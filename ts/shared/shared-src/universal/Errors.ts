@@ -1,20 +1,18 @@
 import { Try } from './TryCatch'
 
-/*
- * Tao sorts every non-assertion failure into one of three categories, because each one has a
- * different reader and a different recovery:
- *
- * 1. `UnexpectedBehaviorError` — an invariant Tao itself, or a layer upstream of this one, should
- *    have guaranteed. It is a Tao bug, never the author's; the reader is a Tao developer. `Assert`
- *    raises this category, so a guard belongs in `Assert` rather than here.
- * 2. `UserInputError` — the author's own data or contract is wrong, and they can fix it. The reader
- *    is the person writing the Tao program, and the message must tell them what to change.
- *    `Assert.input` raises this category from a guard.
- * 3. `HostEnvironmentError` — the machine, toolchain, or an external process failed: a missing
- *    native module, an absent build artifact, a helper that would not start.
- *    `CommandExecutionError` is this category's subprocess specialization and carries the full
- *    command result.
- */
+// Tao sorts every non-assertion failure into one of three categories, because each one has a
+// different reader and a different recovery:
+//
+// 1. `UnexpectedBehaviorError` — an invariant Tao itself, or a layer upstream of this one, should
+//    have guaranteed. It is a Tao bug, never the author's; the reader is a Tao developer. `Assert`
+//    raises this category, so a guard belongs in `Assert` rather than here.
+// 2. `UserInputError` — the author's own data or contract is wrong, and they can fix it. The reader
+//    is the person writing the Tao program, and the message must tell them what to change.
+//    `Assert.input` raises this category from a guard.
+// 3. `HostEnvironmentError` — the machine, toolchain, or an external process failed: a missing
+//    native module, an absent build artifact, a helper that would not start.
+//    `CommandExecutionError` is this category's subprocess specialization and carries the full
+//    command result.
 
 // ProcessSignal declares a platform process signal value without depending on Node types.
 type ProcessSignal = string

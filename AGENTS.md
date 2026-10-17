@@ -60,6 +60,7 @@ Implementation rules:
   - ALWAYS follow existing code style and conventions from files in the same folder.
   - ALWAYS propose new folder structures before creating new folders.
 - TS:
+  - Non-JSDoc comments use `//` lines, including multiline comment blocks; reserve `/** ... */` for JSDoc and do not use `/* ... */` comments.
   - Use `Try` from `@shared` for exception handling, including async recovery and cleanup; native try/catch belongs only in the `TryCatch.ts` primitive.
   - Raise failures through the capitalized `Errors.ThrowX` helpers (or `Errors.Throw` to rethrow/normalize), rather than throwing imported error classes. Test fixtures may throw raw values to exercise failure boundaries.
   - JSDoc:
