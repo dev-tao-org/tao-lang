@@ -167,9 +167,25 @@ export function sourceConformanceIssues(filename: string, source: string): strin
       report(range.pos, 'use // lines instead of non-JSDoc block comments')
     } else if (!publicDocs.has(range.pos)) {
       report(range.pos, 'private JSDoc is not allowed; use // lines')
+    } else if (!hasValidDocLayout(source, range)) {
+      report(
+        range.pos,
+        'multiline JSDoc needs opening-line text, aligned *  continuation lines, and */ after the last text',
+      )
     }
   }
   return issues
+}
+
+function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
+  const lines = source.slice(range.pos, range.end).split(/\r\n|\r|\n/)
+  if (lines.length === 1) {
+    return true
+  }
+  const indentation = source.slice(source.lastIndexOf('\n', range.pos) + 1, range.pos).match(/^[\t ]*/)![0]
+  const prefix = indentation + ' *  '
+  return /^\/\*\* \S+ \S/.test(lines[0]) && /\S \*\/$/.test(lines[lines.length - 1])
+    && lines.slice(1).every(line => line.startsWith(prefix) && /^\S/.test(line.slice(prefix.length)))
 }
 
 function multilineStringIssue(node: TypeScript.Node, file: TypeScript.SourceFile): string | undefined {

@@ -6,6 +6,43 @@ import { join } from 'node:path'
 import { checkSourceConformance, sourceConformanceIssues } from './source-conformance'
 
 Describe('source conformance', () => {
+  Test('requires text on the opening and closing JSDoc lines and two spaces after continuation stars', () => {
+    for (
+      const comment of [
+        '/**\n *  value returns input. */',
+        '/** value\n *  returns input. */',
+        '/** value returns input.\n *  More details.\n */',
+        '/** value returns input.\n More details. */',
+        '/** value returns input.\n * More details. */',
+        '/** value returns input.\n *   More details. */',
+        '/** value returns input.\n *  More details.*/',
+        '/** value returns input.\n  *  Misaligned details. */',
+      ]
+    ) {
+      const issues = sourceConformanceIssues('fixture.ts', comment + '\nexport function value() {}')
+      Expect(issues).toHaveLength(1)
+      Expect(issues[0]).toContain('multiline JSDoc')
+    }
+  })
+
+  Test('accepts the required JSDoc layout, including indented public members and CRLF', () => {
+    const source = S`
+      /** value returns input.
+       *  Additional details.
+       *  Last details. */
+      export function value() {}
+      /** Client exposes the service. */
+      export class Client {
+        /** run invokes the service.
+         *  Additional details. */
+        run() {}
+      }
+    `
+    Expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
+    Expect(sourceConformanceIssues('fixture.ts', source.replaceAll('\n', '\r\n'))).toEqual([])
+    Expect(sourceConformanceIssues('fixture.ts', "const example = '/**\\n * bad */'")).toEqual([])
+  })
+
   Test('requires S for physical multiline runtime literals while ignoring type literals and escapes', () => {
     for (
       const source of [

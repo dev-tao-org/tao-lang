@@ -58,6 +58,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 - Checked by `check`: TypeScript types, formatter conventions (including two-space indentation), and the source rules below.
 - Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
+- Source rules: multiline JSDoc starts with `/** <NAME> <VERB> ...`, continues with aligned ` *  <text>` lines, and closes after the last text with ` */`; no delimiter-only lines.
 - Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.
 - Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
 - Review: tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.

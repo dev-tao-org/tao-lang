@@ -21,11 +21,9 @@ type PollUntilOptions = {
   stop?: () => boolean
 }
 
-/**
- * pollUntil re-reads a condition until it yields something other than `false`, `undefined`, or `null`,
- * and returns that value; once the budget is spent it returns `undefined` instead, so the caller words
- * its own timeout. A read that throws ends the wait with that error.
- */
+/** pollUntil re-reads a condition until it yields something other than `false`, `undefined`, or `null`,
+ *  and returns that value; once the budget is spent it returns `undefined` instead, so the caller words
+ *  its own timeout. A read that throws ends the wait with that error. */
 export async function pollUntil<T>(
   read: () => T | Promise<T>,
   options: PollUntilOptions,

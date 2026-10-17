@@ -64,6 +64,8 @@ require name-led descriptive JSDoc on exported API declarations, reject private 
 block comments, and require `Try` outside its exact primitive file. Local/default exports, overloads,
 values, types and command factories are covered; forwarding exports do not duplicate origin docs.
 Public shape members may carry JSDoc. Strings, templates and regular expressions are not comments.
+Multiline JSDoc keeps name-led text on the opening line, aligned continuation stars followed by exactly two spaces,
+and ` */` after the last text instead of a separate closing line.
 These rules run in `check` and `verify` without new dependencies; `check` never runs tests.
 Multiline runtime literals use the universal `S` tag, which trims blank boundary lines and common
 indentation while preserving relative indentation, including interpolated source. Conformance

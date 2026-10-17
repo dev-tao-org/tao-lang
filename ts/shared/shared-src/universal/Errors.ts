@@ -95,11 +95,9 @@ export function isTaoError(error: unknown): error is TaoError {
   return typeof error === 'object' && error !== null && taoErrors.has(error)
 }
 
-/**
- * messageOf reads the message out of an unknown thrown value for a surface that shows it
- * verbatim, such as a status line or an inline alert. `formatForUser` is the terminal rendering.
- * `packages/apps/runtime/TaoRuntime-src/TR-errors.ts` keeps `errorMessage` as its mirror.
- */
+/** messageOf reads the message out of an unknown thrown value for a surface that shows it
+ *  verbatim, such as a status line or an inline alert. `formatForUser` is the terminal rendering.
+ *  `packages/apps/runtime/TaoRuntime-src/TR-errors.ts` keeps `errorMessage` as its mirror. */
 export function messageOf(error: unknown): string {
   return errorDetail(error) ?? describeThrownValue(error)
 }
@@ -130,18 +128,14 @@ function describeThrownValue(value: unknown): string {
   return fields.length === 0 ? name : `${name} (${fields.join(', ')})`
 }
 
-/**
- * asError hands back a thrown value as an `Error`: an `Error` unchanged, anything else wrapped as an
- * `UnexpectedBehaviorError` carrying its text, for an emitter or rejection that needs the object.
- */
+/** asError hands back a thrown value as an `Error`: an `Error` unchanged, anything else wrapped as an
+ *  `UnexpectedBehaviorError` carrying its text, for an emitter or rejection that needs the object. */
 export function asError(error: unknown): Error {
   return error instanceof Error ? error : new UnexpectedBehaviorError(String(error))
 }
 
-/**
- * abortError is the cancellation an `AbortSignal` consumer expects: a plain `Error` named `AbortError`,
- * which is the Web contract, not a Tao failure category.
- */
+/** abortError is the cancellation an `AbortSignal` consumer expects: a plain `Error` named `AbortError`,
+ *  which is the Web contract, not a Tao failure category. */
 export function abortError(message: string): Error {
   return Object.assign(new Error(message), { name: 'AbortError' })
 }
@@ -160,20 +154,20 @@ export function Throw(error: unknown): never {
 }
 
 /** ThrowUserInput throws a user-correctable Tao error.
- The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
+ *  The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
 export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): never {
   throw new UserInputError(messageForUser, details)
 }
 
 /** ThrowUnexpected throws an internal Tao error.
- Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
- the reader and recovery owner is a Tao developer. */
+ *  Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
+ *  the reader and recovery owner is a Tao developer. */
 export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
   throw new UnexpectedBehaviorError(messageForUser, opts)
 }
 
 /** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process.
- Use for missing native modules or build artifacts, helpers that cannot start, and similar host failures. */
+ *  Use for missing native modules or build artifacts, helpers that cannot start, and similar host failures. */
 export function ThrowHostEnvironment(
   messageForUser: string,
   opts?: { cause?: unknown; details?: ErrorDetails },
@@ -182,19 +176,16 @@ export function ThrowHostEnvironment(
 }
 
 /** ThrowCommandExecution throws a structured child process failure.
- This specializes host-environment failures and retains the full command result for diagnostics. */
+ *  This specializes host-environment failures and retains the full command result for diagnostics. */
 export function ThrowCommandExecution(result: CommandErrorResult): never {
   throw new CommandExecutionError(result)
 }
 
-/**
- * formatForUser renders an error message suitable for terminal users.
- *
- * `TAO_DEBUG_ERRORS=1` swaps in the log rendering instead. An `UnexpectedBehaviorError` reaches the
- * terminal as the bare sentence "Something went wrong.", which is right for a Tao developer and
- * useless for whoever has to find the cause; the switch is what turns that report into the same
- * name, details, cause, and stack the logs already carry.
- */
+/** formatForUser renders an error message suitable for terminal users.
+ *  `TAO_DEBUG_ERRORS=1` swaps in the log rendering instead. An `UnexpectedBehaviorError` reaches the
+ *  terminal as the bare sentence "Something went wrong.", which is right for a Tao developer and
+ *  useless for whoever has to find the cause; the switch is what turns that report into the same
+ *  name, details, cause, and stack the logs already carry. */
 export function formatForUser(error: unknown): string {
   if (debugErrorsEnabled()) {
     return formatForLog(error)
@@ -202,11 +193,9 @@ export function formatForUser(error: unknown): string {
   return isTaoError(error) ? error.messageForUser : unexpectedErrorMessage
 }
 
-/**
- * DEBUG_ERRORS_ENV names the opt-in that makes every user-facing error render its diagnostics. It
- * is exported so the command boundaries that print the bare unexpected sentence can name the switch
- * in the same breath, rather than leaving a reader with a sentence and nowhere to go.
- */
+/** DEBUG_ERRORS_ENV names the opt-in that makes every user-facing error render its diagnostics. It
+ *  is exported so the command boundaries that print the bare unexpected sentence can name the switch
+ *  in the same breath, rather than leaving a reader with a sentence and nowhere to go. */
 export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
 
 // Error normalization and Try form the platform-independent failure boundary. Neither calls the

@@ -64,8 +64,8 @@ function outputMethods(terminalOnly = false) {
 export const TUI = outputMethods(true)
 
 /** IO writes developer output to the terminal and agent output to .artifacts/logs/agent.
- Set TAO_AGENT=1 for agent mode; stderr always reaches both the terminal and log in that mode.
- TAO_AGENT_LOG optionally selects the log file, primarily for isolated command probes. */
+ *  Set TAO_AGENT=1 for agent mode; stderr always reaches both the terminal and log in that mode.
+ *  TAO_AGENT_LOG optionally selects the log file, primarily for isolated command probes. */
 export const IO = outputMethods()
 
 /** setAgentIO enables agent logging, including for direct agent CLI invocation. */
@@ -87,8 +87,8 @@ async function forwardStderr(stream: ReadableStream<Uint8Array>): Promise<void> 
 }
 
 /** runCommand runs argv or a space-separated command and throws on failure.
- Strings have no shell quoting or expansion; use an array to preserve spaces inside arguments.
- Agent stderr is always mirrored, even when a developer probe requests stderr: 'ignore'. */
+ *  Strings have no shell quoting or expansion; use an array to preserve spaces inside arguments.
+ *  Agent stderr is always mirrored, even when a developer probe requests stderr: 'ignore'. */
 export async function runCommand(command: string | readonly string[], options: {
   cwd?: string
   stdout?: 'inherit' | 'ignore'
