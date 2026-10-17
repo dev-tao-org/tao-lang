@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 type Result = { code: number; stdout: string; stderr: string }
 
 Describe('shared command registration', () => {
-  Test('catches synchronous and asynchronous failures with structured or best-effort messages', async () => {
+  Test('reports action rejections and uncaught callback failures through the global handler', async () => {
     await withFixture(async (write, run) => {
       for (
         const [action, message] of [
@@ -18,30 +18,43 @@ Describe('shared command registration', () => {
             'Install the missing tool.',
           ],
           ["() => { throw new Error('Plain command failure.') }", 'Plain command failure.'],
-          ["() => { throw { message: 'Carried failure message.' } }", 'Carried failure message.'],
-          ["() => { throw { get message() { throw new Error('broken formatter') } } }", 'Command failed.'],
+          [
+            "() => { setTimeout(() => { throw new Error('Escaped callback failure.') }, 0) }",
+            'Escaped callback failure.',
+          ],
         ]
       ) {
         await write(
           `registerCommand({ name: 'fail', description: 'Failure fixture.', action: ${action} })`,
         )
         const result = await run('fail')
-        Expect(result).toEqual({ code: 1, stdout: '', stderr: `${message}\n` })
+        Expect(result.code).toBe(1)
+        Expect(result.stdout).toBe('')
+        Expect(result.stderr).toContain(message)
+        Expect(result.stderr).toMatch(/\u001b\[33m[\s\S]+\u001b\[0m\n\u001b\[31m/)
       }
     })
   })
 
-  Test('applies structured command failures and preserves an existing failure after a successful action', async () => {
+  Test('preserves structured failure statuses and stops execution after an action rejects', async () => {
     await withFixture(async (write, run) => {
-      await write(
-        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 23, signal: null, stdout: '', stderr: '' }) })`,
-      )
-      Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: 'Command failed: fixture\n' })
+      for (const [status, expected] of [[23, 23], [0, 1], [256, 1]]) {
+        await write(
+          `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: ${status}, signal: null, stdout: '', stderr: '' }) })`,
+        )
+        const first = await run('verdict')
+        Expect(first.code).toBe(expected)
+        Expect(first.stderr).toContain('Command failed: fixture')
+      }
       await write(S`
         await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 29, signal: null, stdout: '', stderr: '' }) }).action()
+        process.stdout.write('continued after failure')
         registerCommand({ name: 'verdict', description: 'Later success.', action: () => {} })
       `)
-      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: 'Command failed: fixture\n' })
+      const second = await run('verdict')
+      Expect(second.code).toBe(29)
+      Expect(second.stdout).toBe('')
+      Expect(second.stderr).toContain('Command failed: fixture')
     })
   })
 })
@@ -66,6 +79,7 @@ async function withFixture(
         await Bun.write(
           script,
           S`
+            import './CLIs/CLIs-src/cli-kit/fatal-errors'
             import { registerCommand, execute } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
             import { Errors } from '@shared'
             ${source}
@@ -80,7 +94,6 @@ async function withFixture(
             ...process.env,
             TAO_AGENT: '0',
             TAO_AGENT_LOG: join(root, '.artifacts/agent.log'),
-            TAO_DEBUG_ERRORS: '0',
           },
           stdout: 'pipe',
           stderr: 'pipe',

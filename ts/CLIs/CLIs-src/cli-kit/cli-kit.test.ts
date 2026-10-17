@@ -76,7 +76,7 @@ Describe('command IO', () => {
         Expect(agent.code).toBe(23)
         Expect(agent.stdout).toBe('')
         Expect(agent.log).toContain('["agent"]\n')
-        Expect(agent.log).toMatch(/RUN CMD: .+\n\["agent"\]\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+        Expect(agent.log).toMatch(/RUN CMD: .+\n\["agent"\]\n\[\d+\.\d{2}s\] \(.+\)\n\u001b\[33m/)
       })
     },
   )
@@ -102,7 +102,7 @@ Describe('command IO', () => {
       Expect(result.stderr).toContain('Command failed:')
       Expect(result.log.split('#').length - 1).toBe(90000)
       Expect(result.log.split('@').length - 1).toBe(90000)
-      Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+      Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n\u001b\[33m/)
       const dev = await run(commandAction(`runCommand(['bun', '${child}'], { stderr: 'ignore' })`))
       Expect(dev.stderr).not.toContain('#')
       Expect(dev.stderr).toContain('Command failed:')
@@ -151,7 +151,7 @@ Describe('command IO', () => {
         true,
       )
       Expect(failure.code).toBe(1)
-      Expect(failure.stderr).toContain('original failure\n')
+      Expect(failure.stderr).toContain("message: 'original failure'")
       Expect(failure.stderr.match(/Command log unavailable:/g)).toHaveLength(1)
     })
   })
@@ -236,13 +236,14 @@ async function withProbe(
         script,
         S`
           import { IO, runCommand } from '@cli-kit'
+          import './CLIs/CLIs-src/cli-kit/fatal-errors'
           import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
           ${source}
         `,
       )
       const child = Bun.spawn(['bun', script, ...args], {
         cwd: join(root, 'ts'),
-        env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log, TAO_DEBUG_ERRORS: '0' },
+        env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log },
         stdout: 'pipe',
         stderr: 'pipe',
       })

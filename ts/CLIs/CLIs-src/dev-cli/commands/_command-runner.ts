@@ -1,5 +1,5 @@
 import { IO, repositoryRoot, runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors } from '@shared'
 import { existsSync, realpathSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -22,7 +22,7 @@ type CommandArgument = {
   defaultValue?: unknown
 }
 
-/** RegisteredCommand exposes metadata and an action with centralized failure handling. */
+/** RegisteredCommand exposes metadata and an awaited action that propagates failures. */
 export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<Args>, 'action'> & {
   action: (...args: Args) => Promise<void>
 }
@@ -81,17 +81,7 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
   const registered = {
     ...definition,
     action: async (...args: Args): Promise<void> => {
-      await Try(() => definition.action(...args), {
-        catch: error => {
-          const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
-          process.exitCode = commandFailure ? error.result.status || 1 : 1
-          const message = Try(
-            () => Errors.isTaoError(error) ? Errors.formatForUser(error) : Errors.messageOf(error),
-            { catch: () => 'Command failed.' },
-          )
-          IO.error(message)
-        },
-      })
+      await definition.action(...args)
     },
   }
   commands.push({ ...registered, action: (...args: unknown[]) => registered.action(...args as Args) })

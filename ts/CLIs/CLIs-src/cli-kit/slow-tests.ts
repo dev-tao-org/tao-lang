@@ -19,7 +19,7 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
         for (const warning of slowTestWarnings(report)) {
           IO.warn(warning)
         }
-      }, { catch: error => IO.warn('Unable to read test timings: ' + Errors.messageOf(error)) })
+      }, { catch: error => IO.warn('Unable to read test timings:', error) })
     },
   })
 }
@@ -32,7 +32,7 @@ async function prepareTestReport(): Promise<string | undefined> {
     return path
   }, {
     catch: error => {
-      IO.warn('Test timing report unavailable: ' + Errors.messageOf(error))
+      IO.warn('Test timing report unavailable:', error)
       return undefined
     },
   })

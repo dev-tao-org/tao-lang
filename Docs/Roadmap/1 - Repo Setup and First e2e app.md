@@ -26,15 +26,21 @@ types, comments, unused API exports and formatting without tests. Legacy TypeScr
 also passes with the committed dependency manifest and lockfile.
 
 Root `./agent check` and `./agent fmt` reuse the dev CLI's command registration.
-Command modules default-export shared registrations with inline actions and centralized error rendering;
-the action executor alone assigns process exit status from thrown failures. Actions and workflow
+Command modules default-export shared registrations with inline actions that propagate failures.
+Global exception/rejection handlers print yellow stacks before red messages/details, mirror agent
+diagnostics to terminal and log, and terminate with the structured child status or 1. Actions and workflow
 steps return void; variadic `runSteps` awaits each step and stops on failure.
-setup uses the same boundary before Commander is installed. Formatting uses
+Setup installs the same global handlers before Commander is installed. Formatting uses
 the repository config and repository-relative arguments. Dependency-only formatter, compiler,
 installer, package-loader, clock and Commander presentation tests were removed at the developer's request.
 Shared `Try` handles synchronous and asynchronous recovery and cleanup, normalizes propagated failures,
 and preserves original failure context for finalization. The new implementation uses capitalized
 `Errors.ThrowX` helpers with private error constructors; ordering and cleanup-failure regressions are covered.
+The former per-command message renderers and debug-message switch are removed. Recoverable log
+and timing-report failures still warn and preserve the original command outcome. Global failure
+reporting passes 51 tests and 269 assertions, including escaped callbacks, child statuses, color
+ordering, and log mirroring; a forced-status mutation is rejected by its regression.
+Evidence: `.artifacts/logs/agent/2026-10-17T19-40-17.140Z-24924.log`.
 All current Just workflows are registered. Root `fix` and `fmt` format the new workspace and shared
 repository files, excluding the legacy implementation. Tao source fixes await the new parser/tooling.
 Root `check`, `test` and `verify` operate on the new workspace; `check` never runs

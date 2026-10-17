@@ -71,7 +71,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Review: invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
 - Review: prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
 - Review: expose static validation through `check`; keep its individual type, comment and style checks internal.
-- Review: only the shared action executor sets `process.exitCode`; actions and workflow steps return void and throw failures. Use variadic `runSteps`.
+- Review: the global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
 - Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
 ## Git workflow

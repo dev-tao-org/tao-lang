@@ -43,13 +43,4 @@ Describe('Errors throwing helpers', () => {
       return true
     })
   })
-
-  Test('error formatting recovers from unserializable details through Try', () => {
-    const details: Errors.ErrorDetails = {}
-    details.self = details
-    ExpectThrows(() => Errors.ThrowUnexpected('formatting', { details }), error => {
-      Expect(Errors.formatForLog(error)).toContain('details=<safeJson: unserializable>')
-      return true
-    })
-  })
 })

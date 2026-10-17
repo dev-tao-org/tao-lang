@@ -81,12 +81,6 @@ export async function runCommand(command: string | readonly string[], options: {
       })
     }
   }, {
-    catch: error => {
-      if (Errors.isTaoError(error)) {
-        Errors.Throw(error)
-      }
-      Errors.ThrowHostEnvironment(`Unable to run ${label}: ${Errors.messageOf(error)}`)
-    },
     finally: () => output.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
   })
 }
@@ -153,7 +147,7 @@ function logToFile(text: string | Uint8Array): boolean {
   }, {
     catch: error => {
       logUnavailable = true
-      process.stderr.write(`Command log unavailable: ${Errors.messageOf(error)}\n`)
+      process.stderr.write(`Command log unavailable: ${format(error)}\n`)
       return false
     },
   })

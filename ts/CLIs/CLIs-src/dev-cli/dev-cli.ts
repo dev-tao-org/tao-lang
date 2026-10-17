@@ -1,3 +1,4 @@
+import '../cli-kit/fatal-errors'
 import './commands/agent-config'
 import './commands/check'
 import './commands/clean'

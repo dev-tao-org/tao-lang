@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Time } from '@shared'
 import { relative } from 'node:path'
 import * as TypeScript from 'typescript'
 import { IO } from './cli-kit'
@@ -9,17 +9,15 @@ type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
 export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
-  await Try(async () => {
-    for (
-      const filename of TypeScript.sys.readDirectory(root + '/ts', ['.ts', '.tsx', '.mts', '.cts'], [
-        '**/node_modules/**',
-      ])
-    ) {
-      issues.push(
-        ...sourceConformanceIssues(relative(root, filename).replaceAll('\\', '/'), await Bun.file(filename).text()),
-      )
-    }
-  }, { catch: error => Errors.ThrowHostEnvironment('Could not check source conformance: ' + Errors.messageOf(error)) })
+  for (
+    const filename of TypeScript.sys.readDirectory(root + '/ts', ['.ts', '.tsx', '.mts', '.cts'], [
+      '**/node_modules/**',
+    ])
+  ) {
+    issues.push(
+      ...sourceConformanceIssues(relative(root, filename).replaceAll('\\', '/'), await Bun.file(filename).text()),
+    )
+  }
   IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
     Errors.ThrowUserInput(issues.join('\n'))
