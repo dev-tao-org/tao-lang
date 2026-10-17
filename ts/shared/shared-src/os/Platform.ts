@@ -8,8 +8,21 @@ export function isPlatformImport(specifier: string): boolean {
   return specifier === 'bun' || specifier.startsWith('bun:') || isBuiltin(specifier)
 }
 
-/** spawn starts a child process through the managed runtime. */
-export const spawn: typeof Bun.spawn = (...args: unknown[]) => Reflect.apply(Bun.spawn, Bun, args)
+/** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
+export const spawn: typeof Bun.spawn = (...args: unknown[]) => {
+  const optionIndex = Array.isArray(args[0]) ? 1 : 0
+  const options = (args[optionIndex] ?? {}) as { stderr?: unknown; env?: Record<string, string | undefined> }
+  if (preserveTerminalColors(options)) {
+    args[optionIndex] = { ...options, env: { ...(options.env ?? process.env), FORCE_COLOR: '1' } }
+  }
+  return Reflect.apply(Bun.spawn, Bun, args)
+}
+
+function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
+  const environment = options.env ?? process.env
+  const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
+  return !explicitPreference && options.stderr === 'pipe' && process.stderr.isTTY && process.stderr.hasColors()
+}
 
 /** argv contains the current CLI invocation arguments. */
 export const argv = process.argv

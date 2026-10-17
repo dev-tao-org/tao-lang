@@ -33,7 +33,7 @@ export default registerCommand({
         await runCommand('just --fmt --justfile', { variadicArgs: [absolute], cwd: repositoryRoot })
       } else {
         await runCommand(
-          'dprint fmt --config .dprint.jsonc --incremental=false --excludes old-tao-v1/**',
+          'dprint fmt --config .dprint.jsonc --incremental=false --excludes old-tao-v1/** --',
           { variadicArgs: [path], cwd: repositoryRoot },
         )
       }

@@ -118,7 +118,9 @@ a safe fingerprint. Secrets uses the new root encrypted store and approved age d
 Enclave setup and store-key wrapping. No real secret decryption, identity setup or Docker lifecycle was exercised.
 `agent-config`, `my-branch` and `my-sync` still use the separate `runLegacyDev` bridge.
 Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
-Current `./agent verify`: 52 tests, 280 assertions; `.artifacts/logs/agent/2026-10-17T20-01-40.429Z-40690.log`.
+Current `./agent verify`: 53 tests, 286 assertions; `.artifacts/logs/agent/2026-10-17T20-07-11.463Z-44182.log`.
+Piped diagnostics retain terminal colors on color-capable terminals while respecting explicit color preferences.
+Doctor preserves GitHub transport severity, credential-helper validation, hook wiring and individual artifact-directory checks.
 Agents run verify at slice completion and fix or fmt before committing.
 Root `./agent` and `./dev` enter the checkout's pinned devenv automatically unless that environment
 is already active. Root Nix exposes the existing Bun and Node pins plus the developer tools; workspace

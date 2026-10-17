@@ -203,15 +203,17 @@ export function renderSecretEnvFile(values: ReadonlyMap<string, string>, generat
 }
 
 function parseStoreKey(value: unknown): StoreKey {
-  if (
-    !isRecord(value) || typeof value.recipient !== 'string' || !isStringArray(value.wrappedFor)
-    || !isStringArray(value.wrappedKey) || value.wrappedKey.length === 0
-  ) {
+  if (!isStoreKeyShape(value)) {
     Errors.ThrowUserInput(
       "The secret store's storeKey needs a recipient string and wrappedFor and wrappedKey string arrays.",
     )
   }
   return { recipient: value.recipient, wrappedFor: value.wrappedFor, wrappedKey: value.wrappedKey }
+}
+
+function isStoreKeyShape(value: unknown): value is StoreKey {
+  return isRecord(value) && typeof value.recipient === 'string' && isStringArray(value.wrappedFor)
+    && isStringArray(value.wrappedKey) && value.wrappedKey.length > 0
 }
 
 function isStringArray(value: unknown): value is string[] {

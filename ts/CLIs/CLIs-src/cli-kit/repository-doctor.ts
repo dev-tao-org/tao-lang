@@ -22,12 +22,13 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
 }> {
   const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
   const versions = await Promise.all(tools.map(tool => probe(tool + ' --version')))
-  const [commit, describe, changes, branch, origin, helpers] = await Promise.all([
+  const [commit, describe, changes, branch, origin, configuredOrigin, helpers] = await Promise.all([
     probe('git rev-parse HEAD'),
     probe('git describe --always --dirty'),
     probe('git status --porcelain'),
     probe('git symbolic-ref --quiet --short HEAD'),
     probe('git remote get-url origin'),
+    probe('git config --local --get remote.origin.url'),
     probe('git config --get-all credential.https://github.com.helper'),
   ])
   const system = Platform.systemInfo()
@@ -69,29 +70,24 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
       remediation: present ? undefined : './agent setup',
     })
   }
-  const https = origin?.startsWith('https://github.com/') ?? false
-  checks.push({
-    name: 'GitHub transport',
-    status: https ? 'pass' : 'warn',
-    detail: https ? 'Origin uses GitHub HTTPS.' : 'Origin is absent or does not use GitHub HTTPS.',
-    remediation: https ? undefined : 'just setup-github',
-  })
-  checks.push({
-    name: 'GitHub credentials',
-    status: helpers ? 'pass' : 'warn',
-    detail: helpers ? 'An HTTPS credential helper is configured.' : 'No GitHub HTTPS credential helper found.',
-    remediation: helpers ? undefined : 'just setup-github',
-  })
-  const artifacts = Path.join(repositoryRoot, '.artifacts')
-  const writable = await Try(async () => {
-    await FileSystem.access(FileSystem.existsSync(artifacts) ? artifacts : repositoryRoot, FileSystem.constants.W_OK)
-    return true
-  }, { catch: () => false })
-  checks.push({
-    name: 'artifacts',
-    status: writable ? 'pass' : 'fail',
-    detail: writable ? 'The artifact location is writable.' : 'The artifact location is not writable.',
-  })
+  checks.push(diagnoseGitHub(configuredOrigin, origin, helpers))
+  for (const name of ['', 'logs', 'cache', 'build', 'tmp']) {
+    const artifact = Path.join(repositoryRoot, '.artifacts', name)
+    let existing = artifact
+    while (!FileSystem.existsSync(existing)) {
+      existing = Path.dirname(existing)
+    }
+    const writable = await Try(async () => {
+      await FileSystem.access(existing, FileSystem.constants.W_OK)
+      return true
+    }, { catch: () => false })
+    checks.push({
+      name: 'artifacts ' + (name || 'root'),
+      status: writable ? 'pass' : 'fail',
+      detail: writable ? 'The artifact location is writable.' : 'The artifact location is not writable.',
+    })
+  }
+  checks.push(...await gitHookChecks())
   // Generated parser, Studio, Expo, native toolchains and machine-lane diagnostics await their new implementations.
   const status = checks.some(check => check.status === 'fail')
     ? 'fail'
@@ -99,6 +95,66 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
     ? 'warn'
     : 'pass'
   return { version: 1, repositoryRoot, checks, status, fingerprint }
+}
+
+/** diagnoseGitHub preserves required HTTPS transport and the expected GitHub CLI helper diagnostics. */
+export function diagnoseGitHub(
+  configured: string | undefined,
+  effective: string | undefined,
+  helpers: string | undefined,
+): Check {
+  const name = 'GitHub transport'
+  const remediation = 'just setup-github'
+  if (!effective?.startsWith('https://github.com/')) {
+    return { name, remediation, status: 'fail', detail: 'Origin is absent or does not resolve to GitHub HTTPS.' }
+  }
+  if (configured !== effective) {
+    return {
+      name,
+      remediation,
+      status: 'warn',
+      detail: 'Origin depends on a URL rewrite; store the HTTPS URL directly.',
+    }
+  }
+  if (!helpers?.split('\n').some(helper => helper.includes('auth git-credential'))) {
+    return { name, remediation, status: 'warn', detail: 'The GitHub CLI HTTPS credential helper is missing.' }
+  }
+  return { name, status: 'pass', detail: 'Origin uses GitHub HTTPS and the GitHub CLI credential helper.' }
+}
+
+async function gitHookChecks(): Promise<Check[]> {
+  const directory = await probe('git rev-parse --path-format=absolute --git-path hooks')
+  const checks: Check[] = []
+  for (const event of ['commit-msg', 'pre-commit']) {
+    const path = directory ? Path.join(directory, event) : undefined
+    const contents = await Try(async () => path ? await FileSystem.file(path).text() : undefined, {
+      catch: () => undefined,
+    })
+    if (contents === undefined) {
+      checks.push({ name: 'git hooks', status: 'warn', detail: event + ' is not installed; Git guards do not run.' })
+      continue
+    }
+    if (!contents.includes('# tao-warn-only-git-hook')) {
+      checks.push({ name: 'git hooks', status: 'pass', detail: event + ' is managed outside this repository.' })
+      continue
+    }
+    const paths = [...contents.matchAll(/\$worktree\/([^"]+)"/g)].map(match => Path.resolve(repositoryRoot, match[1]))
+    const executable = await Promise.all(paths.map(path =>
+      Try(async () => {
+        await FileSystem.access(path, FileSystem.constants.X_OK)
+        return FileSystem.statSync(path).isFile()
+      }, { catch: () => false })
+    ))
+    checks.push({
+      name: 'git hooks',
+      status: executable.some(Boolean) ? 'pass' : 'warn',
+      detail: executable.some(Boolean)
+        ? event + ' resolves its guard script.'
+        : event + ' cannot resolve an executable guard script in this worktree.',
+    })
+  }
+  // New setup does not install Git guards yet; inspect existing hooks without borrowing the old installer.
+  return checks
 }
 
 async function probe(command: string, variadicArgs: readonly string[] = []): Promise<string | undefined> {

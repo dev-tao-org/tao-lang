@@ -12,7 +12,6 @@ const knipConfiguration: KnipConfig = {
   entry: [
     ...cliEntries,
     ...cliEntries.flatMap(commandEntries),
-    'CLIs/CLIs-src/dev-cli/commands/_command-runner.ts',
     'CLIs/CLIs-src/tao-cli/tao-cli.ts',
     '**/*.test.ts',
   ],

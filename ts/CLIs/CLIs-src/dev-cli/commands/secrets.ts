@@ -70,68 +70,6 @@ function liveEnvironment(): SecretsEnvironment {
   }
 }
 
-function secretsIdentityPath(): string {
-  const homeDirectory = Env.get('HOME')
-  if (homeDirectory === undefined) {
-    Errors.ThrowHostEnvironment('Cannot locate the home directory for the secrets identity.')
-  }
-  return Path.join(homeDirectory, '.config/tao/secrets-identity.txt')
-}
-
-async function readStore(): Promise<SecretStore> {
-  if (!FileSystem.existsSync(storePath)) {
-    return { recipients: [], secrets: {} }
-  }
-  return parseSecretStore(await FileSystem.file(storePath).text())
-}
-
-async function writeStore(store: SecretStore): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
-  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
-  await FileSystem.mkdir(directory, { recursive: true })
-  const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
-  await Try(async () => {
-    await FileSystem.write(temporary, formatSecretStore(store))
-    await FileSystem.move(temporary, storePath)
-  }, { finally: () => FileSystem.rm(temporary, { force: true }) })
-}
-
-async function writeGeneratedEnv(contents: string): Promise<void> {
-  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
-  await FileSystem.mkdir(directory, { recursive: true })
-  const temporaryDirectory = await FileSystem.mkdtemp(Path.join(directory, 'env-'))
-  const temporary = Path.join(temporaryDirectory, 'secrets.env')
-  await Try(async () => {
-    await FileSystem.writePrivate(temporary, contents)
-    await FileSystem.move(temporary, envPath)
-  }, { finally: () => FileSystem.rm(temporaryDirectory, { recursive: true, force: true }) })
-}
-
-async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
-  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
-  const deadline = Time.nowMs() + 30_000
-  while (true) {
-    const acquired = await Try(async () => {
-      await FileSystem.mkdir(lockPath)
-      return true
-    }, {
-      catch: error => {
-        if (!isAlreadyExists(error)) {
-          Errors.Throw(error)
-        }
-        return false
-      },
-    })
-    if (acquired) {
-      return await Try(work, { finally: () => FileSystem.rm(lockPath, { recursive: true, force: true }) })
-    }
-    if (Time.nowMs() >= deadline) {
-      Errors.ThrowHostEnvironment('Timed out waiting for the repository secrets lock.')
-    }
-    await Time.sleep(25)
-  }
-}
-
 async function addSecret(name: string, note: string | undefined, environment: SecretsEnvironment): Promise<void> {
   requireSecretName(name)
   const original = await readStore()
@@ -152,11 +90,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
   const armor = await environment.cipher.encrypt(value, [key.recipient])
   await withStoreMutation(async () => {
     const current = await readStore()
-    if (
-      JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
-      || JSON.stringify(current.secrets[name]) !== JSON.stringify(original.secrets[name])
-      || current.storeKey?.recipient !== original.storeKey?.recipient
-    ) {
+    if (hasConflictingSecretChange(original, current, name)) {
       Errors.ThrowUserInput(
         'The recipients, store key, or selected secret changed while adding. Run the command again.',
       )
@@ -169,6 +103,21 @@ async function addSecret(name: string, note: string | undefined, environment: Se
   })
   IO.info(`${original.secrets[name] === undefined ? 'Added' : 'Replaced'} ${name} in secrets/secrets.jsonc.`)
   IO.info('Run ./dev secrets to write it into .env.secrets.')
+}
+
+function hasConflictingSecretChange(original: SecretStore, current: SecretStore, name: string): boolean {
+  return JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
+    || JSON.stringify(current.secrets[name]) !== JSON.stringify(original.secrets[name])
+    || current.storeKey?.recipient !== original.storeKey?.recipient
+}
+
+async function createStoreKey(cipher: Cipher, recipients: readonly string[]): Promise<StoreKey> {
+  const key = await cipher.generateKey()
+  return {
+    recipient: key.recipient,
+    wrappedFor: [...recipients],
+    wrappedKey: armorLines(await cipher.encrypt(key.secretKey, recipients)),
+  }
 }
 
 async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
@@ -188,6 +137,17 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
   }
 }
 
+async function writeGeneratedEnv(contents: string): Promise<void> {
+  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
+  await FileSystem.mkdir(directory, { recursive: true })
+  const temporaryDirectory = await FileSystem.mkdtemp(Path.join(directory, 'env-'))
+  const temporary = Path.join(temporaryDirectory, 'secrets.env')
+  await Try(async () => {
+    await FileSystem.writePrivate(temporary, contents)
+    await FileSystem.move(temporary, envPath)
+  }, { finally: () => FileSystem.rm(temporaryDirectory, { recursive: true, force: true }) })
+}
+
 async function grantStoreKey(original: SecretStore, secretKey: string, cipher: Cipher): Promise<void> {
   const storeKey = original.storeKey!
   const wrappedKey = armorLines(await cipher.encrypt(secretKey, original.recipients))
@@ -202,6 +162,10 @@ async function grantStoreKey(original: SecretStore, secretKey: string, cipher: C
     }
     await writeStore({ ...current, storeKey: { ...storeKey, wrappedFor: [...current.recipients], wrappedKey } })
   })
+}
+
+function armorLines(armor: string): string[] {
+  return armor.trimEnd().split('\n')
 }
 
 async function listSecrets(): Promise<void> {
@@ -248,6 +212,53 @@ async function setupSecrets(): Promise<void> {
   )
 }
 
+async function readStore(): Promise<SecretStore> {
+  if (!FileSystem.existsSync(storePath)) {
+    return { recipients: [], secrets: {} }
+  }
+  return parseSecretStore(await FileSystem.file(storePath).text())
+}
+
+async function writeStore(store: SecretStore): Promise<void> {
+  await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
+  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
+  await FileSystem.mkdir(directory, { recursive: true })
+  const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
+  await Try(async () => {
+    await FileSystem.write(temporary, formatSecretStore(store))
+    await FileSystem.move(temporary, storePath)
+  }, { finally: () => FileSystem.rm(temporary, { force: true }) })
+}
+
+async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
+  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
+  const deadline = Time.nowMs() + 30_000
+  while (true) {
+    const acquired = await Try(async () => {
+      await FileSystem.mkdir(lockPath)
+      return true
+    }, {
+      catch: error => {
+        if (!isAlreadyExists(error)) {
+          Errors.Throw(error)
+        }
+        return false
+      },
+    })
+    if (acquired) {
+      return await Try(work, { finally: () => FileSystem.rm(lockPath, { recursive: true, force: true }) })
+    }
+    if (Time.nowMs() >= deadline) {
+      Errors.ThrowHostEnvironment('Timed out waiting for the repository secrets lock.')
+    }
+    await Time.sleep(25)
+  }
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+}
+
 async function recipientOfIdentity(): Promise<string> {
   const identityPath = secretsIdentityPath()
   const contents = await FileSystem.file(identityPath).text()
@@ -279,19 +290,10 @@ async function runIdentityTool(command: string, variadicArgs: readonly string[])
   return stdout
 }
 
-async function createStoreKey(cipher: Cipher, recipients: readonly string[]): Promise<StoreKey> {
-  const key = await cipher.generateKey()
-  return {
-    recipient: key.recipient,
-    wrappedFor: [...recipients],
-    wrappedKey: armorLines(await cipher.encrypt(key.secretKey, recipients)),
+function secretsIdentityPath(): string {
+  const homeDirectory = Env.get('HOME')
+  if (homeDirectory === undefined) {
+    Errors.ThrowHostEnvironment('Cannot locate the home directory for the secrets identity.')
   }
-}
-
-function armorLines(armor: string): string[] {
-  return armor.trimEnd().split('\n')
-}
-
-function isAlreadyExists(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+  return Path.join(homeDirectory, '.config/tao/secrets-identity.txt')
 }

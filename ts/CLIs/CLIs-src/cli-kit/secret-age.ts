@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
+import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
 
 /** createAgeCipher adapts age to the secrets flow while keeping private keys out of argv and files. */
@@ -20,6 +21,9 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
       if (!FileSystem.existsSync(identityPath)) {
         Errors.ThrowHostEnvironment(`No secrets identity at ${identityPath}. Run ${setupCommand} on this machine.`)
       }
+      IO.stderr(
+        'Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.\n',
+      )
       const result = await run('age --decrypt --identity', [identityPath], armor)
       return result
     },
