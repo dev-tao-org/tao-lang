@@ -8,6 +8,9 @@ description: >-
 
 # Dev Automation
 
+Root `AGENTS.md` and `ts/CLIs/AGENTS.md` own the active command structure and Justfile routing.
+The notes below describe the retained `old-tao-v1/` workflow while its commands are ported.
+
 - Keep common workflow definitions and human developer commands in `Justfile`; keep shell entrypoints and the `./tao` wrapper thin.
 - Keep agent-only host operations named in `HostCommandTargets.ts`, permitted by the single
   `agentHostCommands` list in `.rulesync/permissions.jsonc`, and invoked as `./agent unsandboxed <operation>`.

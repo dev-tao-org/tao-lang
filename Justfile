@@ -1,9 +1,10 @@
 # Common developer commands, for discovery
-# ALL `./dev ...` passthroughs should be a single line, with the dev command performing all the steps
+# Each recipe calls one complete ./dev command; justified exceptions are documented below.
 
 set quiet
 
 # Print available recipes
+# Exception: Just owns this menu, which must work before CLI dependencies are installed.
 help:
     just --list
 
@@ -11,6 +12,7 @@ help:
 ############################
 
 # Install repository dependencies in the pinned devenv shell (same entry as ./agent setup and harness hooks).
+# Exception: activate the pinned environment before starting the setup runner shared with harness hooks.
 [group('Setup')]
 setup *ARGS:
     TAO_DEV_SHELL_SETUP=0 devenv shell --no-tui ./agent setup {{ ARGS }}

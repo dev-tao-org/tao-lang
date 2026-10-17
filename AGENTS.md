@@ -49,7 +49,7 @@ Implementation rules:
     - When needed, multiple lines are used with a space indentation: `/** <Exported name> ...\n Lorem ipsum\nDolor sit */\nexport ...`
 - Scripts:
   - All common user actions live in `Justfile`
-  - Dev CLI commands perform every required workflow step themselves; Justfile dev recipes call one complete command.
+  - All Justfile recipes call a single complete `./dev ...` command; the Dev CLI owns every workflow step. Document justified exceptions beside the recipe.
   - ALL scripts are written
 - Git workflow:
   - Always create a new feature branch for your new worktree.
