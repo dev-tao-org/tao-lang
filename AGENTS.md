@@ -3,7 +3,6 @@
 Tao is a programming language for building apps.
 
 - `./ts` holds the typescript implementation.
-- Keep workspace `package.json` and TypeScript configuration in `ts/` or `old-tao-v1/`, not the repository root.
 - A PoC implementation exists in `./old-tao-v1`.
   - Use the PoC for reference, but don't copy code wholesale.
   - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
@@ -49,40 +48,27 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - You review the code for repo conformance;
+  - After each implementation chunk, run `./agent fmt`.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.
 
-## Rules
+## Conformity and style
 
-Implementation rules:
+- Checked by `check`: TypeScript types, formatter conventions (including two-space indentation), and the source rules below.
+- Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
+- Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
+- Review: raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
+- Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
+- Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
+- Review: only the shared action executor sets `process.exitCode`; actions and workflow steps return void and throw failures. Use variadic `runSteps`.
+- Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
-- General rules:
-  - ALWAYS follow existing code style and conventions from files in the same folder.
-  - ALWAYS propose new folder structures before creating new folders.
-- TS:
-  - Non-JSDoc comments use `//` lines, including multiline comment blocks; reserve `/** ... */` for JSDoc and do not use `/* ... */` comments.
-  - Use `Try` from `@shared` for exception handling, including async recovery and cleanup; native try/catch belongs only in the `TryCatch.ts` primitive.
-  - Raise failures through the capitalized `Errors.ThrowX` helpers (or `Errors.Throw` to rethrow/normalize), rather than throwing imported error classes. Test fixtures may throw raw values to exercise failure boundaries.
-  - JSDoc:
-    - Exported values are commented on a single line: `/** <Exported name> <verb> <description> */\nexport <Exported name>...`
-    - When needed, multiple lines are used with a space indentation: `/** <Exported name> ...\n Lorem ipsum\nDolor sit */\nexport ...`
-- Scripts:
-  - All common user actions live in `Justfile`
-  - All Justfile recipes call a single complete `./dev ...` command; the Dev CLI owns every workflow step. Document justified exceptions beside the recipe.
-  - ALL scripts are written
-- Git workflow:
-  - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
-  - Always create a new feature branch for your new worktree.
-  - Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
+## Git workflow
 
-## Guidelines
-
-These are your guidelines to always keep in mind and follow:
-
-- The repo values CONSISTENCY, EFFICIENCY and REUSABILITY:
-  - When you spot inconconsistencies, inefficiencies and opportunities for improvement, note them with a proposed fix.
-  - Proposed fixes go in `
+- Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
+- Always create a new feature branch for your new worktree.
+- Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
 
 ## Implementation architecture
 

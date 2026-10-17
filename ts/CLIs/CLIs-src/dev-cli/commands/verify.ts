@@ -2,7 +2,7 @@ import { runCommand, runSteps } from '@cli-kit'
 import {
   registerCommand,
   repositoryRoot,
-  workspaceComments,
+  workspaceConformance,
   workspaceFormat,
   workspaceTypes,
 } from './_command-runner'
@@ -16,7 +16,7 @@ export default registerCommand({
     await runSteps(
       () => workspaceFormat('fmt'),
       () => workspaceTypes(),
-      () => workspaceComments(),
+      () => workspaceConformance(),
       () => runCommand([process.execPath, 'test'], { cwd: `${repositoryRoot}/ts` }),
     )
   },

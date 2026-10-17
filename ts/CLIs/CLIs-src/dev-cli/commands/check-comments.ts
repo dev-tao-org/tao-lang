@@ -1,8 +1,8 @@
-import { registerCommand, workspaceComments } from './_command-runner'
+import { registerCommand, workspaceConformance } from './_command-runner'
 
-/** checkCommentsCommand checks exported function JSDoc in the TypeScript workspace. */
+/** checkCommentsCommand checks API docs and exception/comment syntax in the new workspace. */
 export default registerCommand({
   name: 'check-comments',
-  description: 'Quickly check exported TypeScript functions for name-led JSDoc.',
-  action: async () => await workspaceComments(),
+  description: 'Quickly check exported API JSDoc, private comments and Try usage.',
+  action: async () => await workspaceConformance(),
 })

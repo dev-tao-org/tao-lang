@@ -58,11 +58,14 @@ and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages go to root `.
 while stderr is mirrored to the terminal and log, including child stderr and suppressed developer probes.
 Developer IO remains on the terminal. An unavailable agent log reports once and falls back to terminal
 output while preserving the command verdict. Logging and bootstrap fixtures cover these boundaries.
-`./agent check-comments` uses the installed TypeScript syntax parser to check exported function
-declarations, function-valued variables and local/default exports for name-led JSDoc; it runs in
-`check` and `verify` without a type checker or new dependencies. Callable factories and cross-module
-alias resolution remain review responsibilities. Agents run verify at slice completion and fix or fmt
-before committing.
+`./agent lint` (also available as `check-comments`) uses the installed TypeScript syntax parser to
+require name-led descriptive JSDoc on exported API declarations, reject private JSDoc and ordinary
+block comments, and require `Try` outside its exact primitive file. Local/default exports, overloads,
+values, types and command factories are covered; forwarding exports do not duplicate origin docs.
+Public shape members may carry JSDoc. Strings, templates and regular expressions are not comments.
+These rules run in `check` and `verify` without new dependencies; `check` never runs tests.
+Root `AGENTS.md` lists both automated and review-only conformity rules in one compact section.
+Agents run verify at slice completion and fix or fmt before committing.
 Root commands currently require Bun and dprint on PATH; the root JavaScript toolchain remains disabled.
 The Linux bootstrap uses the relocated pinned tool definitions for root setup and keeps CI
 verification setup in the legacy workspace. Cursor's Linux and macOS dispatch and failure exits

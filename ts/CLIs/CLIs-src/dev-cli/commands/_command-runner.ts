@@ -137,11 +137,11 @@ export async function workspaceTypes(): Promise<void> {
   })
 }
 
-/** workspaceComments checks exported function JSDoc without loading a type checker. */
-export async function workspaceComments(): Promise<void> {
+/** workspaceConformance checks API documentation and exception/comment syntax without a type checker. */
+export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
-  const { checkExportedFunctionComments } = await import('../../cli-kit/export-comments')
-  await checkExportedFunctionComments(repositoryRoot)
+  const { checkSourceConformance } = await import('../../cli-kit/source-conformance')
+  await checkSourceConformance(repositoryRoot)
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

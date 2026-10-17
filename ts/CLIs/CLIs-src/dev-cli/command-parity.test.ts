@@ -149,6 +149,30 @@ Describe('root workflow boundaries', () => {
     })
   }, 30_000)
 
+  Test('lint, check and verify reject source violations before running tests', async () => {
+    await withFixture(async ({ root, run }) => {
+      await Bun.write(
+        join(root, 'ts/violations.ts'),
+        [
+          'export const undocumented = 1',
+          '/** helper performs private work. */',
+          'function helper() { try { return undocumented } catch { return 0 } }',
+          '/* use line comments */',
+        ].join('\n'),
+      )
+      for (const command of ['lint', 'check', 'verify']) {
+        const result = await run('agent', [command])
+        Expect(result.code).toBe(1)
+        Expect(result.output).toContain('ts/violations.ts:1: exported API undocumented needs JSDoc')
+        Expect(result.output).toContain('private JSDoc')
+        Expect(result.output).toContain('use Try')
+        Expect(result.output).toContain('use //')
+        Expect(result.calls.some(call => call.includes('/old-tao-v1'))).toBe(false)
+        Expect(await Bun.file(join(root, 'test-ran')).exists()).toBe(false)
+      }
+    })
+  }, 30_000)
+
   Test('default tests run only new tests and reject legacy paths and symlink aliases', async () => {
     await withFixture(async ({ root, run }) => {
       const legacyMarker = join(root, 'legacy-test-ran')

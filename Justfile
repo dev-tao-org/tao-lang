@@ -56,12 +56,12 @@ fmt *PATHS:
 fix:
     ./dev fix
 
-# Check new-workspace types, exported comments and formatting without running tests
+# Check new-workspace types, source conformance and formatting without running tests
 [group('Dev')]
 check *ARGS:
     ./dev check {{ ARGS }}
 
-# Check exported function documentation in the new workspace
+# Check exported API JSDoc, private comments and Try usage in the new workspace
 [group('Dev')]
 lint:
     ./dev lint
