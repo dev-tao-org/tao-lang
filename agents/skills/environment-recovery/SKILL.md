@@ -35,7 +35,7 @@ behind it.
   instead of using host tooling.
 - Repository commands invoke managed tools by name. Tool-shell exports do not persist between calls,
   so keep nontrivial workflows behind `./agent`, which activates their environment on each invocation.
-- Build a missing profile through `./enter-tao-dev-env` in a regular terminal. A sandbox denial
+- Build a missing profile through root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in a regular terminal. A sandbox denial
   from Nix's daemon socket does not mean the pinned lock is broken.
 
 ## Denied installs

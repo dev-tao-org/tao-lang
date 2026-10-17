@@ -3,17 +3,17 @@
 Tao is a programming language for building apps.
 
 - `./ts` holds the typescript implementation.
-- A PoC implementation exists in `./old-tao-v1`.
+- A PoC implementation exists in `./.x-tao-old-v1`.
   - Use the PoC for reference, but don't copy code wholesale.
   - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
   - Port reimplemented functionality into the new implementation with its own dependencies and tools; never import or execute old implementation code, or borrow its dependencies or executables, to implement a port.
-  - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `old-tao-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
+  - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `.x-tao-old-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
 
 ## Agent usage
 
 These are your rules of usage:
 
-- By default, interpret questions and perform planning, implementation, investigation, and validation against the new implementation outside `old-tao-v1/`. Use the old implementation only for purposes explicitly authorized by applicable rules or instructions, or specifically requested by the developer.
+- By default, interpret questions and perform planning, implementation, investigation, and validation against the new implementation outside `.x-tao-old-v1/`. Use the old implementation only for purposes explicitly authorized by applicable rules or instructions, or specifically requested by the developer.
 - Agents can use trivial shell commands: `cd, ls, pwd, mkdir, rm, cp, mv, git`, etc
 - ALL non-trivial agent commands MUST use `./agent`: `./agent <CMD> <subcommands> <args> <option flags>`
   - Agent-only commands live in `ts/CLIs/CLIs-src/agent-cli/*`
@@ -24,7 +24,7 @@ These are your rules of usage:
 - CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
 - Keep equivalent native agent settings synchronized across Codex, Claude Code and Cursor in the same change; `agent-instructions` owns their file locations and unsupported equivalents.
 - Host execution uses `./agent unsandboxed <operation>` with `.config/agent-host-commands.json`; the harness must grant host access.
-- Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `old-tao-v1/`; agents check or test the legacy implementation only when its files have changed.
+- Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `.x-tao-old-v1/`; agents check or test the legacy implementation only when its files have changed.
 
 ## Dependencies and feature planning
 
@@ -80,7 +80,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
   - Test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
   - Raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
-  - Keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
+  - Keep workspace manifests and TypeScript configs under `ts/` or `.x-tao-old-v1/`; propose new folder structures before creating them.
   - CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
   - Invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
   - Prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
@@ -99,7 +99,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Implementation architecture
 
-- `old-tao-v1/` implements the previous PoC implementation.
+- `.x-tao-old-v1/` implements the previous PoC implementation.
 - `ts/@workspace` implements an "active workspace".
   - It manages an opened tao project: its files, background processes, build system, etc.
   - It performs workspace actions: monitors file changes, formats code, runs tests, builds and launches apps, builds and reloads view previews, etc.

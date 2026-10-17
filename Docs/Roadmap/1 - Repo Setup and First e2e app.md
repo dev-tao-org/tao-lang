@@ -4,9 +4,9 @@ Use the process described in `AGENTS.md` to implement the goals.
 
 ## Goal 1
 
-Get the `old-tao-v1/` PoC working again:
+Get the `.x-tao-old-v1/` PoC working again:
 
-- [x] Get tests running inside of `old-tao-v1/` folder again.
+- [x] Get tests running inside of `.x-tao-old-v1/` folder again.
 - [x] Changes outside of that folder should be minimal.
 
 ## Goal 2

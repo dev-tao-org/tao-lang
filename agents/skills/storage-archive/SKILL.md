@@ -17,7 +17,7 @@ This skill owns the order of operations and what an agent must not do to the arc
 1. **Capture**: `./agent unsandboxed storage qa`. With no paths it captures the reference apps and
    starters plus Studio's own layouts, and commits them as one archive commit; name project paths,
    `--studio`, or `--note` to change that. Check its summary line for failures.
-2. **Show the Developer the shots**, in `storage/qa/runs/<stamp>/screenshots/`, and wait until they
+2. **Show the Developer the shots**, in `.storage/qa/runs/<stamp>/screenshots/`, and wait until they
    are satisfied. A run they reject is reset away before it is pushed (below).
 3. **Publish**: `./agent unsandboxed storage push`. Pushing is irreversible and the archive is
    append-only, so push only a run the Developer asked to keep.
@@ -29,19 +29,19 @@ This skill owns the order of operations and what an agent must not do to the arc
 
 Pinning is occasional; a routine capture can stop after step 3. When changing the capture tooling
 itself, iterate with `./agent tao _preview qa <project> --screenshot --dest .artifacts/qa-dev`
-(unsandboxed, since Studio needs the host's Watchman) so trial runs never reach `storage`.
+(unsandboxed, since Studio needs the host's Watchman) so trial runs never reach `.storage`.
 
 ## The archive's history
 
-- Never commit iteration runs into `storage`. A run that is wrong, a duplicate of the day's run, or
+- Never commit iteration runs into `.storage`. A run that is wrong, a duplicate of the day's run, or
   in a format since changed stays in scratch; if one was committed locally and not pushed, reset the
   submodule to `origin/main` with the Developer's agreement.
 - Never rewrite pushed archive history. `main` records a commit inside it, and removing that commit
   breaks `git submodule update` for every fresh checkout. If it happens anyway, `storage pin` on a
   branch and a landing repair the pointer.
-- The pointer moves only through `pin`. `.gitmodules` sets `ignore = all`, so `git add storage` stages
+- The pointer moves only through `pin`. `.gitmodules` sets `ignore = all`, so `git add .storage` stages
   nothing and `git status` never shows the submodule as changed; read the recorded commit with
-  `git ls-tree HEAD storage` instead.
+  `git ls-tree HEAD .storage` instead.
 
 ## Reviewing a capture
 

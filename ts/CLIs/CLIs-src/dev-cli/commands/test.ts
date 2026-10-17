@@ -44,7 +44,7 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
     return workspace
   }
   if (canonical !== workspace && !canonical.startsWith(`${workspace}/`)) {
-    Errors.ThrowUserInput('Test directory targets must be inside ts/; run legacy workflows from old-tao-v1/.')
+    Errors.ThrowUserInput('Test directory targets must be inside ts/; run legacy workflows from .x-tao-old-v1/.')
   }
   return canonical
 }

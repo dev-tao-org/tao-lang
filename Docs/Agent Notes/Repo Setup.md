@@ -27,17 +27,17 @@ PR #86 remains open with auto-merge disabled. Landing is paused until the develo
 
 ## Earlier implementation notes
 
-Run legacy commands from `old-tao-v1/`: `just setup-tools` builds its pinned tool profile,
+Run legacy commands from `.x-tao-old-v1/`: `just setup-tools` builds its pinned tool profile,
 and `just test-all` runs the ordinary package, runtime, Tao app, and language performance tests.
 Shared formatter dependencies live in `ts/`; install them with `just setup` from the Git root
 (or `just setup-ts` from the PoC).
 Repository agent configuration stays at the Git root.
 Generated artifacts share the root `.artifacts/` directory. The PoC's `.artifacts` is a compatibility
-link; its `.devenv` links to root `.devenv/old-tao-v1/`, keeping its reference environment separate
+link; its `.devenv` links to root `.devenv/.x-tao-old-v1/`, keeping its reference environment separate
 from the new workspace without another generated directory inside the PoC.
 
-The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
-and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
+Before the final directory rename, the ordinary suite passed: 36 suites, 10,527 passing tests, zero failures,
+and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `.x-tao-old-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
 Root workspace tests pass (`./agent test ./`); root `./agent check` runs new workspace
 types, comments, unused API exports and formatting without tests. Legacy TypeScript checking passed from its own folder. Root frozen setup
@@ -63,7 +63,7 @@ All current Just workflows are registered. Root `fix` and `fmt` format the new w
 repository files, excluding the legacy implementation. Tao source fixes await the new parser/tooling.
 Root `check`, `test` and `verify` operate on the new workspace; `check` never runs
 tests. Legacy paths are rejected by root formatting/testing, including existing symlink aliases.
-Run legacy workflows from `old-tao-v1/`; agents check/test it only when its files have changed.
+Run legacy workflows from `.x-tao-old-v1/`; agents check/test it only when its files have changed.
 Secrets, diagnostics and InstantDB lifecycle retain their existing reference tools; cleanup removes
 only the new workspace's dependencies and preserves shared artifacts and legacy dependencies.
 Command comments identify parser, app, IDE, runtime and shell-setup steps awaiting new equivalents.
@@ -72,7 +72,7 @@ Compose health waiting, database seeding, project identity, service URLs and vol
 The shared formatter excludes relocated archives, native build output and storage captures.
 Root lifecycle hooks reach their retained implementations and distinguish root setup/configuration
 from the legacy tool profile. `./dev agent-config` regenerates the adapters. There is no root `gates`
-command; invoke the retained gate runner from `old-tao-v1/` when legacy changes require it.
+command; invoke the retained gate runner from `.x-tao-old-v1/` when legacy changes require it.
 Knip uses its root configuration when analyzing the legacy workspace from its own folder.
 The new workspace independently installs approved Knip 6.34.0 and runs its export/type and unused-file checks
 inside `check` and `verify`, using `ts/scripts/knip.ts`. Command entrypoints are derived from the CLI's

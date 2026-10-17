@@ -27,7 +27,7 @@ export default registerCommand({
   },
 })
 
-const storePath = Repo.resolvePath('secrets', 'secrets.jsonc')
+const storePath = Repo.resolvePath('.secrets', 'secrets.jsonc')
 const envPath = Repo.resolvePath('.env.secrets')
 const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
 
@@ -103,7 +103,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
     })
     await writeStore(updated)
   })
-  IO.print(`${original.secrets[name] === undefined ? 'Added' : 'Replaced'} ${name} in secrets/secrets.jsonc.`)
+  IO.print(`${original.secrets[name] === undefined ? 'Added' : 'Replaced'} ${name} in .secrets/secrets.jsonc.`)
   IO.print('Run ./dev secrets to write it into .env.secrets.')
 }
 
@@ -181,7 +181,7 @@ async function listSecrets(): Promise<void> {
     IO.print('No secrets are stored yet.')
     return
   }
-  IO.print(`${names.length} ${names.length === 1 ? 'secret' : 'secrets'} in secrets/secrets.jsonc:`)
+  IO.print(`${names.length} ${names.length === 1 ? 'secret' : 'secrets'} in .secrets/secrets.jsonc:`)
   for (const name of names) {
     const entry = store.secrets[name]!
     const date = (entry.updatedAt ?? entry.addedAt).slice(0, 10)

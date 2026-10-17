@@ -22,7 +22,7 @@ pushed.
 
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
-  `./enter-tao-dev-env` in that worktree when it reports no shared profile), and remove a
+  root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
   worktree you created once its branch is merged or abandoned.
 - Before reclaiming a worktree, use `./agent reclaim` and follow
   `references/reclaim-task-associations.md` for agent task ownership that local metadata cannot prove.

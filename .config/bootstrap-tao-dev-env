@@ -27,9 +27,9 @@ environment="$checkout/.config/nix"
 if [ -f "$checkout/ts/package.json" ] && ! "$verify_setup"; then
   repository="$checkout"
   state_dir="$checkout/.devenv"
-elif [ -f "$checkout/old-tao-v1/package.json" ] && [ -d "$checkout/old-tao-v1/packages" ]; then
-  repository="$checkout/old-tao-v1"
-  state_dir="$checkout/.devenv/old-tao-v1"
+elif [ -f "$checkout/.x-tao-old-v1/package.json" ] && [ -d "$checkout/.x-tao-old-v1/packages" ]; then
+  repository="$checkout/.x-tao-old-v1"
+  state_dir="$checkout/.devenv/.x-tao-old-v1"
   environment="$repository/packages/cli/dev-cli/dev-cli-src/environment"
 else
   repository="$checkout"
@@ -37,7 +37,7 @@ else
 fi
 cd "$repository"
 if [ "$(uname -s)" != Linux ]; then
-  printf 'Portable bootstrap supports Linux. On macOS use ./enter-tao-dev-env.\n' >&2
+  printf 'Portable bootstrap supports Linux. On macOS use ./enter-tao-dev-env.sh.\n' >&2
   exit 1
 fi
 

@@ -68,7 +68,7 @@ Test.test('source conformance > checks ambient namespaces and workspace declarat
       '/** publicValue stores a number. */\nexport declare const publicValue: number\n',
     )
     await FileSystem.write(Path.join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
-    await FileSystem.write(Path.join(root, 'old-tao-v1/ignored.ts'), 'export const missingDocs = 1')
+    await FileSystem.write(Path.join(root, '.x-tao-old-v1/ignored.ts'), 'export const missingDocs = 1')
     await Test.expect(checkSourceConformance(root)).resolves.toBeUndefined()
     await FileSystem.write(Path.join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
     await Test.expect(checkSourceConformance(root)).rejects.toThrow(

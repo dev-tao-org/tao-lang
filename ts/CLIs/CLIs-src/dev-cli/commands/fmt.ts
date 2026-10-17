@@ -32,7 +32,7 @@ export default registerCommand({
         await runCommand('just --fmt --justfile', { variadicArgs: [absolute], cwd: Repo.getWorkspaceRoot() })
       } else {
         await runCommand(
-          'dprint fmt --config .dprint.jsonc --incremental=false --excludes old-tao-v1/** --',
+          'dprint fmt --config .dprint.jsonc --incremental=false --excludes .x-tao-old-v1/** --',
           { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() },
         )
       }

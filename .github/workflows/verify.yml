@@ -84,18 +84,18 @@ env:
   # `@garden-co` NAPI package (81 MB). The excluded paths are part of the cache's version, so a tree
   # saved with them is never restored as one without them.
   NODE_MODULES_PATHS: |
-    old-tao-v1/node_modules
+    .x-tao-old-v1/node_modules
     ts/node_modules
-    old-tao-v1/packages/*/node_modules
-    old-tao-v1/packages/*/*/node_modules
-    old-tao-v1/packages/apps/providers/*/node_modules
-    old-tao-v1/Apps/Hosted CRUD/node_modules
-    !old-tao-v1/node_modules/.bun/jazz-rn-android@*/node_modules/jazz-rn-android/android
-    !old-tao-v1/node_modules/.bun/jazz-rn-ios@*/node_modules/jazz-rn-ios/*.xcframework
-    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.darwin-*.node
-    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.win32-*.node
-    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.linux-arm64-*.node
-    !old-tao-v1/node_modules/.bun/@garden-co+jazz-napi-darwin-arm64@*/node_modules/@garden-co/jazz-napi-darwin-arm64/*.node
+    .x-tao-old-v1/packages/*/node_modules
+    .x-tao-old-v1/packages/*/*/node_modules
+    .x-tao-old-v1/packages/apps/providers/*/node_modules
+    .x-tao-old-v1/Apps/Hosted CRUD/node_modules
+    !.x-tao-old-v1/node_modules/.bun/jazz-rn-android@*/node_modules/jazz-rn-android/android
+    !.x-tao-old-v1/node_modules/.bun/jazz-rn-ios@*/node_modules/jazz-rn-ios/*.xcframework
+    !.x-tao-old-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.darwin-*.node
+    !.x-tao-old-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.win32-*.node
+    !.x-tao-old-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.linux-arm64-*.node
+    !.x-tao-old-v1/node_modules/.bun/@garden-co+jazz-napi-darwin-arm64@*/node_modules/@garden-co/jazz-napi-darwin-arm64/*.node
   # The generated parser and TextMate grammar, with the stamp that vouches for them; restored before
   # the bootstrap, which runs the generator. The compiled WordFlower app and its stamp likewise.
   # Neither generator trusts a stamp alone: each re-hashes its inputs and its own output first, so a
@@ -104,12 +104,12 @@ env:
   # module-link manifest travels with it: it is how a recompile recognises the tree's `node_modules`
   # link as its own and removes it before publishing, and without it that recompile refuses the link.
   PARSER_GEN_PATHS: |
-    old-tao-v1/packages/language/parser/parser-src/_gen_tao-parser
-    old-tao-v1/packages/ides/ide-extension/ide-extension-syntaxes/_gen_syntaxes
+    .x-tao-old-v1/packages/language/parser/parser-src/_gen_tao-parser
+    .x-tao-old-v1/packages/ides/ide-extension/ide-extension-syntaxes/_gen_syntaxes
     .artifacts/parser-generate-stamp.json
   WORD_FLOWER_PATHS: |
-    old-tao-v1/Apps/WordFlower/1 - Current/.tao/cache/_gen_tao-app
-    old-tao-v1/Apps/WordFlower/1 - Current/.tao/cache/_gen_tao-app.tao-module-links.json
+    .x-tao-old-v1/Apps/WordFlower/1 - Current/.tao/cache/_gen_tao-app
+    .x-tao-old-v1/Apps/WordFlower/1 - Current/.tao/cache/_gen_tao-app.tao-module-links.json
     .artifacts/compile-app-stamp.json
 
 jobs:
@@ -301,7 +301,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.NODE_MODULES_PATHS }}
-          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('old-tao-v1/bun.lock', 'devenv.lock', 'old-tao-v1/package.json', 'old-tao-v1/packages/*/package.json', 'old-tao-v1/packages/*/*/package.json', 'old-tao-v1/packages/apps/providers/*/package.json', 'old-tao-v1/Apps/Hosted CRUD/package.json', 'old-tao-v1/patches/*.patch', 'ts/bun.lock', 'ts/package.json') }}
+          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.x-tao-old-v1/bun.lock', 'devenv.lock', '.x-tao-old-v1/package.json', '.x-tao-old-v1/packages/*/package.json', '.x-tao-old-v1/packages/*/*/package.json', '.x-tao-old-v1/packages/apps/providers/*/package.json', '.x-tao-old-v1/Apps/Hosted CRUD/package.json', '.x-tao-old-v1/patches/*.patch', 'ts/bun.lock', 'ts/package.json') }}
 
       # Bun's download cache matters only when it has to install, so it is restored only then.
       - name: Restore Bun's download cache
@@ -310,7 +310,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /home/runner/tao-cache/bun
-          key: tao-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('old-tao-v1/bun.lock', 'ts/bun.lock') }}
+          key: tao-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.x-tao-old-v1/bun.lock', 'ts/bun.lock') }}
           restore-keys: |
             tao-bun-${{ runner.os }}-${{ runner.arch }}-
 
@@ -330,8 +330,8 @@ jobs:
             /nix
             ~/.nix-profile
             ~/.local/state/nix
-            ${{ github.workspace }}/.devenv/old-tao-v1/portable-generations
-          key: tao-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'old-tao-v1/packages/cli/dev-cli/dev-cli-src/environment/nix-bootstrap.sh', 'old-tao-v1/packages/cli/dev-cli/dev-cli-src/environment/portable-profile.nix', 'old-tao-v1/packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix') }}
+            ${{ github.workspace }}/.devenv/.x-tao-old-v1/portable-generations
+          key: tao-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', '.x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/nix-bootstrap.sh', '.x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/portable-profile.nix', '.x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix') }}
 
       # The maintained native bindings, a generated tree setup would otherwise write in 6–10 s. The
       # generator checks every input and output identity first and rewrites only a stale tree, so a
@@ -340,8 +340,8 @@ jobs:
         id: native-bindings
         uses: actions/cache/restore@v4
         with:
-          path: old-tao-v1/packages/apps/stdlib/.tao-ts/native-bindings
-          key: tao-native-bindings-${{ runner.os }}-${{ hashFiles('old-tao-v1/bun.lock', 'old-tao-v1/packages/apps/native-bindings/native-bindings-src/**', 'old-tao-v1/packages/apps/stdlib/@tao/device/**') }}
+          path: .x-tao-old-v1/packages/apps/stdlib/.tao-ts/native-bindings
+          key: tao-native-bindings-${{ runner.os }}-${{ hashFiles('.x-tao-old-v1/bun.lock', '.x-tao-old-v1/packages/apps/native-bindings/native-bindings-src/**', '.x-tao-old-v1/packages/apps/stdlib/@tao/device/**') }}
           restore-keys: |
             tao-native-bindings-${{ runner.os }}-
 
@@ -351,7 +351,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.PARSER_GEN_PATHS }}
-          key: tao-parser-gen-${{ runner.os }}-${{ hashFiles('old-tao-v1/bun.lock', 'old-tao-v1/packages/language/parser/langium-config.json', 'old-tao-v1/packages/language/parser/parser-grammar/**') }}
+          key: tao-parser-gen-${{ runner.os }}-${{ hashFiles('.x-tao-old-v1/bun.lock', '.x-tao-old-v1/packages/language/parser/langium-config.json', '.x-tao-old-v1/packages/language/parser/parser-grammar/**') }}
           restore-keys: |
             tao-parser-gen-${{ runner.os }}-
 
@@ -361,7 +361,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.WORD_FLOWER_PATHS }}
-          key: tao-word-flower-${{ runner.os }}-${{ hashFiles('old-tao-v1/bun.lock', 'old-tao-v1/Apps/WordFlower/1 - Current/**', '!old-tao-v1/Apps/WordFlower/1 - Current/.tao/cache/**', 'old-tao-v1/packages/language/ast-utils/ast-utils-src/**', 'old-tao-v1/packages/compiler/compiler-src/**', 'old-tao-v1/packages/ai/generation/generation-src/**', 'old-tao-v1/packages/apps/providers/icloud/icloud-src/**', 'old-tao-v1/packages/language/parser/parser-src/**', 'old-tao-v1/packages/language/parser/parser-grammar/**', 'old-tao-v1/packages/apps/expo-host/expo-host-src/**', 'old-tao-v1/packages/shared/shared-src/**', 'old-tao-v1/packages/apps/stdlib/**', '!old-tao-v1/packages/apps/stdlib/**/node_modules/**', '!old-tao-v1/packages/apps/stdlib/.tao-ts/**', 'old-tao-v1/packages/cli/tao-cli/cli-src/**', 'old-tao-v1/packages/language/validator/validator-src/**', 'old-tao-v1/packages/language/project-tooling/project-tooling-src/**') }}
+          key: tao-word-flower-${{ runner.os }}-${{ hashFiles('.x-tao-old-v1/bun.lock', '.x-tao-old-v1/Apps/WordFlower/1 - Current/**', '!.x-tao-old-v1/Apps/WordFlower/1 - Current/.tao/cache/**', '.x-tao-old-v1/packages/language/ast-utils/ast-utils-src/**', '.x-tao-old-v1/packages/compiler/compiler-src/**', '.x-tao-old-v1/packages/ai/generation/generation-src/**', '.x-tao-old-v1/packages/apps/providers/icloud/icloud-src/**', '.x-tao-old-v1/packages/language/parser/parser-src/**', '.x-tao-old-v1/packages/language/parser/parser-grammar/**', '.x-tao-old-v1/packages/apps/expo-host/expo-host-src/**', '.x-tao-old-v1/packages/shared/shared-src/**', '.x-tao-old-v1/packages/apps/stdlib/**', '!.x-tao-old-v1/packages/apps/stdlib/**/node_modules/**', '!.x-tao-old-v1/packages/apps/stdlib/.tao-ts/**', '.x-tao-old-v1/packages/cli/tao-cli/cli-src/**', '.x-tao-old-v1/packages/language/validator/validator-src/**', '.x-tao-old-v1/packages/language/project-tooling/project-tooling-src/**') }}
           restore-keys: |
             tao-word-flower-${{ runner.os }}-
 
@@ -386,7 +386,7 @@ jobs:
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          path: old-tao-v1/packages/apps/stdlib/.tao-ts/native-bindings
+          path: .x-tao-old-v1/packages/apps/stdlib/.tao-ts/native-bindings
           key: ${{ steps.native-bindings.outputs.cache-primary-key }}
 
       # Saved straight after the bootstrap, so a partition that later fails still warms the caches,
@@ -419,10 +419,10 @@ jobs:
         continue-on-error: true
         run: |
           ln -sfn "$(readlink -f ~/.nix-profile)" /nix/var/nix/gcroots/tao-nix-profile
-          ln -sfn "$(readlink -f .devenv/old-tao-v1/profile)" /nix/var/nix/gcroots/tao-portable-profile
+          ln -sfn "$(readlink -f .devenv/.x-tao-old-v1/profile)" /nix/var/nix/gcroots/tao-portable-profile
           ~/.nix-profile/bin/nix-store --gc 2>&1 | tail -n 2
           test -x ~/.nix-profile/bin/nix-build
-          test -x .devenv/old-tao-v1/profile/bin/bun
+          test -x .devenv/.x-tao-old-v1/profile/bin/bun
 
       - name: Save the Nix store and locked toolchain
         if: steps.nix-gc.outcome == 'success'
@@ -433,7 +433,7 @@ jobs:
             /nix
             ~/.nix-profile
             ~/.local/state/nix
-            ${{ github.workspace }}/.devenv/old-tao-v1/portable-generations
+            ${{ github.workspace }}/.devenv/.x-tao-old-v1/portable-generations
           key: ${{ steps.nix-cache.outputs.cache-primary-key }}
 
       # Every partition plans from this one committed snapshot of measured durations, so all of them
@@ -450,7 +450,7 @@ jobs:
       # no agent sandbox, and Chrome and Watchman are on it. The rest of the host gates stay in the local
       # complement.
       - name: Verify partition ${{ env.PARTITION }}
-        working-directory: old-tao-v1
+        working-directory: .x-tao-old-v1
         run: ./agent verify-full-sandbox --partition "$PARTITION" --hosted-linux
 
       - name: Save the compiled WordFlower app

@@ -25,13 +25,13 @@ permissions:
 env:
   # The same paths and key as Verify's installed tree, so a tree one workflow installed serves both.
   NODE_MODULES_PATHS: |
-    old-tao-v1/node_modules
+    .x-tao-old-v1/node_modules
     ts/node_modules
-    old-tao-v1/packages/*/node_modules
-    old-tao-v1/packages/*/*/node_modules
-    old-tao-v1/packages/apps/providers/*/node_modules
-    old-tao-v1/Apps/Hosted CRUD/node_modules
-  COMPANION: old-tao-v1/packages/ides/studio-companion-app
+    .x-tao-old-v1/packages/*/node_modules
+    .x-tao-old-v1/packages/*/*/node_modules
+    .x-tao-old-v1/packages/apps/providers/*/node_modules
+    .x-tao-old-v1/Apps/Hosted CRUD/node_modules
+  COMPANION: .x-tao-old-v1/packages/ides/studio-companion-app
 
 jobs:
   build:
@@ -57,7 +57,7 @@ jobs:
       - name: Cache the Nix store
         uses: nix-community/cache-nix-action@v7
         with:
-          primary-key: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'old-tao-v1/devenv.nix', 'devenv.yaml', 'old-tao-v1/packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix', '.config/nix/hutch.nix') }}
+          primary-key: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', '.x-tao-old-v1/devenv.nix', 'devenv.yaml', '.x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix', '.config/nix/hutch.nix') }}
           restore-prefixes-first-match: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-
           gc-max-store-size-linux: 6G
           gc-max-store-size-macos: 6G
@@ -73,10 +73,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.NODE_MODULES_PATHS }}
-          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('old-tao-v1/bun.lock', 'devenv.lock', 'old-tao-v1/package.json', 'old-tao-v1/packages/*/package.json', 'old-tao-v1/packages/*/*/package.json', 'old-tao-v1/packages/apps/providers/*/package.json', 'old-tao-v1/Apps/Hosted CRUD/package.json', 'old-tao-v1/patches/*.patch', 'ts/bun.lock', 'ts/package.json') }}
+          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.x-tao-old-v1/bun.lock', 'devenv.lock', '.x-tao-old-v1/package.json', '.x-tao-old-v1/packages/*/package.json', '.x-tao-old-v1/packages/*/*/package.json', '.x-tao-old-v1/packages/apps/providers/*/package.json', '.x-tao-old-v1/Apps/Hosted CRUD/package.json', '.x-tao-old-v1/patches/*.patch', 'ts/bun.lock', 'ts/package.json') }}
 
       - name: Set up Tao
-        working-directory: old-tao-v1
+        working-directory: .x-tao-old-v1
         run: |
           devenv shell -- just _tao-project-deps
           devenv shell -- bun install --cwd ../ts --frozen-lockfile
@@ -90,7 +90,7 @@ jobs:
           key: ${{ steps.node-modules.outputs.cache-primary-key }}
 
       - name: Check native-kit parity
-        working-directory: old-tao-v1
+        working-directory: .x-tao-old-v1
         run: devenv shell -- ./agent test-file packages/testing/verification/verification-tests/companion-native-parity.test.ts
 
       # Gradle's home (wrapper distribution, dependency and build caches) for the Android host. The
@@ -115,12 +115,12 @@ jobs:
           path: |
             ~/.cocoapods
             ~/Library/Caches/CocoaPods
-          key: tao-companion-pods-${{ hashFiles('old-tao-v1/bun.lock', 'old-tao-v1/packages/ides/studio-companion-app/package.json', 'old-tao-v1/packages/ides/studio-companion-app/app.json', 'old-tao-v1/packages/ides/studio-companion-app/plugins/**', 'old-tao-v1/packages/ides/studio-companion-app/modules/**') }}
+          key: tao-companion-pods-${{ hashFiles('.x-tao-old-v1/bun.lock', '.x-tao-old-v1/packages/ides/studio-companion-app/package.json', '.x-tao-old-v1/packages/ides/studio-companion-app/app.json', '.x-tao-old-v1/packages/ides/studio-companion-app/plugins/**', '.x-tao-old-v1/packages/ides/studio-companion-app/modules/**') }}
           restore-keys: |
             tao-companion-pods-
 
       - name: Build ${{ matrix.platform }} host
-        working-directory: old-tao-v1
+        working-directory: .x-tao-old-v1
         run: devenv shell -- ./agent unsandboxed companion-host-build --platform ${{ matrix.platform }}
 
       - name: Save CocoaPods caches

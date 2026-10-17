@@ -17,7 +17,7 @@ export function assertNewWorkspacePath(path: string): void {
   const canonical = FileSystem.realpathSync(existing)
   const legacy = FileSystem.existsSync(legacyRoot) ? FileSystem.realpathSync(legacyRoot) : legacyRoot
   if (isWithinDirectory(absolute, legacyRoot) || isWithinDirectory(canonical, legacy)) {
-    Errors.ThrowUserInput('Run legacy workflows from old-tao-v1/; root commands target the new implementation.')
+    Errors.ThrowUserInput('Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.')
   }
 }
 
@@ -58,6 +58,7 @@ export async function workspaceShellSyntax(): Promise<void> {
     const path of [
       'agent',
       'dev',
+      'enter-tao-dev-env.sh',
       '.config/cli-environment.sh',
       '.config/bootstrap-tao-dev-env',
       '.config/nix/nix-bootstrap.sh',
@@ -95,7 +96,7 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes old-tao-v1/**`, {
+  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
     cwd: Repo.getWorkspaceRoot(),
   })
   await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
@@ -107,4 +108,4 @@ function isWithinDirectory(path: string, directory: string): boolean {
   return path === directory || path.startsWith(`${directory}/`)
 }
 
-const legacyRoot = Repo.resolvePath('old-tao-v1')
+const legacyRoot = Repo.resolvePath('.x-tao-old-v1')

@@ -10,13 +10,13 @@
     "**/_gen_*/**",
     // Native acceptance builds the runtime module in place; Gradle owns this output.
     "packages/apps/runtime/android/build/**",
-    "old-tao-v1/packages/apps/runtime/android/build/**",
+    ".x-tao-old-v1/packages/apps/runtime/android/build/**",
     ".*",
     "Docs/Archive/**",
-    "old-tao-v1/Docs/Archive/**",
+    ".x-tao-old-v1/Docs/Archive/**",
     // The storage submodule holds generated capture records owned by another repository.
-    "storage/**",
-    "old-tao-v1/storage/**",
+    ".storage/**",
+    ".x-tao-old-v1/.storage/**",
   ],
   "typescript": {
     "semiColons": "asi",
