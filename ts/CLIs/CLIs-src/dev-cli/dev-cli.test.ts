@@ -12,7 +12,7 @@ Describe('shared developer and agent commands', () => {
     try {
       const repository = fileURLToPath(new URL('../../../../', import.meta.url))
       await mkdir(join(root, 'ts'), { recursive: true })
-      for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
+      for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
         await cp(join(repository, entry), join(root, entry), { recursive: true })
       }
       await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))
@@ -65,6 +65,7 @@ Describe('developer setup command', () => {
       await mkdir(join(root, 'ts'), { recursive: true })
       await cp(join(repository, 'dev'), join(root, 'dev'))
       await cp(join(repository, 'ts/CLIs'), join(root, 'ts/CLIs'), { recursive: true })
+      await cp(join(repository, 'ts/shared'), join(root, 'ts/shared'), { recursive: true })
       await cp(join(repository, 'ts/tsconfig.json'), join(root, 'ts/tsconfig.json'))
       await cp(join(repository, 'ts/tsconfig.base.json'), join(root, 'ts/tsconfig.base.json'))
       await Bun.write(
@@ -111,7 +112,7 @@ Describe('developer branch workflow', () => {
           const repository = fileURLToPath(new URL('../../../../', import.meta.url))
           await mkdir(join(root, 'ts'), { recursive: true })
           await mkdir(join(root, 'old-tao-v1'))
-          for (const entry of ['dev', 'ts/CLIs', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
+          for (const entry of ['dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
             await cp(join(repository, entry), join(root, entry), { recursive: true })
           }
           await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))

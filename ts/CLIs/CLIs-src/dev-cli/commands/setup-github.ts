@@ -6,9 +6,10 @@ const cwd = fileURLToPath(new URL('../../../../../', import.meta.url))
 const origin = 'https://github.com/tao-dev-org/tao-lang.git'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */
-export const setupGithubCommand = registerCommand('setup-github')
-  .description('Configure GitHub HTTPS authentication and verify access to the repository main branch.')
-  .action(async () => {
+export const setupGithubCommand = registerCommand({
+  name: 'setup-github',
+  description: 'Configure GitHub HTTPS authentication and verify access to the repository main branch.',
+  action: async () => {
     for (const key of ['url.git@github.com:.insteadOf', 'url.ssh://git@github.com/.insteadOf']) {
       await runCommand(['git', 'config', '--global', '--unset-all', key], { cwd, stderr: 'ignore' })
     }
@@ -63,4 +64,5 @@ export const setupGithubCommand = registerCommand('setup-github')
       return
     }
     IO.debug(`GitHub HTTPS authentication is ready for ${url.trim()}.`)
-  })
+  },
+})

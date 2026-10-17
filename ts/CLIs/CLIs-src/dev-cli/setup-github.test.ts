@@ -20,7 +20,9 @@ async function withFixture(work: (fixture: Fixture) => Promise<void>): Promise<v
     const repository = fileURLToPath(new URL('../../../../', import.meta.url))
     await mkdir(join(root, 'ts'), { recursive: true })
     await mkdir(bin)
-    for (const entry of ['agent', 'dev', 'Justfile', 'ts/CLIs', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
+    for (
+      const entry of ['agent', 'dev', 'Justfile', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']
+    ) {
       await cp(join(repository, entry), join(root, entry), { recursive: true })
     }
     await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))

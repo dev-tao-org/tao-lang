@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { setupCommand } from './setup'
 
 // This dependency-free entrypoint runs before the command registry's dependencies are installed.
-process.exitCode = await runCommand([process.execPath, 'install', ...Bun.argv.slice(2)])
+await setupCommand.action(Bun.argv.slice(2))
