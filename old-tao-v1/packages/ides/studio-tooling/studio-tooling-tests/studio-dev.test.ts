@@ -960,6 +960,37 @@ Describe('Studio smoke resource isolation', () => {
     Expect(calls[2]?.args).toEqual(['watch-project', '/repo/.artifacts/dev/studio-preview/runtime-test'])
   })
 
+  Test('accepts the enclosing Git checkout watch for an implementation subdirectory', async () => {
+    const calls: string[][] = []
+    const watchRoot = '/repo/.artifacts/dev/studio-preview/runtime-test'
+    const environment = await StudioDev.testing.studioWatchmanEnvironment({
+      checkoutRoot: '/repo',
+      isFile: async path => path === '/repo/old-tao-v1/.devenv/profile/bin/watchman',
+      repositoryRoot: '/repo/old-tao-v1',
+      run: async (command, spec) => {
+        const args = [...(spec.args ?? [])]
+        calls.push(args)
+        return {
+          args,
+          command,
+          exitCode: 0,
+          signal: null,
+          stderr: '',
+          stdout: args[0] === 'watch-project'
+            ? '{"watch":"/repo"}'
+            : args.includes('get-sockname')
+            ? '{"sockname":"/repo/.watchman.sock"}'
+            : '{"version":"2026.01.19.00","capabilities":["field-content.sha1hex","relative_root","suffix-set","wildmatch"]}',
+        }
+      },
+      watchRoot,
+    })
+
+    Expect(environment['WATCHMAN_SOCK']).toBe('/repo/.watchman.sock')
+    Expect(calls.find(args => args[0] === 'watch-project')).toEqual(['watch-project', watchRoot])
+    Expect(calls.some(args => args[0] === 'watch-del')).toBe(false)
+  })
+
   Test('stops before Metro when pinned Watchman is unavailable', async () => {
     await Expect(StudioDev.testing.studioWatchmanEnvironment({
       isFile: async () => false,

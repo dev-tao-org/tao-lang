@@ -722,6 +722,7 @@ export async function openStudioProjectResource(
 /** studioWatchmanEnvironment makes Metro use the repository-pinned Watchman regardless of PATH. */
 async function studioWatchmanEnvironment(
   options: {
+    checkoutRoot?: string
     environment?: Platform.ProcessEnv
     isFile?: (path: string) => Promise<boolean>
     repositoryRoot?: string
@@ -730,6 +731,7 @@ async function studioWatchmanEnvironment(
   } = {},
 ): Promise<Readonly<Record<string, string>>> {
   const repositoryRoot = options.repositoryRoot ?? Repo.getRoot()
+  const checkoutRoot = options.checkoutRoot ?? options.repositoryRoot ?? Repo.getGitRoot()
   const profileBin = FS.resolvePath(PROFILE_BIN_PATH, repositoryRoot)
   const executable = FS.resolvePath('watchman', profileBin)
   const isFile = options.isFile ?? FS.isFile
@@ -776,7 +778,7 @@ async function studioWatchmanEnvironment(
       `Run \`${executable} --no-pretty get-sockname --no-spawn\` to diagnose Watchman, then retry Studio.`,
     )
   }
-  const watchRoot = options.watchRoot ?? repositoryRoot
+  const watchRoot = options.watchRoot ?? checkoutRoot
   const run = options.run ?? CLI.run
   const result = await run(executable, {
     args: ['watch-project', watchRoot],
@@ -802,7 +804,7 @@ async function studioWatchmanEnvironment(
   // checkout's own root marker, so a watched primary checkout folds every worktree nested in it into
   // one watch. One that no dev server subscribes to is released and the watch asked for again; one
   // still in use is left alone, and Studio refuses rather than have Metro crawl every worktree.
-  const checkout = await FS.realPath(repositoryRoot).catch(() => repositoryRoot)
+  const checkout = await FS.realPath(checkoutRoot).catch(() => checkoutRoot)
   const enclosingIn = (output: string) => {
     const watched = watchmanWatchRoot(output)
     return watched === undefined ? undefined : enclosingWatchRoot([watched], checkout)
