@@ -60,5 +60,6 @@
     "local.properties": true,
     "old-tao-v1/**/node_modules": true,
     "old-packages/**/node_modules": true,
-  }
+  },
+  "js/ts.tsdk.path": "ts/node_modules/typescript/lib"
 }
