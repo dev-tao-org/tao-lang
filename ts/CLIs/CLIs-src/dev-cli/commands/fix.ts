@@ -1,4 +1,5 @@
-import { registerCommand, workspaceFormat } from './_command-runner'
+import { workspaceFormat } from '../../cli-checks/check'
+import { registerCommand } from './_command-runner'
 
 /** fixCommand applies the available new-workspace fixes. */
 export default registerCommand({

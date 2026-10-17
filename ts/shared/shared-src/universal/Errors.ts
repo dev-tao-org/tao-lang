@@ -123,12 +123,16 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
   }
   seen.add(error)
   const { stack, cause, ...details } = error
+  const fields: Record<string, unknown> = details
+  if (fields.messageForUser === error.message) {
+    delete fields.messageForUser
+  }
   const frames = stack?.split('\n').slice(1).join('\n')
   if (frames) {
     stacks.push(frames)
   }
   return {
-    ...details,
+    ...fields,
     name: error.name,
     message: error.message,
     ...(error instanceof AggregateError

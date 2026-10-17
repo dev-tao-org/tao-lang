@@ -1,8 +1,9 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
+import { assertDoctorReady, doctorReport } from '../../cli-checks/doctor'
 import { registerCommand } from './_command-runner'
 
-/** doctorCommand diagnoses the active checkout and prints a safe environment fingerprint. */
+/** doctorCommand reports setup issues or explicitly requested environment diagnostics. */
 export default registerCommand({
   name: 'doctor',
   description: 'Diagnose this checkout; accepts --json or --fingerprint.',
@@ -12,7 +13,6 @@ export default registerCommand({
     if (args.some(arg => arg !== '--json' && arg !== '--fingerprint')) {
       Errors.ThrowUserInput('Usage: doctor [--json] [--fingerprint]')
     }
-    const { assertDoctorReady, doctorReport } = await import('../../cli-kit/repository-doctor')
     const fingerprintOnly = args.includes('--fingerprint')
     const report = await doctorReport(fingerprintOnly)
     if (fingerprintOnly) {
@@ -22,16 +22,12 @@ export default registerCommand({
     if (args.includes('--json')) {
       IO.print(JSON.stringify(report, null, 2))
     } else {
-      for (const check of report.checks) {
+      for (const check of report.checks.filter(check => check.status !== 'pass')) {
         const line = `${check.status.toUpperCase()} ${check.name}: ${check.detail}${
           check.remediation ? ` Run: ${check.remediation}` : ''
         }`
-        ;(check.status === 'pass' ? IO.print : IO.warn)(line)
+        IO.warn(line)
       }
-      IO.print(
-        'Environment (safe to paste; ./agent doctor --fingerprint):\n' + JSON.stringify(report.fingerprint, null, 2),
-      )
-      IO.print(`doctor: ${report.status}`)
     }
     assertDoctorReady(report.status)
   },

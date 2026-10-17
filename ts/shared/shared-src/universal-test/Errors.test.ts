@@ -39,6 +39,7 @@ Test.describe('Errors throwing helpers', () => {
         Test.expect(error.name).toBe(category)
         Test.expect(error.details).toBe(details)
         Test.expect(error.message).toBe(message)
+        Test.expect(Errors.describe(error).details).not.toHaveProperty('messageForUser')
         Test.expect(Errors.isCommandExecutionError(error)).toBe(false)
         if (category !== 'UserInputError') {
           Test.expect(error.cause).toBe(cause)

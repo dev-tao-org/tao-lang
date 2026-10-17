@@ -1,5 +1,5 @@
 import { Test } from '@shared/os'
-import { assertDoctorReady, diagnoseGitHub, diagnoseTools, safeToken, toolVersion } from '../cli-kit/repository-doctor'
+import { assertDoctorReady, diagnoseGitHub, diagnoseTools, safeToken, toolVersion } from '../cli-checks/doctor'
 
 Test.test('fingerprints admit versions and hashes while excluding identifying probe output', () => {
   for (const value of ['/Users/person/repo', 'person@example.com', 'host name', 'https://example.com', '', undefined]) {

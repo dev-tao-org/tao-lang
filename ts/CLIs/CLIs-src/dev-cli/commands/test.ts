@@ -3,9 +3,9 @@ import { FileSystem, Path, Repo } from '@shared/os'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,
-  registerCommand,
   workspaceTests,
-} from './_command-runner'
+} from '../../cli-checks/check'
+import { registerCommand } from './_command-runner'
 
 /** testCommand runs the TypeScript workspace tests and preserves their verdict. */
 export default registerCommand({

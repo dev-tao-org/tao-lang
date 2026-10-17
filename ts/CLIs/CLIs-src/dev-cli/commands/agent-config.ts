@@ -6,6 +6,7 @@ export default registerCommand({
   name: 'agent-config',
   description: 'Regenerate supported agent subagents and hooks from canonical sources.',
   async action() {
+    // Other commands do not need Rulesync's configuration-generation dependency graph.
     const { generate } = await import('rulesync')
     const root = Repo.getWorkspaceRoot()
     const targets = [

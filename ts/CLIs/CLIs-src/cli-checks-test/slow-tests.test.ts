@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Test } from '@shared/os'
-import { slowTestWarnings } from '../cli-kit/slow-tests'
+import { slowTestWarnings } from '../cli-checks/slow-tests'
 
 Test.describe('slow test warnings', () => {
   Test.test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {

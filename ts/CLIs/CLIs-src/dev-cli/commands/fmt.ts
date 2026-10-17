@@ -4,9 +4,9 @@ import { FileSystem, Path, Repo } from '@shared/os'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,
-  registerCommand,
   workspaceFormat,
-} from './_command-runner'
+} from '../../cli-checks/check'
+import { registerCommand } from './_command-runner'
 
 /** fmtCommand formats repository files through the shared developer command. */
 export default registerCommand({

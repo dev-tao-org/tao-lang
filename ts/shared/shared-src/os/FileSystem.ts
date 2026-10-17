@@ -14,7 +14,8 @@ export function write(path: string | URL | File, data: string | Uint8Array): Pro
   return Bun.write(path, data)
 }
 
-/** sourceFiles lists TypeScript sources while excluding installed dependencies. */
+/** sourceFiles lists TypeScript sources while excluding installed dependencies.
+ *  Load the compiler lazily so fresh setup can import OS APIs before dependencies are installed. */
 export async function sourceFiles(root: string): Promise<string[]> {
   const { sys } = await import('typescript')
   return sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**'])

@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, Path, Platform } from '@shared/os'
-import { IO } from './cli-kit'
+import { IO } from '../cli-kit/cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
 export async function withTestTimings(run: (reportPath: string | undefined) => Promise<void>): Promise<void> {

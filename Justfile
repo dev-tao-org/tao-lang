@@ -37,6 +37,11 @@ doctor *ARGS:
 clean:
     ./dev clean
 
+# Remove new workspace dependencies and all shared checkout artifacts
+[group('Setup')]
+clean-full:
+    ./dev clean --full
+
 # Dev loop
 ##########
 

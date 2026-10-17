@@ -1,12 +1,12 @@
 import { runSteps } from '@cli-kit'
 import {
-  registerCommand,
   workspaceConformance,
   workspaceDeadExports,
   workspaceFormat,
   workspaceShellSyntax,
   workspaceTypes,
-} from './_command-runner'
+} from '../../cli-checks/check'
+import { registerCommand } from './_command-runner'
 import doctor from './doctor'
 
 /** checkCommand checks the TypeScript workspace. */

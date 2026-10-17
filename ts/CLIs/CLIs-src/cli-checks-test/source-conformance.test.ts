@@ -1,0 +1,147 @@
+import { S } from '@shared'
+import { Test } from '@shared/os'
+import { sourceConformanceIssues } from '../cli-checks/source-conformance'
+
+const builtinImportIssue = 'runtime builtin imports belong in @shared/os'
+const platformGlobalIssue = 'platform globals belong in @shared/os; use its named APIs'
+const multilineStringIssue = 'multiline strings must use S from @shared'
+const invalidSLayoutIssue = 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
+
+const platformViolations = [
+  "import { readFile } from 'node:fs/promises'",
+  "import { readFile } from 'fs/promises'",
+  "export { test } from 'bun:test'",
+  "const runtime = await import('bun')",
+  "const runtime = require('node:path')",
+  "type Runtime = typeof import('node:process')",
+  'const value = process.env.VALUE',
+  'const runtime = Bun',
+  "const value = Buffer.from('text')",
+  'const value = performance.now()',
+  'const value = Date.now()',
+  'const value = new Date()',
+  "const value = Date['now']()",
+  'const value = Date()',
+  'const value = globalThis.Date.now()',
+  'const value = new globalThis.Date()',
+  'type Stream = ReadableStream<Uint8Array>',
+  "const value = globalThis['process'].pid",
+  'const value = globalThis.Bun.argv',
+]
+
+const invalidMultilineStrings = [
+  'const value = `first\nsecond`',
+  'const value = String.raw`first\nsecond`',
+  'const value = "first\\\nsecond"',
+  'const value = S`first\n  second\n`',
+  'const value = S`\n  first\n  second`',
+  'const value = S`\nfirst\n`',
+  '  const value = S`\n    first\n`',
+]
+
+Test.test('source conformance > checks object methods and 45-line function-body boundaries', () => {
+  const valid = S`
+    const encrypt = async (value: string) => value
+    const object = { encrypt, async decrypt(value: string) { return value }, *values() { yield 1 } }
+    type Shape = { encrypt: (value: string) => Promise<string> }
+  `
+  Test.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
+  const initializers = [
+    'async (value) => value',
+    '(value) => value',
+    'function (value) { return value }',
+    'async function (value) { return value }',
+    '((value) => value)',
+    '((value) => value) as Handler',
+    '((value) => value) satisfies Handler',
+    '((value) => value)!',
+  ]
+  const invalid = `const object = {\n${initializers.map((value, index) => `  value${index}: ${value},`).join('\n')}\n}`
+  const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
+  Test.expect(methodIssues).toHaveLength(8)
+  Test.expect(methodIssues.every(issue => issue.endsWith('function implementations in objects must use method syntax')))
+    .toBe(true)
+
+  const accepted = `function boundary() {\n${physicalBodyLines(45)}\n}`
+  Test.expect(sourceConformanceIssues('fixture.ts', accepted)).toEqual([])
+  const rejected = [
+    `function tooLong() {\n${physicalBodyLines(46)}\n}`,
+    `class Service {\n  run() {\n${physicalBodyLines(46)}\n  }\n}`,
+    `class Service {\n  constructor() {\n${physicalBodyLines(46)}\n  }\n}`,
+    `const callback = () => {\n${physicalBodyLines(46)}\n}`,
+    `const expression = () => (\n${Array.from({ length: 44 }, () => '  value,').join('\n')}\n  value\n)`,
+  ].join('\n')
+  Test.expect(messages(sourceConformanceIssues('fixture.ts', rejected))).toEqual([
+    ...Array(4).fill('function bodies must contain at most 45 physical lines; found 46'),
+    'function bodies must contain at most 45 physical lines; found 47',
+  ])
+})
+
+Test.test('source conformance > checks platform imports and globals in one source fixture', () => {
+  const source = platformViolations.join('\n')
+  const issues = messages(sourceConformanceIssues('ts/feature.ts', source)).toSorted()
+  Test.expect(issues).toEqual([
+    ...Array(6).fill(builtinImportIssue),
+    ...Array(13).fill(platformGlobalIssue),
+  ].toSorted())
+  Test.expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
+  Test.expect(messages(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toSorted())
+    .toEqual(issues)
+
+  const allowedTime = S`
+    const monotonic = performance.now()
+    const clock = Date.now()
+    const date = new Date()
+    setTimeout(() => {}, 1)
+    const prohibited = process.pid
+  `
+  Test.expect(messages(sourceConformanceIssues('ts/shared/shared-src/universal/Time.ts', allowedTime))).toEqual([
+    platformGlobalIssue,
+  ])
+})
+
+Test.test('source conformance > requires S for multiline literals and honors exact content indentation', () => {
+  const issues = messages(sourceConformanceIssues('fixture.ts', invalidMultilineStrings.join('\n'))).toSorted()
+  Test.expect(issues).toEqual([
+    ...Array(3).fill(multilineStringIssue),
+    ...Array(4).fill(invalidSLayoutIssue),
+  ].toSorted())
+  Test.expect(sourceConformanceIssues('fixture.ts', 'type Pattern = `first\nsecond`')).toEqual([])
+  Test.expect(sourceConformanceIssues('fixture.ts', "const value = 'first\\nsecond'")).toEqual([])
+  Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  first\n    nested\n`')).toEqual([])
+  Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  ${\n    format(value)\n  }\n`')).toEqual([])
+})
+
+Test.test('source conformance > checks comments and exact native-try exception in combined fixtures', () => {
+  const invalid = S`
+    /* header */
+    const value = /* value */ 1 /* trailing */
+    if /* condition */ (value) { value }
+    function work() { try { work() } finally { cleanup() } }
+  `
+  const issues = messages(sourceConformanceIssues('fixture.ts', invalid)).toSorted()
+  Test.expect(issues).toEqual([
+    'use // lines instead of non-JSDoc block comments',
+    'use // lines instead of non-JSDoc block comments',
+    'use // lines instead of non-JSDoc block comments',
+    'use // lines instead of non-JSDoc block comments',
+    'use Try from @shared instead of native try/catch/finally',
+  ].toSorted())
+  const ignoredSyntax = [
+    `const string = '/* text */ try {} catch {} /** text */'`,
+    'const template = `/* head */ ${1} /* tail */ try {} catch {}`',
+    String.raw`const pattern = /\/\*.*\*\//`,
+  ].join('\n')
+  Test.expect(sourceConformanceIssues('fixture.ts', ignoredSyntax)).toEqual([])
+  const tryStatement = 'function work() { try { work() } finally { cleanup() } }'
+  Test.expect(sourceConformanceIssues('ts/shared/shared-src/universal/TryCatch.ts', tryStatement)).toEqual([])
+  Test.expect(sourceConformanceIssues('ts/other/TryCatch.ts', tryStatement)).toHaveLength(1)
+})
+
+function physicalBodyLines(count: number): string {
+  return Array.from({ length: count }, (_, index) => index % 9 === 0 ? '  // body line' : '  value()').join('\n')
+}
+
+function messages(issues: string[]): string[] {
+  return issues.map(issue => issue.replace(/^.*?:\d+: /u, ''))
+}
