@@ -34,7 +34,7 @@ async function withProbe(
           ${source}
         `,
       )
-      const child = Bun.spawn([process.execPath, script, ...args], {
+      const child = Bun.spawn(['bun', script, ...args], {
         cwd: join(root, 'ts'),
         env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log, TAO_DEBUG_ERRORS: '0' },
         stdout: 'pipe',
@@ -101,17 +101,17 @@ Describe('command IO', () => {
     await withProbe(async (run, root) => {
       const child = join(root, 'args.ts')
       await Bun.write(child, `await Bun.write(Bun.stdout, JSON.stringify(Bun.argv.slice(2)) + '\\n'); process.exit(23)`)
-      const simple = await run(commandAction(`runCommand(process.execPath + ' ${child} first   second')`))
+      const simple = await run(commandAction(`runCommand('bun ${child} first   second')`))
       Expect(simple.code).toBe(23)
       Expect(simple.stdout).toContain('["first","second"]\n')
-      Expect(simple.stdout).toStartWith(`RUN CMD: ${process.execPath} ${child} first second\n`)
+      Expect(simple.stdout).toStartWith(`RUN CMD: bun ${child} first second\n`)
       Expect(simple.stdout).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
       const array = await run(
-        commandAction(`runCommand([process.execPath, '${child}', 'two words', '"quoted"'])`),
+        commandAction(`runCommand(['bun', '${child}', 'two words', '"quoted"'])`),
       )
       Expect(array.code).toBe(23)
       Expect(array.stdout).toContain(JSON.stringify(['two words', '"quoted"']))
-      const agent = await run(commandAction(`runCommand([process.execPath, '${child}', 'agent'])`), true)
+      const agent = await run(commandAction(`runCommand(['bun', '${child}', 'agent'])`), true)
       Expect(agent.code).toBe(23)
       Expect(agent.stdout).toBe('["agent"]\n')
       Expect(agent.log).toMatch(/^RUN CMD: .+\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
@@ -124,7 +124,7 @@ Describe('command IO', () => {
       const payload = 'error chunk\n'.repeat(20000)
       await Bun.write(child, `await Bun.write(Bun.stderr, ${JSON.stringify(payload)}); process.exit(17)`)
       const result = await run(
-        commandAction(`runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`),
+        commandAction(`runCommand(['bun', '${child}'], { stderr: 'ignore' })`),
         true,
       )
       Expect(result.code).toBe(17)
@@ -132,7 +132,7 @@ Describe('command IO', () => {
       Expect(result.stderr.slice(payload.length)).toContain('Command failed:')
       Expect(result.log.includes(payload)).toBe(true)
       Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
-      const dev = await run(commandAction(`runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`))
+      const dev = await run(commandAction(`runCommand(['bun', '${child}'], { stderr: 'ignore' })`))
       Expect(dev.stderr).not.toContain('error chunk')
       Expect(dev.stderr).toContain('Command failed:')
     })
@@ -162,7 +162,7 @@ Describe('command IO', () => {
         S`
           ${invalidLog}
           IO.info('fallback info'); IO.error('visible error');
-          ${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}
+          ${commandAction("runCommand(['bun', '-e', 'process.exit(17)'])")}
         `,
         true,
       )

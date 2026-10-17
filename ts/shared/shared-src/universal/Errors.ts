@@ -1,19 +1,5 @@
 import { Try } from './TryCatch'
 
-// Tao sorts every non-assertion failure into one of three categories, because each one has a
-// different reader and a different recovery:
-//
-// 1. `UnexpectedBehaviorError` — an invariant Tao itself, or a layer upstream of this one, should
-//    have guaranteed. It is a Tao bug, never the author's; the reader is a Tao developer. `Assert`
-//    raises this category, so a guard belongs in `Assert` rather than here.
-// 2. `UserInputError` — the author's own data or contract is wrong, and they can fix it. The reader
-//    is the person writing the Tao program, and the message must tell them what to change.
-//    `Assert.input` raises this category from a guard.
-// 3. `HostEnvironmentError` — the machine, toolchain, or an external process failed: a missing
-//    native module, an absent build artifact, a helper that would not start.
-//    `CommandExecutionError` is this category's subprocess specialization and carries the full
-//    command result.
-
 // ProcessSignal declares a platform process signal value without depending on Node types.
 type ProcessSignal = string
 
@@ -173,17 +159,21 @@ export function Throw(error: unknown): never {
   throw fromUnknown(error)
 }
 
-/** ThrowUserInput throws a user-correctable Tao error. */
+/** ThrowUserInput throws a user-correctable Tao error.
+ The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
 export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): never {
   throw new UserInputError(messageForUser, details)
 }
 
-/** ThrowUnexpected throws an internal Tao error. */
+/** ThrowUnexpected throws an internal Tao error.
+ Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
+ the reader and recovery owner is a Tao developer. */
 export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
   throw new UnexpectedBehaviorError(messageForUser, opts)
 }
 
-/** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process. */
+/** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process.
+ Use for missing native modules or build artifacts, helpers that cannot start, and similar host failures. */
 export function ThrowHostEnvironment(
   messageForUser: string,
   opts?: { cause?: unknown; details?: ErrorDetails },
@@ -191,7 +181,8 @@ export function ThrowHostEnvironment(
   throw new HostEnvironmentError(messageForUser, opts)
 }
 
-/** ThrowCommandExecution throws a structured child process failure. */
+/** ThrowCommandExecution throws a structured child process failure.
+ This specializes host-environment failures and retains the full command result for diagnostics. */
 export function ThrowCommandExecution(result: CommandErrorResult): never {
   throw new CommandExecutionError(result)
 }

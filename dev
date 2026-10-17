@@ -2,6 +2,7 @@
 
 set -e
 export TAO_AGENT=0
+. "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"
 if [ "${1:-}" = setup ]; then
     shift

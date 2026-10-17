@@ -128,6 +128,12 @@ if "$tools_only"; then
 fi
 PATH="$state_dir/profile/bin:$PATH"
 export PATH
+if [ "$repository" = "$checkout" ] && [ -f "$checkout/ts/package.json" ]; then
+  export DEVENV_ROOT="$checkout"
+  export TAO_DEVENV=1
+  export TAO_DEVENV_KIND=portable
+  export PATH="$checkout/ts/node_modules/.bin:$PATH"
+fi
 if "$verify_setup"; then
   # What a verification lane reads and nothing else: the installed packages (adopted when a cache
   # restored them), the generated parser, the maintained native bindings, and the Tao projects' npm

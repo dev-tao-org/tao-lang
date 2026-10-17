@@ -17,6 +17,8 @@ Describe('developer branch workflow', () => {
           const repository = fileURLToPath(new URL('../../../../', import.meta.url))
           await mkdir(join(root, 'ts'), { recursive: true })
           await mkdir(join(root, 'old-tao-v1'))
+          await mkdir(join(root, '.config'))
+          await cp(join(repository, '.config/cli-environment.sh'), join(root, '.config/cli-environment.sh'))
           for (const entry of ['dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
             await cp(join(repository, entry), join(root, entry), { recursive: true })
           }
@@ -38,7 +40,13 @@ Describe('developer branch workflow', () => {
           const calls = join(root, 'calls')
           const child = Bun.spawn([join(root, 'dev'), 'my-branch', 'ro'], {
             cwd: root,
-            env: { ...process.env, TAO_BRANCH_CALLS: calls, TAO_BRANCH_SELECTION_EXIT: selectionFails ? '17' : '0' },
+            env: {
+              ...process.env,
+              TAO_DEVENV: '1',
+              DEVENV_ROOT: root,
+              TAO_BRANCH_CALLS: calls,
+              TAO_BRANCH_SELECTION_EXIT: selectionFails ? '17' : '0',
+            },
             stdout: 'pipe',
             stderr: 'pipe',
           })

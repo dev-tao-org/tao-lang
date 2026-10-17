@@ -15,8 +15,8 @@ Shared formatter dependencies live in `ts/`; install them with `just setup` from
 (or `just setup-ts` from the PoC).
 Repository agent configuration stays at the Git root.
 Generated artifacts share the root `.artifacts/` directory. The PoC's `.artifacts` is a compatibility
-link; its `.devenv` links to root `.devenv/old-tao-v1/`, keeping its full shell separate from the disabled
-root shell without another generated directory inside the PoC.
+link; its `.devenv` links to root `.devenv/old-tao-v1/`, keeping its reference environment separate
+from the new workspace without another generated directory inside the PoC.
 
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
@@ -71,7 +71,12 @@ requires the tag, indented content on new lines, and an aligned closing delimite
 multiline fixtures follow this pattern. Tests must not mutate developer state outside the repository.
 Root `AGENTS.md` lists both automated and review-only conformity rules in one compact section.
 Agents run verify at slice completion and fix or fmt before committing.
-Root commands currently require Bun and dprint on PATH; the root JavaScript toolchain remains disabled.
+Root `./agent` and `./dev` enter the checkout's pinned devenv automatically unless that environment
+is already active. Root Nix exposes the existing Bun and Node pins plus the developer tools; workspace
+executables come from `ts/node_modules/.bin`. Commands invoke `bun` and `tsc` by name. Setup alone
+installs dependencies. Prepared portable Linux profiles remain supported when devenv is unavailable;
+their locked identity is checked before activation. Local activation and verification pass; the
+portable Linux fallback has not been exercised in this slice.
 The Linux bootstrap uses the relocated pinned tool definitions for root setup and keeps CI
 verification setup in the legacy workspace. Cursor's Linux and macOS dispatch and failure exits
 are covered by local fixtures; fresh-host setup and hosted CI have not been exercised.

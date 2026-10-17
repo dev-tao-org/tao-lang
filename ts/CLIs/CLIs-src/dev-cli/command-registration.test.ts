@@ -35,7 +35,7 @@ async function withFixture(
         )
       },
       async (...args) => {
-        const child = Bun.spawn([process.execPath, 'run', script, ...args], {
+        const child = Bun.spawn(['bun', 'run', script, ...args], {
           cwd: join(root, 'ts'),
           env: { ...process.env, TAO_AGENT_LOG: join(root, '.artifacts/agent.log'), TAO_DEBUG_ERRORS: '0' },
           stdout: 'pipe',

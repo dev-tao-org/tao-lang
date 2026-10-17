@@ -19,6 +19,7 @@ These are your rules of usage:
   - Agent commands shared with the developer are imported from the Dev CLI
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
+- CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
 - Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `old-tao-v1/`; agents check or test the legacy implementation only when its files have changed.
 
 ## Dependencies and feature planning
@@ -64,6 +65,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Review: raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
 - Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
 - Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
+- Review: invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
 - Review: only the shared action executor sets `process.exitCode`; actions and workflow steps return void and throw failures. Use variadic `runSteps`.
 - Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 

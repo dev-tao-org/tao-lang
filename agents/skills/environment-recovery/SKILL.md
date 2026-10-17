@@ -27,14 +27,14 @@ behind it.
 
 ## The devenv profile
 
-- `./agent setup` bootstraps dependencies and the CLI build on every `./agent` call, so a stale
-  worktree repairs itself by being used; `dev-automation` owns how each harness reaches it.
-- In a linked worktree `./agent` reuses the primary checkout's pinned profile, or prints the
-  fallback itself (`./enter-tao-dev-env`) when it finds none.
-- The session-start hook puts `.devenv/profile/bin` on each tool shell's PATH — call `bun`,
-  `bunx`, `dprint`, `just`, and `node` directly for inspection when needed; repository workflows
-  still enter through `./agent`. Exports do not persist between tool calls, so if a diagnostic
-  shell lacks the profile, use its explicit `.devenv/profile/bin/` path.
+- Root `./agent` and `./dev` enter their checkout's devenv automatically and expose workspace
+  executable links on PATH. Dependency installation stays explicit through `./agent setup`;
+  `dev-automation` owns the harness setup entrypoints.
+- Linux without devenv can reuse a prepared portable Nix profile; the entrypoint checks its locked
+  identity through the tools-only bootstrap. Without either environment, it reports what is missing
+  instead of using host tooling.
+- Repository commands invoke managed tools by name. Tool-shell exports do not persist between calls,
+  so keep nontrivial workflows behind `./agent`, which activates their environment on each invocation.
 - Build a missing profile through `./enter-tao-dev-env` in a regular terminal. A sandbox denial
   from Nix's daemon socket does not mean the pinned lock is broken.
 

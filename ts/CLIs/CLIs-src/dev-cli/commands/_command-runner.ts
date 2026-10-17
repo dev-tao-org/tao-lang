@@ -132,7 +132,7 @@ export async function runLegacyRecipe(args: string[]): Promise<void> {
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand([process.execPath, 'node_modules/typescript/bin/tsc', '--project', 'tsconfig.json'], {
+  await runCommand(['tsc', '--project', 'tsconfig.json'], {
     cwd: `${repositoryRoot}/ts`,
   })
 }
@@ -147,7 +147,7 @@ export async function workspaceConformance(): Promise<void> {
 /** workspaceTests runs workspace tests with compact developer output and detailed agent output. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   const reporter = process.env.TAO_AGENT === '1' ? [] : ['--reporter=dots']
-  await runCommand([process.execPath, 'test', ...reporter, ...args], { cwd: `${repositoryRoot}/ts` })
+  await runCommand(['bun', 'test', ...reporter, ...args], { cwd: `${repositoryRoot}/ts` })
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

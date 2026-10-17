@@ -21,6 +21,8 @@ async function withFixture(
     await mkdir(join(root, 'ts'))
     await mkdir(join(root, 'old-tao-v1'))
     await mkdir(join(root, 'bin'))
+    await mkdir(join(root, '.config'))
+    await cp(join(repository, '.config/cli-environment.sh'), join(root, '.config/cli-environment.sh'))
     for (
       const entry of ['agent', 'dev', 'Justfile', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']
     ) {
@@ -32,20 +34,20 @@ async function withFixture(
     const dependencies = join(root, 'ts/node_modules')
     await mkdir(dependencies)
     for (const name of await readdir(join(repository, 'ts/node_modules'))) {
-      if (name !== 'typescript') {
+      if (name !== '.bin') {
         await symlink(join(repository, 'ts/node_modules', name), join(dependencies, name))
       }
     }
-    await mkdir(join(dependencies, 'typescript/bin'), { recursive: true })
-    await cp(join(repository, 'ts/node_modules/typescript/package.json'), join(dependencies, 'typescript/package.json'))
-    await symlink(join(repository, 'ts/node_modules/typescript/lib'), join(dependencies, 'typescript/lib'))
+    await mkdir(join(dependencies, '.bin'))
     await Bun.write(
-      join(dependencies, 'typescript/bin/tsc'),
+      join(dependencies, '.bin/tsc'),
       S`
+        #!/usr/bin/env bun
         import { appendFileSync } from 'node:fs'
         appendFileSync(process.env.TAO_PARITY_CALLS, 'tsc|' + process.cwd() + '|' + Bun.argv.slice(2).join('|') + '\\n')
       `,
     )
+    await chmod(join(dependencies, '.bin/tsc'), 0o755)
     await Bun.write(join(root, 'old-tao-v1/Justfile'), 'fix:\n    exit 0\n')
     await Bun.write(
       join(root, 'ts/smoke.test.ts'),
@@ -78,6 +80,8 @@ async function withFixture(
           cwd: root,
           env: {
             ...process.env,
+            TAO_DEVENV: '1',
+            DEVENV_ROOT: root,
             TAO_AGENT_LOG: join(root, '.artifacts/agent.log'),
             PATH: `${join(root, 'bin')}:${process.env.PATH}`,
             TAO_PARITY_CALLS: calls,
