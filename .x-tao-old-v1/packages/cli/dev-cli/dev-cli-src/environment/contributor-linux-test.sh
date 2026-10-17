@@ -100,7 +100,7 @@ printf '%s\n' \
   'amd64=not covered locally; hosted Verify runs ubuntu-24.04 x86-64' > "$root/resources.txt"
 
 # Hash exact tool inputs and the pinned image; never retain a dependency install or host profile.
-{ git ls-tree HEAD .config/bootstrap-tao-dev-env devenv.lock "$environment"; printf 'image=%s\n' "$image"; } > "$root/cache-inputs"
+{ git -C .. ls-tree HEAD .config/bootstrap-tao-dev-env devenv.lock ".x-tao-old-v1/$environment"; printf 'image=%s\n' "$image"; } > "$root/cache-inputs"
 cache_key=$(git hash-object "$root/cache-inputs")
 rm "$root/cache-inputs"
 cache_vm="tao-linux-tools-$cache_key"
@@ -136,7 +136,7 @@ cd /home/admin/tao
 case "$1" in
   cold|cached) mkdir -p .artifacts/logs ;;
 esac
-exec /bin/sh packages/cli/dev-cli/dev-cli-src/environment/guest-smoke.sh "$1"
+exec /bin/sh .x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/guest-smoke.sh "$1"
 GUEST
 
 # The guest receives one archive through the agent: the committed source and this script.

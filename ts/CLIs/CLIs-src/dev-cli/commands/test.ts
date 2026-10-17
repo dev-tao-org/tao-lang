@@ -1,4 +1,3 @@
-import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import {
   assertNewWorkspacePath,
@@ -31,20 +30,15 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
     ? Path.resolve(Repo.resolvePath('ts'), target)
     : Repo.resolvePath(target)
   assertNewWorkspacePath(path)
-  if (!FileSystem.existsSync(path)) {
-    return Path.isAbsolute(target) ? path : undefined
-  }
-  if (!FileSystem.statSync(path).isDirectory()) {
-    return path
-  }
-  const canonical = FileSystem.realpathSync(path)
+  const canonical = FileSystem.existsSync(path) ? FileSystem.realpathSync(path) : path
   const root = FileSystem.realpathSync(Repo.getWorkspaceRoot())
   const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
   if (canonical === root) {
     return workspace
   }
-  if (canonical !== workspace && !canonical.startsWith(`${workspace}/`)) {
-    Errors.ThrowUserInput('Test directory targets must be inside ts/; run legacy workflows from .x-tao-old-v1/.')
+  if (FileSystem.existsSync(path) || Path.isAbsolute(target)) {
+    assertNewWorkspacePath(path, workspace)
+    return canonical
   }
-  return canonical
+  return undefined
 }

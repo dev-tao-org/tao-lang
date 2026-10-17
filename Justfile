@@ -11,11 +11,11 @@ help:
 # Repo dev environment setup
 ############################
 
-# Install repository dependencies in the pinned devenv shell (same entry as ./agent setup and harness hooks).
-# Exception: activate the pinned environment before starting the setup runner shared with harness hooks.
+# Install repository dependencies through the environment-aware setup runner.
 [group('Setup')]
+[positional-arguments]
 setup *ARGS:
-    TAO_DEV_SHELL_SETUP=0 devenv shell --no-tui ./agent setup {{ ARGS }}
+    ./dev setup "$@"
 
 # Configure this checkout and GitHub CLI for HTTPS Git authentication
 [group('Setup')]
@@ -24,13 +24,15 @@ setup-github:
 
 # Decrypt the repository secrets into .env.secrets; `add <KEY>`, `list`, or `setup` to manage them
 [group('Setup')]
+[positional-arguments]
 secrets *ARGS:
-    ./dev secrets {{ ARGS }}
+    ./dev secrets "$@"
 
 # Diagnose this checkout without changing it; pass --json for a structured report
 [group('Setup')]
+[positional-arguments]
 doctor *ARGS:
-    ./dev doctor {{ ARGS }}
+    ./dev doctor "$@"
 
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
@@ -54,7 +56,7 @@ test target="":
 [group('Dev')]
 [positional-arguments]
 fmt *PATHS:
-    ./dev fmt {{ PATHS }}
+    ./dev fmt "$@"
 
 # Apply available new-workspace fixes and shared repository formatting
 [group('Dev')]
@@ -63,13 +65,15 @@ fix:
 
 # Check new-workspace types, source conformance, dead exports and formatting without tests
 [group('Dev')]
+[positional-arguments]
 check *ARGS:
-    ./dev check {{ ARGS }}
+    ./dev check "$@"
 
 # Format, check and test the new TypeScript workspace
 [group('Dev')]
+[positional-arguments]
 verify *ARGS:
-    ./dev verify {{ ARGS }}
+    ./dev verify "$@"
 
 # Dev branch management
 #######################

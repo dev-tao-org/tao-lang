@@ -17,4 +17,8 @@ Test.test('partial cleanup protects shared output retained by another run and re
     { status: 'succeeded', completedAt: 0, artifacts: ['shared', 'old', 'old'] },
     { status: 'failed', completedAt: 1, artifacts: ['shared'] },
   ], day)).toEqual(['old'])
+  Test.expect(Artifacts.expiredTemporaryArtifacts([
+    { status: 'succeeded', completedAt: 0, artifacts: ['logs/session', 'scratch/run/old.txt'] },
+    { status: 'running', artifacts: ['logs/session/active.log', 'scratch/run'] },
+  ], day)).toEqual([])
 })

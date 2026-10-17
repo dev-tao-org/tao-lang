@@ -35,6 +35,10 @@ TestCase('secret store format > parses JSONC while retaining encrypted entries a
 
 TestCase('secret store format > rejects a malformed value instead of dropping it during serialization', () => {
   Expect(() => parseSecretStore('{"secrets":{"TOKEN":{"value":"clear"}}}')).toThrow()
+  Expect(() => parseSecretStore('{"secrets":{"TOKEN":{"value":[]},"TOKEN":{"value":[]}}}')).toThrow('duplicate')
+  Expect(() => parseSecretStore('{"secrets":{"__proto__":{"value":[]}}}')).toThrow('reserved')
+  Expect(() => parseSecretStore('{"secrets":{"BAD\\nINJECT":{"value":[]}}}')).toThrow('usable secret name')
+  Expect(() => renderSecretEnvFile(new Map([['BAD\nINJECT', 'value']]), new Date(0))).toThrow('usable secret name')
 })
 
 TestCase('secret store format > keeps addedAt, advances updatedAt and retains notes when replacing a value', () => {

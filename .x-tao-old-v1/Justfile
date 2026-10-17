@@ -14,7 +14,7 @@ WORD_FLOWER_APP := justfile_directory() + "/Apps/WordFlower/1 - Current/WordFlow
 IDE_EXTENSION_VSIX := justfile_directory() + "/.artifacts/build/tao-ide-extension.vsix"
 LOCAL_INSTANTDB_APP_ID := "9faf89c0-c15c-49b4-bf3f-3b5b2cd9a19f"
 LOCAL_INSTANTDB_DIR := justfile_directory() + "/packages/services/tao-cloud/tao-cloud-src/local"
-LOCAL_INSTANTDB_COMPOSE := "docker compose --project-name tao-local-instantdb --file \"" + LOCAL_INSTANTDB_DIR + "/docker-compose.yml\""
+LOCAL_INSTANTDB_COMPOSE := "docker compose --project-name tao-local-instantdb --file \"" + justfile_directory() + "/../.config/local-instantdb/docker-compose.yml\""
 VERIFY_FULL_GATES := "_fix-dprint _fix-tao _fix-just-fmt _fix-ledger-index _parser-gen _compile-word-flower-app _ide-extension-build _repo-lint _typecheck _hosted-crud-test _test _runtime-pack-check _doctor-json dead-exports ship-bundle-proof studio-smoke studio-proof-real-app studio-smoke-simulated-user keyboard-navigation-smoke studio-dialog-browser studio-metro-refresh studio-agent-browser studio-network-simulation studio-canary"
 VERIFY_FULL_SKIPPED := ""
 
@@ -81,7 +81,7 @@ dev-loop *ARGS:
 # Launch the agent harness with the Bash sandbox off; switch a running session with /sandbox
 [group('Sessions')]
 session-unsandboxed *ARGS:
-    claude --settings "{{ justfile_directory() }}/.claude/settings.unsandboxed.json" {{ ARGS }}
+    claude --settings "{{ justfile_directory() }}/../.claude/settings.unsandboxed.json" {{ ARGS }}
 
 # Launch the agent harness in read-only planning mode
 [group('Sessions')]
@@ -91,17 +91,17 @@ session-review *ARGS:
 # Launch the agent harness with opt-in Docker access for the local InstantDB stack
 [group('Sessions')]
 session-local-services *ARGS:
-    claude --settings "{{ justfile_directory() }}/.claude/settings.local-services.json" {{ ARGS }}
+    claude --settings "{{ justfile_directory() }}/../.claude/settings.local-services.json" {{ ARGS }}
 
 # Launch the agent harness with prompted native-device commands and native build directories
 [group('Sessions')]
 session-native *ARGS:
-    claude --settings "{{ justfile_directory() }}/.claude/settings.native.json" {{ ARGS }}
+    claude --settings "{{ justfile_directory() }}/../.claude/settings.native.json" {{ ARGS }}
 
 # Launch the agent harness with prompted signing/notarization tools and Xcode release directories
 [group('Sessions')]
 session-release *ARGS:
-    claude --settings "{{ justfile_directory() }}/.claude/settings.release.json" {{ ARGS }}
+    claude --settings "{{ justfile_directory() }}/../.claude/settings.release.json" {{ ARGS }}
 
 # Start the official self-hosted InstantDB stack and provision WordFlower's local app
 [group('Run')]

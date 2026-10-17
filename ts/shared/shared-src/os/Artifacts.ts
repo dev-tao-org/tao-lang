@@ -1,4 +1,4 @@
-import { lstatSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { Errors, Time, Try } from '../universal/universal'
 import * as FileSystem from './FileSystem'
@@ -6,8 +6,8 @@ import * as Path from './Path'
 import * as Repo from './Repo'
 
 export { appendFileSync, mkdirSync } from 'node:fs'
-export { rename as move } from 'node:fs/promises'
-export { file, mkdir, mkdtemp, realpathSync, rm, write } from './FileSystem'
+export { mkdtemp, rename as move } from 'node:fs/promises'
+export { file, mkdir, realpathSync, rm, write } from './FileSystem'
 
 /** writePrivate creates a new owner-only artifact without a window of public readability. */
 export function writePrivate(path: string, data: string): Promise<void> {
@@ -35,12 +35,38 @@ export async function isWritable(...segments: string[]): Promise<boolean> {
   })
 }
 
-/** trackTemporary records an exclusively owned log or scratch path for cleanup after successful process completion. */
+/** trackTemporary records log or scratch ownership before output begins, for cleanup after successful completion. */
 export function trackTemporary(path: string): void {
   const absolute = Path.resolve(path)
   if (!isDisposablePath(absolute)) {
     return
   }
+  const release = acquireCleanupLock()
+  Try(() => registerTemporary(absolute), { finally: release })
+}
+
+/** cleanPartial removes tracked successful output older than 24 hours, retaining failures and active runs. */
+export async function cleanPartial(): Promise<number> {
+  const directory = resolvePath('cleanup')
+  if (!FileSystem.existsSync(directory)) {
+    return 0
+  }
+  const release = acquireCleanupLock()
+  return await Try(() => removeExpiredTemporaryRuns(directory), { finally: release })
+}
+
+/** expiredTemporaryArtifacts selects expired successful output while protecting retained paths and their containers. */
+export function expiredTemporaryArtifacts(runs: readonly TemporaryRun[], now: number): string[] {
+  const retained = runs.filter(run => !isExpiredRun(run, now)).flatMap(run => run.artifacts)
+  const expired = runs.filter(run => isExpiredRun(run, now)).flatMap(run => run.artifacts)
+  return [...new Set(expired)].filter(path => !retained.some(kept => pathsOverlap(path, kept)))
+}
+
+type TemporaryRun = { status: 'running' | 'succeeded' | 'failed'; completedAt?: number; artifacts: string[] }
+let activeRun: { path: string; record: TemporaryRun } | undefined
+const retentionMs = 24 * 60 * 60 * 1000
+
+function registerTemporary(absolute: string): void {
   if (!activeRun) {
     const directory = resolvePath('cleanup')
     if (!hasSafeParents(Path.join(directory, 'record.json'))) {
@@ -59,12 +85,7 @@ export function trackTemporary(path: string): void {
   }
 }
 
-/** cleanPartial removes tracked successful output older than 24 hours, retaining failures and active runs. */
-export async function cleanPartial(): Promise<number> {
-  const directory = resolvePath('cleanup')
-  if (!FileSystem.existsSync(directory)) {
-    return 0
-  }
+async function removeExpiredTemporaryRuns(directory: string): Promise<number> {
   if (!hasSafeParents(Path.join(directory, 'record.json'))) {
     Errors.ThrowHostEnvironment('Artifact cleanup records must remain inside the checkout artifact directory.')
   }
@@ -85,16 +106,33 @@ export async function cleanPartial(): Promise<number> {
   return removed
 }
 
-/** expiredTemporaryArtifacts selects expired successful artifacts while protecting every retained run's paths. */
-export function expiredTemporaryArtifacts(runs: readonly TemporaryRun[], now: number): string[] {
-  const retained = runs.filter(run => !isExpiredRun(run, now)).flatMap(run => run.artifacts)
-  const expired = runs.filter(run => isExpiredRun(run, now)).flatMap(run => run.artifacts)
-  return [...new Set(expired)].filter(path => !retained.includes(path))
+function pathsOverlap(left: string, right: string): boolean {
+  return left === right || left.startsWith(right + '/') || right.startsWith(left + '/')
 }
 
-type TemporaryRun = { status: 'running' | 'succeeded' | 'failed'; completedAt?: number; artifacts: string[] }
-let activeRun: { path: string; record: TemporaryRun } | undefined
-const retentionMs = 24 * 60 * 60 * 1000
+function acquireCleanupLock(): () => void {
+  const path = resolvePath('cleanup.lock')
+  const deadline = Time.now() + 5000
+  while (
+    !Try(() => {
+      writeFileSync(path, String(process.pid), { flag: 'wx' })
+      return true
+    }, {
+      catch(error) {
+        if (error instanceof Error && (error as Error & { code?: string }).code === 'EEXIST') {
+          return false
+        }
+        Errors.Throw(error)
+      },
+    })
+  ) {
+    if (Time.now() >= deadline) {
+      Errors.ThrowHostEnvironment(`Artifact cleanup lock is still held: ${path}. Inspect its owner before removing it.`)
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10)
+  }
+  return () => rmSync(path)
+}
 
 function isExpiredRun(run: TemporaryRun, now: number): boolean {
   return run.status === 'succeeded' && run.completedAt !== undefined && run.completedAt <= now - retentionMs

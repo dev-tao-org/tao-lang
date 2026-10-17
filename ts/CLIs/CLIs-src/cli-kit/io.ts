@@ -57,8 +57,8 @@ function configureOutput(configuration: IOConfiguration): void {
     Artifacts.mkdirSync(Path.dirname(agentLog), { recursive: true })
     const logPath = Path.join(Artifacts.realpathSync(Path.dirname(agentLog)), Path.basename(agentLog))
     const announcement = `Logs: ${Path.relative(Repo.getWorkspaceRoot(), logPath)}\n`
-    Artifacts.appendFileSync(agentLog, announcement)
     Artifacts.trackTemporary(agentLog)
+    Artifacts.appendFileSync(agentLog, announcement)
     Terminal.stderr.write(announcement)
   }
 }

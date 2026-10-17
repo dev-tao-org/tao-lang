@@ -1,7 +1,7 @@
 ---
 name: dev-automation
 description: >-
-  Change Tao developer automation. Use when editing packages/cli/dev-cli, packages/cli/agent-cli,
+  Change Tao developer automation. Use when editing ts/CLIs dev-cli or agent-cli commands,
   ./agent, ./dev, ./tao, Justfile recipes, setup, command help, host-operation dispatch, or
   repository workflow output.
 ---

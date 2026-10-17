@@ -100,18 +100,14 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Implementation architecture
 
-- `.x-tao-old-v1/` implements the previous PoC implementation.
-- `ts/@workspace` implements an "active workspace".
-  - It manages an opened tao project: its files, background processes, build system, etc.
-  - It performs workspace actions: monitors file changes, formats code, runs tests, builds and launches apps, builds and reloads view previews, etc.
-- `ts/@parser` implements the parser.
-  - Treesitter is used for file parsing.
-- `ts/@tooling` implement tao tooling commands: `fix`, `test`, `run`, etc
-- `ts/@compiler`
-- `Apps/` implements repo tao app, and tao apps used for e2e testing.
-  - `Apps/Tao Studio/Tao Studio.tao` implements the tao studio desktop app.
-  - `Apps/Studio Companion/Studio Companion.tao` implements the studio phone/tablet companion app.
-  - `Apps/Test Apps/*` implements the e2e test apps.
-    - We use few test apps, to minimize compilation time during e2e testing.
-- `Docs/` contains the repo roadmap and documentation.
-- TBC ...
+- `ts/` owns the independent TypeScript workspace, dependencies, lockfile and compiler configuration.
+- `ts/CLIs/CLIs-src/dev-cli/` owns developer commands; `agent-cli/` adds agent-only commands and imports shared dev commands. Root `dev` and `agent` are thin environment-aware launchers.
+- `ts/CLIs/CLIs-src/cli-kit/` provides command execution, configured output, fatal handling, secrets and host dispatch. `cli-checks/` owns diagnostics, validation, source rules and test timing reports.
+- `ts/shared/shared-src/universal/` provides portable errors, Try, strings, time and type-safe switching. `os/`, exported through `@shared/os`, owns platform operations, repository roots and artifacts.
+- Tests live in sibling `*-test/` folders. `ts/scripts/` holds tool configuration such as Knip.
+- `.config/` owns tool/bootstrap configuration and the local InstantDB Compose file. Root `devenv.*` defines the pinned environment; `.envrc` activates it through direnv, with `enter-tao-dev-env.sh` as the explicit alternative.
+- `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
+- `.artifacts/` holds generated output, logs, caches and temporary state; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
+- `.x-tao-old-v1/` retains the reference language, compiler, runtimes and apps, including Studio, Companion and test apps.
+- `Docs/` contains the active roadmap and documentation; `Docs/Agent Notes/` contains non-authoritative working notes.
+- The new parser, CST-to-AST transformer, compiler, Expo runtime and first Tao app belong to Goal 2. Agree on their folders during planning; they are not implemented yet.

@@ -33,3 +33,11 @@ view RootView {
     }
 }
 ```
+
+### Success criteria
+
+- The minimal Tao app passes through parsing, CST-to-AST transformation and code generation into the Expo runtime.
+- End-to-end tests confirm that "Hello World" appears on web, headless iOS Simulator and headless Android Emulator.
+- CI runs all three platforms by default, sharing the generated Tao output and running platform jobs in parallel. Each platform still needs its own bundle and native build where applicable.
+- Local tests can select a platform for fast iteration. Record cold and warm CI timings before adding further build infrastructure.
+- Measure implementation hot paths and run their performance tests before landing. Investigate increases and iterate until diminishing returns or further work would add too much complexity for the slice; record results and remaining costs under [Performance](../Performance/README.md).

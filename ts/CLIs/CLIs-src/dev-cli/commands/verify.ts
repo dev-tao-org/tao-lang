@@ -1,14 +1,7 @@
 import { runSteps } from '@cli-kit'
-import {
-  workspaceConformance,
-  workspaceDeadExports,
-  workspaceFormat,
-  workspaceShellSyntax,
-  workspaceTests,
-  workspaceTypes,
-} from '../../cli-checks/check'
+import { workspaceFormat, workspaceTests } from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
-import doctor from './doctor'
+import check from './check'
 
 /** verifyCommand fixes, checks and tests the new workspace. */
 export default registerCommand({
@@ -18,11 +11,7 @@ export default registerCommand({
     // Parser, app compilation, IDE build and runtime packaging await their new implementations.
     await runSteps(
       () => workspaceFormat('fmt'),
-      () => doctor.action([]),
-      () => workspaceTypes(),
-      () => workspaceShellSyntax(),
-      () => workspaceConformance(),
-      () => workspaceDeadExports(),
+      () => check.action(),
       () => workspaceTests(),
     )
   },

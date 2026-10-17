@@ -80,22 +80,22 @@ if [ "$mode" = cold ] || [ "$mode" = tools ]; then
 fi
 
 if [ "$mode" = tools ]; then
-  step bootstrap-tools ./.config/bootstrap-tao-dev-env --install-nix --tools-only
+  step bootstrap-tools ../.config/bootstrap-tao-dev-env --install-nix --tools-only --verify-setup
   record_tool_versions
   exit
 fi
 
-git init --quiet --initial-branch=feat/contributor-linux
-git config user.name 'Tao Contributor Test'
-git config user.email 'contributor-test@example.invalid'
-git add --all
-git commit --quiet -m 'Contributor Linux source snapshot'
+git -C .. init --quiet --initial-branch=feat/contributor-linux
+git -C .. config user.name 'Tao Contributor Test'
+git -C .. config user.email 'contributor-test@example.invalid'
+git -C .. add --all
+git -C .. commit --quiet -m 'Contributor Linux source snapshot'
 # Changed-test discovery uses main as its base even in this independent checkout.
-git branch main
+git -C .. branch main
 if [ "$mode" = cold ]; then
-  step bootstrap ./.config/bootstrap-tao-dev-env --install-nix
+  step bootstrap ../.config/bootstrap-tao-dev-env --install-nix --verify-setup
 else
-  step bootstrap ./.config/bootstrap-tao-dev-env
+  step bootstrap ../.config/bootstrap-tao-dev-env --verify-setup
 fi
 record_tool_versions
 step help ./agent help

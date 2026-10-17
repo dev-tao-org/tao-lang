@@ -12,17 +12,14 @@ name: CI macOS
 # gate is admitted here and proved reliable, and then it is the ruleset, not this file, that makes
 # `CI macOS` required.
 #
-# Runs on pushes to `main` and on dispatch. With nothing admitted it proves no gate, so a pull
-# request does not start it; add `pull_request` here in the same change that admits the first
-# gate, since a gate it proves must be proved on the pull request's head. A dispatched run's
+# Legacy host checks are manual only; automatic CI validates the new TypeScript workspace.
+# A dispatched run's
 # `host_gates` input tries one admission for that run only, which is how a gate is measured before
 # it is admitted.
 #
 # The same devenv bootstrap and caches as `Companion hosts`: the portable Linux profile does not
 # exist for Darwin, and the Nix store is what makes a devenv shell affordable on a fresh runner.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       host_gates:

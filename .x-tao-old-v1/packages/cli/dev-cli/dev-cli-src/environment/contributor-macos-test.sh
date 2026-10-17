@@ -122,7 +122,7 @@ set -eu
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 /usr/bin/tar -xf /Users/admin/tao-harness/input/checkout.tar -C /Users/admin
 cd /Users/admin/tao
-exec /bin/sh packages/cli/dev-cli/dev-cli-src/environment/contributor-macos-guest.sh "$1"
+exec /bin/sh .x-tao-old-v1/packages/cli/dev-cli/dev-cli-src/environment/contributor-macos-guest.sh "$1"
 GUEST
 
 # The guest receives one archive through the agent: the committed source and this script.

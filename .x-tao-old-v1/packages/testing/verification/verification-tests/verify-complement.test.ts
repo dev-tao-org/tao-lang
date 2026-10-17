@@ -126,24 +126,12 @@ Describe('verify-complement', () => {
     }
   })
 
-  Test('the real Verify workflow runs the gates the complement leaves to its Linux partitions', async () => {
-    // isHostGate drops a runsOnHostedLinux gate on the catalog flag alone; only the workflow's
-    // --hosted-linux makes the partitions run it. Without the flag they report it skipped and Verify
-    // stays green, so a gate left to Verify would be proved nowhere.
-    const leftToVerify = (await justVariable('VERIFY_FULL_GATES')).filter(name =>
-      GateCatalog.metadata(name).runsOnHostedLinux === true && !VerifyComplement.isHostGate(name)
-    )
-    Expect(leftToVerify.length).toBeGreaterThan(0)
+  Test('automatic Verify delegates to the new workspace without invoking legacy verification', async () => {
     const workflow = await FS.readText(Repo.resolveGitPath('.github/workflows/verify.yml'))
     Expect(VerifyComplement.runsOnPullRequests(workflow)).toBe(true)
-    Expect(workflow).toContain('working-directory: .x-tao-old-v1')
-    Expect(workflow).toContain('cp .github/verify/durations.json .artifacts/timings/durations.json')
-    const partitionRuns = workflow.split('\n').filter(line => /^\s*run:.*\bverify-full-sandbox\b/u.test(line))
-    Expect(partitionRuns.length).toBeGreaterThan(0)
-    for (const line of partitionRuns) {
-      Expect({ line: line.trim(), hostedLinux: /\s--hosted-linux(?:\s|$)/u.test(line) })
-        .toEqual({ line: line.trim(), hostedLinux: true })
-    }
+    Expect(workflow).toContain('uses: ./.github/workflows/typescript.yml')
+    Expect(workflow).not.toContain('verify-full-sandbox')
+    Expect(workflow).not.toContain('working-directory: .x-tao-old-v1')
   })
 
   Test('the receipt lives beside the summary', () => {

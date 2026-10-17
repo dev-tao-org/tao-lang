@@ -1,5 +1,5 @@
 import { S, Try } from '@shared'
-import { FileSystem, Path, Platform, Test } from '@shared/os'
+import { Artifacts, FileSystem, Path, Test } from '@shared/os'
 import { checkSourceConformance, sourceConformanceIssues } from '../cli-checks/source-conformance'
 
 const publicApiFixture = S`
@@ -61,7 +61,8 @@ Test.test('source conformance > checks ambient namespaces and workspace declarat
     ])
   }
 
-  const root = await FileSystem.mkdtemp(Path.join(Platform.tmpdir(), 'tao-source-conformance-'))
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-source-conformance-'))
   await Try(async () => {
     await FileSystem.write(
       Path.join(root, 'ts/public.d.ts'),

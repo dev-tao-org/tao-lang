@@ -3,8 +3,8 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { withTestTimings } from './slow-tests'
 
-/** assertNewWorkspacePath directs legacy operations to their own working directory. */
-export function assertNewWorkspacePath(path: string): void {
+/** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
+export function assertNewWorkspacePath(path: string, root = Repo.getWorkspaceRoot()): void {
   const absolute = Path.resolve(path)
   let existing = absolute
   while (!FileSystem.existsSync(existing)) {
@@ -18,6 +18,10 @@ export function assertNewWorkspacePath(path: string): void {
   const legacy = FileSystem.existsSync(legacyRoot) ? FileSystem.realpathSync(legacyRoot) : legacyRoot
   if (isWithinDirectory(absolute, legacyRoot) || isWithinDirectory(canonical, legacy)) {
     Errors.ThrowUserInput('Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.')
+  }
+  const canonicalRoot = FileSystem.realpathSync(root)
+  if (!isWithinDirectory(absolute, root) || !isWithinDirectory(canonical, canonicalRoot)) {
+    Errors.ThrowUserInput(`Requested paths must remain inside ${root}: ${path}`)
   }
 }
 
