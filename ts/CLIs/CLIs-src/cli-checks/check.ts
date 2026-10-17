@@ -1,6 +1,7 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
+import { prepareParser } from './parser-build'
 import { withTestTimings } from './slow-tests'
 
 /** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
@@ -30,7 +31,7 @@ export async function assertNewWorkspaceTree(): Promise<void> {
   const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await FileSystem.readdir(directory, { withFileTypes: true })) {
-      if (entry.name === 'node_modules') {
+      if (entry.name === 'node_modules' || entry.name.startsWith('_gen_')) {
         continue
       }
       const path = `${directory}/${entry.name}`
@@ -90,6 +91,7 @@ export async function workspaceDeadExports(): Promise<void> {
 
 /** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
+  await prepareParser()
   await withTestTimings(reportPath =>
     runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],

@@ -128,7 +128,7 @@ async function readChecks(snapshot: Snapshot): Promise<Check[]> {
   })
   checks.push(...workspaceChecks())
   checks.push(...await artifactChecks())
-  // Generated parser, Studio, Expo, native toolchains and machine-lane diagnostics await their new implementations.
+  // Studio, Expo, native toolchain and machine-lane diagnostics await their new implementations.
   return checks
 }
 

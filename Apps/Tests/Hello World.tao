@@ -1,0 +1,9 @@
+app HelloWorld {
+  root RootView
+}
+
+view RootView {
+  render Col {
+    Text("Hello World")
+  }
+}

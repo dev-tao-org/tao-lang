@@ -18,5 +18,5 @@ export function write(path: string | URL | File, data: string | Uint8Array): Pro
  *  Load the compiler lazily so fresh setup can import OS APIs before dependencies are installed. */
 export async function sourceFiles(root: string): Promise<string[]> {
   const { sys } = await import('typescript')
-  return sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**'])
+  return sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**', '**/_gen_*/**'])
 }

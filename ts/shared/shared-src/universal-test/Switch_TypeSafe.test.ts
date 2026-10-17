@@ -1,8 +1,8 @@
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { Switch } from '../universal/universal'
 
-Test.describe('Switch.on', () => {
-  Test.test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
+Tests.describe('Switch.on', () => {
+  Tests.test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
     type Message =
       | { type: 'text'; value: string }
       | { type: 'count'; value: number }
@@ -22,12 +22,12 @@ Test.describe('Switch.on', () => {
         },
       })
 
-    Test.expect(describe(text)).toBe('HELLO')
-    Test.expect(describe(count)).toBe('3.0')
+    Tests.expect(describe(text)).toBe('HELLO')
+    Tests.expect(describe(count)).toBe('3.0')
   })
 })
 
-Test.test('Switch.on requires and narrows the undefined discriminator branch', () => {
+Tests.test('Switch.on requires and narrows the undefined discriminator branch', () => {
   type Message = { kind: 'ready'; value: string } | { kind: undefined }
   const render = (message: Message): string =>
     Switch.on(message, 'kind', {
@@ -47,7 +47,7 @@ Test.test('Switch.on requires and narrows the undefined discriminator branch', (
       },
     })
   }
-  Test.expect(render({ kind: 'ready', value: 'ok' })).toBe('ok')
-  Test.expect(render({ kind: undefined })).toBe('undefined')
-  Test.expect(() => incomplete({ kind: undefined })).toThrow()
+  Tests.expect(render({ kind: 'ready', value: 'ok' })).toBe('ok')
+  Tests.expect(render({ kind: undefined })).toBe('undefined')
+  Tests.expect(() => incomplete({ kind: undefined })).toThrow()
 })

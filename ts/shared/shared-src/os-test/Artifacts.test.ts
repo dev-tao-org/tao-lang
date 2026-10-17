@@ -1,8 +1,8 @@
-import { Artifacts, Test } from '@shared/os'
+import { Artifacts, Tests } from '@shared/os'
 
-Test.test('partial cleanup expires successful output after 24 hours and preserves unfinished or failed evidence', () => {
+Tests.test('partial cleanup expires successful output after 24 hours and preserves unfinished or failed evidence', () => {
   const day = 24 * 60 * 60 * 1000
-  Test.expect(Artifacts.expiredTemporaryArtifacts([
+  Tests.expect(Artifacts.expiredTemporaryArtifacts([
     { status: 'succeeded', completedAt: day, artifacts: ['expired'] },
     { status: 'succeeded', completedAt: day + 1, artifacts: ['recent'] },
     { status: 'succeeded', artifacts: ['no-completion-time'] },
@@ -11,13 +11,13 @@ Test.test('partial cleanup expires successful output after 24 hours and preserve
   ], day * 2)).toEqual(['expired'])
 })
 
-Test.test('partial cleanup protects shared output retained by another run and removes duplicate candidates once', () => {
+Tests.test('partial cleanup protects shared output retained by another run and removes duplicate candidates once', () => {
   const day = 24 * 60 * 60 * 1000
-  Test.expect(Artifacts.expiredTemporaryArtifacts([
+  Tests.expect(Artifacts.expiredTemporaryArtifacts([
     { status: 'succeeded', completedAt: 0, artifacts: ['shared', 'old', 'old'] },
     { status: 'failed', completedAt: 1, artifacts: ['shared'] },
   ], day)).toEqual(['old'])
-  Test.expect(Artifacts.expiredTemporaryArtifacts([
+  Tests.expect(Artifacts.expiredTemporaryArtifacts([
     { status: 'succeeded', completedAt: 0, artifacts: ['logs/session', 'scratch/run/old.txt'] },
     { status: 'running', artifacts: ['logs/session/active.log', 'scratch/run'] },
   ], day)).toEqual([])

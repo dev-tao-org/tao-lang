@@ -1,10 +1,10 @@
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { runSteps } from '../cli-kit/cli-kit'
 
-Test.test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
+Tests.test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
   const events: string[] = []
   const failure = new Error('step failed')
-  await Test.expect(
+  await Tests.expect(
     runSteps(
       async () => {
         events.push('first')
@@ -20,6 +20,6 @@ Test.test('awaits variadic void steps in order and stops at the original thrown 
       },
     ),
   ).rejects.toBe(failure)
-  Test.expect(events).toEqual(['first', 'finished', 'second'])
-  Test.expect(await runSteps(() => {}, async () => {})).toBeUndefined()
+  Tests.expect(events).toEqual(['first', 'finished', 'second'])
+  Tests.expect(await runSteps(() => {}, async () => {})).toBeUndefined()
 })

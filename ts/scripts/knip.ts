@@ -9,9 +9,10 @@ export default {
     ...cliEntries().flatMap(commandEntries),
     'CLIs/CLIs-src/tao-cli/tao-cli.ts',
     'CLIs/CLIs-src/dev-cli/commands/_setup.ts',
+    'perf/perf-src/parser-sample.ts',
     '**/*.test.ts',
   ],
-  project: ['CLIs/**/*.ts', 'shared/**/*.ts'],
+  project: ['CLIs/**/*.ts', 'shared/**/*.ts', 'parser/**/*.ts', 'perf/**/*.ts'],
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 } satisfies KnipConfig
 

@@ -8,9 +8,9 @@ export default registerCommand({
   arguments: [{ name: 'args', description: 'Bun install arguments.', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    // The legacy shell/tool profile stays separately bootstrapped with .x-tao-old-v1's setup-tools.
-    // Its former _setup also generated parser/native bindings, app dependencies and completion;
-    // new equivalents await those implementations. Keep this runner dependency-free for fresh setup.
+    // Keep registration dependency-free; load build tooling only after installation succeeds.
     await runCommand('bun install', { variadicArgs: args })
+    const { prepareParser } = await import('../../cli-checks/parser-build')
+    await prepareParser()
   },
 })

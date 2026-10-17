@@ -3,11 +3,19 @@ name: pipeline-performance
 description: >-
   Change or review Tao parsing, validation, compilation, project-tooling refresh, Studio publication,
   or runtime design delivery hot paths. Use when diagnosing edit-to-preview slowdowns, adding work
-  to a save or watch callback, or protecting incremental pipeline performance.
+  to a save or watch callback, or implementing anything touching the current or future
+  keystroke-to-preview-refresh path.
 ---
 
 # Pipeline Performance
 
+- Consider performance in every implementation touching the current or future preview-refresh hot
+  path: keystroke change, updated file outcome, partial recompilation, generated-output publication,
+  Expo HMR/Fast Refresh, and the visible app update. Aim to keep the complete path below 100 ms where
+  feasible; an individual fast phase does not prove that target. Measure affected phases and the
+  end-to-end path when available, investigate added work and regressions, and record remaining costs
+  when the target is not yet achieved. This target does not authorize skipping correctness or
+  implementing later roadmap stages early.
 - Identify the unit of change and its work owners before adding a refresh, check, or traversal. A
   saved input may reach both an explicit request and a filesystem event; those callers must share
   computation when the owning API can prove input equivalence. Keep caller acknowledgements and

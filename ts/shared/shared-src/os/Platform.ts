@@ -1,7 +1,18 @@
 import { execFileSync } from 'node:child_process'
-import { isBuiltin } from 'node:module'
+import { createHash } from 'node:crypto'
+import { createRequire, isBuiltin } from 'node:module'
 import { arch, release, type } from 'node:os'
 import { Errors } from '../universal/universal'
+
+/** loadModule loads a known runtime module, including native Node-API addons. */
+export function loadModule<Value>(path: string): Value {
+  return createRequire(import.meta.url)(path) as Value
+}
+
+/** hashText hashes exact build inputs and generated output for cache validation. */
+export function hashText(source: string): string {
+  return createHash('sha256').update(source).digest('hex')
+}
 
 /** isPlatformImport identifies runtime builtins that belong behind the OS boundary. */
 export function isPlatformImport(specifier: string): boolean {

@@ -31,6 +31,7 @@ These are your rules of usage:
 - Determine during planning whether new or updated dependencies are needed.
 - Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
+- Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.
 
 ## Decisions and communication
 
@@ -105,10 +106,11 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - `ts/CLIs/CLIs-src/dev-cli/` owns developer commands; `agent-cli/` adds agent-only commands and imports shared dev commands. Root `dev` and `agent` are thin environment-aware launchers.
 - `ts/CLIs/CLIs-src/cli-kit/` provides command execution, configured output, fatal handling, secrets and host dispatch. `cli-checks/` owns diagnostics, validation, source rules and test timing reports.
 - `ts/shared/shared-src/universal/` provides portable errors, Try, strings, time and type-safe switching. `os/`, exported through `@shared/os`, owns platform operations, repository roots and artifacts.
+- `ts/parser/` owns the minimal Tree-sitter grammar, native binding and CST parser. `ts/perf/` owns performance fixtures and measurement drivers; shared `Timings` records operation spans for later compiler and runtime instrumentation.
 - Tests live in sibling `*-test/` folders. `ts/scripts/` holds tool configuration such as Knip.
 - `.config/` owns tool/bootstrap configuration and the local InstantDB Compose file. Root `devenv.*` defines the pinned environment; `.envrc` activates it through direnv, with `enter-tao-dev-env.sh` as the explicit alternative.
 - `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
 - `.artifacts/` holds generated output, logs, caches and temporary state; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
 - `.x-tao-old-v1/` retains the reference language, compiler, runtimes and apps, including Studio, Companion and test apps.
 - `Docs/` contains the active roadmap and documentation; `Docs/Agent Notes/` contains non-authoritative working notes.
-- The new parser, CST-to-AST transformer, compiler, Expo runtime and first Tao app belong to Goal 2. Agree on their folders during planning; they are not implemented yet.
+- The CST-to-AST transformer, compiler, Expo runtime and first Tao app remain Goal 2 work. The agreed handwritten runtime belongs in `ts/runtime/runtime-src/` with sibling `runtime-test/`; its scaffold code and instrumentation will be consumed by generated apps and the performance harness.

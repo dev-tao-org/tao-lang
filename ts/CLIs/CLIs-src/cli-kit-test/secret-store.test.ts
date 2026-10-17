@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import {
   type Cipher,
   decryptSecretValues,
@@ -12,7 +12,7 @@ import {
   withSecret,
 } from '../cli-kit/secret-store'
 
-const { expect: Expect, test: TestCase } = Test
+const { expect: Expect, test: TestCase } = Tests
 
 TestCase('secret store format > parses JSONC while retaining encrypted entries and metadata', () => {
   const store = parseSecretStore(S`

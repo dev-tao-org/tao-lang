@@ -6,7 +6,7 @@ export default registerCommand({
   name: 'fix',
   description: 'Apply new workspace and shared repository formatting fixes.',
   async action() {
-    // Tao source fixes and import cleanup await their new parser/tooling implementations.
+    // Tao source fixes and import cleanup await their tooling implementations.
     await workspaceFormat('fmt')
   },
 })

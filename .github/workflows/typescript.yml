@@ -51,6 +51,8 @@ jobs:
         run: ./agent check
       - name: Test workspace
         run: ./agent test
+      - name: Measure parser performance
+        run: ./agent performance parser
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Upload logs and test timings

@@ -1,9 +1,9 @@
 import { S } from '@shared'
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { slowTestWarnings } from '../cli-checks/slow-tests'
 
-Test.describe('slow test warnings', () => {
-  Test.test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {
+Tests.describe('slow test warnings', () => {
+  Tests.test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {
     const warnings = slowTestWarnings(S`
       <testsuites>
         <testsuite name="commands" file="commands.test.ts">
@@ -14,14 +14,14 @@ Test.describe('slow test warnings', () => {
         </testsuite>
       </testsuites>
     `)
-    Test.expect(warnings).toEqual([
+    Tests.expect(warnings).toEqual([
       'Slow tests (>75 ms):',
       '  250.00 ms  commands > slowest (commands.test.ts)',
       '  75.01 ms  nested suite > slow (commands.test.ts)',
     ])
   })
 
-  Test.test('decodes escaped names and ignores XML-looking diagnostics and skipped or invalid timings', () => {
+  Tests.test('decodes escaped names and ignores XML-looking diagnostics and skipped or invalid timings', () => {
     const warnings = slowTestWarnings(S`
       <testsuites>
         <!-- <testcase name="comment" time="10" /> -->
@@ -38,12 +38,12 @@ Test.describe('slow test warnings', () => {
         </testsuite>
       </testsuites>
     `)
-    Test.expect(warnings).toEqual([
+    Tests.expect(warnings).toEqual([
       'Slow tests (>75 ms):',
       '  123.00 ms  outer > A > B "value" & \'x\' 🐱 (file & name.test.ts)',
       '  102.00 ms  outer > after inner (file & name.test.ts)',
       '  101.00 ms  inner > nested (inner.test.ts)',
     ])
-    Test.expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
+    Tests.expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
   })
 })

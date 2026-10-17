@@ -14,7 +14,7 @@ export default registerCommand({
   name: 'check',
   description: 'Check setup, types, source conformance, dead exports and formatting without running tests.',
   async action() {
-    // Parser/app/IDE/runtime checks await their new implementations.
+    // App/IDE/runtime checks await their new implementations.
     await runSteps(
       () => doctor.action([]),
       () => workspaceTypes(),
