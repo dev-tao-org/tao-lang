@@ -119,6 +119,16 @@ Describe('Time', () => {
 })
 
 Describe('FS', () => {
+  Test('scratch directories use the physical shared artifact path for direct callers', async () => {
+    const workspace = await mkTestDir('tao-scratch-workspace-')
+    const artifacts = await mkTestDir('tao-scratch-artifacts-')
+    await FS.symlink(artifacts, FS.resolvePath('.artifacts', workspace))
+    const scratch = await Repo.mkScratchDir('direct-caller-', workspace)
+
+    Expect(FS.pathIsWithin(scratch, FS.resolvePath('scratch', artifacts))).toBe(true)
+    Expect(scratch).toBe(await FS.realPath(scratch))
+  })
+
   Test('temporary test directories default to worktree scratch and leave no normal-run residue', async () => {
     const source = FS.resolvePath('packages/shared/shared-src/testing/Test.ts', Repo.getRoot())
     const script = `import { mkTestDir } from ${JSON.stringify(source)};`

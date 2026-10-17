@@ -75,7 +75,7 @@ export async function expectStarterReproducedFromItsPlan(directory: string): Pro
 
 /** updateStarterFiles publishes authored files without traversing an installed dependency tree. */
 export async function updateStarterFiles(generated: string, checkedIn: string): Promise<void> {
-  const boundary = Repo.resolvePath('.')
+  const boundary = Repo.resolveGitPath('.')
   await ProjectLocal.prepare(generated)
   await ProjectLocal.prepare(checkedIn)
   await FS.withFileMutationLock(checkedIn, boundary, async () => {
@@ -172,5 +172,5 @@ async function checkedProjectFiles(
 
 /** Compare authored files, committed `.tao/store`, and `.tao/.gitignore` without local state or caches. */
 async function projectFilesUnder(directory: string): Promise<string[]> {
-  return await checkedProjectFiles(directory, Repo.resolvePath('.'), true)
+  return await checkedProjectFiles(directory, Repo.resolveGitPath('.'), true)
 }

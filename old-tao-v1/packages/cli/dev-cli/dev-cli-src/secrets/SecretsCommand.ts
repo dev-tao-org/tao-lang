@@ -142,8 +142,9 @@ function liveStoreAccess(cipher: Cipher = ageCipher(), now = () => new Date()): 
 
 /** Every encrypted-store writer uses this lock; prompts and encryption happen before entering it. */
 async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
-  const projectRoot = Repo.getRoot()
-  return await FS.withFileMutationLock(Repo.resolvePath(STORE_PATH), projectRoot, work, {
+  // The workspace store and the shared Git-root artifact lock must fit the same mutation boundary.
+  const boundary = Repo.getGitRoot()
+  return await FS.withFileMutationLock(Repo.resolvePath(STORE_PATH), boundary, work, {
     lockDirectory: Repo.resolvePath('.artifacts/cache/secrets/locks'),
   })
 }

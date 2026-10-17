@@ -55,7 +55,10 @@ function attach(states: readonly TestNodeState[], logRoot: string, repositoryRoo
 
 /** All processes of one shared run must resolve the same disposable Tao cache root. */
 function testHomeEnv(repositoryRoot: string): Record<string, string> {
-  return { TAO_HOME: FS.resolvePath('.artifacts/testing/tao-home', repositoryRoot) }
+  const artifacts = FS.resolvePath('.artifacts', repositoryRoot)
+  // Cache owners reject unexpected symlinks; hand them the shared artifact directory's physical path.
+  const canonicalArtifacts = FS.existsSync(artifacts) ? FS.realPathSync(artifacts) : artifacts
+  return { TAO_HOME: FS.resolvePath('testing/tao-home', canonicalArtifacts) }
 }
 
 export const TaoAppSharedRun = { attach, testHomeEnv }

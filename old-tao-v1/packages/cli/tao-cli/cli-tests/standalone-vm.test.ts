@@ -262,7 +262,7 @@ esac
       Expect(runLogs).toHaveLength(2)
     } finally {
       for (const logs of runLogs) {
-        const run = FS.dirname(logs)
+        const run = await FS.realPath(FS.dirname(logs))
         Expect(FS.pathIsWithin(run, Repo.resolvePath('.artifacts/standalone-vm'))).toBe(true)
         Expect(FS.basename(run)).toMatch(/^tao-acceptance-[0-9]+-[0-9]+$/)
         await FS.remove(run)

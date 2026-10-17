@@ -205,6 +205,20 @@ Test(
         description: 'Android generation ordering fixture ready',
       })
       const connection = await readDevLoopConnection(record.session)
+      const linkedArtifacts = await mkTestDir('managed-mobile-artifact-link-')
+      await FS.symlink(Repo.resolvePath('.artifacts/dev-loops'), FS.resolvePath('private', linkedArtifacts))
+      for (
+        const artifactRoot of [
+          Repo.resolvePath('.artifacts/dev-loops/forbidden-mobile-proof'),
+          FS.resolvePath('.artifacts/dev-loops/forbidden-mobile-proof', record.checkout),
+          FS.resolvePath('private/proof', linkedArtifacts),
+          FS.dirname(Repo.resolvePath('.artifacts')),
+        ]
+      ) {
+        await Expect(devLoopRequest(connection, '/mobile-acceptance', { target: 'android', artifactRoot }))
+          .rejects.toThrow('outside private loop records')
+      }
+      Expect(grants.length).toBe(0)
       await Expect(devLoopRequest(connection, '/firebase-sync', {
         target: 'ios',
         artifactRoot: Repo.resolvePath('.artifacts/refresh-generation-fixture'),
@@ -212,7 +226,7 @@ Test(
       Expect(grants.length).toBe(0)
       const interaction = devLoopRequest(connection, '/mobile-acceptance', {
         target: 'android',
-        artifactRoot: Repo.resolvePath('.artifacts/refresh-generation-fixture'),
+        artifactRoot: FS.resolvePath('.artifacts/refresh-generation-fixture', record.checkout),
       })
       await entered.promise
       const atInteraction = physicalGeneration

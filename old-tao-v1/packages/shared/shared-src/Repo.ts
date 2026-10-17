@@ -120,7 +120,7 @@ export async function mkScratchDir(prefix: string, repositoryRoot = getRoot()): 
   assertScratchPrefix(prefix)
   const root = FS.resolvePath('.artifacts/scratch', repositoryRoot)
   await FS.mkdir(root)
-  return await FS.mkTmpDir(FS.resolvePath(prefix, root))
+  return await FS.mkTmpDir(FS.resolvePath(prefix, await FS.realPath(root)))
 }
 
 /** mkScratchDirOrHost keeps standalone product tools usable when no Git worktree exists. */

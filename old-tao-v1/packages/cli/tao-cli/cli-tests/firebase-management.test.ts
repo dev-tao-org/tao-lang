@@ -17,7 +17,7 @@ const tokenPresence = testOverrideSlot({
     }
   },
 })
-function fixture() {
+async function fixture() {
   const terminal = fakeTerminal()
   const progress = fakeTerminal()
   const calls: string[][] = []
@@ -63,6 +63,7 @@ function fixture() {
     return { exitCode: 0, stdout: JSON.stringify({ status: 'success', result: results[args[0]!] }), stderr: canary }
   }
   const options = {
+    cwd: await mkTestDir('firebase-management-'),
     runner,
     output: terminal.output,
     progress: progress.output,
@@ -86,7 +87,7 @@ function fixture() {
 }
 Describe('Firebase management', () => {
   Test('project inspection reports public checks against the local candidate without deployment', async () => {
-    const f = fixture()
+    const f = await fixture()
     const cwd = await mkTestDir('firebase-management-inspect')
     try {
       await FS.writeText(
@@ -121,7 +122,7 @@ Describe('Firebase management', () => {
     }
   })
   Test('dry-run computes one encoded store path without authentication, prompts, or cloud calls', async () => {
-    const f = fixture()
+    const f = await fixture()
     const result = await runFirebaseManagement('data-reset', undefined, {
       ...f.options,
       project: 'saved-project',
@@ -156,7 +157,7 @@ Describe('Firebase management', () => {
           [' Notes ', 'users/user-123/stores/s_%20Notes%20'],
         ]
       ) {
-        const f = fixture()
+        const f = await fixture()
         const result = await runFirebaseManagement('data-reset', undefined, {
           ...f.options,
           project: 'saved-project',
@@ -168,7 +169,7 @@ Describe('Firebase management', () => {
         Expect(f.calls).toEqual([])
       }
       for (const store of [' ', '\ud800', 'x'.repeat(1_499)]) {
-        const f = fixture()
+        const f = await fixture()
         await Expect(
           runFirebaseManagement('data-reset', undefined, {
             ...f.options,
@@ -183,7 +184,7 @@ Describe('Firebase management', () => {
     },
   )
   Test('confirmed reset deletes exactly one store in the default database and preserves other scope', async () => {
-    const f = fixture()
+    const f = await fixture()
     await runFirebaseManagement('data-reset', undefined, {
       ...f.options,
       project: 'saved-project',
@@ -212,7 +213,7 @@ Describe('Firebase management', () => {
     Expect(f.progress.outputText()).toContain('Auth users, other stores, project settings, and apps are preserved')
   })
   Test('local reset prompt redraws invalid input and Enter confirms Continue by default', async () => {
-    const f = fixture()
+    const f = await fixture()
     const terminal = fakeTerminal('wrong\n\n')
     await runFirebaseManagement('data-reset', undefined, {
       ...f.options,
@@ -230,7 +231,7 @@ Describe('Firebase management', () => {
     Expect(f.calls.map(call => call[0])).toEqual(['firestore:delete'])
   })
   Test('local reset menu label 2 cancels before account access', async () => {
-    const f = fixture()
+    const f = await fixture()
     const terminal = fakeTerminal('2\n')
     await Expect(
       runFirebaseManagement('data-reset', undefined, {
@@ -248,7 +249,7 @@ Describe('Firebase management', () => {
     Expect(f.control.accountReads).toBe(0)
   })
   Test('Stop cancels reset before authentication or mutation', async () => {
-    const f = fixture()
+    const f = await fixture()
     f.control.answer = 'stop'
     await Expect(
       runFirebaseManagement('data-reset', undefined, {
@@ -272,12 +273,12 @@ Describe('Firebase management', () => {
         { project: 'saved-project', uid: '--all-collections', store: 'Notes' },
       ]
     ) {
-      const f = fixture()
+      const f = await fixture()
       await Expect(runFirebaseManagement('data-reset', undefined, { ...f.options, ...invalid })).rejects.toThrow()
       Expect(f.calls).toEqual([])
       Expect(f.control.accountReads).toBe(0)
     }
-    const f = fixture()
+    const f = await fixture()
     await Expect(runFirebaseManagement('projects-list', undefined, { ...f.options, dryRun: true })).rejects.toThrow(
       'does not apply',
     )
@@ -286,7 +287,7 @@ Describe('Firebase management', () => {
     Expect(f.control.accountReads).toBe(0)
   })
   Test('lists all app platforms and exposes only known public fields', async () => {
-    const f = fixture()
+    const f = await fixture()
     Expect(await runFirebaseManagement('apps-list', undefined, { ...f.options, project: 'saved-project' })).toEqual([{
       appId,
       displayName: 'Web app',
@@ -305,7 +306,7 @@ Describe('Firebase management', () => {
     Expect(f.progress.outputText()).not.toContain(canary)
   })
   Test('configuration verifies app ownership and returns only public SDK fields', async () => {
-    const f = fixture()
+    const f = await fixture()
     Expect(await runFirebaseManagement('apps-config', appId, { ...f.options, project: 'saved-project' })).toEqual({
       projectId: 'saved-project',
       appId,
@@ -314,14 +315,14 @@ Describe('Firebase management', () => {
     })
     Expect(f.calls.map(call => call[0])).toEqual(['apps:list', 'apps:sdkconfig'])
     Expect(f.terminal.outputText()).not.toContain(canary)
-    const other = fixture()
+    const other = await fixture()
     await Expect(
       runFirebaseManagement('apps-config', '1:123:web:other', { ...other.options, project: 'saved-project' }),
     ).rejects.toThrow('does not belong')
     Expect(other.calls.map(call => call[0])).toEqual(['apps:list'])
   })
   Test('lists and inspects project identity without private result fields', async () => {
-    const f = fixture()
+    const f = await fixture()
     Expect(await runFirebaseManagement('projects-info', 'saved-project', f.options)).toEqual({
       projectId: 'saved-project',
       displayName: 'Saved',
@@ -329,7 +330,7 @@ Describe('Firebase management', () => {
     Expect(f.terminal.outputText()).not.toContain(canary)
   })
   Test('multiple local accounts choose the first by default and explicit account must be signed in', async () => {
-    const f = fixture()
+    const f = await fixture()
     f.control.accounts.push('second@example.test')
     await runFirebaseManagement('projects-list', undefined, f.options)
     Expect(f.menus[0]).toEqual({
@@ -339,23 +340,23 @@ Describe('Firebase management', () => {
       }],
       defaultValue: 'first@example.test',
     })
-    const other = fixture()
+    const other = await fixture()
     await Expect(
       runFirebaseManagement('projects-list', undefined, { ...other.options, account: 'missing@example.test' }),
     ).rejects.toThrow('not signed in')
     Expect(other.calls).toEqual([])
   })
   Test('creation accepts the generated project ID on Enter and registers web apps only', async () => {
-    const f = fixture()
+    const f = await fixture()
     await runFirebaseManagement('projects-create', undefined, f.options)
     Expect(f.control.textDefault).toMatch(/^tao-project-[a-f0-9]{8}$/u)
     Expect(f.calls[0]?.slice(0, 2)).toEqual(['projects:create', f.control.textDefault])
-    const app = fixture()
+    const app = await fixture()
     await runFirebaseManagement('apps-create', 'My App', { ...app.options, project: 'saved-project' })
     Expect(app.calls[0]?.slice(0, 5)).toEqual(['apps:create', 'WEB', 'My App', '--project', 'saved-project'])
   })
   Test('provider failures never include raw errors, stderr, or token objects', async () => {
-    const f = fixture()
+    const f = await fixture()
     f.control.failure = true
     let message = ''
     try {
@@ -368,7 +369,7 @@ Describe('Firebase management', () => {
     Expect(f.terminal.outputText()).not.toContain(canary)
   })
   Test('JSON signed-out flow gives local sign-in guidance before an inherited-output login', async () => {
-    const f = fixture()
+    const f = await fixture()
     f.control.accounts = []
     await Expect(runFirebaseManagement('projects-list', undefined, f.options)).rejects.toThrow(
       'Run tao firebase projects list in an interactive local terminal to sign in, then retry with --json',
@@ -377,7 +378,7 @@ Describe('Firebase management', () => {
     Expect(f.terminal.outputText()).toBe('')
   })
   Test('ordinary signed-out flow retains local login before reading projects', async () => {
-    const f = fixture()
+    const f = await fixture()
     let reads = 0
     await runFirebaseManagement('projects-list', undefined, {
       ...f.options,
@@ -418,7 +419,7 @@ Describe('Firebase management', () => {
       })
       const restore = slot.install('http://endpoint-secret-canary.test')
       try {
-        const f = fixture()
+        const f = await fixture()
         await Expect(runFirebaseManagement('projects-list', undefined, f.options)).rejects.toThrow('Unset ' + name)
         Expect(f.calls).toEqual([])
         Expect(f.control.accountReads).toBe(0)
@@ -454,7 +455,7 @@ Describe('Firebase management', () => {
       })
       Expect(baseline.exitCode).toBe(0)
       Expect(JSON.parse(baseline.stdout).projectId).toBe('production-project')
-      const f = fixture()
+      const f = await fixture()
       let prepared: Record<string, unknown> | undefined
       let isolated = ''
       await runFirebaseManagement('data-reset', undefined, {
@@ -490,7 +491,7 @@ Describe('Firebase management', () => {
     },
   )
   Test('inherited token authentication stops before account or cloud calls', async () => {
-    const f = fixture()
+    const f = await fixture()
     const restore = tokenPresence.install(canary)
     try {
       await Expect(runFirebaseManagement('projects-list', undefined, f.options)).rejects.toThrow('Unset FIREBASE_TOKEN')

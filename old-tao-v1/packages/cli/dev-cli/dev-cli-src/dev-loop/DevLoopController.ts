@@ -442,17 +442,29 @@ export async function runDevLoopController(
               )
             }
             const target = body.target
-            const artifactRoot = FS.resolvePath(body.artifactRoot)
+            const requestedArtifactRoot = FS.resolvePath(body.artifactRoot)
             const result = mutations.then(async () => {
               await drainProof()
               if (stopRequested || !running || receipt.state !== 'ready' || !attached) {
                 Errors.throwUserInput('The dev loop is not ready for managed mobile interaction.')
               }
               await refreshOwnership()
-              if (
-                !FS.pathIsWithin(artifactRoot, FS.resolvePath('.artifacts', receipt.checkout))
-                || FS.pathIsWithin(artifactRoot, FS.resolvePath('.artifacts/dev-loops', receipt.checkout))
-              ) {
+              const lexicalArtifacts = FS.resolvePath('.artifacts', receipt.checkout)
+              const artifacts = await FS.realPath(lexicalArtifacts)
+              const artifactRoot = FS.pathIsWithin(requestedArtifactRoot, lexicalArtifacts)
+                ? FS.resolvePath(FS.relativePath(lexicalArtifacts, requestedArtifactRoot), artifacts)
+                : requestedArtifactRoot
+              let allowedArtifacts = FS.pathIsWithin(artifactRoot, artifacts)
+                && !FS.pathIsWithin(artifactRoot, FS.resolvePath('dev-loops', artifacts))
+              if (allowedArtifacts) {
+                for (let path = artifactRoot; path !== artifacts; path = FS.dirname(path)) {
+                  if (await FS.isSymbolicLink(path)) {
+                    allowedArtifacts = false
+                    break
+                  }
+                }
+              }
+              if (!allowedArtifacts) {
                 Errors.throwUserInput(
                   'Managed mobile evidence must use a checkout artifact directory outside private loop records.',
                 )

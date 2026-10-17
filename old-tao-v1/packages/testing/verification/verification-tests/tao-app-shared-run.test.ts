@@ -1,4 +1,5 @@
-import { Describe, Expect, Test } from '@shared/test'
+import { FS } from '@shared'
+import { Describe, Expect, mkTestDir, Test } from '@shared/test'
 import { TaoAppSharedRun } from '../verification-src/TaoAppSharedRun'
 import type { TestNodeState } from '../verification-src/TestNodes'
 import { WorkGraph } from '../verification-src/WorkGraph'
@@ -20,6 +21,15 @@ function shard(name: string, roots: readonly string[]): TestNodeState {
 }
 
 Describe('shared Tao app compilation', () => {
+  Test('gives cache owners the physical shared artifact path', async () => {
+    const workspace = await mkTestDir('tao-shared-run-workspace-')
+    const artifacts = await mkTestDir('tao-shared-run-artifacts-')
+    await FS.symlink(artifacts, FS.resolvePath('.artifacts', workspace))
+
+    Expect(TaoAppSharedRun.testHomeEnv(workspace)['TAO_HOME'])
+      .toBe(FS.resolvePath('testing/tao-home', artifacts))
+  })
+
   Test('prepares the union once, runs each owned shard, and publishes only after both pass', async () => {
     const first = shard('tao-apps#1', ['Apps/A', 'Apps/B'])
     const second = shard('tao-apps#2', ['Apps/B', 'Apps/C'])

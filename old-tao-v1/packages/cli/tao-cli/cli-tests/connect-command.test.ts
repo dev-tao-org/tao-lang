@@ -557,7 +557,8 @@ data Notes / Note { Body text }
       )
       Expect(await FS.exists(FS.resolvePath('tao.connections.json', root))).toBe(false)
       Expect(terminal.outputText()).toContain(
-        `Firebase connect completed.\nTo run the app:\n    ./tao run ${
+        // Shared scratch is outside the implementation checkout, so this fixture uses the installed CLI spelling.
+        `Firebase connect completed.\nTo run the app:\n    tao run ${
           FS.relativePath(FS.resolvePath('.'), root)
         } --app Hosted`,
       )

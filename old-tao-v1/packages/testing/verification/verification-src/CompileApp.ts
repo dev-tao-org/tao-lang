@@ -143,10 +143,15 @@ export async function runCompileApp(options: CompileAppOptions): Promise<number>
   const repositoryRoot = options.repositoryRoot ?? Repo.getRoot()
   const appPath = FS.resolvePath(options.appPath, repositoryRoot)
   const outputRoot = FS.resolvePath(options.outputRoot ?? WORD_FLOWER_OUTPUT_ROOT, repositoryRoot)
-  const stampPath = FS.resolvePath(STAMP_PATH, repositoryRoot)
   if (!await FS.isFile(appPath)) {
     Errors.throwUserInput(`No Tao app file found at ${appPath}`)
   }
+  // The PoC shares the Git root's artifacts through a compatibility link. Resolve that owned
+  // directory once, then keep stamp locks and file mutations inside its physical boundary.
+  const artifactDirectory = FS.dirname(FS.resolvePath(STAMP_PATH, repositoryRoot))
+  await FS.mkdir(artifactDirectory)
+  const stampBoundary = await FS.realPath(artifactDirectory)
+  const stampPath = FS.resolvePath(FS.basename(STAMP_PATH), stampBoundary)
 
   // Asked once, so the pre-lock and in-lock answers cannot disagree.
   const honoursStamp = !(options.noCache ?? cacheDisabled())
@@ -156,7 +161,7 @@ export async function runCompileApp(options: CompileAppOptions): Promise<number>
     return 0
   }
 
-  return await FS.withFileMutationLock(stampPath, repositoryRoot, async () => {
+  return await FS.withFileMutationLock(stampPath, stampBoundary, async () => {
     // Every gate is a separate process, and several of them depend on this one. Another process may
     // have finished the compile while this one waited for the lock, so never trust the pre-lock
     // answer: re-read the inputs and re-ask inside the lock.
@@ -165,7 +170,15 @@ export async function runCompileApp(options: CompileAppOptions): Promise<number>
       HCI.writeLine('compile app: up to date')
       return 0
     }
-    return await runCompileAppLocked(options, repositoryRoot, appPath, outputRoot, stampPath, lockedInputs)
+    return await runCompileAppLocked(
+      options,
+      repositoryRoot,
+      appPath,
+      outputRoot,
+      stampPath,
+      stampBoundary,
+      lockedInputs,
+    )
   })
 }
 
@@ -175,6 +188,7 @@ async function runCompileAppLocked(
   appPath: string,
   outputRoot: string,
   stampPath: string,
+  stampBoundary: string,
   inputs: string,
 ): Promise<number> {
   const compile = options.compile ?? runTaoCompile
@@ -194,7 +208,7 @@ async function runCompileAppLocked(
   if (outputs.length === 0) {
     Errors.throwUnexpected(`App compilation produced no output under ${outputRoot}.`)
   }
-  await writeCompileAppStamp(stampPath, repositoryRoot, {
+  await writeCompileAppStamp(stampPath, stampBoundary, {
     inputs,
     outputs: outputs.map(path => FS.relativePath(repositoryRoot, path)),
     outputsHash: await compileAppOutputHash(outputRoot),

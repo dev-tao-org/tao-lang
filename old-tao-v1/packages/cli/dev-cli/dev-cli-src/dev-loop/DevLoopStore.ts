@@ -151,7 +151,7 @@ export async function readManagedAndroidRecoveryCustody(
   if (owner.repositoryRoot !== checkout) {
     return { kind: 'ambiguous', reason: 'Android physical ownership does not prove this canonical checkout.' }
   }
-  const root = FS.resolvePath('.artifacts/dev-loops', checkout)
+  const root = Repo.resolvePath('.artifacts/dev-loops')
   let entries: string[]
   try {
     entries = await FS.listDir(root)

@@ -79,6 +79,18 @@ async function run(
 }
 
 Describe('app compilation staleness stamp', () => {
+  Test('writes and reuses the stamp in a shared artifact directory outside the workspace', async () => {
+    const root = await repository()
+    const artifacts = await mkTestDir('tao-compile-artifacts-')
+    await FS.symlink(artifacts, FS.resolvePath('.artifacts', root))
+    const tao = compiler()
+
+    Expect(await run(root, tao.compile)).toBe(0)
+    Expect(await run(root, tao.compile)).toBe(0)
+    Expect(tao.calls).toEqual(['Apps/Example/Example.tao#Example'])
+    Expect(await FS.isFile(FS.resolvePath('compile-app-stamp.json', artifacts))).toBe(true)
+  })
+
   Test('default gate accepts only the WordFlower project cache output', async () => {
     const root = await repository()
     const appPath = 'Apps/WordFlower/1 - Current/WordFlower.tao'
