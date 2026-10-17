@@ -9,7 +9,7 @@ description: >-
 
 # Delegation
 
-Delegate when it saves time after briefing. Read `references/parallel-implementation.md` for concurrent writers, `references/review-fanout.md` for large reviews, and [library research](references/library-research.md) when planning features.
+Delegate when it saves time after briefing. Read `references/parallel-implementation.md` for concurrent writers, `../code-review/SKILL.md` for branch reviews, `references/review-fanout.md` for multi-unit audits, and [library research](references/library-research.md) when planning features.
 
 ## Delegate when
 
@@ -35,22 +35,22 @@ Send one when the exchange buys something a subagent of your own would not, and 
 
 ## Model and effort routing
 
-**Every agent you create runs a lower model tier than you do**: subagent, spawned session, workflow agent, or teammate. The frontier tier is the Developer's; a created agent gets it only when the Developer asked in the current request, and inheriting your model is not a choice. Pass model and effort as spawn arguments when the tool takes them. A spawned session cannot take them and starts on the app default, so its brief opens with a gate: no work until the coordinator has set its model and effort and confirmed; `agent-coordinator` owns that procedure. If a history-fork mode forbids overrides, use a self-contained brief in a mode that allows them; if a role fixes its model or effort, pick a role whose pins match. Report unavailable choices rather than falling back to defaults.
+**Non-review agents run a lower model tier than you do.** Reviewers follow `code-review`: the same tier or lower, never higher. Other frontier-tier delegation requires the Developer's current request. Set model and effort explicitly when supported; if history forks forbid overrides, use a self-contained brief with overrides. Fixed-role pins must match. A spawned session starts on the app default: its brief must prohibit work until the coordinator sets and confirms model and effort under `agent-coordinator`. Report unavailable choices; do not silently inherit or fall back.
 
-**Effort is a deliberate choice.** Use medium for most work; high only for deep analysis/research, except already planned code writing uses newest GPT-6 Luna at high. Effort above high (`xhigh`) is rare: it needs a strong, specific reason written in the brief, never for reviews, sweeps, verification, or a whole-slice session. Newest GPT-6 Sol determines implementation approaches and writes code only for intricate processes whose implementation is unsettled; hand settled work to Luna. Routine mechanical work may use Luna at low.
+**Choose effort deliberately.** Use medium for most work; high for deep analysis/research and settled code writing with newest GPT-6 Luna. Review effort follows `code-review` and may exceed the assigner's effort for important or intricate work. Above-high effort otherwise needs a strong reason in the brief, never for sweeps, verification or whole-slice sessions. Newest GPT-6 Sol handles unsettled intricate implementation; hand settled writing to Luna. Mechanical work may use Luna at low.
 
-All subagent reviews, including architecture, use medium or low. These rules govern primary agents and subagents where selectable; avoid incompatible fixed roles. Light means `low`. GPT family choices override tier labels. Other harnesses keep the table's newest available family and the review ceiling; concrete IDs are defaults, not ceilings. Preserve supported rolling aliases; never invent one.
+These rules govern primary agents and subagents where selectable; avoid incompatible fixed roles. Light means `low`. GPT family choices override tier labels. Other harnesses keep the table's newest available family and the review tier limit; concrete IDs are defaults, not ceilings. Preserve supported rolling aliases; never invent one.
 
-| Work                                                    | Tier                             | Effort        |
-| ------------------------------------------------------- | -------------------------------- | ------------- |
-| Mechanical sweeps and inventories                       | fast                             | low           |
-| Exploration, implementation decisions, routine research | standard                         | medium        |
-| Running verification and distilling failures            | standard                         | low           |
-| Writing already planned code                            | fast for GPT; standard otherwise | high          |
-| All subagent reviews                                    | deep                             | medium or low |
-| Deep analysis or research                               | deep                             | high          |
-| Unsettled intricate implementation                      | standard                         | medium        |
-| Language semantics and expensive decisions              | deep; frontier only on request   | medium        |
+| Work                                                    | Tier                             | Effort                              |
+| ------------------------------------------------------- | -------------------------------- | ----------------------------------- |
+| Mechanical sweeps and inventories                       | fast                             | low                                 |
+| Exploration, implementation decisions, routine research | standard                         | medium                              |
+| Running verification and distilling failures            | standard                         | low                                 |
+| Writing already planned code                            | fast for GPT; standard otherwise | high                                |
+| All subagent reviews                                    | same or lower; see `code-review` | choose for importance and intricacy |
+| Deep analysis or research                               | deep                             | high                                |
+| Unsettled intricate implementation                      | standard                         | medium                              |
+| Language semantics and expensive decisions              | deep; frontier only on request   | medium                              |
 
 | Tier     | Claude Code `model` | Codex CLI `model` | Cursor `model`     |
 | -------- | ------------------- | ----------------- | ------------------ |
@@ -69,7 +69,9 @@ Apply the lower-than-yourself rule first, then the GPT policy, then the table; s
 
 ## The brief
 
-The agent sees the brief and nothing else. Every brief carries: **goal** and why it matters; **what is already known** — paths, findings, things ruled out; **decisions already made**, so it does not silently re-decide them; **boundaries** — paths it owns, must not touch, and whether it may write; **return format** and length; and a **stop condition** — what "done" is and what to do when the answer is not there.
+Every brief carries the **goal**, known paths/findings, settled decisions, ownership and write boundaries, return format/length, and stop condition. Assume the agent sees only the brief.
+
+Implementation handoffs — launched, delegated or printed — include the **last reviewed full commit SHA**, findings and coverage gaps. Identify reviewed dirty snapshots separately. Without a recorded review, state that and give the baseline. `code-review` owns checkpoint semantics.
 
 Resume when earlier context helps; start fresh for unrelated work. Review each implementation wave's diff before integration, and the whole diff before landing.
 

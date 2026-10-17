@@ -8,7 +8,7 @@ description: >-
 
 # Agent Instructions
 
-- This file owns **where** a rule goes. `references/writing-agents-md.md` owns **how it is written** once you know — the size budgets and why they count characters, how much "why" a rule carries, what belongs and what does not. Read it before editing the text of an `AGENTS.md` or a `SKILL.md`.
+- This file owns **where** a rule goes. `references/writing-agents-md.md` owns **how it is written** once you know — how much "why" a rule carries, what belongs and what does not. Read it before editing the text of an `AGENTS.md` or a `SKILL.md`.
 - Put universal constraints and routing in root `AGENTS.md`.
 - Put subtree invariants in the nearest nested `AGENTS.md` only when they apply to nearly every edit there.
 - Put conditional workflows or domain knowledge in one focused skill under `agents/skills/<name>/SKILL.md`.

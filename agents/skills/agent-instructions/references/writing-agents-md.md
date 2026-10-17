@@ -17,25 +17,10 @@ so that a later reader disagrees with the argument rather than re-running the re
 - Before adding a line, apply the removal test: would an agent make a mistake if this line were not
   here? If a hook would have caught the mistake anyway, the answer is no.
 
-## Size, and why it is counted in characters
+## Skill size
 
-- Budgets live in `InstructionBudgets.ts`: root `AGENTS.md` 14,500 characters, a nested
-  `AGENTS.md` 6,000, each `SKILL.md` 12,000. `repo-lint` enforces the root and `SKILL.md` budgets;
-  it does not read nested `AGENTS.md` files, so keep those under budget by hand. `references/` files have no budget,
-  because they load on demand — that is the whole mechanism the length argument is about.
-- Characters, not lines, because these files are long paragraph bullets. A line budget caps how many
-  bullets there are and says nothing about how much each carries: at the old 80-line budget
-  `delegation/SKILL.md` held 11,594 characters against `verification-lanes/SKILL.md`'s 5,894, both
-  compliant. Folding two bullets together no longer clears a budget.
-- The numbers hold each file's current size rather than demanding a trim. Move them on measured
-  evidence about what agents actually carry, not on a figure from an external guide; published
-  recommendations range from 60 lines to a 650-line, 24,000-character file shipped by the vendor that
-  originated the AGENTS.md convention, and no vendor states a number in primary documentation.
-- Pressure belongs on the file that loads unconditionally. Root `AGENTS.md` is paid by every session
-  whether or not it is relevant; a `SKILL.md` is paid only when its description matches; a
-  `references/` file only when something opens it. So a large skill is much cheaper than its size
-  suggests, and the budget to defend hardest is the root file's. Shrink there first, and move
-  detail outward rather than deleting it.
+- Keep each `SKILL.md` within its existing 12,000-character budget; supporting references have no
+  fixed budget.
 
 ## How much "why"
 
@@ -70,8 +55,8 @@ so that a later reader disagrees with the argument rather than re-running the re
 
 ## After editing
 
-- Follow the checkout's `AGENTS.md` validation policy. On a feature branch, `./agent verify-changed` runs
-  `repo-lint` for budgets and `dead-exports` for code behind rules moved into enforcement. In a
+- Follow the checkout's `AGENTS.md` validation policy. Root `./agent check` runs the current checks;
+  use `./agent test ./` for the root workspace tests. In a
   Developer-directed primary `dev/<name>` checkout, use focused checks and defer full verification
   until authorized landing.
 - Search for what you removed — a deleted rule usually has a second mention somewhere, and that
