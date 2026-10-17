@@ -38,8 +38,8 @@ export async function prepareParser(force = false, timings = new Timings(`proces
   await writeBuildTimings(timings)
 }
 
-const grammarRoot = Repo.resolvePath('ts/parser/grammar')
-const outputRoot = Repo.resolvePath('ts/parser/_gen_parser')
+const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
+const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
 
 async function readInputs() {
   const sources: Record<string, string> = {}

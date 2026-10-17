@@ -58,7 +58,7 @@ async function coldSamples(): Promise<Sample[]> {
 }
 
 async function warmSamples(): Promise<Sample[]> {
-  const { createParser } = await import('../../parser/parser-src/parser')
+  const { createParser } = await import('../../1-grammar/grammar-src/parser')
   const parser = createParser()
   const samples: Sample[] = []
   for (const fixture of await parserFixtures()) {

@@ -14,6 +14,7 @@ Get the `.x-tao-old-v1/` PoC working again:
 Implement a first e2e Hello World app:
 
 - [x] Implement basic treesitter parser
+  - [ ] Extend the first-app grammar with generic view renders/calls, function declarations and raw TypeScript injection; define Text and Col in the app source.
 - [ ] Implement basic treesitter CST to AST transformer
 - [ ] Implement basic AST to code generator
 - [ ] Implement basic expo runtime

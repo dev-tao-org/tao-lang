@@ -1,5 +1,5 @@
 import { Tests } from '@shared/os'
-import { createParser } from '../parser-src/parser'
+import { createParser } from '../grammar-src/parser'
 
 Tests.test('HelloWorld produces a positioned CST with named app, root, view and text nodes', async () => {
   const source = await Tests.readApp('Hello World')

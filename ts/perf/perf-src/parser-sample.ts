@@ -5,7 +5,10 @@ import { parserFixtures } from './parser-fixtures'
 
 if (Platform.isMain(import.meta)) {
   const timings = new Timings(`process:${Platform.pid}`)
-  const { createParser } = await timings.measure('parser.module-load', () => import('../../parser/parser-src/parser'))
+  const { createParser } = await timings.measure(
+    'parser.module-load',
+    () => import('../../1-grammar/grammar-src/parser'),
+  )
   const parser = createParser(timings)
   const source = (await parserFixtures())[0]!.source
   const { tree } = parser.parse(source, timings)

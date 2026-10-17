@@ -19,7 +19,7 @@ export default registerCommand({
       IO.print(`Removed ${removed} temporary artifacts; retained caches, recent output, failures and active runs.`)
       return
     }
-    await FileSystem.rm(Repo.resolvePath('ts/parser/_gen_parser'), { recursive: true, force: true })
+    await FileSystem.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
     if (args.includes('--full')) {
       await Artifacts.rm(Artifacts.resolvePath(), { recursive: true, force: true })

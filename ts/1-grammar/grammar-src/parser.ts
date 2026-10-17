@@ -10,10 +10,10 @@ export function createParser(initialization = new Timings(`process:${Platform.pi
     const instance = new Parser()
     const language = initialization.measure('parser.native-load', () =>
       Platform.loadModule<Parser.Language>(
-        Repo.resolvePath('ts/parser/_gen_parser/build/Release/tree_sitter_tao_binding.node'),
+        Repo.resolvePath('ts/1-grammar/_gen_parser/build/Release/tree_sitter_tao_binding.node'),
       ))
     language.nodeTypeInfo = Platform.loadModule<Parser.NodeInfo[]>(
-      Repo.resolvePath('ts/parser/_gen_parser/src/node-types.json'),
+      Repo.resolvePath('ts/1-grammar/_gen_parser/src/node-types.json'),
     )
     instance.setLanguage(language)
     return instance
