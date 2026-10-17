@@ -15,16 +15,6 @@ export function isFunctionProperty(node: TypeScript.Node): boolean {
   return TypeScript.isArrowFunction(value) || TypeScript.isFunctionExpression(value)
 }
 
-function isExpressionWrapper(node: TypeScript.Expression): node is
-  | TypeScript.ParenthesizedExpression
-  | TypeScript.AsExpression
-  | TypeScript.SatisfiesExpression
-  | TypeScript.NonNullExpression
-{
-  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
-    || TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
-}
-
 /** docs collects JSDoc comments attached to declarations. */
 export function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
   const ranges = new Map<number, TypeScript.CommentRange>()
@@ -47,12 +37,6 @@ export function isPrivateApiMember(node: TypeScript.Node): boolean {
     return true
   }
   return hasPrivateName(node)
-}
-
-function hasPrivateName(node: TypeScript.Node): boolean {
-  return (TypeScript.isPropertyDeclaration(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node))
-    && TypeScript.isPrivateIdentifier(node.name)
 }
 
 /** isApiMember identifies signature members which may carry public docs. */
@@ -90,11 +74,6 @@ export function isAmbientNamespace(node: TypeScript.Node): boolean {
 export function isImplementationNode(node: TypeScript.Node): boolean {
   return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node) || TypeScript.isClassStaticBlockDeclaration(node)
     || (TypeScript.isExpression(node) && !isPublicShapeExpression(node))
-}
-
-function isPublicShapeExpression(node: TypeScript.Node): boolean {
-  return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
-    || TypeScript.isFunctionExpression(node)
 }
 
 /** isApiDeclaration identifies declarations that can define public API groups. */
@@ -154,4 +133,25 @@ export function hasValidDocLayout(source: string, range: TypeScript.CommentRange
   const prefix = indentation + ' *  '
   return /^\/\*\* \S+ \S/.test(lines[0]) && /\S \*\/$/.test(lines[lines.length - 1])
     && lines.slice(1).every(line => line.startsWith(prefix) && /^\S/.test(line.slice(prefix.length)))
+}
+
+function isExpressionWrapper(node: TypeScript.Expression): node is
+  | TypeScript.ParenthesizedExpression
+  | TypeScript.AsExpression
+  | TypeScript.SatisfiesExpression
+  | TypeScript.NonNullExpression
+{
+  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
+    || TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
+}
+
+function hasPrivateName(node: TypeScript.Node): boolean {
+  return (TypeScript.isPropertyDeclaration(node) || TypeScript.isMethodDeclaration(node)
+    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node))
+    && TypeScript.isPrivateIdentifier(node.name)
+}
+
+function isPublicShapeExpression(node: TypeScript.Node): boolean {
+  return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
+    || TypeScript.isFunctionExpression(node)
 }

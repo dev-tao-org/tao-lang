@@ -26,12 +26,6 @@ export function spawn<
   return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
 }
 
-function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
-  const environment = options.env ?? process.env
-  const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
-  return !explicitPreference && options.stderr === 'pipe' && process.stderr.isTTY && process.stderr.hasColors()
-}
-
 /** argv contains the current CLI invocation arguments. */
 export const argv = process.argv
 
@@ -109,4 +103,10 @@ export function captureSync(command: string, options: { variadicArgs?: readonly 
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
+}
+
+function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
+  const environment = options.env ?? process.env
+  const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
+  return !explicitPreference && options.stderr === 'pipe' && process.stderr.isTTY && process.stderr.hasColors()
 }

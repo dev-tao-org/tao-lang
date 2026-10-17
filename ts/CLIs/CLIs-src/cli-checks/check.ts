@@ -44,12 +44,6 @@ export async function assertNewWorkspaceTree(): Promise<void> {
   await visit(workspace)
 }
 
-function isWithinDirectory(path: string, directory: string): boolean {
-  return path === directory || path.startsWith(`${directory}/`)
-}
-
-const legacyRoot = Repo.resolvePath('old-tao-v1')
-
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
@@ -108,3 +102,9 @@ export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
     cwd: Repo.getWorkspaceRoot(),
   })
 }
+
+function isWithinDirectory(path: string, directory: string): boolean {
+  return path === directory || path.startsWith(`${directory}/`)
+}
+
+const legacyRoot = Repo.resolvePath('old-tao-v1')

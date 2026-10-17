@@ -11,32 +11,9 @@ export type CommandDefinition<Args extends unknown[] = []> = {
   action: (...args: Args) => void | Promise<void>
 }
 
-type CommandArgument = {
-  name: string
-  description?: string
-  required?: boolean
-  variadic?: boolean
-  defaultValue?: unknown
-}
-
 /** RegisteredCommand exposes metadata and an awaited action that propagates failures. */
 export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<Args>, 'action'> & {
   action: (...args: Args) => Promise<void>
-}
-
-const commands: CommandDefinition<unknown[]>[] = []
-
-if (Platform.isMain(import.meta)) {
-  const terminal = !Env.is('TERMINAL_OUTPUT', '0')
-  IO.config({
-    stdout: terminal ? 'terminal' : 'log',
-    stderr: terminal ? 'terminal' : 'both',
-    logDirectory: 'dev',
-    logFile: Env.get('OUTPUT_LOG_FILE'),
-  })
-  // Defer setup's import until this module finishes initializing: setup registers through this module.
-  // Commander and the development command registry are loaded only after dependencies exist.
-  void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
 }
 
 /** registerCommand adds one command to the shared CLI registry. */
@@ -80,4 +57,27 @@ export async function execute(name = 'dev'): Promise<void> {
     })
   }
   await parser.parseAsync(Platform.argv)
+}
+
+type CommandArgument = {
+  name: string
+  description?: string
+  required?: boolean
+  variadic?: boolean
+  defaultValue?: unknown
+}
+
+const commands: CommandDefinition<unknown[]>[] = []
+
+if (Platform.isMain(import.meta)) {
+  const terminal = !Env.is('TERMINAL_OUTPUT', '0')
+  IO.config({
+    stdout: terminal ? 'terminal' : 'log',
+    stderr: terminal ? 'terminal' : 'both',
+    logDirectory: 'dev',
+    logFile: Env.get('OUTPUT_LOG_FILE'),
+  })
+  // Defer setup's import until this module finishes initializing: setup registers through this module.
+  // Commander and the development command registry are loaded only after dependencies exist.
+  void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
 }

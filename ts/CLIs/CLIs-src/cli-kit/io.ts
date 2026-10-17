@@ -1,6 +1,17 @@
 import { Time } from '@shared'
 import { Artifacts, Path, Platform, Repo, Terminal, Text } from '@shared/os'
 
+/** IO routes output through channels selected once by each CLI entrypoint. */
+export const IO = {
+  ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
+  config: configureOutput,
+}
+
+/** configuredCommandOutput exposes the configured command streams to cmd-exec. */
+export function configuredCommandOutput() {
+  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe, progressPipe: printProgress }
+}
+
 type OutputPipe = (text: string | Uint8Array) => void
 type IOConfiguration = {
   stdout?: 'terminal' | 'log' | OutputPipe
@@ -16,17 +27,6 @@ let progressPipe: OutputPipe = terminalStderr
 let captureCommands = false
 let mirrorCommandStderr = false
 let agentLog: string
-
-/** IO routes output through channels selected once by each CLI entrypoint. */
-export const IO = {
-  ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
-  config: configureOutput,
-}
-
-/** configuredCommandOutput exposes the configured command streams to cmd-exec. */
-export function configuredCommandOutput() {
-  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe, progressPipe: printProgress }
-}
 
 function configureOutput(configuration: IOConfiguration): void {
   stdoutPipe = typeof configuration.stdout === 'function'

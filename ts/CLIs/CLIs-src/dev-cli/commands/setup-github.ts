@@ -3,9 +3,6 @@ import { Errors, Try } from '@shared'
 import { Platform, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
-const origin = 'https://github.com/tao-dev-org/tao-lang.git'
-const cwd = Repo.getWorkspaceRoot()
-
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */
 export default registerCommand({
   name: 'setup-github',
@@ -16,6 +13,9 @@ export default registerCommand({
     await verifyOrigin()
   },
 })
+
+const origin = 'https://github.com/tao-dev-org/tao-lang.git'
+const cwd = Repo.getWorkspaceRoot()
 
 async function configureHttpsRewrites(): Promise<void> {
   for (const key of ['url.git@github.com:.insteadOf', 'url.ssh://git@github.com/.insteadOf']) {

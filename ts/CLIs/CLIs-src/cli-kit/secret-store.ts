@@ -18,29 +18,12 @@ export type StoreKey = {
   wrappedKey: readonly string[]
 }
 
-type SecretEntry = {
-  addedAt: string
-  updatedAt?: string
-  note?: string
-  value: readonly string[]
-}
-
 /** SecretStore contains machine recipients, the shared store key, and encrypted values. */
 export type SecretStore = {
   recipients: readonly string[]
   storeKey?: StoreKey
   secrets: Readonly<Record<string, SecretEntry>>
 }
-
-const secretStoreHeader = S`
-  // Tao's committed secrets. Values are encrypted with age; keys, notes and dates are not.
-  //
-  // Every value is encrypted to the store key, whose secret half is encrypted to each machine in recipients.
-  // Reading or adding unwraps that key once with this machine's identity. Values encrypted directly to a
-  // machine identity are refused, so a Secure Enclave identity never prompts once per value.
-  //
-  // Do not hand-edit a value. Use ./dev secrets add <KEY>, which encrypts what you paste and never echoes it.
-`
 
 /** parseSecretStore parses JSONC and rejects shapes that could silently lose a secret. */
 export function parseSecretStore(text: string): SecretStore {
@@ -206,6 +189,23 @@ export function renderSecretEnvFile(values: ReadonlyMap<string, string>, generat
     lines.join('\n')
   }\n`
 }
+
+type SecretEntry = {
+  addedAt: string
+  updatedAt?: string
+  note?: string
+  value: readonly string[]
+}
+
+const secretStoreHeader = S`
+  // Tao's committed secrets. Values are encrypted with age; keys, notes and dates are not.
+  //
+  // Every value is encrypted to the store key, whose secret half is encrypted to each machine in recipients.
+  // Reading or adding unwraps that key once with this machine's identity. Values encrypted directly to a
+  // machine identity are refused, so a Secure Enclave identity never prompts once per value.
+  //
+  // Do not hand-edit a value. Use ./dev secrets add <KEY>, which encrypts what you paste and never echoes it.
+`
 
 function parseStoreKey(value: unknown): StoreKey {
   if (!isStoreKeyShape(value)) {

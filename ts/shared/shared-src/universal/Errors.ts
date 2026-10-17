@@ -1,6 +1,3 @@
-// ProcessSignal declares a platform process signal value without depending on Node types.
-type ProcessSignal = string
-
 /** TaoError declares errors expected by Tao command and library code. */
 export type TaoError =
   | UserInputError
@@ -10,6 +7,68 @@ export type TaoError =
 
 /** ErrorDetails declares structured context attached to Tao errors. */
 export type ErrorDetails = Record<string, unknown>
+
+/** isTaoError checks whether a value is one of Tao's structured errors. */
+export function isTaoError(error: unknown): error is TaoError {
+  // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
+  return typeof error === 'object' && error !== null && taoErrors.has(error)
+}
+
+/** isCommandExecutionError checks whether a value is Tao's structured child process failure. */
+export function isCommandExecutionError(error: unknown): error is CommandExecutionError {
+  return isTaoError(error) && error.name === 'CommandExecutionError'
+}
+
+/** describe separates stack frames from complete error details, including causes and aggregate members. */
+export function describe(error: unknown): { stacks: string[]; details: unknown } {
+  const stacks: string[] = []
+  const details = errorDetails(error, stacks, new WeakSet())
+  return { stacks, details }
+}
+
+/** fromUnknown normalizes an unknown thrown value into a Tao error. */
+export function fromUnknown(error: unknown, details?: ErrorDetails): TaoError {
+  if (isTaoError(error)) {
+    return error
+  }
+  return new UnexpectedBehaviorError(unexpectedErrorMessage, { cause: error, details })
+}
+
+/** Throw normalizes and rethrows an unknown failure, preserving existing Tao error identity. */
+export function Throw(error: unknown): never {
+  throw fromUnknown(error)
+}
+
+/** ThrowUserInput throws a user-correctable Tao error.
+ *  The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
+export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): never {
+  throw new UserInputError(messageForUser, details)
+}
+
+/** ThrowUnexpected throws an internal Tao error.
+ *  Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
+ *  the reader and recovery owner is a Tao developer. */
+export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
+  throw new UnexpectedBehaviorError(messageForUser, opts)
+}
+
+/** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process.
+ *  Use for missing native modules or build artifacts, helpers that cannot start, and similar host failures. */
+export function ThrowHostEnvironment(
+  messageForUser: string,
+  opts?: { cause?: unknown; details?: ErrorDetails },
+): never {
+  throw new HostEnvironmentError(messageForUser, opts)
+}
+
+/** ThrowCommandExecution throws a structured child process failure.
+ *  This specializes host-environment failures and retains the full command result for diagnostics. */
+export function ThrowCommandExecution(result: CommandErrorResult): never {
+  throw new CommandExecutionError(result)
+}
+
+// ProcessSignal declares a platform process signal value without depending on Node types.
+type ProcessSignal = string
 
 type CommandErrorResult = {
   command: string
@@ -96,24 +155,6 @@ function formatCommandPart(value: string): string {
   return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
 }
 
-/** isTaoError checks whether a value is one of Tao's structured errors. */
-export function isTaoError(error: unknown): error is TaoError {
-  // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
-  return typeof error === 'object' && error !== null && taoErrors.has(error)
-}
-
-/** isCommandExecutionError checks whether a value is Tao's structured child process failure. */
-export function isCommandExecutionError(error: unknown): error is CommandExecutionError {
-  return isTaoError(error) && error.name === 'CommandExecutionError'
-}
-
-/** describe separates stack frames from complete error details, including causes and aggregate members. */
-export function describe(error: unknown): { stacks: string[]; details: unknown } {
-  const stacks: string[] = []
-  const details = errorDetails(error, stacks, new WeakSet())
-  return { stacks, details }
-}
-
 function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {
   if (!(error instanceof Error)) {
     return error
@@ -140,45 +181,4 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
       : {}),
     ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
   }
-}
-
-/** fromUnknown normalizes an unknown thrown value into a Tao error. */
-export function fromUnknown(error: unknown, details?: ErrorDetails): TaoError {
-  if (isTaoError(error)) {
-    return error
-  }
-  return new UnexpectedBehaviorError(unexpectedErrorMessage, { cause: error, details })
-}
-
-/** Throw normalizes and rethrows an unknown failure, preserving existing Tao error identity. */
-export function Throw(error: unknown): never {
-  throw fromUnknown(error)
-}
-
-/** ThrowUserInput throws a user-correctable Tao error.
- *  The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
-export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): never {
-  throw new UserInputError(messageForUser, details)
-}
-
-/** ThrowUnexpected throws an internal Tao error.
- *  Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
- *  the reader and recovery owner is a Tao developer. */
-export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
-  throw new UnexpectedBehaviorError(messageForUser, opts)
-}
-
-/** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process.
- *  Use for missing native modules or build artifacts, helpers that cannot start, and similar host failures. */
-export function ThrowHostEnvironment(
-  messageForUser: string,
-  opts?: { cause?: unknown; details?: ErrorDetails },
-): never {
-  throw new HostEnvironmentError(messageForUser, opts)
-}
-
-/** ThrowCommandExecution throws a structured child process failure.
- *  This specializes host-environment failures and retains the full command result for diagnostics. */
-export function ThrowCommandExecution(result: CommandErrorResult): never {
-  throw new CommandExecutionError(result)
 }

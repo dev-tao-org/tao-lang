@@ -2,16 +2,6 @@ import { Errors, Time, Try } from '@shared'
 import { FileSystem, Platform, Streams } from '@shared/os'
 import { configuredCommandOutput } from './io'
 
-type OutputPipe = (text: string | Uint8Array) => void
-type Command = string | readonly string[]
-type RunOptions = {
-  variadicArgs?: readonly string[]
-  cwd?: string
-  stdin?: FileSystem.File
-  stdout?: 'inherit' | 'ignore'
-  stderr?: 'inherit' | 'ignore'
-}
-
 /** runCommand runs a space-separated command and throws on failure.
  *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
  *  variadicArgs appends arguments unchanged after the command's own arguments.
@@ -33,6 +23,23 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
       output.progressPipe(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
     },
   })
+}
+
+/** runSteps awaits variadic workflow stages in order and stops when a stage throws. */
+export async function runSteps(...steps: readonly (() => void | Promise<void>)[]): Promise<void> {
+  for (const step of steps) {
+    await step()
+  }
+}
+
+type OutputPipe = (text: string | Uint8Array) => void
+type Command = string | readonly string[]
+type RunOptions = {
+  variadicArgs?: readonly string[]
+  cwd?: string
+  stdin?: FileSystem.File
+  stdout?: 'inherit' | 'ignore'
+  stderr?: 'inherit' | 'ignore'
 }
 
 async function runLoggedCommand(
@@ -101,11 +108,4 @@ function commandArguments(command: Command, options: RunOptions): string[] {
 
 async function forwardOutput(stream: Streams.ByteStream, pipe: OutputPipe): Promise<void> {
   await Streams.consume(stream, pipe)
-}
-
-/** runSteps awaits variadic workflow stages in order and stops when a stage throws. */
-export async function runSteps(...steps: readonly (() => void | Promise<void>)[]): Promise<void> {
-  for (const step of steps) {
-    await step()
-  }
 }

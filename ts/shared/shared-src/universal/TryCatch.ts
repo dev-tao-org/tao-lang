@@ -1,16 +1,5 @@
 import * as Errors from './Errors'
 
-type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
-type TryResult<Value, Recovery, Final> = AlwaysPromise<Value> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
-  : AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
-  :
-    | Value
-    | Recovery
-    | (Extract<Final, PromiseLike<unknown>> extends never ? never : Promise<Awaited<Value> | Awaited<Recovery>>)
-
-type Outcome = { ok: true; value: unknown } | { ok: false; thrown: unknown; error: Errors.TaoError }
-type PendingOutcome = Outcome | Promise<Outcome>
-
 /** Try normalizes failures, allows recovery, and finalizes once with the original callback failure.
  *  Synchronous stages return synchronously; promise-like stages are awaited. Finalizer failures override
  *  pending results or failures, just like native finally, and are normalized before propagation.
@@ -44,6 +33,17 @@ export function Try<Value, Recovery = never, Final = void>(
     Final
   >
 }
+
+type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
+type TryResult<Value, Recovery, Final> = AlwaysPromise<Value> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
+  : AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
+  :
+    | Value
+    | Recovery
+    | (Extract<Final, PromiseLike<unknown>> extends never ? never : Promise<Awaited<Value> | Awaited<Recovery>>)
+
+type Outcome = { ok: true; value: unknown } | { ok: false; thrown: unknown; error: Errors.TaoError }
+type PendingOutcome = Outcome | Promise<Outcome>
 
 type TryOptions<Recovery = never, Final = void> = {
   catch?: (thrown: unknown) => Recovery

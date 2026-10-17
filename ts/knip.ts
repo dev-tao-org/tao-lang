@@ -2,21 +2,23 @@ import type { KnipConfig } from 'knip'
 import * as TypeScript from 'typescript'
 import { FileSystem, Path, Repo } from './shared/shared-src/os'
 
-const cliEntries = [
-  'CLIs/CLIs-src/agent-cli/agent-cli.ts',
-  'CLIs/CLIs-src/dev-cli/dev-cli.ts',
-]
-
 /** knipConfiguration checks new sources while recognizing only imported command registrations. */
-const knipConfiguration: KnipConfig = {
+export default {
   entry: [
-    ...cliEntries,
-    ...cliEntries.flatMap(commandEntries),
+    ...cliEntries(),
+    ...cliEntries().flatMap(commandEntries),
     'CLIs/CLIs-src/tao-cli/tao-cli.ts',
     '**/*.test.ts',
   ],
   project: ['CLIs/**/*.ts', 'shared/**/*.ts'],
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
+} satisfies KnipConfig
+
+function cliEntries(): string[] {
+  return [
+    'CLIs/CLIs-src/agent-cli/agent-cli.ts',
+    'CLIs/CLIs-src/dev-cli/dev-cli.ts',
+  ]
 }
 
 function commandEntries(registry: string): string[] {
@@ -33,5 +35,3 @@ function commandEntries(registry: string): string[] {
     return [Path.posix.join(Path.dirname(registry), specifier.text) + '.ts']
   })
 }
-
-export default knipConfiguration

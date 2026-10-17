@@ -3,8 +3,6 @@ import { Errors, Try } from '@shared'
 import { Env, Platform, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
-const developerPrefix = 'dev/'
-
 /** myBranchCommand switches to the developer's existing personal branch. */
 export default registerCommand({
   name: 'my-branch',
@@ -20,6 +18,8 @@ export default registerCommand({
     await runCommand('git switch', { variadicArgs: [branch], cwd })
   },
 })
+
+const developerPrefix = 'dev/'
 
 async function resolveDeveloperBranch(name: string, cwd: string): Promise<string> {
   const asked = name.trim()

@@ -16,16 +16,6 @@ import {
 } from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
 
-const storePath = Repo.resolvePath('secrets', 'secrets.jsonc')
-const envPath = Repo.resolvePath('.env.secrets')
-const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
-
-type SecretsEnvironment = {
-  cipher: Cipher
-  promptSecret: (prompt: string) => Promise<string>
-  now: () => Date
-}
-
 /** secretsCommand manages the committed encrypted store and its generated local environment file. */
 export default registerCommand({
   name: 'secrets',
@@ -36,6 +26,16 @@ export default registerCommand({
     return await runSecrets(args, liveEnvironment())
   },
 })
+
+const storePath = Repo.resolvePath('secrets', 'secrets.jsonc')
+const envPath = Repo.resolvePath('.env.secrets')
+const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
+
+type SecretsEnvironment = {
+  cipher: Cipher
+  promptSecret: (prompt: string) => Promise<string>
+  now: () => Date
+}
 
 async function runSecrets(args: readonly string[], environment: SecretsEnvironment): Promise<void> {
   const [action, ...rest] = args

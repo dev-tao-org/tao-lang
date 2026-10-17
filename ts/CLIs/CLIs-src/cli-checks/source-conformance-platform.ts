@@ -1,6 +1,19 @@
 import { Platform } from '@shared/os'
 import * as TypeScript from 'typescript'
 
+/** platformAccessIssue reports runtime-specific references outside the OS abstraction. */
+export function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {
+  if (filename.replaceAll('\\', '/').startsWith('ts/shared/shared-src/os/')) {
+    return
+  }
+  if (isBuiltinReference(node)) {
+    return 'runtime builtin imports belong in @shared/os'
+  }
+  if (isPlatformGlobal(node) && !isUniversalTimeAccess(node, filename)) {
+    return 'platform globals belong in @shared/os; use its named APIs'
+  }
+}
+
 const platformGlobals = new Set([
   'process',
   'Bun',
@@ -22,19 +35,6 @@ const platformGlobals = new Set([
   'clearTimeout',
   'clearInterval',
 ])
-
-/** platformAccessIssue reports runtime-specific references outside the OS abstraction. */
-export function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {
-  if (filename.replaceAll('\\', '/').startsWith('ts/shared/shared-src/os/')) {
-    return
-  }
-  if (isBuiltinReference(node)) {
-    return 'runtime builtin imports belong in @shared/os'
-  }
-  if (isPlatformGlobal(node) && !isUniversalTimeAccess(node, filename)) {
-    return 'platform globals belong in @shared/os; use its named APIs'
-  }
-}
 
 function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean {
   if (filename.replaceAll('\\', '/') !== 'ts/shared/shared-src/universal/Time.ts') {

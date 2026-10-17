@@ -1,5 +1,16 @@
 import { ThrowUnexpected } from './Errors'
 
+/** Switch dispatches exhaustively on values, discriminators and object properties. */
+export default Object.assign(Switch, {
+  kind: SwitchKind,
+  kindMaybe: SwitchKindMaybe,
+  nothing,
+  on: SwitchOn,
+  property: SwitchProperty,
+  type: SwitchType,
+  typeMaybe: SwitchTypeMaybe,
+})
+
 type SwitchKey = string | number | symbol
 type SwitchValueKey = SwitchKey | undefined
 type TypeItem = { $type: SwitchKey }
@@ -12,17 +23,6 @@ type TypeHandlers<ItemT extends TypeItem, ResultT> = {
 type KindHandlers<ItemT extends KindItem, ResultT> = {
   [KeyT in ItemT['kind']]: (item: Extract<ItemT, { kind: KeyT }>) => ResultT
 }
-
-/** Switch dispatches exhaustively on values, discriminators and object properties. */
-export default Object.assign(Switch, {
-  kind: SwitchKind,
-  kindMaybe: SwitchKindMaybe,
-  nothing,
-  on: SwitchOn,
-  property: SwitchProperty,
-  type: SwitchType,
-  typeMaybe: SwitchTypeMaybe,
-})
 
 function Switch<ValueT extends SwitchValueKey, ResultT>(
   input: ValueT,

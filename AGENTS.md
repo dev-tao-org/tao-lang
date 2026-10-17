@@ -73,10 +73,10 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Handwritten TypeScript files: 250-line soft limit, 350-line hard limit; generated and whole-file third-party sources are excluded. Mark imported whole files with `@third-party` source provenance.
   - Object functions use method syntax: `async encrypt(...) { ... }`.
 - Review:
-  - Place module re-exports directly after imports, before other definitions.
+  - Put all exports immediately after imports, before private definitions.
   - Follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
   - Extract runs of lines whose purpose is hard to parse into functions named for the operation they perform, even when below the line limit.
-  - Organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
+  - Within private code, organize definitions loosely in reading order. Put helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
   - Tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
   - Test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
   - Raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.

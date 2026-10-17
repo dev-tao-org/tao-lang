@@ -27,20 +27,6 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
   })
 }
 
-async function prepareTestReport(): Promise<string | undefined> {
-  return Try(async () => {
-    const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
-    await Artifacts.mkdir(Path.dirname(path), { recursive: true })
-    await Artifacts.write(path, '')
-    return path
-  }, {
-    catch(error) {
-      IO.warn('Test timing report unavailable:', error)
-      return undefined
-    },
-  })
-}
-
 /** slowTestWarnings formats executed Bun JUnit cases taking more than 75 milliseconds. */
 export function slowTestWarnings(report: string): string[] {
   const slow = readTestCases(report).filter(isSlowTest).sort((left, right) => right.seconds - left.seconds)
@@ -55,6 +41,20 @@ export function slowTestWarnings(report: string): string[] {
       }`
     ),
   ]
+}
+
+async function prepareTestReport(): Promise<string | undefined> {
+  return Try(async () => {
+    const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
+    await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+    await Artifacts.write(path, '')
+    return path
+  }, {
+    catch(error) {
+      IO.warn('Test timing report unavailable:', error)
+      return undefined
+    },
+  })
 }
 
 type TimedTest = { name: string; suite?: string; file?: string; seconds: number; skipped: boolean }

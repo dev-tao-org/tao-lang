@@ -31,25 +31,6 @@ export function functionBody(node: TypeScript.Node): TypeScript.ConciseBody | un
   }
 }
 
-function isBraceOnlyLine(
-  body: TypeScript.Block,
-  source: string,
-  lineStarts: readonly number[],
-  index: number,
-  first: number,
-  last: number,
-): boolean {
-  if (index === first && index === last) {
-    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
-  }
-  const lineStart = lineStarts[index]
-  const lineEnd = lineStarts[index + 1] ?? source.length
-  if (index === first) {
-    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
-  }
-  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
-}
-
 /** multilineStringIssue reports multiline runtime literals that violate S layout. */
 export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.SourceFile): string | undefined {
   if (!isRuntimeString(node)) {
@@ -69,6 +50,25 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
   }
+}
+
+function isBraceOnlyLine(
+  body: TypeScript.Block,
+  source: string,
+  lineStarts: readonly number[],
+  index: number,
+  first: number,
+  last: number,
+): boolean {
+  if (index === first && index === last) {
+    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
+  }
+  const lineStart = lineStarts[index]
+  const lineEnd = lineStarts[index + 1] ?? source.length
+  if (index === first) {
+    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
+  }
+  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
 }
 
 function isRuntimeString(node: TypeScript.Node): node is TypeScript.StringLiteralLike | TypeScript.TemplateExpression {

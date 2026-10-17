@@ -2,25 +2,8 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
 import { runCommand } from './cli-kit'
 
-const allowlistPath = '.config/agent-host-commands.json'
-const developerCommands = new Set([
-  'setup',
-  'agent-config',
-  'my-branch',
-  'fmt',
-  'fix',
-  'check',
-  'test',
-  'verify',
-  'doctor',
-  'secrets',
-])
-const gitOperations = new Set(['status', 'diff', 'log', 'show', 'add', 'commit', 'fetch', 'switch', 'merge'])
-
 /** HostCommandRoute identifies a supported host command and unchanged trailing arguments. */
 export type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
-
-type Prefix = { text: string; tokens: string[] }
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
 export async function runHostCommand(argv: readonly string[]): Promise<void> {
@@ -46,6 +29,23 @@ export function resolveHostCommand(argv: readonly string[], prefixes: unknown): 
   }
   return supportedRoute(matched, argv.slice(matched.tokens.length))
 }
+
+const allowlistPath = '.config/agent-host-commands.json'
+const developerCommands = new Set([
+  'setup',
+  'agent-config',
+  'my-branch',
+  'fmt',
+  'fix',
+  'check',
+  'test',
+  'verify',
+  'doctor',
+  'secrets',
+])
+const gitOperations = new Set(['status', 'diff', 'log', 'show', 'add', 'commit', 'fetch', 'switch', 'merge'])
+
+type Prefix = { text: string; tokens: string[] }
 
 async function readHostCommandPrefixes(): Promise<unknown> {
   const path = Repo.resolvePath(allowlistPath)

@@ -3,9 +3,6 @@ import * as FileSystem from './FileSystem'
 import * as Path from './Path'
 import * as Platform from './Platform'
 
-let workspaceRoot: string | undefined
-let mainWorktreeRoot: string | undefined
-
 /** getWorkspaceRoot locates this checkout from the executing module, independently of the caller's directory. */
 export function getWorkspaceRoot(): string {
   if (workspaceRoot) {
@@ -41,3 +38,6 @@ export function getMainWorktreeRoot(): string {
 export function resolvePath(...segments: string[]): string {
   return Path.resolve(getWorkspaceRoot(), ...segments)
 }
+
+let workspaceRoot: string | undefined
+let mainWorktreeRoot: string | undefined
