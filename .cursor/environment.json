@@ -1,4 +1,4 @@
 {
-  "install": "./.config/bootstrap-tao-dev-env --install-nix",
-  "start": "./.config/bootstrap-tao-dev-env --install-nix"
+  "install": "./.config/cursor-dev-environment",
+  "start": "./.config/cursor-dev-environment"
 }

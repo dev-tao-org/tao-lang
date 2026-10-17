@@ -42,12 +42,15 @@ configure the environment setup script explicitly.
 
 ## Cursor
 
-The hand-maintained `.cursor/environment.json` runs the same bootstrap in
-`install` to prepare each Build and in a one-shot `start` to refresh each session.
+The hand-maintained `.cursor/environment.json` runs `./.config/cursor-dev-environment`
+in `install` to prepare each Build and in a one-shot `start` to refresh each session.
+On Linux that enters `./.config/bootstrap-tao-dev-env --install-nix`, which ends in
+`./agent setup`; on macOS it enters `devenv shell --no-tui ./agent setup`, matching
+`.cursor/worktree-setup.sh`.
 Feature branches overlay the active Build and may change its locked tools or
 dependencies. Cursor documents session startup and branch checkout separately;
 their ordering remains unproved. Until hosted proof establishes that `start`
-sees the requested checkout, explicitly run `./.config/bootstrap-tao-dev-env --install-nix`
+sees the requested checkout, explicitly run `./.config/cursor-dev-environment`
 after checking out or changing the task branch and before testing.
 
 Builds retain disk state, not exported shell variables or processes; the

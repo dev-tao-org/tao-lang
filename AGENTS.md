@@ -50,6 +50,9 @@ Implementation rules:
   - All common user actions live in `Justfile`
   - Dev CLI commands perform every required workflow step themselves; Justfile dev recipes call one complete command.
   - ALL scripts are written
+- Git workflow:
+  - Always create a new feature branch for your new worktree.
+  - Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
 
 ## Guidelines
 

@@ -155,12 +155,48 @@ Describe('cloud setup lifecycle', () => {
   )
 
   for (const phase of ['install', 'start'] as const) {
-    Test(`Cursor ${phase} selects the common bootstrap`, async () => {
+    Test(`Cursor ${phase} selects the platform environment entry`, async () => {
       const config = JSON.parse(await FS.readText(Repo.resolveGitPath('.cursor/environment.json'))) as Record<
         'install' | 'start',
         string
       >
-      Expect(config[phase]).toBe('./.config/bootstrap-tao-dev-env --install-nix')
+      Expect(config[phase]).toBe('./.config/cursor-dev-environment')
+    })
+  }
+
+  for (const os of ['Linux', 'Darwin']) {
+    Test(`Cursor ${os} setup reaches the matching environment and preserves failures`, async () => {
+      await withCloudFixture(async (root, env) => {
+        const entry = FS.resolvePath('.config/cursor-dev-environment', root)
+        await FS.writeText(entry, await FS.readText(Repo.resolveGitPath('.config/cursor-dev-environment')))
+        const devenv = FS.resolvePath('bin/devenv', root)
+        await FS.writeText(
+          devenv,
+          '#!/bin/sh\n'
+            + 'printf "devenv %s setup=%s\\n" "$*" "$TAO_DEV_SHELL_SETUP" >> "$TAO_TEST_CALLS"\n'
+            + 'exit "$TAO_TEST_SETUP_STATUS"\n',
+        )
+        await FS.chmod(devenv, 0o755)
+        for (const status of [0, 9]) {
+          await FS.writeText(env['TAO_TEST_CALLS']!, '')
+          const result = await CLI.run('/bin/sh', {
+            args: [entry],
+            cwd: FS.resolvePath('packages/cli', root),
+            env: {
+              ...env,
+              TAO_TEST_OS: os,
+              TAO_TEST_BOOTSTRAP_STATUS: String(status),
+              TAO_TEST_SETUP_STATUS: String(status),
+            },
+          })
+          Expect(result.exitCode).toBe(status)
+          Expect(await FS.readText(env['TAO_TEST_CALLS']!)).toBe(
+            os === 'Linux'
+              ? 'bootstrap --install-nix\n'
+              : 'devenv shell --no-tui ./agent setup setup=0\n',
+          )
+        }
+      })
     })
   }
 })

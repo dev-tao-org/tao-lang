@@ -28,8 +28,6 @@
   // Formatting
   "editor.defaultFormatter": "dprint.dprint",
   "editor.formatOnSave": true,
-  "dprint.experimentalLsp": true,
-  "dprint.path": ".devenv/profile/bin/dprint",
   "[tao]": {
     "editor.defaultFormatter": "devtao.tao",
     "editor.tabSize": 3,

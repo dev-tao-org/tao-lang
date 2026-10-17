@@ -10,10 +10,10 @@ help:
 # Repo dev environment setup
 ############################
 
-# Configure optional automatic development environments for this repository and its worktrees
+# Install repository dependencies in the pinned devenv shell (same entry as ./agent setup and harness hooks).
 [group('Setup')]
 setup *ARGS:
-    ./dev setup {{ ARGS }}
+    TAO_DEV_SHELL_SETUP=0 devenv shell --no-tui ./agent setup {{ ARGS }}
 
 # Configure this checkout and GitHub CLI for HTTPS Git authentication
 [group('Setup')]

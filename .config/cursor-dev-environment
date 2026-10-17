@@ -1,0 +1,21 @@
+#!/bin/sh
+# Cursor cloud/local environment install and start: pinned tools, then ./agent setup.
+# Linux disposable agents use the portable bootstrap; macOS uses devenv shell like worktree setup.
+set -eu
+
+checkout=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+cd "$checkout"
+
+case "$(uname -s)" in
+  Linux)
+    exec ./.config/bootstrap-tao-dev-env --install-nix "$@"
+    ;;
+  Darwin)
+    export TAO_DEV_SHELL_SETUP=0
+    exec devenv shell --no-tui ./agent setup
+    ;;
+  *)
+    printf 'Unsupported OS for Cursor environment setup: %s\n' "$(uname -s)" >&2
+    exit 1
+    ;;
+esac

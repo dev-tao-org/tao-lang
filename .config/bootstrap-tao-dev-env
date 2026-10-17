@@ -21,11 +21,17 @@ for argument in "$@"; do
 done
 
 checkout=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-# The moved implementation owns its own packages when present. Keep this bootstrap usable by
-# standalone contributor-test fixtures that place packages directly under their fixture root.
-if [ -f "$checkout/old-tao-v1/package.json" ] && [ -d "$checkout/old-tao-v1/packages" ]; then
+# Root setup installs the TypeScript workspace; CI still prepares the legacy verification lane.
+# Its pinned portable tool definitions remain in the moved implementation.
+toolchain_repository="$checkout"
+if [ -f "$checkout/ts/package.json" ] && ! "$verify_setup"; then
+  repository="$checkout"
+  state_dir="$checkout/.devenv"
+  toolchain_repository="$checkout/old-tao-v1"
+elif [ -f "$checkout/old-tao-v1/package.json" ] && [ -d "$checkout/old-tao-v1/packages" ]; then
   repository="$checkout/old-tao-v1"
   state_dir="$checkout/.devenv/old-tao-v1"
+  toolchain_repository="$repository"
 else
   repository="$checkout"
   state_dir="$checkout/.devenv"
@@ -36,7 +42,7 @@ if [ "$(uname -s)" != Linux ]; then
   exit 1
 fi
 
-environment="$repository/packages/cli/dev-cli/dev-cli-src/environment"
+environment="$toolchain_repository/packages/cli/dev-cli/dev-cli-src/environment"
 if "$install_nix"; then
   # The installer waits for an active installation before judging its pending marker.
   /bin/sh "$environment/nix-bootstrap.sh"
@@ -120,13 +126,13 @@ printf 'Portable bootstrap: profile %s\n' "$identity"
 if "$tools_only"; then
   exit 0
 fi
+PATH="$state_dir/profile/bin:$PATH"
+export PATH
 if "$verify_setup"; then
   # What a verification lane reads and nothing else: the installed packages (adopted when a cache
   # restored them), the generated parser, the maintained native bindings, and the Tao projects' npm
   # pins. Agent configuration, Git hooks, shell completion, and the initial dev branch serve a
   # person's checkout. The two generators write disjoint trees, so they run side by side.
-  PATH="$state_dir/profile/bin:$PATH"
-  export PATH
   printf 'Verify setup: dependencies...\n'
   just _deps
   printf 'Verify setup: native bindings and parser, side by side...\n'
