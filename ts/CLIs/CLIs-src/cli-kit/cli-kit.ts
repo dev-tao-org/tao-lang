@@ -99,7 +99,7 @@ export async function runCommand(command: string | readonly string[], options: {
     Errors.ThrowUserInput('A command is required.')
   }
   const label = args.join(' ')
-  IO.info(`RUN: ${label}`)
+  IO.info(`RUN CMD: ${label}`)
   const started = Time.nowMs()
   await Try(async () => {
     const agent = process.env.TAO_AGENT === '1'

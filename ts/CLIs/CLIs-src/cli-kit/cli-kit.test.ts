@@ -100,7 +100,7 @@ IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
       const simple = await run(commandAction(`runCommand(process.execPath + ' ${child} first   second')`))
       Expect(simple.code).toBe(23)
       Expect(simple.stdout).toContain('["first","second"]\n')
-      Expect(simple.stdout).toMatch(/^RUN: .+\n/)
+      Expect(simple.stdout).toStartWith(`RUN CMD: ${process.execPath} ${child} first second\n`)
       Expect(simple.stdout).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
       const array = await run(
         commandAction(`runCommand([process.execPath, '${child}', 'two words', '"quoted"'])`),
@@ -110,7 +110,7 @@ IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
       const agent = await run(commandAction(`runCommand([process.execPath, '${child}', 'agent'])`), true)
       Expect(agent.code).toBe(23)
       Expect(agent.stdout).toBe('["agent"]\n')
-      Expect(agent.log).toMatch(/^RUN: .+\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+      Expect(agent.log).toMatch(/^RUN CMD: .+\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
     })
   })
 
@@ -144,7 +144,7 @@ await execute()`
       Expect(failed.stdout).toBe('')
       Expect(failed.stderr).toContain('missing-tao-command-io-tool')
       Expect(failed.log).toContain(failed.stderr)
-      Expect(failed.log).toContain('RUN: missing-tao-command-io-tool\n')
+      Expect(failed.log).toContain('RUN CMD: missing-tao-command-io-tool\n')
       Expect(failed.log).toMatch(/\[\d+\.\d{2}s\] \(missing-tao-command-io-tool\)/)
       const usage = await run(setup, true, ['unknown'])
       Expect(usage.code).toBe(1)
@@ -163,7 +163,7 @@ ${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}`,
         true,
       )
       Expect(command.code).toBe(17)
-      Expect(command.stdout).toContain('fallback info\nRUN: ')
+      Expect(command.stdout).toContain('fallback info\nRUN CMD: ')
       Expect(command.stdout).toMatch(/\[\d+\.\d{2}s\]/)
       Expect(command.stderr).toContain('visible error\n')
       Expect(command.stderr.match(/Agent log unavailable:/g)).toHaveLength(1)

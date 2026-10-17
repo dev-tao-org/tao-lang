@@ -100,10 +100,10 @@ Describe('developer setup command', () => {
       Expect(await Bun.file(join(root, 'node_modules/setup-fixture/package.json')).exists()).toBe(false)
       Expect(await Bun.file(log).exists()).toBe(entry === 'agent')
       if (entry === 'agent') {
-        Expect(await Bun.file(log).text()).toContain('RUN: ')
-        Expect(stdout).not.toContain('RUN: ')
+        Expect(await Bun.file(log).text()).toContain('RUN CMD: ')
+        Expect(stdout).not.toContain('RUN CMD: ')
       } else {
-        Expect(stdout).toContain('RUN: ')
+        Expect(stdout).toContain('RUN CMD: ')
       }
     }, { finally: () => rm(root, { recursive: true, force: true }) })
   })
