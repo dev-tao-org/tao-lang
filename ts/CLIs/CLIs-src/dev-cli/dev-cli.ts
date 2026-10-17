@@ -24,6 +24,7 @@ if (Platform.isMain(import.meta)) {
   IO.config({
     stdout: terminal ? 'terminal' : 'log',
     stderr: terminal ? 'terminal' : 'both',
+    progress: terminal ? 'terminal' : 'both',
     logDirectory: 'dev',
     logFile: Env.get('OUTPUT_LOG_FILE'),
   })

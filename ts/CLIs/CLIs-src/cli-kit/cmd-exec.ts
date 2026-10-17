@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import { FileSystem, Platform, Streams } from '@shared/os'
-import { configuredCommandOutput, IO } from './io'
+import { configuredCommandOutput } from './io'
 
 type OutputPipe = (text: string | Uint8Array) => void
 type Command = string | readonly string[]
@@ -22,15 +22,15 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
     Errors.ThrowUserInput('A command is required.')
   }
   const label = args.join(' ')
-  IO.print(`RUN CMD: ${label}`)
-  const started = Time.nowMs()
   const output = configuredCommandOutput()
+  output.progressPipe(`RUN CMD: ${label}`)
+  const started = Time.nowMs()
   await Try(() =>
     output.captureCommands
       ? runLoggedCommand(command, options, output)
       : runInheritedCommand(command, options), {
     finally() {
-      IO.print(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
+      output.progressPipe(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
     },
   })
 }

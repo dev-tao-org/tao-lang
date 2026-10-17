@@ -5,12 +5,14 @@ type OutputPipe = (text: string | Uint8Array) => void
 type IOConfiguration = {
   stdout?: 'terminal' | 'log' | OutputPipe
   stderr?: 'terminal' | 'both' | OutputPipe
+  progress?: 'terminal' | 'log' | 'both'
   logFile?: string
   logDirectory?: 'agent' | 'dev'
 }
 
 let stdoutPipe: OutputPipe = terminalStdout
 let stderrPipe: OutputPipe = terminalStderr
+let progressPipe: OutputPipe = terminalStderr
 let captureCommands = false
 let mirrorCommandStderr = false
 let agentLog: string
@@ -23,7 +25,7 @@ export const IO = {
 
 /** configuredCommandOutput exposes the configured command streams to cmd-exec. */
 export function configuredCommandOutput() {
-  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe }
+  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe, progressPipe: printProgress }
 }
 
 function configureOutput(configuration: IOConfiguration): void {
@@ -35,6 +37,11 @@ function configureOutput(configuration: IOConfiguration): void {
   stderrPipe = typeof configuration.stderr === 'function'
     ? configuration.stderr
     : configuration.stderr === 'both'
+    ? loggedStderr
+    : terminalStderr
+  progressPipe = configuration.progress === 'log'
+    ? loggedStdout
+    : configuration.progress === 'both'
     ? loggedStderr
     : terminalStderr
   captureCommands = stdoutPipe !== terminalStdout || stderrPipe !== terminalStderr
@@ -57,7 +64,12 @@ function configureOutput(configuration: IOConfiguration): void {
 }
 
 function usesLogFiles(configuration: IOConfiguration): boolean {
-  return configuration.stdout === 'log' || configuration.stderr === 'both'
+  const modes = [configuration.stdout, configuration.stderr, configuration.progress]
+  return modes.some(mode => mode === 'log' || mode === 'both')
+}
+
+function printProgress(text: string): void {
+  progressPipe(`\u001b[90m${text}\u001b[0m\n`)
 }
 
 function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {

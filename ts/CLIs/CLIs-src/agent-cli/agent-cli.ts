@@ -11,6 +11,7 @@ Env.set('TERMINAL_OUTPUT', terminal ? '1' : '0')
 IO.config({
   stdout: terminal ? 'terminal' : 'log',
   stderr: terminal ? 'terminal' : 'both',
+  progress: terminal ? 'terminal' : 'log',
   logDirectory: 'agent',
   logFile: Env.get('OUTPUT_LOG_FILE'),
 })
