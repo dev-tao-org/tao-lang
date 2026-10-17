@@ -66,7 +66,7 @@ Test('group liveness never turns a denied kernel probe into evidence of group ab
 })
 
 Test('Darwin group liveness inspects members when the kernel probe reports EPERM', () => {
-  const cause = Object.assign(new Error('permission denied'), { code: 'EPERM' })
+  const cause = Object.assign(Errors.asError('permission denied'), { code: 'EPERM' })
   for (const inspectedAlive of [false, true]) {
     let inspections = 0
     const alive = ProcessTree.isGroupAlive(
@@ -87,8 +87,8 @@ Test('Darwin group liveness inspects members when the kernel probe reports EPERM
 })
 
 Test('Darwin group liveness propagates an EPERM member-inspection failure', () => {
-  const cause = Object.assign(new Error('permission denied'), { code: 'EPERM' })
-  const failure = new Error('member inspection denied')
+  const cause = Object.assign(Errors.asError('permission denied'), { code: 'EPERM' })
+  const failure = Errors.asError('member inspection denied')
   Expect(() =>
     ProcessTree.isGroupAlive(
       987,
@@ -106,7 +106,7 @@ Test('Darwin group liveness propagates an EPERM member-inspection failure', () =
 Test('Darwin group liveness does not inspect members for other or untyped probe failures', () => {
   const failures: unknown[] = [
     new Errors.HostEnvironmentError('kernel probe failed', {
-      cause: Object.assign(new Error('I/O failure'), { code: 'EIO' }),
+      cause: Object.assign(Errors.asError('I/O failure'), { code: 'EIO' }),
     }),
     new Errors.HostEnvironmentError('kernel probe denied'),
   ]

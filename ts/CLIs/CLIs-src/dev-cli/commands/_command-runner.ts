@@ -26,7 +26,10 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 }
 
 const commands: CommandDefinition<unknown[]>[] = []
-const legacyDev = fileURLToPath(new URL('../../../../../old-tao-v1/dev', import.meta.url))
+/** repositoryRoot locates the active checkout independently of the caller's directory. */
+export const repositoryRoot = fileURLToPath(new URL('../../../../../', import.meta.url)).replace(/\/$/, '')
+/** legacyRoot locates the reference implementation's workflow directory. */
+export const legacyRoot = `${repositoryRoot}/old-tao-v1`
 
 /** registerCommand adds one command to the shared CLI registry. */
 export function registerCommand<Args extends unknown[]>(definition: CommandDefinition<Args>): RegisteredCommand<Args> {
@@ -68,7 +71,33 @@ export async function execute(name = 'dev'): Promise<void> {
   await parser.parseAsync(Bun.argv)
 }
 
-/** runLegacyDev delegates repository Git workflows to the PoC until those workflows are ported. */
+/** runLegacyDev delegates existing CLI workflows to the reference implementation. */
 export async function runLegacyDev(args: string[]): Promise<number> {
-  return await runCommand([legacyDev, ...args])
+  return await runCommand([`${legacyRoot}/dev`, ...args], { cwd: legacyRoot })
+}
+
+/** runLegacyRecipe retains legacy prerequisites, workflow ordering and exit status. */
+export async function runLegacyRecipe(args: string[]): Promise<number> {
+  return await runCommand(['just', '--justfile', `${legacyRoot}/Justfile`, ...args], { cwd: legacyRoot })
+}
+
+/** workspaceTypes checks the new workspace without invoking reference gates twice. */
+export async function workspaceTypes(): Promise<number> {
+  return await runCommand([process.execPath, 'node_modules/typescript/bin/tsc', '--project', 'tsconfig.json'], {
+    cwd: `${repositoryRoot}/ts`,
+  })
+}
+
+/** workspaceFormat formats or checks the new workspace and shared repository files. */
+export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<number> {
+  return await runCommand([
+    'dprint',
+    mode,
+    '--config',
+    '.dprint.jsonc',
+    '--incremental=false',
+    '**/*',
+    '--excludes',
+    'old-tao-v1/**',
+  ], { cwd: repositoryRoot })
 }

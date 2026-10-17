@@ -1,13 +1,21 @@
 import './commands/check'
+import './commands/clean'
+import './commands/doctor'
+import './commands/fix'
 import './commands/fmt'
+import './commands/lint'
 import './commands/my-branch'
 import './commands/my-sync'
 import './commands/setup'
 import './commands/setup-github'
+import './commands/secrets'
+import './commands/start'
+import './commands/stop'
 import './commands/test'
 import './commands/typecheck'
+import './commands/verify'
 import { execute } from './commands/_command-runner'
 
 if (import.meta.main) {
-    await execute()
+  await execute()
 }

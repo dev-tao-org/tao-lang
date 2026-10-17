@@ -170,16 +170,26 @@ async function open(options: CheckCacheOptions = {}): Promise<CheckCacheSession 
   if (toolchain === undefined) {
     return undefined
   }
-  return createSession(FS.resolvePath(repositoryRoot), toolchain, nativeIdentity, options.nativeBindings)
+  // The relocated implementation remains the source/hash boundary, while its default stamp lives
+  // at the physical shared Git-root artifact path. Explicit fixture roots remain fully isolated.
+  const stampRoot = options.repositoryRoot ?? Repo.getGitRoot(import.meta.dir)
+  return createSession(
+    FS.resolvePath(repositoryRoot),
+    toolchain,
+    nativeIdentity,
+    FS.resolvePath(stampRoot),
+    options.nativeBindings,
+  )
 }
 
 function createSession(
   repositoryRoot: string,
   toolchain: string,
   nativeIdentity: string,
+  stampRoot: string,
   nativeBindings?: MaintainedBindingOptions,
 ): CheckCacheSession {
-  const stampPath = FS.resolvePath(STAMP_PATH, repositoryRoot)
+  const stampPath = FS.resolvePath(STAMP_PATH, stampRoot)
   const pending = new Map<string, PendingWorkspace>()
   return {
     async commit(records: readonly CheckCacheRecord[]): Promise<void> {
@@ -198,7 +208,7 @@ function createSession(
       if (stampable.length === 0) {
         return
       }
-      await FS.withFileMutationLock(stampPath, repositoryRoot, async () => {
+      await FS.withFileMutationLock(stampPath, stampRoot, async () => {
         // Another `tao check` may have stamped its own workspaces while this one ran, so the entries
         // are merged into whatever is on disk now rather than written over it.
         const stamp = await readStamp(stampPath) ?? { entries: {}, version: STAMP_VERSION }
@@ -225,7 +235,7 @@ function createSession(
         if (await maintainedNativeBindingIdentity(nativeBindings) !== nativeIdentity) {
           return
         }
-        await writeStamp(stampPath, repositoryRoot, { entries: capEntries(entries), version: STAMP_VERSION })
+        await writeStamp(stampPath, stampRoot, { entries: capEntries(entries), version: STAMP_VERSION })
       })
     },
 

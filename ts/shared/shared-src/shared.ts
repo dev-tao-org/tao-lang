@@ -1,1 +1,1 @@
-export * from './universal/universal';
+export * from './universal/universal'

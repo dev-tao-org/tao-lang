@@ -1,5 +1,5 @@
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { Switch } from "../universal/universal";
+import { Switch } from '../universal/universal'
 
 Describe('Switch.on', () => {
   Test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
