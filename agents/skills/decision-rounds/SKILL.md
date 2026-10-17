@@ -38,7 +38,7 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 2. Give each decision its realistic options and mark the recommended one, as above.
 3. Print the round as text in the reply, in the shape below. Never put it through a harness question prompt such as `AskUserQuestion`: a prompt hides the round from the transcript, caps what an answer can say, and forces every item through its own box. The Developer answers in the conversation — by letter and number, in prose, or with an option the round did not offer.
 4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. An item the Developer skips takes its recommendation, and the next message says so in one line so the Developer can veto it.
-5. Continue until the planning decisions are settled, then implement. For decisions discovered during implementation, follow root `AGENTS.md`: proceed with best judgment and report the choice at completion, or ask immediately for an essential fork and apply its three-minute response policy. Explicit approval gates still apply.
+5. Continue until the planning decisions are settled, then follow root `AGENTS.md`'s explicit go-ahead requirement before implementation. For decisions discovered during authorized implementation, follow its decision policy. Explicit approval gates still apply.
 
 ## Record what was settled
 
