@@ -4,7 +4,7 @@ import { registerCommand, workspaceFormat } from './_command-runner'
 export default registerCommand({
   name: 'fix',
   description: 'Apply new workspace and shared repository formatting fixes.',
-  action: async () => {
+  async action() {
     // Tao source fixes and import cleanup await their new parser/tooling implementations.
     await workspaceFormat('fmt')
   },

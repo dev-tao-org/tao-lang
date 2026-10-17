@@ -1,6 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
-import { repositoryRoot } from './cli-kit'
+import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 
 type Check = { name: string; status: 'pass' | 'warn' | 'fail'; detail: string; remediation?: string }
 type Fingerprint = {
@@ -12,6 +11,8 @@ type Fingerprint = {
   toolchain: { name: string; present: boolean; version?: string; hash?: string }[]
 }
 
+const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
+
 /** doctorReport gathers diagnostics for the active implementation without changing developer state. */
 export async function doctorReport(fingerprintOnly = false): Promise<{
   version: 1
@@ -20,9 +21,20 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
   status: Check['status']
   fingerprint: Fingerprint
 }> {
-  const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
-  const versions = await Promise.all(tools.map(tool => probe(tool + ' --version')))
-  const [commit, describe, changes, branch, origin, configuredOrigin, helpers] = await Promise.all([
+  const snapshot = await readSnapshot()
+  const fingerprint = await readFingerprint(snapshot)
+  const checks = fingerprintOnly ? [] : await readChecks(snapshot)
+  const status = checks.some(check => check.status === 'fail')
+    ? 'fail'
+    : checks.some(check => check.status === 'warn')
+    ? 'warn'
+    : 'pass'
+  return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
+}
+
+async function readSnapshot() {
+  const [versions, commit, describe, changes, branch, origin, configuredOrigin, helpers] = await Promise.all([
+    Promise.all(tools.map(tool => probe(tool + ' --version'))),
     probe('git rev-parse HEAD'),
     probe('git describe --always --dirty'),
     probe('git status --porcelain'),
@@ -31,6 +43,12 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
     probe('git config --local --get remote.origin.url'),
     probe('git config --get-all credential.https://github.com.helper'),
   ])
+  return { versions, commit, describe, changes, branch, origin, configuredOrigin, helpers }
+}
+
+type Snapshot = Awaited<ReturnType<typeof readSnapshot>>
+
+async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
   const system = Platform.systemInfo()
   const fingerprint: Fingerprint = {
     version: 1,
@@ -38,63 +56,69 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
     kernel: { name: safeToken(system.os), version: safeToken(system.kernel) },
     os: { name: safeToken(system.os) },
     tao: {
-      commit: gitHash(commit)?.slice(0, 12),
-      describe: safeToken(describe),
-      modified: changes === undefined ? undefined : changes !== '',
+      commit: gitHash(snapshot.commit)?.slice(0, 12),
+      describe: safeToken(snapshot.describe),
+      modified: snapshot.changes === undefined ? undefined : snapshot.changes !== '',
     },
     toolchain: tools.map((name, index) => ({
       name,
-      present: versions[index] !== undefined,
-      version: toolVersion(versions[index]),
+      present: snapshot.versions[index] !== undefined,
+      version: toolVersion(snapshot.versions[index]),
     })),
   }
   for (const name of ['ts/bun.lock', 'devenv.lock']) {
     const hash = gitHash(await probe('git hash-object --', { variadicArgs: [name] }))
     fingerprint.toolchain.push({ name, present: hash !== undefined, hash })
   }
-  if (fingerprintOnly) {
-    return { version: 1, repositoryRoot, checks: [], status: 'pass', fingerprint }
-  }
-  const checks = diagnoseTools(tools, versions)
+  return fingerprint
+}
+
+async function readChecks(snapshot: Snapshot): Promise<Check[]> {
+  const checks = diagnoseTools(tools, snapshot.versions)
   checks.push({
     name: 'Git branch',
-    status: branch ? 'pass' : 'warn',
-    detail: branch ?? 'Detached HEAD; select a branch before committing.',
+    status: snapshot.branch ? 'pass' : 'warn',
+    detail: snapshot.branch ?? 'Detached HEAD; select a branch before committing.',
   })
-  for (const name of ['package.json', 'bun.lock', 'node_modules']) {
-    const present = FileSystem.existsSync(Path.join(repositoryRoot, 'ts', name))
-    checks.push({
+  const main = Try(Repo.getMainWorktreeRoot, {
+    catch() {
+      return undefined
+    },
+  })
+  checks.push({
+    name: 'Git worktree',
+    status: main ? 'pass' : 'warn',
+    detail: main ? 'Primary worktree: ' + main : 'Could not determine the primary worktree.',
+  })
+  checks.push(...workspaceChecks())
+  checks.push(diagnoseGitHub(snapshot.configuredOrigin, snapshot.origin, snapshot.helpers))
+  checks.push(...await artifactChecks())
+  checks.push(...await gitHookChecks())
+  // Generated parser, Studio, Expo, native toolchains and machine-lane diagnostics await their new implementations.
+  return checks
+}
+
+function workspaceChecks(): Check[] {
+  return ['package.json', 'bun.lock', 'node_modules'].map(name => {
+    const present = FileSystem.existsSync(Repo.resolvePath('ts', name))
+    return {
       name: 'workspace ' + name,
       status: present ? 'pass' : 'fail',
       detail: present ? 'Present in ts/.' : 'Missing from ts/.',
       remediation: present ? undefined : './agent setup',
-    })
-  }
-  checks.push(diagnoseGitHub(configuredOrigin, origin, helpers))
-  for (const name of ['', 'logs', 'cache', 'build', 'tmp']) {
-    const artifact = Path.join(repositoryRoot, '.artifacts', name)
-    let existing = artifact
-    while (!FileSystem.existsSync(existing)) {
-      existing = Path.dirname(existing)
     }
-    const writable = await Try(async () => {
-      await FileSystem.access(existing, FileSystem.constants.W_OK)
-      return true
-    }, { catch: () => false })
-    checks.push({
+  })
+}
+
+async function artifactChecks(): Promise<Check[]> {
+  return Promise.all(['', 'logs', 'cache', 'build', 'tmp'].map(async name => {
+    const writable = await Artifacts.isWritable(name)
+    return {
       name: 'artifacts ' + (name || 'root'),
       status: writable ? 'pass' : 'fail',
       detail: writable ? 'The artifact location is writable.' : 'The artifact location is not writable.',
-    })
-  }
-  checks.push(...await gitHookChecks())
-  // Generated parser, Studio, Expo, native toolchains and machine-lane diagnostics await their new implementations.
-  const status = checks.some(check => check.status === 'fail')
-    ? 'fail'
-    : checks.some(check => check.status === 'warn')
-    ? 'warn'
-    : 'pass'
-  return { version: 1, repositoryRoot, checks, status, fingerprint }
+    }
+  }))
 }
 
 /** diagnoseGitHub preserves required HTTPS transport and the expected GitHub CLI helper diagnostics. */
@@ -128,7 +152,9 @@ async function gitHookChecks(): Promise<Check[]> {
   for (const event of ['commit-msg', 'pre-commit']) {
     const path = directory ? Path.join(directory, event) : undefined
     const contents = await Try(async () => path ? await FileSystem.file(path).text() : undefined, {
-      catch: () => undefined,
+      catch() {
+        return undefined
+      },
     })
     if (contents === undefined) {
       checks.push({ name: 'git hooks', status: 'warn', detail: event + ' is not installed; Git guards do not run.' })
@@ -138,12 +164,16 @@ async function gitHookChecks(): Promise<Check[]> {
       checks.push({ name: 'git hooks', status: 'pass', detail: event + ' is managed outside this repository.' })
       continue
     }
-    const paths = [...contents.matchAll(/\$worktree\/([^"]+)"/g)].map(match => Path.resolve(repositoryRoot, match[1]))
+    const paths = [...contents.matchAll(/\$worktree\/([^"]+)"/g)].map(match => Repo.resolvePath(match[1]))
     const executable = await Promise.all(paths.map(path =>
       Try(async () => {
         await FileSystem.access(path, FileSystem.constants.X_OK)
         return FileSystem.statSync(path).isFile()
-      }, { catch: () => false })
+      }, {
+        catch() {
+          return false
+        },
+      })
     ))
     checks.push({
       name: 'git hooks',
@@ -158,8 +188,10 @@ async function gitHookChecks(): Promise<Check[]> {
 }
 
 async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
-  return Try(() => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: repositoryRoot }), {
-    catch: () => undefined,
+  return Try(() => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }), {
+    catch() {
+      return undefined
+    },
   })
 }
 

@@ -1,7 +1,7 @@
 import '../../cli-kit/fatal-errors'
-import { IO, repositoryRoot, runCommand } from '@cli-kit'
+import { IO, runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { Env, FileSystem, Path, Platform } from '@shared/os'
+import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-kit/slow-tests'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -41,9 +41,6 @@ if (Platform.isMain(import.meta)) {
   void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
 }
 
-/** repositoryRoot locates the active checkout independently of the caller's directory. */
-export { repositoryRoot } from '@cli-kit'
-
 /** assertNewWorkspacePath directs legacy operations to their own working directory. */
 export function assertNewWorkspacePath(path: string): void {
   const absolute = Path.resolve(path)
@@ -64,7 +61,7 @@ export function assertNewWorkspacePath(path: string): void {
 
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
 export async function assertNewWorkspaceTree(): Promise<void> {
-  const workspace = FileSystem.realpathSync(`${repositoryRoot}/ts`)
+  const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await FileSystem.readdir(directory, { withFileTypes: true })) {
       if (entry.name === 'node_modules') {
@@ -93,11 +90,16 @@ function isWithinDirectory(path: string, directory: string): boolean {
 export function registerCommand<Args extends unknown[]>(definition: CommandDefinition<Args>): RegisteredCommand<Args> {
   const registered = {
     ...definition,
-    action: async (...args: Args): Promise<void> => {
+    async action(...args: Args): Promise<void> {
       await definition.action(...args)
     },
   }
-  commands.push({ ...registered, action: (...args: unknown[]) => registered.action(...args as Args) })
+  commands.push({
+    ...registered,
+    action(...args: unknown[]) {
+      return registered.action(...args as Args)
+    },
+  })
   return registered
 }
 
@@ -105,7 +107,11 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
 export async function execute(name = 'dev'): Promise<void> {
   // Setup can register and invoke its action before Commander has been installed.
   const { Command } = await import('commander')
-  const parser = new Command().name(name).configureOutput({ writeErr: text => IO.stderr(text) })
+  const parser = new Command().name(name).configureOutput({
+    writeErr(text) {
+      return IO.stderr(text)
+    },
+  })
   for (const definition of commands) {
     const command = parser.command(definition.name).description(definition.description)
     for (const argument of definition.arguments ?? []) {
@@ -125,13 +131,13 @@ export async function runLegacyDev(command: string, options: { variadicArgs?: re
   await runCommand(`./dev ${command}`, { variadicArgs: options.variadicArgs, cwd: legacyRoot })
 }
 
-const legacyRoot = `${repositoryRoot}/old-tao-v1`
+const legacyRoot = Repo.resolvePath('old-tao-v1')
 
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
   await runCommand('tsc --project tsconfig.json', {
-    cwd: `${repositoryRoot}/ts`,
+    cwd: Repo.resolvePath('ts'),
   })
 }
 
@@ -139,14 +145,14 @@ export async function workspaceTypes(): Promise<void> {
 export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   const { checkSourceConformance } = await import('../../cli-kit/source-conformance')
-  await checkSourceConformance(repositoryRoot)
+  await checkSourceConformance(Repo.getWorkspaceRoot())
 }
 
 /** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */
 export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
-  await runCommand('knip --config knip.ts --no-progress', { cwd: `${repositoryRoot}/ts` })
+  await runCommand('knip --config knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
 /** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
@@ -154,7 +160,7 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
   await withTestTimings(reportPath =>
     runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
-      cwd: `${repositoryRoot}/ts`,
+      cwd: Repo.resolvePath('ts'),
       stdout: 'log',
     })
   )
@@ -164,7 +170,9 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
   await assertNewWorkspaceTree()
   await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes old-tao-v1/**`, {
-    cwd: repositoryRoot,
+    cwd: Repo.getWorkspaceRoot(),
   })
-  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, { cwd: repositoryRoot })
+  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
+    cwd: Repo.getWorkspaceRoot(),
+  })
 }

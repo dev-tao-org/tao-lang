@@ -1,10 +1,9 @@
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FileSystem, Path, Repo } from '@shared/os'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,
   registerCommand,
-  repositoryRoot,
   workspaceTests,
 } from './_command-runner'
 
@@ -13,10 +12,10 @@ export default registerCommand({
   name: 'test',
   description: 'Run new workspace tests; a path scopes the run and a name filters it.',
   arguments: [{ name: 'target', description: 'Test file or directory.' }],
-  action: async (target?: string) => {
+  async action(target?: string) {
     await assertNewWorkspaceTree()
     if (target) {
-      assertNewWorkspacePath(Path.resolve(repositoryRoot, target))
+      assertNewWorkspacePath(Repo.resolvePath(target))
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
@@ -28,9 +27,9 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
   if (!target) {
     return undefined
   }
-  const path = Path.isAbsolute(target) || FileSystem.existsSync(Path.resolve(`${repositoryRoot}/ts`, target))
-    ? Path.resolve(`${repositoryRoot}/ts`, target)
-    : Path.resolve(repositoryRoot, target)
+  const path = Path.isAbsolute(target) || FileSystem.existsSync(Path.resolve(Repo.resolvePath('ts'), target))
+    ? Path.resolve(Repo.resolvePath('ts'), target)
+    : Repo.resolvePath(target)
   assertNewWorkspacePath(path)
   if (!FileSystem.existsSync(path)) {
     return Path.isAbsolute(target) ? path : undefined
@@ -39,8 +38,8 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
     return path
   }
   const canonical = FileSystem.realpathSync(path)
-  const root = FileSystem.realpathSync(repositoryRoot)
-  const workspace = FileSystem.realpathSync(`${repositoryRoot}/ts`)
+  const root = FileSystem.realpathSync(Repo.getWorkspaceRoot())
+  const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
   if (canonical === root) {
     return workspace
   }

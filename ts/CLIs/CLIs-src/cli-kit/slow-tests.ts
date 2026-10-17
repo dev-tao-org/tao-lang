@@ -1,36 +1,40 @@
 import { Errors, Time, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
-import { IO, repositoryRoot } from './cli-kit'
+import { Artifacts, Path, Platform } from '@shared/os'
+import { IO } from './cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
 export async function withTestTimings(run: (reportPath: string | undefined) => Promise<void>): Promise<void> {
   const reportPath = await prepareTestReport()
   await Try(() => run(reportPath), {
-    finally: async () => {
+    async finally() {
       if (!reportPath) {
         return
       }
       await Try(async () => {
-        const report = await FileSystem.file(reportPath).text()
+        const report = await Artifacts.file(reportPath).text()
         if (!report.trim()) {
           Errors.ThrowHostEnvironment('Test runner did not write timing data.')
         }
         for (const warning of slowTestWarnings(report)) {
           IO.warn(warning)
         }
-      }, { catch: error => IO.warn('Unable to read test timings:', error) })
+      }, {
+        catch(error) {
+          return IO.warn('Unable to read test timings:', error)
+        },
+      })
     },
   })
 }
 
 async function prepareTestReport(): Promise<string | undefined> {
   return Try(async () => {
-    const path = `${repositoryRoot}/.artifacts/logs/test/${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-    await FileSystem.write(path, '')
+    const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
+    await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+    await Artifacts.write(path, '')
     return path
   }, {
-    catch: error => {
+    catch(error) {
       IO.warn('Test timing report unavailable:', error)
       return undefined
     },
@@ -39,8 +43,27 @@ async function prepareTestReport(): Promise<string | undefined> {
 
 /** slowTestWarnings formats yellow warnings for executed Bun JUnit cases taking more than 75 milliseconds. */
 export function slowTestWarnings(report: string): string[] {
+  const slow = readTestCases(report).filter(isSlowTest).sort((left, right) => right.seconds - left.seconds)
+  if (slow.length === 0) {
+    return []
+  }
+  return [
+    yellow('Slow tests (>75 ms):'),
+    ...slow.map(test =>
+      yellow(
+        `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
+          test.file ? ' (' + test.file + ')' : ''
+        }`,
+      )
+    ),
+  ]
+}
+
+type TimedTest = { name: string; suite?: string; file?: string; seconds: number; skipped: boolean }
+
+function readTestCases(report: string): TimedTest[] {
   const suites: Record<string, string>[] = []
-  const cases: { name: string; suite?: string; file?: string; seconds: number; skipped: boolean }[] = []
+  const cases: TimedTest[] = []
   let current: (typeof cases)[number] | undefined
   // Match whole XML tokens, including quoted > characters; diagnostic CDATA and comments stay opaque.
   const tokens = report.matchAll(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<(?:"[^"]*"|'[^']*'|[^'">])*>/g)
@@ -64,15 +87,7 @@ export function slowTestWarnings(report: string): string[] {
         }
         continue
       }
-      const attributes = xmlAttributes(token)
-      const suite = suites[suites.length - 1]
-      current = {
-        name: attributes.name ?? '<unnamed>',
-        suite: attributes.classname || suite?.name,
-        file: attributes.file || suite?.file,
-        seconds: Number(attributes.time),
-        skipped: false,
-      }
+      current = timedTest(token, suites[suites.length - 1])
       if (token.endsWith('/>')) {
         cases.push(current)
         current = undefined
@@ -81,20 +96,18 @@ export function slowTestWarnings(report: string): string[] {
       current.skipped = true
     }
   }
-  const slow = cases.filter(isSlowTest).sort((left, right) => right.seconds - left.seconds)
-  if (slow.length === 0) {
-    return []
+  return cases
+}
+
+function timedTest(token: string, suite: Record<string, string> | undefined): TimedTest {
+  const attributes = xmlAttributes(token)
+  return {
+    name: attributes.name ?? '<unnamed>',
+    suite: attributes.classname || suite?.name,
+    file: attributes.file || suite?.file,
+    seconds: Number(attributes.time),
+    skipped: false,
   }
-  return [
-    yellow('Slow tests (>75 ms):'),
-    ...slow.map(test =>
-      yellow(
-        `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
-          test.file ? ' (' + test.file + ')' : ''
-        }`,
-      )
-    ),
-  ]
 }
 
 function isSlowTest(test: { seconds: number; skipped: boolean }): boolean {

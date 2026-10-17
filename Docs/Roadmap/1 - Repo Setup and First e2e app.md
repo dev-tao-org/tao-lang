@@ -119,7 +119,14 @@ a safe fingerprint. Secrets uses the new root encrypted store and approved age d
 Enclave setup and store-key wrapping. No real secret decryption, identity setup or Docker lifecycle was exercised.
 `agent-config`, `my-branch` and `my-sync` still use the separate `runLegacyDev` bridge.
 Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
-Current `./agent verify`: 54 tests, 292 assertions; `.artifacts/logs/agent/2026-10-17T20-13-03.250Z-48223.log`.
+Current `./agent verify`: 56 tests, 306 assertions; `.artifacts/logs/agent/2026-10-17T20-24-53.242Z-56033.log`.
+The source gate enforces a 45-line function-body limit and method syntax for object function implementations.
+Longer operations, including doctor diagnostics, are split into named parts. Root guidance groups source rules
+and review guidance separately; reviews run only on explicit developer request.
+`Repo.getWorkspaceRoot()` discovers the current checkout, `getMainWorktreeRoot()` queries Git's primary
+worktree, and `resolvePath(...)` resolves checkout paths. Artifact paths and operations go through
+`Artifacts`, rooted in the current checkout's shared `.artifacts/`. A read-only doctor run confirms both roots
+and writable artifact locations; `.artifacts/logs/agent/2026-10-17T20-24-21.949Z-55426.log`.
 Piped diagnostics retain terminal colors on color-capable terminals while respecting explicit color preferences.
 Doctor preserves GitHub transport severity, credential-helper validation, hook wiring and individual artifact-directory checks.
 Agents run verify at slice completion and fix or fmt before committing.

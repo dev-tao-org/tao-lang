@@ -14,5 +14,9 @@ export async function consume(stream: ByteStream, accept: (chunk: Uint8Array) =>
       }
       accept(value)
     }
-  }, { finally: () => reader.releaseLock() })
+  }, {
+    finally() {
+      return reader.releaseLock()
+    },
+  })
 }

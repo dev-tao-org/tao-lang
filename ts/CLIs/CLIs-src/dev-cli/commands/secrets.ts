@@ -1,6 +1,6 @@
-import { IO, repositoryRoot } from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Terminal } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import {
   type Cipher,
@@ -16,9 +16,9 @@ import {
 } from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
 
-const storePath = Path.join(repositoryRoot, 'secrets/secrets.jsonc')
-const envPath = Path.join(repositoryRoot, '.env.secrets')
-const lockPath = Path.join(repositoryRoot, '.artifacts/cache/secrets/locks/store-lock')
+const storePath = Repo.resolvePath('secrets', 'secrets.jsonc')
+const envPath = Repo.resolvePath('.env.secrets')
+const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
 
 type SecretsEnvironment = {
   cipher: Cipher
@@ -32,7 +32,9 @@ export default registerCommand({
   description: 'Decrypt or manage encrypted repository secrets.',
   arguments: [{ name: 'args', variadic: true }],
   allowUnknownOptions: true,
-  action: async (args: string[]) => await runSecrets(args, liveEnvironment()),
+  async action(args: string[]) {
+    return await runSecrets(args, liveEnvironment())
+  },
 })
 
 async function runSecrets(args: readonly string[], environment: SecretsEnvironment): Promise<void> {
@@ -56,9 +58,9 @@ async function runSecrets(args: readonly string[], environment: SecretsEnvironme
 
 function liveEnvironment(): SecretsEnvironment {
   return {
-    cipher: createAgeCipher(secretsIdentityPath(), repositoryRoot, './dev secrets setup'),
+    cipher: createAgeCipher(secretsIdentityPath(), './dev secrets setup'),
     now: Time.date,
-    promptSecret: async prompt => {
+    async promptSecret(prompt) {
       const value = await Terminal.askSecret(prompt)
       if (value === value.trim()) {
         return value
@@ -138,14 +140,18 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
 }
 
 async function writeGeneratedEnv(contents: string): Promise<void> {
-  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
-  await FileSystem.mkdir(directory, { recursive: true })
-  const temporaryDirectory = await FileSystem.mkdtemp(Path.join(directory, 'env-'))
+  const directory = Artifacts.resolvePath('cache', 'secrets')
+  await Artifacts.mkdir(directory, { recursive: true })
+  const temporaryDirectory = await Artifacts.mkdtemp(Path.join(directory, 'env-'))
   const temporary = Path.join(temporaryDirectory, 'secrets.env')
   await Try(async () => {
-    await FileSystem.writePrivate(temporary, contents)
-    await FileSystem.move(temporary, envPath)
-  }, { finally: () => FileSystem.rm(temporaryDirectory, { recursive: true, force: true }) })
+    await Artifacts.writePrivate(temporary, contents)
+    await Artifacts.move(temporary, envPath)
+  }, {
+    finally() {
+      return Artifacts.rm(temporaryDirectory, { recursive: true, force: true })
+    },
+  })
 }
 
 async function grantStoreKey(original: SecretStore, secretKey: string, cipher: Cipher): Promise<void> {
@@ -223,24 +229,28 @@ async function readStore(): Promise<SecretStore> {
 
 async function writeStore(store: SecretStore): Promise<void> {
   await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
-  const directory = Path.join(repositoryRoot, '.artifacts/cache/secrets')
-  await FileSystem.mkdir(directory, { recursive: true })
+  const directory = Artifacts.resolvePath('cache', 'secrets')
+  await Artifacts.mkdir(directory, { recursive: true })
   const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
   await Try(async () => {
-    await FileSystem.write(temporary, formatSecretStore(store))
-    await FileSystem.move(temporary, storePath)
-  }, { finally: () => FileSystem.rm(temporary, { force: true }) })
+    await Artifacts.write(temporary, formatSecretStore(store))
+    await Artifacts.move(temporary, storePath)
+  }, {
+    finally() {
+      return Artifacts.rm(temporary, { force: true })
+    },
+  })
 }
 
 async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
-  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(lockPath), { recursive: true })
   const deadline = Time.nowMs() + 30_000
   while (true) {
     const acquired = await Try(async () => {
-      await FileSystem.mkdir(lockPath)
+      await Artifacts.mkdir(lockPath)
       return true
     }, {
-      catch: error => {
+      catch(error) {
         if (!isAlreadyExists(error)) {
           Errors.Throw(error)
         }
@@ -248,7 +258,11 @@ async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Val
       },
     })
     if (acquired) {
-      return await Try(work, { finally: () => FileSystem.rm(lockPath, { recursive: true, force: true }) })
+      return await Try(work, {
+        finally() {
+          return Artifacts.rm(lockPath, { recursive: true, force: true })
+        },
+      })
     }
     if (Time.nowMs() >= deadline) {
       Errors.ThrowHostEnvironment('Timed out waiting for the repository secrets lock.')

@@ -1,4 +1,5 @@
 export { tmpdir } from 'node:os'
+import { execFileSync } from 'node:child_process'
 import { isBuiltin } from 'node:module'
 import { arch, release, type } from 'node:os'
 import { Errors } from '../universal/universal'
@@ -91,4 +92,14 @@ export async function capture(
     })
   }
   return stdout.trim()
+}
+
+/** captureSync reads a synchronous tool probe without requiring the Bun runtime. */
+export function captureSync(command: string, options: { variadicArgs?: readonly string[]; cwd?: string } = {}): string {
+  const [executable, ...args] = command.trim().split(/ +/)
+  return execFileSync(executable, [...args, ...options.variadicArgs ?? []], {
+    cwd: options.cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
 }

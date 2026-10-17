@@ -12,7 +12,7 @@ import {
 export default registerCommand({
   name: 'verify',
   description: 'Format, check and test the new TypeScript workspace.',
-  action: async () => {
+  async action() {
     // Parser, app compilation, IDE build and runtime packaging await their new implementations.
     await runSteps(
       () => workspaceFormat('fmt'),

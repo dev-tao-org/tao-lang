@@ -8,7 +8,11 @@ Platform.onUnhandledRejection(fatalError)
 function fatalError(error: unknown): never {
   const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
   const status = commandFailure ? error.result.status : undefined
-  Try(() => printError(error), { catch: () => IO.error('\u001b[31m%s\u001b[0m', errorText(error)) })
+  Try(() => printError(error), {
+    catch() {
+      return IO.error('\u001b[31m%s\u001b[0m', errorText(error))
+    },
+  })
   Platform.exit(isFailureStatus(status) ? status : 1)
 }
 

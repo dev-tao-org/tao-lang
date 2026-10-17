@@ -49,7 +49,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - You review the code for repo conformance;
+  - Run code reviews, including subagent reviews, only when explicitly requested by the developer;
   - After each implementation chunk, run `./agent fmt`.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
   - The developer reviews the code and provides feedback;
@@ -57,23 +57,30 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Conformity and style
 
-- Checked by `check`: TypeScript types, unused API exports and source files, formatter conventions (including two-space indentation), and the source rules below.
-- Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
-- Source rules: multiline JSDoc starts with `/** <NAME> <VERB> ...`, continues with aligned ` *  <text>` lines, and closes after the last text with ` */`; no delimiter-only lines.
-- Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.
-- Source rules: runtime builtin imports and platform globals belong only in `ts/shared/shared-src/os/`, exposed through the `@shared/os` barrel; tests and tooling configs follow the same boundary. Universal `Time` owns standard browser/Node clock and timer APIs.
-- Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
-- Review: organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
-- Review: tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
-- Review: test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
-- Review: raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
-- Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
-- Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
-- Review: invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
-- Review: prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
-- Review: expose static validation through `check`; keep its individual type, comment and style checks internal.
-- Review: the global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
-- Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
+- `check` enforces types, dead exports/files, formatting (two spaces), and source rules.
+- Source rules:
+  - Exported APIs need name-led JSDoc; public shape members may have it, private code may not.
+  - Other comments use `//`.
+  - Multiline JSDoc: `/** <NAME> <VERB> ...`, aligned ` *  <text>`, and text-ending ` */`.
+  - Use `Try`; native exception handling belongs only in `universal/TryCatch.ts`.
+  - Multiline strings use indented `S` templates with aligned closing backticks.
+  - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
+  - Function bodies: at most 45 physical interior lines, including comments and blanks.
+  - Object functions use method syntax: `async encrypt(...) { ... }`.
+- Review:
+  - follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
+  - extract runs of lines whose purpose is hard to parse into functions named for the operation they perform, even when below the line limit.
+  - organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
+  - tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
+  - test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
+  - raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
+  - keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
+  - CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
+  - invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
+  - prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
+  - expose static validation through `check`; keep its individual type, comment and style checks internal.
+  - the global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
+  - common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
 ## Git workflow
 

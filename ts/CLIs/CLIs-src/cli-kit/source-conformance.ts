@@ -23,178 +23,364 @@ export async function checkSourceConformance(root: string): Promise<void> {
   }
 }
 
-/** sourceConformanceIssues checks repository-Path.relative TypeScript source for API docs and exception/comment syntax. */
+/** sourceConformanceIssues checks repository-relative TypeScript source for API docs and source conventions. */
 export function sourceConformanceIssues(filename: string, source: string): string[] {
-  const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
-  const issues: string[] = []
-  const publicDocs = new Set<number>()
-  const publicNamespaces = new Set<TypeScript.Node>()
-  const comments = new Map<number, TypeScript.CommentRange>()
-  const visit = (node: TypeScript.Node): void => {
-    const platformIssue = platformAccessIssue(node, filename)
+  return new SourceConformanceChecker(filename, source).check()
+}
+
+class SourceConformanceChecker {
+  private readonly file: TypeScript.SourceFile
+  private readonly issues: string[] = []
+  private readonly publicDocs = new Set<number>()
+  private readonly publicNamespaces = new Set<TypeScript.Node>()
+  private readonly comments = new Map<number, TypeScript.CommentRange>()
+
+  constructor(private readonly filename: string, private readonly source: string) {
+    this.file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
+  }
+
+  check(): string[] {
+    this.visit(this.file)
+    this.checkComments()
+    return this.issues
+  }
+
+  private visit(node: TypeScript.Node): void {
+    this.checkNode(node)
+    this.collectComments(node)
+    for (const child of node.getChildren(this.file)) {
+      if (!TypeScript.isJSDoc(child)) {
+        this.visit(child)
+      }
+    }
+  }
+
+  private checkNode(node: TypeScript.Node): void {
+    if (isFunctionProperty(node)) {
+      this.report(node.getStart(this.file), 'function implementations in objects must use method syntax')
+    }
+    const platformIssue = platformAccessIssue(node, this.filename)
     if (platformIssue) {
-      report(node.getStart(file), platformIssue)
+      this.report(node.getStart(this.file), platformIssue)
+    }
+    const body = functionBody(node)
+    if (body) {
+      this.checkFunctionBody(body)
     }
     if (TypeScript.isSourceFile(node)) {
-      checkScope(node)
+      this.checkScope(node)
     }
-    if (TypeScript.isModuleBlock(node) && publicNamespaces.has(node.parent)) {
-      checkScope(node, isAmbientNamespace(node))
+    if (TypeScript.isModuleBlock(node) && this.publicNamespaces.has(node.parent)) {
+      this.checkScope(node, isAmbientNamespace(node))
     }
-    if (TypeScript.isTryStatement(node) && !isTryPrimitive(filename)) {
-      report(node.getStart(file), 'use Try from @shared instead of native try/catch/finally')
+    if (TypeScript.isTryStatement(node) && !isTryPrimitive(this.filename)) {
+      this.report(node.getStart(this.file), 'use Try from @shared instead of native try/catch/finally')
     }
-    const stringIssue = multilineStringIssue(node, file)
+    const stringIssue = multilineStringIssue(node, this.file)
     if (stringIssue) {
-      report(node.getStart(file), stringIssue)
-    }
-    // Parser token boundaries keep comment-looking strings, templates and regexes out of the scan.
-    for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
-      comments.set(range.pos, range)
-    }
-    for (const range of TypeScript.getTrailingCommentRanges(source, node.end) ?? []) {
-      comments.set(range.pos, range)
-    }
-    for (const child of node.getChildren(file)) {
-      if (!TypeScript.isJSDoc(child)) {
-        visit(child)
-      }
+      this.report(node.getStart(this.file), stringIssue)
     }
   }
-  const checkScope = (scope: TypeScript.SourceFile | TypeScript.ModuleBlock, implicitExports = false): void => {
+
+  private checkFunctionBody(body: TypeScript.ConciseBody): void {
+    const lines = functionBodyLineCount(body, this.source, this.file)
+    if (lines > 45) {
+      this.report(body.getStart(this.file), 'function bodies must contain at most 45 physical lines; found ' + lines)
+    }
+  }
+
+  private collectComments(node: TypeScript.Node): void {
+    // Parser token boundaries keep comment-looking strings, templates and regexes out of the scan.
+    for (const range of TypeScript.getLeadingCommentRanges(this.source, node.getFullStart()) ?? []) {
+      this.comments.set(range.pos, range)
+    }
+    for (const range of TypeScript.getTrailingCommentRanges(this.source, node.end) ?? []) {
+      this.comments.set(range.pos, range)
+    }
+  }
+
+  private checkScope(scope: TypeScript.SourceFile | TypeScript.ModuleBlock, implicitExports = false): void {
     const groups = new Map<string, ApiGroup>()
     const anonymous: ApiGroup[] = []
-    const add = (name: string | undefined, nodes: TypeScript.Node[], exported: boolean): void => {
-      if (name === undefined) {
-        if (exported) {
-          anonymous.push({ nodes, exported })
-        }
-        return
-      }
-      const group = groups.get(name) ?? { name, nodes: [], exported: false }
-      group.nodes.push(...nodes)
-      group.exported ||= exported
-      groups.set(name, group)
-    }
+    this.collectScopeDeclarations(scope, implicitExports, groups, anonymous)
+    this.collectScopeExports(scope, groups, anonymous)
+    this.checkExportedGroups(groups, anonymous)
+  }
+
+  private collectScopeDeclarations(
+    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
+    implicitExports: boolean,
+    groups: Map<string, ApiGroup>,
+    anonymous: ApiGroup[],
+  ): void {
     for (const statement of scope.statements) {
       if (TypeScript.isVariableStatement(statement)) {
-        for (const declaration of statement.declarationList.declarations) {
-          for (const name of bindingNames(declaration.name)) {
-            add(name.text, [name, declaration, statement], implicitExports || isExported(statement))
-          }
-        }
+        this.addVariableDeclarations(statement, implicitExports, groups, anonymous)
       } else if (isApiDeclaration(statement)) {
-        add(statement.name?.text, [statement], implicitExports || isExported(statement))
+        this.addApiGroup(statement.name?.text, [statement], implicitExports || isExported(statement), groups, anonymous)
       }
     }
+  }
+
+  private addVariableDeclarations(
+    statement: TypeScript.VariableStatement,
+    implicitExports: boolean,
+    groups: Map<string, ApiGroup>,
+    anonymous: ApiGroup[],
+  ): void {
+    for (const declaration of statement.declarationList.declarations) {
+      for (const name of bindingNames(declaration.name)) {
+        this.addApiGroup(
+          name.text,
+          [name, declaration, statement],
+          implicitExports || isExported(statement),
+          groups,
+          anonymous,
+        )
+      }
+    }
+  }
+
+  private addApiGroup(
+    name: string | undefined,
+    nodes: TypeScript.Node[],
+    exported: boolean,
+    groups: Map<string, ApiGroup>,
+    anonymous: ApiGroup[],
+  ): void {
+    if (name === undefined) {
+      if (exported) {
+        anonymous.push({ nodes, exported })
+      }
+      return
+    }
+    const group = groups.get(name) ?? { name, nodes: [], exported: false }
+    group.nodes.push(...nodes)
+    group.exported ||= exported
+    groups.set(name, group)
+  }
+
+  private collectScopeExports(
+    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
+    groups: Map<string, ApiGroup>,
+    anonymous: ApiGroup[],
+  ): void {
     for (const statement of scope.statements) {
       if (TypeScript.isExportDeclaration(statement)) {
-        // Forwarding exports may be documented but do not duplicate the declaration's docs.
-        allowDocs([statement])
-        if (isLocalNamedExport(statement)) {
-          for (const specifier of statement.exportClause.elements) {
-            const group = groups.get(specifier.propertyName?.text ?? specifier.name.text)
-            if (group) {
-              group.exported = true
-            }
-          }
-        }
+        this.collectForwardingExport(statement, groups)
       } else if (TypeScript.isExportAssignment(statement)) {
-        const group = TypeScript.isIdentifier(statement.expression) ? groups.get(statement.expression.text) : undefined
-        if (group) {
-          group.exported = true
-          group.nodes.push(statement)
-        } else {
-          anonymous.push({ nodes: [statement], exported: true })
-        }
+        this.collectDefaultExport(statement, groups, anonymous)
       }
     }
-    for (const group of [...groups.values(), ...anonymous]) {
-      if (!group.exported) {
-        continue
-      }
-      checkDocs(group)
-      for (const node of group.nodes) {
-        if (TypeScript.isModuleDeclaration(node)) {
-          let namespace = node
-          while (true) {
-            publicNamespaces.add(namespace)
-            if (!namespace.body || !TypeScript.isModuleDeclaration(namespace.body)) {
-              break
-            }
-            namespace = namespace.body
-          }
-        } else {
-          allowShapeDocs(node)
+  }
+
+  private collectForwardingExport(statement: TypeScript.ExportDeclaration, groups: Map<string, ApiGroup>): void {
+    // Forwarding exports may be documented but do not duplicate the declaration's docs.
+    this.allowDocs([statement])
+    if (isLocalNamedExport(statement)) {
+      for (const specifier of statement.exportClause.elements) {
+        const group = groups.get(specifier.propertyName?.text ?? specifier.name.text)
+        if (group) {
+          group.exported = true
         }
       }
     }
   }
-  const checkDocs = (group: ApiGroup): void => {
-    const valid = allowDocs(group.nodes).some(range =>
-      hasDescription(normalizeDoc(source.slice(range.pos + 3, range.end - 2)), group.name)
+
+  private collectDefaultExport(
+    statement: TypeScript.ExportAssignment,
+    groups: Map<string, ApiGroup>,
+    anonymous: ApiGroup[],
+  ): void {
+    const group = TypeScript.isIdentifier(statement.expression) ? groups.get(statement.expression.text) : undefined
+    if (group) {
+      group.exported = true
+      group.nodes.push(statement)
+    } else {
+      anonymous.push({ nodes: [statement], exported: true })
+    }
+  }
+
+  private checkExportedGroups(groups: Map<string, ApiGroup>, anonymous: ApiGroup[]): void {
+    for (const group of [...groups.values(), ...anonymous]) {
+      if (group.exported) {
+        this.checkExportedGroup(group)
+      }
+    }
+  }
+
+  private checkExportedGroup(group: ApiGroup): void {
+    this.checkDocs(group)
+    for (const node of group.nodes) {
+      if (TypeScript.isModuleDeclaration(node)) {
+        this.allowPublicNamespace(node)
+      } else {
+        this.allowShapeDocs(node)
+      }
+    }
+  }
+
+  private allowPublicNamespace(node: TypeScript.ModuleDeclaration): void {
+    let namespace = node
+    while (true) {
+      this.publicNamespaces.add(namespace)
+      if (!namespace.body || !TypeScript.isModuleDeclaration(namespace.body)) {
+        break
+      }
+      namespace = namespace.body
+    }
+  }
+
+  private checkDocs(group: ApiGroup): void {
+    const valid = this.allowDocs(group.nodes).some(range =>
+      hasDescription(normalizeDoc(this.source.slice(range.pos + 3, range.end - 2)), group.name)
     )
     if (!valid) {
-      report(
-        group.nodes[0].getStart(file),
+      this.report(
+        group.nodes[0].getStart(this.file),
         'exported API ' + (group.name ?? '<default>')
           + ' needs JSDoc beginning with its name and a description',
       )
     }
   }
-  const allowShapeDocs = (node: TypeScript.Node): void => {
+
+  private allowShapeDocs(node: TypeScript.Node): void {
     if (isPrivateApiMember(node) || isImplementationNode(node)) {
       return
     }
-    allowDocs([node])
-    if (isApiMember(node)) {
-      // Inline member docs are trailing trivia after the preceding brace or separator.
-      for (const range of TypeScript.getTrailingCommentRanges(source, node.getFullStart()) ?? []) {
-        if (range.end <= node.getStart(file) && source.startsWith('/**', range.pos)) {
-          publicDocs.add(range.pos)
-        }
+    this.allowDocs([node])
+    this.allowInlineMemberDocs(node)
+    TypeScript.forEachChild(node, child => this.allowShapeDocs(child))
+  }
+
+  private allowInlineMemberDocs(node: TypeScript.Node): void {
+    if (!isApiMember(node)) {
+      return
+    }
+    // Inline member docs are trailing trivia after the preceding brace or separator.
+    for (const range of TypeScript.getTrailingCommentRanges(this.source, node.getFullStart()) ?? []) {
+      if (range.end <= node.getStart(this.file) && this.source.startsWith('/**', range.pos)) {
+        this.publicDocs.add(range.pos)
       }
     }
-    TypeScript.forEachChild(node, allowShapeDocs)
   }
-  const report = (position: number, message: string): void => {
-    issues.push(filename + ':' + (file.getLineAndCharacterOfPosition(position).line + 1) + ': ' + message)
-  }
-  const allowDocs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
-    const ranges = docs(nodes)
-    for (const range of ranges) {
-      publicDocs.add(range.pos)
+
+  private checkComments(): void {
+    for (const range of this.comments.values()) {
+      this.checkComment(range)
     }
-    return ranges
   }
-  const docs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
-    const ranges = new Map<number, TypeScript.CommentRange>()
-    for (const node of nodes) {
-      for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
-        if (source.startsWith('/**', range.pos)) {
-          ranges.set(range.pos, range)
-        }
-      }
-    }
-    return [...ranges.values()]
-  }
-  visit(file)
-  for (const range of comments.values()) {
+
+  private checkComment(range: TypeScript.CommentRange): void {
     if (range.kind !== TypeScript.SyntaxKind.MultiLineCommentTrivia) {
-      continue
+      return
     }
-    if (!source.startsWith('/**', range.pos)) {
-      report(range.pos, 'use // lines instead of non-JSDoc block comments')
-    } else if (!publicDocs.has(range.pos)) {
-      report(range.pos, 'private JSDoc is not allowed; use // lines')
-    } else if (!hasValidDocLayout(source, range)) {
-      report(
+    if (!this.source.startsWith('/**', range.pos)) {
+      this.report(range.pos, 'use // lines instead of non-JSDoc block comments')
+    } else if (!this.publicDocs.has(range.pos)) {
+      this.report(range.pos, 'private JSDoc is not allowed; use // lines')
+    } else if (!hasValidDocLayout(this.source, range)) {
+      this.report(
         range.pos,
         'multiline JSDoc needs opening-line text, aligned *  continuation lines, and */ after the last text',
       )
     }
   }
-  return issues
+
+  private report(position: number, message: string): void {
+    this.issues.push(
+      this.filename + ':' + (this.file.getLineAndCharacterOfPosition(position).line + 1) + ': ' + message,
+    )
+  }
+
+  private allowDocs(nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
+    const ranges = docs(this.source, nodes)
+    for (const range of ranges) {
+      this.publicDocs.add(range.pos)
+    }
+    return ranges
+  }
+}
+
+function isFunctionProperty(node: TypeScript.Node): boolean {
+  if (!TypeScript.isPropertyAssignment(node)) {
+    return false
+  }
+  let value = node.initializer
+  while (isExpressionWrapper(value)) {
+    value = value.expression
+  }
+  return TypeScript.isArrowFunction(value) || TypeScript.isFunctionExpression(value)
+}
+
+function isExpressionWrapper(node: TypeScript.Expression): node is
+  | TypeScript.ParenthesizedExpression
+  | TypeScript.AsExpression
+  | TypeScript.SatisfiesExpression
+  | TypeScript.NonNullExpression
+{
+  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
+    || TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
+}
+
+function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
+  const ranges = new Map<number, TypeScript.CommentRange>()
+  for (const node of nodes) {
+    for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
+      if (source.startsWith('/**', range.pos)) {
+        ranges.set(range.pos, range)
+      }
+    }
+  }
+  return [...ranges.values()]
+}
+
+function functionBodyLineCount(
+  body: TypeScript.ConciseBody,
+  source: string,
+  file: TypeScript.SourceFile,
+): number {
+  const first = file.getLineAndCharacterOfPosition(body.getStart(file)).line
+  const last = file.getLineAndCharacterOfPosition(body.getEnd() - 1).line
+  const lineStarts = file.getLineStarts()
+  let count = 0
+  for (let index = first; index <= last; index++) {
+    if (TypeScript.isBlock(body) && isBraceOnlyLine(body, source, lineStarts, index, first, last)) {
+      continue
+    }
+    count++
+  }
+  return count
+}
+
+function functionBody(node: TypeScript.Node): TypeScript.ConciseBody | undefined {
+  if (
+    TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
+    || TypeScript.isArrowFunction(node) || TypeScript.isMethodDeclaration(node)
+    || TypeScript.isConstructorDeclaration(node) || TypeScript.isGetAccessorDeclaration(node)
+    || TypeScript.isSetAccessorDeclaration(node)
+  ) {
+    return node.body
+  }
+}
+
+function isBraceOnlyLine(
+  body: TypeScript.Block,
+  source: string,
+  lineStarts: readonly number[],
+  index: number,
+  first: number,
+  last: number,
+): boolean {
+  if (index === first && index === last) {
+    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
+  }
+  const lineStart = lineStarts[index]
+  const lineEnd = lineStarts[index + 1] ?? source.length
+  if (index === first) {
+    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
+  }
+  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
 }
 
 function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {

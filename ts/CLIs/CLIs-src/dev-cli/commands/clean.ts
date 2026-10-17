@@ -1,12 +1,12 @@
-import { FileSystem } from '@shared/os'
-import { registerCommand, repositoryRoot } from './_command-runner'
+import { FileSystem, Repo } from '@shared/os'
+import { registerCommand } from './_command-runner'
 
 /** cleanCommand removes dependencies owned by the new workspace. */
 export default registerCommand({
   name: 'clean',
   description: 'Remove the new workspace dependencies.',
-  action: async () => {
+  async action() {
     // New parser/app/IDE/native build trees do not exist yet. Preserve shared .artifacts ownership.
-    await FileSystem.rm(`${repositoryRoot}/ts/node_modules`, { recursive: true, force: true })
+    await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
   },
 })

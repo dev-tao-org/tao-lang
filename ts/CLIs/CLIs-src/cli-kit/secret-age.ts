@@ -1,60 +1,72 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
 import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
 
 /** createAgeCipher adapts age to the secrets flow while keeping private keys out of argv and files. */
-export function createAgeCipher(identityPath: string, artifactDirectory: string, setupCommand: string): Cipher {
+export function createAgeCipher(identityPath: string, setupCommand: string): Cipher {
   return {
-    encrypt: async (plaintext, recipients) => {
-      if (recipients.length === 0) {
-        Errors.ThrowUserInput('The secret store has no recipients.')
-      }
-      const result = await run('age --armor', {
-        variadicArgs: recipients.flatMap(recipient => ['--recipient', recipient]),
-        stdin: plaintext,
-      })
-      return result
+    encrypt,
+    decrypt(armor) {
+      return decryptStoreKey(identityPath, setupCommand, armor)
     },
-    decrypt: async armor => {
-      if (!FileSystem.existsSync(identityPath)) {
-        Errors.ThrowHostEnvironment(`No secrets identity at ${identityPath}. Run ${setupCommand} on this machine.`)
-      }
-      IO.stderr(
-        'Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.\n',
-      )
-      const result = await run('age --decrypt --identity', { variadicArgs: [identityPath], stdin: armor })
-      return result
-    },
-    decryptWithKey: async (armor, secretKey) => {
-      const directory = Path.join(artifactDirectory, '.artifacts/cache/secrets')
-      await FileSystem.mkdir(directory, { recursive: true })
-      const temporary = await FileSystem.mkdtemp(Path.join(directory, 'ciphertext-'))
-      const path = Path.join(temporary, 'value.age')
-      return await Try(async () => {
-        await FileSystem.write(path, armor)
-        const result = await run('age --decrypt --identity -', { variadicArgs: [path], stdin: secretKey })
-        return result
-      }, { finally: () => FileSystem.rm(temporary, { force: true, recursive: true }) })
-    },
-    generateKey: async () => {
-      const result = await run('age-keygen')
-      const recipient = /^#\s*public key:\s*(age1\S+)\s*$/m.exec(result)?.[1]
-      const secretKey = /^AGE-SECRET-KEY-1\S+$/m.exec(result)?.[0]
-      if (recipient === undefined || secretKey === undefined) {
-        Errors.ThrowHostEnvironment('age-keygen did not return a valid key pair.')
-      }
-      return { recipient, secretKey }
-    },
-    recipientOfKey: async secretKey => {
-      const result = await run('age-keygen -y', { stdin: secretKey })
-      const recipient = result.trim()
-      if (!recipient.startsWith('age1')) {
-        Errors.ThrowHostEnvironment('age-keygen did not return a valid recipient.')
-      }
-      return recipient
-    },
+    decryptWithKey,
+    generateKey,
+    recipientOfKey,
   }
+}
+
+async function encrypt(plaintext: string, recipients: readonly string[]): Promise<string> {
+  if (recipients.length === 0) {
+    Errors.ThrowUserInput('The secret store has no recipients.')
+  }
+  return run('age --armor', {
+    variadicArgs: recipients.flatMap(recipient => ['--recipient', recipient]),
+    stdin: plaintext,
+  })
+}
+
+async function decryptStoreKey(identityPath: string, setupCommand: string, armor: string): Promise<string> {
+  if (!FileSystem.existsSync(identityPath)) {
+    Errors.ThrowHostEnvironment(
+      'No secrets identity at ' + identityPath + '. Run ' + setupCommand + ' on this machine.',
+    )
+  }
+  IO.stderr('Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.\n')
+  return run('age --decrypt --identity', { variadicArgs: [identityPath], stdin: armor })
+}
+
+async function decryptWithKey(armor: string, secretKey: string): Promise<string> {
+  const directory = Artifacts.resolvePath('cache', 'secrets')
+  await Artifacts.mkdir(directory, { recursive: true })
+  const temporary = await Artifacts.mkdtemp(Path.join(directory, 'ciphertext-'))
+  const path = Path.join(temporary, 'value.age')
+  return Try(async () => {
+    await Artifacts.write(path, armor)
+    return run('age --decrypt --identity -', { variadicArgs: [path], stdin: secretKey })
+  }, {
+    finally() {
+      return Artifacts.rm(temporary, { force: true, recursive: true })
+    },
+  })
+}
+
+async function generateKey(): Promise<{ recipient: string; secretKey: string }> {
+  const result = await run('age-keygen')
+  const recipient = /^#\s*public key:\s*(age1\S+)\s*$/m.exec(result)?.[1]
+  const secretKey = /^AGE-SECRET-KEY-1\S+$/m.exec(result)?.[0]
+  if (recipient === undefined || secretKey === undefined) {
+    Errors.ThrowHostEnvironment('age-keygen did not return a valid key pair.')
+  }
+  return { recipient, secretKey }
+}
+
+async function recipientOfKey(secretKey: string): Promise<string> {
+  const recipient = (await run('age-keygen -y', { stdin: secretKey })).trim()
+  if (!recipient.startsWith('age1')) {
+    Errors.ThrowHostEnvironment('age-keygen did not return a valid recipient.')
+  }
+  return recipient
 }
 
 async function run(

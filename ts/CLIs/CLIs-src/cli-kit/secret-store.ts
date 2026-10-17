@@ -141,7 +141,9 @@ export function withSecret(
 /** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
 export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): Promise<string> {
   const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join('\n')), {
-    catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
+    catch() {
+      return Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.')
+    },
   })).trim()
   if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
     Errors.ThrowUserInput(
@@ -176,8 +178,11 @@ export async function decryptSecretValues(
   const values = new Map<string, string>()
   for (const name of names) {
     const value = await Try(() => cipher.decryptWithKey(store.secrets[name]!.value.join('\n'), secretKey), {
-      catch: () =>
-        Errors.ThrowUserInput(`${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`),
+      catch() {
+        return Errors.ThrowUserInput(
+          `${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`,
+        )
+      },
     })
     values.set(name, value)
   }

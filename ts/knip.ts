@@ -1,6 +1,6 @@
 import type { KnipConfig } from 'knip'
 import * as TypeScript from 'typescript'
-import { FileSystem, Path } from './shared/shared-src/os'
+import { FileSystem, Path, Repo } from './shared/shared-src/os'
 
 const cliEntries = [
   'CLIs/CLIs-src/agent-cli/agent-cli.ts',
@@ -20,7 +20,7 @@ const knipConfiguration: KnipConfig = {
 }
 
 function commandEntries(registry: string): string[] {
-  const source = FileSystem.readFileSync(Path.resolve(import.meta.dirname, registry), 'utf8')
+  const source = FileSystem.readFileSync(Repo.resolvePath('ts', registry), 'utf8')
   const file = TypeScript.createSourceFile(registry, source, TypeScript.ScriptTarget.Latest)
   return file.statements.flatMap(statement => {
     if (!TypeScript.isImportDeclaration(statement) || statement.importClause) {

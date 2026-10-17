@@ -14,8 +14,12 @@ Test.describe('Switch.on', () => {
       Switch.on(message, 'type', {
         // The `text` branch narrows to `{ type: 'text'; value: string }`, so `.toUpperCase()` type-checks
         // only because Switch.on passed the whole narrowed item rather than just `message.type`.
-        text: item => item.value.toUpperCase(),
-        count: item => item.value.toFixed(1),
+        text(item) {
+          return item.value.toUpperCase()
+        },
+        count(item) {
+          return item.value.toFixed(1)
+        },
       })
 
     Test.expect(describe(text)).toBe('HELLO')

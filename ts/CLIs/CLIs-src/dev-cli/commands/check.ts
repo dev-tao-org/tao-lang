@@ -11,7 +11,7 @@ import {
 export default registerCommand({
   name: 'check',
   description: 'Check new workspace types, source conformance, dead exports and formatting without running tests.',
-  action: async () => {
+  async action() {
     // Parser/app/IDE/runtime checks await their new implementations.
     await runSteps(
       () => workspaceTypes(),

@@ -8,7 +8,7 @@ export default registerCommand({
   description: 'Diagnose this checkout; accepts --json or --fingerprint.',
   arguments: [{ name: 'args', variadic: true }],
   allowUnknownOptions: true,
-  action: async (args: string[]) => {
+  async action(args: string[]) {
     if (args.some(arg => arg !== '--json' && arg !== '--fingerprint')) {
       Errors.ThrowUserInput('Usage: doctor [--json] [--fingerprint]')
     }

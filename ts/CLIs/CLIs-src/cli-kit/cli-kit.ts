@@ -1,8 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { FileSystem, Path, Platform, Streams, Terminal, Text } from '@shared/os'
-
-/** repositoryRoot locates the active checkout independently of the caller's directory. */
-export const repositoryRoot = Path.fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\/$/, '')
+import { Artifacts, FileSystem, Path, Platform, Repo, Streams, Terminal, Text } from '@shared/os'
 
 type OutputPipe = (text: string | Uint8Array) => void
 type IOConfiguration = {
@@ -45,82 +42,95 @@ function configureOutput(configuration: IOConfiguration): void {
     : terminalStderr
   captureCommands = stdoutPipe !== terminalStdout || stderrPipe !== terminalStderr
   mirrorCommandStderr = configuration.stderr === 'both'
-  agentLog = configuration.logFile ? Path.resolve(repositoryRoot, configuration.logFile) : undefined
+  agentLog = configuration.logFile ? Artifacts.resolvePath(Repo.resolvePath(configuration.logFile)) : undefined
   logDirectory = configuration.logDirectory ?? 'dev'
   logUnavailable = false
   logAnnounced = false
+}
+
+type Command = string | readonly string[]
+type RunOptions = {
+  variadicArgs?: readonly string[]
+  cwd?: string
+  stdin?: FileSystem.File
+  stdout?: 'inherit' | 'ignore' | 'log'
+  stderr?: 'inherit' | 'ignore'
 }
 
 /** runCommand runs a space-separated command and throws on failure.
  *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
  *  variadicArgs appends arguments unchanged after the command's own arguments.
  *  Agent commands and stdout: 'log' write stdout to files and mirror stderr even for ignored probes. */
-export async function runCommand(command: string | readonly string[], options: {
-  variadicArgs?: readonly string[]
-  cwd?: string
-  stdin?: FileSystem.File
-  stdout?: 'inherit' | 'ignore' | 'log'
-  stderr?: 'inherit' | 'ignore'
-} = {}): Promise<void> {
-  const args = typeof command === 'string' ? command.trim().split(/ +/) : [...command]
+export async function runCommand(command: Command, options: RunOptions = {}): Promise<void> {
+  const args = commandArguments(command, options)
   if (!args[0]) {
     Errors.ThrowUserInput('A command is required.')
   }
-  args.push(...options.variadicArgs ?? [])
   const label = args.join(' ')
   const output = options.stdout === 'log' ? loggedOutput : IO
   output.info(`RUN CMD: ${label}`)
   const started = Time.nowMs()
-  await Try(async () => {
-    const logging = captureCommands || options.stdout === 'log'
-    const spawnOptions = { cwd: options.cwd, stdin: options.stdin ?? 'inherit' as const }
-    let status: number
-    let signal: string | null
-    if (logging) {
-      const child = Platform.spawn(command, {
-        variadicArgs: options.variadicArgs,
-        ...spawnOptions,
-        stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
-        stderr: 'pipe',
-      })
-      const [completed] = await Promise.all([
-        child.exited,
-        forwardOutput(
-          child.stderr,
-          options.stdout === 'log'
-            ? loggedStderr
-            : options.stderr === 'ignore' && !mirrorCommandStderr
-            ? () => {}
-            : stderrPipe,
-        ),
-        child.stdout ? forwardOutput(child.stdout, options.stdout === 'log' ? loggedStdout : stdoutPipe) : undefined,
-      ])
-      status = completed
-      signal = child.signalCode
-    } else {
-      const child = Platform.spawn(command, {
-        variadicArgs: options.variadicArgs,
-        ...spawnOptions,
-        stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
-        stderr: options.stderr ?? 'inherit',
-      })
-      status = await child.exited
-      signal = child.signalCode
-    }
-    if (status !== 0) {
-      Errors.ThrowCommandExecution({
-        command: args[0],
-        args: args.slice(1),
-        cwd: options.cwd,
-        status,
-        signal,
-        stdout: '',
-        stderr: '',
-      })
-    }
-  }, {
-    finally: () => output.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
+  await Try(() =>
+    captureCommands || options.stdout === 'log'
+      ? runLoggedCommand(command, options)
+      : runInheritedCommand(command, options), {
+    finally() {
+      return output.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
+    },
   })
+}
+
+async function runLoggedCommand(command: Command, options: RunOptions): Promise<void> {
+  const child = Platform.spawn(command, {
+    variadicArgs: options.variadicArgs,
+    cwd: options.cwd,
+    stdin: options.stdin ?? 'inherit',
+    stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
+    stderr: 'pipe',
+  })
+  const [status] = await Promise.all([
+    child.exited,
+    forwardOutput(child.stderr, commandStderr(options)),
+    child.stdout ? forwardOutput(child.stdout, options.stdout === 'log' ? loggedStdout : stdoutPipe) : undefined,
+  ])
+  requireCommandSuccess(command, options, status, child.signalCode)
+}
+
+function commandStderr(options: RunOptions): OutputPipe {
+  if (options.stdout === 'log') {
+    return loggedStderr
+  }
+  return options.stderr === 'ignore' && !mirrorCommandStderr ? () => {} : stderrPipe
+}
+
+async function runInheritedCommand(command: Command, options: RunOptions): Promise<void> {
+  const child = Platform.spawn(command, {
+    variadicArgs: options.variadicArgs,
+    cwd: options.cwd,
+    stdin: options.stdin ?? 'inherit',
+    stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
+    stderr: options.stderr ?? 'inherit',
+  })
+  requireCommandSuccess(command, options, await child.exited, child.signalCode)
+}
+
+function requireCommandSuccess(command: Command, options: RunOptions, status: number, signal: string | null): void {
+  if (status !== 0) {
+    const args = commandArguments(command, options)
+    Errors.ThrowCommandExecution({
+      command: args[0],
+      args: args.slice(1),
+      cwd: options.cwd,
+      status,
+      signal,
+      stdout: '',
+      stderr: '',
+    })
+  }
+}
+
+function commandArguments(command: Command, options: RunOptions): string[] {
+  return [...typeof command === 'string' ? command.trim().split(/ +/) : command, ...options.variadicArgs ?? []]
 }
 
 function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
@@ -132,7 +142,9 @@ function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
     log: output,
     warn: error,
     error,
-    stderr: (text: string | Uint8Array): void => errorPipe(text),
+    stderr(text: string | Uint8Array): void {
+      return errorPipe(text)
+    },
   }
 }
 
@@ -164,22 +176,24 @@ function logToFile(text: string | Uint8Array): boolean {
     return false
   }
   return Try(() => {
-    agentLog ??= `${repositoryRoot}/.artifacts/logs/${logDirectory}/${
-      Time.date().toISOString().replaceAll(':', '-')
-    }-${Platform.pid}.log`
+    agentLog ??= Artifacts.resolvePath(
+      'logs',
+      logDirectory,
+      `${Time.date().toISOString().replaceAll(':', '-')}-${Platform.pid}.log`,
+    )
     if (!logAnnounced) {
-      FileSystem.mkdirSync(Path.dirname(agentLog), { recursive: true })
+      Artifacts.mkdirSync(Path.dirname(agentLog), { recursive: true })
       const announcement = `Logs: ${
-        Path.relative(FileSystem.realpathSync(repositoryRoot), FileSystem.realpathSync(Path.dirname(agentLog))) || '.'
+        Path.relative(Repo.getWorkspaceRoot(), Artifacts.realpathSync(Path.dirname(agentLog))) || '.'
       }/\n`
-      FileSystem.appendFileSync(agentLog, announcement)
+      Artifacts.appendFileSync(agentLog, announcement)
       Terminal.stderr.write(announcement)
       logAnnounced = true
     }
-    FileSystem.appendFileSync(agentLog, text)
+    Artifacts.appendFileSync(agentLog, text)
     return true
   }, {
-    catch: error => {
+    catch(error) {
       logUnavailable = true
       Terminal.stderr.write(`Command log unavailable: ${Text.format(error)}\n`)
       return false

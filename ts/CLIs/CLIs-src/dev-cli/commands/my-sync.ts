@@ -4,7 +4,7 @@ import { registerCommand, runLegacyDev } from './_command-runner'
 export default registerCommand({
   name: 'my-sync',
   description: 'Synchronize main and merge it into this development branch.',
-  action: async () => {
+  async action() {
     await runLegacyDev('my-sync')
   },
 })
