@@ -39,6 +39,8 @@ Describe('shared developer and agent commands', () => {
         ])
         Expect(formatted).toBe(0)
         Expect(await Bun.file(source).text()).toBe("export const value: number = 'wrong'\n")
+        const kit = join(root, 'ts/CLIs/CLIs-src/cli-kit/cli-kit.ts')
+        await Bun.write(kit, `${await Bun.file(kit).text()}\nconst checkedByTsc${entry}: number = 'wrong'\n`)
         const check = Bun.spawn([join(root, entry), 'check'], {
           cwd: root,
           stdout: 'pipe',
@@ -51,6 +53,7 @@ Describe('shared developer and agent commands', () => {
         ])
         Expect(checked).not.toBe(0)
         Expect(stdout + stderr).toContain('TS2322')
+        Expect(stdout + stderr).toContain('cli-kit/cli-kit.ts')
       }
     }, { finally: () => rm(root, { recursive: true, force: true }) })
   })
@@ -85,12 +88,12 @@ Describe('developer setup command', () => {
         stdout: 'pipe',
         stderr: 'pipe',
       })
-      const [exitCode, stdout, stderr] = await Promise.all([
+      const [status, stdout, stderr] = await Promise.all([
         child.exited,
         new Response(child.stdout).text(),
         new Response(child.stderr).text(),
       ])
-      if (exitCode !== 0) {
+      if (status !== 0) {
         Errors.ThrowUnexpected(`Setup failed: ${stdout}\n${stderr}`)
       }
       Expect(await Bun.file(join(root, 'ts/node_modules/setup-fixture/package.json')).exists()).toBe(true)
@@ -171,16 +174,16 @@ Describe('root test command', () => {
           stdout: 'pipe',
           stderr: 'pipe',
         })
-        const [exitCode, stdout, stderr] = await Promise.all([
+        const [status, stdout, stderr] = await Promise.all([
           child.exited,
           new Response(child.stdout).text(),
           new Response(child.stderr).text(),
         ])
 
-        if (exitCode !== (succeeds ? 0 : 1)) {
-          Errors.ThrowUnexpected(`Unexpected CLI exit ${exitCode}:\n${stdout}\n${stderr}`)
+        if (status !== (succeeds ? 0 : 1)) {
+          Errors.ThrowUnexpected(`Unexpected CLI exit ${status}:\n${stdout}\n${stderr}`)
         }
-        Expect(exitCode).toBe(succeeds ? 0 : 1)
+        Expect(status).toBe(succeeds ? 0 : 1)
         Expect(stdout + stderr).toContain('CLI test fixture')
         Expect(stdout + stderr).toContain(succeeds ? '1 pass' : 'Expected: 2')
       }, { finally: () => rm(root, { recursive: true, force: true }) })

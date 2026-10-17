@@ -8,6 +8,6 @@ export default registerCommand({
   allowUnknownOptions: true,
   action: async (args: string[]) => {
     // The encrypted store and legacy app environment are retained until new apps need secrets.
-    return await runLegacyRecipe(['secrets', ...args])
+    await runLegacyRecipe(['secrets', ...args])
   },
 })

@@ -74,19 +74,26 @@ export function setAgentIO(): void {
 }
 
 async function forwardStderr(stream: ReadableStream<Uint8Array>): Promise<void> {
-  for await (const chunk of stream) {
-    IO.stderr(chunk)
-  }
+  const reader = stream.getReader()
+  await Try(async () => {
+    while (true) {
+      const result = await reader.read()
+      if (result.done) {
+        return
+      }
+      IO.stderr(result.value)
+    }
+  }, { finally: () => reader.releaseLock() })
 }
 
-/** runCommand runs argv or a space-separated command and returns its exit code.
+/** runCommand runs argv or a space-separated command and throws on failure.
  Strings have no shell quoting or expansion; use an array to preserve spaces inside arguments.
  Agent stderr is always mirrored, even when a developer probe requests stderr: 'ignore'. */
 export async function runCommand(command: string | readonly string[], options: {
   cwd?: string
   stdout?: 'inherit' | 'ignore'
   stderr?: 'inherit' | 'ignore'
-} = {}): Promise<number> {
+} = {}): Promise<void> {
   const args = typeof command === 'string' ? command.trim().split(/ +/) : [...command]
   if (!args[0]) {
     Errors.ThrowUserInput('A command is required.')
@@ -94,32 +101,46 @@ export async function runCommand(command: string | readonly string[], options: {
   const label = args.join(' ')
   IO.info(`RUN: ${label}`)
   const started = Time.nowMs()
-  return await Try(async () => {
+  await Try(async () => {
     const agent = process.env.TAO_AGENT === '1'
-    const child = Bun.spawn(args, {
-      stdin: 'inherit',
-      stdout: 'inherit',
-      ...options,
-      stderr: agent ? 'pipe' : options.stderr ?? 'inherit',
-    })
-    const [code] = await Promise.all([
-      child.exited,
-      agent ? forwardStderr(child.stderr as ReadableStream<Uint8Array>) : Promise.resolve(),
-    ])
-    return code
+    const spawnOptions = { cwd: options.cwd, stdin: 'inherit' as const, stdout: options.stdout ?? 'inherit' }
+    let status: number
+    let signal: string | null
+    if (agent) {
+      const child = Bun.spawn(args, { ...spawnOptions, stderr: 'pipe' })
+      const [completed] = await Promise.all([child.exited, forwardStderr(child.stderr)])
+      status = completed
+      signal = child.signalCode
+    } else {
+      const child = Bun.spawn(args, { ...spawnOptions, stderr: options.stderr ?? 'inherit' })
+      status = await child.exited
+      signal = child.signalCode
+    }
+    if (status !== 0) {
+      Errors.ThrowCommandExecution({
+        command: args[0],
+        args: args.slice(1),
+        cwd: options.cwd,
+        status,
+        signal,
+        stdout: '',
+        stderr: '',
+      })
+    }
   }, {
-    catch: error => Errors.ThrowHostEnvironment(`Unable to run ${label}: ${Errors.messageOf(error)}`),
+    catch: error => {
+      if (Errors.isTaoError(error)) {
+        Errors.Throw(error)
+      }
+      Errors.ThrowHostEnvironment(`Unable to run ${label}: ${Errors.messageOf(error)}`)
+    },
     finally: () => IO.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
   })
 }
 
-/** runSteps runs workflow stages in order and returns the first failing exit status. */
-export async function runSteps(steps: readonly (() => Promise<number>)[]): Promise<number> {
+/** runSteps awaits variadic workflow stages in order and stops when a stage throws. */
+export async function runSteps(...steps: readonly (() => void | Promise<void>)[]): Promise<void> {
   for (const step of steps) {
-    const exitCode = await step()
-    if (exitCode !== 0) {
-      return exitCode
-    }
+    await step()
   }
-  return 0
 }

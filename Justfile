@@ -32,7 +32,7 @@ secrets *ARGS:
 doctor *ARGS:
     ./dev doctor {{ ARGS }}
 
-# Clean all tao artifacts
+# Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
 clean:
     ./dev clean
@@ -40,7 +40,7 @@ clean:
 # Dev loop
 ##########
 
-# Run tests
+# Run tests in the new TypeScript workspace
 [group('Dev')]
 test target="":
     ./dev test {{ quote(target) }}
@@ -51,22 +51,22 @@ test target="":
 fmt *PATHS:
     ./dev fmt {{ PATHS }}
 
-# Apply every auto-fix, writing to the tree: dprint formatting, Tao source fixes, Justfile formatting, dead imports, etc
+# Apply available new-workspace fixes and shared repository formatting
 [group('Dev')]
 fix:
     ./dev fix
 
-# Check all code, fail fast between checks: canonical source, lint, types, dead imports, etc.
+# Check new-workspace types, exported comments and formatting without running tests
 [group('Dev')]
 check *ARGS:
     ./dev check {{ ARGS }}
 
-# Run the repository lint
+# Check exported function documentation in the new workspace
 [group('Dev')]
 lint:
     ./dev lint
 
-# Run full verification on the repo
+# Format, check and test the new TypeScript workspace
 [group('Dev')]
 verify *ARGS:
     ./dev verify {{ ARGS }}

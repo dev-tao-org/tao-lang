@@ -113,16 +113,16 @@ registerCommand({
     })
   })
 
-  Test('applies returned exit codes and preserves an existing failure after a successful action', async () => {
+  Test('applies structured command failures and preserves an existing failure after a successful action', async () => {
     await withFixture(async (write, run) => {
       await write(
-        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => 23 })`,
+        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 23, signal: null, stdout: '', stderr: '' }) })`,
       )
-      Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: '' })
+      Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: 'Command failed: fixture\n' })
       await write(`
-await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => 29 }).action()
-registerCommand({ name: 'verdict', description: 'Later success.', action: () => 0 })`)
-      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: '' })
+await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 29, signal: null, stdout: '', stderr: '' }) }).action()
+registerCommand({ name: 'verdict', description: 'Later success.', action: () => {} })`)
+      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: 'Command failed: fixture\n' })
     })
   })
 })

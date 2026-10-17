@@ -33,7 +33,8 @@ async function withFixture(
     await Bun.write(join(root, 'old-tao-v1/Justfile'), 'fix:\n    exit 0\n')
     await Bun.write(
       join(root, 'ts/smoke.test.ts'),
-      "import { test, expect } from 'bun:test'\ntest('new workspace', () => expect(1).toBe(1))\n",
+      "import { test, expect } from 'bun:test'\n"
+        + "test('new workspace', async () => { await Bun.write(process.env.TAO_PARITY_TEST_MARKER!, 'ran'); expect(1).toBe(1) })\n",
     )
     for (const [path, name] of [['bin/just', 'just'], ['bin/dprint', 'dprint'], ['old-tao-v1/dev', 'legacy-dev']]) {
       await Bun.write(
@@ -61,6 +62,7 @@ fi
             PATH: `${join(root, 'bin')}:${process.env.PATH}`,
             TAO_PARITY_CALLS: calls,
             TAO_PARITY_FAIL: fail,
+            TAO_PARITY_TEST_MARKER: join(root, 'test-ran'),
           },
           stdout: 'pipe',
           stderr: 'pipe',
@@ -80,21 +82,18 @@ fi
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 }
 
-Describe('legacy command parity', () => {
-  Test('both entrypoints run all fixes and preserve a failing legacy recipe verdict', async () => {
+Describe('root workflow boundaries', () => {
+  Test('both entrypoints fix only the new workspace and preserve formatter failures', async () => {
     await withFixture(async ({ root, run }) => {
       for (const entry of ['dev', 'agent'] as const) {
         const result = await run(entry, ['fix'])
         Expect(result.code).toBe(0)
-        Expect(result.calls).toContain(`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|fix`)
+        Expect(result.calls.some(call => call.includes('/old-tao-v1'))).toBe(false)
         Expect(result.calls.some(call => call.startsWith(`dprint|${root}|fmt|`))).toBe(true)
         Expect(result.calls).toContain(`just|${root}|--fmt|--justfile|${root}/Justfile`)
         const failed = await run(entry, ['fix'], 'fmt')
         Expect(failed.code).toBe(23)
         Expect(failed.calls.some(call => call.endsWith('|fix'))).toBe(false)
-        const legacyFailed = await run(entry, ['fix'], 'fix')
-        Expect(legacyFailed.code).toBe(23)
-        Expect(legacyFailed.calls.at(-1)).toBe(`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|fix`)
       }
     })
   })
@@ -103,7 +102,6 @@ Describe('legacy command parity', () => {
     await withFixture(async ({ root, run }) => {
       for (
         const [args, recipe] of [
-          [['lint'], 'lint'],
           [['doctor', '--json'], 'doctor|--json'],
           [['secrets', 'list'], 'secrets|list'],
           [['start', 'local-instantdb'], 'start-local-instantdb'],
@@ -121,72 +119,101 @@ Describe('legacy command parity', () => {
     })
   })
 
-  Test('clean removes only new workspace dependencies after the guarded legacy plan succeeds', async () => {
+  Test('clean removes only new workspace dependencies and preserves legacy dependencies', async () => {
     await withFixture(async ({ root, run }) => {
       const dependencies = join(root, 'ts/node_modules')
       const target = await realpath(dependencies)
-      const failed = await run('agent', ['clean'], 'clean')
-      Expect(failed.code).toBe(23)
-      Expect((await lstat(dependencies)).isSymbolicLink()).toBe(true)
+      const legacyDependency = join(root, 'old-tao-v1/node_modules/keep.txt')
+      await Bun.write(legacyDependency, 'legacy dependency')
       const cleaned = await run('agent', ['clean'])
       Expect(cleaned.code).toBe(0)
-      Expect(cleaned.calls).toEqual([`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|clean`])
+      Expect(cleaned.calls).toEqual([])
       Expect(await Bun.file(join(dependencies, 'commander/package.json')).exists()).toBe(false)
       Expect((await lstat(target)).isDirectory()).toBe(true)
+      Expect(await Bun.file(legacyDependency).text()).toBe('legacy dependency')
     })
   })
 
-  Test('checks and verification include new workspace and complete legacy gates, retaining failures', async () => {
+  Test('check does not run tests and all validation commands stay in the new workspace', async () => {
     await withFixture(async ({ root, run }) => {
-      for (const command of ['check', 'verify', 'typecheck']) {
-        const recipe = command === 'typecheck' ? '_typecheck' : command
+      for (const command of ['check', 'typecheck', 'lint', 'verify']) {
         const result = await run('agent', [command])
         Expect(result.code).toBe(0)
-        Expect(result.calls).toContain(`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|${recipe}`)
-        if (command === 'check') {
-          const uncached = await run('agent', ['check', '--no-cache'])
-          Expect(uncached.code).toBe(0)
-          Expect(uncached.calls.at(-1)).toBe(
-            `just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|check|--no-cache`,
-          )
-        }
-        const failed = await run('agent', [command], recipe)
+        Expect(result.calls.some(call => call.includes('/old-tao-v1'))).toBe(false)
+        Expect(await Bun.file(join(root, 'test-ran')).exists()).toBe(command === 'verify')
+      }
+      for (const command of ['check', 'verify']) {
+        const failed = await run('agent', [command], command === 'check' ? 'check' : 'fmt')
         Expect(failed.code).toBe(23)
       }
     })
   }, 30_000)
 
-  Test('default tests include legacy suites while explicit new paths stay scoped', async () => {
+  Test('default tests run only new tests and reject legacy paths and symlink aliases', async () => {
     await withFixture(async ({ root, run }) => {
+      const legacyMarker = join(root, 'legacy-test-ran')
+      await Bun.write(
+        join(root, 'old-tao-v1/forbidden.test.ts'),
+        `import { test } from 'bun:test'\ntest('legacy must not run', async () => { await Bun.write(${
+          JSON.stringify(legacyMarker)
+        }, 'ran') })\n`,
+      )
       const all = await run('agent', ['test'])
       Expect(all.code).toBe(0)
       Expect(all.output).toContain('new workspace')
-      Expect(all.calls).toContain(`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|test`)
+      Expect(all.calls).toEqual([])
+      Expect(await Bun.file(join(root, 'test-ran')).text()).toBe('ran')
       const scoped = await run('agent', ['test', './smoke.test.ts'])
       Expect(scoped.code).toBe(0)
       Expect(scoped.calls).toEqual([])
+      for (const target of [root, '..']) {
+        const ancestor = await run('agent', ['test', target])
+        Expect(ancestor.code).toBe(0)
+        Expect(ancestor.calls).toEqual([])
+        Expect(await Bun.file(legacyMarker).exists()).toBe(false)
+      }
       const legacy = await run('agent', ['test', 'old-tao-v1/packages/example with spaces.test.ts'])
-      Expect(legacy.calls).toEqual([
-        `just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|test|packages/example with spaces.test.ts`,
-      ])
-      const failed = await run('agent', ['test'], 'test')
-      Expect(failed.code).toBe(23)
+      Expect(legacy.code).toBe(1)
+      Expect(legacy.calls).toEqual([])
+      Expect(legacy.output).toContain('Run legacy workflows from old-tao-v1/')
+      await symlink(join(root, 'old-tao-v1'), join(root, 'ts/legacy-alias'))
+      const alias = await run('agent', ['test', './legacy-alias'])
+      Expect(alias.code).toBe(1)
+      Expect(alias.calls).toEqual([])
+      const defaultWithAlias = await run('agent', ['test'])
+      Expect(defaultWithAlias.code).toBe(1)
+      Expect(defaultWithAlias.output).toContain('Run legacy workflows from old-tao-v1/')
+      Expect(await Bun.file(legacyMarker).exists()).toBe(false)
+      await rm(join(root, 'ts/legacy-alias'))
+      await Bun.write(
+        join(root, 'ts/smoke.test.ts'),
+        "import { test, expect } from 'bun:test'\ntest('new failure', () => expect(1).toBe(2))\n",
+      )
+      const failed = await run('agent', ['test'])
+      Expect(failed.code).toBe(1)
+      Expect(failed.output).toContain('new failure')
+      Expect(await Bun.file(legacyMarker).exists()).toBe(false)
     })
   })
 
-  Test('formats Tao and Just files using their owners and preserves no-argument formatting steps', async () => {
+  Test('formats shared files without entering the legacy implementation', async () => {
     await withFixture(async ({ root, run }) => {
       await Bun.write(join(root, 'old-tao-v1/fixture with spaces.tao'), 'fixture')
       const tao = await run('agent', ['fmt', 'old-tao-v1/fixture with spaces.tao'])
-      Expect(tao.code).toBe(0)
-      Expect(tao.calls).toEqual([
-        `just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|fmt|fixture with spaces.tao`,
-      ])
+      Expect(tao.code).toBe(1)
+      Expect(tao.calls).toEqual([])
+      Expect(tao.output).toContain('Run legacy workflows from old-tao-v1/')
       const just = await run('agent', ['fmt', 'Justfile'])
       Expect(just.calls).toEqual([`just|${root}|--fmt|--justfile|${root}/Justfile`])
       const all = await run('agent', ['fmt'])
       Expect(all.code).toBe(0)
-      Expect(all.calls).toContain(`just|${root}/old-tao-v1|--justfile|${root}/old-tao-v1/Justfile|fmt`)
+      Expect(all.calls).toContain(`just|${root}|--fmt|--justfile|${root}/Justfile`)
+      Expect(all.calls.some(call => call.includes('/old-tao-v1|'))).toBe(false)
+      await symlink(join(root, 'old-tao-v1'), join(root, 'legacy-alias'))
+      const aliasGlob = await run('agent', ['fmt', 'legacy-alias/*.tao'])
+      Expect(aliasGlob.code).toBe(1)
+      Expect(aliasGlob.calls).toEqual([])
+      Expect(aliasGlob.output).toContain('Run legacy workflows from old-tao-v1/')
     })
   })
 })

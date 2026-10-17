@@ -21,30 +21,33 @@ root shell without another generated directory inside the PoC.
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
-Root workspace tests pass (`./agent test ./`); root `./agent check` includes the reference
-check lane, and legacy TypeScript checking passes. Root frozen setup
+Root workspace tests pass (`./agent test ./`); root `./agent check` runs new workspace
+types, comments and formatting without tests. Legacy TypeScript checking passed from its own folder. Root frozen setup
 also passes with the committed dependency manifest and lockfile.
 
 Root `./agent check` and `./agent fmt` reuse the dev CLI's command registration.
 Command modules default-export shared registrations with inline actions and centralized error rendering;
-the action executor alone assigns process exit status from returned statuses or thrown failures.
+the action executor alone assigns process exit status from thrown failures. Actions and workflow
+steps return void; variadic `runSteps` awaits each step and stops on failure.
 setup uses the same boundary before Commander is installed. Formatting uses
 the repository config and repository-relative arguments. An isolated integration test checks both
 entrypoints' formatting and typecheck failure propagation; setup works before Commander is installed.
 Shared `Try` handles synchronous and asynchronous recovery and cleanup, normalizes propagated failures,
 and preserves original failure context for finalization. The new implementation uses capitalized
 `Errors.ThrowX` helpers with private error constructors; ordering and cleanup-failure regressions are covered.
-All current Just workflows are registered. `fix` applies shared formatting and the complete reference
-parser/dprint/Tao/Just fixes; `fmt` dispatches Tao and Just files to their owners. `check` and `verify`
-include new workspace checks and the existing reference lanes. Default `test` includes new tests and
-the reference's heuristic changed-suite selection; explicit paths stay scoped and names filter both.
-Secrets, diagnostics and InstantDB lifecycle retain their existing reference workflows; cleanup retains
-legacy ownership guards and removes the new workspace's dependencies after the legacy plan succeeds.
+All current Just workflows are registered. Root `fix` and `fmt` format the new workspace and shared
+repository files, excluding the legacy implementation. Tao source fixes await the new parser/tooling.
+Root `check`, `lint`, `typecheck`, `test` and `verify` operate on the new workspace; `check` never runs
+tests. Legacy paths are rejected by root formatting/testing, including existing symlink aliases.
+Run legacy workflows from `old-tao-v1/`; agents check/test it only when its files have changed.
+Secrets, diagnostics and InstantDB lifecycle retain their existing reference tools; cleanup removes
+only the new workspace's dependencies and preserves shared artifacts and legacy dependencies.
 Command comments identify parser, app, IDE, runtime and shell-setup steps awaiting new equivalents.
 The shared formatter excludes relocated archives, native build output and storage captures.
 Root lifecycle hooks reach their retained implementations and distinguish root setup/configuration
-from the legacy tool profile. `./dev agent-config` regenerates the adapters, and `./dev gates` exposes
-the retained gate runner. Knip uses its root configuration while analyzing the legacy workspace.
+from the legacy tool profile. `./dev agent-config` regenerates the adapters. There is no root `gates`
+command; invoke the retained gate runner from `old-tao-v1/` when legacy changes require it.
+Knip uses its root configuration when analyzing the legacy workspace from its own folder.
 The branch review skill records the reviewed commit, covers changes since the prior review, and
 requires independent conformance, DRY, documentation and compound-condition checks.
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub

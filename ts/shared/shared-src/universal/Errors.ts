@@ -33,7 +33,7 @@ type CommandErrorResult = {
   command: string
   args: readonly string[]
   cwd?: string
-  exitCode: number | null
+  status: number | null
   signal: ProcessSignal | null
   stdout: string
   stderr: string
@@ -95,7 +95,7 @@ class CommandExecutionError extends BaseTaoError {
       cause: result.error,
       details: {
         cwd: result.cwd,
-        exitCode: result.exitCode,
+        status: result.status,
         signal: result.signal,
         stderr: result.stderr,
         stdout: result.stdout,

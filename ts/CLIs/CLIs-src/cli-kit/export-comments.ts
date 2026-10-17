@@ -1,4 +1,4 @@
-import { Time, Try } from '@shared'
+import { Errors, Time, Try } from '@shared'
 import * as TypeScript from 'typescript'
 import { IO } from './cli-kit'
 
@@ -100,27 +100,24 @@ export function exportedFunctionCommentIssues(filename: string, source: string):
 }
 
 /** checkExportedFunctionComments scans TypeScript sources under a repository root. */
-export async function checkExportedFunctionComments(root: string): Promise<number> {
+export async function checkExportedFunctionComments(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
-  const result = await Try(async () => {
+  await Try(async () => {
     for (
       const filename of TypeScript.sys.readDirectory(`${root}/ts`, ['.ts', '.tsx'], ['**/node_modules/**', '**/*.d.ts'])
     ) {
       issues.push(...exportedFunctionCommentIssues(filename, await Bun.file(filename).text()))
     }
-    return 0
   }, {
     catch: error => {
-      IO.error(`Could not check exported function comments: ${String(error)}`)
-      return 1
+      Errors.ThrowHostEnvironment(`Could not check exported function comments: ${Errors.messageOf(error)}`)
     },
   })
-  for (const issue of issues) {
-    IO.error(issue)
-  }
   IO.info(`Checked exported function comments: ${issues.length} issue(s) in ${Math.round(Time.nowMs() - started)}ms`)
-  return result === 0 && issues.length === 0 ? 0 : 1
+  if (issues.length > 0) {
+    Errors.ThrowUserInput(issues.join('\n'))
+  }
 }
 
 function isLocalNamedExport(node: TypeScript.Node): node is TypeScript.ExportDeclaration & {

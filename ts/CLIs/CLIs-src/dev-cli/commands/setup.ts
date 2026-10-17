@@ -11,6 +11,6 @@ export default registerCommand({
     // The legacy shell/tool profile stays separately bootstrapped with old-tao-v1's setup-tools.
     // Its former _setup also generated parser/native bindings, app dependencies and completion;
     // new equivalents await those implementations. Keep this runner dependency-free for fresh setup.
-    return await runCommand([process.execPath, 'install', ...args])
+    await runCommand([process.execPath, 'install', ...args])
   },
 })

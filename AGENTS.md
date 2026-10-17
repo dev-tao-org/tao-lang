@@ -19,6 +19,7 @@ These are your rules of usage:
   - Agent commands shared with the developer are imported from the Dev CLI
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
+- Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `old-tao-v1/`; agents check or test the legacy implementation only when its files have changed.
 
 ## Dependencies and feature planning
 

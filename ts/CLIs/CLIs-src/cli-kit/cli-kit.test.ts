@@ -4,6 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { runSteps } from './cli-kit'
 
 type Result = { code: number; stdout: string; stderr: string; log: string }
 
@@ -25,7 +26,12 @@ async function withProbe(
     let invocation = 0
     await work(async (source, agent = false, args = []) => {
       const log = join(root, '.artifacts/logs/agent', `${invocation++}.log`)
-      await Bun.write(script, `import { IO, runCommand } from '@cli-kit'\n${source}`)
+      await Bun.write(
+        script,
+        `import { IO, runCommand } from '@cli-kit'
+import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
+${source}`,
+      )
       const child = Bun.spawn([process.execPath, script, ...args], {
         cwd: join(root, 'ts'),
         env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log, TAO_DEBUG_ERRORS: '0' },
@@ -42,7 +48,34 @@ async function withProbe(
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 }
 
+function commandAction(expression: string): string {
+  return `await registeredAction({ name: 'run', description: 'Command probe.', action: async () => { await ${expression} } }).action()`
+}
+
 Describe('command IO', () => {
+  Test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
+    const events: string[] = []
+    const failure = new Error('step failed')
+    const caught = await Try(() =>
+      runSteps(
+        async () => {
+          events.push('first')
+          await Promise.resolve()
+          events.push('finished')
+        },
+        () => {
+          events.push('second')
+          throw failure
+        },
+        () => {
+          events.push('third')
+        },
+      ), { catch: error => error })
+    Expect(caught).toBe(failure)
+    Expect(events).toEqual(['first', 'finished', 'second'])
+    Expect(await runSteps(() => {}, async () => {})).toBeUndefined()
+  })
+
   Test('routes developer output to terminal and agent messages to file while mirroring stderr', async () => {
     await withProbe(async run => {
       const source = `IO.info('hello %s', 'world'); IO.debug({ value: 3 }); IO.log('message');
@@ -63,21 +96,21 @@ IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
   Test('splits simple strings, preserves argv arrays and reports elapsed time after nonzero exits', async () => {
     await withProbe(async (run, root) => {
       const child = join(root, 'args.ts')
-      await Bun.write(child, `console.log(JSON.stringify(Bun.argv.slice(2))); process.exitCode = 23`)
-      const simple = await run(`process.exitCode = await runCommand(process.execPath + ' ${child} first   second')`)
+      await Bun.write(child, `await Bun.write(Bun.stdout, JSON.stringify(Bun.argv.slice(2)) + '\\n'); process.exit(23)`)
+      const simple = await run(commandAction(`runCommand(process.execPath + ' ${child} first   second')`))
       Expect(simple.code).toBe(23)
       Expect(simple.stdout).toContain('["first","second"]\n')
       Expect(simple.stdout).toMatch(/^RUN: .+\n/)
       Expect(simple.stdout).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
       const array = await run(
-        `process.exitCode = await runCommand([process.execPath, '${child}', 'two words', '"quoted"'])`,
+        commandAction(`runCommand([process.execPath, '${child}', 'two words', '"quoted"'])`),
       )
       Expect(array.code).toBe(23)
       Expect(array.stdout).toContain(JSON.stringify(['two words', '"quoted"']))
-      const agent = await run(`process.exitCode = await runCommand([process.execPath, '${child}', 'agent'])`, true)
+      const agent = await run(commandAction(`runCommand([process.execPath, '${child}', 'agent'])`), true)
       Expect(agent.code).toBe(23)
       Expect(agent.stdout).toBe('["agent"]\n')
-      Expect(agent.log).toMatch(/^RUN: .+\n\[\d+\.\d{2}s\] \(.+\)\n$/)
+      Expect(agent.log).toMatch(/^RUN: .+\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
     })
   })
 
@@ -85,17 +118,19 @@ IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
     await withProbe(async (run, root) => {
       const child = join(root, 'stderr.ts')
       const payload = 'error chunk\n'.repeat(20000)
-      await Bun.write(child, `process.stderr.write(${JSON.stringify(payload)}); process.exitCode = 17`)
+      await Bun.write(child, `await Bun.write(Bun.stderr, ${JSON.stringify(payload)}); process.exit(17)`)
       const result = await run(
-        `process.exitCode = await runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`,
+        commandAction(`runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`),
         true,
       )
       Expect(result.code).toBe(17)
-      Expect(result.stderr).toBe(payload)
+      Expect(result.stderr.startsWith(payload)).toBe(true)
+      Expect(result.stderr.slice(payload.length)).toContain('Command failed:')
       Expect(result.log.includes(payload)).toBe(true)
-      Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
-      const dev = await run(`process.exitCode = await runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`)
-      Expect(dev.stderr).toBe('')
+      Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+      const dev = await run(commandAction(`runCommand([process.execPath, '${child}'], { stderr: 'ignore' })`))
+      Expect(dev.stderr).not.toContain('error chunk')
+      Expect(dev.stderr).toContain('Command failed:')
     })
   })
 
@@ -124,7 +159,7 @@ await execute()`
       const command = await run(
         `${invalidLog}
 IO.info('fallback info'); IO.error('visible error');
-process.exitCode = await runCommand([process.execPath, '-e', 'process.exit(17)'])`,
+${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}`,
         true,
       )
       Expect(command.code).toBe(17)

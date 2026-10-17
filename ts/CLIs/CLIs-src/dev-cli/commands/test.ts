@@ -1,25 +1,22 @@
 import { runCommand } from '@cli-kit'
-import { existsSync } from 'node:fs'
-import { isAbsolute, relative, resolve } from 'node:path'
-import { legacyRoot, registerCommand, repositoryRoot, runLegacyRecipe } from './_command-runner'
+import { Errors } from '@shared'
+import { existsSync, realpathSync, statSync } from 'node:fs'
+import { isAbsolute, resolve } from 'node:path'
+import { assertNewWorkspacePath, assertNewWorkspaceTree, registerCommand, repositoryRoot } from './_command-runner'
 
 /** testCommand runs the TypeScript workspace tests and preserves their verdict. */
 export default registerCommand({
   name: 'test',
-  description: 'Run workspace and legacy tests; a path scopes the run and a name filters both.',
+  description: 'Run new workspace tests; a path scopes the run and a name filters it.',
   arguments: [{ name: 'target', description: 'Test file or directory.' }],
   action: async (target?: string) => {
-    // App/IDE preparation and Tao/runtime suites remain owned by the legacy test recipe.
-    const path = target ? resolve(repositoryRoot, target) : undefined
-    if (isLegacyTestTarget(path)) {
-      return await runLegacyRecipe(['test', relative(legacyRoot, path) || '.'])
+    await assertNewWorkspaceTree()
+    if (target) {
+      assertNewWorkspacePath(resolve(repositoryRoot, target))
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
-    const workspace = await runCommand([process.execPath, 'test', ...args], { cwd: `${repositoryRoot}/ts` })
-    return workspace === 0 && !workspaceTarget
-      ? await runLegacyRecipe(['test', ...(target ? [target] : [])])
-      : workspace
+    await runCommand([process.execPath, 'test', ...args], { cwd: `${repositoryRoot}/ts` })
   },
 })
 
@@ -27,13 +24,24 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
   if (!target) {
     return undefined
   }
-  if (isAbsolute(target) || existsSync(resolve(`${repositoryRoot}/ts`, target))) {
-    return target
+  const path = isAbsolute(target) || existsSync(resolve(`${repositoryRoot}/ts`, target))
+    ? resolve(`${repositoryRoot}/ts`, target)
+    : resolve(repositoryRoot, target)
+  assertNewWorkspacePath(path)
+  if (!existsSync(path)) {
+    return isAbsolute(target) ? path : undefined
   }
-  const path = resolve(repositoryRoot, target)
-  return existsSync(path) ? path : undefined
-}
-
-function isLegacyTestTarget(path: string | undefined): path is string {
-  return path !== undefined && (path === legacyRoot || path.startsWith(`${legacyRoot}/`))
+  if (!statSync(path).isDirectory()) {
+    return path
+  }
+  const canonical = realpathSync(path)
+  const root = realpathSync(repositoryRoot)
+  const workspace = realpathSync(`${repositoryRoot}/ts`)
+  if (canonical === root) {
+    return workspace
+  }
+  if (canonical !== workspace && !canonical.startsWith(`${workspace}/`)) {
+    Errors.ThrowUserInput('Test directory targets must be inside ts/; run legacy workflows from old-tao-v1/.')
+  }
+  return canonical
 }

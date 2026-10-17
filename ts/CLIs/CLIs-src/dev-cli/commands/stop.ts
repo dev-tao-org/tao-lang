@@ -11,6 +11,6 @@ export default registerCommand({
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
     // Use the reference compose project until a new app/backend exists; its down keeps volumes.
-    return await runLegacyRecipe(['stop-local-instantdb'])
+    await runLegacyRecipe(['stop-local-instantdb'])
   },
 })

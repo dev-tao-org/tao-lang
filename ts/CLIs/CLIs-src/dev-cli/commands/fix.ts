@@ -1,16 +1,11 @@
-import { runSteps } from '@cli-kit'
-import { registerCommand, runLegacyRecipe, workspaceFormat } from './_command-runner'
+import { registerCommand, workspaceFormat } from './_command-runner'
 
-/** fixCommand applies shared formatting and the complete reference fix workflow. */
+/** fixCommand applies the available new-workspace fixes. */
 export default registerCommand({
   name: 'fix',
-  description: 'Apply repository formatting and all legacy Tao source fixes.',
+  description: 'Apply new workspace and shared repository formatting fixes.',
   action: async () => {
-    // New Tao source fixes await the parser/tooling implementation; keep parser generation and
-    // Tao fixes in the reference recipe, including its template check and Justfile formatting.
-    return await runSteps([
-      () => workspaceFormat('fmt'),
-      () => runLegacyRecipe(['fix']),
-    ])
+    // Tao source fixes and import cleanup await their new parser/tooling implementations.
+    await workspaceFormat('fmt')
   },
 })

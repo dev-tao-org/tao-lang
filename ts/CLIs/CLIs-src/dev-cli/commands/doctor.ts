@@ -8,6 +8,6 @@ export default registerCommand({
   allowUnknownOptions: true,
   action: async (args: string[]) => {
     // Studio, native toolchain and runtime diagnostics remain scoped to the reference implementation.
-    return await runLegacyRecipe(['doctor', ...args])
+    await runLegacyRecipe(['doctor', ...args])
   },
 })

@@ -8,8 +8,13 @@ description: >-
 
 # Dev Automation
 
-Root `AGENTS.md` and `ts/CLIs/AGENTS.md` own the active command structure and Justfile routing.
-The notes below describe the retained `old-tao-v1/` workflow while its commands are ported.
+Root `AGENTS.md` and `ts/CLIs/AGENTS.md` own the active command structure, workflow scope and Justfile routing.
+Root code workflows run the new implementation; their TypeScript commands own their steps.
+
+## Retained workflows in old-tao-v1
+
+The following instructions apply only inside `old-tao-v1/`. Consult the root validation policy
+before selecting a legacy lane. Relative commands below run from that folder.
 
 - Keep common workflow definitions and human developer commands in `Justfile`; keep shell entrypoints and the `./tao` wrapper thin.
 - Keep agent-only host operations named in `HostCommandTargets.ts`, permitted by the single
@@ -28,7 +33,7 @@ The notes below describe the retained `old-tao-v1/` workflow while its commands 
 - Scope and test-name filter compose rather than replace each other: `TestRunRequest` carries a `kind` that chooses the suites and a `pattern` that filters the tests inside them, so `just test "<name>"` stays the fast changed scope and `just test-all "<name>"` is the same filter over every suite. Never add a request kind that means "a pattern", and never let a filtered run be recorded as a complete one, for the retry ledger or the timings store.
 - Keep `./tao`, `Justfile`, and `./dev` distinct rather than collapsing them to one spelling: `./tao` is the published CLI and product surface for developers who prefer their own editor, the `Justfile` is the human menu of common tasks, and `./dev` holds what belongs in TypeScript rather than a recipe.
 - `dev-cli` may import `agent-cli`; `agent-cli` never imports `dev-cli` back. Both build on `cli-kit` and `verification`, never the other way.
-- Keep the Justfile the definition point for which gates belong to `check` and `verify`; `./dev gates` owns running them and reporting the one verification summary. Its help states how to declare a lane's deliberately unrun gates.
+- Keep `old-tao-v1/Justfile` the definition point for its `check` and `verify` gates; its `./dev gates` owns running them and reporting the one verification summary. Its help states how to declare a lane's deliberately unrun gates.
 - `./dev`'s lane commands load Studio and Expo command modules lazily inside their actions, so `gates`, `test`, and `doctor` start in a checkout that has never generated the parser; `repo-lint`'s `devLazyStudioImportIssues` gates a static `@studio`, `@studio-tooling`, or `@expo-host/dev-loop` import in `dev.ts` that would take that back.
 - `GateCatalog.ts` in `packages/testing/verification` is the one declarative place every scheduling fact lives, for gates and for test suites alike; its type definition documents each field. Adding a gate is one catalog entry plus its name in a lane's Justfile list; a name with no entry runs `just <name>` untuned at cost 1, and an edge whose other end a lane omits is ignored.
 - Ordering is declared once, as file classes, and derived into edges. A node names the classes it `writes` (`just`, `ts`, `tao`, `gen-parser`, `gen-app`, `gen-ide`, `ledger`) and the ones it `reads`, and a reader waits for the writers of exactly those classes. A recipe-backed node implicitly reads `just`. Do not reintroduce a global barrier over tree-mutating gates.

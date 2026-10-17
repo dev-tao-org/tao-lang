@@ -11,6 +11,6 @@ export default registerCommand({
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
     // The compose stack and WordFlower seed remain in the reference; no new app owns them yet.
-    return await runLegacyRecipe(['start-local-instantdb'])
+    await runLegacyRecipe(['start-local-instantdb'])
   },
 })

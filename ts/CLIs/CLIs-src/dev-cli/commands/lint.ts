@@ -1,11 +1,11 @@
-import { registerCommand, runLegacyRecipe } from './_command-runner'
+import { registerCommand, workspaceComments } from './_command-runner'
 
-/** lintCommand runs the retained repository rules. */
+/** lintCommand runs the available new-workspace source rules. */
 export default registerCommand({
   name: 'lint',
-  description: 'Run the reference repository lint.',
+  description: 'Check exported function documentation in the new workspace.',
   action: async () => {
-    // Parser/app/IDE-specific lint rules still target old-tao-v1; new equivalents await those parts.
-    return await runLegacyRecipe(['lint'])
+    // Parser/app/IDE-specific rules await their new implementations.
+    await workspaceComments()
   },
 })

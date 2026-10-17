@@ -1,5 +1,8 @@
 import { IO, repositoryRoot, runCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
+import { existsSync, realpathSync } from 'node:fs'
+import { readdir } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 
 /** CommandArgument describes one positional command argument. */
 export type CommandArgument = {
@@ -16,7 +19,7 @@ export type CommandDefinition<Args extends unknown[] = []> = {
   description: string
   arguments?: readonly CommandArgument[]
   allowUnknownOptions?: boolean
-  action: (...args: Args) => void | number | Promise<void | number>
+  action: (...args: Args) => void | Promise<void>
 }
 
 /** RegisteredCommand exposes metadata and an action with centralized failure handling. */
@@ -30,14 +33,60 @@ export { repositoryRoot } from '@cli-kit'
 /** legacyRoot locates the reference implementation's workflow directory. */
 export const legacyRoot = `${repositoryRoot}/old-tao-v1`
 
+/** assertNewWorkspacePath directs legacy operations to their own working directory. */
+export function assertNewWorkspacePath(path: string): void {
+  const absolute = resolve(path)
+  let existing = absolute
+  while (!existsSync(existing)) {
+    const parent = dirname(existing)
+    if (parent === existing) {
+      break
+    }
+    existing = parent
+  }
+  const canonical = realpathSync(existing)
+  const legacy = existsSync(legacyRoot) ? realpathSync(legacyRoot) : legacyRoot
+  if (isWithinDirectory(absolute, legacyRoot) || isWithinDirectory(canonical, legacy)) {
+    Errors.ThrowUserInput('Run legacy workflows from old-tao-v1/; root commands target the new implementation.')
+  }
+}
+
+function isWithinDirectory(path: string, directory: string): boolean {
+  return path === directory || path.startsWith(`${directory}/`)
+}
+
+/** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
+export async function assertNewWorkspaceTree(): Promise<void> {
+  const workspace = realpathSync(`${repositoryRoot}/ts`)
+  const visit = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') {
+        continue
+      }
+      const path = `${directory}/${entry.name}`
+      if (entry.isSymbolicLink()) {
+        const target = realpathSync(path)
+        assertNewWorkspacePath(target)
+        if (!isWithinDirectory(target, workspace)) {
+          Errors.ThrowUserInput(`Workspace source links must remain inside ts/: ${path}`)
+        }
+      } else if (entry.isDirectory()) {
+        await visit(path)
+      }
+    }
+  }
+  await visit(workspace)
+}
+
 /** registerCommand adds one command to the shared CLI registry. */
 export function registerCommand<Args extends unknown[]>(definition: CommandDefinition<Args>): RegisteredCommand<Args> {
   const registered = {
     ...definition,
     action: async (...args: Args): Promise<void> => {
-      const status = await Try(() => definition.action(...args), {
+      await Try(() => definition.action(...args), {
         catch: error => {
-          process.exitCode = 1
+          const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
+          process.exitCode = commandFailure ? error.result.status || 1 : 1
           const message = Try(
             () => Errors.isTaoError(error) ? Errors.formatForUser(error) : Errors.messageOf(error),
             { catch: () => 'Command failed.' },
@@ -45,9 +94,6 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
           IO.error(message)
         },
       })
-      if (typeof status === 'number' && status !== 0) {
-        process.exitCode = status
-      }
     },
   }
   commands.push({ ...registered, action: (...args: unknown[]) => registered.action(...args as Args) })
@@ -74,31 +120,34 @@ export async function execute(name = 'dev'): Promise<void> {
 }
 
 /** runLegacyDev delegates existing CLI workflows to the reference implementation. */
-export async function runLegacyDev(args: string[]): Promise<number> {
-  return await runCommand([`${legacyRoot}/dev`, ...args], { cwd: legacyRoot })
+export async function runLegacyDev(args: string[]): Promise<void> {
+  await runCommand([`${legacyRoot}/dev`, ...args], { cwd: legacyRoot })
 }
 
 /** runLegacyRecipe retains legacy prerequisites, workflow ordering and exit status. */
-export async function runLegacyRecipe(args: string[]): Promise<number> {
-  return await runCommand(['just', '--justfile', `${legacyRoot}/Justfile`, ...args], { cwd: legacyRoot })
+export async function runLegacyRecipe(args: string[]): Promise<void> {
+  await runCommand(['just', '--justfile', `${legacyRoot}/Justfile`, ...args], { cwd: legacyRoot })
 }
 
-/** workspaceTypes checks the new workspace without invoking reference gates twice. */
-export async function workspaceTypes(): Promise<number> {
-  return await runCommand([process.execPath, 'node_modules/typescript/bin/tsc', '--project', 'tsconfig.json'], {
+/** workspaceTypes checks only the new TypeScript workspace. */
+export async function workspaceTypes(): Promise<void> {
+  await assertNewWorkspaceTree()
+  await runCommand([process.execPath, 'node_modules/typescript/bin/tsc', '--project', 'tsconfig.json'], {
     cwd: `${repositoryRoot}/ts`,
   })
 }
 
 /** workspaceComments checks exported function JSDoc without loading a type checker. */
-export async function workspaceComments(): Promise<number> {
+export async function workspaceComments(): Promise<void> {
+  await assertNewWorkspaceTree()
   const { checkExportedFunctionComments } = await import('../../cli-kit/export-comments')
-  return await checkExportedFunctionComments(repositoryRoot)
+  await checkExportedFunctionComments(repositoryRoot)
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
-export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<number> {
-  const formatted = await runCommand([
+export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
+  await assertNewWorkspaceTree()
+  await runCommand([
     'dprint',
     mode,
     '--config',
@@ -108,10 +157,7 @@ export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<number> {
     '--excludes',
     'old-tao-v1/**',
   ], { cwd: repositoryRoot })
-  if (formatted !== 0) {
-    return formatted
-  }
-  return await runCommand([
+  await runCommand([
     'just',
     '--fmt',
     ...(mode === 'check' ? ['--check'] : []),

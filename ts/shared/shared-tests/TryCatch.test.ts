@@ -251,11 +251,11 @@ Describe('Errors throwing helpers', () => {
   })
 
   Test('ThrowCommandExecution retains the subprocess result and Throw retains normalized identity', () => {
-    const result = { command: 'tool', args: ['with spaces'], exitCode: 23, signal: null, stdout: 'out', stderr: 'err' }
+    const result = { command: 'tool', args: ['with spaces'], status: 23, signal: null, stdout: 'out', stderr: 'err' }
     const error = Try(() => Errors.ThrowCommandExecution(result), { catch: value => value }) as Errors.TaoError
     Expect(error.name).toBe('CommandExecutionError')
     Expect(error.message).toBe('Command failed: tool "with spaces"')
-    Expect(error.details).toMatchObject({ exitCode: 23, stdout: 'out', stderr: 'err' })
+    Expect(error.details).toMatchObject({ status: 23, stdout: 'out', stderr: 'err' })
     if (error.name === 'CommandExecutionError') {
       Expect(error.result).toBe(result)
     }
