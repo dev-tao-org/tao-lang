@@ -133,7 +133,7 @@ export async function runLegacyRecipe(args: string[]): Promise<void> {
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand(['tsc', '--project', 'tsconfig.json'], {
+  await runCommand('tsc --project tsconfig.json', {
     cwd: `${repositoryRoot}/ts`,
   })
 }
@@ -164,21 +164,8 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand([
-    'dprint',
-    mode,
-    '--config',
-    '.dprint.jsonc',
-    '--incremental=false',
-    '**/*',
-    '--excludes',
-    'old-tao-v1/**',
-  ], { cwd: repositoryRoot })
-  await runCommand([
-    'just',
-    '--fmt',
-    ...(mode === 'check' ? ['--check'] : []),
-    '--justfile',
-    `${repositoryRoot}/Justfile`,
-  ], { cwd: repositoryRoot })
+  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes old-tao-v1/**`, {
+    cwd: repositoryRoot,
+  })
+  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, { cwd: repositoryRoot })
 }

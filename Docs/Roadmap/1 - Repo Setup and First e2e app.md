@@ -37,7 +37,7 @@ and preserves original failure context for finalization. The new implementation 
 `Errors.ThrowX` helpers with private error constructors; ordering and cleanup-failure regressions are covered.
 All current Just workflows are registered. Root `fix` and `fmt` format the new workspace and shared
 repository files, excluding the legacy implementation. Tao source fixes await the new parser/tooling.
-Root `check`, `lint`, `typecheck`, `test` and `verify` operate on the new workspace; `check` never runs
+Root `check`, `test` and `verify` operate on the new workspace; `check` never runs
 tests. Legacy paths are rejected by root formatting/testing, including existing symlink aliases.
 Run legacy workflows from `old-tao-v1/`; agents check/test it only when its files have changed.
 Secrets, diagnostics and InstantDB lifecycle retain their existing reference tools; cleanup removes
@@ -53,7 +53,7 @@ requires independent conformance, DRY, documentation and compound-condition chec
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Config-mutating GitHub setup tests were removed at the developer's request; setup is no longer exercised by the ordinary test suite.
-`runCommand` accepts simple space-separated strings or argument arrays, and reports command start
+`runCommand` prefers simple space-separated strings, retaining argument arrays for values containing spaces, and reports command start
 and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages and child stdout go to root
 `.artifacts/logs/agent/`, while stderr is mirrored to the terminal and log, including suppressed probes.
 Developer IO remains on the terminal except test-command output, which logs to `.artifacts/logs/dev/`
@@ -65,7 +65,7 @@ tests no longer prove root command routing, legacy path isolation, validation ga
 Tests use dots alongside a JUnit timing report in `.artifacts/logs/test/`. After every run, including
 failed runs, yellow stderr warnings list tests taking strictly more than 75ms, slowest first.
 Missing timing data reports a warning without replacing the test verdict. No XML dependency was added.
-`./agent lint` (also available as `check-comments`) uses the installed TypeScript syntax parser to
+`./agent check` includes the installed TypeScript syntax parser to
 require name-led descriptive JSDoc on exported API declarations, reject private JSDoc and ordinary
 block comments, and require `Try` outside its exact primitive file. Local/default exports, overloads,
 values, types and command factories are covered; forwarding exports do not duplicate origin docs.
@@ -73,6 +73,7 @@ Public shape members may carry JSDoc. Strings, templates and regular expressions
 Multiline JSDoc keeps name-led text on the opening line, aligned continuation stars followed by exactly two spaces,
 and ` */` after the last text instead of a separate closing line.
 These rules run in `check` and `verify` without new dependencies; `check` never runs tests.
+Type, comment and style checks remain internal steps of `check`, with no separate public subcheck commands.
 Multiline runtime literals use the universal `S` tag, which trims blank boundary lines and common
 indentation while preserving relative indentation, including interpolated source. Conformance
 requires the tag, indented content on new lines, and an aligned closing delimiter. Surviving

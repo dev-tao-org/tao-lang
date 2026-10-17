@@ -68,6 +68,8 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
 - Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
 - Review: invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
+- Review: prefer space-separated strings for `runCommand`; use argument arrays when needed to preserve spaces or other argument boundaries.
+- Review: expose static validation through `check`; keep its individual type, comment and style checks internal.
 - Review: only the shared action executor sets `process.exitCode`; actions and workflow steps return void and throw failures. Use variadic `runSteps`.
 - Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 

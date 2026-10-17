@@ -10,7 +10,7 @@ export default registerCommand({
   description: 'Configure GitHub HTTPS authentication and verify access to the repository main branch.',
   action: async () => {
     for (const key of ['url.git@github.com:.insteadOf', 'url.ssh://git@github.com/.insteadOf']) {
-      await Try(() => runCommand(['git', 'config', '--global', '--unset-all', key], { cwd, stderr: 'ignore' }), {
+      await Try(() => runCommand(`git config --global --unset-all ${key}`, { cwd, stderr: 'ignore' }), {
         catch: error => {
           if (!commandFailedWith(error, 5)) {
             Errors.Throw(error)
@@ -19,12 +19,12 @@ export default registerCommand({
       })
     }
     for (
-      const args of [
-        ['--replace-all', 'url.https://github.com/.insteadOf', 'git@github.com:'],
-        ['--add', 'url.https://github.com/.insteadOf', 'ssh://git@github.com/'],
+      const command of [
+        'git config --global --replace-all url.https://github.com/.insteadOf git@github.com:',
+        'git config --global --add url.https://github.com/.insteadOf ssh://git@github.com/',
       ]
     ) {
-      await runCommand(['git', 'config', '--global', ...args], { cwd })
+      await runCommand(command, { cwd })
     }
     const authenticated = await Try(async () => {
       await runCommand('gh auth status --hostname github.com', { cwd, stdout: 'ignore', stderr: 'ignore' })
@@ -41,14 +41,14 @@ export default registerCommand({
       await runCommand('gh auth login --hostname github.com --git-protocol https --web', { cwd })
     }
     for (
-      const args of [
-        ['gh', 'config', 'set', 'git_protocol', 'https', '--host', 'github.com'],
-        ['gh', 'auth', 'setup-git', '--hostname', 'github.com'],
-        ['git', 'remote', 'set-url', 'origin', origin],
-        ['git', 'ls-remote', '--exit-code', 'origin', 'refs/heads/main'],
+      const command of [
+        'gh config set git_protocol https --host github.com',
+        'gh auth setup-git --hostname github.com',
+        `git remote set-url origin ${origin}`,
+        'git ls-remote --exit-code origin refs/heads/main',
       ]
     ) {
-      await runCommand(args, { cwd, stdout: args[1] === 'ls-remote' ? 'ignore' : 'inherit' })
+      await runCommand(command, { cwd, stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit' })
     }
     const remote = Bun.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
     const [code, url, stderr] = await Promise.all([

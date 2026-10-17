@@ -61,11 +61,6 @@ fix:
 check *ARGS:
     ./dev check {{ ARGS }}
 
-# Check exported API JSDoc, private comments, Try usage and S templates in the new workspace
-[group('Dev')]
-lint:
-    ./dev lint
-
 # Format, check and test the new TypeScript workspace
 [group('Dev')]
 verify *ARGS:

@@ -78,8 +78,8 @@ export function setAgentIO(): void {
   process.env.TAO_AGENT = '1'
 }
 
-/** runCommand runs argv or a space-separated command and throws on failure.
- *  Strings have no shell quoting or expansion; use an array to preserve spaces inside arguments.
+/** runCommand runs a space-separated command and throws on failure.
+ *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
  *  Agent commands and stdout: 'log' write stdout to files and mirror stderr even for ignored probes. */
 export async function runCommand(command: string | readonly string[], options: {
   cwd?: string

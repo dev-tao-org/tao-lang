@@ -18,7 +18,7 @@ behind it.
 - Create a worktree at a real path, never one reached through a symlink. `/tmp` resolves to
   `/private/tmp` on macOS and the sandbox sets `$TMPDIR` to the symlink form, so a checkout made
   there is reached by two paths at once: TypeScript resolves imports through both, treats the
-  results as different declarations, and `./agent typecheck` fails with types that are not
+  results as different declarations, and `./agent check` fails with types that are not
   assignable to themselves (`Type 'AdvanceStep' is not assignable to type 'AdvanceStep'`) naming no cause.
 - `./agent doctor`'s `worktree path` check names it. `git worktree move <given> <real>` fixes it,
   but has no named host operation: report the exact move and ask the Developer before adding one.
