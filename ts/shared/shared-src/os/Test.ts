@@ -1,5 +1,7 @@
 import { createRequire } from 'node:module'
 
+export { rejects, throws } from 'node:assert/strict'
+
 const load = createRequire(import.meta.url)
 type TestModule = typeof import('bun:test')
 
@@ -21,5 +23,3 @@ function testApi<Name extends 'describe' | 'expect' | 'test'>(name: Name): TestM
     },
   }) as TestModule[Name]
 }
-
-export { rejects, throws } from 'node:assert/strict'

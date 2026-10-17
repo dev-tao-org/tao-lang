@@ -1,8 +1,9 @@
-export { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { isBuiltin } from 'node:module'
 import { arch, release, type } from 'node:os'
 import { Errors } from '../universal/universal'
+
+export { tmpdir } from 'node:os'
 
 /** isPlatformImport identifies runtime builtins that belong behind the OS boundary. */
 export function isPlatformImport(specifier: string): boolean {
