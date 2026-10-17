@@ -68,19 +68,19 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Function bodies: at most 45 physical interior lines, including comments and blanks.
   - Object functions use method syntax: `async encrypt(...) { ... }`.
 - Review:
-  - follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
-  - extract runs of lines whose purpose is hard to parse into functions named for the operation they perform, even when below the line limit.
-  - organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
-  - tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
-  - test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
-  - raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
-  - keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
+  - Follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
+  - Extract runs of lines whose purpose is hard to parse into functions named for the operation they perform, even when below the line limit.
+  - Organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
+  - Tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
+  - Test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic. Keep test files in a sibling `<subject>-test/` folder.
+  - Raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
+  - Keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
   - CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
-  - invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
-  - prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
-  - expose static validation through `check`; keep its individual type, comment and style checks internal.
-  - the global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
-  - common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
+  - Invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
+  - Prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
+  - Expose static validation through `check`; keep its individual type, comment and style checks internal.
+  - The global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
+  - Common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
 ## Git workflow
 
