@@ -1,4 +1,4 @@
-import { Errors, Timings } from '@shared'
+import { Errors, Switch, Timings } from '@shared'
 import { Platform } from '@shared/os'
 import type Parser from 'tree-sitter'
 import type * as AST from './AST'
@@ -26,6 +26,11 @@ export function transform(
 // ASTConstructor owns one source snapshot and records origins at its Node dispatch boundary.
 class ASTConstructor {
   readonly origins = new Map<AST.Node, AST.Origin>()
+  private readonly constructors = {
+    SourceFile: this.File.bind(this),
+    AppDeclaration: this.AppDeclaration.bind(this),
+    Identifier: this.Name.bind(this),
+  }
 
   File(node: Parser.SyntaxNode): AST.File {
     return { kind: 'File', declarations: this.List(node) }
@@ -35,7 +40,7 @@ class ASTConstructor {
     return {
       kind: 'AppDeclaration',
       name: this.Node(node, 'name'),
-      root: this.Node(requiredChild(node, 'root_declaration'), 'view'),
+      root: this.Node(requiredChild(node, 'RootDeclaration'), 'view'),
     }
   }
 
@@ -66,16 +71,7 @@ class ASTConstructor {
   }
 
   private construct(node: Parser.SyntaxNode): AST.Node {
-    switch (node.type) {
-      case 'source_file':
-        return this.File(node)
-      case 'app_declaration':
-        return this.AppDeclaration(node)
-      case 'identifier':
-        return this.Name(node)
-      default:
-        return Errors.ThrowUnexpected(`CST transformation is not implemented for ${node.type}.`)
-    }
+    return Switch.on<Parser.SyntaxNode, 'type', AST.Node>(node, 'type', this.constructors)
   }
 }
 

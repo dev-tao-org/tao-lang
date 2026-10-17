@@ -69,6 +69,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Other comments use `//`.
   - Multiline JSDoc: `/** <NAME> <VERB> ...`, aligned ` *  <text>`, and text-ending ` */`.
   - Use `Try`; native exception handling belongs only in `universal/TryCatch.ts`.
+  - Use `Switch(...)` or `Switch.*` from `@shared` for switch dispatch; never use native `switch` statements.
   - Multiline strings use indented `S` templates with aligned closing backticks.
   - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
   - Function bodies: at most 45 physical interior lines, including comments and blanks.

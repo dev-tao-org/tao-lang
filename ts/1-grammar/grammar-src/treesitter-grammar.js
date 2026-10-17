@@ -6,31 +6,50 @@ export default grammar({
     return [/\s/]
   },
   rules: {
-    source_file($) {
-      return repeat(choice($.app_declaration, $.view_declaration))
+    SourceFile($) {
+      return repeat(choice($.AppDeclaration, $.ViewDeclaration))
     },
-    app_declaration($) {
-      return seq('app', field('name', $.identifier), '{', $.root_declaration, '}')
+
+    // Apps
+    AppDeclaration($) {
+      return seq('app', field('name', $.Identifier), '{', $.RootDeclaration, '}')
     },
-    root_declaration($) {
-      return seq('root', field('view', $.identifier))
+    RootDeclaration($) {
+      return seq('root', field('view', $.Identifier))
     },
-    view_declaration($) {
-      return seq('view', field('name', $.identifier), '{', $.render_clause, '}')
+
+    // Views and rendering
+    ViewDeclaration($) {
+      return seq('view', field('name', $.Identifier), '{', $.RenderStatement, '}')
     },
-    render_clause($) {
-      return seq('render', field('body', $.container))
+    RenderStatement($) {
+      return seq('render', field('body', $.ViewRender))
     },
-    container($) {
-      return seq(field('kind', choice('Col', 'Row')), '{', repeat($.text_view), '}')
+    ViewRender($) {
+      return seq(
+        field('view', $.Identifier),
+        optional(field('argumentList', $.ArgumentList)),
+        optional(seq('{', repeat(field('children', $.ViewRender)), '}')),
+      )
     },
-    text_view($) {
-      return seq('Text', '(', field('value', $.string), ')')
+
+    // Expressions
+    ArgumentList($) {
+      return seq(
+        '(',
+        optional(seq(
+          choice($.TextLiteral, $.Identifier),
+          repeat(seq(',', choice($.TextLiteral, $.Identifier))),
+        )),
+        ')',
+      )
     },
-    string() {
+    TextLiteral() {
       return token(seq('"', repeat(choice(/[^"\\\r\n]/, /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/)), '"'))
     },
-    identifier() {
+
+    // Names
+    Identifier() {
       return /[A-Za-z_][A-Za-z0-9_]*/
     },
   },

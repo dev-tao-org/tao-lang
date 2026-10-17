@@ -48,7 +48,7 @@ Tests.test('next: Hello World also transforms its generic view render', async ()
       children: [{
         kind: 'ViewRender',
         target: { kind: 'Name', value: 'Text' },
-        arguments: [{ kind: 'StringLiteral', value: 'Hello World' }],
+        arguments: [{ kind: 'TextLiteral', value: 'Hello World' }],
         children: [],
       }],
     },

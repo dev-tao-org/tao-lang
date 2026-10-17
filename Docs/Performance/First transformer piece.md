@@ -31,13 +31,27 @@ After grouping the transformer into `AST.ts` and `Transform.ts`, rerun the same 
 scenario with unchanged input and sample definitions. Base revision is `f870e4838` plus the
 consolidation changes. The constructor now declares its handlers as ordinary class methods.
 
-| Run | Transform median / p95 | Parse-to-AST median / p95 |
-| --- | ---: | ---: |
-| Alongside verification | 0.007 / 0.020 ms | 0.011 / 0.025 ms |
-| Unchanged rerun without concurrent agent verification | 0.005 / 0.011 ms | 0.008 / 0.017 ms |
+| Run                                                   | Transform median / p95 | Parse-to-AST median / p95 |
+| ----------------------------------------------------- | ---------------------: | ------------------------: |
+| Alongside verification                                |       0.007 / 0.020 ms |          0.011 / 0.025 ms |
+| Unchanged rerun without concurrent agent verification |       0.005 / 0.011 ms |          0.008 / 0.017 ms |
 
 Raw reports are `parser-cb61d743-c843-49fb-af9c-713074c2aaab.json` and
 `parser-b638f0d7-339c-4165-8f4d-9255b275f45a.json` under `.artifacts/logs/performance/`.
 The second run's combined median matches the first-piece baseline. These short runs do not
 establish a speedup or attribute microsecond differences to the refactor; further optimization
 is deferred while the structure is under review.
+
+## Generic grammar and Switch dispatch
+
+On base `a40716668` plus the grammar review changes, the same authored fixtures now parse
+through PascalCase rules and generic `ViewRender` nodes. Dispatch uses `Switch.on` with
+handlers bound once per constructor. Keep the original fixture bytes and sample definitions;
+the grammar and CST shape changed, so this measures the integrated review changes.
+
+Warm full-app parsing medians range from 0.003 to 0.004 ms (p95 0.004 to 0.007 ms).
+App-only transformation records median 0.005 / p95 0.012 ms; app-only parse-to-AST records
+median 0.008 / p95 0.016 ms. Each phase has 100 retained samples after 20 warmups.
+Raw report: `.artifacts/logs/performance/parser-5c697566-430d-472c-8cbb-e6defffda1ad.json`.
+No concurrent agent verification ran during measurement. The app-only combined median is
+unchanged at the reported precision; full view transformation and preview repaint remain pending.
