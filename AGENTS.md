@@ -4,8 +4,7 @@ Tao is a programming language for building apps.
 
 - `./ts` holds the typescript implementation.
 - A PoC implementation exists in `./.x-tao-old-v1`.
-  - Use the PoC for reference, but don't copy code wholesale.
-  - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
+  - When planning or implementing language syntax and functionality, consult the old implementation as the specification for syntax and behavior unless a departure has been agreed with the developer. Do not copy code wholesale.
   - Port reimplemented functionality into the new implementation with its own dependencies and tools; never import or execute old implementation code, or borrow its dependencies or executables, to implement a port.
   - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `.x-tao-old-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
 
