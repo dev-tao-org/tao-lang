@@ -1,6 +1,7 @@
 #!/bin/sh
 
 set -e
+export TAO_AGENT=0
 cd "$(dirname "$0")/ts"
 if [ "${1:-}" = setup ]; then
     shift

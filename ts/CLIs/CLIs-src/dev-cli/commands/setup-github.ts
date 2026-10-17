@@ -4,7 +4,7 @@ import { registerCommand, repositoryRoot as cwd } from './_command-runner'
 const origin = 'https://github.com/tao-dev-org/tao-lang.git'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */
-export const setupGithubCommand = registerCommand({
+export default registerCommand({
   name: 'setup-github',
   description: 'Configure GitHub HTTPS authentication and verify access to the repository main branch.',
   action: async () => {
@@ -17,9 +17,9 @@ export const setupGithubCommand = registerCommand({
         ['--add', 'url.https://github.com/.insteadOf', 'ssh://git@github.com/'],
       ]
     ) {
-      process.exitCode = await runCommand(['git', 'config', '--global', ...args], { cwd })
-      if (process.exitCode !== 0) {
-        return
+      const code = await runCommand(['git', 'config', '--global', ...args], { cwd })
+      if (code !== 0) {
+        return code
       }
     }
     const authenticated = await runCommand(['gh', 'auth', 'status', '--hostname', 'github.com'], {
@@ -28,7 +28,7 @@ export const setupGithubCommand = registerCommand({
       stderr: 'ignore',
     })
     if (authenticated !== 0) {
-      process.exitCode = await runCommand([
+      const code = await runCommand([
         'gh',
         'auth',
         'login',
@@ -38,8 +38,8 @@ export const setupGithubCommand = registerCommand({
         'https',
         '--web',
       ], { cwd })
-      if (process.exitCode !== 0) {
-        return
+      if (code !== 0) {
+        return code
       }
     }
     for (
@@ -50,16 +50,20 @@ export const setupGithubCommand = registerCommand({
         ['git', 'ls-remote', '--exit-code', 'origin', 'refs/heads/main'],
       ]
     ) {
-      process.exitCode = await runCommand(args, { cwd, stdout: args[1] === 'ls-remote' ? 'ignore' : 'inherit' })
-      if (process.exitCode !== 0) {
-        return
+      const code = await runCommand(args, { cwd, stdout: args[1] === 'ls-remote' ? 'ignore' : 'inherit' })
+      if (code !== 0) {
+        return code
       }
     }
-    const remote = Bun.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'inherit' })
-    const [code, url] = await Promise.all([remote.exited, new Response(remote.stdout).text()])
-    process.exitCode = code
+    const remote = Bun.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
+    const [code, url, stderr] = await Promise.all([
+      remote.exited,
+      new Response(remote.stdout).text(),
+      new Response(remote.stderr).text(),
+    ])
+    IO.stderr(stderr)
     if (code !== 0) {
-      return
+      return code
     }
     IO.debug(`GitHub HTTPS authentication is ready for ${url.trim()}.`)
   },

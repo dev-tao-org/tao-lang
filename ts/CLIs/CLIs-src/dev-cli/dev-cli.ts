@@ -1,5 +1,6 @@
 import './commands/agent-config'
 import './commands/check'
+import './commands/check-comments'
 import './commands/clean'
 import './commands/doctor'
 import './commands/fix'

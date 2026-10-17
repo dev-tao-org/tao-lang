@@ -47,6 +47,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - You review the code for repo conformance;
+  - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.
 
@@ -68,6 +69,7 @@ Implementation rules:
   - All Justfile recipes call a single complete `./dev ...` command; the Dev CLI owns every workflow step. Document justified exceptions beside the recipe.
   - ALL scripts are written
 - Git workflow:
+  - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
   - Always create a new feature branch for your new worktree.
   - Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
 

@@ -1,6 +1,5 @@
-import { runCommand } from '@cli-kit'
+import { IO, repositoryRoot, runCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
-import { fileURLToPath } from 'node:url'
 
 /** CommandArgument describes one positional command argument. */
 export type CommandArgument = {
@@ -17,7 +16,7 @@ export type CommandDefinition<Args extends unknown[] = []> = {
   description: string
   arguments?: readonly CommandArgument[]
   allowUnknownOptions?: boolean
-  action: (...args: Args) => void | Promise<void>
+  action: (...args: Args) => void | number | Promise<void | number>
 }
 
 /** RegisteredCommand exposes metadata and an action with centralized failure handling. */
@@ -27,7 +26,7 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 
 const commands: CommandDefinition<unknown[]>[] = []
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
-export const repositoryRoot = fileURLToPath(new URL('../../../../../', import.meta.url)).replace(/\/$/, '')
+export { repositoryRoot } from '@cli-kit'
 /** legacyRoot locates the reference implementation's workflow directory. */
 export const legacyRoot = `${repositoryRoot}/old-tao-v1`
 
@@ -36,16 +35,19 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
   const registered = {
     ...definition,
     action: async (...args: Args): Promise<void> => {
-      await Try(() => definition.action(...args), {
+      const status = await Try(() => definition.action(...args), {
         catch: error => {
           process.exitCode = 1
           const message = Try(
             () => Errors.isTaoError(error) ? Errors.formatForUser(error) : Errors.messageOf(error),
             { catch: () => 'Command failed.' },
           )
-          console.error(message)
+          IO.error(message)
         },
       })
+      if (typeof status === 'number' && status !== 0) {
+        process.exitCode = status
+      }
     },
   }
   commands.push({ ...registered, action: (...args: unknown[]) => registered.action(...args as Args) })
@@ -56,7 +58,7 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
 export async function execute(name = 'dev'): Promise<void> {
   // Setup can register and invoke its action before Commander has been installed.
   const { Command } = await import('commander')
-  const parser = new Command().name(name)
+  const parser = new Command().name(name).configureOutput({ writeErr: text => IO.stderr(text) })
   for (const definition of commands) {
     const command = parser.command(definition.name).description(definition.description)
     for (const argument of definition.arguments ?? []) {
@@ -86,6 +88,12 @@ export async function workspaceTypes(): Promise<number> {
   return await runCommand([process.execPath, 'node_modules/typescript/bin/tsc', '--project', 'tsconfig.json'], {
     cwd: `${repositoryRoot}/ts`,
   })
+}
+
+/** workspaceComments checks exported function JSDoc without loading a type checker. */
+export async function workspaceComments(): Promise<number> {
+  const { checkExportedFunctionComments } = await import('../../cli-kit/export-comments')
+  return await checkExportedFunctionComments(repositoryRoot)
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

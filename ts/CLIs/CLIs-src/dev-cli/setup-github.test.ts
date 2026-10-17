@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -140,10 +140,20 @@ Describe('GitHub setup parity', () => {
         Expect(await readFile(join(root, 'gh-calls'), 'utf8')).toBe(
           'auth status --hostname github.com\nconfig set git_protocol https --host github.com\nauth setup-git --hostname github.com\n',
         )
-        Expect(result.stdout).toContain(
+        const logs = join(root, '.artifacts/logs/agent')
+        const output = entry === 'agent'
+          ? await readFile(join(logs, (await readdir(logs))[0]), 'utf8')
+          : result.stdout
+        Expect(output).toContain(
           'GitHub HTTPS authentication is ready for https://github.com/tao-dev-org/tao-lang.git.',
         )
-        Expect(result.stdout + result.stderr).not.toContain('auth status diagnostics')
+        if (entry === 'agent') {
+          Expect(result.stdout).toBe('')
+          Expect(result.stderr).toContain('auth status diagnostics')
+          Expect(output).toContain(result.stderr)
+        } else {
+          Expect(result.stdout + result.stderr).not.toContain('auth status diagnostics')
+        }
       })
     })
   }

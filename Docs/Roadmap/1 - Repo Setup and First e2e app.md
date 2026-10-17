@@ -21,12 +21,13 @@ root shell without another generated directory inside the PoC.
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
-Root workspace tests pass 37/37 (`./agent test ./`); root `./agent check` includes the reference
+Root workspace tests pass (`./agent test ./`); root `./agent check` includes the reference
 check lane, and legacy TypeScript checking passes. Root frozen setup
 also passes with the committed dependency manifest and lockfile.
 
 Root `./agent check` and `./agent fmt` reuse the dev CLI's command registration.
-Command metadata and inline actions use a shared registration wrapper with centralized error rendering;
+Command modules default-export shared registrations with inline actions and centralized error rendering;
+the action executor alone assigns process exit status from returned statuses or thrown failures.
 setup uses the same boundary before Commander is installed. Formatting uses
 the repository config and repository-relative arguments. An isolated integration test checks both
 entrypoints' formatting and typecheck failure propagation; setup works before Commander is installed.
@@ -49,6 +50,16 @@ requires independent conformance, DRY, documentation and compound-condition chec
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Isolated Git and GitHub CLI fixtures cover successful setup and failure exits.
+`runCommand` accepts simple space-separated strings or argument arrays, and reports command start
+and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages go to root `.artifacts/logs/agent/`,
+while stderr is mirrored to the terminal and log, including child stderr and suppressed developer probes.
+Developer IO remains on the terminal. An unavailable agent log reports once and falls back to terminal
+output while preserving the command verdict. Logging and bootstrap fixtures cover these boundaries.
+`./agent check-comments` uses the installed TypeScript syntax parser to check exported function
+declarations, function-valued variables and local/default exports for name-led JSDoc; it runs in
+`check` and `verify` without a type checker or new dependencies. Callable factories and cross-module
+alias resolution remain review responsibilities. Agents run verify at slice completion and fix or fmt
+before committing.
 Root commands currently require Bun and dprint on PATH; the root JavaScript toolchain remains disabled.
 The Linux bootstrap uses the relocated pinned tool definitions for root setup and keeps CI
 verification setup in the legacy workspace. Cursor's Linux and macOS dispatch and failure exits

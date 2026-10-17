@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import { registerCommand, runLegacyRecipe } from './_command-runner'
 
 /** startCommand starts a supported repository service with its complete setup. */
-export const startCommand = registerCommand({
+export default registerCommand({
   name: 'start',
   description: 'Start a repository service.',
   arguments: [{ name: 'service', required: true }],
@@ -11,6 +11,6 @@ export const startCommand = registerCommand({
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
     // The compose stack and WordFlower seed remain in the reference; no new app owns them yet.
-    process.exitCode = await runLegacyRecipe(['start-local-instantdb'])
+    return await runLegacyRecipe(['start-local-instantdb'])
   },
 })

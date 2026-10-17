@@ -57,12 +57,12 @@ Describe('shared developer and agent commands', () => {
 })
 
 Describe('developer setup command', () => {
-  Test('installs from a fresh workspace before loading Commander', async () => {
+  Test.each(['dev', 'agent'])('%s installs from a fresh workspace before loading Commander', async entry => {
     const root = await mkdtemp(join(tmpdir(), 'tao-cli-setup-'))
     await Try(async () => {
       const repository = fileURLToPath(new URL('../../../../', import.meta.url))
       await mkdir(join(root, 'ts'), { recursive: true })
-      await cp(join(repository, 'dev'), join(root, 'dev'))
+      await cp(join(repository, entry), join(root, entry))
       await cp(join(repository, 'ts/CLIs'), join(root, 'ts/CLIs'), { recursive: true })
       await cp(join(repository, 'ts/shared'), join(root, 'ts/shared'), { recursive: true })
       await cp(join(repository, 'ts/tsconfig.json'), join(root, 'ts/tsconfig.json'))
@@ -78,8 +78,10 @@ Describe('developer setup command', () => {
           dependencies: { 'setup-fixture': 'file:../local-package' },
         }),
       )
-      const child = Bun.spawn([join(root, 'dev'), 'setup', '--ignore-scripts'], {
+      const log = join(root, '.artifacts/logs/agent/bootstrap.log')
+      const child = Bun.spawn([join(root, entry), 'setup', '--ignore-scripts'], {
         cwd: root,
+        env: { ...process.env, TAO_AGENT_LOG: log },
         stdout: 'pipe',
         stderr: 'pipe',
       })
@@ -93,6 +95,13 @@ Describe('developer setup command', () => {
       }
       Expect(await Bun.file(join(root, 'ts/node_modules/setup-fixture/package.json')).exists()).toBe(true)
       Expect(await Bun.file(join(root, 'node_modules/setup-fixture/package.json')).exists()).toBe(false)
+      Expect(await Bun.file(log).exists()).toBe(entry === 'agent')
+      if (entry === 'agent') {
+        Expect(await Bun.file(log).text()).toContain('RUN: ')
+        Expect(stdout).not.toContain('RUN: ')
+      } else {
+        Expect(stdout).toContain('RUN: ')
+      }
     }, { finally: () => rm(root, { recursive: true, force: true }) })
   })
 })

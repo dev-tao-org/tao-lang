@@ -113,12 +113,16 @@ registerCommand({
     })
   })
 
-  Test('retains the explicit action exit code when no exception is thrown', async () => {
+  Test('applies returned exit codes and preserves an existing failure after a successful action', async () => {
     await withFixture(async (write, run) => {
       await write(
-        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => { process.exitCode = 23 } })`,
+        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => 23 })`,
       )
       Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: '' })
+      await write(`
+await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => 29 }).action()
+registerCommand({ name: 'verdict', description: 'Later success.', action: () => 0 })`)
+      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: '' })
     })
   })
 })
