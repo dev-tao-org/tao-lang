@@ -16,4 +16,6 @@ Keep results in a named document in this directory. Each record includes:
 
 ## First Hello World slice
 
-Measure Tao parsing, CST-to-AST transformation and code generation, plus the complete Tao pipeline. Record web, headless iOS and headless Android build, launch and test costs separately, including cold and warm runs and total parallel CI wall time. Reuse the generated Tao output across platform jobs while measuring their distinct platform work. Establish these measurements during implementation; no timings have been established yet.
+The [first parser baseline](First%20parser%20baseline.md) records the independent Tree-sitter parser's startup and full-parse measurements. `./agent performance parser` runs directly, in local verify and in TypeScript CI. The complete preview pipeline remains unmeasured.
+
+Measure CST-to-AST transformation and code generation as they arrive, then the complete Tao pipeline and the runtime's granular operations through the two-iframe harness. Record web, headless iOS and headless Android build, launch and test costs separately, including cold and warm runs and total parallel CI wall time. Reuse the generated Tao output across platform jobs while measuring their distinct platform work.
