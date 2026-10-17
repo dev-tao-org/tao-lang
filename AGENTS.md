@@ -13,6 +13,7 @@ Tao is a programming language for building apps.
 
 These are your rules of usage:
 
+- By default, interpret questions and perform planning, implementation, investigation, and validation against the new implementation outside `old-tao-v1/`. Use the old implementation only for purposes explicitly authorized by applicable rules or instructions, or specifically requested by the developer.
 - Agents can use trivial shell commands: `cd, ls, pwd, mkdir, rm, cp, mv, git`, etc
 - ALL non-trivial agent commands MUST use `./agent`: `./agent <CMD> <subcommands> <args> <option flags>`
   - Agent-only commands live in `ts/CLIs/CLIs-src/agent-cli/*`
