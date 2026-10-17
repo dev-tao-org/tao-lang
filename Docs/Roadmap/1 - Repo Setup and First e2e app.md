@@ -49,8 +49,9 @@ from the legacy tool profile. `./dev agent-config` regenerates the adapters. The
 command; invoke the retained gate runner from `old-tao-v1/` when legacy changes require it.
 Knip uses its root configuration when analyzing the legacy workspace from its own folder.
 The new workspace independently installs approved Knip 6.34.0 and runs its export/type and unused-file checks
-inside `check` and `verify`, using `ts/knip.json`. CLI registrations, bootstrap and tests are
-entrypoints; shared barrels remain analyzable so namespace exports are checked. Tao bindings,
+inside `check` and `verify`, using `ts/knip.ts`. Command entrypoints are derived from the CLI's
+registration imports, alongside bootstrap and test entries; orphan command files are rejected.
+Shared barrels remain analyzable so namespace exports are checked. Tao bindings,
 generated native siblings and declaration facades await their new implementations. No legacy
 code, dependencies or executables are borrowed to implement this check. Test-only usage counts as usage.
 The branch review skill records the reviewed commit, covers changes since the prior review, and
@@ -84,7 +85,9 @@ Shared utility tests live in `shared-src/universal-test/`, named for their subje
 Switch_TypeSafe and TryCatch. The redundant `shared-tests/` folder and its config include are removed.
 After integrating Knip and relocating tests, `./agent verify` passes 52 tests and 252 assertions
 across eight files. Temporary unused-file and unused-namespace-export probes both made `check`
-fail and were removed. Evidence: `.artifacts/logs/agent/2026-10-17T19-27-58.334Z-6721.log`.
+fail and were removed. After review, an orphan-command probe also fails `check`; its wildcard
+entry exemption was replaced with entries derived from actual CLI imports. Final verification:
+`.artifacts/logs/agent/2026-10-17T19-31-37.153Z-19143.log`.
 Multiline runtime literals use the universal `S` tag, which trims blank boundary lines and common
 indentation while preserving relative indentation, including interpolated source. Conformance
 requires the tag, indented content on new lines, and an aligned closing delimiter. Surviving
