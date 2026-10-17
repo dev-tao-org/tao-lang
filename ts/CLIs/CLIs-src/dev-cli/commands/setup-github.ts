@@ -1,8 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
-import { fileURLToPath } from 'node:url'
-import { registerCommand } from './_command-runner'
+import { registerCommand, repositoryRoot as cwd } from './_command-runner'
 
-const cwd = fileURLToPath(new URL('../../../../../', import.meta.url))
 const origin = 'https://github.com/tao-dev-org/tao-lang.git'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */

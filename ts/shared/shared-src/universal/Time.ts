@@ -11,13 +11,13 @@ export function nowMs(): number {
   return performance.now()
 }
 
-/** PollUntilOptions bounds a `pollUntil` wait; `now` and `sleep` are injectable so tests can drive the clock. */
+// The clock and wait are injectable so tests can drive the polling budget.
 type PollUntilOptions = {
   intervalMs: number
   timeoutMs: number
   now?: () => number
   sleep?: (ms: number) => Promise<void>
-  /** stop ends the wait early with `undefined`, for a caller whose user may cancel. */
+  // Cancellation ends the wait early with undefined.
   stop?: () => boolean
 }
 
@@ -35,10 +35,14 @@ export async function pollUntil<T>(
   const deadline = now() + options.timeoutMs
   while (options.stop?.() !== true && now() < deadline) {
     const value = await read()
-    if (value !== false && value !== undefined && value !== null) {
-      return value as Exclude<Awaited<T>, false | null | undefined>
+    if (isCompletedPollResult(value)) {
+      return value
     }
     await wait(Math.min(options.intervalMs, Math.max(0, deadline - now())))
   }
   return undefined
+}
+
+function isCompletedPollResult<T>(value: T): value is Exclude<T, false | null | undefined> {
+  return value !== false && value !== undefined && value !== null
 }

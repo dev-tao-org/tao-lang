@@ -29,8 +29,8 @@ secrets *ARGS:
 
 # Diagnose this checkout without changing it; pass --json for a structured report
 [group('Setup')]
-doctor:
-    ./dev doctor
+doctor *ARGS:
+    ./dev doctor {{ ARGS }}
 
 # Clean all tao artifacts
 [group('Setup')]
@@ -58,8 +58,8 @@ fix:
 
 # Check all code, fail fast between checks: canonical source, lint, types, dead imports, etc.
 [group('Dev')]
-check:
-    ./dev check
+check *ARGS:
+    ./dev check {{ ARGS }}
 
 # Run the repository lint
 [group('Dev')]
@@ -68,8 +68,8 @@ lint:
 
 # Run full verification on the repo
 [group('Dev')]
-verify:
-    ./dev verify
+verify *ARGS:
+    ./dev verify {{ ARGS }}
 
 # Dev branch management
 #######################

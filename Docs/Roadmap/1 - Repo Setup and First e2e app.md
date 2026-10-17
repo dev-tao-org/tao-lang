@@ -21,7 +21,7 @@ root shell without another generated directory inside the PoC.
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
-Root workspace tests pass 35/35 (`./agent test ./`); root `./agent check` includes the reference
+Root workspace tests pass 37/37 (`./agent test ./`); root `./agent check` includes the reference
 check lane, and legacy TypeScript checking passes. Root frozen setup
 also passes with the committed dependency manifest and lockfile.
 
@@ -41,6 +41,11 @@ Secrets, diagnostics and InstantDB lifecycle retain their existing reference wor
 legacy ownership guards and removes the new workspace's dependencies after the legacy plan succeeds.
 Command comments identify parser, app, IDE, runtime and shell-setup steps awaiting new equivalents.
 The shared formatter excludes relocated archives, native build output and storage captures.
+Root lifecycle hooks reach their retained implementations and distinguish root setup/configuration
+from the legacy tool profile. `./dev agent-config` regenerates the adapters, and `./dev gates` exposes
+the retained gate runner. Knip uses its root configuration while analyzing the legacy workspace.
+The branch review skill records the reviewed commit, covers changes since the prior review, and
+requires independent conformance, DRY, documentation and compound-condition checks.
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Isolated Git and GitHub CLI fixtures cover successful setup and failure exits.
