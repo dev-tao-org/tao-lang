@@ -1,8 +1,9 @@
 import { IO, repositoryRoot, runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { existsSync, realpathSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { Platform } from '@shared/os'
+import { existsSync, realpathSync } from '@shared/os/FileSystem'
+import { readdir } from '@shared/os/FileSystem'
+import { dirname, resolve } from '@shared/os/Path'
 import { withTestTimings } from '../../cli-kit/slow-tests'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -104,7 +105,7 @@ export async function execute(name = 'dev'): Promise<void> {
       await definition.action(...args.slice(0, definition.arguments?.length ?? 0))
     })
   }
-  await parser.parseAsync(Bun.argv)
+  await parser.parseAsync(Platform.argv)
 }
 
 /** runLegacyDev delegates existing CLI workflows to the reference implementation. */

@@ -1,5 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
+import { Platform } from '@shared/os'
 import { registerCommand, repositoryRoot as cwd } from './_command-runner'
 
 const origin = 'https://github.com/tao-dev-org/tao-lang.git'
@@ -50,11 +51,11 @@ export default registerCommand({
     ) {
       await runCommand(command, { cwd, stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit' })
     }
-    const remote = Bun.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
+    const remote = Platform.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
     const [code, url, stderr] = await Promise.all([
       remote.exited,
-      new Response(remote.stdout).text(),
-      new Response(remote.stderr).text(),
+      Platform.readText(remote.stdout),
+      Platform.readText(remote.stderr),
     ])
     IO.stderr(stderr)
     if (code !== 0) {

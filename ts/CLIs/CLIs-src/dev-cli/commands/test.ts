@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
-import { existsSync, realpathSync, statSync } from 'node:fs'
-import { isAbsolute, resolve } from 'node:path'
+import { existsSync, realpathSync, statSync } from '@shared/os/FileSystem'
+import { isAbsolute, resolve } from '@shared/os/Path'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,

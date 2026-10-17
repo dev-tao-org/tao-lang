@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { rejects as ExpectRejects, throws as ExpectThrows } from 'node:assert/strict'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
+import { rejects as ExpectRejects, throws as ExpectThrows } from '@shared/os/Test'
 
 Describe('Try', () => {
   Test('recovers and finalizes even when a thrown object cannot be inspected', async () => {

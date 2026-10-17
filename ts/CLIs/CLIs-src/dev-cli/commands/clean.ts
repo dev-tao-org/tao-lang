@@ -1,4 +1,4 @@
-import { rm } from 'node:fs/promises'
+import { rm } from '@shared/os/FileSystem'
 import { registerCommand, repositoryRoot } from './_command-runner'
 
 /** cleanCommand removes dependencies owned by the new workspace. */

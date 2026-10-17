@@ -1,6 +1,7 @@
 import { Errors, Try } from '@shared'
-import { mkdir } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { Clock, FileSystem, Platform } from '@shared/os'
+import { mkdir } from '@shared/os/FileSystem'
+import { dirname } from '@shared/os/Path'
 import { IO, repositoryRoot } from './cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
@@ -12,7 +13,7 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
         return
       }
       await Try(async () => {
-        const report = await Bun.file(reportPath).text()
+        const report = await FileSystem.file(reportPath).text()
         if (!report.trim()) {
           Errors.ThrowHostEnvironment('Test runner did not write timing data.')
         }
@@ -26,9 +27,10 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
 
 async function prepareTestReport(): Promise<string | undefined> {
   return Try(async () => {
-    const path = `${repositoryRoot}/.artifacts/logs/test/${Date.now()}-${process.pid}-${crypto.randomUUID()}.xml`
+    const path =
+      `${repositoryRoot}/.artifacts/logs/test/${Clock.epochMs()}-${Platform.pid}-${Platform.randomUUID()}.xml`
     await mkdir(dirname(path), { recursive: true })
-    await Bun.write(path, '')
+    await FileSystem.write(path, '')
     return path
   }, {
     catch: error => {

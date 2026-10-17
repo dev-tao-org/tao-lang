@@ -1,5 +1,7 @@
+import { IO, repositoryRoot, runCommand, runSteps } from '@cli-kit'
 import { Errors } from '@shared'
-import { registerCommand, runLegacyRecipe } from './_command-runner'
+import { FileSystem } from '@shared/os'
+import { registerCommand } from './_command-runner'
 
 /** startCommand starts a supported repository service with its complete setup. */
 export default registerCommand({
@@ -10,7 +12,22 @@ export default registerCommand({
     if (service !== 'local-instantdb') {
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
-    // The compose stack and WordFlower seed remain in the reference; no new app owns them yet.
-    await runLegacyRecipe(['start-local-instantdb'])
+    const cwd = `${repositoryRoot}/.config/local-instantdb`
+    await runSteps(
+      () =>
+        runCommand('docker compose --project-name tao-local-instantdb --file docker-compose.yml up --detach --wait', {
+          cwd,
+        }),
+      () =>
+        runCommand(
+          'docker compose --project-name tao-local-instantdb --file docker-compose.yml exec -T postgres psql --set ON_ERROR_STOP=1 --username instant --dbname instant --set app_id=9faf89c0-c15c-49b4-bf3f-3b5b2cd9a19f --file /dev/stdin',
+          {
+            cwd,
+            stdin: FileSystem.file(`${repositoryRoot}/.config/local-instantdb/seed-app.sql`),
+          },
+        ),
+    )
+    // The new app, compiler and runtime have not yet been ported; this provisions only the local service.
+    IO.info('InstantDB is ready at http://localhost:9020 (dashboard: http://localhost:3000)')
   },
 })

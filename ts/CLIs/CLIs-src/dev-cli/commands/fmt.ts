@@ -1,7 +1,7 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { existsSync, statSync } from 'node:fs'
-import { basename, resolve } from 'node:path'
+import { existsSync, statSync } from '@shared/os/FileSystem'
+import { basename, resolve } from '@shared/os/Path'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,

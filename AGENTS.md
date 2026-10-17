@@ -61,6 +61,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
 - Source rules: multiline JSDoc starts with `/** <NAME> <VERB> ...`, continues with aligned ` *  <text>` lines, and closes after the last text with ` */`; no delimiter-only lines.
 - Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.
+- Source rules: runtime builtin imports and platform globals belong only in `ts/shared/shared-src/os/`, exposed through `@shared/os` APIs such as `Platform` and `Env`; tests and tooling configs follow the same boundary.
 - Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
 - Review: organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
 - Review: tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.

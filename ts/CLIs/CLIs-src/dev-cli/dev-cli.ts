@@ -1,4 +1,5 @@
 import '../cli-kit/fatal-errors'
+import { Platform } from '@shared/os'
 import './commands/agent-config'
 import './commands/check'
 import './commands/clean'
@@ -16,6 +17,6 @@ import './commands/test'
 import './commands/verify'
 import { execute } from './commands/_command-runner'
 
-if (import.meta.main) {
+if (Platform.isMain(import.meta)) {
   await execute()
 }

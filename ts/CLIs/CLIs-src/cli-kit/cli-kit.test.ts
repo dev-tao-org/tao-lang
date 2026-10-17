@@ -1,14 +1,34 @@
 import { S, Try } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { Env, FileSystem, Platform } from '@shared/os'
+import { cp, mkdir, mkdtemp, readFile, rm, symlink } from '@shared/os/FileSystem'
+import { fileURLToPath, join } from '@shared/os/Path'
+import { tmpdir } from '@shared/os/Platform'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
 import { runSteps } from './cli-kit'
 
 type Result = { code: number; stdout: string; stderr: string; log: string }
 
 Describe('command IO', () => {
+  Test('prints complete aggregate failures with yellow stacks before red details in terminal and log', async () => {
+    await withProbe(async run => {
+      const source = S`
+        const member = new Error('aggregate-member')
+        const failure = new AggregateError([member, ...Array.from({ length: 105 }, (_, index) => 'entry-' + index)], 'x'.repeat(12000) + 'message-tail')
+        member.cause = failure
+        throw failure
+      `
+      const result = await run(source, true)
+      Expect(result.code).toBe(1)
+      Expect(result.stdout).toBe('')
+      Expect(result.stderr).toContain('message-tail')
+      Expect(result.stderr).toContain('aggregate-member')
+      Expect(result.stderr).toContain('entry-104')
+      Expect(result.stderr).toContain('[Circular error cause]')
+      Expect(result.stderr).toMatch(/\u001b\[33m[\s\S]+\u001b\[0m\n\u001b\[31m/)
+      Expect(result.log).toBe(result.stderr)
+    })
+  })
+
   Test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
     const events: string[] = []
     const failure = new Error('step failed')
@@ -56,7 +76,7 @@ Describe('command IO', () => {
     async () => {
       await withProbe(async (run, root) => {
         const child = join(root, 'args.ts')
-        await Bun.write(
+        await FileSystem.write(
           child,
           `await Bun.write(Bun.stdout, JSON.stringify(Bun.argv.slice(2)) + '\\n'); process.exit(23)`,
         )
@@ -86,7 +106,7 @@ Describe('command IO', () => {
       const child = join(root, 'stderr.ts')
       const payload = '#'.repeat(90000) + '\n'
       const stdoutPayload = '@'.repeat(90000) + '\n'
-      await Bun.write(
+      await FileSystem.write(
         child,
         `await Promise.all([Bun.write(Bun.stderr, ${JSON.stringify(payload)}), Bun.write(Bun.stdout, ${
           JSON.stringify(stdoutPayload)
@@ -232,7 +252,7 @@ async function withProbe(
     let invocation = 0
     await work(async (source, agent = false, args = []) => {
       const log = join(root, '.artifacts/logs/agent', `${invocation++}.log`)
-      await Bun.write(
+      await FileSystem.write(
         script,
         S`
           import { IO, runCommand } from '@cli-kit'
@@ -241,18 +261,18 @@ async function withProbe(
           ${source}
         `,
       )
-      const child = Bun.spawn(['bun', script, ...args], {
+      const child = Platform.spawn(['bun', script, ...args], {
         cwd: join(root, 'ts'),
-        env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log },
+        env: { ...Env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log },
         stdout: 'pipe',
         stderr: 'pipe',
       })
       const [code, stdout, stderr] = await Promise.all([
         child.exited,
-        new Response(child.stdout).text(),
-        new Response(child.stderr).text(),
+        Platform.readText(child.stdout),
+        Platform.readText(child.stderr),
       ])
-      return { code, stdout, stderr, log: await Bun.file(log).exists() ? await readFile(log, 'utf8') : '' }
+      return { code, stdout, stderr, log: await FileSystem.file(log).exists() ? await readFile(log, 'utf8') : '' }
     }, root)
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 }

@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { throws as ExpectThrows } from 'node:assert/strict'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
+import { throws as ExpectThrows } from '@shared/os/Test'
 
 Describe('Errors throwing helpers', () => {
   Test('ThrowX preserves each error category, message and context', () => {

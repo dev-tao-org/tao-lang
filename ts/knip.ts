@@ -1,7 +1,7 @@
 import type { KnipConfig } from 'knip'
-import { readFileSync } from 'node:fs'
-import { dirname, posix, resolve } from 'node:path'
 import * as TypeScript from 'typescript'
+import { readFileSync } from './shared/shared-src/os/FileSystem'
+import { dirname, posix, resolve } from './shared/shared-src/os/Path'
 
 const cliEntries = [
   'CLIs/CLIs-src/agent-cli/agent-cli.ts',

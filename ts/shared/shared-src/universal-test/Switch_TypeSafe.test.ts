@@ -1,4 +1,4 @@
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
 import { Switch } from '../universal/universal'
 
 Describe('Switch.on', () => {

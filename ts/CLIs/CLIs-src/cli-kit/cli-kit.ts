@@ -1,8 +1,8 @@
-import { Errors, Time, Try } from '@shared'
-import { appendFileSync, mkdirSync, realpathSync } from 'node:fs'
-import { dirname, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { format } from 'node:util'
+import { Errors, Try } from '@shared'
+import { Clock, Env, FileSystem, Platform, Streams, Terminal } from '@shared/os'
+import { appendFileSync, mkdirSync, realpathSync } from '@shared/os/FileSystem'
+import { dirname, fileURLToPath, relative } from '@shared/os/Path'
+import { format } from '@shared/os/Text'
 
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
 export const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\/$/, '')
@@ -20,7 +20,7 @@ export const IO = outputMethods()
 
 /** setAgentIO enables agent logging, including for direct agent CLI invocation. */
 export function setAgentIO(): void {
-  process.env.TAO_AGENT = '1'
+  Env.TAO_AGENT = '1'
 }
 
 /** runCommand runs a space-separated command and throws on failure.
@@ -30,6 +30,7 @@ export function setAgentIO(): void {
 export async function runCommand(command: string | readonly string[], options: {
   variadicArgs?: readonly string[]
   cwd?: string
+  stdin?: FileSystem.File
   stdout?: 'inherit' | 'ignore' | 'log'
   stderr?: 'inherit' | 'ignore'
 } = {}): Promise<void> {
@@ -41,14 +42,14 @@ export async function runCommand(command: string | readonly string[], options: {
   const label = args.join(' ')
   const output = options.stdout === 'log' ? outputMethods(false, true) : IO
   output.info(`RUN CMD: ${label}`)
-  const started = Time.nowMs()
+  const started = Clock.nowMs()
   await Try(async () => {
-    const logging = process.env.TAO_AGENT === '1' || options.stdout === 'log'
-    const spawnOptions = { cwd: options.cwd, stdin: 'inherit' as const }
+    const logging = Env.TAO_AGENT === '1' || options.stdout === 'log'
+    const spawnOptions = { cwd: options.cwd, stdin: options.stdin ?? 'inherit' as const }
     let status: number
     let signal: string | null
     if (logging) {
-      const child = Bun.spawn(args, {
+      const child = Platform.spawn(args, {
         ...spawnOptions,
         stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
         stderr: 'pipe',
@@ -61,7 +62,7 @@ export async function runCommand(command: string | readonly string[], options: {
       status = completed
       signal = child.signalCode
     } else {
-      const child = Bun.spawn(args, {
+      const child = Platform.spawn(args, {
         ...spawnOptions,
         stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
         stderr: options.stderr ?? 'inherit',
@@ -81,7 +82,7 @@ export async function runCommand(command: string | readonly string[], options: {
       })
     }
   }, {
-    finally: () => output.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
+    finally: () => output.info(`[${((Clock.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
   })
 }
 
@@ -98,32 +99,23 @@ function outputMethods(terminalOnly = false, fileOnly = false) {
   }
 }
 
-async function forwardOutput(stream: ReadableStream<Uint8Array>, stderr: boolean): Promise<void> {
-  const reader = stream.getReader()
-  await Try(async () => {
-    while (true) {
-      const result = await reader.read()
-      if (result.done) {
-        return
-      }
-      writeOutput(result.value, stderr, false, true)
-    }
-  }, { finally: () => reader.releaseLock() })
+async function forwardOutput(stream: Streams.ByteStream, stderr: boolean): Promise<void> {
+  await Streams.consume(stream, value => writeOutput(value, stderr, false, true))
 }
 
 function writeOutput(text: string | Uint8Array, stderr = false, terminalOnly = false, fileOnly = false): void {
-  const logging = fileOnly || process.env.TAO_AGENT === '1'
+  const logging = fileOnly || Env.TAO_AGENT === '1'
   if (stderr) {
     if (logging) {
       logToFile(text)
     }
-    process.stderr.write(text)
+    Terminal.stderr.write(text)
     return
   }
   if (terminalOnly || !logging) {
-    process.stdout.write(text)
+    Terminal.stdout.write(text)
   } else if (!logToFile(text)) {
-    process.stdout.write(text)
+    Terminal.stdout.write(text)
   }
 }
 
@@ -133,21 +125,21 @@ function logToFile(text: string | Uint8Array): boolean {
   }
   return Try(() => {
     if (!agentLog) {
-      agentLog = process.env.TAO_AGENT_LOG
-        ?? `${repositoryRoot}/.artifacts/logs/${process.env.TAO_AGENT === '1' ? 'agent' : 'dev'}/${
-          new Date().toISOString().replaceAll(':', '-')
-        }-${process.pid}.log`
+      agentLog = Env.TAO_AGENT_LOG
+        ?? `${repositoryRoot}/.artifacts/logs/${Env.TAO_AGENT === '1' ? 'agent' : 'dev'}/${
+          Clock.utcNow().toISOString().replaceAll(':', '-')
+        }-${Platform.pid}.log`
       mkdirSync(dirname(agentLog), { recursive: true })
       const announcement = `Logs: ${relative(realpathSync(repositoryRoot), realpathSync(dirname(agentLog))) || '.'}/\n`
       appendFileSync(agentLog, announcement)
-      process.stderr.write(announcement)
+      Terminal.stderr.write(announcement)
     }
     appendFileSync(agentLog, text)
     return true
   }, {
     catch: error => {
       logUnavailable = true
-      process.stderr.write(`Command log unavailable: ${format(error)}\n`)
+      Terminal.stderr.write(`Command log unavailable: ${format(error)}\n`)
       return false
     },
   })

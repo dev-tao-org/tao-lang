@@ -1,5 +1,6 @@
-import { Errors, Time } from '@shared'
-import { relative } from 'node:path'
+import { Errors } from '@shared'
+import { Clock, FileSystem, Platform } from '@shared/os'
+import { relative } from '@shared/os/Path'
 import * as TypeScript from 'typescript'
 import { IO } from './cli-kit'
 
@@ -7,18 +8,17 @@ type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
 
 /** checkSourceConformance checks new TypeScript sources without running tests or loading a type checker. */
 export async function checkSourceConformance(root: string): Promise<void> {
-  const started = Time.nowMs()
+  const started = Clock.nowMs()
   const issues: string[] = []
-  for (
-    const filename of TypeScript.sys.readDirectory(root + '/ts', ['.ts', '.tsx', '.mts', '.cts'], [
-      '**/node_modules/**',
-    ])
-  ) {
+  for (const filename of await FileSystem.sourceFiles(root + '/ts')) {
     issues.push(
-      ...sourceConformanceIssues(relative(root, filename).replaceAll('\\', '/'), await Bun.file(filename).text()),
+      ...sourceConformanceIssues(
+        relative(root, filename).replaceAll('\\', '/'),
+        await FileSystem.file(filename).text(),
+      ),
     )
   }
-  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
+  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Clock.nowMs() - started) + 'ms')
   if (issues.length > 0) {
     Errors.ThrowUserInput(issues.join('\n'))
   }
@@ -32,6 +32,10 @@ export function sourceConformanceIssues(filename: string, source: string): strin
   const publicNamespaces = new Set<TypeScript.Node>()
   const comments = new Map<number, TypeScript.CommentRange>()
   const visit = (node: TypeScript.Node): void => {
+    const platformIssue = platformAccessIssue(node, filename)
+    if (platformIssue) {
+      report(node.getStart(file), platformIssue)
+    }
     if (TypeScript.isSourceFile(node)) {
       checkScope(node)
     }
@@ -193,6 +197,99 @@ export function sourceConformanceIssues(filename: string, source: string): strin
   }
   return issues
 }
+
+function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {
+  if (filename.replaceAll('\\', '/').startsWith('ts/shared/shared-src/os/')) {
+    return
+  }
+  if (isBuiltinReference(node)) {
+    return 'runtime builtin imports belong in @shared/os'
+  }
+  if (isPlatformGlobal(node)) {
+    return 'platform globals belong in @shared/os; use its named APIs'
+  }
+}
+
+function isBuiltinReference(node: TypeScript.Node): boolean {
+  if (!TypeScript.isStringLiteral(node) || !Platform.isPlatformImport(node.text)) {
+    return false
+  }
+  const parent = node.parent
+  return TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent)
+    || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
+}
+
+function isRuntimeImportCall(node: TypeScript.Node): boolean {
+  if (!TypeScript.isCallExpression(node)) {
+    return false
+  }
+  return node.expression.kind === TypeScript.SyntaxKind.ImportKeyword
+    || (TypeScript.isIdentifier(node.expression) && node.expression.text === 'require')
+}
+
+function isImportTypeArgument(node: TypeScript.Node): boolean {
+  return TypeScript.isLiteralTypeNode(node) && TypeScript.isImportTypeNode(node.parent)
+}
+
+function isPlatformGlobal(node: TypeScript.Node): boolean {
+  if (isGlobalPropertyAccess(node) || isWallClockAccess(node)) {
+    return true
+  }
+  if (!TypeScript.isIdentifier(node) || !platformGlobals.has(node.text)) {
+    return false
+  }
+  return !isPropertyName(node)
+}
+
+function isWallClockAccess(node: TypeScript.Node): boolean {
+  if (TypeScript.isPropertyAccessExpression(node)) {
+    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'Date' && node.name.text === 'now'
+  }
+  if (TypeScript.isNewExpression(node)) {
+    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'Date' && !node.arguments?.length
+  }
+  return false
+}
+
+function isPropertyName(node: TypeScript.Identifier): boolean {
+  const parent = node.parent
+  return (TypeScript.isPropertyAccessExpression(parent) && parent.name === node)
+    || (TypeScript.isPropertyAssignment(parent) && parent.name === node)
+}
+
+function isGlobalPropertyAccess(node: TypeScript.Node): boolean {
+  if (TypeScript.isPropertyAccessExpression(node)) {
+    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'globalThis'
+      && platformGlobals.has(node.name.text)
+  }
+  if (TypeScript.isElementAccessExpression(node)) {
+    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'globalThis'
+      && TypeScript.isStringLiteral(node.argumentExpression) && platformGlobals.has(node.argumentExpression.text)
+  }
+  return false
+}
+
+const platformGlobals = new Set([
+  'process',
+  'Bun',
+  'Buffer',
+  'Deno',
+  'crypto',
+  'performance',
+  'fetch',
+  'WebSocket',
+  'Worker',
+  'Response',
+  'Request',
+  'Headers',
+  'ReadableStream',
+  'WritableStream',
+  'console',
+  'setTimeout',
+  'setInterval',
+  'clearTimeout',
+  'clearInterval',
+])
 
 function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
   const lines = source.slice(range.pos, range.end).split(/\r\n|\r|\n/)

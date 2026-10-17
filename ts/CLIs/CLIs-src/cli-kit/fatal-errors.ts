@@ -1,15 +1,16 @@
 import { Errors, Try } from '@shared'
-import { inspect } from 'node:util'
+import { Platform } from '@shared/os'
+import { inspect } from '@shared/os/Text'
 import { IO } from './cli-kit'
 
-process.on('uncaughtException', fatalError)
-process.on('unhandledRejection', fatalError)
+Platform.onUncaughtException(fatalError)
+Platform.onUnhandledRejection(fatalError)
 
 function fatalError(error: unknown): never {
   const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
   const status = commandFailure ? error.result.status : undefined
-  Try(() => printError(error), { catch: () => IO.error('\u001b[31m%s\u001b[0m', inspect(error)) })
-  process.exit(isFailureStatus(status) ? status : 1)
+  Try(() => printError(error), { catch: () => IO.error('\u001b[31m%s\u001b[0m', errorText(error)) })
+  Platform.exit(isFailureStatus(status) ? status : 1)
 }
 
 function printError(error: unknown): void {
@@ -18,7 +19,17 @@ function printError(error: unknown): void {
   for (const stack of stacks) {
     IO.error('\u001b[33m%s\u001b[0m', stack)
   }
-  IO.error('\u001b[31m%s\u001b[0m', inspect(details, { depth: null, customInspect: false, colors: false }))
+  IO.error('\u001b[31m%s\u001b[0m', errorText(details))
+}
+
+function errorText(value: unknown): string {
+  return inspect(value, {
+    depth: null,
+    customInspect: false,
+    colors: false,
+    maxStringLength: null,
+    maxArrayLength: null,
+  })
 }
 
 function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {
@@ -38,6 +49,9 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
     ...details,
     name: error.name,
     message: error.message,
+    ...(error instanceof AggregateError
+      ? { errors: error.errors.map(member => errorDetails(member, stacks, seen)) }
+      : {}),
     ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
   }
 }

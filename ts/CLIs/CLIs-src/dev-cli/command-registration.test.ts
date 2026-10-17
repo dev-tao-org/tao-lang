@@ -1,9 +1,9 @@
 import { S, Try } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { Env, FileSystem, Platform } from '@shared/os'
+import { cp, mkdir, mkdtemp, rm, symlink } from '@shared/os/FileSystem'
+import { fileURLToPath, join } from '@shared/os/Path'
+import { tmpdir } from '@shared/os/Platform'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
 
 type Result = { code: number; stdout: string; stderr: string }
 
@@ -76,7 +76,7 @@ async function withFixture(
     const script = join(root, 'ts/probe.ts')
     await work(
       async source => {
-        await Bun.write(
+        await FileSystem.write(
           script,
           S`
             import './CLIs/CLIs-src/cli-kit/fatal-errors'
@@ -88,10 +88,10 @@ async function withFixture(
         )
       },
       async (...args) => {
-        const child = Bun.spawn(['bun', 'run', script, ...args], {
+        const child = Platform.spawn(['bun', 'run', script, ...args], {
           cwd: join(root, 'ts'),
           env: {
-            ...process.env,
+            ...Env,
             TAO_AGENT: '0',
             TAO_AGENT_LOG: join(root, '.artifacts/agent.log'),
           },
@@ -100,8 +100,8 @@ async function withFixture(
         })
         const [code, stdout, stderr] = await Promise.all([
           child.exited,
-          new Response(child.stdout).text(),
-          new Response(child.stderr).text(),
+          Platform.readText(child.stdout),
+          Platform.readText(child.stderr),
         ])
         return { code, stdout, stderr }
       },

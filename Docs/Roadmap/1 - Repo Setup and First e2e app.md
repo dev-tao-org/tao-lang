@@ -49,6 +49,8 @@ Run legacy workflows from `old-tao-v1/`; agents check/test it only when its file
 Secrets, diagnostics and InstantDB lifecycle retain their existing reference tools; cleanup removes
 only the new workspace's dependencies and preserves shared artifacts and legacy dependencies.
 Command comments identify parser, app, IDE, runtime and shell-setup steps awaiting new equivalents.
+Local InstantDB start/stop now use `.config/local-instantdb/` without invoking reference recipes.
+Compose health waiting, database seeding, project identity, service URLs and volume-preserving shutdown remain intact.
 The shared formatter excludes relocated archives, native build output and storage captures.
 Root lifecycle hooks reach their retained implementations and distinguish root setup/configuration
 from the legacy tool profile. `./dev agent-config` regenerates the adapters. There is no root `gates`
@@ -99,6 +101,15 @@ indentation while preserving relative indentation, including interpolated source
 requires the tag, indented content on new lines, and an aligned closing delimiter. Surviving
 multiline fixtures follow this pattern. Tests must not mutate developer state outside the repository.
 Root `AGENTS.md` lists both automated and review-only conformity rules in one compact section.
+Platform implementations live in `ts/shared/shared-src/os/`: live environment, process/events,
+filesystem, path, terminal, clocks, streams, formatting and test APIs. All callers, tests and the
+Knip config use these modules; the test-runner module stays outside the runtime barrel. Source
+conformance rejects builtin imports and direct platform globals outside the exact OS subtree,
+including common computed `globalThis` accesses and clock calls, while ignoring string fixtures
+and ordinary property names. TypeScript source discovery loads its compiler lazily so fresh setup
+still imports only runtime builtins before dependencies are installed.
+Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
+Current `./agent verify`: 53 tests, 327 assertions; `.artifacts/logs/agent/2026-10-17T19-50-18.055Z-32095.log`.
 Agents run verify at slice completion and fix or fmt before committing.
 Root `./agent` and `./dev` enter the checkout's pinned devenv automatically unless that environment
 is already active. Root Nix exposes the existing Bun and Node pins plus the developer tools; workspace

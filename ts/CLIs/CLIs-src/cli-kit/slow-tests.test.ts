@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
 import { slowTestWarnings } from './slow-tests'
 
 Describe('slow test warnings', () => {

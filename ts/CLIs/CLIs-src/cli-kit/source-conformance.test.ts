@@ -1,11 +1,45 @@
 import { S, Try } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { FileSystem } from '@shared/os'
+import { mkdtemp, rm } from '@shared/os/FileSystem'
+import { join } from '@shared/os/Path'
+import { tmpdir } from '@shared/os/Platform'
+import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
 import { checkSourceConformance, sourceConformanceIssues } from './source-conformance'
 
 Describe('source conformance', () => {
+  Test('keeps runtime imports and platform globals inside the exact OS subtree', () => {
+    for (
+      const source of [
+        "import { readFile } from 'node:fs/promises'",
+        "import { readFile } from 'fs/promises'",
+        "export { test } from 'bun:test'",
+        "const runtime = await import('bun')",
+        "const runtime = require('node:path')",
+        "type Runtime = typeof import('node:process')",
+        'const value = process.env.VALUE',
+        'const runtime = Bun',
+        "const value = Buffer.from('text')",
+        'const value = performance.now()',
+        'const value = Date.now()',
+        'const value = new Date()',
+        'type Stream = ReadableStream<Uint8Array>',
+        "const value = globalThis['process'].pid",
+        'const value = globalThis.Bun.argv',
+      ]
+    ) {
+      Expect(sourceConformanceIssues('ts/feature.ts', source)).toHaveLength(1)
+      Expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
+      Expect(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toHaveLength(1)
+    }
+    Expect(sourceConformanceIssues('ts/feature.test.ts', "import { test } from 'bun:test'")).toHaveLength(1)
+    Expect(sourceConformanceIssues('ts/knip.ts', "import { readFileSync } from 'node:fs'")).toHaveLength(1)
+    Expect(sourceConformanceIssues('ts/feature.ts', "const text = 'process.env and bun:test'; // Bun.spawn\n")).toEqual(
+      [],
+    )
+    Expect(sourceConformanceIssues('ts/feature.ts', 'const value = { process: 1 }; value.process')).toEqual([])
+    Expect(sourceConformanceIssues('ts/feature.ts', "const value = new Date('2026-10-17')")).toEqual([])
+  })
+
   Test('requires text on the opening and closing JSDoc lines and two spaces after continuation stars', () => {
     for (
       const comment of [
@@ -75,14 +109,14 @@ Describe('source conformance', () => {
   Test('scans workspace declaration files while excluding dependencies and the legacy tree', async () => {
     const root = await mkdtemp(join(tmpdir(), 'tao-source-conformance-'))
     await Try(async () => {
-      await Bun.write(
+      await FileSystem.write(
         join(root, 'ts/public.d.ts'),
         '/** publicValue stores a public number. */\nexport declare const publicValue: number\n',
       )
-      await Bun.write(join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
-      await Bun.write(join(root, 'old-tao-v1/ignored.ts'), 'export const missingDocs = 1')
+      await FileSystem.write(join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
+      await FileSystem.write(join(root, 'old-tao-v1/ignored.ts'), 'export const missingDocs = 1')
       await Expect(checkSourceConformance(root)).resolves.toBeUndefined()
-      await Bun.write(join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
+      await FileSystem.write(join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
       await Expect(checkSourceConformance(root)).rejects.toThrow(
         'ts/public.d.ts:1: exported API publicValue needs JSDoc',
       )
