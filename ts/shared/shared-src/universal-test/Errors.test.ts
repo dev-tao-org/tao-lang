@@ -17,6 +17,7 @@ Test.describe('Errors throwing helpers', () => {
         Test.expect(error.name).toBe(category)
         Test.expect(error.details).toBe(details)
         Test.expect(error.message).toBe(message)
+        Test.expect(Errors.isCommandExecutionError(error)).toBe(false)
         if (category !== 'UserInputError') {
           Test.expect(error.cause).toBe(cause)
         }
@@ -28,11 +29,12 @@ Test.describe('Errors throwing helpers', () => {
   Test.test('ThrowCommandExecution retains the subprocess result and Throw retains normalized identity', () => {
     const result = { command: 'tool', args: ['with spaces'], status: 23, signal: null, stdout: 'out', stderr: 'err' }
     Test.throws(() => Errors.ThrowCommandExecution(result), thrown => {
+      Test.expect(Errors.isCommandExecutionError(thrown)).toBe(true)
       const error = thrown as Errors.TaoError
       Test.expect(error.name).toBe('CommandExecutionError')
       Test.expect(error.message).toBe('Command failed: tool "with spaces"')
       Test.expect(error.details).toMatchObject({ status: 23, stdout: 'out', stderr: 'err' })
-      if (error.name === 'CommandExecutionError') {
+      if (Errors.isCommandExecutionError(error)) {
         Test.expect(error.result).toBe(result)
       }
       Test.throws(() => Errors.Throw(error), propagated => {
@@ -41,5 +43,6 @@ Test.describe('Errors throwing helpers', () => {
       })
       return true
     })
+    Test.expect(Errors.isCommandExecutionError({ name: 'CommandExecutionError' })).toBe(false)
   })
 })

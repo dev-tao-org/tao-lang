@@ -59,5 +59,5 @@ async function optionalGitValue(key: string, cwd: string): Promise<string> {
 }
 
 function isMissingConfigValue(error: unknown): boolean {
-  return Errors.isTaoError(error) && error.name === 'CommandExecutionError' && error.result.status === 1
+  return Errors.isCommandExecutionError(error) && error.result.status === 1
 }

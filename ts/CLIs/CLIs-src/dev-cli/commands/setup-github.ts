@@ -43,7 +43,7 @@ async function authenticateGithub(): Promise<void> {
     return true
   }, {
     catch(error) {
-      if (!Errors.isTaoError(error) || error.name !== 'CommandExecutionError') {
+      if (!Errors.isCommandExecutionError(error)) {
         Errors.Throw(error)
       }
       return false
@@ -89,5 +89,5 @@ async function verifyOrigin(): Promise<void> {
 }
 
 function commandFailedWith(error: unknown, status: number): boolean {
-  return Errors.isTaoError(error) && error.name === 'CommandExecutionError' && error.result.status === status
+  return Errors.isCommandExecutionError(error) && error.result.status === status
 }

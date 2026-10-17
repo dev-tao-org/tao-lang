@@ -63,7 +63,7 @@ function validatedPrefixes(value: unknown): Prefix[] {
   }
   const seen = new Set<string>()
   return value.map((prefix: unknown) => {
-    if (typeof prefix !== 'string' || prefix === '' || prefix.trim() !== prefix) {
+    if (!isValidPrefix(prefix)) {
       Errors.ThrowUserInput('Host command permission prefixes must be nonempty strings without surrounding spaces.')
     }
     const tokens = prefix.split(' ')
@@ -77,6 +77,10 @@ function validatedPrefixes(value: unknown): Prefix[] {
     seen.add(key)
     return { text: prefix, tokens }
   })
+}
+
+function isValidPrefix(prefix: unknown): prefix is string {
+  return typeof prefix === 'string' && prefix !== '' && prefix.trim() === prefix
 }
 
 function prefixMatches(prefix: readonly string[], argv: readonly string[]): boolean {

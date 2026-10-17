@@ -6,11 +6,11 @@ Platform.onUncaughtException(fatalError)
 Platform.onUnhandledRejection(fatalError)
 
 function fatalError(error: unknown): void {
-  const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
+  const commandFailure = Errors.isCommandExecutionError(error)
   const status = commandFailure ? error.result.status : undefined
   Try(() => printError(error), {
     finally() {
-      Platform.exit(isFailureStatus(status) ? status : 1)
+      Platform.exit(status ?? 1)
     },
   })
 }

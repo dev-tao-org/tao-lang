@@ -102,6 +102,11 @@ export function isTaoError(error: unknown): error is TaoError {
   return typeof error === 'object' && error !== null && taoErrors.has(error)
 }
 
+/** isCommandExecutionError checks whether a value is Tao's structured child process failure. */
+export function isCommandExecutionError(error: unknown): error is CommandExecutionError {
+  return isTaoError(error) && error.name === 'CommandExecutionError'
+}
+
 /** fromUnknown normalizes an unknown thrown value into a Tao error. */
 export function fromUnknown(error: unknown, details?: ErrorDetails): TaoError {
   if (isTaoError(error)) {
