@@ -1189,14 +1189,17 @@ await runWithCommands(commands => {
 
   commands
     .command('agent-config')
-    .description('Generate harness agent adapters and permission config from .rulesync.')
+    .description('Generate harness subagents and hooks; refresh native configs in standalone legacy checkouts.')
     .action(async () => {
       try {
         const { AgentConfigGenerator } = await import('@agent-cli/agent-config/AgentConfigGenerator')
-        await AgentConfigGenerator.generate({ root: Repo.resolveGitPath() })
+        const root = Repo.resolveGitPath()
+        await AgentConfigGenerator.generate({ root })
         // Local Git metadata paths must never enter the tracked adapters or freshness render.
-        const { CodexGitPermissions } = await import('@agent-cli/agent-config/CodexGitPermissions')
-        await CodexGitPermissions.install({ root: Repo.resolveGitPath() })
+        if (!(await FS.isFile(FS.resolvePath('ts/package.json', root)))) {
+          const { CodexGitPermissions } = await import('@agent-cli/agent-config/CodexGitPermissions')
+          await CodexGitPermissions.install({ root })
+        }
       } catch (error) {
         HCI.writeErrorLine(Errors.formatForUser(error))
         Platform.runtimeProcess.exit(1)

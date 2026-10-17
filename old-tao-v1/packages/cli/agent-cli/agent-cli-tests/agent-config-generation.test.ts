@@ -71,6 +71,38 @@ Describe('agent config generation', () => {
     }
   })
 
+  Test('keeps native agent permissions out of the current workspace generator', async () => {
+    const root = await mkTestDir('tao-agent-config-native-')
+    try {
+      await FS.mkdir(FS.resolvePath('ts', root))
+      await FS.writeJson(FS.resolvePath('ts/package.json', root), {})
+      const calls: GenerateOptions[] = []
+      const nativeGenerators: string[] = []
+      await AgentConfigGenerator.generate({
+        generate: async options => {
+          calls.push(options)
+        },
+        generateClaudeProfiles: async () => {
+          nativeGenerators.push('claude')
+        },
+        generateCodexConfig: async () => {
+          nativeGenerators.push('codex')
+        },
+        root,
+      })
+
+      Expect(calls.map(call => call.targets)).toEqual([['codexcli'], ['claudecode'], ['cursor']])
+      Expect(calls.map(call => call.features)).toEqual([
+        ['subagents', 'hooks'],
+        ['subagents', 'hooks'],
+        ['subagents'],
+      ])
+      Expect(nativeGenerators).toEqual([])
+    } finally {
+      await FS.remove(root)
+    }
+  })
+
   Test('continues when a sandbox denies the generated Claude Code settings', async () => {
     const root = await mkTestDir('tao-agent-config-settings-')
     try {
@@ -123,7 +155,7 @@ Describe('agent config generation', () => {
     }
   })
 
-  Test('checks Rulesync hooks only for the new workspace and preserves native Claude settings', async () => {
+  Test('limits current-workspace freshness to Rulesync-owned hook outputs', async () => {
     const root = await mkTestDir('tao-agent-config-freshness-')
     try {
       await FS.mkdir(FS.resolvePath('ts', root))
@@ -153,7 +185,10 @@ Describe('agent config generation', () => {
 
       Expect(issues.length).toBeGreaterThan(0)
       Expect(
-        issues.every(issue => issue.startsWith('.claude/settings.json ') || issue.startsWith('.codex/hooks.json ')),
+        issues.every(issue =>
+          (issue.startsWith('.claude/settings.json ') || issue.startsWith('.codex/hooks.json '))
+          && issue.includes('./agent agent-config')
+        ),
       ).toBe(true)
       Expect(await FS.readText(settingsPath)).toBe(nativeSettings)
     } finally {

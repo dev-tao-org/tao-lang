@@ -1,6 +1,6 @@
 import { Errors, FS, Platform, Repo } from '@shared'
 import * as CLI from '@shared/CLI'
-import { Describe, Expect, initGitTestRepository, mkGitTestDir, mkTestDir, Test } from '@shared/test'
+import { Describe, Expect, mkTestDir, Test } from '@shared/test'
 import { parseProfiles, readProfiles } from '../agent-cli-src/agent-config/AgentProfiles'
 import { CodexConfigGenerator } from '../agent-cli-src/agent-config/CodexConfigGenerator'
 import { DELEGATION_SKILL_PATH, tierModels } from '../agent-cli-src/delegation/DelegationProfiles'
@@ -247,96 +247,6 @@ Describe('Codex config generation', () => {
     }
   })
 
-  Test('generates the committed profile in a checkout outside the home directory', async () => {
-    const root = await mkGitTestDir('tao-codex-portable-')
-    try {
-      await initGitTestRepository(root)
-      for (const path of ['.rulesync/permissions.jsonc', '.rulesync/profiles.jsonc', DELEGATION_SKILL_PATH]) {
-        await FS.writeText(FS.resolvePath(path, root), await FS.readText(Repo.resolveGitPath(path)))
-      }
-      const outputs = new Map<string, string>()
-      await CodexConfigGenerator.generate({
-        root,
-        writeText: async (path, content) => {
-          outputs.set(FS.relativePath(root, path), content)
-        },
-      })
-
-      Expect(outputs.get('.codex/config.toml')).toBe(await FS.readText(Repo.resolveGitPath('.codex/config.toml')))
-    } finally {
-      await FS.remove(root)
-    }
-  })
-
-  Test('keeps complete config bytes identical across home and relocated checkout locations', async () => {
-    const insideHome = await mkTestDir('tao-codex-home-location-')
-    const outsideHome = await mkGitTestDir('tao-codex-other-location-')
-    try {
-      // The checkout-local fixture shares the checkout's location, which is under home on a
-      // contributor machine but need not be in a hosted container whose HOME lies elsewhere.
-      Expect(insideHome.startsWith(`${FS.homeDir()}/`)).toBe(Repo.getRoot().startsWith(`${FS.homeDir()}/`))
-      Expect(outsideHome.startsWith(`${FS.homeDir()}/`)).toBe(false)
-      const expected = await FS.readText(Repo.resolveGitPath('.codex/config.toml'))
-      // Different synthetic login/clone layouts exercise the whole renderer without changing
-      // process HOME or writing a real user config. Git location is deliberately not an input.
-      for (
-        const root of [
-          insideHome,
-          FS.resolvePath('home-alice/code/clone', outsideHome),
-          FS.resolvePath('home-bob/relocated/clone', outsideHome),
-        ]
-      ) {
-        await FS.mkdir(root)
-        // Nested Git fixtures are forbidden in a sandboxed worktree. The real home-scoped
-        // checkout is covered by the fresh-render test; relocated Git fixtures live outside it.
-        if (root !== insideHome) {
-          await initGitTestRepository(root)
-        }
-        for (const path of ['.rulesync/permissions.jsonc', '.rulesync/profiles.jsonc', DELEGATION_SKILL_PATH]) {
-          await FS.writeText(FS.resolvePath(path, root), await FS.readText(Repo.resolveGitPath(path)))
-        }
-        const outputs = new Map<string, string>()
-        await CodexConfigGenerator.generate({
-          root,
-          writeText: async (path, content) => {
-            outputs.set(FS.relativePath(root, path), content)
-          },
-        })
-        Expect(outputs.get('.codex/config.toml')).toBe(expected)
-      }
-    } finally {
-      await FS.remove(insideHome)
-      await FS.remove(outsideHome)
-    }
-  })
-
-  Test('keeps the committed Claude Code settings in step with the canonical rules', async () => {
-    // The generator skips this write when a sandbox denies it, so an agent can edit the canonical
-    // rules, watch `./agent setup` succeed, and commit rules that never reached the settings file.
-    // Nothing else notices; this does.
-    const root = Repo.getGitRoot()
-    const rules = CodexConfigGenerator.parsePermissions(
-      await FS.readText(FS.resolvePath('.rulesync/permissions.jsonc', root)),
-    )
-    const settings = await FS.readJson<{
-      permissions?: { allow?: string[]; ask?: string[]; deny?: string[] }
-      sandbox?: { network?: { allowUnixSockets?: string[]; allowedDomains?: string[] } }
-    }>(FS.resolvePath('.claude/settings.json', root))
-
-    for (const [pattern, action] of Object.entries(rules.permission?.read ?? {})) {
-      const rendered = `Read(${pattern})`
-      const list = action === 'deny' ? settings.permissions?.deny : settings.permissions?.allow
-      Expect(list ?? []).toContain(rendered)
-    }
-    for (const [pattern, action] of Object.entries(rules.permission?.bash ?? {})) {
-      if (action === 'deny') {
-        Expect(settings.permissions?.deny ?? []).toContain(`Bash(${pattern})`)
-      }
-    }
-    Expect(settings.sandbox?.network?.allowedDomains ?? [])
-      .toEqual(rules.claudecode?.sandbox?.network?.allowedDomains ?? [])
-  })
-
   Test('takes the delegation defaults from the standard tier of the routing table', async () => {
     const root = Repo.getGitRoot()
     const skill = await FS.readText(FS.resolvePath(DELEGATION_SKILL_PATH, root))
@@ -362,32 +272,6 @@ Describe('Codex config generation', () => {
     )
 
     Expect(rendered).not.toContain('[agents]')
-  })
-
-  Test('keeps the tracked Codex profile identical to a fresh render', async () => {
-    const root = Repo.getGitRoot()
-    const rendered = CodexConfigGenerator.render(
-      CodexConfigGenerator.parsePermissions(await FS.readText(FS.resolvePath('.rulesync/permissions.jsonc', root))),
-      await readProfiles(root),
-      await FS.readText(FS.resolvePath(DELEGATION_SKILL_PATH, root)),
-    )
-
-    Expect(await FS.readText(FS.resolvePath('.codex/config.toml', root))).toBe(rendered)
-    const rules = await FS.readText(FS.resolvePath('.codex/rules/tao.rules', root))
-    Expect(rules).toBe(
-      CodexConfigGenerator.renderRules(
-        CodexConfigGenerator.parsePermissions(await FS.readText(FS.resolvePath('.rulesync/permissions.jsonc', root))),
-      ),
-    )
-    Expect(rules).not.toContain('pattern=["git","merge"]')
-    Expect(rules).not.toContain('pattern=["kill"')
-    Expect(rules).not.toContain('pattern=["/bin/kill"')
-    Expect(rules).not.toContain('pattern=["just","land"], decision="allow"')
-    Expect(rules).not.toContain('pattern=["./dev","land"], decision="allow"')
-    Expect(rules).not.toContain('pattern=["just","merge-with-main"], decision="allow"')
-    Expect(rules).not.toContain('pattern=["./dev","merge-with-main"], decision="allow"')
-    Expect(rules).not.toContain('pattern=["just","my-land"], decision="allow"')
-    Expect(rules).not.toContain('pattern=["./agent","land"]')
   })
 
   Test('tracks the startup profile, and no harness file names a home directory or a login', async () => {

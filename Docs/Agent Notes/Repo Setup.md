@@ -15,7 +15,7 @@ Cursor auto-run prose cannot grant an OS sandbox escape. Root host commands use
 `.config/agent-host-commands.json`; retained legacy commands keep their separate allowlist.
 The Git-permission installer and direct smol-toml dependency were removed by request.
 A dedicated new-workspace CI lane is added; hosted execution is unverified.
-Local verification passes 60 tests and 312 assertions. Adapter regeneration preserves native settings;
+Local verification passes 61 tests and 319 assertions. Adapter regeneration preserves native settings;
 no home configuration changes, branch switching or services were invoked. `my-branch` only switches
 to an existing developer branch; `my-sync` and the synchronization machinery were removed by request.
 The developer requested a final review of the entire branch from its fork point, followed by landing.

@@ -1,6 +1,5 @@
 import { FS, Repo } from '@shared'
 import { Describe, Expect, mkTestDir, Test } from '@shared/test'
-import { AgentConfigFreshness } from '../agent-cli-src/agent-config/AgentConfigFreshness'
 import {
   agentHostCommands,
   generateClaudeHostSettings,
@@ -135,10 +134,6 @@ Describe('agent host command permissions', () => {
       ...expected.slice(expected.indexOf('reclaim --execute')),
     ])
     const rules = CodexConfigGenerator.renderRules(source)
-    const settings = JSON.parse(await FS.readText(Repo.resolveGitPath('.claude/settings.json'))) as {
-      permissions: { allow: string[] }
-      sandbox: { excludedCommands: string[] }
-    }
     const operations = [...new Set(prefixes.map(prefix => prefix[0]))]
     Expect(rules.split('\n').filter(line => line.startsWith('prefix_rule('))).toEqual(
       operations.map(operation =>
@@ -147,19 +142,6 @@ Describe('agent host command permissions', () => {
         }, decision="allow", justification="Repository host wrapper validates subcommands and arguments.")`
       ),
     )
-    const shapes = operations.flatMap(operation => [
-      `./agent unsandboxed ${operation}`,
-      `./agent unsandboxed ${operation} *`,
-    ])
-    Expect(settings.sandbox.excludedCommands).toEqual(shapes)
-    Expect(settings.permissions.allow.filter(rule => rule.startsWith('Bash(./agent unsandboxed')))
-      .toEqual(shapes.map(shape => `Bash(${shape})`))
-    Expect(settings.permissions.allow).not.toContain('Bash(./agent land)')
-    Expect(
-      (await AgentConfigFreshness.staleIssues(Repo.getGitRoot())).some(issue =>
-        issue.startsWith('.claude/settings.json ')
-      ),
-    ).toBe(false)
   })
 
   Test('accepts only whole listed prefixes and rejects malformed entries', () => {

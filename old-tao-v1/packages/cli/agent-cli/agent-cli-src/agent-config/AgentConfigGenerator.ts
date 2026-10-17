@@ -5,15 +5,20 @@ import { ClaudeProfilesGenerator } from './ClaudeProfilesGenerator'
 import { CodexConfigGenerator } from './CodexConfigGenerator'
 
 /**
- * Codex CLI's permissions come from `CodexConfigGenerator` instead of rulesync: rulesync's Codex
- * permissions translator cannot express that profile's loopback binding, Unix sockets, or curated
- * domain list, so generating them through it would replace a narrow policy with an open one.
+ * Standalone legacy checkouts render Codex permissions locally because rulesync cannot express the
+ * profile's loopback binding, Unix sockets, or curated domain list without broadening its policy.
  */
 const targetFeatures = {
   codexcli: ['subagents', 'hooks'],
   claudecode: ['subagents', 'permissions', 'hooks'],
   // Cursor takes the profiles alone. Its permissions and worktree setup stay hand-maintained in
   // `.cursor/`, because rulesync has no translator for the shape those files are written in.
+  cursor: ['subagents'],
+} satisfies Record<string, Feature[]>
+
+const currentWorkspaceFeatures = {
+  codexcli: ['subagents', 'hooks'],
+  claudecode: ['subagents', 'hooks'],
   cursor: ['subagents'],
 } satisfies Record<string, Feature[]>
 
@@ -36,14 +41,16 @@ type GenerateAgentConfigOptions = {
 
 async function generateAgentConfigs(options: GenerateAgentConfigOptions): Promise<void> {
   const generateTarget = options.generate ?? generate
+  const currentWorkspace = await FS.isFile(FS.resolvePath('ts/package.json', options.root))
+  const featuresByTarget = currentWorkspace ? currentWorkspaceFeatures : targetFeatures
   for (const target of targets) {
     try {
-      if (target === 'claudecode') {
+      if (!currentWorkspace && target === 'claudecode') {
         await recoverConflictedSettings(options.root, generateTarget)
       }
       await generateTarget({
         configPath: '.rulesync/rulesync.jsonc',
-        features: targetFeatures[target as keyof typeof targetFeatures],
+        features: featuresByTarget[target as keyof typeof featuresByTarget],
         inputRoot: options.root,
         outputRoots: [options.root],
         targets: [target],
@@ -55,6 +62,9 @@ async function generateAgentConfigs(options: GenerateAgentConfigOptions): Promis
       const path = (error as NodeJS.ErrnoException).path
       ;(options.onSkip ?? HCI.writeErrorLine)(`Skipped ${target} agent config: ${path} is not writable.`)
     }
+  }
+  if (currentWorkspace) {
+    return
   }
   try {
     await generateClaudeHostSettings(options.root)

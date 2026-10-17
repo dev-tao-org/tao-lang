@@ -16,44 +16,9 @@ function fatalError(error: unknown): void {
 }
 
 function printError(error: unknown): void {
-  const stacks: string[] = []
-  const details = errorDetails(error, stacks, new WeakSet())
+  const { stacks, details } = Errors.describe(error)
   for (const stack of stacks) {
     IO.printToStdErr('\u001b[33m%s\u001b[0m', stack)
   }
-  IO.printToStdErr('%s', errorText(details))
-}
-
-function errorText(value: unknown): string {
-  return Text.inspect(value, {
-    depth: null,
-    customInspect: false,
-    colors: false,
-    maxStringLength: null,
-    maxArrayLength: null,
-  })
-}
-
-function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {
-  if (!(error instanceof Error)) {
-    return error
-  }
-  if (seen.has(error)) {
-    return '[Circular error cause]'
-  }
-  seen.add(error)
-  const { stack, cause, ...details } = error
-  const frames = stack?.split('\n').slice(1).join('\n')
-  if (frames) {
-    stacks.push(frames)
-  }
-  return {
-    ...details,
-    name: error.name,
-    message: error.message,
-    ...(error instanceof AggregateError
-      ? { errors: error.errors.map(member => errorDetails(member, stacks, seen)) }
-      : {}),
-    ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
-  }
+  IO.printToStdErr('%s', Text.inspect(details))
 }

@@ -20,6 +20,8 @@ const LEGACY_RULESYNC_OUTPUTS = [
 
 const STALE_DETAIL =
   'is stale against its `.rulesync/` source; run `./agent setup`, and commit the result if the file is tracked.'
+const CURRENT_STALE_DETAIL =
+  'is stale against its `.rulesync/` source; run `./agent agent-config`, and commit the result if the file is tracked.'
 
 /** renderedOutputs collects what a generator would write, keyed by repository-relative path. */
 async function renderedOutputs(
@@ -81,6 +83,7 @@ async function rulesyncOutputs(root: string, currentWorkspace: boolean): Promise
 /** staleAgentConfigIssues reports each committed harness file that regenerating would change. */
 async function staleAgentConfigIssues(root: string): Promise<string[]> {
   const currentWorkspace = await FS.isFile(FS.resolvePath('ts/package.json', root))
+  const detail = currentWorkspace ? CURRENT_STALE_DETAIL : STALE_DETAIL
   const expected = currentWorkspace
     ? await rulesyncOutputs(root, true)
     : new Map([
@@ -92,7 +95,7 @@ async function staleAgentConfigIssues(root: string): Promise<string[]> {
   for (const [path, content] of expected) {
     const committed = FS.resolvePath(path, root)
     if (await FS.isFile(committed) && await FS.readText(committed) !== content) {
-      issues.push(`${path} ${STALE_DETAIL}`)
+      issues.push(`${path} ${detail}`)
     }
   }
   return issues.sort()
