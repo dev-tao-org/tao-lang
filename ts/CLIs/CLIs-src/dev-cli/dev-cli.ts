@@ -1,4 +1,5 @@
 import './commands/check'
+import './commands/fmt'
 import './commands/my-branch'
 import './commands/my-sync'
 import './commands/setup'

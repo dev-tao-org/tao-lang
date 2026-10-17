@@ -1,11 +1,51 @@
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { cp, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runMyBranch } from './commands/my-branch'
 
 const justfile = fileURLToPath(new URL('../../../../Justfile', import.meta.url))
+
+Describe('shared developer and agent commands', () => {
+    Test('format repository-relative paths and preserve check failures through both entrypoints', async () => {
+        const root = await mkdtemp(join(tmpdir(), 'tao-cli-shared-'))
+        try {
+            const repository = fileURLToPath(new URL('../../../../', import.meta.url))
+            await mkdir(join(root, 'ts'), { recursive: true })
+            for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
+                await cp(join(repository, entry), join(root, entry), { recursive: true })
+            }
+            await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))
+            await Bun.write(join(root, '.dprint.jsonc'), JSON.stringify({
+                plugins: [join(repository, 'ts/node_modules/@dprint/typescript/plugin.wasm')],
+                typescript: { semiColons: 'asi', quoteStyle: 'preferSingle' },
+            }))
+            const source = join(root, 'ts/format fixture.ts')
+            for (const entry of ['dev', 'agent']) {
+                await Bun.write(source, 'export const value:number="wrong";\n')
+                const format = Bun.spawn([join(root, entry), 'fmt', 'ts/format fixture.ts'], {
+                    cwd: root, stdout: 'pipe', stderr: 'pipe',
+                })
+                const [formatted] = await Promise.all([
+                    format.exited, new Response(format.stdout).text(), new Response(format.stderr).text(),
+                ])
+                Expect(formatted).toBe(0)
+                Expect(await Bun.file(source).text()).toBe("export const value: number = 'wrong'\n")
+                const check = Bun.spawn([join(root, entry), 'check'], {
+                    cwd: root, stdout: 'pipe', stderr: 'pipe',
+                })
+                const [checked, stdout, stderr] = await Promise.all([
+                    check.exited, new Response(check.stdout).text(), new Response(check.stderr).text(),
+                ])
+                Expect(checked).not.toBe(0)
+                Expect(stdout + stderr).toContain('TS2322')
+            }
+        } finally {
+            await rm(root, { recursive: true, force: true })
+        }
+    })
+})
 
 Describe('developer setup command', () => {
   Test('installs from a fresh workspace before loading Commander', async () => {

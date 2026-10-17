@@ -15,8 +15,9 @@ export function setAgentIO() {
 }
 
 /** runCommand runs an inherited terminal command and returns its exit code. */
-export async function runCommand(command: string[]): Promise<number> {
+export async function runCommand(command: string[], options: { cwd?: string } = {}): Promise<number> {
     const child = Bun.spawn(command, {
+        ...options,
         stdin: 'inherit',
         stdout: 'inherit',
         stderr: 'inherit',
