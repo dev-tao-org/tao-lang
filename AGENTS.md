@@ -7,6 +7,7 @@ Tao is a programming language for building apps.
 - A PoC implementation exists in `./old-tao-v1`.
   - Use the PoC for reference, but don't copy code wholesale.
   - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
+  - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `old-tao-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
 
 ## Agent usage
 
@@ -25,6 +26,13 @@ These are your rules of usage:
 - Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
 
+## Decisions and communication
+
+- Resolve questions needing developer input during planning. For a decision discovered during implementation, use best judgment and continue; at completion, state the assumption and ask whether it should change.
+- During implementation, ask immediately if a decision is essential or would substantially split the implementation. Continue independent work while awaiting a reply; after three minutes without a response, proceed with best judgment and report the choice at completion. This fallback does not replace explicit approval required for dependencies, destructive actions, publication, landing, or other permission-gated operations.
+- Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
+- Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
+
 ## Your mission
 
 Your mission is to follow the developer's instructions to implement the Tao MVP in pieces, following this process:
@@ -33,11 +41,11 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - The developer describes the PoC functionality to implement;
   - The developer may have provided new code stubs for you to fill out;
   - You create a plan together in dialogue mode (see skill);
-    - When done, you propose a plan with N steps, each of which will be reviewed by the developer before you proceed to the next step.
+    - Agree on the plan and any review points with the developer before implementation.
   - You write tests and implement the plan with TDD;
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
-    - Unless told not to, you should implement one functional piece at a time, and ask for review before proceeding.
+    - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - You review the code for repo conformance;
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.

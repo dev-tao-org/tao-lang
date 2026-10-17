@@ -8,6 +8,7 @@ description: >-
 
 # Old Repo Porting
 
+- Root `AGENTS.md` owns when legacy changes need planning discussion or a retrospective question. Consult it before editing the reference implementation.
 - Reuse proven semantics and edge cases, not whole files or obsolete architecture; `packages/AGENTS.md` owns where the reused code lives. Record task-specific conclusions in the active roadmap task.
 - Use `_gen_` for generated names. Do not commit generated output unless the task requires it.
 - Do not downgrade Langium as part of a port. Tao's type system is the hand-rolled structural `Type` in `@ast-utils`.
