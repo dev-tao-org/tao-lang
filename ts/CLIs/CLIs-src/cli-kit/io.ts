@@ -1,0 +1,96 @@
+import { Time } from '@shared'
+import { Artifacts, Path, Platform, Repo, Terminal, Text } from '@shared/os'
+
+type OutputPipe = (text: string | Uint8Array) => void
+type IOConfiguration = {
+  stdout?: 'terminal' | 'log' | OutputPipe
+  stderr?: 'terminal' | 'both' | OutputPipe
+  logFile?: string
+  logDirectory?: 'agent' | 'dev'
+}
+
+let stdoutPipe: OutputPipe = terminalStdout
+let stderrPipe: OutputPipe = terminalStderr
+let captureCommands = false
+let mirrorCommandStderr = false
+let agentLog: string
+
+/** IO routes output through channels selected once by each CLI entrypoint. */
+export const IO = {
+  ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
+  config: configureOutput,
+}
+
+/** configuredCommandOutput exposes the configured command streams to cmd-exec. */
+export function configuredCommandOutput() {
+  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe }
+}
+
+function configureOutput(configuration: IOConfiguration): void {
+  stdoutPipe = typeof configuration.stdout === 'function'
+    ? configuration.stdout
+    : configuration.stdout === 'log'
+    ? loggedStdout
+    : terminalStdout
+  stderrPipe = typeof configuration.stderr === 'function'
+    ? configuration.stderr
+    : configuration.stderr === 'both'
+    ? loggedStderr
+    : terminalStderr
+  captureCommands = stdoutPipe !== terminalStdout || stderrPipe !== terminalStderr
+  mirrorCommandStderr = configuration.stderr === 'both'
+  agentLog = configuration.logFile
+    ? Repo.resolvePath(configuration.logFile)
+    : Artifacts.resolvePath(
+      'logs',
+      configuration.logDirectory ?? 'dev',
+      `${Time.date().toISOString().replaceAll(':', '-')}-${Platform.pid}.log`,
+    )
+  if (usesLogFiles(configuration)) {
+    Artifacts.mkdirSync(Path.dirname(agentLog), { recursive: true })
+    const announcement = `Logs: ${
+      Path.relative(Repo.getWorkspaceRoot(), Artifacts.realpathSync(Path.dirname(agentLog))) || '.'
+    }/\n`
+    Artifacts.appendFileSync(agentLog, announcement)
+    Terminal.stderr.write(announcement)
+  }
+}
+
+function usesLogFiles(configuration: IOConfiguration): boolean {
+  return configuration.stdout === 'log' || configuration.stderr === 'both'
+}
+
+function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
+  return {
+    print(...args: unknown[]): void {
+      outputPipe(`${Text.format(...args)}\n`)
+    },
+    warn(...args: unknown[]): void {
+      outputPipe(`\u001b[33m${Text.format(...args)}\u001b[0m\n`)
+    },
+    printToStdErr(...args: unknown[]): void {
+      errorPipe(`\u001b[31m${Text.format(...args)}\u001b[0m\n`)
+    },
+  }
+}
+
+function loggedStdout(text: string | Uint8Array): void {
+  logToFile(text)
+}
+
+function loggedStderr(text: string | Uint8Array): void {
+  terminalStderr(text)
+  logToFile(text)
+}
+
+function terminalStdout(text: string | Uint8Array): void {
+  Terminal.stdout.write(text)
+}
+
+function terminalStderr(text: string | Uint8Array): void {
+  Terminal.stderr.write(text)
+}
+
+function logToFile(text: string | Uint8Array): void {
+  Artifacts.appendFileSync(agentLog, text)
+}

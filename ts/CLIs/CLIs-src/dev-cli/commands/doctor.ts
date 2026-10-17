@@ -26,7 +26,7 @@ export default registerCommand({
         const line = `${check.status.toUpperCase()} ${check.name}: ${check.detail}${
           check.remediation ? ` Run: ${check.remediation}` : ''
         }`
-        ;(check.status === 'fail' ? IO.warn : IO.print)(line)
+        ;(check.status === 'pass' ? IO.print : IO.warn)(line)
       }
       IO.print(
         'Environment (safe to paste; ./agent doctor --fingerprint):\n' + JSON.stringify(report.fingerprint, null, 2),
