@@ -1,7 +1,7 @@
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
-import { transform } from '../../2-transformer/transformer-src/Transform'
+import { transform } from '../../2-transform/transform-src/Transform'
 
 /** transformerSamples measures the implemented app-only slice, excluding unsupported view declarations.
  *  Record 100 warm samples after 20 warmups; this is not a complete Hello World or preview measurement. */

@@ -1,11 +1,11 @@
 import { Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
-import { transform } from '../transformer-src/Transform'
+import { transform } from '../transform-src/Transform'
 
 Tests.test('an app becomes semantic declarations and names with source origins', async () => {
   const source = (await Tests.readApp('Hello World')).split('\n\n')[0]!
-  const timings = new Timings('transformer-test')
+  const timings = new Timings('transform-test')
   const { tree } = createParser().parse(source)
   const result = transform(tree, timings)
   Tests.expect(result?.root).toEqual({

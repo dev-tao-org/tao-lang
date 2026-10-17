@@ -12,7 +12,13 @@ export default {
     'perf/perf-src/parser-sample.ts',
     '**/*.test.ts',
   ],
-  project: ['CLIs/**/*.ts', 'shared/**/*.ts', '1-grammar/**/*.ts', '2-transformer/**/*.ts', 'perf/**/*.ts'],
+  project: [
+    'CLIs/**/*.ts',
+    'shared/**/*.ts',
+    '1-grammar/**/*.ts',
+    '2-transform/**/*.ts',
+    'perf/**/*.ts',
+  ],
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 } satisfies KnipConfig
 
