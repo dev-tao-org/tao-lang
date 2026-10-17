@@ -75,7 +75,7 @@ from the legacy tool profile. `./dev agent-config` regenerates the adapters. The
 command; invoke the retained gate runner from `old-tao-v1/` when legacy changes require it.
 Knip uses its root configuration when analyzing the legacy workspace from its own folder.
 The new workspace independently installs approved Knip 6.34.0 and runs its export/type and unused-file checks
-inside `check` and `verify`, using `ts/knip.ts`. Command entrypoints are derived from the CLI's
+inside `check` and `verify`, using `ts/scripts/knip.ts`. Command entrypoints are derived from the CLI's
 registration imports, alongside bootstrap and test entries; orphan command files are rejected.
 Shared barrels remain analyzable so namespace exports are checked. Tao bindings,
 generated native siblings and declaration facades await their new implementations. No legacy

@@ -1,6 +1,6 @@
 import type { KnipConfig } from 'knip'
 import * as TypeScript from 'typescript'
-import { FileSystem, Path, Repo } from './shared/shared-src/os'
+import { FileSystem, Path, Repo } from '../shared/shared-src/os'
 
 /** knipConfiguration checks new sources while recognizing only imported command registrations. */
 export default {

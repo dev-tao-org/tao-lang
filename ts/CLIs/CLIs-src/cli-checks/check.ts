@@ -79,7 +79,7 @@ export async function workspaceConformance(): Promise<void> {
 export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
-  await runCommand('knip --config knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
+  await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
 /** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
