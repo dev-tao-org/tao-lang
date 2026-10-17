@@ -6,6 +6,6 @@ export TAO_AGENT=0
 cd "$(dirname "$0")/ts"
 if [ "${1:-}" = setup ]; then
     shift
-    exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" "$@"
+    exec bun run "./CLIs/CLIs-src/dev-cli/commands/_command-runner.ts" "$@"
 fi
 exec bun run "./CLIs/CLIs-src/dev-cli/dev-cli.ts" "$@"

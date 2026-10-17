@@ -1,11 +1,8 @@
-import { Errors, Try } from '@shared'
-import { Clock, Env, FileSystem, Platform, Streams, Terminal } from '@shared/os'
-import { appendFileSync, mkdirSync, realpathSync } from '@shared/os/FileSystem'
-import { dirname, fileURLToPath, relative } from '@shared/os/Path'
-import { format } from '@shared/os/Text'
+import { Errors, Time, Try } from '@shared'
+import { Env, FileSystem, Path, Platform, Streams, Terminal, Text } from '@shared/os'
 
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
-export const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\/$/, '')
+export const repositoryRoot = Path.fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\/$/, '')
 
 let agentLog: string | undefined
 let logUnavailable = false
@@ -20,7 +17,7 @@ export const IO = outputMethods()
 
 /** setAgentIO enables agent logging, including for direct agent CLI invocation. */
 export function setAgentIO(): void {
-  Env.TAO_AGENT = '1'
+  Env.set('TAO_AGENT', '1')
 }
 
 /** runCommand runs a space-separated command and throws on failure.
@@ -42,9 +39,9 @@ export async function runCommand(command: string | readonly string[], options: {
   const label = args.join(' ')
   const output = options.stdout === 'log' ? outputMethods(false, true) : IO
   output.info(`RUN CMD: ${label}`)
-  const started = Clock.nowMs()
+  const started = Time.nowMs()
   await Try(async () => {
-    const logging = Env.TAO_AGENT === '1' || options.stdout === 'log'
+    const logging = Env.is('TAO_AGENT', '1') || options.stdout === 'log'
     const spawnOptions = { cwd: options.cwd, stdin: options.stdin ?? 'inherit' as const }
     let status: number
     let signal: string | null
@@ -82,13 +79,13 @@ export async function runCommand(command: string | readonly string[], options: {
       })
     }
   }, {
-    finally: () => output.info(`[${((Clock.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
+    finally: () => output.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`),
   })
 }
 
 function outputMethods(terminalOnly = false, fileOnly = false) {
-  const output = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, false, terminalOnly, fileOnly)
-  const error = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, true, terminalOnly, fileOnly)
+  const output = (...args: unknown[]): void => writeOutput(`${Text.format(...args)}\n`, false, terminalOnly, fileOnly)
+  const error = (...args: unknown[]): void => writeOutput(`${Text.format(...args)}\n`, true, terminalOnly, fileOnly)
   return {
     info: output,
     debug: output,
@@ -104,7 +101,7 @@ async function forwardOutput(stream: Streams.ByteStream, stderr: boolean): Promi
 }
 
 function writeOutput(text: string | Uint8Array, stderr = false, terminalOnly = false, fileOnly = false): void {
-  const logging = fileOnly || Env.TAO_AGENT === '1'
+  const logging = fileOnly || Env.is('TAO_AGENT', '1')
   if (stderr) {
     if (logging) {
       logToFile(text)
@@ -125,21 +122,23 @@ function logToFile(text: string | Uint8Array): boolean {
   }
   return Try(() => {
     if (!agentLog) {
-      agentLog = Env.TAO_AGENT_LOG
-        ?? `${repositoryRoot}/.artifacts/logs/${Env.TAO_AGENT === '1' ? 'agent' : 'dev'}/${
-          Clock.utcNow().toISOString().replaceAll(':', '-')
+      agentLog = Env.get('TAO_AGENT_LOG')
+        ?? `${repositoryRoot}/.artifacts/logs/${Env.is('TAO_AGENT', '1') ? 'agent' : 'dev'}/${
+          Time.date().toISOString().replaceAll(':', '-')
         }-${Platform.pid}.log`
-      mkdirSync(dirname(agentLog), { recursive: true })
-      const announcement = `Logs: ${relative(realpathSync(repositoryRoot), realpathSync(dirname(agentLog))) || '.'}/\n`
-      appendFileSync(agentLog, announcement)
+      FileSystem.mkdirSync(Path.dirname(agentLog), { recursive: true })
+      const announcement = `Logs: ${
+        Path.relative(FileSystem.realpathSync(repositoryRoot), FileSystem.realpathSync(Path.dirname(agentLog))) || '.'
+      }/\n`
+      FileSystem.appendFileSync(agentLog, announcement)
       Terminal.stderr.write(announcement)
     }
-    appendFileSync(agentLog, text)
+    FileSystem.appendFileSync(agentLog, text)
     return true
   }, {
     catch: error => {
       logUnavailable = true
-      Terminal.stderr.write(`Command log unavailable: ${format(error)}\n`)
+      Terminal.stderr.write(`Command log unavailable: ${Text.format(error)}\n`)
       return false
     },
   })

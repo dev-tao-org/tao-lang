@@ -1,7 +1,5 @@
-import { Errors, Try } from '@shared'
-import { Clock, FileSystem, Platform } from '@shared/os'
-import { mkdir } from '@shared/os/FileSystem'
-import { dirname } from '@shared/os/Path'
+import { Errors, Time, Try } from '@shared'
+import { FileSystem, Path, Platform } from '@shared/os'
 import { IO, repositoryRoot } from './cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
@@ -27,9 +25,8 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
 
 async function prepareTestReport(): Promise<string | undefined> {
   return Try(async () => {
-    const path =
-      `${repositoryRoot}/.artifacts/logs/test/${Clock.epochMs()}-${Platform.pid}-${Platform.randomUUID()}.xml`
-    await mkdir(dirname(path), { recursive: true })
+    const path = `${repositoryRoot}/.artifacts/logs/test/${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`
+    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
     await FileSystem.write(path, '')
     return path
   }, {

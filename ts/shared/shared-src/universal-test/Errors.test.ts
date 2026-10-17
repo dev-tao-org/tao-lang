@@ -1,9 +1,8 @@
 import { Errors } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
-import { throws as ExpectThrows } from '@shared/os/Test'
+import { Test } from '@shared/os'
 
-Describe('Errors throwing helpers', () => {
-  Test('ThrowX preserves each error category, message and context', () => {
+Test.describe('Errors throwing helpers', () => {
+  Test.test('ThrowX preserves each error category, message and context', () => {
     const details = { field: 'input' }
     const cause = new Error('host')
     for (
@@ -13,31 +12,31 @@ Describe('Errors throwing helpers', () => {
         [() => Errors.ThrowHostEnvironment('host', { cause, details }), 'HostEnvironmentError', 'host'],
       ] as const
     ) {
-      ExpectThrows(action, thrown => {
+      Test.throws(action, thrown => {
         const error = thrown as Errors.TaoError
-        Expect(error.name).toBe(category)
-        Expect(error.details).toBe(details)
-        Expect(error.message).toBe(message)
+        Test.expect(error.name).toBe(category)
+        Test.expect(error.details).toBe(details)
+        Test.expect(error.message).toBe(message)
         if (category !== 'UserInputError') {
-          Expect(error.cause).toBe(cause)
+          Test.expect(error.cause).toBe(cause)
         }
         return true
       })
     }
   })
 
-  Test('ThrowCommandExecution retains the subprocess result and Throw retains normalized identity', () => {
+  Test.test('ThrowCommandExecution retains the subprocess result and Throw retains normalized identity', () => {
     const result = { command: 'tool', args: ['with spaces'], status: 23, signal: null, stdout: 'out', stderr: 'err' }
-    ExpectThrows(() => Errors.ThrowCommandExecution(result), thrown => {
+    Test.throws(() => Errors.ThrowCommandExecution(result), thrown => {
       const error = thrown as Errors.TaoError
-      Expect(error.name).toBe('CommandExecutionError')
-      Expect(error.message).toBe('Command failed: tool "with spaces"')
-      Expect(error.details).toMatchObject({ status: 23, stdout: 'out', stderr: 'err' })
+      Test.expect(error.name).toBe('CommandExecutionError')
+      Test.expect(error.message).toBe('Command failed: tool "with spaces"')
+      Test.expect(error.details).toMatchObject({ status: 23, stdout: 'out', stderr: 'err' })
       if (error.name === 'CommandExecutionError') {
-        Expect(error.result).toBe(result)
+        Test.expect(error.result).toBe(result)
       }
-      ExpectThrows(() => Errors.Throw(error), propagated => {
-        Expect(propagated).toBe(error)
+      Test.throws(() => Errors.Throw(error), propagated => {
+        Test.expect(propagated).toBe(error)
         return true
       })
       return true

@@ -1,6 +1,5 @@
 import { Errors, Try } from '@shared'
-import { Platform } from '@shared/os'
-import { inspect } from '@shared/os/Text'
+import { Platform, Text } from '@shared/os'
 import { IO } from './cli-kit'
 
 Platform.onUncaughtException(fatalError)
@@ -23,7 +22,7 @@ function printError(error: unknown): void {
 }
 
 function errorText(value: unknown): string {
-  return inspect(value, {
+  return Text.inspect(value, {
     depth: null,
     customInspect: false,
     colors: false,

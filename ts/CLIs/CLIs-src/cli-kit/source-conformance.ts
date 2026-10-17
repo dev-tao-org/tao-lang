@@ -1,6 +1,5 @@
-import { Errors } from '@shared'
-import { Clock, FileSystem, Platform } from '@shared/os'
-import { relative } from '@shared/os/Path'
+import { Errors, Time } from '@shared'
+import { FileSystem, Path, Platform } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from './cli-kit'
 
@@ -8,23 +7,23 @@ type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
 
 /** checkSourceConformance checks new TypeScript sources without running tests or loading a type checker. */
 export async function checkSourceConformance(root: string): Promise<void> {
-  const started = Clock.nowMs()
+  const started = Time.nowMs()
   const issues: string[] = []
   for (const filename of await FileSystem.sourceFiles(root + '/ts')) {
     issues.push(
       ...sourceConformanceIssues(
-        relative(root, filename).replaceAll('\\', '/'),
+        Path.relative(root, filename).replaceAll('\\', '/'),
         await FileSystem.file(filename).text(),
       ),
     )
   }
-  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Clock.nowMs() - started) + 'ms')
+  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
     Errors.ThrowUserInput(issues.join('\n'))
   }
 }
 
-/** sourceConformanceIssues checks repository-relative TypeScript source for API docs and exception/comment syntax. */
+/** sourceConformanceIssues checks repository-Path.relative TypeScript source for API docs and exception/comment syntax. */
 export function sourceConformanceIssues(filename: string, source: string): string[] {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
   const issues: string[] = []
@@ -205,9 +204,17 @@ function platformAccessIssue(node: TypeScript.Node, filename: string): string | 
   if (isBuiltinReference(node)) {
     return 'runtime builtin imports belong in @shared/os'
   }
-  if (isPlatformGlobal(node)) {
+  if (isPlatformGlobal(node) && !isUniversalTimeAccess(node, filename)) {
     return 'platform globals belong in @shared/os; use its named APIs'
   }
+}
+
+function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean {
+  if (filename.replaceAll('\\', '/') !== 'ts/shared/shared-src/universal/Time.ts') {
+    return false
+  }
+  return isWallClockAccess(node)
+    || (TypeScript.isIdentifier(node) && (node.text === 'performance' || node.text === 'setTimeout'))
 }
 
 function isBuiltinReference(node: TypeScript.Node): boolean {
@@ -242,31 +249,63 @@ function isPlatformGlobal(node: TypeScript.Node): boolean {
 }
 
 function isWallClockAccess(node: TypeScript.Node): boolean {
-  if (TypeScript.isPropertyAccessExpression(node)) {
-    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'Date' && node.name.text === 'now'
+  if (TypeScript.isPropertyAccessExpression(node) || TypeScript.isElementAccessExpression(node)) {
+    return isDateReference(node.expression) && memberName(node) === 'now'
   }
   if (TypeScript.isNewExpression(node)) {
-    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'Date' && !node.arguments?.length
+    return isDateReference(node.expression) && !node.arguments?.length
   }
-  return false
+  return TypeScript.isCallExpression(node) && isDateReference(node.expression)
+}
+
+function isDateReference(node: TypeScript.Node): boolean {
+  if (TypeScript.isIdentifier(node)) {
+    return node.text === 'Date'
+  }
+  return isGlobalMember(node, 'Date')
 }
 
 function isPropertyName(node: TypeScript.Identifier): boolean {
   const parent = node.parent
-  return (TypeScript.isPropertyAccessExpression(parent) && parent.name === node)
-    || (TypeScript.isPropertyAssignment(parent) && parent.name === node)
+  if (TypeScript.isPropertyAccessExpression(parent)) {
+    return parent.name === node
+  }
+  if (
+    TypeScript.isPropertyAssignment(parent) || TypeScript.isPropertySignature(parent)
+    || TypeScript.isPropertyDeclaration(parent) || TypeScript.isMethodSignature(parent)
+    || TypeScript.isMethodDeclaration(parent) || TypeScript.isGetAccessorDeclaration(parent)
+    || TypeScript.isSetAccessorDeclaration(parent) || TypeScript.isEnumMember(parent)
+  ) {
+    return parent.name === node
+  }
+  return TypeScript.isBindingElement(parent) && parent.propertyName === node
 }
 
 function isGlobalPropertyAccess(node: TypeScript.Node): boolean {
+  if (!TypeScript.isPropertyAccessExpression(node) && !TypeScript.isElementAccessExpression(node)) {
+    return false
+  }
+  const name = memberName(node)
+  return name !== undefined && platformGlobals.has(name) && isGlobalMember(node, name)
+}
+
+function isGlobalMember(node: TypeScript.Node, name: string): boolean {
+  if (!TypeScript.isPropertyAccessExpression(node) && !TypeScript.isElementAccessExpression(node)) {
+    return false
+  }
+  return TypeScript.isIdentifier(node.expression) && node.expression.text === 'globalThis'
+    && memberName(node) === name
+}
+
+function memberName(
+  node: TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression,
+): string | undefined {
   if (TypeScript.isPropertyAccessExpression(node)) {
-    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'globalThis'
-      && platformGlobals.has(node.name.text)
+    return node.name.text
   }
   if (TypeScript.isElementAccessExpression(node)) {
-    return TypeScript.isIdentifier(node.expression) && node.expression.text === 'globalThis'
-      && TypeScript.isStringLiteral(node.argumentExpression) && platformGlobals.has(node.argumentExpression.text)
+    return TypeScript.isStringLiteral(node.argumentExpression) ? node.argumentExpression.text : undefined
   }
-  return false
 }
 
 const platformGlobals = new Set([

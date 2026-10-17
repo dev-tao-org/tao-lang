@@ -1,9 +1,7 @@
+import '../../cli-kit/fatal-errors'
 import { IO, repositoryRoot, runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { Platform } from '@shared/os'
-import { existsSync, realpathSync } from '@shared/os/FileSystem'
-import { readdir } from '@shared/os/FileSystem'
-import { dirname, resolve } from '@shared/os/Path'
+import { FileSystem, Path, Platform } from '@shared/os'
 import { withTestTimings } from '../../cli-kit/slow-tests'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -29,22 +27,29 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 }
 
 const commands: CommandDefinition<unknown[]>[] = []
+
+if (Platform.isMain(import.meta)) {
+  // Defer setup's import until this module finishes initializing: setup registers through this module.
+  // Commander and the development command registry are loaded only after dependencies exist.
+  void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
+}
+
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
 export { repositoryRoot } from '@cli-kit'
 
 /** assertNewWorkspacePath directs legacy operations to their own working directory. */
 export function assertNewWorkspacePath(path: string): void {
-  const absolute = resolve(path)
+  const absolute = Path.resolve(path)
   let existing = absolute
-  while (!existsSync(existing)) {
-    const parent = dirname(existing)
+  while (!FileSystem.existsSync(existing)) {
+    const parent = Path.dirname(existing)
     if (parent === existing) {
       break
     }
     existing = parent
   }
-  const canonical = realpathSync(existing)
-  const legacy = existsSync(legacyRoot) ? realpathSync(legacyRoot) : legacyRoot
+  const canonical = FileSystem.realpathSync(existing)
+  const legacy = FileSystem.existsSync(legacyRoot) ? FileSystem.realpathSync(legacyRoot) : legacyRoot
   if (isWithinDirectory(absolute, legacyRoot) || isWithinDirectory(canonical, legacy)) {
     Errors.ThrowUserInput('Run legacy workflows from old-tao-v1/; root commands target the new implementation.')
   }
@@ -52,15 +57,15 @@ export function assertNewWorkspacePath(path: string): void {
 
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
 export async function assertNewWorkspaceTree(): Promise<void> {
-  const workspace = realpathSync(`${repositoryRoot}/ts`)
+  const workspace = FileSystem.realpathSync(`${repositoryRoot}/ts`)
   const visit = async (directory: string): Promise<void> => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
+    for (const entry of await FileSystem.readdir(directory, { withFileTypes: true })) {
       if (entry.name === 'node_modules') {
         continue
       }
       const path = `${directory}/${entry.name}`
       if (entry.isSymbolicLink()) {
-        const target = realpathSync(path)
+        const target = FileSystem.realpathSync(path)
         assertNewWorkspacePath(target)
         if (!isWithinDirectory(target, workspace)) {
           Errors.ThrowUserInput(`Workspace source links must remain inside ts/: ${path}`)
@@ -113,11 +118,6 @@ export async function runLegacyDev(args: string[]): Promise<void> {
   await runCommand('./dev', { variadicArgs: args, cwd: legacyRoot })
 }
 
-/** runLegacyRecipe retains legacy prerequisites, workflow ordering and exit status. */
-export async function runLegacyRecipe(args: string[]): Promise<void> {
-  await runCommand('just --justfile Justfile', { variadicArgs: args, cwd: legacyRoot })
-}
-
 const legacyRoot = `${repositoryRoot}/old-tao-v1`
 
 /** workspaceTypes checks only the new TypeScript workspace. */
@@ -145,8 +145,8 @@ export async function workspaceDeadExports(): Promise<void> {
 /** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await withTestTimings(reportPath =>
-    runCommand('bun test', {
-      variadicArgs: [...(reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []), '--dots', ...args],
+    runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
+      variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
       cwd: `${repositoryRoot}/ts`,
       stdout: 'log',
     })

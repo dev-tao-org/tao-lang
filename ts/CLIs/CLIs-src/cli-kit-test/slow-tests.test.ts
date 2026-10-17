@@ -1,9 +1,9 @@
 import { S } from '@shared'
-import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
-import { slowTestWarnings } from './slow-tests'
+import { Test } from '@shared/os'
+import { slowTestWarnings } from '../cli-kit/slow-tests'
 
-Describe('slow test warnings', () => {
-  Test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {
+Test.describe('slow test warnings', () => {
+  Test.test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {
     const warnings = slowTestWarnings(S`
       <testsuites>
         <testsuite name="commands" file="commands.test.ts">
@@ -14,14 +14,14 @@ Describe('slow test warnings', () => {
         </testsuite>
       </testsuites>
     `)
-    Expect(warnings).toEqual([
+    Test.expect(warnings).toEqual([
       '\u001b[33mSlow tests (>75 ms):\u001b[0m',
       '\u001b[33m  250.00 ms  commands > slowest (commands.test.ts)\u001b[0m',
       '\u001b[33m  75.01 ms  nested suite > slow (commands.test.ts)\u001b[0m',
     ])
   })
 
-  Test('decodes escaped names and ignores XML-looking diagnostics and skipped or invalid timings', () => {
+  Test.test('decodes escaped names and ignores XML-looking diagnostics and skipped or invalid timings', () => {
     const warnings = slowTestWarnings(S`
       <testsuites>
         <!-- <testcase name="comment" time="10" /> -->
@@ -38,12 +38,12 @@ Describe('slow test warnings', () => {
         </testsuite>
       </testsuites>
     `)
-    Expect(warnings).toEqual([
+    Test.expect(warnings).toEqual([
       '\u001b[33mSlow tests (>75 ms):\u001b[0m',
       '\u001b[33m  123.00 ms  outer > A > B "value" & \'x\' 🐱 (file & name.test.ts)\u001b[0m',
       '\u001b[33m  102.00 ms  outer > after inner (file & name.test.ts)\u001b[0m',
       '\u001b[33m  101.00 ms  inner > nested (inner.test.ts)\u001b[0m',
     ])
-    Expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
+    Test.expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
   })
 })

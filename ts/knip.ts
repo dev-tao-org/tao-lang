@@ -1,7 +1,6 @@
 import type { KnipConfig } from 'knip'
 import * as TypeScript from 'typescript'
-import { readFileSync } from './shared/shared-src/os/FileSystem'
-import { dirname, posix, resolve } from './shared/shared-src/os/Path'
+import { FileSystem, Path } from './shared/shared-src/os'
 
 const cliEntries = [
   'CLIs/CLIs-src/agent-cli/agent-cli.ts',
@@ -13,7 +12,7 @@ const knipConfiguration: KnipConfig = {
   entry: [
     ...cliEntries,
     ...cliEntries.flatMap(commandEntries),
-    'CLIs/CLIs-src/dev-cli/commands/_setup.ts',
+    'CLIs/CLIs-src/dev-cli/commands/_command-runner.ts',
     'CLIs/CLIs-src/tao-cli/tao-cli.ts',
     '**/*.test.ts',
   ],
@@ -22,7 +21,7 @@ const knipConfiguration: KnipConfig = {
 }
 
 function commandEntries(registry: string): string[] {
-  const source = readFileSync(resolve(import.meta.dirname, registry), 'utf8')
+  const source = FileSystem.readFileSync(Path.resolve(import.meta.dirname, registry), 'utf8')
   const file = TypeScript.createSourceFile(registry, source, TypeScript.ScriptTarget.Latest)
   return file.statements.flatMap(statement => {
     if (!TypeScript.isImportDeclaration(statement) || statement.importClause) {
@@ -32,7 +31,7 @@ function commandEntries(registry: string): string[] {
     if (!TypeScript.isStringLiteral(specifier) || !specifier.text.startsWith('./commands/')) {
       return []
     }
-    return [posix.join(dirname(registry), specifier.text) + '.ts']
+    return [Path.posix.join(Path.dirname(registry), specifier.text) + '.ts']
   })
 }
 

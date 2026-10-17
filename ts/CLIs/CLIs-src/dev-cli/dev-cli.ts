@@ -1,5 +1,5 @@
-import '../cli-kit/fatal-errors'
 import { Platform } from '@shared/os'
+import '../cli-kit/fatal-errors'
 import './commands/agent-config'
 import './commands/check'
 import './commands/clean'

@@ -1,7 +1,6 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { existsSync, statSync } from '@shared/os/FileSystem'
-import { basename, resolve } from '@shared/os/Path'
+import { FileSystem, Path } from '@shared/os'
 import {
   assertNewWorkspacePath,
   assertNewWorkspaceTree,
@@ -22,20 +21,20 @@ export default registerCommand({
     }
     await assertNewWorkspaceTree()
     for (const path of paths) {
-      const absolute = resolve(repositoryRoot, path)
+      const absolute = Path.resolve(repositoryRoot, path)
       assertNewWorkspacePath(absolute)
-      const isFile = existsSync(absolute) && statSync(absolute).isFile()
+      const isFile = FileSystem.existsSync(absolute) && FileSystem.statSync(absolute).isFile()
       if (!isFile && !/[*?\[{]/.test(path)) {
         Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)
       }
       if (isFile && path.endsWith('.tao')) {
         Errors.ThrowUserInput('New Tao formatting awaits the parser.')
-      } else if (isFile && basename(absolute) === 'Justfile') {
-        await runCommand(['just', '--fmt', '--justfile', absolute], { cwd: repositoryRoot })
+      } else if (isFile && Path.basename(absolute) === 'Justfile') {
+        await runCommand('just --fmt --justfile', { variadicArgs: [absolute], cwd: repositoryRoot })
       } else {
         await runCommand(
-          ['dprint', 'fmt', '--config', '.dprint.jsonc', '--incremental=false', path, '--excludes', 'old-tao-v1/**'],
-          { cwd: repositoryRoot },
+          'dprint fmt --config .dprint.jsonc --incremental=false --excludes old-tao-v1/**',
+          { variadicArgs: [path], cwd: repositoryRoot },
         )
       }
     }

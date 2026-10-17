@@ -34,6 +34,7 @@ in
     pkgs.dprint
     pkgs.git
     pkgs.gh
+    pkgs.age
     pkgs.ripgrep
     pkgs.cocoapods
     pkgs.direnv

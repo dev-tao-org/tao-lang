@@ -1,13 +1,9 @@
 import { S, Try } from '@shared'
-import { FileSystem } from '@shared/os'
-import { mkdtemp, rm } from '@shared/os/FileSystem'
-import { join } from '@shared/os/Path'
-import { tmpdir } from '@shared/os/Platform'
-import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
-import { checkSourceConformance, sourceConformanceIssues } from './source-conformance'
+import { FileSystem, Path, Platform, Test } from '@shared/os'
+import { checkSourceConformance, sourceConformanceIssues } from '../cli-kit/source-conformance'
 
-Describe('source conformance', () => {
-  Test('keeps runtime imports and platform globals inside the exact OS subtree', () => {
+Test.describe('source conformance', () => {
+  Test.test('keeps runtime imports and platform globals inside the exact OS subtree', () => {
     for (
       const source of [
         "import { readFile } from 'node:fs/promises'",
@@ -22,25 +18,49 @@ Describe('source conformance', () => {
         'const value = performance.now()',
         'const value = Date.now()',
         'const value = new Date()',
+        "const value = Date['now']()",
+        'const value = Date()',
+        'const value = globalThis.Date.now()',
+        'const value = new globalThis.Date()',
         'type Stream = ReadableStream<Uint8Array>',
         "const value = globalThis['process'].pid",
         'const value = globalThis.Bun.argv',
       ]
     ) {
-      Expect(sourceConformanceIssues('ts/feature.ts', source)).toHaveLength(1)
-      Expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
-      Expect(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toHaveLength(1)
+      Test.expect(sourceConformanceIssues('ts/feature.ts', source)).toHaveLength(1)
+      Test.expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
+      Test.expect(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toHaveLength(1)
     }
-    Expect(sourceConformanceIssues('ts/feature.test.ts', "import { test } from 'bun:test'")).toHaveLength(1)
-    Expect(sourceConformanceIssues('ts/knip.ts', "import { readFileSync } from 'node:fs'")).toHaveLength(1)
-    Expect(sourceConformanceIssues('ts/feature.ts', "const text = 'process.env and bun:test'; // Bun.spawn\n")).toEqual(
-      [],
-    )
-    Expect(sourceConformanceIssues('ts/feature.ts', 'const value = { process: 1 }; value.process')).toEqual([])
-    Expect(sourceConformanceIssues('ts/feature.ts', "const value = new Date('2026-10-17')")).toEqual([])
+    Test.expect(sourceConformanceIssues('ts/feature.test.ts', "import { test } from 'bun:test'")).toHaveLength(1)
+    Test.expect(sourceConformanceIssues('ts/knip.ts', "import { readFileSync } from 'node:fs'")).toHaveLength(1)
+    Test.expect(sourceConformanceIssues('ts/feature.ts', "const text = 'process.env and bun:test'; // Bun.spawn\n"))
+      .toEqual(
+        [],
+      )
+    Test.expect(sourceConformanceIssues('ts/feature.ts', 'const value = { process: 1 }; value.process')).toEqual([])
+    Test.expect(sourceConformanceIssues(
+      'ts/feature.ts',
+      S`
+        type Shape = { process: string; Bun(): void }
+        interface Other { Buffer: number; fetch(): void }
+        class Value { process = 1; Bun() {} }
+      `,
+    )).toEqual([])
+    Test.expect(sourceConformanceIssues(
+      'ts/shared/shared-src/universal/Time.ts',
+      S`
+        const monotonic = performance.now()
+        const clock = Date.now()
+        const date = new Date()
+        setTimeout(() => {}, 1)
+      `,
+    )).toEqual([])
+    Test.expect(sourceConformanceIssues('ts/shared/shared-src/universal/Time.ts', 'const value = process.pid'))
+      .toHaveLength(1)
+    Test.expect(sourceConformanceIssues('ts/feature.ts', "const value = new Date('2026-10-17')")).toEqual([])
   })
 
-  Test('requires text on the opening and closing JSDoc lines and two spaces after continuation stars', () => {
+  Test.test('requires text on the opening and closing JSDoc lines and two spaces after continuation stars', () => {
     for (
       const comment of [
         '/**\n *  value returns input. */',
@@ -54,12 +74,12 @@ Describe('source conformance', () => {
       ]
     ) {
       const issues = sourceConformanceIssues('fixture.ts', comment + '\nexport function value() {}')
-      Expect(issues).toHaveLength(1)
-      Expect(issues[0]).toContain('multiline JSDoc')
+      Test.expect(issues).toHaveLength(1)
+      Test.expect(issues[0]).toContain('multiline JSDoc')
     }
   })
 
-  Test('accepts the required JSDoc layout, including indented public members and CRLF', () => {
+  Test.test('accepts the required JSDoc layout, including indented public members and CRLF', () => {
     const source = S`
       /** value returns input.
        *  Additional details.
@@ -72,12 +92,12 @@ Describe('source conformance', () => {
         run() {}
       }
     `
-    Expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
-    Expect(sourceConformanceIssues('fixture.ts', source.replaceAll('\n', '\r\n'))).toEqual([])
-    Expect(sourceConformanceIssues('fixture.ts', "const example = '/**\\n * bad */'")).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', source.replaceAll('\n', '\r\n'))).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', "const example = '/**\\n * bad */'")).toEqual([])
   })
 
-  Test('requires S for physical multiline runtime literals while ignoring type literals and escapes', () => {
+  Test.test('requires S for physical multiline runtime literals while ignoring type literals and escapes', () => {
     for (
       const source of [
         'const value = `first\nsecond`',
@@ -85,13 +105,13 @@ Describe('source conformance', () => {
         'const value = "first\\\nsecond"',
       ]
     ) {
-      Expect(sourceConformanceIssues('fixture.ts', source).join('\n')).toContain('multiline strings must use S')
+      Test.expect(sourceConformanceIssues('fixture.ts', source).join('\n')).toContain('multiline strings must use S')
     }
-    Expect(sourceConformanceIssues('fixture.ts', 'type Pattern = `first\nsecond`')).toEqual([])
-    Expect(sourceConformanceIssues('fixture.ts', "const value = 'first\\nsecond'")).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', 'type Pattern = `first\nsecond`')).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', "const value = 'first\\nsecond'")).toEqual([])
   })
 
-  Test('requires separate indented content lines and aligned S delimiters', () => {
+  Test.test('requires separate indented content lines and aligned S delimiters', () => {
     for (
       const source of [
         'const value = S`first\n  second\n`',
@@ -100,30 +120,32 @@ Describe('source conformance', () => {
         '  const value = S`\n    first\n`',
       ]
     ) {
-      Expect(sourceConformanceIssues('fixture.ts', source).join('\n')).toContain('S content must start on a new line')
+      Test.expect(sourceConformanceIssues('fixture.ts', source).join('\n')).toContain(
+        'S content must start on a new line',
+      )
     }
-    Expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  first\n    nested\n`')).toEqual([])
-    Expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  ${\n    format(value)\n  }\n`')).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  first\n    nested\n`')).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  ${\n    format(value)\n  }\n`')).toEqual([])
   })
 
-  Test('scans workspace declaration files while excluding dependencies and the legacy tree', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'tao-source-conformance-'))
+  Test.test('scans workspace declaration files while excluding dependencies and the legacy tree', async () => {
+    const root = await FileSystem.mkdtemp(Path.join(Platform.tmpdir(), 'tao-source-conformance-'))
     await Try(async () => {
       await FileSystem.write(
-        join(root, 'ts/public.d.ts'),
+        Path.join(root, 'ts/public.d.ts'),
         '/** publicValue stores a public number. */\nexport declare const publicValue: number\n',
       )
-      await FileSystem.write(join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
-      await FileSystem.write(join(root, 'old-tao-v1/ignored.ts'), 'export const missingDocs = 1')
-      await Expect(checkSourceConformance(root)).resolves.toBeUndefined()
-      await FileSystem.write(join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
-      await Expect(checkSourceConformance(root)).rejects.toThrow(
+      await FileSystem.write(Path.join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
+      await FileSystem.write(Path.join(root, 'old-tao-v1/ignored.ts'), 'export const missingDocs = 1')
+      await Test.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+      await FileSystem.write(Path.join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
+      await Test.expect(checkSourceConformance(root)).rejects.toThrow(
         'ts/public.d.ts:1: exported API publicValue needs JSDoc',
       )
-    }, { finally: () => rm(root, { recursive: true, force: true }) })
+    }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
   })
 
-  Test('accepts documented declarations, overload groups, arrows, aliases, and defaults', () => {
+  Test.test('accepts documented declarations, overload groups, arrows, aliases, and defaults', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -143,10 +165,10 @@ Describe('source conformance', () => {
         export default defaultValue
       `,
     )
-    Expect(issues).toEqual([])
+    Test.expect(issues).toEqual([])
   })
 
-  Test('reports undocumented direct functions, function variables, aliases, and defaults', () => {
+  Test.test('reports undocumented direct functions, function variables, aliases, and defaults', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -157,14 +179,14 @@ Describe('source conformance', () => {
         export default () => 1
       `,
     )
-    Expect(issues).toHaveLength(4)
-    Expect(issues[0]).toContain('exported API missing needs JSDoc')
-    Expect(issues[1]).toContain('exported API arrow needs JSDoc')
-    Expect(issues[2]).toContain('exported API aliasTarget needs JSDoc')
-    Expect(issues[3]).toContain('exported API <default> needs JSDoc')
+    Test.expect(issues).toHaveLength(4)
+    Test.expect(issues[0]).toContain('exported API missing needs JSDoc')
+    Test.expect(issues[1]).toContain('exported API arrow needs JSDoc')
+    Test.expect(issues[2]).toContain('exported API aliasTarget needs JSDoc')
+    Test.expect(issues[3]).toContain('exported API <default> needs JSDoc')
   })
 
-  Test('requires a named function comment to begin with the function name', () => {
+  Test.test('requires a named function comment to begin with the function name', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -172,23 +194,23 @@ Describe('source conformance', () => {
         export function value() { return 1 }
       `,
     )
-    Expect(issues).toHaveLength(1)
-    Expect(issues[0]).toContain('exported API value needs JSDoc beginning with its name')
+    Test.expect(issues).toHaveLength(1)
+    Test.expect(issues[0]).toContain('exported API value needs JSDoc beginning with its name')
   })
 
-  Test('ignores strings, ordinary comments, and barrel re-exports', () => {
+  Test.test('ignores strings, ordinary comments, and barrel re-exports', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
         const example = 'export function hidden() {}'
         // export function alsoHidden() {}
-        export { remote } from './remote'
+        export { remote } from '../cli-kit/remote'
       `,
     )
-    Expect(issues).toEqual([])
+    Test.expect(issues).toEqual([])
   })
 
-  Test('does not treat a file banner or export-list comment as declaration documentation', () => {
+  Test.test('does not treat a file banner or export-list comment as declaration documentation', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -200,12 +222,12 @@ Describe('source conformance', () => {
         export { localMissing }
       `,
     )
-    Expect(issues).toHaveLength(3)
-    Expect(issues[0]).toContain('exported API missing needs JSDoc')
-    Expect(issues[1]).toContain('exported API localMissing needs JSDoc')
+    Test.expect(issues).toHaveLength(3)
+    Test.expect(issues[0]).toContain('exported API missing needs JSDoc')
+    Test.expect(issues[1]).toContain('exported API localMissing needs JSDoc')
   })
 
-  Test('accepts an exported overload comment and rejects private overload JSDoc', () => {
+  Test.test('accepts an exported overload comment and rejects private overload JSDoc', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -217,11 +239,11 @@ Describe('source conformance', () => {
         function privateHelper(value: unknown): string { return String(value) }
       `,
     )
-    Expect(issues).toHaveLength(1)
-    Expect(issues[0]).toContain('private JSDoc')
+    Test.expect(issues).toHaveLength(1)
+    Test.expect(issues[0]).toContain('private JSDoc')
   })
 
-  Test('rejects a function name with no description', () => {
+  Test.test('rejects a function name with no description', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -229,11 +251,11 @@ Describe('source conformance', () => {
         export function empty() {}
       `,
     )
-    Expect(issues).toHaveLength(1)
-    Expect(issues[0]).toContain('needs JSDoc beginning with its name and a description')
+    Test.expect(issues).toHaveLength(1)
+    Test.expect(issues[0]).toContain('needs JSDoc beginning with its name and a description')
   })
 
-  Test('requires documentation on exported values, types, classes and factory defaults', () => {
+  Test.test('requires documentation on exported values, types, classes and factory defaults', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -244,10 +266,10 @@ Describe('source conformance', () => {
         export default factory()
       `,
     )
-    Expect(issues).toHaveLength(5)
+    Test.expect(issues).toHaveLength(5)
   })
 
-  Test('rejects JSDoc on private declarations and nested implementation details', () => {
+  Test.test('rejects JSDoc on private declarations and nested implementation details', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -263,18 +285,18 @@ Describe('source conformance', () => {
         }
       `,
     )
-    Expect(issues).toHaveLength(3)
-    Expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
+    Test.expect(issues).toHaveLength(3)
+    Test.expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
   })
 
-  Test('rejects native try statements with a single exact primitive exception', () => {
+  Test.test('rejects native try statements with a single exact primitive exception', () => {
     const source = 'function work() { try { work() } finally { cleanup() } }'
-    Expect(sourceConformanceIssues('ts/work.ts', source).join('\n')).toContain('use Try')
-    Expect(sourceConformanceIssues('ts/other/TryCatch.ts', source).join('\n')).toContain('use Try')
-    Expect(sourceConformanceIssues('ts/shared/shared-src/universal/TryCatch.ts', source)).toEqual([])
+    Test.expect(sourceConformanceIssues('ts/work.ts', source).join('\n')).toContain('use Try')
+    Test.expect(sourceConformanceIssues('ts/other/TryCatch.ts', source).join('\n')).toContain('use Try')
+    Test.expect(sourceConformanceIssues('ts/shared/shared-src/universal/TryCatch.ts', source)).toEqual([])
   })
 
-  Test('rejects ordinary block comments between tokens and trailing statements', () => {
+  Test.test('rejects ordinary block comments between tokens and trailing statements', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -283,21 +305,21 @@ Describe('source conformance', () => {
         if /* condition */ (value) { value }
       `,
     )
-    Expect(issues).toHaveLength(4)
-    Expect(issues.every(issue => issue.includes('use //'))).toBe(true)
+    Test.expect(issues).toHaveLength(4)
+    Test.expect(issues.every(issue => issue.includes('use //'))).toBe(true)
   })
 
-  Test('ignores comment and try syntax inside strings, templates and regular expressions', () => {
+  Test.test('ignores comment and try syntax inside strings, templates and regular expressions', () => {
     const source = [
       `const string = '/* text */ try {} catch {} /** text */'`,
       'const template = `/* head */ ${1} /* tail */ try {} catch {}`',
       String.raw`const pattern = /\/\*.*\*\//`,
       '// try {} catch {} /* example */',
     ].join('\n')
-    Expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
+    Test.expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
   })
 
-  Test('accepts documented API values, type aliases, namespaces, factories and public members', () => {
+  Test.test('accepts documented API values, type aliases, namespaces, factories and public members', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -320,10 +342,10 @@ Describe('source conformance', () => {
         export default registerCommand({ action: () => count })
       `,
     )
-    Expect(issues).toEqual([])
+    Test.expect(issues).toEqual([])
   })
 
-  Test('keeps implementation bodies, private members and private namespaces private', () => {
+  Test.test('keeps implementation bodies, private members and private namespaces private', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -346,11 +368,11 @@ Describe('source conformance', () => {
         }
       `,
     )
-    Expect(issues).toHaveLength(5)
-    Expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
+    Test.expect(issues).toHaveLength(5)
+    Test.expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
   })
 
-  Test('allows public signature member docs while keeping callable bodies private', () => {
+  Test.test('allows public signature member docs while keeping callable bodies private', () => {
     const issues = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -370,13 +392,13 @@ Describe('source conformance', () => {
         export const expression = function(options: { /** value carries input. */ value: number }) { return options.value }
       `,
     )
-    Expect(issues).toHaveLength(2)
-    Expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
-    Expect(issues[0]).toContain('fixture.ts:3:')
-    Expect(issues[1]).toContain('fixture.ts:9:')
+    Test.expect(issues).toHaveLength(2)
+    Test.expect(issues.every(issue => issue.includes('private JSDoc'))).toBe(true)
+    Test.expect(issues[0]).toContain('fixture.ts:3:')
+    Test.expect(issues[1]).toContain('fixture.ts:9:')
   })
 
-  Test('checks every destructured export and local destructured export alias', () => {
+  Test.test('checks every destructured export and local destructured export alias', () => {
     const invalid = sourceConformanceIssues(
       'fixture.ts',
       S`
@@ -386,11 +408,11 @@ Describe('source conformance', () => {
         export { third }
       `,
     )
-    Expect(invalid).toHaveLength(3)
+    Test.expect(invalid).toHaveLength(3)
     for (const name of ['first', 'second', 'third']) {
-      Expect(invalid.some(issue => issue.includes('exported API ' + name + ' needs JSDoc'))).toBe(true)
+      Test.expect(invalid.some(issue => issue.includes('exported API ' + name + ' needs JSDoc'))).toBe(true)
     }
-    Expect(sourceConformanceIssues(
+    Test.expect(sourceConformanceIssues(
       'fixture.ts',
       S`
         /** first stores the first value. */
@@ -403,10 +425,10 @@ Describe('source conformance', () => {
     )).toEqual([])
   })
 
-  Test('checks implicit exports in public ambient namespaces, including nested namespaces', () => {
+  Test.test('checks implicit exports in public ambient namespaces, including nested namespaces', () => {
     for (const declaration of ['export declare namespace API', 'export namespace API']) {
       const filename = declaration.includes('declare') ? 'fixture.ts' : 'fixture.d.ts'
-      Expect(sourceConformanceIssues(
+      Test.expect(sourceConformanceIssues(
         filename,
         S`
           /** API exposes operations. */

@@ -74,7 +74,9 @@ and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages and child std
 Developer IO remains on the terminal except test-command output, which logs to `.artifacts/logs/dev/`
 and mirrors stderr. Each logging process announces its repo-relative log directory once at startup.
 An unavailable command log reports once and falls back to terminal output while preserving the verdict.
-Tests retain Tao-owned logging, error normalization, source conformance and utility transformations.
+Tests retain error normalization, source conformance, utility transformations and pure doctor/secrets policy.
+All tests using `_command-runner`, including its shared subprocess fixtures, were removed at the developer's request;
+CLI logging, fatal-handler and registration integration behavior is no longer covered by those tests.
 The seven slow workflow/branch integration tests were removed at the developer's request; ordinary
 tests no longer prove root command routing, legacy path isolation, validation gating or branch synchronization.
 Tests use dots alongside a JUnit timing report in `.artifacts/logs/test/`. After every run, including
@@ -101,15 +103,22 @@ indentation while preserving relative indentation, including interpolated source
 requires the tag, indented content on new lines, and an aligned closing delimiter. Surviving
 multiline fixtures follow this pattern. Tests must not mutate developer state outside the repository.
 Root `AGENTS.md` lists both automated and review-only conformity rules in one compact section.
-Platform implementations live in `ts/shared/shared-src/os/`: live environment, process/events,
-filesystem, path, terminal, clocks, streams, formatting and test APIs. All callers, tests and the
-Knip config use these modules; the test-runner module stays outside the runtime barrel. Source
+Platform implementations live in `ts/shared/shared-src/os/`: environment get/set/is, process/events,
+filesystem, path, terminal, streams, formatting and test APIs. All callers, tests and the
+Knip config import namespace APIs through `shared-src/os.ts`; the test API loads its runner only when called. Source
 conformance rejects builtin imports and direct platform globals outside the exact OS subtree,
 including common computed `globalThis` accesses and clock calls, while ignoring string fixtures
 and ordinary property names. TypeScript source discovery loads its compiler lazily so fresh setup
-still imports only runtime builtins before dependencies are installed.
+still imports only runtime builtins before dependencies are installed. Universal `Time` uses standard browser/Node
+clock and timer APIs: monotonic `nowMs`, epoch `now`, wall-clock `date`, and millisecond `sleep`.
+Bootstrap now enters `_command-runner.ts` directly; its main-module path loads setup without Commander.
+Tests live in sibling `universal-test/` and `cli-kit-test/` folders.
+Local start/stop, doctor and secrets no longer execute legacy recipes. Doctor checks the new workspace and emits
+a safe fingerprint. Secrets uses the new root encrypted store and approved age dependency, preserving Secure
+Enclave setup and store-key wrapping. No real secret decryption, identity setup or Docker lifecycle was exercised.
+`agent-config`, `my-branch` and `my-sync` still use the separate `runLegacyDev` bridge.
 Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
-Current `./agent verify`: 53 tests, 327 assertions; `.artifacts/logs/agent/2026-10-17T19-50-18.055Z-32095.log`.
+Current `./agent verify`: 52 tests, 280 assertions; `.artifacts/logs/agent/2026-10-17T20-01-40.429Z-40690.log`.
 Agents run verify at slice completion and fix or fmt before committing.
 Root `./agent` and `./dev` enter the checkout's pinned devenv automatically unless that environment
 is already active. Root Nix exposes the existing Bun and Node pins plus the developer tools; workspace

@@ -8,8 +8,7 @@
     "paths": {
       "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
       "@shared": ["./shared/shared-src/shared.ts"],
-      "@shared/os": ["./shared/shared-src/os/os.ts"],
-      "@shared/os/*": ["./shared/shared-src/os/*"]
+      "@shared/os": ["./shared/shared-src/os.ts"]
     }
   }
 }

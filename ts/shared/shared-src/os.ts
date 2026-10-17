@@ -1,0 +1,8 @@
+export * as Env from './os/Env'
+export * as FileSystem from './os/FileSystem'
+export * as Path from './os/Path'
+export * as Platform from './os/Platform'
+export * as Streams from './os/Streams'
+export * as Terminal from './os/Terminal'
+export * as Test from './os/Test'
+export * as Text from './os/Text'

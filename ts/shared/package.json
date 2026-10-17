@@ -6,8 +6,7 @@
   "module": "shared-src/shared.ts",
   "exports": {
     ".": "./shared-src/shared.ts",
-    "./os": "./shared-src/os/os.ts",
-    "./os/*": "./shared-src/os/*.ts",
+    "./os": "./shared-src/os.ts",
     "./universal": "./shared-src/universal/universal.ts"
   }
 }

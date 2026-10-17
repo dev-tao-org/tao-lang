@@ -1,8 +1,8 @@
-import { describe as Describe, expect as Expect, test as Test } from '@shared/os/Test'
+import { Test } from '@shared/os'
 import { Switch } from '../universal/universal'
 
-Describe('Switch.on', () => {
-  Test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
+Test.describe('Switch.on', () => {
+  Test.test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
     type Message =
       | { type: 'text'; value: string }
       | { type: 'count'; value: number }
@@ -18,7 +18,7 @@ Describe('Switch.on', () => {
         count: item => item.value.toFixed(1),
       })
 
-    Expect(describe(text)).toBe('HELLO')
-    Expect(describe(count)).toBe('3.0')
+    Test.expect(describe(text)).toBe('HELLO')
+    Test.expect(describe(count)).toBe('3.0')
   })
 })
