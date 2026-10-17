@@ -61,7 +61,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Conformity and style
 
-- `check` enforces types, dead exports/files, formatting (two spaces), and source rules.
+- `check` enforces types, unused locals/parameters, dead exports/files, formatting (two spaces), and source rules.
 - Source rules:
   - Exported APIs need name-led JSDoc; public shape members may have it, private code may not.
   - Other comments use `//`.
@@ -83,7 +83,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
   - Prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
   - Expose static validation through `check`; keep its individual type, comment and style checks internal.
-  - The global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
+  - The global CLI fatal handler prints uncaught failures and uses the command error status when present, otherwise 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
   - Output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve stderr for flows near process exit; prefer throwing failures or warning otherwise.
   - Common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 

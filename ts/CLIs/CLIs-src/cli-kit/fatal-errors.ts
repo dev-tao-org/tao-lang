@@ -57,7 +57,3 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
     ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
   }
 }
-
-function isFailureStatus(status: unknown): status is number {
-  return typeof status === 'number' && Number.isInteger(status) && status > 0 && status <= 255
-}
