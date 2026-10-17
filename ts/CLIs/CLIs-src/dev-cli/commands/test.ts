@@ -1,8 +1,13 @@
-import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { existsSync, realpathSync, statSync } from 'node:fs'
 import { isAbsolute, resolve } from 'node:path'
-import { assertNewWorkspacePath, assertNewWorkspaceTree, registerCommand, repositoryRoot } from './_command-runner'
+import {
+  assertNewWorkspacePath,
+  assertNewWorkspaceTree,
+  registerCommand,
+  repositoryRoot,
+  workspaceTests,
+} from './_command-runner'
 
 /** testCommand runs the TypeScript workspace tests and preserves their verdict. */
 export default registerCommand({
@@ -16,7 +21,7 @@ export default registerCommand({
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
-    await runCommand([process.execPath, 'test', ...args], { cwd: `${repositoryRoot}/ts` })
+    await workspaceTests(args)
   },
 })
 

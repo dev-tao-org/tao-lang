@@ -1,9 +1,9 @@
-import { runCommand, runSteps } from '@cli-kit'
+import { runSteps } from '@cli-kit'
 import {
   registerCommand,
-  repositoryRoot,
   workspaceConformance,
   workspaceFormat,
+  workspaceTests,
   workspaceTypes,
 } from './_command-runner'
 
@@ -17,7 +17,7 @@ export default registerCommand({
       () => workspaceFormat('fmt'),
       () => workspaceTypes(),
       () => workspaceConformance(),
-      () => runCommand([process.execPath, 'test'], { cwd: `${repositoryRoot}/ts` }),
+      () => workspaceTests(),
     )
   },
 })

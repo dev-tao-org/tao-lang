@@ -184,7 +184,11 @@ Describe('root test command', () => {
           Errors.ThrowUnexpected(`Unexpected CLI exit ${status}:\n${stdout}\n${stderr}`)
         }
         Expect(status).toBe(succeeds ? 0 : 1)
-        Expect(stdout + stderr).toContain('CLI test fixture')
+        Expect(stdout).toContain('test --reporter=dots ')
+        if (!succeeds) {
+          Expect(stdout + stderr).toContain('CLI test fixture')
+        }
+        Expect(stdout + stderr).not.toContain('(pass) CLI test fixture')
         Expect(stdout + stderr).toContain(succeeds ? '1 pass' : 'Expected: 2')
       }, { finally: () => rm(root, { recursive: true, force: true }) })
     })

@@ -144,6 +144,12 @@ export async function workspaceConformance(): Promise<void> {
   await checkSourceConformance(repositoryRoot)
 }
 
+/** workspaceTests runs workspace tests with compact developer output and detailed agent output. */
+export async function workspaceTests(args: readonly string[] = []): Promise<void> {
+  const reporter = process.env.TAO_AGENT === '1' ? [] : ['--reporter=dots']
+  await runCommand([process.execPath, 'test', ...reporter, ...args], { cwd: `${repositoryRoot}/ts` })
+}
+
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
   await assertNewWorkspaceTree()
