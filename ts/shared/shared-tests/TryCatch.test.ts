@@ -37,13 +37,6 @@ Describe('Try', () => {
     }
   })
 
-  Test('loads the package universal export as declared for consumers', async () => {
-    const manifest = await Bun.file(new URL('../package.json', import.meta.url)).json()
-    const universal = await import(new URL(manifest.exports['./universal'], new URL('../', import.meta.url)).href)
-    Expect(universal.Try).toBe(Try)
-    Expect(universal.Errors).toBe(Errors)
-  })
-
   Test('preserves synchronous values and allows catch to recover synchronously', () => {
     const value = { id: 1 }
     const result: typeof value = Try(() => value)

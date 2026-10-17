@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
 import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -28,9 +28,11 @@ async function withProbe(
       const log = join(root, '.artifacts/logs/agent', `${invocation++}.log`)
       await Bun.write(
         script,
-        `import { IO, runCommand } from '@cli-kit'
-import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
-${source}`,
+        S`
+          import { IO, runCommand } from '@cli-kit'
+          import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
+          ${source}
+        `,
       )
       const child = Bun.spawn([process.execPath, script, ...args], {
         cwd: join(root, 'ts'),
@@ -78,8 +80,10 @@ Describe('command IO', () => {
 
   Test('routes developer output to terminal and agent messages to file while mirroring stderr', async () => {
     await withProbe(async run => {
-      const source = `IO.info('hello %s', 'world'); IO.debug({ value: 3 }); IO.log('message');
-IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
+      const source = S`
+        IO.info('hello %s', 'world'); IO.debug({ value: 3 }); IO.log('message');
+        IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');
+      `
       const dev = await run(source)
       const agent = await run(source, true)
       Expect(dev.code).toBe(0)
@@ -134,11 +138,13 @@ IO.warn('warning'); IO.error('failure'); IO.stderr('raw stderr');`
     })
   })
 
-  Test('records spawn failures and the shared error boundary and Commander diagnostics', async () => {
+  Test('records spawn failures through the shared error boundary', async () => {
     await withProbe(async run => {
-      const setup = `import { registerCommand, execute } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
-registerCommand({ name: 'probe', description: 'Probe.', action: async () => await runCommand('missing-tao-command-io-tool') })
-await execute()`
+      const setup = S`
+        import { registerCommand, execute } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
+        registerCommand({ name: 'probe', description: 'Probe.', action: async () => await runCommand('missing-tao-command-io-tool') })
+        await execute()
+      `
       const failed = await run(setup, true, ['probe'])
       Expect(failed.code).toBe(1)
       Expect(failed.stdout).toBe('')
@@ -146,10 +152,6 @@ await execute()`
       Expect(failed.log).toContain(failed.stderr)
       Expect(failed.log).toContain('RUN CMD: missing-tao-command-io-tool\n')
       Expect(failed.log).toMatch(/\[\d+\.\d{2}s\] \(missing-tao-command-io-tool\)/)
-      const usage = await run(setup, true, ['unknown'])
-      Expect(usage.code).toBe(1)
-      Expect(usage.log).toBe(usage.stderr)
-      Expect(usage.stderr).toContain("unknown command 'unknown'")
     })
   })
 
@@ -157,9 +159,11 @@ await execute()`
     await withProbe(async (run, root) => {
       const invalidLog = `process.env.TAO_AGENT_LOG = ${JSON.stringify(join(root, 'ts'))}`
       const command = await run(
-        `${invalidLog}
-IO.info('fallback info'); IO.error('visible error');
-${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}`,
+        S`
+          ${invalidLog}
+          IO.info('fallback info'); IO.error('visible error');
+          ${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}
+        `,
         true,
       )
       Expect(command.code).toBe(17)
@@ -168,9 +172,11 @@ ${commandAction("runCommand([process.execPath, '-e', 'process.exit(17)'])")}`,
       Expect(command.stderr).toContain('visible error\n')
       Expect(command.stderr.match(/Agent log unavailable:/g)).toHaveLength(1)
       const failure = await run(
-        `${invalidLog}
-import { registerCommand } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
-await registerCommand({ name: 'fail', description: 'Failure.', action: () => { throw new Error('original failure') } }).action()`,
+        S`
+          ${invalidLog}
+          import { registerCommand } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
+          await registerCommand({ name: 'fail', description: 'Failure.', action: () => { throw new Error('original failure') } }).action()
+        `,
         true,
       )
       Expect(failure.code).toBe(1)

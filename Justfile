@@ -61,7 +61,7 @@ fix:
 check *ARGS:
     ./dev check {{ ARGS }}
 
-# Check exported API JSDoc, private comments and Try usage in the new workspace
+# Check exported API JSDoc, private comments, Try usage and S templates in the new workspace
 [group('Dev')]
 lint:
     ./dev lint

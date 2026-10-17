@@ -1,6 +1,6 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
-import { chmod, cp, lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink } from 'node:fs/promises'
+import { chmod, cp, mkdir, mkdtemp, readdir, readFile, realpath, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,24 +29,43 @@ async function withFixture(
         filter: path => !path.endsWith('.test.ts'),
       })
     }
-    await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))
+    const dependencies = join(root, 'ts/node_modules')
+    await mkdir(dependencies)
+    for (const name of await readdir(join(repository, 'ts/node_modules'))) {
+      if (name !== 'typescript') {
+        await symlink(join(repository, 'ts/node_modules', name), join(dependencies, name))
+      }
+    }
+    await mkdir(join(dependencies, 'typescript/bin'), { recursive: true })
+    await cp(join(repository, 'ts/node_modules/typescript/package.json'), join(dependencies, 'typescript/package.json'))
+    await symlink(join(repository, 'ts/node_modules/typescript/lib'), join(dependencies, 'typescript/lib'))
+    await Bun.write(
+      join(dependencies, 'typescript/bin/tsc'),
+      S`
+        import { appendFileSync } from 'node:fs'
+        appendFileSync(process.env.TAO_PARITY_CALLS, 'tsc|' + process.cwd() + '|' + Bun.argv.slice(2).join('|') + '\\n')
+      `,
+    )
     await Bun.write(join(root, 'old-tao-v1/Justfile'), 'fix:\n    exit 0\n')
     await Bun.write(
       join(root, 'ts/smoke.test.ts'),
-      "import { test, expect } from 'bun:test'\n"
-        + "test('new workspace', async () => { await Bun.write(process.env.TAO_PARITY_TEST_MARKER!, 'ran'); expect(1).toBe(1) })\n",
+      S`
+        import { test, expect } from 'bun:test'
+        test('new workspace', async () => { await Bun.write(process.env.TAO_PARITY_TEST_MARKER!, 'ran'); expect(1).toBe(1) })
+      `,
     )
     for (const [path, name] of [['bin/just', 'just'], ['bin/dprint', 'dprint'], ['old-tao-v1/dev', 'legacy-dev']]) {
       await Bun.write(
         join(root, path!),
-        `#!/bin/sh
-printf '%s|%s' '${name}' "$PWD" >> "$TAO_PARITY_CALLS"
-for arg in "$@"; do printf '|%s' "$arg" >> "$TAO_PARITY_CALLS"; done
-printf '\\n' >> "$TAO_PARITY_CALLS"
-if [ -n "$TAO_PARITY_FAIL" ]; then
-  for arg in "$@"; do [ "$arg" != "$TAO_PARITY_FAIL" ] || exit 23; done
-fi
-`,
+        S`
+          #!/bin/sh
+          printf '%s|%s' '${name}' "$PWD" >> "$TAO_PARITY_CALLS"
+          for arg in "$@"; do printf '|%s' "$arg" >> "$TAO_PARITY_CALLS"; done
+          printf '\\n' >> "$TAO_PARITY_CALLS"
+          if [ -n "$TAO_PARITY_FAIL" ]; then
+            for arg in "$@"; do [ "$arg" != "$TAO_PARITY_FAIL" ] || exit 23; done
+          fi
+        `,
       )
       await chmod(join(root, path!), 0o755)
     }
@@ -59,6 +78,7 @@ fi
           cwd: root,
           env: {
             ...process.env,
+            TAO_AGENT_LOG: join(root, '.artifacts/agent.log'),
             PATH: `${join(root, 'bin')}:${process.env.PATH}`,
             TAO_PARITY_CALLS: calls,
             TAO_PARITY_FAIL: fail,
@@ -83,21 +103,6 @@ fi
 }
 
 Describe('root workflow boundaries', () => {
-  Test('both entrypoints fix only the new workspace and preserve formatter failures', async () => {
-    await withFixture(async ({ root, run }) => {
-      for (const entry of ['dev', 'agent'] as const) {
-        const result = await run(entry, ['fix'])
-        Expect(result.code).toBe(0)
-        Expect(result.calls.some(call => call.includes('/old-tao-v1'))).toBe(false)
-        Expect(result.calls.some(call => call.startsWith(`dprint|${root}|fmt|`))).toBe(true)
-        Expect(result.calls).toContain(`just|${root}|--fmt|--justfile|${root}/Justfile`)
-        const failed = await run(entry, ['fix'], 'fmt')
-        Expect(failed.code).toBe(23)
-        Expect(failed.calls.some(call => call.endsWith('|fix'))).toBe(false)
-      }
-    })
-  })
-
   Test('registers the remaining Just workflows with legacy preparation, arguments and working directory', async () => {
     await withFixture(async ({ root, run }) => {
       for (
@@ -116,21 +121,6 @@ Describe('root workflow boundaries', () => {
       Expect(unknown.code).toBe(1)
       Expect(unknown.calls).toEqual([])
       Expect(unknown.output).toContain('local-instantdb')
-    })
-  })
-
-  Test('clean removes only new workspace dependencies and preserves legacy dependencies', async () => {
-    await withFixture(async ({ root, run }) => {
-      const dependencies = join(root, 'ts/node_modules')
-      const target = await realpath(dependencies)
-      const legacyDependency = join(root, 'old-tao-v1/node_modules/keep.txt')
-      await Bun.write(legacyDependency, 'legacy dependency')
-      const cleaned = await run('agent', ['clean'])
-      Expect(cleaned.code).toBe(0)
-      Expect(cleaned.calls).toEqual([])
-      Expect(await Bun.file(join(dependencies, 'commander/package.json')).exists()).toBe(false)
-      Expect((await lstat(target)).isDirectory()).toBe(true)
-      Expect(await Bun.file(legacyDependency).text()).toBe('legacy dependency')
     })
   })
 
@@ -178,9 +168,10 @@ Describe('root workflow boundaries', () => {
       const legacyMarker = join(root, 'legacy-test-ran')
       await Bun.write(
         join(root, 'old-tao-v1/forbidden.test.ts'),
-        `import { test } from 'bun:test'\ntest('legacy must not run', async () => { await Bun.write(${
-          JSON.stringify(legacyMarker)
-        }, 'ran') })\n`,
+        S`
+          import { test } from 'bun:test'
+          test('legacy must not run', async () => { await Bun.write(${JSON.stringify(legacyMarker)}, 'ran') })
+        `,
       )
       const all = await run('agent', ['test'])
       Expect(all.code).toBe(0)
@@ -220,19 +211,13 @@ Describe('root workflow boundaries', () => {
     })
   })
 
-  Test('formats shared files without entering the legacy implementation', async () => {
+  Test('rejects legacy formatting paths and aliases before invoking external tools', async () => {
     await withFixture(async ({ root, run }) => {
       await Bun.write(join(root, 'old-tao-v1/fixture with spaces.tao'), 'fixture')
       const tao = await run('agent', ['fmt', 'old-tao-v1/fixture with spaces.tao'])
       Expect(tao.code).toBe(1)
       Expect(tao.calls).toEqual([])
       Expect(tao.output).toContain('Run legacy workflows from old-tao-v1/')
-      const just = await run('agent', ['fmt', 'Justfile'])
-      Expect(just.calls).toEqual([`just|${root}|--fmt|--justfile|${root}/Justfile`])
-      const all = await run('agent', ['fmt'])
-      Expect(all.code).toBe(0)
-      Expect(all.calls).toContain(`just|${root}|--fmt|--justfile|${root}/Justfile`)
-      Expect(all.calls.some(call => call.includes('/old-tao-v1|'))).toBe(false)
       await symlink(join(root, 'old-tao-v1'), join(root, 'legacy-alias'))
       const aliasGlob = await run('agent', ['fmt', 'legacy-alias/*.tao'])
       Expect(aliasGlob.code).toBe(1)

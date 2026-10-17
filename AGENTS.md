@@ -57,7 +57,10 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 - Checked by `check`: TypeScript types, formatter conventions (including two-space indentation), and the source rules below.
 - Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
+- Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.
 - Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
+- Review: tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
+- Review: test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic.
 - Review: raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
 - Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
 - Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.

@@ -30,8 +30,8 @@ Command modules default-export shared registrations with inline actions and cent
 the action executor alone assigns process exit status from thrown failures. Actions and workflow
 steps return void; variadic `runSteps` awaits each step and stops on failure.
 setup uses the same boundary before Commander is installed. Formatting uses
-the repository config and repository-relative arguments. An isolated integration test checks both
-entrypoints' formatting and typecheck failure propagation; setup works before Commander is installed.
+the repository config and repository-relative arguments. Dependency-only formatter, compiler,
+installer, package-loader, clock and Commander presentation tests were removed at the developer's request.
 Shared `Try` handles synchronous and asynchronous recovery and cleanup, normalizes propagated failures,
 and preserves original failure context for finalization. The new implementation uses capitalized
 `Errors.ThrowX` helpers with private error constructors; ordering and cleanup-failure regressions are covered.
@@ -52,18 +52,23 @@ The branch review skill records the reviewed commit, covers changes since the pr
 requires independent conformance, DRY, documentation and compound-condition checks.
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
-Isolated Git and GitHub CLI fixtures cover successful setup and failure exits.
+Config-mutating GitHub setup tests were removed at the developer's request; setup is no longer exercised by the ordinary test suite.
 `runCommand` accepts simple space-separated strings or argument arrays, and reports command start
 and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages go to root `.artifacts/logs/agent/`,
 while stderr is mirrored to the terminal and log, including child stderr and suppressed developer probes.
 Developer IO remains on the terminal. An unavailable agent log reports once and falls back to terminal
-output while preserving the command verdict. Logging and bootstrap fixtures cover these boundaries.
+output while preserving the command verdict. Tests retain Tao-owned logging, error normalization,
+ordering and path restrictions; workflow fixtures record compiler invocation instead of compiling again.
 `./agent lint` (also available as `check-comments`) uses the installed TypeScript syntax parser to
 require name-led descriptive JSDoc on exported API declarations, reject private JSDoc and ordinary
 block comments, and require `Try` outside its exact primitive file. Local/default exports, overloads,
 values, types and command factories are covered; forwarding exports do not duplicate origin docs.
 Public shape members may carry JSDoc. Strings, templates and regular expressions are not comments.
 These rules run in `check` and `verify` without new dependencies; `check` never runs tests.
+Multiline runtime literals use the universal `S` tag, which trims blank boundary lines and common
+indentation while preserving relative indentation, including interpolated source. Conformance
+requires the tag, indented content on new lines, and an aligned closing delimiter. Surviving
+multiline fixtures follow this pattern. Tests must not mutate developer state outside the repository.
 Root `AGENTS.md` lists both automated and review-only conformity rules in one compact section.
 Agents run verify at slice completion and fix or fmt before committing.
 Root commands currently require Bun and dprint on PATH; the root JavaScript toolchain remains disabled.
