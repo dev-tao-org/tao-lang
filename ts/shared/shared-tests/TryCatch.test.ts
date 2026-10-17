@@ -2,6 +2,48 @@ import { Errors, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
 
 Describe('Try', () => {
+  Test('recovers and finalizes even when a thrown object cannot be inspected', async () => {
+    const revoked = Proxy.revocable({}, {})
+    revoked.revoke()
+    const hostile = new Proxy({}, {
+      getPrototypeOf: () => {
+        throw 'prototype inspection denied'
+      },
+    })
+    for (const thrown of [revoked.proxy, hostile]) {
+      for (const asynchronous of [false, true]) {
+        const events: string[] = []
+        const result = await Try(() => {
+          if (asynchronous) {
+            return Promise.reject(thrown)
+          }
+          throw thrown
+        }, {
+          catch: original => {
+            Expect(original).toBe(thrown)
+            events.push('catch')
+            return 'recovered'
+          },
+          finally: (original, error) => {
+            Expect(original).toBe(thrown)
+            Expect(Errors.isTaoError(error)).toBe(true)
+            Expect(error?.cause).toBe(thrown)
+            events.push('finally')
+          },
+        })
+        Expect(result).toBe('recovered')
+        Expect(events).toEqual(['catch', 'finally'])
+      }
+    }
+  })
+
+  Test('loads the package universal export as declared for consumers', async () => {
+    const manifest = await Bun.file(new URL('../package.json', import.meta.url)).json()
+    const universal = await import(new URL(manifest.exports['./universal'], new URL('../', import.meta.url)).href)
+    Expect(universal.Try).toBe(Try)
+    Expect(universal.Errors).toBe(Errors)
+  })
+
   Test('preserves synchronous values and allows catch to recover synchronously', () => {
     const value = { id: 1 }
     const result: typeof value = Try(() => value)

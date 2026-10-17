@@ -277,9 +277,9 @@ Describe('agent hooks', () => {
     const commands = Object.values(hooks.hooks).flat()
 
     for (const entry of commands) {
-      const script = entry.command.match(/packages\/cli\/agent-cli\/agent-cli-src\/cli\/[\w-]+\.zsh/)?.[0]
+      const script = entry.command.match(/old-tao-v1\/packages\/cli\/agent-cli\/agent-cli-src\/cli\/[\w-]+\.zsh/)?.[0]
       Expect(script).toBeDefined()
-      Expect(await FS.exists(Repo.resolvePath(script!))).toBe(true)
+      Expect(await FS.exists(Repo.resolveGitPath(script!))).toBe(true)
     }
     // The warning hooks must keep their stdout: it is the only channel that reaches the model.
     const warning = commands.filter(entry =>

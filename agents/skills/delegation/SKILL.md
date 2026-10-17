@@ -65,7 +65,7 @@ Use `oracle` for one hard question — a root cause that survived two attempts, 
 
 ## Choosing the tier
 
-Apply the lower-than-yourself rule first, then the GPT policy, then the table; say the tier and effort in one line without asking. Ask only when the work fits no row, when spending a frontier model in another harness, when a run may exceed ten minutes, or when the work was already rerun at another tier; mark your recommendation and record the answer.
+Apply the model-tier limits above, then the GPT policy and table; state tier and effort without asking. Ask only when no row fits, for otherwise-unapproved frontier use, a run over ten minutes, or a rerun at another tier; record the answer.
 
 ## The brief
 

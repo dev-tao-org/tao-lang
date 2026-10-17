@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runCommand, runSteps } from '@cli-kit'
 import { Errors } from '@shared'
 import { existsSync, statSync } from 'node:fs'
 import { basename, relative, resolve } from 'node:path'
@@ -13,18 +13,10 @@ export const fmtCommand = registerCommand({
     if (paths.length === 0) {
       // New Tao formatting awaits its parser. The reference fmt recipe retains parser generation,
       // Tao formatting, template checks and its own Justfile formatting.
-      for (
-        const step of [
-          () => workspaceFormat('fmt'),
-          () => runCommand(['just', '--fmt', '--justfile', `${repositoryRoot}/Justfile`], { cwd: repositoryRoot }),
-          () => runLegacyRecipe(['fmt']),
-        ]
-      ) {
-        process.exitCode = await step()
-        if (process.exitCode !== 0) {
-          return
-        }
-      }
+      process.exitCode = await runSteps([
+        () => workspaceFormat('fmt'),
+        () => runLegacyRecipe(['fmt']),
+      ])
       return
     }
     for (const path of paths) {

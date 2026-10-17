@@ -54,6 +54,20 @@ Validate findings against the current tree, deduplicate them, resolve confirmed 
 authorized scope, and run relevant verification. Keep gaps and unresolved risks visible in the
 checkpoint and final report. A passing test run does not replace the independent review.
 
+## Required conformance checks
+
+- Always check **all new code** in the review range for conformance with applicable repository
+  instructions and local conventions; distribute this coverage explicitly across reviewers.
+- Look for DRY opportunities within the changes and nearby relevant code. Check reasonably for
+  existing functions that already do similar work, without exhaustively searching the repository.
+  Also identify sufficiently aligned operations that should share a new function; explain the
+  concrete common behavior and preserve meaningful differences.
+- Exported functions must have JSDoc. Comments on non-exported implementation code use `//`,
+  not JSDoc; add private comments only when useful.
+- Extract logical conditions combining **three or more checks** into a named predicate function.
+  Extract two-check conditions too when their meaning is not clear. The named predicate may hold
+  the compound expression; choose a name that explains its intent.
+
 ## Implementation handoffs
 
 Every handoff that launches, delegates to, or prints a prompt for another implementation agent must

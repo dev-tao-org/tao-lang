@@ -1,4 +1,4 @@
-import { CLI, FS, Repo, Text } from '@shared'
+import { CLI, FS, Platform, Repo, Text } from '@shared'
 import { Describe, Expect, initGitTestRepository, mkGitTestDir, mkTestDir, Test } from '@shared/test'
 import type { GenerateOptions } from 'rulesync'
 import { AgentConfigGenerator } from '../agent-cli-src/agent-config/AgentConfigGenerator'
@@ -8,10 +8,10 @@ Describe('agent config generation', () => {
     const root = await mkGitTestDir('tao-agent-hook-subdirectory-')
     await initGitTestRepository(root)
     const marker = FS.resolvePath('hook-ran', root)
-    const script = FS.resolvePath('packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh', root)
+    const script = FS.resolvePath('old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh', root)
     await FS.writeText(script, '#!/bin/sh\n: > "$TAO_TEST_HOOK_MARKER"\n')
     await FS.chmod(script, 0o755)
-    const nested = FS.resolvePath('packages/cli/agent-cli', root)
+    const nested = FS.resolvePath('old-tao-v1/packages/cli/agent-cli', root)
     await FS.mkdir(nested)
     const hooks = JSON.parse(
       Text.stripJsonc(await FS.readText(Repo.resolveGitPath('.rulesync/hooks.jsonc'))),
@@ -173,5 +173,59 @@ Describe('agent config generation', () => {
     } finally {
       await FS.remove(root)
     }
+  })
+
+  Test('relocated lifecycle hooks use root setup and reference tools without changing ownership', async () => {
+    const root = await mkGitTestDir('tao-relocated-hooks-')
+    await initGitTestRepository(root)
+    const implementation = FS.resolvePath('old-tao-v1', root)
+    const scriptPath = 'packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh'
+    const script = FS.resolvePath(scriptPath, implementation)
+    await FS.writeText(script, await FS.readText(Repo.resolvePath(scriptPath)), { mode: 0o755 })
+    const calls = FS.resolvePath('calls', root)
+    const toolCalls = FS.resolvePath('tools', root)
+    const profile = FS.resolvePath('.devenv/profile/bin', implementation)
+    const bin = FS.resolvePath('bin', root)
+    const envFile = FS.resolvePath('shell-env', root)
+    for (
+      const [path, source] of [
+        ['agent', '#!/bin/sh\nprintf "agent:%s\\n" "$*" >> "$TAO_TEST_CALLS"\n'],
+        ['.config/bootstrap-tao-dev-env', '#!/bin/sh\nprintf "bootstrap:%s\\n" "$*" >> "$TAO_TEST_CALLS"\n'],
+        ['old-tao-v1/agent', '#!/bin/sh\nexit 99\n'],
+        ['old-tao-v1/.devenv/profile/bin/bun', '#!/bin/sh\nprintf "%s\\n" "$2" >> "$TAO_TEST_TOOLS"\n'],
+        ['bin/uname', '#!/bin/sh\necho Linux\n'],
+      ]
+    ) {
+      await FS.writeText(FS.resolvePath(path!, root), source!, { mode: 0o755 })
+    }
+    for (const remote of ['', 'true']) {
+      const result = await CLI.run(script, {
+        cwd: FS.dirname(script),
+        env: {
+          CLAUDE_CODE_REMOTE: remote,
+          CLAUDE_ENV_FILE: envFile,
+          PATH: `${bin}:${Platform.runtimeProcess.env['PATH']}`,
+          TAO_TEST_CALLS: calls,
+          TAO_TEST_TOOLS: toolCalls,
+        },
+      })
+      Expect({ exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr })
+        .toEqual({ exitCode: 0, stdout: '', stderr: '' })
+    }
+    Expect(await FS.readText(calls)).toBe('agent:setup\nbootstrap:--install-nix\n')
+    Expect(await FS.readText(envFile)).toContain(profile)
+    Expect((await FS.readText(toolCalls)).split('\n').filter(Boolean)).toEqual([
+      FS.resolvePath('packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts', implementation),
+      FS.resolvePath('packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts', implementation),
+      FS.resolvePath('packages/cli/agent-cli/agent-cli-src/agent-hooks/CloudSessionTitleEntry.ts', implementation),
+    ])
+    const worktreePath = 'packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh'
+    const worktree = FS.resolvePath(worktreePath, implementation)
+    await FS.writeText(worktree, await FS.readText(Repo.resolvePath(worktreePath)), { mode: 0o755 })
+    const result = await CLI.run(worktree, { args: ['create'], cwd: root, env: { TAO_TEST_TOOLS: toolCalls } })
+    Expect(result.exitCode).toBe(0)
+    Expect(await FS.readText(toolCalls)).toContain(
+      FS.resolvePath('packages/cli/agent-cli/agent-cli-src/agent-hooks/WorktreeHookEntry.ts', implementation),
+    )
   })
 })

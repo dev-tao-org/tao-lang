@@ -13,6 +13,7 @@ type KindHandlers<ItemT extends KindItem, ResultT> = {
   [KeyT in ItemT['kind']]: (item: Extract<ItemT, { kind: KeyT }>) => ResultT
 }
 
+/** Switch dispatches exhaustively on values, discriminators and object properties. */
 export default Object.assign(Switch, {
   kind: SwitchKind,
   kindMaybe: SwitchKindMaybe,
@@ -27,7 +28,6 @@ function ownHandler<HandlersT extends object>(handlers: HandlersT, key: Property
   return Object.hasOwn(handlers, key) ? handlers[key as keyof HandlersT] : undefined
 }
 
-/** Switch dispatches exhaustively on a literal value. */
 function Switch<ValueT extends SwitchValueKey, ResultT>(
   input: ValueT,
   handlers: ValueHandlers<ValueT, ResultT>,
@@ -45,7 +45,6 @@ type ValueHandlers<ValueT extends SwitchValueKey, ResultT> =
   & { [KeyT in Exclude<ValueT, undefined> & SwitchKey]: (value: KeyT) => ResultT }
   & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
 
-/** SwitchType dispatches exhaustively on an AST-style `$type` discriminator. */
 function SwitchType<ItemT extends TypeItem, ResultT>(
   item: ItemT,
   handlers: TypeHandlers<ItemT, ResultT>,
@@ -59,9 +58,8 @@ function SwitchType<ItemT extends TypeItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-/** SwitchKind dispatches exhaustively on a `kind` discriminator. When `ItemT` is a single type whose
- *  `kind` is itself a literal union rather than a union of distinct types, this gives handlers no
- *  narrowing; a handler that needs a narrower type must close over the item instead. */
+// A single type whose kind is a literal union gives handlers no narrowing;
+// a handler needing a narrower type must close over the item instead.
 function SwitchKind<ItemT extends KindItem, ResultT>(
   item: ItemT,
   handlers: KindHandlers<ItemT, ResultT>,
@@ -75,7 +73,6 @@ function SwitchKind<ItemT extends KindItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-/** SwitchTypeMaybe dispatches exhaustively on an AST-style `$type` discriminator or undefined. */
 function SwitchTypeMaybe<ItemT extends TypeItem | undefined, ResultT>(
   item: ItemT,
   handlers: TypeMaybeHandlers<ItemT, ResultT>,
@@ -93,7 +90,6 @@ type TypeMaybeHandlers<ItemT extends TypeItem | undefined, ResultT> =
   & TypeHandlers<Exclude<ItemT, undefined>, ResultT>
   & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
 
-/** SwitchKindMaybe dispatches exhaustively on a `kind` discriminator or undefined. */
 function SwitchKindMaybe<ItemT extends KindItem | undefined, ResultT>(
   item: ItemT,
   handlers: KindMaybeHandlers<ItemT, ResultT>,
@@ -111,7 +107,6 @@ type KindMaybeHandlers<ItemT extends KindItem | undefined, ResultT> =
   & KindHandlers<Exclude<ItemT, undefined>, ResultT>
   & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
 
-/** SwitchProperty dispatches exhaustively on one property value. */
 function SwitchProperty<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   item: ItemT,
   propertyName: PropertyT,
@@ -135,8 +130,7 @@ type PropertyHandlers<ItemT, PropertyT extends keyof ItemT, ResultT> = PropertyV
     & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
   : never
 
-/** SwitchOn dispatches exhaustively on one property, like SwitchProperty, but passes each handler the
- *  item narrowed to that property's member instead of the property's value. */
+// Unlike property dispatch, each handler receives the item narrowed to that property's member.
 function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   item: ItemT,
   propertyName: PropertyT,
@@ -156,5 +150,4 @@ type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> = 
   [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
 }
 
-/** nothing is a no-op handler for a branch whose receiver deliberately ignores it. */
 function nothing(): void {}

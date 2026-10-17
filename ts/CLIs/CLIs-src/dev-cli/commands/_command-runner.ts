@@ -90,7 +90,7 @@ export async function workspaceTypes(): Promise<number> {
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<number> {
-  return await runCommand([
+  const formatted = await runCommand([
     'dprint',
     mode,
     '--config',
@@ -99,5 +99,15 @@ export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<number> {
     '**/*',
     '--excludes',
     'old-tao-v1/**',
+  ], { cwd: repositoryRoot })
+  if (formatted !== 0) {
+    return formatted
+  }
+  return await runCommand([
+    'just',
+    '--fmt',
+    ...(mode === 'check' ? ['--check'] : []),
+    '--justfile',
+    `${repositoryRoot}/Justfile`,
   ], { cwd: repositoryRoot })
 }

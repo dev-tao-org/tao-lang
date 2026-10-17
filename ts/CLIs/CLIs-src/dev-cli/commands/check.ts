@@ -1,5 +1,5 @@
-import { runCommand } from '@cli-kit'
-import { registerCommand, repositoryRoot, runLegacyRecipe, workspaceFormat, workspaceTypes } from './_command-runner'
+import { runSteps } from '@cli-kit'
+import { registerCommand, runLegacyRecipe, workspaceFormat, workspaceTypes } from './_command-runner'
 
 /** checkCommand checks the TypeScript workspace. */
 export const checkCommand = registerCommand({
@@ -9,19 +9,10 @@ export const checkCommand = registerCommand({
   allowUnknownOptions: true,
   action: async (args: string[]) => {
     // New parser/app/IDE/runtime gates await those implementations; retain all reference gates.
-    for (
-      const step of [
-        () => workspaceTypes(),
-        () => workspaceFormat('check'),
-        () =>
-          runCommand(['just', '--fmt', '--check', '--justfile', `${repositoryRoot}/Justfile`], { cwd: repositoryRoot }),
-        () => runLegacyRecipe(['check', ...args]),
-      ]
-    ) {
-      process.exitCode = await step()
-      if (process.exitCode !== 0) {
-        return
-      }
-    }
+    process.exitCode = await runSteps([
+      () => workspaceTypes(),
+      () => workspaceFormat('check'),
+      () => runLegacyRecipe(['check', ...args]),
+    ])
   },
 })

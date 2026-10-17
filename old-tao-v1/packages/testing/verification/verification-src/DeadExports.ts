@@ -1100,7 +1100,7 @@ async function runKnip(repositoryRoot: string): Promise<unknown> {
     args: [
       'node_modules/knip/bin/knip.js',
       '--config',
-      '.config/knip.json',
+      Repo.resolveGitPath('.config/knip.json', repositoryRoot),
       '--no-progress',
       '--reporter',
       'json',

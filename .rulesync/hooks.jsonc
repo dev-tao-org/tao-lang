@@ -1,9 +1,10 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/hooks-schema.json",
   // Canonical agent lifecycle hooks for this repository, one source for two harnesses.
-  // `./agent setup` renders them through rulesync's hooks feature into .claude/settings.json and
+  // The reference `./dev agent-config` renders them through rulesync into .claude/settings.json and
   // .codex/hooks.json. Edit this file, never the generated ones. Keep every command
-  // harness-neutral: discover the worktree root through Git so a harness launched from any
+  // Hook implementations remain under old-tao-v1 until ported; configuration stays at the Git root.
+  // Keep commands harness-neutral: discover the worktree root through Git so a harness launched from any
   // repository subdirectory reaches the same script, and use no field one harness does not document.
   "hooks": {
     // Every local harness reaches the repository's one setup entry, `./agent setup`, before an agent's
@@ -16,10 +17,10 @@
     // processes outside the Bash sandbox, which matters for Claude Code: its sandbox denies the
     // writes a dependency install needs under paths it protects.
     //
-    // The POSIX script runs `./agent setup` — the entrypoint rather than `just setup` because it
-    // activates the pinned devenv profile itself, which a fresh worktree has not done yet; it is
-    // idempotent and returns in well under a second once a checkout is bootstrapped, so it runs
-    // unconditionally — and then, when Claude Code hands it CLAUDE_ENV_FILE, exports that profile's
+    // Root `./agent setup` installs the TypeScript workspace dependencies. Parser/native generation,
+    // project dependencies, Git hooks and completion remain reference workflows until ported;
+    // `./dev agent-config` regenerates the retained root harness adapters explicitly.
+    // When Claude Code hands the POSIX hook CLAUDE_ENV_FILE, it exports the reference profile's
     // bin directory onto the PATH of every later Bash tool command. Setup stays quiet; after it
     // completes, the model-routing notice reaches the agent only when the routing table looks
     // behind the models this machine runs. Every verified Claude Code cloud Linux session first
@@ -30,9 +31,9 @@
     "sessionStart": [
       {
         "name": "Set up this checkout",
-        "description": "Install pinned dependencies, generate harness configuration, and load the development tools when a session starts.",
+        "description": "Install workspace dependencies and load retained development tools when a session starts.",
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\"",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\"",
       },
     ],
     // A cloud session started from the app is usually untitled at SessionStart, so its title is
@@ -43,7 +44,7 @@
         "name": "Mark cloud session titles",
         "description": "Prefix a cloud session's title with CLOUD: once it has one; does nothing in local sessions.",
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-prompt-submit.zsh\" || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-prompt-submit.zsh\" || true",
       },
     ],
     // The three delegation hooks record what this repository hands to subagents, so that the
@@ -89,21 +90,21 @@
         "matcher": "Bash",
         "name": "Check shell commands before running",
         "description": "Block overly broad output, misleading commands, and unsafe staging; explain how to correct the command.",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-output-discipline.zsh\" || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-output-discipline.zsh\" || true",
       },
       {
         "type": "command",
         "matcher": "Agent",
         "name": "Record subagent requests locally",
         "description": "Save delegation requests in this checkout's local logs to review model routing and cost.",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" spawn > /dev/null 2>&1 || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" spawn > /dev/null 2>&1 || true",
       },
       {
         "type": "command",
         "matcher": "Bash",
         "name": "Remind agents about shell conventions",
         "description": "Add non-blocking reminders about working-directory changes, environment prefixes, and preserving command exit status.",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-shell-habits.zsh\" 2>/dev/null || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-shell-habits.zsh\" 2>/dev/null || true",
       },
     ],
     // A subagent gets the repository boilerplate from the second hook rather than from every
@@ -113,11 +114,11 @@
         "name": "Record subagent starts locally",
         "description": "Save subagent start events in this checkout's local delegation logs.",
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" start > /dev/null 2>&1 || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" start > /dev/null 2>&1 || true",
       },
       {
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-subagent-brief.zsh\" 2>/dev/null || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-subagent-brief.zsh\" 2>/dev/null || true",
         "name": "Give subagents repository instructions",
         "description": "Provide each subagent with the repository's working-directory, search, file ownership, and reporting rules.",
       },
@@ -127,7 +128,7 @@
         "name": "Record subagent completions locally",
         "description": "Save subagent completion events in this checkout's local delegation logs.",
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" stop > /dev/null 2>&1 || true",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" stop > /dev/null 2>&1 || true",
       },
     ],
     // Claude Code otherwise creates its worktrees inside the checkout, under `.claude/worktrees/`,
@@ -143,7 +144,7 @@
         "name": "Create isolated worktrees beside the checkout",
         "description": "Create a sibling Git worktree so its files stay outside the primary checkout's file watchers.",
         "type": "command",
-        "command": "script=packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" create",
+        "command": "script=old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" create",
       },
     ],
     "worktreeRemove": [
@@ -151,7 +152,7 @@
         "name": "Remove a finished isolated worktree",
         "description": "Remove the worktree selected by the harness through the repository's worktree cleanup script.",
         "type": "command",
-        "command": "script=packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" remove",
+        "command": "script=old-tao-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" remove",
       },
     ],
   },

@@ -15,8 +15,12 @@
 set -e
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../../../../.." && pwd -P)
-PROFILE_BIN="$REPO_ROOT/.devenv/profile/bin"
+IMPLEMENTATION_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../../../../.." && pwd -P)
+REPO_ROOT="$IMPLEMENTATION_ROOT"
+case "$IMPLEMENTATION_ROOT" in
+  */old-tao-v1) REPO_ROOT=$(dirname "$IMPLEMENTATION_ROOT") ;;
+esac
+PROFILE_BIN="$IMPLEMENTATION_ROOT/.devenv/profile/bin"
 
 # A cloud session's title step needs the harness payload; read it before setup can consume stdin.
 hook_payload=''
@@ -55,11 +59,11 @@ fi
 # so CloudSessionTitleEntry.ts reads the hook payload on stdin and folds the notice into it.
 if [ -x "$PROFILE_BIN/bun" ]; then
   if [ "${CLAUDE_CODE_REMOTE:-}" = true ]; then
-    notice=$("$PROFILE_BIN/bun" run "$REPO_ROOT/packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts" "$REPO_ROOT" < /dev/null || true)
+    notice=$("$PROFILE_BIN/bun" run "$IMPLEMENTATION_ROOT/packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts" "$REPO_ROOT" < /dev/null || true)
     printf '%s' "$hook_payload" \
-      | "$PROFILE_BIN/bun" run "$REPO_ROOT/packages/cli/agent-cli/agent-cli-src/agent-hooks/CloudSessionTitleEntry.ts" "$notice" \
+      | "$PROFILE_BIN/bun" run "$IMPLEMENTATION_ROOT/packages/cli/agent-cli/agent-cli-src/agent-hooks/CloudSessionTitleEntry.ts" "$notice" \
       || { [ -z "$notice" ] || printf '%s\n' "$notice"; }
   else
-    "$PROFILE_BIN/bun" run "$REPO_ROOT/packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts" "$REPO_ROOT" || true
+    "$PROFILE_BIN/bun" run "$IMPLEMENTATION_ROOT/packages/cli/agent-cli/agent-cli-src/cli/agent-model-audit.ts" "$REPO_ROOT" || true
   fi
 fi

@@ -58,16 +58,18 @@ function failure(thrown: unknown): Outcome {
 function capture(action: () => unknown): PendingOutcome {
   try {
     const value = action()
-    if (
-      value !== null && (typeof value === 'object' || typeof value === 'function')
-      && typeof (value as PromiseLike<unknown>).then === 'function'
-    ) {
+    if (isPromiseLike(value)) {
       return Promise.resolve(value).then(value => ({ ok: true, value }), failure)
     }
     return { ok: true, value }
   } catch (thrown) {
     return failure(thrown)
   }
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return value !== null && (typeof value === 'object' || typeof value === 'function')
+    && typeof (value as PromiseLike<unknown>).then === 'function'
 }
 
 function continueWith(result: PendingOutcome, next: (outcome: Outcome) => PendingOutcome): PendingOutcome {

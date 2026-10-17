@@ -11,16 +11,11 @@ export const testCommand = registerCommand({
   action: async (target?: string) => {
     // App/IDE preparation and Tao/runtime suites remain owned by the legacy test recipe.
     const path = target ? resolve(repositoryRoot, target) : undefined
-    const inLegacy = path !== undefined && (path === legacyRoot || path.startsWith(`${legacyRoot}/`))
-    if (inLegacy) {
+    if (isLegacyTestTarget(path)) {
       process.exitCode = await runLegacyRecipe(['test', relative(legacyRoot, path) || '.'])
       return
     }
-    const workspaceTarget = target && (isAbsolute(target) || existsSync(resolve(`${repositoryRoot}/ts`, target)))
-      ? target
-      : path && existsSync(path)
-      ? path
-      : undefined
+    const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
     const workspace = await runCommand([process.execPath, 'test', ...args], { cwd: `${repositoryRoot}/ts` })
     process.exitCode = workspace === 0 && !workspaceTarget
@@ -28,3 +23,18 @@ export const testCommand = registerCommand({
       : workspace
   },
 })
+
+function workspaceTestTarget(target: string | undefined): string | undefined {
+  if (!target) {
+    return undefined
+  }
+  if (isAbsolute(target) || existsSync(resolve(`${repositoryRoot}/ts`, target))) {
+    return target
+  }
+  const path = resolve(repositoryRoot, target)
+  return existsSync(path) ? path : undefined
+}
+
+function isLegacyTestTarget(path: string | undefined): path is string {
+  return path !== undefined && (path === legacyRoot || path.startsWith(`${legacyRoot}/`))
+}

@@ -16,7 +16,7 @@ import { Try } from './TryCatch'
  *    command result.
  */
 
-/** ProcessSignal declares a platform process signal value without depending on Node types. */
+// ProcessSignal declares a platform process signal value without depending on Node types.
 type ProcessSignal = string
 
 /** TaoError declares errors expected by Tao command and library code. */
@@ -41,6 +41,7 @@ type CommandErrorResult = {
 }
 
 const unexpectedErrorMessage = 'Something went wrong.'
+const taoErrors = new WeakSet<object>()
 
 class BaseTaoError extends Error {
   readonly details?: ErrorDetails
@@ -49,6 +50,7 @@ class BaseTaoError extends Error {
 
   constructor(name: TaoError['name'], messageForUser: string, opts: { cause?: unknown; details?: ErrorDetails } = {}) {
     super(messageForUser)
+    taoErrors.add(this)
     this.name = name
     this.messageForUser = messageForUser
     this.cause = opts.cause
@@ -56,7 +58,7 @@ class BaseTaoError extends Error {
   }
 }
 
-/** UserInputError reports invalid input or expected user-correctable failures. */
+// UserInputError reports invalid input or expected user-correctable failures.
 class UserInputError extends BaseTaoError {
   override readonly name = 'UserInputError'
 
@@ -65,7 +67,7 @@ class UserInputError extends BaseTaoError {
   }
 }
 
-/** UnexpectedBehaviorError reports internal failures that should not happen in normal use. */
+// UnexpectedBehaviorError reports internal failures that should not happen in normal use.
 class UnexpectedBehaviorError extends BaseTaoError {
   override readonly name = 'UnexpectedBehaviorError'
 
@@ -74,7 +76,7 @@ class UnexpectedBehaviorError extends BaseTaoError {
   }
 }
 
-/** HostEnvironmentError reports a failure of the machine, toolchain, or an external process. */
+// HostEnvironmentError reports a failure of the machine, toolchain, or an external process.
 class HostEnvironmentError extends BaseTaoError {
   override readonly name = 'HostEnvironmentError'
 
@@ -83,7 +85,7 @@ class HostEnvironmentError extends BaseTaoError {
   }
 }
 
-/** CommandExecutionError reports a failed child process invocation. */
+// CommandExecutionError reports a failed child process invocation.
 class CommandExecutionError extends BaseTaoError {
   override readonly name = 'CommandExecutionError'
   readonly result: CommandErrorResult
@@ -105,10 +107,8 @@ class CommandExecutionError extends BaseTaoError {
 
 /** isTaoError checks whether a value is one of Tao's structured errors. */
 export function isTaoError(error: unknown): error is TaoError {
-  return error instanceof UserInputError
-    || error instanceof UnexpectedBehaviorError
-    || error instanceof HostEnvironmentError
-    || error instanceof CommandExecutionError
+  // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
+  return typeof error === 'object' && error !== null && taoErrors.has(error)
 }
 
 /**
@@ -220,11 +220,9 @@ export function formatForUser(error: unknown): string {
  */
 export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
 
-/**
- * Error normalization and Try form the platform-independent failure boundary. Neither calls the
- * other during module initialization. The switch is read off the ambient process
- * without a Node type in scope, and an environment that has no `process` simply never enables it.
- */
+// Error normalization and Try form the platform-independent failure boundary. Neither calls the
+// other during module initialization. Read the switch without importing platform types;
+// environments without process never enable it.
 function debugErrorsEnabled(): boolean {
   const ambient = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
   const value = ambient?.env?.[DEBUG_ERRORS_ENV]
@@ -261,7 +259,7 @@ function formatCommandForError(command: string, args: readonly string[]): string
   return [command, ...args].map(formatCommandPart).join(' ')
 }
 
-/** formatCommandPart quotes a command word that a reader could not paste back as written. */
+// Quote a command word that a reader could not paste back as written.
 function formatCommandPart(value: string): string {
   return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
 }

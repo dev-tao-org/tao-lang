@@ -6,10 +6,12 @@
 # worktree at all. Without a `bun`, as in a clone that has not run setup, it does what the harness
 # would have done itself, so a session still gets its worktree.
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
-bun="$repo_root/.devenv/profile/bin/bun"
+implementation_root="$repo_root/old-tao-v1"
+[[ -d "$implementation_root/packages" ]] || implementation_root="$repo_root"
+bun="$implementation_root/.devenv/profile/bin/bun"
 [[ -x "$bun" ]] || bun="$(command -v bun 2>/dev/null)"
 if [[ -n "$bun" ]]; then
-  exec "$bun" run "$repo_root/packages/cli/agent-cli/agent-cli-src/agent-hooks/WorktreeHookEntry.ts" "$@"
+  exec "$bun" run "$implementation_root/packages/cli/agent-cli/agent-cli-src/agent-hooks/WorktreeHookEntry.ts" "$@"
 fi
 
 payload="$(cat)"
