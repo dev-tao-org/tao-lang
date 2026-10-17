@@ -21,12 +21,15 @@ root shell without another generated directory inside the PoC.
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
-Root tests pass 8/8; root `./agent check` and legacy TypeScript checking pass. Root frozen setup
+Root tests pass 14/14; root `./agent check` and legacy TypeScript checking pass. Root frozen setup
 also passes without dependency changes.
 
 Root `./agent check` and `./agent fmt` reuse the dev CLI's command registration. Formatting uses
 the repository config and repository-relative arguments. An isolated integration test checks both
 entrypoints' formatting and typecheck failure propagation; setup works before Commander is installed.
+Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
+protocol and credential helper configuration, origin normalization, and verification of `main`.
+Isolated Git and GitHub CLI fixtures cover successful setup and failure exits.
 Root commands currently require Bun and dprint on PATH; the root JavaScript toolchain remains disabled.
 The Linux bootstrap uses the relocated pinned tool definitions for root setup and keeps CI
 verification setup in the legacy workspace. Cursor's Linux and macOS dispatch and failure exits

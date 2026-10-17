@@ -6,6 +6,7 @@ Tao is a programming language for building apps.
 - Keep workspace `package.json` and TypeScript configuration in `ts/` or `old-tao-v1/`, not the repository root.
 - A PoC implementation exists in `./old-tao-v1`.
   - Use the PoC for reference, but don't copy code wholesale.
+  - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
 
 ## Agent usage
 

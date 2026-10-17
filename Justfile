@@ -18,7 +18,7 @@ setup *ARGS:
 # Configure this checkout and GitHub CLI for HTTPS Git authentication
 [group('Setup')]
 setup-github:
-    ./dev setup github
+    ./dev setup-github
 
 # Decrypt the repository secrets into .env.secrets; `add <KEY>`, `list`, or `setup` to manage them
 [group('Setup')]
