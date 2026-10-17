@@ -22,6 +22,8 @@ These are your rules of usage:
 - Agents NEVER use `python`, `bun` etc directly
 - `./agent` logs by default; use `TERMINAL_OUTPUT=1 ./agent ...` for terminal output (`0` selects logs). Stderr remains visible.
 - CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
+- Keep equivalent native agent settings synchronized across Codex, Claude Code and Cursor in the same change; `agent-instructions` owns their file locations and unsupported equivalents.
+- Host execution uses `./agent unsandboxed <operation>` with `.config/agent-host-commands.json`; the harness must grant host access.
 - Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `old-tao-v1/`; agents check or test the legacy implementation only when its files have changed.
 
 ## Dependencies and feature planning
@@ -82,6 +84,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
   - Expose static validation through `check`; keep its individual type, comment and style checks internal.
   - The global CLI fatal handler prints uncaught failures and exits with a valid error status or 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
+  - Output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve stderr for flows near process exit; prefer throwing failures or warning otherwise.
   - Common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
 ## Git workflow

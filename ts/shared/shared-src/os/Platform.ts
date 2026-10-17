@@ -37,6 +37,12 @@ export const argv = process.argv
 /** pid identifies the current process. */
 export const pid = process.pid
 
+/** terminate stops an owned child and waits for its process to exit. */
+export async function terminate(child: Bun.Subprocess): Promise<void> {
+  child.kill('SIGKILL')
+  await child.exited
+}
+
 /** onUncaughtException installs a process-wide exception listener. */
 export function onUncaughtException(handler: (error: unknown) => void): void {
   process.on('uncaughtException', handler)

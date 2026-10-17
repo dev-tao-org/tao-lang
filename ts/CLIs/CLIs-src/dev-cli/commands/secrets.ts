@@ -65,7 +65,7 @@ function liveEnvironment(): SecretsEnvironment {
       if (value === value.trim()) {
         return value
       }
-      IO.stderr('The value has surrounding whitespace.\n')
+      IO.warn('The value has surrounding whitespace.')
       const answer = await Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: ')
       return /^n(o)?$/i.test(answer.trim()) ? value : value.trim()
     },
@@ -84,7 +84,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
   if (original.storeKey !== undefined) {
     await unlockSecretStoreKey(environment.cipher, original.storeKey)
   }
-  IO.stderr(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.\n`)
+  IO.print(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.`)
   const value = await environment.promptSecret(`Value for ${name}:`)
   if (value.trim() === '') {
     Errors.ThrowUserInput('No value was entered, so nothing was stored.')
@@ -103,8 +103,8 @@ async function addSecret(name: string, note: string | undefined, environment: Se
     })
     await writeStore(updated)
   })
-  IO.info(`${original.secrets[name] === undefined ? 'Added' : 'Replaced'} ${name} in secrets/secrets.jsonc.`)
-  IO.info('Run ./dev secrets to write it into .env.secrets.')
+  IO.print(`${original.secrets[name] === undefined ? 'Added' : 'Replaced'} ${name} in secrets/secrets.jsonc.`)
+  IO.print('Run ./dev secrets to write it into .env.secrets.')
 }
 
 function hasConflictingSecretChange(original: SecretStore, current: SecretStore, name: string): boolean {
@@ -126,13 +126,13 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
   const original = await readStore()
   const names = Object.keys(original.secrets).sort()
   if (names.length === 0) {
-    IO.info('No secrets are stored yet. Add one with ./dev secrets add <KEY>.')
+    IO.print('No secrets are stored yet. Add one with ./dev secrets add <KEY>.')
     return
   }
   const storeKey = original.storeKey!
   const { values, secretKey } = await decryptSecretValues(original, environment.cipher)
   await writeGeneratedEnv(renderSecretEnvFile(values, environment.now()))
-  IO.info(`Wrote ${values.size} ${values.size === 1 ? 'secret' : 'secrets'} to .env.secrets.`)
+  IO.print(`Wrote ${values.size} ${values.size === 1 ? 'secret' : 'secrets'} to .env.secrets.`)
   const ungranted = original.recipients.filter(recipient => !storeKey.wrappedFor.includes(recipient))
   if (ungranted.length > 0) {
     await grantStoreKey(original, secretKey, environment.cipher)
@@ -178,14 +178,14 @@ async function listSecrets(): Promise<void> {
   const store = await readStore()
   const names = Object.keys(store.secrets).sort()
   if (names.length === 0) {
-    IO.info('No secrets are stored yet.')
+    IO.print('No secrets are stored yet.')
     return
   }
-  IO.info(`${names.length} ${names.length === 1 ? 'secret' : 'secrets'} in secrets/secrets.jsonc:`)
+  IO.print(`${names.length} ${names.length === 1 ? 'secret' : 'secrets'} in secrets/secrets.jsonc:`)
   for (const name of names) {
     const entry = store.secrets[name]!
     const date = (entry.updatedAt ?? entry.addedAt).slice(0, 10)
-    IO.info(`  ${name.padEnd(28)} ${date}${entry.note === undefined ? '' : `  ${entry.note}`}`)
+    IO.print(`  ${name.padEnd(28)} ${date}${entry.note === undefined ? '' : `  ${entry.note}`}`)
   }
 }
 
@@ -211,7 +211,7 @@ async function setupSecrets(): Promise<void> {
     await writeStore({ ...store, recipients: [...store.recipients, recipient] })
     return true
   })
-  IO.info(
+  IO.print(
     added
       ? existed
         ? "Recorded this machine's existing Secure Enclave identity as a secrets recipient."

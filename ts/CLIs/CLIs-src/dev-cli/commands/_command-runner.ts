@@ -108,8 +108,11 @@ export async function execute(name = 'dev'): Promise<void> {
   // Setup can register and invoke its action before Commander has been installed.
   const { Command } = await import('commander')
   const parser = new Command().name(name).configureOutput({
+    writeOut(text) {
+      IO.print(text.replace(/\n$/, ''))
+    },
     writeErr(text) {
-      return IO.stderr(text)
+      IO.printToStdErr(text.replace(/\n$/, ''))
     },
   })
   for (const definition of commands) {
@@ -134,6 +137,21 @@ export async function workspaceTypes(): Promise<void> {
   await runCommand('tsc --project tsconfig.json', {
     cwd: Repo.resolvePath('ts'),
   })
+}
+
+/** workspaceShellSyntax checks the root entrypoints and portable bootstrap without executing them. */
+export async function workspaceShellSyntax(): Promise<void> {
+  for (
+    const path of [
+      'agent',
+      'dev',
+      '.config/cli-environment.sh',
+      '.config/bootstrap-tao-dev-env',
+      '.config/nix/nix-bootstrap.sh',
+    ]
+  ) {
+    await runCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })
+  }
 }
 
 /** workspaceConformance checks API documentation and exception/comment syntax without a type checker. */

@@ -19,9 +19,9 @@ function printError(error: unknown): void {
   const stacks: string[] = []
   const details = errorDetails(error, stacks, new WeakSet())
   for (const stack of stacks) {
-    IO.error('\u001b[33m%s\u001b[0m', stack)
+    IO.printToStdErr('\u001b[33m%s\u001b[0m', stack)
   }
-  IO.error('\u001b[31m%s\u001b[0m', errorText(details))
+  IO.printToStdErr('%s', errorText(details))
 }
 
 function errorText(value: unknown): string {

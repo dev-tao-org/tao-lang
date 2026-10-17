@@ -4,6 +4,7 @@ import {
   workspaceConformance,
   workspaceDeadExports,
   workspaceFormat,
+  workspaceShellSyntax,
   workspaceTests,
   workspaceTypes,
 } from './_command-runner'
@@ -17,6 +18,7 @@ export default registerCommand({
     await runSteps(
       () => workspaceFormat('fmt'),
       () => workspaceTypes(),
+      () => workspaceShellSyntax(),
       () => workspaceConformance(),
       () => workspaceDeadExports(),
       () => workspaceTests(),

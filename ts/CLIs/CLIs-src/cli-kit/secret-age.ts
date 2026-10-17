@@ -32,7 +32,7 @@ async function decryptStoreKey(identityPath: string, setupCommand: string, armor
       'No secrets identity at ' + identityPath + '. Run ' + setupCommand + ' on this machine.',
     )
   }
-  IO.stderr('Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.\n')
+  IO.warn('Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.')
   return run('age --decrypt --identity', { variadicArgs: [identityPath], stdin: armor })
 }
 

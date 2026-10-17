@@ -41,20 +41,18 @@ async function prepareTestReport(): Promise<string | undefined> {
   })
 }
 
-/** slowTestWarnings formats yellow warnings for executed Bun JUnit cases taking more than 75 milliseconds. */
+/** slowTestWarnings formats executed Bun JUnit cases taking more than 75 milliseconds. */
 export function slowTestWarnings(report: string): string[] {
   const slow = readTestCases(report).filter(isSlowTest).sort((left, right) => right.seconds - left.seconds)
   if (slow.length === 0) {
     return []
   }
   return [
-    yellow('Slow tests (>75 ms):'),
+    'Slow tests (>75 ms):',
     ...slow.map(test =>
-      yellow(
-        `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
-          test.file ? ' (' + test.file + ')' : ''
-        }`,
-      )
+      `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
+        test.file ? ' (' + test.file + ')' : ''
+      }`
     ),
   ]
 }
@@ -112,10 +110,6 @@ function timedTest(token: string, suite: Record<string, string> | undefined): Ti
 
 function isSlowTest(test: { seconds: number; skipped: boolean }): boolean {
   return !test.skipped && Number.isFinite(test.seconds) && test.seconds > 0.075
-}
-
-function yellow(text: string): string {
-  return '\u001b[33m' + text + '\u001b[0m'
 }
 
 function xmlAttributes(token: string): Record<string, string> {

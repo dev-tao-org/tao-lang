@@ -142,9 +142,13 @@ function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> = {
-  [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
-}
+type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> =
+  & {
+    [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
+  }
+  & (undefined extends ItemT[PropertyT]
+    ? { undefined: (item: Extract<ItemT, Partial<Record<PropertyT, undefined>>>) => ResultT }
+    : {})
 
 function ownHandler<HandlersT extends object>(handlers: HandlersT, key: PropertyKey): unknown {
   return Object.hasOwn(handlers, key) ? handlers[key as keyof HandlersT] : undefined

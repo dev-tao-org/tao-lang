@@ -22,16 +22,15 @@ done
 
 checkout=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 # Root setup installs the TypeScript workspace; CI still prepares the legacy verification lane.
-# Its pinned portable tool definitions remain in the moved implementation.
-toolchain_repository="$checkout"
+# Ordinary root setup owns its portable tools independently of the reference implementation.
+environment="$checkout/.config/nix"
 if [ -f "$checkout/ts/package.json" ] && ! "$verify_setup"; then
   repository="$checkout"
   state_dir="$checkout/.devenv"
-  toolchain_repository="$checkout/old-tao-v1"
 elif [ -f "$checkout/old-tao-v1/package.json" ] && [ -d "$checkout/old-tao-v1/packages" ]; then
   repository="$checkout/old-tao-v1"
   state_dir="$checkout/.devenv/old-tao-v1"
-  toolchain_repository="$repository"
+  environment="$repository/packages/cli/dev-cli/dev-cli-src/environment"
 else
   repository="$checkout"
   state_dir="$checkout/.devenv"
@@ -42,7 +41,6 @@ if [ "$(uname -s)" != Linux ]; then
   exit 1
 fi
 
-environment="$toolchain_repository/packages/cli/dev-cli/dev-cli-src/environment"
 if "$install_nix"; then
   # The installer waits for an active installation before judging its pending marker.
   /bin/sh "$environment/nix-bootstrap.sh"

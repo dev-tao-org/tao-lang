@@ -4,6 +4,7 @@ import {
   workspaceConformance,
   workspaceDeadExports,
   workspaceFormat,
+  workspaceShellSyntax,
   workspaceTypes,
 } from './_command-runner'
 
@@ -15,6 +16,7 @@ export default registerCommand({
     // Parser/app/IDE/runtime checks await their new implementations.
     await runSteps(
       () => workspaceTypes(),
+      () => workspaceShellSyntax(),
       () => workspaceConformance(),
       () => workspaceDeadExports(),
       () => workspaceFormat('check'),

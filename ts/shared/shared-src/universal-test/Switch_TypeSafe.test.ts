@@ -26,3 +26,28 @@ Test.describe('Switch.on', () => {
     Test.expect(describe(count)).toBe('3.0')
   })
 })
+
+Test.test('Switch.on requires and narrows the undefined discriminator branch', () => {
+  type Message = { kind: 'ready'; value: string } | { kind: undefined }
+  const render = (message: Message): string =>
+    Switch.on(message, 'kind', {
+      ready(item) {
+        return item.value
+      },
+      undefined(item) {
+        const kind: undefined = item.kind
+        return String(kind)
+      },
+    })
+  const incomplete = (message: Message) => {
+    // @ts-expect-error The undefined variant needs its own handler.
+    return Switch.on(message, 'kind', {
+      ready(item) {
+        return item.value
+      },
+    })
+  }
+  Test.expect(render({ kind: 'ready', value: 'ok' })).toBe('ok')
+  Test.expect(render({ kind: undefined })).toBe('undefined')
+  Test.expect(() => incomplete({ kind: undefined })).toThrow()
+})

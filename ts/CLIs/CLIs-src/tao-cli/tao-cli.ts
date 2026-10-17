@@ -1,3 +1,3 @@
-import { TUI } from '@cli-kit'
+import { IO } from '@cli-kit'
 
-TUI.debug('Tao CLI')
+IO.print('Tao CLI')

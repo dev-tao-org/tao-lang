@@ -1,23 +1,8 @@
-# Repo-local filesystem, network, and approval settings for Tao development.
-# Setup adds exact Git common/worktree directory grants to the machine-local Codex user
-# profile. Start a fresh session after first setup or moving a checkout; session hooks
-# cannot extend the permissions of an already running session.
-# See packages/cli/agent-cli/agent-cli-src/agent-config/CodexGitPermissions.ts.
-#
-# Tracked so a new worktree has its permission profile before setup or session hooks run.
-# It names no login: Codex accepts only absolute Unix socket paths, so a home-relative socket
-# in the canonical rules is left out here and reached through a named host operation instead.
-#
-# Generated with .codex/rules/tao.rules by `./agent setup` from .rulesync/permissions.jsonc
-# and .rulesync/profiles.jsonc. Edit those canonical files, not either generated Codex output:
-# rulesync's own Codex translator cannot express loopback binding, Unix sockets, or a
-# curated domain allowlist, so this profile is rendered by
-# packages/cli/agent-cli/agent-cli-src/agent-config/CodexConfigGenerator.ts instead.
-#
-# The sibling .codex/hooks.json is generated from .rulesync/hooks.jsonc by the same setup and
-# runs `./agent setup` when a session starts, the one setup entry Worktrunk (.config/wt.toml),
-# Claude Code (.claude/settings.json hooks), and Cursor (.cursor/worktrees.json) reach too.
-# Codex trusts a repository hook once per content hash through its /hooks command.
+# Native repository settings, maintained by hand; agent-config generates hooks and subagents only.
+# Keep equivalent rules in .codex/rules/tao.rules, .claude/settings*.json and
+# .cursor/permissions.json synchronized in the same change (see agent-instructions).
+# Model defaults follow agents/skills/delegation/SKILL.md. Setup does not install
+# machine-local Git grants; named host operations require harness approval.
 
 default_permissions = "tao-workspace"
 approval_policy = "on-request"

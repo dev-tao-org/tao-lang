@@ -9,10 +9,15 @@ The roadmap's implementation log was moved here at the developer's request. Keep
 Developer tests log by default, with an explicit terminal override available. Output routing and log setup
 are configured at CLI entrypoints; commands no longer request a separate log mode. The log-failure latch,
 fallback path and IO configuration test were removed at the developer's request.
-The remaining branch and agent-config workflows are now local, with approved rulesync 16.18.0
-and smol-toml 1.9.0 dependencies. A dedicated new-workspace CI lane is added; hosted execution is unverified.
-Local verification passes 63 tests and 329 assertions. Generator fixtures use recording callbacks;
-no real adapter regeneration, home configuration changes, branch synchronization or services were invoked.
+Agent configuration uses Rulesync 16.18.0 for hooks and subagents. Unsupported settings are maintained
+natively in Codex, Claude Code and Cursor files; equivalent rule changes must be synchronized manually.
+Cursor auto-run prose cannot grant an OS sandbox escape. Root host commands use
+`.config/agent-host-commands.json`; retained legacy commands keep their separate allowlist.
+The Git-permission installer and direct smol-toml dependency were removed by request.
+A dedicated new-workspace CI lane is added; hosted execution is unverified.
+Local verification passes 60 tests and 312 assertions. Adapter regeneration preserves native settings;
+no home configuration changes, branch switching or services were invoked. `my-branch` only switches
+to an existing developer branch; `my-sync` and the synchronization machinery were removed by request.
 The developer requested a final review of the entire branch from its fork point, followed by landing.
 
 ## Earlier implementation notes
@@ -125,7 +130,7 @@ Tests live in sibling `universal-test/` and `cli-kit-test/` folders.
 Local start/stop, doctor and secrets no longer execute legacy recipes. Doctor checks the new workspace and emits
 a safe fingerprint. Secrets uses the new root encrypted store and approved age dependency, preserving Secure
 Enclave setup and store-key wrapping. No real secret decryption, identity setup or Docker lifecycle was exercised.
-`agent-config`, `my-branch` and `my-sync` still use the separate `runLegacyDev` bridge.
+This historical bridge gap was subsequently resolved with local implementations; root commands no longer use `runLegacyDev`.
 Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
 Current `./agent verify`: 56 tests, 306 assertions; `.artifacts/logs/agent/2026-10-17T20-24-53.242Z-56033.log`.
 The source gate enforces a 45-line function-body limit and method syntax for object function implementations.

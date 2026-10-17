@@ -15,9 +15,9 @@ Test.describe('slow test warnings', () => {
       </testsuites>
     `)
     Test.expect(warnings).toEqual([
-      '\u001b[33mSlow tests (>75 ms):\u001b[0m',
-      '\u001b[33m  250.00 ms  commands > slowest (commands.test.ts)\u001b[0m',
-      '\u001b[33m  75.01 ms  nested suite > slow (commands.test.ts)\u001b[0m',
+      'Slow tests (>75 ms):',
+      '  250.00 ms  commands > slowest (commands.test.ts)',
+      '  75.01 ms  nested suite > slow (commands.test.ts)',
     ])
   })
 
@@ -39,10 +39,10 @@ Test.describe('slow test warnings', () => {
       </testsuites>
     `)
     Test.expect(warnings).toEqual([
-      '\u001b[33mSlow tests (>75 ms):\u001b[0m',
-      '\u001b[33m  123.00 ms  outer > A > B "value" & \'x\' 🐱 (file & name.test.ts)\u001b[0m',
-      '\u001b[33m  102.00 ms  outer > after inner (file & name.test.ts)\u001b[0m',
-      '\u001b[33m  101.00 ms  inner > nested (inner.test.ts)\u001b[0m',
+      'Slow tests (>75 ms):',
+      '  123.00 ms  outer > A > B "value" & \'x\' 🐱 (file & name.test.ts)',
+      '  102.00 ms  outer > after inner (file & name.test.ts)',
+      '  101.00 ms  inner > nested (inner.test.ts)',
     ])
     Test.expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
   })

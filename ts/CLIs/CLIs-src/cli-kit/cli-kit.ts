@@ -15,9 +15,6 @@ let captureCommands = false
 let mirrorCommandStderr = false
 let agentLog: string
 
-/** TUI exposes terminal output independently of configured logging. */
-export const TUI = outputMethods(terminalStdout, terminalStderr)
-
 /** IO routes output through channels selected once by each CLI entrypoint. */
 export const IO = {
   ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
@@ -77,14 +74,14 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
     Errors.ThrowUserInput('A command is required.')
   }
   const label = args.join(' ')
-  IO.info(`RUN CMD: ${label}`)
+  IO.print(`RUN CMD: ${label}`)
   const started = Time.nowMs()
   await Try(() =>
     captureCommands
       ? runLoggedCommand(command, options)
       : runInheritedCommand(command, options), {
     finally() {
-      IO.info(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
+      IO.print(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
     },
   })
 }
@@ -97,12 +94,19 @@ async function runLoggedCommand(command: Command, options: RunOptions): Promise<
     stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
     stderr: 'pipe',
   })
-  const [status] = await Promise.all([
-    child.exited,
-    forwardOutput(child.stderr, commandStderr(options)),
-    child.stdout ? forwardOutput(child.stdout, stdoutPipe) : undefined,
-  ])
-  requireCommandSuccess(command, options, status, child.signalCode)
+  await Try(async () => {
+    const [status] = await Promise.all([
+      child.exited,
+      forwardOutput(child.stderr, commandStderr(options)),
+      child.stdout ? forwardOutput(child.stdout, stdoutPipe) : undefined,
+    ])
+    requireCommandSuccess(command, options, status, child.signalCode)
+  }, {
+    async catch(error) {
+      await Platform.terminate(child)
+      Errors.Throw(error)
+    },
+  })
 }
 
 function commandStderr(options: RunOptions): OutputPipe {
@@ -140,16 +144,15 @@ function commandArguments(command: Command, options: RunOptions): string[] {
 }
 
 function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
-  const output = (...args: unknown[]): void => outputPipe(`${Text.format(...args)}\n`)
-  const error = (...args: unknown[]): void => errorPipe(`${Text.format(...args)}\n`)
   return {
-    info: output,
-    debug: output,
-    log: output,
-    warn: error,
-    error,
-    stderr(text: string | Uint8Array): void {
-      return errorPipe(text)
+    print(...args: unknown[]): void {
+      outputPipe(`${Text.format(...args)}\n`)
+    },
+    warn(...args: unknown[]): void {
+      outputPipe(`\u001b[33m${Text.format(...args)}\u001b[0m\n`)
+    },
+    printToStdErr(...args: unknown[]): void {
+      errorPipe(`\u001b[31m${Text.format(...args)}\u001b[0m\n`)
     },
   }
 }

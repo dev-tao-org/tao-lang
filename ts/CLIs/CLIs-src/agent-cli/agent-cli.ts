@@ -1,6 +1,7 @@
 import '../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
-import { Env } from '@shared/os'
+import { Env, Platform } from '@shared/os'
+import unsandboxed from './commands/unsandboxed'
 import '../dev-cli/dev-cli'
 import { execute } from '../dev-cli/commands/_command-runner'
 
@@ -13,4 +14,8 @@ IO.config({
   logDirectory: 'agent',
   logFile: Env.get('OUTPUT_LOG_FILE'),
 })
-await execute('agent')
+if (Platform.argv[2] === 'unsandboxed' && Platform.argv[3] !== '--help') {
+  await unsandboxed.action(Platform.argv.slice(3))
+} else {
+  await execute('agent')
+}

@@ -1,6 +1,7 @@
 import { CLI, FS, Platform, Repo, Text } from '@shared'
 import { Describe, Expect, initGitTestRepository, mkGitTestDir, mkTestDir, Test } from '@shared/test'
 import type { GenerateOptions } from 'rulesync'
+import { AgentConfigFreshness } from '../agent-cli-src/agent-config/AgentConfigFreshness'
 import { AgentConfigGenerator } from '../agent-cli-src/agent-config/AgentConfigGenerator'
 
 Describe('agent config generation', () => {
@@ -117,6 +118,44 @@ Describe('agent config generation', () => {
       }
 
       Expect(thrown).toBe(failure)
+    } finally {
+      await FS.remove(root)
+    }
+  })
+
+  Test('checks Rulesync hooks only for the new workspace and preserves native Claude settings', async () => {
+    const root = await mkTestDir('tao-agent-config-freshness-')
+    try {
+      await FS.mkdir(FS.resolvePath('ts', root))
+      await FS.writeJson(FS.resolvePath('ts/package.json', root), {})
+      await FS.mkdir(FS.resolvePath('.rulesync', root))
+      await FS.writeJson(FS.resolvePath('.rulesync/rulesync.jsonc', root), {
+        targets: ['claudecode', 'codexcli'],
+        features: ['hooks'],
+      })
+      await FS.writeJson(FS.resolvePath('.rulesync/hooks.jsonc', root), {
+        hooks: { sessionStart: [{ type: 'command', command: 'echo canonical-hook' }] },
+      })
+      await FS.mkdir(FS.resolvePath('.claude', root))
+      await FS.writeJson(FS.resolvePath('.claude/settings.json', root), {
+        permissions: { allow: ['Bash(native-permission)'] },
+        sandbox: { enabled: true },
+        hooks: {},
+      })
+      await FS.writeText(FS.resolvePath('.claude/settings.native.json', root), 'outdated native profile')
+      await FS.mkdir(FS.resolvePath('.codex', root))
+      await FS.writeText(FS.resolvePath('.codex/hooks.json', root), '{}')
+      await FS.writeText(FS.resolvePath('.codex/config.toml', root), 'model = "native-profile"')
+
+      const settingsPath = FS.resolvePath('.claude/settings.json', root)
+      const nativeSettings = await FS.readText(settingsPath)
+      const issues = await AgentConfigFreshness.staleIssues(root)
+
+      Expect(issues.length).toBeGreaterThan(0)
+      Expect(
+        issues.every(issue => issue.startsWith('.claude/settings.json ') || issue.startsWith('.codex/hooks.json ')),
+      ).toBe(true)
+      Expect(await FS.readText(settingsPath)).toBe(nativeSettings)
     } finally {
       await FS.remove(root)
     }

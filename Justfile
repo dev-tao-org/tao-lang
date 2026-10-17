@@ -69,15 +69,10 @@ verify *ARGS:
 # Dev branch management
 #######################
 
-# Switch to your own dev/* branch, creating it from main the first time
+# Switch to your existing personal dev/* branch
 [group('Dev Branch Management')]
 my-branch name='':
     ./dev my-branch {{ quote(name) }}
-
-# Synchronize main and merge it into the current development branch
-[group('Dev Branch Management')]
-my-sync:
-    ./dev my-sync
 
 # Dev environment services
 ##########################

@@ -71,7 +71,9 @@ async function verifyOrigin(): Promise<void> {
     Platform.readText(remote.stdout),
     Platform.readText(remote.stderr),
   ])
-  IO.stderr(stderr)
+  if (code === 0 && stderr.trim()) {
+    IO.warn(stderr.trimEnd())
+  }
   if (code !== 0) {
     Errors.ThrowCommandExecution({
       command: 'git',
@@ -83,7 +85,7 @@ async function verifyOrigin(): Promise<void> {
       stderr,
     })
   }
-  IO.debug(`GitHub HTTPS authentication is ready for ${url.trim()}.`)
+  IO.print(`GitHub HTTPS authentication is ready for ${url.trim()}.`)
 }
 
 function commandFailedWith(error: unknown, status: number): boolean {

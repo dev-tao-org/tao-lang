@@ -113,6 +113,10 @@ env:
     .artifacts/compile-app-stamp.json
 
 jobs:
+  typescript:
+    name: TypeScript workspace
+    uses: ./.github/workflows/typescript.yml
+
   # Holds a pull request until its author has accepted CLA.md by posting the agreement sentence on a
   # pull request in this repository. The comment is the signature: GitHub authenticates who posted
   # it, timestamps it, and keeps its edit history. It is this job's result, not a commit status, so a
@@ -513,7 +517,7 @@ jobs:
 
   verify:
     name: Verify
-    needs: [plan, partition]
+    needs: [plan, partition, typescript]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -530,6 +534,7 @@ jobs:
         env:
           PARTITION_RESULT: ${{ needs.partition.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
+          TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
         run: |
           # One annotation per extracted failure, and one for each failed gate whose log matched no
           # recognized format, escaped as workflow commands require.
@@ -543,6 +548,10 @@ jobs:
               | "::error title=Partition \($k): \($gate)::Failed with no recognized test failure; the partition's log artifact holds its output.")
           JQ
           status=0
+          if [ "$TYPESCRIPT_RESULT" != success ]; then
+            echo "The TypeScript workspace did not pass ($TYPESCRIPT_RESULT)."
+            exit 1
+          fi
           if [ "$PLAN_RESULT" != success ]; then
             echo "The plan job did not succeed ($PLAN_RESULT), so no partition ran."
             exit 1

@@ -14,7 +14,7 @@
       ]
     }
   ],
-  "langium.config": "packages/language/parser/langium-config.json",
+  "langium.config": "old-tao-v1/packages/language/parser/langium-config.json",
   // WordFlower target files use alternate extensions to stay out of Tao discovery.
   "files.associations": {
     "*.tao-next": "tao",

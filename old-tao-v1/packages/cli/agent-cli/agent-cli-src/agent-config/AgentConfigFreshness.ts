@@ -8,7 +8,12 @@ import { CodexConfigGenerator } from './CodexConfigGenerator'
  * The committed harness files rulesync renders. It merges into what is already there, so freshness
  * is judged by regenerating over a copy of the committed file, never into an empty directory.
  */
-const RULESYNC_OUTPUTS = [
+const CURRENT_RULESYNC_OUTPUTS = [
+  { features: ['hooks'], path: '.claude/settings.json', target: 'claudecode' },
+  { features: ['hooks'], path: '.codex/hooks.json', target: 'codexcli' },
+] as const
+
+const LEGACY_RULESYNC_OUTPUTS = [
   { features: ['permissions', 'hooks'], path: '.claude/settings.json', target: 'claudecode' },
   { features: ['hooks'], path: '.codex/hooks.json', target: 'codexcli' },
 ] as const
@@ -32,11 +37,12 @@ async function renderedOutputs(
   return outputs
 }
 
-async function rulesyncOutputs(root: string): Promise<Map<string, string>> {
+async function rulesyncOutputs(root: string, currentWorkspace: boolean): Promise<Map<string, string>> {
   const outputs = new Map<string, string>()
   const scratch = await FS.mkTmpDir('tao-agent-config-freshness-')
+  const targets = currentWorkspace ? CURRENT_RULESYNC_OUTPUTS : LEGACY_RULESYNC_OUTPUTS
   try {
-    for (const output of RULESYNC_OUTPUTS) {
+    for (const output of targets) {
       const committed = FS.resolvePath(output.path, root)
       if (!(await FS.isFile(committed))) {
         continue
@@ -52,7 +58,7 @@ async function rulesyncOutputs(root: string): Promise<Map<string, string>> {
         silent: true,
         targets: [output.target],
       })
-      if (output.target === 'claudecode') {
+      if (!currentWorkspace && output.target === 'claudecode') {
         await FS.mkdir(FS.resolvePath('.rulesync', scratch))
         await FS.copyFile(
           FS.resolvePath('.rulesync/permissions.jsonc', root),
@@ -74,11 +80,14 @@ async function rulesyncOutputs(root: string): Promise<Map<string, string>> {
 
 /** staleAgentConfigIssues reports each committed harness file that regenerating would change. */
 async function staleAgentConfigIssues(root: string): Promise<string[]> {
-  const expected = new Map([
-    ...await renderedOutputs(root, CodexConfigGenerator.generate),
-    ...await renderedOutputs(root, ClaudeProfilesGenerator.generate),
-    ...await rulesyncOutputs(root),
-  ])
+  const currentWorkspace = await FS.isFile(FS.resolvePath('ts/package.json', root))
+  const expected = currentWorkspace
+    ? await rulesyncOutputs(root, true)
+    : new Map([
+      ...await renderedOutputs(root, CodexConfigGenerator.generate),
+      ...await renderedOutputs(root, ClaudeProfilesGenerator.generate),
+      ...await rulesyncOutputs(root, false),
+    ])
   const issues: string[] = []
   for (const [path, content] of expected) {
     const committed = FS.resolvePath(path, root)

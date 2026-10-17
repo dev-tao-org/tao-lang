@@ -17,7 +17,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
       ),
     )
   }
-  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
+  IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
     Errors.ThrowUserInput(issues.join('\n'))
   }

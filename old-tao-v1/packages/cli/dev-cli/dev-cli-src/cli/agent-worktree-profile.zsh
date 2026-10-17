@@ -64,6 +64,9 @@ function tao_link_primary_devenv_profile() {
   local common_git_dir
   common_git_dir="$(git -C "$worktree_dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || return 1
   local primary_worktree_dir="${common_git_dir:h}"
+  if [[ "${worktree_dir:t}" == old-tao-v1 ]]; then
+    primary_worktree_dir="$primary_worktree_dir/old-tao-v1"
+  fi
   local primary_profile="$primary_worktree_dir/.devenv/profile"
   [[ "$primary_worktree_dir" != "$worktree_dir" ]] || return 1
   [[ -x "$primary_profile/bin/node" && -x "$primary_profile/bin/bun" ]] || return 1

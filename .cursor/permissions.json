@@ -5,7 +5,7 @@
       "Allow read-only network requests that do not transmit secrets, credentials, private keys, tokens, private repository contents, or other sensitive local data.",
       "Allow ordinary read-only shell commands used to inspect files, source code, git state, logs, test output, build artifacts, dependencies, and local environment information.",
       "Allow this repository's own sandboxed workflow commands — ./agent, ./tao other than dev, ./dev, just recipes, bun test, bun run, and dprint — including the ones that build, format, generate, or run tests.",
-      "Run host operations only through a named ./agent unsandboxed operation listed in .rulesync/permissions.jsonc; use app-dev for the Tao development loop and simulators for simulator interactions.",
+      "Run new-workspace host operations only through ./agent unsandboxed with a prefix listed in .config/agent-host-commands.json. The harness must separately grant host access; this instruction does not bypass its sandbox. Retained old implementation operations use its own allowlist.",
       "Allow the named ./agent unsandboxed prepare-release studio and prepare-release ide-extension operations for local release preparation; neither publishes.",
       "Allow ./agent unsandboxed docker-desktop start to launch Docker Desktop for local development.",
       "Allow starting, querying, and stopping local development servers and previews bound to loopback addresses, and allow reading their pages, logs, and network activity in a browser or preview tool.",

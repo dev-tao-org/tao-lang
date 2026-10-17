@@ -28,6 +28,6 @@ export default registerCommand({
         ),
     )
     // The new app, compiler and runtime have not yet been ported; this provisions only the local service.
-    IO.info('InstantDB is ready at http://localhost:9020 (dashboard: http://localhost:3000)')
+    IO.print('InstantDB is ready at http://localhost:9020 (dashboard: http://localhost:3000)')
   },
 })
