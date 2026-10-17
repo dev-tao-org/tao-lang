@@ -9,7 +9,7 @@ description: >-
 
 # Delegation
 
-Delegate when it saves more time than startup and briefing cost. This skill owns delegation, tiers, briefs, and return checks. `references/parallel-implementation.md` owns concurrent writers; `references/review-fanout.md` owns dividing a large review.
+Delegate when it saves time after briefing. Read `references/parallel-implementation.md` for concurrent writers, `references/review-fanout.md` for large reviews, and [library research](references/library-research.md) when planning features.
 
 ## Delegate when
 

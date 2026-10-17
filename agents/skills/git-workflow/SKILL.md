@@ -9,9 +9,8 @@ description: >-
 
 # Git Workflow
 
-Root `AGENTS.md` owns branch and index constraints and standing authorization to merge other
-branches, including its dependency-approval exception. Apply that authorization to all incoming
-file changes. The warn-only Git hooks
+Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
+waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
 `landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Pushing is
 irreversible: confirm with the Developer before pushing anything the Developer did not ask to be

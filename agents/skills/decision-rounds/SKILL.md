@@ -18,7 +18,7 @@ Root `AGENTS.md` owns the boundary between the Developer's decisions and routine
 
 ## Find every decision first
 
-1. Brainstorm wide. List every decision the task raises, grouped by area, before narrowing anything. Include the items you would default and the items you would drop.
+1. Brainstorm wide. List every decision the task raises, grouped by area, before narrowing anything. Include the items you would default and the items you would drop. For feature plans, use the library research required by root `AGENTS.md` and include any dependency choices that need approval.
 2. Show the whole inventory in the numbered/lettered shape root `AGENTS.md` sets for replies to the Developer, marking each item you propose to drop or default with the default stated in a few words.
 3. Narrow with the Developer. The Developer strikes, adds, or promotes items; the survivors are the decision list.
 

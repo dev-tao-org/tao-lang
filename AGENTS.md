@@ -19,6 +19,12 @@ These are your rules of usage:
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
 
+## Dependencies and feature planning
+
+- Determine during planning whether new or updated dependencies are needed.
+- Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
+- When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
+
 ## Your mission
 
 Your mission is to follow the developer's instructions to implement the Tao MVP in pieces, following this process:
