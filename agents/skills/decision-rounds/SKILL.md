@@ -34,7 +34,7 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 
 ## Settle them a handful at a time
 
-1. Present three to five per round, upstream decisions first so later rounds shrink or disappear.
+1. Always open a planning discussion with three questions, choosing upstream decisions first. Continue asking questions until every decision needed for implementation is settled; use three per later round while enough substantive open decisions remain.
 2. Give each decision its realistic options and mark the recommended one, as above.
 3. Print the round as text in the reply, in the shape below. Never put it through a harness question prompt such as `AskUserQuestion`: a prompt hides the round from the transcript, caps what an answer can say, and forces every item through its own box. The Developer answers in the conversation — by letter and number, in prose, or with an option the round did not offer.
 4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. An item the Developer skips takes its recommendation, and the next message says so in one line so the Developer can veto it.
