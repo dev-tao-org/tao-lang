@@ -5,6 +5,6 @@ export default registerCommand({
   name: 'my-sync',
   description: 'Synchronize main and merge it into this development branch.',
   action: async () => {
-    await runLegacyDev(['my-sync'])
+    await runLegacyDev('my-sync')
   },
 })

@@ -71,6 +71,7 @@ Config-mutating GitHub setup tests were removed at the developer's request; setu
 retaining command arrays for base arguments containing spaces, and reports command start
 and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages and child stdout go to root
 `.artifacts/logs/agent/`, while stderr is mirrored to the terminal and log, including suppressed probes.
+CLI entrypoints read the environment once and call `IO.config` to select output pipes; IO and command execution do not reread agent-mode variables.
 Developer IO remains on the terminal except test-command output, which logs to `.artifacts/logs/dev/`
 and mirrors stderr. Each logging process announces its repo-relative log directory once at startup.
 An unavailable command log reports once and falls back to terminal output while preserving the verdict.
@@ -118,7 +119,7 @@ a safe fingerprint. Secrets uses the new root encrypted store and approved age d
 Enclave setup and store-key wrapping. No real secret decryption, identity setup or Docker lifecycle was exercised.
 `agent-config`, `my-branch` and `my-sync` still use the separate `runLegacyDev` bridge.
 Fatal diagnostics now retain long strings/arrays and aggregate members, including cause cycles.
-Current `./agent verify`: 53 tests, 286 assertions; `.artifacts/logs/agent/2026-10-17T20-07-11.463Z-44182.log`.
+Current `./agent verify`: 54 tests, 292 assertions; `.artifacts/logs/agent/2026-10-17T20-13-03.250Z-48223.log`.
 Piped diagnostics retain terminal colors on color-capable terminals while respecting explicit color preferences.
 Doctor preserves GitHub transport severity, credential-helper validation, hook wiring and individual artifact-directory checks.
 Agents run verify at slice completion and fix or fmt before committing.

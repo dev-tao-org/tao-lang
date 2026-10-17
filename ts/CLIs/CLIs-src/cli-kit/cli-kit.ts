@@ -1,23 +1,54 @@
 import { Errors, Time, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Streams, Terminal, Text } from '@shared/os'
+import { FileSystem, Path, Platform, Streams, Terminal, Text } from '@shared/os'
 
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
 export const repositoryRoot = Path.fileURLToPath(new URL('../../../../', import.meta.url)).replace(/\/$/, '')
 
+type OutputPipe = (text: string | Uint8Array) => void
+type IOConfiguration = {
+  stdout?: 'terminal' | 'log' | OutputPipe
+  stderr?: 'terminal' | 'both' | OutputPipe
+  logFile?: string
+  logDirectory?: 'agent' | 'dev'
+}
+
+let stdoutPipe: OutputPipe = terminalStdout
+let stderrPipe: OutputPipe = terminalStderr
+let captureCommands = false
+let mirrorCommandStderr = false
 let agentLog: string | undefined
+let logDirectory: 'agent' | 'dev' = 'dev'
 let logUnavailable = false
+let logAnnounced = false
 
-/** TUI exposes terminal output methods independently of the active agent mode. */
-export const TUI = outputMethods(true)
+/** TUI exposes terminal output independently of configured logging. */
+export const TUI = outputMethods(terminalStdout, terminalStderr)
 
-/** IO writes developer output to the terminal and agent output to .artifacts/logs/agent.
- *  Set TAO_AGENT=1 for agent mode; stderr always reaches both the terminal and log in that mode.
- *  TAO_AGENT_LOG optionally selects the log file; file logging announces its repo-relative directory once. */
-export const IO = outputMethods()
+/** IO routes output through channels selected once by each CLI entrypoint. */
+export const IO = {
+  ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
+  config: configureOutput,
+}
 
-/** setAgentIO enables agent logging, including for direct agent CLI invocation. */
-export function setAgentIO(): void {
-  Env.set('TAO_AGENT', '1')
+const loggedOutput = outputMethods(loggedStdout, loggedStderr)
+
+function configureOutput(configuration: IOConfiguration): void {
+  stdoutPipe = typeof configuration.stdout === 'function'
+    ? configuration.stdout
+    : configuration.stdout === 'log'
+    ? loggedStdout
+    : terminalStdout
+  stderrPipe = typeof configuration.stderr === 'function'
+    ? configuration.stderr
+    : configuration.stderr === 'both'
+    ? loggedStderr
+    : terminalStderr
+  captureCommands = stdoutPipe !== terminalStdout || stderrPipe !== terminalStderr
+  mirrorCommandStderr = configuration.stderr === 'both'
+  agentLog = configuration.logFile ? Path.resolve(repositoryRoot, configuration.logFile) : undefined
+  logDirectory = configuration.logDirectory ?? 'dev'
+  logUnavailable = false
+  logAnnounced = false
 }
 
 /** runCommand runs a space-separated command and throws on failure.
@@ -37,29 +68,38 @@ export async function runCommand(command: string | readonly string[], options: {
   }
   args.push(...options.variadicArgs ?? [])
   const label = args.join(' ')
-  const output = options.stdout === 'log' ? outputMethods(false, true) : IO
+  const output = options.stdout === 'log' ? loggedOutput : IO
   output.info(`RUN CMD: ${label}`)
   const started = Time.nowMs()
   await Try(async () => {
-    const logging = Env.is('TAO_AGENT', '1') || options.stdout === 'log'
+    const logging = captureCommands || options.stdout === 'log'
     const spawnOptions = { cwd: options.cwd, stdin: options.stdin ?? 'inherit' as const }
     let status: number
     let signal: string | null
     if (logging) {
-      const child = Platform.spawn(args, {
+      const child = Platform.spawn(command, {
+        variadicArgs: options.variadicArgs,
         ...spawnOptions,
         stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
         stderr: 'pipe',
       })
       const [completed] = await Promise.all([
         child.exited,
-        forwardOutput(child.stderr, true),
-        child.stdout ? forwardOutput(child.stdout, false) : undefined,
+        forwardOutput(
+          child.stderr,
+          options.stdout === 'log'
+            ? loggedStderr
+            : options.stderr === 'ignore' && !mirrorCommandStderr
+            ? () => {}
+            : stderrPipe,
+        ),
+        child.stdout ? forwardOutput(child.stdout, options.stdout === 'log' ? loggedStdout : stdoutPipe) : undefined,
       ])
       status = completed
       signal = child.signalCode
     } else {
-      const child = Platform.spawn(args, {
+      const child = Platform.spawn(command, {
+        variadicArgs: options.variadicArgs,
         ...spawnOptions,
         stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
         stderr: options.stderr ?? 'inherit',
@@ -83,37 +123,40 @@ export async function runCommand(command: string | readonly string[], options: {
   })
 }
 
-function outputMethods(terminalOnly = false, fileOnly = false) {
-  const output = (...args: unknown[]): void => writeOutput(`${Text.format(...args)}\n`, false, terminalOnly, fileOnly)
-  const error = (...args: unknown[]): void => writeOutput(`${Text.format(...args)}\n`, true, terminalOnly, fileOnly)
+function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
+  const output = (...args: unknown[]): void => outputPipe(`${Text.format(...args)}\n`)
+  const error = (...args: unknown[]): void => errorPipe(`${Text.format(...args)}\n`)
   return {
     info: output,
     debug: output,
     log: output,
     warn: error,
     error,
-    stderr: (text: string | Uint8Array): void => writeOutput(text, true, terminalOnly, fileOnly),
+    stderr: (text: string | Uint8Array): void => errorPipe(text),
   }
 }
 
-async function forwardOutput(stream: Streams.ByteStream, stderr: boolean): Promise<void> {
-  await Streams.consume(stream, value => writeOutput(value, stderr, false, true))
+async function forwardOutput(stream: Streams.ByteStream, pipe: OutputPipe): Promise<void> {
+  await Streams.consume(stream, pipe)
 }
 
-function writeOutput(text: string | Uint8Array, stderr = false, terminalOnly = false, fileOnly = false): void {
-  const logging = fileOnly || Env.is('TAO_AGENT', '1')
-  if (stderr) {
-    if (logging) {
-      logToFile(text)
-    }
-    Terminal.stderr.write(text)
-    return
+function loggedStdout(text: string | Uint8Array): void {
+  if (!logToFile(text)) {
+    terminalStdout(text)
   }
-  if (terminalOnly || !logging) {
-    Terminal.stdout.write(text)
-  } else if (!logToFile(text)) {
-    Terminal.stdout.write(text)
-  }
+}
+
+function loggedStderr(text: string | Uint8Array): void {
+  logToFile(text)
+  terminalStderr(text)
+}
+
+function terminalStdout(text: string | Uint8Array): void {
+  Terminal.stdout.write(text)
+}
+
+function terminalStderr(text: string | Uint8Array): void {
+  Terminal.stderr.write(text)
 }
 
 function logToFile(text: string | Uint8Array): boolean {
@@ -121,17 +164,17 @@ function logToFile(text: string | Uint8Array): boolean {
     return false
   }
   return Try(() => {
-    if (!agentLog) {
-      agentLog = Env.get('TAO_AGENT_LOG')
-        ?? `${repositoryRoot}/.artifacts/logs/${Env.is('TAO_AGENT', '1') ? 'agent' : 'dev'}/${
-          Time.date().toISOString().replaceAll(':', '-')
-        }-${Platform.pid}.log`
+    agentLog ??= `${repositoryRoot}/.artifacts/logs/${logDirectory}/${
+      Time.date().toISOString().replaceAll(':', '-')
+    }-${Platform.pid}.log`
+    if (!logAnnounced) {
       FileSystem.mkdirSync(Path.dirname(agentLog), { recursive: true })
       const announcement = `Logs: ${
         Path.relative(FileSystem.realpathSync(repositoryRoot), FileSystem.realpathSync(Path.dirname(agentLog))) || '.'
       }/\n`
       FileSystem.appendFileSync(agentLog, announcement)
       Terminal.stderr.write(announcement)
+      logAnnounced = true
     }
     FileSystem.appendFileSync(agentLog, text)
     return true

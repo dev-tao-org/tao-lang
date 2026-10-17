@@ -10,11 +10,10 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
       if (recipients.length === 0) {
         Errors.ThrowUserInput('The secret store has no recipients.')
       }
-      const result = await run(
-        'age --armor',
-        recipients.flatMap(recipient => ['--recipient', recipient]),
-        plaintext,
-      )
+      const result = await run('age --armor', {
+        variadicArgs: recipients.flatMap(recipient => ['--recipient', recipient]),
+        stdin: plaintext,
+      })
       return result
     },
     decrypt: async armor => {
@@ -24,7 +23,7 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
       IO.stderr(
         'Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.\n',
       )
-      const result = await run('age --decrypt --identity', [identityPath], armor)
+      const result = await run('age --decrypt --identity', { variadicArgs: [identityPath], stdin: armor })
       return result
     },
     decryptWithKey: async (armor, secretKey) => {
@@ -34,12 +33,12 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
       const path = Path.join(temporary, 'value.age')
       return await Try(async () => {
         await FileSystem.write(path, armor)
-        const result = await run('age --decrypt --identity -', [path], secretKey)
+        const result = await run('age --decrypt --identity -', { variadicArgs: [path], stdin: secretKey })
         return result
       }, { finally: () => FileSystem.rm(temporary, { force: true, recursive: true }) })
     },
     generateKey: async () => {
-      const result = await run('age-keygen', [])
+      const result = await run('age-keygen')
       const recipient = /^#\s*public key:\s*(age1\S+)\s*$/m.exec(result)?.[1]
       const secretKey = /^AGE-SECRET-KEY-1\S+$/m.exec(result)?.[0]
       if (recipient === undefined || secretKey === undefined) {
@@ -48,7 +47,7 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
       return { recipient, secretKey }
     },
     recipientOfKey: async secretKey => {
-      const result = await run('age-keygen -y', [], secretKey)
+      const result = await run('age-keygen -y', { stdin: secretKey })
       const recipient = result.trim()
       if (!recipient.startsWith('age1')) {
         Errors.ThrowHostEnvironment('age-keygen did not return a valid recipient.')
@@ -58,14 +57,18 @@ export function createAgeCipher(identityPath: string, artifactDirectory: string,
   }
 }
 
-async function run(command: string, variadicArgs: readonly string[], stdin?: string): Promise<string> {
-  const child = Platform.spawn([...command.split(' '), ...variadicArgs], {
+async function run(
+  command: string,
+  options: { variadicArgs?: readonly string[]; stdin?: string } = {},
+): Promise<string> {
+  const child = Platform.spawn(command, {
+    variadicArgs: options.variadicArgs,
     stdin: 'pipe',
     stdout: 'pipe',
     stderr: 'pipe',
   })
-  if (stdin !== undefined) {
-    child.stdin.write(stdin)
+  if (options.stdin !== undefined) {
+    child.stdin.write(options.stdin)
   }
   child.stdin.end()
   const [status, stdout] = await Promise.all([

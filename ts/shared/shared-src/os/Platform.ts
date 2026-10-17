@@ -9,13 +9,19 @@ export function isPlatformImport(specifier: string): boolean {
 }
 
 /** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
-export const spawn: typeof Bun.spawn = (...args: unknown[]) => {
-  const optionIndex = Array.isArray(args[0]) ? 1 : 0
-  const options = (args[optionIndex] ?? {}) as { stderr?: unknown; env?: Record<string, string | undefined> }
-  if (preserveTerminalColors(options)) {
-    args[optionIndex] = { ...options, env: { ...(options.env ?? process.env), FORCE_COLOR: '1' } }
+export function spawn<
+  const In extends Bun.SpawnOptions.Writable = 'ignore',
+  const Out extends Bun.SpawnOptions.Readable = 'pipe',
+  const Err extends Bun.SpawnOptions.Readable = 'inherit',
+>(command: string | readonly string[], options: Bun.SpawnOptions.SpawnOptions<In, Out, Err> & {
+  variadicArgs?: readonly string[]
+} = {}): Bun.Subprocess<In, Out, Err> {
+  const { variadicArgs = [], ...spawnOptions } = options
+  if (preserveTerminalColors(spawnOptions)) {
+    spawnOptions.env = { ...(spawnOptions.env ?? process.env), FORCE_COLOR: '1' }
   }
-  return Reflect.apply(Bun.spawn, Bun, args)
+  const args = typeof command === 'string' ? command.trim().split(/ +/) : [...command]
+  return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
 }
 
 function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
@@ -66,15 +72,18 @@ export function systemInfo(): { architecture: string; kernel: string; os: string
 }
 
 /** capture reads command output and throws when the command fails. */
-export async function capture(command: string, variadicArgs: readonly string[] = [], cwd?: string): Promise<string> {
-  const args = [...command.split(' '), ...variadicArgs]
-  const child = spawn(args, { cwd, stdout: 'pipe', stderr: 'pipe' })
+export async function capture(
+  command: string,
+  options: { variadicArgs?: readonly string[]; cwd?: string } = {},
+): Promise<string> {
+  const args = [...command.trim().split(/ +/), ...options.variadicArgs ?? []]
+  const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
   const [status, stdout, stderr] = await Promise.all([child.exited, readText(child.stdout), readText(child.stderr)])
   if (status !== 0) {
     Errors.ThrowCommandExecution({
       command: args[0],
       args: args.slice(1),
-      cwd,
+      cwd: options.cwd,
       status,
       signal: child.signalCode,
       stdout,

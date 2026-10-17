@@ -1,7 +1,7 @@
 import '../../cli-kit/fatal-errors'
 import { IO, repositoryRoot, runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { Env, FileSystem, Path, Platform } from '@shared/os'
 import { withTestTimings } from '../../cli-kit/slow-tests'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -29,6 +29,13 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 const commands: CommandDefinition<unknown[]>[] = []
 
 if (Platform.isMain(import.meta)) {
+  const agent = Env.is('TAO_AGENT', '1')
+  IO.config({
+    stdout: agent ? 'log' : 'terminal',
+    stderr: agent ? 'both' : 'terminal',
+    logDirectory: agent ? 'agent' : 'dev',
+    logFile: Env.get('TAO_AGENT_LOG'),
+  })
   // Defer setup's import until this module finishes initializing: setup registers through this module.
   // Commander and the development command registry are loaded only after dependencies exist.
   void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
@@ -114,8 +121,8 @@ export async function execute(name = 'dev'): Promise<void> {
 }
 
 /** runLegacyDev delegates existing CLI workflows to the reference implementation. */
-export async function runLegacyDev(args: string[]): Promise<void> {
-  await runCommand('./dev', { variadicArgs: args, cwd: legacyRoot })
+export async function runLegacyDev(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<void> {
+  await runCommand(`./dev ${command}`, { variadicArgs: options.variadicArgs, cwd: legacyRoot })
 }
 
 const legacyRoot = `${repositoryRoot}/old-tao-v1`

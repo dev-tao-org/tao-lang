@@ -191,7 +191,9 @@ async function setupSecrets(): Promise<void> {
   await FileSystem.mkdir(Path.dirname(identityPath), { recursive: true })
   const existed = FileSystem.existsSync(identityPath)
   if (!existed) {
-    await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', [identityPath])
+    await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', {
+      variadicArgs: [identityPath],
+    })
   }
   await FileSystem.chmod(identityPath, 0o600)
   const recipient = await recipientOfIdentity()
@@ -266,15 +268,16 @@ async function recipientOfIdentity(): Promise<string> {
   if (recorded !== undefined) {
     return recorded
   }
-  const recipient = await runIdentityTool('age-plugin-se recipients --input', [identityPath])
+  const recipient = await runIdentityTool('age-plugin-se recipients --input', { variadicArgs: [identityPath] })
   if (recipient.trim() === '') {
     Errors.ThrowHostEnvironment('age-plugin-se did not return the identity recipient.')
   }
   return recipient.trim()
 }
 
-async function runIdentityTool(command: string, variadicArgs: readonly string[]): Promise<string> {
-  const child = Platform.spawn([...command.split(' '), ...variadicArgs], {
+async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
+  const child = Platform.spawn(command, {
+    variadicArgs: options.variadicArgs,
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',

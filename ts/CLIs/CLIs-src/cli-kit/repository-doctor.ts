@@ -49,7 +49,7 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
     })),
   }
   for (const name of ['ts/bun.lock', 'devenv.lock']) {
-    const hash = gitHash(await probe('git hash-object --', [name]))
+    const hash = gitHash(await probe('git hash-object --', { variadicArgs: [name] }))
     fingerprint.toolchain.push({ name, present: hash !== undefined, hash })
   }
   if (fingerprintOnly) {
@@ -157,8 +157,10 @@ async function gitHookChecks(): Promise<Check[]> {
   return checks
 }
 
-async function probe(command: string, variadicArgs: readonly string[] = []): Promise<string | undefined> {
-  return Try(() => Platform.capture(command, variadicArgs, repositoryRoot), { catch: () => undefined })
+async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
+  return Try(() => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: repositoryRoot }), {
+    catch: () => undefined,
+  })
 }
 
 /** safeToken admits only plain version and identifier tokens into the pasteable fingerprint. */

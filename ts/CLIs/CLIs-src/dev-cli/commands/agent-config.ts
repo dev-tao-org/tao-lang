@@ -6,6 +6,6 @@ export default registerCommand({
   description: 'Regenerate repository harness configuration from its canonical sources.',
   action: async () => {
     // The generator remains in the reference until the new harness tooling is implemented.
-    await runLegacyDev(['agent-config'])
+    await runLegacyDev('agent-config')
   },
 })

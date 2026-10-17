@@ -6,7 +6,7 @@ export default registerCommand({
   description: 'Select a personal development branch and synchronize it with main.',
   arguments: [{ name: 'name', description: 'Branch name or suffix.', defaultValue: '' }],
   action: async (name: string = '') => {
-    await runLegacyDev(['my-branch', name])
-    await runLegacyDev(['my-sync'])
+    await runLegacyDev('my-branch', { variadicArgs: [name] })
+    await runLegacyDev('my-sync')
   },
 })

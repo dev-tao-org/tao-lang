@@ -51,7 +51,7 @@ export default registerCommand({
     ) {
       await runCommand(command, { cwd, stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit' })
     }
-    const remote = Platform.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
+    const remote = Platform.spawn('git remote get-url origin', { cwd, stdout: 'pipe', stderr: 'pipe' })
     const [code, url, stderr] = await Promise.all([
       remote.exited,
       Platform.readText(remote.stdout),
