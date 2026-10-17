@@ -4,7 +4,8 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "commander": "15.0.0"
+    "commander": "15.0.0",
+    "github": "^14.0.0"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",
