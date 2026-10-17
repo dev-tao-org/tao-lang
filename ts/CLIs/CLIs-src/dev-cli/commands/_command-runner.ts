@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Try } from '@shared'
 import { fileURLToPath } from 'node:url'
 
 /** CommandArgument describes one positional command argument. */
@@ -33,18 +33,16 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
   const registered = {
     ...definition,
     action: async (...args: Args): Promise<void> => {
-      try {
-        await definition.action(...args)
-      } catch (error) {
-        process.exitCode = 1
-        let message = 'Command failed.'
-        try {
-          message = Errors.isTaoError(error) ? Errors.formatForUser(error) : Errors.messageOf(error)
-        } catch {
-          // Keep the command boundary usable even when an unusual thrown value cannot be formatted.
-        }
-        console.error(message)
-      }
+      await Try(() => definition.action(...args), {
+        catch: error => {
+          process.exitCode = 1
+          const message = Try(
+            () => Errors.isTaoError(error) ? Errors.formatForUser(error) : Errors.messageOf(error),
+            { catch: () => 'Command failed.' },
+          )
+          console.error(message)
+        },
+      })
     },
   }
   commands.push({ ...registered, action: (...args: unknown[]) => registered.action(...args as Args) })

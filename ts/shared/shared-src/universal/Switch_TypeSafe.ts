@@ -1,4 +1,4 @@
-import { UnexpectedBehaviorError } from './Errors'
+import { ThrowUnexpected } from './Errors'
 
 type SwitchKey = string | number | symbol
 type SwitchValueKey = SwitchKey | undefined
@@ -36,7 +36,7 @@ function Switch<ValueT extends SwitchValueKey, ResultT>(
   const handler = ownHandler(handlers, key)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled switch value: ${String(input)}`)
+    ThrowUnexpected(`Unhandled switch value: ${String(input)}`)
   }
   return (handler as (value: ValueT) => ResultT)(input)
 }
@@ -54,7 +54,7 @@ function SwitchType<ItemT extends TypeItem, ResultT>(
   const handler = ownHandler(handlers, key)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled item type: ${String(key)}`)
+    ThrowUnexpected(`Unhandled item type: ${String(key)}`)
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }
@@ -70,7 +70,7 @@ function SwitchKind<ItemT extends KindItem, ResultT>(
   const handler = ownHandler(handlers, key)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled item kind: ${String(key)}`)
+    ThrowUnexpected(`Unhandled item kind: ${String(key)}`)
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }
@@ -84,7 +84,7 @@ function SwitchTypeMaybe<ItemT extends TypeItem | undefined, ResultT>(
   const handler = ownHandler(handlers, key)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled item type: ${String(key)}`)
+    ThrowUnexpected(`Unhandled item type: ${String(key)}`)
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }
@@ -102,7 +102,7 @@ function SwitchKindMaybe<ItemT extends KindItem | undefined, ResultT>(
   const handler = ownHandler(handlers, key)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled item kind: ${String(key)}`)
+    ThrowUnexpected(`Unhandled item kind: ${String(key)}`)
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }
@@ -122,7 +122,7 @@ function SwitchProperty<ItemT extends object, PropertyT extends keyof ItemT, Res
   const handler = ownHandler(handlers, key as PropertyKey)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled property value: ${String(propertyValue)}`)
+    ThrowUnexpected(`Unhandled property value: ${String(propertyValue)}`)
   }
   return (handler as (value: PropertyValue<ItemT, PropertyT>) => ResultT)(propertyValue)
 }
@@ -147,7 +147,7 @@ function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   const handler = ownHandler(handlers, key as PropertyKey)
 
   if (!handler) {
-    throw new UnexpectedBehaviorError(`Unhandled property value: ${String(propertyValue)}`)
+    ThrowUnexpected(`Unhandled property value: ${String(propertyValue)}`)
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }

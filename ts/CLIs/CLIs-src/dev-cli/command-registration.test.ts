@@ -1,3 +1,4 @@
+import { Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
 import { cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -13,7 +14,7 @@ async function withFixture(
   ) => Promise<void>,
 ): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), 'tao-command-registration-'))
-  try {
+  await Try(async () => {
     const repository = fileURLToPath(new URL('../../../../', import.meta.url))
     await mkdir(join(root, 'ts'))
     for (const entry of ['ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
@@ -48,9 +49,7 @@ await execute()
         return { code, stdout, stderr }
       },
     )
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
+  }, { finally: () => rm(root, { recursive: true, force: true }) })
 }
 
 Describe('shared command registration', () => {
@@ -95,9 +94,9 @@ registerCommand({
     await withFixture(async (write, run) => {
       for (
         const [action, message] of [
-          ["() => { throw new Errors.UserInputError('Fix the command input.') }", 'Fix the command input.'],
+          ["() => { Errors.ThrowUserInput('Fix the command input.') }", 'Fix the command input.'],
           [
-            "async () => { await Promise.resolve(); throw new Errors.HostEnvironmentError('Install the missing tool.') }",
+            "async () => { await Promise.resolve(); Errors.ThrowHostEnvironment('Install the missing tool.') }",
             'Install the missing tool.',
           ],
           ["() => { throw new Error('Plain command failure.') }", 'Plain command failure.'],

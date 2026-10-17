@@ -1,3 +1,4 @@
+import { Errors, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
 import { chmod, cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -9,7 +10,7 @@ const justfile = fileURLToPath(new URL('../../../../Justfile', import.meta.url))
 Describe('shared developer and agent commands', () => {
   Test('format repository-relative paths and preserve check failures through both entrypoints', async () => {
     const root = await mkdtemp(join(tmpdir(), 'tao-cli-shared-'))
-    try {
+    await Try(async () => {
       const repository = fileURLToPath(new URL('../../../../', import.meta.url))
       await mkdir(join(root, 'ts'), { recursive: true })
       for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
@@ -51,16 +52,14 @@ Describe('shared developer and agent commands', () => {
         Expect(checked).not.toBe(0)
         Expect(stdout + stderr).toContain('TS2322')
       }
-    } finally {
-      await rm(root, { recursive: true, force: true })
-    }
+    }, { finally: () => rm(root, { recursive: true, force: true }) })
   })
 })
 
 Describe('developer setup command', () => {
   Test('installs from a fresh workspace before loading Commander', async () => {
     const root = await mkdtemp(join(tmpdir(), 'tao-cli-setup-'))
-    try {
+    await Try(async () => {
       const repository = fileURLToPath(new URL('../../../../', import.meta.url))
       await mkdir(join(root, 'ts'), { recursive: true })
       await cp(join(repository, 'dev'), join(root, 'dev'))
@@ -90,13 +89,11 @@ Describe('developer setup command', () => {
         new Response(child.stderr).text(),
       ])
       if (exitCode !== 0) {
-        throw new Error(`Setup failed: ${stdout}\n${stderr}`)
+        Errors.ThrowUnexpected(`Setup failed: ${stdout}\n${stderr}`)
       }
       Expect(await Bun.file(join(root, 'ts/node_modules/setup-fixture/package.json')).exists()).toBe(true)
       Expect(await Bun.file(join(root, 'node_modules/setup-fixture/package.json')).exists()).toBe(false)
-    } finally {
-      await rm(root, { recursive: true, force: true })
-    }
+    }, { finally: () => rm(root, { recursive: true, force: true }) })
   })
 })
 
@@ -108,7 +105,7 @@ Describe('developer branch workflow', () => {
         : 'synchronizes after selecting a branch and reports a synchronization failure',
       async () => {
         const root = await mkdtemp(join(tmpdir(), 'tao-cli-branch-'))
-        try {
+        await Try(async () => {
           const repository = fileURLToPath(new URL('../../../../', import.meta.url))
           await mkdir(join(root, 'ts'), { recursive: true })
           await mkdir(join(root, 'old-tao-v1'))
@@ -142,9 +139,7 @@ Describe('developer branch workflow', () => {
           ])
           Expect(code).toBe(selectionFails ? 17 : 23)
           Expect(await Bun.file(calls).text()).toBe(selectionFails ? 'my-branch ro\n' : 'my-branch ro\nmy-sync\n')
-        } finally {
-          await rm(root, { recursive: true, force: true })
-        }
+        }, { finally: () => rm(root, { recursive: true, force: true }) })
       },
     )
   }
@@ -154,7 +149,7 @@ Describe('root test command', () => {
   for (const succeeds of [true, false]) {
     Test(`returns the verdict of a ${succeeds ? 'passing' : 'failing'} test file`, async () => {
       const root = await mkdtemp(join(tmpdir(), 'tao-cli-test-'))
-      try {
+      await Try(async () => {
         const fixture = join(root, 'test fixture.test.ts')
         await Bun.write(
           fixture,
@@ -174,14 +169,12 @@ Describe('root test command', () => {
         ])
 
         if (exitCode !== (succeeds ? 0 : 1)) {
-          throw new Error(`Unexpected CLI exit ${exitCode}:\n${stdout}\n${stderr}`)
+          Errors.ThrowUnexpected(`Unexpected CLI exit ${exitCode}:\n${stdout}\n${stderr}`)
         }
         Expect(exitCode).toBe(succeeds ? 0 : 1)
         Expect(stdout + stderr).toContain('CLI test fixture')
         Expect(stdout + stderr).toContain(succeeds ? '1 pass' : 'Expected: 2')
-      } finally {
-        await rm(root, { recursive: true, force: true })
-      }
+      }, { finally: () => rm(root, { recursive: true, force: true }) })
     })
   }
 })

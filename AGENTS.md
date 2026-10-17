@@ -58,6 +58,8 @@ Implementation rules:
   - ALWAYS follow existing code style and conventions from files in the same folder.
   - ALWAYS propose new folder structures before creating new folders.
 - TS:
+  - Use `Try` from `@shared` for exception handling, including async recovery and cleanup; native try/catch belongs only in the `TryCatch.ts` primitive.
+  - Raise failures through the capitalized `Errors.ThrowX` helpers (or `Errors.Throw` to rethrow/normalize), rather than throwing imported error classes. Test fixtures may throw raw values to exercise failure boundaries.
   - JSDoc:
     - Exported values are commented on a single line: `/** <Exported name> <verb> <description> */\nexport <Exported name>...`
     - When needed, multiple lines are used with a space indentation: `/** <Exported name> ...\n Lorem ipsum\nDolor sit */\nexport ...`

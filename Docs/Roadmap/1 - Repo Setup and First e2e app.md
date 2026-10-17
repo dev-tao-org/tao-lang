@@ -21,14 +21,17 @@ root shell without another generated directory inside the PoC.
 The complete final-layout ordinary suite passes: 36 suites, 10,527 passing tests, zero failures,
 and 18 existing skipped/todo tests. Run: `./agent test-all --max-lines 35` inside `old-tao-v1/`.
 Evidence: `.artifacts/logs/dev-test/2026-10-17T16-15-00-487Z-63720-4dbddb24/summary.json`.
-Root tests pass 17/17; root `./agent check` and legacy TypeScript checking pass. Root frozen setup
-also passes without dependency changes.
+Root tests pass 29/29; root `./agent check` and legacy TypeScript checking pass. Root frozen setup
+also passes with the committed dependency manifest and lockfile.
 
 Root `./agent check` and `./agent fmt` reuse the dev CLI's command registration.
 Command metadata and inline actions use a shared registration wrapper with centralized error rendering;
 setup uses the same boundary before Commander is installed. Formatting uses
 the repository config and repository-relative arguments. An isolated integration test checks both
 entrypoints' formatting and typecheck failure propagation; setup works before Commander is installed.
+Shared `Try` handles synchronous and asynchronous recovery and cleanup, normalizes propagated failures,
+and preserves original failure context for finalization. The new implementation uses capitalized
+`Errors.ThrowX` helpers with private error constructors; ordering and cleanup-failure regressions are covered.
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Isolated Git and GitHub CLI fixtures cover successful setup and failure exits.

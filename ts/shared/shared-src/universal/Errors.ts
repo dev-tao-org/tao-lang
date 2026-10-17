@@ -1,3 +1,5 @@
+import { Try } from './TryCatch'
+
 /*
  * Tao sorts every non-assertion failure into one of three categories, because each one has a
  * different reader and a different recovery:
@@ -55,7 +57,7 @@ class BaseTaoError extends Error {
 }
 
 /** UserInputError reports invalid input or expected user-correctable failures. */
-export class UserInputError extends BaseTaoError {
+class UserInputError extends BaseTaoError {
   override readonly name = 'UserInputError'
 
   constructor(messageForUser: string, details?: ErrorDetails) {
@@ -64,7 +66,7 @@ export class UserInputError extends BaseTaoError {
 }
 
 /** UnexpectedBehaviorError reports internal failures that should not happen in normal use. */
-export class UnexpectedBehaviorError extends BaseTaoError {
+class UnexpectedBehaviorError extends BaseTaoError {
   override readonly name = 'UnexpectedBehaviorError'
 
   constructor(messageForUser = unexpectedErrorMessage, opts: { cause?: unknown; details?: ErrorDetails } = {}) {
@@ -73,7 +75,7 @@ export class UnexpectedBehaviorError extends BaseTaoError {
 }
 
 /** HostEnvironmentError reports a failure of the machine, toolchain, or an external process. */
-export class HostEnvironmentError extends BaseTaoError {
+class HostEnvironmentError extends BaseTaoError {
   override readonly name = 'HostEnvironmentError'
 
   constructor(messageForUser: string, opts: { cause?: unknown; details?: ErrorDetails } = {}) {
@@ -82,7 +84,7 @@ export class HostEnvironmentError extends BaseTaoError {
 }
 
 /** CommandExecutionError reports a failed child process invocation. */
-export class CommandExecutionError extends BaseTaoError {
+class CommandExecutionError extends BaseTaoError {
   override readonly name = 'CommandExecutionError'
   readonly result: CommandErrorResult
 
@@ -168,22 +170,32 @@ export function fromUnknown(error: unknown, details?: ErrorDetails): TaoError {
   return new UnexpectedBehaviorError(unexpectedErrorMessage, { cause: error, details })
 }
 
-/** throwUserInput throws a user-correctable Tao error. */
-export function throwUserInput(messageForUser: string, details?: ErrorDetails): never {
+/** Throw normalizes and rethrows an unknown failure, preserving existing Tao error identity. */
+export function Throw(error: unknown): never {
+  throw fromUnknown(error)
+}
+
+/** ThrowUserInput throws a user-correctable Tao error. */
+export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): never {
   throw new UserInputError(messageForUser, details)
 }
 
-/** throwUnexpected throws an internal Tao error. */
-export function throwUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
+/** ThrowUnexpected throws an internal Tao error. */
+export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
   throw new UnexpectedBehaviorError(messageForUser, opts)
 }
 
-/** throwHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process. */
-export function throwHostEnvironment(
+/** ThrowHostEnvironment throws a Tao error blaming the machine, toolchain, or an external process. */
+export function ThrowHostEnvironment(
   messageForUser: string,
   opts?: { cause?: unknown; details?: ErrorDetails },
 ): never {
   throw new HostEnvironmentError(messageForUser, opts)
+}
+
+/** ThrowCommandExecution throws a structured child process failure. */
+export function ThrowCommandExecution(result: CommandErrorResult): never {
+  throw new CommandExecutionError(result)
 }
 
 /**
@@ -209,8 +221,8 @@ export function formatForUser(error: unknown): string {
 export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
 
 /**
- * This module is the leaf every other shared module throws through, so it depends on nothing —
- * `Platform` imports it, not the other way round. The switch is read off the ambient process
+ * Error normalization and Try form the platform-independent failure boundary. Neither calls the
+ * other during module initialization. The switch is read off the ambient process
  * without a Node type in scope, and an environment that has no `process` simply never enables it.
  */
 function debugErrorsEnabled(): boolean {
@@ -242,11 +254,7 @@ function formatCause(cause: unknown): string {
 }
 
 function safeJson(value: unknown): string {
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return '<safeJson: unserializable>'
-  }
+  return Try(() => JSON.stringify(value), { catch: () => '<safeJson: unserializable>' })
 }
 
 function formatCommandForError(command: string, args: readonly string[]): string {

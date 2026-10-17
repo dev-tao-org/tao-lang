@@ -1,3 +1,4 @@
+import { Errors, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -13,7 +14,7 @@ type Fixture = {
 
 async function withFixture(work: (fixture: Fixture) => Promise<void>): Promise<void> {
   const directory = await mkdtemp(join(tmpdir(), 'tao-github-setup-'))
-  try {
+  await Try(async () => {
     const root = join(directory, 'checkout')
     const bin = join(directory, 'bin')
     const remote = join(directory, 'remote.git')
@@ -104,7 +105,7 @@ exec "$TAO_SETUP_GITHUB_BUN" "$@"
     ) {
       const result = await git(...args)
       if (result.code !== 0) {
-        throw new Error(`Fixture failed: ${result.stderr}`)
+        Errors.ThrowUnexpected(`Fixture failed: ${result.stderr}`)
       }
     }
     await work({
@@ -118,9 +119,7 @@ exec "$TAO_SETUP_GITHUB_BUN" "$@"
           overrides,
         ),
     })
-  } finally {
-    await rm(directory, { recursive: true, force: true })
-  }
+  }, { finally: () => rm(directory, { recursive: true, force: true }) })
 }
 
 Describe('GitHub setup parity', () => {
@@ -129,7 +128,7 @@ Describe('GitHub setup parity', () => {
       await withFixture(async ({ root, git, setup }) => {
         const result = await setup(entry)
         if (result.code !== 0) {
-          throw new Error(`Setup failed: ${result.stdout}\n${result.stderr}`)
+          Errors.ThrowUnexpected(`Setup failed: ${result.stdout}\n${result.stderr}`)
         }
         Expect((await git('config', '--global', '--get-all', 'url.https://github.com/.insteadOf')).stdout)
           .toBe('git@github.com:\nssh://git@github.com/\n')
