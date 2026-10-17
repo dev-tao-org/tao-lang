@@ -15,10 +15,6 @@ export async function checkSourceConformance(root: string): Promise<void> {
   for (const filename of await FileSystem.sourceFiles(root + '/ts')) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const source = await FileSystem.file(filename).text()
-    const { warning } = sourceSizeDiagnostics(relative, source)
-    if (warning) {
-      IO.warn(warning)
-    }
     issues.push(...sourceConformanceIssues(relative, source))
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')

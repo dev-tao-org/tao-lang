@@ -1,13 +1,11 @@
 import { Test } from '@shared/os'
 import { sourceSizeDiagnostics } from '../cli-checks/source-size'
 
-Test.test('source size warns after 250 lines and fails after 350 physical lines', () => {
+Test.test('source size stays silent through the soft limit and fails after 350 physical lines', () => {
   const source = (lines: number) => '// line\n'.repeat(lines)
   Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(250))).toEqual({})
-  Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(251)).warning).toContain('251')
-  Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(350))).toEqual({
-    warning: 'ts/feature.ts: handwritten TypeScript file exceeds the 250-line soft limit; found 350',
-  })
+  Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(251))).toEqual({})
+  Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(350))).toEqual({})
   Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(351)).error).toContain('at most 350')
   Test.expect(sourceSizeDiagnostics('ts/feature.ts', source(350).trimEnd()).error).toBeUndefined()
 })

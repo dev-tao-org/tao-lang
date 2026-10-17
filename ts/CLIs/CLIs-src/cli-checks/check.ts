@@ -66,6 +66,7 @@ export async function workspaceShellSyntax(): Promise<void> {
       '.config/cli-environment.sh',
       '.config/bootstrap-tao-dev-env',
       '.config/nix/nix-bootstrap.sh',
+      '.cursor/worktree-setup.sh',
     ]
   ) {
     await runCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })

@@ -100,10 +100,8 @@ identity=$({
 identity=${identity%% *}
 generation="$state_dir/portable-generations/$identity"
 if [ ! -x "$generation/bin/bun" ] || [ ! -x "$generation/bin/node" ] || [ ! -x "$generation/bin/zsh" ]; then
-  printf 'Portable bootstrap: building locked Linux tools...\n'
+  printf 'Portable bootstrap: building locked Linux tools...\n' >&2
   nix-build "$environment/portable-profile.nix" --out-link "$generation"
-else
-  printf 'Portable bootstrap: reusing locked Linux tools.\n'
 fi
 
 if [ -e "$state_dir/profile" ] && [ ! -L "$state_dir/profile" ]; then
@@ -120,7 +118,6 @@ mv -Tf "$publication" "$state_dir/profile"
 flock -u 9
 exec 9>&-
 
-printf 'Portable bootstrap: profile %s\n' "$identity"
 if "$tools_only"; then
   exit 0
 fi

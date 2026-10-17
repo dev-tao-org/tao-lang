@@ -50,6 +50,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - You create a plan together in dialogue mode (see skill);
     - Agree on the plan and any review points with the developer before implementation.
   - You write tests and implement the plan with TDD;
+    - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.

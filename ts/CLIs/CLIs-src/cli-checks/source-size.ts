@@ -1,16 +1,13 @@
 import * as TypeScript from 'typescript'
 
-/** sourceSizeDiagnostics applies the soft and hard line limits to handwritten TypeScript. */
-export function sourceSizeDiagnostics(filename: string, source: string): { warning?: string; error?: string } {
+/** sourceSizeDiagnostics enforces the hard line limit on handwritten TypeScript. */
+export function sourceSizeDiagnostics(filename: string, source: string): { error?: string } {
   if (isExcludedSource(filename, source)) {
     return {}
   }
   const lines = source === '' ? 0 : source.split('\n').length - Number(source.endsWith('\n'))
   if (lines > 350) {
     return { error: `${filename}: handwritten TypeScript files must contain at most 350 lines; found ${lines}` }
-  }
-  if (lines > 250) {
-    return { warning: `${filename}: handwritten TypeScript file exceeds the 250-line soft limit; found ${lines}` }
   }
   return {}
 }
