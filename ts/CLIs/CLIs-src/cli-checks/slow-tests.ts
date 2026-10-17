@@ -48,6 +48,7 @@ async function prepareTestReport(): Promise<string | undefined> {
     const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
     await Artifacts.mkdir(Path.dirname(path), { recursive: true })
     await Artifacts.write(path, '')
+    Artifacts.trackTemporary(path)
     return path
   }, {
     catch(error) {

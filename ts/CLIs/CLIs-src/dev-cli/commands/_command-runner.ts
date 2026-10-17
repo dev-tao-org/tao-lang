@@ -1,6 +1,6 @@
 import '../../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
-import { Env, Platform } from '@shared/os'
+import { Platform } from '@shared/os'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
 export type CommandDefinition<Args extends unknown[] = []> = {
@@ -68,16 +68,3 @@ type CommandArgument = {
 }
 
 const commands: CommandDefinition<unknown[]>[] = []
-
-if (Platform.isMain(import.meta)) {
-  const terminal = !Env.is('TERMINAL_OUTPUT', '0')
-  IO.config({
-    stdout: terminal ? 'terminal' : 'log',
-    stderr: terminal ? 'terminal' : 'both',
-    logDirectory: 'dev',
-    logFile: Env.get('OUTPUT_LOG_FILE'),
-  })
-  // Defer setup's import until this module finishes initializing: setup registers through this module.
-  // Commander and the development command registry are loaded only after dependencies exist.
-  void import('./setup').then(({ default: setup }) => setup.action(Platform.argv.slice(2)))
-}

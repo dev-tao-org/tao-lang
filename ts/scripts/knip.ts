@@ -8,6 +8,7 @@ export default {
     ...cliEntries(),
     ...cliEntries().flatMap(commandEntries),
     'CLIs/CLIs-src/tao-cli/tao-cli.ts',
+    'CLIs/CLIs-src/dev-cli/commands/_setup.ts',
     '**/*.test.ts',
   ],
   project: ['CLIs/**/*.ts', 'shared/**/*.ts'],

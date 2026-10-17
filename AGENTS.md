@@ -55,6 +55,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - Run code reviews, including subagent reviews, only when explicitly requested by the developer;
   - After each implementation chunk, run `./agent fmt`.
+  - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.
