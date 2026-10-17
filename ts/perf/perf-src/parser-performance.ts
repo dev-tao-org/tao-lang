@@ -1,6 +1,7 @@
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
+import { transformerSamples } from './transformer-samples'
 
 /** parserPerformance measures fresh-process startup and warmed full parses, retaining raw samples.
  *  Cold means a fresh Bun process with warm OS/tool caches; no browser or repaint is measured. */
@@ -8,6 +9,7 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   const samples: Sample[] = build.map(sample => ({ ...sample, scenario: 'rebuild' }))
   samples.push(...await coldSamples())
   samples.push(...await warmSamples())
+  samples.push(...await transformerSamples())
   const summary = summarize(samples)
   const directory = Artifacts.resolvePath('logs/performance')
   await Artifacts.mkdir(directory, { recursive: true })
@@ -28,6 +30,8 @@ export async function parserPerformance(build: readonly TimingSample[]) {
           cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
           warm: '20 unrecorded warmups per fixture, then 100 full parses per fixture in one process.',
           rebuild: 'One forced grammar generation/native rebuild; tool and Node header caches retained.',
+          transformer:
+            'App declaration only: 20 warmups, then 100 full parse-to-AST samples; views are not implemented.',
         },
         summary,
         samples,
