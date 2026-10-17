@@ -12,7 +12,7 @@ Describe('command IO', () => {
   Test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
     const events: string[] = []
     const failure = new Error('step failed')
-    const caught = await Try(() =>
+    await Expect(
       runSteps(
         async () => {
           events.push('first')
@@ -26,8 +26,8 @@ Describe('command IO', () => {
         () => {
           events.push('third')
         },
-      ), { catch: error => error })
-    Expect(caught).toBe(failure)
+      ),
+    ).rejects.toBe(failure)
     Expect(events).toEqual(['first', 'finished', 'second'])
     Expect(await runSteps(() => {}, async () => {})).toBeUndefined()
   })

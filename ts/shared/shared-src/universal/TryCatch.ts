@@ -13,7 +13,8 @@ type PendingOutcome = Outcome | Promise<Outcome>
 
 /** Try normalizes failures, allows recovery, and finalizes once with the original callback failure.
  *  Synchronous stages return synchronously; promise-like stages are awaited. Finalizer failures override
- *  pending results or failures, just like native finally, and are normalized before propagation. */
+ *  pending results or failures, just like native finally, and are normalized before propagation.
+ *  Both handlers are optional; without catch, the normalized failure propagates. */
 export function Try<Value, Recovery = never, Final = void>(
   action: () => Value,
   options: TryOptions<Recovery, Final> = {},

@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { describe as Describe, expect as Expect, test as Test } from 'bun:test'
+import { rejects as ExpectRejects, throws as ExpectThrows } from 'node:assert/strict'
 
 Describe('Try', () => {
   Test('recovers and finalizes even when a thrown object cannot be inspected', async () => {
@@ -49,19 +50,24 @@ Describe('Try', () => {
 
   Test('normalizes unknown failures and preserves structured error identity', () => {
     for (const thrown of [new Error('raw'), 'failure', null, undefined]) {
-      const error = Try(() =>
+      ExpectThrows(() =>
         Try(() => {
           throw thrown
-        }), { catch: value => value })
-      Expect(Errors.isTaoError(error)).toBe(true)
-      Expect((error as Errors.TaoError).name).toBe('UnexpectedBehaviorError')
-      Expect((error as Errors.TaoError).cause).toBe(thrown)
+        }), error => {
+        Expect(Errors.isTaoError(error)).toBe(true)
+        Expect((error as Errors.TaoError).name).toBe('UnexpectedBehaviorError')
+        Expect((error as Errors.TaoError).cause).toBe(thrown)
+        return true
+      })
     }
-    const original = Try(() => Errors.ThrowUserInput('Fix input'), { catch: value => value })
-    Expect(Try(() =>
+    const original = Errors.fromUnknown(new Error('structured failure'))
+    ExpectThrows(() =>
       Try(() => {
         throw original
-      }), { catch: value => value })).toBe(original)
+      }), error => {
+      Expect(error).toBe(original)
+      return true
+    })
   })
 
   Test('finalizes once with the original failure even after catch recovery or failure', () => {
@@ -69,7 +75,7 @@ Describe('Try', () => {
     const handlerFailure = new Error('handler failed')
     for (const handlerFails of [false, true]) {
       const contexts: unknown[][] = []
-      const result = Try(() =>
+      const action = () =>
         Try(() => {
           throw original
         }, {
@@ -83,15 +89,18 @@ Describe('Try', () => {
           finally: (thrown, error) => {
             contexts.push([thrown, error])
           },
-        }), { catch: error => error })
+        })
+      if (handlerFails) {
+        ExpectThrows(action, error => {
+          Expect((error as Errors.TaoError).cause).toBe(handlerFailure)
+          return true
+        })
+      } else {
+        Expect(action()).toBe('recovered')
+      }
       Expect(contexts).toHaveLength(1)
       Expect(contexts[0]![0]).toBe(original)
       Expect((contexts[0]![1] as Errors.TaoError).cause).toBe(original)
-      if (handlerFails) {
-        Expect((result as Errors.TaoError).cause).toBe(handlerFailure)
-      } else {
-        Expect(result).toBe('recovered')
-      }
     }
   })
 
@@ -152,14 +161,18 @@ Describe('Try', () => {
 
   Test('normalizes asynchronous body and catch failures', async () => {
     const original = new Error('async body')
-    const replacement = Try(() => Errors.ThrowHostEnvironment('async handler'), { catch: value => value })
-    const bodyFailure = await Try(() =>
+    const replacement = Errors.fromUnknown(new Error('async handler'))
+    await ExpectRejects(
       Try(async () => {
         throw original
-      }), { catch: value => value })
-    Expect((bodyFailure as Errors.TaoError).cause).toBe(original)
+      }),
+      error => {
+        Expect((error as Errors.TaoError).cause).toBe(original)
+        return true
+      },
+    )
     const contexts: unknown[][] = []
-    const handlerFailure = await Try(() =>
+    await Expect(
       Try(async () => {
         throw original
       }, {
@@ -169,8 +182,8 @@ Describe('Try', () => {
         finally: (thrown, error) => {
           contexts.push([thrown, error])
         },
-      }), { catch: value => value })
-    Expect(handlerFailure).toBe(replacement)
+      }),
+    ).rejects.toBe(replacement)
     Expect(contexts).toHaveLength(1)
     Expect(contexts[0]![0]).toBe(original)
     Expect((contexts[0]![1] as Errors.TaoError).cause).toBe(original)
@@ -185,14 +198,16 @@ Describe('Try', () => {
           calls++
           throw cleanupFailure
         }
-        const error = await Try(() =>
+        await ExpectRejects(async () =>
           Try(() => {
             if (bodyFails) {
               throw 'body failed'
             }
             return 7
-          }, { finally: asynchronous ? async () => cleanup() : cleanup }), { catch: value => value })
-        Expect((error as Errors.TaoError).cause).toBe(cleanupFailure)
+          }, { finally: asynchronous ? async () => cleanup() : cleanup }), error => {
+          Expect((error as Errors.TaoError).cause).toBe(cleanupFailure)
+          return true
+        })
         Expect(calls).toBe(1)
       }
     }
@@ -214,10 +229,14 @@ Describe('Try', () => {
     const result: Promise<number> = Try(() => thenable)
     Expect(await result).toBe(9)
     const failure = new Error('then getter')
-    Expect(Try(() => ({
-      get then() {
-        throw failure
-      },
-    }), { catch: thrown => thrown })).toBe(failure)
+    ExpectThrows(() =>
+      Try(() => ({
+        get then() {
+          throw failure
+        },
+      })), error => {
+      Expect((error as Errors.TaoError).cause).toBe(failure)
+      return true
+    })
   })
 })
