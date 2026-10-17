@@ -54,11 +54,17 @@ Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when req
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Config-mutating GitHub setup tests were removed at the developer's request; setup is no longer exercised by the ordinary test suite.
 `runCommand` accepts simple space-separated strings or argument arrays, and reports command start
-and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages go to root `.artifacts/logs/agent/`,
-while stderr is mirrored to the terminal and log, including child stderr and suppressed developer probes.
-Developer IO remains on the terminal. An unavailable agent log reports once and falls back to terminal
-output while preserving the command verdict. Tests retain Tao-owned logging, error normalization,
-ordering and path restrictions; workflow fixtures record compiler invocation instead of compiling again.
+and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages and child stdout go to root
+`.artifacts/logs/agent/`, while stderr is mirrored to the terminal and log, including suppressed probes.
+Developer IO remains on the terminal except test-command output, which logs to `.artifacts/logs/dev/`
+and mirrors stderr. Each logging process announces its repo-relative log directory once at startup.
+An unavailable command log reports once and falls back to terminal output while preserving the verdict.
+Tests retain Tao-owned logging, error normalization, source conformance and utility transformations.
+The seven slow workflow/branch integration tests were removed at the developer's request; ordinary
+tests no longer prove root command routing, legacy path isolation, validation gating or branch synchronization.
+Tests use dots alongside a JUnit timing report in `.artifacts/logs/test/`. After every run, including
+failed runs, yellow stderr warnings list tests taking strictly more than 75ms, slowest first.
+Missing timing data reports a warning without replacing the test verdict. No XML dependency was added.
 `./agent lint` (also available as `check-comments`) uses the installed TypeScript syntax parser to
 require name-led descriptive JSDoc on exported API declarations, reject private JSDoc and ordinary
 block comments, and require `Try` outside its exact primitive file. Local/default exports, overloads,

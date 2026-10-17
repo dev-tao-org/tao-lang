@@ -50,10 +50,6 @@ export function Try<Value, Recovery = never, Final = void>(
   >
 }
 
-function failure(thrown: unknown): Outcome {
-  return { ok: false, thrown, error: Errors.fromUnknown(thrown) }
-}
-
 // Native try/catch is the primitive behind Try; callers use the normalized boundary above.
 function capture(action: () => unknown): PendingOutcome {
   try {
@@ -65,6 +61,10 @@ function capture(action: () => unknown): PendingOutcome {
   } catch (thrown) {
     return failure(thrown)
   }
+}
+
+function failure(thrown: unknown): Outcome {
+  return { ok: false, thrown, error: Errors.fromUnknown(thrown) }
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {

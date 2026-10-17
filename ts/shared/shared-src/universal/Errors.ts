@@ -89,6 +89,15 @@ class CommandExecutionError extends BaseTaoError {
   }
 }
 
+function formatCommandForError(command: string, args: readonly string[]): string {
+  return [command, ...args].map(formatCommandPart).join(' ')
+}
+
+// Quote a command word that a reader could not paste back as written.
+function formatCommandPart(value: string): string {
+  return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
+}
+
 /** isTaoError checks whether a value is one of Tao's structured errors. */
 export function isTaoError(error: unknown): error is TaoError {
   // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
@@ -181,6 +190,11 @@ export function ThrowCommandExecution(result: CommandErrorResult): never {
   throw new CommandExecutionError(result)
 }
 
+/** DEBUG_ERRORS_ENV names the opt-in that makes every user-facing error render its diagnostics. It
+ *  is exported so the command boundaries that print the bare unexpected sentence can name the switch
+ *  in the same breath, rather than leaving a reader with a sentence and nowhere to go. */
+export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
+
 /** formatForUser renders an error message suitable for terminal users.
  *  `TAO_DEBUG_ERRORS=1` swaps in the log rendering instead. An `UnexpectedBehaviorError` reaches the
  *  terminal as the bare sentence "Something went wrong.", which is right for a Tao developer and
@@ -192,11 +206,6 @@ export function formatForUser(error: unknown): string {
   }
   return isTaoError(error) ? error.messageForUser : unexpectedErrorMessage
 }
-
-/** DEBUG_ERRORS_ENV names the opt-in that makes every user-facing error render its diagnostics. It
- *  is exported so the command boundaries that print the bare unexpected sentence can name the switch
- *  in the same breath, rather than leaving a reader with a sentence and nowhere to go. */
-export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
 
 // Error normalization and Try form the platform-independent failure boundary. Neither calls the
 // other during module initialization. Read the switch without importing platform types;
@@ -231,13 +240,4 @@ function formatCause(cause: unknown): string {
 
 function safeJson(value: unknown): string {
   return Try(() => JSON.stringify(value), { catch: () => '<safeJson: unserializable>' })
-}
-
-function formatCommandForError(command: string, args: readonly string[]): string {
-  return [command, ...args].map(formatCommandPart).join(' ')
-}
-
-// Quote a command word that a reader could not paste back as written.
-function formatCommandPart(value: string): string {
-  return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
 }

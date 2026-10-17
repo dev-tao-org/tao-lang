@@ -3,6 +3,7 @@ import { Errors, Try } from '@shared'
 import { existsSync, realpathSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { withTestTimings } from '../../cli-kit/slow-tests'
 
 /** CommandArgument describes one positional command argument. */
 export type CommandArgument = {
@@ -144,10 +145,20 @@ export async function workspaceConformance(): Promise<void> {
   await checkSourceConformance(repositoryRoot)
 }
 
-/** workspaceTests runs workspace tests with compact developer output and detailed agent output. */
+/** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
-  const reporter = process.env.TAO_AGENT === '1' ? [] : ['--reporter=dots']
-  await runCommand(['bun', 'test', ...reporter, ...args], { cwd: `${repositoryRoot}/ts` })
+  await withTestTimings(reportPath =>
+    runCommand([
+      'bun',
+      'test',
+      ...(reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []),
+      '--dots',
+      ...args,
+    ], {
+      cwd: `${repositoryRoot}/ts`,
+      stdout: 'log',
+    })
+  )
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

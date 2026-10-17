@@ -5,6 +5,27 @@ import { IO } from './cli-kit'
 
 type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
 
+/** checkSourceConformance checks new TypeScript sources without running tests or loading a type checker. */
+export async function checkSourceConformance(root: string): Promise<void> {
+  const started = Time.nowMs()
+  const issues: string[] = []
+  await Try(async () => {
+    for (
+      const filename of TypeScript.sys.readDirectory(root + '/ts', ['.ts', '.tsx', '.mts', '.cts'], [
+        '**/node_modules/**',
+      ])
+    ) {
+      issues.push(
+        ...sourceConformanceIssues(relative(root, filename).replaceAll('\\', '/'), await Bun.file(filename).text()),
+      )
+    }
+  }, { catch: error => Errors.ThrowHostEnvironment('Could not check source conformance: ' + Errors.messageOf(error)) })
+  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
+  if (issues.length > 0) {
+    Errors.ThrowUserInput(issues.join('\n'))
+  }
+}
+
 /** sourceConformanceIssues checks repository-relative TypeScript source for API docs and exception/comment syntax. */
 export function sourceConformanceIssues(filename: string, source: string): string[] {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
@@ -14,6 +35,13 @@ export function sourceConformanceIssues(filename: string, source: string): strin
   const comments = new Map<number, TypeScript.CommentRange>()
   const report = (position: number, message: string): void => {
     issues.push(filename + ':' + (file.getLineAndCharacterOfPosition(position).line + 1) + ': ' + message)
+  }
+  const allowDocs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
+    const ranges = docs(nodes)
+    for (const range of ranges) {
+      publicDocs.add(range.pos)
+    }
+    return ranges
   }
   const docs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
     const ranges = new Map<number, TypeScript.CommentRange>()
@@ -26,41 +54,33 @@ export function sourceConformanceIssues(filename: string, source: string): strin
     }
     return [...ranges.values()]
   }
-  const allowDocs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
-    const ranges = docs(nodes)
-    for (const range of ranges) {
-      publicDocs.add(range.pos)
+  const visit = (node: TypeScript.Node): void => {
+    if (TypeScript.isSourceFile(node)) {
+      checkScope(node)
     }
-    return ranges
-  }
-  const checkDocs = (group: ApiGroup): void => {
-    const valid = allowDocs(group.nodes).some(range =>
-      hasDescription(normalizeDoc(source.slice(range.pos + 3, range.end - 2)), group.name)
-    )
-    if (!valid) {
-      report(
-        group.nodes[0].getStart(file),
-        'exported API ' + (group.name ?? '<default>')
-          + ' needs JSDoc beginning with its name and a description',
-      )
+    if (TypeScript.isModuleBlock(node) && publicNamespaces.has(node.parent)) {
+      checkScope(node, isAmbientNamespace(node))
     }
-  }
-  const allowShapeDocs = (node: TypeScript.Node): void => {
-    if (isPrivateApiMember(node) || isImplementationNode(node)) {
-      return
+    if (TypeScript.isTryStatement(node) && !isTryPrimitive(filename)) {
+      report(node.getStart(file), 'use Try from @shared instead of native try/catch/finally')
     }
-    allowDocs([node])
-    if (isApiMember(node)) {
-      // Inline member docs are trailing trivia after the preceding brace or separator.
-      for (const range of TypeScript.getTrailingCommentRanges(source, node.getFullStart()) ?? []) {
-        if (range.end <= node.getStart(file) && source.startsWith('/**', range.pos)) {
-          publicDocs.add(range.pos)
-        }
+    const stringIssue = multilineStringIssue(node, file)
+    if (stringIssue) {
+      report(node.getStart(file), stringIssue)
+    }
+    // Parser token boundaries keep comment-looking strings, templates and regexes out of the scan.
+    for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
+      comments.set(range.pos, range)
+    }
+    for (const range of TypeScript.getTrailingCommentRanges(source, node.end) ?? []) {
+      comments.set(range.pos, range)
+    }
+    for (const child of node.getChildren(file)) {
+      if (!TypeScript.isJSDoc(child)) {
+        visit(child)
       }
     }
-    TypeScript.forEachChild(node, allowShapeDocs)
   }
-
   const checkScope = (scope: TypeScript.SourceFile | TypeScript.ModuleBlock, implicitExports = false): void => {
     const groups = new Map<string, ApiGroup>()
     const anonymous: ApiGroup[] = []
@@ -130,33 +150,32 @@ export function sourceConformanceIssues(filename: string, source: string): strin
       }
     }
   }
-
-  const visit = (node: TypeScript.Node): void => {
-    if (TypeScript.isSourceFile(node)) {
-      checkScope(node)
+  const checkDocs = (group: ApiGroup): void => {
+    const valid = allowDocs(group.nodes).some(range =>
+      hasDescription(normalizeDoc(source.slice(range.pos + 3, range.end - 2)), group.name)
+    )
+    if (!valid) {
+      report(
+        group.nodes[0].getStart(file),
+        'exported API ' + (group.name ?? '<default>')
+          + ' needs JSDoc beginning with its name and a description',
+      )
     }
-    if (TypeScript.isModuleBlock(node) && publicNamespaces.has(node.parent)) {
-      checkScope(node, isAmbientNamespace(node))
+  }
+  const allowShapeDocs = (node: TypeScript.Node): void => {
+    if (isPrivateApiMember(node) || isImplementationNode(node)) {
+      return
     }
-    if (TypeScript.isTryStatement(node) && !isTryPrimitive(filename)) {
-      report(node.getStart(file), 'use Try from @shared instead of native try/catch/finally')
-    }
-    const stringIssue = multilineStringIssue(node, file)
-    if (stringIssue) {
-      report(node.getStart(file), stringIssue)
-    }
-    // Parser token boundaries keep comment-looking strings, templates and regexes out of the scan.
-    for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
-      comments.set(range.pos, range)
-    }
-    for (const range of TypeScript.getTrailingCommentRanges(source, node.end) ?? []) {
-      comments.set(range.pos, range)
-    }
-    for (const child of node.getChildren(file)) {
-      if (!TypeScript.isJSDoc(child)) {
-        visit(child)
+    allowDocs([node])
+    if (isApiMember(node)) {
+      // Inline member docs are trailing trivia after the preceding brace or separator.
+      for (const range of TypeScript.getTrailingCommentRanges(source, node.getFullStart()) ?? []) {
+        if (range.end <= node.getStart(file) && source.startsWith('/**', range.pos)) {
+          publicDocs.add(range.pos)
+        }
       }
     }
+    TypeScript.forEachChild(node, allowShapeDocs)
   }
   visit(file)
   for (const range of comments.values()) {
@@ -258,6 +277,12 @@ function isPrivateApiMember(node: TypeScript.Node): boolean {
   return hasPrivateName(node)
 }
 
+function hasPrivateName(node: TypeScript.Node): boolean {
+  return (TypeScript.isPropertyDeclaration(node) || TypeScript.isMethodDeclaration(node)
+    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node))
+    && TypeScript.isPrivateIdentifier(node.name)
+}
+
 function isApiMember(node: TypeScript.Node): boolean {
   return TypeScript.isTypeElement(node) || TypeScript.isClassElement(node) || TypeScript.isParameter(node)
 }
@@ -286,12 +311,6 @@ function isAmbientNamespace(node: TypeScript.Node): boolean {
   return false
 }
 
-function hasPrivateName(node: TypeScript.Node): boolean {
-  return (TypeScript.isPropertyDeclaration(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node))
-    && TypeScript.isPrivateIdentifier(node.name)
-}
-
 function isImplementationNode(node: TypeScript.Node): boolean {
   return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node) || TypeScript.isClassStaticBlockDeclaration(node)
     || (TypeScript.isExpression(node) && !isPublicShapeExpression(node))
@@ -300,27 +319,6 @@ function isImplementationNode(node: TypeScript.Node): boolean {
 function isPublicShapeExpression(node: TypeScript.Node): boolean {
   return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
     || TypeScript.isFunctionExpression(node)
-}
-
-/** checkSourceConformance checks new TypeScript sources without running tests or loading a type checker. */
-export async function checkSourceConformance(root: string): Promise<void> {
-  const started = Time.nowMs()
-  const issues: string[] = []
-  await Try(async () => {
-    for (
-      const filename of TypeScript.sys.readDirectory(root + '/ts', ['.ts', '.tsx', '.mts', '.cts'], [
-        '**/node_modules/**',
-      ])
-    ) {
-      issues.push(
-        ...sourceConformanceIssues(relative(root, filename).replaceAll('\\', '/'), await Bun.file(filename).text()),
-      )
-    }
-  }, { catch: error => Errors.ThrowHostEnvironment('Could not check source conformance: ' + Errors.messageOf(error)) })
-  IO.info('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
-  if (issues.length > 0) {
-    Errors.ThrowUserInput(issues.join('\n'))
-  }
 }
 
 function isApiDeclaration(

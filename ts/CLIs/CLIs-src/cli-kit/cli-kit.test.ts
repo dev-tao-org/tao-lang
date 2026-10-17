@@ -92,8 +92,8 @@ Describe('command IO', () => {
       Expect(dev.log).toBe('')
       Expect(agent.code).toBe(0)
       Expect(agent.stdout).toBe('')
-      Expect(agent.stderr).toBe(dev.stderr)
-      Expect(agent.log).toBe(dev.stdout + dev.stderr)
+      Expect(agent.stderr).toBe('Logs: .artifacts/logs/agent/\n' + dev.stderr)
+      Expect(agent.log).toBe('Logs: .artifacts/logs/agent/\n' + dev.stdout + dev.stderr)
     })
   })
 
@@ -113,27 +113,36 @@ Describe('command IO', () => {
       Expect(array.stdout).toContain(JSON.stringify(['two words', '"quoted"']))
       const agent = await run(commandAction(`runCommand(['bun', '${child}', 'agent'])`), true)
       Expect(agent.code).toBe(23)
-      Expect(agent.stdout).toBe('["agent"]\n')
-      Expect(agent.log).toMatch(/^RUN CMD: .+\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+      Expect(agent.stdout).toBe('')
+      Expect(agent.log).toContain('["agent"]\n')
+      Expect(agent.log).toMatch(/RUN CMD: .+\n\["agent"\]\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
     })
   })
 
-  Test('drains complete child stderr to terminal and log even for ignored probes', async () => {
+  Test('drains complete child streams, logging stdout and mirroring stderr even for ignored probes', async () => {
     await withProbe(async (run, root) => {
       const child = join(root, 'stderr.ts')
-      const payload = 'error chunk\n'.repeat(20000)
-      await Bun.write(child, `await Bun.write(Bun.stderr, ${JSON.stringify(payload)}); process.exit(17)`)
+      const payload = '#'.repeat(90000) + '\n'
+      const stdoutPayload = '@'.repeat(90000) + '\n'
+      await Bun.write(
+        child,
+        `await Promise.all([Bun.write(Bun.stderr, ${JSON.stringify(payload)}), Bun.write(Bun.stdout, ${
+          JSON.stringify(stdoutPayload)
+        })]); process.exit(17)`,
+      )
       const result = await run(
         commandAction(`runCommand(['bun', '${child}'], { stderr: 'ignore' })`),
         true,
       )
       Expect(result.code).toBe(17)
-      Expect(result.stderr.startsWith(payload)).toBe(true)
-      Expect(result.stderr.slice(payload.length)).toContain('Command failed:')
-      Expect(result.log.includes(payload)).toBe(true)
+      Expect(result.stdout).toBe('')
+      Expect(result.stderr.startsWith('Logs: .artifacts/logs/agent/\n' + payload)).toBe(true)
+      Expect(result.stderr).toContain('Command failed:')
+      Expect(result.log.split('#').length - 1).toBe(90000)
+      Expect(result.log.split('@').length - 1).toBe(90000)
       Expect(result.log).toMatch(/\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
       const dev = await run(commandAction(`runCommand(['bun', '${child}'], { stderr: 'ignore' })`))
-      Expect(dev.stderr).not.toContain('error chunk')
+      Expect(dev.stderr).not.toContain('#')
       Expect(dev.stderr).toContain('Command failed:')
     })
   })
@@ -149,7 +158,7 @@ Describe('command IO', () => {
       Expect(failed.code).toBe(1)
       Expect(failed.stdout).toBe('')
       Expect(failed.stderr).toContain('missing-tao-command-io-tool')
-      Expect(failed.log).toContain(failed.stderr)
+      Expect(failed.log).toContain(failed.stderr.split('\n').slice(1).join('\n'))
       Expect(failed.log).toContain('RUN CMD: missing-tao-command-io-tool\n')
       Expect(failed.log).toMatch(/\[\d+\.\d{2}s\] \(missing-tao-command-io-tool\)/)
     })
@@ -170,7 +179,7 @@ Describe('command IO', () => {
       Expect(command.stdout).toContain('fallback info\nRUN CMD: ')
       Expect(command.stdout).toMatch(/\[\d+\.\d{2}s\]/)
       Expect(command.stderr).toContain('visible error\n')
-      Expect(command.stderr.match(/Agent log unavailable:/g)).toHaveLength(1)
+      Expect(command.stderr.match(/Command log unavailable:/g)).toHaveLength(1)
       const failure = await run(
         S`
           ${invalidLog}
@@ -181,7 +190,64 @@ Describe('command IO', () => {
       )
       Expect(failure.code).toBe(1)
       Expect(failure.stderr).toContain('original failure\n')
-      Expect(failure.stderr.match(/Agent log unavailable:/g)).toHaveLength(1)
+      Expect(failure.stderr.match(/Command log unavailable:/g)).toHaveLength(1)
+    })
+  })
+
+  Test('logs developer child stdout, mirrors stderr, and announces the relative directory only once', async () => {
+    await withProbe(async run => {
+      const result = await run(S`
+        await runCommand(['bun', '-e', 'console.log("stdout payload"); console.error("stderr payload")'], { stdout: 'log' })
+        await runCommand(['bun', '-e', 'console.log("second payload")'], { stdout: 'log' })
+      `)
+      Expect(result.code).toBe(0)
+      Expect(result.stdout).toBe('')
+      Expect(result.stderr).toBe('Logs: .artifacts/logs/agent/\nstderr payload\n')
+      Expect(result.log).toContain('stdout payload\n')
+      Expect(result.log).toContain('stderr payload\n')
+      Expect(result.log).toContain('second payload\n')
+      Expect(result.log.match(/Logs:/g)).toHaveLength(1)
+      Expect(result.log.match(/RUN CMD:/g)).toHaveLength(2)
+    })
+  })
+
+  Test('reports slow tests after failed runs and preserves their failure when timing data is unavailable', async () => {
+    await withProbe(async run => {
+      for (const reportState of ['available', 'missing', 'blocked']) {
+        const writeReport = reportState === 'available'
+          ? 'await Bun.write(reportPath, \'<testsuite name="suite"><testcase name="slow" time="0.25" /></testsuite>\')'
+          : ''
+        const blockReport = reportState === 'blocked'
+          ? "await Bun.write(new URL('../.artifacts/logs/test', import.meta.url), 'blocked')"
+          : ''
+        const source = S`
+          import { withTestTimings } from './CLIs/CLIs-src/cli-kit/slow-tests'
+          import { Errors } from '@shared'
+          import { rm } from 'node:fs/promises'
+          await rm(new URL('../.artifacts/logs/test', import.meta.url), { recursive: true, force: true })
+          ${blockReport}
+          await registeredAction({ name: 'test', description: 'Timing probe.', action: async () => {
+            await withTestTimings(async reportPath => {
+              ${writeReport}
+              IO.stderr('tests completed\\n')
+              Errors.ThrowCommandExecution({ command: 'test-fixture', args: [], status: 23, signal: null, stdout: '', stderr: '' })
+            })
+          } }).action()
+        `
+        const result = await run(source, true)
+        Expect(result.code).toBe(23)
+        Expect(result.stderr).toContain('Command failed: test-fixture')
+        if (reportState === 'available') {
+          Expect(result.stderr).toContain('\u001b[33mSlow tests (>75 ms):\u001b[0m')
+          Expect(result.stderr.indexOf('tests completed')).toBeLessThan(result.stderr.indexOf('Slow tests'))
+          Expect(result.log).toContain('250.00 ms  suite > slow')
+        } else if (reportState === 'missing') {
+          Expect(result.stderr).toContain('Unable to read test timings:')
+        } else {
+          Expect(result.stderr).toContain('Test timing report unavailable:')
+          Expect(result.stderr).toContain('tests completed')
+        }
+      }
     })
   })
 })
