@@ -1,11 +1,5 @@
 import * as Errors from './Errors'
 
-/** TryOptions supplies optional recovery and finalization handlers. */
-export type TryOptions<Recovery = never, Final = void> = {
-  catch?: (thrown: unknown) => Recovery
-  finally?: (thrown: unknown, error: Errors.TaoError | undefined) => Final
-}
-
 type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
 type TryResult<Value, Recovery, Final> = AlwaysPromise<Value> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
   : AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
@@ -48,6 +42,11 @@ export function Try<Value, Recovery = never, Final = void>(
     Recovery,
     Final
   >
+}
+
+type TryOptions<Recovery = never, Final = void> = {
+  catch?: (thrown: unknown) => Recovery
+  finally?: (thrown: unknown, error: Errors.TaoError | undefined) => Final
 }
 
 // Native try/catch is the primitive behind Try; callers use the normalized boundary above.

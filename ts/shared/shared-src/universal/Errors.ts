@@ -137,18 +137,6 @@ function describeThrownValue(value: unknown): string {
   return fields.length === 0 ? name : `${name} (${fields.join(', ')})`
 }
 
-/** asError hands back a thrown value as an `Error`: an `Error` unchanged, anything else wrapped as an
- *  `UnexpectedBehaviorError` carrying its text, for an emitter or rejection that needs the object. */
-export function asError(error: unknown): Error {
-  return error instanceof Error ? error : new UnexpectedBehaviorError(String(error))
-}
-
-/** abortError is the cancellation an `AbortSignal` consumer expects: a plain `Error` named `AbortError`,
- *  which is the Web contract, not a Tao failure category. */
-export function abortError(message: string): Error {
-  return Object.assign(new Error(message), { name: 'AbortError' })
-}
-
 /** fromUnknown normalizes an unknown thrown value into a Tao error. */
 export function fromUnknown(error: unknown, details?: ErrorDetails): TaoError {
   if (isTaoError(error)) {
@@ -190,11 +178,6 @@ export function ThrowCommandExecution(result: CommandErrorResult): never {
   throw new CommandExecutionError(result)
 }
 
-/** DEBUG_ERRORS_ENV names the opt-in that makes every user-facing error render its diagnostics. It
- *  is exported so the command boundaries that print the bare unexpected sentence can name the switch
- *  in the same breath, rather than leaving a reader with a sentence and nowhere to go. */
-export const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
-
 /** formatForUser renders an error message suitable for terminal users.
  *  `TAO_DEBUG_ERRORS=1` swaps in the log rendering instead. An `UnexpectedBehaviorError` reaches the
  *  terminal as the bare sentence "Something went wrong.", which is right for a Tao developer and
@@ -215,6 +198,8 @@ function debugErrorsEnabled(): boolean {
   const value = ambient?.env?.[DEBUG_ERRORS_ENV]
   return value !== undefined && value !== '' && value !== '0' && value !== 'false'
 }
+
+const DEBUG_ERRORS_ENV = 'TAO_DEBUG_ERRORS'
 
 /** formatForLog renders an error message with diagnostic details. */
 export function formatForLog(error: unknown): string {

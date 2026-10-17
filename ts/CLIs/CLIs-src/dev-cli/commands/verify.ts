@@ -2,6 +2,7 @@ import { runSteps } from '@cli-kit'
 import {
   registerCommand,
   workspaceConformance,
+  workspaceDeadExports,
   workspaceFormat,
   workspaceTests,
   workspaceTypes,
@@ -17,6 +18,7 @@ export default registerCommand({
       () => workspaceFormat('fmt'),
       () => workspaceTypes(),
       () => workspaceConformance(),
+      () => workspaceDeadExports(),
       () => workspaceTests(),
     )
   },

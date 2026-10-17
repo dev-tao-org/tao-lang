@@ -1,8 +1,7 @@
 {
   "extends": "../tsconfig.base.json",
   "include": [
-    "shared-src/**/*",
-    "shared-tests/**/*"
+    "shared-src/**/*"
   ],
   "compilerOptions": {
     "types": [

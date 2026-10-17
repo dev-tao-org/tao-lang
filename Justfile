@@ -56,7 +56,7 @@ fmt *PATHS:
 fix:
     ./dev fix
 
-# Check new-workspace types, source conformance and formatting without running tests
+# Check new-workspace types, source conformance, dead exports and formatting without tests
 [group('Dev')]
 check *ARGS:
     ./dev check {{ ARGS }}

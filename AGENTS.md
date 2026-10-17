@@ -6,6 +6,7 @@ Tao is a programming language for building apps.
 - A PoC implementation exists in `./old-tao-v1`.
   - Use the PoC for reference, but don't copy code wholesale.
   - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
+  - Port reimplemented functionality into the new implementation with its own dependencies and tools; never import or execute old implementation code, or borrow its dependencies or executables, to implement a port.
   - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `old-tao-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
 
 ## Agent usage
@@ -56,7 +57,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Conformity and style
 
-- Checked by `check`: TypeScript types, formatter conventions (including two-space indentation), and the source rules below.
+- Checked by `check`: TypeScript types, unused API exports and source files, formatter conventions (including two-space indentation), and the source rules below.
 - Source rules: exported API declarations need name-led descriptive JSDoc; public shape members may have it, private code may not. Use `//` for other comments. Use `Try` instead of native try/catch/finally, except in `ts/shared/shared-src/universal/TryCatch.ts`.
 - Source rules: multiline JSDoc starts with `/** <NAME> <VERB> ...`, continues with aligned ` *  <text>` lines, and closes after the last text with ` */`; no delimiter-only lines.
 - Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.

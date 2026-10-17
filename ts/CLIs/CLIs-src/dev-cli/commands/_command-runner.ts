@@ -5,15 +5,6 @@ import { readdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { withTestTimings } from '../../cli-kit/slow-tests'
 
-/** CommandArgument describes one positional command argument. */
-export type CommandArgument = {
-  name: string
-  description?: string
-  required?: boolean
-  variadic?: boolean
-  defaultValue?: unknown
-}
-
 /** CommandDefinition declares a command's metadata and inline implementation. */
 export type CommandDefinition<Args extends unknown[] = []> = {
   name: string
@@ -21,6 +12,14 @@ export type CommandDefinition<Args extends unknown[] = []> = {
   arguments?: readonly CommandArgument[]
   allowUnknownOptions?: boolean
   action: (...args: Args) => void | Promise<void>
+}
+
+type CommandArgument = {
+  name: string
+  description?: string
+  required?: boolean
+  variadic?: boolean
+  defaultValue?: unknown
 }
 
 /** RegisteredCommand exposes metadata and an action with centralized failure handling. */
@@ -31,8 +30,6 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 const commands: CommandDefinition<unknown[]>[] = []
 /** repositoryRoot locates the active checkout independently of the caller's directory. */
 export { repositoryRoot } from '@cli-kit'
-/** legacyRoot locates the reference implementation's workflow directory. */
-export const legacyRoot = `${repositoryRoot}/old-tao-v1`
 
 /** assertNewWorkspacePath directs legacy operations to their own working directory. */
 export function assertNewWorkspacePath(path: string): void {
@@ -130,6 +127,8 @@ export async function runLegacyRecipe(args: string[]): Promise<void> {
   await runCommand('just --justfile Justfile', { variadicArgs: args, cwd: legacyRoot })
 }
 
+const legacyRoot = `${repositoryRoot}/old-tao-v1`
+
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
@@ -143,6 +142,13 @@ export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   const { checkSourceConformance } = await import('../../cli-kit/source-conformance')
   await checkSourceConformance(repositoryRoot)
+}
+
+/** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */
+export async function workspaceDeadExports(): Promise<void> {
+  await assertNewWorkspaceTree()
+  // Tao bindings, generated native siblings and declaration facades await their new implementations.
+  await runCommand('knip --config knip.json --no-progress', { cwd: `${repositoryRoot}/ts` })
 }
 
 /** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
