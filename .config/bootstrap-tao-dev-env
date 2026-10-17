@@ -14,14 +14,14 @@ for argument in "$@"; do
       printf 'Usage: ./.config/bootstrap-tao-dev-env [--install-nix] [--tools-only | --verify-setup]\n'
       printf 'Build the locked portable Linux profile, then run ./agent setup.\n'
       printf 'Use --tools-only to prepare a reusable tools image without repository dependencies.\n'
-      printf 'Use --verify-setup to prepare only what a verification lane reads, as CI does.\n'
+      printf 'Use --verify-setup to prepare the retained legacy verification lane.\n'
       exit 0 ;;
     *) printf 'Unknown bootstrap option: %s\n' "$argument" >&2; exit 2 ;;
   esac
 done
 
 checkout=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-# Root setup installs the TypeScript workspace; CI still prepares the legacy verification lane.
+# Root setup installs the TypeScript workspace; --verify-setup explicitly selects the legacy lane.
 # Ordinary root setup owns its portable tools independently of the reference implementation.
 environment="$checkout/.config/nix"
 if [ -f "$checkout/ts/package.json" ] && ! "$verify_setup"; then

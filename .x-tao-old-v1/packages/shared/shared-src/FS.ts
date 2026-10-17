@@ -991,9 +991,16 @@ export async function withFileMutationLock<Value>(
   await assertNoSymbolicLinkComponents(resolvedBoundary, resolvedTarget, 'mutation target')
   const canonicalBoundary = await realPath(resolvedBoundary)
   const canonicalTarget = resolvePath(relativePath(resolvedBoundary, resolvedTarget), canonicalBoundary)
-  const lockPath = options.lockDirectory === undefined
+  const configuredLockDirectory = options.lockDirectory === undefined ? undefined : resolvePath(options.lockDirectory)
+  if (configuredLockDirectory !== undefined) {
+    await assertNoSymbolicLinkComponents(resolvedBoundary, configuredLockDirectory, 'mutation lock')
+  }
+  const canonicalLockDirectory = configuredLockDirectory === undefined
+    ? undefined
+    : resolvePath(relativePath(resolvedBoundary, configuredLockDirectory), canonicalBoundary)
+  const lockPath = canonicalLockDirectory === undefined
     ? `${canonicalTarget}.tao-file-mutation.lock`
-    : resolvePath(`${sha256Hex(canonicalTarget)}.tao-file-mutation.lock`, options.lockDirectory)
+    : resolvePath(`${sha256Hex(canonicalTarget)}.tao-file-mutation.lock`, canonicalLockDirectory)
   await assertNoSymbolicLinkComponents(canonicalBoundary, lockPath, 'mutation lock')
   await mkdirWithinBoundary(dirname(lockPath), canonicalBoundary)
   return await withMutationLockFile(lockPath, work, options)

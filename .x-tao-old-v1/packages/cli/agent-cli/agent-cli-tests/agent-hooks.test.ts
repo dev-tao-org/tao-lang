@@ -277,7 +277,8 @@ Describe('agent hooks', () => {
     const commands = Object.values(hooks.hooks).flat()
 
     for (const entry of commands) {
-      const script = entry.command.match(/.x-tao-old-v1\/packages\/cli\/agent-cli\/agent-cli-src\/cli\/[\w-]+\.zsh/)?.[0]
+      const script = entry.command.match(/.x-tao-old-v1\/packages\/cli\/agent-cli\/agent-cli-src\/cli\/[\w-]+\.zsh/)
+        ?.[0]
       Expect(script).toBeDefined()
       Expect(await FS.exists(Repo.resolveGitPath(script!))).toBe(true)
     }

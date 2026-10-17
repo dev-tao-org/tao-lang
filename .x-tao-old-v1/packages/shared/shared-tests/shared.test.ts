@@ -662,6 +662,28 @@ Describe('FS', () => {
     }
   })
 
+  Test('canonicalizes custom lock directories beneath a trusted boundary with a symlinked ancestor', async () => {
+    const root = await mkTestDir('tao-custom-lock-')
+    const physical = FS.resolvePath('physical', root)
+    const alias = FS.resolvePath('alias', root)
+    await FS.mkdir(FS.resolvePath('home/target', physical))
+    await FS.symlink(physical, alias)
+    const boundary = FS.resolvePath('home', alias)
+    const target = FS.resolvePath('target', boundary)
+    const lockDirectory = FS.resolvePath('locks', boundary)
+    let acquired = false
+    await FS.withFileMutationLock(target, boundary, async () => {
+      acquired = true
+      Expect((await FS.listDir(lockDirectory)).some(name => name.endsWith('.tao-file-mutation.lock'))).toBe(true)
+    }, { lockDirectory })
+    Expect(acquired).toBe(true)
+    Expect(await FS.listDir(lockDirectory)).toEqual([])
+    await FS.symlink(physical, FS.resolvePath('linked-locks', boundary))
+    await Expect(FS.withFileMutationLock(target, boundary, async () => undefined, {
+      lockDirectory: FS.resolvePath('linked-locks', boundary),
+    })).rejects.toThrow('mutation lock symbolic link')
+  })
+
   Test('reclaims a file-mutation lock whose owning process no longer exists', async () => {
     const root = await tmpDir()
     const sourceDir = FS.resolvePath('source', root)

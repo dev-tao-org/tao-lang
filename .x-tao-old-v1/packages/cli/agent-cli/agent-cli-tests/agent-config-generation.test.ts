@@ -9,7 +9,10 @@ Describe('agent config generation', () => {
     const root = await mkGitTestDir('tao-agent-hook-subdirectory-')
     await initGitTestRepository(root)
     const marker = FS.resolvePath('hook-ran', root)
-    const script = FS.resolvePath('.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh', root)
+    const script = FS.resolvePath(
+      '.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh',
+      root,
+    )
     await FS.writeText(script, '#!/bin/sh\n: > "$TAO_TEST_HOOK_MARKER"\n')
     await FS.chmod(script, 0o755)
     const nested = FS.resolvePath('.x-tao-old-v1/packages/cli/agent-cli', root)
