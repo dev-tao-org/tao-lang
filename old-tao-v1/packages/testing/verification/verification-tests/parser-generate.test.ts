@@ -25,8 +25,8 @@ const GENERATED = [
 ]
 
 /** repository builds a parser package skeleton with the same shape the real generator reads. */
-async function repository(): Promise<string> {
-  const root = await mkTestDir('tao-parser-generate-', { location: 'host' })
+async function repository(root?: string): Promise<string> {
+  root ??= await mkTestDir('tao-parser-generate-', { location: 'host' })
   await FS.writeJson(FS.resolvePath('packages/language/parser/langium-config.json', root), CONFIG)
   await FS.writeText(
     FS.resolvePath('packages/language/parser/parser-grammar/tao-grammar.langium', root),
@@ -81,6 +81,58 @@ Describe('parser generate staleness stamp', () => {
           ),
         ),
       ).toBe(true)
+    } finally {
+      await FS.remove(root)
+    }
+  })
+
+  Test('keeps relocated implementation artifacts at the enclosing Git root', async () => {
+    const gitRoot = await mkTestDir('tao-parser-generate-relocated-', { location: 'host' })
+    const root = FS.resolvePath('old-tao-v1', gitRoot)
+    const artifactRoot = FS.resolvePath('.artifacts', gitRoot)
+    const langium = generator()
+    try {
+      await FS.mkdir(FS.resolvePath('.git', gitRoot))
+      await FS.writeJson(FS.resolvePath('package.json', root), { name: 'fixture' })
+      await FS.writeText(FS.resolvePath('packages/tsconfig.base.json', root), '{}\n')
+      await repository(root)
+      await FS.mkdir(artifactRoot)
+      await FS.symlink('../.artifacts', FS.resolvePath('.artifacts', root))
+
+      Expect(await runParserGenerate({ generate: langium.generate, repositoryRoot: root })).toBe(0)
+      Expect(await FS.isFile(FS.resolvePath('parser-generate-stamp.json', artifactRoot))).toBe(true)
+      Expect(await FS.isFile(FS.resolvePath('packages/language/parser/parser-src/_gen_tao-parser/ast.ts', root))).toBe(
+        true,
+      )
+      Expect(await FS.isSymbolicLink(FS.resolvePath('.artifacts', root))).toBe(true)
+    } finally {
+      await FS.remove(gitRoot)
+    }
+  })
+
+  Test('does not overwrite an unrelated file-output sibling changed during publication', async () => {
+    const root = await repository()
+    const langium = generator()
+    const grammar = FS.resolvePath('packages/language/parser/parser-grammar/views.langium', root)
+    const generatedAst = FS.resolvePath('packages/language/parser/parser-src/_gen_tao-parser/ast.ts', root)
+    const sibling = FS.resolvePath(
+      'packages/ides/ide-extension/ide-extension-syntaxes/_gen_syntaxes/keep.txt',
+      root,
+    )
+    try {
+      await runParserGenerate({ generate: langium.generate, repositoryRoot: root })
+      const astBefore = await FS.readText(generatedAst)
+      await FS.writeText(grammar, 'ViewDeclaration: "changed";\n')
+      await FS.writeText(sibling, 'before staging\n')
+
+      await Expect(runParserGenerate({
+        beforePublication: async () => await FS.writeText(sibling, 'concurrent edit\n'),
+        generate: langium.generate,
+        repositoryRoot: root,
+      })).rejects.toThrow('output parent changed before publication')
+
+      Expect(await FS.readText(sibling)).toBe('concurrent edit\n')
+      Expect(await FS.readText(generatedAst)).toBe(astBefore)
     } finally {
       await FS.remove(root)
     }
