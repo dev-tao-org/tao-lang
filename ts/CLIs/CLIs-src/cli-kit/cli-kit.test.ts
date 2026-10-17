@@ -8,52 +8,6 @@ import { runSteps } from './cli-kit'
 
 type Result = { code: number; stdout: string; stderr: string; log: string }
 
-async function withProbe(
-  work: (
-    run: (source: string, agent?: boolean, args?: string[]) => Promise<Result>,
-    root: string,
-  ) => Promise<void>,
-): Promise<void> {
-  const root = await mkdtemp(join(tmpdir(), 'tao-command-io-'))
-  await Try(async () => {
-    const repository = fileURLToPath(new URL('../../../../', import.meta.url))
-    await mkdir(join(root, 'ts'))
-    for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
-      await cp(join(repository, entry), join(root, entry), { recursive: true })
-    }
-    await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))
-    const script = join(root, 'ts/probe.ts')
-    let invocation = 0
-    await work(async (source, agent = false, args = []) => {
-      const log = join(root, '.artifacts/logs/agent', `${invocation++}.log`)
-      await Bun.write(
-        script,
-        S`
-          import { IO, runCommand } from '@cli-kit'
-          import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
-          ${source}
-        `,
-      )
-      const child = Bun.spawn(['bun', script, ...args], {
-        cwd: join(root, 'ts'),
-        env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log, TAO_DEBUG_ERRORS: '0' },
-        stdout: 'pipe',
-        stderr: 'pipe',
-      })
-      const [code, stdout, stderr] = await Promise.all([
-        child.exited,
-        new Response(child.stdout).text(),
-        new Response(child.stderr).text(),
-      ])
-      return { code, stdout, stderr, log: await Bun.file(log).exists() ? await readFile(log, 'utf8') : '' }
-    }, root)
-  }, { finally: () => rm(root, { recursive: true, force: true }) })
-}
-
-function commandAction(expression: string): string {
-  return `await registeredAction({ name: 'run', description: 'Command probe.', action: async () => { await ${expression} } }).action()`
-}
-
 Describe('command IO', () => {
   Test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
     const events: string[] = []
@@ -97,27 +51,35 @@ Describe('command IO', () => {
     })
   })
 
-  Test('splits simple strings, preserves argv arrays and reports elapsed time after nonzero exits', async () => {
-    await withProbe(async (run, root) => {
-      const child = join(root, 'args.ts')
-      await Bun.write(child, `await Bun.write(Bun.stdout, JSON.stringify(Bun.argv.slice(2)) + '\\n'); process.exit(23)`)
-      const simple = await run(commandAction(`runCommand('bun ${child} first   second')`))
-      Expect(simple.code).toBe(23)
-      Expect(simple.stdout).toContain('["first","second"]\n')
-      Expect(simple.stdout).toStartWith(`RUN CMD: bun ${child} first second\n`)
-      Expect(simple.stdout).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
-      const array = await run(
-        commandAction(`runCommand(['bun', '${child}', 'two words', '"quoted"'])`),
-      )
-      Expect(array.code).toBe(23)
-      Expect(array.stdout).toContain(JSON.stringify(['two words', '"quoted"']))
-      const agent = await run(commandAction(`runCommand(['bun', '${child}', 'agent'])`), true)
-      Expect(agent.code).toBe(23)
-      Expect(agent.stdout).toBe('')
-      Expect(agent.log).toContain('["agent"]\n')
-      Expect(agent.log).toMatch(/RUN CMD: .+\n\["agent"\]\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
-    })
-  })
+  Test(
+    'splits command strings, appends variadic arguments unchanged, and preserves argv arrays and exit status',
+    async () => {
+      await withProbe(async (run, root) => {
+        const child = join(root, 'args.ts')
+        await Bun.write(
+          child,
+          `await Bun.write(Bun.stdout, JSON.stringify(Bun.argv.slice(2)) + '\\n'); process.exit(23)`,
+        )
+        const simple = await run(commandAction(
+          `runCommand('bun ${child} first   second', { variadicArgs: ['two words', '', '"quoted"', '$literal', '--flag=value'] })`,
+        ))
+        Expect(simple.code).toBe(23)
+        Expect(simple.stdout).toContain('["first","second","two words","","\\"quoted\\"","$literal","--flag=value"]\n')
+        Expect(simple.stdout).toStartWith(`RUN CMD: bun ${child} first second two words `)
+        Expect(simple.stdout).toMatch(/\[\d+\.\d{2}s\] \(.+\)\n$/)
+        const array = await run(
+          commandAction(`runCommand(['bun', '${child}', 'two words'], { variadicArgs: ['"quoted"'] })`),
+        )
+        Expect(array.code).toBe(23)
+        Expect(array.stdout).toContain(JSON.stringify(['two words', '"quoted"']))
+        const agent = await run(commandAction(`runCommand('bun ${child}', { variadicArgs: ['agent'] })`), true)
+        Expect(agent.code).toBe(23)
+        Expect(agent.stdout).toBe('')
+        Expect(agent.log).toContain('["agent"]\n')
+        Expect(agent.log).toMatch(/RUN CMD: .+\n\["agent"\]\n\[\d+\.\d{2}s\] \(.+\)\nCommand failed:/)
+      })
+    },
+  )
 
   Test('drains complete child streams, logging stdout and mirroring stderr even for ignored probes', async () => {
     await withProbe(async (run, root) => {
@@ -251,3 +213,49 @@ Describe('command IO', () => {
     })
   })
 })
+
+async function withProbe(
+  work: (
+    run: (source: string, agent?: boolean, args?: string[]) => Promise<Result>,
+    root: string,
+  ) => Promise<void>,
+): Promise<void> {
+  const root = await mkdtemp(join(tmpdir(), 'tao-command-io-'))
+  await Try(async () => {
+    const repository = fileURLToPath(new URL('../../../../', import.meta.url))
+    await mkdir(join(root, 'ts'))
+    for (const entry of ['agent', 'dev', 'ts/CLIs', 'ts/shared', 'ts/tsconfig.json', 'ts/tsconfig.base.json']) {
+      await cp(join(repository, entry), join(root, entry), { recursive: true })
+    }
+    await symlink(join(repository, 'ts/node_modules'), join(root, 'ts/node_modules'))
+    const script = join(root, 'ts/probe.ts')
+    let invocation = 0
+    await work(async (source, agent = false, args = []) => {
+      const log = join(root, '.artifacts/logs/agent', `${invocation++}.log`)
+      await Bun.write(
+        script,
+        S`
+          import { IO, runCommand } from '@cli-kit'
+          import { registerCommand as registeredAction } from './CLIs/CLIs-src/dev-cli/commands/_command-runner'
+          ${source}
+        `,
+      )
+      const child = Bun.spawn(['bun', script, ...args], {
+        cwd: join(root, 'ts'),
+        env: { ...process.env, TAO_AGENT: agent ? '1' : '0', TAO_AGENT_LOG: log, TAO_DEBUG_ERRORS: '0' },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const [code, stdout, stderr] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ])
+      return { code, stdout, stderr, log: await Bun.file(log).exists() ? await readFile(log, 'utf8') : '' }
+    }, root)
+  }, { finally: () => rm(root, { recursive: true, force: true }) })
+}
+
+function commandAction(expression: string): string {
+  return `await registeredAction({ name: 'run', description: 'Command probe.', action: async () => { await ${expression} } }).action()`
+}

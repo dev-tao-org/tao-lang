@@ -18,61 +18,6 @@ export const TUI = outputMethods(true)
  *  TAO_AGENT_LOG optionally selects the log file; file logging announces its repo-relative directory once. */
 export const IO = outputMethods()
 
-function outputMethods(terminalOnly = false, fileOnly = false) {
-  const output = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, false, terminalOnly, fileOnly)
-  const error = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, true, terminalOnly, fileOnly)
-  return {
-    info: output,
-    debug: output,
-    log: output,
-    warn: error,
-    error,
-    stderr: (text: string | Uint8Array): void => writeOutput(text, true, terminalOnly, fileOnly),
-  }
-}
-
-function writeOutput(text: string | Uint8Array, stderr = false, terminalOnly = false, fileOnly = false): void {
-  const logging = fileOnly || process.env.TAO_AGENT === '1'
-  if (stderr) {
-    if (logging) {
-      logToFile(text)
-    }
-    process.stderr.write(text)
-    return
-  }
-  if (terminalOnly || !logging) {
-    process.stdout.write(text)
-  } else if (!logToFile(text)) {
-    process.stdout.write(text)
-  }
-}
-
-function logToFile(text: string | Uint8Array): boolean {
-  if (logUnavailable) {
-    return false
-  }
-  return Try(() => {
-    if (!agentLog) {
-      agentLog = process.env.TAO_AGENT_LOG
-        ?? `${repositoryRoot}/.artifacts/logs/${process.env.TAO_AGENT === '1' ? 'agent' : 'dev'}/${
-          new Date().toISOString().replaceAll(':', '-')
-        }-${process.pid}.log`
-      mkdirSync(dirname(agentLog), { recursive: true })
-      const announcement = `Logs: ${relative(realpathSync(repositoryRoot), realpathSync(dirname(agentLog))) || '.'}/\n`
-      appendFileSync(agentLog, announcement)
-      process.stderr.write(announcement)
-    }
-    appendFileSync(agentLog, text)
-    return true
-  }, {
-    catch: error => {
-      logUnavailable = true
-      process.stderr.write(`Command log unavailable: ${Errors.messageOf(error)}\n`)
-      return false
-    },
-  })
-}
-
 /** setAgentIO enables agent logging, including for direct agent CLI invocation. */
 export function setAgentIO(): void {
   process.env.TAO_AGENT = '1'
@@ -80,8 +25,10 @@ export function setAgentIO(): void {
 
 /** runCommand runs a space-separated command and throws on failure.
  *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
+ *  variadicArgs appends arguments unchanged after the command's own arguments.
  *  Agent commands and stdout: 'log' write stdout to files and mirror stderr even for ignored probes. */
 export async function runCommand(command: string | readonly string[], options: {
+  variadicArgs?: readonly string[]
   cwd?: string
   stdout?: 'inherit' | 'ignore' | 'log'
   stderr?: 'inherit' | 'ignore'
@@ -90,6 +37,7 @@ export async function runCommand(command: string | readonly string[], options: {
   if (!args[0]) {
     Errors.ThrowUserInput('A command is required.')
   }
+  args.push(...options.variadicArgs ?? [])
   const label = args.join(' ')
   const output = options.stdout === 'log' ? outputMethods(false, true) : IO
   output.info(`RUN CMD: ${label}`)
@@ -143,6 +91,19 @@ export async function runCommand(command: string | readonly string[], options: {
   })
 }
 
+function outputMethods(terminalOnly = false, fileOnly = false) {
+  const output = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, false, terminalOnly, fileOnly)
+  const error = (...args: unknown[]): void => writeOutput(`${format(...args)}\n`, true, terminalOnly, fileOnly)
+  return {
+    info: output,
+    debug: output,
+    log: output,
+    warn: error,
+    error,
+    stderr: (text: string | Uint8Array): void => writeOutput(text, true, terminalOnly, fileOnly),
+  }
+}
+
 async function forwardOutput(stream: ReadableStream<Uint8Array>, stderr: boolean): Promise<void> {
   const reader = stream.getReader()
   await Try(async () => {
@@ -154,6 +115,48 @@ async function forwardOutput(stream: ReadableStream<Uint8Array>, stderr: boolean
       writeOutput(result.value, stderr, false, true)
     }
   }, { finally: () => reader.releaseLock() })
+}
+
+function writeOutput(text: string | Uint8Array, stderr = false, terminalOnly = false, fileOnly = false): void {
+  const logging = fileOnly || process.env.TAO_AGENT === '1'
+  if (stderr) {
+    if (logging) {
+      logToFile(text)
+    }
+    process.stderr.write(text)
+    return
+  }
+  if (terminalOnly || !logging) {
+    process.stdout.write(text)
+  } else if (!logToFile(text)) {
+    process.stdout.write(text)
+  }
+}
+
+function logToFile(text: string | Uint8Array): boolean {
+  if (logUnavailable) {
+    return false
+  }
+  return Try(() => {
+    if (!agentLog) {
+      agentLog = process.env.TAO_AGENT_LOG
+        ?? `${repositoryRoot}/.artifacts/logs/${process.env.TAO_AGENT === '1' ? 'agent' : 'dev'}/${
+          new Date().toISOString().replaceAll(':', '-')
+        }-${process.pid}.log`
+      mkdirSync(dirname(agentLog), { recursive: true })
+      const announcement = `Logs: ${relative(realpathSync(repositoryRoot), realpathSync(dirname(agentLog))) || '.'}/\n`
+      appendFileSync(agentLog, announcement)
+      process.stderr.write(announcement)
+    }
+    appendFileSync(agentLog, text)
+    return true
+  }, {
+    catch: error => {
+      logUnavailable = true
+      process.stderr.write(`Command log unavailable: ${Errors.messageOf(error)}\n`)
+      return false
+    },
+  })
 }
 
 /** runSteps awaits variadic workflow stages in order and stops when a stage throws. */

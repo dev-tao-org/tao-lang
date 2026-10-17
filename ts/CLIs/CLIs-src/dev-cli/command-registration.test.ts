@@ -7,6 +7,45 @@ import { fileURLToPath } from 'node:url'
 
 type Result = { code: number; stdout: string; stderr: string }
 
+Describe('shared command registration', () => {
+  Test('catches synchronous and asynchronous failures with structured or best-effort messages', async () => {
+    await withFixture(async (write, run) => {
+      for (
+        const [action, message] of [
+          ["() => { Errors.ThrowUserInput('Fix the command input.') }", 'Fix the command input.'],
+          [
+            "async () => { await Promise.resolve(); Errors.ThrowHostEnvironment('Install the missing tool.') }",
+            'Install the missing tool.',
+          ],
+          ["() => { throw new Error('Plain command failure.') }", 'Plain command failure.'],
+          ["() => { throw { message: 'Carried failure message.' } }", 'Carried failure message.'],
+          ["() => { throw { get message() { throw new Error('broken formatter') } } }", 'Command failed.'],
+        ]
+      ) {
+        await write(
+          `registerCommand({ name: 'fail', description: 'Failure fixture.', action: ${action} })`,
+        )
+        const result = await run('fail')
+        Expect(result).toEqual({ code: 1, stdout: '', stderr: `${message}\n` })
+      }
+    })
+  })
+
+  Test('applies structured command failures and preserves an existing failure after a successful action', async () => {
+    await withFixture(async (write, run) => {
+      await write(
+        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 23, signal: null, stdout: '', stderr: '' }) })`,
+      )
+      Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: 'Command failed: fixture\n' })
+      await write(S`
+        await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 29, signal: null, stdout: '', stderr: '' }) }).action()
+        registerCommand({ name: 'verdict', description: 'Later success.', action: () => {} })
+      `)
+      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: 'Command failed: fixture\n' })
+    })
+  })
+})
+
 async function withFixture(
   work: (
     write: (source: string) => Promise<void>,
@@ -56,42 +95,3 @@ async function withFixture(
     )
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 }
-
-Describe('shared command registration', () => {
-  Test('catches synchronous and asynchronous failures with structured or best-effort messages', async () => {
-    await withFixture(async (write, run) => {
-      for (
-        const [action, message] of [
-          ["() => { Errors.ThrowUserInput('Fix the command input.') }", 'Fix the command input.'],
-          [
-            "async () => { await Promise.resolve(); Errors.ThrowHostEnvironment('Install the missing tool.') }",
-            'Install the missing tool.',
-          ],
-          ["() => { throw new Error('Plain command failure.') }", 'Plain command failure.'],
-          ["() => { throw { message: 'Carried failure message.' } }", 'Carried failure message.'],
-          ["() => { throw { get message() { throw new Error('broken formatter') } } }", 'Command failed.'],
-        ]
-      ) {
-        await write(
-          `registerCommand({ name: 'fail', description: 'Failure fixture.', action: ${action} })`,
-        )
-        const result = await run('fail')
-        Expect(result).toEqual({ code: 1, stdout: '', stderr: `${message}\n` })
-      }
-    })
-  })
-
-  Test('applies structured command failures and preserves an existing failure after a successful action', async () => {
-    await withFixture(async (write, run) => {
-      await write(
-        `registerCommand({ name: 'verdict', description: 'Child verdict fixture.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 23, signal: null, stdout: '', stderr: '' }) })`,
-      )
-      Expect(await run('verdict')).toEqual({ code: 23, stdout: '', stderr: 'Command failed: fixture\n' })
-      await write(S`
-        await registerCommand({ name: 'prior', description: 'Earlier failure.', action: () => Errors.ThrowCommandExecution({ command: 'fixture', args: [], status: 29, signal: null, stdout: '', stderr: '' }) }).action()
-        registerCommand({ name: 'verdict', description: 'Later success.', action: () => {} })
-      `)
-      Expect(await run('verdict')).toEqual({ code: 29, stdout: '', stderr: 'Command failed: fixture\n' })
-    })
-  })
-})

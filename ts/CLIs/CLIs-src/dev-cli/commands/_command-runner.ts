@@ -52,10 +52,6 @@ export function assertNewWorkspacePath(path: string): void {
   }
 }
 
-function isWithinDirectory(path: string, directory: string): boolean {
-  return path === directory || path.startsWith(`${directory}/`)
-}
-
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
 export async function assertNewWorkspaceTree(): Promise<void> {
   const workspace = realpathSync(`${repositoryRoot}/ts`)
@@ -77,6 +73,10 @@ export async function assertNewWorkspaceTree(): Promise<void> {
     }
   }
   await visit(workspace)
+}
+
+function isWithinDirectory(path: string, directory: string): boolean {
+  return path === directory || path.startsWith(`${directory}/`)
 }
 
 /** registerCommand adds one command to the shared CLI registry. */
@@ -122,12 +122,12 @@ export async function execute(name = 'dev'): Promise<void> {
 
 /** runLegacyDev delegates existing CLI workflows to the reference implementation. */
 export async function runLegacyDev(args: string[]): Promise<void> {
-  await runCommand([`${legacyRoot}/dev`, ...args], { cwd: legacyRoot })
+  await runCommand('./dev', { variadicArgs: args, cwd: legacyRoot })
 }
 
 /** runLegacyRecipe retains legacy prerequisites, workflow ordering and exit status. */
 export async function runLegacyRecipe(args: string[]): Promise<void> {
-  await runCommand(['just', '--justfile', `${legacyRoot}/Justfile`, ...args], { cwd: legacyRoot })
+  await runCommand('just --justfile Justfile', { variadicArgs: args, cwd: legacyRoot })
 }
 
 /** workspaceTypes checks only the new TypeScript workspace. */
@@ -148,13 +148,8 @@ export async function workspaceConformance(): Promise<void> {
 /** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await withTestTimings(reportPath =>
-    runCommand([
-      'bun',
-      'test',
-      ...(reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []),
-      '--dots',
-      ...args,
-    ], {
+    runCommand('bun test', {
+      variadicArgs: [...(reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []), '--dots', ...args],
       cwd: `${repositoryRoot}/ts`,
       stdout: 'log',
     })

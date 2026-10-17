@@ -61,14 +61,14 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Source rules: multiline JSDoc starts with `/** <NAME> <VERB> ...`, continues with aligned ` *  <text>` lines, and closes after the last text with ` */`; no delimiter-only lines.
 - Source rules: multiline string literals use the `S` tag from `@shared`; put content on new indented lines and align the closing delimiter with the opening line's indentation.
 - Review: follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
-- Review: organize definitions loosely in reading order. Put a helper used by only one other definition directly after that definition, grouping sibling helpers and their own helpers; keep shared helpers sensibly grouped and preserve initialization order.
+- Review: organize definitions loosely in reading order. Put private helpers after their sole caller or, when shared, after their last caller; group sibling helpers and their own helpers while preserving initialization order.
 - Review: tests must not mutate developer state outside the repository, including global configuration or authentication. Remove tests that perform such changes.
 - Review: test Tao-owned behavior, not whether external tools, dependencies or OS primitives work; remove pass-through tests and use small recording fixtures for external execution needed to prove our logic.
 - Review: raise failures with capitalized `Errors.ThrowX` / `Errors.Throw`; raw throws belong only in error primitives and failure-boundary test fixtures.
 - Review: keep workspace manifests and TypeScript configs under `ts/` or `old-tao-v1/`; propose new folder structures before creating them.
 - Review: CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
 - Review: invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
-- Review: prefer space-separated strings for `runCommand`; use argument arrays when needed to preserve spaces or other argument boundaries.
+- Review: prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
 - Review: expose static validation through `check`; keep its individual type, comment and style checks internal.
 - Review: only the shared action executor sets `process.exitCode`; actions and workflow steps return void and throw failures. Use variadic `runSteps`.
 - Review: common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.

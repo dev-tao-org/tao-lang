@@ -33,27 +33,6 @@ export function sourceConformanceIssues(filename: string, source: string): strin
   const publicDocs = new Set<number>()
   const publicNamespaces = new Set<TypeScript.Node>()
   const comments = new Map<number, TypeScript.CommentRange>()
-  const report = (position: number, message: string): void => {
-    issues.push(filename + ':' + (file.getLineAndCharacterOfPosition(position).line + 1) + ': ' + message)
-  }
-  const allowDocs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
-    const ranges = docs(nodes)
-    for (const range of ranges) {
-      publicDocs.add(range.pos)
-    }
-    return ranges
-  }
-  const docs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
-    const ranges = new Map<number, TypeScript.CommentRange>()
-    for (const node of nodes) {
-      for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
-        if (source.startsWith('/**', range.pos)) {
-          ranges.set(range.pos, range)
-        }
-      }
-    }
-    return [...ranges.values()]
-  }
   const visit = (node: TypeScript.Node): void => {
     if (TypeScript.isSourceFile(node)) {
       checkScope(node)
@@ -176,6 +155,27 @@ export function sourceConformanceIssues(filename: string, source: string): strin
       }
     }
     TypeScript.forEachChild(node, allowShapeDocs)
+  }
+  const report = (position: number, message: string): void => {
+    issues.push(filename + ':' + (file.getLineAndCharacterOfPosition(position).line + 1) + ': ' + message)
+  }
+  const allowDocs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
+    const ranges = docs(nodes)
+    for (const range of ranges) {
+      publicDocs.add(range.pos)
+    }
+    return ranges
+  }
+  const docs = (nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] => {
+    const ranges = new Map<number, TypeScript.CommentRange>()
+    for (const node of nodes) {
+      for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
+        if (source.startsWith('/**', range.pos)) {
+          ranges.set(range.pos, range)
+        }
+      }
+    }
+    return [...ranges.values()]
   }
   visit(file)
   for (const range of comments.values()) {

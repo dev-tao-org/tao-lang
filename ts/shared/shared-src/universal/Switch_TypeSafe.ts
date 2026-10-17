@@ -24,10 +24,6 @@ export default Object.assign(Switch, {
   typeMaybe: SwitchTypeMaybe,
 })
 
-function ownHandler<HandlersT extends object>(handlers: HandlersT, key: PropertyKey): unknown {
-  return Object.hasOwn(handlers, key) ? handlers[key as keyof HandlersT] : undefined
-}
-
 function Switch<ValueT extends SwitchValueKey, ResultT>(
   input: ValueT,
   handlers: ValueHandlers<ValueT, ResultT>,
@@ -148,6 +144,10 @@ function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
 
 type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> = {
   [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
+}
+
+function ownHandler<HandlersT extends object>(handlers: HandlersT, key: PropertyKey): unknown {
+  return Object.hasOwn(handlers, key) ? handlers[key as keyof HandlersT] : undefined
 }
 
 function nothing(): void {}

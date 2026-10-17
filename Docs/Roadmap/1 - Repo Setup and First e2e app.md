@@ -53,7 +53,8 @@ requires independent conformance, DRY, documentation and compound-condition chec
 Root `just setup-github` preserves the legacy HTTPS URL rewrites, login when required, GitHub
 protocol and credential helper configuration, origin normalization, and verification of `main`.
 Config-mutating GitHub setup tests were removed at the developer's request; setup is no longer exercised by the ordinary test suite.
-`runCommand` prefers simple space-separated strings, retaining argument arrays for values containing spaces, and reports command start
+`runCommand` prefers simple space-separated strings with `variadicArgs` for forwarded arguments,
+retaining command arrays for base arguments containing spaces, and reports command start
 and elapsed time. Agent entrypoints set `TAO_AGENT=1`: IO messages and child stdout go to root
 `.artifacts/logs/agent/`, while stderr is mirrored to the terminal and log, including suppressed probes.
 Developer IO remains on the terminal except test-command output, which logs to `.artifacts/logs/dev/`
