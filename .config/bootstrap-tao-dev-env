@@ -14,20 +14,33 @@ for argument in "$@"; do
       printf 'Usage: ./.config/bootstrap-tao-dev-env [--install-nix] [--tools-only | --verify-setup]\n'
       printf 'Build the locked portable Linux profile, then run ./agent setup.\n'
       printf 'Use --tools-only to prepare a reusable tools image without repository dependencies.\n'
-      printf 'Use --verify-setup to prepare only what a verification lane reads, as CI does.\n'
+      printf 'Use --verify-setup to prepare the retained legacy verification lane.\n'
       exit 0 ;;
     *) printf 'Unknown bootstrap option: %s\n' "$argument" >&2; exit 2 ;;
   esac
 done
 
-repository=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+checkout=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+# Root setup installs the TypeScript workspace; --verify-setup explicitly selects the legacy lane.
+# Ordinary root setup owns its portable tools independently of the reference implementation.
+environment="$checkout/.config/nix"
+if [ -f "$checkout/ts/package.json" ] && ! "$verify_setup"; then
+  repository="$checkout"
+  state_dir="$checkout/.devenv"
+elif [ -f "$checkout/.x-tao-old-v1/package.json" ] && [ -d "$checkout/.x-tao-old-v1/packages" ]; then
+  repository="$checkout/.x-tao-old-v1"
+  state_dir="$checkout/.devenv/.x-tao-old-v1"
+  environment="$repository/packages/cli/dev-cli/dev-cli-src/environment"
+else
+  repository="$checkout"
+  state_dir="$checkout/.devenv"
+fi
 cd "$repository"
 if [ "$(uname -s)" != Linux ]; then
-  printf 'Portable bootstrap supports Linux. On macOS use ./enter-tao-dev-env.\n' >&2
+  printf 'Portable bootstrap supports Linux. On macOS use ./enter-tao-dev-env.sh.\n' >&2
   exit 1
 fi
 
-environment="$repository/packages/cli/dev-cli/dev-cli-src/environment"
 if "$install_nix"; then
   # The installer waits for an active installation before judging its pending marker.
   /bin/sh "$environment/nix-bootstrap.sh"
@@ -75,8 +88,8 @@ for required in flock sha256sum; do
   fi
 done
 
-mkdir -p .devenv/portable-generations
-exec 9>.devenv/portable-bootstrap.lock
+mkdir -p "$state_dir/portable-generations"
+exec 9>"$state_dir/portable-bootstrap.lock"
 flock -w 600 9 || { printf 'Timed out waiting for portable bootstrap.\n' >&2; exit 1; }
 
 # Keep each generation rooted in the Nix store, including generations used by concurrent commands.
@@ -85,7 +98,7 @@ identity=$({
   cat devenv.lock "$environment/toolchain-packages.nix" "$environment/portable-profile.nix"
 } | sha256sum)
 identity=${identity%% *}
-generation="$repository/.devenv/portable-generations/$identity"
+generation="$state_dir/portable-generations/$identity"
 if [ ! -x "$generation/bin/bun" ] || [ ! -x "$generation/bin/node" ] || [ ! -x "$generation/bin/zsh" ]; then
   printf 'Portable bootstrap: building locked Linux tools...\n'
   nix-build "$environment/portable-profile.nix" --out-link "$generation"
@@ -93,17 +106,17 @@ else
   printf 'Portable bootstrap: reusing locked Linux tools.\n'
 fi
 
-if [ -e .devenv/profile ] && [ ! -L .devenv/profile ]; then
+if [ -e "$state_dir/profile" ] && [ ! -L "$state_dir/profile" ]; then
   printf 'Refusing to replace .devenv/profile because it is not a symbolic link.\n' >&2
   exit 1
 fi
-publication="$repository/.devenv/portable-profile-next-$$"
+publication="$state_dir/portable-profile-next-$$"
 trap 'rm -f "$publication"' EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 ln -s "portable-generations/$identity" "$publication"
-mv -Tf "$publication" "$repository/.devenv/profile"
+mv -Tf "$publication" "$state_dir/profile"
 flock -u 9
 exec 9>&-
 
@@ -111,13 +124,19 @@ printf 'Portable bootstrap: profile %s\n' "$identity"
 if "$tools_only"; then
   exit 0
 fi
+PATH="$state_dir/profile/bin:$PATH"
+export PATH
+if [ "$repository" = "$checkout" ] && [ -f "$checkout/ts/package.json" ]; then
+  export DEVENV_ROOT="$checkout"
+  export TAO_DEVENV=1
+  export TAO_DEVENV_KIND=portable
+  export PATH="$checkout/ts/node_modules/.bin:$PATH"
+fi
 if "$verify_setup"; then
   # What a verification lane reads and nothing else: the installed packages (adopted when a cache
   # restored them), the generated parser, the maintained native bindings, and the Tao projects' npm
   # pins. Agent configuration, Git hooks, shell completion, and the initial dev branch serve a
   # person's checkout. The two generators write disjoint trees, so they run side by side.
-  PATH="$repository/.devenv/profile/bin:$PATH"
-  export PATH
   printf 'Verify setup: dependencies...\n'
   just _deps
   printf 'Verify setup: native bindings and parser, side by side...\n'
@@ -126,6 +145,8 @@ if "$verify_setup"; then
   just --no-deps _parser-gen
   wait "$bindings"
   printf 'Verify setup: Tao project dependencies...\n'
-  exec just --no-deps _tao-project-deps
+  just --no-deps _tao-project-deps
+  printf 'Verify setup: TypeScript formatter plugins...\n'
+  exec "$state_dir/profile/bin/bun" install --cwd "$checkout/ts" --frozen-lockfile
 fi
 exec "$repository/agent" setup

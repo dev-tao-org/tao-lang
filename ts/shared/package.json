@@ -1,0 +1,12 @@
+{
+  "name": "@shared",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "module": "shared-src/shared.ts",
+  "exports": {
+    ".": "./shared-src/shared.ts",
+    "./os": "./shared-src/os.ts",
+    "./universal": "./shared-src/universal/universal.ts"
+  }
+}

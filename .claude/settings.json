@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\""
+            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\""
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-prompt-submit.zsh\" || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-prompt-submit.zsh\" || true"
           }
         ]
       }
@@ -26,11 +26,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-output-discipline.zsh\" || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-output-discipline.zsh\" || true"
           },
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-shell-habits.zsh\" 2>/dev/null || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-shell-habits.zsh\" 2>/dev/null || true"
           }
         ]
       },
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" spawn > /dev/null 2>&1 || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" spawn > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -49,11 +49,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" start > /dev/null 2>&1 || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" start > /dev/null 2>&1 || true"
           },
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-subagent-brief.zsh\" 2>/dev/null || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-subagent-brief.zsh\" 2>/dev/null || true"
           }
         ]
       }
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" stop > /dev/null 2>&1 || true"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-delegation-log.zsh\" stop > /dev/null 2>&1 || true"
           }
         ]
       }
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "script=packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" create"
+            "command": "script=.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" create"
           }
         ]
       }
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "script=packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" remove"
+            "command": "script=.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-worktree.zsh && repo_root=\"$(git rev-parse --show-toplevel)\" && { [ -x \"$repo_root/$script\" ] || repo_root=\"$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\")\"; } && \"$repo_root/$script\" remove"
           }
         ]
       }
@@ -92,6 +92,33 @@
   "sandbox": {
     "enabled": true,
     "excludedCommands": [
+      "./agent unsandboxed agent-config",
+      "./agent unsandboxed agent-config *",
+      "./agent unsandboxed my-branch",
+      "./agent unsandboxed my-branch *",
+      "./agent unsandboxed fmt",
+      "./agent unsandboxed fmt *",
+      "./agent unsandboxed fix",
+      "./agent unsandboxed fix *",
+      "./agent unsandboxed check",
+      "./agent unsandboxed check *",
+      "./agent unsandboxed test",
+      "./agent unsandboxed test *",
+      "./agent unsandboxed verify",
+      "./agent unsandboxed verify *",
+      "./agent unsandboxed doctor",
+      "./agent unsandboxed doctor *",
+      "./agent unsandboxed secrets",
+      "./agent unsandboxed secrets *",
+      "./agent unsandboxed git status *",
+      "./agent unsandboxed git diff *",
+      "./agent unsandboxed git log *",
+      "./agent unsandboxed git show *",
+      "./agent unsandboxed git add *",
+      "./agent unsandboxed git commit *",
+      "./agent unsandboxed git fetch *",
+      "./agent unsandboxed git switch *",
+      "./agent unsandboxed git merge *",
       "./agent unsandboxed notify-developer",
       "./agent unsandboxed notify-developer *",
       "./agent unsandboxed stop",

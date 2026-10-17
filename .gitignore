@@ -59,7 +59,7 @@ packages/apps/expo-host/android/
 packages/ides/studio-companion-app/ios/
 packages/ides/studio-companion-app/android/
 
-# Decrypted repository-tool secrets, written by `just secrets`; encrypted originals live in secrets/.
+# Decrypted repository-tool secrets, written by `just secrets`; encrypted originals live in .secrets/.
 .env.secrets
 # Local overrides kept by hand. Nothing generates this, so nothing can overwrite it.
 .env.local

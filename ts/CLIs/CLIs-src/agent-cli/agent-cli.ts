@@ -1,0 +1,22 @@
+import '../cli-kit/fatal-errors'
+import { IO } from '@cli-kit'
+import { Env, Platform } from '@shared/os'
+import unsandboxed from './commands/unsandboxed'
+import '../dev-cli/dev-cli'
+import { execute } from '../dev-cli/commands/_command-runner'
+
+const terminal = Env.is('TERMINAL_OUTPUT', '1')
+// Preserve the selected output mode in children when invoked without the shell wrapper.
+Env.set('TERMINAL_OUTPUT', terminal ? '1' : '0')
+IO.config({
+  stdout: terminal ? 'terminal' : 'log',
+  stderr: terminal ? 'terminal' : 'both',
+  progress: terminal ? 'terminal' : 'log',
+  logDirectory: 'agent',
+  logFile: Env.get('OUTPUT_LOG_FILE'),
+})
+if (Platform.argv[2] === 'unsandboxed' && Platform.argv[3] !== '--help') {
+  await unsandboxed.action(Platform.argv.slice(3))
+} else {
+  await execute('agent')
+}

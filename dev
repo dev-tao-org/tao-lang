@@ -1,43 +1,14 @@
 #!/bin/sh
-
-if [ -z "${ZSH_VERSION:-}" ]; then
-  SCRIPT_PATH=$0
-  while [ -L "$SCRIPT_PATH" ]; do
-    SCRIPT_LINK=$(readlink "$SCRIPT_PATH") || exit 1
-    case "$SCRIPT_LINK" in
-      /*) SCRIPT_PATH=$SCRIPT_LINK ;;
-      *) SCRIPT_PATH=${SCRIPT_PATH%/*}/$SCRIPT_LINK ;;
-    esac
-  done
-  SCRIPT_DIR=$(CDPATH= cd -- "${SCRIPT_PATH%/*}" && pwd -P) || exit 1
-  . "$SCRIPT_DIR/packages/cli/dev-cli/dev-cli-src/environment/repo-shell.sh"
-  tao_exec_repo_zsh "$SCRIPT_DIR" "$0" "$@"
-fi
+# Run developer commands inside this checkout's pinned environment, forwarding arguments unchanged.
 
 set -e
-
-# Repository development tooling: package tests and Expo device preparation.
-# This is not the Tao CLI; `./tao run` runs the app development loop.
-SCRIPT_DIR="${0:A:h}"
-DEVENV_PROFILE="$SCRIPT_DIR/.devenv/profile"
-DEPENDENCY_SCRIPT="$SCRIPT_DIR/packages/cli/dev-cli/dev-cli-src/cli/ensure-dependencies.zsh"
-
-source "$SCRIPT_DIR/packages/cli/dev-cli/dev-cli-src/cli/agent-worktree-profile.zsh"
-
-if ! tao_activate_devenv_profile "$SCRIPT_DIR" "$DEVENV_PROFILE"; then
-  echo "Tao's pinned devenv profile is unavailable." >&2
-  echo "On macOS run ./enter-tao-dev-env; on Linux run ./.config/bootstrap-tao-dev-env --install-nix." >&2
-  exit 1
+# Activate managed tools, then resolve command modules from the TypeScript workspace.
+. "$(dirname "$0")/.config/cli-environment.sh"
+cd "$(dirname "$0")/ts"
+# Fresh setup must run before Commander and other workspace dependencies are installed.
+if [ "${1:-}" = setup ]; then
+  shift
+  exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" "$@"
 fi
-
-# `./dev` runs from source, so it uses the same installer and completion proof as `./agent` before
-# Bun resolves the entry module. A dependency tree restored here therefore never triggers a second
-# install when the next command enters through `./agent`.
-if [[ "${1:-}" == agent-config ]]; then
-  # Agent-config regeneration is a sandbox-excluded recovery; use only dependencies already here.
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR" --no-install
-else
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR"
-fi
-
-exec bun run "$SCRIPT_DIR/packages/cli/dev-cli/dev-cli-src/dev.ts" "$@"
+# Replace the wrapper so signals and exit status belong to the command process.
+exec bun run "./CLIs/CLIs-src/dev-cli/dev-cli.ts" "$@"

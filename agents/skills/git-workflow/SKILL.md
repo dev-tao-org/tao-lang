@@ -9,9 +9,8 @@ description: >-
 
 # Git Workflow
 
-Root `AGENTS.md` owns branch and index constraints and standing authorization to merge other
-branches, including its dependency-approval exception. Apply that authorization to all incoming
-file changes. The warn-only Git hooks
+Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
+waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
 `landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Pushing is
 irreversible: confirm with the Developer before pushing anything the Developer did not ask to be
@@ -23,7 +22,7 @@ pushed.
 
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
-  `./enter-tao-dev-env` in that worktree when it reports no shared profile), and remove a
+  root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
   worktree you created once its branch is merged or abandoned.
 - Before reclaiming a worktree, use `./agent reclaim` and follow
   `references/reclaim-task-associations.md` for agent task ownership that local metadata cannot prove.

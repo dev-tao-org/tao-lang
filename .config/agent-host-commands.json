@@ -1,0 +1,23 @@
+[
+  "setup",
+  "agent-config",
+  "my-branch",
+  "fmt",
+  "fix",
+  "check",
+  "test",
+  "verify",
+  "doctor",
+  "secrets",
+  "git status",
+  "git diff",
+  "git log",
+  "git show",
+  "git add",
+  "git commit",
+  "git fetch",
+  "git switch",
+  "git merge",
+  "local-instantdb start",
+  "local-instantdb stop"
+]

@@ -1,0 +1,105 @@
+import { FS } from '@shared'
+import { generate } from 'rulesync'
+import { generateClaudeHostSettings } from './AgentHostCommands'
+import { ClaudeProfilesGenerator } from './ClaudeProfilesGenerator'
+import { CodexConfigGenerator } from './CodexConfigGenerator'
+
+/**
+ * The committed harness files rulesync renders. It merges into what is already there, so freshness
+ * is judged by regenerating over a copy of the committed file, never into an empty directory.
+ */
+const CURRENT_RULESYNC_OUTPUTS = [
+  { features: ['hooks'], path: '.claude/settings.json', target: 'claudecode' },
+  { features: ['hooks'], path: '.codex/hooks.json', target: 'codexcli' },
+] as const
+
+const LEGACY_RULESYNC_OUTPUTS = [
+  { features: ['permissions', 'hooks'], path: '.claude/settings.json', target: 'claudecode' },
+  { features: ['hooks'], path: '.codex/hooks.json', target: 'codexcli' },
+] as const
+
+const STALE_DETAIL =
+  'is stale against its `.rulesync/` source; run `./agent setup`, and commit the result if the file is tracked.'
+const CURRENT_STALE_DETAIL =
+  'is stale against its `.rulesync/` source; run `./agent agent-config`, and commit the result if the file is tracked.'
+
+/** renderedOutputs collects what a generator would write, keyed by repository-relative path. */
+async function renderedOutputs(
+  root: string,
+  generator: (options: { root: string; writeText: (path: string, content: string) => Promise<void> }) => Promise<void>,
+): Promise<Map<string, string>> {
+  const outputs = new Map<string, string>()
+  await generator({
+    root,
+    writeText: (path, content) => {
+      outputs.set(FS.slashPath(FS.relativePath(root, path)), content)
+      return Promise.resolve()
+    },
+  })
+  return outputs
+}
+
+async function rulesyncOutputs(root: string, currentWorkspace: boolean): Promise<Map<string, string>> {
+  const outputs = new Map<string, string>()
+  const scratch = await FS.mkTmpDir('tao-agent-config-freshness-')
+  const targets = currentWorkspace ? CURRENT_RULESYNC_OUTPUTS : LEGACY_RULESYNC_OUTPUTS
+  try {
+    for (const output of targets) {
+      const committed = FS.resolvePath(output.path, root)
+      if (!(await FS.isFile(committed))) {
+        continue
+      }
+      const regenerated = FS.resolvePath(output.path, scratch)
+      await FS.mkdir(FS.dirname(regenerated))
+      await FS.copyFile(committed, regenerated)
+      await generate({
+        configPath: '.rulesync/rulesync.jsonc',
+        features: [...output.features],
+        inputRoot: root,
+        outputRoots: [scratch],
+        silent: true,
+        targets: [output.target],
+      })
+      if (!currentWorkspace && output.target === 'claudecode') {
+        await FS.mkdir(FS.resolvePath('.rulesync', scratch))
+        await FS.copyFile(
+          FS.resolvePath('.rulesync/permissions.jsonc', root),
+          FS.resolvePath('.rulesync/permissions.jsonc', scratch),
+        )
+        await FS.copyFile(
+          FS.resolvePath('.rulesync/rulesync.jsonc', root),
+          FS.resolvePath('.rulesync/rulesync.jsonc', scratch),
+        )
+        await generateClaudeHostSettings(scratch)
+      }
+      outputs.set(output.path, await FS.readText(regenerated))
+    }
+  } finally {
+    await FS.remove(scratch)
+  }
+  return outputs
+}
+
+/** staleAgentConfigIssues reports each committed harness file that regenerating would change. */
+async function staleAgentConfigIssues(root: string): Promise<string[]> {
+  const currentWorkspace = await FS.isFile(FS.resolvePath('ts/package.json', root))
+  const detail = currentWorkspace ? CURRENT_STALE_DETAIL : STALE_DETAIL
+  const expected = currentWorkspace
+    ? await rulesyncOutputs(root, true)
+    : new Map([
+      ...await renderedOutputs(root, CodexConfigGenerator.generate),
+      ...await renderedOutputs(root, ClaudeProfilesGenerator.generate),
+      ...await rulesyncOutputs(root, false),
+    ])
+  const issues: string[] = []
+  for (const [path, content] of expected) {
+    const committed = FS.resolvePath(path, root)
+    if (await FS.isFile(committed) && await FS.readText(committed) !== content) {
+      issues.push(`${path} ${detail}`)
+    }
+  }
+  return issues.sort()
+}
+
+/** AgentConfigFreshness is the gate behind "never edit a generated harness file". */
+export const AgentConfigFreshness = { staleIssues: staleAgentConfigIssues }

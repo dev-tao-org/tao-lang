@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "paths": {
+      "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
+      "@shared": ["./shared/shared-src/shared.ts"],
+      "@shared/os": ["./shared/shared-src/os.ts"]
+    }
+  }
+}

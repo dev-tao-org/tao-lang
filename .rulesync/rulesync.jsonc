@@ -1,9 +1,8 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
   "targets": ["codexcli", "claudecode", "cursor"],
-  // Features generated for every target. The permissions feature is opted into per target by
-  // packages/cli/agent-cli/agent-cli-src/agent-config/AgentConfigGenerator.ts, because Codex CLI
-  // keeps generated permission profiles and command rules that rulesync's translator cannot express.
+  // Root agent-config generates subagents for all targets and hooks for Codex and Claude.
+  // Permissions, model defaults and profiles are maintained in native harness files.
   "features": ["subagents"],
   "delete": true,
 }

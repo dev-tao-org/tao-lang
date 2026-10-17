@@ -6,7 +6,7 @@
       "type": "shell",
       "command": "just install-ide-extension",
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/.x-tao-old-v1",
         "shell": {
           "executable": "zsh",
           "args": [

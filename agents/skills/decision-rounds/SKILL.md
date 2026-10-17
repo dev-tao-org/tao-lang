@@ -18,7 +18,7 @@ Root `AGENTS.md` owns the boundary between the Developer's decisions and routine
 
 ## Find every decision first
 
-1. Brainstorm wide. List every decision the task raises, grouped by area, before narrowing anything. Include the items you would default and the items you would drop.
+1. Brainstorm wide. List every decision the task raises, grouped by area, before narrowing anything. Include the items you would default and the items you would drop. For feature plans, use the library research required by root `AGENTS.md` and include any dependency choices that need approval.
 2. Show the whole inventory in the numbered/lettered shape root `AGENTS.md` sets for replies to the Developer, marking each item you propose to drop or default with the default stated in a few words.
 3. Narrow with the Developer. The Developer strikes, adds, or promotes items; the survivors are the decision list.
 
@@ -38,7 +38,7 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 2. Give each decision its realistic options and mark the recommended one, as above.
 3. Print the round as text in the reply, in the shape below. Never put it through a harness question prompt such as `AskUserQuestion`: a prompt hides the round from the transcript, caps what an answer can say, and forces every item through its own box. The Developer answers in the conversation — by letter and number, in prose, or with an option the round did not offer.
 4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. An item the Developer skips takes its recommendation, and the next message says so in one line so the Developer can veto it.
-5. Continue until the list is settled, then plan and implement. A decision discovered during implementation joins the next round; it is not decided silently.
+5. Continue until the planning decisions are settled, then implement. For decisions discovered during implementation, follow root `AGENTS.md`: proceed with best judgment and report the choice at completion, or ask immediately for an essential fork and apply its three-minute response policy. Explicit approval gates still apply.
 
 ## Record what was settled
 

@@ -1,11 +1,7 @@
 { pkgs, inputs, ... }:
 
 let
-  toolchain = import ./packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix {
-    inherit pkgs;
-    bunPkgs = import inputs.bun-nixpkgs { system = pkgs.stdenv.system; };
-  };
-  hutchPkg = pkgs.callPackage ./.config/nix/hutch.nix { nodejs = toolchain.node; };
+  bunPkgs = import inputs.bun-nixpkgs { system = pkgs.stdenv.system; };
 in
 {
   name = "tao-lang";
@@ -16,18 +12,8 @@ in
   apple.sdk = null;
 
   enterShell = ''
-    export PATH="$DEVENV_ROOT:$PATH"
-    for bin_dir in "$DEVENV_ROOT/node_modules/.bin" "$DEVENV_ROOT/packages/shared/node_modules/.bin"; do
-      export PATH="$bin_dir:$PATH"
-    done
+    export PATH="$DEVENV_ROOT/ts/node_modules/.bin:$DEVENV_ROOT:$PATH"
   '';
-
-  languages.javascript = {
-    enable = true;
-    package = toolchain.node;
-    bun.enable = true;
-    bun.package = toolchain.bun;
-  };
 
   android = {
     enable = true;
@@ -41,10 +27,17 @@ in
     android-studio.enable = false;
   };
 
-  packages = toolchain.packages ++ [
+  packages = [
+    bunPkgs.bun
+    (pkgs.lib.getBin pkgs.nodejs_24)
+    pkgs.just
+    pkgs.dprint
+    pkgs.git
+    pkgs.gh
+    pkgs.age
+    pkgs.ripgrep
     pkgs.cocoapods
     pkgs.direnv
-    hutchPkg
   ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se ];
 
   env.TAO_DEVENV = "1";
@@ -52,10 +45,10 @@ in
   env.LC_ALL = "en_US.UTF-8";
   env.LC_CTYPE = "en_US.UTF-8";
 
-  scripts.tao = {
-    exec = ''"$DEVENV_ROOT/tao" "$@" '';
-    description = "Tao language CLI";
-  };
+  # scripts.tao = {
+  #   exec = ''"$DEVENV_ROOT/tao" "$@" '';
+  #   description = "Tao language CLI";
+  # };
   scripts.j = {
     exec = ''just "$@"'';
     description = "just";

@@ -1,5 +1,9 @@
 # Verification seeds
 
+These files belong to the retained `.x-tao-old-v1/` verification planner. Automatic GitHub
+`Verify` now checks only the new TypeScript workspace and does not consume these seeds.
+The partitioned workflow described below is historical context for the retained tooling.
+
 The two files here are what hosted `Verify` plans with before it has run anything. Each partition
 job copies them into `.artifacts/timings/` and `.artifacts/test-ledger/` before it plans, and a fresh
 checkout reads `durations.json` under its own local store (`RunTimings.load`), so neither a runner

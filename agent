@@ -1,144 +1,16 @@
 #!/bin/sh
+# Run agent commands inside this checkout's pinned environment, forwarding arguments unchanged.
 
-if [ -z "${ZSH_VERSION:-}" ]; then
-  SCRIPT_PATH=$0
-  while [ -L "$SCRIPT_PATH" ]; do
-    SCRIPT_LINK=$(readlink "$SCRIPT_PATH") || exit 1
-    case "$SCRIPT_LINK" in
-      /*) SCRIPT_PATH=$SCRIPT_LINK ;;
-      *) SCRIPT_PATH=${SCRIPT_PATH%/*}/$SCRIPT_LINK ;;
-    esac
-  done
-  SCRIPT_DIR=$(CDPATH= cd -- "${SCRIPT_PATH%/*}" && pwd -P) || exit 1
-  . "$SCRIPT_DIR/packages/cli/dev-cli/dev-cli-src/environment/repo-shell.sh"
-  tao_exec_repo_zsh "$SCRIPT_DIR" "$0" "$@"
-fi
-
-# Run under zsh's own defaults regardless of the developer's ~/.zshenv. `BASH_REMATCH` in
-# particular moves regex captures out of `match`, which would blank the denied path in exactly
-# the install diagnostic that exists to name it, and `emulate zsh` alone does not reset it.
-emulate zsh
-unsetopt BASH_REMATCH
 set -e
-
-HOST_COMMAND_REQUESTED=false
-if [[ "${1:-}" == unsandboxed ]]; then
+# Log normal output by default; TERMINAL_OUTPUT=1 requests terminal output instead.
+export TERMINAL_OUTPUT="${TERMINAL_OUTPUT:-0}"
+# Activate managed tools, then resolve command modules from the TypeScript workspace.
+. "$(dirname "$0")/.config/cli-environment.sh"
+cd "$(dirname "$0")/ts"
+# Fresh setup must run before Commander and other workspace dependencies are installed.
+if [ "${1:-}" = setup ]; then
   shift
-  if (( $# == 0 )); then
-    echo 'Usage: ./agent unsandboxed <command> [args...]' >&2
-    exit 2
-  fi
-  HOST_COMMAND_REQUESTED=true
+  exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" "$@"
 fi
-
-SCRIPT_DIR="${0:A:h}"
-if [[ "$HOST_COMMAND_REQUESTED" == false && "${1:-}" == setup && "${2:-}" == --environment ]]; then
-  if (( $# != 2 )); then
-    echo 'Usage: ./agent setup --environment' >&2
-    exit 2
-  fi
-  exec "$SCRIPT_DIR/enter-tao-dev-env" --setup-only
-fi
-AGENT_CLI_PACKAGE_DIR="$SCRIPT_DIR/packages/cli/agent-cli"
-DEV_CLI_PACKAGE_DIR="$SCRIPT_DIR/packages/cli/dev-cli"
-CLI_KIT_PACKAGE_DIR="$SCRIPT_DIR/packages/cli/cli-kit"
-SHARED_PACKAGE_DIR="$SCRIPT_DIR/packages/shared"
-VERIFICATION_PACKAGE_DIR="$SCRIPT_DIR/packages/testing/verification"
-BUILD_DIR="$SCRIPT_DIR/.artifacts/build/agent-dev"
-AGENT_TEMP_DIR="$SCRIPT_DIR/.artifacts/tmp"
-BUILD_OUTPUT="$BUILD_DIR/agent-dev.js"
-BUILD_STAMP="$BUILD_DIR/agent-dev.stamp"
-BUILD_LOCK="$BUILD_DIR/agent-dev.lock"
-DEVENV_PROFILE="$SCRIPT_DIR/.devenv/profile"
-DEPENDENCY_SCRIPT="$DEV_CLI_PACKAGE_DIR/dev-cli-src/cli/ensure-dependencies.zsh"
-
-source "$DEV_CLI_PACKAGE_DIR/dev-cli-src/cli/agent-worktree-profile.zsh"
-
-function enter_devenv_if_needed() {
-  tao_activate_devenv_profile "$SCRIPT_DIR" "$DEVENV_PROFILE" && return
-
-  echo "Tao's pinned devenv profile is unavailable." >&2
-  echo "On macOS run ./enter-tao-dev-env; on Linux run ./.config/bootstrap-tao-dev-env --install-nix." >&2
-  exit 1
-}
-
-enter_devenv_if_needed
-if [[ "$HOST_COMMAND_REQUESTED" == true ]]; then
-  HOST_COMMAND_KIND="$(bun "$AGENT_CLI_PACKAGE_DIR/agent-cli-src/cli/agent-host-command-check.ts" \
-    "$SCRIPT_DIR/.rulesync/permissions.jsonc" "$@")" || exit $?
-  if ! ps -axo pid=,ppid=,lstart=,command= >/dev/null 2>&1; then
-    echo 'FAIL  ./agent unsandboxed is still running inside a sandbox; the host command was not started.' >&2
-    exit 1
-  fi
-  if [[ "$HOST_COMMAND_KIND" == named ]]; then
-    cd "$SCRIPT_DIR"
-    exec bun "$AGENT_CLI_PACKAGE_DIR/agent-cli-src/cli/agent-host-dispatch.ts" \
-      "$SCRIPT_DIR/.rulesync/permissions.jsonc" "$@"
-  fi
-fi
-mkdir -p "$BUILD_DIR" "$AGENT_TEMP_DIR"
-BUN_TEMP_DIR="$(tao_bun_temp_dir "$AGENT_TEMP_DIR")"
-
-function needs_build() {
-  [[ ! -f "$BUILD_OUTPUT" ]] && return 0
-  [[ ! -f "$BUILD_STAMP" ]] && return 0
-
-  for source_path in \
-    "$AGENT_CLI_PACKAGE_DIR"/agent-cli-src/**/*.ts(N) \
-    "$CLI_KIT_PACKAGE_DIR"/cli-kit-src/**/*.ts(N) \
-    "$SHARED_PACKAGE_DIR"/shared-src/**/*.ts(N) \
-    "$VERIFICATION_PACKAGE_DIR"/verification-src/**/*.ts(N) \
-    "$SCRIPT_DIR"/package.json \
-    "$SCRIPT_DIR"/bun.lock \
-    "$AGENT_CLI_PACKAGE_DIR"/package.json \
-    "$CLI_KIT_PACKAGE_DIR"/package.json \
-    "$SHARED_PACKAGE_DIR"/package.json \
-    "$VERIFICATION_PACKAGE_DIR"/package.json
-  do
-    [[ "$source_path" -nt "$BUILD_STAMP" ]] && return 0
-  done
-
-  return 1
-}
-
-function build_agent() {
-  echo "Building the agent CLI..." >&2
-  if ! build_output="$(TMPDIR="$BUN_TEMP_DIR" bun build --cwd "$AGENT_CLI_PACKAGE_DIR" agent-cli-src/agent-dev.ts --target bun --outfile "$BUILD_OUTPUT" 2>&1)"; then
-    echo "$build_output" >&2
-    exit 1
-  fi
-  touch "$BUILD_STAMP"
-}
-
-function build_agent_if_needed() {
-  needs_build || return 0
-  build_agent
-}
-
-function ensure_agent_build() {
-  needs_build || return 0
-  tao_run_with_lock "$BUILD_LOCK" 30 build_agent_if_needed
-}
-
-# Every repository workflow call bootstraps through the shared dependency owner before building the CLI.
-# `./agent setup` is the one public dependency command and continues into the Justfile setup recipe
-# for an explicit health proof plus generated harness adapters.
-tao_warn_on_detached_head "$SCRIPT_DIR"
-# `./agent setup --refresh-lockfile` updates the lockfile after a package manifest changes;
-# ordinary entry points install from the frozen lockfile.
-if [[ "${1:-}" == fix-agent-config ]]; then
-  # This command runs outside a harness sandbox to rewrite protected agent configuration. Its
-  # bootstrap must never install packages in that less confined process.
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR" --no-install
-elif [[ "${1:-}" == setup && "${2:-}" == --refresh-lockfile ]]; then
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR" --refresh-lockfile
-  tao_agent_command_args "$@"
-  set -- "${reply[@]}"
-elif needs_build; then
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR" --health
-else
-  zsh "$DEPENDENCY_SCRIPT" "$SCRIPT_DIR"
-fi
-ensure_agent_build
-
-exec bun "$BUILD_OUTPUT" "$@"
+# Replace the wrapper so signals and exit status belong to the command process.
+exec bun run "./CLIs/CLIs-src/agent-cli/agent-cli.ts" "$@"

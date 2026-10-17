@@ -47,9 +47,10 @@ paths and branch. Use only its `--fingerprint` output in a public report.
 
 ## Looking around first
 
-`Docs/Spec/` is what Tao implements today, `Docs/Tutorials/` is the way in, and `Apps/` holds the
-apps we build the language against. If any of them disagrees with what you saw, that disagreement is
-worth one of the forms above.
+`AGENTS.md` describes the current implementation architecture, and `Docs/Roadmap/` describes
+the next work. The reference language specification, tutorials and apps remain under
+`.x-tao-old-v1/Docs/Spec/`, `.x-tao-old-v1/Docs/Tutorials/` and `.x-tao-old-v1/Apps/`.
+If their documented behavior disagrees with what you saw, that is worth reporting.
 
 ## Sending a change
 
