@@ -24,3 +24,20 @@ Raw report: `.artifacts/logs/performance/parser-a8d46e5f-96c9-4cf4-aada-90a41ef7
 The report records the dirty revision, host, runtimes, fixture hash and all samples.
 These tiny warmed measurements do not establish scalability or the sub-100ms preview target.
 Full-app transformation and actual Expo-to-visible-update measurements remain pending.
+
+## Consolidated-file checkpoint
+
+After grouping the transformer into `AST.ts` and `Transform.ts`, rerun the same app-only
+scenario with unchanged input and sample definitions. Base revision is `f870e4838` plus the
+consolidation changes. The constructor now declares its handlers as ordinary class methods.
+
+| Run | Transform median / p95 | Parse-to-AST median / p95 |
+| --- | ---: | ---: |
+| Alongside verification | 0.007 / 0.020 ms | 0.011 / 0.025 ms |
+| Unchanged rerun without concurrent agent verification | 0.005 / 0.011 ms | 0.008 / 0.017 ms |
+
+Raw reports are `parser-cb61d743-c843-49fb-af9c-713074c2aaab.json` and
+`parser-b638f0d7-339c-4165-8f4d-9255b275f45a.json` under `.artifacts/logs/performance/`.
+The second run's combined median matches the first-piece baseline. These short runs do not
+establish a speedup or attribute microsecond differences to the refactor; further optimization
+is deferred while the structure is under review.
