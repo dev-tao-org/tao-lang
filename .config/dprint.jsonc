@@ -14,8 +14,6 @@
     "Docs/Archive/**",
     // The storage submodule holds generated capture records owned by another repository.
     "storage/**",
-    "packages/old-*",
-    "packages/old-*/**",
   ],
   "typescript": {
     "semiColons": "asi",
@@ -35,8 +33,8 @@
   "json": {},
   "markdown": {},
   "plugins": [
-    "../node_modules/@dprint/typescript/plugin.wasm",
-    "../node_modules/@dprint/json/plugin.wasm",
-    "../node_modules/@dprint/markdown/plugin.wasm",
+    "../ts/node_modules/@dprint/typescript/plugin.wasm",
+    "../ts/node_modules/@dprint/json/plugin.wasm",
+    "../ts/node_modules/@dprint/markdown/plugin.wasm",
   ],
 }

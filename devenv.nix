@@ -1,12 +1,13 @@
 { pkgs, inputs, ... }:
 
-let
-  toolchain = import ./packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix {
-    inherit pkgs;
-    bunPkgs = import inputs.bun-nixpkgs { system = pkgs.stdenv.system; };
-  };
-  hutchPkg = pkgs.callPackage ./.config/nix/hutch.nix { nodejs = toolchain.node; };
-in
+# Disabled during the root rebuild; re-enable as the new toolchain becomes available.
+# let
+#   toolchain = import ./packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix {
+#     inherit pkgs;
+#     bunPkgs = import inputs.bun-nixpkgs { system = pkgs.stdenv.system; };
+#   };
+#   hutchPkg = pkgs.callPackage ./.config/nix/hutch.nix { nodejs = toolchain.node; };
+# in
 {
   name = "tao-lang";
 
@@ -17,17 +18,18 @@ in
 
   enterShell = ''
     export PATH="$DEVENV_ROOT:$PATH"
-    for bin_dir in "$DEVENV_ROOT/node_modules/.bin" "$DEVENV_ROOT/packages/shared/node_modules/.bin"; do
-      export PATH="$bin_dir:$PATH"
-    done
+    # Legacy dependency paths are disabled until the new workspace is wired up.
+    # for bin_dir in "$DEVENV_ROOT/node_modules/.bin" "$DEVENV_ROOT/packages/shared/node_modules/.bin"; do
+    #   export PATH="$bin_dir:$PATH"
+    # done
   '';
 
-  languages.javascript = {
-    enable = true;
-    package = toolchain.node;
-    bun.enable = true;
-    bun.package = toolchain.bun;
-  };
+  # languages.javascript = {
+  #   enable = true;
+  #   package = toolchain.node;
+  #   bun.enable = true;
+  #   bun.package = toolchain.bun;
+  # };
 
   android = {
     enable = true;
@@ -41,10 +43,11 @@ in
     android-studio.enable = false;
   };
 
-  packages = toolchain.packages ++ [
+  # Restore toolchain.packages ++ when the toolchain is re-enabled.
+  packages = [
     pkgs.cocoapods
     pkgs.direnv
-    hutchPkg
+    # hutchPkg
   ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se ];
 
   env.TAO_DEVENV = "1";
@@ -52,10 +55,10 @@ in
   env.LC_ALL = "en_US.UTF-8";
   env.LC_CTYPE = "en_US.UTF-8";
 
-  scripts.tao = {
-    exec = ''"$DEVENV_ROOT/tao" "$@" '';
-    description = "Tao language CLI";
-  };
+  # scripts.tao = {
+  #   exec = ''"$DEVENV_ROOT/tao" "$@" '';
+  #   description = "Tao language CLI";
+  # };
   scripts.j = {
     exec = ''just "$@"'';
     description = "just";

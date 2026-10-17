@@ -50,16 +50,18 @@ env:
   npm_config_cache: /Users/runner/tao-cache/npm
   # Verify's installed-tree paths and key, so the cache is shared per runner OS.
   NODE_MODULES_PATHS: |
-    node_modules
-    packages/*/node_modules
-    packages/*/*/node_modules
-    packages/apps/providers/*/node_modules
-    Apps/Hosted CRUD/node_modules
-    !node_modules/.bun/jazz-rn-android@*/node_modules/jazz-rn-android/android
-    !node_modules/.bun/jazz-rn-ios@*/node_modules/jazz-rn-ios/*.xcframework
-    !node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.darwin-*.node
-    !node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.win32-*.node
-    !node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.linux-arm64-*.node
+    old-tao-v1/node_modules
+    ts/node_modules
+    old-tao-v1/packages/*/node_modules
+    old-tao-v1/packages/*/*/node_modules
+    old-tao-v1/packages/apps/providers/*/node_modules
+    old-tao-v1/Apps/Hosted CRUD/node_modules
+    !old-tao-v1/node_modules/.bun/jazz-rn-android@*/node_modules/jazz-rn-android/android
+    !old-tao-v1/node_modules/.bun/jazz-rn-ios@*/node_modules/jazz-rn-ios/*.xcframework
+    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.darwin-*.node
+    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.win32-*.node
+    !old-tao-v1/node_modules/.bun/jazz-napi@*/node_modules/jazz-napi/jazz-napi.linux-arm64-*.node
+    !old-tao-v1/node_modules/.bun/@garden-co+jazz-napi-darwin-arm64@*/node_modules/@garden-co/jazz-napi-darwin-arm64/*.node
 
 jobs:
   macos:
@@ -74,7 +76,7 @@ jobs:
       - name: Cache the Nix store
         uses: nix-community/cache-nix-action@v7
         with:
-          primary-key: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml', 'packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix', '.config/nix/hutch.nix') }}
+          primary-key: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'old-tao-v1/devenv.nix', 'devenv.yaml', 'old-tao-v1/packages/cli/dev-cli/dev-cli-src/environment/toolchain-packages.nix', '.config/nix/hutch.nix') }}
           restore-prefixes-first-match: tao-devenv-nix-${{ runner.os }}-${{ runner.arch }}-
           gc-max-store-size-macos: 6G
 
@@ -89,10 +91,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.NODE_MODULES_PATHS }}
-          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'devenv.lock', 'package.json', 'packages/*/package.json', 'packages/*/*/package.json', 'packages/apps/providers/*/package.json', 'Apps/Hosted CRUD/package.json', 'patches/*.patch') }}
+          key: tao-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('old-tao-v1/bun.lock', 'devenv.lock', 'old-tao-v1/package.json', 'old-tao-v1/packages/*/package.json', 'old-tao-v1/packages/*/*/package.json', 'old-tao-v1/packages/apps/providers/*/package.json', 'old-tao-v1/Apps/Hosted CRUD/package.json', 'old-tao-v1/patches/*.patch', 'ts/bun.lock', 'ts/package.json') }}
 
       - name: Set up Tao
-        run: devenv shell -- ./agent setup
+        working-directory: old-tao-v1
+        run: |
+          devenv shell -- just _tao-project-deps
+          devenv shell -- bun install --cwd ../ts --frozen-lockfile
 
       - name: Save the installed node_modules
         if: steps.macos-node-modules.outputs.cache-hit != 'true'
@@ -113,6 +118,7 @@ jobs:
           # The dispatch input tries one admission for one run; the workflow's own line is the default.
           # (`env` is a step-level context only, so this cannot sit on the job.)
           HOST_GATES: ${{ inputs.host_gates || env.CI_HOST_GATES }}
+        working-directory: old-tao-v1
         run: |
           echo "Admitted host gates: '${HOST_GATES}'"
           devenv shell -- ./agent unsandboxed verify-full-ci --ci-host-gates "$HOST_GATES"

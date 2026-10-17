@@ -1,6 +1,6 @@
 {
   // Use the workspace TypeScript version so Langium generated code typechecks consistently.
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsdk": "ts/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   // Build and install the IDE extension, then restart the extension host (requires extension ryuta46.multi-command).
   "tao.workspaceKeybinding.buildAndRestart": true,
@@ -46,25 +46,21 @@
     "!**/_gen_*/App.tsx": false
   },
   "files.exclude": {
-    // ".artifacts": true,
     ".devenv": true,
     ".direnv": true,
     ".android": true,
-    // ".codex": true,
-    // ".cursor": true,
     "**/.expo": true,
     ".gemini": true,
     ".dprint.jsonc": true,
     "**/.DS_Store": true,
     "**/node_modules": true,
     "**/bun.lock": true,
-    // "**/_gen_*": true,
     "!**/_gen_*/App.tsx": false,
     "devenv.lock": true,
     "devenv.yaml": true,
     "**/tsconfig.tsbuildinfo": true,
     "local.properties": true,
-    // "packages/apps/runtime/android": true,
-    // "packages/apps/runtime/ios": true
+    "old-tao-v1/**/node_modules": true,
+    "old-packages/**/node_modules": true,
   }
 }

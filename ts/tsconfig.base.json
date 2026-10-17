@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "paths": {
+      "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
+      "@shared": ["./shared/shared-src/shared.ts"],
+      "@shared/Time": ["./shared/shared-src/universal/Time.ts"]
+    }
+  }
+}
