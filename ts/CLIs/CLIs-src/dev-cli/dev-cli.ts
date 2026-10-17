@@ -19,12 +19,14 @@ import './commands/verify'
 import { execute } from './commands/_command-runner'
 
 if (Platform.isMain(import.meta)) {
-  const agent = Env.is('TAO_AGENT', '1')
+  const outputPreference = Env.get('TERMINAL_OUTPUT')
+  const testRun = Platform.argv[2] === 'test' || Platform.argv[2] === 'verify'
+  const terminal = outputPreference === undefined ? !testRun : outputPreference === '1'
   IO.config({
-    stdout: agent ? 'log' : 'terminal',
-    stderr: agent ? 'both' : 'terminal',
-    logDirectory: agent ? 'agent' : 'dev',
-    logFile: Env.get('TAO_AGENT_LOG'),
+    stdout: terminal ? 'terminal' : 'log',
+    stderr: terminal ? 'terminal' : 'both',
+    logDirectory: 'dev',
+    logFile: Env.get('OUTPUT_LOG_FILE'),
   })
   await execute()
 }

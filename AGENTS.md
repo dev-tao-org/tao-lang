@@ -20,6 +20,7 @@ These are your rules of usage:
   - Agent commands shared with the developer are imported from the Dev CLI
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
+- `./agent` logs by default; use `TERMINAL_OUTPUT=1 ./agent ...` for terminal output (`0` selects logs). Stderr remains visible.
 - CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
 - Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `old-tao-v1/`; agents check or test the legacy implementation only when its files have changed.
 
@@ -35,6 +36,7 @@ These are your rules of usage:
 - During implementation, ask immediately if a decision is essential or would substantially split the implementation. Continue independent work while awaiting a reply; after three minutes without a response, proceed with best judgment and report the choice at completion. This fallback does not replace explicit approval required for dependencies, destructive actions, publication, landing, or other permission-gated operations.
 - Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
 - Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
+- Write useful observations in `Docs/Agent Notes/` (environment issues in `Dev Env Issues.md`). These notes are never authoritative; keep investigation logs out of roadmaps.
 
 ## Your mission
 

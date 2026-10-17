@@ -5,15 +5,14 @@ import { IO } from './cli-kit'
 Platform.onUncaughtException(fatalError)
 Platform.onUnhandledRejection(fatalError)
 
-function fatalError(error: unknown): never {
+function fatalError(error: unknown): void {
   const commandFailure = Errors.isTaoError(error) && error.name === 'CommandExecutionError'
   const status = commandFailure ? error.result.status : undefined
   Try(() => printError(error), {
-    catch() {
-      return IO.error('\u001b[31m%s\u001b[0m', errorText(error))
+    finally() {
+      Platform.exit(isFailureStatus(status) ? status : 1)
     },
   })
-  Platform.exit(isFailureStatus(status) ? status : 1)
 }
 
 function printError(error: unknown): void {

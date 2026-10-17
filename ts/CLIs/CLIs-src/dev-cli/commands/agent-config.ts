@@ -1,11 +1,13 @@
-import { registerCommand, runLegacyDev } from './_command-runner'
+import { registerCommand } from './_command-runner'
 
-/** agentConfigCommand regenerates root harness adapters through the retained generator. */
+/** agentConfigCommand generates local adapters before installing Codex Git metadata grants. */
 export default registerCommand({
   name: 'agent-config',
   description: 'Regenerate repository harness configuration from its canonical sources.',
   async action() {
-    // The generator remains in the reference until the new harness tooling is implemented.
-    await runLegacyDev('agent-config')
+    const { generateRepositoryAgentConfig } = await import('../../cli-kit/agent-config-generator')
+    await generateRepositoryAgentConfig()
+    const { installGitPermissions } = await import('../../cli-kit/agent-git-permissions')
+    await installGitPermissions()
   },
 })

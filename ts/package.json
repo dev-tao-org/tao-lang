@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
+  "overrides": {
+    "rulesync": { "js-yaml": "5.4.2" },
+    "smol-toml": "1.9.0"
+  },
   "dependencies": {
     "commander": "15.0.0",
     "github": "^14.0.0"
@@ -13,6 +17,8 @@
     "@dprint/markdown": "0.23.2",
     "@dprint/typescript": "0.96.1",
     "knip": "6.34.0",
+    "rulesync": "16.18.0",
+    "smol-toml": "1.9.0",
     "typescript": "5.9.3"
   }
 }

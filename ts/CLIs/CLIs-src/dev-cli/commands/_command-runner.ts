@@ -29,12 +29,12 @@ export type RegisteredCommand<Args extends unknown[]> = Omit<CommandDefinition<A
 const commands: CommandDefinition<unknown[]>[] = []
 
 if (Platform.isMain(import.meta)) {
-  const agent = Env.is('TAO_AGENT', '1')
+  const terminal = !Env.is('TERMINAL_OUTPUT', '0')
   IO.config({
-    stdout: agent ? 'log' : 'terminal',
-    stderr: agent ? 'both' : 'terminal',
-    logDirectory: agent ? 'agent' : 'dev',
-    logFile: Env.get('TAO_AGENT_LOG'),
+    stdout: terminal ? 'terminal' : 'log',
+    stderr: terminal ? 'terminal' : 'both',
+    logDirectory: 'dev',
+    logFile: Env.get('OUTPUT_LOG_FILE'),
   })
   // Defer setup's import until this module finishes initializing: setup registers through this module.
   // Commander and the development command registry are loaded only after dependencies exist.
@@ -126,11 +126,6 @@ export async function execute(name = 'dev'): Promise<void> {
   await parser.parseAsync(Platform.argv)
 }
 
-/** runLegacyDev delegates existing CLI workflows to the reference implementation. */
-export async function runLegacyDev(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<void> {
-  await runCommand(`./dev ${command}`, { variadicArgs: options.variadicArgs, cwd: legacyRoot })
-}
-
 const legacyRoot = Repo.resolvePath('old-tao-v1')
 
 /** workspaceTypes checks only the new TypeScript workspace. */
@@ -155,13 +150,12 @@ export async function workspaceDeadExports(): Promise<void> {
   await runCommand('knip --config knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
-/** workspaceTests runs workspace tests with dots, file logs and end-of-run slow-test warnings. */
+/** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await withTestTimings(reportPath =>
     runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
       cwd: Repo.resolvePath('ts'),
-      stdout: 'log',
     })
   )
 }

@@ -1,0 +1,51 @@
+name: TypeScript workspace
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typescript-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: TypeScript setup, check and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TERMINAL_OUTPUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: tao-typescript-nix-${{ runner.os }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml') }}
+          restore-prefixes-first-match: tao-typescript-nix-${{ runner.os }}-
+          gc-max-store-size-linux: 6G
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+      - name: Install devenv
+        run: nix profile add nixpkgs#devenv
+      - name: Install workspace dependencies
+        run: ./agent setup --frozen-lockfile
+      - name: Check workspace
+        run: ./agent check
+      - name: Test workspace
+        run: ./agent test
+      - name: Ensure validation kept tracked files unchanged
+        run: git diff --exit-code
+      - name: Upload logs and test timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-logs
+          path: .artifacts/logs/
+          if-no-files-found: ignore

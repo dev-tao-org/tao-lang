@@ -1,2 +1,3 @@
+export { homedir as homeDirectory } from 'node:os'
 export { basename, dirname, isAbsolute, join, posix, relative, resolve } from 'node:path'
 export { fileURLToPath } from 'node:url'
