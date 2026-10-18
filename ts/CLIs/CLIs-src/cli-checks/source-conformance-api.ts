@@ -3,7 +3,19 @@ import * as TypeScript from 'typescript'
 /** ApiGroup describes declarations which share one exported API name. */
 export type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
 
-/** isFunctionProperty detects function-valued object properties. */
+function isValueReturningFunction(fn: TypeScript.ArrowFunction | TypeScript.FunctionExpression): boolean {
+  const body = fn.body
+  if (!TypeScript.isBlock(body)) {
+    return true
+  }
+  const statements = body.statements.filter(statement => !TypeScript.isEmptyStatement(statement))
+  if (statements.length !== 1 || !TypeScript.isReturnStatement(statements[0])) {
+    return false
+  }
+  return statements[0].expression !== undefined
+}
+
+/** isFunctionProperty detects disallowed function-valued object properties. */
 export function isFunctionProperty(node: TypeScript.Node): boolean {
   if (!TypeScript.isPropertyAssignment(node)) {
     return false
@@ -12,7 +24,17 @@ export function isFunctionProperty(node: TypeScript.Node): boolean {
   while (isExpressionWrapper(value)) {
     value = value.expression
   }
-  return TypeScript.isArrowFunction(value) || TypeScript.isFunctionExpression(value)
+  if (TypeScript.isArrowFunction(value) && isCatchProperty(node) && isValueReturningFunction(value)) {
+    return false
+  }
+  if (TypeScript.isArrowFunction(value)) {
+    return true
+  }
+  return TypeScript.isFunctionExpression(value)
+}
+
+function isCatchProperty(node: TypeScript.PropertyAssignment): boolean {
+  return TypeScript.isIdentifier(node.name) && node.name.text === 'catch'
 }
 
 /** docs collects JSDoc comments attached to declarations. */

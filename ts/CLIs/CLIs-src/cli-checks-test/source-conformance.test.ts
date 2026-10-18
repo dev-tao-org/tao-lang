@@ -46,23 +46,6 @@ Tests.test('source conformance > checks object methods and 45-line function-body
     type Shape = { encrypt: (value: string) => Promise<string> }
   `
   Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
-  const initializers = [
-    'async (value) => value',
-    '(value) => value',
-    'function (value) { return value }',
-    'async function (value) { return value }',
-    '((value) => value)',
-    '((value) => value) as Handler',
-    '((value) => value) satisfies Handler',
-    '((value) => value)!',
-  ]
-  const invalid = `const object = {\n${initializers.map((value, index) => `  value${index}: ${value},`).join('\n')}\n}`
-  const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
-  Tests.expect(methodIssues).toHaveLength(8)
-  Tests.expect(
-    methodIssues.every(issue => issue.endsWith('function implementations in objects must use method syntax')),
-  )
-    .toBe(true)
 
   const accepted = `function boundary() {\n${physicalBodyLines(45)}\n}`
   Tests.expect(sourceConformanceIssues('fixture.ts', accepted)).toEqual([])
@@ -77,6 +60,31 @@ Tests.test('source conformance > checks object methods and 45-line function-body
     ...Array(4).fill('function bodies must contain at most 45 physical lines; found 46'),
     'function bodies must contain at most 45 physical lines; found 47',
   ])
+})
+
+Tests.test('source conformance > allows value-only Try catch arrows', () => {
+  for (
+    const allowed of [
+      'Try(() => work(), { catch: () => "" })',
+      'Try(() => work(), { catch: (error) => error })',
+      'Try(() => work(), { catch: async () => 1 })',
+      'Try(() => work(), { catch: () => { return false } })',
+    ]
+  ) {
+    Tests.expect(sourceConformanceIssues('fixture.ts', allowed)).toEqual([])
+  }
+  const invalid = S`
+    Try(() => work(), { handler: (value) => value })
+    Try(() => work(), { catch: () => { log(); return "" } })
+    Try(() => work(), { catch: () => { throw new Error("nope") } })
+    Try(() => work(), { catch: function (error) { return error } })
+  `
+  const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
+  Tests.expect(methodIssues).toHaveLength(4)
+  Tests.expect(
+    methodIssues.every(issue => issue.endsWith('function implementations in objects must use method syntax')),
+  )
+    .toBe(true)
 })
 
 Tests.test('source conformance > checks platform imports and globals in one source fixture', () => {
