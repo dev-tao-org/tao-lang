@@ -15,9 +15,12 @@ Tests.test('agent test summarizes results and warnings while retaining full outp
     Platform.readText(child.stderr),
   ])
   Tests.expect(status).toBe(0)
-  Tests.expect(stderr).toContain('Warning recorded: Slow tests (>0 ms):')
-  Tests.expect(stderr).toMatch(/Completed: [1-9]\d* warning\(s\), 0 error\(s\)/)
-  Tests.expect(stdout + stderr).not.toContain('a per-run threshold uses seconds')
+  const completed = stderr.indexOf('Completed: ')
+  Tests.expect(completed).toBeGreaterThanOrEqual(0)
+  Tests.expect(stderr.slice(completed)).toMatch(/Completed: [1-9]\d* warning\(s\), 0 error\(s\)/)
+  Tests.expect(stderr.slice(completed)).toContain('Warning: [TypeScript tests] Slow tests (>0 ms):')
+  Tests.expect(stderr.slice(completed)).toMatch(/Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/)
+  Tests.expect(stdout + stderr.slice(0, completed)).not.toContain('a per-run threshold uses seconds')
   const logPath = /Logs: (.+\.log)/.exec(stderr)?.[1]
   Tests.expect(logPath).toBeDefined()
   const log = await FileSystem.readFile(Repo.resolvePath(logPath!), 'utf8')
@@ -32,6 +35,15 @@ Tests.test('fresh setup finds package tools installed after the launcher prepare
   await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-environment-'))
   await Try(async () => {
+    await FileSystem.mkdir(Path.join(root, '.config'), { recursive: true })
+    await FileSystem.cp(
+      Repo.resolvePath('.config/prepared-environment.sh'),
+      Path.join(root, '.config/prepared-environment.sh'),
+    )
+    await FileSystem.cp(Repo.resolvePath('.config/cli-environment.sh'), Path.join(root, '.config/cli-environment.sh'))
+    for (const file of ['devenv.nix', 'devenv.yaml', 'devenv.lock']) {
+      await FileSystem.writeFile(Path.join(root, file), '', 'utf8')
+    }
     await FileSystem.mkdir(Path.join(root, 'ts/1-grammar'), { recursive: true })
     await FileSystem.writeFile(Path.join(root, 'ts/1-grammar/package.json'), '{}', 'utf8')
     const tool = Path.join(root, 'fixture-tool')

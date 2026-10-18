@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { Tests } from '@shared/os'
+import { Repo, Tests } from '@shared/os'
 import { parseSlowTestSeconds, slowTestWarnings } from '../cli-checks/slow-tests'
 
 Tests.test('a per-run threshold uses seconds and warns strictly above the boundary', () => {
@@ -33,8 +33,8 @@ Tests.describe('slow test warnings', () => {
     `)
     Tests.expect(warnings).toEqual([
       'Slow tests (>75 ms):',
-      '  250.00 ms  commands > slowest (commands.test.ts)',
-      '  75.01 ms  nested suite > slow (commands.test.ts)',
+      `  ${Repo.resolvePath('ts/commands.test.ts')}  250.00 ms  commands > slowest`,
+      `  ${Repo.resolvePath('ts/commands.test.ts')}  75.01 ms  nested suite > slow`,
     ])
   })
 
@@ -57,9 +57,9 @@ Tests.describe('slow test warnings', () => {
     `)
     Tests.expect(warnings).toEqual([
       'Slow tests (>75 ms):',
-      '  123.00 ms  outer > A > B "value" & \'x\' 🐱 (file & name.test.ts)',
-      '  102.00 ms  outer > after inner (file & name.test.ts)',
-      '  101.00 ms  inner > nested (inner.test.ts)',
+      `  ${Repo.resolvePath('ts/file & name.test.ts')}  123.00 ms  outer > A > B "value" & 'x' 🐱`,
+      `  ${Repo.resolvePath('ts/file & name.test.ts')}  102.00 ms  outer > after inner`,
+      `  ${Repo.resolvePath('ts/inner.test.ts')}  101.00 ms  inner > nested`,
     ])
     Tests.expect(slowTestWarnings('<testsuite><testcase name="fast" time="0.01" /></testsuite>')).toEqual([])
   })

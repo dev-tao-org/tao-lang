@@ -60,6 +60,7 @@ let files = createFileOutput({})
 let tui = false
 let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
+let warningDetails: string[] = []
 let output = createOutput(writeOutput)
 
 function configureOutput(options: IOConfiguration): void {
@@ -69,6 +70,7 @@ function configureOutput(options: IOConfiguration): void {
   configuration = options
   lastMainOutput = ''
   diagnostics = { warn: 0, error: 0 }
+  warningDetails = []
   plain = createPlainOutput()
   files = createFileOutput(options)
   output = createOutput(writeOutput)
@@ -104,12 +106,19 @@ function countDiagnostic(event: OutputEvent): void {
     return
   }
   diagnostics[event.level]++
-  if (diagnostics[event.level] === 1 && isQuiet() && !configuration.forwardEvents && !tui) {
-    const message = event.level === 'warn'
-      ? Text.stripAnsi(event.text).split('\n')[0]!.slice(0, 240)
-      : 'See the log for details.'
-    Terminal.stderr.write(`${event.level === 'warn' ? 'Warning' : 'Error'} recorded: ${message}\n`)
+  if (event.level === 'warn') {
+    if (!configuration.forwardEvents) {
+      warningDetails.push(formatWarningDetail(event))
+    }
+  } else if (diagnostics.error === 1 && isQuiet() && !configuration.forwardEvents && !tui) {
+    Terminal.stderr.write('Error recorded: See the log for details.\n')
   }
+}
+
+function formatWarningDetail(event: OutputEvent): string {
+  const channel = event.main ? '' : `[${event.channel.title}] `
+  const message = Text.stripAnsi(event.text).replace(/\s+/g, ' ').trim()
+  return `Warning: ${channel}${message}`.slice(0, 240)
 }
 
 function isQuiet(): boolean {
@@ -143,6 +152,9 @@ async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<voi
           Path.relative(Repo.getWorkspaceRoot(), files.path)
         }\n`,
       )
+      for (const warning of warningDetails) {
+        Terminal.stderr.write(warning + '\n')
+      }
     }
   }
 }

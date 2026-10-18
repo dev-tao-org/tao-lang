@@ -17,6 +17,8 @@ backup pushes are authorized below; other publication needs the Developer's auth
 
 ## Backup pushes
 
+- Use `./agent unsandboxed git <operation>` for supported Git mutations; the harness must grant host execution. Keep ordinary read-only Git inspection sandboxed. Do not install machine-local Git filesystem grants as a prerequisite.
+
 - Push committed work to `origin` after a meaningful completed chunk or before a substantial
   handoff, rather than after every commit. Report a failed backup and retain it as an unresolved
   task complication; local commits alone are not an origin backup.

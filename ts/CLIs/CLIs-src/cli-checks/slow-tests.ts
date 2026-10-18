@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { Artifacts, Path, Platform } from '@shared/os'
+import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
@@ -38,11 +38,7 @@ export function slowTestWarnings(report: string, slowSeconds = 0.075): string[] 
   }
   return [
     `Slow tests (>${slowSeconds * 1000} ms):`,
-    ...slow.map(test =>
-      `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
-        test.file ? ' (' + test.file + ')' : ''
-      }`
-    ),
+    ...slow.map(formatSlowTest),
   ]
 }
 
@@ -71,6 +67,12 @@ async function prepareTestReport(): Promise<string | undefined> {
 }
 
 type TimedTest = { name: string; suite?: string; file?: string; seconds: number; skipped: boolean }
+
+function formatSlowTest(test: TimedTest): string {
+  const location = test.file ? Repo.resolvePath('ts', test.file) + '  ' : ''
+  const suite = test.suite && test.suite !== test.file ? test.suite + ' > ' : ''
+  return `  ${location}${(test.seconds * 1000).toFixed(2)} ms  ${suite}${test.name}`
+}
 
 function readTestCases(report: string): TimedTest[] {
   const suites: Record<string, string>[] = []

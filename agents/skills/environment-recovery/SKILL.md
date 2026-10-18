@@ -27,8 +27,7 @@ behind it.
 
 ## The devenv profile
 
-- Root `./agent` and `./dev` enter their checkout's devenv automatically and expose workspace
-  executable links on PATH. Dependency installation stays explicit through `./agent setup`;
+- Root CLI entrypoints reuse a prepared devenv profile whose recorded inputs and profile target still match, including a matching primary-checkout profile for worktrees. Cold or changed inputs enter devenv once to prepare it; ordinary reuse does not create new GC roots. Dependency installation stays explicit through `./agent setup`;
   `dev-automation` owns the harness setup entrypoints.
 - Linux without devenv can reuse a prepared portable Nix profile; the entrypoint checks its locked
   identity through the tools-only bootstrap. Without either environment, it reports what is missing

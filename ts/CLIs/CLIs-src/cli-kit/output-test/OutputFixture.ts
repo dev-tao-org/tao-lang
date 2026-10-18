@@ -23,7 +23,7 @@ async function runFixture(): Promise<void> {
   await configureCLIOutput(mode === 'dev-child' ? 'dev' : 'agent')
   IO.print('fixture routine details')
   IO.channel({ title: 'tool' }).stderr('ordinary tool stderr\n')
-  IO.warn('fixture warning')
+  IO.warn('\u001b[33mfixture warning\u001b[0m\n  at /tmp/fixture.ts:12')
   if (mode === 'parent' || mode === 'failed') {
     await runCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
   }

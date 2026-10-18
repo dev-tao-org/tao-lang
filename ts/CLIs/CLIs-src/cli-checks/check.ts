@@ -90,6 +90,7 @@ export async function workspaceShellSyntax(): Promise<void> {
       'tao',
       'enter-tao-dev-env.sh',
       '.config/cli-environment.sh',
+      '.config/prepared-environment.sh',
       '.config/bootstrap-tao-dev-env',
       '.config/nix/nix-bootstrap.sh',
       '.cursor/worktree-setup.sh',

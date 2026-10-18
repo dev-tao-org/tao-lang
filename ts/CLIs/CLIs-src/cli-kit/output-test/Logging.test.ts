@@ -10,6 +10,14 @@ Tests.test('agent logs preserve levels, nested warnings and stderr while termina
     Tests.expect(log).toContain('[info stderr] [tool] ordinary tool stderr')
     Tests.expect(log).toContain('[warn stdout]')
     Tests.expect(stderr).toContain('2 warning(s)')
+    if (!terminalOutput) {
+      const completed = stderr.search(/(?:Completed|Failed): 2 warning\(s\)/)
+      const details = stderr.slice(completed)
+      Tests.expect(completed).toBeGreaterThanOrEqual(0)
+      Tests.expect(details.match(/^Warning: /gm)?.length).toBe(2)
+      Tests.expect(details).toContain('fixture warning at /tmp/fixture.ts:12')
+      Tests.expect(details).not.toContain('\u001b[')
+    }
     Tests.expect(stdout).not.toContain('\u001e')
     Tests.expect(stdout).toContain('fixture result')
     Tests.expect(status).toBe(mode === 'failed' ? 1 : 0)

@@ -1,11 +1,15 @@
 # Sourced by the thin CLI entrypoints before Bun or workspace dependencies are loaded.
 repository=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$repository/.config/prepared-environment.sh"
+tao_environment_key=$(tao_environment_identity "$repository")
 active_environment=
 if [ -n "${DEVENV_ROOT:-}" ]; then
   active_environment=$(CDPATH= cd -- "$DEVENV_ROOT" 2>/dev/null && pwd -P) || active_environment=
 fi
 if [ "${TAO_DEVENV:-}" != 1 ] || [ "$active_environment" != "$repository" ]; then
-  if ! command -v devenv >/dev/null 2>&1; then
+  if tao_reuse_prepared_environment; then
+    : # Reuse the prepared generation without another devenv activation or GC-root write.
+  elif ! command -v devenv >/dev/null 2>&1; then
     if [ "$(uname -s)" = Linux ] && [ -d "$repository/.devenv/portable-generations" ]; then
       "$repository/.config/bootstrap-tao-dev-env" --tools-only
       export PATH="$repository/.devenv/profile/bin:$PATH"
@@ -19,9 +23,11 @@ if [ "${TAO_DEVENV:-}" != 1 ] || [ "$active_environment" != "$repository" ]; the
   else
     entrypoint=$(basename -- "$0")
     cd "$repository"
+    export TAO_ENVIRONMENT_INPUTS="$tao_environment_key"
     exec devenv shell --no-tui -- "$repository/$entrypoint" "$@"
   fi
 fi
+tao_record_prepared_environment
 if [ "${TAO_DEVENV_KIND:-}" = portable ]; then
   export LD_LIBRARY_PATH="$repository/.devenv/profile/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
