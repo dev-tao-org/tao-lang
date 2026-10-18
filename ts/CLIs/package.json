@@ -9,6 +9,7 @@
     "@tao/grammar": "workspace:*",
     "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
+    "@tao/typecheck": "workspace:*",
     "@tao/workspace": "workspace:*",
     "commander": "15.0.0",
     "github": "^14.0.0",

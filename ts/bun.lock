@@ -56,6 +56,7 @@
         "@tao/shared": "workspace:*",
       },
       "devDependencies": {
+        "@tao/grammar": "workspace:*",
         "@types/bun": "1.4.0",
       },
     },
@@ -118,6 +119,7 @@
         "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/typecheck": "workspace:*",
         "@tao/workspace": "workspace:*",
         "commander": "15.0.0",
         "github": "^14.0.0",

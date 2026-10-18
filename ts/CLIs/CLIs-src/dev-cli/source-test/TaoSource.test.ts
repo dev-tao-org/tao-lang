@@ -13,13 +13,18 @@ Tests.test('source commands organize imports, format valid declarations and pres
 
 async function runSourceCommands(path: string): Promise<void> {
   const messages: string[] = []
+  const warnings: string[] = []
   const print = (message: string) => {
     messages.push(message)
   }
   await FileSystem.writeFile(path, 'use Text from @tao/ui\nuse Col from @tao/ui\nview Main{render Text( "Hi" )}')
-  await updateTaoSource(path, 'fix', print)
+  await updateTaoSource(path, 'fix', print, message => warnings.push(message))
   Tests.expect(await FileSystem.readFile(path, 'utf8'))
     .toBe('use Col, Text from @tao/ui\n\nview Main {\n  render Text("Hi")\n}')
+  Tests.expect(warnings).toEqual([
+    `${path}:1:5 [unused-import] Imported name 'Col' is not used in this file.`,
+    `${path}:3:6 [unused-declaration] Declaration 'Main' is not used in this file.`,
+  ])
   const invalid = 'view Main{render Text( "Hi" )}\n\nview Editing('
   await FileSystem.writeFile(path, invalid)
   await Tests.expect(updateTaoSource(path, 'fix', print)).rejects.toThrow('complete Tao document')
@@ -33,4 +38,5 @@ async function runSourceCommands(path: string): Promise<void> {
     'view Native {\n  render inject ```ts\n    const n = 1\n    return <Text value={n} />\n  ```\n}',
   )
   Tests.expect(messages).toHaveLength(3)
+  Tests.expect(warnings).toHaveLength(2)
 }

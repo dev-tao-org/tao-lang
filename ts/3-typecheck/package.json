@@ -8,6 +8,7 @@
     "@tao/shared": "workspace:*"
   },
   "devDependencies": {
+    "@tao/grammar": "workspace:*",
     "@types/bun": "1.4.0"
   }
 }
