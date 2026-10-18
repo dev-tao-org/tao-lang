@@ -6,7 +6,7 @@ Compare equivalent inputs and workloads under comparable host and cache conditio
 
 Investigate measured increases, including whether they reflect noise or additional work. Try reasonable improvements and measure again. Continue until improvements show diminishing returns or further optimization would add too much complexity for the slice. Record any remaining increase, its cause, attempted improvements and the reason for stopping; do not hide regressions by weakening tests or raising budgets.
 
-Keep results in a named document in this directory. Each record includes:
+Keep working measurements in `.artifacts/notes/`; add or update documents here when the developer instructs it. Each measurement record includes:
 
 - Scenario, command, fixture, baseline and candidate commits.
 - Platform, tool versions, host conditions and cold/warm definitions.
@@ -16,4 +16,8 @@ Keep results in a named document in this directory. Each record includes:
 
 ## First Hello World slice
 
-Measure Tao parsing, CST-to-AST transformation and code generation, plus the complete Tao pipeline. Record web, headless iOS and headless Android build, launch and test costs separately, including cold and warm runs and total parallel CI wall time. Reuse the generated Tao output across platform jobs while measuring their distinct platform work. Establish these measurements during implementation; no timings have been established yet.
+The [first parser baseline](First%20parser%20baseline.md) records the independent Tree-sitter parser's startup and full-parse measurements. `./agent performance parser` runs directly, in local verify and in TypeScript CI, and now includes full-source AST and code generation. The [first Expo preview baseline](First%20Expo%20preview%20baseline.md) records the two-frame pipeline and both refresh-completion signals.
+
+The [first editor extension baseline](First%20editor%20extension%20baseline.md) records incremental Tao parsing, embedded TSX parsing and highlighting queries. Run it with `./agent performance extension`; it excludes editor rendering.
+
+Measure CST-to-AST transformation and code generation as they arrive, then the complete Tao pipeline and the runtime's granular operations through the two-iframe harness. Record web, headless iOS and headless Android build, launch and test costs separately, including cold and warm runs and total parallel CI wall time. Reuse the generated Tao output across platform jobs while measuring their distinct platform work.

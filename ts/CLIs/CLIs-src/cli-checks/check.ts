@@ -1,6 +1,9 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { Env, FileSystem, Path, Repo } from '@shared/os'
+import { checkEditorTypeScript } from './editor-typescript'
+import { prepareParser } from './parser-build'
+import { prepareRuntime } from './runtime-build'
 import { withTestTimings } from './slow-tests'
 
 /** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
@@ -30,7 +33,7 @@ export async function assertNewWorkspaceTree(): Promise<void> {
   const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await FileSystem.readdir(directory, { withFileTypes: true })) {
-      if (entry.name === 'node_modules') {
+      if (entry.name === 'node_modules' || entry.name.startsWith('_gen_')) {
         continue
       }
       const path = `${directory}/${entry.name}`
@@ -51,7 +54,28 @@ export async function assertNewWorkspaceTree(): Promise<void> {
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand('tsc --project tsconfig.json', {
+  await checkEditorTypeScript()
+  const packages = [
+    '0-workspace',
+    '1-grammar',
+    '2-ast-gen',
+    '3-typecheck',
+    '4-fix',
+    '5-check',
+    '6-compile',
+    '7-runtime',
+    'CLIs',
+    'ide-extension',
+    'perf',
+    'shared',
+  ]
+  const discoveredProjects = await Promise.all(packages.map(async project => {
+    const sourceFiles = await FileSystem.sourceFiles(Repo.resolvePath('ts', project))
+    return sourceFiles.length > 0 ? project : undefined
+  }))
+  const projects = discoveredProjects.filter((project): project is string => project !== undefined)
+  await runCommand('tsc --build', {
+    variadicArgs: projects.map(project => `${project}/tsconfig.json`),
     cwd: Repo.resolvePath('ts'),
   })
 }
@@ -62,10 +86,12 @@ export async function workspaceShellSyntax(): Promise<void> {
     const path of [
       'agent',
       'dev',
+      'tao',
       'enter-tao-dev-env.sh',
       '.config/cli-environment.sh',
       '.config/bootstrap-tao-dev-env',
       '.config/nix/nix-bootstrap.sh',
+      '.cursor/worktree-setup.sh',
     ]
   ) {
     await runCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })
@@ -87,14 +113,36 @@ export async function workspaceDeadExports(): Promise<void> {
   await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
-/** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
+/** workspaceTests runs named CI tests or local dots, with end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
+  await prepareParser()
+  await prepareRuntime()
+  if (shouldPrepareExtensionAssets(args)) {
+    const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
+    await prepareExtensionAssets()
+  }
+  const command = Env.get('CI') ? 'bun test' : 'bun test --dots'
   await withTestTimings(reportPath =>
-    runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
+    runCommand(reportPath ? `${command} --reporter=junit --reporter-outfile` : command, {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
       cwd: Repo.resolvePath('ts'),
     })
   )
+}
+
+/** shouldPrepareExtensionAssets selects test runs that need the authored IDE asset tree. */
+export function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
+  if (args.length === 0) {
+    return true
+  }
+  const root = Repo.getWorkspaceRoot()
+  const workspace = Path.resolve(root, 'ts')
+  return args.some(argument => {
+    if (argument === '--test-name-pattern' || argument.includes('ide-extension')) {
+      return true
+    }
+    return isWithinDirectory(workspace, Path.resolve(root, argument))
+  })
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

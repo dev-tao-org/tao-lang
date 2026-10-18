@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { sourceConformanceIssues } from '../cli-checks/source-conformance'
 
 const builtinImportIssue = 'runtime builtin imports belong in @shared/os'
@@ -39,31 +39,16 @@ const invalidMultilineStrings = [
   '  const value = S`\n    first\n`',
 ]
 
-Test.test('source conformance > checks object methods and 45-line function-body boundaries', () => {
+Tests.test('source conformance > checks object methods and 45-line function-body boundaries', () => {
   const valid = S`
     const encrypt = async (value: string) => value
-    const object = { encrypt, async decrypt(value: string) { return value }, *values() { yield 1 } }
+    const object = { encrypt, async decrypt(value: string) { record(value); return value }, *values() { yield 1 } }
     type Shape = { encrypt: (value: string) => Promise<string> }
   `
-  Test.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
-  const initializers = [
-    'async (value) => value',
-    '(value) => value',
-    'function (value) { return value }',
-    'async function (value) { return value }',
-    '((value) => value)',
-    '((value) => value) as Handler',
-    '((value) => value) satisfies Handler',
-    '((value) => value)!',
-  ]
-  const invalid = `const object = {\n${initializers.map((value, index) => `  value${index}: ${value},`).join('\n')}\n}`
-  const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
-  Test.expect(methodIssues).toHaveLength(8)
-  Test.expect(methodIssues.every(issue => issue.endsWith('function implementations in objects must use method syntax')))
-    .toBe(true)
+  Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
 
   const accepted = `function boundary() {\n${physicalBodyLines(45)}\n}`
-  Test.expect(sourceConformanceIssues('fixture.ts', accepted)).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', accepted)).toEqual([])
   const rejected = [
     `function tooLong() {\n${physicalBodyLines(46)}\n}`,
     `class Service {\n  run() {\n${physicalBodyLines(46)}\n  }\n}`,
@@ -71,21 +56,60 @@ Test.test('source conformance > checks object methods and 45-line function-body 
     `const callback = () => {\n${physicalBodyLines(46)}\n}`,
     `const expression = () => (\n${Array.from({ length: 44 }, () => '  value,').join('\n')}\n  value\n)`,
   ].join('\n')
-  Test.expect(messages(sourceConformanceIssues('fixture.ts', rejected))).toEqual([
+  Tests.expect(messages(sourceConformanceIssues('fixture.ts', rejected))).toEqual([
     ...Array(4).fill('function bodies must contain at most 45 physical lines; found 46'),
     'function bodies must contain at most 45 physical lines; found 47',
   ])
 })
 
-Test.test('source conformance > checks platform imports and globals in one source fixture', () => {
+Tests.test('source conformance > prefers concise arrows for single-return object functions', () => {
+  const valid = S`
+    Try(() => work(), { catch: () => "" })
+    Try(() => work(), { catch: error => error })
+    Try(() => work(), { catch(error) { log(error); return error } })
+    Try(() => work(), { async catch() { await recover() } })
+  `
+  Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
+  const invalid = S`
+    Try(() => work(), { catch(error) { return error } })
+    Try(() => work(), { handler: (value) => { return value } })
+    Try(() => work(), { catch: (error) => { log(error); return error } })
+    Try(() => work(), { catch: function (error) { return error } })
+  `
+  const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
+  Tests.expect(methodIssues).toHaveLength(4)
+  Tests.expect(methodIssues.filter(issue =>
+    issue.endsWith(
+      'single-return object functions should use expression-bodied arrow properties',
+    )
+  )).toHaveLength(3)
+  Tests.expect(methodIssues.filter(issue => issue.endsWith('multi-statement object functions must use method syntax')))
+    .toHaveLength(1)
+})
+
+Tests.test('source conformance > retains object methods with sensitive bindings', () => {
+  const source = S`
+    const object = {
+      thisValue() { return this.value },
+      argumentValue() { return arguments[0] },
+      superValue() { return super.value },
+      explicitThis(this: object) { return 1 },
+      computedName() { return { [this.value]() {} } },
+      namedFunction: function self() { return self },
+    }
+  `
+  Tests.expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
+})
+
+Tests.test('source conformance > checks platform imports and globals in one source fixture', () => {
   const source = platformViolations.join('\n')
   const issues = messages(sourceConformanceIssues('ts/feature.ts', source)).toSorted()
-  Test.expect(issues).toEqual([
+  Tests.expect(issues).toEqual([
     ...Array(6).fill(builtinImportIssue),
     ...Array(13).fill(platformGlobalIssue),
   ].toSorted())
-  Test.expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
-  Test.expect(messages(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toSorted())
+  Tests.expect(sourceConformanceIssues('ts/shared/shared-src/os/Platform.ts', source)).toEqual([])
+  Tests.expect(messages(sourceConformanceIssues('ts/shared/shared-src/os-other/Platform.ts', source)).toSorted())
     .toEqual(issues)
 
   const allowedTime = S`
@@ -95,24 +119,24 @@ Test.test('source conformance > checks platform imports and globals in one sourc
     setTimeout(() => {}, 1)
     const prohibited = process.pid
   `
-  Test.expect(messages(sourceConformanceIssues('ts/shared/shared-src/universal/Time.ts', allowedTime))).toEqual([
+  Tests.expect(messages(sourceConformanceIssues('ts/shared/shared-src/universal/Time.ts', allowedTime))).toEqual([
     platformGlobalIssue,
   ])
 })
 
-Test.test('source conformance > requires S for multiline literals and honors exact content indentation', () => {
+Tests.test('source conformance > requires S for multiline literals and honors exact content indentation', () => {
   const issues = messages(sourceConformanceIssues('fixture.ts', invalidMultilineStrings.join('\n'))).toSorted()
-  Test.expect(issues).toEqual([
+  Tests.expect(issues).toEqual([
     ...Array(3).fill(multilineStringIssue),
     ...Array(4).fill(invalidSLayoutIssue),
   ].toSorted())
-  Test.expect(sourceConformanceIssues('fixture.ts', 'type Pattern = `first\nsecond`')).toEqual([])
-  Test.expect(sourceConformanceIssues('fixture.ts', "const value = 'first\\nsecond'")).toEqual([])
-  Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  first\n    nested\n`')).toEqual([])
-  Test.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  ${\n    format(value)\n  }\n`')).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', 'type Pattern = `first\nsecond`')).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', "const value = 'first\\nsecond'")).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  first\n    nested\n`')).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', 'const value = S`\n  ${\n    format(value)\n  }\n`')).toEqual([])
 })
 
-Test.test('source conformance > checks comments and exact native-try exception in combined fixtures', () => {
+Tests.test('source conformance > checks comments and exact native-try exception in combined fixtures', () => {
   const invalid = S`
     /* header */
     const value = /* value */ 1 /* trailing */
@@ -120,7 +144,7 @@ Test.test('source conformance > checks comments and exact native-try exception i
     function work() { try { work() } finally { cleanup() } }
   `
   const issues = messages(sourceConformanceIssues('fixture.ts', invalid)).toSorted()
-  Test.expect(issues).toEqual([
+  Tests.expect(issues).toEqual([
     'use // lines instead of non-JSDoc block comments',
     'use // lines instead of non-JSDoc block comments',
     'use // lines instead of non-JSDoc block comments',
@@ -132,10 +156,10 @@ Test.test('source conformance > checks comments and exact native-try exception i
     'const template = `/* head */ ${1} /* tail */ try {} catch {}`',
     String.raw`const pattern = /\/\*.*\*\//`,
   ].join('\n')
-  Test.expect(sourceConformanceIssues('fixture.ts', ignoredSyntax)).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', ignoredSyntax)).toEqual([])
   const tryStatement = 'function work() { try { work() } finally { cleanup() } }'
-  Test.expect(sourceConformanceIssues('ts/shared/shared-src/universal/TryCatch.ts', tryStatement)).toEqual([])
-  Test.expect(sourceConformanceIssues('ts/other/TryCatch.ts', tryStatement)).toHaveLength(1)
+  Tests.expect(sourceConformanceIssues('ts/shared/shared-src/universal/TryCatch.ts', tryStatement)).toEqual([])
+  Tests.expect(sourceConformanceIssues('ts/other/TryCatch.ts', tryStatement)).toHaveLength(1)
 })
 
 function physicalBodyLines(count: number): string {

@@ -1,39 +1,20 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/hooks-schema.json",
   // Canonical agent lifecycle hooks for this repository, one source for two harnesses.
-  // The reference `./dev agent-config` renders them through rulesync into .claude/settings.json and
-  // .codex/hooks.json. Edit this file, never the generated ones. Keep every command
-  // Hook implementations remain under .x-tao-old-v1 until ported; configuration stays at the Git root.
+  // Root `./agent agent-config` renders them into .claude/settings.json and .codex/hooks.json.
+  // Edit this file, never the generated hooks. Other hook implementations remain in the reference.
   // Keep commands harness-neutral: discover the worktree root through Git so a harness launched from any
   // repository subdirectory reaches the same script, and use no field one harness does not document.
   "hooks": {
-    // Every local harness reaches the repository's one setup entry, `./agent setup`, before an agent's
-    // first command. Worktrunk runs it from its blocking `pre-start` hook (.config/wt.toml) and
-    // Cursor from its worktree setup (.cursor/worktrees.json); a worktree Claude Code or Codex
-    // creates itself — `--worktree`, `isolation: "worktree"`, a background session — passes
-    // through neither, so it would start with no node_modules and no generated agent adapters,
-    // and an agent would meet a checkout where `bun test` and `tsc` fail for reasons that look
-    // like product breakage. This hook gives that path the same guarantee. Hooks run as ordinary
-    // processes outside the Bash sandbox, which matters for Claude Code: its sandbox denies the
-    // writes a dependency install needs under paths it protects.
-    //
-    // Root `./agent setup` installs the TypeScript workspace dependencies. Parser/native generation,
-    // project dependencies, Git hooks and completion remain reference workflows until ported;
-    // `./dev agent-config` regenerates the retained root harness adapters explicitly.
-    // When Claude Code hands the POSIX hook CLAUDE_ENV_FILE, it exports the reference profile's
-    // bin directory onto the PATH of every later Bash tool command. Setup stays quiet; after it
-    // completes, the model-routing notice reaches the agent only when the routing table looks
-    // behind the models this machine runs. Every verified Claude Code cloud Linux session first
-    // enters .config/bootstrap-tao-dev-env --install-nix, which checks the locked tool identity even for
-    // cached profiles and calls the same setup entry. Hosted Codex uses explicit environment
-    // setup/maintenance, and Cursor cloud uses .cursor/environment.json;
-    // .claude/cloud-setup.md documents all three.
+    // Install the current checkout's locked TypeScript dependencies through root setup.
+    // Codex local environments, Cursor worktree setup and Worktrunk use this same entry.
+    // Cloud environments provision tools first; .claude/cloud-setup.md owns that setup.
     "sessionStart": [
       {
         "name": "Set up this checkout",
-        "description": "Install workspace dependencies and load retained development tools when a session starts.",
+        "description": "Install the current checkout's locked TypeScript dependencies before the agent works.",
         "type": "command",
-        "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\"",
+        "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent setup --frozen-lockfile",
       },
     ],
     // A cloud session started from the app is usually untitled at SessionStart, so its title is

@@ -3,11 +3,19 @@ name: pipeline-performance
 description: >-
   Change or review Tao parsing, validation, compilation, project-tooling refresh, Studio publication,
   or runtime design delivery hot paths. Use when diagnosing edit-to-preview slowdowns, adding work
-  to a save or watch callback, or protecting incremental pipeline performance.
+  to a save or watch callback, or implementing anything touching the current or future
+  keystroke-to-preview-refresh path.
 ---
 
 # Pipeline Performance
 
+- Consider performance in every implementation touching the current or future preview-refresh hot
+  path: keystroke change, updated file outcome, partial recompilation, generated-output publication,
+  Expo HMR/Fast Refresh, and the visible app update. Aim to keep the complete path below 100 ms where
+  feasible; an individual fast phase does not prove that target. Measure affected phases and the
+  end-to-end path when available, investigate added work and regressions, and record remaining costs
+  when the target is not yet achieved. This target does not authorize skipping correctness or
+  implementing later roadmap stages early.
 - Identify the unit of change and its work owners before adding a refresh, check, or traversal. A
   saved input may reach both an explicit request and a filesystem event; those callers must share
   computation when the owning API can prove input equivalence. Keep caller acknowledgements and
@@ -60,6 +68,9 @@ description: >-
 - Numerical budgets and admission policy live in executable performance automation. Follow
   `verification-lanes` for running and interpreting the periodic performance proof; do not tune a
   ceiling to make a regressed run pass or claim speed from a busy-host correctness smoke.
-- Refresh the owning roadmap with tested commits, warm sample definitions, phase results, host
-  conditions, and remaining costs. Preserve settled product decisions while optimizing their
-  implementation.
+- Record tested commits, warm sample definitions, phase results, host conditions and remaining
+  costs with the task's `.artifacts` notes. Preserve settled product decisions while optimizing
+  their implementation.
+- Retain one preview timing record per implementation commit using
+  [preview history](references/preview-history.md). `.artifacts` reports alone are temporary;
+  publish and pin the `.storage` history before an authorized landing.

@@ -8,6 +8,12 @@ description: >-
 
 # Storage Archive
 
+Preview timing history is owned by `pipeline-performance`'s
+[preview history](../pipeline-performance/references/preview-history.md). Its pre-landing archive
+push and pointer update are authorized by that workflow; the screenshot capture/visual-approval
+steps below apply to screenshots. The new implementation's authorized `land` command publishes
+and pins timing records; `performance record` captures them locally without publication.
+
 `Docs/Roadmap/UI screenshot archive/Plan - UI screenshot archive.md` owns what the archive records
 and why: the device and appearance matrix, file names, the per-run manifest, and the submodule rules.
 This skill owns the order of operations and what an agent must not do to the archive's history.
@@ -39,7 +45,8 @@ itself, iterate with `./agent tao _preview qa <project> --screenshot --dest .art
 - Never rewrite pushed archive history. `main` records a commit inside it, and removing that commit
   breaks `git submodule update` for every fresh checkout. If it happens anyway, `storage pin` on a
   branch and a landing repair the pointer.
-- The pointer moves only through `pin`. `.gitmodules` sets `ignore = all`, so `git add .storage` stages
+- Use `pin` for screenshot pointer updates; preview history owns its publication prerequisites.
+  `.gitmodules` sets `ignore = all`, so `git add .storage` stages
   nothing and `git status` never shows the submodule as changed; read the recorded commit with
   `git ls-tree HEAD .storage` instead.
 

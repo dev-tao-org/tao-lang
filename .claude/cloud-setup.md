@@ -2,8 +2,8 @@
 
 All three providers enter through `./.config/bootstrap-tao-dev-env --install-nix` from the
 repository root. It provisions the locked portable Linux tools noninteractively,
-then calls `./agent setup`, the sole owner of repository dependencies and generated
-adapters. `--install-nix` explicitly permits installation when Nix is missing.
+then calls `./agent setup`, the owner of repository dependencies. Generate harness
+adapters separately with `./agent agent-config`. `--install-nix` explicitly permits installation when Nix is missing.
 For an image cache that needs tools alone, add `--tools-only`; run the full entry
 after checking out the task's branch.
 
@@ -31,13 +31,10 @@ local `.codex/hooks.json` is not the cloud setup contract.
 ## Claude Code
 
 Use the same command as the cloud environment's setup script. The repository
-SessionStart hook runs on starts and resumes. Every Linux session with
-`CLAUDE_CODE_REMOTE=true` enters bootstrap, which checks the current locked tool
-identity even when a cached profile exists, then calls `./agent setup`. Local
-sessions retain ordinary setup without tool downloads.
-When `CLAUDE_ENV_FILE` is supplied, the hook persists the profile PATH for later
-tool commands. Multi-repository cloud sessions may not load repository hooks, so
-configure the environment setup script explicitly.
+SessionStart hook runs root `./agent setup --frozen-lockfile` on starts and resumes.
+The configured cloud setup script provisions the locked tools before that hook runs;
+the root CLI wrappers activate those tools on every invocation. Multi-repository cloud
+sessions may not load repository hooks, so configure the environment setup script explicitly.
 [Cloud setup and hooks](https://code.claude.com/docs/en/cloud-environments).
 
 ## Cursor

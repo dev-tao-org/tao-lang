@@ -1,0 +1,40 @@
+import { Time, Try } from '@shared'
+import { Http, Tests } from '@shared/os'
+import { waitForExpoReady } from '../../runtime-src/expo/ExpoReadiness'
+
+Tests.test('Expo readiness aborts a stalled request at the deadline', async () => {
+  let aborted = false
+  let failed = false
+  const request: typeof Http.request = async (_url, init) =>
+    await new Promise(resolve => {
+      init?.signal?.addEventListener('abort', () => {
+        aborted = true
+        resolve(Http.response())
+      }, { once: true })
+    })
+
+  await Try(() => waitForExpoReady('http://127.0.0.1', () => true, request, 20), {
+    catch() {
+      failed = true
+    },
+  })
+
+  Tests.expect(aborted).toBe(true)
+  Tests.expect(failed).toBe(true)
+})
+
+Tests.test('Expo readiness rejects an OK response that arrives after the deadline', async () => {
+  let failed = false
+  const request: typeof Http.request = async () =>
+    await new Promise(resolve => {
+      Time.schedule(60, () => resolve(Http.response()))
+    })
+
+  await Try(() => waitForExpoReady('http://127.0.0.1', () => true, request, 20), {
+    catch() {
+      failed = true
+    },
+  })
+
+  Tests.expect(failed).toBe(true)
+})

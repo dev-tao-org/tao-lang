@@ -12,6 +12,35 @@ description: >-
 
 This skill owns the one route a `feat/<name>` branch takes onto `main`, and the judgment around it. `./agent help` and each command's `--help` print the flags. `git-workflow` owns branches, worktrees, and history; `verification-lanes` owns lanes, a red lane or failed partition, and CI contention; `agent-coordinator` owns pacing many landings at once.
 
+## New implementation
+
+Root commands outside `.x-tao-old-v1/` expose three routes, with the same names in `./dev` and
+`./agent unsandboxed`:
+
+- `merge-main` fetches and integrates `origin/main` into a clean feature branch without publishing.
+  Review any integrated changes before continuing.
+- `land` owns integration, verification, performance archive publication/pinning, PR checks and
+  the squash merge. Use it only with explicit Developer authorization for the slice. Prepare and
+  review `.artifacts/merge/<branch>.msg`, commit source changes, and use `performance record`
+  before landing. Resolve missing or failed per-commit measurements rather than silently skipping
+  them. Source commits remain the history identities after a data-only Gitlink commit.
+- `landed [branch]` checks authoritative merged-PR and remote-main evidence. Authentication or
+  remote-query errors are not evidence that a branch did not land.
+
+Rerun `land` to resume after a reported review or recovery stop. Review newly integrated changes
+and exact archive/source references before retrying; a retry is not a substitute for that review.
+The command must push and confirm archive data before publishing Tao's pointer, and pin the PR
+merge to the checked head. Never bypass a failed gate with a direct push or merge.
+
+These commands do not imply permission to run `land` while implementing or testing them. Use
+recording command fixtures for mutation tests; actual publication and merging require the
+Developer's landing instruction.
+
+## Retained implementation reference
+
+The sections below describe the separate `.x-tao-old-v1/` implementation, including its commands
+that the new CLI does not expose. Do not use those tools to implement a new-workspace landing.
+
 ## Authorization
 
 - Land only with the Developer's explicit yes for the named slice. It lasts for the rest of the thread, through every retry, until the Developer revokes it; when the Developer told a coordinator to land or release a queue, that coordinator's GO carries it.
@@ -29,7 +58,10 @@ What you ask for turns on whether the gates prove the change, not on its size.
 
 ## Before the route
 
-- The branch is a clean `feat/<name>` with the exact reviewed task paths committed, and the roadmap, ledger, and spec documents the work changed are refreshed: an edit after `Verify` starts changes the head it proves.
+- Complete `pipeline-performance`'s [preview history](../pipeline-performance/references/preview-history.md)
+  publication and pointer update before landing; carry measured source SHAs and archive references
+  into the reviewed merge message.
+- The branch is a clean `feat/<name>` with the exact reviewed task paths committed, instructed documentation edits complete and the `.artifacts` ledger current: an edit after `Verify` starts changes the head it proves.
 - The merge message at `.artifacts/merge/<branch>.msg` is written and reviewed (below).
 - Maintained native bindings need no manual step: `open-pr --auto-merge` regenerates them before the push and refuses if that fails or changes the worktree.
 - Run no broad local lane and no `finalize` first; the route is the proof. Until `Verify` is green on the current head, call the branch awaiting CI, not verified.

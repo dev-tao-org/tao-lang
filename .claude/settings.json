@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && \"$repo_root/.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh\""
+            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent setup --frozen-lockfile"
           }
         ]
       }
@@ -106,6 +106,11 @@
       "./agent unsandboxed test *",
       "./agent unsandboxed verify",
       "./agent unsandboxed verify *",
+      "./agent unsandboxed performance preview",
+      "./agent unsandboxed performance record",
+      "./agent unsandboxed performance record *",
+      "./agent unsandboxed performance preview *",
+      "./agent unsandboxed install-ide-extension",
       "./agent unsandboxed doctor",
       "./agent unsandboxed doctor *",
       "./agent unsandboxed secrets",

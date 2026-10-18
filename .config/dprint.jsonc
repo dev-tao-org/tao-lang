@@ -36,8 +36,8 @@
   "json": {},
   "markdown": {},
   "plugins": [
-    "../ts/node_modules/@dprint/typescript/plugin.wasm",
-    "../ts/node_modules/@dprint/json/plugin.wasm",
-    "../ts/node_modules/@dprint/markdown/plugin.wasm",
+    "../ts/0-workspace/node_modules/@dprint/typescript/plugin.wasm",
+    "../ts/0-workspace/node_modules/@dprint/json/plugin.wasm",
+    "../ts/0-workspace/node_modules/@dprint/markdown/plugin.wasm",
   ],
 }

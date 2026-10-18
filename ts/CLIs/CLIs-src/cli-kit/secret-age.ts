@@ -7,9 +7,7 @@ import type { Cipher } from './secret-store'
 export function createAgeCipher(identityPath: string, setupCommand: string): Cipher {
   return {
     encrypt,
-    decrypt(armor) {
-      return decryptStoreKey(identityPath, setupCommand, armor)
-    },
+    decrypt: (armor) => decryptStoreKey(identityPath, setupCommand, armor),
     decryptWithKey,
     generateKey,
     recipientOfKey,
@@ -45,9 +43,7 @@ async function decryptWithKey(armor: string, secretKey: string): Promise<string>
     await Artifacts.write(path, armor)
     return run('age --decrypt --identity -', { variadicArgs: [path], stdin: secretKey })
   }, {
-    finally() {
-      return Artifacts.rm(temporary, { force: true, recursive: true })
-    },
+    finally: () => Artifacts.rm(temporary, { force: true, recursive: true }),
   })
 }
 

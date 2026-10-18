@@ -4,9 +4,7 @@
 # before it launches an agent in a new worktree. Every other harness reaches the same entry:
 # Claude Code and Codex from the SessionStart hook generated out of .rulesync/hooks.jsonc for
 # worktrees they create themselves, and Cursor from .cursor/worktrees.json. Change what setup
-# does in the Justfile `setup` recipe, and keep this command and those hooks in step.
-# `devenv shell` builds the profile on first entry; `./agent` can reuse the primary checkout's
-# profile in a linked worktree when one exists.
+# does in its TypeScript command, and keep this command and those hooks in step.
+# Root `./agent` activates the pinned environment before installing dependencies.
 [pre-start]
-# Automated setup must not offer personal shell configuration, even when it inherits a terminal.
-setup = "TAO_DEV_SHELL_SETUP=0 devenv shell --no-tui ./agent setup"
+setup = "./agent setup --frozen-lockfile"

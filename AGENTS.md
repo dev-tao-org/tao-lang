@@ -4,8 +4,7 @@ Tao is a programming language for building apps.
 
 - `./ts` holds the typescript implementation.
 - A PoC implementation exists in `./.x-tao-old-v1`.
-  - Use the PoC for reference, but don't copy code wholesale.
-  - When reimplementing existing functionality, preserve its behavior by default unless the developer requests a change.
+  - When planning or implementing language syntax and functionality, consult the old implementation as the specification for syntax and behavior unless a departure has been agreed with the developer. Do not copy code wholesale.
   - Port reimplemented functionality into the new implementation with its own dependencies and tools; never import or execute old implementation code, or borrow its dependencies or executables, to implement a port.
   - Keep the previous implementation as reference. Except for fixes necessary to keep that reference working, discuss changes to `.x-tao-old-v1/` with the developer during planning. If a necessary change is discovered during implementation, make the minimal change, then disclose it at completion and ask whether it was acceptable or should be tackled differently.
 
@@ -31,6 +30,7 @@ These are your rules of usage:
 - Determine during planning whether new or updated dependencies are needed.
 - Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
+- Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.
 
 ## Decisions and communication
 
@@ -38,7 +38,8 @@ These are your rules of usage:
 - During implementation, ask immediately if a decision is essential or would substantially split the implementation. Continue independent work while awaiting a reply; after three minutes without a response, proceed with best judgment and report the choice at completion. This fallback does not replace explicit approval required for dependencies, destructive actions, publication, landing, or other permission-gated operations.
 - Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
 - Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
-- Write useful observations in `Docs/Agent Notes/` (environment issues in `Dev Env Issues.md`). These notes are never authoritative; keep investigation logs out of roadmaps.
+- Keep working notes, investigation logs, checkpoints and progress records under `.artifacts/notes/`, `.artifacts/checkpoint/` or `.artifacts/progress/`. Normal and partial cleanup retain these paths; only `clean --full` removes them.
+- Update existing repository documents only when the developer instructs you to do so; keep other observations and progress in `.artifacts`.
 
 ## Your mission
 
@@ -48,12 +49,14 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - The developer describes the PoC functionality to implement;
   - The developer may have provided new code stubs for you to fill out;
   - You create a plan together in dialogue mode (see skill);
-    - Agree on the plan and any review points with the developer before implementation.
+    - During discussion or planning, never begin implementation until the developer explicitly agrees to go ahead with the plan and any review points. This includes creating stubs, moving folders and editing implementation files. Agreement on individual design choices, requests describing the proposed result, and unanswered questions do not authorize implementation.
   - You write tests and implement the plan with TDD;
+    - Keep `Apps/Dev/Kitchen Sink/Kitchen Sink.tao` runnable and demonstrating every implemented language feature; update it whenever language functionality is added or changed.
+    - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - Run code reviews, including subagent reviews, only when explicitly requested by the developer;
+  - Use `code-review` for ongoing style, conformance, file-layout and organizational-health reviews at completed implementation checkpoints. Additional correctness reviews require the developer's explicit request;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
@@ -68,11 +71,12 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Other comments use `//`.
   - Multiline JSDoc: `/** <NAME> <VERB> ...`, aligned ` *  <text>`, and text-ending ` */`.
   - Use `Try`; native exception handling belongs only in `universal/TryCatch.ts`.
+  - Use `Switch(...)` or `Switch.*` from `@shared` for switch dispatch; never use native `switch` statements.
   - Multiline strings use indented `S` templates with aligned closing backticks.
   - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
   - Function bodies: at most 45 physical interior lines, including comments and blanks.
   - Handwritten TypeScript files: 250-line soft limit, 350-line hard limit; generated and whole-file third-party sources are excluded. Mark imported whole files with `@third-party` source provenance.
-  - Object functions use method syntax: `async encrypt(...) { ... }`.
+  - Object functions with only a returned expression use expression-bodied arrow properties: `Name: name => value`. Other object functions use method syntax; retain methods when arrows would change `this`, `arguments`, `super` or generator behavior.
 - Review:
   - Put all exports immediately after imports, before private definitions.
   - Follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
@@ -97,6 +101,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
 - Always create a new feature branch for your new worktree.
 - Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
+- Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 
 ## Implementation architecture
 
@@ -104,10 +109,11 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - `ts/CLIs/CLIs-src/dev-cli/` owns developer commands; `agent-cli/` adds agent-only commands and imports shared dev commands. Root `dev` and `agent` are thin environment-aware launchers.
 - `ts/CLIs/CLIs-src/cli-kit/` provides command execution, configured output, fatal handling, secrets and host dispatch. `cli-checks/` owns diagnostics, validation, source rules and test timing reports.
 - `ts/shared/shared-src/universal/` provides portable errors, Try, strings, time and type-safe switching. `os/`, exported through `@shared/os`, owns platform operations, repository roots and artifacts.
+- `ts/0-workspace/workspace-src/` owns project scaffolding and pipeline sessions. `ts/1-grammar/grammar-src/` owns the Tree-sitter grammar, native binding and CST parser. `ts/2-ast-gen/ast-gen-src/` owns CST-to-AST transformation. `ts/3-typecheck/`, `ts/4-fix/` and `ts/5-check/` reserve the following stages. `ts/6-compile/` owns AST-to-code generation; its `AGENTS.md` owns the compiler/runtime boundary. `ts/7-runtime/runtime-src/` owns the handwritten app runtime. `ts/perf/` owns performance fixtures and measurement drivers; shared `Timings` records operation spans.
 - Tests live in sibling `*-test/` folders. `ts/scripts/` holds tool configuration such as Knip.
 - `.config/` owns tool/bootstrap configuration and the local InstantDB Compose file. Root `devenv.*` defines the pinned environment; `.envrc` activates it through direnv, with `enter-tao-dev-env.sh` as the explicit alternative.
 - `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
-- `.artifacts/` holds generated output, logs, caches and temporary state; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
+- `.artifacts/` holds generated output, logs, caches, temporary state and retained agent notes/progress; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
 - `.x-tao-old-v1/` retains the reference language, compiler, runtimes and apps, including Studio, Companion and test apps.
-- `Docs/` contains the active roadmap and documentation; `Docs/Agent Notes/` contains non-authoritative working notes.
-- The new parser, CST-to-AST transformer, compiler, Expo runtime and first Tao app belong to Goal 2. Agree on their folders during planning; they are not implemented yet.
+- `Docs/` contains the active roadmap and documentation.
+- Packages own their manifests and TypeScript configs extending `ts/tsconfig.base.json`; `ts/package.json` owns workspace metadata. Runtime scaffold code and instrumentation are consumed by generated apps and the performance harness.

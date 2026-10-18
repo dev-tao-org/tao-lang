@@ -9,7 +9,7 @@ description: >-
 # Simplify Repo
 
 The goal is the best concluding state, not the smallest diff: current structure is no constraint.
-Each run has a plan under `Docs/Roadmap/Repository simplification <n>/`; this skill owns what every
+Each run has a plan under `.artifacts/notes/repository-simplification/`; this skill owns what every
 run shares. Standing decisions below are the Developer's and are not reopened; anything new goes through
 `decision-rounds`.
 

@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/4-fix.tsbuildinfo" },
+  "include": ["fix-src/**/*", "fix-test/**/*"]
+}

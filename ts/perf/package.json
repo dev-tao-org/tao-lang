@@ -1,0 +1,18 @@
+{
+  "name": "@tao/perf",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@tao/ast-gen": "workspace:*",
+    "@tao/cli": "workspace:*",
+    "@tao/grammar": "workspace:*",
+    "@tao/runtime": "workspace:*",
+    "@tao/shared": "workspace:*",
+    "@tao/workspace": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "playwright": "1.58.2"
+  }
+}

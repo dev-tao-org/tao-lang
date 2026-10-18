@@ -41,16 +41,25 @@ function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean
     return false
   }
   return isWallClockAccess(node)
-    || (TypeScript.isIdentifier(node) && (node.text === 'performance' || node.text === 'setTimeout'))
+    || (TypeScript.isIdentifier(node) && ['performance', 'setTimeout', 'clearTimeout'].includes(node.text))
 }
 
 function isBuiltinReference(node: TypeScript.Node): boolean {
-  if (!TypeScript.isStringLiteral(node) || !Platform.isPlatformImport(node.text)) {
+  const specifier = TypeScript.isStringLiteralLike(node)
+    ? node.text
+    : TypeScript.isTemplateExpression(node)
+    ? node.head.text
+    : undefined
+  if (specifier === undefined || !isPlatformSpecifier(specifier)) {
     return false
   }
   const parent = node.parent
   return TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent)
-    || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
+    || TypeScript.isExternalModuleReference(parent) || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
+}
+
+function isPlatformSpecifier(specifier: string): boolean {
+  return specifier.startsWith('node:') || specifier.startsWith('bun:') || Platform.isPlatformImport(specifier)
 }
 
 function isRuntimeImportCall(node: TypeScript.Node): boolean {

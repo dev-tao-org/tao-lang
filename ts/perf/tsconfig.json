@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/perf.tsbuildinfo" },
+  "include": ["perf-src/**/*", "perf-test/**/*"]
+}

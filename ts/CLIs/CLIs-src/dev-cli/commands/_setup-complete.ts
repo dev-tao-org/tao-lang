@@ -1,0 +1,24 @@
+import '../../cli-kit/fatal-errors'
+import { FileSystem, Path, Repo } from '@shared/os'
+import { prepareParser } from '../../cli-checks/parser-build'
+import { prepareRuntime } from '../../cli-checks/runtime-build'
+import { runDirenvSetup } from '../shell/DirenvSetup'
+
+await prepareParser()
+await prepareRuntime()
+await ensureShellCompletionCache()
+await runDirenvSetup({ prepare: true })
+
+async function ensureShellCompletionCache(): Promise<void> {
+  const cache = Repo.resolvePath('.artifacts/cache/dev-shell')
+  const completion = Path.resolve(cache, 'completion.zsh')
+  if (FileSystem.existsSync(completion)) {
+    return
+  }
+  await FileSystem.mkdir(cache, { recursive: true })
+  await FileSystem.writeFile(
+    completion,
+    '# Tao dev shell completion is generated during ./agent setup.\n',
+    'utf8',
+  )
+}

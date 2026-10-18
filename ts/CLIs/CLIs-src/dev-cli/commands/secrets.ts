@@ -22,9 +22,7 @@ export default registerCommand({
   description: 'Decrypt or manage encrypted repository secrets.',
   arguments: [{ name: 'args', variadic: true }],
   allowUnknownOptions: true,
-  async action(args: string[]) {
-    return await runSecrets(args, liveEnvironment())
-  },
+  action: async (args: string[]) => await runSecrets(args, liveEnvironment()),
 })
 
 const storePath = Repo.resolvePath('.secrets', 'secrets.jsonc')
@@ -148,9 +146,7 @@ async function writeGeneratedEnv(contents: string): Promise<void> {
     await Artifacts.writePrivate(temporary, contents)
     await Artifacts.move(temporary, envPath)
   }, {
-    finally() {
-      return Artifacts.rm(temporaryDirectory, { recursive: true, force: true })
-    },
+    finally: () => Artifacts.rm(temporaryDirectory, { recursive: true, force: true }),
   })
 }
 
@@ -236,9 +232,7 @@ async function writeStore(store: SecretStore): Promise<void> {
     await Artifacts.write(temporary, formatSecretStore(store))
     await Artifacts.move(temporary, storePath)
   }, {
-    finally() {
-      return Artifacts.rm(temporary, { force: true })
-    },
+    finally: () => Artifacts.rm(temporary, { force: true }),
   })
 }
 
@@ -259,9 +253,7 @@ async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Val
     })
     if (acquired) {
       return await Try(work, {
-        finally() {
-          return Artifacts.rm(lockPath, { recursive: true, force: true })
-        },
+        finally: () => Artifacts.rm(lockPath, { recursive: true, force: true }),
       })
     }
     if (Time.nowMs() >= deadline) {

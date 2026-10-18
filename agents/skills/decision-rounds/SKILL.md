@@ -14,7 +14,6 @@ Root `AGENTS.md` owns the boundary between the Developer's decisions and routine
 ## When
 
 - Open a round when a task holds judgments that are the Developer's to make, before writing any plan that rests on them. A single such judgment is one round with one item; do not open a round for routine implementation choices.
-- Language semantics still land through `Apps/WordFlower/2 - Next` and `Docs/Roadmap/Tao Revolution/Decisions.md`. A round feeds those records and never replaces them.
 
 ## Find every decision first
 
@@ -34,16 +33,16 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 
 ## Settle them a handful at a time
 
-1. Present three to five per round, upstream decisions first so later rounds shrink or disappear.
+1. Always open a planning discussion with three questions, choosing upstream decisions first. Continue asking questions until every decision needed for implementation is settled; use three per later round while enough substantive open decisions remain.
 2. Give each decision its realistic options and mark the recommended one, as above.
 3. Print the round as text in the reply, in the shape below. Never put it through a harness question prompt such as `AskUserQuestion`: a prompt hides the round from the transcript, caps what an answer can say, and forces every item through its own box. The Developer answers in the conversation — by letter and number, in prose, or with an option the round did not offer.
 4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. An item the Developer skips takes its recommendation, and the next message says so in one line so the Developer can veto it.
-5. Continue until the planning decisions are settled, then implement. For decisions discovered during implementation, follow root `AGENTS.md`: proceed with best judgment and report the choice at completion, or ask immediately for an essential fork and apply its three-minute response policy. Explicit approval gates still apply.
+5. Continue until the planning decisions are settled, then follow root `AGENTS.md`'s explicit go-ahead requirement before implementation. For decisions discovered during authorized implementation, follow its decision policy. Explicit approval gates still apply.
 
 ## Record what was settled
 
 - The conversation is the record. The handoff lists the decisions made, and the commit message carries the ones that shaped the change among its bullets.
-- Language and product decisions additionally follow their existing owners: amend `Decisions.md` or `2 - Next` in the same change, as `Docs/Roadmap/Tao Revolution/Process.md` requires.
+- Keep any additional decision record with the task's `.artifacts` notes; amend repository specifications only when the developer instructs it.
 
 ## Shape
 

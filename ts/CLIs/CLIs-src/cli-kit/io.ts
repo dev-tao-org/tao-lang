@@ -5,6 +5,7 @@ import { Artifacts, Path, Platform, Repo, Terminal, Text } from '@shared/os'
 export const IO = {
   ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
   config: configureOutput,
+  progress: printProgress,
 }
 
 /** configuredCommandOutput exposes the configured command streams to cmd-exec. */

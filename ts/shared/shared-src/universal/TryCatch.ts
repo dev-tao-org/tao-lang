@@ -7,7 +7,7 @@ import * as Errors from './Errors'
 export function Try<Value, Recovery = never, Final = void>(
   action: () => Value,
   options: TryOptions<Recovery, Final> = {},
-): TryResult<Value, Recovery, Final> {
+): TryResult<Value, NoInfer<Recovery>, NoInfer<Final>> {
   const completed = continueWith(capture(action), original => {
     const handled = !original.ok && options.catch
       ? capture(() => options.catch!(original.thrown))
@@ -34,14 +34,27 @@ export function Try<Value, Recovery = never, Final = void>(
   >
 }
 
-type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
-type TryResult<Value, Recovery, Final> = AlwaysPromise<Value> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
-  : AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
-  :
-    | Value
-    | Recovery
-    | (Extract<Final, PromiseLike<unknown>> extends never ? never : Promise<Awaited<Value> | Awaited<Recovery>>)
+/** Try.WithDefault returns a fixed fallback when the callback throws or rejects. */
+export namespace Try {
+  /** WithDefault returns a fixed fallback when the callback throws or rejects. */
+  export function WithDefault<Value, Default>(
+    defaultValue: Default,
+    action: () => Value,
+  ): TryResult<Value, Default, void> {
+    return Try(action, {
+      catch: () => defaultValue,
+    }) as TryResult<Value, Default, void>
+  }
+}
 
+type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
+type MayBePromise<T> = [Extract<T, PromiseLike<unknown>>] extends [never] ? false : true
+type TryResult<Value, Recovery, Final> = AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
+  : AlwaysPromise<Value> extends true
+    ? Exclude<Recovery, PromiseLike<unknown>> | Promise<Awaited<Value> | Awaited<Recovery>>
+  : MayBePromise<Value | Recovery | Final> extends true
+    ? Exclude<Value | Recovery, PromiseLike<unknown>> | Promise<Awaited<Value> | Awaited<Recovery>>
+  : Value | Recovery
 type Outcome = { ok: true; value: unknown } | { ok: false; thrown: unknown; error: Errors.TaoError }
 type PendingOutcome = Outcome | Promise<Outcome>
 

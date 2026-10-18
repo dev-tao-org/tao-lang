@@ -1,7 +1,23 @@
 import { execFileSync } from 'node:child_process'
-import { isBuiltin } from 'node:module'
-import { arch, release, type } from 'node:os'
-import { Errors } from '../universal/universal'
+import { createHash } from 'node:crypto'
+import { createRequire, isBuiltin } from 'node:module'
+import { arch, homedir, release, type } from 'node:os'
+import { Errors, Try } from '../universal/universal'
+
+/** homeDirectory returns the current user's platform home directory. */
+export function homeDirectory(): string {
+  return homedir()
+}
+
+/** loadModule loads a known runtime module, including native Node-API addons. */
+export function loadModule<Value>(path: string): Value {
+  return createRequire(import.meta.url)(path) as Value
+}
+
+/** hashText hashes exact build inputs and generated output for cache validation. */
+export function hashText(source: string): string {
+  return createHash('sha256').update(source).digest('hex')
+}
 
 /** isPlatformImport identifies runtime builtins that belong behind the OS boundary. */
 export function isPlatformImport(specifier: string): boolean {
@@ -71,10 +87,10 @@ export function systemInfo(): { architecture: string; kernel: string; os: string
   return { architecture: arch(), kernel: release(), os: type() }
 }
 
-/** capture reads command output and throws when the command fails. */
+/** capture reads command output and throws when the command fails; trim:false preserves exact text. */
 export async function capture(
   command: string,
-  options: { variadicArgs?: readonly string[]; cwd?: string } = {},
+  options: { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean } = {},
 ): Promise<string> {
   const args = [...command.trim().split(/ +/), ...options.variadicArgs ?? []]
   const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
@@ -90,7 +106,23 @@ export async function capture(
       stderr,
     })
   }
-  return stdout.trim()
+  return options.trim === false ? stdout : stdout.trim()
+}
+
+/** requireHostProcessAccess rejects restricted execution before starting host-dependent tools.
+ *  Process inspection is a conservative prerequisite, not proof of every desktop permission. */
+export async function requireHostProcessAccess(
+  hint: string,
+  inspect = () => capture('ps -axo pid=,ppid='),
+): Promise<void> {
+  const processes = await Try(inspect, {
+    catch(error) {
+      Errors.ThrowHostEnvironment(`Host process access is unavailable. ${hint}`, { cause: error })
+    },
+  })
+  if (!processes) {
+    Errors.ThrowHostEnvironment(`Host process inspection returned no processes. ${hint}`)
+  }
 }
 
 /** captureSync reads a synchronous tool probe without requiring the Bun runtime. */

@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/7-runtime.tsbuildinfo",
+    "jsx": "react-jsx"
+  },
+  "include": ["runtime-src/**/*", "runtime-test/**/*"]
+}

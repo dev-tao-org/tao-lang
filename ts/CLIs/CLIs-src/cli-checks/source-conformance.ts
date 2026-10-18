@@ -2,8 +2,9 @@ import { Errors, Time } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
-import { hasValidDocLayout, isAmbientNamespace, isFunctionProperty } from './source-conformance-api'
+import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { ExportedApiChecker } from './source-conformance-exports'
+import { objectFunctionStyleIssue } from './source-conformance-functions'
 import { functionBody, functionBodyLineCount, multilineStringIssue } from './source-conformance-layout'
 import { platformAccessIssue } from './source-conformance-platform'
 import { sourceSizeDiagnostics } from './source-size'
@@ -15,10 +16,6 @@ export async function checkSourceConformance(root: string): Promise<void> {
   for (const filename of await FileSystem.sourceFiles(root + '/ts')) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const source = await FileSystem.file(filename).text()
-    const { warning } = sourceSizeDiagnostics(relative, source)
-    if (warning) {
-      IO.warn(warning)
-    }
     issues.push(...sourceConformanceIssues(relative, source))
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
@@ -67,8 +64,9 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
-    if (isFunctionProperty(node)) {
-      this.report(node.getStart(this.file), 'function implementations in objects must use method syntax')
+    const functionIssue = objectFunctionStyleIssue(node, this.source)
+    if (functionIssue) {
+      this.report(node.getStart(this.file), functionIssue)
     }
     const platformIssue = platformAccessIssue(node, this.filename)
     if (platformIssue) {

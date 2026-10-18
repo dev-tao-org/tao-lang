@@ -1,6 +1,7 @@
 # Native command rules; keep equivalents in Claude and Cursor settings synchronized.
 # New host prefixes come from .config/agent-host-commands.json; the wrapper validates argv.
 # Host access still depends on the invoking harness. Retained legacy operations follow its allowlist.
+prefix_rule(pattern=["./agent","unsandboxed","install-ide-extension"], decision="allow", justification="Developer-approved replacement of the Tao extension in Cursor and VS Code.")
 prefix_rule(pattern=["./agent","unsandboxed","agent-config"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","my-branch"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","fmt"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
@@ -8,6 +9,8 @@ prefix_rule(pattern=["./agent","unsandboxed","fix"], decision="allow", justifica
 prefix_rule(pattern=["./agent","unsandboxed","check"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","test"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","verify"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
+prefix_rule(pattern=["./agent","unsandboxed","performance","preview"], decision="allow", justification="Developer-approved isolated headless preview proof through the guarded host wrapper.")
+prefix_rule(pattern=["./agent","unsandboxed","performance","record"], decision="allow", justification="Developer-approved commit-linked local performance recording; no push or landing.")
 prefix_rule(pattern=["./agent","unsandboxed","doctor"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","secrets"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","git","status"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")

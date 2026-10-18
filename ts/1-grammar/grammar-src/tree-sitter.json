@@ -1,0 +1,10 @@
+{
+  "grammars": [{ "name": "tao", "scope": "source.tao", "path": ".", "file-types": ["tao"] }],
+  "metadata": {
+    "version": "0.0.0",
+    "license": "AGPL-3.0-only",
+    "description": "The minimal Tao app grammar.",
+    "authors": [{ "name": "Tao" }]
+  },
+  "bindings": { "c": false, "go": false, "node": true, "python": false, "rust": false, "swift": false }
+}

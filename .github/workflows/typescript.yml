@@ -30,6 +30,13 @@ jobs:
             .devenv/portable-generations
             .devenv/profile
           gc-max-store-size-linux: 6G
+      - name: Make restored caches writable
+        run: |
+          for cache_directory in .devenv "$HOME/.cache"; do
+            if [ -d "$cache_directory" ]; then
+              sudo chown -hR "$(id -u):$(id -g)" "$cache_directory"
+            fi
+          done
       - uses: cachix/cachix-action@v16
         with:
           name: devenv
@@ -42,7 +49,7 @@ jobs:
           path: |
             ~/.bun/install/cache
             ~/.cache/dprint
-          key: tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-${{ hashFiles('ts/bun.lock', 'ts/package.json', '.config/dprint.jsonc') }}
+          key: tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-${{ hashFiles('ts/bun.lock', 'ts/**/package.json', '.config/dprint.jsonc') }}
           restore-keys: |
             tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-
       - name: Install workspace dependencies

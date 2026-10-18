@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { sourceConformanceIssues } from '../cli-checks/source-conformance'
 
 const invalidApiFixture = S`
@@ -78,7 +78,7 @@ const invalidJSDocLayouts = [
   '/** value7 returns input.\n  *  Misaligned details. */',
 ]
 
-Test.test('source conformance > reports exact API, alias, destructuring, privacy, and JSDoc errors together', () => {
+Tests.test('source conformance > reports exact API, alias, destructuring, privacy, and JSDoc errors together', () => {
   const actual = messages(sourceConformanceIssues('fixture.ts', invalidApiFixture)).toSorted()
   const missingDocs = [
     'missing',
@@ -102,15 +102,15 @@ Test.test('source conformance > reports exact API, alias, destructuring, privacy
     'exported API empty needs JSDoc beginning with its name and a description',
     ...Array(11).fill('private JSDoc is not allowed; use // lines'),
   ].toSorted()
-  Test.expect(actual).toEqual(expected)
+  Tests.expect(actual).toEqual(expected)
 })
 
-Test.test('source conformance > reports all malformed JSDoc layouts in one multi-export fixture', () => {
+Tests.test('source conformance > reports all malformed JSDoc layouts in one multi-export fixture', () => {
   const fixture = invalidJSDocLayouts.map((comment, index) => {
     return `${comment}\nexport function value${index}() {}`
   }).join('\n')
   const actual = messages(sourceConformanceIssues('fixture.ts', fixture)).toSorted()
-  Test.expect(actual).toEqual(
+  Tests.expect(actual).toEqual(
     Array(8).fill(
       'multiline JSDoc needs opening-line text, aligned *  continuation lines, and */ after the last text',
     ),

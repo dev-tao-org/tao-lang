@@ -1,8 +1,8 @@
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import { Switch } from '../universal/universal'
 
-Test.describe('Switch.on', () => {
-  Test.test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
+Tests.describe('Switch.on', () => {
+  Tests.test('dispatches exhaustively on a property, passing the handler the narrowed item', () => {
     type Message =
       | { type: 'text'; value: string }
       | { type: 'count'; value: number }
@@ -14,26 +14,20 @@ Test.describe('Switch.on', () => {
       Switch.on(message, 'type', {
         // The `text` branch narrows to `{ type: 'text'; value: string }`, so `.toUpperCase()` type-checks
         // only because Switch.on passed the whole narrowed item rather than just `message.type`.
-        text(item) {
-          return item.value.toUpperCase()
-        },
-        count(item) {
-          return item.value.toFixed(1)
-        },
+        text: (item) => item.value.toUpperCase(),
+        count: (item) => item.value.toFixed(1),
       })
 
-    Test.expect(describe(text)).toBe('HELLO')
-    Test.expect(describe(count)).toBe('3.0')
+    Tests.expect(describe(text)).toBe('HELLO')
+    Tests.expect(describe(count)).toBe('3.0')
   })
 })
 
-Test.test('Switch.on requires and narrows the undefined discriminator branch', () => {
+Tests.test('Switch.on requires and narrows the undefined discriminator branch', () => {
   type Message = { kind: 'ready'; value: string } | { kind: undefined }
   const render = (message: Message): string =>
     Switch.on(message, 'kind', {
-      ready(item) {
-        return item.value
-      },
+      ready: (item) => item.value,
       undefined(item) {
         const kind: undefined = item.kind
         return String(kind)
@@ -42,12 +36,10 @@ Test.test('Switch.on requires and narrows the undefined discriminator branch', (
   const incomplete = (message: Message) => {
     // @ts-expect-error The undefined variant needs its own handler.
     return Switch.on(message, 'kind', {
-      ready(item) {
-        return item.value
-      },
+      ready: (item) => item.value,
     })
   }
-  Test.expect(render({ kind: 'ready', value: 'ok' })).toBe('ok')
-  Test.expect(render({ kind: undefined })).toBe('undefined')
-  Test.expect(() => incomplete({ kind: undefined })).toThrow()
+  Tests.expect(render({ kind: 'ready', value: 'ok' })).toBe('ok')
+  Tests.expect(render({ kind: undefined })).toBe('undefined')
+  Tests.expect(() => incomplete({ kind: undefined })).toThrow()
 })

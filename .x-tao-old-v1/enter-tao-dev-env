@@ -9,6 +9,19 @@ fi
 repository=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 cd "$repository"
 
+# The tracked .devenv symlink stores state under the Git root. devenv fails with EEXIST on gc until
+# that target directory exists.
+if [ -L .devenv ]; then
+  link_target=$(readlink .devenv)
+  case "$link_target" in
+    /*) devenv_state="$link_target" ;;
+    *)
+      devenv_state="$(CDPATH= cd -- "$repository/$(dirname -- "$link_target")" && pwd -P)/$(basename -- "$link_target")"
+      ;;
+  esac
+  mkdir -p "$devenv_state"
+fi
+
 # Existing shells already carry these markers, including shells entered without this wrapper.
 if [ "$#" -eq 0 ] && [ "${TAO_DEVENV:-}" = 1 ] && [ -n "${DEVENV_ROOT:-}" ] &&
   [ "$(CDPATH= cd -- "$DEVENV_ROOT" 2>/dev/null && pwd -P)" = "$repository" ]; then

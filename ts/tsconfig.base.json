@@ -6,11 +6,26 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
+    "allowUnreachableCode": false,
     "noEmit": true,
+    "incremental": true,
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
     "paths": {
       "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
       "@shared": ["./shared/shared-src/shared.ts"],
-      "@shared/os": ["./shared/shared-src/os.ts"]
+      "@shared/os": ["./shared/shared-src/os.ts"],
+      "@shared/os/browser": ["./shared/shared-src/os/BrowserRuntime.ts"],
+      "@shared/os/preview": ["./shared/shared-src/os/PreviewPlatform.ts"],
+      "@grammar/*": ["./1-grammar/grammar-src/*"],
+      "@ast-gen/*": ["./2-ast-gen/ast-gen-src/*"],
+      "@typecheck/*": ["./3-typecheck/typecheck-src/*"],
+      "@fix/*": ["./4-fix/fix-src/*"],
+      "@check/*": ["./5-check/check-src/*"],
+      "@compile/*": ["./6-compile/compile-src/*"],
+      "@runtime/*": ["./7-runtime/runtime-src/*"],
+      "@workspace/*": ["./0-workspace/workspace-src/*"]
     }
   }
 }

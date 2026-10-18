@@ -2,7 +2,8 @@
 name: code-review
 description: >-
   Review branch changes with one or more read-only subagents. Use for implementation reviews,
-  requested changeset reviews, and review checkpoints before handing work over.
+  requested changeset reviews, and ongoing style, conformance, file-layout and organizational-health
+  reviews at implementation checkpoints.
 ---
 
 # Code Review
@@ -11,6 +12,22 @@ Use at least one read-only subagent; one is the usual choice. Add reviewers when
 the code tree or functional responsibilities justify separate attention. Functional scopes may
 intersect files; make ownership of each review question clear and reconcile overlapping findings.
 Reviewing does not authorize implementation, publication, or landing.
+
+## Ongoing organizational review
+
+At completed implementation checkpoints, include a read-only review of style, conformance,
+file layout and organizational health. For a small slice, one reviewer may cover both correctness
+and organization; give substantial or cross-package changes a dedicated organizational pass.
+Check naming, definition ordering, file cohesion and size, package ownership, shared helpers,
+dependency direction, documentation placement and consistency with the agreed architecture.
+Assess whether the structure remains suitable for the next agreed slice without requiring
+speculative abstractions or implementing deferred features.
+
+Separate demonstrated instruction violations and maintainability problems from optional design
+suggestions. Cite the applicable rule or concrete maintenance cost and the smallest useful change;
+personal preferences alone are not findings. Report strengths and justified deferrals when they
+explain why the current organization should remain. The ongoing authorization covers these reviews,
+not unsolicited correctness-review fan-outs, refactoring, or scope expansion.
 
 ## Scope and checkpoint
 

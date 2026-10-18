@@ -8,9 +8,8 @@ export default registerCommand({
   arguments: [{ name: 'args', description: 'Bun install arguments.', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    // The legacy shell/tool profile stays separately bootstrapped with .x-tao-old-v1's setup-tools.
-    // Its former _setup also generated parser/native bindings, app dependencies and completion;
-    // new equivalents await those implementations. Keep this runner dependency-free for fresh setup.
     await runCommand('bun install', { variadicArgs: args })
+    // A new process resolves dependencies from the completed installation.
+    await runCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts')
   },
 })

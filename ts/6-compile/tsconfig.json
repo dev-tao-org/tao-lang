@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/6-compile.tsbuildinfo" },
+  "include": ["compile-src/**/*", "compile-test/**/*"]
+}

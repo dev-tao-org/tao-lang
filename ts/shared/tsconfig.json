@@ -4,13 +4,12 @@
     "shared-src/**/*"
   ],
   "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/shared.tsbuildinfo",
     "types": [
-      "node",
       "bun"
     ],
     "composite": false,
     "declaration": false,
-    "incremental": false,
     "noEmit": true
   }
 }

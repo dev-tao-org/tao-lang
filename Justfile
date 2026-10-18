@@ -34,6 +34,11 @@ secrets *ARGS:
 doctor *ARGS:
     ./dev doctor "$@"
 
+# Configure optional automatic development environments for this repository and its worktrees
+[group('Setup')]
+shell-setup:
+    ./dev shell-setup --configure
+
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
 clean:
@@ -85,6 +90,21 @@ my-branch name='':
 
 # Dev environment services
 ##########################
+
+# Compile the existing Hello World app and keep its two browser previews running
+[group('Dev')]
+dev:
+    ./dev dev
+
+# Measure preview refresh and print scenario timings and the raw report path
+[group('Dev')]
+performance:
+    ./dev performance preview
+
+# Build the Tao extension once and install it into Cursor and VS Code
+[group('Dev')]
+install-ide-extension:
+    ./dev install-ide-extension
 
 # Start the official self-hosted InstantDB stack and provision WordFlower's local app
 [group('Services')]

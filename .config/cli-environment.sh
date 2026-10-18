@@ -22,4 +22,13 @@ if [ "${TAO_DEVENV:-}" != 1 ] || [ "$active_environment" != "$repository" ]; the
     exec devenv shell --no-tui -- "$repository/$entrypoint" "$@"
   fi
 fi
+if [ "${TAO_DEVENV_KIND:-}" = portable ]; then
+  export LD_LIBRARY_PATH="$repository/.devenv/profile/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 export PATH="$repository/ts/node_modules/.bin:$repository:$PATH"
+# Include package tool paths before installation so fresh setup can resolve newly installed tools.
+for workspace_package in "$repository"/ts/*; do
+  if [ -f "$workspace_package/package.json" ]; then
+    export PATH="$workspace_package/node_modules/.bin:$PATH"
+  fi
+done

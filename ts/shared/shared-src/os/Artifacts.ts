@@ -25,13 +25,9 @@ export async function isWritable(...segments: string[]): Promise<boolean> {
   while (!FileSystem.existsSync(existing)) {
     existing = Path.dirname(existing)
   }
-  return Try(async () => {
+  return Try.WithDefault(false, async () => {
     await FileSystem.access(existing, FileSystem.constants.W_OK)
     return true
-  }, {
-    catch() {
-      return false
-    },
   })
 }
 

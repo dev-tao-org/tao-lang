@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/CLIs.tsbuildinfo" },
+  "include": ["CLIs-src/**/*"]
+}

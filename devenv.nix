@@ -31,6 +31,8 @@ in
     bunPkgs.bun
     (pkgs.lib.getBin pkgs.nodejs_24)
     pkgs.just
+    pkgs.gnumake
+    pkgs.python3
     pkgs.dprint
     pkgs.git
     pkgs.gh
@@ -38,7 +40,8 @@ in
     pkgs.ripgrep
     pkgs.cocoapods
     pkgs.direnv
-  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se ];
+  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se ]
+    ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.stdenv.cc ];
 
   env.TAO_DEVENV = "1";
   env.LANG = "en_US.UTF-8";

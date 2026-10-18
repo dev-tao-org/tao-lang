@@ -1,5 +1,5 @@
 import { S } from '@shared'
-import { Test } from '@shared/os'
+import { Tests } from '@shared/os'
 import {
   type Cipher,
   decryptSecretValues,
@@ -12,7 +12,7 @@ import {
   withSecret,
 } from '../cli-kit/secret-store'
 
-const { expect: Expect, test: TestCase } = Test
+const { expect: Expect, test: TestCase } = Tests
 
 TestCase('secret store format > parses JSONC while retaining encrypted entries and metadata', () => {
   const store = parseSecretStore(S`
@@ -116,9 +116,7 @@ function recordingCipher(): {
 } {
   const calls = { machineDecrypt: 0, recipientCheck: 0, valueDecrypt: 0 }
   const cipher: Cipher = {
-    async encrypt() {
-      return 'wrapped'
-    },
+    encrypt: async () => 'wrapped',
     async decrypt() {
       calls.machineDecrypt += 1
       return 'AGE-SECRET-KEY-1store\n'
@@ -128,9 +126,7 @@ function recordingCipher(): {
       calls.valueDecrypt += 1
       return 'clear-token'
     },
-    async generateKey() {
-      return ({ recipient: 'age1store', secretKey: 'AGE-SECRET-KEY-1store' })
-    },
+    generateKey: async () => ({ recipient: 'age1store', secretKey: 'AGE-SECRET-KEY-1store' }),
     async recipientOfKey() {
       calls.recipientCheck += 1
       return 'age1store'

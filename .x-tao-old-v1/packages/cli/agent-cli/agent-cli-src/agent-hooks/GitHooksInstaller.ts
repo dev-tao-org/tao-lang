@@ -30,6 +30,9 @@ function gitHookEntry(event: string): string {
 ${GIT_HOOK_MARKER} ${event}
 # Written by \`./agent setup\`. Asks the committing worktree for its own copy; never fails a commit.
 worktree="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -d "$worktree/.x-tao-old-v1/packages" ]; then
+  worktree="$worktree/.x-tao-old-v1"
+fi
 script="$worktree/${GIT_HOOK_SCRIPT}"
 [ -n "$worktree" ] && [ -x "$script" ] && "$script" ${event} "$@"
 exit 0

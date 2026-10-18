@@ -1,5 +1,5 @@
 import { S, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Test } from '@shared/os'
+import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { checkSourceConformance, sourceConformanceIssues } from '../cli-checks/source-conformance'
 
 const publicApiFixture = S`
@@ -37,12 +37,12 @@ const publicApiFixture = S`
   export default defaultValue
 `
 
-Test.test('source conformance > accepts documented API groups and public shapes in one fixture', () => {
-  Test.expect(sourceConformanceIssues('fixture.ts', publicApiFixture)).toEqual([])
-  Test.expect(sourceConformanceIssues('fixture.ts', publicApiFixture.replaceAll('\n', '\r\n'))).toEqual([])
+Tests.test('source conformance > accepts documented API groups and public shapes in one fixture', () => {
+  Tests.expect(sourceConformanceIssues('fixture.ts', publicApiFixture)).toEqual([])
+  Tests.expect(sourceConformanceIssues('fixture.ts', publicApiFixture.replaceAll('\n', '\r\n'))).toEqual([])
 })
 
-Test.test('source conformance > checks ambient namespaces and workspace declarations', async () => {
+Tests.test('source conformance > checks ambient namespaces and workspace declarations', async () => {
   for (const declaration of ['export declare namespace API', 'export namespace API']) {
     const filename = declaration.includes('declare') ? 'fixture.ts' : 'fixture.d.ts'
     const source = S`
@@ -56,7 +56,7 @@ Test.test('source conformance > checks ambient namespaces and workspace declarat
         }
       }
     `
-    Test.expect(sourceConformanceIssues(filename, source)).toEqual([
+    Tests.expect(sourceConformanceIssues(filename, source)).toEqual([
       `${filename}:3: exported API missing needs JSDoc beginning with its name and a description`,
     ])
   }
@@ -70,14 +70,12 @@ Test.test('source conformance > checks ambient namespaces and workspace declarat
     )
     await FileSystem.write(Path.join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
     await FileSystem.write(Path.join(root, '.x-tao-old-v1/ignored.ts'), 'export const missingDocs = 1')
-    await Test.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
     await FileSystem.write(Path.join(root, 'ts/public.d.ts'), 'export declare const publicValue: number\n')
-    await Test.expect(checkSourceConformance(root)).rejects.toThrow(
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
       'ts/public.d.ts:1: exported API publicValue needs JSDoc',
     )
   }, {
-    finally() {
-      return FileSystem.rm(root, { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
 })

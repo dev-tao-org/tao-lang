@@ -38,6 +38,8 @@ local.properties
 .artifacts/*
 !.artifacts/.gitkeep
 _gen_*/
+/ts/7-runtime/_gen_runtime
+/ts/7-runtime/_gen_runtime.*.pending
 # Project-local state uses .tao/.gitignore; store/ is committed.
 # Keep former generated layouts ignored when integration precedes local migration.
 # Running loops and conflicting cache destinations may still retain these files.

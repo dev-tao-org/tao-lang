@@ -1,0 +1,10 @@
+(AppDeclaration "app" @keyword)
+(AppDeclaration name: (Identifier) @type)
+(RootDeclaration "root" @keyword)
+(ViewDeclaration "view" @keyword)
+(ViewDeclaration name: (Identifier) @function)
+(RenderStatement "render" @keyword)
+(Injection "inject" @keyword)
+(Parameter type: (Identifier) @type)
+(ViewRender view: (Identifier) @function)
+(TextLiteral) @string

@@ -14,5 +14,5 @@ let
 in
 pkgs.buildEnv {
   name = "tao-typescript-portable-profile";
-  paths = tools.packages;
+  paths = tools.packages ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.stdenv.cc.cc.lib ];
 }

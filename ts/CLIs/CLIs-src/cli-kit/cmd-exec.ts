@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { FileSystem, Platform, Streams } from '@shared/os'
+import { Env, FileSystem, Platform, Streams } from '@shared/os'
 import { configuredCommandOutput } from './io'
 
 /** runCommand runs a space-separated command and throws on failure.
@@ -37,6 +37,7 @@ type Command = string | readonly string[]
 type RunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
+  env?: Record<string, string | undefined>
   stdin?: FileSystem.File
   stdout?: 'inherit' | 'ignore'
   stderr?: 'inherit' | 'ignore'
@@ -50,6 +51,7 @@ async function runLoggedCommand(
   const child = Platform.spawn(command, {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
+    env: commandEnvironment(options.env),
     stdin: options.stdin ?? 'inherit',
     stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
     stderr: 'pipe',
@@ -80,6 +82,7 @@ async function runInheritedCommand(command: Command, options: RunOptions): Promi
   const child = Platform.spawn(command, {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
+    env: commandEnvironment(options.env),
     stdin: options.stdin ?? 'inherit',
     stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
     stderr: options.stderr ?? 'inherit',
@@ -104,6 +107,12 @@ function requireCommandSuccess(command: Command, options: RunOptions, status: nu
 
 function commandArguments(command: Command, options: RunOptions): string[] {
   return [...typeof command === 'string' ? command.trim().split(/ +/) : command, ...options.variadicArgs ?? []]
+}
+
+function commandEnvironment(
+  overrides?: Record<string, string | undefined>,
+): Record<string, string | undefined> | undefined {
+  return overrides === undefined ? undefined : { ...Env.snapshot(), ...overrides }
 }
 
 async function forwardOutput(stream: Streams.ByteStream, pipe: OutputPipe): Promise<void> {

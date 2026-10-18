@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
 /** doctorReport gathers diagnostics for the active implementation without changing developer state. */
 export async function doctorReport(fingerprintOnly = false): Promise<{
@@ -20,31 +20,6 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
   return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
 }
 
-/** diagnoseGitHub preserves required HTTPS transport and the expected GitHub CLI helper diagnostics. */
-export function diagnoseGitHub(
-  configured: string | undefined,
-  effective: string | undefined,
-  helpers: string | undefined,
-): Check {
-  const name = 'GitHub transport'
-  const remediation = 'just setup-github'
-  if (!effective?.startsWith('https://github.com/')) {
-    return { name, remediation, status: 'fail', detail: 'Origin is absent or does not resolve to GitHub HTTPS.' }
-  }
-  if (configured !== effective) {
-    return {
-      name,
-      remediation,
-      status: 'warn',
-      detail: 'Origin depends on a URL rewrite; store the HTTPS URL directly.',
-    }
-  }
-  if (!helpers?.split('\n').some(helper => helper.includes('auth git-credential'))) {
-    return { name, remediation, status: 'warn', detail: 'The GitHub CLI HTTPS credential helper is missing.' }
-  }
-  return { name, status: 'pass', detail: 'Origin uses GitHub HTTPS and the GitHub CLI credential helper.' }
-}
-
 /** safeToken admits only plain version and identifier tokens into the pasteable fingerprint. */
 export function safeToken(value: string | undefined): string | undefined {
   const token = value?.trim()
@@ -59,15 +34,20 @@ export function toolVersion(output: string | undefined): string | undefined {
 }
 
 /** diagnoseTools classifies required runtime versions and optional local-service tools. */
-export function diagnoseTools(tools: readonly string[], versions: readonly (string | undefined)[]): Check[] {
+export function diagnoseTools(
+  tools: readonly string[],
+  versions: readonly (string | undefined)[],
+  failures: readonly (string | undefined)[] = [],
+): Check[] {
   return tools.map((name, index) => {
     const version = toolVersion(versions[index])
     const optional = name === 'age' || name === 'docker'
     if (!version) {
+      const diagnostic = failures[index] || versions[index]?.trim()
       return {
         name,
         status: optional ? 'warn' : 'fail',
-        detail: 'Not available on the managed PATH.',
+        detail: diagnostic || 'Not available on the managed PATH.',
         remediation: 'Enter the repository devenv; run ./agent setup.',
       }
     }
@@ -103,17 +83,32 @@ type Fingerprint = {
 const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
 
 async function readSnapshot() {
-  const [versions, commit, describe, changes, branch, origin, configuredOrigin, helpers] = await Promise.all([
-    Promise.all(tools.map(tool => probe(tool + ' --version'))),
+  const [probes, commit, describe, changes] = await Promise.all([
+    Promise.all(tools.map(probeTool)),
     probe('git rev-parse HEAD'),
     probe('git describe --always --dirty'),
     probe('git status --porcelain'),
-    probe('git symbolic-ref --quiet --short HEAD'),
-    probe('git remote get-url origin'),
-    probe('git config --local --get remote.origin.url'),
-    probe('git config --get-all credential.https://github.com.helper'),
   ])
-  return { versions, commit, describe, changes, branch, origin, configuredOrigin, helpers }
+  return {
+    versions: probes.map(probe => probe.output),
+    failures: probes.map(probe => probe.failure),
+    commit,
+    describe,
+    changes,
+  }
+}
+
+async function probeTool(tool: string): Promise<{ output?: string; failure?: string }> {
+  return await Try(async () => ({
+    output: await Platform.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
+  }), {
+    catch(error) {
+      const failure = Errors.isCommandExecutionError(error)
+        ? error.result.stderr.trim() || error.result.stdout.trim() || `Exited with status ${error.result.status}.`
+        : String(error)
+      return { failure }
+    },
+  })
 }
 
 type Snapshot = Awaited<ReturnType<typeof readSnapshot>>
@@ -144,27 +139,16 @@ async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
 }
 
 async function readChecks(snapshot: Snapshot): Promise<Check[]> {
-  const checks = diagnoseTools(tools, snapshot.versions)
-  checks.push({
-    name: 'Git branch',
-    status: snapshot.branch ? 'pass' : 'warn',
-    detail: snapshot.branch ?? 'Detached HEAD; select a branch before committing.',
-  })
-  const main = Try(Repo.getMainWorktreeRoot, {
-    catch() {
-      return undefined
-    },
-  })
+  const checks = diagnoseTools(tools, snapshot.versions, snapshot.failures)
+  const main = Try.WithDefault(undefined, Repo.getMainWorktreeRoot)
   checks.push({
     name: 'Git worktree',
     status: main ? 'pass' : 'warn',
     detail: main ? 'Primary worktree: ' + main : 'Could not determine the primary worktree.',
   })
   checks.push(...workspaceChecks())
-  checks.push(diagnoseGitHub(snapshot.configuredOrigin, snapshot.origin, snapshot.helpers))
   checks.push(...await artifactChecks())
-  checks.push(...await gitHookChecks())
-  // Generated parser, Studio, Expo, native toolchains and machine-lane diagnostics await their new implementations.
+  // Studio, Expo, native toolchain and machine-lane diagnostics await their new implementations.
   return checks
 }
 
@@ -191,53 +175,11 @@ async function artifactChecks(): Promise<Check[]> {
   }))
 }
 
-async function gitHookChecks(): Promise<Check[]> {
-  const directory = await probe('git rev-parse --path-format=absolute --git-path hooks')
-  const checks: Check[] = []
-  for (const event of ['commit-msg', 'pre-commit']) {
-    const path = directory ? Path.join(directory, event) : undefined
-    const contents = await Try(async () => path ? await FileSystem.file(path).text() : undefined, {
-      catch() {
-        return undefined
-      },
-    })
-    if (contents === undefined) {
-      checks.push({ name: 'git hooks', status: 'warn', detail: event + ' is not installed; Git guards do not run.' })
-      continue
-    }
-    if (!contents.includes('# tao-warn-only-git-hook')) {
-      checks.push({ name: 'git hooks', status: 'pass', detail: event + ' is managed outside this repository.' })
-      continue
-    }
-    const paths = [...contents.matchAll(/\$worktree\/([^"]+)"/g)].map(match => Repo.resolvePath(match[1]))
-    const executable = await Promise.all(paths.map(path =>
-      Try(async () => {
-        await FileSystem.access(path, FileSystem.constants.X_OK)
-        return FileSystem.statSync(path).isFile()
-      }, {
-        catch() {
-          return false
-        },
-      })
-    ))
-    checks.push({
-      name: 'git hooks',
-      status: executable.some(Boolean) ? 'pass' : 'warn',
-      detail: executable.some(Boolean)
-        ? event + ' resolves its guard script.'
-        : event + ' cannot resolve an executable guard script in this worktree.',
-    })
-  }
-  // New setup does not install Git guards yet; inspect existing hooks without borrowing the old installer.
-  return checks
-}
-
 async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
-  return Try(() => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }), {
-    catch() {
-      return undefined
-    },
-  })
+  return Try.WithDefault(
+    undefined,
+    () => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
+  )
 }
 
 function gitHash(value: string | undefined): string | undefined {

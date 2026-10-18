@@ -58,7 +58,7 @@ none exists, and prints what remains. An existing merge message is kept; `--redr
 request that replaces it with a fresh mechanical draft. Cheap and safe to re-run — it records what it
 established and redoes only what changed — so run it instead of the sequence by hand, and again after
 every round of the Developer's corrections. `--check` previews without touching anything. Completing the work
-still means commits landed, worktree clean, affected documents refreshed, the reachable host lanes
+still means commits landed, worktree clean, instructed document edits complete, the reachable host lanes
 run, and the message reviewed and edited, never handed over as drafted. `./agent board` reports every
 worktree's branch, cleanliness, finalize state, and last proof, beside the lane and lease registry —
 read it before calling a slow lane a regression, and before landing, to see who else is close.
@@ -71,7 +71,7 @@ read it before calling a slow lane a regression, and before landing, to see who 
 - Never background a gate and then poll for its output in a sleep loop: run it in the foreground with
   a timeout, since the gate is no faster for being backgrounded. **Reporting while a lane runs**,
   below, is the one exception — a lane too long to wait out, with the Developer waiting on it.
-- Refresh the roadmap, ledger, and spec documents the work changed **before** verifying; a tracked
+- Complete instructed documentation edits and update the `.artifacts` ledger **before** verifying; a tracked
   edit made after a green lane changes the tree that lane proved, so the next lane runs everything
   again from nothing.
 - A lane that is slow is usually not a regression — read `.artifacts/logs/<lane>/latest/summary.json`
