@@ -50,6 +50,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - You create a plan together in dialogue mode (see skill);
     - During discussion or planning, never begin implementation until the developer explicitly agrees to go ahead with the plan and any review points. This includes creating stubs, moving folders and editing implementation files. Agreement on individual design choices, requests describing the proposed result, and unanswered questions do not authorize implementation.
   - You write tests and implement the plan with TDD;
+    - Keep `Apps/Dev/Kitchen Sink/Kitchen Sink.tao` runnable and demonstrating every implemented language feature; update it whenever language functionality is added or changed.
     - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.

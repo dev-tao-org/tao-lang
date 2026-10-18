@@ -1,0 +1,57 @@
+app KitchenSink {
+  root RootView
+}
+
+view RootView {
+  render Col {
+    Heading
+    Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
+    Panel("Nested children and aliased captures") {
+      Pair("First parameter", "Second parameter")
+      Row() {
+        Text("Left")
+        Text("Right")
+      }
+    }
+  }
+}
+
+view Pair(First text, Second text) {
+  render Col {
+    Text(First)
+    Text(Second)
+  }
+}
+
+view Text(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+  ```
+}
+
+view Panel(Title text) {
+  render inject Caption Title, Children @@children ```ts
+    return <TR.ReactNative.View style={{ padding: 12, borderWidth: 1 }}>
+      <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
+      {Children}
+    </TR.ReactNative.View>
+  ```
+}
+
+view Col() {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'column', gap: 8 }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+view Row {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'row', gap: 16 }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+view Heading {
+  render inject ```ts
+    return <TR.ReactNative.Text style={{ fontSize: 24 }}>Kitchen Sink</TR.ReactNative.Text>
+  ```
+}
