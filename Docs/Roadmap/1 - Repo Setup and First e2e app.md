@@ -23,6 +23,11 @@ Implement a first e2e Hello World app:
 - [ ] Implement basic testing framework
 - [x] Implement a minimal preview-refresh performance package and automated harness, using the runtime's granular app-side measurements.
 
+## Goal 3
+
+- [ ] Implement `LetDefinition` and scopes
+- [ ] Get compiled code to be formatted properly
+
 ### Preview-refresh performance
 
 - Provide `tao compile <app-entry-file>` and a shared in-process compiler API. The performance web server calls that API directly, then saves generated Expo modules for normal refresh.
