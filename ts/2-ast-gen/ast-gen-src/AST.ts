@@ -59,4 +59,19 @@ export type Origin = { readonly start: number; readonly end: number }
 /** Document owns a semantic root and its source origins without retaining CST nodes. */
 export type Document = { readonly root: File; readonly origins: ReadonlyMap<Node, Origin> }
 
+/** IsAppDeclaration narrows a semantic node to an app declaration. */
+export function IsAppDeclaration(node: Node): node is AppDeclaration {
+  return node.kind === 'AppDeclaration'
+}
+
+/** IsViewDeclaration narrows a semantic node to a view declaration. */
+export function IsViewDeclaration(node: Node): node is ViewDeclaration {
+  return node.kind === 'ViewDeclaration'
+}
+
+/** IsInjection narrows a semantic node to an injection. */
+export function IsInjection(node: Node): node is Injection {
+  return node.kind === 'Injection'
+}
+
 type Declaration = AppDeclaration | ViewDeclaration

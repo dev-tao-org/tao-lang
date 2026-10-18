@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { Errors, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
@@ -18,7 +19,7 @@ Tests.test('an app becomes semantic declarations and names with source origins',
   })
   const { root, origins } = result!
   const app = root.declarations[0]!
-  if (app.kind !== 'AppDeclaration') {
+  if (!AST.IsAppDeclaration(app)) {
     Errors.ThrowUnexpected('Expected app')
   }
   Tests.expect(origins.size).toBe(4)
