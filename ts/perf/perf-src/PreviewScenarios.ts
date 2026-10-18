@@ -14,6 +14,7 @@ export const helloWorldScenarios: readonly PreviewScenario[] = [
     apply: source => source.replace('Text("Hello Tao")', 'Text("Hello Tao")\n    Text("Second view")'),
   },
   { name: 'row', apply: source => source.replace('render Col {', 'render Row {') },
+  { name: 'reset', apply: (_source, canonical) => canonical },
 ]
 
 /** previewScenarios edits the isolated Preview app: label, second line, row, then the authored source. */

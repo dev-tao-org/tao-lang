@@ -86,7 +86,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
 
 async function runScenarios(page: HeadlessBrowser.Page): Promise<PreviewResult[]> {
   for (const [index, scenario] of scenarios.entries()) {
-    await page.locator('#run').click()
+    await page.locator('#run').click({ timeout: 5000 })
     await page.waitForFunction(
       expected => {
         const state = window.__taoPreviewState
