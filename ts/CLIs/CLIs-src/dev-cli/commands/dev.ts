@@ -74,10 +74,7 @@ function reportExpoOutput(stream: 'stdout' | 'stderr', text: string): void {
 
 function reportReload(timing: ReloadTiming): void {
   IO.print(
-    `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms; `
-      + `reload complete ${timing.saveToAppliedMs.toFixed(1)} ms (${
-        (timing.saveToAppliedMs / 1000).toFixed(4)
-      } s elapsed, both previews).`,
+    `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`,
   )
   for (const [id, frame] of Object.entries(timing.frames)) {
     const label = id === 'left' ? 'narrow' : 'wide'
@@ -90,6 +87,11 @@ function reportReload(timing: ReloadTiming): void {
         } s elapsed)`,
     )
   }
+  IO.print(
+    `Total ${timing.revision}: save → repaint (preview applied) ${timing.saveToAppliedMs.toFixed(1)} ms (${
+      (timing.saveToAppliedMs / 1000).toFixed(4)
+    } s elapsed, both previews).`,
+  )
 }
 
 async function cleanup(options: {
