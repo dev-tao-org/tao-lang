@@ -160,9 +160,7 @@ function trackedDocument(session: DocumentSession, sessions: Set<DocumentSession
   let disposed = false
   sessions.add(session)
   return {
-    update(source) {
-      return session.update(source)
-    },
+    update: (source) => session.update(source),
     dispose() {
       if (disposed) {
         return
@@ -180,9 +178,7 @@ function initializeParser(runtimeWasmPath?: string): Promise<void> {
   parserInitialization ??= WebParser.init(
     runtimeWasmPath
       ? {
-        locateFile() {
-          return runtimeWasmPath
-        },
+        locateFile: () => runtimeWasmPath,
       }
       : undefined,
   )

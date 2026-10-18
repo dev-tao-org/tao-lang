@@ -31,9 +31,7 @@ async function writeFileAtomically(path: string, content: string): Promise<void>
     await FileSystem.writeFile(staged, content, 'utf8')
     await FileSystem.rename(staged, path)
   }, {
-    finally() {
-      return FileSystem.rm(staged, { force: true })
-    },
+    finally: () => FileSystem.rm(staged, { force: true }),
   })
 }
 

@@ -42,9 +42,7 @@ export namespace Try {
     action: () => Value,
   ): TryResult<Value, Default, void> {
     return Try(action, {
-      catch() {
-        return defaultValue
-      },
+      catch: () => defaultValue,
     }) as TryResult<Value, Default, void>
   }
 }

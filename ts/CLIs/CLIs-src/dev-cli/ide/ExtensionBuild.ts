@@ -62,9 +62,7 @@ async function validateRelocatedPackage(): Promise<void> {
     await FileSystem.cp(packageRoot, directory, { recursive: true })
     await Bundle.validateEditorBundle(Path.join(directory, 'dist/extension.js'))
   }, {
-    finally() {
-      return FileSystem.rm(directory, { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })
 }
 

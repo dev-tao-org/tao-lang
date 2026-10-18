@@ -116,9 +116,7 @@ function recordingCipher(): {
 } {
   const calls = { machineDecrypt: 0, recipientCheck: 0, valueDecrypt: 0 }
   const cipher: Cipher = {
-    async encrypt() {
-      return 'wrapped'
-    },
+    encrypt: async () => 'wrapped',
     async decrypt() {
       calls.machineDecrypt += 1
       return 'AGE-SECRET-KEY-1store\n'
@@ -128,9 +126,7 @@ function recordingCipher(): {
       calls.valueDecrypt += 1
       return 'clear-token'
     },
-    async generateKey() {
-      return ({ recipient: 'age1store', secretKey: 'AGE-SECRET-KEY-1store' })
-    },
+    generateKey: async () => ({ recipient: 'age1store', secretKey: 'AGE-SECRET-KEY-1store' }),
     async recipientOfKey() {
       calls.recipientCheck += 1
       return 'age1store'

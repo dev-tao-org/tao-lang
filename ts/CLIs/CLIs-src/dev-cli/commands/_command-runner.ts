@@ -26,9 +26,7 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
   }
   commands.push({
     ...registered,
-    action(...args: unknown[]) {
-      return registered.action(...args as Args)
-    },
+    action: (...args: unknown[]) => registered.action(...args as Args),
   })
   return registered
 }

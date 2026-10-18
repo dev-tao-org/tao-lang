@@ -42,7 +42,7 @@ const invalidMultilineStrings = [
 Tests.test('source conformance > checks object methods and 45-line function-body boundaries', () => {
   const valid = S`
     const encrypt = async (value: string) => value
-    const object = { encrypt, async decrypt(value: string) { return value }, *values() { yield 1 } }
+    const object = { encrypt, async decrypt(value: string) { record(value); return value }, *values() { yield 1 } }
     type Shape = { encrypt: (value: string) => Promise<string> }
   `
   Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
@@ -62,25 +62,43 @@ Tests.test('source conformance > checks object methods and 45-line function-body
   ])
 })
 
-Tests.test('source conformance > requires method syntax for Try catch handlers', () => {
+Tests.test('source conformance > prefers concise arrows for single-return object functions', () => {
   const valid = S`
-    Try(() => work(), { catch() { return "" } })
-    Try(() => work(), { catch(error) { return error } })
-    Try(() => work(), { async catch() { return 1 } })
+    Try(() => work(), { catch: () => "" })
+    Try(() => work(), { catch: error => error })
+    Try(() => work(), { catch(error) { log(error); return error } })
+    Try(() => work(), { async catch() { await recover() } })
   `
   Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
   const invalid = S`
-    Try(() => work(), { handler: (value) => value })
-    Try(() => work(), { catch: () => "" })
-    Try(() => work(), { catch: () => { log(); return "" } })
+    Try(() => work(), { catch(error) { return error } })
+    Try(() => work(), { handler: (value) => { return value } })
+    Try(() => work(), { catch: (error) => { log(error); return error } })
     Try(() => work(), { catch: function (error) { return error } })
   `
   const methodIssues = sourceConformanceIssues('fixture.ts', invalid)
   Tests.expect(methodIssues).toHaveLength(4)
-  Tests.expect(
-    methodIssues.every(issue => issue.endsWith('function implementations in objects must use method syntax')),
-  )
-    .toBe(true)
+  Tests.expect(methodIssues.filter(issue =>
+    issue.endsWith(
+      'single-return object functions should use expression-bodied arrow properties',
+    )
+  )).toHaveLength(3)
+  Tests.expect(methodIssues.filter(issue => issue.endsWith('multi-statement object functions must use method syntax')))
+    .toHaveLength(1)
+})
+
+Tests.test('source conformance > retains object methods with sensitive bindings', () => {
+  const source = S`
+    const object = {
+      thisValue() { return this.value },
+      argumentValue() { return arguments[0] },
+      superValue() { return super.value },
+      explicitThis(this: object) { return 1 },
+      computedName() { return { [this.value]() {} } },
+      namedFunction: function self() { return self },
+    }
+  `
+  Tests.expect(sourceConformanceIssues('fixture.ts', source)).toEqual([])
 })
 
 Tests.test('source conformance > checks platform imports and globals in one source fixture', () => {

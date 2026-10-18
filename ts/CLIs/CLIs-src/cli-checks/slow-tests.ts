@@ -19,9 +19,7 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
           IO.warn(warning)
         }
       }, {
-        catch(error) {
-          return IO.warn('Unable to read test timings:', error)
-        },
+        catch: (error) => IO.warn('Unable to read test timings:', error),
       })
     },
   })

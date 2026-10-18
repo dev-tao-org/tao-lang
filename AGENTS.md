@@ -76,7 +76,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
   - Function bodies: at most 45 physical interior lines, including comments and blanks.
   - Handwritten TypeScript files: 250-line soft limit, 350-line hard limit; generated and whole-file third-party sources are excluded. Mark imported whole files with `@third-party` source provenance.
-  - Object functions use method syntax: `async encrypt(...) { ... }`.
+  - Object functions with only a returned expression use expression-bodied arrow properties: `Name: name => value`. Other object functions use method syntax; retain methods when arrows would change `this`, `arguments`, `super` or generator behavior.
 - Review:
   - Put all exports immediately after imports, before private definitions.
   - Follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.

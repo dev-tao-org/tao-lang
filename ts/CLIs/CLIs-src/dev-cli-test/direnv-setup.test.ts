@@ -70,22 +70,16 @@ function createFixtureEnvironment(
   commandCalls: Array<{ args: readonly string[]; command: string }>,
 ): SetupEnvironment {
   return {
-    interactive() {
-      return true
-    },
+    interactive: () => true,
     async confirm(options) {
       prompts.push(options)
       return true
     },
-    resolveDirenvPackage() {
-      return paths.packageOutput
-    },
+    resolveDirenvPackage: () => paths.packageOutput,
     write(text) {
       output.push(text)
     },
-    root() {
-      return root
-    },
+    root: () => root,
     env: { HOME: home, SHELL: '/bin/zsh' },
     async run(command, spec = {}) {
       commandCalls.push({ args: spec.args ?? [], command })
@@ -136,9 +130,7 @@ async function createFixture(): Promise<FixtureState> {
 async function withFixture(run: (fixtureState: FixtureState) => Promise<void>): Promise<void> {
   const fixtureState = await createFixture()
   await Try(() => run(fixtureState), {
-    finally() {
-      return FileSystem.rm(fixtureState.root, { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(fixtureState.root, { recursive: true, force: true }),
   })
 }
 

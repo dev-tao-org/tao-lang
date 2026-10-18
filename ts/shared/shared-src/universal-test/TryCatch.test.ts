@@ -261,9 +261,7 @@ Tests.test('Try > awaits finalizers and WithDefault awaits recovery for synchron
 
 Tests.test('Try > assimilates thenables and normalizes a throwing then getter', async () => {
   const thenable: PromiseLike<number> = {
-    then(resolve, reject) {
-      return Promise.resolve(9).then(resolve, reject)
-    },
+    then: (resolve, reject) => Promise.resolve(9).then(resolve, reject),
   }
   const result: Promise<number> = Try(() => thenable)
   Tests.expect(await result).toBe(9)

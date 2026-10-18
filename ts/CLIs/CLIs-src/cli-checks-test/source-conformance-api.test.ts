@@ -76,8 +76,6 @@ Tests.test('source conformance > checks ambient namespaces and workspace declara
       'ts/public.d.ts:1: exported API publicValue needs JSDoc',
     )
   }, {
-    finally() {
-      return FileSystem.rm(root, { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
 })

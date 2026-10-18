@@ -10,7 +10,6 @@ export {
   isApiDeclaration,
   isApiMember,
   isExported,
-  isFunctionProperty,
   isImplementationNode,
   isLocalNamedExport,
   isPrivateApiMember,
@@ -19,21 +18,6 @@ export {
 
 /** ApiGroup describes declarations which share one exported API name. */
 type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
-
-/** isFunctionProperty detects disallowed function-valued object properties. */
-function isFunctionProperty(node: TypeScript.Node): boolean {
-  if (!TypeScript.isPropertyAssignment(node)) {
-    return false
-  }
-  let value = node.initializer
-  while (isExpressionWrapper(value)) {
-    value = value.expression
-  }
-  if (TypeScript.isArrowFunction(value)) {
-    return true
-  }
-  return TypeScript.isFunctionExpression(value)
-}
 
 /** docs collects JSDoc comments attached to declarations. */
 function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
@@ -149,16 +133,6 @@ function hasValidDocLayout(source: string, range: TypeScript.CommentRange): bool
   const prefix = indentation + ' *  '
   return /^\/\*\* \S+ \S/.test(lines[0]) && /\S \*\/$/.test(lines[lines.length - 1])
     && lines.slice(1).every(line => line.startsWith(prefix) && /^\S/.test(line.slice(prefix.length)))
-}
-
-function isExpressionWrapper(node: TypeScript.Expression): node is
-  | TypeScript.ParenthesizedExpression
-  | TypeScript.AsExpression
-  | TypeScript.SatisfiesExpression
-  | TypeScript.NonNullExpression
-{
-  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
-    || TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
 }
 
 function hasPrivateName(node: TypeScript.Node): boolean {

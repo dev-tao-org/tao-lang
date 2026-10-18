@@ -42,9 +42,7 @@ async function runDevSession(): Promise<void> {
     IO.print('Edit Apps/Tests/Hello World.tao to refresh both previews. Press Ctrl-C to stop.')
     await Lifecycle.waitForTermination()
   }, {
-    finally(_thrown, error) {
-      return cleanup({ preview, workspace, expo, reportFailure: Boolean(error) })
-    },
+    finally: (_thrown, error) => cleanup({ preview, workspace, expo, reportFailure: Boolean(error) }),
   })
 }
 

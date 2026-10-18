@@ -21,9 +21,7 @@ Tests.test('reloading activation replaces an old hook and unloads an active disa
     )
     Tests.expect(FileSystem.existsSync(Path.join(fixture.home, 'hook-called'))).toBe(false)
   }, {
-    finally() {
-      return FileSystem.rm(Path.dirname(fixture.root), { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(Path.dirname(fixture.root), { recursive: true, force: true }),
   })
 })
 
@@ -37,9 +35,7 @@ Tests.test('disabled shared setup preserves an unrelated active direnv environme
     Tests.expect(FileSystem.existsSync(Path.join(fixture.home, 'export-cwd'))).toBe(false)
     Tests.expect(FileSystem.existsSync(Path.join(fixture.home, 'hook-called'))).toBe(false)
   }, {
-    finally() {
-      return FileSystem.rm(Path.dirname(fixture.root), { recursive: true, force: true })
-    },
+    finally: () => FileSystem.rm(Path.dirname(fixture.root), { recursive: true, force: true }),
   })
 })
 

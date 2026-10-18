@@ -2,8 +2,9 @@ import { Errors, Time } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
-import { hasValidDocLayout, isAmbientNamespace, isFunctionProperty } from './source-conformance-api'
+import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { ExportedApiChecker } from './source-conformance-exports'
+import { objectFunctionStyleIssue } from './source-conformance-functions'
 import { functionBody, functionBodyLineCount, multilineStringIssue } from './source-conformance-layout'
 import { platformAccessIssue } from './source-conformance-platform'
 import { sourceSizeDiagnostics } from './source-size'
@@ -63,8 +64,9 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
-    if (isFunctionProperty(node)) {
-      this.report(node.getStart(this.file), 'function implementations in objects must use method syntax')
+    const functionIssue = objectFunctionStyleIssue(node, this.source)
+    if (functionIssue) {
+      this.report(node.getStart(this.file), functionIssue)
     }
     const platformIssue = platformAccessIssue(node, this.filename)
     if (platformIssue) {
