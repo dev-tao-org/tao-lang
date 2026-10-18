@@ -2,8 +2,6 @@
 # Run agent commands inside this checkout's pinned environment, forwarding arguments unchanged.
 
 set -e
-# Log normal output by default; TERMINAL_OUTPUT=1 requests terminal output instead.
-export TERMINAL_OUTPUT="${TERMINAL_OUTPUT:-0}"
 # Activate managed tools, then resolve command modules from the TypeScript workspace.
 . "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"

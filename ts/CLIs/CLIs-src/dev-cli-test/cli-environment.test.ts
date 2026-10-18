@@ -1,11 +1,11 @@
 import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
-Tests.test('test accepts a per-run slow threshold alongside a selected test path', async () => {
-  const child = Platform.spawn(Repo.resolvePath('dev'), {
+Tests.test('agent test defaults to terminal output and accepts a slow threshold with a selected path', async () => {
+  const child = Platform.spawn(Repo.resolvePath('agent'), {
     variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
     cwd: Repo.getWorkspaceRoot(),
-    env: { ...Env.snapshot(), TERMINAL_OUTPUT: '1' },
+    env: { ...Env.snapshot(), TERMINAL_OUTPUT: undefined },
     stdout: 'pipe',
     stderr: 'pipe',
   })

@@ -93,7 +93,8 @@ In an interactive terminal, `./dev` shows a dashboard with one TypeScript column
 Tao worker. Lines wrap within each column; the visible tail is bounded and full output is retained
 in the announced log file. Agent and Tao commands use plain output by default, with worker names
 prefixing lines. `TERMINAL_UI=1` requests the dashboard, and `TERMINAL_UI=0` requests plain output.
-Pipes always use plain output. `TERMINAL_OUTPUT` continues to control terminal versus log routing.
+Pipes always use plain output. Commands print to the terminal by default; `TERMINAL_OUTPUT=0`
+selects log routing while keeping stderr visible.
 Captured workers cannot start nested dashboards. Interrupting a run stops active workers and
 cleans up their app sessions; interrupted or missing worker reports cannot count as success.
 

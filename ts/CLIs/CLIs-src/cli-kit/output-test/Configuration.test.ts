@@ -6,12 +6,17 @@ import { createPlainOutput } from '../output/Plain'
 Tests.test('selects interactive dev presentation and preserves explicit routing and noninteractive fallback', () => {
   const tty = { tty: true }
   Tests.expect(resolveOutputConfiguration('dev', tty)).toMatchObject({ ui: true, routing: { stdout: 'terminal' } })
-  Tests.expect(resolveOutputConfiguration('agent', tty)).toMatchObject({ ui: false, routing: { stdout: 'log' } })
+  Tests.expect(resolveOutputConfiguration('agent', tty)).toMatchObject({
+    ui: false,
+    routing: { stdout: 'terminal', stderr: 'terminal', progress: 'terminal' },
+  })
   Tests.expect(resolveOutputConfiguration('tao', tty)).toMatchObject({ ui: false, routing: { stdout: 'terminal' } })
   Tests.expect(resolveOutputConfiguration('agent', { ...tty, ui: '1', terminalOutput: '1' }))
     .toMatchObject({ ui: true, routing: { stdout: 'terminal', stderr: 'terminal' } })
   Tests.expect(resolveOutputConfiguration('dev', { ...tty, ui: '0', terminalOutput: '0' }))
     .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'both' } })
+  Tests.expect(resolveOutputConfiguration('agent', { ...tty, terminalOutput: '0' }))
+    .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'both', progress: 'log' } })
   Tests.expect(resolveOutputConfiguration('dev', { tty: false, ui: '1' }).ui).toBe(false)
 })
 

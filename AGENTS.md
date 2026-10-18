@@ -19,7 +19,7 @@ These are your rules of usage:
   - Agent commands shared with the developer are imported from the Dev CLI
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
-- `./agent` logs by default; use `TERMINAL_OUTPUT=1 ./agent ...` for terminal output (`0` selects logs). Stderr remains visible.
+- `./agent` prints to the terminal by default; `TERMINAL_OUTPUT=0` selects logs. Stderr remains visible.
 - CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
 - Keep equivalent native agent settings synchronized across Codex, Claude Code and Cursor in the same change; `agent-instructions` owns their file locations and unsupported equivalents.
 - Host execution uses `./agent unsandboxed <operation>` with `.config/agent-host-commands.json`; the harness must grant host access.

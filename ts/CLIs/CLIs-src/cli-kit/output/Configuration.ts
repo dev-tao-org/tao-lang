@@ -11,8 +11,7 @@ export function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environmen
   tty: boolean
 }) {
   const ui = environment.tty && (environment.ui ?? (entrypoint === 'dev' ? '1' : '0')) === '1'
-  const terminal = environment.terminalOutput === '1'
-    || (environment.terminalOutput === undefined && entrypoint !== 'agent')
+  const terminal = environment.terminalOutput !== '0'
   const routing: IOConfiguration = {
     stdout: terminal ? 'terminal' : 'log',
     stderr: terminal ? 'terminal' : 'both',
@@ -37,9 +36,6 @@ export async function configureCLIOutput(
     ...(options.delegate ? { stdout: 'terminal' as const, stderr: 'terminal' as const } : {}),
     logFile: Env.get('OUTPUT_LOG_FILE'),
   })
-  if (entrypoint === 'agent') {
-    Env.set('TERMINAL_OUTPUT', Env.is('TERMINAL_OUTPUT', '1') ? '1' : '0')
-  }
   if (options.delegate) {
     Env.set('TERMINAL_UI', resolved.ui ? '1' : '0')
   } else if (resolved.ui) {
