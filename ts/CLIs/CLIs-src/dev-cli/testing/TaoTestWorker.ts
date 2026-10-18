@@ -25,7 +25,7 @@ if (Platform.isMain(import.meta)) {
       },
     })
   }, {
-    finally: () => IO.finish(),
+    finally: (_thrown, error) => error ? undefined : IO.finish(),
   })
 }
 

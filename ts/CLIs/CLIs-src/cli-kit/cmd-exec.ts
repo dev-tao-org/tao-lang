@@ -2,6 +2,7 @@ import { Errors, Time, Try } from '@shared'
 import { Env, FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
 import { configuredCommandOutput } from './io'
 import type { OutputChannel } from './output/Output'
+import { createProcessOutput } from './output/ProcessOutput'
 
 /** runCommand runs a space-separated command and throws on failure.
  *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
@@ -53,6 +54,7 @@ type RunOptions = {
   stderr?: 'inherit' | 'ignore'
   output?: OutputChannel
   signal?: AbortSignal
+  structuredOutput?: boolean
 }
 
 async function runLoggedCommand(
@@ -63,7 +65,14 @@ async function runLoggedCommand(
   const child = Platform.spawn(command, {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
-    env: { ...Env.snapshot(), ...options.env, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', OUTPUT_LOG_FILE: undefined },
+    env: {
+      ...Env.snapshot(),
+      ...options.env,
+      TERMINAL_UI: '0',
+      TERMINAL_OUTPUT: '1',
+      OUTPUT_LOG_FILE: undefined,
+      CLI_OUTPUT_EVENTS: options.structuredOutput ? '1' : undefined,
+    },
     stdin: options.stdin ?? (options.output ? 'ignore' : 'inherit'),
     stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
     stderr: 'pipe',
@@ -72,8 +81,8 @@ async function runLoggedCommand(
   await Try(async () => {
     const [status] = await Promise.all([
       child.exited,
-      forwardOutput(child.stderr, commandStderr(options, output)),
-      child.stdout ? forwardOutput(child.stdout, output.stdoutPipe) : undefined,
+      forwardOutput(child.stderr, commandStderr(options, output), output.receive),
+      child.stdout ? forwardOutput(child.stdout, output.stdoutPipe, output.receive) : undefined,
     ])
     requireCommandSuccess(command, options, status, child.signalCode)
     shutdown.assertCompleted()
@@ -121,7 +130,7 @@ async function runInheritedCommand(command: Command, options: RunOptions): Promi
   const child = Platform.spawn(command, {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
-    env: commandEnvironment(options.env),
+    env: { ...Env.snapshot(), ...options.env },
     stdin: options.stdin ?? 'inherit',
     stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
     stderr: options.stderr ?? 'inherit',
@@ -152,12 +161,12 @@ function commandArguments(command: Command, options: RunOptions): string[] {
   return [...typeof command === 'string' ? command.trim().split(/ +/) : command, ...options.variadicArgs ?? []]
 }
 
-function commandEnvironment(
-  overrides?: Record<string, string | undefined>,
-): Record<string, string | undefined> | undefined {
-  return overrides === undefined ? undefined : { ...Env.snapshot(), ...overrides }
-}
-
-async function forwardOutput(stream: Streams.ByteStream, pipe: OutputPipe): Promise<void> {
-  await Streams.consume(stream, pipe)
+async function forwardOutput(
+  stream: Streams.ByteStream,
+  pipe: OutputPipe,
+  receive: ReturnType<typeof configuredCommandOutput>['receive'],
+): Promise<void> {
+  const output = createProcessOutput(pipe, receive)
+  await Streams.consume(stream, output.write)
+  output.finish()
 }

@@ -32,7 +32,7 @@ export async function runTestPlan(
   const outcomes = await executeTestSections(plan, operations)
   typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
   for (const channel of [...typeScriptChannel ? [typeScriptChannel] : [], ...taoChannels]) {
-    channel.print(channel.completion())
+    channel.summary(channel.completion())
   }
   const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
   if (failures.length > 0) {
@@ -41,7 +41,7 @@ export async function runTestPlan(
     }
     Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
   }
-  IO.print(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
+  IO.summary(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
 }
 
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
@@ -157,6 +157,7 @@ async function runTaoWorker(worker: TaoWorkerPlan, channel: OutputChannel): Prom
   let commandFailure: string | undefined
   await Try(() =>
     runCommand('bun run', {
+      structuredOutput: true,
       cwd: Repo.getWorkspaceRoot(),
       variadicArgs: [
         Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),

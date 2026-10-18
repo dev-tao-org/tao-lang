@@ -10,7 +10,9 @@ export function createFileOutput(options: { logDirectory?: 'agent' | 'dev'; logF
     `${Time.date().toISOString().replaceAll(':', '-')}-${Platform.pid}.log`,
   )
   let opened = false
-  return (event: OutputEvent): void => {
+  return Object.assign(write, { path })
+
+  function write(event: OutputEvent): void {
     if (!opened) {
       opened = true
       Artifacts.mkdirSync(Path.dirname(path), { recursive: true })
@@ -19,6 +21,7 @@ export function createFileOutput(options: { logDirectory?: 'agent' | 'dev'; logF
       Artifacts.appendFileSync(path, announcement)
       Terminal.stderr.write(announcement)
     }
-    Artifacts.appendFileSync(path, event.main ? event.text : `[${event.channel.title}] ${event.text}`)
+    const channel = event.main ? '' : `[${event.channel.title}] `
+    Artifacts.appendFileSync(path, `[${event.level} ${event.stream}] ${channel}${event.text}`)
   }
 }

@@ -11,11 +11,12 @@ export function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environmen
   tty: boolean
 }) {
   const ui = environment.tty && (environment.ui ?? (entrypoint === 'dev' ? '1' : '0')) === '1'
-  const terminal = environment.terminalOutput !== '0'
+  const terminal = environment.terminalOutput === '1'
+    || (environment.terminalOutput === undefined && entrypoint !== 'agent')
   const routing: IOConfiguration = {
     stdout: terminal ? 'terminal' : 'log',
-    stderr: terminal ? 'terminal' : 'both',
-    progress: terminal ? 'terminal' : entrypoint === 'agent' ? 'log' : 'both',
+    stderr: terminal ? 'terminal' : 'log',
+    progress: terminal ? 'terminal' : 'log',
     logDirectory: entrypoint === 'agent' ? 'agent' : 'dev',
   }
   return { ui, routing }
@@ -24,7 +25,7 @@ export function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environmen
 /** configureCLIOutput owns environment reads and lazy TUI setup for all CLI entrypoints. */
 export async function configureCLIOutput(
   entrypoint: CLIEntrypoint,
-  options: { delegate?: boolean } = {},
+  options: { delegate?: boolean; interactive?: boolean } = {},
 ): Promise<void> {
   const resolved = resolveOutputConfiguration(entrypoint, {
     ui: Env.get('TERMINAL_UI'),
@@ -35,10 +36,13 @@ export async function configureCLIOutput(
     ...resolved.routing,
     ...(options.delegate ? { stdout: 'terminal' as const, stderr: 'terminal' as const } : {}),
     logFile: Env.get('OUTPUT_LOG_FILE'),
+    forwardEvents: Env.is('CLI_OUTPUT_EVENTS', '1'),
+    passthrough: options.delegate,
   })
   if (options.delegate) {
+    Env.set('TERMINAL_OUTPUT', resolved.routing.stdout === 'terminal' ? '1' : '0')
     Env.set('TERMINAL_UI', resolved.ui ? '1' : '0')
-  } else if (resolved.ui) {
+  } else if (resolved.ui && options.interactive !== false && !Env.is('CLI_OUTPUT_EVENTS', '1')) {
     const { createTUI } = await import('./tui/TUI')
     renderOutput(await createTUI())
   }

@@ -9,8 +9,9 @@ async function fatalError(error: unknown): Promise<void> {
   const commandFailure = Errors.isCommandExecutionError(error)
   const status = commandFailure ? error.result.status : undefined
   await Try(async () => {
-    await IO.finish('failed')
     printError(error)
+    IO.summary(`Failed: ${Errors.fromUnknown(error).message.split('\n')[0]!.slice(0, 240)}`)
+    await IO.finish('failed')
   }, {
     finally() {
       Platform.exit(status ?? 1)

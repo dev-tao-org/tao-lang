@@ -93,14 +93,21 @@ In an interactive terminal, `./dev` shows a dashboard with one TypeScript column
 Tao worker. Lines wrap within each column; the visible tail is bounded and full output is retained
 in the announced log file. Agent and Tao commands use plain output by default, with worker names
 prefixing lines. `TERMINAL_UI=1` requests the dashboard, and `TERMINAL_UI=0` requests plain output.
-Pipes always use plain output. Commands print to the terminal by default; `TERMINAL_OUTPUT=0`
-selects log routing while keeping stderr visible.
+Pipes always use plain output. Agent commands log routine stdout and stderr by default and print
+worker verdicts and the final result. `TERMINAL_OUTPUT=1` also streams full output to the terminal;
+`TERMINAL_OUTPUT=0` requests concise output for any CLI. Full logs are retained in either mode.
 Captured workers cannot start nested dashboards. Interrupting a run stops active workers and
 cleans up their app sessions; interrupted or missing worker reports cannot count as success.
 
 Completion lines include each worker's elapsed time. Successful execution ends with a green
 `All tests passed in 1.32s` summary; its wall time covers suite execution and reporting after shared
 asset preparation. A failed or interrupted run never prints that success summary.
+
+One combined log records `info`, `warn` and `error` messages with their original stream and worker
+identity. Ordinary tool stderr is informational unless a Tao adapter explicitly reports a warning
+or error. Tao subprocesses preserve these levels. A concise command always announces its log path;
+the first warning/error produces a terminal notice, and completion reports warning/error message
+counts even when their details stay in the log. Warnings do not change the exit status.
 
 Workspace tests supply change notifications and control debounce turns while keeping file reads
 and compilation real. They check Tao's response to changes without depending on native watcher

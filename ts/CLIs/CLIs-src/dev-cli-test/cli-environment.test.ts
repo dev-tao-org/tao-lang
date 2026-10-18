@@ -1,7 +1,7 @@
 import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
-Tests.test('agent test defaults to terminal output and accepts a slow threshold with a selected path', async () => {
+Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
   const child = Platform.spawn(Repo.resolvePath('agent'), {
     variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
     cwd: Repo.getWorkspaceRoot(),
@@ -15,9 +15,15 @@ Tests.test('agent test defaults to terminal output and accepts a slow threshold 
     Platform.readText(child.stderr),
   ])
   Tests.expect(status).toBe(0)
-  Tests.expect(stdout + stderr).toContain('Slow tests (>0 ms):')
-  Tests.expect(stdout + stderr).toContain('a per-run threshold uses seconds')
-  Tests.expect(stdout + stderr).toContain('bun test --parallel=1')
+  Tests.expect(stderr).toContain('Warning recorded: Slow tests (>0 ms):')
+  Tests.expect(stderr).toMatch(/Completed: [1-9]\d* warning\(s\), 0 error\(s\)/)
+  Tests.expect(stdout + stderr).not.toContain('a per-run threshold uses seconds')
+  const logPath = /Logs: (.+\.log)/.exec(stderr)?.[1]
+  Tests.expect(logPath).toBeDefined()
+  const log = await FileSystem.readFile(Repo.resolvePath(logPath!), 'utf8')
+  Tests.expect(log).toContain('bun test --parallel=1')
+  Tests.expect(log).toContain('a per-run threshold uses seconds')
+  Tests.expect(log).toContain('[warn stdout]')
   Tests.expect(stdout + stderr).toMatch(/\[TypeScript tests\] passed in \d+\.\d{2}s/)
   Tests.expect(stdout).toMatch(/\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/)
 })

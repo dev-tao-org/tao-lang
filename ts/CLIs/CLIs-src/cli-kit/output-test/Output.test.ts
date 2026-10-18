@@ -1,5 +1,6 @@
 import { Tests, Text } from '@shared/os'
 import { createOutput, formatChannelCompletion } from '../output/Output'
+import { createProcessOutput, encodeOutputMessage, type OutputMessage } from '../output/ProcessOutput'
 import { displayStatus, elapsed, wrappedTail } from '../output/tui/Display'
 
 Tests.test('output preserves streamed UTF-8 and raw sink text while keeping visible lines plain', async () => {
@@ -28,6 +29,21 @@ Tests.test('output snapshots retain only the bounded tail of each channel', asyn
   Tests.expect(lines[0]).toBe('line-21')
   Tests.expect(lines.at(-1)).toBe('last')
   await output.finish()
+})
+
+Tests.test('subprocess output retains framed severity across byte fragments without classifying raw stderr', () => {
+  const raw: string[] = []
+  const messages: OutputMessage[] = []
+  const pipe = createProcessOutput(text => raw.push(text), event => messages.push(event))
+  const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '€ warning\n' })
+  const encoder = new TextEncoder()
+  const bytes = encoder.encode('normal stderr\n' + frame + '\u001einvalid\ntrailing')
+  for (const byte of bytes) {
+    pipe.write(new Uint8Array([byte]))
+  }
+  pipe.finish()
+  Tests.expect(raw.join('')).toBe('normal stderr\n\u001einvalid\ntrailing')
+  Tests.expect(messages).toEqual([{ stream: 'stdout', level: 'warn', text: '€ warning\n' }])
 })
 
 Tests.test('wrapped tails preserve ANSI styling and complete Unicode while selecting from the bottom', () => {

@@ -1,6 +1,5 @@
 import '../../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
-import { Try } from '@shared'
 import { Platform } from '@shared/os'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -61,9 +60,8 @@ export async function execute(name = 'dev'): Promise<void> {
       await definition.action(...positional, ...options)
     })
   }
-  await Try(() => parser.parseAsync(Platform.argv), {
-    finally: (_thrown, error) => IO.finish(error ? 'failed' : 'passed'),
-  })
+  await parser.parseAsync(Platform.argv)
+  await IO.finish()
 }
 
 type CommandArgument = {

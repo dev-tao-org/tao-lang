@@ -1,13 +1,16 @@
 import '../../cli-kit/fatal-errors'
+import { configureCLIOutput, IO } from '@cli-kit'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { runDirenvSetup } from '../shell/DirenvSetup'
 
+await configureCLIOutput('agent')
 await prepareParser()
 await prepareRuntime()
 await ensureShellCompletionCache()
 await runDirenvSetup({ prepare: true })
+await IO.finish()
 
 async function ensureShellCompletionCache(): Promise<void> {
   const cache = Repo.resolvePath('.artifacts/cache/dev-shell')

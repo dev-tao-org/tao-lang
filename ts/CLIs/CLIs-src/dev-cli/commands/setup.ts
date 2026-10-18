@@ -10,6 +10,6 @@ export default registerCommand({
   async action(args: string[]) {
     await runCommand('bun install', { variadicArgs: args })
     // A new process resolves dependencies from the completed installation.
-    await runCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts')
+    await runCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts', { structuredOutput: true })
   },
 })

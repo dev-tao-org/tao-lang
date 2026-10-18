@@ -22,6 +22,8 @@ export type OutputEvent = {
   stream: 'stdout' | 'stderr' | 'progress'
   text: string
   main: boolean
+  level: 'info' | 'warn' | 'error'
+  summary?: boolean
 }
 
 /** OutputChannel owns direct logging handles for one task or child process. */
@@ -32,6 +34,8 @@ export type OutputChannel = {
   warn(...values: unknown[]): void
   printToStdErr(...values: unknown[]): void
   progress(message: string): void
+  summary(...values: unknown[]): void
+  receive(message: Pick<OutputEvent, 'stream' | 'text' | 'level' | 'summary'>): void
   start(): void
   finish(status: 'passed' | 'failed'): void
   completion(): string
@@ -78,21 +82,23 @@ function createChannel(
 ): OutputChannel {
   const stdout = Streams.createDecoder()
   const stderr = Streams.createDecoder()
-  const emit = (stream: OutputEvent['stream'], text: string) => {
+  const emit = (stream: OutputEvent['stream'], text: string, level: OutputEvent['level'] = 'info', summary = false) => {
     if (!text) {
       return
     }
     appendTail(state, Text.stripAnsi(text))
-    write({ channel: state, main, stream, text })
+    write({ channel: state, main, stream, text, level, summary })
     update()
   }
   return {
     stdout: text => emit('stdout', stdout(text)),
     stderr: text => emit('stderr', stderr(text)),
     print: (...values) => emit('stdout', Text.format(...values) + '\n'),
-    warn: (...values) => emit('stdout', '\u001b[33m' + Text.format(...values) + '\u001b[0m\n'),
-    printToStdErr: (...values) => emit('stderr', '\u001b[31m' + Text.format(...values) + '\u001b[0m\n'),
+    warn: (...values) => emit('stdout', '\u001b[33m' + Text.format(...values) + '\u001b[0m\n', 'warn'),
+    printToStdErr: (...values) => emit('stderr', '\u001b[31m' + Text.format(...values) + '\u001b[0m\n', 'error'),
     progress: message => emit('progress', '\u001b[90m' + message + '\u001b[0m\n'),
+    summary: (...values) => emit('stdout', Text.format(...values) + '\n', 'info', true),
+    receive: message => emit(message.stream, message.text, message.level, message.summary),
     start(): void {
       state.status = 'running'
       state.startedAtMs = Time.nowMs()

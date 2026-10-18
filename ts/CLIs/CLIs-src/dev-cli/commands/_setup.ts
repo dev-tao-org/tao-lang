@@ -1,14 +1,9 @@
-import { IO } from '@cli-kit'
-import { Env, Platform } from '@shared/os'
+import { configureCLIOutput, IO } from '@cli-kit'
+import { Platform } from '@shared/os'
 import setup from './setup'
 
-const terminal = !Env.is('TERMINAL_OUTPUT', '0')
-IO.config({
-  stdout: terminal ? 'terminal' : 'log',
-  stderr: terminal ? 'terminal' : 'both',
-  progress: terminal ? 'terminal' : 'log',
-  logDirectory: 'dev',
-  logFile: Env.get('OUTPUT_LOG_FILE'),
-})
+const agent = Platform.argv[2] === '--agent'
+await configureCLIOutput(agent ? 'agent' : 'dev', { interactive: false })
 // Registration does not load Commander; setup can install dependencies before normal CLI parsing.
-await setup.action(Platform.argv.slice(2))
+await setup.action(Platform.argv.slice(agent ? 3 : 2))
+await IO.finish()

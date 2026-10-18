@@ -8,15 +8,15 @@ Tests.test('selects interactive dev presentation and preserves explicit routing 
   Tests.expect(resolveOutputConfiguration('dev', tty)).toMatchObject({ ui: true, routing: { stdout: 'terminal' } })
   Tests.expect(resolveOutputConfiguration('agent', tty)).toMatchObject({
     ui: false,
-    routing: { stdout: 'terminal', stderr: 'terminal', progress: 'terminal' },
+    routing: { stdout: 'log', stderr: 'log', progress: 'log' },
   })
   Tests.expect(resolveOutputConfiguration('tao', tty)).toMatchObject({ ui: false, routing: { stdout: 'terminal' } })
   Tests.expect(resolveOutputConfiguration('agent', { ...tty, ui: '1', terminalOutput: '1' }))
     .toMatchObject({ ui: true, routing: { stdout: 'terminal', stderr: 'terminal' } })
   Tests.expect(resolveOutputConfiguration('dev', { ...tty, ui: '0', terminalOutput: '0' }))
-    .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'both' } })
+    .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'log' } })
   Tests.expect(resolveOutputConfiguration('agent', { ...tty, terminalOutput: '0' }))
-    .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'both', progress: 'log' } })
+    .toMatchObject({ ui: false, routing: { stdout: 'log', stderr: 'log', progress: 'log' } })
   Tests.expect(resolveOutputConfiguration('dev', { tty: false, ui: '1' }).ui).toBe(false)
 })
 
