@@ -11,18 +11,16 @@ export function compile(
   options: { revision: string; app?: string; program?: LinkedProgram },
   timings = new Timings('compiler'),
 ): string {
-  return Generate(timings, document, options)
+  return generate(timings, document, options)
 }
 
-const Generate = Timings.measure('compiler.generate', generate)
-
-function generate(
+const generate = Timings.measure('compiler.generate', function(
   document: AST.Document,
   options: { revision: string; app?: string; program?: LinkedProgram },
 ): string {
   const program = options.program ?? linkSingleFile(document)
   return compileProgram(program, options.revision, options.app)
-}
+})
 
 function linkSingleFile(document: AST.Document): LinkedProgram {
   if (

@@ -16,7 +16,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
-    const document = await ParseTransformAndCompile(timings, source, parser, timings)
+    const document = await parseTransformAndCompile(timings, source, parser, timings)
     const app = document?.root.declarations.find(AST.IsAppDeclaration)
     if (app?.name.value !== 'HelloWorld') {
       Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
@@ -28,9 +28,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   return samples
 }
 
-const ParseTransformAndCompile = Timings.measure('compiler.parse-to-code', parseTransformAndCompile)
-
-async function parseTransformAndCompile(
+const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async function(
   source: string,
   parser: ReturnType<typeof createParser>,
   timings: Timings,
@@ -48,4 +46,4 @@ async function parseTransformAndCompile(
     compile(document, { revision: 'benchmark', program: linkModules(path, sources) }, timings)
   }
   return document
-}
+})

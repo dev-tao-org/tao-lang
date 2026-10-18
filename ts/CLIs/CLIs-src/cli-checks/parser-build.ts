@@ -8,9 +8,6 @@ export async function prepareParser(force = false, timings = new Timings(`proces
   await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
 }
 
-const GenerateParser = Timings.measure('parser.generate', generateParser)
-const BuildParserNative = Timings.measure('parser.native-build', buildParserNative)
-
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
 const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
 
@@ -34,26 +31,28 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   for (const filename of ['binding.gyp', 'binding.cc']) {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
-  await GenerateParser(timings)
-  await BuildParserNative(timings, inputs)
+  await generateParser(timings)
+  await buildParserNative(timings, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
 }
 
-async function generateParser(): Promise<void> {
+const generateParser = Timings.measure('parser.generate', async function(): Promise<void> {
   await runCommand('tree-sitter generate --abi 15 --output', {
     variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
     cwd: grammarRoot,
   })
-}
+})
 
-async function buildParserNative(inputs: Awaited<ReturnType<typeof readInputs>>): Promise<void> {
+const buildParserNative = Timings.measure('parser.native-build', async function(
+  inputs: Awaited<ReturnType<typeof readInputs>>,
+): Promise<void> {
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [outputRoot, ...nodeHeaders(inputs.node.executable)],
     cwd: Repo.resolvePath('ts'),
     env: nodeGypEnvironment(),
   })
-}
+})
 
 function canReuseParser(force: boolean, current: boolean, outputs: readonly string[]): boolean {
   return !force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))

@@ -13,35 +13,40 @@ export async function publishBuild(
   onProgress?: (message: string) => void,
 ): Promise<void> {
   onProgress?.('Writing generated app build…')
-  const path = await WriteBuild(timings, buildDirectory, code)
+  const path = await writeBuild(timings, buildDirectory, code)
   onProgress?.('Generated app build write complete.')
   if (!isCurrent()) {
     return
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
-  const runtime = await PrepareRuntime(timings, prepareRuntime)
+  const runtime = await runPrepareRuntime(timings, prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
   onProgress?.('Publishing changed runtime app files…')
-  await PublishChanged(timings, path, runtime.appPath, isCurrent)
+  await publishChanged(timings, path, runtime.appPath, isCurrent)
   onProgress?.('Runtime app file publication complete.')
 }
 
-const WriteBuild = Timings.measure('workspace.build.write', writeBuild)
-const PrepareRuntime = Timings.measure('workspace.runtime.prepare', runPrepareRuntime)
-const PublishChanged = Timings.measure('workspace.runtime.publish-changed', publishChanged)
-
-function runPrepareRuntime(prepareRuntime: () => Promise<RuntimeApplication>): Promise<RuntimeApplication> {
+const runPrepareRuntime = Timings.measure('workspace.runtime.prepare', function(
+  prepareRuntime: () => Promise<RuntimeApplication>,
+): Promise<RuntimeApplication> {
   return prepareRuntime()
-}
+})
 
-async function writeBuild(directory: string, code: string): Promise<string> {
-  await FileSystem.mkdir(directory, { recursive: true })
-  const path = Path.join(directory, 'App.tsx')
-  await FileSystem.writeIfChanged(path, code)
-  return path
-}
+const writeBuild = Timings.measure(
+  'workspace.build.write',
+  async function(directory: string, code: string): Promise<string> {
+    await FileSystem.mkdir(directory, { recursive: true })
+    const path = Path.join(directory, 'App.tsx')
+    await FileSystem.writeIfChanged(path, code)
+    return path
+  },
+)
 
-async function publishChanged(buildPath: string, target: string, isCurrent: () => boolean): Promise<void> {
+const publishChanged = Timings.measure('workspace.runtime.publish-changed', async function(
+  buildPath: string,
+  target: string,
+  isCurrent: () => boolean,
+): Promise<void> {
   const [code, previous] = await Promise.all([
     FileSystem.readFile(buildPath, 'utf8'),
     Try.WithDefault(undefined, () => FileSystem.readFile(target, 'utf8')),
@@ -58,4 +63,4 @@ async function publishChanged(buildPath: string, target: string, isCurrent: () =
   }, {
     finally: () => FileSystem.rm(pending, { force: true }),
   })
-}
+})

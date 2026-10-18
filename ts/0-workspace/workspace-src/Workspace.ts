@@ -73,7 +73,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
-const WorkspacePublish = Timings.measure('workspace.publish', publishWorkspace)
 const LinkModules = Timings.measure('modules.link', linkModules)
 
 class WorkspaceSession {
@@ -146,7 +145,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await WorkspacePublish(timings, this.publishCallback, output, isCurrent, timings)
+    await publishWorkspace(timings, this.publishCallback, output, isCurrent, timings)
     if (!isCurrent()) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -214,14 +213,14 @@ class WorkspaceSession {
   }
 }
 
-function publishWorkspace(
+const publishWorkspace = Timings.measure('workspace.publish', function(
   publish: (output: CompiledApp, isCurrent: () => boolean, timings: Timings) => Promise<void>,
   output: CompiledApp,
   isCurrent: () => boolean,
   timings: Timings,
 ): Promise<void> {
   return publish(output, isCurrent, timings)
-}
+})
 
 function skippedStages(): PipelineStages {
   return { typecheck: typecheck(), fix: fix(), check: check() }

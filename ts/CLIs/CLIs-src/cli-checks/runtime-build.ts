@@ -10,7 +10,7 @@ export async function prepareRuntime(timings = new Timings(`process:${Platform.p
     const identity = Platform.hashText(JSON.stringify(inputs))
     const directory = Artifacts.resolvePath('cache/runtime-build', identity)
     if (!resourceFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
-      await RuntimeBuild(timings, directory, identity, inputs)
+      await buildResources(timings, directory, identity, inputs)
     }
     await publishResources(directory)
     return directory
@@ -27,8 +27,6 @@ export async function writeRuntimeSources(directory: string, sources: Record<str
     await FileSystem.writeFile(target, source)
   }
 }
-
-const RuntimeBuild = Timings.measure('runtime.build', buildResources)
 
 const packageRoot = Repo.resolvePath('ts/7-runtime')
 const resourceFiles = ['runtime.json', 'package.json', 'bun.lock', ...Object.keys(RuntimeSourceResources)]
@@ -47,7 +45,11 @@ async function readInputs() {
   return { sources: Object.fromEntries(sources) }
 }
 
-async function buildResources(directory: string, identity: string, inputs: Awaited<ReturnType<typeof readInputs>>) {
+const buildResources = Timings.measure('runtime.build', async function(
+  directory: string,
+  identity: string,
+  inputs: Awaited<ReturnType<typeof readInputs>>,
+) {
   const stage = `${directory}.${Platform.randomUUID()}.pending`
   await Try(async () => {
     await FileSystem.mkdir(stage, { recursive: true })
@@ -80,7 +82,7 @@ async function buildResources(directory: string, identity: string, inputs: Await
       await FileSystem.rm(stage, { recursive: true, force: true })
     },
   })
-}
+})
 
 function runtimeManifest(source: string): RuntimeManifest {
   const parsed = JSON.parse(source) as {

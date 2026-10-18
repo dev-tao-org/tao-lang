@@ -22,7 +22,7 @@ export function loadModules(
   parser: ReturnType<typeof createParser>,
   timings: Timings,
 ): Promise<SourceModule[]> {
-  return LoadModules(timings, { entry, options, parser, timings })
+  return loadGraph(timings, { entry, options, parser, timings })
 }
 
 type LoadRequest = {
@@ -44,10 +44,7 @@ type Discovery = Map<string, string | undefined> & {
   siblings: string[]
 }
 
-const LoadModules = Timings.measure('modules.load', loadGraph)
-const Discover = Timings.measure('modules.discover', discover)
-
-async function loadGraph(request: LoadRequest): Promise<SourceModule[]> {
+const loadGraph = Timings.measure('modules.load', async function(request: LoadRequest): Promise<SourceModule[]> {
   const { entry, options, parser, timings } = request
   const entryPath = Path.resolve(entry.path)
   const entryDirectory = Path.dirname(entryPath)
@@ -64,7 +61,7 @@ async function loadGraph(request: LoadRequest): Promise<SourceModule[]> {
   while (state.pending.length > 0) {
     const path = state.pending.shift()!
     const source = state.sources.get(path)!
-    const found = await Discover(timings, state, source)
+    const found = await discover(timings, state, source)
     for (const [candidate, text] of found) {
       if (!state.sources.has(candidate)) {
         const document = text === undefined
@@ -78,36 +75,39 @@ async function loadGraph(request: LoadRequest): Promise<SourceModule[]> {
     source.siblings = found.siblings
   }
   return [...state.sources.values()]
-}
+})
 
-async function discover(state: LoadState, source: SourceModule): Promise<Discovery> {
-  const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [] })
-  const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
-    ? within(state.projectRoot, source.path) ? source.path : undefined
-    : realPathInsideProject(source.path, state.projectRoot)
-  if (physical) {
-    found.siblings = await directSourceFiles(Path.dirname(physical), state.projectRoot)
-    for (const path of found.siblings.filter(path => path !== source.path)) {
-      found.set(path, undefined)
-    }
-  }
-  for (const statement of source.document.root.declarations.filter(isImportStatement)) {
-    const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
-    const targets = specifier === undefined
-      ? await bareTargets(source.path, physical, state)
-      : await importTargets(specifier, source.path, physical, state)
-    found.imports.push({
-      statement,
-      targets: targets.map(({ path, relation }) => ({ path, relation })),
-    })
-    for (const target of targets) {
-      if (!found.has(target.path)) {
-        found.set(target.path, target.source)
+const discover = Timings.measure(
+  'modules.discover',
+  async function(state: LoadState, source: SourceModule): Promise<Discovery> {
+    const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [] })
+    const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
+      ? within(state.projectRoot, source.path) ? source.path : undefined
+      : realPathInsideProject(source.path, state.projectRoot)
+    if (physical) {
+      found.siblings = await directSourceFiles(Path.dirname(physical), state.projectRoot)
+      for (const path of found.siblings.filter(path => path !== source.path)) {
+        found.set(path, undefined)
       }
     }
-  }
-  return found
-}
+    for (const statement of source.document.root.declarations.filter(isImportStatement)) {
+      const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+      const targets = specifier === undefined
+        ? await bareTargets(source.path, physical, state)
+        : await importTargets(specifier, source.path, physical, state)
+      found.imports.push({
+        statement,
+        targets: targets.map(({ path, relation }) => ({ path, relation })),
+      })
+      for (const target of targets) {
+        if (!found.has(target.path)) {
+          found.set(target.path, target.source)
+        }
+      }
+    }
+    return found
+  },
+)
 
 async function readDocument(path: string, parser: ReturnType<typeof createParser>): Promise<AST.Document> {
   return parseDocument(await FileSystem.readFile(path, 'utf8'), path, parser)

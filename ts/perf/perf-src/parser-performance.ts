@@ -42,15 +42,13 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   return { path, summary }
 }
 
-const RunParserProcess = Timings.measure('parser.process-wall', runParserProcess)
-
 type Sample = TimingSample & { scenario: string }
 
 async function coldSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
   for (let index = 0; index < 5; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
-    const output = await RunParserProcess(timings)
+    const output = await runParserProcess(timings)
     const child: TimingSample[] = JSON.parse(output)
     samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
     samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'cold-initial' })))
@@ -58,12 +56,12 @@ async function coldSamples(): Promise<Sample[]> {
   return samples
 }
 
-async function runParserProcess(): Promise<string> {
+const runParserProcess = Timings.measure('parser.process-wall', async function(): Promise<string> {
   return await Platform.capture('bun run', {
     variadicArgs: [Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')],
     cwd: Repo.resolvePath('ts'),
   })
-}
+})
 
 async function warmSamples(): Promise<Sample[]> {
   const { createParser } = await import('../../1-grammar/grammar-src/parser')

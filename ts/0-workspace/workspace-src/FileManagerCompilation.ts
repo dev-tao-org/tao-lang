@@ -131,7 +131,7 @@ export async function readSource(
 ): Promise<SourceSnapshot | UpdateResult> {
   const timings = new Timings('workspace:input')
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const snapshot = await WorkspaceRead(timings, path, observedAtMs, read)
+  const snapshot = await readWorkspaceSource(timings, path, observedAtMs, read)
   return 'status' in snapshot ? snapshot : { ...snapshot, timings }
 }
 
@@ -166,9 +166,7 @@ export function notifyCompletion(
 
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 
-const WorkspaceRead = Timings.measure('workspace.read', readWorkspaceSource)
-
-function readWorkspaceSource(
+const readWorkspaceSource = Timings.measure('workspace.read', function(
   path: string,
   observedAtMs: number,
   read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult>,
@@ -179,7 +177,7 @@ function readWorkspaceSource(
     }
     return { source: result.source, observedAtMs }
   })
-}
+})
 
 function defaultRead(path: string, observedAtMs: number): Promise<SourceSnapshot> {
   return FileSystem.readFile(path, 'utf8').then(source => ({

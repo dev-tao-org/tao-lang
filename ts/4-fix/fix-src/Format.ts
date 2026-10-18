@@ -13,18 +13,16 @@ export type FormatResult = { status: 'formatted' | 'invalid'; text: string; edit
 
 /** format proposes whitespace edits for one parsed Tao source without file access or mutation. */
 export function format(input: FormatInput, timings = new Timings('formatter')): FormatResult {
-  return Format(timings, input)
+  return formatSource(timings, input)
 }
 
-const Format = Timings.measure('formatter.format', formatSource)
-
-function formatSource(input: FormatInput): FormatResult {
+const formatSource = Timings.measure('formatter.format', function(input: FormatInput): FormatResult {
   if (input.tree.rootNode.hasError) {
     return { status: 'invalid', text: input.source, edits: [] }
   }
   const edits = prefixEdits(input.source, input.tree.rootNode).sort((left, right) => left.start - right.start)
   return { status: 'formatted', text: applyEdits(input.source, edits), edits }
-}
+})
 
 function applyEdits(source: string, edits: readonly SourceEdit[]): string {
   const parts: string[] = []
