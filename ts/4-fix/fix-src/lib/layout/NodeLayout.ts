@@ -72,7 +72,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
       this.plan.gaps[index]!.indent++
     }
     const items = this.node.namedChildren.filter(node =>
-      node.startIndex > open.endIndex
+      node.startIndex >= open.endIndex
       && node.endIndex <= close.startIndex && node.type !== 'Comment'
     )
     return this.lineSeparated(items)
@@ -81,8 +81,39 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
   list(): this {
     const { first, last } = this.range(this.node)
     if (last > first + 1) {
-      this.plan.groups.push({ first, last, preserve: this.isMultiline() || this.hasComments() })
+      this.plan.groups.push({
+        first,
+        last,
+        preserve: this.isMultiline() || this.hasComments(),
+        breaks: [first + 1, ...this.commaBreaks(), last],
+        indentStart: first + 1,
+        indentEnd: last,
+      })
     }
     return this
+  }
+
+  commaList(tail?: Token<Kind> | Field<Kind>): this {
+    const breaks = this.commaBreaks()
+    if (breaks.length === 0) {
+      return this
+    }
+    const { first, last } = this.range(this.node)
+    const suffix = tail && (this.node.children.find(child => child.type === tail) ?? this.node.childForFieldName(tail))
+    const end = suffix ? this.range(suffix).first : last + 1
+    this.plan.groups.push({
+      first,
+      last: suffix?.type === 'TypeScript' ? end - 1 : last,
+      preserve: this.plan.tokens.slice(first, end).some(node => node.type === 'Comment')
+        || this.plan.source.slice(this.node.startIndex, this.plan.tokens[end - 1]!.endIndex).includes('\n'),
+      breaks: [...breaks, ...suffix ? [end] : []],
+      indentStart: first + 1,
+      indentEnd: end,
+    })
+    return this
+  }
+
+  private commaBreaks(): number[] {
+    return this.node.children.filter(node => node.type === ',').map(node => this.range(node).last + 1)
   }
 }

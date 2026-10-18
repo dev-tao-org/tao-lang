@@ -13,7 +13,14 @@ export type Boundary = SourceRange & {
 }
 
 /** ListGroup identifies delimiters whose interior may break together. */
-export type ListGroup = { first: number; last: number; preserve: boolean }
+export type ListGroup = {
+  first: number
+  last: number
+  preserve: boolean
+  breaks: readonly number[]
+  indentStart: number
+  indentEnd: number
+}
 
 /** LayoutPlan holds source anchors and constraints shared by formatting and layout handlers. */
 export type LayoutPlan = {
@@ -65,6 +72,9 @@ export function spaceAt(plan: LayoutPlan, index: number, spaces: number): void {
     Errors.ThrowUnexpected(`Conflicting spacing rules at ${gap.start}.`)
   }
   gap.spaces = spaces
+  if (gap.explicitLines === undefined) {
+    gap.lines = 0
+  }
   gap.explicitSpace = spaces
 }
 

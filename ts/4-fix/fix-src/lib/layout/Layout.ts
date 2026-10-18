@@ -54,15 +54,11 @@ function shouldBreak(
 }
 
 function breakList(plan: LayoutPlan, group: ListGroup): void {
-  for (let index = group.first + 1; index <= group.last; index++) {
-    const gap = plan.gaps[index]!
-    gap.lines = index === group.first + 1 || index === group.last
-        || plan.tokens[index - 1]?.type === ','
-      ? 1
-      : gap.lines
-    if (index < group.last) {
-      gap.indent++
-    }
+  for (const index of group.breaks) {
+    plan.gaps[index]!.lines = 1
+  }
+  for (let index = group.indentStart; index < group.indentEnd; index++) {
+    plan.gaps[index]!.indent++
   }
 }
 
