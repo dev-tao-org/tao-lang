@@ -88,12 +88,20 @@ async function copyAssets(): Promise<void> {
     Path.join(sourceRoot, 'language-configuration.json'),
     Path.join(packageRoot, 'language-configuration.json'),
   )
+  await copyLanguageIcons()
   const notices = await Promise.all(
     ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
       `${name}\n\n${await FileSystem.readFile(Path.join(modules, name, 'LICENSE'), 'utf8')}`
     ),
   )
   await FileSystem.writeFile(Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'), notices.join('\n\n'))
+}
+
+async function copyLanguageIcons(): Promise<void> {
+  const icons = Repo.resolvePath('Assets/Icons')
+  await FileSystem.mkdir(Path.join(packageRoot, 'icons'), { recursive: true })
+  await FileSystem.cp(Path.join(icons, 'tao-light.svg'), Path.join(packageRoot, 'icons/tao-light.svg'))
+  await FileSystem.cp(Path.join(icons, 'tao-dark.svg'), Path.join(packageRoot, 'icons/tao-dark.svg'))
 }
 
 async function writeTsxQueries(modules: string): Promise<void> {

@@ -98,6 +98,12 @@ function createRequestHandler(
     if (request.method === 'GET' && url.pathname === '/') {
       return pageResponse(options, url.origin)
     }
+    const favicon = faviconFile(url.pathname)
+    if (request.method === 'GET' && favicon) {
+      return Http.response(await FileSystem.readFile(favicon, 'utf8'), {
+        headers: { 'content-type': 'image/svg+xml' },
+      })
+    }
     if (request.method === 'GET' && url.pathname === '/preview-browser.js') {
       return Http.response(Artifacts.file(Path.join(sessionDir, 'preview-browser.js')), {
         headers: { 'content-type': 'text/javascript; charset=utf-8' },
@@ -115,6 +121,16 @@ function createRequestHandler(
     }
     return Http.response('Not found', { status: 404 })
   }
+}
+
+function faviconFile(pathname: string): string | undefined {
+  if (pathname === '/favicon-white.svg' || pathname === '/favicon.svg') {
+    return Repo.resolvePath('Assets/Icons/tao-favicon-white.svg')
+  }
+  if (pathname === '/favicon-dark.svg') {
+    return Repo.resolvePath('Assets/Icons/tao-favicon-dark.svg')
+  }
+  return undefined
 }
 
 function pageResponse(options: ResolvedHarnessOptions, origin: string): Http.HttpResponse {
@@ -249,7 +265,7 @@ function pageHtml(
 ): string {
   const safe = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
   return S`
-    <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
+    <!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
     safe(sessionId)
   }"><meta name="tao-preview-url" content="${safe(previewUrl)}"><meta name="tao-scenarios" content="${
     safe(JSON.stringify(scenarios))
