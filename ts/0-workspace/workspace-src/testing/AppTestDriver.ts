@@ -23,37 +23,30 @@ export async function createAppTestDriver(
       Artifacts.trackTemporary(directory)
       state.workspace = createWorkspace({
         outputDirectory: directory,
-        onProgress,
         runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
         compile: (input, options, timings) => compileApp(input, { ...options, app }, timings),
       })
-      onProgress?.('Compiling and publishing the Tao app…')
+      onProgress?.(`Compiling app ${app}…`)
       const result = await state.workspace.update(new Document(path, source))
-      onProgress?.('Tao app compilation and publication finished.')
-      for (const timing of result.timings) {
-        onProgress?.(`Pipeline phase ${timing.name}: ${timing.durationMs.toFixed(2)}ms.`)
-      }
       if (result.status !== 'published') {
         Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
       }
-      onProgress?.('Starting headless Expo runtime and waiting for readiness…')
-      state.expo = await Runtime.start(state.workspace.runtime!, undefined, onProgress)
-      onProgress?.('Headless Expo runtime ready.')
+      onProgress?.('Starting Expo…')
+      state.expo = await Runtime.start(state.workspace.runtime!)
       onProgress?.('Launching headless browser…')
       state.browser = await openBrowser()
-      onProgress?.('Headless browser ready.')
-      onProgress?.('Navigating to app and waiting for initial readiness…')
+      onProgress?.('Loading app…')
       await state.browser.open(state.expo.url)
-      onProgress?.('App navigation and initial readiness complete.')
+      onProgress?.('Running test steps…')
     },
     press: tag => browser(state).press(tag),
     type: (tag, value) => browser(state).type(tag, value),
     expectText: (value, tag) => browser(state).expectText(value, tag),
     expectInput: (tag, value) => browser(state).expectInput(tag, value),
     async dispose() {
-      onProgress?.('Cleaning up headless browser, Expo runtime and workspace…')
+      onProgress?.('Cleaning up…')
       await disposeSession(state)
-      onProgress?.('Test case cleanup complete.')
+      onProgress?.('Cleanup complete.')
     },
   }
 }

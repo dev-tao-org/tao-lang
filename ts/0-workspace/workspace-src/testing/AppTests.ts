@@ -15,12 +15,9 @@ export async function runAppTests(
   openBrowser: () => Promise<TestBrowser>,
   onProgress?: TestProgress,
 ): Promise<TestResult[]> {
-  onProgress?.(`Reading ${path}…`)
   const source = await FileSystem.readFile(path, 'utf8')
-  onProgress?.(`Parsing and transforming ${path}…`)
   const document = transform(createParser().parse(source).tree)
     ?? Errors.ThrowUserInput(`Invalid Tao test source: ${path}`)
-  onProgress?.(`Parsed and transformed ${path}.`)
   return await runTests(document, {
     path,
     source,

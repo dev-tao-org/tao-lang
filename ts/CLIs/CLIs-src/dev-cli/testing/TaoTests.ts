@@ -9,16 +9,10 @@ import { prepareRuntime } from '../../cli-checks/runtime-build'
 export async function runTaoTests(target: string): Promise<void> {
   const progress = createProgress()
   progress('Preparing headless Tao app tests…')
-  progress('Preparing parser build…')
   await prepareParser()
-  progress('Parser build ready.')
-  progress('Preparing runtime build…')
   await prepareRuntime()
-  progress('Runtime build ready.')
   const path = Path.resolve(target)
-  progress(`Discovering Tao test suites in ${Path.relative(Repo.getWorkspaceRoot(), path)}…`)
-  const paths = await findTaoTestFiles(path, createParser(), progress)
-  progress(`Discovered ${paths.length} Tao test suite(s).`)
+  const paths = await findTaoTestFiles(path)
   if (paths.length === 0) {
     Errors.ThrowUserInput(`No Tao test suites found in ${path}.`)
   }
@@ -53,7 +47,6 @@ export async function runTaoTests(target: string): Promise<void> {
 export async function findTaoTestFiles(
   path: string,
   parser = createParser(),
-  progress?: (message: string) => void,
 ): Promise<string[]> {
   if (FileSystem.statSync(path).isFile()) {
     return [path]
@@ -65,9 +58,8 @@ export async function findTaoTestFiles(
     }
     const child = Path.join(path, entry.name)
     if (entry.isDirectory()) {
-      paths.push(...await findTaoTestFiles(child, parser, progress))
+      paths.push(...await findTaoTestFiles(child, parser))
     } else if (entry.name.endsWith('.tao')) {
-      progress?.(`Reading and parsing ${Path.relative(Repo.getWorkspaceRoot(), child)} for test discovery…`)
       const { tree } = parser.parse(await FileSystem.readFile(child, 'utf8'))
       if (tree.rootNode.descendantsOfType('TestsDeclaration').length > 0) {
         paths.push(child)
