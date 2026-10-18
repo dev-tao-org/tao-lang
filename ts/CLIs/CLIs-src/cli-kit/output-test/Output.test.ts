@@ -69,7 +69,7 @@ Tests.test('channel status and elapsed display follow run transitions', () => {
   Tests.expect(displayStatus('failed')).toEqual({ mark: '✗', color: 'red' })
   const channel = { title: 'worker', status: 'running' as const, lines: [], startedAtMs: 1_000 }
   Tests.expect(elapsed(channel, 5_500)).toBe('0:04')
-  Tests.expect(elapsed(channel, 9_000, 5_500)).toBe('0:04')
+  Tests.expect(elapsed({ ...channel, status: 'passed', finishedAtMs: 5_500 }, 9_000)).toBe('0:04')
 })
 
 Tests.test('finishing output disposes its installed renderer after the final update', async () => {

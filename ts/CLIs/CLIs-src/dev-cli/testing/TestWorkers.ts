@@ -108,8 +108,8 @@ async function runTypeScriptTests(
     withTestTimings(
       reportPath =>
         runCommand(`bun test --parallel=${workers}`, {
-          cwd: Repo.resolvePath('ts'),
           variadicArgs: reportPath ? [...args, '--reporter=junit', '--reporter-outfile', reportPath] : [...args],
+          cwd: Repo.resolvePath('ts'),
           output: channel,
           signal,
           env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
@@ -181,8 +181,6 @@ async function runTaoWorker(
   let commandFailure: string | undefined
   await Try(() =>
     runCommand('bun run', {
-      structuredOutput: true,
-      cwd: Repo.getWorkspaceRoot(),
       variadicArgs: [
         Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),
         '--report',
@@ -190,6 +188,8 @@ async function runTaoWorker(
         '--',
         ...worker.paths,
       ],
+      structuredOutput: true,
+      cwd: Repo.getWorkspaceRoot(),
       output: channel,
       signal,
       env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },

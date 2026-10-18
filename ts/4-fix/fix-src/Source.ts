@@ -11,7 +11,7 @@ export function applyEdits(source: string, edits: readonly SourceEdit[]): string
   const parts: string[] = []
   let offset = 0
   for (const edit of edits) {
-    if (edit.start < offset || edit.end < edit.start || edit.end > source.length) {
+    if (isInvalidEdit(edit, offset, source.length)) {
       Errors.ThrowUnexpected('Source edits overlap or leave their snapshot.')
     }
     parts.push(source.slice(offset, edit.start), edit.text)
@@ -19,4 +19,8 @@ export function applyEdits(source: string, edits: readonly SourceEdit[]): string
   }
   parts.push(source.slice(offset))
   return parts.join('')
+}
+
+function isInvalidEdit(edit: SourceEdit, offset: number, sourceLength: number): boolean {
+  return edit.start < offset || edit.end < edit.start || edit.end > sourceLength
 }

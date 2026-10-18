@@ -15,11 +15,11 @@ export function displayStatus(
 }
 
 /** elapsed formats a channel's completed or current run duration. */
-export function elapsed(channel: ChannelState, now: number, finishedAt?: number): string {
+export function elapsed(channel: ChannelState, now: number): string {
   if (channel.startedAtMs === undefined) {
     return '—'
   }
-  const seconds = Math.max(0, Math.floor(((finishedAt ?? now) - channel.startedAtMs) / 1_000))
+  const seconds = Math.max(0, Math.floor(((channel.finishedAtMs ?? now) - channel.startedAtMs) / 1_000))
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 

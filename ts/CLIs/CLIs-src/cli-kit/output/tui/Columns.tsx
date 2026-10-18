@@ -6,7 +6,6 @@ import { displayStatus, elapsed, wrappedTail } from './Display'
 /** Columns renders channel output in equal-width terminal panes. */
 export function Columns(props: {
   channels: readonly ChannelState[]
-  finishedAt: ReadonlyMap<string, number>
   now: number
   rows: number
   width: number
@@ -22,7 +21,6 @@ export function Columns(props: {
       {props.channels.map(channel => (
         <ChannelPane
           channel={channel}
-          finishedAt={props.finishedAt.get(channel.title)}
           key={channel.title}
           now={props.now}
           paneWidth={paneWidth}
@@ -35,14 +33,13 @@ export function Columns(props: {
 
 function ChannelPane(props: {
   channel: ChannelState
-  finishedAt?: number
   now: number
   paneWidth: number
   rows: number
 }): JSX.Element {
   const { channel } = props
   const status = displayStatus(channel.status)
-  const title = `${status.mark} ${channel.title} ${elapsed(channel, props.now, props.finishedAt)}`
+  const title = `${status.mark} ${channel.title} ${elapsed(channel, props.now)}`
   const lines = wrappedTail(channel.lines, props.paneWidth, props.rows)
   return (
     <Box flexDirection="column" width={props.paneWidth}>
