@@ -95,7 +95,17 @@ function receiveSignal(event: MessageEvent): void {
   const collection = signal.type === 'tao.preview-applied' ? frameState.applied : frameState.hmr
   if (!collection.has(signal.revision)) {
     collection.set(signal.revision, { signal, receivedAt: Browser.now() })
+    relaySignal(signal)
   }
+}
+
+function relaySignal(signal: PreviewSignal): void {
+  const { type, sessionId, frameId, bootId, revision, timestampMs } = signal
+  void Browser.requestJson('/receipt', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type, sessionId, frameId, bootId, revision, timestampMs }),
+  }).then(undefined, failScenario)
 }
 
 async function runScenario(

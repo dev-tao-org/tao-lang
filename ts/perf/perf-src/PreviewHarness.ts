@@ -3,6 +3,7 @@ import { Artifacts, Path, Repo } from '@shared/os'
 import type { createWorkspace } from '@workspace/Workspace'
 import * as Browser from '../../shared/shared-src/os/Browser'
 import * as Http from '../../shared/shared-src/os/Http'
+import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
 export async function createPreviewHarness(options: HarnessOptions): Promise<PreviewHarness> {
@@ -27,7 +28,9 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
   const streams = new Set<Http.StreamController>()
   const expected = new Set<string>()
   const encoder = new TextEncoder()
-  const stopListening = options.workspace.onExpected(revision => {
+  const reload = new ReloadTimings(options.sessionId, options.onReload)
+  const stopListening = options.workspace.onExpected((revision, startedAtMs) => {
+    reload.begin(revision, startedAtMs)
     expected.clear()
     expected.add(revision)
     sendEvent(streams, encoder, 'expected', { revision })
@@ -36,7 +39,7 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
     idleTimeout: 0,
     hostname: '127.0.0.1',
     port: 0,
-    fetch: createRequestHandler(options, sessionDir, streams, expected, encoder),
+    fetch: createRequestHandler(options, sessionDir, streams, expected, encoder, reload),
   })
   return {
     url: server.url.toString(),
@@ -54,6 +57,7 @@ function createRequestHandler(
   streams: Set<Http.StreamController>,
   expected: Set<string>,
   encoder: TextEncoder,
+  reload: ReloadTimings,
 ): (request: Http.HttpRequest) => Promise<Http.HttpResponse> {
   return async request => {
     const url = new URL(request.url)
@@ -70,6 +74,10 @@ function createRequestHandler(
     }
     if (request.method === 'POST' && url.pathname === '/edit') {
       return editResponse(request, options)
+    }
+    if (request.method === 'POST' && url.pathname === '/receipt') {
+      reload.receive(await request.json())
+      return Http.jsonResponse({ received: true })
     }
     return Http.response('Not found', { status: 404 })
   }
@@ -95,6 +103,7 @@ export type HarnessOptions = {
   previewUrl: string
   initialSource: string
   sessionId: string
+  onReload?(timing: ReloadTiming): void
 }
 
 /** PreviewHarness exposes a local URL and deterministic resource disposal. */

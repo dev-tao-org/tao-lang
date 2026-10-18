@@ -4,6 +4,7 @@ import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 import { createProject, createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createExpoSession, type ExpoSession } from '../../../../0-workspace/workspace-src/Expo'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
+import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
 import * as Browser from '../../../../shared/shared-src/os/Browser'
 import * as Lifecycle from '../../../../shared/shared-src/os/ProcessLifecycle'
 import * as WorkspaceWatch from '../../../../shared/shared-src/os/WorkspaceWatch'
@@ -34,8 +35,12 @@ async function runDevSession(): Promise<void> {
       previewUrl: expo.url,
       initialSource: source,
       sessionId: Platform.randomUUID(),
+      onReload: reportReload,
     })
-    stopWatching = WorkspaceWatch.watchFile(sourcePath, () => refreshSource(sourcePath, workspace))
+    stopWatching = WorkspaceWatch.watchFile(
+      sourcePath,
+      observedAtMs => refreshSource(sourcePath, workspace, observedAtMs),
+    )
     await Browser.openUrl(preview.url)
     IO.print('Tao preview is running at ' + preview.url)
     IO.print('Edit Apps/Tests/Hello World.tao to refresh both previews. Press Ctrl-C to stop.')
@@ -47,12 +52,16 @@ async function runDevSession(): Promise<void> {
   })
 }
 
-function refreshSource(path: string, workspace: ReturnType<typeof createWorkspace>): void {
-  void publishSource(path, workspace)
+function refreshSource(path: string, workspace: ReturnType<typeof createWorkspace>, observedAtMs: number): void {
+  void publishSource(path, workspace, observedAtMs)
 }
 
-async function publishSource(path: string, workspace: ReturnType<typeof createWorkspace>): Promise<void> {
-  const result = await Try(() => workspace.updateFile(path), {
+async function publishSource(
+  path: string,
+  workspace: ReturnType<typeof createWorkspace>,
+  observedAtMs: number,
+): Promise<void> {
+  const result = await Try(() => workspace.updateFile(path, observedAtMs), {
     catch() {
       return undefined
     },
@@ -70,6 +79,13 @@ function requirePublished(result: UpdateResult): void {
 
 function reportExpoOutput(stream: 'stdout' | 'stderr', text: string): void {
   IO.progress(`[expo ${stream}] ${text.trimEnd()}`)
+}
+
+function reportReload(timing: ReloadTiming): void {
+  IO.print(
+    `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms; `
+      + `reload complete ${timing.saveToAppliedMs.toFixed(1)} ms (both previews).`,
+  )
 }
 
 async function cleanup(options: {

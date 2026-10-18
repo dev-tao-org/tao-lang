@@ -3,7 +3,7 @@ import { check } from '@check/Check'
 import { compile } from '@compile/Compile'
 import { fix } from '@fix/Fix'
 import { createParser } from '@grammar/parser'
-import { Errors, Timings, type TimingSample, Try } from '@shared'
+import { Errors, Time, Timings, type TimingSample, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Project } from './Project'
@@ -24,7 +24,7 @@ class WorkspaceSession {
   private queued: Pending | undefined
   private lastGood: string | undefined
   private disposed = false
-  private readonly expectedListeners = new Set<(revision: string) => void>()
+  private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
 
   constructor(private readonly options: WorkspaceOptions) {}
 
@@ -32,12 +32,12 @@ class WorkspaceSession {
     return this.lastGood
   }
 
-  onExpected(listener: (revision: string) => void): () => boolean {
+  onExpected(listener: (revision: string, startedAtMs: number) => void): () => boolean {
     this.expectedListeners.add(listener)
     return () => this.expectedListeners.delete(listener)
   }
 
-  update(source: string): Promise<UpdateResult> {
+  update(source: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
     if (this.disposed) {
       Errors.ThrowUserInput('Workspace has been disposed.')
     }
@@ -46,6 +46,7 @@ class WorkspaceSession {
     const request: Pending = {
       id: ++this.revision,
       source,
+      startedAtMs,
       resolve(result: UpdateResult) {
         complete(result)
       },
@@ -60,8 +61,8 @@ class WorkspaceSession {
     return result
   }
 
-  async updateFile(path: string): Promise<UpdateResult> {
-    return await this.update(await FileSystem.readFile(path, 'utf8'))
+  async updateFile(path: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
+    return await this.update(await FileSystem.readFile(path, 'utf8'), startedAtMs)
   }
 
   dispose(): void {
@@ -98,9 +99,9 @@ class WorkspaceSession {
     }
     const code = (this.options.compile ?? compile)(document, { revision }, timings)
     const output = { revision, source: request.source, code, timings: timings.samples, stages }
-    this.options.onExpected?.(revision)
+    this.options.onExpected?.(revision, request.startedAtMs)
     for (const listener of this.expectedListeners) {
-      listener(revision)
+      listener(revision, request.startedAtMs)
     }
     await timings.measure(
       'workspace.publish',
@@ -148,7 +149,7 @@ export type WorkspaceOptions = {
   project?: Project
   compile?: typeof compile
   publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
-  onExpected?: (revision: string) => void
+  onExpected?: (revision: string, startedAtMs: number) => void
 }
 
 /** CompiledApp carries the exact source snapshot and compiler timings for a revision. */
@@ -177,7 +178,7 @@ export type PipelineStages = {
   check: ReturnType<typeof check>
 }
 
-type Pending = { id: number; source: string; resolve(result: UpdateResult): void }
+type Pending = { id: number; source: string; startedAtMs: number; resolve(result: UpdateResult): void }
 
 function failureResult(request: Pending, error: unknown): UpdateResult {
   return {

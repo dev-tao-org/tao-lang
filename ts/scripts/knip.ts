@@ -31,6 +31,7 @@ export default {
       'perf-src/preview-performance.ts',
       'perf-src/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
+      '**/*.test.ts',
     ]),
     shared: packageWorkspace(['**/*.test.ts']),
   },

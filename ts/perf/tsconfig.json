@@ -1,4 +1,4 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["perf-src/**/*"]
+  "include": ["perf-src/**/*", "perf-test/**/*"]
 }

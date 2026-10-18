@@ -9,7 +9,11 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
   const firstEntered = new Promise<void>(resolve => enteredFirst = resolve)
   const published: string[] = []
   const compiled: string[] = []
+  const expected: [string, number][] = []
   const workspace = createWorkspace({
+    onExpected(revision, startedAtMs) {
+      expected.push([revision, startedAtMs])
+    },
     compile(_document, options) {
       compiled.push(options.revision)
       return 'compiled ' + options.revision
@@ -25,10 +29,10 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
     },
   })
 
-  const first = workspace.update(source)
+  const first = workspace.update(source, 1000)
   await firstEntered
   const replaced = workspace.update(source.replace('Hello World', 'Hello Tao'))
-  const latest = workspace.update(source.replace('Hello World', 'Latest Tao'))
+  const latest = workspace.update(source.replace('Hello World', 'Latest Tao'), 2000)
   releaseFirst()
 
   Tests.expect(await first).toMatchObject({ status: 'superseded', revision: 'r1' })
@@ -36,6 +40,7 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
   Tests.expect(await latest).toMatchObject({ status: 'published', revision: 'r3' })
   Tests.expect(compiled).toEqual(['r1', 'r3'])
   Tests.expect(published).toEqual(['r3'])
+  Tests.expect(expected).toEqual([['r1', 1000], ['r3', 2000]])
 })
 
 Tests.test('invalid source retains the last published application', async () => {

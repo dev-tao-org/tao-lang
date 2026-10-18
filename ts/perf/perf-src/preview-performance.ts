@@ -4,6 +4,7 @@ import { createExpoSession, type ExpoSession } from '@workspace/Expo'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import type { PageState } from '../../shared/shared-src/os/BrowserRuntime'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
+import type { ReloadTiming } from './ReloadTimings'
 
 /** previewPerformance measures source edits through two isolated headless Expo web previews.
  *  macOS requires host process access before any browser starts; no screenshots are captured. */
@@ -11,7 +12,7 @@ export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
     await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
-  const resources: Resources = { errors: [], sessionId: Platform.randomUUID() }
+  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID() }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
       await disposePreview(options, resources)
@@ -25,6 +26,7 @@ export type PreviewOptions = { workspace: ReturnType<typeof createWorkspace>; pr
 type Resources = {
   sessionId: string
   errors: string[]
+  reloads: ReloadTiming[]
   expo?: ExpoSession
   startupMs?: number
   frameSizes?: { id: string; width: number; height: number }[]
@@ -52,6 +54,9 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     previewUrl: owned.expo.url,
     initialSource: options.initialSource,
     sessionId: owned.sessionId,
+    onReload(timing) {
+      owned.reloads.push(timing)
+    },
   })
   const { chromium } = await import('playwright')
   owned.browser = await chromium.launch({ headless: true, channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome' })
@@ -73,6 +78,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     }))
   )
   const results = await runScenarios(page)
+  await waitForReloadReports(owned)
   const path = await writeReport(options.project, owned, results)
   return { path, sessionId: owned.sessionId, results }
 }
@@ -163,6 +169,7 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
         generatedProject: project.directory,
         startupMs: owned.startupMs,
         frameSizes: owned.frameSizes,
+        reloads: owned.reloads,
         definitions: {
           compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
           updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
@@ -181,5 +188,15 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
 function requirePublished(result: UpdateResult): void {
   if (result.status !== 'published') {
     Errors.ThrowUnexpected(`Initial preview source was ${result.status}.`)
+  }
+}
+
+async function waitForReloadReports(owned: Resources): Promise<void> {
+  const deadline = Time.nowMs() + 5000
+  while (owned.reloads.length < scenarios.length) {
+    if (Time.nowMs() >= deadline) {
+      Errors.ThrowUnexpected('Preview receipts did not reach the terminal timing reporter.')
+    }
+    await Time.sleep(10)
   }
 }
