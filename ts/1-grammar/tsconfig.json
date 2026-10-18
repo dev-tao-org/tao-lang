@@ -1,5 +1,6 @@
 {
   "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/1-grammar.tsbuildinfo" },
   "include": ["grammar-src/**/*", "grammar-test/**/*"],
   "exclude": ["_gen_parser/**/*"]
 }

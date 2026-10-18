@@ -1,4 +1,4 @@
-import { runCommand, runSteps } from '@cli-kit'
+import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { checkEditorTypeScript } from './editor-typescript'
@@ -73,12 +73,10 @@ export async function workspaceTypes(): Promise<void> {
     return sourceFiles.length > 0 ? project : undefined
   }))
   const projects = discoveredProjects.filter((project): project is string => project !== undefined)
-  await runSteps(...projects.map(project => () =>
-    runCommand('tsc --project', {
-      variadicArgs: [`${project}/tsconfig.json`],
-      cwd: Repo.resolvePath('ts'),
-    })
-  ))
+  await runCommand('tsc --build', {
+    variadicArgs: projects.map(project => `${project}/tsconfig.json`),
+    cwd: Repo.resolvePath('ts'),
+  })
 }
 
 /** workspaceShellSyntax checks the root entrypoints and portable bootstrap without executing them. */

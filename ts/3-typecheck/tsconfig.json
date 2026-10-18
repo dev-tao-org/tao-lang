@@ -1,4 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/3-typecheck.tsbuildinfo" },
   "include": ["typecheck-src/**/*", "typecheck-test/**/*"]
 }
