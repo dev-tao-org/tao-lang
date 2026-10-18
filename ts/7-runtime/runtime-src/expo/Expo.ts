@@ -44,6 +44,19 @@ export type ExpoSession = {
 /** ExpoOptions streams Expo output while retaining a copy for diagnostics. */
 export type ExpoOptions = { onOutput?: (stream: 'stdout' | 'stderr', text: string) => void; signal?: AbortSignal }
 
+/** expoEnvironment keeps managed web refresh active without native debugger preparation or browser auto-opening. */
+export function expoEnvironment(directory: string): Record<string, string | undefined> {
+  return {
+    ...Env.snapshot(),
+    PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
+    BROWSER: 'none',
+    CI: 'false',
+    EXPO_UNSTABLE_HEADLESS: '1',
+    EXPO_OFFLINE: '1',
+    EXPO_NO_TELEMETRY: '1',
+  }
+}
+
 function unusedPort(): number {
   const server = Http.serve({
     hostname: '127.0.0.1',
@@ -53,17 +66,6 @@ function unusedPort(): number {
   const port = server.port ?? Errors.ThrowUnexpected('Could not reserve a local Expo port.')
   server.stop(true)
   return port
-}
-
-function expoEnvironment(directory: string): Record<string, string | undefined> {
-  return {
-    ...Env.snapshot(),
-    PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
-    BROWSER: 'none',
-    CI: 'false',
-    EXPO_OFFLINE: '1',
-    EXPO_NO_TELEMETRY: '1',
-  }
 }
 
 function formatOutput(output: Lifecycle.ProcessOutput): string {

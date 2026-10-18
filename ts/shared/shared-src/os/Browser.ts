@@ -7,16 +7,34 @@ export async function build(entrypoints: string[], outdir: string): Promise<Bun.
 }
 
 /** openUrl opens a URL in the user's default browser. */
-export async function openUrl(url: string): Promise<void> {
-  const child = Platform.spawn(browserCommand(url), { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' })
-  const status = await child.exited
+export async function openUrl(url: string, host: BrowserHost = nativeBrowser()): Promise<void> {
+  if (host.os === 'Darwin') {
+    await host.requireAccess('Run just dev in a normal terminal or a host-enabled harness; the browser was not opened.')
+  }
+  const status = await host.start(browserCommand(url, host.os))
   if (status !== 0) {
     Errors.ThrowHostEnvironment(`Could not open the preview URL in the default browser: ${url}`)
   }
 }
 
-function browserCommand(url: string): string[] {
-  const os = Platform.systemInfo().os
+type BrowserHost = {
+  os: string
+  requireAccess: (hint: string) => Promise<void>
+  start: (command: readonly string[]) => Promise<number>
+}
+
+function nativeBrowser(): BrowserHost {
+  return {
+    os: Platform.systemInfo().os,
+    requireAccess: Platform.requireHostProcessAccess,
+    async start(command) {
+      const child = Platform.spawn(command, { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' })
+      return await child.exited
+    },
+  }
+}
+
+function browserCommand(url: string, os: string): string[] {
   if (os === 'Darwin') {
     return ['open', '-g', url]
   }
