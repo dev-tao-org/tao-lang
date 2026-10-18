@@ -36,6 +36,6 @@ agent's account of it. Integrate shared manifests, generated artifacts, dependen
 and documentation only after their upstream workstreams settle, running focused validation for each
 integrated slice and fixing confirmed failures before unblocking dependent work. When commits are
 authorized, use `git-workflow` and commit green integration units as work stabilizes, preferring
-continued parallel progress over artificial commit perfection. Finish with independent review across
-workstream boundaries (`references/review-fanout.md`), then run the repository's full final gate and
-report any environment-limited validation separately.
+continued parallel progress over artificial commit perfection. When the Developer requests independent
+review, cover workstream boundaries (`references/review-fanout.md`). Run the repository's full final
+gate and report any environment-limited validation separately.

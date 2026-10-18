@@ -1,21 +1,21 @@
 ---
 name: code-review
 description: >-
-  Review branch changes with one or more read-only subagents. Use for implementation reviews,
-  requested changeset reviews, and ongoing style, conformance, file-layout and organizational-health
-  reviews at implementation checkpoints.
+  Review branch changes with one or more read-only subagents when the Developer explicitly requests
+  a review, including correctness, style, conformance, file-layout and organizational-health reviews.
 ---
 
 # Code Review
 
-Use at least one read-only subagent; one is the usual choice. Add reviewers when distinct parts of
+Root `AGENTS.md` owns review authorization. For an authorized review, use at least one read-only
+subagent; one is the usual choice. Add reviewers when distinct parts of
 the code tree or functional responsibilities justify separate attention. Functional scopes may
 intersect files; make ownership of each review question clear and reconcile overlapping findings.
 Reviewing does not authorize implementation, publication, or landing.
 
-## Ongoing organizational review
+## Requested organizational review
 
-At completed implementation checkpoints, include a read-only review of style, conformance,
+When requested, include a read-only review of style, conformance,
 file layout and organizational health. For a small slice, one reviewer may cover both correctness
 and organization; give substantial or cross-package changes a dedicated organizational pass.
 Check naming, definition ordering, file cohesion and size, package ownership, shared helpers,
@@ -26,8 +26,8 @@ speculative abstractions or implementing deferred features.
 Separate demonstrated instruction violations and maintainability problems from optional design
 suggestions. Cite the applicable rule or concrete maintenance cost and the smallest useful change;
 personal preferences alone are not findings. Report strengths and justified deferrals when they
-explain why the current organization should remain. The ongoing authorization covers these reviews,
-not unsolicited correctness-review fan-outs, refactoring, or scope expansion.
+explain why the current organization should remain. Stay within the requested review scope;
+review authorization does not permit refactoring or scope expansion.
 
 ## Scope and checkpoint
 
@@ -47,7 +47,7 @@ The **last reviewed commit** is the newest full commit SHA whose complete preced
 was covered. Uncommitted changes may have a reviewed snapshot, but cannot advance that commit marker
 until the committed contents are confirmed to match the snapshot. Record unresolved findings
 separately; reviewed does not mean approved or fixed. Partial or interrupted reviews do not advance
-the marker. Re-review fixes and later changes before advancing it again.
+the marker. Advance it again only after fixes and later changes receive an authorized review.
 
 ## Reviewer selection and brief
 

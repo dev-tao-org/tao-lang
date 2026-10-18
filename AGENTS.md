@@ -56,7 +56,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - Use `code-review` for ongoing style, conformance, file-layout and organizational-health reviews at completed implementation checkpoints. Additional correctness reviews require the developer's explicit request;
+  - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.

@@ -59,7 +59,7 @@ The coordinator is responsible for how many agents land at once; `landing` owns 
 - **A session that reports "not done" stays**, even when it looks idle: it may be holding a landing the Developer paused. Ask what remains rather than assuming.
 - **A finished branch can land inside another.** When a paused session's small, ready change sits exactly where your next change goes, merge its branch into yours and tell it not to open its own pull request; one landing replaces two and the conflict never happens.
 - **A gate that fails hosted twice goes back to the local complement**, failure recorded. One that passes alone but fails or slows packed needs the runner to itself (the catalog's cost reservation), not a longer timeout: packed browser gates ran two to four times their solo time.
-- **The project closes with a review of everything it landed**: one agent with at most one subagent reviews all the work, a fix round lands through the same route, then the closing summary (Developer directive, 2026-10-06).
+- **Closing reviews require a Developer request** under root `AGENTS.md`. When requested, one agent with at most one subagent reviews the landed work; any authorized fixes follow the same landing route before the closing summary.
 
 ## The loop and the report
 
