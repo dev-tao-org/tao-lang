@@ -1,7 +1,13 @@
 import { Errors } from '@shared'
 import { Terminal } from '@shared/os'
 import { createFileOutput } from './output/Files'
-import { createOutput, type OutputChannel, type OutputEvent, type OutputRenderer } from './output/Output'
+import {
+  createOutput,
+  formatChannelCompletion,
+  type OutputChannel,
+  type OutputEvent,
+  type OutputRenderer,
+} from './output/Output'
 import { createPlainOutput } from './output/Plain'
 
 /** IO routes direct and process-scoped output through one presentation and file policy. */
@@ -47,6 +53,7 @@ let configuration: IOConfiguration = {}
 let plain = createPlainOutput()
 let files = createFileOutput({})
 let tui = false
+let lastMainOutput = ''
 let output = createOutput(writeOutput)
 
 function needsStreamCapture(channel?: OutputChannel): boolean {
@@ -60,6 +67,7 @@ function configureOutput(options: IOConfiguration): void {
     Errors.ThrowUnexpected('Cannot reconfigure output while a TUI is active.')
   }
   configuration = options
+  lastMainOutput = ''
   plain = createPlainOutput()
   files = createFileOutput(options)
   output = createOutput(writeOutput)
@@ -67,6 +75,9 @@ function configureOutput(options: IOConfiguration): void {
 }
 
 function writeOutput(event: OutputEvent): void {
+  if (event.main && event.stream === 'stdout') {
+    lastMainOutput = event.text
+  }
   const mode = configuration[event.stream] ?? 'terminal'
   if (typeof mode === 'function') {
     mode(event.text)
@@ -89,14 +100,14 @@ async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<voi
   if (wasTui) {
     const snapshot = output.snapshot()
     for (const state of snapshot.channels) {
-      Terminal.stderr.write(`[${state.title}] ${state.status}\n`)
+      Terminal.stderr.write(`[${state.title}] ${formatChannelCompletion(state)}\n`)
       if (state.status === 'failed') {
         Terminal.stderr.write(state.lines.slice(-12).join('\n') + '\n')
       }
     }
-    const summary = snapshot.main.lines.filter(Boolean).at(-1)
+    const summary = lastMainOutput || snapshot.main.lines.filter(Boolean).at(-1)
     if (summary) {
-      Terminal.stderr.write(summary + '\n')
+      Terminal.stderr.write(summary.endsWith('\n') ? summary : summary + '\n')
     }
   }
 }

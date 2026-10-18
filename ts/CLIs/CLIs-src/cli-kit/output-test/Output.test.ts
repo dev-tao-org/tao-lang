@@ -1,5 +1,5 @@
 import { Tests, Text } from '@shared/os'
-import { createOutput } from '../output/Output'
+import { createOutput, formatChannelCompletion } from '../output/Output'
 import { displayStatus, elapsed, wrappedTail } from '../output/tui/Display'
 
 Tests.test('output preserves streamed UTF-8 and raw sink text while keeping visible lines plain', async () => {
@@ -40,6 +40,13 @@ Tests.test('wrapped tails preserve ANSI styling and complete Unicode while selec
 })
 
 Tests.test('channel status and elapsed display follow run transitions', () => {
+  Tests.expect(formatChannelCompletion({
+    title: 'worker',
+    status: 'passed',
+    lines: [],
+    startedAtMs: 1000,
+    finishedAtMs: 1230,
+  })).toBe('passed in 0.23s')
   Tests.expect(displayStatus('idle')).toEqual({ mark: '○', color: 'gray' })
   Tests.expect(displayStatus('running')).toEqual({ mark: '●', color: 'yellow' })
   Tests.expect(displayStatus('passed')).toEqual({ mark: '✓', color: 'green' })

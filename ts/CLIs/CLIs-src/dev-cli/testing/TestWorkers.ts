@@ -21,6 +21,7 @@ export type { TestExecutionOptions } from './TestPlan'
 export async function runTestPlan(
   options: { typescriptArgs?: readonly string[]; taoTarget?: string; slowSeconds?: number } & TestExecutionOptions,
 ): Promise<void> {
+  const startedAtMs = Time.nowMs()
   const plan = planTestExecution(options)
   const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
   const taoChannels: OutputChannel[] = []
@@ -30,6 +31,9 @@ export async function runTestPlan(
   }
   const outcomes = await executeTestSections(plan, operations)
   typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
+  for (const channel of [...typeScriptChannel ? [typeScriptChannel] : [], ...taoChannels]) {
+    channel.print(channel.completion())
+  }
   const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
   if (failures.length > 0) {
     if (!plan.typescript && outcomes.tao) {
@@ -37,6 +41,7 @@ export async function runTestPlan(
     }
     Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
   }
+  IO.print(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
 }
 
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */

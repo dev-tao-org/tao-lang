@@ -18,6 +18,8 @@ Tests.test('test accepts a per-run slow threshold alongside a selected test path
   Tests.expect(stdout + stderr).toContain('Slow tests (>0 ms):')
   Tests.expect(stdout + stderr).toContain('a per-run threshold uses seconds')
   Tests.expect(stdout + stderr).toContain('bun test --parallel=1')
+  Tests.expect(stdout + stderr).toMatch(/\[TypeScript tests\] passed in \d+\.\d{2}s/)
+  Tests.expect(stdout).toMatch(/\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/)
 })
 
 Tests.test('fresh setup finds package tools installed after the launcher prepares PATH', async () => {

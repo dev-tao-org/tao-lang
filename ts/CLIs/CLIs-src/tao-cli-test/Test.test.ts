@@ -37,6 +37,7 @@ Tests.test('tao test resolves default folders and relative files from the caller
       Tests.expect(stdout).toContain('Unknown Tao app: Missing.')
       Tests.expect(stdout).toContain('Tao tests (headless web): 0 passed, 1 failed.')
       Tests.expect(stderr).toContain('Tao app tests failed.')
+      Tests.expect(stdout + stderr).not.toContain('All tests passed')
     }
   }, { finally: () => FileSystem.rm(directory, { recursive: true, force: true }) })
 }, 30_000)

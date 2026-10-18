@@ -7,6 +7,7 @@ export type ChannelState = {
   status: 'idle' | 'running' | 'passed' | 'failed'
   lines: readonly string[]
   startedAtMs?: number
+  finishedAtMs?: number
 }
 
 /** OutputSnapshot describes root progress and worker panes without exposing the renderer. */
@@ -33,6 +34,7 @@ export type OutputChannel = {
   progress(message: string): void
   start(): void
   finish(status: 'passed' | 'failed'): void
+  completion(): string
 }
 
 /** createOutput routes complete output to sinks while bounding only the visible channel tails. */
@@ -61,6 +63,13 @@ export function createOutput(write: (event: OutputEvent) => void) {
   }
 }
 
+/** formatChannelCompletion renders a channel verdict with its completed duration in seconds. */
+export function formatChannelCompletion(state: ChannelState): string {
+  return state.startedAtMs === undefined
+    ? state.status
+    : `${state.status} in ${(Math.max(0, (state.finishedAtMs ?? Time.nowMs()) - state.startedAtMs) / 1000).toFixed(2)}s`
+}
+
 function createChannel(
   state: ChannelState,
   main: boolean,
@@ -87,12 +96,15 @@ function createChannel(
     start(): void {
       state.status = 'running'
       state.startedAtMs = Time.nowMs()
+      state.finishedAtMs = undefined
       update()
     },
     finish(status): void {
       state.status = status
+      state.finishedAtMs ??= Time.nowMs()
       update()
     },
+    completion: () => formatChannelCompletion(state),
   }
 }
 
