@@ -42,7 +42,8 @@ Tests.test('an unfinished app produces no AST', async () => {
 })
 
 Tests.test('Hello World transforms generic renders and native injections', async () => {
-  const { tree } = createParser().parse(await Tests.readApp('Hello World'))
+  const source = await Tests.readApp('Hello World')
+  const { tree } = createParser().parse(source)
   const result = transform(tree)
   Tests.expect<unknown>(result?.root.declarations[1]).toEqual({
     kind: 'ViewDeclaration',
@@ -55,7 +56,7 @@ Tests.test('Hello World transforms generic renders and native injections', async
       kind: 'ViewRender',
       start: 61,
       end: 94,
-      target: { kind: 'Name', start: 61, end: 64, value: 'Col' },
+      target: { kind: 'Name', start: 61, end: 64, value: source.slice(61, 64) },
       arguments: [],
       children: [{
         kind: 'ViewRender',

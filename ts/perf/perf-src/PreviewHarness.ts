@@ -1,3 +1,4 @@
+import { DefaultAppearance } from '@runtime/Appearance'
 import { Errors, S, Time, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type { createWorkspace, UpdateResult } from '@workspace/Workspace'
@@ -244,7 +245,7 @@ function pageHtml(sessionId: string, previewUrl: string, left: string, right: st
     safe(sessionId)
   }"><meta name="tao-preview-url" content="${
     safe(previewUrl)
-  }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:380px minmax(600px,1fr);gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:#252525}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
+  }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:380px minmax(600px,1fr);gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:${DefaultAppearance.background};outline:1px solid ${DefaultAppearance.border};outline-offset:-1px}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
     safe(left)
   }"></iframe><iframe id="right" title="Wide preview" src="${
     safe(right)

@@ -70,8 +70,14 @@ const expoTypeScriptConfig = {
 
 const expoEntry = S`
   import { registerRootComponent } from 'expo';
+  import { createElement } from 'react';
+  import { View } from 'react-native';
+  import { DefaultAppearance } from './src/_gen_runtime/runtime/Appearance';
   import App from './src/App';
-  registerRootComponent(App);
+  function TaoApplication() {
+    return createElement(View, { style: { flex: 1, backgroundColor: DefaultAppearance.background } }, createElement(App));
+  }
+  registerRootComponent(TaoApplication);
 `
 
 async function linkRuntimeSources(directory: string, resourcesDirectory: string, sourceFiles: string[]): Promise<void> {

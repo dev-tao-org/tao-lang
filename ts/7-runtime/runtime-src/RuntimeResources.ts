@@ -2,6 +2,7 @@
 export const RuntimeSourceResources = {
   'runtime/TR.ts': 'ts/7-runtime/runtime-src/TR.ts',
   'runtime/App.ts': 'ts/7-runtime/runtime-src/App.ts',
+  'runtime/Appearance.ts': 'ts/7-runtime/runtime-src/Appearance.ts',
   'runtime/Preview.ts': 'ts/7-runtime/runtime-src/Preview.ts',
   'runtime/View.ts': 'ts/7-runtime/runtime-src/View.ts',
   'runtime/Scope.ts': 'ts/7-runtime/runtime-src/Scope.ts',
