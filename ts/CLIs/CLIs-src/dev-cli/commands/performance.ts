@@ -2,6 +2,7 @@ import { IO } from '@cli-kit'
 import { Errors, Timings } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
+import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
 
 /** performanceCommand records the available implementation's repeated performance baselines. */
@@ -46,12 +47,17 @@ async function runExtension(): Promise<void> {
 }
 
 async function runPreview(): Promise<void> {
+  await prepareRuntime()
   const { createProject, createWorkspace } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
+  const { Artifacts } = await import('@shared/os')
   const project = await createProject()
   const result = await previewPerformance({
     project,
-    workspace: createWorkspace({ project }),
+    workspace: createWorkspace({
+      project,
+      runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
+    }),
     initialSource: await Tests.readApp('Hello World'),
   })
   IO.print('Preview performance report: ' + result.path)

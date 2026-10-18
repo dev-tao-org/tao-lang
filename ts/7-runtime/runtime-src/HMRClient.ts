@@ -1,4 +1,4 @@
-import { PreviewPlatform } from '@shared/os'
+import * as PreviewPlatform from '@shared/os/preview'
 import MetroHMRClient from 'tao:metro-hmr-client'
 
 /** PreviewHMRClient observes Expo's actual Metro client without changing update application. */

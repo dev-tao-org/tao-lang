@@ -1,10 +1,11 @@
 import { formatTimings, IO } from '@cli-kit'
+import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Artifacts, Browser, Lifecycle, Platform, Repo } from '@shared/os'
 import { createProject, createWorkspace, type UpdateResult } from '@workspace/Workspace'
-import { createExpoSession, type ExpoSession } from '../../../../0-workspace/workspace-src/Expo'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
 import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
+import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
 
 /** devCommand runs the authored Hello World fixture in a persistent dual-preview Expo session. */
@@ -17,14 +18,15 @@ export default registerCommand({
 })
 
 async function runDevSession(): Promise<void> {
+  await prepareRuntime()
   const sourcePath = Repo.resolvePath('Apps/Tests/Hello World.tao')
   const project = await createProject({ directory: Artifacts.resolvePath('dev/hello-world'), persistent: true })
   const workspace = createWorkspace({ project, onSourceUpdate: reportSourceUpdate, onSourceError: reportSourceError })
-  let expo: ExpoSession | undefined
+  let expo: Runtime.ExpoSession | undefined
   let preview: PreviewHarness | undefined
   await Try(async () => {
     requirePublished(await workspace.openFile(sourcePath))
-    expo = await createExpoSession(project, { onOutput: reportExpoOutput })
+    expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput })
     preview = await createPreviewHarness({
       workspace,
       previewUrl: expo.url,
@@ -91,7 +93,7 @@ function reportReload(timing: ReloadTiming): void {
 async function cleanup(options: {
   preview: PreviewHarness | undefined
   workspace: ReturnType<typeof createWorkspace>
-  expo: ExpoSession | undefined
+  expo: Runtime.ExpoSession | undefined
   reportFailure: boolean
 }): Promise<void> {
   options.preview?.dispose()
@@ -104,7 +106,7 @@ async function cleanup(options: {
   }
 }
 
-function printExpoOutput(output: Awaited<ReturnType<ExpoSession['output']>>): void {
+function printExpoOutput(output: Awaited<ReturnType<Runtime.ExpoSession['output']>>): void {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   if (messages.length) {
     IO.printToStdErr('Expo diagnostics:\n' + messages.join('\n'))

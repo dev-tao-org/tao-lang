@@ -21,21 +21,26 @@ export class Timings {
     this.samples.push({ name, clock: this.clock, startMs, durationMs: this.now() - startMs, status: 'succeeded' })
   }
 
-  measure<Value>(name: string, action: () => Value): Value {
-    const startMs = this.now()
+  measure<Arguments extends unknown[], Value>(
+    name: string,
+    action: (...arguments_: Arguments) => Value,
+  ): (...arguments_: Arguments) => Value {
     const now = this.now
     const clock = this.clock
     const samples = this.samples
-    return Try(action, {
-      finally(_thrown, error) {
-        samples.push({
-          name,
-          clock,
-          startMs,
-          durationMs: now() - startMs,
-          status: error ? 'failed' : 'succeeded',
-        })
-      },
-    }) as Value
+    return (...arguments_: Arguments): Value => {
+      const startMs = now()
+      return Try(() => action(...arguments_), {
+        finally(_thrown, error) {
+          samples.push({
+            name,
+            clock,
+            startMs,
+            durationMs: now() - startMs,
+            status: error ? 'failed' : 'succeeded',
+          })
+        },
+      }) as Value
+    }
   }
 }

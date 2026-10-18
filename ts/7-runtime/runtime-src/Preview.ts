@@ -1,5 +1,5 @@
 import { Time } from '@shared'
-import { PreviewPlatform } from '@shared/os'
+import * as PreviewPlatform from '@shared/os/preview'
 import type { AppOptions } from './View'
 
 /** ModuleApplied marks evaluation of a new generated module for preview correlation. */

@@ -8,10 +8,11 @@ export function compile(
   options: { revision: string },
   timings = new Timings('compiler'),
 ): string {
-  return timings.measure('compiler.generate', () => {
+  const generate = timings.measure('compiler.generate', function generate() {
     const Compile = new Compiler()
     return Compile.File(document.root, options.revision)
   })
+  return generate()
 }
 
 class Compiler {

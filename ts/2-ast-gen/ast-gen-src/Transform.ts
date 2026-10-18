@@ -12,11 +12,12 @@ export function transform(
   if (tree.rootNode.hasError) {
     return undefined
   }
-  return timings.measure('transformer.transform', () => {
+  const transformDocument = timings.measure('transformer.transform', function transformDocument() {
     const AST = new ASTConstructor()
     const root = AST.Node(tree.rootNode, 'File')
     return { root, origins: AST.origins }
   })
+  return transformDocument()
 }
 
 type OfKind<Kind extends AST.Node['kind']> = Extract<AST.Node, { kind: Kind }>

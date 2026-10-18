@@ -20,6 +20,7 @@ export default registerCommand({
       return
     }
     await FileSystem.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
+    await FileSystem.rm(Repo.resolvePath('ts/7-runtime/_gen_runtime'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
     if (args.includes('--full')) {
       await Artifacts.rm(Artifacts.resolvePath(), { recursive: true, force: true })

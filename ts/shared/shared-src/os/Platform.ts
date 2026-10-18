@@ -1,8 +1,13 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire, isBuiltin } from 'node:module'
-import { arch, release, type } from 'node:os'
+import { arch, homedir, release, type } from 'node:os'
 import { Errors, Try } from '../universal/universal'
+
+/** homeDirectory returns the current user's platform home directory. */
+export function homeDirectory(): string {
+  return homedir()
+}
 
 /** loadModule loads a known runtime module, including native Node-API addons. */
 export function loadModule<Value>(path: string): Value {

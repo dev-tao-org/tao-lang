@@ -13,6 +13,8 @@ export default registerCommand({
     await runCommand('bun install', { variadicArgs: args })
     const { prepareParser } = await import('../../cli-checks/parser-build')
     await prepareParser()
+    const { prepareRuntime } = await import('../../cli-checks/runtime-build')
+    await prepareRuntime()
     await ensureShellCompletionCache()
     const { runDirenvSetup } = await import('../shell/DirenvSetup')
     await runDirenvSetup({ prepare: true })

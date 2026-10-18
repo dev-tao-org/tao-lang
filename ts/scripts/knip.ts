@@ -47,6 +47,7 @@ function packageWorkspace(entry: string[]) {
       '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],
       '@shared/os': ['../shared/shared-src/os.ts'],
+      '@shared/os/preview': ['../shared/shared-src/os/PreviewPlatform.ts'],
       '@grammar/*': ['../1-grammar/grammar-src/*'],
       '@ast-gen/*': ['../2-ast-gen/ast-gen-src/*'],
       '@typecheck/*': ['../3-typecheck/typecheck-src/*'],

@@ -14,11 +14,7 @@ export async function waitForExpoReady(
       Errors.ThrowHostEnvironment('Expo exited before becoming ready.')
     }
     const remainingMs = deadline - Time.nowMs()
-    const response = await Try(() => requestBeforeDeadline(url, remainingMs, request), {
-      catch() {
-        return undefined
-      },
-    })
+    const response = await Try.WithDefault(undefined, () => requestBeforeDeadline(url, remainingMs, request))
     if (response?.ok && Time.nowMs() < deadline) {
       return
     }

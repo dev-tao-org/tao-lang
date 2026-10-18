@@ -12,7 +12,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
-    const document = timings.measure('compiler.parse-to-code', () => {
+    const parseTransformAndCompile = timings.measure('compiler.parse-to-code', function parseTransformAndCompile() {
       const { tree } = parser.parse(source, timings)
       const document = transform(tree, timings)
       if (document) {
@@ -20,6 +20,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
       }
       return document
     })
+    const document = parseTransformAndCompile()
     if (document?.root.declarations[0]?.name.value !== 'HelloWorld') {
       Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
     }

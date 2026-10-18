@@ -15,7 +15,7 @@ export default registerCommand({
     variadic: true,
   }],
   async action(paths: string[]) {
-    // App compilation, IDE build and runtime packaging await their new implementations.
+    // Native app journeys await their testing implementation.
     await runSteps(
       () => fmt.action(paths),
       () => check.action(),

@@ -1,15 +1,15 @@
 import { Errors, Try } from '@shared'
-import { Env, Http, Lifecycle, Platform } from '@shared/os'
+import { Env, Http, Lifecycle, Path, Platform } from '@shared/os'
+import type { RuntimeApplication } from '../Runtime'
 import { waitForExpoReady } from './ExpoReadiness'
-import type { Project } from './Project'
 
 /** createExpoSession starts a managed Expo web server and waits for its first response. */
-export async function createExpoSession(project: Project, options: ExpoOptions = {}): Promise<ExpoSession> {
+export async function createExpoSession(project: RuntimeApplication, options: ExpoOptions = {}): Promise<ExpoSession> {
   const port = unusedPort()
   const child = Platform.spawn('expo', {
     variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
-    cwd: project.expoDirectory,
-    env: expoEnvironment(),
+    cwd: project.directory,
+    env: expoEnvironment(project.directory),
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -56,9 +56,10 @@ function unusedPort(): number {
   return port
 }
 
-function expoEnvironment(): Record<string, string | undefined> {
+function expoEnvironment(directory: string): Record<string, string | undefined> {
   return {
     ...Env.snapshot(),
+    PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
     BROWSER: 'none',
     CI: 'false',
     EXPO_OFFLINE: '1',

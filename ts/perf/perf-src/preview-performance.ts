@@ -1,6 +1,6 @@
+import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { createExpoSession, type ExpoSession } from '@workspace/Expo'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
 import type { ReloadTiming } from './ReloadTimings'
@@ -26,7 +26,7 @@ type Resources = {
   sessionId: string
   errors: string[]
   reloads: ReloadTiming[]
-  expo?: ExpoSession
+  expo?: Runtime.ExpoSession
   startupMs?: number
   frameSizes?: { id: string; width: number; height: number }[]
   harness?: PreviewHarness
@@ -50,7 +50,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
   await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
   await FileSystem.writeFile(sourcePath, options.initialSource, 'utf8')
   requirePublished(await options.workspace.openFile(sourcePath))
-  owned.expo = await createExpoSession(options.project)
+  owned.expo = await Runtime.start(options.workspace.runtime!)
   owned.harness = await createPreviewHarness({
     workspace: options.workspace,
     previewUrl: owned.expo.url,

@@ -2,6 +2,7 @@ import { formatTimings, IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { Repo } from '@shared/os'
 import { createProject, createWorkspace } from '@workspace/Workspace'
+import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
 
 /** compileCommand compiles an entry file into an isolated generated Expo project. */
@@ -10,6 +11,7 @@ export default registerCommand({
   description: 'Compile a Tao app entry file into a generated Expo project.',
   arguments: [{ name: 'entry', required: true, description: 'Tao app entry file.' }],
   async action(entry: string) {
+    await prepareRuntime()
     const project = await createProject()
     const workspace = createWorkspace({ project })
     const result = await workspace.updateFile(Repo.resolvePath(entry))
@@ -24,6 +26,6 @@ export default registerCommand({
     if (result.status === 'superseded') {
       Errors.ThrowUnexpected(`Compilation superseded: ${entry}`)
     }
-    IO.print(project.appPath)
+    IO.print(workspace.runtime!.appPath)
   },
 })

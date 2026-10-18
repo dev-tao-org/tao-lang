@@ -48,11 +48,13 @@ async function coldSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
   for (let index = 0; index < 5; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
-    const output = await timings.measure('parser.process-wall', () =>
-      Platform.capture('bun run', {
+    const runParserProcess = timings.measure('parser.process-wall', async function runParserProcess() {
+      return await Platform.capture('bun run', {
         variadicArgs: [Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')],
         cwd: Repo.resolvePath('ts'),
-      }))
+      })
+    })
+    const output = await runParserProcess()
     const child: TimingSample[] = JSON.parse(output)
     samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
     samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'cold-initial' })))

@@ -1,6 +1,6 @@
 import { Time, Try } from '@shared'
 import { Http, Tests } from '@shared/os'
-import { waitForExpoReady } from '../workspace-src/ExpoReadiness'
+import { waitForExpoReady } from '../../runtime-src/expo/ExpoReadiness'
 
 Tests.test('Expo readiness aborts a stalled request at the deadline', async () => {
   let aborted = false

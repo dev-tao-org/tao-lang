@@ -3,10 +3,12 @@ import { check } from '@check/Check'
 import { compile } from '@compile/Compile'
 import { fix } from '@fix/Fix'
 import { createParser } from '@grammar/parser'
+import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { Path } from '@shared/os'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Project } from './Project'
+import { publishBuild } from './WorkspaceBuild'
 import { readSource, type SourceSnapshot, WorkspaceFile } from './WorkspaceFile'
 
 export { createProject } from './Project'
@@ -15,6 +17,7 @@ export type { Project, ProjectOptions } from './Project'
 /** WorkspaceOptions configures output publication for a single compile session. */
 export type WorkspaceOptions = {
   project?: Project
+  runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
   compile?: typeof compile
   publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
   onExpected?: (revision: string, startedAtMs: number) => void
@@ -73,11 +76,16 @@ class WorkspaceSession {
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
   private sourceFile: WorkspaceFile | undefined
+  private application: Runtime.RuntimeApplication | undefined
 
   constructor(private readonly options: WorkspaceOptions) {}
 
   get lastGoodRevision(): string | undefined {
     return this.lastGood
+  }
+
+  get runtime(): Runtime.RuntimeApplication | undefined {
+    return this.application
   }
 
   onExpected(listener: (revision: string, startedAtMs: number) => void): () => boolean {
@@ -192,14 +200,8 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await timings.measure(
-      'workspace.publish',
-      () =>
-        (this.options.publish ?? this.publishApp.bind(this))(
-          output,
-          () => this.isCurrent(request),
-        ),
-    )
+    const WorkspacePublish = timings.measure('workspace.publish', this.publish.bind(this))
+    await WorkspacePublish(output, request)
     if (!this.isCurrent(request)) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -225,19 +227,25 @@ class WorkspaceSession {
       && (request.isSourceCurrent?.() ?? true)
   }
 
-  private async publishApp(output: CompiledApp, isCurrent: () => boolean): Promise<void> {
+  private async publish(output: CompiledApp, request: Pending): Promise<void> {
+    const isCurrent = () => this.isCurrent(request)
+    if (this.options.publish) {
+      await this.options.publish(output, isCurrent)
+      return
+    }
     if (!this.options.project) {
       return
     }
-    const target = this.options.project.appPath
-    const temporary = `${target}.${output.revision}.pending`
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
-    await FileSystem.writeFile(temporary, output.code, 'utf8')
-    if (!isCurrent()) {
-      await FileSystem.rm(temporary, { force: true })
-      return
-    }
-    FileSystem.renameSync(temporary, target)
+    await publishBuild(this.options.project, output.code, this.prepareRuntime.bind(this), isCurrent, request.timings)
+  }
+
+  private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
+    const project = this.options.project ?? Errors.ThrowUnexpected('Runtime compilation requires a loaded project.')
+    this.application ??= await Runtime.create({
+      ...this.options.runtimeOptions,
+      directory: Path.join(project.directory, '.tao/cache/runtime'),
+    })
+    return this.application
   }
 
   private resolveSuperseded(request: Pending | undefined): void {

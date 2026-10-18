@@ -1,5 +1,35 @@
-import { Errors, S } from '../universal/universal'
-import { capture } from './Platform'
+import { Errors, S, Try } from '../universal/universal'
+import * as FileSystem from './FileSystem'
+import * as Path from './Path'
+import { capture, randomUUID } from './Platform'
+
+/** bundleRuntime builds only captured source/configuration bytes, retaining platform package imports.
+ *  Every internal input must be in the snapshot; live source files are never read during bundling. */
+export async function bundleRuntime(
+  entrypoints: string[],
+  outdir: string,
+  snapshot: { root: string; sources: Record<string, string> },
+): Promise<void> {
+  const directory = `${outdir}.${randomUUID()}.sources`
+  await Try(async () => {
+    await writeSnapshot(directory, snapshot)
+    const result = await Bun.build({
+      entrypoints: entrypoints.map(path => snapshotPath(directory, snapshot.root, path)),
+      outdir,
+      target: 'browser',
+      format: 'esm',
+      naming: '[name].js',
+      external: ['react', 'react-native', 'react-dom', 'expo', '@expo/metro-runtime', 'tao:metro-hmr-client'],
+    })
+    if (!result.success) {
+      Errors.ThrowUnexpected(`Runtime bundling failed: ${result.logs.map(log => log.message).join('\n')}`)
+    }
+  }, {
+    async finally() {
+      await FileSystem.rm(directory, { recursive: true, force: true })
+    },
+  })
+}
 
 /** bundleNode bundles a TypeScript entry for Node hosts while preserving declared external APIs. */
 export async function bundleNode(entrypoint: string, outdir: string, external: string[]): Promise<void> {
@@ -51,4 +81,24 @@ export async function validateEditorBundle(path: string): Promise<void> {
     }).catch(error => { console.error(error); process.exit(1); });
   `
   await capture('node -e', { variadicArgs: [script, path] })
+}
+
+async function writeSnapshot(directory: string, snapshot: { root: string; sources: Record<string, string> }) {
+  for (const [path, content] of Object.entries(snapshot.sources)) {
+    const target = snapshotPath(directory, snapshot.root, path)
+    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.writeFile(target, content)
+  }
+}
+
+function snapshotPath(directory: string, root: string, path: string): string {
+  const relative = Path.relative(root, path)
+  if (isOutsideSnapshotRoot(relative)) {
+    Errors.ThrowUnexpected(`Runtime snapshot input is outside its source root: ${path}`)
+  }
+  return Path.join(directory, relative)
+}
+
+function isOutsideSnapshotRoot(relative: string): boolean {
+  return relative === '..' || relative.startsWith(`..${Path.sep}`) || Path.isAbsolute(relative)
 }

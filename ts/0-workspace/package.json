@@ -9,6 +9,7 @@
     "@tao/compile": "workspace:*",
     "@tao/fix": "workspace:*",
     "@tao/grammar": "workspace:*",
+    "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
     "@tao/typecheck": "workspace:*"
   },

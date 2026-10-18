@@ -13,6 +13,7 @@
         "@tao/compile": "workspace:*",
         "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/typecheck": "workspace:*",
       },
@@ -105,6 +106,7 @@
     "CLIs": {
       "name": "@tao/cli",
       "dependencies": {
+        "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/workspace": "workspace:*",
         "commander": "15.0.0",
@@ -135,6 +137,7 @@
         "@tao/ast-gen": "workspace:*",
         "@tao/cli": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/workspace": "workspace:*",
       },

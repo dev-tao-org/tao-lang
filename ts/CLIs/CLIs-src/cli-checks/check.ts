@@ -3,6 +3,7 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { checkEditorTypeScript } from './editor-typescript'
 import { prepareParser } from './parser-build'
+import { prepareRuntime } from './runtime-build'
 import { withTestTimings } from './slow-tests'
 
 /** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
@@ -115,6 +116,7 @@ export async function workspaceDeadExports(): Promise<void> {
 /** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await prepareParser()
+  await prepareRuntime()
   if (shouldPrepareExtensionAssets(args)) {
     const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
     await prepareExtensionAssets()

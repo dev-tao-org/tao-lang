@@ -6,7 +6,10 @@ import type { PipelineStages, UpdateResult } from './Workspace'
 export async function readSource(path: string, observedAtMs = Time.timestampMs()): Promise<SourceSnapshot> {
   const timings = new Timings('workspace:input')
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const source = await timings.measure('workspace.read', () => FileSystem.readFile(path, 'utf8'))
+  const readWorkspaceSource = timings.measure('workspace.read', function readWorkspaceSource(path: string) {
+    return FileSystem.readFile(path, 'utf8')
+  })
+  const source = await readWorkspaceSource(path)
   return { source, observedAtMs, timings }
 }
 
