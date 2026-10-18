@@ -30,7 +30,9 @@ export default registerCommand({
     const execution = { serial: options.serial, parallel: options.parallel }
     planTestExecution(execution)
     if (target?.endsWith('.tao')) {
-      await runTaoTests(Repo.resolvePath(target), execution)
+      const path = Repo.resolvePath(target)
+      assertNewWorkspacePath(path)
+      await runTaoTests(path, execution)
       return
     }
     await assertNewWorkspaceTree()

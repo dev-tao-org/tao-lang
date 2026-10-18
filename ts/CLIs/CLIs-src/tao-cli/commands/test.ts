@@ -1,4 +1,4 @@
-import { Env, Path, Repo } from '@shared/os'
+import { resolveCallerPath } from '@cli-kit'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { runTaoTests } from '../../dev-cli/testing/TaoTests'
 import type { TestExecutionOptions } from '../../dev-cli/testing/TestPlan'
@@ -16,6 +16,6 @@ export default registerCommand({
     description: 'Run concurrently; optionally override the worker budget (default: 4).',
   }],
   async action(target: string, options: TestExecutionOptions = {}) {
-    await runTaoTests(Path.resolve(Env.get('TAO_CLI_CWD') ?? Repo.getWorkspaceRoot(), target), options)
+    await runTaoTests(resolveCallerPath(target), options)
   },
 })

@@ -123,3 +123,19 @@ Tests.test('cancellation between Tao files stops the batch and cannot return par
   })).rejects.toThrow('Tao test run interrupted.')
   Tests.expect(executed).toEqual(['first.tao'])
 })
+
+Tests.test('cancelling a serial section does not start the next section', async () => {
+  const controller = Http.createAbortController()
+  const executed: string[] = []
+  const plan = planTestExecution({ typescriptArgs: [], taoTarget: '/apps', serial: true })
+  await Tests.expect(executeTestSections(plan, {
+    async typescript() {
+      executed.push('typescript')
+      controller.abort()
+    },
+    async tao() {
+      executed.push('tao')
+    },
+  }, controller.signal)).rejects.toThrow('Tao test run interrupted.')
+  Tests.expect(executed).toEqual(['typescript'])
+})

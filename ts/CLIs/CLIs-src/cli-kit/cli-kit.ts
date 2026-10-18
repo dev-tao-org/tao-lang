@@ -1,3 +1,4 @@
+export { resolveCallerPath } from './caller-path'
 export { runCommand, runSteps } from './cmd-exec'
 export { IO } from './io'
 export { configureCLIOutput } from './output/Configuration'

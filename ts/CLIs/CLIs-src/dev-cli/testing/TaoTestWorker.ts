@@ -1,9 +1,8 @@
 import { configureCLIOutput, IO } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { FileSystem, Http, Lifecycle, Platform } from '@shared/os'
+import type { TaoWorkerReport } from './TestPlan'
 import { runTaoTestFiles } from './TestWorkers'
-
-type TaoWorkerReport = { passed: number; failed: number; error?: string }
 
 if (Platform.isMain(import.meta)) {
   await configureCLIOutput('agent')

@@ -1,17 +1,20 @@
 import { IO, type OutputChannel, runCommand } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
-import { Artifacts, FileSystem, HeadlessBrowser, Http, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
 import { findTaoTestFiles } from './TaoTests'
 import {
+  assertTestRunActive,
   executeTestSections,
   planTaoWorkers,
   planTestExecution,
   runFilesSequentially,
   runWorkerBatch,
   type TaoWorkerPlan,
+  type TaoWorkerReport,
   type TestExecutionOptions,
   type TestPlan,
+  type TestRunSignal,
 } from './TestPlan'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
@@ -21,27 +24,9 @@ export type { TestExecutionOptions } from './TestPlan'
 export async function runTestPlan(
   options: { typescriptArgs?: readonly string[]; taoTarget?: string; slowSeconds?: number } & TestExecutionOptions,
 ): Promise<void> {
-  const startedAtMs = Time.nowMs()
-  const plan = planTestExecution(options)
-  const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
-  const taoChannels: OutputChannel[] = []
-  const operations = {
-    typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds),
-    tao: () => runTaoTests(plan, taoChannels),
-  }
-  const outcomes = await executeTestSections(plan, operations)
-  typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
-  for (const channel of [...typeScriptChannel ? [typeScriptChannel] : [], ...taoChannels]) {
-    channel.summary(channel.completion())
-  }
-  const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
-  if (failures.length > 0) {
-    if (!plan.typescript && outcomes.tao) {
-      Errors.ThrowUserInput('Tao app tests failed.')
-    }
-    Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
-  }
-  IO.summary(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
+  const controller = Http.createAbortController()
+  const stop = Lifecycle.onTermination(() => controller.abort())
+  await Try(() => executeTestPlan(options, controller.signal), { finally: stop })
 }
 
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
@@ -81,36 +66,69 @@ export async function runTaoTestFiles(
   )
 }
 
-type TaoWorkerReport = { passed: number; failed: number; error?: string }
+async function executeTestPlan(
+  options: Parameters<typeof runTestPlan>[0],
+  signal: TestRunSignal,
+): Promise<void> {
+  const startedAtMs = Time.nowMs()
+  const plan = planTestExecution(options)
+  const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
+  const taoChannels: OutputChannel[] = []
+  const operations = {
+    typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal),
+    tao: () => runTaoTests(plan, taoChannels, signal),
+  }
+  const outcomes = await executeTestSections(plan, operations, signal)
+  typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
+  for (const channel of [...typeScriptChannel ? [typeScriptChannel] : [], ...taoChannels]) {
+    channel.summary(channel.completion())
+  }
+  const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
+  if (failures.length > 0) {
+    if (!plan.typescript && outcomes.tao) {
+      Errors.ThrowUserInput('Tao app tests failed.')
+    }
+    Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
+  }
+  IO.summary(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
+}
 
 async function runTypeScriptTests(
   plan: TestPlan,
   channel: OutputChannel | undefined,
   slowSeconds: number | undefined,
+  signal: TestRunSignal,
 ): Promise<void> {
   if (!plan.typescript || !channel) {
     return
   }
   channel.start()
   const { args, workers } = plan.typescript
-  await withTestTimings(
-    reportPath =>
-      runCommand(`bun test --parallel=${workers}`, {
-        cwd: Repo.resolvePath('ts'),
-        variadicArgs: reportPath ? [...args, '--reporter=junit', '--reporter-outfile', reportPath] : [...args],
-        output: channel,
-        env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
-      }),
-    slowSeconds,
-    channel,
-  )
+  await Try(() =>
+    withTestTimings(
+      reportPath =>
+        runCommand(`bun test --parallel=${workers}`, {
+          cwd: Repo.resolvePath('ts'),
+          variadicArgs: reportPath ? [...args, '--reporter=junit', '--reporter-outfile', reportPath] : [...args],
+          output: channel,
+          signal,
+          env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+        }),
+      slowSeconds,
+      channel,
+    ), {
+    catch(error) {
+      channel.finish('failed')
+      Errors.Throw(error)
+    },
+  })
 }
 
-async function runTaoTests(plan: TestPlan, channels: OutputChannel[]): Promise<void> {
+async function runTaoTests(plan: TestPlan, channels: OutputChannel[], signal: TestRunSignal): Promise<void> {
   if (!plan.tao) {
     return
   }
-  await Try(() => executeTaoTests(plan, channels), {
+  await Try(() => executeTaoTests(plan, channels, signal), {
     catch(error) {
       channels.forEach((channel, index) => {
         channel.finish(error instanceof TaoWorkerFailure && !error.workerFailures.includes(index) ? 'passed' : 'failed')
@@ -120,11 +138,12 @@ async function runTaoTests(plan: TestPlan, channels: OutputChannel[]): Promise<v
   })
 }
 
-async function executeTaoTests(plan: TestPlan, channels: OutputChannel[]): Promise<void> {
+async function executeTaoTests(plan: TestPlan, channels: OutputChannel[], signal: TestRunSignal): Promise<void> {
   if (!plan.tao) {
     return
   }
   const files = await findTaoTestFiles(Path.resolve(plan.tao.target))
+  assertTestRunActive(signal)
   if (files.length === 0) {
     Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
   }
@@ -137,7 +156,7 @@ async function executeTaoTests(plan: TestPlan, channels: OutputChannel[]): Promi
   const workers = planTaoWorkers(files, reportPaths)
   const results = await runWorkerBatch(
     workers,
-    worker => runTaoWorker(worker, channels[worker.index]!),
+    worker => runTaoWorker(worker, channels[worker.index]!, signal),
     (worker, error) => ({ passed: 0, failed: 0, error: `Tao worker ${worker.index + 1} failed: ${String(error)}` }),
   )
   const failures = results.flatMap((result, index) => result.failed > 0 || result.error ? [index] : [])
@@ -152,7 +171,12 @@ async function executeTaoTests(plan: TestPlan, channels: OutputChannel[]): Promi
   }
 }
 
-async function runTaoWorker(worker: TaoWorkerPlan, channel: OutputChannel): Promise<TaoWorkerReport> {
+async function runTaoWorker(
+  worker: TaoWorkerPlan,
+  channel: OutputChannel,
+  signal: TestRunSignal,
+): Promise<TaoWorkerReport> {
+  assertTestRunActive(signal)
   channel.start()
   let commandFailure: string | undefined
   await Try(() =>
@@ -167,6 +191,7 @@ async function runTaoWorker(worker: TaoWorkerPlan, channel: OutputChannel): Prom
         ...worker.paths,
       ],
       output: channel,
+      signal,
       env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
     }), {
     catch(error) {

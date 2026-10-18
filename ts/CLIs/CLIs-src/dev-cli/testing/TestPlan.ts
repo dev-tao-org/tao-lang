@@ -20,7 +20,11 @@ export type TestSectionOperations = { typescript: () => Promise<void>; tao: () =
 /** TestSectionFailures retains each selected section's failure after every selected section finishes. */
 export type TestSectionFailures = { typescript?: string; tao?: string }
 
-type TestRunSignal = ReturnType<typeof Http.createAbortController>['signal']
+/** TestRunSignal carries cancellation through scheduling and subprocess execution. */
+export type TestRunSignal = ReturnType<typeof Http.createAbortController>['signal']
+
+/** TaoWorkerReport is the shared subprocess result protocol for completed Tao cases. */
+export type TaoWorkerReport = { passed: number; failed: number; error?: string }
 
 /** planTestExecution validates test options and assigns worker budgets deterministically. */
 export function planTestExecution(
@@ -47,17 +51,6 @@ export function planTestExecution(
   }
 }
 
-function parseParallelBudget(value: string | boolean): number {
-  if (value === false || value === true) {
-    return 6
-  }
-  const budget = Number(value)
-  if (!Number.isSafeInteger(budget) || budget < 1) {
-    Errors.ThrowUserInput('--parallel requires a positive whole-number worker budget.')
-  }
-  return budget
-}
-
 /** planTaoWorkers creates deterministic contiguous chunks and pairs each with its result path. */
 export function planTaoWorkers(paths: readonly string[], reportPaths: readonly string[]): TaoWorkerPlan[] {
   const workerCount = Math.min(paths.length, reportPaths.length)
@@ -76,6 +69,7 @@ export function planTaoWorkers(paths: readonly string[], reportPaths: readonly s
 export async function executeTestSections(
   plan: TestPlan,
   operations: TestSectionOperations,
+  signal?: TestRunSignal,
 ): Promise<TestSectionFailures> {
   const selected = [
     plan.typescript ? { section: 'typescript' as const, run: operations.typescript } : undefined,
@@ -84,11 +78,13 @@ export async function executeTestSections(
   const results: { section: 'typescript' | 'tao'; failure?: string }[] = []
   if (plan.serial) {
     for (const section of selected) {
-      results.push(await runSection(section.section, section.run))
+      assertTestRunActive(signal)
+      results.push(await runSection(section.section, section.run, signal))
     }
   } else {
-    results.push(...await Promise.all(selected.map(section => runSection(section.section, section.run))))
+    results.push(...await Promise.all(selected.map(section => runSection(section.section, section.run, signal))))
   }
+  assertTestRunActive(signal)
   return Object.fromEntries(results.flatMap(result => result.failure ? [[result.section, result.failure]] : []))
 }
 
@@ -116,6 +112,24 @@ export async function runFilesSequentially<Item, Result>(
   return results
 }
 
+/** assertTestRunActive rejects scheduling or partial success after cancellation. */
+export function assertTestRunActive(signal: TestRunSignal | undefined): void {
+  if (signal?.aborted) {
+    Errors.ThrowHostEnvironment('Tao test run interrupted.')
+  }
+}
+
+function parseParallelBudget(value: string | boolean): number {
+  if (value === false || value === true) {
+    return 6
+  }
+  const budget = Number(value)
+  if (!Number.isSafeInteger(budget) || budget < 1) {
+    Errors.ThrowUserInput('--parallel requires a positive whole-number worker budget.')
+  }
+  return budget
+}
+
 function splitWorkerBudget(
   budget: number,
   sections: number,
@@ -130,15 +144,12 @@ function splitWorkerBudget(
   return [typescript, Math.max(1, budget - typescript)]
 }
 
-function runSection(section: 'typescript' | 'tao', run: () => Promise<void>) {
-  return run().then(
+function runSection(section: 'typescript' | 'tao', run: () => Promise<void>, signal?: TestRunSignal) {
+  return Promise.resolve().then(() => {
+    assertTestRunActive(signal)
+    return run()
+  }).then(
     () => ({ section }),
     error => ({ section, failure: String(error) }),
   )
-}
-
-function assertTestRunActive(signal: TestRunSignal | undefined): void {
-  if (signal?.aborted) {
-    Errors.ThrowHostEnvironment('Tao test run interrupted.')
-  }
 }
