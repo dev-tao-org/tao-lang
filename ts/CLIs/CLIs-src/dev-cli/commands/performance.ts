@@ -9,18 +9,29 @@ import { registerCommand } from './_command-runner'
 export default registerCommand({
   name: 'performance',
   description: 'Measure parser/compiler phases, editor updates or two live Expo previews; save raw samples.',
-  arguments: [{ name: 'target', description: 'parser, extension or preview.', defaultValue: 'parser' }],
+  arguments: [{
+    name: 'target',
+    description: 'parser, extension, preview or record (current commit).',
+    defaultValue: 'parser',
+  }],
   async action(target: string) {
     if (target === 'extension') {
       return runExtension()
     }
-    if (target !== 'parser' && target !== 'preview') {
-      Errors.ThrowUserInput('Available performance targets: parser, extension, preview')
+    if (!['parser', 'preview', 'record'].includes(target)) {
+      Errors.ThrowUserInput('Available performance targets: parser, extension, preview, record')
     }
     const timings = new Timings(`process:${Platform.pid}`)
     await prepareParser(target === 'parser', timings)
+    if (target === 'record') {
+      const { recordPreviewPerformance } = await import('../../../../perf/perf-src/PreviewHistory')
+      const record = await recordPreviewPerformance(runPreview)
+      IO.print(`${record.reused ? 'Existing' : 'Recorded'} commit performance: ${record.directory}`)
+      return
+    }
     if (target === 'preview') {
-      return runPreview()
+      await runPreview()
+      return
     }
     const { parserPerformance } = await import('../../../../perf/perf-src/parser-performance')
     const { path, summary } = await parserPerformance(timings.samples)
@@ -46,7 +57,7 @@ async function runExtension(): Promise<void> {
   IO.print('Performance report: ' + path)
 }
 
-async function runPreview(): Promise<void> {
+async function runPreview(initialSource?: string) {
   await prepareRuntime()
   const { createProject, createWorkspace } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
@@ -58,7 +69,7 @@ async function runPreview(): Promise<void> {
       project,
       runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
     }),
-    initialSource: await Tests.readApp('Hello World'),
+    initialSource: initialSource ?? await Tests.readApp('Hello World'),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
   for (const [index, timing] of result.reloads.entries()) {
@@ -69,4 +80,5 @@ async function runPreview(): Promise<void> {
     IO.print('  ' + formatTimings(timing.pipeline))
   }
   IO.print('Preview performance report: ' + result.path)
+  return result
 }

@@ -87,10 +87,10 @@ export function systemInfo(): { architecture: string; kernel: string; os: string
   return { architecture: arch(), kernel: release(), os: type() }
 }
 
-/** capture reads command output and throws when the command fails. */
+/** capture reads command output and throws when the command fails; trim:false preserves exact text. */
 export async function capture(
   command: string,
-  options: { variadicArgs?: readonly string[]; cwd?: string } = {},
+  options: { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean } = {},
 ): Promise<string> {
   const args = [...command.trim().split(/ +/), ...options.variadicArgs ?? []]
   const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
@@ -106,7 +106,7 @@ export async function capture(
       stderr,
     })
   }
-  return stdout.trim()
+  return options.trim === false ? stdout : stdout.trim()
 }
 
 /** requireHostProcessAccess rejects restricted execution before starting host-dependent tools.

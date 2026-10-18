@@ -6,6 +6,12 @@ source commit instead of triggering another measurement.
 
 ## Capture
 
+- For an implementation commit, use `./agent unsandboxed performance record` (developer equivalent:
+  `./dev performance record`). It records current HEAD, loads the fixture from that commit,
+  requires unchanged committed implementation inputs, and validates/reuses an existing successful
+  record. It writes to the initialized `.storage` submodule or retains pending data under
+  `.artifacts/notes/preview-history/<commit-sha>/`; it does not initialize, commit or push the archive.
+  Failed, partial or corrupt existing records are retained and reported; they are not overwritten.
 - Developer command: `./dev performance preview`. Agents on macOS use the approved host operation
   `./agent unsandboxed performance preview`. This starts isolated headless Expo web previews,
   exercises text, added-view and column-to-row edits through disk watching, and prints the JSON
@@ -44,11 +50,9 @@ Do not replace an existing per-commit record with a faster rerun. Diagnostic rer
 2. Initialize/sync the actual `.storage` Git submodule if needed; never write archive data into
    its uninitialized directory. Commit only this task's new performance records in the submodule.
 3. Push that archive commit and confirm it exists remotely before pinning its Gitlink in Tao.
-   Use the supported storage publication/pin workflow in `storage-archive`. The new implementation
-   currently has neither storage commands nor allowlisted submodule initialization/push operations.
-   Until that tooling exists or the Developer performs publication, report this prerequisite as
-   blocked and retain pending records under `.artifacts/notes/preview-history/`. Do not bypass the
-   host allowlist or invoke the old implementation's tools as a substitute.
+   The new implementation's authorized `land` workflow owns archive initialization, publication
+   and pinning. Recording alone does not publish. Do not bypass the host allowlist or invoke the
+   old implementation's tools as a substitute.
 4. Commit the updated `.storage` pointer as a separate Tao follow-up. Include the measured source
    SHAs, archive commit and record paths in the reviewed squash/merge message so the final main
    commit can be traced back to its measurements.

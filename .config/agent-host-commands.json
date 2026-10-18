@@ -1,5 +1,8 @@
 [
   "install-ide-extension",
+  "land",
+  "landed",
+  "merge-main",
   "setup",
   "agent-config",
   "my-branch",
@@ -9,6 +12,7 @@
   "test",
   "verify",
   "performance preview",
+  "performance record",
   "doctor",
   "secrets",
   "git status",

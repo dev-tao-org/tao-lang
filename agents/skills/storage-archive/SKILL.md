@@ -11,8 +11,8 @@ description: >-
 Preview timing history is owned by `pipeline-performance`'s
 [preview history](../pipeline-performance/references/preview-history.md). Its pre-landing archive
 push and pointer update are authorized by that workflow; the screenshot capture/visual-approval
-steps below apply to screenshots. That workflow records the current implementation's missing
-publication tooling as a prerequisite; it does not provide an executable fallback.
+steps below apply to screenshots. The new implementation's authorized `land` command publishes
+and pins timing records; `performance record` captures them locally without publication.
 
 `Docs/Roadmap/UI screenshot archive/Plan - UI screenshot archive.md` owns what the archive records
 and why: the device and appearance matrix, file names, the per-run manifest, and the submodule rules.

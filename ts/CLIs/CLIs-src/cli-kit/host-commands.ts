@@ -35,6 +35,9 @@ export function resolveHostCommand(argv: readonly string[], prefixes: unknown): 
 const allowlistPath = '.config/agent-host-commands.json'
 const developerCommands = new Set([
   'install-ide-extension',
+  'land',
+  'landed',
+  'merge-main',
   'setup',
   'agent-config',
   'my-branch',
@@ -99,8 +102,8 @@ function hasValidPrefixTokens(tokens: readonly string[]): boolean {
 }
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {
-  if (prefix.text === 'performance preview') {
-    return { command: './dev performance preview', variadicArgs: trailing }
+  if (prefix.text === 'performance preview' || prefix.text === 'performance record') {
+    return { command: './dev ' + prefix.text, variadicArgs: trailing }
   }
   if (prefix.tokens.length === 1 && developerCommands.has(prefix.tokens[0]!)) {
     return { command: `./dev ${prefix.tokens[0]}`, variadicArgs: trailing }
