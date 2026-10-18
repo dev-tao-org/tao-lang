@@ -132,7 +132,7 @@ function bindValues(view: View, args: ViewRenderArgs): Readonly<Record<string, u
   if (missingIndex >= 0) {
     Errors.ThrowUserInput(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
   }
-  const bindings: Record<string, unknown> = {}
+  const bindings = Object.create(null) as Record<string, unknown>
   for (const [index, parameter] of view.parameters.entries()) {
     bindings[parameter] = args.values[index]
   }

@@ -76,7 +76,7 @@ export default grammar({
       )
     },
     TextLiteral() {
-      return token(seq('"', repeat(choice(/[^"\\\r\n]/, /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/)), '"'))
+      return token(seq('"', repeat(choice(/[^"\\\r\n\u0000-\u001f]/, /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/)), '"'))
     },
 
     // Names

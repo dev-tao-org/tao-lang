@@ -20,6 +20,18 @@ Tests.test('Render binds positional view values and supplies children', () => {
   Tests.expect(html).toContain('<main><section>hello</section></main>')
 })
 
+Tests.test('Render binds the legal __proto__ parameter as an ordinary value', () => {
+  const ProtoValue = ViewDefinition(
+    'ProtoValue',
+    ['__proto__'],
+    bindings => createElement('span', null, bindings['__proto__'] as string),
+  )
+
+  const html = renderToStaticMarkup(Render(ProtoValue, ViewRenderArgs(['ordinary value'])))
+
+  Tests.expect(html).toBe('<span>ordinary value</span>')
+})
+
 Tests.test('Render reports missing positional view arguments', () => {
   const Message = ViewDefinition('Message', ['Value'], ({ Value }) => createElement('span', null, Value as string))
 

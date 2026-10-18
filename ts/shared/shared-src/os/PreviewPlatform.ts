@@ -55,14 +55,21 @@ type PreviewState = {
 }
 
 function previewState(): PreviewState | undefined {
-  if (typeof window === 'undefined' || window.parent === window) {
+  if (typeof window === 'undefined') {
     return undefined
   }
   const host = window as Window & { __taoPreview?: PreviewState }
+  if (!host.parent || host.parent === window) {
+    return undefined
+  }
   if (host.__taoPreview) {
     return host.__taoPreview
   }
-  const query = new URLSearchParams(window.location.search)
+  const search = host.location?.search
+  if (!search) {
+    return undefined
+  }
+  const query = new URLSearchParams(search)
   const sessionId = query.get('sessionId')
   const frameId = query.get('frameId')
   const parentOrigin = query.get('parentOrigin')

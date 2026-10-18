@@ -37,3 +37,12 @@ Tests.test('an unfinished edit recovers to generic view names, arguments and chi
   Tests.expect(repaired.rootNode.descendantsOfType('ArgumentList')[0]?.namedChildren.map(node => node.type))
     .toEqual(['TextLiteral', 'Identifier'])
 })
+
+Tests.test('text literals reject raw JSON control characters but retain escaped controls', () => {
+  const parser = createParser()
+  const rawControl = parser.parse('view RootView { render Text("raw\u0001control") }')
+  const escapedControl = parser.parse('view RootView { render Text("escaped\\u0001control") }')
+
+  Tests.expect(rawControl.tree.rootNode.hasError).toBe(true)
+  Tests.expect(escapedControl.tree.rootNode.hasError).toBe(false)
+})
