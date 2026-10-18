@@ -10,7 +10,7 @@ export default {
     '1-grammar': packageWorkspace(['**/*.test.ts']),
     '2-ast-gen': packageWorkspace(['**/*.test.ts']),
     '3-typecheck': packageWorkspace(['**/*.test.ts']),
-    '4-fix': packageWorkspace([]),
+    '4-fix': packageWorkspace(['**/*.test.ts']),
     '5-check': packageWorkspace([]),
     '6-compile': packageWorkspace(['**/*.test.ts']),
     '7-runtime': packageWorkspace([
