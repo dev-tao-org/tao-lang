@@ -1,17 +1,18 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Artifacts, Browser, Lifecycle, Platform, Repo } from '@shared/os'
+import { Artifacts, Browser, FileSystem, Lifecycle, Platform, Repo } from '@shared/os'
 import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
+import { previewScenarios } from '../../../../perf/perf-src/PreviewScenarios'
 import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
 
-/** devCommand runs the authored Hello World fixture in a persistent dual-preview Expo session. */
+/** devCommand runs the isolated Preview fixture in a persistent dual-preview Expo session. */
 export default registerCommand({
   name: 'dev',
-  description: 'Run the Hello World fixture in two live previews and refresh after source edits.',
+  description: 'Run the Preview fixture in two live previews and refresh after each button edit.',
   async action() {
     await runDevSession()
   },
@@ -20,8 +21,8 @@ export default registerCommand({
 async function runDevSession(): Promise<void> {
   await prepareRuntime()
   const workspace = createWorkspace({
-    directory: Repo.resolvePath('Apps/Tests'),
-    outputDirectory: Artifacts.resolvePath('dev/hello-world'),
+    directory: Repo.resolvePath('Apps/Dev/Preview'),
+    outputDirectory: Artifacts.resolvePath('dev/preview'),
     onSourceUpdate: reportSourceUpdate,
     onSourceError: reportSourceError,
   })
@@ -29,17 +30,22 @@ async function runDevSession(): Promise<void> {
   let preview: PreviewHarness | undefined
   await Try(async () => {
     IO.progress('Opening workspace at ' + workspace.directory)
-    requirePublished(await workspace.openFile('Hello World.tao'))
+    requirePublished(await workspace.openFile('Preview.tao'))
+    const entryPath = workspace.files.entryPath
+      ?? Errors.ThrowUnexpected('Preview did not register an entry path for preview edits.')
+    const canonicalSource = await FileSystem.readFile(entryPath, 'utf8')
     expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput })
     preview = await createPreviewHarness({
       workspace,
       previewUrl: expo.url,
       sessionId: Platform.randomUUID(),
+      canonicalSource,
+      scenarios: previewScenarios,
       onReload: reportReload,
     })
     IO.print('Tao preview is running at ' + preview.url)
     await Browser.openUrl(preview.url)
-    IO.print('Edit Apps/Tests/Hello World.tao to refresh both previews. Press Ctrl-C to stop.')
+    IO.print('Edit Apps/Dev/Preview/Preview.tao to refresh both previews. Press Ctrl-C to stop.')
     await Lifecycle.waitForTermination()
   }, {
     finally: (_thrown, error) => cleanup({ preview, workspace, expo, reportFailure: Boolean(error) }),
@@ -64,7 +70,7 @@ function reportSourceError(error: unknown): void {
 
 function requirePublished(result: UpdateResult): void {
   if (result.status !== 'published') {
-    Errors.ThrowUnexpected('Hello World source did not compile for the live preview: ' + result.status)
+    Errors.ThrowUnexpected('Preview source did not compile for the live preview: ' + result.status)
   }
 }
 

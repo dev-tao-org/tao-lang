@@ -91,7 +91,7 @@ my-branch name='':
 # Dev environment services
 ##########################
 
-# Compile the existing Hello World app and keep its two browser previews running
+# Compile the Preview app and keep its two browser previews running
 [group('Dev')]
 dev:
     ./dev dev

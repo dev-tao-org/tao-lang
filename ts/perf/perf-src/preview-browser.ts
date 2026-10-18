@@ -41,7 +41,9 @@ const frames = new Map<string, HTMLIFrameElement>([
 const receipts = new PreviewReceipts<SignalReceipt>()
 const expected = new Set<string>()
 const pendingSignals: MessageEvent[] = []
-const scenarios = ['text', 'add-text', 'row'] as const
+const scenarios = JSON.parse(
+  Browser.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
+) as string[]
 let latestExpected = 0
 let scenarioIndex = 0
 const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
@@ -68,6 +70,7 @@ Browser.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () =
     return
   }
   result.status = 'running'
+  refreshRunButton()
   setStatus('running')
   const clickTime = Time.nowMs()
   const clickTimestampMs = Time.timestampMs()
@@ -107,11 +110,7 @@ function relaySignal(signal: PreviewSignal): void {
   }).then(undefined, failScenario)
 }
 
-async function runScenario(
-  scenario: typeof scenarios[number],
-  clickTime: number,
-  clickTimestampMs: number,
-): Promise<void> {
+async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
   const update = await Browser.requestJson<{ status: string; revision: string; timings: unknown[]; stages?: unknown }>(
     '/edit',
     {
@@ -137,15 +136,27 @@ async function runScenario(
   scenarioIndex++
   result.currentScenario = scenario
   result.status = scenarioIndex === scenarios.length ? 'complete' : 'ready'
-  Browser.querySelector<HTMLButtonElement>('#run')!.textContent = scenarioIndex === scenarios.length
-    ? 'Complete'
-    : `Run ${scenarios[scenarioIndex]}`
+  refreshRunButton()
   setStatus(result.status)
+}
+
+function refreshRunButton(): void {
+  const runButton = Browser.querySelector<HTMLButtonElement>('#run')!
+  const complete = scenarioIndex >= scenarios.length
+  runButton.disabled = complete || result.status === 'running'
+  runButton.textContent = complete
+    ? 'Complete'
+    : result.status === 'running'
+    ? `Running ${scenarios[scenarioIndex]}…`
+    : scenarioIndex === 0
+    ? 'Run edit scenarios'
+    : `Run ${scenarios[scenarioIndex]}`
 }
 
 function failScenario(reason: unknown): void {
   result.status = 'failed'
   result.error = String(reason)
+  refreshRunButton()
   setStatus('failed')
 }
 
