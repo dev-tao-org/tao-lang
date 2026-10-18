@@ -91,6 +91,11 @@ my-branch name='':
 dev:
     ./dev dev
 
+# Build the Tao extension once and install it into Cursor and VS Code
+[group('Dev')]
+install-ide-extension:
+    ./dev install-ide-extension
+
 # Start the official self-hosted InstantDB stack and provision WordFlower's local app
 [group('Services')]
 start-local-instantdb:

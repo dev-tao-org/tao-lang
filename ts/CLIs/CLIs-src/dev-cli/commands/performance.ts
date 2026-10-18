@@ -7,11 +7,14 @@ import { registerCommand } from './_command-runner'
 /** performanceCommand records the available implementation's repeated performance baselines. */
 export default registerCommand({
   name: 'performance',
-  description: 'Measure parser/compiler phases or two live Expo previews; save raw samples.',
-  arguments: [{ name: 'target', description: 'parser or preview.', defaultValue: 'parser' }],
+  description: 'Measure parser/compiler phases, editor updates or two live Expo previews; save raw samples.',
+  arguments: [{ name: 'target', description: 'parser, extension or preview.', defaultValue: 'parser' }],
   async action(target: string) {
+    if (target === 'extension') {
+      return runExtension()
+    }
     if (target !== 'parser' && target !== 'preview') {
-      Errors.ThrowUserInput('Available performance targets: parser, preview')
+      Errors.ThrowUserInput('Available performance targets: parser, extension, preview')
     }
     const timings = new Timings(`process:${Platform.pid}`)
     await prepareParser(target === 'parser', timings)
@@ -28,6 +31,19 @@ export default registerCommand({
     IO.print('Performance report: ' + path)
   },
 })
+
+async function runExtension(): Promise<void> {
+  const { prepareExtensionAssets } = await import('../ide/ExtensionBuild')
+  await prepareExtensionAssets()
+  const { extensionPerformance } = await import('../../../../perf/perf-src/extension-performance')
+  const { path, summary } = await extensionPerformance()
+  for (const phase of summary) {
+    IO.print(
+      `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
+    )
+  }
+  IO.print('Performance report: ' + path)
+}
 
 async function runPreview(): Promise<void> {
   const { createProject, createWorkspace } = await import('@workspace/Workspace')

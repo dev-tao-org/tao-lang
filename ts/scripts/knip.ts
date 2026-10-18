@@ -34,6 +34,7 @@ export default {
       '**/*.test.ts',
     ]),
     shared: packageWorkspace(['**/*.test.ts']),
+    'ide-extension': packageWorkspace(['ide-extension-src/extension.ts', '**/*.test.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 }

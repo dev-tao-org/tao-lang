@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["bun", "vscode"]
+  },
+  "include": ["ide-extension-src/**/*.ts", "ide-extension-test/**/*.ts"]
+}

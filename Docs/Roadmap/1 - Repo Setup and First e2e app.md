@@ -40,6 +40,13 @@ Implement a first e2e Hello World app:
 
 The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20World.tao).
 
+### Developer-requested editor slice
+
+- [x] Build a self-contained VS Code extension using the Tao WASM grammar and `web-tree-sitter`, with incremental per-document syntax highlighting and syntax diagnostics, including embedded TSX through upstream grammar queries.
+- [x] Provide Cmd+Shift+B / `just install-ide-extension` to build once and install into Cursor and VS Code; keep generated output in `.artifacts/ide-extension`.
+- [x] Measure the editor core on Kitchen Sink; record the baseline under [Performance](../Performance/First%20editor%20extension%20baseline.md).
+- Interactive editor acceptance remains unverified. Typechecking, completion, navigation and formatting follow their language-service implementations.
+
 ### Success criteria
 
 - The minimal Tao app passes through parsing, CST-to-AST transformation and code generation into the Expo runtime.

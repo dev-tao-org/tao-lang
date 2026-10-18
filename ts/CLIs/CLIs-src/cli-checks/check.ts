@@ -62,6 +62,7 @@ export async function workspaceTypes(): Promise<void> {
     '6-compile',
     '7-runtime',
     'CLIs',
+    'ide-extension',
     'perf',
     'shared',
   ]
@@ -114,6 +115,10 @@ export async function workspaceDeadExports(): Promise<void> {
 /** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await prepareParser()
+  if (args.length === 0 || args.some(path => path.includes('ide-extension'))) {
+    const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
+    await prepareExtensionAssets()
+  }
   await withTestTimings(reportPath =>
     runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],

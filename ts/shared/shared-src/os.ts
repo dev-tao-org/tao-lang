@@ -1,4 +1,5 @@
 export * as Artifacts from './os/Artifacts'
+export * as Bundle from './os/Bundle'
 export * as Env from './os/Env'
 export * as FileSystem from './os/FileSystem'
 export * as Path from './os/Path'

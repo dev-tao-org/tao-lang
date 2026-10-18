@@ -13,6 +13,7 @@
     "6-compile",
     "7-runtime",
     "CLIs",
+    "ide-extension",
     "perf",
     "shared"
   ],
