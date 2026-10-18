@@ -1,8 +1,8 @@
 ---
 name: code-review
 description: >-
-  Review branch changes with one or more read-only subagents when the Developer explicitly requests
-  a review, including correctness, style, conformance, file-layout and organizational-health reviews.
+  Review branch changes with one or more read-only subagents. Use when the Developer explicitly
+  requests a review, including correctness, style, conformance, file-layout and organizational-health reviews.
 ---
 
 # Code Review

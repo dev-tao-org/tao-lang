@@ -5,15 +5,15 @@ import { AgentConfigFreshness } from '../agent-cli-src/agent-config/AgentConfigF
 import { AgentConfigGenerator } from '../agent-cli-src/agent-config/AgentConfigGenerator'
 
 Describe('agent config generation', () => {
-  Test('the session-start hook reaches the worktree script from a repository subdirectory', async () => {
+  Test('the session-start hook runs locked root setup from a repository subdirectory', async () => {
     const root = await mkGitTestDir('tao-agent-hook-subdirectory-')
     await initGitTestRepository(root)
     const marker = FS.resolvePath('hook-ran', root)
-    const script = FS.resolvePath(
-      '.x-tao-old-v1/packages/cli/agent-cli/agent-cli-src/cli/agent-session-start.zsh',
-      root,
+    const script = FS.resolvePath('agent', root)
+    await FS.writeText(
+      script,
+      '#!/bin/sh\nprintf \'%s\\n\' "$PWD" "$@" > "$TAO_TEST_HOOK_MARKER"\n',
     )
-    await FS.writeText(script, '#!/bin/sh\n: > "$TAO_TEST_HOOK_MARKER"\n')
     await FS.chmod(script, 0o755)
     const nested = FS.resolvePath('.x-tao-old-v1/packages/cli/agent-cli', root)
     await FS.mkdir(nested)
@@ -28,7 +28,11 @@ Describe('agent config generation', () => {
     })
 
     Expect(result.exitCode).toBe(0)
-    Expect(await FS.exists(marker)).toBe(true)
+    Expect((await FS.readText(marker)).trim().split('\n')).toEqual([
+      await FS.realPath(root),
+      'setup',
+      '--frozen-lockfile',
+    ])
   })
 
   Test('continues when a managed worktree blocks one adapter directory', async () => {
