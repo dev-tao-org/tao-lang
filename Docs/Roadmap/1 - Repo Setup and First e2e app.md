@@ -23,11 +23,6 @@ Implement a first e2e Hello World app:
 - [ ] Implement basic testing framework
 - [x] Implement a minimal preview-refresh performance package and automated harness, using the runtime's granular app-side measurements.
 
-## Goal 3
-
-- [ ] Implement `LetDefinition` and scopes
-- [ ] Get compiled code to be formatted properly
-
 ### Preview-refresh performance
 
 - Provide `tao compile <app-entry-file>` and a shared in-process compiler API. The performance web server calls that API directly, then saves generated Expo modules for normal refresh.
@@ -60,3 +55,8 @@ The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20Wo
 - Local tests can select a platform for fast iteration. Record cold and warm CI timings before adding further build infrastructure.
 - The compiled app scaffold uses the new handwritten TypeScript runtime; the performance harness automatically measures both refresh signals for the specified edits in both iframe sizes, with granular runtime-operation timings alongside compiler timings and resulting DOM assertions.
 - Measure implementation hot paths and run their performance tests before landing. Investigate increases and iterate until diminishing returns or further work would add too much complexity for the slice; record results and remaining costs under [Performance](../Performance/README.md).
+
+## Goal 3
+
+- [ ] Implement `LetDefinition` and scopes
+- [ ] Get compiled code to be formatted properly
