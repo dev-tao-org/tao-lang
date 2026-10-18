@@ -1,5 +1,10 @@
 # First transformer piece
 
+Historical checkpoint: these app-only workloads describe earlier revisions. The current
+`./agent performance parser` command measures full-app transformation and code generation;
+see [First Expo preview baseline](First%20Expo%20preview%20baseline.md) for the later pipeline.
+The command below reproduces the described workload only at its recorded historical revision.
+
 This is a review checkpoint, not the completed CST-to-AST slice.
 
 The measured input is only the app declaration from `Apps/Tests/Hello World.tao`.
