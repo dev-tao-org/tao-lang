@@ -7,6 +7,9 @@
 # `.git/hooks/<event>` entries this installs call this script by the committing worktree's own
 # path, so a worktree that lacks it is silent before this ever runs.
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+if [ -d "$repo_root/.x-tao-old-v1/packages" ]; then
+  repo_root="$repo_root/.x-tao-old-v1"
+fi
 bun="$repo_root/.devenv/profile/bin/bun"
 [ -x "$bun" ] || bun="$(command -v bun 2>/dev/null)"
 [ -n "$bun" ] || exit 0
