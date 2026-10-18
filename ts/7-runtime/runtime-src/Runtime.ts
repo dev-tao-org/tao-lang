@@ -12,8 +12,14 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
   const resources = await readRuntimeResources(resourcesDirectory)
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
   await FileSystem.mkdir(directory, { recursive: true })
-  await writeExpoApplication(directory, resourcesDirectory, resources.dependencies)
   const dependencyDirectory = await prepareToolchain(cacheDirectory, resourcesDirectory, options.install)
+  await writeExpoApplication(
+    directory,
+    resourcesDirectory,
+    resources.dependencies,
+    resources.devDependencies,
+    resources.sourceFiles,
+  )
   return await applicationWithToolchain(directory, dependencyDirectory)
 }
 
@@ -35,8 +41,16 @@ export type RuntimeCreateOptions = {
 
 export type { ExpoOptions, ExpoSession } from './expo/Expo'
 
-type RuntimeResources = { identity: string; dependencies: Record<string, string> }
-type RuntimeMetadata = RuntimeResources & { version: 1 }
+type RuntimeResources = {
+  identity: string
+  dependencies: Record<string, string>
+  devDependencies: Record<string, string>
+  sourceFiles: string[]
+}
+type RuntimeMetadata = Omit<RuntimeResources, 'devDependencies'> & {
+  version: 2
+  devDependencies?: Record<string, string>
+}
 
 async function readRuntimeResources(directory: string): Promise<RuntimeResources> {
   const metadataPath = Path.join(directory, 'runtime.json')
@@ -51,12 +65,17 @@ async function readRuntimeResources(directory: string): Promise<RuntimeResources
   if (!isRuntimeMetadata(metadata)) {
     Errors.ThrowUserInput(`Compiled runtime metadata is invalid: ${metadataPath}`)
   }
-  for (const file of ['package.json', 'bun.lock', 'TR.js', 'HMRClient.js']) {
+  for (const file of ['package.json', 'bun.lock', ...metadata.sourceFiles]) {
     if (!await FileSystem.exists(Path.join(directory, file))) {
       Errors.ThrowUserInput(`Compiled runtime resource is missing: ${Path.join(directory, file)}`)
     }
   }
-  return { identity: metadata.identity, dependencies: metadata.dependencies }
+  return {
+    identity: metadata.identity,
+    dependencies: metadata.dependencies,
+    devDependencies: metadata.devDependencies ?? {},
+    sourceFiles: metadata.sourceFiles,
+  }
 }
 
 function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {
@@ -64,7 +83,20 @@ function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {
     return false
   }
   const metadata = value as Partial<RuntimeMetadata>
-  return metadata.version === 1 && isSafeIdentity(metadata.identity) && isDependencies(metadata.dependencies)
+  return metadata.version === 2 && isSafeIdentity(metadata.identity)
+    && isDependencies(metadata.dependencies)
+    && (metadata.devDependencies === undefined || isDependencies(metadata.devDependencies))
+    && isSourceFiles(metadata.sourceFiles)
+}
+
+function isSourceFiles(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isSafeSourcePath)
+}
+
+function isSafeSourcePath(file: unknown): file is string {
+  return typeof file === 'string' && file.length > 0
+    && !file.startsWith('/') && !file.includes('\\')
+    && !file.split('/').some(segment => segment === '.' || segment === '..')
 }
 
 function isSafeIdentity(value: unknown): value is string {
@@ -93,18 +125,8 @@ async function applicationWithToolchain(
   if (existingPath === FileSystem.realpathSync(dependencyDirectory)) {
     return runtimeApplication(directory)
   }
-  await retargetSymlink(directory, link, dependencyDirectory)
+  await FileSystem.replaceDirectoryLink(dependencyDirectory, link)
   return runtimeApplication(directory)
-}
-
-async function retargetSymlink(directory: string, link: string, target: string): Promise<void> {
-  const pendingLink = Path.join(directory, `.node_modules-${Platform.randomUUID()}`)
-  await FileSystem.symlink(target, pendingLink, 'dir')
-  await Try(() => FileSystem.renameSync(pendingLink, link), {
-    finally() {
-      return FileSystem.rm(pendingLink, { force: true })
-    },
-  })
 }
 
 function runtimeApplication(directory: string): RuntimeApplication {

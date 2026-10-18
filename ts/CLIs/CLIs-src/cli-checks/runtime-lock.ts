@@ -15,7 +15,13 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
     {
       lockfileVersion: lock.lockfileVersion,
       configVersion: lock.configVersion,
-      workspaces: { '': { name: manifest.name, dependencies: manifest.dependencies } },
+      workspaces: {
+        '': {
+          name: manifest.name,
+          dependencies: manifest.dependencies,
+          ...(manifest.devDependencies ? { devDependencies: manifest.devDependencies } : {}),
+        },
+      },
       packages,
     },
     null,
@@ -24,7 +30,12 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
 }
 
 /** RuntimeManifest pins the external dependencies consumed by one built Expo runtime. */
-export type RuntimeManifest = { name: string; private: true; dependencies: Record<string, string> }
+export type RuntimeManifest = {
+  name: string
+  private: true
+  dependencies: Record<string, string>
+  devDependencies?: Record<string, string>
+}
 
 type WorkspaceLock = {
   lockfileVersion: number

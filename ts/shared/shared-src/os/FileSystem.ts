@@ -1,8 +1,9 @@
-import { access as accessPath, readFile, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { access as accessPath, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { Try } from '../universal/universal'
 
 export { constants, existsSync, lstatSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs'
-export { access, chmod, cp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
+export { access, chmod, cp, mkdir, readdir, readFile, rename, rm, rmdir, symlink, writeFile } from 'node:fs/promises'
 
 /** exists reports whether a filesystem path is accessible, including directories. */
 export async function exists(path: string): Promise<boolean> {
@@ -20,6 +21,17 @@ export async function writeIfChanged(path: string, content: string): Promise<boo
   }
   await writeFile(path, content)
   return true
+}
+
+/** replaceDirectoryLink atomically replaces a directory symlink without changing its target's contents. */
+export async function replaceDirectoryLink(target: string, path: string): Promise<void> {
+  const pending = `${path}.${randomUUID()}.pending`
+  await Try(async () => {
+    await symlink(target, pending, 'dir')
+    await rename(pending, path)
+  }, {
+    finally: () => rm(pending, { force: true }),
+  })
 }
 
 /** File represents a runtime-backed file used for subprocess input. */

@@ -1,11 +1,13 @@
-import { S } from '@shared'
+import { Errors, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 
-/** writeExpoApplication writes a minimal generated Expo app and its compiled Tao runtime entries. */
+/** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
   directory: string,
   resourcesDirectory: string,
   dependencies: Record<string, string>,
+  devDependencies: Record<string, string>,
+  sourceFiles: string[],
 ): Promise<void> {
   await FileSystem.writeIfChanged(
     Path.join(directory, 'package.json'),
@@ -15,6 +17,7 @@ export async function writeExpoApplication(
         private: true,
         main: 'index.ts',
         dependencies,
+        devDependencies,
         scripts: { web: 'expo start --web --no-dev' },
       },
       null,
@@ -27,27 +30,43 @@ export async function writeExpoApplication(
     Path.join(directory, 'app.json'),
     JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2),
   )
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'tsconfig.json'),
-    JSON.stringify({ extends: 'expo/tsconfig.base' }, null, 2),
-  )
+  await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), JSON.stringify(expoTypeScriptConfig, null, 2))
   await FileSystem.mkdir(Path.join(directory, 'src'), { recursive: true })
-  await writeRuntimeAssets(directory, resourcesDirectory)
+  await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
 }
 
 const metroConfiguration = S`
   const path = require('node:path');
+  const fs = require('node:fs');
   const { getDefaultConfig } = require('expo/metro-config');
   const config = getDefaultConfig(__dirname);
   config.resolver.platforms = ['web', 'native'];
+  config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime'))];
+  config.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules')];
   config.resolver.resolveRequest = (context, name, platform) => {
-    if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/TR.js'), platform);
-    if (name === '@expo/metro/metro-runtime/modules/HMRClient') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/HMRClient.js'), platform);
+    if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
+    if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
+    if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/PreviewPlatform.ts'), platform);
+    if (name === '@expo/metro/metro-runtime/modules/HMRClient') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/HMRClient.ts'), platform);
     if (name === 'tao:metro-hmr-client') return context.resolveRequest(context, '@expo/metro/metro-runtime/modules/HMRClient', platform);
     return context.resolveRequest(context, name, platform);
   };
   module.exports = config;
 `
+
+const expoTypeScriptConfig = {
+  extends: 'expo/tsconfig.base',
+  compilerOptions: {
+    baseUrl: '.',
+    strict: true,
+    preserveSymlinks: true,
+    paths: {
+      '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
+      '@shared': ['src/_gen_runtime/shared/shared.ts'],
+      '@shared/os/preview': ['src/_gen_runtime/shared/os/PreviewPlatform.ts'],
+    },
+  },
+}
 
 const expoEntry = S`
   import { registerRootComponent } from 'expo';
@@ -55,13 +74,65 @@ const expoEntry = S`
   registerRootComponent(App);
 `
 
-async function writeRuntimeAssets(directory: string, resourcesDirectory: string): Promise<void> {
+async function linkRuntimeSources(directory: string, resourcesDirectory: string, sourceFiles: string[]): Promise<void> {
   const target = Path.join(directory, 'src/_gen_runtime')
-  await FileSystem.mkdir(target, { recursive: true })
-  for (const file of ['TR.js', 'HMRClient.js']) {
-    await FileSystem.writeIfChanged(
-      Path.join(target, file),
-      await FileSystem.readFile(Path.join(resourcesDirectory, file), 'utf8'),
-    )
+  const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(target))
+  if (current?.isSymbolicLink()) {
+    const existingPath = await Try.WithDefault(undefined, () => FileSystem.realpathSync(target))
+    if (existingPath === resourcesDirectory) {
+      return
+    }
+    await FileSystem.replaceDirectoryLink(resourcesDirectory, target)
+    return
   }
+  if (current?.isDirectory()) {
+    await removeOwnedSourceCopies(target, sourceFiles)
+    const remaining = await FileSystem.readdir(target)
+    if (remaining.length > 0) {
+      Errors.ThrowUserInput(`Generated runtime source path contains user files: ${target}`)
+    }
+    await FileSystem.rmdir(target)
+  } else if (current) {
+    Errors.ThrowUserInput(`Generated runtime source path is not a directory: ${target}`)
+  }
+  await FileSystem.symlink(resourcesDirectory, target, 'dir')
+}
+
+async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): Promise<void> {
+  const oldSources = [...sourceFiles, 'TR.js', 'HMRClient.js']
+  const directories = [...new Set(oldSources.flatMap(file => parentDirectories(target, file)))]
+    .sort((left, right) => left.length - right.length)
+  await assertUnlinkedDirectories(directories)
+  for (const file of oldSources) {
+    await FileSystem.rm(Path.join(target, file), { force: true })
+  }
+  for (const directory of directories.toReversed()) {
+    const entries = await Try.WithDefault([], () => FileSystem.readdir(directory))
+    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    if (current?.isDirectory() && entries.length === 0) {
+      await FileSystem.rmdir(directory)
+    }
+  }
+}
+
+async function assertUnlinkedDirectories(directories: readonly string[]): Promise<void> {
+  for (const directory of directories) {
+    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    if (current?.isSymbolicLink()) {
+      Errors.ThrowUserInput(`Generated runtime source path contains a linked directory: ${directory}`)
+    }
+    if (current && !current.isDirectory()) {
+      Errors.ThrowUserInput(`Generated runtime source path is not a directory: ${directory}`)
+    }
+  }
+}
+
+function parentDirectories(target: string, file: string): string[] {
+  const result: string[] = []
+  let directory = Path.dirname(Path.join(target, file))
+  while (directory !== target && directory !== Path.dirname(directory)) {
+    result.push(directory)
+    directory = Path.dirname(directory)
+  }
+  return result
 }

@@ -26,9 +26,7 @@ export async function createExpoSession(
   })
   return {
     url,
-    output() {
-      return output
-    },
+    output: () => output,
     async dispose() {
       await Lifecycle.stopProcess(child)
       await output
@@ -50,9 +48,7 @@ function unusedPort(): number {
   const server = Http.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch() {
-      return Http.response()
-    },
+    fetch: () => Http.response(),
   })
   const port = server.port ?? Errors.ThrowUnexpected('Could not reserve a local Expo port.')
   server.stop(true)

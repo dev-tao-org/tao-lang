@@ -49,9 +49,7 @@ Tests.test('Render shares its timing observer with nested Render calls', () => {
   const Child = ViewDefinition('Child', [], () => createElement('span', null, 'child'))
   const Root = ViewDefinition('Root', [], () => Render(Child, ViewRenderArgs()))
   const observer = {
-    now() {
-      return ++now
-    },
+    now: () => ++now,
     onTiming(timing: { phase: string }) {
       phases.push(timing.phase)
     },
