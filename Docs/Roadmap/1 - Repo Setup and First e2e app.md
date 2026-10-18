@@ -58,5 +58,58 @@ The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20Wo
 
 ## Goal 3
 
+- [ ] Update instructions to always update local main after changes have landed
+- [ ] Move away from classes for large blocks of functionality, e.g compiler (it will hit limits). Change CST-to-AST construction to be stateless. Follow compiler pattern for spreading over files.
+- [ ] Get basic tao tests working
+  - [ ] Get things in snippet below working
+  - [ ] Use a default headless target for tests for now
+  - [ ] Add render tags, see old impl for reference
+  - [ ] Skip `render view` for now, just implement `run app` case
+  - [ ] See old impl for reference of how to do these things.
 - [ ] Implement `LetDefinition` and scopes
+  - [ ] See old impl for reference of runtime scope construction and declarations onto scopes.
 - [ ] Get compiled code to be formatted properly
+- [ ] Move hello world views into @tao/ui and implement `use` and stdlib
+  - [ ] Get single-document recompilation working, with focus on speed
+    - [ ] Deduce rules. E.g if a view body changes, only the view's own code needs to be re-parsed and re-compiled.
+    - [ ] Consider one file per definition, such that updating a view only outputs that file again
+    - [ ] At least make sure that views are compiled such that only react components are in the file, for fa
+          st refresh/hmr to work (or whatever the conditions is)
+
+### Basic test snippet of functionality to get working
+
+```tao
+tests "Foo" {
+  test "Bar" {
+    run AppDecl
+    expect ...
+    press #id-of-render
+    type "Hello World" into #id-of-render
+    expect {
+      ...
+    }
+  }
+}
+```
+
+### Proposed CST-to-AST construction
+
+Illustrative, not implemented: expose stateless functions such as `AST.Name(cst)`. Every node is created with its originating CST node and copies its numeric source range; the document owns the path and version. No constructor instance, `this`, or origins map is needed.
+
+```ts
+function Name(cst: CST.Identifier): AST.Name {
+  return Node(cst, 'Name', { value: cst.text })
+}
+
+function Node<const Kind extends AST.Node['kind'], T extends object>(
+  cst: CST.Node,
+  kind: Kind,
+  value: T,
+): T & { kind: Kind } & AST.Origin {
+  return Object.assign(value, {
+    kind,
+    start: cst.startIndex,
+    end: cst.endIndex,
+  })
+}
+```
