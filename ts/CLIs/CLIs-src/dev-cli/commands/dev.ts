@@ -1,12 +1,10 @@
 import { formatTimings, IO } from '@cli-kit'
 import { Errors, Try } from '@shared'
-import { Artifacts, Platform, Repo } from '@shared/os'
+import { Artifacts, Browser, Lifecycle, Platform, Repo } from '@shared/os'
 import { createProject, createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createExpoSession, type ExpoSession } from '../../../../0-workspace/workspace-src/Expo'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
 import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
-import * as Browser from '../../../../shared/shared-src/os/Browser'
-import * as Lifecycle from '../../../../shared/shared-src/os/ProcessLifecycle'
 import { registerCommand } from './_command-runner'
 
 /** devCommand runs the authored Hello World fixture in a persistent dual-preview Expo session. */
@@ -46,7 +44,12 @@ async function runDevSession(): Promise<void> {
 
 function reportSourceUpdate(result: UpdateResult): void {
   IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
-  if (result.status === 'invalid' || result.status === 'failed') {
+  if (result.status === 'failed') {
+    IO.warn(`Preview source compilation failed: ${result.error}`)
+    IO.warn('The last good app remains available.')
+    return
+  }
+  if (result.status === 'invalid') {
     IO.warn('Preview source was not published; the last good app remains available.')
   }
 }

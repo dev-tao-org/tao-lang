@@ -1,10 +1,17 @@
 import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
 export async function prepareParser(force = false, timings = new Timings(`process:${Platform.pid}`)): Promise<void> {
+  await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
+}
+
+const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
+const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
+
+async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const inputs = await readInputs()
   const stamp = JSON.stringify(inputs)
   const outputs = [
@@ -16,7 +23,7 @@ export async function prepareParser(force = false, timings = new Timings(`proces
   ]
   const stampPath = Path.join(outputRoot, 'inputs.json')
   const current = FileSystem.existsSync(stampPath) && await FileSystem.file(stampPath).text() === stamp
-  if (!force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))) {
+  if (canReuseParser(force, current, outputs)) {
     return
   }
   await FileSystem.mkdir(outputRoot, { recursive: true })
@@ -39,8 +46,9 @@ export async function prepareParser(force = false, timings = new Timings(`proces
   await writeBuildTimings(timings)
 }
 
-const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
-const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
+function canReuseParser(force: boolean, current: boolean, outputs: readonly string[]): boolean {
+  return !force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))
+}
 
 async function readInputs() {
   const sources: Record<string, string> = {}

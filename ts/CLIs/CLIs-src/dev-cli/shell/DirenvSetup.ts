@@ -1,16 +1,23 @@
 import { Errors, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
+import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
+import {
+  activationSourceLine,
+  mergeActivationSourceLine,
+  readOptionalFile,
+  realPathIfPresent,
+  resolveZshrcTarget,
+  writeFileAtomically,
+} from './DirenvSetupFiles'
+import { prepareDevelopmentShell } from './DirenvSetupPreparation'
+
+export { runDirenvSetup, type SetupEnvironment }
 
 const ACTIVATION_SOURCE = 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'
-const SOURCE_LINE = '[[ ! -r "$HOME/.tao-dev/shell/activation.zsh" ]] || source "$HOME/.tao-dev/shell/activation.zsh"'
-const LEGACY_SOURCE_LINES = new Set([
-  `[[ ! -r '$HOME/.tao-dev/shell/activation.zsh' ]] || source '$HOME/.tao-dev/shell/activation.zsh'`,
-])
 const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this repo (and its worktrees)?"
 
 /** SetupEnvironment injects shell and process dependencies for direnv setup. */
-export type SetupEnvironment = {
+type SetupEnvironment = {
   confirm: typeof Terminal.askConfirm
   env: Readonly<Record<string, string | undefined>>
   interactive: () => boolean
@@ -21,11 +28,11 @@ export type SetupEnvironment = {
 }
 
 /** runDirenvSetup offers optional zsh activation through pinned direnv for this Git identity. */
-export async function runDirenvSetup(
+async function runDirenvSetup(
   options: { configure?: boolean; prepare?: boolean } = {},
   environment: SetupEnvironment = liveEnvironment(),
 ): Promise<number> {
-  await runPrepareStep(options.prepare, environment)
+  await prepareDevelopmentShell(options.prepare, environment)
   if (isSetupDisabled(environment)) {
     return 0
   }
@@ -41,19 +48,6 @@ function liveEnvironment(): SetupEnvironment {
     run: runCapturedCommand,
     write: Terminal.writeLine,
   }
-}
-
-async function runPrepareStep(prepare: boolean | undefined, environment: SetupEnvironment): Promise<void> {
-  if (!prepare) {
-    return
-  }
-  await Try(() => prepareEnvironment(environment), {
-    catch(cause) {
-      environment.write(
-        `Development shell preparation was unavailable; directory entry will retry normally.\n${errorMessage(cause)}`,
-      )
-    },
-  })
 }
 
 function isSetupDisabled(environment: SetupEnvironment): boolean {
@@ -85,17 +79,39 @@ async function completeDirenvSetup(
     return 0
   }
   const repository = Path.dirname(choicePath)
-  await atomicWrite(Path.resolve(repository, 'common-dir'), `${commonDirectory}\n`)
-  await atomicWrite(choicePath, accepted ? 'pending\n' : 'disabled\n')
+  const previousChoice = await readOptionalFile(choicePath)
+  await writeFileAtomically(Path.resolve(repository, 'common-dir'), `${commonDirectory}\n`)
   if (!accepted) {
-    write('Automatic shell activation is off for this repository. Run `./agent shell-setup` to change that.')
+    if (previousChoice === 'enabled\n') {
+      await refreshInstalledActivation(root, shellRoot)
+      await revokeDirenvAllowance(root, environment)
+    }
+    await writeFileAtomically(choicePath, 'disabled\n')
+    write(
+      `Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:\n${activationSourceLine}\nRun \`./agent shell-setup --configure\` to change this repository's choice.`,
+    )
     return 0
   }
+  await writeFileAtomically(choicePath, 'pending\n')
   await installActivation(root, shellRoot, environment)
   await updateZshrcSource(zshrc)
-  await atomicWrite(choicePath, 'enabled\n')
-  write(`Automatic shell activation is enabled. Open a new zsh terminal or run:\n${SOURCE_LINE}`)
+  await writeFileAtomically(choicePath, 'enabled\n')
+  write(`Automatic shell activation is enabled. Open a new zsh terminal or run:\n${activationSourceLine}`)
   return 0
+}
+
+async function revokeDirenvAllowance(root: string, environment: SetupEnvironment): Promise<void> {
+  const denied = await environment.run('direnv', { args: ['deny', root], cwd: root })
+  if (denied.exitCode !== 0) {
+    Errors.ThrowHostEnvironment(
+      `Could not revoke direnv trust for ${root} (exit ${denied.exitCode}):\n${denied.stderr.trim()}`,
+    )
+  }
+}
+
+async function refreshInstalledActivation(root: string, shellRoot: string): Promise<void> {
+  const source = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
+  await writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
 }
 
 function requireHome(env: Readonly<Record<string, string | undefined>>): string {
@@ -113,7 +129,7 @@ async function hasStoredChoice(
   if (options.configure) {
     return false
   }
-  const previousChoice = await readOptional(choicePath)
+  const previousChoice = await readOptionalFile(choicePath)
   return ['enabled\n', 'disabled\n'].includes(previousChoice)
 }
 
@@ -151,12 +167,12 @@ async function installActivation(
 ): Promise<void> {
   const profileClient = Path.resolve(root, '.devenv/profile/bin/direnv')
   const output = environment.resolveDirenvPackage?.(profileClient)
-    ?? (await realPathOptional(profileClient)).match(/^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin\/direnv$/)?.[1]
+    ?? (await realPathIfPresent(profileClient)).match(/^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin\/direnv$/)?.[1]
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
       `Pinned direnv is missing from this checkout. Rebuild the dev environment, then run:\ncd ${
         quote(root)
-      }\n./enter-tao-dev-env.sh\n./agent shell-setup`,
+      }\n./enter-tao-dev-env.sh\n./agent shell-setup --configure`,
     )
   }
   const devenv = await environment.run('devenv', { args: ['version'], cwd: root })
@@ -180,123 +196,27 @@ async function installActivation(
       `Could not retain the pinned direnv package with a Nix GC root. Shell activation remains disabled.\n${rooted.stderr.trim()}`,
     )
   }
-  await atomicWrite(Path.resolve(shellRoot, 'activation.zsh'), runtime)
-  await atomicWrite(Path.resolve(shellRoot, 'envrc'), envrc)
-  await atomicWrite(Path.resolve(shellRoot, 'completion.zsh'), completion)
+  await writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), runtime)
+  await writeFileAtomically(Path.resolve(shellRoot, 'envrc'), envrc)
+  await writeFileAtomically(Path.resolve(shellRoot, 'completion.zsh'), completion)
 }
 
 async function updateZshrcSource(zshrc: string): Promise<void> {
   await Try(async () => {
     const target = resolveZshrcTarget(zshrc)
-    const existing = await readOptional(target)
-    const updated = mergeSourceLine(existing)
+    const existing = await readOptionalFile(target)
+    const updated = mergeActivationSourceLine(existing)
     if (updated !== existing) {
       await FileSystem.writeFile(target, updated, 'utf8')
     }
   }, {
     catch(cause) {
       Errors.ThrowHostEnvironment(
-        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup again:\n${SOURCE_LINE}`,
+        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup --configure:\n${activationSourceLine}`,
         { cause },
       )
     },
   })
-}
-
-function resolveZshrcTarget(zshrc: string): string {
-  if (FileSystem.existsSync(zshrc) || isSymlink(zshrc)) {
-    return FileSystem.realpathSync(zshrc)
-  }
-  return zshrc
-}
-
-function mergeSourceLine(existing: string): string {
-  let sourced = false
-  const normalized = existing.split('\n').flatMap(line => {
-    const trimmed = line.trim()
-    if (trimmed !== SOURCE_LINE && !LEGACY_SOURCE_LINES.has(trimmed)) {
-      return [line]
-    }
-    if (sourced) {
-      return []
-    }
-    sourced = true
-    return [trimmed === SOURCE_LINE ? line : SOURCE_LINE]
-  }).join('\n')
-  return sourced
-    ? normalized
-    : `${normalized}${normalized && !normalized.endsWith('\n') ? '\n' : ''}${SOURCE_LINE}\n`
-}
-
-async function prepareEnvironment(environment: SetupEnvironment): Promise<void> {
-  if (!await shouldPrepareEnvironment(environment)) {
-    return
-  }
-  await runDevenvShellPrepare(environment)
-}
-
-async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<boolean> {
-  const { env } = environment
-  const home = env['HOME']
-  if (!home || !FileSystem.existsSync(Path.resolve(home, '.tao-dev/shell/repositories'))) {
-    return false
-  }
-  const root = environment.root()
-  const canonicalRoot = FileSystem.realpathSync(root)
-  if (
-    env['TAO_DEVENV'] === '1' && env['DEVENV_ROOT']
-    && FileSystem.realpathSync(env['DEVENV_ROOT']) === canonicalRoot
-  ) {
-    return false
-  }
-  if (!FileSystem.existsSync(Path.resolve(root, 'devenv.nix'))) {
-    return false
-  }
-  const git = await environment.run('git', {
-    args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    cwd: root,
-  })
-  if (git.exitCode !== 0) {
-    return false
-  }
-  const common = FileSystem.realpathSync(git.stdout.trim())
-  const hash = await environment.run('git', {
-    args: ['hash-object', '--stdin'],
-    cwd: root,
-    stdin: `${common}\n`,
-  })
-  if (hash.exitCode !== 0 || !/^[a-f0-9]{40,64}$/.test(hash.stdout.trim())) {
-    return false
-  }
-  const record = Path.resolve(home, '.tao-dev/shell/repositories', hash.stdout.trim())
-  if (
-    await readOptional(Path.resolve(record, 'choice')) !== 'enabled\n'
-    || await readOptional(Path.resolve(record, 'common-dir')) !== `${common}\n`
-  ) {
-    return false
-  }
-  const worktrees = await environment.run('git', {
-    args: ['worktree', 'list', '--porcelain', '-z'],
-    cwd: root,
-  })
-  return worktrees.exitCode === 0 && worktrees.stdout.split('\0').includes(`worktree ${canonicalRoot}`)
-}
-
-async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<void> {
-  const { env, run, write } = environment
-  const root = environment.root()
-  write('Preparing this checkout’s development shell for automatic directory entry...')
-  const prepared = await run('devenv', {
-    args: ['shell', '--no-tui', '--', 'true'],
-    cwd: root,
-    env: { ...env, DEVENV_TUI: 'false' },
-    timeoutMs: 60_000,
-  })
-  if (prepared.exitCode !== 0) {
-    write(
-      `Development shell preparation was unavailable (exit ${prepared.exitCode}); directory entry will retry normally.\n${prepared.stderr.trim()}`,
-    )
-  }
 }
 
 function quote(value: string): string {
@@ -307,33 +227,4 @@ function rejectLineBreaks(...paths: string[]): void {
   if (paths.some(path => /[\r\n]/.test(path))) {
     Errors.ThrowHostEnvironment('Automatic shell activation does not support paths containing line breaks.')
   }
-}
-
-async function readOptional(path: string): Promise<string> {
-  return FileSystem.existsSync(path) ? await FileSystem.readFile(path, 'utf8') : ''
-}
-
-async function atomicWrite(path: string, content: string): Promise<void> {
-  const staged = `${path}.${Platform.randomUUID()}.tmp`
-  await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-    await FileSystem.writeFile(staged, content, 'utf8')
-    await FileSystem.rename(staged, path)
-  }, {
-    finally() {
-      return FileSystem.rm(staged, { force: true })
-    },
-  })
-}
-
-async function realPathOptional(path: string): Promise<string> {
-  return await Try(() => FileSystem.realpathSync(path), { catch: () => '' })
-}
-
-function isSymlink(path: string): boolean {
-  return Try(() => FileSystem.statSync(path).isSymbolicLink(), { catch: () => false })
-}
-
-function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
 }

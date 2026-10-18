@@ -62,21 +62,17 @@ Tests.test('source conformance > checks object methods and 45-line function-body
   ])
 })
 
-Tests.test('source conformance > allows value-only Try catch arrows', () => {
-  for (
-    const allowed of [
-      'Try(() => work(), { catch: () => "" })',
-      'Try(() => work(), { catch: (error) => error })',
-      'Try(() => work(), { catch: async () => 1 })',
-      'Try(() => work(), { catch: () => { return false } })',
-    ]
-  ) {
-    Tests.expect(sourceConformanceIssues('fixture.ts', allowed)).toEqual([])
-  }
+Tests.test('source conformance > requires method syntax for Try catch handlers', () => {
+  const valid = S`
+    Try(() => work(), { catch() { return "" } })
+    Try(() => work(), { catch(error) { return error } })
+    Try(() => work(), { async catch() { return 1 } })
+  `
+  Tests.expect(sourceConformanceIssues('fixture.ts', valid)).toEqual([])
   const invalid = S`
     Try(() => work(), { handler: (value) => value })
+    Try(() => work(), { catch: () => "" })
     Try(() => work(), { catch: () => { log(); return "" } })
-    Try(() => work(), { catch: () => { throw new Error("nope") } })
     Try(() => work(), { catch: function (error) { return error } })
   `
   const methodIssues = sourceConformanceIssues('fixture.ts', invalid)

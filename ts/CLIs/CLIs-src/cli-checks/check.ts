@@ -115,7 +115,7 @@ export async function workspaceDeadExports(): Promise<void> {
 /** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await prepareParser()
-  if (args.length === 0 || args.some(path => path.includes('ide-extension'))) {
+  if (shouldPrepareExtensionAssets(args)) {
     const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
     await prepareExtensionAssets()
   }
@@ -125,6 +125,21 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
       cwd: Repo.resolvePath('ts'),
     })
   )
+}
+
+/** shouldPrepareExtensionAssets selects test runs that need the authored IDE asset tree. */
+export function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
+  if (args.length === 0) {
+    return true
+  }
+  const root = Repo.getWorkspaceRoot()
+  const workspace = Path.resolve(root, 'ts')
+  return args.some(argument => {
+    if (argument === '--test-name-pattern' || argument.includes('ide-extension')) {
+      return true
+    }
+    return isWithinDirectory(workspace, Path.resolve(root, argument))
+  })
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */

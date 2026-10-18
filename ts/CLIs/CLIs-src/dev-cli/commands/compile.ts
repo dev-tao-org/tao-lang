@@ -15,8 +15,14 @@ export default registerCommand({
     const result = await workspace.updateFile(Repo.resolvePath(entry))
     workspace.dispose()
     IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
-    if (result.status !== 'published') {
-      Errors.ThrowUserInput(`Compilation ${result.status}: ${entry}`)
+    if (result.status === 'failed') {
+      Errors.ThrowUnexpected(`Compilation failed: ${entry}\n${result.error}`)
+    }
+    if (result.status === 'invalid') {
+      Errors.ThrowUserInput(`Compilation invalid: ${entry}`)
+    }
+    if (result.status === 'superseded') {
+      Errors.ThrowUnexpected(`Compilation superseded: ${entry}`)
     }
     IO.print(project.appPath)
   },

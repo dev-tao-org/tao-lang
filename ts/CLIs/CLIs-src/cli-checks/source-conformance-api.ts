@@ -1,22 +1,27 @@
 import * as TypeScript from 'typescript'
 
-/** ApiGroup describes declarations which share one exported API name. */
-export type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
-
-function isValueReturningFunction(fn: TypeScript.ArrowFunction | TypeScript.FunctionExpression): boolean {
-  const body = fn.body
-  if (!TypeScript.isBlock(body)) {
-    return true
-  }
-  const statements = body.statements.filter(statement => !TypeScript.isEmptyStatement(statement))
-  if (statements.length !== 1 || !TypeScript.isReturnStatement(statements[0])) {
-    return false
-  }
-  return statements[0].expression !== undefined
+export {
+  type ApiGroup,
+  bindingNames,
+  docs,
+  hasDescription,
+  hasValidDocLayout,
+  isAmbientNamespace,
+  isApiDeclaration,
+  isApiMember,
+  isExported,
+  isFunctionProperty,
+  isImplementationNode,
+  isLocalNamedExport,
+  isPrivateApiMember,
+  normalizeDoc,
 }
 
+/** ApiGroup describes declarations which share one exported API name. */
+type ApiGroup = { name?: string; nodes: TypeScript.Node[]; exported: boolean }
+
 /** isFunctionProperty detects disallowed function-valued object properties. */
-export function isFunctionProperty(node: TypeScript.Node): boolean {
+function isFunctionProperty(node: TypeScript.Node): boolean {
   if (!TypeScript.isPropertyAssignment(node)) {
     return false
   }
@@ -24,21 +29,14 @@ export function isFunctionProperty(node: TypeScript.Node): boolean {
   while (isExpressionWrapper(value)) {
     value = value.expression
   }
-  if (TypeScript.isArrowFunction(value) && isCatchProperty(node) && isValueReturningFunction(value)) {
-    return false
-  }
   if (TypeScript.isArrowFunction(value)) {
     return true
   }
   return TypeScript.isFunctionExpression(value)
 }
 
-function isCatchProperty(node: TypeScript.PropertyAssignment): boolean {
-  return TypeScript.isIdentifier(node.name) && node.name.text === 'catch'
-}
-
 /** docs collects JSDoc comments attached to declarations. */
-export function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
+function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
   const ranges = new Map<number, TypeScript.CommentRange>()
   for (const node of nodes) {
     for (const range of TypeScript.getLeadingCommentRanges(source, node.getFullStart()) ?? []) {
@@ -51,7 +49,7 @@ export function docs(source: string, nodes: readonly TypeScript.Node[]): TypeScr
 }
 
 /** isPrivateApiMember detects private declarations and private class members. */
-export function isPrivateApiMember(node: TypeScript.Node): boolean {
+function isPrivateApiMember(node: TypeScript.Node): boolean {
   if (
     TypeScript.canHaveModifiers(node)
     && TypeScript.getModifiers(node)?.some(modifier => modifier.kind === TypeScript.SyntaxKind.PrivateKeyword)
@@ -62,12 +60,12 @@ export function isPrivateApiMember(node: TypeScript.Node): boolean {
 }
 
 /** isApiMember identifies signature members which may carry public docs. */
-export function isApiMember(node: TypeScript.Node): boolean {
+function isApiMember(node: TypeScript.Node): boolean {
   return TypeScript.isTypeElement(node) || TypeScript.isClassElement(node) || TypeScript.isParameter(node)
 }
 
 /** bindingNames returns identifiers contained in a binding pattern. */
-export function bindingNames(name: TypeScript.BindingName): TypeScript.Identifier[] {
+function bindingNames(name: TypeScript.BindingName): TypeScript.Identifier[] {
   if (TypeScript.isIdentifier(name)) {
     return [name]
   }
@@ -75,7 +73,7 @@ export function bindingNames(name: TypeScript.BindingName): TypeScript.Identifie
 }
 
 /** isAmbientNamespace detects ambient namespace declarations and descendants. */
-export function isAmbientNamespace(node: TypeScript.Node): boolean {
+function isAmbientNamespace(node: TypeScript.Node): boolean {
   let current: TypeScript.Node | undefined = node
   while (current) {
     if (TypeScript.isSourceFile(current)) {
@@ -93,13 +91,12 @@ export function isAmbientNamespace(node: TypeScript.Node): boolean {
 }
 
 /** isImplementationNode detects bodies and expressions outside public type shapes. */
-export function isImplementationNode(node: TypeScript.Node): boolean {
-  return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node) || TypeScript.isClassStaticBlockDeclaration(node)
-    || (TypeScript.isExpression(node) && !isPublicShapeExpression(node))
+function isImplementationNode(node: TypeScript.Node): boolean {
+  return isImplementationContainer(node) || (TypeScript.isExpression(node) && !isPublicShapeExpression(node))
 }
 
 /** isApiDeclaration identifies declarations that can define public API groups. */
-export function isApiDeclaration(
+function isApiDeclaration(
   node: TypeScript.Node,
 ): node is
   | TypeScript.FunctionDeclaration
@@ -109,32 +106,29 @@ export function isApiDeclaration(
   | TypeScript.EnumDeclaration
   | TypeScript.ModuleDeclaration
 {
-  return TypeScript.isFunctionDeclaration(node) || TypeScript.isClassDeclaration(node)
-    || TypeScript.isInterfaceDeclaration(node)
-    || TypeScript.isTypeAliasDeclaration(node) || TypeScript.isEnumDeclaration(node)
-    || TypeScript.isModuleDeclaration(node)
+  return isCallableDeclaration(node) || isTypeDeclaration(node) || isContainerDeclaration(node)
 }
 
 /** isExported detects declarations with an export modifier. */
-export function isExported(node: TypeScript.Node): boolean {
+function isExported(node: TypeScript.Node): boolean {
   return TypeScript.canHaveModifiers(node)
     && TypeScript.getModifiers(node)?.some(modifier => modifier.kind === TypeScript.SyntaxKind.ExportKeyword) === true
 }
 
 /** isLocalNamedExport detects named exports that refer to local declarations. */
-export function isLocalNamedExport(node: TypeScript.ExportDeclaration): node is TypeScript.ExportDeclaration & {
+function isLocalNamedExport(node: TypeScript.ExportDeclaration): node is TypeScript.ExportDeclaration & {
   exportClause: TypeScript.NamedExports
 } {
   return !node.moduleSpecifier && node.exportClause !== undefined && TypeScript.isNamedExports(node.exportClause)
 }
 
 /** normalizeDoc removes JSDoc formatting and normalizes description whitespace. */
-export function normalizeDoc(text: string): string {
+function normalizeDoc(text: string): string {
   return text.replace(/^\s*\* ?/gm, '').trim().split(/\s+/).join(' ')
 }
 
 /** hasDescription checks that a JSDoc comment starts with a name and description. */
-export function hasDescription(text: string, name?: string): boolean {
+function hasDescription(text: string, name?: string): boolean {
   if (name === undefined) {
     return /^\S+\s+\S+/.test(text)
   }
@@ -146,7 +140,7 @@ export function hasDescription(text: string, name?: string): boolean {
 }
 
 /** hasValidDocLayout checks the repository JSDoc opening, continuation, and closing layout. */
-export function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
+function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
   const lines = source.slice(range.pos, range.end).split(/\r\n|\r|\n/)
   if (lines.length === 1) {
     return true
@@ -176,4 +170,27 @@ function hasPrivateName(node: TypeScript.Node): boolean {
 function isPublicShapeExpression(node: TypeScript.Node): boolean {
   return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
     || TypeScript.isFunctionExpression(node)
+}
+
+function isImplementationContainer(node: TypeScript.Node): boolean {
+  return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node)
+    || TypeScript.isClassStaticBlockDeclaration(node)
+}
+
+function isCallableDeclaration(
+  node: TypeScript.Node,
+): node is TypeScript.FunctionDeclaration | TypeScript.ClassDeclaration {
+  return TypeScript.isFunctionDeclaration(node) || TypeScript.isClassDeclaration(node)
+}
+
+function isTypeDeclaration(
+  node: TypeScript.Node,
+): node is TypeScript.InterfaceDeclaration | TypeScript.TypeAliasDeclaration {
+  return TypeScript.isInterfaceDeclaration(node) || TypeScript.isTypeAliasDeclaration(node)
+}
+
+function isContainerDeclaration(
+  node: TypeScript.Node,
+): node is TypeScript.EnumDeclaration | TypeScript.ModuleDeclaration {
+  return TypeScript.isEnumDeclaration(node) || TypeScript.isModuleDeclaration(node)
 }

@@ -1,10 +1,13 @@
+import { Time } from '@shared'
 import { Platform } from '@shared/os'
 
+export { type CommandResult, runCapturedCommand, type RunOptions }
+
 /** CommandResult reports captured subprocess output and exit status. */
-export type CommandResult = { exitCode: number; stderr: string; stdout: string }
+type CommandResult = { exitCode: number; stderr: string; stdout: string }
 
 /** RunOptions configures cwd, environment, stdin, and timeout for captured commands. */
-export type RunOptions = {
+type RunOptions = {
   args?: readonly string[]
   cwd?: string
   env?: Record<string, string | undefined>
@@ -37,7 +40,7 @@ async function readCommandResult(
 ): Promise<CommandResult> {
   const cancel = timeoutMs === undefined
     ? undefined
-    : Platform.scheduleDelayed(timeoutMs, () => {
+    : Time.schedule(timeoutMs, () => {
       void Platform.terminate(child)
     })
   const [exitCode, stdout, stderr] = await Promise.all([
@@ -48,5 +51,3 @@ async function readCommandResult(
   cancel?.()
   return { exitCode, stdout, stderr }
 }
-
-export { runCapturedCommand }

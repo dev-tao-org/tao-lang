@@ -5,9 +5,10 @@
 typeset -g _tao_dev_direnv="$HOME/.tao-dev/shell/direnv/bin/direnv"
 typeset -gA _tao_dev_allowed
 typeset -g _tao_dev_completed_root
+typeset -g _tao_dev_disabled_root
 
 _tao_dev_trusted_root() {
-  local root common id record field registered=0
+  local expected_choice=${1:-enabled} root common id record field registered=0
   root=$(command git rev-parse --show-toplevel 2>/dev/null) || return 1
   root=${root:A}
   [[ "${PWD:A}" == "$root" || "${PWD:A}" == "$root/"* ]] || return 1
@@ -16,7 +17,7 @@ _tao_dev_trusted_root() {
   id=$(print -r -- "$common" | command git hash-object --stdin 2>/dev/null) || return 1
   record="$HOME/.tao-dev/shell/repositories/$id"
   [[ -f "$record/common-dir" && -f "$record/choice" ]] || return 1
-  [[ "$(<"$record/common-dir")" == "$common" && "$(<"$record/choice")" == enabled ]] || return 1
+  [[ "$(<"$record/common-dir")" == "$common" && "$(<"$record/choice")" == "$expected_choice" ]] || return 1
   while IFS= read -r -d '' field; do
     if [[ "$field" == "worktree $root" ]]; then
       registered=1
@@ -28,6 +29,30 @@ _tao_dev_trusted_root() {
 }
 
 _tao_dev_preserve_status() { return "$1" }
+
+_tao_dev_managed_active_root() {
+  local disabled_root=$1 active_root=${DIRENV_DIR#-} active_common disabled_common field registered=0
+  [[ ${DIRENV_DIR-} == -* && -n "$active_root" ]] || return 1
+  active_root=$(command git -C "$active_root" rev-parse --show-toplevel 2>/dev/null) || return 1
+  active_root=${active_root:A}
+  active_common=$(command git -C "$active_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  disabled_common=$(command git -C "$disabled_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  [[ "${active_common:A}" == "${disabled_common:A}" ]] || return 1
+  while IFS= read -r -d '' field; do
+    if [[ "$field" == "worktree $active_root" ]]; then
+      registered=1
+      break
+    fi
+  done < <(command git --git-dir="${disabled_common:A}" worktree list --porcelain -z 2>/dev/null)
+  (( registered )) || return 1
+  print -r -- "$active_root"
+}
+
+_tao_dev_unload_from_parent() {
+  local root=$1 parent=${1:h} exports
+  exports=$(builtin cd -q -- "$parent" && "$_tao_dev_direnv" export zsh) || return 1
+  eval "$exports"
+}
 
 _tao_dev_create_envrc() {
   local root=$1 template="$HOME/.tao-dev/shell/envrc"
@@ -41,8 +66,23 @@ _tao_dev_create_envrc() {
 }
 
 _tao_dev_direnv_hook() {
-  local previous_exit_status=$? root fingerprint completion
+  local previous_exit_status=$? root disabled_root active_root fingerprint completion
   root=$(_tao_dev_trusted_root)
+  disabled_root=$(_tao_dev_trusted_root disabled)
+  if [[ -n "$disabled_root" ]]; then
+    if [[ "$_tao_dev_disabled_root" != "$disabled_root" ]]; then
+      active_root=$(_tao_dev_managed_active_root "$disabled_root")
+      if [[ -z "$active_root" ]] || _tao_dev_unload_from_parent "$active_root"; then
+        _tao_dev_disabled_root=$disabled_root
+      else
+        _tao_dev_disabled_root=''
+      fi
+    fi
+    _tao_dev_completed_root=''
+    _tao_dev_preserve_status "$previous_exit_status"
+    return "$previous_exit_status"
+  fi
+  _tao_dev_disabled_root=''
   [[ -n "$root" ]] && _tao_dev_create_envrc "$root"
   if [[ -n "$root" && -f "$root/.envrc" ]]; then
     fingerprint=$(command git hash-object -- "$root/.envrc" 2>/dev/null)

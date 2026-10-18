@@ -7,6 +7,7 @@ const sourceLine = '[[ ! -r "$HOME/.tao-dev/shell/activation.zsh" ]] || source "
 
 type FixtureState = {
   choice: string
+  commandCalls: Array<{ args: readonly string[]; command: string }>
   environment: SetupEnvironment
   output: string[]
   prompts: Array<{ defaultValue?: boolean; message: string }>
@@ -66,6 +67,7 @@ function createFixtureEnvironment(
   paths: FixturePaths,
   output: string[],
   prompts: Array<{ defaultValue?: boolean; message: string }>,
+  commandCalls: Array<{ args: readonly string[]; command: string }>,
 ): SetupEnvironment {
   return {
     interactive() {
@@ -86,6 +88,7 @@ function createFixtureEnvironment(
     },
     env: { HOME: home, SHELL: '/bin/zsh' },
     async run(command, spec = {}) {
+      commandCalls.push({ args: spec.args ?? [], command })
       return await mockCommand(root, paths, command, spec)
     },
   }
@@ -117,9 +120,11 @@ async function createFixture(): Promise<FixtureState> {
   const paths = await writeFixtureTree(root, home)
   const output: string[] = []
   const prompts: Array<{ defaultValue?: boolean; message: string }> = []
+  const commandCalls: Array<{ args: readonly string[]; command: string }> = []
   return {
     choice: paths.choice,
-    environment: createFixtureEnvironment(root, home, paths, output, prompts),
+    commandCalls,
+    environment: createFixtureEnvironment(root, home, paths, output, prompts, commandCalls),
     output,
     prompts,
     root,
@@ -148,5 +153,41 @@ Tests.test('shell setup uses a short consent prompt and enables activation once 
       '# runtime fixture\n',
     )
     Tests.expect(await FileSystem.readFile(fixtureState.choice, 'utf8')).toBe('enabled\n')
+  })
+})
+
+Tests.test('reconfiguring an enabled shell setup off revokes only its direnv allowance', async () => {
+  await withFixture(async fixtureState => {
+    await runDirenvSetup({}, fixtureState.environment)
+    fixtureState.commandCalls.length = 0
+    await FileSystem.writeFile(Path.join(fixtureState.shell, 'activation.zsh'), '# stale runtime\n', 'utf8')
+    fixtureState.environment.confirm = async options => {
+      fixtureState.prompts.push(options)
+      return false
+    }
+
+    Tests.expect(await runDirenvSetup({ configure: true }, fixtureState.environment)).toBe(0)
+    Tests.expect(await FileSystem.readFile(fixtureState.choice, 'utf8')).toBe('disabled\n')
+    Tests.expect(fixtureState.commandCalls).toContainEqual({
+      args: ['deny', fixtureState.root],
+      command: 'direnv',
+    })
+    Tests.expect(await FileSystem.readFile(Path.join(fixtureState.shell, 'activation.zsh'), 'utf8')).toBe(
+      '# runtime fixture\n',
+    )
+    Tests.expect(fixtureState.output.at(-1)).toContain('./agent shell-setup --configure')
+    Tests.expect(fixtureState.output.at(-1)).toContain('every already-open zsh terminal')
+    Tests.expect(fixtureState.output.at(-1)).toContain(sourceLine)
+  })
+})
+
+Tests.test('shell setup preserves a broken shell configuration symlink', async () => {
+  await withFixture(async fixture => {
+    const missingTarget = Path.join(fixture.root, 'missing-managed-zshrc')
+    await FileSystem.rm(fixture.zshrc)
+    await FileSystem.symlink(missingTarget, fixture.zshrc)
+    await Tests.expect(runDirenvSetup({}, fixture.environment)).rejects.toThrow('Could not update shell configuration')
+    Tests.expect(FileSystem.lstatSync(fixture.zshrc).isSymbolicLink()).toBe(true)
+    Tests.expect(FileSystem.existsSync(missingTarget)).toBe(false)
   })
 })

@@ -67,12 +67,6 @@ export function randomUUID(): string {
   return crypto.randomUUID()
 }
 
-/** scheduleDelayed runs action after the supplied delay and returns a cancel function. */
-export function scheduleDelayed(durationMs: number, action: () => void): () => void {
-  const timeout = setTimeout(action, durationMs)
-  return () => clearTimeout(timeout)
-}
-
 /** readText consumes a child output stream without exposing the runtime reader. */
 export function readText(stream: ReadableStream<Uint8Array>): Promise<string> {
   return new Response(stream).text()
