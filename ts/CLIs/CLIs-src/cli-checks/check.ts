@@ -1,6 +1,7 @@
 import { runCommand, runSteps } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
+import { checkEditorTypeScript } from './editor-typescript'
 import { prepareParser } from './parser-build'
 import { withTestTimings } from './slow-tests'
 
@@ -52,6 +53,7 @@ export async function assertNewWorkspaceTree(): Promise<void> {
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
+  await checkEditorTypeScript()
   const packages = [
     '0-workspace',
     '1-grammar',

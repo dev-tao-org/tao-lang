@@ -1,7 +1,10 @@
 {
-  // Use the workspace TypeScript version so Langium generated code typechecks consistently.
-  "typescript.tsdk": "ts/node_modules/typescript/lib",
+  // Match the pinned TypeScript compiler used by the new workspace checks.
+  "typescript.tsdk": "ts/CLIs/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "js/ts.experimental.useTsgo": false,
+  "typescript.experimental.useTsgo": false,
   // Build and install the IDE extension, then restart the extension host (requires extension ryuta46.multi-command).
   "tao.workspaceKeybinding.buildAndRestart": true,
   "multiCommand.commands": [
@@ -61,5 +64,5 @@
     ".x-tao-old-v1/**/node_modules": true,
     "old-packages/**/node_modules": true,
   },
-  "js/ts.tsdk.path": "ts/node_modules/typescript/lib"
+  "js/ts.tsdk.path": "ts/CLIs/node_modules/typescript/lib"
 }
