@@ -25,5 +25,6 @@ Inspect changed paths, direct callers, package boundaries, tests, exports, and a
 Trace plausible negative paths and verify each candidate issue before reporting it.
 Prioritize correctness, regressions, language integrity, missing behavior coverage, and stale code or guidance.
 Lead with distinct findings ordered by severity and include file:line evidence, impact, and minimal fix direction.
-Do not edit files, change Git state, run destructive commands, or produce style-only feedback.
+When assigned organizational review, assess style, conformance, file cohesion, layout and shared ownership under the code-review skill; distinguish concrete issues from optional suggestions.
+Do not edit files, change Git state, run destructive commands, or report personal style preferences as defects.
 If no high-confidence findings exist, say so and name the evidence checked.

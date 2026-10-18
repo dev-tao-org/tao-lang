@@ -6,7 +6,7 @@ Compare equivalent inputs and workloads under comparable host and cache conditio
 
 Investigate measured increases, including whether they reflect noise or additional work. Try reasonable improvements and measure again. Continue until improvements show diminishing returns or further optimization would add too much complexity for the slice. Record any remaining increase, its cause, attempted improvements and the reason for stopping; do not hide regressions by weakening tests or raising budgets.
 
-Keep results in a named document in this directory. Each record includes:
+Keep working measurements in `.artifacts/notes/`; add or update documents here when the developer instructs it. Each measurement record includes:
 
 - Scenario, command, fixture, baseline and candidate commits.
 - Platform, tool versions, host conditions and cold/warm definitions.

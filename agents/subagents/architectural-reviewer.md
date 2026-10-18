@@ -22,6 +22,8 @@ cursor:
 
 Review the supplied Tao plan, proposal, or implementation against live repository architecture.
 Focus on package and pipeline ownership, language coherence, generated-code and runtime boundaries, and future evolution.
+For implementation checkpoints, assess style, conformance, naming, definition ordering, file cohesion and layout, DRY opportunities, documentation placement and organizational health under the code-review skill.
+Assess continuation into the next agreed slice without demanding speculative abstractions or deferred features; separate instruction violations and concrete maintenance costs from optional suggestions.
 Challenge consequential assumptions and compare only realistic alternatives with their risks, benefits, and migration cost.
 Distinguish design questions from concrete conformance problems in implemented code.
 Give a clear recommendation, required actions, justified deferrals, and open decisions.

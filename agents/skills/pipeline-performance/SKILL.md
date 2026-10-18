@@ -68,6 +68,6 @@ description: >-
 - Numerical budgets and admission policy live in executable performance automation. Follow
   `verification-lanes` for running and interpreting the periodic performance proof; do not tune a
   ceiling to make a regressed run pass or claim speed from a busy-host correctness smoke.
-- Refresh the owning roadmap with tested commits, warm sample definitions, phase results, host
-  conditions, and remaining costs. Preserve settled product decisions while optimizing their
-  implementation.
+- Record tested commits, warm sample definitions, phase results, host conditions and remaining
+  costs with the task's `.artifacts` notes. Preserve settled product decisions while optimizing
+  their implementation.

@@ -14,7 +14,6 @@ Root `AGENTS.md` owns the boundary between the Developer's decisions and routine
 ## When
 
 - Open a round when a task holds judgments that are the Developer's to make, before writing any plan that rests on them. A single such judgment is one round with one item; do not open a round for routine implementation choices.
-- Language semantics still land through `Apps/WordFlower/2 - Next` and `Docs/Roadmap/Tao Revolution/Decisions.md`. A round feeds those records and never replaces them.
 
 ## Find every decision first
 
@@ -43,7 +42,7 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 ## Record what was settled
 
 - The conversation is the record. The handoff lists the decisions made, and the commit message carries the ones that shaped the change among its bullets.
-- Language and product decisions additionally follow their existing owners: amend `Decisions.md` or `2 - Next` in the same change, as `Docs/Roadmap/Tao Revolution/Process.md` requires.
+- Keep any additional decision record with the task's `.artifacts` notes; amend repository specifications only when the developer instructs it.
 
 ## Shape
 

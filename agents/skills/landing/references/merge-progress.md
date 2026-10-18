@@ -31,7 +31,7 @@ alone: the parent skill's authorization still applies.
 
 Move the line until every item on the finished side is true on its own: its behavior change is
 complete, not a first half; it has the tests it deserves, and they pass; it does not depend on
-anything still in progress; and its roadmap entry, ledger row, or spec paragraph is updated. A defect
+anything still in progress; and its `.artifacts` checkpoint records the result, with any instructed documentation edits complete. A defect
 found but not fixed is not a cut boundary — record it (below) and land the fixes around it. If the
 finished side is empty, say so and do not merge.
 
@@ -68,8 +68,7 @@ the Developer compacting the thread, or a fresh thread taking the branch — bot
 the repository. A model-written summary drops the constraint that mattered; a file does not.
 
 It is ignored by Git and lives only in this worktree, which is the right scope: it carries a branch
-across a context boundary, while work that has to survive the branch goes in the roadmap document
-under "Handing over the rest". Keep it short enough to stay true: the goal in a sentence; decisions taken and what they rule out;
+across a context boundary. Keep it short enough to stay true: the goal in a sentence; decisions taken and what they rule out;
 the evidence already green, with the lane and its timestamp, so the next thread does not re-run it;
 paths this branch owns; what is open, each with its next concrete step; and what has been proposed to
 the Developer and not yet answered. Replace it rather than appending — a checkpoint is the current state, not a
@@ -78,8 +77,6 @@ it is the only thing that remembers.
 
 ## Handing over the rest
 
-The remaining work lives in the repository, not in a reply: every open item goes in the task's
-roadmap document with the exact reproduction, the last thing tried, and why it is still open (a
-defect found while landing the finished side goes here too); the follow-up branch's name appears
-there so the next agent can find the work from `main` alone. The Developer's reply gets the cut and nothing
+Every open item goes in the task's `.artifacts` checkpoint with the exact reproduction, the last
+thing tried, why it is still open and the follow-up branch's name. The Developer's reply gets the cut and nothing
 else: what landed, what did not, and what runs next.

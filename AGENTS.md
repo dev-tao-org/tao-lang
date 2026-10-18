@@ -38,7 +38,8 @@ These are your rules of usage:
 - During implementation, ask immediately if a decision is essential or would substantially split the implementation. Continue independent work while awaiting a reply; after three minutes without a response, proceed with best judgment and report the choice at completion. This fallback does not replace explicit approval required for dependencies, destructive actions, publication, landing, or other permission-gated operations.
 - Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
 - Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
-- Write useful observations in `Docs/Agent Notes/` (environment issues in `Dev Env Issues.md`). These notes are never authoritative; keep investigation logs out of roadmaps.
+- Keep working notes, investigation logs, checkpoints and progress records under `.artifacts/notes/`, `.artifacts/checkpoint/` or `.artifacts/progress/`. Normal and partial cleanup retain these paths; only `clean --full` removes them.
+- Update existing repository documents only when the developer instructs you to do so; keep other observations and progress in `.artifacts`.
 
 ## Your mission
 
@@ -55,7 +56,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - Run code reviews, including subagent reviews, only when explicitly requested by the developer;
+  - Use `code-review` for ongoing style, conformance, file-layout and organizational-health reviews at completed implementation checkpoints. Additional correctness reviews require the developer's explicit request;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
@@ -111,7 +112,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Tests live in sibling `*-test/` folders. `ts/scripts/` holds tool configuration such as Knip.
 - `.config/` owns tool/bootstrap configuration and the local InstantDB Compose file. Root `devenv.*` defines the pinned environment; `.envrc` activates it through direnv, with `enter-tao-dev-env.sh` as the explicit alternative.
 - `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
-- `.artifacts/` holds generated output, logs, caches and temporary state; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
+- `.artifacts/` holds generated output, logs, caches, temporary state and retained agent notes/progress; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
 - `.x-tao-old-v1/` retains the reference language, compiler, runtimes and apps, including Studio, Companion and test apps.
-- `Docs/` contains the active roadmap and documentation; `Docs/Agent Notes/` contains non-authoritative working notes.
+- `Docs/` contains the active roadmap and documentation.
 - Packages own their manifests and TypeScript configs extending `ts/tsconfig.base.json`; `ts/package.json` owns workspace metadata. Runtime scaffold code and instrumentation are consumed by generated apps and the performance harness.
