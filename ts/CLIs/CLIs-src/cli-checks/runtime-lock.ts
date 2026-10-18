@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import * as TypeScript from 'typescript'
+import TypeScript from 'typescript'
 
 /** runtimeLock retains resolved workspace package versions for the standalone Expo toolchain. */
 export function runtimeLock(source: string, manifest: RuntimeManifest): string {
