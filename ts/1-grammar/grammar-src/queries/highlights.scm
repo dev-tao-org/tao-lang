@@ -7,4 +7,12 @@
 (Injection "inject" @keyword)
 (Parameter type: (Identifier) @type)
 (ViewRender view: (Identifier) @function)
+(TestsDeclaration "tests" @keyword)
+(TestDeclaration "test" @keyword)
+(RunStatement "run" @keyword)
+(RunStatement app: (Identifier) @type)
+(PressStatement "press" @keyword)
+(TypeStatement ["type" "into"] @keyword)
+(ExpectStatement "expect" @keyword)
+(RenderTag) @variable
 (TextLiteral) @string

@@ -5,6 +5,8 @@ app KitchenSink {
 view RootView {
   render Col {
     Heading
+    #editable Input
+    #save SaveButton
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
@@ -54,4 +56,30 @@ view Heading {
   render inject ```ts
     return <TR.ReactNative.Text style={{ fontSize: 24 }}>Kitchen Sink</TR.ReactNative.Text>
   ```
+}
+
+view Input {
+  render inject ```ts
+    return <TR.ReactNative.TextInput defaultValue="Original" accessibilityLabel="Editable text" />
+  ```
+}
+
+view SaveButton {
+  render inject ```ts
+    const [saved, setSaved] = TR.React.useState(false)
+    return <TR.ReactNative.Pressable onPress={() => setSaved(true)}>
+      <TR.ReactNative.Text>{saved ? 'Saved' : 'Save'}</TR.ReactNative.Text>
+    </TR.ReactNative.Pressable>
+  ```
+}
+
+tests "Kitchen Sink" {
+  test "Tagged input and control" {
+    run KitchenSink
+    expect text "Kitchen Sink"
+    type "Edited text" into #editable
+    press #save
+    expect { text "Saved" }
+    expect #editable { input value "Edited text" }
+  }
 }

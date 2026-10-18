@@ -1,0 +1,52 @@
+app Interactions {
+  root Form
+}
+
+view Form {
+  render Col {
+    #name Input
+    #save Button
+  }
+}
+
+view Input {
+  render inject ```ts
+    return <TR.ReactNative.TextInput defaultValue="Original" accessibilityLabel="Name" />
+  ```
+}
+
+view Button {
+  render inject ```ts
+    const [pressed, setPressed] = TR.React.useState(false)
+    return <TR.ReactNative.Pressable onPress={() => setPressed(true)}>
+      <TR.ReactNative.Text>{pressed ? 'Saved' : 'Ready'}</TR.ReactNative.Text>
+    </TR.ReactNative.Pressable>
+  ```
+}
+
+view Col {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'column' }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+tests "App interactions" {
+  test "Edits and presses tagged renders" {
+    run Interactions
+    expect text "Ready"
+    expect #name input value "Original"
+    type "Hello World" into #name
+    press #save
+    expect {
+      text "Saved"
+    }
+    expect #name {
+      input value "Hello World"
+    }
+  }
+  test(Label "Each case starts fresh") {
+    run Interactions
+    expect text "Ready"
+    expect #name input value "Original"
+  }
+}

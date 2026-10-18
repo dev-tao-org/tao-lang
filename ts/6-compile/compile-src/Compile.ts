@@ -6,7 +6,7 @@ import { compileFile } from './FileCompiler'
  *  Full compilation consumes one immutable AST; no previous result is reused. */
 export function compile(
   document: AST.Document,
-  options: { revision: string },
+  options: { revision: string; app?: string },
   timings = new Timings('compiler'),
 ): string {
   return Generate(timings, document, options)
@@ -14,6 +14,6 @@ export function compile(
 
 const Generate = Timings.measure('compiler.generate', generate)
 
-function generate(document: AST.Document, options: { revision: string }): string {
-  return compileFile(document.root, options.revision)
+function generate(document: AST.Document, options: { revision: string; app?: string }): string {
+  return compileFile(document.root, options.revision, options.app)
 }

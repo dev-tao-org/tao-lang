@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
@@ -13,7 +14,8 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   for (let index = 0; index < 120; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
     const document = ParseTransformAndCompile(timings, source, parser, timings)
-    if (document?.root.declarations[0]?.name.value !== 'HelloWorld') {
+    const app = document?.root.declarations.find(AST.IsAppDeclaration)
+    if (app?.name.value !== 'HelloWorld') {
       Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
     }
     if (index >= 20) {

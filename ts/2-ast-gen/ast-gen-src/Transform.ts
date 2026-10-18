@@ -39,6 +39,16 @@ const constructors = {
   Identifier: AST.Name,
   ContextReference: AST.ContextReference,
   TextLiteral: AST.TextLiteral,
+  RenderTag: AST.RenderTag,
+  TestsDeclaration: AST.TestsDeclaration,
+  TestDeclaration: AST.TestDeclaration,
+  RunStatement: AST.RunStatement,
+  PressStatement: AST.PressStatement,
+  TypeStatement: AST.TypeStatement,
+  ExpectStatement: AST.ExpectStatement,
+  TextExpectation: AST.TextExpectation,
+  InputExpectation: AST.InputExpectation,
+  InputValueExpectation: AST.InputExpectation,
 }
 
 function transformDocument(tree: Parser.Tree): AST.Document {

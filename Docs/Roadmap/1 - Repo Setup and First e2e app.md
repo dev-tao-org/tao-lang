@@ -20,7 +20,7 @@ Implement a first e2e Hello World app:
 - [x] Implement basic expo runtime
   - [x] Create a TypeScript runtime folder owning the handwritten code included in compiled Tao app scaffolds, with app-side performance instrumentation exposed to the harness.
 - [x] Write a basic web test that checks "Hello World" is showing in the app
-- [ ] Implement basic testing framework
+- [x] Implement basic testing framework
 - [x] Implement a minimal preview-refresh performance package and automated harness, using the runtime's granular app-side measurements.
 
 ### Preview-refresh performance
@@ -60,12 +60,12 @@ The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20Wo
 
 - [x] Update instructions to always update local main after changes have landed
 - [x] Move away from classes for large blocks of functionality, e.g compiler (it will hit limits). Change CST-to-AST construction to be stateless. Follow compiler pattern for spreading over files.
-- [ ] Get basic tao tests working
-  - [ ] Get things in snippet below working
-  - [ ] Use a default headless target for tests for now
-  - [ ] Add render tags, see old impl for reference
-  - [ ] Skip `render view` for now, just implement `run app` case
-  - [ ] See old impl for reference of how to do these things.
+- [x] Get basic tao tests working
+  - [x] Get things in snippet below working
+  - [x] Use a default headless target for tests for now
+  - [x] Add render tags, see old impl for reference
+  - [x] Skip `render view` for now, just implement `run app` case
+  - [x] See old impl for reference of how to do these things.
 - [ ] Implement `LetDefinition` and scopes
   - [ ] See old impl for reference of runtime scope construction and declarations onto scopes.
 - [ ] Get compiled code to be formatted properly

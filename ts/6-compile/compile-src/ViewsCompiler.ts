@@ -33,7 +33,9 @@ function compileViewRender(node: AST.ViewRender, callbackNames: CallbackNames): 
       node.arguments,
       argument => compileExpression(argument, callbackNames),
     )
-  }, ${listMap(node.children, child => compileViewRender(child, callbackNames))}))`
+  }, ${listMap(node.children, child => compileViewRender(child, callbackNames))}${
+    node.tag ? ', ' + literal(node.tag) : ''
+  }))`
 }
 
 function compileExpression(node: AST.Expression, callbackNames: CallbackNames): string {

@@ -15,7 +15,9 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
 /** ViewRender constructs a view invocation with arguments and child renders. */
 export function ViewRender(cst: Parser.SyntaxNode): Nodes.ViewRender {
   const argumentsNode = cst.childForFieldName('argumentList')
+  const tag = cst.childForFieldName('tag')
   return AST.Node(cst, 'ViewRender', {
+    ...(tag ? { tag: AST.RenderTag(tag) } : {}),
     target: AST.Field(cst, 'view', 'Name'),
     arguments: argumentsNode ? AST.List(argumentsNode, ['Name', 'TextLiteral']) : [],
     children: cst.childrenForFieldName('children').map(child => AST.Construct(child, 'ViewRender')),

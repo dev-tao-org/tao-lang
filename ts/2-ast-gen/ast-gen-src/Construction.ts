@@ -6,6 +6,17 @@ import { AppDeclaration, File, Parameter } from './TransformDeclarations'
 import { Capture, ContextReference, Injection, TextLiteral, ViewDeclaration, ViewRender } from './TransformViews'
 
 export * from './AST'
+export {
+  ExpectStatement,
+  InputExpectation,
+  PressStatement,
+  RenderTag,
+  RunStatement,
+  TestDeclaration,
+  TestsDeclaration,
+  TextExpectation,
+  TypeStatement,
+} from './TransformTests'
 export { Construct }
 export {
   AppDeclaration,

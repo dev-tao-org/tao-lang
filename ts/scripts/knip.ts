@@ -21,7 +21,6 @@ export default {
     CLIs: packageWorkspace([
       ...cliEntries(),
       ...cliEntries().flatMap(commandEntries),
-      'CLIs-src/tao-cli/tao-cli.ts',
       'CLIs-src/dev-cli/commands/_setup.ts',
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
       '**/*.test.ts',
@@ -65,6 +64,7 @@ function cliEntries(): string[] {
   return [
     'CLIs-src/agent-cli/agent-cli.ts',
     'CLIs-src/dev-cli/dev-cli.ts',
+    'CLIs-src/tao-cli/tao-cli.ts',
   ]
 }
 

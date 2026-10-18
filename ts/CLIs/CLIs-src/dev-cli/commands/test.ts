@@ -4,6 +4,7 @@ import {
   assertNewWorkspaceTree,
   workspaceTests,
 } from '../../cli-checks/check'
+import { runTaoTests } from '../testing/TaoTests'
 import { registerCommand } from './_command-runner'
 
 /** testCommand runs the TypeScript workspace tests and preserves their verdict. */
@@ -12,6 +13,10 @@ export default registerCommand({
   description: 'Run new workspace tests; a path scopes the run and a name filters it.',
   arguments: [{ name: 'target', description: 'Test file or directory.' }],
   async action(target?: string) {
+    if (target?.endsWith('.tao')) {
+      await runTaoTests(Repo.resolvePath(target))
+      return
+    }
     await assertNewWorkspaceTree()
     if (target) {
       assertNewWorkspacePath(Repo.resolvePath(target))

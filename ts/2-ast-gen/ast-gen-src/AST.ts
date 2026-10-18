@@ -11,6 +11,10 @@ export type Node =
   | Capture
   | Expression
   | ContextReference
+  | TestDeclaration
+  | TestStep
+  | Expectation
+  | RenderTag
 
 /** OfKind selects semantic nodes with one of the supplied discriminants. */
 export type OfKind<Kind extends Node['kind']> = Extract<Node, { kind: Kind }>
@@ -33,6 +37,7 @@ export type Parameter = Semantic<'Parameter', { name: Name; type: Name }>
 
 /** ViewRender invokes a view with positional arguments and child renders. */
 export type ViewRender = Semantic<'ViewRender', {
+  tag?: RenderTag
   target: Name
   arguments: readonly Expression[]
   children: readonly ViewRender[]
@@ -55,6 +60,39 @@ export type ContextReference = Semantic<'ContextReference', { value: string }>
 
 /** Name preserves an authored identifier without resolving it. */
 export type Name = Semantic<'Name', { value: string }>
+
+/** RenderTag identifies one authored render occurrence for interaction tests. */
+export type RenderTag = Semantic<'RenderTag', { value: string }>
+
+/** TestsDeclaration groups app journeys under an optional label. */
+export type TestsDeclaration = Semantic<'TestsDeclaration', { label?: TextLiteral; tests: readonly TestDeclaration[] }>
+
+/** TestDeclaration contains one isolated app journey. */
+export type TestDeclaration = Semantic<'TestDeclaration', { label?: TextLiteral; steps: readonly TestStep[] }>
+
+/** TestStep represents a launch, interaction or visible assertion. */
+export type TestStep = RunStatement | PressStatement | TypeStatement | ExpectStatement
+
+/** RunStatement launches an app declaration in a fresh test session. */
+export type RunStatement = Semantic<'RunStatement', { app: Name }>
+
+/** PressStatement activates one tagged render. */
+export type PressStatement = Semantic<'PressStatement', { target: RenderTag }>
+
+/** TypeStatement replaces a tagged input's current text. */
+export type TypeStatement = Semantic<'TypeStatement', { target: RenderTag; value: TextLiteral }>
+
+/** ExpectStatement groups visible assertions under an optional tagged render. */
+export type ExpectStatement = Semantic<'ExpectStatement', { target?: RenderTag; expectations: readonly Expectation[] }>
+
+/** Expectation describes an exact visible text or input-value assertion. */
+export type Expectation = TextExpectation | InputExpectation
+
+/** TextExpectation matches exact visible text. */
+export type TextExpectation = Semantic<'TextExpectation', { value: TextLiteral }>
+
+/** InputExpectation checks a tagged input's current value. */
+export type InputExpectation = Semantic<'InputExpectation', { target?: RenderTag; value: TextLiteral }>
 
 /** Document owns a semantic root without retaining CST nodes. */
 export type Document = { readonly root: File }
@@ -83,6 +121,11 @@ export function IsViewDeclaration(node: Node): node is ViewDeclaration {
   return IsKind(node, 'ViewDeclaration')
 }
 
+/** IsTestsDeclaration narrows a semantic node to an app-test suite. */
+export function IsTestsDeclaration(node: Node): node is TestsDeclaration {
+  return IsKind(node, 'TestsDeclaration')
+}
+
 /** IsInjection narrows a semantic node to an injection. */
 export function IsInjection(node: Node): node is Injection {
   return IsKind(node, 'Injection')
@@ -96,7 +139,7 @@ export function IsKind<Kind extends Node['kind']>(
   return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
 }
 
-type Declaration = AppDeclaration | ViewDeclaration
+type Declaration = AppDeclaration | ViewDeclaration | TestsDeclaration
 type Semantic<Kind extends string, Fields> = {
   readonly kind: Kind
   readonly start: number

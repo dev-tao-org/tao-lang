@@ -4,12 +4,13 @@ import { literal } from './codegen-util'
 import { compileViewDeclaration } from './ViewsCompiler'
 
 /** compileFile emits the app module for one Tao source file. */
-export function compileFile(node: AST.File, revision: string): string {
+export function compileFile(node: AST.File, revision: string, appName?: string): string {
   const apps = node.declarations.filter(AST.IsAppDeclaration)
-  if (apps.length !== 1) {
+  if (!appName && apps.length !== 1) {
     Errors.ThrowUserInput('Compile one app declaration per entry file.')
   }
-  const app = apps[0]!
+  const app = (appName ? apps.find(candidate => candidate.name.value === appName) : apps[0])
+    ?? Errors.ThrowUserInput(`Unknown Tao app: ${appName ?? '(none)'}.`)
   const revisionLiteral = JSON.stringify(revision)
   const views = node.declarations.filter(AST.IsViewDeclaration)
     .map(compileViewDeclaration).join('\n')

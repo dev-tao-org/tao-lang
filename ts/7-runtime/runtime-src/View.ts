@@ -14,6 +14,7 @@ export type View = {
 export type ViewRenderArgs = {
   readonly values: readonly unknown[]
   readonly children: readonly ReactNode[]
+  readonly tag?: string
 }
 
 /** ViewRenderer renders a view from its named values and ordered children. */
@@ -47,9 +48,14 @@ export function ViewDefinition(name: string, parameters: readonly string[], rend
 }
 
 /** ViewRenderArgs packages positional values and optional children for a view call. */
-export function ViewRenderArgs(values: readonly unknown[] = [], children: readonly ReactNode[] = []): ViewRenderArgs {
+export function ViewRenderArgs(
+  values: readonly unknown[] = [],
+  children: readonly ReactNode[] = [],
+  tag?: string,
+): ViewRenderArgs {
   return {
     values,
+    tag,
     children: children.map((child, index) =>
       isValidElement(child) ? cloneElement(child, { key: child.key ?? index }) : child
     ),
@@ -72,9 +78,10 @@ const viewMarker: unique symbol = Symbol('TaoView')
 type ViewBodyProps = {
   view: View
   args: ViewRenderArgs
+  testID?: string
 }
 
-function ViewBody({ view, args }: ViewBodyProps): ReactNode {
+function ViewBody({ view, args, testID }: ViewBodyProps): ReactNode {
   const observer = useContext(RuntimeObserverContext)
   const bindingStartedAt = observer?.now()
   const bindings = bindValues(view, args)
@@ -82,7 +89,14 @@ function ViewBody({ view, args }: ViewBodyProps): ReactNode {
   const startedAt = observer?.now()
   const result = view.render(bindings, args.children)
   observe(observer, 'render', startedAt)
-  return result
+  return applyTestID(result, args.tag ?? testID)
+}
+
+function applyTestID(result: ReactNode, testID: string | undefined): ReactNode {
+  if (testID === undefined || !isValidElement(result)) {
+    return result
+  }
+  return cloneElement(result as ReactElement<{ testID?: string }>, { testID })
 }
 
 function bindValues(view: View, args: ViewRenderArgs): Readonly<Record<string, unknown>> {

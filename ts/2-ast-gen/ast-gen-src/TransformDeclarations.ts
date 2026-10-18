@@ -4,7 +4,9 @@ import * as AST from './Construction'
 
 /** File constructs the semantic declaration list for one source file. */
 export function File(cst: Parser.SyntaxNode): Nodes.File {
-  return AST.Node(cst, 'File', { declarations: AST.List(cst, ['AppDeclaration', 'ViewDeclaration']) })
+  return AST.Node(cst, 'File', {
+    declarations: AST.List(cst, ['AppDeclaration', 'ViewDeclaration', 'TestsDeclaration']),
+  })
 }
 
 /** AppDeclaration constructs an app and its unresolved root view. */
