@@ -1,8 +1,7 @@
 import { Errors, Time, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, type BrowserRuntime, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createExpoSession, type ExpoSession } from '@workspace/Expo'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
-import type { PageState } from '../../shared/shared-src/os/BrowserRuntime'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
 import type { ReloadTiming } from './ReloadTimings'
 
@@ -96,7 +95,7 @@ async function runScenarios(page: import('playwright').Page): Promise<PreviewRes
       index,
       { timeout: 95_000 },
     )
-    const state: PageState = await page.evaluate(() => window.__taoPreviewState)
+    const state: BrowserRuntime.PageState = await page.evaluate(() => window.__taoPreviewState)
     if (state.status === 'failed') {
       Errors.ThrowUnexpected(state.error ?? 'Preview update failed.')
     }

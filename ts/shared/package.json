@@ -11,6 +11,7 @@
   "exports": {
     ".": "./shared-src/shared.ts",
     "./os": "./shared-src/os.ts",
+    "./os/browser": "./shared-src/os/BrowserRuntime.ts",
     "./universal": "./shared-src/universal/universal.ts"
   }
 }

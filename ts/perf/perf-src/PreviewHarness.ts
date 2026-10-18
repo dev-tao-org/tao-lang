@@ -1,8 +1,6 @@
 import { Errors, S } from '@shared'
-import { Artifacts, Path, Repo } from '@shared/os'
+import { Artifacts, Browser, Http, Path, Repo } from '@shared/os'
 import type { createWorkspace } from '@workspace/Workspace'
-import * as Browser from '../../shared/shared-src/os/Browser'
-import * as Http from '../../shared/shared-src/os/Http'
 import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
@@ -10,6 +8,19 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
   const sessionDir = await prepareBrowserClient(options.sessionId)
   return await startHarnessServer(options, sessionDir)
 }
+
+/** HarnessOptions binds one browser surface to a workspace and running Expo URL. */
+export type HarnessOptions = {
+  workspace: Workspace
+  previewUrl: string
+  sessionId: string
+  onReload?(timing: ReloadTiming): void
+}
+
+/** PreviewHarness exposes a local URL and deterministic resource disposal. */
+export type PreviewHarness = { url: string; dispose(): void }
+
+type Workspace = ReturnType<typeof createWorkspace>
 
 async function prepareBrowserClient(sessionId: string): Promise<string> {
   const directory = Artifacts.resolvePath('tmp', `preview-ui-${sessionId}`)
@@ -98,19 +109,6 @@ async function editResponse(request: Http.HttpRequest, options: HarnessOptions):
   const result = await options.workspace.saveSource(source => scenarioSource(source, body.scenario))
   return Http.jsonResponse(result)
 }
-
-/** HarnessOptions binds one browser surface to a workspace and running Expo URL. */
-export type HarnessOptions = {
-  workspace: Workspace
-  previewUrl: string
-  sessionId: string
-  onReload?(timing: ReloadTiming): void
-}
-
-/** PreviewHarness exposes a local URL and deterministic resource disposal. */
-export type PreviewHarness = { url: string; dispose(): void }
-
-type Workspace = ReturnType<typeof createWorkspace>
 
 function eventsResponse(
   streams: Set<Http.StreamController>,

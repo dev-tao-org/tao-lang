@@ -1,7 +1,6 @@
 import { Errors, Time, Timings, Try } from '@shared'
-import { FileSystem } from '@shared/os'
-import * as WorkspaceWatch from '../../shared/shared-src/os/WorkspaceWatch'
-import type { UpdateResult } from './Workspace'
+import { FileSystem, WorkspaceWatch } from '@shared/os'
+import type { PipelineStages, UpdateResult } from './Workspace'
 
 /** readSource records source observation and disk reading before queued compilation. */
 export async function readSource(path: string, observedAtMs = Time.timestampMs()): Promise<SourceSnapshot> {
@@ -18,17 +17,21 @@ export type SourceSnapshot = { source: string; observedAtMs: number; timings: Ti
 export class WorkspaceFile {
   private stopWatching: (() => void) | undefined
   private readonly waiters = new Set<SourceWaiter>()
+  private refreshGeneration = 0
+  private disposed = false
 
   constructor(
     readonly path: string,
-    private readonly compile: (snapshot: SourceSnapshot) => Promise<UpdateResult>,
+    private readonly compile: (snapshot: SourceSnapshot, isCurrent: () => boolean) => Promise<UpdateResult>,
     private readonly onResult?: (result: UpdateResult) => void,
     private readonly onError?: (error: unknown) => void,
+    private readonly read: typeof readSource = readSource,
+    private readonly watch: typeof WorkspaceWatch.watchFile = WorkspaceWatch.watchFile,
   ) {}
 
   async open(): Promise<UpdateResult> {
     const onError = this.onError
-    this.stopWatching = WorkspaceWatch.watchFile(this.path, observedAtMs => {
+    this.stopWatching = this.watch(this.path, observedAtMs => {
       void Try(() => this.refresh(observedAtMs), {
         catch(error) {
           onError?.(error)
@@ -62,6 +65,8 @@ export class WorkspaceFile {
   }
 
   dispose(): void {
+    this.disposed = true
+    this.refreshGeneration++
     this.stopWatching?.()
     for (const waiter of this.waiters) {
       waiter.reject(sourceFailure('Workspace source was closed: ' + this.path))
@@ -70,15 +75,31 @@ export class WorkspaceFile {
   }
 
   private async refresh(observedAtMs: number): Promise<UpdateResult> {
-    const snapshot = await readSource(this.path, observedAtMs)
-    const result = await this.compile(snapshot)
+    const generation = ++this.refreshGeneration
+    const isCurrent = () => !this.disposed && generation === this.refreshGeneration
+    const snapshot = await this.read(this.path, observedAtMs)
+    if (!isCurrent()) {
+      const result = supersededResult(generation)
+      this.settleWaiters(snapshot.source, result)
+      return result
+    }
+    const result = await this.compile(snapshot, isCurrent)
+    if (!isCurrent()) {
+      const superseded = supersededResult(generation)
+      this.settleWaiters(snapshot.source, superseded)
+      return superseded
+    }
     this.onResult?.(result)
+    this.settleWaiters(snapshot.source, result)
+    return result
+  }
+
+  private settleWaiters(source: string, result: UpdateResult): void {
     for (const waiter of this.waiters) {
-      if (waiter.source === snapshot.source) {
+      if (waiter.source === source) {
         waiter.resolve(result)
       }
     }
-    return result
   }
 }
 
@@ -90,4 +111,21 @@ function sourceFailure(message: string): Errors.TaoError {
       return Errors.fromUnknown(error)
     },
   })
+}
+
+function supersededResult(generation: number): UpdateResult {
+  return {
+    status: 'superseded',
+    revision: `source-${generation}`,
+    timings: [],
+    stages: emptyStages(),
+  }
+}
+
+function emptyStages(): PipelineStages {
+  return {
+    typecheck: { stage: 'typecheck', status: 'skipped' },
+    fix: { stage: 'fix', status: 'skipped' },
+    check: { stage: 'check', status: 'skipped' },
+  }
 }

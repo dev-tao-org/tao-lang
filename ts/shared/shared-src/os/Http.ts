@@ -30,6 +30,11 @@ export async function request(url: string, init?: RequestInit): Promise<Response
   return await fetch(url, init)
 }
 
+/** createAbortController creates a cancellation source for bounded platform requests. */
+export function createAbortController(): AbortController {
+  return new AbortController()
+}
+
 /** stream creates a byte stream through the platform boundary. */
 export function stream(source: UnderlyingDefaultSource<Uint8Array>): ReadableStream<Uint8Array> {
   return new ReadableStream(source)

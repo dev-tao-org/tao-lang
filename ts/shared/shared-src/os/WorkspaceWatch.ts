@@ -6,6 +6,7 @@ import { watch as watchDirectory } from 'node:fs'
 export function watchFile(path: string, onChange: (observedAtMs: number) => void, debounceMs = 5): () => void {
   let generation = 0
   let disposed = false
+  let cancel: (() => void) | undefined
   const watcher = watchDirectory(Path.dirname(path), (_event, filename) => {
     if (!filename || Path.basename(filename.toString()) === Path.basename(path)) {
       scheduleChange()
@@ -14,16 +15,18 @@ export function watchFile(path: string, onChange: (observedAtMs: number) => void
   return () => {
     disposed = true
     generation++
+    cancel?.()
     watcher.close()
   }
 
   function scheduleChange(): void {
     const current = ++generation
     const observedAtMs = Time.timestampMs()
-    setTimeout(() => {
+    cancel?.()
+    cancel = Time.schedule(debounceMs, () => {
       if (!disposed && current === generation) {
         onChange(observedAtMs)
       }
-    }, debounceMs)
+    })
   }
 }

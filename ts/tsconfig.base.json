@@ -16,6 +16,7 @@
       "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
       "@shared": ["./shared/shared-src/shared.ts"],
       "@shared/os": ["./shared/shared-src/os.ts"],
+      "@shared/os/browser": ["./shared/shared-src/os/BrowserRuntime.ts"],
       "@grammar/*": ["./1-grammar/grammar-src/*"],
       "@ast-gen/*": ["./2-ast-gen/ast-gen-src/*"],
       "@typecheck/*": ["./3-typecheck/typecheck-src/*"],

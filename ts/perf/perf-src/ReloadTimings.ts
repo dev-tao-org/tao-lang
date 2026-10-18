@@ -1,5 +1,6 @@
 import type { TimingSample } from '@shared'
 import type { Publication } from '@workspace/Workspace'
+import { PreviewReceipts } from './PreviewReceipts'
 
 /** ReloadTiming measures one source update through both previews' refresh milestones. */
 export type ReloadTiming = {
@@ -21,7 +22,7 @@ export class ReloadTimings {
   private startedAtMs = 0
   private reported = false
   private publication: Publication | undefined
-  private readonly frames = new Map<string, { hmr?: Signal; applied?: Signal }>()
+  private readonly receipts = new PreviewReceipts<Signal>()
 
   constructor(private readonly sessionId: string, private readonly report?: (timing: ReloadTiming) => void) {}
 
@@ -30,7 +31,7 @@ export class ReloadTimings {
     this.startedAtMs = startedAtMs
     this.reported = false
     this.publication = undefined
-    this.frames.clear()
+    this.receipts.clear()
   }
 
   published(publication: Publication): void {
@@ -47,35 +48,28 @@ export class ReloadTimings {
     if (value.sessionId !== this.sessionId || value.revision !== this.revision) {
       return
     }
-    const frame = this.frames.get(value.frameId) ?? {}
-    if (value.type === 'tao.update-done') {
-      frame.hmr ??= value
-    } else {
-      frame.applied ??= value
-    }
-    this.frames.set(value.frameId, frame)
+    const milestone = value.type === 'tao.update-done' ? 'hmr' : 'applied'
+    this.receipts.record(milestone, value, value)
     this.reportIfComplete()
   }
 
   private reportIfComplete(): void {
-    const complete = [...this.frames].filter(([, frame]) =>
-      frame.hmr && frame.applied && frame.hmr.bootId === frame.applied.bootId
-    )
+    const complete = this.receipts.complete(this.revision)
     const publication = this.publication
-    if (complete.length !== 2 || !publication || this.reported) {
+    if (complete.size !== 2 || !publication || this.reported) {
       return
     }
     this.reported = true
     this.report?.({
       revision: this.revision,
-      saveToHmrMs: Math.max(...complete.map(([, frame]) => frame.hmr!.timestampMs)) - this.startedAtMs,
-      saveToAppliedMs: Math.max(...complete.map(([, frame]) => frame.applied!.timestampMs)) - this.startedAtMs,
+      saveToHmrMs: Math.max(...[...complete.values()].map(frame => frame.hmr.timestampMs)) - this.startedAtMs,
+      saveToAppliedMs: Math.max(...[...complete.values()].map(frame => frame.applied.timestampMs)) - this.startedAtMs,
       pipeline: publication.timings,
-      frames: Object.fromEntries(complete.map(([id, frame]) => [id, {
-        publishToHmrMs: frame.hmr!.timestampMs - publication.publishedAtMs,
-        hmrToAppliedMs: frame.applied!.timestampMs - frame.hmr!.timestampMs,
-        saveToHmrMs: frame.hmr!.timestampMs - this.startedAtMs,
-        saveToAppliedMs: frame.applied!.timestampMs - this.startedAtMs,
+      frames: Object.fromEntries([...complete].map(([id, frame]) => [id, {
+        publishToHmrMs: frame.hmr.timestampMs - publication.publishedAtMs,
+        hmrToAppliedMs: frame.applied.timestampMs - frame.hmr.timestampMs,
+        saveToHmrMs: frame.hmr.timestampMs - this.startedAtMs,
+        saveToAppliedMs: frame.applied.timestampMs - this.startedAtMs,
       }])),
     })
   }

@@ -1,4 +1,6 @@
-import * as Browser from '../../shared/shared-src/os/BrowserRuntime'
+import { Time } from '@shared'
+import * as Browser from '@shared/os/browser'
+import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
 
 type PreviewSignal = {
   type: 'tao.preview-applied' | 'tao.update-done'
@@ -11,7 +13,6 @@ type PreviewSignal = {
 }
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
-type FrameState = { applied: Map<string, SignalReceipt>; hmr: Map<string, SignalReceipt> }
 
 type PreviewResult = {
   scenario: string
@@ -37,7 +38,7 @@ const frames = new Map<string, HTMLIFrameElement>([
   ['left', Browser.querySelector<HTMLIFrameElement>('#left')!],
   ['right', Browser.querySelector<HTMLIFrameElement>('#right')!],
 ])
-const states = new Map<string, FrameState>([...frames.keys()].map(id => [id, { applied: new Map(), hmr: new Map() }]))
+const receipts = new PreviewReceipts<SignalReceipt>()
 const expected = new Set<string>()
 const pendingSignals: MessageEvent[] = []
 const scenarios = ['text', 'add-text', 'row'] as const
@@ -68,8 +69,8 @@ Browser.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () =
   }
   result.status = 'running'
   setStatus('running')
-  const clickTime = Browser.now()
-  const clickTimestampMs = Browser.timestampMs()
+  const clickTime = Time.nowMs()
+  const clickTimestampMs = Time.timestampMs()
   void runScenario(scenarios[scenarioIndex]!, clickTime, clickTimestampMs).then(undefined, failScenario)
 })
 
@@ -88,13 +89,11 @@ function receiveSignal(event: MessageEvent): void {
     return
   }
   const frame = frames.get(signal.frameId)
-  const frameState = states.get(signal.frameId)
-  if (!frame || !frameState || event.source !== Browser.frameWindow(frame)) {
+  if (!frame || event.source !== Browser.frameWindow(frame)) {
     return
   }
-  const collection = signal.type === 'tao.preview-applied' ? frameState.applied : frameState.hmr
-  if (!collection.has(signal.revision)) {
-    collection.set(signal.revision, { signal, receivedAt: Browser.now() })
+  const milestone = signal.type === 'tao.preview-applied' ? 'applied' : 'hmr'
+  if (receipts.record(milestone, signal, { signal, receivedAt: Time.nowMs() })) {
     relaySignal(signal)
   }
 }
@@ -179,7 +178,7 @@ function isCurrentSignal(signal: PreviewSignal): boolean {
     && (signal.type === 'tao.preview-applied' || signal.type === 'tao.update-done')
 }
 
-function frameTimings(receipt: { hmr: SignalReceipt; applied: SignalReceipt }, clickTime: number) {
+function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
   return {
     bootId: receipt.applied.signal.bootId,
     clickToHmrMs: receipt.hmr.receivedAt - clickTime,
@@ -192,26 +191,17 @@ function frameTimings(receipt: { hmr: SignalReceipt; applied: SignalReceipt }, c
   }
 }
 
-function waitForFrames(revision: string): Promise<Map<string, { hmr: SignalReceipt; applied: SignalReceipt }>> {
+function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<SignalReceipt>>> {
   return new Promise((resolve, reject) => {
-    const deadline = Browser.now() + 90_000
+    const deadline = Time.nowMs() + 90_000
     const poll = () => {
-      const collected = new Map<string, { hmr: SignalReceipt; applied: SignalReceipt }>()
-      for (const [id, state] of states) {
-        const hmr = state.hmr.get(revision)
-        const applied = state.applied.get(revision)
-        if (hmr && applied) {
-          if (hmr.signal.bootId === applied.signal.bootId) {
-            collected.set(id, { hmr, applied })
-          }
-        }
-      }
+      const collected = receipts.complete(revision)
       if (collected.size === frames.size) {
         resolve(collected)
-      } else if (Browser.now() >= deadline) {
+      } else if (Time.nowMs() >= deadline) {
         reject(`Timed out waiting for both preview receipts for ${revision}.`)
       } else {
-        void Browser.sleep(25).then(poll)
+        void Time.sleep(25).then(poll)
       }
     }
     poll()
@@ -223,15 +213,7 @@ function revisionNumber(revision: string): number {
 }
 
 function pruneReceiptHistory(): void {
-  for (const state of states.values()) {
-    for (const collection of [state.applied, state.hmr]) {
-      for (const revision of collection.keys()) {
-        if (revisionNumber(revision) < latestExpected) {
-          collection.delete(revision)
-        }
-      }
-    }
-  }
+  receipts.pruneBefore(latestExpected)
 }
 
 function setStatus(status: string): void {

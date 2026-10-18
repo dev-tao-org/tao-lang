@@ -1,4 +1,5 @@
-import { Tests } from '@shared/os'
+import { Try } from '@shared'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace } from '../workspace-src/Workspace'
 
 Tests.test('a rapid edit burst compiles only the active and newest queued source', async () => {
@@ -60,3 +61,53 @@ Tests.test('invalid source retains the last published application', async () => 
   Tests.expect(workspace.lastGoodRevision).toBe('r1')
   Tests.expect(publishCount).toBe(1)
 })
+
+Tests.test('opening another source invalidates an in-flight publication from the old file', async () => {
+  await verifyOpeningAnotherSourceInvalidatesOldPublication()
+})
+
+async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<void> {
+  const directory = Artifacts.resolvePath('tmp', `workspace-open-race-${Platform.randomUUID()}`)
+  const pathA = Path.join(directory, 'A.tao')
+  const pathB = Path.join(directory, 'B.tao')
+  const source = await Tests.readApp('Hello World')
+  let releaseA!: () => void
+  let enteredA!: () => void
+  const gateA = new Promise<void>(resolve => releaseA = resolve)
+  const enteredPublishA = new Promise<void>(resolve => enteredA = resolve)
+  const published: string[] = []
+  const workspace = createWorkspace({
+    compile(_document, options) {
+      return options.revision
+    },
+    async publish(app, isCurrent) {
+      if (app.source === source) {
+        enteredA()
+        await gateA
+      }
+      if (isCurrent()) {
+        published.push(app.source)
+      }
+    },
+  })
+
+  await Try(async () => {
+    await FileSystem.mkdir(directory, { recursive: true })
+    await FileSystem.writeFile(pathA, source)
+    await FileSystem.writeFile(pathB, source.replace('Hello World', 'Source B'))
+    const openA = workspace.openFile(pathA)
+    await enteredPublishA
+    const openB = workspace.openFile(pathB)
+    releaseA()
+
+    Tests.expect(await openA).toMatchObject({ status: 'superseded' })
+    Tests.expect(await openB).toMatchObject({ status: 'published', revision: 'r2' })
+    Tests.expect(published).toEqual([source.replace('Hello World', 'Source B')])
+  }, {
+    async finally() {
+      releaseA()
+      workspace.dispose()
+      await FileSystem.rm(directory, { recursive: true, force: true })
+    },
+  })
+}

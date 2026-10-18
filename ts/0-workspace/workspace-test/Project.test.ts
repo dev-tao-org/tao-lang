@@ -11,9 +11,25 @@ Tests.test('persistent Expo projects reuse their matching runtime dependency lin
     Tests.expect(FileSystem.realpathSync(Path.join(project.expoDirectory, 'node_modules'))).toBe(
       FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/node_modules')),
     )
+    await expectScaffoldDependenciesMatchRuntime(project.expoDirectory)
   }, {
     finally() {
       return FileSystem.rm(directory, { recursive: true, force: true })
     },
   })
 })
+
+async function expectScaffoldDependenciesMatchRuntime(expoDirectory: string): Promise<void> {
+  const runtime = JSON.parse(await FileSystem.readFile(Repo.resolvePath('ts/7-runtime/package.json'), 'utf8')) as {
+    dependencies: Record<string, string>
+  }
+  const scaffold = JSON.parse(await FileSystem.readFile(Path.join(expoDirectory, 'package.json'), 'utf8')) as {
+    dependencies: Record<string, string>
+  }
+  const expected = Object.fromEntries(
+    Object.entries(runtime.dependencies).filter((entry): entry is [string, string] =>
+      !entry[1].startsWith('workspace:')
+    ),
+  )
+  Tests.expect(scaffold.dependencies).toEqual(expected)
+}

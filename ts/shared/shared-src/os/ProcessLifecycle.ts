@@ -1,3 +1,5 @@
+import { Time, Try } from '../universal/universal'
+
 /** waitForTermination resolves once the process receives an interactive shutdown signal. */
 export function waitForTermination(): Promise<void> {
   return new Promise(resolve => {
@@ -20,9 +22,8 @@ export async function stopProcess(child: ManagedProcess): Promise<void> {
     return
   }
   child.kill('SIGINT')
-  const timeout = setTimeout(() => child.exitCode === null && child.kill('SIGKILL'), 3000)
-  await child.exited
-  clearTimeout(timeout)
+  const cancel = Time.schedule(3000, () => child.exitCode === null && child.kill('SIGKILL'))
+  await Try(() => child.exited, { finally: cancel })
 }
 
 /** ProcessOutput retains both piped child streams for later failure diagnostics. */

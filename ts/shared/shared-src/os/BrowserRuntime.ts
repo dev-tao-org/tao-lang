@@ -1,16 +1,6 @@
 /** PageState names the small state object exposed to headless preview automation. */
 export type PageState = { status: string; currentScenario?: string; results: unknown[]; error?: string }
 
-/** now reads the browser's monotonic clock for same-page event durations. */
-export function now(): number {
-  return performance.now()
-}
-
-/** timestampMs reads the page clock as an epoch-relative timestamp for iframe event correlation. */
-export function timestampMs(): number {
-  return performance.timeOrigin + performance.now()
-}
-
 /** querySelector selects one page element through the browser document. */
 export function querySelector<ElementType extends Element>(selector: string): ElementType | null {
   return document.querySelector<ElementType>(selector)
@@ -36,11 +26,6 @@ export function frameWindow(frame: HTMLIFrameElement): Window | null {
 export async function requestJson<Value>(url: string, init?: RequestInit): Promise<Value> {
   const response = await fetch(url, init)
   return await response.json() as Value
-}
-
-/** sleep waits through the browser timer for bounded receipt polling. */
-export function sleep(durationMs: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, durationMs))
 }
 
 /** setPageState exposes current preview progress to the headless browser runner. */

@@ -14,7 +14,7 @@ export async function createProject(options: ProjectOptions = {}): Promise<Proje
   await writeProjectFiles(expoDirectory)
   await linkRuntimeDependencies(Path.join(expoDirectory, 'node_modules'))
   const runtimeSource = Repo.resolvePath('ts/7-runtime/runtime-src')
-  if (await exists(runtimeSource)) {
+  if (await FileSystem.exists(runtimeSource)) {
     const runtimeDirectory = Path.join(expoDirectory, '_runtime')
     await FileSystem.rm(runtimeDirectory, { recursive: true, force: true })
     await FileSystem.cp(runtimeSource, runtimeDirectory, { recursive: true })
@@ -30,14 +30,14 @@ export type Project = { directory: string; expoDirectory: string; appPath: strin
 export type ProjectOptions = { directory?: string; persistent?: boolean }
 
 async function writeProjectFiles(directory: string): Promise<void> {
-  await writePackage(directory)
+  await writePackage(directory, await runtimeDependencies())
   await writeEntry(directory)
   await writeMetroConfig(directory)
   await writeMetadata(directory)
   await FileSystem.mkdir(Path.join(directory, '_gen_tao-app'), { recursive: true })
 }
 
-async function writePackage(directory: string): Promise<void> {
+async function writePackage(directory: string, dependencies: Record<string, string>): Promise<void> {
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
     JSON.stringify(
@@ -45,18 +45,23 @@ async function writePackage(directory: string): Promise<void> {
         name: 'tao-preview',
         private: true,
         main: 'index.ts',
-        dependencies: {
-          '@expo/metro-runtime': '57.0.17',
-          expo: '57.0.30',
-          react: '19.2.3',
-          'react-dom': '19.2.3',
-          'react-native': '0.86.3',
-          'react-native-web': '0.21.0',
-        },
+        dependencies,
         scripts: { web: 'expo start --web --no-dev' },
       },
       null,
       2,
+    ),
+  )
+}
+
+async function runtimeDependencies(): Promise<Record<string, string>> {
+  const manifestPath = Repo.resolvePath('ts/7-runtime/package.json')
+  const manifest = JSON.parse(await FileSystem.readFile(manifestPath, 'utf8')) as RuntimeManifest
+  const dependencies = manifest.dependencies
+    ?? Errors.ThrowUnexpected(`Runtime package has no dependencies: ${manifestPath}`)
+  return Object.fromEntries(
+    Object.entries(dependencies).filter((entry): entry is [string, string] =>
+      typeof entry[1] === 'string' && !entry[1].startsWith('workspace:')
     ),
   )
 }
@@ -71,6 +76,8 @@ async function writeEntry(directory: string): Promise<void> {
     `,
   )
 }
+
+type RuntimeManifest = { dependencies?: Record<string, string> }
 
 async function writeMetroConfig(directory: string): Promise<void> {
   await FileSystem.writeFile(
@@ -102,17 +109,6 @@ async function writeMetadata(directory: string): Promise<void> {
     Path.join(directory, 'tsconfig.json'),
     JSON.stringify({ extends: 'expo/tsconfig.base' }, null, 2),
   )
-}
-
-async function exists(path: string): Promise<boolean> {
-  return await Try(async () => {
-    await FileSystem.access(path)
-    return true
-  }, {
-    catch() {
-      return false
-    },
-  })
 }
 
 async function linkRuntimeDependencies(linkPath: string): Promise<void> {
