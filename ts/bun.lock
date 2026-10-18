@@ -118,6 +118,7 @@
     },
     "ide-extension": {
       "name": "@tao/ide-extension",
+      "version": "0.0.1",
       "dependencies": {
         "tree-sitter-typescript": "0.23.2",
         "web-tree-sitter": "0.26.6",
