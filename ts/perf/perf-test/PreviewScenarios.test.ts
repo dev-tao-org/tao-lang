@@ -24,4 +24,6 @@ Tests.test('hello world preview cycle keeps the performance edits', async () => 
   Tests.expect(text).toContain('Text("Hello Tao")')
   Tests.expect(added).toContain('Text("Second view")')
   Tests.expect(row).toContain('render Row {')
+  Tests.expect(helloWorldScenarios.map(scenario => scenario.name)).toEqual(['text', 'add-text', 'row', 'reset'])
+  Tests.expect(applyScenario(helloWorldScenarios, 'reset', row, canonical)).toBe(canonical)
 })

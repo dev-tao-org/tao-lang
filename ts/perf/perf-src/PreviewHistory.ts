@@ -88,7 +88,7 @@ function newRecord(context: Context): HistoryRecord {
     status: 'failed',
     command: './agent unsandboxed performance record',
     fixture: { path: fixturePath, sha256: context.fixtureSha256 },
-    scenarios: ['text', 'add-text', 'row'],
+    scenarios: ['text', 'add-text', 'row', 'reset'],
     sourceIsolation:
       'Committed fixture copied into the generated benchmark workspace; passed records require clean implementation inputs before and after capture. Raw report dirty-state provenance is preserved.',
   }
