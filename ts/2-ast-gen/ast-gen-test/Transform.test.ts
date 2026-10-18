@@ -50,6 +50,7 @@ Tests.test('Hello World transforms generic renders and native injections', async
     end: 96,
     name: { kind: 'Name', start: 41, end: 49, value: 'RootView' },
     parameters: [],
+    definitions: [],
     render: {
       kind: 'ViewRender',
       start: 61,

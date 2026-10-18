@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import type Parser from 'tree-sitter'
 import * as AST from './AST'
 import { Construct } from './Transform'
-import { AppDeclaration, File, Parameter } from './TransformDeclarations'
+import { AppDeclaration, File, LetDefinition, Parameter } from './TransformDeclarations'
 import { Capture, ContextReference, Injection, TextLiteral, ViewDeclaration, ViewRender } from './TransformViews'
 
 export * from './AST'
@@ -24,6 +24,7 @@ export {
   ContextReference,
   File,
   Injection,
+  LetDefinition,
   Parameter,
   TextLiteral,
   ViewDeclaration,

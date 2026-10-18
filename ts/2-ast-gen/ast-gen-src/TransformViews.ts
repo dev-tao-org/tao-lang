@@ -8,6 +8,8 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
   return AST.Node(cst, 'ViewDeclaration', {
     name: AST.Field(cst, 'name', 'Name'),
     parameters: parameters ? AST.List(parameters, ['Parameter']) : [],
+    definitions: cst.namedChildren.filter(child => child.type === 'LetDefinition')
+      .map(child => AST.Construct(child, 'LetDefinition')),
     render: AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection']),
   })
 }
@@ -20,7 +22,7 @@ export function ViewRender(cst: Parser.SyntaxNode): Nodes.ViewRender {
     ...(tag ? { tag: AST.RenderTag(tag) } : {}),
     target: AST.Field(cst, 'view', 'Name'),
     arguments: argumentsNode ? AST.List(argumentsNode, ['Name', 'TextLiteral']) : [],
-    children: cst.childrenForFieldName('children').map(child => AST.Construct(child, 'ViewRender')),
+    children: cst.childrenForFieldName('children').map(child => AST.Construct(child, ['ViewRender', 'LetDefinition'])),
   })
 }
 

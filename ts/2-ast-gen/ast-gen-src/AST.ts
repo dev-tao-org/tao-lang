@@ -29,8 +29,12 @@ export type AppDeclaration = Semantic<'AppDeclaration', { name: Name; root: Name
 export type ViewDeclaration = Semantic<'ViewDeclaration', {
   name: Name
   parameters: readonly Parameter[]
+  definitions: readonly LetDefinition[]
   render: ViewRender | Injection
 }>
+
+/** LetDefinition binds a value in its containing lexical scope. */
+export type LetDefinition = Semantic<'LetDefinition', { name: Name; type?: Name; value: Expression }>
 
 /** Parameter preserves an authored parameter name and unresolved type. */
 export type Parameter = Semantic<'Parameter', { name: Name; type: Name }>
@@ -40,7 +44,7 @@ export type ViewRender = Semantic<'ViewRender', {
   tag?: RenderTag
   target: Name
   arguments: readonly Expression[]
-  children: readonly ViewRender[]
+  children: readonly (ViewRender | LetDefinition)[]
 }>
 
 /** Injection preserves an opaque TypeScript body and explicit capture bindings. */
@@ -126,6 +130,16 @@ export function IsTestsDeclaration(node: Node): node is TestsDeclaration {
   return IsKind(node, 'TestsDeclaration')
 }
 
+/** IsLetDefinition narrows a semantic node to a lexical value definition. */
+export function IsLetDefinition(node: Node): node is LetDefinition {
+  return IsKind(node, 'LetDefinition')
+}
+
+/** IsViewRender narrows a semantic node to a view invocation. */
+export function IsViewRender(node: Node): node is ViewRender {
+  return IsKind(node, 'ViewRender')
+}
+
 /** IsInjection narrows a semantic node to an injection. */
 export function IsInjection(node: Node): node is Injection {
   return IsKind(node, 'Injection')
@@ -139,7 +153,7 @@ export function IsKind<Kind extends Node['kind']>(
   return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
 }
 
-type Declaration = AppDeclaration | ViewDeclaration | TestsDeclaration
+type Declaration = AppDeclaration | ViewDeclaration | TestsDeclaration | LetDefinition
 type Semantic<Kind extends string, Fields> = {
   readonly kind: Kind
   readonly start: number

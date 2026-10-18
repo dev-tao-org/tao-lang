@@ -31,6 +31,7 @@ const TransformDocument = Timings.measure('transformer.transform', transformDocu
 const constructors = {
   SourceFile: AST.File,
   AppDeclaration: AST.AppDeclaration,
+  LetDefinition: AST.LetDefinition,
   ViewDeclaration: AST.ViewDeclaration,
   ViewRender: AST.ViewRender,
   Parameter: AST.Parameter,

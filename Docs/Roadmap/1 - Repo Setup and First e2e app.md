@@ -66,8 +66,8 @@ The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20Wo
   - [x] Add render tags, see old impl for reference
   - [x] Skip `render view` for now, just implement `run app` case
   - [x] See old impl for reference of how to do these things.
-- [ ] Implement `LetDefinition` and scopes
-  - [ ] See old impl for reference of runtime scope construction and declarations onto scopes.
+- [x] Implement `LetDefinition` and scopes
+  - [x] See old impl for reference of runtime scope construction and declarations onto scopes.
 - [ ] Get compiled code to be formatted properly
 - [ ] Move hello world views into @tao/ui and implement `use` and stdlib
   - [ ] Get single-document recompilation working, with focus on speed

@@ -1,10 +1,18 @@
+let DefaultTitle is text = "Kitchen Sink"
+
 app KitchenSink {
   root RootView
 }
 
 view RootView {
+  let Title = DefaultTitle
   render Col {
     Heading
+    Text(Title)
+    Col {
+      let Title = "Nested lexical scope"
+      Text(Title)
+    }
     #editable Input
     #save SaveButton
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
@@ -19,8 +27,9 @@ view RootView {
 }
 
 view Pair(First text, Second text) {
+  let FirstCaption = First
   render Col {
-    Text(First)
+    Text(FirstCaption)
     Text(Second)
   }
 }
@@ -77,6 +86,7 @@ tests "Kitchen Sink" {
   test "Tagged input and control" {
     run KitchenSink
     expect text "Kitchen Sink"
+    expect text "Nested lexical scope"
     type "Edited text" into #editable
     press #save
     expect { text "Saved" }

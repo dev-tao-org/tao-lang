@@ -1,12 +1,15 @@
 import { Errors } from '@shared'
 import { cloneElement, createContext, createElement, isValidElement, useContext } from 'react'
 import type { ReactElement, ReactNode } from 'react'
+import { LetDefinition, Scope } from './Scope'
+import type { Scope as RuntimeScope } from './Scope'
 
 /** View is a named runtime definition whose renderer receives bound values and children. */
 export type View = {
   readonly name: string
   readonly parameters: readonly string[]
   readonly render: ViewRenderer
+  readonly scope: RuntimeScope
   readonly [viewMarker]: true
 }
 
@@ -19,7 +22,7 @@ export type ViewRenderArgs = {
 
 /** ViewRenderer renders a view from its named values and ordered children. */
 export type ViewRenderer = (
-  bindings: Readonly<Record<string, unknown>>,
+  bindings: RuntimeScope,
   children: readonly ReactNode[],
 ) => ReactNode
 
@@ -43,8 +46,13 @@ export type AppOptions = {
 }
 
 /** ViewDefinition creates a generic runtime view without assigning built-in Tao view names. */
-export function ViewDefinition(name: string, parameters: readonly string[], render: ViewRenderer): View {
-  return { name, parameters: [...parameters], render, [viewMarker]: true }
+export function ViewDefinition(
+  name: string,
+  parameters: readonly string[],
+  render: ViewRenderer,
+  scope: RuntimeScope = Scope(),
+): View {
+  return { name, parameters: [...parameters], render, scope, [viewMarker]: true }
 }
 
 /** ViewRenderArgs packages positional values and optional children for a view call. */
@@ -99,7 +107,7 @@ function applyTestID(result: ReactNode, testID: string | undefined): ReactNode {
   return cloneElement(result as ReactElement<{ testID?: string }>, { testID })
 }
 
-function bindValues(view: View, args: ViewRenderArgs): Readonly<Record<string, unknown>> {
+function bindValues(view: View, args: ViewRenderArgs): RuntimeScope {
   if (!isView(view)) {
     Errors.ThrowUserInput('Cannot render an unknown Tao view.')
   }
@@ -107,9 +115,9 @@ function bindValues(view: View, args: ViewRenderArgs): Readonly<Record<string, u
   if (missingIndex >= 0) {
     Errors.ThrowUserInput(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
   }
-  const bindings = Object.create(null) as Record<string, unknown>
+  const bindings = Scope(view.scope)
   for (const [index, parameter] of view.parameters.entries()) {
-    bindings[parameter] = args.values[index]
+    LetDefinition(bindings, parameter, args.values[index])
   }
   return bindings
 }

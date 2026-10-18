@@ -15,4 +15,7 @@
 (TypeStatement ["type" "into"] @keyword)
 (ExpectStatement "expect" @keyword)
 (RenderTag) @variable
+(LetDefinition ["let" "is"] @keyword)
+(LetDefinition name: (Identifier) @variable)
+(LetDefinition type: (Identifier) @type)
 (TextLiteral) @string

@@ -1,0 +1,62 @@
+let Greeting is text = "File scope"
+let __proto__ = "Prototype name"
+
+app Scopes {
+  root Root
+}
+
+view Root {
+  let Caption = Greeting
+  render Col {
+    #file Text(Caption)
+    Col {
+      let Greeting = "Nested scope"
+      #inner Text(Greeting)
+      #native NativeLet
+      Col {
+        let Greeting = "Deep scope"
+        #deep Text(Greeting)
+      }
+    }
+    #sibling Text(Greeting)
+    Echo("Parameter scope")
+    Text(__proto__)
+  }
+}
+
+view Echo(Greeting text) {
+  let Caption = Greeting
+  render Text(Caption)
+}
+
+view NativeLet {
+  let Caption = Greeting
+  render inject Caption ```ts
+    return <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
+  ```
+}
+
+view Text(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+  ```
+}
+
+view Col {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View>{Children}</TR.ReactNative.View>
+  ```
+}
+
+tests "Lexical scopes" {
+  test "Nearest value and isolated child blocks" {
+    run Scopes
+    expect #file { text "File scope" }
+    expect #inner { text "Nested scope" }
+    expect #native { text "File scope" }
+    expect #deep { text "Deep scope" }
+    expect #sibling { text "File scope" }
+    expect text "Parameter scope"
+    expect text "Prototype name"
+  }
+}

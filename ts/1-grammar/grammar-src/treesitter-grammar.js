@@ -7,7 +7,7 @@ export default grammar({
   },
   rules: {
     SourceFile($) {
-      return repeat(choice($.AppDeclaration, $.ViewDeclaration, $.TestsDeclaration))
+      return repeat(choice($.AppDeclaration, $.ViewDeclaration, $.TestsDeclaration, $.LetDefinition))
     },
 
     // Apps
@@ -25,6 +25,7 @@ export default grammar({
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
         '{',
+        repeat($.LetDefinition),
         $.RenderStatement,
         '}',
       )
@@ -61,7 +62,18 @@ export default grammar({
         optional(field('tag', $.RenderTag)),
         field('view', $.Identifier),
         optional(field('argumentList', $.ArgumentList)),
-        optional(seq('{', repeat(field('children', $.ViewRender)), '}')),
+        optional(seq('{', repeat(field('children', choice($.ViewRender, $.LetDefinition))), '}')),
+      )
+    },
+
+    // Lexical values
+    LetDefinition($) {
+      return seq(
+        'let',
+        field('name', $.Identifier),
+        optional(seq('is', field('type', $.Identifier))),
+        '=',
+        field('value', choice($.TextLiteral, $.Identifier)),
       )
     },
 

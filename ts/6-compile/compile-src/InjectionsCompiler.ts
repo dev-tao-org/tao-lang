@@ -5,11 +5,11 @@ import { type CallbackNames, literal } from './codegen-util'
 /** compileInjection emits authored TypeScript inside a view callback. */
 export function compileInjection(
   node: AST.Injection,
-  parameters: readonly AST.Parameter[],
+  bindings: ReadonlySet<string>,
   callbackNames: CallbackNames,
 ): string {
   return [
-    ...node.captures.map(capture => compileCapture(capture, parameters, callbackNames)),
+    ...node.captures.map(capture => compileCapture(capture, bindings, callbackNames)),
     'return (() => {',
     node.code,
     '})();',
@@ -18,14 +18,13 @@ export function compileInjection(
 
 function compileCapture(
   node: AST.Capture,
-  parameters: readonly AST.Parameter[],
+  bindings: ReadonlySet<string>,
   callbackNames: CallbackNames,
 ): string {
   const value = Switch.kind(node.value, {
     Name(name) {
-      const parameter = parameters.find(parameter => parameter.name.value === name.value)
-      const nativeType = parameter?.type.value === 'text' ? ' as string' : ''
-      return `${callbackNames.values}[${literal(name)}]${nativeType}`
+      const nativeType = bindings.has(name.value) ? ' as string' : ''
+      return `TR.Value(${callbackNames.values}, ${literal(name)})${nativeType}`
     },
     ContextReference: reference =>
       reference.value === 'children'

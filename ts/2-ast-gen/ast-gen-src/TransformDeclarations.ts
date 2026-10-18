@@ -5,7 +5,7 @@ import * as AST from './Construction'
 /** File constructs the semantic declaration list for one source file. */
 export function File(cst: Parser.SyntaxNode): Nodes.File {
   return AST.Node(cst, 'File', {
-    declarations: AST.List(cst, ['AppDeclaration', 'ViewDeclaration', 'TestsDeclaration']),
+    declarations: AST.List(cst, ['AppDeclaration', 'ViewDeclaration', 'TestsDeclaration', 'LetDefinition']),
   })
 }
 
@@ -20,4 +20,14 @@ export function AppDeclaration(cst: Parser.SyntaxNode): Nodes.AppDeclaration {
 /** Parameter constructs an authored parameter and its unresolved type. */
 export function Parameter(cst: Parser.SyntaxNode): Nodes.Parameter {
   return AST.Node(cst, 'Parameter', { name: AST.Field(cst, 'name', 'Name'), type: AST.Field(cst, 'type', 'Name') })
+}
+
+/** LetDefinition constructs an ordered lexical value binding. */
+export function LetDefinition(cst: Parser.SyntaxNode): Nodes.LetDefinition {
+  const type = cst.childForFieldName('type')
+  return AST.Node(cst, 'LetDefinition', {
+    name: AST.Field(cst, 'name', 'Name'),
+    ...(type ? { type: AST.Name(type) } : {}),
+    value: AST.Field(cst, 'value', ['Name', 'TextLiteral']),
+  })
 }
