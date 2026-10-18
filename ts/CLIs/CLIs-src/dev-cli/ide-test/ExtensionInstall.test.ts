@@ -5,9 +5,12 @@ Tests.test('extension installation forwards one VSIX to both editors without spl
   const calls: unknown[] = []
   await installExtension('/owned/artifacts/Tao Extension.vsix', async (command, options) => {
     calls.push({ command, options })
-  })
-  Tests.expect(calls).toEqual(['cursor', 'code'].map(editor => ({
-    command: `${editor} --install-extension`,
-    options: { variadicArgs: ['/owned/artifacts/Tao Extension.vsix', '--force'] },
-  })))
+  }, async command => command.startsWith('cursor ') ? 'devtao.tao\ntao.tao-language' : 'devtao.tao')
+  Tests.expect(calls).toEqual([
+    { command: 'cursor --uninstall-extension tao.tao-language', options: undefined },
+    ...['cursor', 'code'].map(editor => ({
+      command: `${editor} --install-extension`,
+      options: { variadicArgs: ['/owned/artifacts/Tao Extension.vsix', '--force'] },
+    })),
+  ])
 })

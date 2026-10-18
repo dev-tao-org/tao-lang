@@ -2,7 +2,7 @@
 
 This VS Code extension incrementally parses Tao source with the repository's Tree-sitter grammar. It reports syntax errors, highlights Tao syntax, and parses fenced TypeScript injection bodies as TSX so embedded syntax receives diagnostics and highlighting. Embedded tokens use the upstream TypeScript and JavaScript Tree-sitter highlight queries shipped with their grammar packages.
 
-The packaged extension includes the web-tree-sitter runtime, the generated Tao and TSX grammars, and their queries. It does not require a Tao CLI installation. In the new workspace, disable the legacy `devtao.tao` extension to avoid duplicate Tao diagnostics and language contributions.
+The packaged extension includes the web-tree-sitter runtime, the generated Tao and TSX grammars, and their queries. It does not require a Tao CLI installation. It uses the existing `devtao.tao` identity, replacing the previous implementation. The installer removes the accidental `tao.tao-language` installation when present. Keep `devtao.tao` enabled in the workspace and reload the editor window after replacing the implementation.
 
 From the repository root, Cmd+Shift+B or `just install-ide-extension` builds one VSIX and installs it into Cursor and VS Code using their `cursor` and `code` CLI commands. `./dev build-ide-extension` only builds the package, at `.artifacts/ide-extension/tao-language.vsix`.
 

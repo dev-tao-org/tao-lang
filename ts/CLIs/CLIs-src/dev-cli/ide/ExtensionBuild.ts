@@ -39,8 +39,8 @@ export async function prepareExtensionAssets(): Promise<void> {
     JSON.stringify(
       {
         ...manifest,
-        name: 'tao-language',
-        publisher: 'tao',
+        name: 'tao',
+        publisher: 'devtao',
         type: 'commonjs',
         main: './dist/extension.js',
         files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],

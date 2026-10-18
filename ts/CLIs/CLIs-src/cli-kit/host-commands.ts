@@ -34,6 +34,7 @@ export function resolveHostCommand(argv: readonly string[], prefixes: unknown): 
 
 const allowlistPath = '.config/agent-host-commands.json'
 const developerCommands = new Set([
+  'install-ide-extension',
   'setup',
   'agent-config',
   'my-branch',
