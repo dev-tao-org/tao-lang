@@ -3,7 +3,6 @@ import { workspaceTests } from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
 import check from './check'
 import fmt from './fmt'
-import performanceCommand from './performance'
 
 /** verifyCommand fixes, checks and tests the new workspace. */
 export default registerCommand({
@@ -20,7 +19,6 @@ export default registerCommand({
       () => fmt.action(paths),
       () => check.action(),
       () => workspaceTests(),
-      () => performanceCommand.action('parser'),
     )
   },
 })
