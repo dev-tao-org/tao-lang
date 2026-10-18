@@ -14,10 +14,16 @@ export async function createAppTestDriver(
   openBrowser: () => Promise<TestBrowser>,
   compileApp: typeof compile,
   onProgress?: TestProgress,
+  signal?: AbortSignal,
 ): Promise<TestDriver> {
   const state: Session = {}
+  const abort = () => {
+    void Try.WithDefault(undefined, async () => await state.browser?.dispose())
+  }
+  signal?.addEventListener('abort', abort, { once: true })
   return {
     async run(app) {
+      assertActive(signal)
       await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
       const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
       Artifacts.trackTemporary(directory)
@@ -28,13 +34,16 @@ export async function createAppTestDriver(
       })
       onProgress?.(`Compiling app ${app}…`)
       const result = await state.workspace.update(new Document(path, source))
+      assertActive(signal)
       if (result.status !== 'published') {
         Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
       }
       onProgress?.('Starting Expo…')
-      state.expo = await Runtime.start(state.workspace.runtime!)
+      state.expo = await Runtime.start(state.workspace.runtime!, { signal })
+      assertActive(signal)
       onProgress?.('Launching headless browser…')
       state.browser = await openBrowser()
+      assertActive(signal)
       onProgress?.('Loading app…')
       await state.browser.open(state.expo.url)
       onProgress?.('Running test steps…')
@@ -44,10 +53,17 @@ export async function createAppTestDriver(
     expectText: (value, tag) => browser(state).expectText(value, tag),
     expectInput: (tag, value) => browser(state).expectInput(tag, value),
     async dispose() {
+      signal?.removeEventListener('abort', abort)
       onProgress?.('Cleaning up…')
       await disposeSession(state)
       onProgress?.('Cleanup complete.')
     },
+  }
+}
+
+function assertActive(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    Errors.ThrowHostEnvironment('Tao test run interrupted.')
   }
 }
 

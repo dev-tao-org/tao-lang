@@ -3,7 +3,11 @@ import { Artifacts, Path, Platform } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
-export async function withTestTimings(run: (reportPath: string | undefined) => Promise<void>): Promise<void> {
+export async function withTestTimings(
+  run: (reportPath: string | undefined) => Promise<void>,
+  slowSeconds = 0.075,
+  output: Pick<typeof IO, 'warn'> = IO,
+): Promise<void> {
   const reportPath = await prepareTestReport()
   await Try(() => run(reportPath), {
     async finally() {
@@ -15,8 +19,8 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
         if (!report.trim()) {
           Errors.ThrowHostEnvironment('Test runner did not write timing data.')
         }
-        for (const warning of slowTestWarnings(report)) {
-          IO.warn(warning)
+        for (const warning of slowTestWarnings(report, slowSeconds)) {
+          output.warn(warning)
         }
       }, {
         catch: (error) => IO.warn('Unable to read test timings:', error),
@@ -25,20 +29,30 @@ export async function withTestTimings(run: (reportPath: string | undefined) => P
   })
 }
 
-/** slowTestWarnings formats executed Bun JUnit cases taking more than 75 milliseconds. */
-export function slowTestWarnings(report: string): string[] {
-  const slow = readTestCases(report).filter(isSlowTest).sort((left, right) => right.seconds - left.seconds)
+/** slowTestWarnings formats executed Bun JUnit cases strictly exceeding the supplied seconds. */
+export function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
+  const slow = readTestCases(report).filter(test => isSlowTest(test, slowSeconds))
+    .sort((left, right) => right.seconds - left.seconds)
   if (slow.length === 0) {
     return []
   }
   return [
-    'Slow tests (>75 ms):',
+    `Slow tests (>${slowSeconds * 1000} ms):`,
     ...slow.map(test =>
       `  ${(test.seconds * 1000).toFixed(2)} ms  ${test.suite ? test.suite + ' > ' : ''}${test.name}${
         test.file ? ' (' + test.file + ')' : ''
       }`
     ),
   ]
+}
+
+/** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */
+export function parseSlowTestSeconds(value = '0.075'): number {
+  const seconds = Number(value)
+  if (!value.trim() || !Number.isFinite(seconds) || seconds < 0) {
+    Errors.ThrowUserInput('--slow requires a finite, non-negative duration in seconds.')
+  }
+  return seconds
 }
 
 async function prepareTestReport(): Promise<string | undefined> {
@@ -107,8 +121,8 @@ function timedTest(token: string, suite: Record<string, string> | undefined): Ti
   }
 }
 
-function isSlowTest(test: { seconds: number; skipped: boolean }): boolean {
-  return !test.skipped && Number.isFinite(test.seconds) && test.seconds > 0.075
+function isSlowTest(test: { seconds: number; skipped: boolean }, threshold: number): boolean {
+  return !test.skipped && Number.isFinite(test.seconds) && test.seconds > threshold
 }
 
 function xmlAttributes(token: string): Record<string, string> {

@@ -4,7 +4,9 @@ import {
   assertNewWorkspaceTree,
   workspaceTests,
 } from '../../cli-checks/check'
+import { parseSlowTestSeconds } from '../../cli-checks/slow-tests'
 import { runTaoTests } from '../testing/TaoTests'
+import { planTestExecution, type TestExecutionOptions } from '../testing/TestPlan'
 import { registerCommand } from './_command-runner'
 
 /** testCommand runs TypeScript and Tao app tests, retaining scoped selections. */
@@ -12,9 +14,23 @@ export default registerCommand({
   name: 'test',
   description: 'Run all TypeScript and Tao app tests; optionally select a Tao file or TypeScript path/name.',
   arguments: [{ name: 'target', description: 'Test file or directory.' }],
-  async action(target?: string) {
+  options: [{
+    flags: '--slow <seconds>',
+    description: 'Warn for TypeScript tests exceeding this duration in seconds.',
+    defaultValue: '0.075',
+  }, {
+    flags: '--serial',
+    description: 'Run TypeScript then Tao tests with one worker each.',
+  }, {
+    flags: '--parallel [workers]',
+    description: 'Run concurrently; optionally override the total worker budget (default: 4).',
+  }],
+  async action(target?: string, options: { slow?: string } & TestExecutionOptions = {}) {
+    const slowSeconds = parseSlowTestSeconds(options.slow)
+    const execution = { serial: options.serial, parallel: options.parallel }
+    planTestExecution(execution)
     if (target?.endsWith('.tao')) {
-      await runTaoTests(Repo.resolvePath(target))
+      await runTaoTests(Repo.resolvePath(target), execution)
       return
     }
     await assertNewWorkspaceTree()
@@ -23,7 +39,7 @@ export default registerCommand({
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
-    await workspaceTests(args)
+    await workspaceTests(args, slowSeconds, execution)
   },
 })
 

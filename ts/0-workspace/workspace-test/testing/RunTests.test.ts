@@ -1,7 +1,7 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, S } from '@shared'
-import { Tests } from '@shared/os'
+import { Http, Tests } from '@shared/os'
 import { runTests, type TestDriver } from '../../workspace-src/testing/RunTests'
 
 Tests.test('app journeys execute in order with inherited assertion targets and fresh drivers', async () => {
@@ -67,6 +67,31 @@ Tests.test('a failed assertion stops its journey, reports the source line and st
   Tests.expect(result[0]).toMatchObject({ status: 'failed', line: 4 })
   Tests.expect(result[0]?.error).toContain('Missing')
   Tests.expect(operations).toEqual(['run:Example', 'dispose'])
+})
+
+Tests.test('interrupting a journey disposes its driver and skips remaining cases', async () => {
+  const source = 'tests { test { run Example expect text "Ready" } test { run Example expect text "Ready" } }'
+  const controller = Http.createAbortController()
+  const operations: string[] = []
+  const result = await runTests(parse(source), {
+    path: '/virtual/interrupted.tao',
+    source,
+    signal: controller.signal,
+    async createDriver() {
+      operations.push('new')
+      return {
+        ...recordingDriver(operations),
+        async run() {
+          operations.push('interrupt')
+          controller.abort()
+        },
+      }
+    },
+  })
+  Tests.expect(result).toHaveLength(1)
+  Tests.expect(result[0]?.status).toBe('failed')
+  Tests.expect(result[0]?.error).toContain('interrupted')
+  Tests.expect(operations).toEqual(['new', 'interrupt', 'dispose'])
 })
 
 function parse(source: string) {

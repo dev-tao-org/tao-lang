@@ -3,6 +3,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "target": "ESNext",
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,

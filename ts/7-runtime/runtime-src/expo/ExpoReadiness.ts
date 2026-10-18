@@ -7,14 +7,21 @@ export async function waitForExpoReady(
   isRunning: () => boolean,
   request: typeof Http.request = Http.request,
   timeoutMs = 90_000,
+  signal?: AbortSignal,
 ): Promise<void> {
   const deadline = Time.nowMs() + timeoutMs
   while (Time.nowMs() < deadline) {
+    if (signal?.aborted) {
+      Errors.ThrowHostEnvironment('Expo startup interrupted.')
+    }
     if (!isRunning()) {
       Errors.ThrowHostEnvironment('Expo exited before becoming ready.')
     }
     const remainingMs = deadline - Time.nowMs()
-    const response = await Try.WithDefault(undefined, () => requestBeforeDeadline(url, remainingMs, request))
+    const response = await Try.WithDefault(undefined, () => requestBeforeDeadline(url, remainingMs, request, signal))
+    if (signal?.aborted) {
+      Errors.ThrowHostEnvironment('Expo startup interrupted.')
+    }
     if (response?.ok && Time.nowMs() < deadline) {
       return
     }
@@ -29,8 +36,20 @@ async function requestBeforeDeadline(
   url: string,
   remainingMs: number,
   request: typeof Http.request,
+  signal?: AbortSignal,
 ): Promise<Http.HttpResponse> {
   const controller = Http.createAbortController()
+  let abort!: () => void
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    abort = () => {
+      controller.abort()
+      reject(Errors.fromUnknown(new Error('Expo startup interrupted.')))
+    }
+  })
+  signal?.addEventListener('abort', abort, { once: true })
+  if (signal?.aborted) {
+    abort()
+  }
   let cancelTimer!: () => void
   const timeout = new Promise<never>((_resolve, reject) => {
     cancelTimer = Time.schedule(remainingMs, () => {
@@ -39,10 +58,11 @@ async function requestBeforeDeadline(
     })
   })
   return await Try(
-    () => Promise.race([request(url, { signal: controller.signal }), timeout]),
+    () => Promise.race([request(url, { signal: controller.signal }), timeout, cancelled]),
     {
       finally() {
         cancelTimer()
+        signal?.removeEventListener('abort', abort)
       },
     },
   )

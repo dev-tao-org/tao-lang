@@ -14,6 +14,7 @@ export async function runAppTests(
   path: string,
   openBrowser: () => Promise<TestBrowser>,
   onProgress?: TestProgress,
+  signal?: AbortSignal,
 ): Promise<TestResult[]> {
   const source = await FileSystem.readFile(path, 'utf8')
   const document = transform(createParser().parse(source).tree)
@@ -22,6 +23,7 @@ export async function runAppTests(
     path,
     source,
     onProgress,
-    createDriver: () => createAppTestDriver(path, source, openBrowser, compile, onProgress),
+    signal,
+    createDriver: () => createAppTestDriver(path, source, openBrowser, compile, onProgress, signal),
   })
 }

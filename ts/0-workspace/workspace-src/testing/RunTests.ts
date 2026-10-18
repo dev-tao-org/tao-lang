@@ -16,6 +16,7 @@ export type TestOptions = {
   path: string
   source: string
   onProgress?: TestProgress
+  signal?: AbortSignal
   createDriver(): Promise<TestDriver>
 }
 
@@ -39,6 +40,9 @@ export async function runTests(document: AST.Document, options: TestOptions): Pr
       const label = caseLabel(suite, test, options)
       options.onProgress?.(`Test ${label}…`)
       results.push(await runCase(suite, test, options))
+      if (options.signal?.aborted) {
+        return results
+      }
     }
   }
   if (results.length === 0) {
@@ -58,8 +62,10 @@ async function runCase(
   let driver: TestDriver | undefined
   return await Try(async (): Promise<TestResult> => {
     assertJourney(test)
+    assertActive(options.signal)
     driver = await options.createDriver()
     for (const step of test.steps) {
+      assertActive(options.signal)
       current = step
       await runStep(step, driver)
     }
@@ -76,6 +82,12 @@ async function runCase(
       await driver?.dispose()
     },
   })
+}
+
+function assertActive(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    Errors.ThrowHostEnvironment('Tao test run interrupted.')
+  }
 }
 
 function assertJourney(test: AST.TestDeclaration): void {

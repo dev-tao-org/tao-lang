@@ -1,10 +1,10 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { Env, FileSystem, Path, Repo } from '@shared/os'
+import { FileSystem, Path, Repo } from '@shared/os'
+import { planTestExecution, type TestExecutionOptions } from '../dev-cli/testing/TestPlan'
 import { checkEditorTypeScript } from './editor-typescript'
 import { prepareParser } from './parser-build'
 import { prepareRuntime } from './runtime-build'
-import { withTestTimings } from './slow-tests'
 
 /** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
 export function assertNewWorkspacePath(path: string, root = Repo.getWorkspaceRoot()): void {
@@ -114,25 +114,26 @@ export async function workspaceDeadExports(): Promise<void> {
   await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
-/** workspaceTests runs named CI tests or local dots, with end-of-run slow-test warnings. */
-export async function workspaceTests(args: readonly string[] = []): Promise<void> {
+/** workspaceTests prepares shared assets once and runs the selected suites with bounded workers. */
+export async function workspaceTests(
+  args: readonly string[] = [],
+  slowSeconds = 0.075,
+  options: TestExecutionOptions = {},
+): Promise<void> {
+  const selection = {
+    typescriptArgs: args,
+    taoTarget: args.length === 0 ? Repo.resolvePath('Apps') : undefined,
+    ...options,
+  }
+  planTestExecution(selection)
   await prepareParser()
   await prepareRuntime()
   if (shouldPrepareExtensionAssets(args)) {
     const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
     await prepareExtensionAssets()
   }
-  const command = Env.get('CI') ? 'bun test' : 'bun test --dots'
-  await withTestTimings(reportPath =>
-    runCommand(reportPath ? `${command} --reporter=junit --reporter-outfile` : command, {
-      variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
-      cwd: Repo.resolvePath('ts'),
-    })
-  )
-  if (args.length === 0) {
-    const { runTaoTests } = await import('../dev-cli/testing/TaoTests')
-    await runTaoTests(Repo.resolvePath('Apps'))
-  }
+  const { runTestPlan } = await import('../dev-cli/testing/TestWorkers')
+  await runTestPlan({ ...selection, slowSeconds })
 }
 
 /** shouldPrepareExtensionAssets selects test runs that need the authored IDE asset tree. */

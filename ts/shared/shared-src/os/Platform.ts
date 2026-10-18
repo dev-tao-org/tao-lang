@@ -46,6 +46,9 @@ export const argv = process.argv
 /** pid identifies the current process. */
 export const pid = process.pid
 
+/** ChildProcess identifies an owned process handled by command supervision. */
+export type ChildProcess = Bun.Subprocess
+
 /** terminate stops an owned child and waits for its process to exit. */
 export async function terminate(child: Bun.Subprocess): Promise<void> {
   child.kill('SIGKILL')

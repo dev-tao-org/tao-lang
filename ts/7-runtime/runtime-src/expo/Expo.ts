@@ -18,7 +18,7 @@ export async function createExpoSession(
   })
   const url = `http://127.0.0.1:${port}`
   const output = Lifecycle.captureProcessOutput(child, options.onOutput)
-  await Try(() => waitForExpoReady(url, () => child.exitCode === null), {
+  await Try(() => waitForExpoReady(url, () => child.exitCode === null, undefined, undefined, options.signal), {
     async catch(error) {
       await Lifecycle.stopProcess(child)
       Errors.ThrowHostEnvironment(`Expo web preview failed to start. ${formatOutput(await output)} ${String(error)}`)
@@ -42,7 +42,7 @@ export type ExpoSession = {
 }
 
 /** ExpoOptions streams Expo output while retaining a copy for diagnostics. */
-export type ExpoOptions = { onOutput?: (stream: 'stdout' | 'stderr', text: string) => void }
+export type ExpoOptions = { onOutput?: (stream: 'stdout' | 'stderr', text: string) => void; signal?: AbortSignal }
 
 function unusedPort(): number {
   const server = Http.serve({

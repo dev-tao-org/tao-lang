@@ -1,5 +1,24 @@
 import { S, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+
+Tests.test('test accepts a per-run slow threshold alongside a selected test path', async () => {
+  const child = Platform.spawn(Repo.resolvePath('dev'), {
+    variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
+    cwd: Repo.getWorkspaceRoot(),
+    env: { ...Env.snapshot(), TERMINAL_OUTPUT: '1' },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [status, stdout, stderr] = await Promise.all([
+    child.exited,
+    Platform.readText(child.stdout),
+    Platform.readText(child.stderr),
+  ])
+  Tests.expect(status).toBe(0)
+  Tests.expect(stdout + stderr).toContain('Slow tests (>0 ms):')
+  Tests.expect(stdout + stderr).toContain('a per-run threshold uses seconds')
+  Tests.expect(stdout + stderr).toContain('bun test --parallel=1')
+})
 
 Tests.test('fresh setup finds package tools installed after the launcher prepares PATH', async () => {
   await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })

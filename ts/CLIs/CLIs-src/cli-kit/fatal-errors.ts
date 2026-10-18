@@ -5,10 +5,13 @@ import { IO } from './cli-kit'
 Platform.onUncaughtException(fatalError)
 Platform.onUnhandledRejection(fatalError)
 
-function fatalError(error: unknown): void {
+async function fatalError(error: unknown): Promise<void> {
   const commandFailure = Errors.isCommandExecutionError(error)
   const status = commandFailure ? error.result.status : undefined
-  Try(() => printError(error), {
+  await Try(async () => {
+    await IO.finish('failed')
+    printError(error)
+  }, {
     finally() {
       Platform.exit(status ?? 1)
     },

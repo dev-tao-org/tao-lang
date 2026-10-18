@@ -1,6 +1,23 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import { slowTestWarnings } from '../cli-checks/slow-tests'
+import { parseSlowTestSeconds, slowTestWarnings } from '../cli-checks/slow-tests'
+
+Tests.test('a per-run threshold uses seconds and warns strictly above the boundary', () => {
+  const seconds = parseSlowTestSeconds('0.25')
+  const report = S`
+    <testsuite name="threshold">
+      <testcase name="fast" time="0.1" />
+      <testcase name="boundary" time="0.25" />
+      <testcase name="slow" time="0.251" />
+    </testsuite>
+  `
+  Tests.expect(slowTestWarnings(report, seconds)).toEqual(['Slow tests (>250 ms):', '  251.00 ms  threshold > slow'])
+  Tests.expect(parseSlowTestSeconds()).toBe(0.075)
+  Tests.expect(parseSlowTestSeconds('0')).toBe(0)
+  for (const invalid of ['-1', 'Infinity', 'invalid', '']) {
+    Tests.expect(() => parseSlowTestSeconds(invalid)).toThrow('--slow requires')
+  }
+})
 
 Tests.describe('slow test warnings', () => {
   Tests.test('lists only tests strictly over 75ms, slowest first, with source and suite names', () => {

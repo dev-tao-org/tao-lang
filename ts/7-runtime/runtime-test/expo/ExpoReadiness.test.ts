@@ -38,3 +38,16 @@ Tests.test('Expo readiness rejects an OK response that arrives after the deadlin
 
   Tests.expect(failed).toBe(true)
 })
+
+Tests.test('interrupting Expo startup aborts its pending request instead of awaiting the startup deadline', async () => {
+  const controller = Http.createAbortController()
+  let requestAborted = false
+  const request: typeof Http.request = async (_url, init) => {
+    controller.abort()
+    requestAborted = init?.signal?.aborted === true
+    return await new Promise(() => {})
+  }
+  await Tests.expect(waitForExpoReady('http://127.0.0.1', () => true, request, 1000, controller.signal))
+    .rejects.toThrow('interrupted')
+  Tests.expect(requestAborted).toBe(true)
+})

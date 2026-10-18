@@ -13,16 +13,28 @@ export function waitForTermination(): Promise<void> {
   })
 }
 
+/** onTermination registers a cooperative shutdown handler and returns its listener cleanup. */
+export function onTermination(handler: (signal: 'SIGINT' | 'SIGTERM') => void): () => void {
+  const interrupt = () => handler('SIGINT')
+  const terminate = () => handler('SIGTERM')
+  process.on('SIGINT', interrupt)
+  process.on('SIGTERM', terminate)
+  return () => {
+    process.off('SIGINT', interrupt)
+    process.off('SIGTERM', terminate)
+  }
+}
+
 /** ManagedProcess is an Expo-like child with piped output streams. */
 export type ManagedProcess = Bun.Subprocess<'ignore', 'pipe', 'pipe'>
 
 /** stopProcess asks a managed child to stop, then force-stops it after a bounded grace period. */
-export async function stopProcess(child: ManagedProcess): Promise<void> {
+export async function stopProcess(child: Bun.Subprocess, graceMs = 3000): Promise<void> {
   if (child.exitCode !== null) {
     return
   }
   child.kill('SIGINT')
-  const cancel = Time.schedule(3000, () => child.exitCode === null && child.kill('SIGKILL'))
+  const cancel = Time.schedule(graceMs, () => child.exitCode === null && child.kill('SIGKILL'))
   await Try(() => child.exited, { finally: cancel })
 }
 

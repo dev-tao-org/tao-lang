@@ -1,3 +1,5 @@
 export { runCommand, runSteps } from './cmd-exec'
 export { IO } from './io'
+export { configureCLIOutput } from './output/Configuration'
+export type { OutputChannel } from './output/Output'
 export { formatTimings } from './timing-output'
