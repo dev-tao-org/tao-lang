@@ -1,15 +1,15 @@
 import type { SourceEdit } from '@fix/Format'
 import type * as vscode from 'vscode'
 
-/** formattingProvider adapts synchronous snapshot edits to VS Code's format-on-save contract. */
+/** formattingProvider adapts snapshot edits and lazy preparation to VS Code's format-on-save contract. */
 export function formattingProvider(
   editor: typeof vscode,
-  propose: (document: vscode.TextDocument, indent: number) => readonly SourceEdit[],
+  propose: (document: vscode.TextDocument, indent: number) => readonly SourceEdit[] | Promise<readonly SourceEdit[]>,
 ): vscode.DocumentFormattingEditProvider {
   return {
-    provideDocumentFormattingEdits(document, options, cancellation) {
+    async provideDocumentFormattingEdits(document, options, cancellation) {
       const version = document.version
-      const edits = propose(document, options.tabSize)
+      const edits = await propose(document, options.tabSize)
       if (cancellation.isCancellationRequested || version !== document.version) {
         return []
       }

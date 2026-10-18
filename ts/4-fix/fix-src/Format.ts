@@ -38,6 +38,10 @@ const formatSource = Timings.measure('formatter.format', function(
   }
   const plan = formattingPlan(input.source, input.tree, Formatting, Layout, timings)
   const edits = layout(plan, options, timings)
-  const status = !input.tree.rootNode.hasError ? 'formatted' : edits.length > 0 ? 'partial' : 'invalid'
+  const status = plan.skipped.length === 0
+    ? 'formatted'
+    : input.tree.rootNode.hasError && edits.length === 0
+    ? 'invalid'
+    : 'partial'
   return { status, text: applyEdits(input.source, edits), edits, skipped: plan.skipped }
 })

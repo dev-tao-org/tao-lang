@@ -1,9 +1,11 @@
+import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
 import { Try } from '@shared'
-import { FileSystem, Path, Repo, Tests } from '@shared/os'
+import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
 import { createWasmDocumentSession } from '../ide-extension-src/core'
 
 Tests.test('save formatting uses the WASM snapshot, preserving partial edits and parser ownership', async () => {
   const runtime = await loadRuntime()
+  const typescript = createTypeScriptFormatter(await FormatterResources.typeScriptFormatterBytes())
   Try(() => {
     const source = '// Title\nview Ready{render Text( "Hi 😀" )}\n\nview Editing('
     const expected = '// Title\nview Ready {\n  render Text("Hi 😀")\n}\n\nview Editing('
@@ -14,6 +16,10 @@ Tests.test('save formatting uses the WASM snapshot, preserving partial edits and
     Tests.expect(runtime.document.format().text).toBe(expected)
     runtime.document.update(result.text)
     Tests.expect(runtime.document.format().edits).toEqual([])
+    runtime.document.update('view Native{render inject ```ts const n=1;return <Text value={ n } /> ```}')
+    Tests.expect(runtime.document.format({ typescript }).text).toBe(
+      'view Native {\n  render inject ```ts\n    const n = 1\n    return <Text value={n} />\n  ```\n}',
+    )
   }, { finally: runtime.dispose })
 })
 

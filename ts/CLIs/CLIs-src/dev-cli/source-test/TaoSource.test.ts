@@ -27,5 +27,10 @@ async function runSourceCommands(path: string): Promise<void> {
   await updateTaoSource(path, 'format', print)
   Tests.expect(await FileSystem.readFile(path, 'utf8'))
     .toBe('view Main {\n  render Text("Hi")\n}\n\nview Editing(')
-  Tests.expect(messages).toHaveLength(2)
+  await FileSystem.writeFile(path, 'view Native{render inject ```ts const n=1;return <Text value={ n } /> ```}')
+  await updateTaoSource(path, 'format', print)
+  Tests.expect(await FileSystem.readFile(path, 'utf8')).toBe(
+    'view Native {\n  render inject ```ts\n    const n = 1\n    return <Text value={n} />\n  ```\n}',
+  )
+  Tests.expect(messages).toHaveLength(3)
 }

@@ -38,12 +38,26 @@ view Welcome {
 }
 ```
 
-The formatter does not split text literals or rewrite fenced TypeScript injections to meet the width.
+The formatter does not split Tao text literals to meet the width.
 Nested render tags appear above their render line; root tags keep the current `render #tag View` form.
 Comments stay with their surrounding code. Ordinary
 statement gaps preserve up to one existing blank line; contextual rules require separation between
-top-level declarations and remove empty padding immediately inside braces. Strings and injected code
-retain their contents.
+top-level declarations and remove empty padding immediately inside braces. Tao strings retain their contents.
+
+Fenced TypeScript is formatted as TSX with the same width and indentation:
+
+````tao
+view Caption(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+  ```
+}
+````
+
+The native formatter is loaded on the first save or command that needs it, then reused. Its starting
+indentation preserves meaningful whitespace inside multiline literals. An incomplete native body
+is left unchanged while complete surrounding Tao syntax can still be formatted. Formatting is not
+part of the preview compilation path.
 
 Long named-import lists use a hanging indent, with their source on the following line:
 

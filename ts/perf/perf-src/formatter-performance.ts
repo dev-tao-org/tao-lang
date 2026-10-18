@@ -1,13 +1,17 @@
 import { transform } from '@ast-gen/Transform'
 import { fix } from '@fix/Fix'
 import { format } from '@fix/Format'
+import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import { createParser } from '@grammar/parser'
 import { Errors, Timings, type TimingSample } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
 export async function formatterPerformance() {
+  const initialization = new Timings('formatter-initialize')
+  const bytes = await FormatterResources.typeScriptFormatterBytes()
+  const typescript = createTypeScriptFormatter(bytes, initialization)
   const fixtures = [
     {
       scenario: 'kitchen-sink',
@@ -22,7 +26,7 @@ export async function formatterPerformance() {
         ).join('\n'),
     },
   ]
-  const samples = fixtures.flatMap(sampleFixture)
+  const samples = fixtures.flatMap(fixture => sampleFixture(fixture, typescript))
   const summary = summarizeSamples(samples)
   const path = Artifacts.resolvePath('logs/performance', `formatter-${Platform.randomUUID()}.json`)
   await Artifacts.mkdir(Path.dirname(path), { recursive: true })
@@ -35,6 +39,8 @@ export async function formatterPerformance() {
         commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
         modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
         system: Platform.systemInfo(),
+        initialization: initialization.samples,
+        wasmBytes: bytes.byteLength,
         definition:
           '20 warmups then 100 immutable-snapshot samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
         fixtures: fixtures.map(fixture => ({ scenario: fixture.scenario, hash: Platform.hashText(fixture.source) })),
@@ -48,13 +54,13 @@ export async function formatterPerformance() {
   return { path, summary }
 }
 
-function sampleFixture(fixture: { source: string; scenario: string }) {
+function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {
   const tree = createParser().parse(fixture.source).tree
   const ast = transform(tree) ?? Errors.ThrowUnexpected('Formatter performance fixture has invalid syntax.')
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
     const timings = new Timings('formatter-performance')
-    format({ source: fixture.source, tree }, timings)
+    format({ source: fixture.source, tree }, timings, { typescript })
     fix({ source: fixture.source, tree, ast }, timings)
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))

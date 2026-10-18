@@ -1,3 +1,4 @@
+import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import * as vscode from 'vscode'
 import { createWasmDocumentSession, type DocumentSession } from './core'
 import { formattingProvider } from './Formatting'
@@ -72,10 +73,7 @@ function registerLanguage(
     vscode.languages.registerDocumentSemanticTokensProvider({ language: 'tao' }, provider, legend),
     vscode.languages.registerDocumentFormattingEditProvider(
       { language: 'tao' },
-      formattingProvider(vscode, (document, indent) => {
-        refreshDocument(document, parser, diagnostics, sessions)
-        return sessions.get(document.uri.toString())?.session?.format({ indent }).edits ?? []
-      }),
+      formattingProvider(vscode, createFormatting(context, parser, diagnostics, sessions)),
     ),
     vscode.workspace.onDidOpenTextDocument(document => refreshDocument(document, parser, diagnostics, sessions)),
     vscode.workspace.onDidChangeTextDocument(event => refreshDocument(event.document, parser, diagnostics, sessions)),
@@ -88,6 +86,26 @@ function registerLanguage(
   )
   for (const document of vscode.workspace.textDocuments) {
     refreshDocument(document, parser, diagnostics, sessions)
+  }
+}
+
+function createFormatting(
+  context: vscode.ExtensionContext,
+  parser: Awaited<ReturnType<typeof createWasmDocumentSession>>,
+  diagnostics: vscode.DiagnosticCollection,
+  sessions: Map<string, DocumentState>,
+) {
+  let formatter: PromiseLike<EmbeddedFormatter> | undefined
+  return async (document: vscode.TextDocument, indent: number) => {
+    const native = document.getText().includes('```ts')
+    if (native) {
+      formatter ??= vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(context.extensionUri, 'runtime/typescript-formatter.wasm'),
+      ).then(bytes => createTypeScriptFormatter(bytes))
+    }
+    const typescript = native ? await formatter : undefined
+    refreshDocument(document, parser, diagnostics, sessions)
+    return sessions.get(document.uri.toString())?.session?.format({ indent, typescript }).edits ?? []
   }
 }
 

@@ -6,6 +6,7 @@ import { createParser } from '@grammar/parser'
 import { Errors, Timings } from '@shared'
 import { FileSystem } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
+import { embeddedFormatting } from './EmbeddedFormatting'
 
 /** updateTaoSource applies requested source tools once before the file watcher observes a save. */
 export async function updateTaoSource(
@@ -29,11 +30,10 @@ export async function updateTaoSource(
       tree = parser.parse(source, timings).tree
     }
   }
-  const result = format({ source, tree }, timings)
+  const typescript = source.includes('```ts') ? await embeddedFormatting(timings) : undefined
+  const result = format({ source, tree }, timings, { typescript })
   await FileSystem.writeIfChanged(path, result.text)
   print(
-    `${mode === 'fix' ? 'Fixed' : 'Formatted'} ${path}${
-      result.skipped.length ? ' (incomplete declarations skipped)' : ''
-    }`,
+    `${mode === 'fix' ? 'Fixed' : 'Formatted'} ${path}${result.skipped.length ? ' (incomplete syntax skipped)' : ''}`,
   )
 }

@@ -1,6 +1,7 @@
 import { IO, runCommand } from '@cli-kit'
+import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
 import { Try } from '@shared'
-import { Artifacts, Bundle, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
 /** buildExtension packages the current Tao grammar and editor adapter into one standalone VSIX. */
@@ -89,12 +90,26 @@ async function copyAssets(): Promise<void> {
     Path.join(packageRoot, 'language-configuration.json'),
   )
   await copyLanguageIcons()
+  const formatterNotice = await copyFormatter()
   const notices = await Promise.all(
     ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
       `${name}\n\n${await FileSystem.readFile(Path.join(modules, name, 'LICENSE'), 'utf8')}`
     ),
   )
-  await FileSystem.writeFile(Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'), notices.join('\n\n'))
+  await FileSystem.writeFile(
+    Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'),
+    [...notices, formatterNotice].join('\n\n'),
+  )
+}
+
+async function copyFormatter(): Promise<string> {
+  const bytes = await FormatterResources.typeScriptFormatterBytes()
+  await FileSystem.writeFile(Path.join(packageRoot, 'runtime/typescript-formatter.wasm'), bytes)
+  const wrapperLicense = await FileSystem.readFile(
+    Repo.resolvePath('ts/4-fix/node_modules/@dprint/formatter/LICENSE'),
+    'utf8',
+  )
+  return `@dprint/formatter\n\n${wrapperLicense}\n\n@dprint/typescript\n\n${createTypeScriptFormatter(bytes).license}`
 }
 
 async function copyLanguageIcons(): Promise<void> {
