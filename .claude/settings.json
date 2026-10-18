@@ -106,6 +106,8 @@
       "./agent unsandboxed test *",
       "./agent unsandboxed verify",
       "./agent unsandboxed verify *",
+      "./agent unsandboxed performance preview",
+      "./agent unsandboxed performance preview *",
       "./agent unsandboxed doctor",
       "./agent unsandboxed doctor *",
       "./agent unsandboxed secrets",

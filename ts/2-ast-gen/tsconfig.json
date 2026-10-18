@@ -1,0 +1,4 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": ["ast-gen-src/**/*", "ast-gen-test/**/*"]
+}

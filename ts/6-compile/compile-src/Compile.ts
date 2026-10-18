@@ -21,35 +21,39 @@ class Compiler {
       Errors.ThrowUserInput('Compile one app declaration per entry file.')
     }
     const app = apps[0]!
+    const views = node.declarations.filter(declaration => declaration.kind === 'ViewDeclaration')
+      .map(view => this.ViewDeclaration(view)).join('\n')
     return S`
       import * as TR from '@runtime';
       TR.ModuleApplied(${literal(revision)});
       const _views: Record<string, TR.View> = {};
-      ${
-      node.declarations.filter(declaration => declaration.kind === 'ViewDeclaration').map(view =>
-        this.ViewDeclaration(view)
-      ).join('\n')
-    }
+      ${views}
       export default function App() {
         return TR.App(_views[${literal(app.root.value)}], ${literal(revision)});
       }
-      `
+    `
   }
 
   ViewDeclaration(node: AST.ViewDeclaration): string {
+    const parameters = list(node.parameters.map(parameter => literal(parameter.name.value)))
     return S`
-      _views[${literal(node.name.value)}] = TR.ViewDefinition(${literal(node.name.value)}, ${
-      list(node.parameters.map(parameter => literal(parameter.name.value)))
-    }, (_values, _children) => {
+      _views[${literal(node.name.value)}] = TR.ViewDefinition(${
+      literal(node.name.value)
+    }, ${parameters}, (_values, _children) => {
         ${this.Node(node.render, node.parameters)}
       });
-      `
+    `
   }
 
   Node(node: AST.ViewRender | AST.Injection, parameters: readonly AST.Parameter[]): string {
+    const Compile = this
     return Switch.kind(node, {
-      ViewRender: value => `return ${this.ViewRender(value)};`,
-      Injection: value => this.Injection(value, parameters),
+      ViewRender(value) {
+        return `return ${Compile.ViewRender(value)};`
+      },
+      Injection(value) {
+        return Compile.Injection(value, parameters)
+      },
     })
   }
 
@@ -61,8 +65,12 @@ class Compiler {
 
   Expression(node: AST.Expression): string {
     return Switch.kind(node, {
-      Name: name => `_values[${literal(name.value)}]`,
-      TextLiteral: text => literal(text.value),
+      Name(name) {
+        return `_values[${literal(name.value)}]`
+      },
+      TextLiteral(text) {
+        return literal(text.value)
+      },
     })
   }
 
@@ -72,15 +80,16 @@ class Compiler {
 
   Capture(node: AST.Capture, parameters: readonly AST.Parameter[]): string {
     const value = Switch.kind(node.value, {
-      Name: name => {
+      Name(name) {
         const parameter = parameters.find(parameter => parameter.name.value === name.value)
         const nativeType = parameter?.type.value === 'text' ? ' as string' : ''
         return `_values[${literal(name.value)}]${nativeType}`
       },
-      ContextReference: reference =>
-        reference.value === 'children'
+      ContextReference(reference) {
+        return reference.value === 'children'
           ? '_children'
-          : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
+          : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`)
+      },
     })
     return `const ${node.name.value} = ${value};`
   }

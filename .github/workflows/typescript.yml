@@ -42,7 +42,7 @@ jobs:
           path: |
             ~/.bun/install/cache
             ~/.cache/dprint
-          key: tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-${{ hashFiles('ts/bun.lock', 'ts/package.json', '.config/dprint.jsonc') }}
+          key: tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-${{ hashFiles('ts/bun.lock', 'ts/**/package.json', '.config/dprint.jsonc') }}
           restore-keys: |
             tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-
       - name: Install workspace dependencies

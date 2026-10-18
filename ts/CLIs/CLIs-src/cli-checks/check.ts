@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runCommand, runSteps } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { prepareParser } from './parser-build'
@@ -52,9 +52,30 @@ export async function assertNewWorkspaceTree(): Promise<void> {
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand('tsc --project tsconfig.json', {
-    cwd: Repo.resolvePath('ts'),
-  })
+  const packages = [
+    '0-workspace',
+    '1-grammar',
+    '2-ast-gen',
+    '3-typecheck',
+    '4-fix',
+    '5-check',
+    '6-compile',
+    '7-runtime',
+    'CLIs',
+    'perf',
+    'shared',
+  ]
+  const discoveredProjects = await Promise.all(packages.map(async project => {
+    const sourceFiles = await FileSystem.sourceFiles(Repo.resolvePath('ts', project))
+    return sourceFiles.length > 0 ? project : undefined
+  }))
+  const projects = discoveredProjects.filter((project): project is string => project !== undefined)
+  await runSteps(...projects.map(project => () =>
+    runCommand('tsc --project', {
+      variadicArgs: [`${project}/tsconfig.json`],
+      cwd: Repo.resolvePath('ts'),
+    })
+  ))
 }
 
 /** workspaceShellSyntax checks the root entrypoints and portable bootstrap without executing them. */
@@ -63,6 +84,7 @@ export async function workspaceShellSyntax(): Promise<void> {
     const path of [
       'agent',
       'dev',
+      'tao',
       'enter-tao-dev-env.sh',
       '.config/cli-environment.sh',
       '.config/bootstrap-tao-dev-env',

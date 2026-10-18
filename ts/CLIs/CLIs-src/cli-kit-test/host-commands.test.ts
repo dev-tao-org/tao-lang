@@ -8,6 +8,12 @@ Tests.test('host routing selects the longest exact token prefix', () => {
   )).toEqual({ command: './dev start local-instantdb', variadicArgs: ['--quiet'] })
 })
 
+Tests.test('preview browser proof has a narrow named host route', () => {
+  Tests.expect(resolveHostCommand(['performance', 'preview'], ['performance preview']))
+    .toEqual({ command: './dev performance preview', variadicArgs: [] })
+  Tests.expect(() => resolveHostCommand(['performance', 'parser'], ['performance preview'])).toThrow('not allowlisted')
+})
+
 Tests.test('native Git arguments stay literal and in their original order', () => {
   const injected = '$(touch /tmp/host-command-injection)'
   Tests.expect(resolveHostCommand(

@@ -1,0 +1,21 @@
+{
+  "name": "@tao/workspace",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@tao/ast-gen": "workspace:*",
+    "@tao/check": "workspace:*",
+    "@tao/compile": "workspace:*",
+    "@tao/fix": "workspace:*",
+    "@tao/grammar": "workspace:*",
+    "@tao/shared": "workspace:*",
+    "@tao/typecheck": "workspace:*"
+  },
+  "devDependencies": {
+    "@dprint/json": "0.23.0",
+    "@dprint/markdown": "0.23.2",
+    "@dprint/typescript": "0.96.1",
+    "@types/bun": "1.4.0"
+  }
+}

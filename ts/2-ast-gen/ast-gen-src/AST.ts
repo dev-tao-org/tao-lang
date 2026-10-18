@@ -10,9 +10,6 @@ export type Node =
   | Expression
   | ContextReference
 
-/** Declaration introduces an app or a reusable view. */
-export type Declaration = AppDeclaration | ViewDeclaration
-
 /** File contains the declarations in one source snapshot. */
 export type File = { readonly kind: 'File'; readonly declarations: readonly Declaration[] }
 
@@ -61,3 +58,5 @@ export type Origin = { readonly start: number; readonly end: number }
 
 /** Document owns a semantic root and its source origins without retaining CST nodes. */
 export type Document = { readonly root: File; readonly origins: ReadonlyMap<Node, Origin> }
+
+type Declaration = AppDeclaration | ViewDeclaration

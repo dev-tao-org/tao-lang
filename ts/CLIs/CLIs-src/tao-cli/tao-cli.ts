@@ -1,3 +1,4 @@
-import { IO } from '@cli-kit'
+import '../dev-cli/commands/compile'
+import { execute } from '../dev-cli/commands/_command-runner'
 
-IO.print('Tao CLI')
+await execute('tao')

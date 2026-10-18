@@ -10,7 +10,9 @@ export async function runHostCommand(argv: readonly string[]): Promise<void> {
   const cwd = Repo.getWorkspaceRoot()
   const prefixes = await readHostCommandPrefixes()
   const route = resolveHostCommand(argv, prefixes)
-  await requireHostProcessAccess(cwd)
+  await Platform.requireHostProcessAccess(
+    'Invoke this operation through ./agent unsandboxed in a host-enabled harness.',
+  )
   await runCommand(route.command, { variadicArgs: route.variadicArgs, cwd })
 }
 
@@ -96,6 +98,9 @@ function hasValidPrefixTokens(tokens: readonly string[]): boolean {
 }
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {
+  if (prefix.text === 'performance preview') {
+    return { command: './dev performance preview', variadicArgs: trailing }
+  }
   if (prefix.tokens.length === 1 && developerCommands.has(prefix.tokens[0]!)) {
     return { command: `./dev ${prefix.tokens[0]}`, variadicArgs: trailing }
   }
@@ -111,18 +116,4 @@ function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostComman
 
 function isNativeGitPrefix(prefix: Prefix): boolean {
   return prefix.tokens.length === 2 && prefix.tokens[0] === 'git' && gitOperations.has(prefix.tokens[1]!)
-}
-
-async function requireHostProcessAccess(cwd: string): Promise<void> {
-  const processes = await Try(() => Platform.capture('ps -axo pid=,ppid=', { cwd }), {
-    catch(error) {
-      Errors.ThrowHostEnvironment(
-        'Host process inspection failed; invoke this operation through `./agent unsandboxed` in a host-enabled harness.',
-        { cause: error },
-      )
-    },
-  })
-  if (processes === '') {
-    Errors.ThrowHostEnvironment('Host process inspection returned no processes; retry through `./agent unsandboxed`.')
-  }
 }

@@ -1,0 +1,11 @@
+{
+  "name": "@tao/check",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "knip": "6.34.0",
+    "typescript": "5.9.3"
+  }
+}

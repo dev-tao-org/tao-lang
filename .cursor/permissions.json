@@ -9,7 +9,8 @@
       "Allow the named ./agent unsandboxed prepare-release studio and prepare-release ide-extension operations for local release preparation; neither publishes.",
       "Allow ./agent unsandboxed docker-desktop start to launch Docker Desktop for local development.",
       "Allow starting, querying, and stopping local development servers and previews bound to loopback addresses, and allow reading their pages, logs, and network activity in a browser or preview tool.",
-      "Allow repository browser-smoke commands inside the active sandbox; any host escape still requires review."
+      "Allow repository browser-smoke commands inside the active sandbox; any host escape still requires review.",
+      "Allow the developer-approved ./agent unsandboxed performance preview operation for isolated headless local preview proof."
     ],
     "block_instructions": [
       "Require review for commands that delete or substantially overwrite user or repository data.",

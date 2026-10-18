@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire, isBuiltin } from 'node:module'
 import { arch, release, type } from 'node:os'
-import { Errors } from '../universal/universal'
+import { Errors, Try } from '../universal/universal'
 
 /** loadModule loads a known runtime module, including native Node-API addons. */
 export function loadModule<Value>(path: string): Value {
@@ -102,6 +102,22 @@ export async function capture(
     })
   }
   return stdout.trim()
+}
+
+/** requireHostProcessAccess rejects restricted execution before starting host-dependent tools.
+ *  Process inspection is a conservative prerequisite, not proof of every desktop permission. */
+export async function requireHostProcessAccess(
+  hint: string,
+  inspect = () => capture('ps -axo pid=,ppid='),
+): Promise<void> {
+  const processes = await Try(inspect, {
+    catch(error) {
+      Errors.ThrowHostEnvironment(`Host process access is unavailable. ${hint}`, { cause: error })
+    },
+  })
+  if (!processes) {
+    Errors.ThrowHostEnvironment(`Host process inspection returned no processes. ${hint}`)
+  }
 }
 
 /** captureSync reads a synchronous tool probe without requiring the Bun runtime. */

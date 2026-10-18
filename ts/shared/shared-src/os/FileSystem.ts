@@ -1,5 +1,5 @@
-export { constants, existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
-export { access, chmod, mkdir, readdir, rm } from 'node:fs/promises'
+export { constants, existsSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs'
+export { access, chmod, cp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 
 /** File represents a runtime-backed file used for subprocess input. */
 export type File = Bun.BunFile

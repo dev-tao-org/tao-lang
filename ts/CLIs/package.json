@@ -1,0 +1,17 @@
+{
+  "name": "@tao/cli",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@tao/shared": "workspace:*",
+    "@tao/workspace": "workspace:*",
+    "commander": "15.0.0",
+    "github": "^14.0.0",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "rulesync": "16.18.0",
+    "@types/bun": "1.4.0"
+  }
+}

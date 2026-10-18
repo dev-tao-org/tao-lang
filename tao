@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run Tao commands inside this checkout's pinned environment.
+set -e
+. "$(dirname "$0")/.config/cli-environment.sh"
+cd "$(dirname "$0")/ts"
+exec bun run "./CLIs/CLIs-src/tao-cli/tao-cli.ts" "$@"

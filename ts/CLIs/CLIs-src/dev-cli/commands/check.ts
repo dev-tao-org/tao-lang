@@ -19,8 +19,8 @@ export default registerCommand({
       () => doctor.action([]),
       () => workspaceTypes(),
       () => workspaceShellSyntax(),
-      () => workspaceConformance(),
       () => workspaceDeadExports(),
+      () => workspaceConformance(),
       () => workspaceFormat('check'),
     )
   },

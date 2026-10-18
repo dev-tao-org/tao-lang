@@ -8,6 +8,7 @@ prefix_rule(pattern=["./agent","unsandboxed","fix"], decision="allow", justifica
 prefix_rule(pattern=["./agent","unsandboxed","check"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","test"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","verify"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
+prefix_rule(pattern=["./agent","unsandboxed","performance","preview"], decision="allow", justification="Developer-approved isolated headless preview proof through the guarded host wrapper.")
 prefix_rule(pattern=["./agent","unsandboxed","doctor"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","secrets"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","git","status"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")

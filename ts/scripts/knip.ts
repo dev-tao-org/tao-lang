@@ -1,45 +1,71 @@
-import type { KnipConfig } from 'knip'
-import * as TypeScript from 'typescript'
 import { FileSystem, Path, Repo } from '../shared/shared-src/os'
 
-/** knipConfiguration checks new sources while recognizing only imported command registrations. */
+/** knipConfiguration checks package workspaces while recognizing imported command registrations. */
 export default {
-  entry: [
-    ...cliEntries(),
-    ...cliEntries().flatMap(commandEntries),
-    'CLIs/CLIs-src/tao-cli/tao-cli.ts',
-    'CLIs/CLIs-src/dev-cli/commands/_setup.ts',
-    'perf/perf-src/parser-sample.ts',
-    '**/*.test.ts',
-  ],
-  project: [
-    'CLIs/**/*.ts',
-    'shared/**/*.ts',
-    '1-grammar/**/*.ts',
-    '2-transform/**/*.ts',
-    'perf/**/*.ts',
-  ],
+  workspaces: {
+    '0-workspace': packageWorkspace([
+      'workspace-src/Workspace.ts',
+      '**/*.test.ts',
+    ]),
+    '1-grammar': packageWorkspace(['**/*.test.ts']),
+    '2-ast-gen': packageWorkspace(['**/*.test.ts']),
+    '3-typecheck': packageWorkspace([]),
+    '4-fix': packageWorkspace([]),
+    '5-check': packageWorkspace([]),
+    '6-compile': packageWorkspace(['**/*.test.ts']),
+    '7-runtime': packageWorkspace([
+      'runtime-src/TR.ts',
+      'runtime-src/HMRClient.ts',
+      '**/*.test.ts',
+    ]),
+    CLIs: packageWorkspace([
+      ...cliEntries(),
+      ...cliEntries().flatMap(commandEntries),
+      'CLIs-src/tao-cli/tao-cli.ts',
+      'CLIs-src/dev-cli/commands/_setup.ts',
+      '**/*.test.ts',
+    ]),
+    perf: packageWorkspace([
+      'perf-src/parser-sample.ts',
+      'perf-src/parser-performance.ts',
+      'perf-src/preview-performance.ts',
+      'perf-src/PreviewHarness.ts',
+      'perf-src/preview-browser.ts',
+    ]),
+    shared: packageWorkspace(['**/*.test.ts']),
+  },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
-} satisfies KnipConfig
+}
+
+function packageWorkspace(entry: string[]) {
+  return {
+    ...(entry.length > 0 ? { entry } : {}),
+    project: ['**/*.{ts,tsx}'],
+    paths: {
+      '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
+      '@shared': ['../shared/shared-src/shared.ts'],
+      '@shared/os': ['../shared/shared-src/os.ts'],
+      '@grammar/*': ['../1-grammar/grammar-src/*'],
+      '@ast-gen/*': ['../2-ast-gen/ast-gen-src/*'],
+      '@typecheck/*': ['../3-typecheck/typecheck-src/*'],
+      '@fix/*': ['../4-fix/fix-src/*'],
+      '@check/*': ['../5-check/check-src/*'],
+      '@compile/*': ['../6-compile/compile-src/*'],
+      '@runtime/*': ['../7-runtime/runtime-src/*'],
+      '@workspace/*': ['../0-workspace/workspace-src/*'],
+    },
+  }
+}
 
 function cliEntries(): string[] {
   return [
-    'CLIs/CLIs-src/agent-cli/agent-cli.ts',
-    'CLIs/CLIs-src/dev-cli/dev-cli.ts',
+    'CLIs-src/agent-cli/agent-cli.ts',
+    'CLIs-src/dev-cli/dev-cli.ts',
   ]
 }
 
 function commandEntries(registry: string): string[] {
-  const source = FileSystem.readFileSync(Repo.resolvePath('ts', registry), 'utf8')
-  const file = TypeScript.createSourceFile(registry, source, TypeScript.ScriptTarget.Latest)
-  return file.statements.flatMap(statement => {
-    if (!TypeScript.isImportDeclaration(statement) || statement.importClause) {
-      return []
-    }
-    const specifier = statement.moduleSpecifier
-    if (!TypeScript.isStringLiteral(specifier) || !specifier.text.startsWith('./commands/')) {
-      return []
-    }
-    return [Path.posix.join(Path.dirname(registry), specifier.text) + '.ts']
-  })
+  const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
+  return [...source.matchAll(/^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm)]
+    .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
 }
