@@ -1,6 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import { Path } from '@shared/os'
 import type { Stats } from 'node:fs'
+import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
 
 /** WorkspaceChange identifies one authored file or directory notification. */
 export type WorkspaceChange = {
@@ -21,26 +22,26 @@ export async function watchWorkspace(
   ignoredDirectories: readonly string[] = [],
   additionalDirectories: readonly string[] = [],
 ): Promise<WorkspaceWatcher> {
-  const { watch } = await import('chokidar')
   const root = Path.resolve(directory)
   const excluded = ignoredDirectories.map(path => Path.resolve(path))
   const roots = [root, ...additionalDirectories.map(directory => Path.resolve(directory))]
-  const watcher = watch(roots, {
-    ignoreInitial: true,
-    followSymlinks: false,
-    usePolling: false,
-    awaitWriteFinish: false,
-    atomic: 5,
-    ignored: (path, stats) => ignoredRootsPath(roots, path, excluded, stats),
-  })
+  const watcher = await createWatcher(roots, excluded)
   let ready = false
   let disposed = false
-  watcher.on('all', (kind, path) => {
+  const reconciliation = reconcileWatchChanges(path => {
+    if (!disposed) {
+      onChange({ kind: 'change', path, observedAtMs: Time.timestampMs() })
+    }
+  })
+  watcher.on('all', (kind, path, stats) => {
     if (!ready || disposed) {
       return
     }
     if (isChangeKind(kind)) {
       onChange({ kind, path: Path.resolve(path), observedAtMs: Time.timestampMs() })
+      if (kind === 'change' && stats) {
+        reconciliation.observe(Path.resolve(path), watchStamp(stats))
+      }
     }
   })
   await Try(() =>
@@ -52,6 +53,7 @@ export async function watchWorkspace(
       watcher.on('error', error => ready ? onError(error) : reject(error))
     }), {
     async catch(error) {
+      reconciliation.dispose()
       await watcher.close()
       Errors.Throw(error)
     },
@@ -59,9 +61,22 @@ export async function watchWorkspace(
   return {
     async dispose() {
       disposed = true
+      reconciliation.dispose()
       await watcher.close()
     },
   }
+}
+
+async function createWatcher(roots: string[], excluded: string[]) {
+  const { watch } = await import('chokidar')
+  return watch(roots, {
+    ignoreInitial: true,
+    followSymlinks: false,
+    usePolling: false,
+    awaitWriteFinish: false,
+    atomic: 5,
+    ignored: (path, stats) => ignoredRootsPath(roots, path, excluded, stats),
+  })
 }
 
 function ignoredRootsPath(roots: readonly string[], path: string, excluded: readonly string[], stats?: Stats): boolean {
