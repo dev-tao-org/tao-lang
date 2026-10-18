@@ -2,21 +2,26 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, S } from '@shared'
-import { FileSystem, Repo, Tests } from '@shared/os'
+import { FileSystem, Path, Repo, Tests } from '@shared/os'
+import { linkModules } from '@typecheck/LinkModules'
+import type { LinkedProgram, ResolvedImport, SourceModule } from '@typecheck/Modules'
 import { compile } from '../compile-src/Compile'
 
 Tests.test('Hello World generates generic runtime calls and authored native injections', async () => {
-  const { tree } = createParser().parse(await Tests.readApp('Hello World'))
+  const source = await Tests.readApp('Hello World')
+  const { tree } = createParser().parse(source)
   const document = transform(tree)!
+  const entryPath = Repo.resolvePath('Apps/Tests/Hello World.tao')
   const root = document.root.declarations.find(AST.IsViewDeclaration)!.render
   if (!AST.IsViewRender(root)) {
     Errors.ThrowUnexpected('Expected a root render.')
   }
-  const code = compile(document, { revision: 'test-1' })
+  const program = await linkedUIProgram(entryPath, document)
+  const code = compile(document, { revision: 'test-1', program })
   Tests.expect(code).toContain('TR.ViewDefinition("Text", ["Value"]')
-  Tests.expect(code).toContain(`TR.Render(_views[${JSON.stringify(root.target.value)}], TR.ViewRenderArgs(`)
+  Tests.expect(code).toContain(`TR.ViewReference(_taoValues, ${JSON.stringify(root.target.value)})`)
   Tests.expect(code).toContain('<TR.ReactNative.Text>{Value}</TR.ReactNative.Text>')
-  Tests.expect(code).toContain('TR.App(_views["RootView"], "test-1")')
+  Tests.expect(code).toContain('TR.App(TR.ViewReference(_scope0, "RootView"), "test-1")')
   Tests.expect(code).toContain('const Children = _taoChildren;')
 })
 
@@ -25,12 +30,87 @@ Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nest
   const { tree } = createParser().parse(source)
   const document = transform(tree)
   Tests.expect(document).toBeDefined()
-  const code = compile(document!, { revision: 'kitchen-sink' })
+  const entryPath = Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao')
+  const program = await linkedUIProgram(entryPath, document!)
+  const code = compile(document!, { revision: 'kitchen-sink', program })
   Tests.expect(code).toContain('TR.ViewDefinition("Pair", ["First", "Second"]')
   Tests.expect(code).toContain('TR.ViewRenderArgs([TR.Value(_taoValues, "FirstCaption")], [])')
   Tests.expect(code).toContain('const Caption = TR.Value(_taoValues, "Title") as string;')
   Tests.expect(code).toContain('const Children = _taoChildren;')
-  Tests.expect(code).toContain('TR.App(_views["RootView"], "kitchen-sink")')
+  Tests.expect(code).toContain('TR.App(TR.ViewReference(_scope0, "RootView"), "kitchen-sink")')
+})
+
+Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles', () => {
+  const { entry, program } = cyclicModuleFixture()
+  const code = compile(entry, { revision: 'modules', program })
+
+  Tests.expect(code).toContain('const _scope0 = TR.Scope();')
+  Tests.expect(code).toContain('const _scope1 = TR.Scope();')
+  Tests.expect(code).toContain('TR.LetReference(_scope0, "UI.Root", () => TR.Value(_scope1, "Root"));')
+  Tests.expect(code).toContain('TR.LetReference(_scope1, "Entry.Shared", () => TR.Value(_scope0, "Shared"));')
+  Tests.expect(code).toContain('TR.LetReference(_scope0, "LocalShared", () => TR.Value(_scope0, "Shared"));')
+  Tests.expect(code).toContain('TR.ViewReference(_taoValues, "UI.Root")')
+  Tests.expect(code).toContain('TR.ViewReference(_taoValues, "Entry.Shared")')
+  Tests.expect(code).toContain('TR.LetDefinition(_scope0, "Shared", TR.ViewDefinition("Shared"')
+  Tests.expect(code).toContain('TR.LetDefinition(_scope1, "Root", TR.ViewDefinition("Root"')
+  Tests.expect(code).toContain('TR.App(TR.ViewReference(_scope0, "UI.Root"), "modules")')
+  Tests.expect(code.indexOf('TR.ViewDefinition("Root"')).toBeLessThan(code.indexOf('"Caption", "module value"'))
+  Tests.expect(code).not.toContain('_views')
+
+  const importedApp = compile(entry, { revision: 'selected-app', app: 'UI.Extra', program })
+  Tests.expect(importedApp).toContain('TR.App(TR.ViewReference(_scope1, "Root"), "selected-app")')
+})
+
+function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } {
+  const entry = transform(
+    createParser().parse(S`
+      use package @common as UI
+      use Shared as LocalShared from ./entry
+      app Main { root UI.Root }
+      view Shared { render UI.Root }
+      let Caption = "module value"
+    `).tree,
+  )!
+  const common = transform(
+    createParser().parse(S`
+      use Shared as Entry from ./entry
+      app Extra { root Root }
+      view Root { render Entry.Shared }
+    `).tree,
+  )!
+  return {
+    entry,
+    program: {
+      entry: '/entry',
+      modules: [
+        {
+          path: '/entry',
+          document: entry,
+          bindings: [
+            { name: 'UI.Root', source: '/common', target: 'Root' },
+            { name: 'UI.Extra', source: '/common', target: 'Extra' },
+            { name: 'LocalShared', source: '/entry', target: 'Shared' },
+          ],
+        },
+        {
+          path: '/common',
+          document: common,
+          bindings: [{ name: 'Entry.Shared', source: '/entry', target: 'Shared' }],
+        },
+      ],
+      definitions: [{
+        source: '/entry',
+        declaration: entry.root.declarations.find(AST.IsLetDefinition)!,
+      }],
+    },
+  }
+}
+
+Tests.test('standalone compilation rejects unresolved use statements', () => {
+  const { tree } = createParser().parse('use package @common as UI\napp Main { root UI.Root }')
+  const document = transform(tree)!
+
+  Tests.expect(() => compile(document, { revision: 'standalone' })).toThrow('linked program')
 })
 
 Tests.test('injection locals and captures cannot collide with generated callback bindings', () => {
@@ -61,6 +141,36 @@ function generatedJavaScript(source: string): string {
   Tests.expect(tree.rootNode.hasError).toBe(false)
   return compile(transform(tree)!, { revision: 'hygiene' })
     .replace(/^import \* as TR from '@runtime';\n/m, '')
-    .replace('const _views: Record<string, TR.View> = {};', 'const _views = {};')
     .replace('export default function App()', 'function App()')
+}
+
+async function linkedUIProgram(
+  entryPath: string,
+  document: AST.Document,
+): Promise<ReturnType<typeof linkModules>> {
+  const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@tao/ui/Views.tao')
+  const uiSource = await FileSystem.readFile(uiPath, 'utf8')
+  const uiDocument = transform(createParser().parse(uiSource).tree)!
+  const modulesPath = Path.join(Path.dirname(entryPath), 'Modules.tao')
+  const modulesDocument = FileSystem.existsSync(modulesPath)
+    ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')).tree)
+    : undefined
+  const imports: ResolvedImport[] = document.root.declarations
+    .filter((node): node is ResolvedImport['statement'] => AST.IsUseStatement(node) || AST.IsUsePackageStatement(node))
+    .map(statement => {
+      const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+      const isUI = from === '@tao/ui'
+      return {
+        statement,
+        targets: [{ path: isUI ? uiPath : modulesPath, relation: isUI ? 'public' : 'same-directory' }],
+      }
+    })
+  const sources: SourceModule[] = [
+    { path: entryPath, document, imports, siblings: modulesDocument ? [modulesPath] : [] },
+    { path: uiPath, document: uiDocument, imports: [], siblings: [] },
+  ]
+  if (modulesDocument) {
+    sources.push({ path: modulesPath, document: modulesDocument, imports: [], siblings: [] })
+  }
+  return linkModules(entryPath, sources)
 }

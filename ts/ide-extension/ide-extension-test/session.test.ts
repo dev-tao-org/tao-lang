@@ -14,9 +14,7 @@ Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', asyn
       result.tokens.some(token => token.kind === 'keyword' && source.slice(token.start, token.end) === 'app'),
     ).toBe(true)
     Tests.expect(
-      result.tokens.some(token =>
-        token.kind === 'property' && source.slice(token.start, token.end) === 'flexDirection'
-      ),
+      result.tokens.some(token => token.kind === 'property' && source.slice(token.start, token.end) === 'padding'),
     )
       .toBe(true)
     Tests.expect(

@@ -7,20 +7,35 @@ export default grammar({
   },
   rules: {
     SourceFile($) {
-      return repeat(choice($.AppDeclaration, $.ViewDeclaration, $.TestsDeclaration, $.LetDefinition))
+      return repeat(choice(
+        $.AppDeclaration,
+        $.ViewDeclaration,
+        $.TestsDeclaration,
+        $.LetDefinition,
+        $.UseStatement,
+        $.UsePackageStatement,
+      ))
     },
 
     // Apps
     AppDeclaration($) {
-      return seq('app', field('name', $.Identifier), '{', $.RootDeclaration, '}')
+      return seq(
+        optional(field('visibility', $.Visibility)),
+        'app',
+        field('name', $.Identifier),
+        '{',
+        $.RootDeclaration,
+        '}',
+      )
     },
     RootDeclaration($) {
-      return seq('root', field('view', $.Identifier))
+      return seq('root', field('view', $.QualifiedName))
     },
 
     // Views and rendering
     ViewDeclaration($) {
       return seq(
+        optional(field('visibility', $.Visibility)),
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
@@ -39,7 +54,7 @@ export default grammar({
       return seq('(', optional(seq($.Parameter, repeat(seq(',', $.Parameter)))), ')')
     },
     Parameter($) {
-      return seq(field('name', $.Identifier), field('type', $.Identifier))
+      return seq(field('name', $.Identifier), field('type', $.QualifiedName))
     },
     Injection($) {
       return seq(
@@ -49,7 +64,7 @@ export default grammar({
       )
     },
     InjectionCapture($) {
-      return seq(field('name', $.Identifier), optional(field('value', choice($.Identifier, $.ContextReference))))
+      return seq(field('name', $.Identifier), optional(field('value', choice($.QualifiedName, $.ContextReference))))
     },
     ContextReference() {
       return /@@[A-Za-z_][A-Za-z0-9_]*/
@@ -60,7 +75,7 @@ export default grammar({
     ViewRender($) {
       return seq(
         optional(field('tag', $.RenderTag)),
-        field('view', $.Identifier),
+        field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
         optional(seq('{', repeat(field('children', choice($.ViewRender, $.LetDefinition))), '}')),
       )
@@ -69,12 +84,41 @@ export default grammar({
     // Lexical values
     LetDefinition($) {
       return seq(
+        optional(field('visibility', $.Visibility)),
         'let',
         field('name', $.Identifier),
-        optional(seq('is', field('type', $.Identifier))),
+        optional(seq('is', field('type', $.QualifiedName))),
         '=',
-        field('value', choice($.TextLiteral, $.Identifier)),
+        field('value', choice($.TextLiteral, $.QualifiedName)),
       )
+    },
+
+    // Modules
+    UseStatement($) {
+      return choice(
+        seq('use', field('all', $.All), 'from', field('from', $.ImportPath)),
+        seq(
+          'use',
+          field('imports', $.NamedImport),
+          repeat(seq(',', field('imports', $.NamedImport))),
+          optional(seq('from', field('from', $.ImportPath))),
+        ),
+      )
+    },
+    NamedImport($) {
+      return seq(field('target', $.Identifier), optional(seq('as', field('alias', $.Identifier))))
+    },
+    All() {
+      return 'all'
+    },
+    UsePackageStatement($) {
+      return seq('use', 'package', field('from', $.ImportPath), optional(seq('as', field('alias', $.Identifier))))
+    },
+    ImportPath() {
+      return /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)/
+    },
+    Visibility() {
+      return choice('file', 'folder', 'package', 'project', 'public')
     },
 
     // App tests and interactions
@@ -94,7 +138,7 @@ export default grammar({
       )
     },
     RunStatement($) {
-      return seq('run', field('app', $.Identifier))
+      return seq('run', field('app', $.QualifiedName))
     },
     PressStatement($) {
       return seq('press', field('target', $.RenderTag))
@@ -135,8 +179,8 @@ export default grammar({
       return seq(
         '(',
         optional(seq(
-          choice($.TextLiteral, $.Identifier),
-          repeat(seq(',', choice($.TextLiteral, $.Identifier))),
+          choice($.TextLiteral, $.QualifiedName),
+          repeat(seq(',', choice($.TextLiteral, $.QualifiedName))),
         )),
         ')',
       )
@@ -148,6 +192,9 @@ export default grammar({
     // Names
     Identifier() {
       return /[A-Za-z_][A-Za-z0-9_]*/
+    },
+    QualifiedName($) {
+      return seq($.Identifier, repeat(seq('.', $.Identifier)))
     },
   },
 })

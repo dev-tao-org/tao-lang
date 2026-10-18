@@ -21,6 +21,7 @@ import {
   supersededInput,
   supersededResult,
 } from './FileManagerCompilation'
+import { nearestProjectRoot } from './modules/Paths'
 import type { UpdateResult } from './Workspace'
 
 export type { CompiledEvent, CompileRequest, FileManagerOptions, SourceSnapshot } from './FileManagerCompilation'
@@ -168,6 +169,7 @@ export class FileManager {
       change => this.onChange(change),
       error => this.options.onSourceError?.(error),
       ignoredDirectories,
+      this.options.watchDirectories,
     ).then(watcher => {
       this.watcher = watcher
       return watcher
@@ -289,7 +291,7 @@ export class FileManager {
   }
 
   private selectWorkspaceRoot(entry: string): void {
-    this.workspaceRoot ??= Path.dirname(entry)
+    this.workspaceRoot ??= nearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
     if (!isWithin(this.workspaceRoot, entry)) {
       Errors.ThrowUserInput(`Entry file must be inside the workspace root: ${entry}`)
     }

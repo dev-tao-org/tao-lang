@@ -6,9 +6,12 @@ import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample } from '@shared'
 import { Path } from '@shared/os'
+import * as Stdlib from '@stdlib/Stdlib'
+import { linkModules } from '@typecheck/LinkModules'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Document } from './Document'
 import { type CompileRequest, FileManager } from './FileManager'
+import { loadModules } from './modules/Loader'
 import type { Project } from './Project'
 import { publishBuild } from './WorkspaceBuild'
 
@@ -23,6 +26,7 @@ export type WorkspaceOptions = {
   project?: Project
   runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
   compile?: typeof compile
+  onProgress?: (message: string) => void
   publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
   onExpected?: (revision: string, startedAtMs: number) => void
   onSourceUpdate?: (result: UpdateResult) => void
@@ -70,6 +74,7 @@ export function createWorkspace(options: WorkspaceOptions) {
 }
 
 const WorkspacePublish = Timings.measure('workspace.publish', publishWorkspace)
+const LinkModules = Timings.measure('modules.link', linkModules)
 
 class WorkspaceSession {
   readonly directory: string | undefined
@@ -90,6 +95,7 @@ class WorkspaceSession {
     this.files = new FileManager({
       directory: this.directory,
       outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
+      watchDirectories: Stdlib.directory ? [Stdlib.directory] : [],
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
@@ -130,13 +136,11 @@ class WorkspaceSession {
     const revision = `r${request.id}`
     const timings = request.timings
     timings.record('workspace.queue', request.queuedAtMs)
-    const { tree } = this.parser.parse(request.source, timings)
-    const document = transform(tree, timings)
     const stages = skippedStages()
-    if (!document) {
+    const code = await this.build(request)
+    if (code === undefined) {
       return { status: 'invalid', revision, timings: timings.samples, stages }
     }
-    const code = (this.options.compile ?? compile)(document, { revision }, timings)
     const output = { revision, source: request.source, code, timings: timings.samples, stages }
     this.options.onExpected?.(revision, request.startedAtMs)
     for (const listener of this.expectedListeners) {
@@ -158,6 +162,29 @@ class WorkspaceSession {
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
+  private async build(request: CompileRequest): Promise<string | undefined> {
+    const progress = this.options.onProgress
+    progress?.('Parsing Tao source…')
+    const { tree } = this.parser.parse(request.source, request.timings)
+    progress?.('Tao source parsing complete; transforming AST…')
+    const document = transform(tree, request.timings)
+    if (!document) {
+      return undefined
+    }
+    progress?.('Resolving source modules and visibility…')
+    const sources = await loadModules(
+      { path: request.path ?? '<memory>', document },
+      { directory: this.directory, stdlibDirectory: Stdlib.directory, stdlibSources: Stdlib.sources },
+      this.parser,
+      request.timings,
+    )
+    const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
+    progress?.('Source modules resolved; generating app code…')
+    const code = (this.options.compile ?? compile)(document, { revision: `r${request.id}`, program }, request.timings)
+    progress?.('App code generation complete.')
+    return code
+  }
+
   private async publish(output: CompiledApp, isCurrent: () => boolean, timings: Timings): Promise<void> {
     if (this.options.publish) {
       await this.options.publish(output, isCurrent)
@@ -172,6 +199,7 @@ class WorkspaceSession {
       this.prepareRuntimeCallback,
       isCurrent,
       timings,
+      this.options.onProgress,
     )
   }
 
@@ -180,6 +208,7 @@ class WorkspaceSession {
     this.application ??= await Runtime.create({
       ...this.options.runtimeOptions,
       directory: output.runtimeDirectory,
+      onProgress: this.options.onProgress,
     })
     return this.application
   }

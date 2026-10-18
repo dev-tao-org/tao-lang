@@ -1,4 +1,10 @@
-let DefaultTitle is text = "Kitchen Sink"
+use all from @tao/ui
+use Text as Caption from @tao/ui
+use package @tao/ui as UI
+use ModuleCaption
+use ModuleCaption as ImportedCaption from ./Modules
+
+file let DefaultTitle is text = "Kitchen Sink"
 
 app KitchenSink {
   root RootView
@@ -9,24 +15,26 @@ view RootView {
   render Col {
     Heading
     Text(Title)
+    Text(ModuleCaption)
+    Text(ImportedCaption)
     Col {
       let Title = "Nested lexical scope"
       Text(Title)
     }
-    #editable Input
+    #editable Input("Original")
     #save SaveButton
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
       Row() {
-        Text("Left")
-        Text("Right")
+        Caption("Left")
+        UI.Text("Right")
       }
     }
   }
 }
 
-view Pair(First text, Second text) {
+folder view Pair(First text, Second text) {
   let FirstCaption = First
   render Col {
     Text(FirstCaption)
@@ -34,13 +42,7 @@ view Pair(First text, Second text) {
   }
 }
 
-view Text(Value text) {
-  render inject Value ```ts
-    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
-  ```
-}
-
-view Panel(Title text) {
+package view Panel(Title text) {
   render inject Caption Title, Children @@children ```ts
     return <TR.ReactNative.View style={{ padding: 12, borderWidth: 1 }}>
       <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
@@ -49,31 +51,13 @@ view Panel(Title text) {
   ```
 }
 
-view Col() {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'column', gap: 8 }}>{Children}</TR.ReactNative.View>
-  ```
-}
-
-view Row {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'row', gap: 16 }}>{Children}</TR.ReactNative.View>
-  ```
-}
-
-view Heading {
+project view Heading {
   render inject ```ts
     return <TR.ReactNative.Text style={{ fontSize: 24 }}>Kitchen Sink</TR.ReactNative.Text>
   ```
 }
 
-view Input {
-  render inject ```ts
-    return <TR.ReactNative.TextInput defaultValue="Original" accessibilityLabel="Editable text" />
-  ```
-}
-
-view SaveButton {
+public view SaveButton {
   render inject ```ts
     const [saved, setSaved] = TR.React.useState(false)
     return <TR.ReactNative.Pressable onPress={() => setSaved(true)}>

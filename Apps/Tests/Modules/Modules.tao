@@ -1,0 +1,30 @@
+use Text, Col from @tao/ui
+use Card as ImportedCard from @cards
+use package @cards as Cards
+use all from ./Public
+
+let Caption = "Caller scope"
+
+app Modules {
+  root ModuleRoot
+}
+
+view ModuleRoot {
+  render Col {
+    ImportedCard
+    Cards.Card
+    Nearby
+    PublicCaption
+    Text(Caption)
+  }
+}
+
+tests "Modules" {
+  test "Imported views retain private values and package scope" {
+    run Modules
+    expect text "Package-owned value"
+    expect text "Folder sibling"
+    expect text "Public wildcard"
+    expect text "Caller scope"
+  }
+}

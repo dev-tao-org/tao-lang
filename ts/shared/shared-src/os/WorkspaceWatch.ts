@@ -19,17 +19,19 @@ export async function watchWorkspace(
   onChange: (change: WorkspaceChange) => void,
   onError: (error: unknown) => void,
   ignoredDirectories: readonly string[] = [],
+  additionalDirectories: readonly string[] = [],
 ): Promise<WorkspaceWatcher> {
   const { watch } = await import('chokidar')
   const root = Path.resolve(directory)
   const excluded = ignoredDirectories.map(path => Path.resolve(path))
-  const watcher = watch(root, {
+  const roots = [root, ...additionalDirectories.map(directory => Path.resolve(directory))]
+  const watcher = watch(roots, {
     ignoreInitial: true,
     followSymlinks: false,
     usePolling: false,
     awaitWriteFinish: false,
     atomic: 5,
-    ignored: (path, stats) => ignoredPath(root, path, excluded, stats),
+    ignored: (path, stats) => ignoredRootsPath(roots, path, excluded, stats),
   })
   let ready = false
   let disposed = false
@@ -60,6 +62,11 @@ export async function watchWorkspace(
       await watcher.close()
     },
   }
+}
+
+function ignoredRootsPath(roots: readonly string[], path: string, excluded: readonly string[], stats?: Stats): boolean {
+  const root = roots.find(root => withinDirectory(root, path))
+  return root === undefined || ignoredPath(root, path, excluded, stats)
 }
 
 function ignoredPath(root: string, path: string, excluded: readonly string[], stats?: Stats): boolean {

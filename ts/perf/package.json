@@ -9,6 +9,8 @@
     "@tao/grammar": "workspace:*",
     "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
+    "@tao/stdlib": "workspace:*",
+    "@tao/typecheck": "workspace:*",
     "@tao/workspace": "workspace:*"
   },
   "devDependencies": {

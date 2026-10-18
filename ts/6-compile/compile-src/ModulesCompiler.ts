@@ -1,0 +1,121 @@
+import * as AST from '@ast-gen/AST'
+import { Errors, S } from '@shared'
+import type { LinkedProgram } from '@typecheck/Modules'
+import { literal } from './codegen-util'
+import { compileLetDefinition } from './ValuesCompiler'
+import { compileViewDeclaration } from './ViewsCompiler'
+
+/** compileProgram emits one app module from its already linked source modules. */
+export function compileProgram(program: LinkedProgram, revision: string, appName?: string): string {
+  const selected = selectApp(program, appName)
+  const moduleIndexes = new Map(program.modules.map((module, index) => [module.path, index]))
+  const moduleIndex = (path: string) =>
+    moduleIndexes.get(path)
+      ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${path}.`)
+  const scopes = program.modules.map((_module, index) => `const ${scopeName(index)} = TR.Scope();`).join('\n')
+  const aliases = compileAliases(program, moduleIndex)
+  const views = compileViews(program, moduleTextBindings(program))
+  const definitions = program.definitions.map(definition =>
+    compileLetDefinition(definition.declaration, scopeName(moduleIndex(definition.source)))
+  ).join('\n')
+  const rootScope = scopeName(moduleIndex(selected.source))
+  return S`
+    import * as TR from '@runtime';
+    TR.ModuleApplied(${JSON.stringify(revision)});
+    ${scopes}
+    ${aliases}
+    ${views}
+    ${definitions}
+    export default function App() {
+      return TR.App(TR.ViewReference(${rootScope}, ${literal(selected.declaration.root)}), ${JSON.stringify(revision)});
+    }
+  `
+}
+
+function compileAliases(program: LinkedProgram, moduleIndex: (path: string) => number): string {
+  return program.modules.flatMap((module, index) =>
+    module.bindings.map(binding =>
+      `TR.LetReference(${scopeName(index)}, ${JSON.stringify(binding.name)}, () => TR.Value(${
+        scopeName(
+          moduleIndex(binding.source),
+        )
+      }, ${JSON.stringify(binding.target)}));`
+    )
+  ).join('\n')
+}
+
+function compileViews(program: LinkedProgram, inheritedByModule: ReadonlyMap<string, ReadonlySet<string>>): string {
+  return program.modules.flatMap((module, index) =>
+    module.document.root.declarations
+      .filter(AST.IsViewDeclaration)
+      .map(view => compileViewDeclaration(view, inheritedByModule.get(module.path) ?? new Set(), scopeName(index)))
+  ).join('\n')
+}
+
+function moduleTextBindings(program: LinkedProgram): ReadonlyMap<string, ReadonlySet<string>> {
+  const bindingsByModule = new Map(program.modules.map(module => [
+    module.path,
+    new Map(module.bindings.map(binding => [binding.name, binding])),
+  ]))
+  const textByDeclaration = new Map<string, boolean>()
+  const viewModules = program.modules.filter(module => module.document.root.declarations.some(AST.IsViewDeclaration))
+  const ownTextNames = new Map(viewModules.map(module => [module.path, new Set<string>()]))
+  for (const definition of program.definitions) {
+    const value = definition.declaration.value
+    const binding = bindingsByModule.get(definition.source)?.get(value.value)
+    const target = declarationKey(binding?.source ?? definition.source, binding?.target ?? value.value)
+    const isText = AST.IsKind(value, 'TextLiteral') || textByDeclaration.get(target) === true
+    textByDeclaration.set(declarationKey(definition.source, definition.declaration.name.value), isText)
+    if (isText) {
+      ownTextNames.get(definition.source)?.add(definition.declaration.name.value)
+    }
+  }
+  return new Map(
+    viewModules.map(module => {
+      const inherited = new Set(ownTextNames.get(module.path) ?? [])
+      for (const binding of module.bindings) {
+        if (textByDeclaration.get(declarationKey(binding.source, binding.target))) {
+          inherited.add(binding.name)
+        }
+      }
+      return [module.path, inherited] as const
+    }),
+  )
+}
+
+function declarationKey(source: string, name: string): string {
+  return `${source}\u0000${name}`
+}
+
+function selectApp(program: LinkedProgram, appName?: string): { source: string; declaration: AST.AppDeclaration } {
+  const entry = program.modules.find(module => module.path === program.entry)
+    ?? Errors.ThrowUserInput(`Linked entry module is missing from the program: ${program.entry}.`)
+  if (appName === undefined) {
+    const apps = entry.document.root.declarations.filter(AST.IsAppDeclaration)
+    if (apps.length !== 1) {
+      Errors.ThrowUserInput('Compile one app declaration per entry file.')
+    }
+    return { source: entry.path, declaration: apps[0] }
+  }
+  const direct = entry.document.root.declarations.find(
+    (declaration): declaration is AST.AppDeclaration =>
+      AST.IsAppDeclaration(declaration) && declaration.name.value === appName,
+  )
+  if (direct) {
+    return { source: entry.path, declaration: direct }
+  }
+  const binding = entry.bindings.find(candidate => candidate.name === appName)
+    ?? Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+  const owner = program.modules.find(module => module.path === binding.source)
+  const declaration = owner?.document.root.declarations.find(
+    (candidate): candidate is AST.AppDeclaration =>
+      AST.IsAppDeclaration(candidate) && candidate.name.value === binding.target,
+  )
+  return declaration
+    ? { source: binding.source, declaration }
+    : Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+}
+
+function scopeName(index: number): string {
+  return `_scope${index}`
+}

@@ -5,12 +5,14 @@ import * as AST from './Construction'
 /** ViewDeclaration constructs a view and its render body. */
 export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
   const parameters = cst.childForFieldName('parameters')
+  const visibility = cst.childForFieldName('visibility')?.text as Nodes.Visibility | undefined
   return AST.Node(cst, 'ViewDeclaration', {
     name: AST.Field(cst, 'name', 'Name'),
     parameters: parameters ? AST.List(parameters, ['Parameter']) : [],
     definitions: cst.namedChildren.filter(child => child.type === 'LetDefinition')
       .map(child => AST.Construct(child, 'LetDefinition')),
     render: AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection']),
+    ...(visibility ? { visibility } : {}),
   })
 }
 

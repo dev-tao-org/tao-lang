@@ -1,0 +1,23 @@
+public view Text(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+  ```
+}
+
+public view Col {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'column' }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+public view Row {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'row' }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+public view Input(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.TextInput defaultValue={Value} />
+  ```
+}

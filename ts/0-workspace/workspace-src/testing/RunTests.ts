@@ -15,8 +15,12 @@ export type TestDriver = {
 export type TestOptions = {
   path: string
   source: string
+  onProgress?: TestProgress
   createDriver(): Promise<TestDriver>
 }
+
+/** TestProgress reports optional checkpoints during an app test run. */
+export type TestProgress = (message: string) => void
 
 /** TestResult reports one journey and the source location of its outcome. */
 export type TestResult = {
@@ -32,7 +36,10 @@ export async function runTests(document: AST.Document, options: TestOptions): Pr
   const results: TestResult[] = []
   for (const suite of document.root.declarations.filter(AST.IsTestsDeclaration)) {
     for (const test of suite.tests) {
+      const label = caseLabel(suite, test, options)
+      options.onProgress?.(`Starting test case ${label}…`)
       results.push(await runCase(suite, test, options))
+      options.onProgress?.(`Finished test case ${label}.`)
     }
   }
   if (results.length === 0) {
@@ -52,10 +59,15 @@ async function runCase(
   let driver: TestDriver | undefined
   return await Try(async (): Promise<TestResult> => {
     assertJourney(test)
+    options.onProgress?.('Preparing app test driver…')
     driver = await options.createDriver()
+    options.onProgress?.('App test driver ready.')
     for (const step of test.steps) {
       current = step
-      await runStep(step, driver)
+      const description = stepDescription(step)
+      options.onProgress?.(`${description}…`)
+      await runStep(step, driver, options.onProgress)
+      options.onProgress?.(`${description} complete.`)
     }
     return { label, status: 'passed', line: lineOf(test, options.source), durationMs: Time.nowMs() - startedAt }
   }, {
@@ -85,16 +97,35 @@ function assertJourney(test: AST.TestDeclaration): void {
   }
 }
 
-function runStep(step: AST.TestStep, driver: TestDriver): Promise<void> {
+function runStep(step: AST.TestStep, driver: TestDriver, progress?: TestProgress): Promise<void> {
   return Switch.kind(step, {
     RunStatement: value => driver.run(value.app.value),
     PressStatement: value => driver.press(value.target.value),
     TypeStatement: value => driver.type(value.target.value, value.value.value),
     async ExpectStatement(value) {
       for (const expectation of value.expectations) {
+        const description = expectationDescription(expectation)
+        progress?.(`${description}…`)
         await expectValue(expectation, value.target?.value, driver)
+        progress?.(`${description} complete.`)
       }
     },
+  })
+}
+
+function stepDescription(step: AST.TestStep): string {
+  return Switch.kind(step, {
+    RunStatement: value => `Running app ${value.app.value}`,
+    PressStatement: value => `Pressing ${value.target.value}`,
+    TypeStatement: value => `Typing into ${value.target.value}`,
+    ExpectStatement: () => 'Checking expectations',
+  })
+}
+
+function expectationDescription(expectation: AST.Expectation): string {
+  return Switch.kind(expectation, {
+    TextExpectation: value => `Asserting visible text ${value.value.value}`,
+    InputExpectation: value => `Asserting input value ${value.value.value}`,
   })
 }
 

@@ -17,6 +17,14 @@ export function LetDefinition(scope: Scope, name: string, value: unknown): void 
   Object.defineProperty(scope, name, { value, enumerable: true })
 }
 
+/** LetReference defines an immutable lazy binding to a value in another scope. */
+export function LetReference(scope: Scope, name: string, resolve: () => unknown): void {
+  if (Object.prototype.hasOwnProperty.call(scope, name)) {
+    Errors.ThrowUserInput(`Name "${name}" is already defined`)
+  }
+  Object.defineProperty(scope, name, { get: resolve, enumerable: true })
+}
+
 /** Value resolves a name from the nearest lexical scope. */
 export function Value(scope: Scope, name: string): unknown {
   if (!(name in scope)) {

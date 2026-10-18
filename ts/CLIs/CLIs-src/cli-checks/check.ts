@@ -68,6 +68,7 @@ export async function workspaceTypes(): Promise<void> {
     'ide-extension',
     'perf',
     'shared',
+    'stdlib',
   ]
   const discoveredProjects = await Promise.all(packages.map(async project => {
     const sourceFiles = await FileSystem.sourceFiles(Repo.resolvePath('ts', project))

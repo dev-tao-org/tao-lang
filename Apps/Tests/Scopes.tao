@@ -1,3 +1,5 @@
+use Text, Col from @tao/ui
+
 let Greeting is text = "File scope"
 let __proto__ = "Prototype name"
 
@@ -33,18 +35,6 @@ view NativeLet {
   let Caption = Greeting
   render inject Caption ```ts
     return <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
-  ```
-}
-
-view Text(Value text) {
-  render inject Value ```ts
-    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
-  ```
-}
-
-view Col {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View>{Children}</TR.ReactNative.View>
   ```
 }
 

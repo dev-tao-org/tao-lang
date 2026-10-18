@@ -1,18 +1,14 @@
+use Col, Input from @tao/ui
+
 app Interactions {
   root Form
 }
 
 view Form {
   render Col {
-    #name Input
+    #name Input("Original")
     #save Button
   }
-}
-
-view Input {
-  render inject ```ts
-    return <TR.ReactNative.TextInput defaultValue="Original" accessibilityLabel="Name" />
-  ```
 }
 
 view Button {
@@ -21,12 +17,6 @@ view Button {
     return <TR.ReactNative.Pressable onPress={() => setPressed(true)}>
       <TR.ReactNative.Text>{pressed ? 'Saved' : 'Ready'}</TR.ReactNative.Text>
     </TR.ReactNative.Pressable>
-  ```
-}
-
-view Col {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'column' }}>{Children}</TR.ReactNative.View>
   ```
 }
 

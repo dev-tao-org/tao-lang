@@ -6,7 +6,9 @@ export async function prepareToolchain(
   cacheDirectory: string,
   resourcesDirectory: string,
   installer: RuntimeInstaller = managedInstaller,
+  onProgress?: (message: string) => void,
 ): Promise<string> {
+  onProgress?.('Resolving runtime toolchain cache identity…')
   const toolchainKey = await toolchainIdentity(resourcesDirectory)
   const target = Path.join(cacheDirectory, toolchainKey)
   await BuildLock.withBuildLock(Path.join(cacheDirectory, `${toolchainKey}.lock`), async () => {
@@ -21,9 +23,14 @@ export async function prepareToolchain(
     )
     const readyPath = Path.join(target, '.ready')
     const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(readyPath, 'utf8'))
-    if (ready !== toolchainKey || !await FileSystem.exists(Path.join(target, 'node_modules'))) {
+    const hasDependencies = await FileSystem.exists(Path.join(target, 'node_modules'))
+    if (ready === toolchainKey && hasDependencies) {
+      onProgress?.('Runtime toolchain cache hit.')
+    } else {
+      onProgress?.('Installing cached Expo runtime dependencies…')
       await installer.install(target)
       await FileSystem.writeFile(readyPath, toolchainKey)
+      onProgress?.('Expo runtime dependencies installed.')
     }
   })
   return Path.join(target, 'node_modules')

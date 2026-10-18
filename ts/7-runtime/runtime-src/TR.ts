@@ -15,9 +15,9 @@ export const ReactNative = Object.create(Native, {
 }
 export { App } from './App'
 export { ModuleApplied } from './Preview'
-export { LetDefinition, RenderChildren, Scope, Value } from './Scope'
+export { LetDefinition, LetReference, RenderChildren, Scope, Value } from './Scope'
 export type { Scope as RuntimeScope } from './Scope'
-export { Render, ViewDefinition, ViewRenderArgs } from './View'
+export { Render, ViewDefinition, ViewReference, ViewRenderArgs } from './View'
 export type { AppOptions, RuntimeObserver, RuntimeTiming, View, ViewRenderer } from './View'
 
 function Text({ style, ...props }: Native.TextProps, ref: Ref<Native.Text>) {

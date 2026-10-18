@@ -9,7 +9,7 @@ export default {
     ]),
     '1-grammar': packageWorkspace(['**/*.test.ts']),
     '2-ast-gen': packageWorkspace(['**/*.test.ts']),
-    '3-typecheck': packageWorkspace([]),
+    '3-typecheck': packageWorkspace(['**/*.test.ts']),
     '4-fix': packageWorkspace([]),
     '5-check': packageWorkspace([]),
     '6-compile': packageWorkspace(['**/*.test.ts']),
@@ -34,6 +34,7 @@ export default {
       '**/*.test.ts',
     ]),
     shared: packageWorkspace(['**/*.test.ts']),
+    stdlib: packageWorkspace([]),
     'ide-extension': packageWorkspace(['ide-extension-src/extension.ts', '**/*.test.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
@@ -56,6 +57,7 @@ function packageWorkspace(entry: string[]) {
       '@compile/*': ['../6-compile/compile-src/*'],
       '@runtime/*': ['../7-runtime/runtime-src/*'],
       '@workspace/*': ['../0-workspace/workspace-src/*'],
+      '@stdlib/*': ['../stdlib/stdlib-src/*'],
     },
   }
 }

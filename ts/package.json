@@ -15,7 +15,8 @@
     "CLIs",
     "ide-extension",
     "perf",
-    "shared"
+    "shared",
+    "stdlib"
   ],
   "overrides": {
     "rulesync": { "js-yaml": "5.4.2" }

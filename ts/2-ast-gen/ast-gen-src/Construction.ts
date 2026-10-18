@@ -3,6 +3,7 @@ import type Parser from 'tree-sitter'
 import * as AST from './AST'
 import { Construct } from './Transform'
 import { AppDeclaration, File, LetDefinition, Parameter } from './TransformDeclarations'
+import { ImportPath, NamedImport, QualifiedName, UsePackageStatement, UseStatement } from './TransformModules'
 import { Capture, ContextReference, Injection, TextLiteral, ViewDeclaration, ViewRender } from './TransformViews'
 
 export * from './AST'
@@ -30,6 +31,7 @@ export {
   ViewDeclaration,
   ViewRender,
 }
+export { ImportPath, NamedImport, QualifiedName, UsePackageStatement, UseStatement }
 
 /** Field constructs one required CST field with an expected semantic kind. */
 export function Field<Kind extends AST.Node['kind']>(

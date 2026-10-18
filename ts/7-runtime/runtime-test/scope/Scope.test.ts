@@ -1,8 +1,8 @@
 import { Tests } from '@shared/os'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { LetDefinition, RenderChildren, Scope, Value } from '../../runtime-src/Scope'
-import { Render, ViewDefinition, ViewRenderArgs } from '../../runtime-src/View'
+import { LetDefinition, LetReference, RenderChildren, Scope, Value } from '../../runtime-src/Scope'
+import { Render, ViewDefinition, ViewReference, ViewRenderArgs } from '../../runtime-src/View'
 
 Tests.test('Scope resolves the nearest lexical definition and preserves parent values', () => {
   const parent = Scope()
@@ -34,6 +34,21 @@ Tests.test('Scope treats __proto__ as an ordinary definition', () => {
   Tests.expect(Object.getPrototypeOf(scope)).toBeNull()
 })
 
+Tests.test('Scope resolves lazy imported aliases after every module scope exists', () => {
+  const source = Scope()
+  const importer = Scope()
+  let reads = 0
+  LetReference(importer, 'UI.Caption', () => {
+    reads += 1
+    return Value(source, 'Caption')
+  })
+
+  Tests.expect(reads).toBe(0)
+  LetDefinition(source, 'Caption', 'from source')
+  Tests.expect(Value(importer, 'UI.Caption')).toBe('from source')
+  Tests.expect(reads).toBe(1)
+})
+
 Tests.test('RenderChildren gives its body a child scope and ordered output array', () => {
   const parent = Scope()
   LetDefinition(parent, 'label', 'outer')
@@ -62,4 +77,13 @@ Tests.test('View parameters shadow captured parent scope during rendering', () =
   const html = renderToStaticMarkup(Render(Message, ViewRenderArgs(['parameter'])))
 
   Tests.expect(html).toBe('<span>parameter</span>')
+})
+
+Tests.test('ViewReference resolves a view from its owning scope', () => {
+  const scope = Scope()
+  const View = ViewDefinition('Screen', [], () => null, scope)
+  LetDefinition(scope, 'Screen', View)
+
+  Tests.expect(ViewReference(scope, 'Screen')).toBe(View)
+  Tests.expect(() => ViewReference(scope, 'Missing')).toThrow('Unknown Tao view: Missing.')
 })

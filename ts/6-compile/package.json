@@ -6,7 +6,8 @@
   "dependencies": {
     "@tao/ast-gen": "workspace:*",
     "@tao/runtime": "workspace:*",
-    "@tao/shared": "workspace:*"
+    "@tao/shared": "workspace:*",
+    "@tao/typecheck": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "1.4.0"

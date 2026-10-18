@@ -15,6 +15,7 @@
         "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/stdlib": "workspace:*",
         "@tao/typecheck": "workspace:*",
       },
       "devDependencies": {
@@ -51,6 +52,7 @@
     "3-typecheck": {
       "name": "@tao/typecheck",
       "dependencies": {
+        "@tao/ast-gen": "workspace:*",
         "@tao/shared": "workspace:*",
       },
       "devDependencies": {
@@ -80,6 +82,7 @@
         "@tao/ast-gen": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/typecheck": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
@@ -139,6 +142,8 @@
         "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/stdlib": "workspace:*",
+        "@tao/typecheck": "workspace:*",
         "@tao/workspace": "workspace:*",
       },
       "devDependencies": {
@@ -151,6 +156,15 @@
         "chokidar": "5.0.0",
         "playwright": "1.58.2",
         "typescript": "5.9.3",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.0",
+      },
+    },
+    "stdlib": {
+      "name": "@tao/stdlib",
+      "dependencies": {
+        "@tao/shared": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
@@ -638,6 +652,8 @@
     "@tao/runtime": ["@tao/runtime@workspace:7-runtime"],
 
     "@tao/shared": ["@tao/shared@workspace:shared"],
+
+    "@tao/stdlib": ["@tao/stdlib@workspace:stdlib"],
 
     "@tao/typecheck": ["@tao/typecheck@workspace:3-typecheck"],
 

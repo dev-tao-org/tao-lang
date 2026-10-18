@@ -4,6 +4,8 @@ import type Parser from 'tree-sitter'
 export type Node =
   | File
   | Declaration
+  | NamedImport
+  | ImportPath
   | Name
   | Parameter
   | ViewRender
@@ -22,19 +24,54 @@ export type OfKind<Kind extends Node['kind']> = Extract<Node, { kind: Kind }>
 /** File contains the declarations in one source snapshot. */
 export type File = Semantic<'File', { declarations: readonly Declaration[] }>
 
+/** Declaration represents a file-level semantic declaration. */
+export type Declaration =
+  | AppDeclaration
+  | ViewDeclaration
+  | TestsDeclaration
+  | LetDefinition
+  | UseStatement
+  | UsePackageStatement
+
+/** ValueDeclaration represents a declaration that introduces a value. */
+export type ValueDeclaration = AppDeclaration | ViewDeclaration | LetDefinition
+
+/** Visibility limits where a declaration can be referenced. */
+export type Visibility = 'file' | 'folder' | 'package' | 'project' | 'public'
+
 /** AppDeclaration names an app and its unresolved root view. */
-export type AppDeclaration = Semantic<'AppDeclaration', { name: Name; root: Name }>
+export type AppDeclaration = Semantic<'AppDeclaration', { name: Name; root: Name; visibility?: Visibility }>
 
 /** ViewDeclaration defines parameters and one render body. */
 export type ViewDeclaration = Semantic<'ViewDeclaration', {
   name: Name
+  visibility?: Visibility
   parameters: readonly Parameter[]
   definitions: readonly LetDefinition[]
   render: ViewRender | Injection
 }>
 
 /** LetDefinition binds a value in its containing lexical scope. */
-export type LetDefinition = Semantic<'LetDefinition', { name: Name; type?: Name; value: Expression }>
+export type LetDefinition = Semantic<
+  'LetDefinition',
+  { name: Name; type?: Name; value: Expression; visibility?: Visibility }
+>
+
+/** UseStatement imports declarations from an optional path or imports every declaration from one path. */
+export type UseStatement = Semantic<'UseStatement', {
+  imports: readonly NamedImport[]
+  from?: ImportPath
+  all: boolean
+}>
+
+/** UsePackageStatement imports a package under an optional namespace alias. */
+export type UsePackageStatement = Semantic<'UsePackageStatement', { from: ImportPath; alias?: Name }>
+
+/** NamedImport selects one declaration with an optional local alias. */
+export type NamedImport = Semantic<'NamedImport', { target: Name; alias?: Name }>
+
+/** ImportPath preserves an authored module path. */
+export type ImportPath = Semantic<'ImportPath', { value: string }>
 
 /** Parameter preserves an authored parameter name and unresolved type. */
 export type Parameter = Semantic<'Parameter', { name: Name; type: Name }>
@@ -135,6 +172,21 @@ export function IsLetDefinition(node: Node): node is LetDefinition {
   return IsKind(node, 'LetDefinition')
 }
 
+/** IsValueDeclaration narrows a semantic node to a value declaration. */
+export function IsValueDeclaration(node: Node): node is ValueDeclaration {
+  return IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDefinition'])
+}
+
+/** IsUseStatement narrows a semantic node to a declaration import. */
+export function IsUseStatement(node: Node): node is UseStatement {
+  return IsKind(node, 'UseStatement')
+}
+
+/** IsUsePackageStatement narrows a semantic node to a package import. */
+export function IsUsePackageStatement(node: Node): node is UsePackageStatement {
+  return IsKind(node, 'UsePackageStatement')
+}
+
 /** IsViewRender narrows a semantic node to a view invocation. */
 export function IsViewRender(node: Node): node is ViewRender {
   return IsKind(node, 'ViewRender')
@@ -153,7 +205,6 @@ export function IsKind<Kind extends Node['kind']>(
   return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
 }
 
-type Declaration = AppDeclaration | ViewDeclaration | TestsDeclaration | LetDefinition
 type Semantic<Kind extends string, Fields> = {
   readonly kind: Kind
   readonly start: number

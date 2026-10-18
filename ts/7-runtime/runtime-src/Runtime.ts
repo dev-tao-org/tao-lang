@@ -8,11 +8,19 @@ import { prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
 export async function create(options: RuntimeCreateOptions): Promise<RuntimeApplication> {
   const directory = Path.resolve(options.directory)
   const resourcesPath = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
+  options.onProgress?.('Reading and validating runtime resources…')
   const resourcesDirectory = FileSystem.realpathSync(resourcesPath)
   const resources = await readRuntimeResources(resourcesDirectory)
+  options.onProgress?.('Runtime resources ready.')
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
   await FileSystem.mkdir(directory, { recursive: true })
-  const dependencyDirectory = await prepareToolchain(cacheDirectory, resourcesDirectory, options.install)
+  const dependencyDirectory = await prepareToolchain(
+    cacheDirectory,
+    resourcesDirectory,
+    options.install,
+    options.onProgress,
+  )
+  options.onProgress?.('Scaffolding Expo runtime application…')
   await writeExpoApplication(
     directory,
     resourcesDirectory,
@@ -20,12 +28,20 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
     resources.devDependencies,
     resources.sourceFiles,
   )
+  options.onProgress?.('Expo runtime application scaffolded.')
   return await applicationWithToolchain(directory, dependencyDirectory)
 }
 
 /** start starts the prepared Expo application and waits for its first response. */
-export async function start(application: RuntimeApplication, options?: ExpoOptions): Promise<ExpoSession> {
-  return await createExpoSession(application, options)
+export async function start(
+  application: RuntimeApplication,
+  options?: ExpoOptions,
+  onProgress?: (message: string) => void,
+): Promise<ExpoSession> {
+  onProgress?.('Starting Expo server and waiting for readiness…')
+  const session = await createExpoSession(application, options)
+  onProgress?.('Expo server is ready.')
+  return session
 }
 
 /** RuntimeApplication identifies the generated Expo runtime directory and compiled Tao app entry. */
@@ -37,6 +53,7 @@ export type RuntimeCreateOptions = {
   resourcesDirectory?: string
   toolchainCacheDirectory?: string
   install?: RuntimeInstaller
+  onProgress?: (message: string) => void
 }
 
 export type { ExpoOptions, ExpoSession } from './expo/Expo'

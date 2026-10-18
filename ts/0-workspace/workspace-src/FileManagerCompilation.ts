@@ -6,6 +6,7 @@ import type { UpdateResult } from './Workspace'
 export type FileManagerOptions = {
   directory?: string
   outputDirectory?: string
+  watchDirectories?: readonly string[]
   debounceMs?: number
   compile(request: CompileRequest, isCurrent: () => boolean): Promise<UpdateResult>
   onSourceUpdate?: (result: UpdateResult) => void

@@ -55,6 +55,15 @@ export function ViewDefinition(
   return { name, parameters: [...parameters], render, scope, [viewMarker]: true }
 }
 
+/** ViewReference resolves a view from its owning lexical scope. */
+export function ViewReference(scope: RuntimeScope, name: string): View {
+  const view = scope[name]
+  if (!isView(view)) {
+    Errors.ThrowUserInput(`Unknown Tao view: ${name}.`)
+  }
+  return view
+}
+
 /** ViewRenderArgs packages positional values and optional children for a view call. */
 export function ViewRenderArgs(
   values: readonly unknown[] = [],

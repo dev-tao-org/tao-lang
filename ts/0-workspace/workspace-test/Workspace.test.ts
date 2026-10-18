@@ -60,7 +60,7 @@ Tests.test('invalid source retains the last published application', async () => 
   Tests.expect(publishCount).toBe(1)
 })
 
-Tests.test('a virtual document queues immutable versioned source without filesystem access', async () => {
+Tests.test('a virtual document queues immutable versions without reading its entry from disk', async () => {
   const source = await Tests.readApp('Hello World')
   const document = new Document('/virtual/Hello World.tao', source)
   let releaseFirst!: () => void
