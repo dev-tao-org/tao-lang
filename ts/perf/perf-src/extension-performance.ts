@@ -1,6 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createWasmDocumentSession } from '../../ide-extension/ide-extension-src/core'
+import { semanticTokenRanges } from '../../ide-extension/ide-extension-src/SemanticTokens'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {
@@ -23,6 +24,9 @@ export async function extensionPerformance() {
       const start = Time.nowMs()
       const result = session.document.update(source)
       current.push({ phase: 'editor.update', durationMs: Time.nowMs() - start })
+      const rangesStarted = Time.nowMs()
+      semanticTokenRanges(result.tokens)
+      current.push({ phase: 'editor.token-ranges', durationMs: Time.nowMs() - rangesStarted })
       if (result.diagnostics.length > 0 || result.tokens.length === 0) {
         Errors.ThrowUnexpected('Extension performance fixture did not produce valid highlighted syntax.')
       }
@@ -49,7 +53,7 @@ async function writeReport(fixture: string, samples: Sample[]) {
         commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
         modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
         definition:
-          'Kitchen Sink: 20 warmups then 100 alternating text edits, including Tao/TSX queries and diagnostics. Excludes VS Code rendering.',
+          'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
         fixtureHash: Platform.hashText(fixture),
         system: Platform.systemInfo(),
         summary,

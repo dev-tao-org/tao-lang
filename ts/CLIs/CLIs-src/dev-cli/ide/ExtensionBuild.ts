@@ -1,5 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
-import { Bundle, FileSystem, Path, Repo } from '@shared/os'
+import { Try } from '@shared'
+import { Artifacts, Bundle, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
 /** buildExtension packages the current Tao grammar and editor adapter into one standalone VSIX. */
@@ -8,7 +9,7 @@ export async function buildExtension(): Promise<string> {
   await Bundle.bundleNode(Path.join(sourceRoot, 'ide-extension-src/extension.ts'), Path.join(packageRoot, 'dist'), [
     'vscode',
   ])
-  await Bundle.validateEditorBundle(Path.join(packageRoot, 'dist/extension.js'))
+  await validateRelocatedPackage()
   await runCommand('vsce package --no-dependencies --allow-missing-repository --out', {
     variadicArgs: [vsixPath],
     cwd: packageRoot,
@@ -54,6 +55,18 @@ export async function prepareExtensionAssets(): Promise<void> {
 const sourceRoot = Repo.resolvePath('ts/ide-extension')
 const packageRoot = Repo.resolvePath('.artifacts/ide-extension/package')
 const vsixPath = Repo.resolvePath('.artifacts/ide-extension/tao-language.vsix')
+
+async function validateRelocatedPackage(): Promise<void> {
+  const directory = Artifacts.resolvePath('tmp', `editor-package-${Platform.randomUUID()}`)
+  await Try(async () => {
+    await FileSystem.cp(packageRoot, directory, { recursive: true })
+    await Bundle.validateEditorBundle(Path.join(directory, 'dist/extension.js'))
+  }, {
+    finally() {
+      return FileSystem.rm(directory, { recursive: true, force: true })
+    },
+  })
+}
 
 async function copyAssets(): Promise<void> {
   const modules = Path.join(sourceRoot, 'node_modules')

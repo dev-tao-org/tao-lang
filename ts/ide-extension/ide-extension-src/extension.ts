@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import { createWasmDocumentSession, type DocumentSession } from './core'
+import { semanticTokenRanges } from './SemanticTokens'
 
 /** activate registers Tao parsing, diagnostics and semantic highlighting in VS Code. */
 export async function activate(context: vscode.ExtensionContext) {
@@ -46,17 +47,12 @@ class TaoSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider
       return new vscode.SemanticTokens(new Uint32Array())
     }
     const builder = new vscode.SemanticTokensBuilder(this.legend)
-    const seen = new Set<string>()
-    let previousEnd = -1
-    for (const token of state.tokens) {
+    for (const token of semanticTokenRanges(state.tokens)) {
       const type = semanticTokenTypes.indexOf(token.kind)
-      const key = `${token.start}:${token.end}:${type}`
-      if (type < 0 || seen.has(key) || token.start < previousEnd) {
+      if (type < 0) {
         continue
       }
-      seen.add(key)
       pushSingleLineToken(builder, document, token.start, token.end, semanticTokenTypes[type])
-      previousEnd = token.end
     }
     return builder.build()
   }
