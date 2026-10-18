@@ -108,6 +108,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Make commits as you implement parts. Run `./agent verify` before committing, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
 - Back up committed work to `origin` after meaningful implementation chunks, rather than after every commit; `git-workflow` owns backup pushes and keeping them from triggering CI unless requested.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
+- Always compare preview performance from the branch's starting baseline to its final implementation before landing. Use `pipeline-performance` for comparisons and promptly flagging significant changes during development.
 
 ## Implementation architecture
 

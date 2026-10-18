@@ -74,3 +74,6 @@ description: >-
 - Retain one preview timing record per implementation commit using
   [preview history](references/preview-history.md). `.artifacts` reports alone are temporary;
   publish and pin the `.storage` history before an authorized landing.
+- Follow [preview history](references/preview-history.md#comparisons-and-significant-changes) for
+  diagnostic comparisons during development, immediate reporting of significant speedups or
+  slowdowns, and the mandatory branch-start-to-final comparison before landing.
