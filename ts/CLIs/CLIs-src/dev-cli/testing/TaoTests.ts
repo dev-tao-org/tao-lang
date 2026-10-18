@@ -7,14 +7,19 @@ import { prepareRuntime } from '../../cli-checks/runtime-build'
 
 /** runTaoTests runs self-contained app journeys using the default headless web target. */
 export async function runTaoTests(target: string): Promise<void> {
+  IO.progress('Preparing headless Tao app tests…')
   await prepareParser()
   await prepareRuntime()
   const path = Path.resolve(target)
-  const paths = await testPaths(path)
+  const paths = await findTaoTestFiles(path)
+  if (paths.length === 0) {
+    Errors.ThrowUserInput(`No Tao test suites found in ${path}.`)
+  }
   const { runAppTests } = await import('@workspace/testing/AppTests')
   let passed = 0
   let failed = 0
   for (const file of paths) {
+    IO.progress(`Testing ${Path.relative(Repo.getWorkspaceRoot(), file)}…`)
     for (const result of await runAppTests(file, HeadlessBrowser.openTestBrowser)) {
       const location = `${Path.relative(Repo.getWorkspaceRoot(), file)}:${result.line}`
       IO.print(
@@ -36,7 +41,8 @@ export async function runTaoTests(target: string): Promise<void> {
   }
 }
 
-async function testPaths(path: string, parser = createParser()): Promise<string[]> {
+/** findTaoTestFiles discovers authored test suites, excluding hidden and dependency folders. */
+export async function findTaoTestFiles(path: string, parser = createParser()): Promise<string[]> {
   if (FileSystem.statSync(path).isFile()) {
     return [path]
   }
@@ -47,7 +53,7 @@ async function testPaths(path: string, parser = createParser()): Promise<string[
     }
     const child = Path.join(path, entry.name)
     if (entry.isDirectory()) {
-      paths.push(...await testPaths(child, parser))
+      paths.push(...await findTaoTestFiles(child, parser))
     } else if (entry.name.endsWith('.tao')) {
       const { tree } = parser.parse(await FileSystem.readFile(child, 'utf8'))
       if (tree.rootNode.descendantsOfType('TestsDeclaration').length > 0) {

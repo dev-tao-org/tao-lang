@@ -52,7 +52,7 @@ clean-full:
 # Dev loop
 ##########
 
-# Run tests in the new TypeScript workspace
+# Run TypeScript tests and all Tao app tests
 [group('Dev')]
 test target="":
     ./dev test {{ quote(target) }}

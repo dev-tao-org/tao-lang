@@ -1,3 +1,4 @@
+import { Env, Path, Repo } from '@shared/os'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { runTaoTests } from '../../dev-cli/testing/TaoTests'
 
@@ -7,6 +8,6 @@ export default registerCommand({
   description: 'Run Tao app tests in a file or folder on headless web.',
   arguments: [{ name: 'target', defaultValue: '.', description: 'Tao file or folder.' }],
   async action(target: string) {
-    await runTaoTests(target)
+    await runTaoTests(Path.resolve(Env.get('TAO_CLI_CWD') ?? Repo.getWorkspaceRoot(), target))
   },
 })

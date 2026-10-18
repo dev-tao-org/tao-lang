@@ -1,6 +1,8 @@
 #!/bin/sh
 # Run Tao commands inside this checkout's pinned environment.
 set -e
+TAO_CLI_CWD=${TAO_CLI_CWD:-$(pwd -P)}
+export TAO_CLI_CWD
 . "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"
 exec bun run "./CLIs/CLIs-src/tao-cli/tao-cli.ts" "$@"

@@ -130,7 +130,7 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
   )
   if (args.length === 0) {
     const { runTaoTests } = await import('../dev-cli/testing/TaoTests')
-    await runTaoTests(Repo.resolvePath('Apps/Tests'))
+    await runTaoTests(Repo.resolvePath('Apps'))
   }
 }
 

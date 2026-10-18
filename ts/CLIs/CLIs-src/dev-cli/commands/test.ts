@@ -7,10 +7,10 @@ import {
 import { runTaoTests } from '../testing/TaoTests'
 import { registerCommand } from './_command-runner'
 
-/** testCommand runs the TypeScript workspace tests and preserves their verdict. */
+/** testCommand runs TypeScript and Tao app tests, retaining scoped selections. */
 export default registerCommand({
   name: 'test',
-  description: 'Run new workspace tests; a path scopes the run and a name filters it.',
+  description: 'Run all TypeScript and Tao app tests; optionally select a Tao file or TypeScript path/name.',
   arguments: [{ name: 'target', description: 'Test file or directory.' }],
   async action(target?: string) {
     if (target?.endsWith('.tao')) {
