@@ -15,6 +15,7 @@ export function compileProgram(program: LinkedProgram, revision: string, appName
   const scopes = program.modules.map((_module, index) => `const ${scopeName(index)} = TR.Scope();`).join('\n')
   const aliases = compileAliases(program, moduleIndex)
   const views = compileViews(program, moduleTextBindings(program))
+  const apps = compileAppRegistrations(program)
   const definitions = program.definitions.map(definition =>
     compileLetDefinition(definition.declaration, scopeName(moduleIndex(definition.source)))
   ).join('\n')
@@ -25,6 +26,7 @@ export function compileProgram(program: LinkedProgram, revision: string, appName
     ${scopes}
     ${aliases}
     ${views}
+    ${apps}
     ${definitions}
     export default function App() {
       return TR.App(TR.ViewReference(${rootScope}, ${literal(selected.declaration.root)}), ${JSON.stringify(revision)});
@@ -41,6 +43,19 @@ function compileAliases(program: LinkedProgram, moduleIndex: (path: string) => n
         )
       }, ${JSON.stringify(binding.target)}));`
     )
+  ).join('\n')
+}
+
+// Define each module app name on its scope so folder bindings resolve.
+function compileAppRegistrations(program: LinkedProgram): string {
+  return program.modules.flatMap((module, index) =>
+    module.document.root.declarations
+      .filter(AST.IsAppDeclaration)
+      .map(app =>
+        `TR.LetDefinition(${scopeName(index)}, ${literal(app.name)}, TR.ViewReference(${scopeName(index)}, ${
+          literal(app.root)
+        }));`
+      )
   ).join('\n')
 }
 

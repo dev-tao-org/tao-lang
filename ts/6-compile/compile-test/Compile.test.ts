@@ -25,6 +25,31 @@ Tests.test('Hello World generates generic runtime calls and authored native inje
   Tests.expect(code).toContain('const Children = _taoChildren;')
 })
 
+Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {
+  const helloPath = '/hello.tao'
+  const interactionsPath = '/interactions.tao'
+  const hello = transform(
+    createParser().parse(S`
+      app HelloWorld { root RootView }
+      view RootView { render inject \`\`\`ts return null \`\`\` }
+    `).tree,
+  )!
+  const interactions = transform(
+    createParser().parse(S`
+      app Interactions { root Form }
+      view Form { render inject \`\`\`ts return null \`\`\` }
+    `).tree,
+  )!
+  const program = linkModules(helloPath, [
+    { path: helloPath, document: hello, imports: [], siblings: [interactionsPath] },
+    { path: interactionsPath, document: interactions, imports: [], siblings: [helloPath] },
+  ])
+  const code = compile(hello, { revision: 'folder-apps', program })
+  Tests.expect(code).toContain('TR.LetDefinition(_scope0, "HelloWorld", TR.ViewReference(_scope0, "RootView"));')
+  Tests.expect(code).toContain('TR.LetDefinition(_scope1, "Interactions", TR.ViewReference(_scope1, "Form"));')
+  Tests.expect(code).toContain('TR.LetReference(_scope0, "Interactions", () => TR.Value(_scope1, "Interactions"));')
+})
+
 Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {
   const source = await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
   const { tree } = createParser().parse(source)
