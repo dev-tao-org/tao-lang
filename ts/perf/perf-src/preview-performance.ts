@@ -1,6 +1,6 @@
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Try } from '@shared'
-import { Artifacts, type BrowserRuntime, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
 import type { ReloadTiming } from './ReloadTimings'
@@ -30,7 +30,7 @@ type Resources = {
   startupMs?: number
   frameSizes?: { id: string; width: number; height: number }[]
   harness?: PreviewHarness
-  browser?: import('playwright').Browser
+  browser?: HeadlessBrowser.Browser
 }
 type PreviewResult = {
   scenario: string
@@ -59,8 +59,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
       owned.reloads.push(timing)
     },
   })
-  const { chromium } = await import('playwright')
-  owned.browser = await chromium.launch({ headless: true, channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome' })
+  owned.browser = await HeadlessBrowser.launch('performance preview')
   const page = await owned.browser.newPage({ viewport: { width: 1280, height: 800 } })
   page.on('pageerror', error => owned.errors.push(String(error)))
   page.on('console', message => {
@@ -84,7 +83,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
   return { path, sessionId: owned.sessionId, results, reloads: owned.reloads, startupMs: owned.startupMs }
 }
 
-async function runScenarios(page: import('playwright').Page): Promise<PreviewResult[]> {
+async function runScenarios(page: HeadlessBrowser.Page): Promise<PreviewResult[]> {
   for (const [index, scenario] of scenarios.entries()) {
     await page.locator('#run').click()
     await page.waitForFunction(
@@ -125,7 +124,7 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   }
 }
 
-async function assertScenario(page: import('playwright').Page, scenario: typeof scenarios[number]): Promise<void> {
+async function assertScenario(page: HeadlessBrowser.Page, scenario: typeof scenarios[number]): Promise<void> {
   for (const frameId of ['left', 'right']) {
     const frame = page.frameLocator(`#${frameId}`)
     await frame.getByText('Hello Tao', { exact: true }).waitFor()
@@ -138,7 +137,7 @@ async function assertScenario(page: import('playwright').Page, scenario: typeof 
   }
 }
 
-async function hasRowLayout(frame: import('playwright').FrameLocator): Promise<boolean> {
+async function hasRowLayout(frame: HeadlessBrowser.FrameLocator): Promise<boolean> {
   return await frame.getByText('Hello Tao', { exact: true }).evaluate(first => {
     const parent = first.parentElement
     const second = parent && [...parent.children].find(node => node.textContent === 'Second view')
@@ -146,7 +145,7 @@ async function hasRowLayout(frame: import('playwright').FrameLocator): Promise<b
   })
 }
 
-async function waitForFrameText(page: import('playwright').Page, text: string): Promise<void> {
+async function waitForFrameText(page: HeadlessBrowser.Page, text: string): Promise<void> {
   for (const frameId of ['left', 'right']) {
     await page.frameLocator(`#${frameId}`).getByText(text, { exact: true }).waitFor({ timeout: 60_000 })
   }

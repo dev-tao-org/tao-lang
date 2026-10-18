@@ -1,17 +1,32 @@
 import { Errors, Time, Try } from '@shared'
-import { Env, Platform } from '@shared/os'
-import type { TestBrowser } from '@workspace/testing/AppTests'
-import { chromium, type Page } from 'playwright'
+import type { Browser, Page } from 'playwright'
+import * as Env from './Env'
+import * as Platform from './Platform'
+
+export type { Browser, FrameLocator, Page } from 'playwright'
+
+/** TestBrowser provides isolated headless UI operations for app journeys. */
+export type TestBrowser = {
+  open(url: string): Promise<void>
+  press(tag: string): Promise<void>
+  type(tag: string, value: string): Promise<void>
+  expectText(value: string, tag?: string): Promise<void>
+  expectInput(tag: string, value: string): Promise<void>
+  dispose(): Promise<void>
+}
+
+/** launch starts isolated headless Chrome after checking host access. */
+export async function launch(operation: string): Promise<Browser> {
+  if (Platform.systemInfo().os === 'Darwin') {
+    await Platform.requireHostProcessAccess(`Run ./agent unsandboxed ${operation}; Chrome was not launched.`)
+  }
+  const { chromium } = await import('playwright')
+  return await chromium.launch({ headless: true, channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome' })
+}
 
 /** openTestBrowser adapts the existing browser toolchain to isolated headless app journeys. */
 export async function openTestBrowser(): Promise<TestBrowser> {
-  if (Platform.systemInfo().os === 'Darwin') {
-    await Platform.requireHostProcessAccess('Run ./agent unsandboxed test <file.tao>; Chrome was not launched.')
-  }
-  const browser = await chromium.launch({
-    headless: true,
-    channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome',
-  })
+  const browser = await launch('test <file.tao>')
   return await Try(async (): Promise<TestBrowser> => {
     const page = await browser.newPage({ viewport: { width: 768, height: 1024 } })
     page.setDefaultTimeout(5000)

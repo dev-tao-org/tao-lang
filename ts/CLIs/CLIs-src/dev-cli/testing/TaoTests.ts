@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import { createParser } from '@grammar/parser'
 import { Errors } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { FileSystem, HeadlessBrowser, Path, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 
@@ -12,11 +12,10 @@ export async function runTaoTests(target: string): Promise<void> {
   const path = Path.resolve(target)
   const paths = await testPaths(path)
   const { runAppTests } = await import('@workspace/testing/AppTests')
-  const { openTestBrowser } = await import('../../../../perf/perf-src/HeadlessBrowser')
   let passed = 0
   let failed = 0
   for (const file of paths) {
-    for (const result of await runAppTests(file, openTestBrowser)) {
+    for (const result of await runAppTests(file, HeadlessBrowser.openTestBrowser)) {
       const location = `${Path.relative(Repo.getWorkspaceRoot(), file)}:${result.line}`
       IO.print(
         `${result.status === 'passed' ? 'PASS' : 'FAIL'} ${result.label} (${location}, ${

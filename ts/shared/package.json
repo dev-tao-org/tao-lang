@@ -6,6 +6,7 @@
   "module": "shared-src/shared.ts",
   "dependencies": {
     "chokidar": "5.0.0",
+    "playwright": "1.58.2",
     "typescript": "5.9.3"
   },
   "devDependencies": { "@types/bun": "1.4.0" },
