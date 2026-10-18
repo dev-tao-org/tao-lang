@@ -5,10 +5,10 @@ import { createProject, createWorkspace } from '@workspace/Workspace'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
 
-/** compileCommand compiles an entry file into an isolated generated Expo project. */
+/** compileCommand compiles an entry file into an isolated Expo runtime. */
 export default registerCommand({
   name: 'compile',
-  description: 'Compile a Tao app entry file into a generated Expo project.',
+  description: 'Compile a Tao app entry file into a generated Expo runtime.',
   arguments: [{ name: 'entry', required: true, description: 'Tao app entry file.' }],
   async action(entry: string) {
     await prepareRuntime()

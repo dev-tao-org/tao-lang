@@ -16,6 +16,8 @@ export type { Project, ProjectOptions } from './Project'
 
 /** WorkspaceOptions configures output publication for a single compile session. */
 export type WorkspaceOptions = {
+  directory?: string
+  outputDirectory?: string
   project?: Project
   runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
   compile?: typeof compile
@@ -66,6 +68,8 @@ export function createWorkspace(options: WorkspaceOptions) {
 }
 
 class WorkspaceSession {
+  readonly directory: string | undefined
+  private readonly output: ReturnType<typeof outputPaths>
   private readonly parser = createParser()
   private revision = 0
   private current: Pending | undefined
@@ -78,7 +82,11 @@ class WorkspaceSession {
   private sourceFile: WorkspaceFile | undefined
   private application: Runtime.RuntimeApplication | undefined
 
-  constructor(private readonly options: WorkspaceOptions) {}
+  constructor(private readonly options: WorkspaceOptions) {
+    const directory = options.directory ?? options.project?.directory
+    this.directory = directory ? Path.resolve(directory) : undefined
+    this.output = outputPaths(options)
+  }
 
   get lastGoodRevision(): string | undefined {
     return this.lastGood
@@ -105,7 +113,7 @@ class WorkspaceSession {
     const sourceGeneration = ++this.sourceGeneration
     this.sourceFile?.dispose()
     this.sourceFile = new WorkspaceFile(
-      path,
+      this.sourcePath(path),
       (snapshot, isCurrent) => this.enqueue(snapshot, sourceGeneration, isCurrent),
       this.options.onSourceUpdate,
       this.options.onSourceError,
@@ -155,7 +163,11 @@ class WorkspaceSession {
   }
 
   async updateFile(path: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
-    return await this.enqueue(await readSource(path, startedAtMs))
+    return await this.enqueue(await readSource(this.sourcePath(path), startedAtMs))
+  }
+
+  private sourcePath(path: string): string {
+    return Path.resolve(this.directory ?? '.', path)
   }
 
   dispose(): void {
@@ -233,17 +245,23 @@ class WorkspaceSession {
       await this.options.publish(output, isCurrent)
       return
     }
-    if (!this.options.project) {
+    if (!this.output) {
       return
     }
-    await publishBuild(this.options.project, output.code, this.prepareRuntime.bind(this), isCurrent, request.timings)
+    await publishBuild(
+      this.output.buildDirectory,
+      output.code,
+      this.prepareRuntime.bind(this),
+      isCurrent,
+      request.timings,
+    )
   }
 
   private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
-    const project = this.options.project ?? Errors.ThrowUnexpected('Runtime compilation requires a loaded project.')
+    const output = this.output ?? Errors.ThrowUnexpected('Runtime compilation requires a workspace output directory.')
     this.application ??= await Runtime.create({
       ...this.options.runtimeOptions,
-      directory: Path.join(project.directory, '.tao/cache/runtime'),
+      directory: output.runtimeDirectory,
     })
     return this.application
   }
@@ -278,4 +296,18 @@ function failureResult(request: Pending, error: unknown): UpdateResult {
 
 function skippedStages(): PipelineStages {
   return { typecheck: typecheck(), fix: fix(), check: check() }
+}
+
+function outputPaths(options: WorkspaceOptions): { buildDirectory: string; runtimeDirectory: string } | undefined {
+  if (options.outputDirectory) {
+    const directory = Path.resolve(options.outputDirectory)
+    return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'runtime') }
+  }
+  if (options.project) {
+    return {
+      buildDirectory: options.project.buildDirectory,
+      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/runtime'),
+    }
+  }
+  return undefined
 }

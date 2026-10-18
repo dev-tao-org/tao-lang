@@ -1,19 +1,18 @@
 import type { RuntimeApplication } from '@runtime/Runtime'
 import { Timings, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import type { Project } from './Project'
 
 /** publishBuild stages compilation output, then atomically publishes only changed files.
  *  A superseded request may finish staging but cannot replace the current runtime application. */
 export async function publishBuild(
-  project: Project,
+  buildDirectory: string,
   code: string,
   prepareRuntime: () => Promise<RuntimeApplication>,
   isCurrent: () => boolean,
   timings: Timings,
 ): Promise<void> {
   const WriteBuild = timings.measure('workspace.build.write', writeBuild)
-  const path = await WriteBuild(project.buildDirectory, code)
+  const path = await WriteBuild(buildDirectory, code)
   if (!isCurrent()) {
     return
   }

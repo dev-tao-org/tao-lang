@@ -11,6 +11,49 @@ Tests.test('project compilation creates its runtime lazily and publishes only ch
   })
 })
 
+Tests.test('opening an authored folder keeps generated runtime output outside the workspace', async () => {
+  const root = Artifacts.resolvePath('tmp', `folder-workspace-${Platform.randomUUID()}`)
+  await Try(() => verifyFolderWorkspace(root), {
+    finally() {
+      return FileSystem.rm(root, { recursive: true, force: true })
+    },
+  })
+})
+
+async function verifyFolderWorkspace(root: string): Promise<void> {
+  const directory = Path.join(root, 'authored')
+  const outputDirectory = Path.join(root, 'output')
+  const resourcesDirectory = Path.join(root, 'resources')
+  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.writeFile(Path.join(directory, 'Hello World.tao'), await Tests.readApp('Hello World'))
+  await writeResources(resourcesDirectory)
+  const workspace = createWorkspace({
+    directory,
+    outputDirectory,
+    runtimeOptions: {
+      resourcesDirectory,
+      toolchainCacheDirectory: Path.join(root, 'toolchains'),
+      install: {
+        async install(target) {
+          await FileSystem.mkdir(Path.join(target, 'node_modules'), { recursive: true })
+        },
+      },
+    },
+  })
+  await Try(async () => {
+    Tests.expect((await workspace.openFile('Hello World.tao')).status).toBe('published')
+    Tests.expect(await FileSystem.readdir(directory)).toEqual(['Hello World.tao'])
+    Tests.expect(workspace.runtime?.directory).toBe(Path.join(outputDirectory, 'runtime'))
+    Tests.expect(await FileSystem.readFile(workspace.runtime!.appPath, 'utf8')).toBe(
+      await FileSystem.readFile(Path.join(outputDirectory, 'build/App.tsx'), 'utf8'),
+    )
+  }, {
+    finally() {
+      workspace.dispose()
+    },
+  })
+}
+
 async function verifyProjectCompilation(root: string): Promise<void> {
   const project = await createProject({ directory: Path.join(root, 'project') })
   Tests.expect(await FileSystem.readdir(project.directory)).toEqual(['.tao'])

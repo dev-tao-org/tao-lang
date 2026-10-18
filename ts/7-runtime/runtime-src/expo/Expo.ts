@@ -4,12 +4,15 @@ import type { RuntimeApplication } from '../Runtime'
 import { waitForExpoReady } from './ExpoReadiness'
 
 /** createExpoSession starts a managed Expo web server and waits for its first response. */
-export async function createExpoSession(project: RuntimeApplication, options: ExpoOptions = {}): Promise<ExpoSession> {
+export async function createExpoSession(
+  application: RuntimeApplication,
+  options: ExpoOptions = {},
+): Promise<ExpoSession> {
   const port = unusedPort()
   const child = Platform.spawn('expo', {
     variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
-    cwd: project.directory,
-    env: expoEnvironment(project.directory),
+    cwd: application.directory,
+    env: expoEnvironment(application.directory),
     stdout: 'pipe',
     stderr: 'pipe',
   })

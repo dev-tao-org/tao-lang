@@ -38,14 +38,14 @@ async function createApplications(root: string, resourcesA: string, resourcesB: 
   const first = await Runtime.create(optionsA)
   await FileSystem.writeFile(first.appPath, 'compiled Tao application')
   await Runtime.create(optionsA)
-  const otherProject = await Runtime.create({ ...optionsA, directory: Path.join(root, 'second') })
+  const otherRuntime = await Runtime.create({ ...optionsA, directory: Path.join(root, 'second') })
   const changed = await Runtime.create({ ...optionsA, resourcesDirectory: resourcesB })
-  return { first, otherProject, changed, installedDirectories }
+  return { first, otherRuntime, changed, installedDirectories }
 }
 
 async function verifyCreatedApplications(
   root: string,
-  { first, otherProject, changed, installedDirectories }: CreatedApplications,
+  { first, otherRuntime, changed, installedDirectories }: CreatedApplications,
   dependencyVersions: Record<string, string>,
 ): Promise<void> {
   const manifest = JSON.parse(await FileSystem.readFile(Path.join(first.directory, 'package.json'), 'utf8')) as {
@@ -59,18 +59,18 @@ async function verifyCreatedApplications(
     'compiled TR B',
   )
   Tests.expect(await FileSystem.readFile(first.appPath, 'utf8')).toBe('compiled Tao application')
-  Tests.expect(otherProject.appPath).toBe(Path.join(root, 'second/src/App.tsx'))
+  Tests.expect(otherRuntime.appPath).toBe(Path.join(root, 'second/src/App.tsx'))
   Tests.expect(FileSystem.realpathSync(Path.join(changed.directory, 'node_modules'))).toBe(
     FileSystem.realpathSync(Path.join(installedDirectories[1], 'node_modules')),
   )
-  Tests.expect(FileSystem.realpathSync(Path.join(otherProject.directory, 'node_modules'))).toBe(
+  Tests.expect(FileSystem.realpathSync(Path.join(otherRuntime.directory, 'node_modules'))).toBe(
     FileSystem.realpathSync(Path.join(installedDirectories[0], 'node_modules')),
   )
 }
 
 type CreatedApplications = {
   first: Runtime.RuntimeApplication
-  otherProject: Runtime.RuntimeApplication
+  otherRuntime: Runtime.RuntimeApplication
   changed: Runtime.RuntimeApplication
   installedDirectories: string[]
 }

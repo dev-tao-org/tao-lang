@@ -2,7 +2,7 @@ import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Artifacts, Browser, Lifecycle, Platform, Repo } from '@shared/os'
-import { createProject, createWorkspace, type UpdateResult } from '@workspace/Workspace'
+import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
 import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
@@ -19,13 +19,17 @@ export default registerCommand({
 
 async function runDevSession(): Promise<void> {
   await prepareRuntime()
-  const sourcePath = Repo.resolvePath('Apps/Tests/Hello World.tao')
-  const project = await createProject({ directory: Artifacts.resolvePath('dev/hello-world'), persistent: true })
-  const workspace = createWorkspace({ project, onSourceUpdate: reportSourceUpdate, onSourceError: reportSourceError })
+  const workspace = createWorkspace({
+    directory: Repo.resolvePath('Apps/Tests'),
+    outputDirectory: Artifacts.resolvePath('dev/hello-world'),
+    onSourceUpdate: reportSourceUpdate,
+    onSourceError: reportSourceError,
+  })
   let expo: Runtime.ExpoSession | undefined
   let preview: PreviewHarness | undefined
   await Try(async () => {
-    requirePublished(await workspace.openFile(sourcePath))
+    IO.progress('Opening workspace at ' + workspace.directory)
+    requirePublished(await workspace.openFile('Hello World.tao'))
     expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput })
     preview = await createPreviewHarness({
       workspace,
@@ -67,7 +71,7 @@ function requirePublished(result: UpdateResult): void {
 }
 
 function reportExpoOutput(stream: 'stdout' | 'stderr', text: string): void {
-  IO.progress(`[expo ${stream}] ${text.trimEnd()}`)
+  IO.progress(`[expo ${stream}] ${text.trimEnd().replace('Starting project at ', 'Starting Expo runtime at ')}`)
 }
 
 function reportReload(timing: ReloadTiming): void {
