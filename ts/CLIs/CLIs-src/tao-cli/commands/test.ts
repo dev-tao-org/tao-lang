@@ -13,7 +13,7 @@ export default registerCommand({
     description: 'Run Tao test files with one worker.',
   }, {
     flags: '--parallel [workers]',
-    description: 'Run concurrently; optionally override the worker budget (default: 2).',
+    description: 'Run concurrently; optionally override the worker budget (default: 4).',
   }],
   async action(target: string, options: TestExecutionOptions = {}) {
     await runTaoTests(Path.resolve(Env.get('TAO_CLI_CWD') ?? Repo.getWorkspaceRoot(), target), options)

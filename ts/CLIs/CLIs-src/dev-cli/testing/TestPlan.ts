@@ -34,7 +34,7 @@ export function planTestExecution(
   const typescriptSelected = options.typescriptArgs !== undefined
   const taoSelected = options.taoTarget !== undefined
   const sections = Number(typescriptSelected) + Number(taoSelected)
-  const budget = parallel === undefined || parallel === true ? 4 : parseParallelBudget(parallel)
+  const budget = parallel === undefined || parallel === true ? 6 : parseParallelBudget(parallel)
   const [typescriptWorkers, taoWorkers] = serial || budget === 1
     ? [1, 1]
     : splitWorkerBudget(budget, sections, typescriptSelected, parallel === undefined || parallel === true)
@@ -49,7 +49,7 @@ export function planTestExecution(
 
 function parseParallelBudget(value: string | boolean): number {
   if (value === false || value === true) {
-    return 4
+    return 6
   }
   const budget = Number(value)
   if (!Number.isSafeInteger(budget) || budget < 1) {
@@ -123,10 +123,10 @@ function splitWorkerBudget(
   defaultBudget: boolean,
 ): [number, number] {
   if (sections < 2) {
-    const workers = defaultBudget ? 2 : budget
+    const workers = defaultBudget ? typescriptSelected ? 2 : 4 : budget
     return typescriptSelected ? [workers, 0] : [0, workers]
   }
-  const typescript = Math.max(1, Math.floor(budget / 2))
+  const typescript = Math.min(2, Math.max(1, Math.floor(budget / 2)))
   return [typescript, Math.max(1, budget - typescript)]
 }
 

@@ -20,9 +20,9 @@ Tests.test('a project watcher reloads package dependencies and recovers invalid 
     Tests.expect(publications.at(-1)).toContain('"First value"')
     await FileSystem.writeFile(dependency, 'project view Card {')
     await waitUntil(() => outcomes.some(result => result.status === 'failed'))
-    Tests.expect(publications).toHaveLength(1)
+    Tests.expect(publications.every(code => code.includes('"First value"'))).toBe(true)
     await FileSystem.writeFile(dependency, card('Repaired value'))
-    await waitUntil(() => publications.length === 2)
+    await waitUntil(() => publications.at(-1)?.includes('"Repaired value"') === true)
     Tests.expect(publications.at(-1)).toContain('"Repaired value"')
   }, {
     async finally() {

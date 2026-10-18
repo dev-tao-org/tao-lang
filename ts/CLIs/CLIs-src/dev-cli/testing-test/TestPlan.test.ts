@@ -10,7 +10,7 @@ import {
 Tests.test('allocates fixed workers to selected sections and splits explicit budgets', () => {
   Tests.expect(planTestExecution({ typescriptArgs: [], taoTarget: '/apps' })).toEqual({
     typescript: { args: [], workers: 2 },
-    tao: { target: '/apps', workers: 2 },
+    tao: { target: '/apps', workers: 4 },
     serial: false,
   })
   Tests.expect(planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '5' })).toEqual({
@@ -20,9 +20,15 @@ Tests.test('allocates fixed workers to selected sections and splits explicit bud
   })
   Tests.expect(planTestExecution({ taoTarget: '/apps' })).toEqual({
     typescript: undefined,
-    tao: { target: '/apps', workers: 2 },
+    tao: { target: '/apps', workers: 4 },
     serial: false,
   })
+  Tests.expect(planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '6' })).toEqual({
+    typescript: { args: [], workers: 2 },
+    tao: { target: '/apps', workers: 4 },
+    serial: false,
+  })
+  Tests.expect(planTestExecution({ typescriptArgs: [] }).typescript?.workers).toBe(2)
 })
 
 Tests.test('serial mode and a one-worker budget run selected sections in sequence', () => {
