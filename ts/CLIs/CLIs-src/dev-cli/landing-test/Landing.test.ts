@@ -205,6 +205,7 @@ Tests.test('archive pointers retain the verified parent and only the storage dif
   f.state.pointerPending = true
   const proof = await land(f.io)
   Tests.expect(proof.sourceCommit).toBe('e'.repeat(40))
+  Tests.expect(f.calls).toContain('git diff --cached --name-only --ignore-submodules=none')
   Tests.expect(f.calls).toContain(`git push origin ${proof.sourceCommit}:refs/heads/${f.branch}`)
   for (const kind of ['parent', 'paths']) {
     const invalid = recordingLanding()

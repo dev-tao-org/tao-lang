@@ -15,7 +15,7 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
     Errors.ThrowUserInput('Storage advanced after remote confirmation; rerun land before pinning its archive.')
   }
   await git(io, ['update-index', '--cacheinfo', `160000,${publishedArchive},.storage`])
-  const staged = await git(io, ['diff', '--cached', '--name-only'])
+  const staged = await git(io, ['diff', '--cached', '--name-only', '--ignore-submodules=none'])
   if (!staged) {
     await requireArchiveGitlink(io, verifiedHead, publishedArchive)
     return verifiedHead
@@ -34,7 +34,14 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
   const pointerHead = await git(io, ['rev-parse', 'HEAD'])
   await requireArchiveGitlink(io, pointerHead, publishedArchive)
   const parents = await git(io, ['show', '-s', '--format=%P', pointerHead])
-  const paths = await git(io, ['diff-tree', '--no-commit-id', '--name-only', '-r', pointerHead])
+  const paths = await git(io, [
+    'diff-tree',
+    '--no-commit-id',
+    '--name-only',
+    '--ignore-submodules=none',
+    '-r',
+    pointerHead,
+  ])
   if (parents !== verifiedHead || paths !== '.storage') {
     Errors.ThrowUserInput(
       'The archive pointer commit is not an isolated follow-up to the verified source; review before rerunning land.',

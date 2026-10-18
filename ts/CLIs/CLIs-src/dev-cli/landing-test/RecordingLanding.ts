@@ -130,8 +130,8 @@ function gitReply(args: readonly string[], state: ReturnType<typeof initialState
     'ls-tree': `160000 commit ${state.pinnedArchive}\t.storage`,
   }
   const words = args.join(' ')
-  if (!storage && words === 'diff --cached --name-only') {
-    return state.pointerPending ? '.storage' : ''
+  if (!storage && args[0] === 'diff' && args.includes('--cached')) {
+    return state.pointerPending && args.includes('--ignore-submodules=none') ? '.storage' : ''
   }
   if (args[0] === 'diff-tree' && args.includes('e'.repeat(40))) {
     return state.pointerPaths
