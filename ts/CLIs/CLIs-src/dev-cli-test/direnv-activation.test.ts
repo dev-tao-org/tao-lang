@@ -1,5 +1,5 @@
 import { S, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 type RuntimeFixture = {
   home: string
@@ -120,7 +120,7 @@ async function runActivationHook(fixture: RuntimeFixture, activeRoot: string): P
     cwd: fixture.root,
     env: {
       HOME: fixture.home,
-      PATH: `${Path.join(fixture.home, 'bin')}:/usr/bin:/bin`,
+      PATH: `${Path.join(fixture.home, 'bin')}:${Env.get('PATH') ?? ''}`,
       DIRENV_DIR: `-${activeRoot}`,
       TAO_TEST_ACTIVE: 'from-sibling-A',
       TAO_TEST_COMMON: Path.join(Path.dirname(fixture.root), 'common.git'),
