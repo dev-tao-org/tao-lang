@@ -1,6 +1,6 @@
 import { runCommand } from '@cli-kit'
 import { Errors } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { Env, FileSystem, Path, Repo } from '@shared/os'
 import { checkEditorTypeScript } from './editor-typescript'
 import { prepareParser } from './parser-build'
 import { prepareRuntime } from './runtime-build'
@@ -113,7 +113,7 @@ export async function workspaceDeadExports(): Promise<void> {
   await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
 }
 
-/** workspaceTests runs workspace tests with dots and end-of-run slow-test warnings. */
+/** workspaceTests runs named CI tests or local dots, with end-of-run slow-test warnings. */
 export async function workspaceTests(args: readonly string[] = []): Promise<void> {
   await prepareParser()
   await prepareRuntime()
@@ -121,8 +121,9 @@ export async function workspaceTests(args: readonly string[] = []): Promise<void
     const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')
     await prepareExtensionAssets()
   }
+  const command = Env.get('CI') ? 'bun test' : 'bun test --dots'
   await withTestTimings(reportPath =>
-    runCommand(reportPath ? 'bun test --dots --reporter=junit --reporter-outfile' : 'bun test --dots', {
+    runCommand(reportPath ? `${command} --reporter=junit --reporter-outfile` : command, {
       variadicArgs: [...(reportPath ? [reportPath] : []), ...args],
       cwd: Repo.resolvePath('ts'),
     })
