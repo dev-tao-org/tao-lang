@@ -39,6 +39,9 @@ These are your rules of usage:
 - Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
 - Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
 - Keep working notes, investigation logs, checkpoints and progress records under `.artifacts/notes/`, `.artifacts/checkpoint/` or `.artifacts/progress/`. Normal and partial cleanup retain these paths; only `clean --full` removes them.
+- During development, briefly tell the developer when an environment complication is discovered. Retain every complication left unresolved in task-local `.artifacts` notes or the checkpoint across interruptions and compaction; record its impact, workaround and open/resolved status. A workaround alone does not resolve the underlying issue.
+- Track meaningful environment friction, including missing helpful tooling, slow or unreliable setup, poor diagnostics, redundant verification without useful caching or test selection, concurrent-work interference, unnecessary permission requests and unavailable actions that reasonably ought to be available. Assess permission friction against actual risk and required developer judgment; recording it does not relax approval or verification requirements.
+- When asked about issues encountered, give a concise executive report from the task's complication record. When asked what remains or whether work is ready to land or archive, also surface every unresolved complication, distinguishing blockers from follow-up improvements.
 - Keep `Docs/Specification/` aligned with language and tooling behavior as implementations change; its `AGENTS.md` owns scope and writing style. Update other repository documents only when the developer instructs you to do so; keep observations and progress in `.artifacts`.
 
 ## Your mission
@@ -103,6 +106,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
 - Always create a new feature branch for your new worktree.
 - Make commits as you implement parts. Run `./agent verify` before committing, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
+- Back up committed work to `origin` after meaningful implementation chunks, rather than after every commit; `git-workflow` owns backup pushes and keeping them from triggering CI unless requested.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 
 ## Implementation architecture

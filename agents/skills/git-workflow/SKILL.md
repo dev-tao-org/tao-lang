@@ -12,9 +12,24 @@ description: >-
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
-`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Pushing is
-irreversible: confirm with the Developer before pushing anything the Developer did not ask to be
-pushed.
+`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Periodic
+backup pushes are authorized below; other publication needs the Developer's authorization.
+
+## Backup pushes
+
+- Push committed work to `origin` after a meaningful completed chunk or before a substantial
+  handoff, rather than after every commit. Report a failed backup and retain it as an unresolved
+  task complication; local commits alone are not an origin backup.
+- Backup pushes must not trigger CI unless the Developer requests CI for that push. Check current
+  workflow triggers and open pull requests before choosing a destination. With the current
+  workflows, pushing a feature branch without an open PR does not start CI; updating an open PR does.
+- If the working branch has an open PR, push the committed snapshot to a dedicated
+  `backup/<working-branch>` ref without an open PR instead. Confirm that destination is outside
+  automatic CI triggers; do not open a PR or dispatch a workflow for a backup. If no CI-free
+  destination is available, retain the backup as pending and explain the constraint.
+- Use an ordinary fast-forward push, set upstream only for the actual working branch, and never
+  force-push, push `main`, rewrite commit messages to skip CI, or weaken workflow gates for a backup.
+  A backup is not landing authorization or verification evidence.
 
 ## Worktree ownership
 
