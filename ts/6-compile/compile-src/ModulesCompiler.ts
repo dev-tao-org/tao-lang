@@ -52,7 +52,7 @@ function compileAppRegistrations(program: LinkedProgram): string {
     module.document.root.declarations
       .filter(AST.IsAppDeclaration)
       .map(app =>
-        `TR.LetDefinition(${scopeName(index)}, ${literal(app.name)}, TR.ViewReference(${scopeName(index)}, ${
+        `TR.LetReference(${scopeName(index)}, ${literal(app.name)}, () => TR.ViewReference(${scopeName(index)}, ${
           literal(app.root)
         }));`
       )

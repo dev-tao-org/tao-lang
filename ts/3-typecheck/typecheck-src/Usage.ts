@@ -16,7 +16,7 @@ export function unusedWarnings(document: AST.Document, timings = new Timings('us
   return analyzeUsage(timings, document)
 }
 
-type Binding = { name: AST.Name; imported: boolean; report: boolean; used: boolean }
+type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
 const analyzeUsage = Timings.measure('usage.analyze', function(document: AST.Document): UsageWarning[] {
@@ -34,15 +34,15 @@ const analyzeUsage = Timings.measure('usage.analyze', function(document: AST.Doc
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
     const visibility = node.visibility ?? (AST.IsAppDeclaration(node) ? 'folder' : 'file')
-    declare(scope, node.name, false, visibility === 'file')
+    declare(scope, node.name, 'local', visibility === 'file')
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
-      declare(scope, item.alias ?? item.target, true)
+      declare(scope, item.alias ?? item.target, 'import')
     }
   } else if (AST.IsUsePackageStatement(node)) {
     const value = node.alias?.value ?? namespaceFromPath(node.from.value)
     if (value) {
-      declare(scope, node.alias ?? { ...node.from, kind: 'Name', value }, true)
+      declare(scope, node.alias ?? { ...node.from, kind: 'Name', value }, 'namespace')
     }
   }
 }
@@ -119,15 +119,16 @@ function childScope(parent?: Scope): Scope {
   return { parent, bindings: new Map(), all: parent?.all ?? [] }
 }
 
-function declare(scope: Scope, name: AST.Name, imported = false, report = true): void {
-  const binding = { name, imported, report, used: false }
+function declare(scope: Scope, name: AST.Name, kind: Binding['kind'] = 'local', report = true): void {
+  const binding = { name, kind, report, used: false }
   scope.bindings.set(name.value, [...scope.bindings.get(name.value) ?? [], binding])
   scope.all.push(binding)
 }
 
 function reference(scope: Scope, name: AST.Name): void {
   const head = name.value.split('.')[0]!
-  const bindings = scope.bindings.get(name.value) ?? scope.bindings.get(head)
+  const namespace = scope.bindings.get(head)?.filter(binding => binding.kind === 'namespace')
+  const bindings = scope.bindings.get(name.value) ?? (namespace?.length ? namespace : undefined)
   if (bindings) {
     for (const binding of bindings) {
       binding.used = true
@@ -140,8 +141,10 @@ function reference(scope: Scope, name: AST.Name): void {
 function warningFor(binding: Binding): UsageWarning {
   return {
     severity: 'warning',
-    code: binding.imported ? 'unused-import' : 'unused-declaration',
-    message: `${binding.imported ? 'Imported name' : 'Declaration'} '${binding.name.value}' is not used in this file.`,
+    code: binding.kind === 'local' ? 'unused-declaration' : 'unused-import',
+    message: `${
+      binding.kind === 'local' ? 'Declaration' : 'Imported name'
+    } '${binding.name.value}' is not used in this file.`,
     start: binding.name.start,
     end: binding.name.end,
   }

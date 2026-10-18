@@ -1,6 +1,8 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
+import * as RuntimeScope from '@runtime/Scope'
+import { ViewDefinition, ViewReference } from '@runtime/View'
 import { Errors, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
@@ -45,9 +47,22 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
     { path: interactionsPath, document: interactions, imports: [], siblings: [helloPath] },
   ])
   const code = compile(hello, { revision: 'folder-apps', program })
-  Tests.expect(code).toContain('TR.LetDefinition(_scope0, "HelloWorld", TR.ViewReference(_scope0, "RootView"));')
-  Tests.expect(code).toContain('TR.LetDefinition(_scope1, "Interactions", TR.ViewReference(_scope1, "Form"));')
+  Tests.expect(code).toContain('TR.LetReference(_scope0, "HelloWorld", () => TR.ViewReference(_scope0, "RootView"));')
+  Tests.expect(code).toContain('TR.LetReference(_scope1, "Interactions", () => TR.ViewReference(_scope1, "Form"));')
   Tests.expect(code).toContain('TR.LetReference(_scope0, "Interactions", () => TR.Value(_scope1, "Interactions"));')
+})
+
+Tests.test('app registration waits until its root alias is initialized', () => {
+  const source = S`
+    app Main { root Alias }
+    view Root { render inject \`\`\`ts return null \`\`\` }
+    let Copy = Main
+    let Alias = Root
+  `
+  const execute = new Function('TR', generatedJavaScript(source) + '\nreturn TR.Value(_scope0, "Copy");')
+  const root = execute({ ...RuntimeScope, ViewDefinition, ViewReference, ModuleApplied() {} })
+  Tests.expect(root.name).toBe('Root')
+  Tests.expect(root.render()).toBeNull()
 })
 
 Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {

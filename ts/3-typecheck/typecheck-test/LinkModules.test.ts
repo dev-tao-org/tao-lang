@@ -111,6 +111,12 @@ Tests.test('cross-module lets are ordered by dependency and cycles are reported'
 Tests.test('unknown module-level let references fail with their owning source', () => {
   const module = source('app/main.tao', [letReference('Result', 'Missing')])
   Tests.expect(() => linkModules(module.path, [module])).toThrow('Unknown let reference Missing in app/main.tao')
+  const statement = useNamed('Base')
+  const qualified = source('app/main.tao', [statement, letReference('Result', 'Base.Missing')])
+  const imported = source('app/base.tao', [letDefinition('Base', 'ready', 'public')])
+  qualified.imports = [resolved(statement, imported.path, 'same-project')]
+  Tests.expect(() => linkModules(qualified.path, [qualified, imported]))
+    .toThrow('Unknown let reference Base.Missing in app/main.tao')
 })
 
 function source(

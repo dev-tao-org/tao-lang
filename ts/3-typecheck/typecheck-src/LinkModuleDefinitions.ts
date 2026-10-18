@@ -4,11 +4,7 @@ import type { LinkedDefinition, LinkedModule, ModuleBinding } from './Modules'
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
 export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefinition[] {
-  const definitions = modules.flatMap(module =>
-    module.document.root.declarations
-      .filter(AST.IsLetDefinition)
-      .map(declaration => ({ source: module.path, declaration }))
-  )
+  const definitions = dependencyDefinitions(modules)
   const definitionByKey = new Map(
     definitions.map(item => [definitionKey(item.source, item.declaration.name.value), item]),
   )
@@ -23,7 +19,7 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
   const ordered: LinkedDefinition[] = []
   const visiting = new Set<string>()
   const visited = new Set<string>()
-  const visit = (item: LinkedDefinition): void => {
+  const visit = (item: DependencyDefinition): void => {
     const key = definitionKey(item.source, item.declaration.name.value)
     if (visited.has(key)) {
       return
@@ -42,30 +38,44 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
     }
     visiting.delete(key)
     visited.add(key)
-    ordered.push(item)
+    if (AST.IsLetDefinition(item.declaration)) {
+      ordered.push({ source: item.source, declaration: item.declaration })
+    }
   }
   for (const item of definitions) {
-    visit(item)
+    if (AST.IsLetDefinition(item.declaration)) {
+      visit(item)
+    }
   }
   return ordered
 }
 
+type DependencyDefinition = { source: string; declaration: AST.LetDefinition | AST.AppDeclaration }
+
+function dependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefinition[] {
+  return modules.flatMap(module =>
+    module.document.root.declarations
+      .filter((node): node is DependencyDefinition['declaration'] =>
+        AST.IsLetDefinition(node) || AST.IsAppDeclaration(node)
+      )
+      .map(declaration => ({ source: module.path, declaration }))
+  )
+}
+
 function dependenciesFor(
-  item: LinkedDefinition,
+  item: DependencyDefinition,
   module: LinkedModule,
-  definitions: ReadonlyMap<string, LinkedDefinition>,
+  definitions: ReadonlyMap<string, DependencyDefinition>,
   knownNames: ReadonlySet<string>,
 ): ModuleBinding[] {
-  const value = item.declaration.value
+  const value = AST.IsAppDeclaration(item.declaration) ? item.declaration.root : item.declaration.value
   if (!AST.IsKind(value, 'Name')) {
     return []
   }
   if (definitions.has(definitionKey(module.path, value.value))) {
     return [{ name: value.value, source: module.path, target: value.value }]
   }
-  const imports = module.bindings.filter(binding =>
-    binding.name === value.value || value.value.startsWith(`${binding.name}.`)
-  )
+  const imports = module.bindings.filter(binding => binding.name === value.value)
   if (imports.length > 0) {
     return imports
   }

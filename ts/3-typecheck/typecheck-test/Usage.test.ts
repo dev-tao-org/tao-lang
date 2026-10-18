@@ -43,3 +43,17 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
   Tests.expect(warnings.every(warning => warning.severity === 'warning')).toBe(true)
   Tests.expect(ast.root.declarations).toHaveLength(12)
 })
+
+Tests.test('qualified namespace use ignores an ordinary local binding with the same head', () => {
+  const source = S`
+    use package @tao/ui as UI
+    app Demo { root Main }
+    view Main {
+      let UI = "unused"
+      render UI.Text("shown")
+    }
+  `
+  const ast = transform(createParser().parse(source).tree)!
+  Tests.expect(unusedWarnings(ast).map(warning => [warning.code, source.slice(warning.start, warning.end)]))
+    .toEqual([['unused-declaration', 'UI']])
+})
