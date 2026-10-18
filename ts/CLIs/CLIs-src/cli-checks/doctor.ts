@@ -34,15 +34,20 @@ export function toolVersion(output: string | undefined): string | undefined {
 }
 
 /** diagnoseTools classifies required runtime versions and optional local-service tools. */
-export function diagnoseTools(tools: readonly string[], versions: readonly (string | undefined)[]): Check[] {
+export function diagnoseTools(
+  tools: readonly string[],
+  versions: readonly (string | undefined)[],
+  failures: readonly (string | undefined)[] = [],
+): Check[] {
   return tools.map((name, index) => {
     const version = toolVersion(versions[index])
     const optional = name === 'age' || name === 'docker'
     if (!version) {
+      const diagnostic = failures[index] || versions[index]?.trim()
       return {
         name,
         status: optional ? 'warn' : 'fail',
-        detail: 'Not available on the managed PATH.',
+        detail: diagnostic || 'Not available on the managed PATH.',
         remediation: 'Enter the repository devenv; run ./agent setup.',
       }
     }
@@ -78,13 +83,32 @@ type Fingerprint = {
 const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
 
 async function readSnapshot() {
-  const [versions, commit, describe, changes] = await Promise.all([
-    Promise.all(tools.map(tool => probe(tool + ' --version'))),
+  const [probes, commit, describe, changes] = await Promise.all([
+    Promise.all(tools.map(probeTool)),
     probe('git rev-parse HEAD'),
     probe('git describe --always --dirty'),
     probe('git status --porcelain'),
   ])
-  return { versions, commit, describe, changes }
+  return {
+    versions: probes.map(probe => probe.output),
+    failures: probes.map(probe => probe.failure),
+    commit,
+    describe,
+    changes,
+  }
+}
+
+async function probeTool(tool: string): Promise<{ output?: string; failure?: string }> {
+  return await Try(async () => ({
+    output: await Platform.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
+  }), {
+    catch(error) {
+      const failure = Errors.isCommandExecutionError(error)
+        ? error.result.stderr.trim() || error.result.stdout.trim() || `Exited with status ${error.result.status}.`
+        : String(error)
+      return { failure }
+    },
+  })
 }
 
 type Snapshot = Awaited<ReturnType<typeof readSnapshot>>
@@ -115,7 +139,7 @@ async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
 }
 
 async function readChecks(snapshot: Snapshot): Promise<Check[]> {
-  const checks = diagnoseTools(tools, snapshot.versions)
+  const checks = diagnoseTools(tools, snapshot.versions, snapshot.failures)
   const main = Try.WithDefault(undefined, Repo.getMainWorktreeRoot)
   checks.push({
     name: 'Git worktree',

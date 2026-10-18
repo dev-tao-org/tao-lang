@@ -25,3 +25,11 @@ Tests.test('doctor distinguishes required runtime failures from optional service
   Tests.expect(() => assertDoctorReady('fail')).toThrow('required setup failures')
   Tests.expect(assertDoctorReady('warn')).toBeUndefined()
 })
+
+Tests.test('doctor preserves a failed required tool probe diagnostic', () => {
+  const [check] = diagnoseTools(['dprint'], [undefined], ['Formatter startup failed: missing runtime library.'])
+  Tests.expect(check?.status).toBe('fail')
+  Tests.expect(check?.detail).toBe('Formatter startup failed: missing runtime library.')
+  Tests.expect(diagnoseTools(['dprint'], ['Unexpected formatter output.'])[0]?.detail)
+    .toBe('Unexpected formatter output.')
+})
