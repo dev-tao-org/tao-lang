@@ -96,6 +96,11 @@ my-branch name='':
 dev:
     ./dev dev
 
+# Measure preview refresh and print scenario timings and the raw report path
+[group('Dev')]
+performance:
+    ./dev performance preview
+
 # Build the Tao extension once and install it into Cursor and VS Code
 [group('Dev')]
 install-ide-extension:

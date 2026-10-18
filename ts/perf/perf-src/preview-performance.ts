@@ -81,7 +81,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
   const results = await runScenarios(page)
   await waitForReloadReports(owned)
   const path = await writeReport(options.project, owned, results)
-  return { path, sessionId: owned.sessionId, results }
+  return { path, sessionId: owned.sessionId, results, reloads: owned.reloads, startupMs: owned.startupMs }
 }
 
 async function runScenarios(page: import('playwright').Page): Promise<PreviewResult[]> {
