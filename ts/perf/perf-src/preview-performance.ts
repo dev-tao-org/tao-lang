@@ -42,7 +42,7 @@ type PreviewResult = {
   frames: Record<string, { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }>
 }
 
-const scenarios = ['text', 'add-text', 'row'] as const
+const scenarios = ['text', 'add-text', 'row', 'reset'] as const
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
@@ -55,6 +55,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     workspace: options.workspace,
     previewUrl: owned.expo.url,
     sessionId: owned.sessionId,
+    canonicalSource: options.initialSource,
     onReload(timing) {
       owned.reloads.push(timing)
     },
@@ -127,6 +128,16 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
 async function assertScenario(page: HeadlessBrowser.Page, scenario: typeof scenarios[number]): Promise<void> {
   for (const frameId of ['left', 'right']) {
     const frame = page.frameLocator(`#${frameId}`)
+    if (scenario === 'reset') {
+      await frame.getByText('Hello World', { exact: true }).waitFor()
+      if (await frame.getByText('Hello Tao', { exact: true }).count() > 0) {
+        Errors.ThrowUnexpected(`${frameId} frame still showed edited text after reset.`)
+      }
+      if (await frame.getByText('Second view', { exact: true }).count() > 0) {
+        Errors.ThrowUnexpected(`${frameId} frame still showed the added view after reset.`)
+      }
+      continue
+    }
     await frame.getByText('Hello Tao', { exact: true }).waitFor()
     if (scenario !== 'text') {
       await frame.getByText('Second view', { exact: true }).waitFor()

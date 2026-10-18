@@ -10,5 +10,6 @@ export async function parserFixtures(): Promise<{ scenario: string; source: stri
     { scenario: 'text', source: editedText },
     { scenario: 'add-text', source: addedText },
     { scenario: 'row', source: addedText.replace('render Col', 'render Row') },
+    { scenario: 'reset', source: initial },
   ]
 }
