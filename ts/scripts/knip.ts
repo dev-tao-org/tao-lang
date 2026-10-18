@@ -23,6 +23,7 @@ export default {
       ...cliEntries().flatMap(commandEntries),
       'CLIs-src/tao-cli/tao-cli.ts',
       'CLIs-src/dev-cli/commands/_setup.ts',
+      'CLIs-src/dev-cli/commands/_setup-complete.ts',
       '**/*.test.ts',
     ]),
     perf: packageWorkspace([
