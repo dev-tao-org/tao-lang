@@ -1,5 +1,8 @@
 # First editor extension baseline
 
+Historical checkpoint: the fixture and implementation have evolved. See the [performance guide](README.md)
+for current commands; reproducing these figures requires the recorded revision and inputs.
+
 Run `./agent performance extension` after setup. The driver uses the same WASM document session as the extension, with Kitchen Sink as its fixture. It alternates a text edit inside a TSX injection, performs 20 unrecorded warmups, then records 100 incremental updates. Every measured result must have highlight captures and no syntax diagnostics.
 
 This is the first baseline for the new path, based on the dirty implementation over `c7b57deef`. It is not a comparison against the old extension. The October 17, 2026 run used macOS ARM64, Bun 1.4.2, Tree-sitter CLI 0.26.13, web-tree-sitter 0.26.6 and tree-sitter-typescript 0.23.2 on the shared developer host. OS and runtime caches were warm; editor rendering and WASM initialization are excluded.

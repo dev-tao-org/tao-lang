@@ -3,6 +3,9 @@
 Measured on October 17, 2026, in the Goal 2 worktree with the pinned TypeScript 5.9.3.
 These are individual local samples of the TypeScript phase, excluding environment activation
 and the remaining check gates.
+No exact source revision or raw report was retained in this record; use it as a historical observation,
+not a reproducible current baseline. Run `./agent check` and inspect its `tsc --build` phase separately
+from total check time when collecting new samples.
 
 | Configuration                                        |   Time |
 | ---------------------------------------------------- | -----: |

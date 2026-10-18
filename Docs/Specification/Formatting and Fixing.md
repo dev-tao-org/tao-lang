@@ -54,10 +54,8 @@ view Caption(Value text) {
 }
 ````
 
-The native formatter is loaded on the first save or command that needs it, then reused. Its starting
-indentation preserves meaningful whitespace inside multiline literals. An incomplete native body
-is left unchanged while complete surrounding Tao syntax can still be formatted. Formatting is not
-part of the preview compilation path.
+Formatting preserves meaningful whitespace inside multiline literals. An incomplete TypeScript body
+is left unchanged while complete surrounding Tao syntax can still be formatted.
 
 Long named-import lists use a hanging indent, with their source on the following line:
 
@@ -110,12 +108,9 @@ view Greeting {
 view BeingEdited(
 ```
 
-Fixing requires a complete AST. Syntactic fixes such as import organization do not require successful
-name resolution; future semantic fixes can require resolved references. Both operations propose
-source edits without mutating the supplied tree or writing files. The editor or command applies those
-edits to the matching document version and decides when to save.
+Fixing requires syntactically complete source. Import organization works even when imported modules
+cannot be resolved; future semantic fixes can require resolved references.
 
-`./tao fmt path/to/File.tao` formats one source file and
-`./tao fix path/to/File.tao` organizes its imports before formatting. Repository commands `./dev fmt`
-and `./dev fix` accept explicit Tao file paths too. The extension supplies the same
-formatting operation to the editor's format-on-save support.
+`tao fmt path/to/File.tao` formats one source file and
+`tao fix path/to/File.tao` organizes its imports before formatting. Editor format-on-save uses the
+same formatting behavior.
