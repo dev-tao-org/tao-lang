@@ -34,6 +34,11 @@ secrets *ARGS:
 doctor *ARGS:
     ./dev doctor "$@"
 
+# Configure optional automatic development environments for this repository and its worktrees
+[group('Setup')]
+shell-setup:
+    ./dev shell-setup --configure
+
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
 clean:

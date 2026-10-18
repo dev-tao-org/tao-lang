@@ -1,3 +1,4 @@
+import { createInterface, type ReadLineOptions } from 'node:readline/promises'
 import { StringDecoder } from 'node:string_decoder'
 import { Errors, Try } from '../universal/universal'
 
@@ -6,6 +7,44 @@ export const stdout = process.stdout
 
 /** stderr exposes the diagnostic output stream. */
 export const stderr = process.stderr
+
+/** isInteractive reports whether stdin and stdout are attached to a terminal. */
+export function isInteractive(): boolean {
+  return stdout.isTTY === true && process.stdin.isTTY === true
+}
+
+/** writeLine writes human-readable text plus a newline to stdout. */
+export function writeLine(message = ''): void {
+  stdout.write(`${message}\n`)
+}
+
+/** askConfirm prompts for a yes/no response. */
+export async function askConfirm(options: { defaultValue?: boolean; message: string }): Promise<boolean> {
+  if (!isInteractive()) {
+    return options.defaultValue ?? false
+  }
+  const suffix = options.defaultValue ? '[Y/n]' : '[y/N]'
+  const readline = createInterface(confirmReadlineOptions())
+  return await Try(async () => {
+    while (true) {
+      const answer = (await readline.question(`${options.message} ${suffix} `)).trim().toLowerCase()
+      if (answer === '' && options.defaultValue !== undefined) {
+        return options.defaultValue
+      }
+      if (answer === 'y' || answer === 'yes') {
+        return true
+      }
+      if (answer === 'n' || answer === 'no') {
+        return false
+      }
+      stderr.write('Answer yes or no.\n')
+    }
+  }, {
+    finally() {
+      readline.close()
+    },
+  })
+}
 
 /** askSecret reads hidden input, submitting bracketed pastes as one value including embedded newlines. */
 export async function askSecret(prompt: string): Promise<string> {
@@ -44,6 +83,13 @@ export async function askSecret(prompt: string): Promise<string> {
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
+
+function confirmReadlineOptions(): ReadLineOptions {
+  return {
+    input: process.stdin,
+    output: stderr,
+  }
+}
 
 function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: Buffer) => void {
   const state: SecretInput = { decoder: new StringDecoder('utf8'), value: '', pending: '', pasting: false }

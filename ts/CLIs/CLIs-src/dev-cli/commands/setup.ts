@@ -1,5 +1,20 @@
 import { runCommand } from '@cli-kit'
+import { FileSystem, Path, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
+
+async function ensureShellCompletionCache(): Promise<void> {
+  const cache = Repo.resolvePath('.artifacts/cache/dev-shell')
+  const completion = Path.resolve(cache, 'completion.zsh')
+  if (FileSystem.existsSync(completion)) {
+    return
+  }
+  await FileSystem.mkdir(cache, { recursive: true })
+  await FileSystem.writeFile(
+    completion,
+    '# Tao dev shell completion is generated during ./agent setup.\n',
+    'utf8',
+  )
+}
 
 /** setupCommand installs the TypeScript development workspace dependencies. */
 export default registerCommand({
@@ -12,5 +27,8 @@ export default registerCommand({
     await runCommand('bun install', { variadicArgs: args })
     const { prepareParser } = await import('../../cli-checks/parser-build')
     await prepareParser()
+    await ensureShellCompletionCache()
+    const { runDirenvSetup } = await import('../shell/DirenvSetup')
+    await runDirenvSetup({ prepare: true })
   },
 })
