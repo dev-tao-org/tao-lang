@@ -30,6 +30,11 @@ jobs:
             .devenv/portable-generations
             .devenv/profile
           gc-max-store-size-linux: 6G
+      - name: Make restored workspace cache writable
+        run: |
+          if [ -d .devenv ]; then
+            sudo chown -hR "$(id -u):$(id -g)" .devenv
+          fi
       - uses: cachix/cachix-action@v16
         with:
           name: devenv
