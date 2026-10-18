@@ -66,17 +66,9 @@ function mergeActivationSourceLine(existing: string): string {
 
 /** realPathIfPresent resolves a path when it exists and returns an empty string otherwise. */
 async function realPathIfPresent(path: string): Promise<string> {
-  return await Try(() => FileSystem.realpathSync(path), {
-    catch() {
-      return ''
-    },
-  })
+  return await Try.WithDefault('', () => FileSystem.realpathSync(path))
 }
 
 function isSymbolicLink(path: string): boolean {
-  return Try(() => FileSystem.lstatSync(path).isSymbolicLink(), {
-    catch() {
-      return false
-    },
-  })
+  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
 }

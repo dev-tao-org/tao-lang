@@ -3,13 +3,9 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
 import { type SourceSnapshot, WorkspaceFile } from '../workspace-src/WorkspaceFile'
 
-const hostUnavailable = Platform.systemInfo().os === 'Darwin' && !await Try(async () => {
+const hostUnavailable = Platform.systemInfo().os === 'Darwin' && !await Try.WithDefault(false, async () => {
   await Platform.requireHostProcessAccess('File notification tests require macOS host access.')
   return true
-}, {
-  catch() {
-    return false
-  },
 })
 
 Tests.test('a newer file read supersedes an older deferred watcher read', async () => {

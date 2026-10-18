@@ -36,18 +36,52 @@ Tests.test('Try > recovers and finalizes even when a thrown object cannot be ins
   }
 })
 
-Tests.test('Try > preserves synchronous values and allows catch to recover synchronously', () => {
+Tests.test('Try > preserves synchronous values', () => {
   const value = { id: 1 }
   const result: typeof value = Try(() => value)
-  const recovered: number = Try(() => {
+  const recovered: number = Try.WithDefault(42, () => {
     throw 'input'
-  }, {
-    catch() {
-      return 42
-    },
   })
   Tests.expect(result).toBe(value)
   Tests.expect(recovered).toBe(42)
+})
+
+Tests.test('Try.WithDefault > preserves success values and returns the fallback on sync or async failure', async () => {
+  const fallback = { recovered: true }
+  const synchronous: string | typeof fallback = Try.WithDefault(fallback, () => 'value')
+  const synchronousFailure: typeof fallback | number = Try.WithDefault(fallback, () => {
+    throw new Error('sync failure')
+  })
+  const asynchronous: typeof fallback | Promise<number | typeof fallback> = Try.WithDefault(fallback, async () => 7)
+  const asynchronousFailure: typeof fallback | Promise<string | typeof fallback> = Try.WithDefault(
+    fallback,
+    () => Promise.reject(new Error('async failure')),
+  )
+  const asynchronousFallback: Promise<number> = Try.WithDefault(
+    Promise.resolve(11),
+    () => Promise.reject(new Error('async failure')),
+  )
+  Tests.expect(synchronous).toBe('value')
+  Tests.expect(synchronousFailure).toBe(fallback)
+  Tests.expect(await asynchronous).toBe(7)
+  Tests.expect(await asynchronousFailure).toBe(fallback)
+  Tests.expect(await asynchronousFallback).toBe(11)
+})
+
+Tests.test('Try.WithDefault > types mixed results without losing synchronous values or asynchronous recovery', async () => {
+  const mixedFailure = Try.WithDefault(false, (): number | Promise<string> => Promise.reject('mixed failure'))
+  const promisedRecovery: Extract<typeof mixedFailure, Promise<unknown>> = Promise.resolve(false)
+  const mixedSuccess: number | boolean | Promise<number | string | boolean> = Try.WithDefault(
+    false,
+    (): number | Promise<string> => 4,
+  )
+  Tests.expect(await mixedFailure).toBe(await promisedRecovery)
+  Tests.expect(mixedSuccess).toBe(4)
+  const earlyFailure = Try.WithDefault(false, (): Promise<string> => {
+    throw 'before returning a promise'
+  })
+  const synchronousRecovery: Exclude<typeof earlyFailure, Promise<unknown>> = false
+  Tests.expect(earlyFailure).toBe(synchronousRecovery)
 })
 
 Tests.test('Try > normalizes unknown failures and preserves structured error identity', () => {
@@ -215,19 +249,14 @@ Tests.test('Try > normalizes finalizer failures and lets them override pending r
   }
 })
 
-Tests.test('Try > awaits asynchronous finalizers and catch handlers for synchronous callbacks', async () => {
+Tests.test('Try > awaits finalizers and WithDefault awaits recovery for synchronous callbacks', async () => {
   const result: Promise<number> = Try(() => 3, { async finally() {} })
   Tests.expect(result).toBeInstanceOf(Promise)
   Tests.expect(await result).toBe(3)
-  Tests.expect(
-    await Try(() => {
-      throw 'body'
-    }, {
-      async catch() {
-        return 8
-      },
-    }),
-  ).toBe(8)
+  const asynchronousRecovery: Promise<number> = Try.WithDefault(Promise.resolve(8), () => {
+    throw 'body'
+  })
+  Tests.expect(await asynchronousRecovery).toBe(8)
 })
 
 Tests.test('Try > assimilates thenables and normalizes a throwing then getter', async () => {

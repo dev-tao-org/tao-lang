@@ -116,11 +116,7 @@ async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
 
 async function readChecks(snapshot: Snapshot): Promise<Check[]> {
   const checks = diagnoseTools(tools, snapshot.versions)
-  const main = Try(Repo.getMainWorktreeRoot, {
-    catch() {
-      return undefined
-    },
-  })
+  const main = Try.WithDefault(undefined, Repo.getMainWorktreeRoot)
   checks.push({
     name: 'Git worktree',
     status: main ? 'pass' : 'warn',
@@ -156,11 +152,10 @@ async function artifactChecks(): Promise<Check[]> {
 }
 
 async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
-  return Try(() => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }), {
-    catch() {
-      return undefined
-    },
-  })
+  return Try.WithDefault(
+    undefined,
+    () => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
+  )
 }
 
 function gitHash(value: string | undefined): string | undefined {
