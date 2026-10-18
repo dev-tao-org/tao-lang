@@ -1,25 +1,30 @@
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
-import { transform } from '../../2-transform/transform-src/Transform'
+import { transform } from '../../2-ast-gen/ast-gen-src/Transform'
+import { compile } from '../../6-compile/compile-src/Compile'
 
-/** transformerSamples measures the implemented app-only slice, excluding unsupported view declarations.
- *  Record 100 warm samples after 20 warmups; this is not a complete Hello World or preview measurement. */
+/** transformerSamples measures full Hello World parsing, transformation and code generation.
+ *  Record 100 warm samples after 20 warmups; no publication or preview is measured here. */
 export async function transformerSamples(): Promise<(TimingSample & { scenario: string })[]> {
-  const source = (await Tests.readApp('Hello World')).split('\n\n')[0]!
+  const source = await Tests.readApp('Hello World')
   const parser = createParser()
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
     const timings = new Timings(`process:${Platform.pid}`)
-    const document = timings.measure('transformer.parse-to-ast', () => {
+    const document = timings.measure('compiler.parse-to-code', () => {
       const { tree } = parser.parse(source, timings)
-      return transform(tree, timings)
+      const document = transform(tree, timings)
+      if (document) {
+        compile(document, { revision: 'benchmark' }, timings)
+      }
+      return document
     })
     if (document?.root.declarations[0]?.name.value !== 'HelloWorld') {
-      Errors.ThrowUnexpected('App-only transformer sample did not produce the expected app.')
+      Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
     }
     if (index >= 20) {
-      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'app-only' })))
+      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'hello-world-compile' })))
     }
   }
   return samples

@@ -7,3 +7,22 @@ view RootView {
     Text("Hello World")
   }
 }
+
+view Text(Value text) {
+  render inject Value ```ts
+    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+  ```
+}
+
+view Col() {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'column' }}>{Children}</TR.ReactNative.View>
+  ```
+}
+
+view Row() {
+  render inject Children @@children ```ts
+    return <TR.ReactNative.View style={{ flexDirection: 'row' }}>{Children}</TR.ReactNative.View>
+  ```
+}
+

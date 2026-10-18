@@ -20,10 +20,41 @@ export default grammar({
 
     // Views and rendering
     ViewDeclaration($) {
-      return seq('view', field('name', $.Identifier), '{', $.RenderStatement, '}')
+      return seq(
+        'view',
+        field('name', $.Identifier),
+        optional(field('parameters', $.ParameterList)),
+        '{',
+        $.RenderStatement,
+        '}',
+      )
     },
     RenderStatement($) {
-      return seq('render', field('body', $.ViewRender))
+      return seq('render', field('body', choice($.ViewRender, $.Injection)))
+    },
+
+    // View parameters and native injection boundaries
+    ParameterList($) {
+      return seq('(', optional(seq($.Parameter, repeat(seq(',', $.Parameter)))), ')')
+    },
+    Parameter($) {
+      return seq(field('name', $.Identifier), field('type', $.Identifier))
+    },
+    Injection($) {
+      return seq(
+        'inject',
+        optional(seq($.InjectionCapture, repeat(seq(',', $.InjectionCapture)))),
+        field('code', $.TypeScript),
+      )
+    },
+    InjectionCapture($) {
+      return seq(field('name', $.Identifier), optional(field('value', choice($.Identifier, $.ContextReference))))
+    },
+    ContextReference() {
+      return /@@[A-Za-z_][A-Za-z0-9_]*/
+    },
+    TypeScript() {
+      return token(seq('```ts', repeat(choice(/[^`]/, /`[^`]/, /``[^`]/)), '```'))
     },
     ViewRender($) {
       return seq(
