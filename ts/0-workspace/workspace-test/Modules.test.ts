@@ -1,28 +1,31 @@
-import { Time, Try } from '@shared'
+import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
+import { createWatchFixture } from './WatchFixture'
 
-Tests.test('a project watcher reloads package dependencies and recovers invalid source', async () => {
-  await Platform.requireHostProcessAccess('Module observation requires macOS host access.')
+Tests.test('dependency changes reload modules and recover invalid source', async () => {
   const directory = Artifacts.resolvePath('tmp', `module-watch-${Platform.randomUUID()}`)
   const dependency = Path.join(directory, '@cards/Card.tao')
   const publications: string[] = []
-  const outcomes: UpdateResult[] = []
+  const observation = createWatchFixture()
   const workspace = createWorkspace({
+    ...observation.options,
     async publish(app) {
       publications.push(app.code)
     },
-    onSourceUpdate: result => outcomes.push(result),
   })
   await Try(async () => {
     await writeFixture(directory, dependency)
     Tests.expect((await workspace.openFile(Path.join(directory, 'feature/App.tao'))).status).toBe('published')
     Tests.expect(publications.at(-1)).toContain('"First value"')
-    await FileSystem.writeFile(dependency, 'project view Card {')
-    await waitUntil(() => outcomes.some(result => result.status === 'failed'))
-    Tests.expect(publications.every(code => code.includes('"First value"'))).toBe(true)
-    await FileSystem.writeFile(dependency, card('Repaired value'))
-    await waitUntil(() => publications.at(-1)?.includes('"Repaired value"') === true)
+    Tests.expect((await changeDependency(workspace, observation, dependency, 'project view Card {')).status).toBe(
+      'failed',
+    )
+    Tests.expect(publications).toHaveLength(1)
+    Tests.expect((await changeDependency(workspace, observation, dependency, card('Repaired value'))).status).toBe(
+      'published',
+    )
+    Tests.expect(publications).toHaveLength(2)
     Tests.expect(publications.at(-1)).toContain('"Repaired value"')
   }, {
     async finally() {
@@ -30,7 +33,7 @@ Tests.test('a project watcher reloads package dependencies and recovers invalid 
       await FileSystem.rm(directory, { recursive: true, force: true })
     },
   })
-}, 10_000)
+})
 
 async function writeFixture(directory: string, dependency: string): Promise<void> {
   await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
@@ -47,10 +50,18 @@ function card(value: string): string {
   return `use Text from @tao/ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
 }
 
-async function waitUntil(ready: () => boolean): Promise<void> {
-  const deadline = Time.nowMs() + 3000
-  while (!ready() && Time.nowMs() < deadline) {
-    await Time.sleep(5)
-  }
-  Tests.expect(ready()).toBe(true)
+async function changeDependency(
+  workspace: ReturnType<typeof createWorkspace>,
+  observation: ReturnType<typeof createWatchFixture>,
+  path: string,
+  source: string,
+): Promise<UpdateResult> {
+  await FileSystem.writeFile(path, source)
+  let complete!: (result: UpdateResult) => void
+  const result = new Promise<UpdateResult>(resolve => complete = resolve)
+  const stop = workspace.files.onCompiled(event => complete(event.result))
+  return await Try(async () => {
+    observation.notify(path)
+    return await result
+  }, { finally: stop })
 }

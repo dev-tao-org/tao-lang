@@ -9,7 +9,7 @@ import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Document } from './Document'
-import { type CompileRequest, FileManager } from './FileManager'
+import { type CompileRequest, FileManager, type FileManagerOptions } from './FileManager'
 import { loadModules } from './modules/Loader'
 import type { Project } from './Project'
 import { publishBuild } from './WorkspaceBuild'
@@ -30,6 +30,8 @@ export type WorkspaceOptions = {
   onExpected?: (revision: string, startedAtMs: number) => void
   onSourceUpdate?: (result: UpdateResult) => void
   onSourceError?: (error: unknown) => void
+  watch?: FileManagerOptions['watch']
+  schedule?: FileManagerOptions['schedule']
 }
 
 /** Publication records the exact revision and measured pipeline when output reaches disk. */
@@ -97,6 +99,8 @@ class WorkspaceSession {
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
+      watch: options.watch,
+      schedule: options.schedule,
     })
   }
 

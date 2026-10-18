@@ -96,3 +96,11 @@ prefixing lines. `TERMINAL_UI=1` requests the dashboard, and `TERMINAL_UI=0` req
 Pipes always use plain output. `TERMINAL_OUTPUT` continues to control terminal versus log routing.
 Captured workers cannot start nested dashboards. Interrupting a run stops active workers and
 cleans up their app sessions; interrupted or missing worker reports cannot count as success.
+
+Completion lines include each worker's elapsed time. Successful execution ends with a green
+`All tests passed in 1.32s` summary; its wall time covers suite execution and reporting after shared
+asset preparation. A failed or interrupted run never prints that success summary.
+
+Workspace tests supply change notifications and control debounce turns while keeping file reads
+and compilation real. They check Tao's response to changes without depending on native watcher
+timing. Preview performance runs exercise the real disk-save, watcher and refresh path.

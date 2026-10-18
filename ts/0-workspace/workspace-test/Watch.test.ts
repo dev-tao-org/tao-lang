@@ -1,12 +1,7 @@
 import { Time, Timings, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Tests, WorkspaceWatch } from '@shared/os'
-import { FileManager, type SourceSnapshot } from '../workspace-src/FileManager'
-import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
-
-const hostUnavailable = Platform.systemInfo().os === 'Darwin' && !await Try.WithDefault(false, async () => {
-  await Platform.requireHostProcessAccess('Workspace watch tests require macOS host access.')
-  return true
-})
+import { Tests, WorkspaceWatch } from '@shared/os'
+import { FileManager, type FileManagerOptions, type SourceSnapshot } from '../workspace-src/FileManager'
+import type { UpdateResult } from '../workspace-src/Workspace'
 
 Tests.test('opening waits for the latest selected-entry read after an observed change', async () => {
   const fixture = createManagerFixture(async (_path, _observedAtMs, index) => {
@@ -108,60 +103,35 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
   await manager.dispose()
 })
 
-Tests.test.skipIf(hostUnavailable)(
-  'workspace changes compile the selected entry and ignore output and post-disposal changes',
-  async () => {
-    await verifyHostWorkspaceWatching()
-  },
-  10_000,
-)
-
-async function verifyHostWorkspaceWatching(): Promise<void> {
-  const directory = Artifacts.resolvePath('tmp', `workspace-watch-${Platform.randomUUID()}`)
-  const output = Path.join(directory, 'generated-output')
-  const path = Path.join(directory, 'App.tao')
-  const nested = Path.join(directory, 'nested', 'Feature.tao')
-  const source = await Tests.readApp('Hello World')
-  const workspace = createWorkspace({ directory, outputDirectory: output, async publish() {} })
-  await Try(async () => {
-    await FileSystem.mkdir(directory, { recursive: true })
-    await FileSystem.writeFile(path, source)
-    Tests.expect((await workspace.openFile(path)).status).toBe('published')
-    let events = 0
-    const stop = workspace.files.onCompiled(event => {
-      if (event.result.status === 'published') {
-        events++
-      }
-    })
-    await FileSystem.mkdir(Path.dirname(nested), { recursive: true })
-    await FileSystem.writeFile(nested, source)
-    await waitForCompileCount(() => events, 1)
-    const created = events
-    const pending = `${path}.pending`
-    await FileSystem.writeFile(pending, source)
-    await FileSystem.rename(pending, path)
-    await waitForCompileCount(() => events, created + 1)
-    const replaced = events
-    await FileSystem.rm(nested)
-    await waitForCompileCount(() => events, replaced + 1)
-    await Time.sleep(50)
-    const settled = events
-    await FileSystem.mkdir(output, { recursive: true })
-    await FileSystem.writeFile(Path.join(output, 'Generated.tao'), source)
-    await Time.sleep(50)
-    Tests.expect(events).toBe(settled)
-    await workspace.dispose()
-    await FileSystem.writeFile(path, source)
-    await Time.sleep(50)
-    Tests.expect(events).toBe(settled)
-    stop()
-  }, {
-    async finally() {
-      await workspace.dispose()
-      await FileSystem.rm(directory, { recursive: true, force: true })
+Tests.test('source notifications refresh the selected entry and ignore output, unrelated and disposed changes', async () => {
+  const paths: string[] = []
+  const fixture = createManagerFixture(
+    async path => {
+      paths.push(path)
+      return snapshot(`source-${paths.length}`)
     },
-  })
-}
+    undefined,
+    { directory: '/workspace', outputDirectory: '/workspace/generated' },
+  )
+  await fixture.manager.openFile('/workspace/App.tao')
+  const kinds = ['add', 'change', 'unlink', 'addDir', 'unlinkDir'] as const
+  for (const [index, kind] of kinds.entries()) {
+    fixture.notify(kind, '/workspace/nested/Dependency.tao')
+    fixture.flush()
+    await fixture.waitForCompiled(`source-${index + 2}`)
+  }
+  Tests.expect(paths).toEqual(Array.from({ length: 6 }, () => '/workspace/App.tao'))
+  fixture.notify('change', '/workspace/generated/Generated.tao')
+  fixture.notify('addDir', '/workspace/generated/nested')
+  fixture.notify('change', '/workspace/image.png')
+  fixture.flush()
+  Tests.expect(fixture.readCount).toBe(6)
+  await fixture.dispose()
+  fixture.notify('change', '/workspace/App.tao')
+  fixture.flush()
+  Tests.expect(fixture.readCount).toBe(6)
+  Tests.expect(fixture.closed).toBe(1)
+})
 
 type ManagerFixtureState = {
   onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
@@ -179,6 +149,7 @@ function createManagerFixture(
   read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
     result(isCurrent() ? 'published' : 'superseded'),
+  options: Partial<FileManagerOptions> = {},
 ) {
   const state: ManagerFixtureState = {
     onChange: undefined,
@@ -191,7 +162,7 @@ function createManagerFixture(
     completed: new Map(),
     waiters: new Map(),
   }
-  const manager = createFixtureManager(read, compileSource, state)
+  const manager = createFixtureManager(read, compileSource, state, options)
   manager.onCompiled(event => {
     state.completed.set(event.source, event.result)
     state.waiters.get(event.source)?.(event.result)
@@ -230,8 +201,10 @@ function createFixtureManager(
   read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult>,
   state: ManagerFixtureState,
+  options: Partial<FileManagerOptions>,
 ): FileManager {
   const manager = new FileManager({
+    ...options,
     async read(path, observedAtMs) {
       state.activeReads++
       state.maxConcurrentReads = Math.max(state.maxConcurrentReads, state.activeReads)
@@ -278,14 +251,6 @@ function result(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult
       check: { stage: 'check', status: 'skipped' },
     },
   }
-}
-
-async function waitForCompileCount(getCount: () => number, expected: number): Promise<void> {
-  const deadline = Time.nowMs() + 2000
-  while (getCount() < expected && Time.nowMs() < deadline) {
-    await Time.sleep(5)
-  }
-  Tests.expect(getCount()).toBeGreaterThanOrEqual(expected)
 }
 
 function deferredVoid() {
