@@ -1,3 +1,5 @@
+import { format, type FormatResult } from '@fix/Format'
+import type { LayoutOptions } from '@fix/lib/layout/Layout'
 import { Errors, Time, Try } from '@shared'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from 'web-tree-sitter'
 import {
@@ -210,5 +212,3 @@ function measureQuery(options: SessionOptions) {
   const measure = options.measure
   return measure ? (milliseconds: number) => measure('query', milliseconds) : undefined
 }
-import { format, type FormatResult } from '@fix/Format'
-import type { LayoutOptions } from '@fix/lib/layout/Layout'

@@ -1,18 +1,20 @@
 import { Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
+import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
 
 /** LayoutOptions configures the soft line width and indentation used by source formatting. */
-export type LayoutOptions = { width?: number; indent?: number }
+export type LayoutOptions = { width?: number; indent?: number; typescript?: EmbeddedFormatter }
 
 /** layout resolves breakable lists and emits only changed whitespace boundaries. */
 export function layout(plan: LayoutPlan, options: LayoutOptions, timings: Timings): SourceEdit[] {
-  return emitLayout(timings, plan, options)
+  return emitLayout(timings, plan, options, timings)
 }
 
 const emitLayout = Timings.measure('formatter.layout', function(
   plan: LayoutPlan,
   options: LayoutOptions,
+  timings: Timings,
 ): SourceEdit[] {
   const edits: SourceEdit[] = []
   const groups = new Map(plan.groups.map(group => [group.first, group]))
@@ -29,9 +31,45 @@ const emitLayout = Timings.measure('formatter.layout', function(
     if (gap.editable && whitespace !== plan.source.slice(gap.start, gap.end)) {
       edits.push({ start: gap.start, end: gap.end, text: whitespace })
     }
-    column = advance(column, plan.tokens[index]?.text ?? '')
+    const token = plan.tokens[index]
+    const text = formatToken(plan, index, options, timings)
+    if (token && text !== token.text) {
+      edits.push({ start: token.startIndex, end: token.endIndex, text })
+    }
+    column = advance(column, text)
   }
   return edits
+})
+
+function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, timings: Timings): string {
+  const token = plan.tokens[index]
+  if (!token) {
+    return ''
+  }
+  if (token.type !== 'TypeScript' || !options.typescript) {
+    return token.text
+  }
+  const level = plan.gaps[index]!.indent
+  const body = formatEmbedded(timings, options.typescript, token.text.slice(5, -3), {
+    indent: options.indent ?? 2,
+    level: level + 1,
+    width: options.width ?? 120,
+    newline: plan.newline,
+  })
+  if (body === undefined) {
+    plan.skipped.push({ start: token.startIndex, end: token.endIndex })
+    return token.text
+  }
+  return '```ts' + plan.newline + body.trimEnd()
+    + plan.newline + ' '.repeat(level * (options.indent ?? 2)) + '```'
+}
+
+const formatEmbedded = Timings.measure('formatter.typescript', function(
+  formatter: EmbeddedFormatter,
+  body: string,
+  options: Parameters<EmbeddedFormatter>[1],
+): string | undefined {
+  return formatter(body, options)
 })
 
 function flatWidths(plan: LayoutPlan): number[] {

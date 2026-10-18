@@ -2,7 +2,7 @@ import { Tests } from '@shared/os'
 import type * as vscode from 'vscode'
 import { formattingProvider } from '../ide-extension-src/Formatting'
 
-Tests.test('editor formatting returns range edits and discards results for a changed document version', () => {
+Tests.test('editor formatting returns range edits and discards results for a changed document version', async () => {
   const editor = {
     TextEdit: { replace: (range: unknown, newText: string) => ({ range, newText }) },
     Range: class {
@@ -12,7 +12,8 @@ Tests.test('editor formatting returns range edits and discards results for a cha
   const snapshot = { version: 1, positionAt: (offset: number) => offset }
   const document = snapshot as unknown as vscode.TextDocument
   let changeVersion = false
-  const provider = formattingProvider(editor, () => {
+  const provider = formattingProvider(editor, async () => {
+    await Promise.resolve()
     if (changeVersion) {
       snapshot.version++
     }
@@ -20,12 +21,12 @@ Tests.test('editor formatting returns range edits and discards results for a cha
   })
   const options = { tabSize: 2, insertSpaces: true }
   const cancellation = { isCancellationRequested: false } as vscode.CancellationToken
-  const edits = provider.provideDocumentFormattingEdits(document, options, cancellation) as vscode.TextEdit[]
+  const edits = await provider.provideDocumentFormattingEdits(document, options, cancellation) as vscode.TextEdit[]
   Tests.expect(edits?.length).toBe(1)
   Tests.expect(edits?.[0]?.newText).toBe(' ')
   const range = edits?.[0]?.range as unknown as { start: number; end: number }
   Tests.expect(range.start).toBe(3)
   Tests.expect(range.end).toBe(5)
   changeVersion = true
-  Tests.expect(provider.provideDocumentFormattingEdits(document, options, cancellation)).toEqual([])
+  Tests.expect(await provider.provideDocumentFormattingEdits(document, options, cancellation)).toEqual([])
 })
