@@ -7,7 +7,8 @@ const ENTRY = `${ENVIRONMENT}/contributor-linux-test.sh`
 const UBUNTU_IMAGE = 'ghcr.io/cirruslabs/ubuntu@sha256:e004f7f4f6765e2b3ae2738a95040c5d03867b667eb21a57ea0c3729aad640b6'
 const GUEST_RUN = '/bin/sh /home/admin/tao-harness/input/run.sh'
 
-Describe('contributor Linux VM runner', () => {
+// Contributor VM/distribution automation is retired for the retained language reference.
+Describe['skip']('contributor Linux VM runner', () => {
   Test('rejects extra arguments before consulting Tart or the VM helper', async () => {
     await withFixture(async fixture => {
       for (

@@ -17,6 +17,9 @@ LOCAL_INSTANTDB_DIR := justfile_directory() + "/packages/services/tao-cloud/tao-
 LOCAL_INSTANTDB_COMPOSE := "docker compose --project-name tao-local-instantdb --file \"" + justfile_directory() + "/../.config/local-instantdb/docker-compose.yml\""
 VERIFY_FULL_GATES := "_fix-dprint _fix-tao _fix-just-fmt _fix-ledger-index _parser-gen _compile-word-flower-app _ide-extension-build _repo-lint _typecheck _hosted-crud-test _test _runtime-pack-check _doctor-json dead-exports ship-bundle-proof studio-smoke studio-proof-real-app studio-smoke-simulated-user keyboard-navigation-smoke studio-dialog-browser studio-metro-refresh studio-agent-browser studio-network-simulation studio-canary"
 VERIFY_FULL_SKIPPED := ""
+REFERENCE_APPS := '"Apps/Test Apps/Language Core" "Apps/Test Apps/Data MVP" "Apps/Test Apps/Forms and Interaction MVP" "Apps/Test Apps/Packages" "Apps/Test Apps/Navigation/Basic Navigation.test.tao" "Apps/Test Apps/Navigation/Sheet Presentation.test.tao"'
+REFERENCE_PREPARE := "_parser-gen _compile-word-flower-app"
+REFERENCE_TESTS := "_reference-tests studio-smoke"
 
 # Print available recipes
 help:
@@ -362,23 +365,10 @@ standalone-cli-vm-setup:
 dev app_path="Apps" APP="":
     ./tao run "$1" {{ if APP == "" { "" } else { "--app \"$2\"" } }}
 
-# `just test` is the fast default, so it runs the suites this branch's diff reaches rather than all
-# of them. Selection is a heuristic over the diff: a run can be green while a suite the change broke
-# somewhere else never ran, which is what `test-all` is for and what the description says out loud.
-#
-# One optional positional means either a path or a test-name pattern, and the difference is decided
-# by whether the argument exists on disk, never by how it is spelled — a test name with a slash in it
-# and a path that was deleted both resolve the way the filesystem says. The chosen reading is printed
-# before the run so a wrong guess is visible in the first line of output instead of in a confusing
-# empty result.
-#
-# A name pattern narrows the same default scope rather than replacing it: `just test "<name>"` is the
-# changed suites filtered to that name, not every suite filtered to it. Scope and filter compose, so
-# the fast default stays fast and only `test-all` widens it.
-# Run changed suites, fail fast; explicit file/name targets collect failures. Selection can miss a regression; hosted Verify runs every suite before a merge
+# Run reference Tao journeys and Studio launch/cleanup; explicit paths or names remain scoped
 [group('Dev')]
-test target="": _compile-word-flower-app _ide-extension-build
-    if [ {{ quote(target) }} = '' ]; then ./dev test-changed; elif [ -e {{ quote(target) }} ]; then printf 'Running tests in %s\n' {{ quote(target) }}; ./dev test-file {{ quote(target) }}; else printf 'Filtering the changed suites to tests matching "%s"\n' {{ quote(target) }}; ./dev test-changed --name {{ quote(target) }}; fi
+test target="":
+    export TAO_HOME="{{ justfile_directory() }}/../.artifacts/reference-home"; if [ {{ quote(target) }} = '' ]; then ./dev gates {{ REFERENCE_PREPARE }} {{ REFERENCE_TESTS }} --lane reference-test; elif [ -e {{ quote(target) }} ]; then printf 'Running tests in %s\n' {{ quote(target) }}; case {{ quote(target) }} in Apps/*|*.tao) ./tao test {{ quote(target) }} --output lines ;; *) ./dev test-file {{ quote(target) }} ;; esac; else printf 'Filtering reference journeys to tests matching "%s"\n' {{ quote(target) }}; ./tao test {{ REFERENCE_APPS }} --name {{ quote(target) }} --output lines; fi
 
 # Run every test suite, fail fast; an explicit test-name pattern collects failures in that filtered scope
 [group('Dev')]
@@ -563,11 +553,11 @@ fix: _parser-gen
     ./tao fix
     just --fmt
 
-# Check all code, fail fast between checks: canonical source, lint, types. --no-cache ignores a recorded green tree
+# Check reference app compilation and representative Tao source; broad TS/lint checks stay in verify-full
 [arg('no_cache', long='no-cache', value='true')]
 [group('Dev')]
 check no_cache='false':
-    ./dev gates _parser-gen _compile-word-flower-app _ide-extension-build _repo-lint _tao-check _dprint-check _typecheck _runtime-pack-check --lane check --green-tree check {{ if no_cache == "true" { "--no-cache" } else { "" } }}
+    ./dev gates {{ REFERENCE_PREPARE }} _reference-source-check --lane reference-check --green-tree reference-check {{ if no_cache == "true" { "--no-cache" } else { "" } }}
 
 # Build a VSIX without installing it, for VS Code packager compatibility checks
 [group('Dev')]
@@ -741,27 +731,13 @@ clean: clean-scratch
 clean-all: clean-scratch
     ./dev clean --all
 
-# The four verification scopes are four names rather than one name and three flags, because a name
-# completes under `just v<TAB>` while a flag has to be remembered. They sort into the order they
-# widen in — `verify`, `verify-changed`, `verify-full`, `verify-full-sandbox` — and share every gate
-# but the test gate and the host lanes. Each records the tree it proved green under its own lane
-# name and stands on a record from any lane whose gates contain its own, which is why the
-# `--green-tree` lists differ. `--no-cache` is the one flag they all take: it is orthogonal to scope,
-# choosing whether recorded evidence is trusted at all rather than which gates run. It is named for
-# what it does to the cache of recorded verdicts, and matches the `TAO_TEST_NO_CACHE` key the graph
-# already exports; it deletes nothing, which is what `clean` is for.
-#
-# `--complete` remains accepted on `verify` as the explicit spelling of what bare `verify` already
-# does, because the merge command and the repository's instructions name it that way.
-# Full verification lanes lower their CLI process to below-normal scheduling priority before
-# launching gates; children inherit it. This leaves job counts and admission unchanged.
-# A host or sandbox refusal prints a warning and verification continues at inherited priority.
-# Verify everything, fail fast between checks: fix, check, all tests. --no-cache ignores a recorded green tree
+# Reference verdicts use separate green-tree keys and cannot satisfy a maintenance verification.
+# Verify the retained language and Studio reference; --complete is kept for older callers, verify-full is maintenance
 [arg('complete', long='complete', value='true')]
 [arg('no_cache', long='no-cache', value='true')]
 [group('Dev')]
 verify complete='false' no_cache='false': _deps
-    ./dev gates _fix-dprint _fix-tao _fix-just-fmt _fix-ledger-index _parser-gen _compile-word-flower-app _ide-extension-build _repo-lint _typecheck _hosted-crud-test _test _runtime-pack-check dead-exports --lane verify --json .artifacts/logs/verify/summary.json --skipped "studio-smoke=slow lane; run ./agent unsandboxed studio-smoke or ./agent unsandboxed verify-full" --green-tree verify verify-full-sandbox verify-full {{ if no_cache == "true" { "--no-cache" } else { "" } }}
+    ./dev gates {{ REFERENCE_PREPARE }} _reference-source-check {{ REFERENCE_TESTS }} --lane reference-verify --json .artifacts/logs/reference-verify/summary.json --green-tree reference-verify {{ if no_cache == "true" { "--no-cache" } else { "" } }}
 
 # Verify changed suites, fail fast: the iteration gate, never merge evidence. --no-cache ignores a recorded green tree
 [arg('no_cache', long='no-cache', value='true')]
@@ -943,6 +919,12 @@ _hosted-crud-test:
 # `_test-changed` recipe for that reason — nothing would ever run it.
 _test PATTERN="":
     "{{ BUN }}" run packages/cli/dev-cli/dev-cli-src/dev.ts test "{{ PATTERN }}"
+
+_reference-tests:
+    TAO_HOME="{{ justfile_directory() }}/../.artifacts/reference-home" ./tao test {{ REFERENCE_APPS }} --output lines
+
+_reference-source-check:
+    ./tao check {{ REFERENCE_APPS }}
 
 _android-emulator:
     "{{ BUN }}" run packages/cli/dev-cli/dev-cli-src/dev.ts android-emulator

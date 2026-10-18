@@ -633,6 +633,8 @@ function buildCatalog(): ReadonlyMap<string, GateMetadata> {
       { priority: PREPARE_PRIORITY, reads: ['gen-parser', 'tao', 'ts'], writes: ['gen-ide'] },
     ],
     ['_tao-check', { cost: TAO_CHECK_COST, reads: ['gen-parser', 'tao', 'ts'] }],
+    ['_reference-source-check', { cost: TAO_CHECK_COST, reads: ['gen-parser', 'tao', 'ts'] }],
+    ['_reference-tests', { cost: 3, reads: ['gen-app', 'gen-parser', 'tao', 'ts'] }],
     // The parser tsconfig includes Langium's generated tree. Typecheck retains its conservative
     // ordering after the app compile moved into the WordFlower project's cache.
     ['_typecheck', { cost: TYPECHECK_COST, reads: ['gen-app', 'gen-parser', 'ts'] }],
