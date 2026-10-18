@@ -23,9 +23,9 @@ if [ "${TAO_DEVENV:-}" != 1 ] || [ "$active_environment" != "$repository" ]; the
   fi
 fi
 export PATH="$repository/ts/node_modules/.bin:$repository:$PATH"
-# Workspace packages own their tools; make their local binaries available by name.
-for package_tools in "$repository"/ts/*/node_modules/.bin; do
-  if [ -d "$package_tools" ]; then
-    export PATH="$package_tools:$PATH"
+# Include package tool paths before installation so fresh setup can resolve newly installed tools.
+for workspace_package in "$repository"/ts/*; do
+  if [ -f "$workspace_package/package.json" ]; then
+    export PATH="$workspace_package/node_modules/.bin:$PATH"
   fi
 done
