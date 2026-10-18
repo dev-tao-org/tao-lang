@@ -101,6 +101,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
 - Always create a new feature branch for your new worktree.
 - Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
+- Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 
 ## Implementation architecture
 

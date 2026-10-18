@@ -71,3 +71,6 @@ description: >-
 - Record tested commits, warm sample definitions, phase results, host conditions and remaining
   costs with the task's `.artifacts` notes. Preserve settled product decisions while optimizing
   their implementation.
+- Retain one preview timing record per implementation commit using
+  [preview history](references/preview-history.md). `.artifacts` reports alone are temporary;
+  publish and pin the `.storage` history before an authorized landing.
