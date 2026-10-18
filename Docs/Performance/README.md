@@ -20,4 +20,6 @@ The [first parser baseline](First%20parser%20baseline.md) records the independen
 
 The [first editor extension baseline](First%20editor%20extension%20baseline.md) records incremental Tao parsing, embedded TSX parsing and highlighting queries. Run it with `./agent performance extension`; it excludes editor rendering.
 
+The [Roadmap 1 preview comparison](Roadmap%201%20preview%20comparison.md) compares the original branch baseline with the completed language/tooling implementation on identical source and frame sizes.
+
 The current web pipeline records parsing, transformation, compilation, output publication and app-side refresh receipts through the two-iframe harness; see [Preview Workflow](../Specification/Preview%20Workflow.md). Native iOS/Android measurements and parallel platform CI remain roadmap work.

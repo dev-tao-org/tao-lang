@@ -37,7 +37,6 @@ Success: developers can explore and test an interactive view in named scenarios 
 - [ ] Verify Hello World on headless iOS Simulator and Android Emulator.
 - [ ] Select native platforms locally and record cold/warm platform timings.
 - [ ] Run web, iOS and Android in CI with shared generated Tao output and parallel platform jobs; measure total CI time before adding further build infrastructure.
-- [ ] Complete the original branch-baseline versus final preview comparison before landing the current work; retain the results under [Performance](../Performance/README.md).
 - [ ] Repair the shared Watchman launchagent's stale executable path when its restart can be coordinated with active sessions.
 - [ ] Revisit deferred legacy maintenance failures only when those workflows are needed again; see [Reference Verification](../Specification/Reference%20Verification.md).
 

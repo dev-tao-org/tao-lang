@@ -27,6 +27,7 @@ The canonical performance fixture is [Hello World.tao](../../Apps/Tests/Hello%20
 - [x] Build a self-contained Tree-sitter editor extension with incremental syntax highlighting, syntax diagnostics and format-on-save.
 - [x] Build/install the extension into Cursor and VS Code through Cmd+Shift+B.
 - [x] Record parser, editor, formatter and preview measurements.
+- [x] Compare the original branch baseline with the final preview pipeline. See [preview comparison](../Performance/Roadmap%201%20preview%20comparison.md).
 - [x] Keep local main current after authorized landings and require branch-wide performance comparisons before landing.
 
 See [Tests](../Specification/Tests.md), [Formatting and Fixing](../Specification/Formatting%20and%20Fixing.md), and [Performance](../Performance/README.md) for implemented behavior and evidence. All outstanding implementation and acceptance TODOs are consolidated in Roadmap 2.
