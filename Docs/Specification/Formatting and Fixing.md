@@ -81,8 +81,23 @@ use Col, Text from @tao/ui
 ```
 
 Aliases remain aliases. Comments travel with their imports, and comment-separated groups are kept
-separate where combining them would lose their grouping. Unused imports are retained; removing them
-requires semantic usage analysis beyond this first organizer.
+separate where combining them would lose their grouping.
+
+`tao fix` warns about unused named imports, package namespaces, private declarations and local
+bindings. It retains them all: a declaration may be work in progress. References respect lexical
+shadowing, qualified names and explicit native captures. Wildcard imports receive no per-export
+warnings, and declarations visible to other files are not declared unused from a single-file check.
+
+```tao
+use Text, Col from @tao/ui
+
+app Example { root Main }
+view Main { render Text("Hello") }
+```
+
+Fixing this file reports that `Col` is unused, while keeping the import. Warning locations refer to
+the final, formatted source. This local usage analysis does not require imported modules to resolve
+and does not replace full type checking.
 
 While a document is incomplete, formatting applies only to complete top-level declarations. An
 unfinished declaration and uncertain whitespace around it are left alone:

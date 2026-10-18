@@ -5,6 +5,7 @@ import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/form
 import { createParser } from '@grammar/parser'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
+import { unusedWarnings } from '@typecheck/Usage'
 import { summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
@@ -42,7 +43,7 @@ export async function formatterPerformance() {
         initialization: initialization.samples,
         wasmBytes: bytes.byteLength,
         definition:
-          '20 warmups then 100 immutable-snapshot samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
+          '20 warmups then 100 immutable-snapshot formatting, import-fix and usage-analysis samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
         fixtures: fixtures.map(fixture => ({ scenario: fixture.scenario, hash: Platform.hashText(fixture.source) })),
         summary,
         samples,
@@ -62,6 +63,7 @@ function sampleFixture(fixture: { source: string; scenario: string }, typescript
     const timings = new Timings('formatter-performance')
     format({ source: fixture.source, tree }, timings, { typescript })
     fix({ source: fixture.source, tree, ast }, timings)
+    unusedWarnings(ast, timings)
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
     }

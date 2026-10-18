@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
 import { orderDefinitions } from './LinkModuleDefinitions'
-import type { LinkedProgram, ModuleBinding, SourceModule } from './Modules'
+import { type LinkedProgram, type ModuleBinding, namespaceFromPath, type SourceModule } from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
 export function linkModules(entry: string, sources: readonly SourceModule[]): LinkedProgram {
@@ -312,11 +312,4 @@ function isVisible(
     return relation === 'same-directory' || relation === 'same-package' || relation === 'same-project'
   }
   return visibility === 'public'
-}
-
-function namespaceFromPath(path: string): string | undefined {
-  const parts = path.split('/').filter(part => part !== '' && part !== '.' && part !== '..')
-  const last = parts.at(-1)?.replace(/\.tao$/, '')
-  const name = last?.startsWith('@') ? last.slice(1) : last
-  return name && /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name) ? name : undefined
 }
