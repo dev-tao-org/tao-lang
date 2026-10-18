@@ -45,6 +45,15 @@ statement gaps preserve up to one existing blank line; contextual rules require 
 top-level declarations and remove empty padding immediately inside braces. Strings and injected code
 retain their contents.
 
+Long named-import lists use a hanging indent, with their source on the following line:
+
+```tao
+use FirstView,
+  SecondView,
+  ThirdView
+from @example/ui
+```
+
 Fixing can combine compatible imports, remove exact duplicates, and sort selected names and sources:
 
 ```tao

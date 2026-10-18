@@ -1,7 +1,28 @@
+import type { SyntaxNode } from '@grammar/CST'
 import { createParser } from '@grammar/parser'
 import { S, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { format } from '../fix-src/Format'
+import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './SyntaxFixture'
+
+Tests.test('all current grammar rules format canonically and remain stable across reflow', () => {
+  const tree = createParser().parse(syntaxFixture).tree
+  Tests.expect(tree.rootNode.hasError).toBe(false)
+  Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(Object.keys(syntaxKinds).sort())
+  assertFormatted(syntaxFixture, formattedSyntaxFixture)
+  const source = 'use First,Second,Third from @long/package\nview Main(A text,B text){render Panel(A,B)}'
+  Tests.expect(formatted(source, 28)).toBe(S`
+    use First,
+      Second,
+      Third
+    from @long/package
+
+    view Main(A text, B text) {
+      render Panel(A, B)
+    }
+  `)
+  Tests.expect(formatted(formatted(source, 28), 120)).toBe(formatted(source, 28))
+})
 
 Tests.test('formatting normalizes a complete source fixture without changing literals or native code', () => {
   assertFormatted(sourceFixture, expectedFixture)
@@ -43,6 +64,14 @@ Tests.test('formatting protects unfinished declarations while formatting complet
 
 function formatted(source: string, width?: number): string {
   return format({ source, tree: createParser().parse(source).tree }, undefined, { width }).text
+}
+
+function namedKinds(node: SyntaxNode, kinds = new Set<string>()): Set<string> {
+  kinds.add(node.type)
+  for (const child of node.namedChildren) {
+    namedKinds(child, kinds)
+  }
+  return kinds
 }
 
 function assertFormatted(source: string, expected: string): void {

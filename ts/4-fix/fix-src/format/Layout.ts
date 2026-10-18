@@ -46,6 +46,12 @@ export const Layout = {
   ArgumentList(lm) {
     lm.list()
   },
+  UseStatement(lm) {
+    lm.commaList('from')
+  },
+  Injection(lm) {
+    lm.commaList('code')
+  },
 } satisfies LayoutHandlers
 
 function isImport(node: SyntaxNode): boolean {
