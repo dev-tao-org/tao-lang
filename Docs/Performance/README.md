@@ -20,4 +20,4 @@ The [first parser baseline](First%20parser%20baseline.md) records the independen
 
 The [first editor extension baseline](First%20editor%20extension%20baseline.md) records incremental Tao parsing, embedded TSX parsing and highlighting queries. Run it with `./agent performance extension`; it excludes editor rendering.
 
-Measure CST-to-AST transformation and code generation as they arrive, then the complete Tao pipeline and the runtime's granular operations through the two-iframe harness. Record web, headless iOS and headless Android build, launch and test costs separately, including cold and warm runs and total parallel CI wall time. Reuse the generated Tao output across platform jobs while measuring their distinct platform work.
+The current web pipeline records parsing, transformation, compilation, output publication and app-side refresh receipts through the two-iframe harness; see [Preview Workflow](../Specification/Preview%20Workflow.md). Native iOS/Android measurements and parallel platform CI remain roadmap work.
