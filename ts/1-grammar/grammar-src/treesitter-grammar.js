@@ -7,7 +7,7 @@ export default grammar({
   },
   rules: {
     SourceFile($) {
-      return repeat(choice($.AppDeclaration, $.ViewDeclaration))
+      return repeat(choice($.AppDeclaration, $.ViewDeclaration, $.TestsDeclaration))
     },
 
     // Apps
@@ -58,10 +58,64 @@ export default grammar({
     },
     ViewRender($) {
       return seq(
+        optional(field('tag', $.RenderTag)),
         field('view', $.Identifier),
         optional(field('argumentList', $.ArgumentList)),
         optional(seq('{', repeat(field('children', $.ViewRender)), '}')),
       )
+    },
+
+    // App tests and interactions
+    TestsDeclaration($) {
+      return seq('tests', optional(field('label', $.TextLiteral)), '{', repeat($.TestDeclaration), '}')
+    },
+    TestDeclaration($) {
+      return seq(
+        'test',
+        optional(choice(
+          field('label', $.TextLiteral),
+          seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
+        )),
+        '{',
+        repeat(choice($.RunStatement, $.PressStatement, $.TypeStatement, $.ExpectStatement)),
+        '}',
+      )
+    },
+    RunStatement($) {
+      return seq('run', field('app', $.Identifier))
+    },
+    PressStatement($) {
+      return seq('press', field('target', $.RenderTag))
+    },
+    TypeStatement($) {
+      return seq('type', field('value', $.TextLiteral), 'into', field('target', $.RenderTag))
+    },
+    ExpectStatement($) {
+      return seq(
+        'expect',
+        choice(
+          $.TextExpectation,
+          $.InputExpectation,
+          seq(
+            optional(field('target', $.RenderTag)),
+            '{',
+            repeat(choice($.TextExpectation, $.InputValueExpectation)),
+            '}',
+          ),
+        ),
+      )
+    },
+    TextExpectation($) {
+      return seq('text', field('value', $.TextLiteral))
+    },
+    InputExpectation($) {
+      return seq(field('target', $.RenderTag), 'input', 'value', field('value', $.TextLiteral))
+    },
+    InputValueExpectation($) {
+      return seq('input', 'value', field('value', $.TextLiteral))
+    },
+    RenderTag() {
+      return /#[A-Za-z_][A-Za-z0-9_-]*/
     },
 
     // Expressions

@@ -11,22 +11,24 @@ Tests.test('an app becomes semantic declarations and names with source origins',
   const result = transform(tree, timings)
   Tests.expect(result?.root).toEqual({
     kind: 'File',
+    start: 0,
+    end: 34,
     declarations: [{
       kind: 'AppDeclaration',
-      name: { kind: 'Name', value: 'HelloWorld' },
-      root: { kind: 'Name', value: 'RootView' },
+      start: 0,
+      end: 34,
+      name: { kind: 'Name', start: 4, end: 14, value: 'HelloWorld' },
+      root: { kind: 'Name', start: 24, end: 32, value: 'RootView' },
     }],
   })
-  const { root, origins } = result!
+  const { root } = result!
   const app = root.declarations[0]!
   if (!AST.IsAppDeclaration(app)) {
     Errors.ThrowUnexpected('Expected app')
   }
-  Tests.expect(origins.size).toBe(4)
-  Tests.expect(origins.get(root)).toEqual({ start: 0, end: 34 })
-  Tests.expect(origins.get(app)).toEqual({ start: 0, end: 34 })
-  Tests.expect(origins.get(app.name)).toEqual({ start: 4, end: 14 })
-  Tests.expect(origins.get(app.root)).toEqual({ start: 24, end: 32 })
+  const second = transform(tree)
+  Tests.expect(second?.root).not.toBe(root)
+  Tests.expect(second?.root.declarations[0]?.start).toBe(app.start)
   Tests.expect(timings.samples.map(sample => [sample.name, sample.status])).toEqual([
     ['transformer.transform', 'succeeded'],
   ])
@@ -44,16 +46,22 @@ Tests.test('Hello World transforms generic renders and native injections', async
   const result = transform(tree)
   Tests.expect<unknown>(result?.root.declarations[1]).toEqual({
     kind: 'ViewDeclaration',
-    name: { kind: 'Name', value: 'RootView' },
+    start: 36,
+    end: 96,
+    name: { kind: 'Name', start: 41, end: 49, value: 'RootView' },
     parameters: [],
     render: {
       kind: 'ViewRender',
-      target: { kind: 'Name', value: 'Col' },
+      start: 61,
+      end: 94,
+      target: { kind: 'Name', start: 61, end: 64, value: 'Col' },
       arguments: [],
       children: [{
         kind: 'ViewRender',
-        target: { kind: 'Name', value: 'Text' },
-        arguments: [{ kind: 'TextLiteral', value: 'Hello World' }],
+        start: 71,
+        end: 90,
+        target: { kind: 'Name', start: 71, end: 75, value: 'Text' },
+        arguments: [{ kind: 'TextLiteral', start: 76, end: 89, value: 'Hello World' }],
         children: [],
       }],
     },

@@ -24,6 +24,9 @@ pushed.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
   root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
   worktree you created once its branch is merged or abandoned.
+- After authoritatively confirming a landing, fetch remote `main` and fast-forward local `main`.
+  If local `main` is checked out in another worktree, have its owner update that checkout rather
+  than moving its branch ref behind it. Preserve local commits and dirty work; never reset them.
 - Before reclaiming a worktree, use `./agent reclaim` and follow
   `references/reclaim-task-associations.md` for agent task ownership that local metadata cannot prove.
 - Git operations that replace protected paths can half-succeed inside the sandbox: HEAD and most

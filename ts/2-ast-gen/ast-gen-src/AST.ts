@@ -1,3 +1,5 @@
+import type Parser from 'tree-sitter'
+
 /** Node represents a semantic node without retaining its source CST. */
 export type Node =
   | File
@@ -14,53 +16,62 @@ export type Node =
 export type OfKind<Kind extends Node['kind']> = Extract<Node, { kind: Kind }>
 
 /** File contains the declarations in one source snapshot. */
-export type File = { readonly kind: 'File'; readonly declarations: readonly Declaration[] }
+export type File = Semantic<'File', { declarations: readonly Declaration[] }>
 
 /** AppDeclaration names an app and its unresolved root view. */
-export type AppDeclaration = { readonly kind: 'AppDeclaration'; readonly name: Name; readonly root: Name }
+export type AppDeclaration = Semantic<'AppDeclaration', { name: Name; root: Name }>
 
 /** ViewDeclaration defines parameters and one render body. */
-export type ViewDeclaration = {
-  readonly kind: 'ViewDeclaration'
-  readonly name: Name
-  readonly parameters: readonly Parameter[]
-  readonly render: ViewRender | Injection
-}
+export type ViewDeclaration = Semantic<'ViewDeclaration', {
+  name: Name
+  parameters: readonly Parameter[]
+  render: ViewRender | Injection
+}>
 
 /** Parameter preserves an authored parameter name and unresolved type. */
-export type Parameter = { readonly kind: 'Parameter'; readonly name: Name; readonly type: Name }
+export type Parameter = Semantic<'Parameter', { name: Name; type: Name }>
 
 /** ViewRender invokes a view with positional arguments and child renders. */
-export type ViewRender = {
-  readonly kind: 'ViewRender'
-  readonly target: Name
-  readonly arguments: readonly Expression[]
-  readonly children: readonly ViewRender[]
-}
+export type ViewRender = Semantic<'ViewRender', {
+  target: Name
+  arguments: readonly Expression[]
+  children: readonly ViewRender[]
+}>
 
 /** Injection preserves an opaque TypeScript body and explicit capture bindings. */
-export type Injection = { readonly kind: 'Injection'; readonly captures: readonly Capture[]; readonly code: string }
+export type Injection = Semantic<'Injection', { captures: readonly Capture[]; code: string }>
 
 /** Capture binds a native local to a Tao value or contextual children. */
-export type Capture = { readonly kind: 'Capture'; readonly name: Name; readonly value: Name | ContextReference }
+export type Capture = Semantic<'Capture', { name: Name; value: Name | ContextReference }>
 
 /** Expression represents the first app's literal and name expressions. */
 export type Expression = Name | TextLiteral
 
 /** TextLiteral contains a decoded authored text value. */
-export type TextLiteral = { readonly kind: 'TextLiteral'; readonly value: string }
+export type TextLiteral = Semantic<'TextLiteral', { value: string }>
 
 /** ContextReference preserves an unresolved contextual capture such as @@children. */
-export type ContextReference = { readonly kind: 'ContextReference'; readonly value: string }
+export type ContextReference = Semantic<'ContextReference', { value: string }>
 
 /** Name preserves an authored identifier without resolving it. */
-export type Name = { readonly kind: 'Name'; readonly value: string }
+export type Name = Semantic<'Name', { value: string }>
 
-/** Origin locates a semantic node using half-open UTF-16 source offsets. */
-export type Origin = { readonly start: number; readonly end: number }
+/** Document owns a semantic root without retaining CST nodes. */
+export type Document = { readonly root: File }
 
-/** Document owns a semantic root and its source origins without retaining CST nodes. */
-export type Document = { readonly root: File; readonly origins: ReadonlyMap<Node, Origin> }
+/** Node constructs a semantic node with its source range. */
+export function Node<Kind extends Node['kind']>(
+  cst: Parser.SyntaxNode,
+  kind: Kind,
+  fields: Fields<Kind>,
+): OfKind<Kind> {
+  return { ...fields, kind, start: cst.startIndex, end: cst.endIndex } as OfKind<Kind>
+}
+
+/** Name constructs a semantic identifier from its CST node. */
+export function Name(cst: Parser.SyntaxNode): Name {
+  return Node(cst, 'Name', { value: cst.text })
+}
 
 /** IsAppDeclaration narrows a semantic node to an app declaration. */
 export function IsAppDeclaration(node: Node): node is AppDeclaration {
@@ -86,3 +97,9 @@ export function IsKind<Kind extends Node['kind']>(
 }
 
 type Declaration = AppDeclaration | ViewDeclaration
+type Semantic<Kind extends string, Fields> = {
+  readonly kind: Kind
+  readonly start: number
+  readonly end: number
+} & Readonly<Fields>
+type Fields<Kind extends Node['kind']> = Omit<OfKind<Kind>, 'kind' | 'start' | 'end'>

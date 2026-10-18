@@ -58,8 +58,8 @@ The canonical source is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20Wo
 
 ## Goal 3
 
-- [ ] Update instructions to always update local main after changes have landed
-- [ ] Move away from classes for large blocks of functionality, e.g compiler (it will hit limits). Change CST-to-AST construction to be stateless. Follow compiler pattern for spreading over files.
+- [x] Update instructions to always update local main after changes have landed
+- [x] Move away from classes for large blocks of functionality, e.g compiler (it will hit limits). Change CST-to-AST construction to be stateless. Follow compiler pattern for spreading over files.
 - [ ] Get basic tao tests working
   - [ ] Get things in snippet below working
   - [ ] Use a default headless target for tests for now
@@ -94,7 +94,7 @@ tests "Foo" {
 
 ### Proposed CST-to-AST construction
 
-Illustrative, not implemented: expose stateless functions such as `AST.Name(cst)`. Every node is created with its originating CST node and copies its numeric source range; the document owns the path and version. No constructor instance, `this`, or origins map is needed.
+Illustrative construction format: expose stateless functions such as `AST.Name(cst)`. Every node is created with its originating CST node and copies its numeric source range; the document owns the path and version. No constructor instance, `this`, or origins map is needed.
 
 ```ts
 function Name(cst: CST.Identifier): AST.Name {
