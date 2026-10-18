@@ -12,7 +12,18 @@ Tests.test('reload output waits for both matching previews and measures from the
   reload.receive(signal('right', 'tao.preview-applied', 1115))
   Tests.expect(reported).toEqual([])
   reload.receive(signal('left', 'tao.update-done', 1080))
-  Tests.expect(reported).toEqual([{ revision: 'r2', saveToHmrMs: 85, saveToAppliedMs: 115 }])
+  Tests.expect(reported).toEqual([])
+  reload.published({ revision: 'r2', startedAtMs: 1000, publishedAtMs: 1010, timings: [] })
+  Tests.expect(reported).toEqual([{
+    revision: 'r2',
+    saveToHmrMs: 85,
+    saveToAppliedMs: 115,
+    pipeline: [],
+    frames: {
+      left: { publishToHmrMs: 70, hmrToAppliedMs: 30, saveToHmrMs: 80, saveToAppliedMs: 110 },
+      right: { publishToHmrMs: 75, hmrToAppliedMs: 30, saveToHmrMs: 85, saveToAppliedMs: 115 },
+    },
+  }])
   reload.receive(signal('left', 'tao.preview-applied', 1200))
   Tests.expect(reported).toHaveLength(1)
 })

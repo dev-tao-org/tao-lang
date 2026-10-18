@@ -27,12 +27,13 @@ Implement a first e2e Hello World app:
 
 - Provide `tao compile <app-entry-file>` and a shared in-process compiler API. The performance web server calls that API directly, then saves generated Expo modules for normal refresh.
 - The performance package owns a minimal TypeScript webapp and automated runner using the canonical Tao fixture. Start Expo once and display the same compiled app in two iframes of different sizes.
-- A button sends a command to the performance web server to change its in-memory fixture snapshot and fully recompile. Automation exercises the same command path; the authored fixture remains unchanged.
+- A button sends a command to save the opened Tao source file. Workspace owns file observation and recompiles when it detects the change; the button never calls the compiler directly. Performance tests use the same save/watch path with an isolated source fixture, preserving the canonical app.
 - Measure text replacement and a structural sequence that adds a Text view, then changes Col to Row. Record each edit step separately in both previews.
 - Establish reusable timing support and place measurements at the actual workflow boundaries: source update, parsing, CST-to-AST transformation, code generation, generated-file publication and preview refresh.
 - Report both the actual Metro `update-done` event and the runtime's React post-commit `preview-applied` event, plus granular binding/rendering spans. Correlate messages by session, iframe, document boot and source revision; reject stale messages. Automation also checks the resulting text and row layout. No screenshots or physical-paint claims.
 - Attribute results to the source revision, edit scenario and iframe size. Use local monotonic durations, epoch-relative timestamps under the agreed same-host clock assumption, and the parent clock for click-to-receipt totals. Save structured results and repeated samples under [Performance](../Performance/README.md).
 - `just dev` watches the existing canonical app, writes generated output under `.artifacts/dev/hello-world/`, opens the two-preview URL and retains the session until Ctrl-C. It does not copy the authored Tao file.
+- Compiler and reload output report observation-to-read, source read, queue, parse, AST, codegen and output-write spans, followed by publication-to-Metro and Metro-to-applied intervals per preview.
 - Keep this first baseline to full recompilation and the minimal app. Studio integration and partial recompilation follow later.
 
 ### Minimal first app

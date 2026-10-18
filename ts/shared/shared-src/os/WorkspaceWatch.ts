@@ -7,7 +7,7 @@ export function watchFile(path: string, onChange: (observedAtMs: number) => void
   let generation = 0
   let disposed = false
   const watcher = watchDirectory(Path.dirname(path), (_event, filename) => {
-    if (!filename || filename.toString() === Path.basename(path)) {
+    if (!filename || Path.basename(filename.toString()) === Path.basename(path)) {
       scheduleChange()
     }
   })

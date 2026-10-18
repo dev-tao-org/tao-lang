@@ -23,3 +23,9 @@ export function date(): Date {
 export function sleep(duration: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, duration))
 }
+
+/** schedule runs an action after a delay and returns a cancellation function. */
+export function schedule(durationMs: number, action: () => void): () => void {
+  const timer = setTimeout(action, durationMs)
+  return () => clearTimeout(timer)
+}

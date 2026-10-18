@@ -17,6 +17,10 @@ export class Timings {
 
   constructor(readonly clock: string, private readonly now = Time.nowMs) {}
 
+  record(name: string, startMs: number): void {
+    this.samples.push({ name, clock: this.clock, startMs, durationMs: this.now() - startMs, status: 'succeeded' })
+  }
+
   measure<Value>(name: string, action: () => Value): Value {
     const startMs = this.now()
     const now = this.now

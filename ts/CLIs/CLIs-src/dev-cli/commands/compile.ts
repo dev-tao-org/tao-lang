@@ -1,4 +1,4 @@
-import { IO } from '@cli-kit'
+import { formatTimings, IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { Repo } from '@shared/os'
 import { createProject, createWorkspace } from '@workspace/Workspace'
@@ -14,6 +14,7 @@ export default registerCommand({
     const workspace = createWorkspace({ project })
     const result = await workspace.updateFile(Repo.resolvePath(entry))
     workspace.dispose()
+    IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
     if (result.status !== 'published') {
       Errors.ThrowUserInput(`Compilation ${result.status}: ${entry}`)
     }

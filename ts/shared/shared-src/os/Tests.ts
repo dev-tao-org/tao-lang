@@ -26,7 +26,9 @@ function testApi<Name extends 'describe' | 'expect' | 'test'>(name: Name): Tests
     return Reflect.apply(load('bun:test')[name], undefined, args)
   }, {
     get(_target, property) {
-      return Reflect.get(load('bun:test')[name], property)
+      const api = load('bun:test')[name]
+      const value = Reflect.get(api, property, api)
+      return typeof value === 'function' ? value.bind(api) : value
     },
   }) as TestsModule[Name]
 }

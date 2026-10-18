@@ -7,6 +7,7 @@ import { Errors, Time, Timings, type TimingSample, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Project } from './Project'
+import { readSource, type SourceSnapshot, WorkspaceFile } from './WorkspaceFile'
 
 export { createProject } from './Project'
 export type { Project, ProjectOptions } from './Project'
@@ -25,6 +26,8 @@ class WorkspaceSession {
   private lastGood: string | undefined
   private disposed = false
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
+  private readonly publishedListeners = new Set<(publication: Publication) => void>()
+  private sourceFile: WorkspaceFile | undefined
 
   constructor(private readonly options: WorkspaceOptions) {}
 
@@ -37,7 +40,35 @@ class WorkspaceSession {
     return () => this.expectedListeners.delete(listener)
   }
 
+  onPublished(listener: (publication: Publication) => void): () => boolean {
+    this.publishedListeners.add(listener)
+    return () => this.publishedListeners.delete(listener)
+  }
+
+  async openFile(path: string): Promise<UpdateResult> {
+    if (this.disposed) {
+      Errors.ThrowUserInput('Workspace has been disposed.')
+    }
+    this.sourceFile?.dispose()
+    this.sourceFile = new WorkspaceFile(
+      path,
+      snapshot => this.enqueue(snapshot),
+      this.options.onSourceUpdate,
+      this.options.onSourceError,
+    )
+    return await this.sourceFile.open()
+  }
+
+  async saveSource(source: string | ((current: string) => string)): Promise<UpdateResult> {
+    const file = this.sourceFile ?? Errors.ThrowUserInput('Open a source file before saving an edit.')
+    return await file.save(source)
+  }
+
   update(source: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
+    return this.enqueue({ source, observedAtMs: startedAtMs, timings: new Timings('workspace:input') })
+  }
+
+  private enqueue(snapshot: SourceSnapshot): Promise<UpdateResult> {
     if (this.disposed) {
       Errors.ThrowUserInput('Workspace has been disposed.')
     }
@@ -45,8 +76,10 @@ class WorkspaceSession {
     const result = new Promise<UpdateResult>(resolve => complete = resolve)
     const request: Pending = {
       id: ++this.revision,
-      source,
-      startedAtMs,
+      source: snapshot.source,
+      startedAtMs: snapshot.observedAtMs,
+      timings: snapshot.timings,
+      queuedAtMs: Time.nowMs(),
       resolve(result: UpdateResult) {
         complete(result)
       },
@@ -62,11 +95,13 @@ class WorkspaceSession {
   }
 
   async updateFile(path: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
-    return await this.update(await FileSystem.readFile(path, 'utf8'), startedAtMs)
+    return await this.enqueue(await readSource(path, startedAtMs))
   }
 
   dispose(): void {
     this.disposed = true
+    this.sourceFile?.dispose()
+    this.sourceFile = undefined
     this.resolveSuperseded(this.queued)
     this.queued = undefined
   }
@@ -90,7 +125,8 @@ class WorkspaceSession {
 
   private async compileAndPublish(request: Pending): Promise<UpdateResult> {
     const revision = `r${request.id}`
-    const timings = new Timings(`workspace:${revision}`)
+    const timings = request.timings
+    timings.record('workspace.queue', request.queuedAtMs)
     const { tree } = this.parser.parse(request.source, timings)
     const document = transform(tree, timings)
     const stages = skippedStages()
@@ -115,6 +151,14 @@ class WorkspaceSession {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
     this.lastGood = revision
+    for (const listener of this.publishedListeners) {
+      listener({
+        revision,
+        startedAtMs: request.startedAtMs,
+        publishedAtMs: Time.timestampMs(),
+        timings: timings.samples,
+      })
+    }
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
@@ -150,6 +194,16 @@ export type WorkspaceOptions = {
   compile?: typeof compile
   publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
   onExpected?: (revision: string, startedAtMs: number) => void
+  onSourceUpdate?: (result: UpdateResult) => void
+  onSourceError?: (error: unknown) => void
+}
+
+/** Publication records the exact revision and measured pipeline when output reaches disk. */
+export type Publication = {
+  revision: string
+  startedAtMs: number
+  publishedAtMs: number
+  timings: readonly TimingSample[]
 }
 
 /** CompiledApp carries the exact source snapshot and compiler timings for a revision. */
@@ -178,14 +232,21 @@ export type PipelineStages = {
   check: ReturnType<typeof check>
 }
 
-type Pending = { id: number; source: string; startedAtMs: number; resolve(result: UpdateResult): void }
+type Pending = {
+  id: number
+  source: string
+  startedAtMs: number
+  queuedAtMs: number
+  timings: Timings
+  resolve(result: UpdateResult): void
+}
 
 function failureResult(request: Pending, error: unknown): UpdateResult {
   return {
     status: 'failed',
     revision: `r${request.id}`,
     error: String(error),
-    timings: [],
+    timings: request.timings.samples,
     stages: skippedStages(),
   }
 }

@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { Artifacts, Env, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createExpoSession, type ExpoSession } from '@workspace/Expo'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import type { PageState } from '../../shared/shared-src/os/BrowserRuntime'
@@ -47,12 +47,14 @@ const scenarios = ['text', 'add-text', 'row'] as const
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
-  requirePublished(await options.workspace.update(options.initialSource))
+  const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
+  await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
+  await FileSystem.writeFile(sourcePath, options.initialSource, 'utf8')
+  requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await createExpoSession(options.project)
   owned.harness = await createPreviewHarness({
     workspace: options.workspace,
     previewUrl: owned.expo.url,
-    initialSource: options.initialSource,
     sessionId: owned.sessionId,
     onReload(timing) {
       owned.reloads.push(timing)

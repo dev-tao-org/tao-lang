@@ -35,6 +35,7 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
     expected.add(revision)
     sendEvent(streams, encoder, 'expected', { revision })
   })
+  const stopPublished = options.workspace.onPublished(publication => reload.published(publication))
   const server = Http.serve({
     idleTimeout: 0,
     hostname: '127.0.0.1',
@@ -45,6 +46,7 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
     url: server.url.toString(),
     dispose() {
       stopListening()
+      stopPublished()
       closeStreams(streams)
       server.stop(true)
     },
@@ -93,7 +95,7 @@ function pageResponse(options: HarnessOptions, origin: string): Http.HttpRespons
 
 async function editResponse(request: Http.HttpRequest, options: HarnessOptions): Promise<Http.HttpResponse> {
   const body = await request.json() as { scenario?: string }
-  const result = await options.workspace.update(scenarioSource(options.initialSource, body.scenario))
+  const result = await options.workspace.saveSource(source => scenarioSource(source, body.scenario))
   return Http.jsonResponse(result)
 }
 
@@ -101,7 +103,6 @@ async function editResponse(request: Http.HttpRequest, options: HarnessOptions):
 export type HarnessOptions = {
   workspace: Workspace
   previewUrl: string
-  initialSource: string
   sessionId: string
   onReload?(timing: ReloadTiming): void
 }
@@ -165,16 +166,14 @@ function encodeEvent(encoder: TextEncoder, name: string, data: object): Uint8Arr
 }
 
 function scenarioSource(initial: string, scenario: string | undefined): string {
-  const edited = initial.replace('Hello World', 'Hello Tao')
   if (scenario === 'text') {
-    return edited
+    return initial.replace('Hello World', 'Hello Tao')
   }
-  const withSecondText = edited.replace('Text("Hello Tao")', 'Text("Hello Tao")\n    Text("Second view")')
   if (scenario === 'add-text') {
-    return withSecondText
+    return initial.replace('Text("Hello Tao")', 'Text("Hello Tao")\n    Text("Second view")')
   }
   if (scenario === 'row') {
-    return withSecondText.replace('render Col {', 'render Row {')
+    return initial.replace('render Col {', 'render Row {')
   }
   return Errors.ThrowUserInput('Unknown preview performance scenario: ' + String(scenario))
 }
