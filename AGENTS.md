@@ -39,7 +39,7 @@ These are your rules of usage:
 - Default to concise executive summaries: give the outcome and material implications at a high level. Omit routine implementation details and activity recaps unless requested; surface important deviations, assumptions, risks, and decisions that need follow-up.
 - Track every developer request, including requests arriving during implementation, in the task checkpoint across interruptions and compaction. Keep each pending until addressed; a superseded or irrelevant request may be marked complete with the reason. Reconcile the checklist before finishing or handing off so no request is dropped.
 - Keep working notes, investigation logs, checkpoints and progress records under `.artifacts/notes/`, `.artifacts/checkpoint/` or `.artifacts/progress/`. Normal and partial cleanup retain these paths; only `clean --full` removes them.
-- Update existing repository documents only when the developer instructs you to do so; keep other observations and progress in `.artifacts`.
+- Keep `Docs/Specification/` aligned with language and tooling behavior as implementations change; its `AGENTS.md` owns scope and writing style. Update other repository documents only when the developer instructs you to do so; keep observations and progress in `.artifacts`.
 
 ## Your mission
 
@@ -55,6 +55,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
+    - Run every new test directly before finishing implementation; also run relevant existing tests when the change may affect broader behavior. If parallel agents cause failures outside your owned work, report and coordinate them without repairing their changes yourself.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;
   - After each implementation chunk, run `./agent fmt`.
@@ -100,7 +101,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Land only when explicitly instructed by the developer. A pause or stop revokes authorization until explicitly renewed.
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
 - Always create a new feature branch for your new worktree.
-- Make commits as you implement parts. Tests don't HAVE to be passing part-way commits.
+- Make commits as you implement parts. Run `./agent verify` before committing, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 
 ## Implementation architecture
