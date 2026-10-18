@@ -1,6 +1,6 @@
 import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
@@ -33,6 +33,7 @@ export async function prepareParser(force = false, timings = new Timings(`proces
     runCommand('node-gyp rebuild --loglevel=warn --directory', {
       variadicArgs: [outputRoot, ...nodeHeaders(inputs.node.executable)],
       cwd: Repo.resolvePath('ts'),
+      env: nodeGypEnvironment(),
     }))
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
@@ -63,6 +64,15 @@ async function readInputs() {
 function nodeHeaders(executable: string): string[] {
   const root = Path.dirname(Path.dirname(executable))
   return FileSystem.existsSync(Path.join(root, 'include/node/node.h')) ? ['--nodedir', root] : []
+}
+
+function nodeGypEnvironment(): Record<string, string | undefined> {
+  const flag = '--disable-warning=DEP0169'
+  const options = (Env.get('NODE_OPTIONS') ?? '').split(/\s+/).filter(Boolean)
+  if (!options.includes(flag)) {
+    options.push(flag)
+  }
+  return { NODE_OPTIONS: options.join(' ') }
 }
 
 async function environmentInputs(): Promise<string> {
