@@ -1,7 +1,7 @@
 /** RuntimeSourceResources maps readable app sources to their portable resource paths. */
 export const RuntimeSourceResources = {
   'runtime/TR.ts': 'ts/7-runtime/runtime-src/TR.ts',
-  'runtime/Native.ts': 'ts/7-runtime/runtime-src/Native.ts',
+  'runtime/App.ts': 'ts/7-runtime/runtime-src/App.ts',
   'runtime/Preview.ts': 'ts/7-runtime/runtime-src/Preview.ts',
   'runtime/View.ts': 'ts/7-runtime/runtime-src/View.ts',
   'runtime/HMRClient.ts': 'ts/7-runtime/runtime-src/HMRClient.ts',

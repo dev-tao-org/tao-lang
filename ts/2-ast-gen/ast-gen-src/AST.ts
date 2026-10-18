@@ -10,6 +10,9 @@ export type Node =
   | Expression
   | ContextReference
 
+/** OfKind selects semantic nodes with one of the supplied discriminants. */
+export type OfKind<Kind extends Node['kind']> = Extract<Node, { kind: Kind }>
+
 /** File contains the declarations in one source snapshot. */
 export type File = { readonly kind: 'File'; readonly declarations: readonly Declaration[] }
 
@@ -61,17 +64,25 @@ export type Document = { readonly root: File; readonly origins: ReadonlyMap<Node
 
 /** IsAppDeclaration narrows a semantic node to an app declaration. */
 export function IsAppDeclaration(node: Node): node is AppDeclaration {
-  return node.kind === 'AppDeclaration'
+  return IsKind(node, 'AppDeclaration')
 }
 
 /** IsViewDeclaration narrows a semantic node to a view declaration. */
 export function IsViewDeclaration(node: Node): node is ViewDeclaration {
-  return node.kind === 'ViewDeclaration'
+  return IsKind(node, 'ViewDeclaration')
 }
 
 /** IsInjection narrows a semantic node to an injection. */
 export function IsInjection(node: Node): node is Injection {
-  return node.kind === 'Injection'
+  return IsKind(node, 'Injection')
+}
+
+/** IsKind narrows a semantic node to the requested discriminant or discriminants. */
+export function IsKind<Kind extends Node['kind']>(
+  node: Node,
+  kind: Kind | readonly Kind[],
+): node is OfKind<Kind> {
+  return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
 }
 
 type Declaration = AppDeclaration | ViewDeclaration

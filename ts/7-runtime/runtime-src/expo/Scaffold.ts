@@ -99,7 +99,7 @@ async function linkRuntimeSources(directory: string, resourcesDirectory: string,
 }
 
 async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): Promise<void> {
-  const oldSources = [...sourceFiles, 'TR.js', 'HMRClient.js']
+  const oldSources = [...sourceFiles, 'runtime/Native.ts', 'TR.js', 'HMRClient.js']
   const directories = [...new Set(oldSources.flatMap(file => parentDirectories(target, file)))]
     .sort((left, right) => left.length - right.length)
   await assertUnlinkedDirectories(directories)

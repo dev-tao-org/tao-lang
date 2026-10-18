@@ -1,7 +1,6 @@
 import { Errors } from '@shared'
-import { cloneElement, createContext, createElement, isValidElement, Suspense, useContext, useEffect } from 'react'
+import { cloneElement, createContext, createElement, isValidElement, useContext } from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import { previewOptions } from './Preview'
 
 /** View is a named runtime definition whose renderer receives bound values and children. */
 export type View = {
@@ -60,12 +59,12 @@ export function ViewRenderArgs(values: readonly unknown[] = [], children: readon
 /** Render is the public root-level alias for creating a runtime view element. */
 export function Render(view: View, args: ViewRenderArgs, observer?: RuntimeObserver): ReactElement {
   const body = createElement(ViewBody, { view, args })
-  return observer ? createElement(RuntimeObserverContext.Provider, { value: observer }, body) : body
+  return observer ? ProvideRuntimeObserver(observer, body) : body
 }
 
-/** App renders a zero-argument root and acknowledges its revision after commit. */
-export function App(view: View, revision: string, options: AppOptions = previewOptions()): ReactElement {
-  return createElement(AppRoot, { view, revision, options })
+/** ProvideRuntimeObserver sets the timing observer for a runtime subtree. */
+export function ProvideRuntimeObserver(observer: RuntimeObserver | undefined, children: ReactNode): ReactElement {
+  return createElement(RuntimeObserverContext.Provider, { value: observer }, children)
 }
 
 const viewMarker: unique symbol = Symbol('TaoView')
@@ -73,12 +72,6 @@ const viewMarker: unique symbol = Symbol('TaoView')
 type ViewBodyProps = {
   view: View
   args: ViewRenderArgs
-}
-
-type AppRootProps = {
-  view: View
-  revision: string
-  options: AppOptions
 }
 
 function ViewBody({ view, args }: ViewBodyProps): ReactNode {
@@ -90,38 +83,6 @@ function ViewBody({ view, args }: ViewBodyProps): ReactNode {
   const result = view.render(bindings, args.children)
   observe(observer, 'render', startedAt)
   return result
-}
-
-function AppRoot({ view, revision, options }: AppRootProps): ReactNode {
-  const observer = options.observer
-  const startedAt = observer?.now()
-  const subtree = Render(view, ViewRenderArgs())
-  return createElement(
-    RuntimeObserverContext.Provider,
-    { value: observer },
-    createElement(
-      Suspense,
-      { fallback: options.fallback ?? null },
-      createElement(CommitAfterRender, { children: subtree, revision, options, observer, startedAt }),
-    ),
-  )
-}
-
-type CommitAfterRenderProps = {
-  children: ReactNode
-  revision: string
-  options: AppOptions
-  observer?: RuntimeObserver
-  startedAt?: number
-}
-
-function CommitAfterRender({ children, revision, options, observer, startedAt }: CommitAfterRenderProps): ReactNode {
-  const onApplied = options.onApplied
-  useEffect(() => {
-    observe(observer, 'render-to-applied', startedAt)
-    onApplied?.(revision)
-  }, [observer, onApplied, revision])
-  return children
 }
 
 function bindValues(view: View, args: ViewRenderArgs): Readonly<Record<string, unknown>> {

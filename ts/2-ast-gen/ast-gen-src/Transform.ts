@@ -1,7 +1,7 @@
 import { Errors, Switch, Timings } from '@shared'
 import { Platform } from '@shared/os'
 import type Parser from 'tree-sitter'
-import type * as AST from './AST'
+import * as AST from './AST'
 
 /** transform constructs an AST only for a syntactically valid source snapshot.
  *  Returned semantic nodes and numeric origins do not retain the caller-owned CST. */
@@ -22,8 +22,6 @@ function transformDocument(tree: Parser.Tree): AST.Document {
   const root = AST.Node(tree.rootNode, 'File')
   return { root, origins: AST.origins }
 }
-
-type OfKind<Kind extends AST.Node['kind']> = Extract<AST.Node, { kind: Kind }>
 
 // ASTConstructor owns one snapshot; its dispatch boundary records numeric source origins.
 class ASTConstructor {
@@ -105,25 +103,24 @@ class ASTConstructor {
     return { kind: 'TextLiteral', value: JSON.parse(node.text) as string }
   }
 
-  Node<Kind extends AST.Node['kind']>(node: Parser.SyntaxNode, kind: Kind | readonly Kind[]): OfKind<Kind> {
+  Node<Kind extends AST.Node['kind']>(node: Parser.SyntaxNode, kind: Kind | readonly Kind[]): AST.OfKind<Kind> {
     const result = Switch.on<Parser.SyntaxNode, 'type', AST.Node>(node, 'type', this.constructors)
-    const allowed = typeof kind === 'string' ? [kind] : kind
-    if (!allowed.includes(result.kind as Kind)) {
+    if (!AST.IsKind(result, kind)) {
       Errors.ThrowUnexpected(`Unexpected ${result.kind} for CST ${node.type}.`)
     }
     this.origins.set(result, { start: node.startIndex, end: node.endIndex })
-    return result as OfKind<Kind>
+    return result
   }
 
   Field<Kind extends AST.Node['kind']>(
     node: Parser.SyntaxNode,
     field: string,
     kind: Kind | readonly Kind[],
-  ): OfKind<Kind> {
+  ): AST.OfKind<Kind> {
     return this.Node(requiredField(node, field), kind)
   }
 
-  List<Kind extends AST.Node['kind']>(node: Parser.SyntaxNode, kinds: readonly Kind[]): OfKind<Kind>[] {
+  List<Kind extends AST.Node['kind']>(node: Parser.SyntaxNode, kinds: readonly Kind[]): AST.OfKind<Kind>[] {
     return node.namedChildren.map(child => this.Node(child, kinds))
   }
 }

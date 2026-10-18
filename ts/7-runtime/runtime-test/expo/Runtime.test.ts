@@ -129,7 +129,11 @@ async function verifyCreatedApplications(
   Tests.expect(FileSystem.realpathSync(Path.join(changed.directory, 'src/_gen_runtime')))
     .toBe(FileSystem.realpathSync(resourcesB))
   Tests.expect(await FileSystem.readFile(Path.join(first.directory, 'src/_gen_runtime/runtime/TR.ts'), 'utf8'))
-    .toContain("export { ReactNative } from './Native'")
+    .toContain("export * as ReactNative from 'react-native'")
+  Tests.expect(await FileSystem.readFile(Path.join(first.directory, 'src/_gen_runtime/runtime/TR.ts'), 'utf8'))
+    .toContain("export { App } from './App'")
+  Tests.expect(await FileSystem.exists(Path.join(first.directory, 'src/_gen_runtime/runtime/Native.ts'))).toBe(false)
+  Tests.expect(await FileSystem.exists(Path.join(first.directory, 'src/_gen_runtime/runtime/App.ts'))).toBe(true)
   Tests.expect(await FileSystem.readFile(first.appPath, 'utf8')).toBe(appSource)
   Tests.expect(otherRuntime.appPath).toBe(Path.join(root, 'second/src/App.tsx'))
   Tests.expect(FileSystem.realpathSync(Path.join(changed.directory, 'node_modules'))).toBe(
@@ -155,6 +159,9 @@ async function writeLegacyRuntimeDirectory(directory: string, resourcesDirectory
     await FileSystem.readFile(Path.join(resourcesDirectory, 'runtime/TR.ts'), 'utf8'),
   )
   await FileSystem.writeFile(Path.join(target, 'HMRClient.js'), 'legacy HMR bundle')
+  const legacyNativeSource = Path.join(target, 'runtime/Native.ts')
+  await FileSystem.mkdir(Path.dirname(legacyNativeSource), { recursive: true })
+  await FileSystem.writeFile(legacyNativeSource, 'legacy Native runtime source')
 }
 
 async function writeResources(directory: string, dependencies: Record<string, string>, label: string): Promise<void> {
