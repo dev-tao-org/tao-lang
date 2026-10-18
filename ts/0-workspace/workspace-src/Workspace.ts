@@ -67,6 +67,8 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
+const WorkspacePublish = Timings.measure('workspace.publish', publishWorkspace)
+
 class WorkspaceSession {
   readonly directory: string | undefined
   private readonly output: ReturnType<typeof outputPaths>
@@ -81,6 +83,8 @@ class WorkspaceSession {
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
   private sourceFile: WorkspaceFile | undefined
   private application: Runtime.RuntimeApplication | undefined
+  private readonly publishCallback = this.publish.bind(this)
+  private readonly prepareRuntimeCallback = this.prepareRuntime.bind(this)
 
   constructor(private readonly options: WorkspaceOptions) {
     const directory = options.directory ?? options.project?.directory
@@ -186,9 +190,7 @@ class WorkspaceSession {
         return
       }
       const result = await Try(() => this.compileAndPublish(request), {
-        catch(error) {
-          return failureResult(request, error)
-        },
+        catch: (error) => failureResult(request, error),
       })
       request.resolve(result)
       this.current = this.queued
@@ -212,8 +214,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    const WorkspacePublish = timings.measure('workspace.publish', this.publish.bind(this))
-    await WorkspacePublish(output, request)
+    await WorkspacePublish(timings, this.publishCallback, output, request)
     if (!this.isCurrent(request)) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -251,7 +252,7 @@ class WorkspaceSession {
     await publishBuild(
       this.output.buildDirectory,
       output.code,
-      this.prepareRuntime.bind(this),
+      this.prepareRuntimeCallback,
       isCurrent,
       request.timings,
     )
@@ -271,6 +272,14 @@ class WorkspaceSession {
       request.resolve({ status: 'superseded', revision: `r${request.id}`, timings: [], stages: skippedStages() })
     }
   }
+}
+
+function publishWorkspace(
+  publish: (output: CompiledApp, request: Pending) => Promise<void>,
+  output: CompiledApp,
+  request: Pending,
+): Promise<void> {
+  return publish(output, request)
 }
 
 type Pending = {

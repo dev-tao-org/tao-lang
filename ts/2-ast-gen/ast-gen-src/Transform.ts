@@ -12,12 +12,15 @@ export function transform(
   if (tree.rootNode.hasError) {
     return undefined
   }
-  const transformDocument = timings.measure('transformer.transform', function transformDocument() {
-    const AST = new ASTConstructor()
-    const root = AST.Node(tree.rootNode, 'File')
-    return { root, origins: AST.origins }
-  })
-  return transformDocument()
+  return TransformDocument(timings, tree)
+}
+
+const TransformDocument = Timings.measure('transformer.transform', transformDocument)
+
+function transformDocument(tree: Parser.Tree): AST.Document {
+  const AST = new ASTConstructor()
+  const root = AST.Node(tree.rootNode, 'File')
+  return { root, origins: AST.origins }
 }
 
 type OfKind<Kind extends AST.Node['kind']> = Extract<AST.Node, { kind: Kind }>

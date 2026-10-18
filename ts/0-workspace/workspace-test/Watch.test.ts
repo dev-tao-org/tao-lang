@@ -8,7 +8,7 @@ const hostUnavailable = Platform.systemInfo().os === 'Darwin' && !await Try.With
   return true
 })
 
-Tests.test('a newer file read supersedes an older deferred watcher read', async () => {
+Tests.test('opening waits for the newer watcher read when its initial read is superseded', async () => {
   await verifyNewerReadSupersedesOlder()
 })
 
@@ -169,7 +169,7 @@ async function verifyNewerReadSupersedesOlder(): Promise<void> {
   fixture.releaseNew()
   await fixture.newestPublished
   fixture.releaseOld()
-  Tests.expect(await opening).toMatchObject({ status: 'superseded' })
+  Tests.expect(await opening).toMatchObject({ status: 'published' })
   Tests.expect(fixture.results).toEqual(['newer', 'published'])
   fixture.file.dispose()
 }

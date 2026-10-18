@@ -11,15 +11,20 @@ export async function publishBuild(
   isCurrent: () => boolean,
   timings: Timings,
 ): Promise<void> {
-  const WriteBuild = timings.measure('workspace.build.write', writeBuild)
-  const path = await WriteBuild(buildDirectory, code)
+  const path = await WriteBuild(timings, buildDirectory, code)
   if (!isCurrent()) {
     return
   }
-  const PrepareRuntime = timings.measure('workspace.runtime.prepare', prepareRuntime)
-  const runtime = await PrepareRuntime()
-  const PublishChanged = timings.measure('workspace.runtime.publish-changed', publishChanged)
-  await PublishChanged(path, runtime.appPath, isCurrent)
+  const runtime = await PrepareRuntime(timings, prepareRuntime)
+  await PublishChanged(timings, path, runtime.appPath, isCurrent)
+}
+
+const WriteBuild = Timings.measure('workspace.build.write', writeBuild)
+const PrepareRuntime = Timings.measure('workspace.runtime.prepare', runPrepareRuntime)
+const PublishChanged = Timings.measure('workspace.runtime.publish-changed', publishChanged)
+
+function runPrepareRuntime(prepareRuntime: () => Promise<RuntimeApplication>): Promise<RuntimeApplication> {
+  return prepareRuntime()
 }
 
 async function writeBuild(directory: string, code: string): Promise<string> {
@@ -44,8 +49,6 @@ async function publishChanged(buildPath: string, target: string, isCurrent: () =
       FileSystem.renameSync(pending, target)
     }
   }, {
-    finally() {
-      return FileSystem.rm(pending, { force: true })
-    },
+    finally: () => FileSystem.rm(pending, { force: true }),
   })
 }

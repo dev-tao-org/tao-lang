@@ -11,6 +11,7 @@ export type TimingSample = {
 }
 
 /** Timings collects operation spans for one request or bounded measurement run.
+ *  Create measured functions at module scope and pass their recorder on each call.
  *  Discard the collector with its request; timestamps from different clock domains cannot be subtracted. */
 export class Timings {
   readonly samples: TimingSample[] = []
@@ -21,22 +22,19 @@ export class Timings {
     this.samples.push({ name, clock: this.clock, startMs, durationMs: this.now() - startMs, status: 'succeeded' })
   }
 
-  measure<Arguments extends unknown[], Value>(
+  static measure<Arguments extends unknown[], Value>(
     name: string,
     action: (...arguments_: Arguments) => Value,
-  ): (...arguments_: Arguments) => Value {
-    const now = this.now
-    const clock = this.clock
-    const samples = this.samples
-    return (...arguments_: Arguments): Value => {
-      const startMs = now()
+  ): (timings: Timings, ...arguments_: Arguments) => Value {
+    return (timings: Timings, ...arguments_: Arguments): Value => {
+      const startMs = timings.now()
       return Try(() => action(...arguments_), {
         finally(_thrown, error) {
-          samples.push({
+          timings.samples.push({
             name,
-            clock,
+            clock: timings.clock,
             startMs,
-            durationMs: now() - startMs,
+            durationMs: timings.now() - startMs,
             status: error ? 'failed' : 'succeeded',
           })
         },

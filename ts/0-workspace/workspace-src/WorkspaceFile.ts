@@ -6,22 +6,21 @@ import type { PipelineStages, UpdateResult } from './Workspace'
 export async function readSource(path: string, observedAtMs = Time.timestampMs()): Promise<SourceSnapshot> {
   const timings = new Timings('workspace:input')
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const readWorkspaceSource = timings.measure('workspace.read', function readWorkspaceSource(path: string) {
-    return FileSystem.readFile(path, 'utf8')
-  })
-  const source = await readWorkspaceSource(path)
+  const source = await ReadWorkspaceSource(timings, path)
   return { source, observedAtMs, timings }
 }
 
 /** SourceSnapshot carries a disk snapshot and its input timings into the compiler queue. */
 export type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
-/** WorkspaceFile owns source watching; saving waits for the watcher rather than invoking compilation. */
+/** WorkspaceFile owns source watching; saving waits for the watcher rather than invoking compilation.
+ *  Opening waits for the newest in-flight refresh when its initial read is superseded. */
 export class WorkspaceFile {
   private stopWatching: (() => void) | undefined
   private readonly waiters = new Set<SourceWaiter>()
   private refreshGeneration = 0
   private disposed = false
+  private latestRefresh: Promise<UpdateResult> | undefined
 
   constructor(
     readonly path: string,
@@ -35,13 +34,25 @@ export class WorkspaceFile {
   async open(): Promise<UpdateResult> {
     const onError = this.onError
     this.stopWatching = this.watch(this.path, observedAtMs => {
-      void Try(() => this.refresh(observedAtMs), {
+      void Try(() => this.startRefresh(observedAtMs), {
         catch(error) {
           onError?.(error)
         },
       })
     })
-    return await this.refresh(Time.timestampMs())
+    let pending = this.startRefresh(Time.timestampMs())
+    while (true) {
+      const result = await pending
+      if (this.disposed || pending === this.latestRefresh) {
+        return result
+      }
+      pending = this.latestRefresh!
+    }
+  }
+
+  private startRefresh(observedAtMs: number): Promise<UpdateResult> {
+    this.latestRefresh = this.refresh(observedAtMs)
+    return this.latestRefresh
   }
 
   async save(source: string | ((current: string) => string)): Promise<UpdateResult> {
@@ -106,13 +117,17 @@ export class WorkspaceFile {
   }
 }
 
+const ReadWorkspaceSource = Timings.measure('workspace.read', readWorkspaceSource)
+
+function readWorkspaceSource(path: string): Promise<string> {
+  return FileSystem.readFile(path, 'utf8')
+}
+
 type SourceWaiter = { source: string; resolve(result: UpdateResult): void; reject(error: unknown): void }
 
 function sourceFailure(message: string): Errors.TaoError {
   return Try(() => Errors.ThrowHostEnvironment(message), {
-    catch(error) {
-      return Errors.fromUnknown(error)
-    },
+    catch: (error) => Errors.fromUnknown(error),
   })
 }
 

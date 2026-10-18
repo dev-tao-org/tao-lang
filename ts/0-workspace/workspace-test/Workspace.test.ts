@@ -48,9 +48,7 @@ Tests.test('invalid source retains the last published application', async () => 
   const source = await Tests.readApp('Hello World')
   let publishCount = 0
   const workspace = createWorkspace({
-    compile() {
-      return 'compiled app'
-    },
+    compile: () => 'compiled app',
     async publish() {
       publishCount++
     },
@@ -77,9 +75,7 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
   const enteredPublishA = new Promise<void>(resolve => enteredA = resolve)
   const published: string[] = []
   const workspace = createWorkspace({
-    compile(_document, options) {
-      return options.revision
-    },
+    compile: (_document, options) => options.revision,
     async publish(app, isCurrent) {
       if (app.source === source) {
         enteredA()
