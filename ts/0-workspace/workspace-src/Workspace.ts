@@ -4,13 +4,15 @@ import { compile } from '@compile/Compile'
 import { fix } from '@fix/Fix'
 import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Time, Timings, type TimingSample, Try } from '@shared'
+import { Errors, Time, Timings, type TimingSample } from '@shared'
 import { Path } from '@shared/os'
 import { typecheck } from '@typecheck/Typecheck'
+import type { Document } from './Document'
+import { type CompileRequest, FileManager } from './FileManager'
 import type { Project } from './Project'
 import { publishBuild } from './WorkspaceBuild'
-import { readSource, type SourceSnapshot, WorkspaceFile } from './WorkspaceFile'
 
+export { Document } from './Document'
 export { createProject } from './Project'
 export type { Project, ProjectOptions } from './Project'
 
@@ -73,23 +75,25 @@ class WorkspaceSession {
   readonly directory: string | undefined
   private readonly output: ReturnType<typeof outputPaths>
   private readonly parser = createParser()
-  private revision = 0
-  private current: Pending | undefined
-  private queued: Pending | undefined
   private lastGood: string | undefined
-  private disposed = false
-  private sourceGeneration = 0
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
-  private sourceFile: WorkspaceFile | undefined
   private application: Runtime.RuntimeApplication | undefined
   private readonly publishCallback = this.publish.bind(this)
   private readonly prepareRuntimeCallback = this.prepareRuntime.bind(this)
+  readonly files: FileManager
 
   constructor(private readonly options: WorkspaceOptions) {
     const directory = options.directory ?? options.project?.directory
     this.directory = directory ? Path.resolve(directory) : undefined
     this.output = outputPaths(options)
+    this.files = new FileManager({
+      directory: this.directory,
+      outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
+      compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
+      onSourceUpdate: options.onSourceUpdate,
+      onSourceError: options.onSourceError,
+    })
   }
 
   get lastGoodRevision(): string | undefined {
@@ -111,94 +115,18 @@ class WorkspaceSession {
   }
 
   async openFile(path: string): Promise<UpdateResult> {
-    if (this.disposed) {
-      Errors.ThrowUserInput('Workspace has been disposed.')
-    }
-    const sourceGeneration = ++this.sourceGeneration
-    this.sourceFile?.dispose()
-    this.sourceFile = new WorkspaceFile(
-      this.sourcePath(path),
-      (snapshot, isCurrent) => this.enqueue(snapshot, sourceGeneration, isCurrent),
-      this.options.onSourceUpdate,
-      this.options.onSourceError,
-    )
-    return await this.sourceFile.open()
+    return await this.files.openFile(path)
   }
 
-  async saveSource(source: string | ((current: string) => string)): Promise<UpdateResult> {
-    const file = this.sourceFile ?? Errors.ThrowUserInput('Open a source file before saving an edit.')
-    return await file.save(source)
+  update(source: string | Document, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
+    return this.files.update(source, startedAtMs)
   }
 
-  update(source: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
-    return this.enqueue({ source, observedAtMs: startedAtMs, timings: new Timings('workspace:input') })
+  async dispose(): Promise<void> {
+    await this.files.dispose()
   }
 
-  private enqueue(
-    snapshot: SourceSnapshot,
-    sourceGeneration?: number,
-    isSourceCurrent?: () => boolean,
-  ): Promise<UpdateResult> {
-    if (this.disposed) {
-      Errors.ThrowUserInput('Workspace has been disposed.')
-    }
-    let complete!: (result: UpdateResult) => void
-    const result = new Promise<UpdateResult>(resolve => complete = resolve)
-    const request: Pending = {
-      id: ++this.revision,
-      source: snapshot.source,
-      startedAtMs: snapshot.observedAtMs,
-      timings: snapshot.timings,
-      queuedAtMs: Time.nowMs(),
-      sourceGeneration,
-      isSourceCurrent,
-      resolve(result: UpdateResult) {
-        complete(result)
-      },
-    }
-    if (this.current) {
-      this.resolveSuperseded(this.queued)
-      this.queued = request
-    } else {
-      this.current = request
-      void this.processQueue()
-    }
-    return result
-  }
-
-  async updateFile(path: string, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
-    return await this.enqueue(await readSource(this.sourcePath(path), startedAtMs))
-  }
-
-  private sourcePath(path: string): string {
-    return Path.resolve(this.directory ?? '.', path)
-  }
-
-  dispose(): void {
-    this.disposed = true
-    this.sourceGeneration++
-    this.sourceFile?.dispose()
-    this.sourceFile = undefined
-    this.resolveSuperseded(this.queued)
-    this.queued = undefined
-  }
-
-  private async processQueue(): Promise<void> {
-    while (this.current) {
-      const request = this.current
-      if (!request) {
-        return
-      }
-      const result = await Try(() => this.compileAndPublish(request), {
-        catch: (error) => failureResult(request, error),
-      })
-      request.resolve(result)
-      this.current = this.queued
-      this.queued = undefined
-    }
-  }
-
-  private async compileAndPublish(request: Pending): Promise<UpdateResult> {
+  private async compileAndPublish(request: CompileRequest, isCurrent: () => boolean): Promise<UpdateResult> {
     const revision = `r${request.id}`
     const timings = request.timings
     timings.record('workspace.queue', request.queuedAtMs)
@@ -214,8 +142,8 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await WorkspacePublish(timings, this.publishCallback, output, request)
-    if (!this.isCurrent(request)) {
+    await WorkspacePublish(timings, this.publishCallback, output, isCurrent, timings)
+    if (!isCurrent()) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
     this.lastGood = revision
@@ -230,18 +158,7 @@ class WorkspaceSession {
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
-  private latestId(): number {
-    return this.queued?.id ?? this.current?.id ?? this.revision
-  }
-
-  private isCurrent(request: Pending): boolean {
-    return !this.disposed && request.id === this.latestId()
-      && (request.sourceGeneration === undefined || request.sourceGeneration === this.sourceGeneration)
-      && (request.isSourceCurrent?.() ?? true)
-  }
-
-  private async publish(output: CompiledApp, request: Pending): Promise<void> {
-    const isCurrent = () => this.isCurrent(request)
+  private async publish(output: CompiledApp, isCurrent: () => boolean, timings: Timings): Promise<void> {
     if (this.options.publish) {
       await this.options.publish(output, isCurrent)
       return
@@ -254,7 +171,7 @@ class WorkspaceSession {
       output.code,
       this.prepareRuntimeCallback,
       isCurrent,
-      request.timings,
+      timings,
     )
   }
 
@@ -266,41 +183,15 @@ class WorkspaceSession {
     })
     return this.application
   }
-
-  private resolveSuperseded(request: Pending | undefined): void {
-    if (request) {
-      request.resolve({ status: 'superseded', revision: `r${request.id}`, timings: [], stages: skippedStages() })
-    }
-  }
 }
 
 function publishWorkspace(
-  publish: (output: CompiledApp, request: Pending) => Promise<void>,
+  publish: (output: CompiledApp, isCurrent: () => boolean, timings: Timings) => Promise<void>,
   output: CompiledApp,
-  request: Pending,
+  isCurrent: () => boolean,
+  timings: Timings,
 ): Promise<void> {
-  return publish(output, request)
-}
-
-type Pending = {
-  id: number
-  source: string
-  startedAtMs: number
-  queuedAtMs: number
-  timings: Timings
-  sourceGeneration?: number
-  isSourceCurrent?: () => boolean
-  resolve(result: UpdateResult): void
-}
-
-function failureResult(request: Pending, error: unknown): UpdateResult {
-  return {
-    status: 'failed',
-    revision: `r${request.id}`,
-    error: String(error),
-    timings: request.timings.samples,
-    stages: skippedStages(),
-  }
+  return publish(output, isCurrent, timings)
 }
 
 function skippedStages(): PipelineStages {

@@ -112,7 +112,7 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
       owned.expo?.dispose(),
     ]),
   )
-  options.workspace.dispose()
+  await options.workspace.dispose()
   const output = owned.expo ? await owned.expo.output() : undefined
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)
   await Artifacts.mkdir(Path.dirname(logPath), { recursive: true })

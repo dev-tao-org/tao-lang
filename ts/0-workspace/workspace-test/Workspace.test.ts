@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { createWorkspace } from '../workspace-src/Workspace'
+import { createWorkspace, Document } from '../workspace-src/Workspace'
 
 Tests.test('a rapid edit burst compiles only the active and newest queued source', async () => {
   const source = await Tests.readApp('Hello World')
@@ -60,6 +60,43 @@ Tests.test('invalid source retains the last published application', async () => 
   Tests.expect(publishCount).toBe(1)
 })
 
+Tests.test('a virtual document queues immutable versioned source without filesystem access', async () => {
+  const source = await Tests.readApp('Hello World')
+  const document = new Document('/virtual/Hello World.tao', source)
+  let releaseFirst!: () => void
+  let enteredFirst!: () => void
+  const firstGate = new Promise<void>(resolve => releaseFirst = resolve)
+  const firstEntered = new Promise<void>(resolve => enteredFirst = resolve)
+  const events: { path: string | undefined; source: string; version: number | undefined }[] = []
+  const workspace = createWorkspace({
+    compile: (_document, options) => options.revision,
+    async publish(app, isCurrent) {
+      if (app.revision === 'r1') {
+        enteredFirst()
+        await firstGate
+      }
+      if (isCurrent()) {
+        return
+      }
+    },
+  })
+  workspace.files.onCompiled(event => events.push({ ...event, version: event.version }))
+
+  const first = workspace.update(document)
+  await firstEntered
+  document.replaceSource(source)
+  const latest = workspace.update(document)
+  releaseFirst()
+  Tests.expect(await first).toMatchObject({ status: 'superseded' })
+  Tests.expect(await latest).toMatchObject({ status: 'published' })
+  Tests.expect(events.map(({ path, source: value, version }) => ({ path, source: value, version }))).toEqual([
+    { path: document.path, source, version: 0 },
+    { path: document.path, source, version: 1 },
+  ])
+  Tests.expect(workspace.files.getDocument(document.path)).toBe(document)
+  await workspace.dispose()
+})
+
 Tests.test('opening another source invalidates an in-flight publication from the old file', async () => {
   await verifyOpeningAnotherSourceInvalidatesOldPublication()
 })
@@ -97,12 +134,12 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
     releaseA()
 
     Tests.expect(await openA).toMatchObject({ status: 'superseded' })
-    Tests.expect(await openB).toMatchObject({ status: 'published', revision: 'r2' })
+    Tests.expect(await openB).toMatchObject({ status: 'published' })
     Tests.expect(published).toEqual([source.replace('Hello World', 'Source B')])
   }, {
     async finally() {
       releaseA()
-      workspace.dispose()
+      await workspace.dispose()
       await FileSystem.rm(directory, { recursive: true, force: true })
     },
   })

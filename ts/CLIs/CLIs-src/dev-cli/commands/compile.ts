@@ -14,8 +14,8 @@ export default registerCommand({
     await prepareRuntime()
     const project = await createProject()
     const workspace = createWorkspace({ project })
-    const result = await workspace.updateFile(Repo.resolvePath(entry))
-    workspace.dispose()
+    const result = await workspace.files.compileFile(Repo.resolvePath(entry))
+    await workspace.dispose()
     IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
     if (result.status === 'failed') {
       Errors.ThrowUnexpected(`Compilation failed: ${entry}\n${result.error}`)

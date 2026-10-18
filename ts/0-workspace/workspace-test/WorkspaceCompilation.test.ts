@@ -45,8 +45,8 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
       await FileSystem.readFile(Path.join(outputDirectory, 'build/App.tsx'), 'utf8'),
     )
   }, {
-    finally() {
-      workspace.dispose()
+    async finally() {
+      await workspace.dispose()
     },
   })
 }
@@ -80,8 +80,8 @@ async function verifyProjectCompilation(root: string): Promise<void> {
     await verifyPublication(workspace, project.buildDirectory, source, () => code = 'compiled B')
     Tests.expect(installs).toBe(1)
   }, {
-    finally() {
-      workspace.dispose()
+    async finally() {
+      await workspace.dispose()
     },
   })
 }

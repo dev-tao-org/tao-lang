@@ -1,6 +1,6 @@
-import { Errors, S } from '@shared'
-import { Artifacts, Browser, Http, Path, Repo } from '@shared/os'
-import type { createWorkspace } from '@workspace/Workspace'
+import { Errors, S, Time, Try } from '@shared'
+import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
+import type { createWorkspace, UpdateResult } from '@workspace/Workspace'
 import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
@@ -21,6 +21,7 @@ export type HarnessOptions = {
 export type PreviewHarness = { url: string; dispose(): void }
 
 type Workspace = ReturnType<typeof createWorkspace>
+type EditState = { closed: boolean; pending: Set<() => void> }
 
 async function prepareBrowserClient(sessionId: string): Promise<string> {
   const directory = Artifacts.resolvePath('tmp', `preview-ui-${sessionId}`)
@@ -39,6 +40,7 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
   const streams = new Set<Http.StreamController>()
   const expected = new Set<string>()
   const encoder = new TextEncoder()
+  const edits: EditState = { closed: false, pending: new Set() }
   const reload = new ReloadTimings(options.sessionId, options.onReload)
   const stopListening = options.workspace.onExpected((revision, startedAtMs) => {
     reload.begin(revision, startedAtMs)
@@ -51,13 +53,17 @@ async function startHarnessServer(options: HarnessOptions, sessionDir: string): 
     idleTimeout: 0,
     hostname: '127.0.0.1',
     port: 0,
-    fetch: createRequestHandler(options, sessionDir, streams, expected, encoder, reload),
+    fetch: createRequestHandler(options, sessionDir, streams, expected, encoder, reload, edits),
   })
   return {
     url: server.url.toString(),
     dispose() {
+      edits.closed = true
       stopListening()
       stopPublished()
+      for (const abort of edits.pending) {
+        abort()
+      }
       closeStreams(streams)
       server.stop(true)
     },
@@ -71,6 +77,7 @@ function createRequestHandler(
   expected: Set<string>,
   encoder: TextEncoder,
   reload: ReloadTimings,
+  edits: EditState,
 ): (request: Http.HttpRequest) => Promise<Http.HttpResponse> {
   return async request => {
     const url = new URL(request.url)
@@ -86,7 +93,7 @@ function createRequestHandler(
       return eventsResponse(streams, expected, encoder)
     }
     if (request.method === 'POST' && url.pathname === '/edit') {
-      return editResponse(request, options)
+      return editResponse(request, options, edits)
     }
     if (request.method === 'POST' && url.pathname === '/receipt') {
       reload.receive(await request.json())
@@ -104,10 +111,56 @@ function pageResponse(options: HarnessOptions, origin: string): Http.HttpRespons
   })
 }
 
-async function editResponse(request: Http.HttpRequest, options: HarnessOptions): Promise<Http.HttpResponse> {
+async function editResponse(
+  request: Http.HttpRequest,
+  options: HarnessOptions,
+  edits: EditState,
+): Promise<Http.HttpResponse> {
   const body = await request.json() as { scenario?: string }
-  const result = await options.workspace.saveSource(source => scenarioSource(source, body.scenario))
-  return Http.jsonResponse(result)
+  const path = options.workspace.files.entryPath ?? Errors.ThrowUserInput('Open an app before editing its source.')
+  const source = scenarioSource(await FileSystem.readFile(path, 'utf8'), body.scenario)
+  if (edits.closed) {
+    return Http.response('Preview harness is closed', { status: 503 })
+  }
+  const observation = observeEdit(options.workspace, path, source, edits.pending)
+  return await Try(async () => {
+    const [, result] = await Promise.all([FileSystem.writeFile(path, source, 'utf8'), observation.result])
+    return Http.jsonResponse(result)
+  }, {
+    finally: observation.dispose,
+  })
+}
+
+function observeEdit(workspace: Workspace, path: string, source: string, pendingEdits: Set<() => void>) {
+  let resolve!: (result: UpdateResult) => void
+  let reject!: (error: unknown) => void
+  const result = new Promise<UpdateResult>((complete, fail) => {
+    resolve = complete
+    reject = fail
+  })
+  const stop = workspace.files.onCompiled(event => {
+    if (event.path === path && event.source === source) {
+      resolve(event.result)
+    }
+  })
+  const cancel = Time.schedule(5000, () => reject(editFailure('Saved source was not observed: ' + path)))
+  pendingEdits.add(abort)
+  return { result, dispose }
+
+  function dispose(): void {
+    stop()
+    cancel()
+    pendingEdits.delete(abort)
+  }
+
+  function abort(): void {
+    reject(editFailure('Preview harness closed before source compilation finished.'))
+    dispose()
+  }
+}
+
+function editFailure(message: string): Errors.TaoError {
+  return Try(() => Errors.ThrowHostEnvironment(message), { catch: error => Errors.fromUnknown(error) })
 }
 
 function eventsResponse(

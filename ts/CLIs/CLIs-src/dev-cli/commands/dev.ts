@@ -101,13 +101,16 @@ async function cleanup(options: {
   reportFailure: boolean
 }): Promise<void> {
   options.preview?.dispose()
-  options.workspace.dispose()
-  if (options.expo) {
-    await options.expo.dispose()
-    if (options.reportFailure) {
-      printExpoOutput(await options.expo.output())
-    }
-  }
+  await Try(() => options.workspace.dispose(), {
+    async finally() {
+      if (options.expo) {
+        await options.expo.dispose()
+        if (options.reportFailure) {
+          printExpoOutput(await options.expo.output())
+        }
+      }
+    },
+  })
 }
 
 function printExpoOutput(output: Awaited<ReturnType<Runtime.ExpoSession['output']>>): void {
