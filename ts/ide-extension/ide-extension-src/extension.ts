@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import { createWasmDocumentSession, type DocumentSession } from './core'
+import { formattingProvider } from './Formatting'
 import { semanticTokenRanges } from './SemanticTokens'
 
 /** activate registers Tao parsing, diagnostics and semantic highlighting in VS Code. */
@@ -69,6 +70,13 @@ function registerLanguage(
   context.subscriptions.push(
     diagnostics,
     vscode.languages.registerDocumentSemanticTokensProvider({ language: 'tao' }, provider, legend),
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: 'tao' },
+      formattingProvider(vscode, (document, indent) => {
+        refreshDocument(document, parser, diagnostics, sessions)
+        return sessions.get(document.uri.toString())?.session?.format({ indent }).edits ?? []
+      }),
+    ),
     vscode.workspace.onDidOpenTextDocument(document => refreshDocument(document, parser, diagnostics, sessions)),
     vscode.workspace.onDidChangeTextDocument(event => refreshDocument(event.document, parser, diagnostics, sessions)),
     vscode.workspace.onDidCloseTextDocument(document => disposeDocument(document, diagnostics, sessions)),

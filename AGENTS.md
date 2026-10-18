@@ -55,6 +55,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
     - The majority of repo test should be in e2e Tao tests.
     - Keep package tests to basic functionality and regression tests.
+    - Prefer larger formatting fixtures exercising multiple rules over a separate test for each formatting detail.
     - Run every new test directly before finishing implementation; also run relevant existing tests when the change may affect broader behavior. If parallel agents cause failures outside your owned work, report and coordinate them without repairing their changes yourself.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;

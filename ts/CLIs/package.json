@@ -4,6 +4,9 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@tao/fix": "workspace:*",
+    "@tao/ast-gen": "workspace:*",
+    "@tao/grammar": "workspace:*",
     "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
     "@tao/workspace": "workspace:*",

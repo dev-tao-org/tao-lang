@@ -10,7 +10,7 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   samples.push(...await coldSamples())
   samples.push(...await warmSamples())
   samples.push(...await transformerSamples())
-  const summary = summarize(samples)
+  const summary = summarizeSamples(samples)
   const directory = Artifacts.resolvePath('logs/performance')
   await Artifacts.mkdir(directory, { recursive: true })
   const path = Path.join(directory, `parser-${Platform.randomUUID()}.json`)
@@ -40,6 +40,28 @@ export async function parserPerformance(build: readonly TimingSample[]) {
     ),
   )
   return { path, summary }
+}
+
+/** summarizeSamples groups raw operation samples by scenario and reports their distribution. */
+export function summarizeSamples(samples: readonly Sample[]) {
+  const groups = new Map<string, number[]>()
+  for (const sample of samples) {
+    const key = sample.scenario + '/' + sample.name
+    const group = groups.get(key) ?? []
+    group.push(sample.durationMs)
+    groups.set(key, group)
+  }
+  return [...groups].map(([phase, values]) => {
+    const sorted = values.toSorted((left, right) => left - right)
+    return {
+      phase,
+      count: sorted.length,
+      minMs: sorted[0]!,
+      medianMs: sorted[Math.floor(sorted.length / 2)]!,
+      p95Ms: sorted[Math.ceil(sorted.length * 0.95) - 1]!,
+      maxMs: sorted[sorted.length - 1]!,
+    }
+  })
 }
 
 type Sample = TimingSample & { scenario: string }
@@ -79,25 +101,4 @@ async function warmSamples(): Promise<Sample[]> {
     }
   }
   return samples
-}
-
-function summarize(samples: readonly Sample[]) {
-  const groups = new Map<string, number[]>()
-  for (const sample of samples) {
-    const key = sample.scenario + '/' + sample.name
-    const group = groups.get(key) ?? []
-    group.push(sample.durationMs)
-    groups.set(key, group)
-  }
-  return [...groups].map(([phase, values]) => {
-    const sorted = values.toSorted((left, right) => left - right)
-    return {
-      phase,
-      count: sorted.length,
-      minMs: sorted[0]!,
-      medianMs: sorted[Math.floor(sorted.length / 2)]!,
-      p95Ms: sorted[Math.ceil(sorted.length * 0.95) - 1]!,
-      maxMs: sorted[sorted.length - 1]!,
-    }
-  })
 }

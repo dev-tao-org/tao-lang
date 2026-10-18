@@ -1,7 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { check } from '@check/Check'
 import { compile } from '@compile/Compile'
-import { fix } from '@fix/Fix'
 import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample } from '@shared'
@@ -63,7 +62,7 @@ export type UpdateResult =
 /** PipelineStages names downstream passes that are explicitly skipped by workspace compilation. */
 export type PipelineStages = {
   typecheck: ReturnType<typeof typecheck>
-  fix: ReturnType<typeof fix>
+  fix: { stage: 'fix'; status: 'skipped' }
   check: ReturnType<typeof check>
 }
 
@@ -223,7 +222,7 @@ const publishWorkspace = Timings.measure('workspace.publish', function(
 })
 
 function skippedStages(): PipelineStages {
-  return { typecheck: typecheck(), fix: fix(), check: check() }
+  return { typecheck: typecheck(), fix: { stage: 'fix', status: 'skipped' }, check: check() }
 }
 
 function outputPaths(options: WorkspaceOptions): { buildDirectory: string; runtimeDirectory: string } | undefined {

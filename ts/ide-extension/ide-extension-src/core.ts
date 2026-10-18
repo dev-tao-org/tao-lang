@@ -14,6 +14,7 @@ import { editTreeForSource } from './SourceEdit'
 /** DocumentSession owns one incrementally updated Tao tree for one document. */
 export interface DocumentSession {
   update(source: string): DocumentResult
+  format(options?: LayoutOptions): FormatResult
   dispose(): void
 }
 
@@ -99,6 +100,12 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
   let disposed = false
 
   return {
+    format(options) {
+      if (disposed || !taoTree) {
+        Errors.ThrowUnexpected('Cannot format an unavailable Tao document session')
+      }
+      return format({ source, tree: taoTree }, undefined, options)
+    },
     update(nextSource) {
       if (disposed) {
         Errors.ThrowUnexpected('Cannot update a disposed Tao document session')
@@ -161,6 +168,7 @@ function trackedDocument(session: DocumentSession, sessions: Set<DocumentSession
   sessions.add(session)
   return {
     update: (source) => session.update(source),
+    format: (options) => session.format(options),
     dispose() {
       if (disposed) {
         return
@@ -202,3 +210,5 @@ function measureQuery(options: SessionOptions) {
   const measure = options.measure
   return measure ? (milliseconds: number) => measure('query', milliseconds) : undefined
 }
+import { format, type FormatResult } from '@fix/Format'
+import type { LayoutOptions } from '@fix/lib/layout/Layout'

@@ -6,6 +6,7 @@ import {
   assertNewWorkspaceTree,
   workspaceFormat,
 } from '../../cli-checks/check'
+import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
 
 /** fmtCommand formats repository files through the shared developer command. */
@@ -27,7 +28,7 @@ export default registerCommand({
         Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)
       }
       if (isFile && path.endsWith('.tao')) {
-        Errors.ThrowUserInput('New Tao formatting awaits the formatter.')
+        await updateTaoSource(absolute, 'format')
       } else if (isFile && Path.basename(absolute) === 'Justfile') {
         await runCommand('just --fmt --justfile', { variadicArgs: [absolute], cwd: Repo.getWorkspaceRoot() })
       } else {

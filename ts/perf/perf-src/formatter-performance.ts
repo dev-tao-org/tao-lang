@@ -1,0 +1,64 @@
+import { transform } from '@ast-gen/Transform'
+import { fix } from '@fix/Fix'
+import { format } from '@fix/Format'
+import { createParser } from '@grammar/parser'
+import { Errors, Timings, type TimingSample } from '@shared'
+import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { summarizeSamples } from './parser-performance'
+
+/** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
+export async function formatterPerformance() {
+  const fixtures = [
+    {
+      scenario: 'kitchen-sink',
+      source: await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8'),
+    },
+    {
+      scenario: '500-views',
+      source: 'use Text from @tao/ui\nuse Col from @tao/ui\n'
+        + Array.from(
+          { length: 500 },
+          (_, index) => `view Example${index}(Title text, Subtitle text) { render Col { Text(Title) Text(Subtitle) } }`,
+        ).join('\n'),
+    },
+  ]
+  const samples = fixtures.flatMap(sampleFixture)
+  const summary = summarizeSamples(samples)
+  const path = Artifacts.resolvePath('logs/performance', `formatter-${Platform.randomUUID()}.json`)
+  await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+  Artifacts.trackTemporary(path)
+  await Artifacts.write(
+    path,
+    JSON.stringify(
+      {
+        version: 1,
+        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+        system: Platform.systemInfo(),
+        definition:
+          '20 warmups then 100 immutable-snapshot samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
+        fixtures: fixtures.map(fixture => ({ scenario: fixture.scenario, hash: Platform.hashText(fixture.source) })),
+        summary,
+        samples,
+      },
+      null,
+      2,
+    ),
+  )
+  return { path, summary }
+}
+
+function sampleFixture(fixture: { source: string; scenario: string }) {
+  const tree = createParser().parse(fixture.source).tree
+  const ast = transform(tree) ?? Errors.ThrowUnexpected('Formatter performance fixture has invalid syntax.')
+  const samples: (TimingSample & { scenario: string })[] = []
+  for (let index = 0; index < 120; index++) {
+    const timings = new Timings('formatter-performance')
+    format({ source: fixture.source, tree }, timings)
+    fix({ source: fixture.source, tree, ast }, timings)
+    if (index >= 20) {
+      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
+    }
+  }
+  return samples
+}

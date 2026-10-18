@@ -37,5 +37,5 @@ export function ImportPath(cst: Parser.SyntaxNode): Nodes.ImportPath {
 
 /** QualifiedName normalizes identifier segments while preserving the authored source range. */
 export function QualifiedName(cst: Parser.SyntaxNode): Nodes.Name {
-  return AST.Node(cst, 'Name', { value: cst.namedChildren.map(child => child.text).join('.') })
+  return AST.Name(cst)
 }

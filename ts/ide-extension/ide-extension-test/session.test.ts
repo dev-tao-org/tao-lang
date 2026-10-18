@@ -2,6 +2,21 @@ import { Try } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { createWasmDocumentSession } from '../ide-extension-src/core'
 
+Tests.test('save formatting uses the WASM snapshot, preserving partial edits and parser ownership', async () => {
+  const runtime = await loadRuntime()
+  Try(() => {
+    const source = '// Title\nview Ready{render Text( "Hi 😀" )}\n\nview Editing('
+    const expected = '// Title\nview Ready {\n  render Text("Hi 😀")\n}\n\nview Editing('
+    runtime.document.update(source)
+    const result = runtime.document.format()
+    Tests.expect(result.text).toBe(expected)
+    Tests.expect(result.skipped.length).toBeGreaterThan(0)
+    Tests.expect(runtime.document.format().text).toBe(expected)
+    runtime.document.update(result.text)
+    Tests.expect(runtime.document.format().edits).toEqual([])
+  }, { finally: runtime.dispose })
+})
+
 const packageRoot = Repo.resolvePath('.artifacts/ide-extension/package')
 
 Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', async () => {

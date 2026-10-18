@@ -2,8 +2,8 @@
 
 export default grammar({
   name: 'tao',
-  extras() {
-    return [/\s/]
+  extras($) {
+    return [/\s/, $.Comment]
   },
   rules: {
     SourceFile($) {
@@ -190,6 +190,9 @@ export default grammar({
     },
 
     // Names
+    Comment() {
+      return token(choice(/\/\/[^\n\r]*/, /\/\*[^*]*\*+([^/*][^*]*\*+)*\//))
+    },
     Identifier() {
       return /[A-Za-z_][A-Za-z0-9_]*/
     },

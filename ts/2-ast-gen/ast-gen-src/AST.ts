@@ -149,7 +149,8 @@ export function Node<Kind extends Node['kind']>(
 
 /** Name constructs a semantic identifier from its CST node. */
 export function Name(cst: Parser.SyntaxNode): Name {
-  return Node(cst, 'Name', { value: cst.text })
+  const parts = cst.namedChildren.filter(child => child.type === 'Identifier')
+  return Node(cst, 'Name', { value: parts.length ? parts.map(child => child.text).join('.') : cst.text })
 }
 
 /** IsAppDeclaration narrows a semantic node to an app declaration. */

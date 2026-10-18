@@ -11,15 +11,18 @@ export default registerCommand({
   description: 'Measure parser/compiler phases, editor updates or two live Expo previews; save raw samples.',
   arguments: [{
     name: 'target',
-    description: 'parser, extension, preview or record (current commit).',
+    description: 'parser, formatter, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
   async action(target: string) {
+    if (target === 'formatter') {
+      return runFormatter()
+    }
     if (target === 'extension') {
       return runExtension()
     }
     if (!['parser', 'preview', 'record'].includes(target)) {
-      Errors.ThrowUserInput('Available performance targets: parser, extension, preview, record')
+      Errors.ThrowUserInput('Available performance targets: parser, formatter, extension, preview, record')
     }
     const timings = new Timings(`process:${Platform.pid}`)
     await prepareParser(target === 'parser', timings)
@@ -43,6 +46,18 @@ export default registerCommand({
     IO.print('Performance report: ' + path)
   },
 })
+
+async function runFormatter(): Promise<void> {
+  await prepareParser()
+  const { formatterPerformance } = await import('../../../../perf/perf-src/formatter-performance')
+  const { path, summary } = await formatterPerformance()
+  for (const phase of summary) {
+    IO.print(
+      `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
+    )
+  }
+  IO.print('Performance report: ' + path)
+}
 
 async function runExtension(): Promise<void> {
   const { prepareExtensionAssets } = await import('../ide/ExtensionBuild')

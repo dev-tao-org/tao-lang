@@ -33,7 +33,7 @@
   "editor.formatOnSave": true,
   "[tao]": {
     "editor.defaultFormatter": "devtao.tao",
-    "editor.tabSize": 3,
+    "editor.tabSize": 2,
     "editor.insertSpaces": true
   },
   /////////////////////////////

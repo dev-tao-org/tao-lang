@@ -27,3 +27,4 @@
 (Visibility) @keyword
 (QualifiedName) @type
 (TextLiteral) @string
+(Comment) @comment

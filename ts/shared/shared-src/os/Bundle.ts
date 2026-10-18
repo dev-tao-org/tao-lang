@@ -31,6 +31,7 @@ export async function validateEditorBundle(path: string): Promise<void> {
       languages: {
         createDiagnosticCollection: disposable,
         registerDocumentSemanticTokensProvider: disposable,
+        registerDocumentFormattingEditProvider: disposable,
       },
       workspace: {
         fs: { readFile(uri) { return fs.readFile(uri.fsPath); } },

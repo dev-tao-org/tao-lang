@@ -24,7 +24,10 @@
     ],
     "configurationDefaults": {
       "[tao]": {
-        "editor.semanticHighlighting.enabled": true
+        "editor.semanticHighlighting.enabled": true,
+        "editor.defaultFormatter": "devtao.tao",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2
       }
     }
   },
@@ -40,6 +43,7 @@
     "url": "https://github.com/tao-dev-org/tao-lang.git"
   },
   "dependencies": {
+    "@tao/fix": "workspace:*",
     "web-tree-sitter": "0.26.6",
     "tree-sitter-typescript": "0.23.2"
   },

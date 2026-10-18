@@ -47,7 +47,7 @@ export function List<Kind extends AST.Node['kind']>(
   cst: Parser.SyntaxNode,
   kinds: readonly Kind[],
 ): AST.OfKind<Kind>[] {
-  return cst.namedChildren.map(child => Construct(child, kinds))
+  return cst.namedChildren.filter(child => child.type !== 'Comment').map(child => Construct(child, kinds))
 }
 
 /** RequiredField returns a required CST field. */

@@ -1,3 +1,4 @@
+// Standard views are ordinary imported Tao declarations.
 use all from @tao/ui
 use Text as Caption from @tao/ui
 use package @tao/ui as UI
@@ -43,6 +44,7 @@ folder view Pair(First text, Second text) {
 }
 
 package view Panel(Title text) {
+  /* Injections explicitly capture their Tao values and contextual children. */
   render inject Caption Title, Children @@children ```ts
     return <TR.ReactNative.View style={{ padding: 12, borderWidth: 1 }}>
       <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>

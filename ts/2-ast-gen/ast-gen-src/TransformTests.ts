@@ -14,7 +14,7 @@ export function TestsDeclaration(cst: Parser.SyntaxNode): Nodes.TestsDeclaration
 export function TestDeclaration(cst: Parser.SyntaxNode): Nodes.TestDeclaration {
   return AST.Node(cst, 'TestDeclaration', {
     label: optionalText(cst, 'label'),
-    steps: cst.namedChildren.filter(child => child.type !== 'TextLiteral').map(child =>
+    steps: cst.namedChildren.filter(child => child.type !== 'TextLiteral' && child.type !== 'Comment').map(child =>
       AST.Construct(child, ['RunStatement', 'PressStatement', 'TypeStatement', 'ExpectStatement'])
     ),
   })
@@ -43,7 +43,7 @@ export function ExpectStatement(cst: Parser.SyntaxNode): Nodes.ExpectStatement {
   const target = cst.childForFieldName('target')
   return AST.Node(cst, 'ExpectStatement', {
     target: target ? AST.RenderTag(target) : undefined,
-    expectations: cst.namedChildren.filter(child => child.type !== 'RenderTag').map(child =>
+    expectations: cst.namedChildren.filter(child => child.type !== 'RenderTag' && child.type !== 'Comment').map(child =>
       AST.Construct(child, ['TextExpectation', 'InputExpectation'])
     ),
   })

@@ -1,6 +1,7 @@
 import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { writeCSTTypes } from './cst-types'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
@@ -24,6 +25,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const stampPath = Path.join(outputRoot, 'inputs.json')
   const current = FileSystem.existsSync(stampPath) && await FileSystem.file(stampPath).text() === stamp
   if (canReuseParser(force, current, outputs)) {
+    await writeCSTTypes(outputRoot)
     return
   }
   await FileSystem.mkdir(outputRoot, { recursive: true })
@@ -32,6 +34,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
   await generateParser(timings)
+  await writeCSTTypes(outputRoot)
   await buildParserNative(timings, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)

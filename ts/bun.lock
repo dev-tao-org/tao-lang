@@ -62,6 +62,7 @@
     "4-fix": {
       "name": "@tao/fix",
       "dependencies": {
+        "@tao/ast-gen": "workspace:*",
         "@tao/grammar": "workspace:*",
         "@tao/shared": "workspace:*",
         "tree-sitter": "0.25.1",
@@ -111,6 +112,9 @@
     "CLIs": {
       "name": "@tao/cli",
       "dependencies": {
+        "@tao/ast-gen": "workspace:*",
+        "@tao/fix": "workspace:*",
+        "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/workspace": "workspace:*",
@@ -127,6 +131,7 @@
       "name": "@tao/ide-extension",
       "version": "0.0.1",
       "dependencies": {
+        "@tao/fix": "workspace:*",
         "tree-sitter-typescript": "0.23.2",
         "web-tree-sitter": "0.26.6",
       },
@@ -141,6 +146,7 @@
       "dependencies": {
         "@tao/ast-gen": "workspace:*",
         "@tao/cli": "workspace:*",
+        "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
