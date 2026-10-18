@@ -368,7 +368,7 @@ dev app_path="Apps" APP="":
 # Run reference Tao journeys and Studio launch/cleanup; explicit paths or names remain scoped
 [group('Dev')]
 test target="":
-    export TAO_HOME="{{ justfile_directory() }}/../.artifacts/reference-home"; if [ {{ quote(target) }} = '' ]; then ./dev gates {{ REFERENCE_PREPARE }} {{ REFERENCE_TESTS }} --lane reference-test; elif [ -e {{ quote(target) }} ]; then printf 'Running tests in %s\n' {{ quote(target) }}; case {{ quote(target) }} in Apps/*|*.tao) ./tao test {{ quote(target) }} --output lines ;; *) ./dev test-file {{ quote(target) }} ;; esac; else printf 'Filtering reference journeys to tests matching "%s"\n' {{ quote(target) }}; ./tao test {{ REFERENCE_APPS }} --name {{ quote(target) }} --output lines; fi
+    export TAO_HOME="{{ justfile_directory() }}/../.artifacts/reference-home"; if [ {{ quote(target) }} = '' ]; then ./dev gates {{ REFERENCE_PREPARE }} {{ REFERENCE_TESTS }} --lane reference-test; elif [ -e {{ quote(target) }} ]; then printf 'Running tests in %s\n' {{ quote(target) }}; target_path={{ quote(target) }}; if [ -d "$target_path" ]; then target_path=$(cd "$target_path" && pwd -P); fi; case "$target_path" in "{{ justfile_directory() }}/Apps"|"{{ justfile_directory() }}/Apps/"*|*.tao) ./tao test "$target_path" --output lines ;; *) ./dev test-file "$target_path" ;; esac; else printf 'Filtering reference journeys to tests matching "%s"\n' {{ quote(target) }}; ./tao test {{ REFERENCE_APPS }} --name {{ quote(target) }} --output lines; fi
 
 # Run every test suite, fail fast; an explicit test-name pattern collects failures in that filtered scope
 [group('Dev')]
