@@ -1,12 +1,14 @@
 import '../../cli-kit/fatal-errors'
 import { configureCLIOutput, IO } from '@cli-kit'
 import { FileSystem, Path, Repo } from '@shared/os'
+import { prepareNativeLocks } from '../../cli-checks/native-lock-build'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { runDirenvSetup } from '../shell/DirenvSetup'
 
 await configureCLIOutput('agent')
 await prepareParser()
+await prepareNativeLocks()
 await prepareRuntime()
 await ensureShellCompletionCache()
 await runDirenvSetup({ prepare: true })

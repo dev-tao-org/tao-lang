@@ -6,10 +6,12 @@ export type Node =
   | Declaration
   | NamedImport
   | ImportPath
+  | RequiresDeclaration
   | Name
   | Parameter
   | ViewRender
   | Injection
+  | ForeignView
   | Capture
   | Expression
   | ContextReference
@@ -32,6 +34,7 @@ export type Declaration =
   | LetDefinition
   | UseStatement
   | UsePackageStatement
+  | RequiresDeclaration
 
 /** ValueDeclaration represents a declaration that introduces a value. */
 export type ValueDeclaration = AppDeclaration | ViewDeclaration | LetDefinition
@@ -48,8 +51,11 @@ export type ViewDeclaration = Semantic<'ViewDeclaration', {
   visibility?: Visibility
   parameters: readonly Parameter[]
   definitions: readonly LetDefinition[]
-  render: ViewRender | Injection
+  render: ViewRender | Injection | ForeignView
 }>
+
+/** ForeignView identifies a TypeScript module implementing a view declaration. */
+export type ForeignView = Semantic<'ForeignView', { path: ImportPath }>
 
 /** LetDefinition binds a value in its containing lexical scope. */
 export type LetDefinition = Semantic<
@@ -66,6 +72,14 @@ export type UseStatement = Semantic<'UseStatement', {
 
 /** UsePackageStatement imports a package under an optional namespace alias. */
 export type UsePackageStatement = Semantic<'UsePackageStatement', { from: ImportPath; alias?: Name }>
+
+/** RequiresDeclaration records one authored package or file dependency. */
+export type RequiresDeclaration = Semantic<'RequiresDeclaration', {
+  provider: 'github' | 'file' | 'npm' | 'bundled'
+  identifier: string
+  version?: string
+  alias?: Name
+}>
 
 /** NamedImport selects one declaration with an optional local alias. */
 export type NamedImport = Semantic<'NamedImport', { target: Name; alias?: Name }>

@@ -5,6 +5,7 @@ export const RuntimeSourceResources = {
   'runtime/Appearance.ts': 'ts/7-runtime/runtime-src/Appearance.ts',
   'runtime/Preview.ts': 'ts/7-runtime/runtime-src/Preview.ts',
   'runtime/View.ts': 'ts/7-runtime/runtime-src/View.ts',
+  'runtime/ForeignView.ts': 'ts/7-runtime/runtime-src/ForeignView.ts',
   'runtime/Scope.ts': 'ts/7-runtime/runtime-src/Scope.ts',
   'runtime/HMRClient.ts': 'ts/7-runtime/runtime-src/HMRClient.ts',
   'runtime/MetroClient.d.ts': 'ts/7-runtime/runtime-src/MetroClient.d.ts',

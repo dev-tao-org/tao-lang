@@ -1,8 +1,10 @@
 import type { compile } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Artifacts, FileSystem, Path } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
 import { Document } from '../Document'
+import { discoverProject } from '../projects/Projects'
+import { openProjectWorkspace } from '../ProjectWorkspace'
 import { createWorkspace } from '../Workspace'
 import type { TestBrowser } from './AppTests'
 import type { TestDriver, TestProgress } from './RunTests'
@@ -24,14 +26,7 @@ export async function createAppTestDriver(
   return {
     async run(app) {
       assertActive(signal)
-      await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
-      const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
-      Artifacts.trackTemporary(directory)
-      state.workspace = createWorkspace({
-        outputDirectory: directory,
-        runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
-        compile: (input, options, timings) => compileApp(input, { ...options, app }, timings),
-      })
+      state.workspace = await createTestWorkspace(path, app, compileApp)
       onProgress?.(`Compiling app ${app}…`)
       const result = await state.workspace.update(new Document(path, source))
       assertActive(signal)
@@ -68,9 +63,25 @@ function assertActive(signal?: AbortSignal): void {
 }
 
 type Session = {
-  workspace?: ReturnType<typeof createWorkspace>
+  workspace?: ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
   expo?: Runtime.ExpoSession
   browser?: TestBrowser
+}
+
+async function createTestWorkspace(path: string, app: string, compileApp: typeof compile) {
+  const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
+  const compile: typeof compileApp = (input, options, timings) => compileApp(input, { ...options, app }, timings)
+  if (await discoverProject(path)) {
+    return await openProjectWorkspace(path, {
+      id: `test-${Platform.randomUUID()}`,
+      runtimeOptions,
+      compile,
+    })
+  }
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
+  const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
+  Artifacts.trackTemporary(directory)
+  return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
 }
 
 function browser(state: Session): TestBrowser {

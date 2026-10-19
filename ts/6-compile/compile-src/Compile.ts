@@ -8,7 +8,12 @@ import { compileProgram } from './ModulesCompiler'
  *  Full compilation consumes one immutable AST; no previous result is reused. */
 export function compile(
   document: AST.Document,
-  options: { revision: string; app?: string; program?: LinkedProgram },
+  options: {
+    revision: string
+    app?: string
+    program?: LinkedProgram
+    foreignViewPath?: (modulePath: string, authoredPath: string) => string
+  },
   timings = new Timings('compiler'),
 ): string {
   return generate(timings, document, options)
@@ -16,10 +21,15 @@ export function compile(
 
 const generate = Timings.measure('compiler.generate', function(
   document: AST.Document,
-  options: { revision: string; app?: string; program?: LinkedProgram },
+  options: {
+    revision: string
+    app?: string
+    program?: LinkedProgram
+    foreignViewPath?: (modulePath: string, authoredPath: string) => string
+  },
 ): string {
   const program = options.program ?? linkSingleFile(document)
-  return compileProgram(program, options.revision, options.app)
+  return compileProgram(program, options.revision, options.app, options.foreignViewPath)
 })
 
 function linkSingleFile(document: AST.Document): LinkedProgram {

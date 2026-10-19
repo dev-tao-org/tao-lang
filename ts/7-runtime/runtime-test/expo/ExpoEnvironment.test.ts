@@ -7,5 +7,6 @@ Tests.test('managed Expo servers keep refresh enabled without preparing native d
   Tests.expect(environment.BROWSER).toBe('none')
   Tests.expect(environment.CI).toBe('false')
   Tests.expect(environment.EXPO_OFFLINE).toBe('1')
+  Tests.expect(environment.EXPO_NO_TYPESCRIPT_SETUP).toBe('1')
   Tests.expect(environment.PATH?.startsWith('/fixture/runtime/node_modules/.bin')).toBe(true)
 })

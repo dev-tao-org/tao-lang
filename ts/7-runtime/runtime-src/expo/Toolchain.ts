@@ -1,5 +1,5 @@
-import { Try } from '@shared'
-import { BuildLock, FileSystem, Path, Platform } from '@shared/os'
+import { Errors, Try } from '@shared'
+import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
 export async function prepareToolchain(
@@ -36,12 +36,46 @@ export async function prepareToolchain(
   return Path.join(target, 'node_modules')
 }
 
+/** findPreparedToolchain returns the pinned runtime toolchain only when its cache is complete. */
+export async function findPreparedToolchain(
+  cacheDirectory: string,
+  resourcesDirectory: string,
+): Promise<string | undefined> {
+  const key = await toolchainIdentity(resourcesDirectory)
+  const target = Path.join(cacheDirectory, key)
+  const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(Path.join(target, '.ready'), 'utf8'))
+  return ready === key && await FileSystem.exists(Path.join(target, 'node_modules'))
+    ? Path.join(target, 'node_modules')
+    : undefined
+}
+
 /** RuntimeInstaller installs managed dependencies into a versioned toolchain directory. */
 export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> }
 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
-    await Platform.capture('bun install --frozen-lockfile --ignore-scripts', { cwd: cacheDirectory })
+    const child = Platform.spawn(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
+      cwd: cacheDirectory,
+      env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.cacheDirectory('bun') },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [status, stdout, stderr] = await Promise.all([
+      child.exited,
+      Platform.readText(child.stdout),
+      Platform.readText(child.stderr),
+    ])
+    if (status !== 0) {
+      Errors.ThrowCommandExecution({
+        command: 'bun',
+        args: ['install', '--frozen-lockfile', '--ignore-scripts'],
+        cwd: cacheDirectory,
+        status,
+        signal: null,
+        stdout,
+        stderr,
+      })
+    }
   },
 }
 

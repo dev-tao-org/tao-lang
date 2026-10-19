@@ -56,4 +56,5 @@ export const Layout = {
 
 function isImport(node: SyntaxNode): boolean {
   return node.type === 'UseStatement' || node.type === 'UsePackageStatement'
+    || node.type === 'RequiresDeclaration'
 }

@@ -43,6 +43,7 @@ export class FileManager {
   private current: Pending | undefined
   private queued: Pending | undefined
   private disposed = false
+  private processing: Promise<void> | undefined
 
   constructor(private readonly options: FileManagerOptions) {
     this.workspaceRoot = options.directory ? Path.resolve(options.directory) : undefined
@@ -114,6 +115,7 @@ export class FileManager {
     const watcher = this.watcherStart ? await Try.WithDefault(undefined, () => this.watcherStart!) : this.watcher
     this.watcher = undefined
     await watcher?.dispose()
+    await this.processing
   }
 
   private async waitForLatestRefresh(initial: Refresh, generation: number): Promise<UpdateResult> {
@@ -201,7 +203,7 @@ export class FileManager {
       this.queued = request
     } else {
       this.current = request
-      void this.processQueue()
+      this.processing = this.processQueue()
     }
     return result
   }

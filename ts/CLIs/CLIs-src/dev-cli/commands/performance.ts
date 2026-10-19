@@ -1,6 +1,7 @@
 import { formatTimings, IO } from '@cli-kit'
 import { Errors, Timings } from '@shared'
 import { Platform, Tests } from '@shared/os'
+import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
@@ -74,14 +75,14 @@ async function runExtension(): Promise<void> {
 
 async function runPreview(initialSource?: string) {
   await prepareRuntime()
-  const { createProject, createWorkspace } = await import('@workspace/Workspace')
+  const { createProject } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
   const { Artifacts } = await import('@shared/os')
   const project = await createProject()
   const result = await previewPerformance({
     project,
-    workspace: createWorkspace({
-      project,
+    workspace: await openProjectWorkspace(project.directory, {
+      id: 'performance',
       runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
     }),
     initialSource: initialSource ?? await Tests.readApp('Hello World'),

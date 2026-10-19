@@ -27,6 +27,29 @@ Tests.test('Hello World generates generic runtime calls and authored native inje
   Tests.expect(code).toContain('const Children = _taoChildren;')
 })
 
+Tests.test('foreign views compile to named imports and the runtime foreign-view adapter', () => {
+  const source = S`
+    app Calendar { root FormattedDate }
+    public view FormattedDate(Value text) from ./FormattedDate.tsx
+  `
+  const document = transform(createParser().parse(source).tree)!
+  const code = compile(document, {
+    revision: 'foreign-view',
+    foreignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
+  })
+
+  Tests.expect(code).toContain('import { FormattedDate as _taoForeignView0 } from "<memory>:./FormattedDate.tsx";')
+  Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _scope0)')
+})
+
+Tests.test('foreign views reject non-text parameter contracts', () => {
+  const source = 'app Calendar { root FormattedDate } view FormattedDate(Value number) from ./FormattedDate.tsx'
+  const document = transform(createParser().parse(source).tree)!
+
+  Tests.expect(() => compile(document, { revision: 'foreign-view-type' }))
+    .toThrow('parameters must all use the text type')
+})
+
 Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {
   const helloPath = '/hello.tao'
   const interactionsPath = '/interactions.tao'

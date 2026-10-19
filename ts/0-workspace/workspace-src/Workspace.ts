@@ -7,11 +7,13 @@ import { Errors, Time, Timings, type TimingSample } from '@shared'
 import { Path } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
+import type { LinkedProgram } from '@typecheck/Modules'
 import { typecheck } from '@typecheck/Typecheck'
 import type { Document } from './Document'
 import { type CompileRequest, FileManager, type FileManagerOptions } from './FileManager'
-import { loadModules } from './modules/Loader'
+import { loadModules, type ModuleLoadOptions } from './modules/Loader'
 import type { Project } from './Project'
+import type { ProjectPipelineResult } from './ProjectPipeline'
 import { publishBuild } from './WorkspaceBuild'
 
 export { Document } from './Document'
@@ -32,6 +34,10 @@ export type WorkspaceOptions = {
   onSourceError?: (error: unknown) => void
   watch?: FileManagerOptions['watch']
   schedule?: FileManagerOptions['schedule']
+  resolveProject?: ModuleLoadOptions['resolveProject']
+  beforeLoad?: () => Promise<void>
+  watchDirectories?: readonly string[]
+  beforeCompile?: (program: LinkedProgram) => Promise<Pick<ProjectPipelineResult, 'foreignViewPath'>>
 }
 
 /** Publication records the exact revision and measured pipeline when output reaches disk. */
@@ -75,6 +81,17 @@ export function createWorkspace(options: WorkspaceOptions) {
 }
 
 const LinkModules = Timings.measure('modules.link', linkModules)
+const RefreshDependencies = Timings.measure('dependencies.sources', async function(
+  refresh: WorkspaceOptions['beforeLoad'],
+) {
+  await refresh?.()
+})
+const PrepareDependencies = Timings.measure('dependencies.prepared', async function(
+  prepare: WorkspaceOptions['beforeCompile'],
+  program: LinkedProgram,
+) {
+  return await prepare?.(program)
+})
 
 class WorkspaceSession {
   readonly directory: string | undefined
@@ -95,7 +112,7 @@ class WorkspaceSession {
     this.files = new FileManager({
       directory: this.directory,
       outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
-      watchDirectories: Stdlib.directory ? [Stdlib.directory] : [],
+      watchDirectories: [...Stdlib.directory ? [Stdlib.directory] : [], ...options.watchDirectories ?? []],
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
@@ -174,15 +191,26 @@ class WorkspaceSession {
       return undefined
     }
     progress?.('Resolving source modules and visibility…')
+    await RefreshDependencies(request.timings, this.options.beforeLoad)
     const sources = await loadModules(
       { path: request.path ?? '<memory>', document },
-      { directory: this.directory, stdlibDirectory: Stdlib.directory, stdlibSources: Stdlib.sources },
+      {
+        directory: this.directory,
+        stdlibDirectory: Stdlib.directory,
+        stdlibSources: Stdlib.sources,
+        resolveProject: this.options.resolveProject,
+      },
       this.parser,
       request.timings,
     )
     const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
+    const prepared = await PrepareDependencies(request.timings, this.options.beforeCompile, program)
     progress?.('Source modules resolved; generating app code…')
-    const code = (this.options.compile ?? compile)(document, { revision: `r${request.id}`, program }, request.timings)
+    const code = (this.options.compile ?? compile)(
+      document,
+      { revision: `r${request.id}`, program, ...prepared },
+      request.timings,
+    )
     progress?.('App code generation complete.')
     return code
   }

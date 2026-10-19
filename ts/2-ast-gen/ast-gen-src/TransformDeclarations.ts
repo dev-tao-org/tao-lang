@@ -12,6 +12,7 @@ export function File(cst: Parser.SyntaxNode): Nodes.File {
       'LetDefinition',
       'UseStatement',
       'UsePackageStatement',
+      'RequiresDeclaration',
     ]),
   })
 }

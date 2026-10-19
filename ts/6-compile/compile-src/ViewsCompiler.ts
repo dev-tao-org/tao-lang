@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { S, Switch } from '@shared'
+import { Errors, S, Switch } from '@shared'
 import { type CallbackNames, listMap, literal, unusedName } from './codegen-util'
 import { compileInjection } from './InjectionsCompiler'
 import { compileExpression, compileLetDefinition, textBindings } from './ValuesCompiler'
@@ -9,8 +9,19 @@ export function compileViewDeclaration(
   node: AST.ViewDeclaration,
   inherited: ReadonlySet<string>,
   scope: string,
+  foreignComponent?: string,
 ): string {
   const parameters = listMap(node.parameters, parameter => literal(parameter.name))
+  if (AST.IsKind(node.render, 'ForeignView')) {
+    if (node.parameters.some(parameter => parameter.type.value !== 'text')) {
+      Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
+    }
+    const component = foreignComponent
+      ?? Errors.ThrowUnexpected(`Missing compiled import for foreign view ${node.name.value}.`)
+    return `TR.LetDefinition(${scope}, ${literal(node.name)}, TR.ForeignView(${
+      literal(node.name)
+    }, ${parameters}, ${component}, ${scope}));`
+  }
   const callbackNames = callbackNamesFor(node)
   const definitions = node.definitions
     .map(definition => compileLetDefinition(definition, callbackNames.values))

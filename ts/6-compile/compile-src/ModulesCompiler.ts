@@ -1,20 +1,27 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, S } from '@shared'
+import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { literal } from './codegen-util'
 import { compileLetDefinition } from './ValuesCompiler'
 import { compileViewDeclaration } from './ViewsCompiler'
 
 /** compileProgram emits one app module from its already linked source modules. */
-export function compileProgram(program: LinkedProgram, revision: string, appName?: string): string {
+export function compileProgram(
+  program: LinkedProgram,
+  revision: string,
+  appName?: string,
+  foreignViewPath?: (modulePath: string, authoredPath: string) => string,
+): string {
   const selected = selectApp(program, appName)
   const moduleIndexes = new Map(program.modules.map((module, index) => [module.path, index]))
   const moduleIndex = (path: string) =>
     moduleIndexes.get(path)
       ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${path}.`)
+  const foreign = foreignViews(program, foreignViewPath)
   const scopes = program.modules.map((_module, index) => `const ${scopeName(index)} = TR.Scope();`).join('\n')
   const aliases = compileAliases(program, moduleIndex)
-  const views = compileViews(program, moduleTextBindings(program))
+  const views = compileViews(program, moduleTextBindings(program), foreign.names)
   const apps = compileAppRegistrations(program)
   const definitions = program.definitions.map(definition =>
     compileLetDefinition(definition.declaration, scopeName(moduleIndex(definition.source)))
@@ -22,6 +29,7 @@ export function compileProgram(program: LinkedProgram, revision: string, appName
   const rootScope = scopeName(moduleIndex(selected.source))
   return S`
     import * as TR from '@runtime';
+    ${foreign.imports}
     TR.ModuleApplied(${JSON.stringify(revision)});
     ${scopes}
     ${aliases}
@@ -59,12 +67,60 @@ function compileAppRegistrations(program: LinkedProgram): string {
   ).join('\n')
 }
 
-function compileViews(program: LinkedProgram, inheritedByModule: ReadonlyMap<string, ReadonlySet<string>>): string {
+function compileViews(
+  program: LinkedProgram,
+  inheritedByModule: ReadonlyMap<string, ReadonlySet<string>>,
+  foreignNames: ReadonlyMap<string, string>,
+): string {
   return program.modules.flatMap((module, index) =>
     module.document.root.declarations
       .filter(AST.IsViewDeclaration)
-      .map(view => compileViewDeclaration(view, inheritedByModule.get(module.path) ?? new Set(), scopeName(index)))
+      .map(view =>
+        compileViewDeclaration(
+          view,
+          inheritedByModule.get(module.path) ?? new Set(),
+          scopeName(index),
+          foreignNames.get(foreignViewKey(module.path, view.start)),
+        )
+      )
   ).join('\n')
+}
+
+function foreignViews(
+  program: LinkedProgram,
+  resolvePath?: (modulePath: string, authoredPath: string) => string,
+): { imports: string; names: ReadonlyMap<string, string> } {
+  const views = program.modules.flatMap(module =>
+    module.document.root.declarations
+      .filter(AST.IsViewDeclaration)
+      .flatMap(view =>
+        AST.IsKind(view.render, 'ForeignView')
+          ? [{ module: module.path, view, authored: view.render.path.value }]
+          : []
+      )
+  )
+    .map(item => ({
+      ...item,
+      path: resolvePath
+        ? resolvePath(item.module, item.authored)
+        : Path.resolve(Path.dirname(item.module), item.authored),
+    }))
+    .sort((left, right) =>
+      left.path.localeCompare(right.path)
+      || left.module.localeCompare(right.module)
+      || left.view.name.value.localeCompare(right.view.name.value)
+    )
+  const names = new Map<string, string>()
+  const imports = views.map((item, index) => {
+    const alias = `_taoForeignView${index}`
+    names.set(foreignViewKey(item.module, item.view.start), alias)
+    return `import { ${item.view.name.value} as ${alias} } from ${JSON.stringify(item.path)};`
+  }).join('\n')
+  return { imports, names }
+}
+
+function foreignViewKey(module: string, start: number): string {
+  return `${module}\u0000${start}`
 }
 
 function moduleTextBindings(program: LinkedProgram): ReadonlyMap<string, ReadonlySet<string>> {

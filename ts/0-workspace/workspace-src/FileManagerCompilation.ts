@@ -114,7 +114,7 @@ export function failedInput(request: QueuedInput, error: unknown): CompletedInpu
 
 /** isRelevantChange identifies watcher events that invalidate Tao compilation. */
 export function isRelevantChange(change: WorkspaceWatch.WorkspaceChange): boolean {
-  return change.kind === 'addDir' || change.kind === 'unlinkDir' || change.path.endsWith('.tao')
+  return change.kind === 'addDir' || change.kind === 'unlinkDir' || /\.(?:tao|tsx?|jsx?|json)$/.test(change.path)
 }
 
 /** isWithin checks path containment after resolving both paths. */

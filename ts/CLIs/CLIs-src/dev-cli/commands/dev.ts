@@ -1,7 +1,8 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Artifacts, Browser, FileSystem, Lifecycle, Platform, Repo } from '@shared/os'
+import { Browser, FileSystem, Lifecycle, Platform, Repo } from '@shared/os'
+import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
 import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
 import { previewScenarios } from '../../../../perf/perf-src/PreviewScenarios'
@@ -20,9 +21,9 @@ export default registerCommand({
 
 async function runDevSession(): Promise<void> {
   await prepareRuntime()
-  const workspace = createWorkspace({
-    directory: Repo.resolvePath('Apps/Dev/Preview'),
-    outputDirectory: Artifacts.resolvePath('dev/preview'),
+  const entry = Repo.resolvePath('Apps/Dev/Preview/Preview.tao')
+  const workspace = await openProjectWorkspace(entry, {
+    kind: 'studio',
     onSourceUpdate: reportSourceUpdate,
     onSourceError: reportSourceError,
   })
@@ -30,7 +31,7 @@ async function runDevSession(): Promise<void> {
   let preview: PreviewHarness | undefined
   await Try(async () => {
     IO.progress('Opening workspace at ' + workspace.directory)
-    requirePublished(await workspace.openFile('Preview.tao'))
+    requirePublished(await workspace.openFile(entry))
     const entryPath = workspace.files.entryPath
       ?? Errors.ThrowUnexpected('Preview did not register an entry path for preview edits.')
     const canonicalSource = await FileSystem.readFile(entryPath, 'utf8')

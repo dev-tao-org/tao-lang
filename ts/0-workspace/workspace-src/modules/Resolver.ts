@@ -3,13 +3,14 @@ import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import { directSourceFiles, importableFile, namedPackageDirectories, recursiveSourceFiles } from './Catalog'
 import type { ModuleLoadOptions } from './Loader'
-import { namedPackageRoot, realPathInsideProject, relationFor, within } from './Paths'
+import { canonicalProjectRoot, namedPackageRoot, realPathInsideProject, relationFor, within } from './Paths'
 
 /** ModuleTarget identifies one discovered source and its visibility relation to the importer. */
 export type ModuleTarget = {
   path: string
   relation: SourceModule['imports'][number]['targets'][number]['relation']
   source?: string
+  projectRoot?: string
 }
 
 /** ModuleResolutionContext contains the project boundary and configured standard library. */
@@ -23,11 +24,11 @@ export async function importTargets(
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
   if (specifier.startsWith('@tao/')) {
-    const resolved = await stdlibTargets(specifier, context.options)
-    if (resolved.targets.length === 0 && !resolved.exists) {
-      Errors.ThrowUserInput(`Cannot resolve standard library module ${specifier}.`)
-    }
-    return resolved.targets.map(target => ({ ...target, relation: 'public' }))
+    return await resolveStdlibImport(specifier, context.options)
+  }
+  const importedProject = projectImport(specifier)
+  if (importedProject) {
+    return await projectModuleTargets(importedProject, specifier, importer, context)
   }
   if (specifier.startsWith('@')) {
     const [name, ...parts] = specifier.split('/')
@@ -36,6 +37,56 @@ export async function importTargets(
     }
     return await namedTargets(name!, parts, importer, physicalImporter, context)
   }
+  return await relativeTargets(specifier, importer, physicalImporter, context)
+}
+
+async function projectModuleTargets(
+  imported: { alias: string; module: string; parts: string[] },
+  specifier: string,
+  importer: string,
+  context: ModuleResolutionContext,
+): Promise<ModuleTarget[]> {
+  if (imported.alias === 'tao') {
+    const modulePath = `@tao/${imported.module}${imported.parts.length ? `/${imported.parts.join('/')}` : ''}`
+    return await resolveStdlibImport(modulePath, context.options)
+  }
+  const dependency = await context.options.resolveProject?.(importer, imported.alias)
+  if (!dependency) {
+    Errors.ThrowUserInput(`Project dependency ${imported.alias} is not available while resolving ${specifier}.`)
+  }
+  const projectRoot = canonicalProjectRoot(dependency.root)
+  if (!projectRoot) {
+    Errors.ThrowUserInput(`Project dependency ${imported.alias} has no valid project root.`)
+  }
+  const packageName = `@${imported.module}`
+  const packageRoots = (await namedPackageDirectories(projectRoot, packageName))
+    .filter(path => realPathInsideProject(path, projectRoot) !== undefined)
+  if (packageRoots.length > 1) {
+    Errors.ThrowUserInput(`Package ${packageName} is ambiguous in project ${projectRoot}.`)
+  }
+  const packageRoot = packageRoots[0]
+  if (!packageRoot) {
+    Errors.ThrowUserInput(`Project module ${specifier} was not found.`)
+  }
+  const targetDirectory = Path.resolve(packageRoot, ...imported.parts)
+  if (!within(packageRoot, targetDirectory)) {
+    Errors.ThrowUserInput(`Project module path escapes ${imported.module}.`)
+  }
+  if (!await FileSystem.exists(targetDirectory)) {
+    Errors.ThrowUserInput(`Project module ${specifier} was not found.`)
+  }
+  const files = imported.parts.length === 0
+    ? await recursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
+    : await directSourceFiles(targetDirectory, projectRoot)
+  return files.map(path => ({ path, relation: 'public', projectRoot }))
+}
+
+async function relativeTargets(
+  specifier: string,
+  importer: string,
+  physicalImporter: string | undefined,
+  context: ModuleResolutionContext,
+): Promise<ModuleTarget[]> {
   if (!physicalImporter) {
     Errors.ThrowUserInput(`Cannot resolve relative module ${specifier} from ${importer}.`)
   }
@@ -62,6 +113,14 @@ export async function importTargets(
     }
   }
   return files.map(path => ({ path, relation: relationFor(importer, path, context.projectRoot) }))
+}
+
+async function resolveStdlibImport(specifier: string, options: ModuleLoadOptions): Promise<ModuleTarget[]> {
+  const resolved = await stdlibTargets(specifier, options)
+  if (resolved.targets.length === 0 && !resolved.exists) {
+    Errors.ThrowUserInput(`Cannot resolve standard library module ${specifier}.`)
+  }
+  return resolved.targets.map(target => ({ ...target, relation: 'public' }))
 }
 
 /** bareTargets resolves unqualified use declarations against the direct folder or named package. */
@@ -119,6 +178,12 @@ async function namedTargets(
     path,
     relation: namedPackageRoot(importer, context.projectRoot) === packageRoot ? 'same-package' : 'same-project',
   }))
+}
+
+function projectImport(specifier: string): { alias: string; module: string; parts: string[] } | undefined {
+  const [segment, ...parts] = specifier.split('/')
+  const match = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/.exec(segment!)
+  return match ? { alias: match[1]!, module: match[2]!, parts } : undefined
 }
 
 async function directImportFiles(target: string, projectRoot: string): Promise<string[]> {

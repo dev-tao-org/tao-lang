@@ -1,5 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { initializeProject } from '@workspace/projects/Projects'
 import { findTaoTestFiles } from '../dev-cli/testing/TaoTests'
 
 Tests.test('Tao app discovery includes developer apps and excludes files without tests', async () => {
@@ -16,6 +17,7 @@ Tests.test('tao test resolves default folders and relative files from the caller
   await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/tao cli-'))
   await Try(async () => {
+    await initializeProject(directory)
     await FileSystem.writeFile(
       Path.join(directory, 'Journey.tao'),
       'tests { test { run Missing expect text "Never" } }',
@@ -24,7 +26,12 @@ Tests.test('tao test resolves default folders and relative files from the caller
       const child = Platform.spawn(Repo.resolvePath('tao'), {
         variadicArgs: ['test', ...args],
         cwd: directory,
-        env: { ...Env.snapshot(), TAO_CLI_CWD: undefined },
+        env: {
+          ...Env.snapshot(),
+          TAO_CLI_CWD: undefined,
+          TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
+          TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
+        },
         stdout: 'pipe',
         stderr: 'pipe',
       })

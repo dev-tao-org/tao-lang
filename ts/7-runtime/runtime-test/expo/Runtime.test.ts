@@ -19,6 +19,32 @@ Tests.test('runtime source migration rejects linked parents before deleting file
   })
 })
 
+Tests.test('runtime preparation installs a cold pinned cache and reuses it', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-preparation-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    await writeResources(resources, { expo: '57.0.30' }, 'prepare')
+    Tests.expect(await Runtime.preparedRuntime({ resourcesDirectory: resources, toolchainCacheDirectory: cache }))
+      .toBeUndefined()
+    let installs = 0
+    const options = {
+      resourcesDirectory: resources,
+      toolchainCacheDirectory: cache,
+      install: {
+        async install(directory: string) {
+          installs++
+          await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+        },
+      },
+    }
+    await Runtime.prepareRuntime(options)
+    await Runtime.prepareRuntime(options)
+    Tests.expect(installs).toBe(1)
+    Tests.expect(await Runtime.preparedRuntime(options)).toBeDefined()
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 async function verifyLinkedSourceParents(root: string): Promise<void> {
   const directory = Path.join(root, 'generated')
   const sources = Path.join(directory, 'src/_gen_runtime')

@@ -44,6 +44,9 @@ export const Formatting = {
   UsePackageStatement(fm) {
     fm.oneSpaceAfter('use', 'package').oneSpaceAround('as')
   },
+  RequiresDeclaration(fm) {
+    fm.oneSpaceAfter('requires').noSpaceAround(':').oneSpaceAround('version', 'as')
+  },
   NamedImport(fm) {
     fm.oneSpaceAround('as')
   },

@@ -11,9 +11,21 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
     parameters: parameters ? AST.List(parameters, ['Parameter']) : [],
     definitions: cst.namedChildren.filter(child => child.type === 'LetDefinition')
       .map(child => AST.Construct(child, 'LetDefinition')),
-    render: AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection']),
+    render: viewBody(cst),
     ...(visibility ? { visibility } : {}),
   })
+}
+
+function viewBody(cst: Parser.SyntaxNode): Nodes.ViewDeclaration['render'] {
+  const body = cst.namedChildren.find(child => child.type === 'ForeignView')
+  return body
+    ? AST.Construct(body, 'ForeignView')
+    : AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection'])
+}
+
+/** ForeignView constructs a module-backed view body. */
+export function ForeignView(cst: Parser.SyntaxNode): Nodes.ForeignView {
+  return AST.Node(cst, 'ForeignView', { path: AST.Field(cst, 'path', 'ImportPath') })
 }
 
 /** ViewRender constructs a view invocation with arguments and child renders. */

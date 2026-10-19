@@ -3,6 +3,7 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { planTestExecution, type TestExecutionOptions } from '../dev-cli/testing/TestPlan'
 import { checkEditorTypeScript } from './editor-typescript'
+import { prepareNativeLocks } from './native-lock-build'
 import { prepareParser } from './parser-build'
 import { prepareRuntime } from './runtime-build'
 
@@ -128,6 +129,7 @@ export async function workspaceTests(
   }
   planTestExecution(selection)
   await prepareParser()
+  await prepareNativeLocks()
   await prepareRuntime()
   if (shouldPrepareExtensionAssets(args)) {
     const { prepareExtensionAssets } = await import('../dev-cli/ide/ExtensionBuild')

@@ -47,6 +47,18 @@ export function realPathInsideProject(path: string, projectRoot: string): string
   })
 }
 
+/** canonicalProjectRoot accepts only a real directory root without a nested project boundary. */
+export function canonicalProjectRoot(path: string): string | undefined {
+  return Try.WithDefault(undefined, () => {
+    if (!FileSystem.lstatSync(path).isDirectory()) {
+      return undefined
+    }
+    const root = FileSystem.realpathSync(path)
+    const owner = nearestProjectRoot(root)
+    return owner === undefined || owner === root ? root : undefined
+  })
+}
+
 /** namedPackageRoot finds the owning local @name package directory. */
 export function namedPackageRoot(path: string, projectRoot: string): string | undefined {
   let directory = Path.dirname(path)

@@ -73,3 +73,24 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
   Tests.expect(tree.rootNode.descendantsOfType('Visibility').map(node => node.text))
     .toEqual(['file', 'folder', 'public'])
 })
+
+Tests.test('requirements, package subpath imports and foreign views parse', () => {
+  const source = S`
+    requires github:acme/widgets version v1.2.0 as widgets
+    requires file:../widgets as widgets
+    requires npm:@date-fns/tz version 4.1.0
+    requires bundled:tao version v2 as tao
+    use Save from @store
+    use Button from widgets@ui/controls
+    public view FormattedDate(Value text) from ./FormattedDate.tsx
+  `
+  const { tree } = createParser().parse(source)
+  Tests.expect(tree.rootNode.hasError).toBe(false)
+  Tests.expect(tree.rootNode.descendantsOfType('RequiresDeclaration')).toHaveLength(4)
+  Tests.expect(tree.rootNode.descendantsOfType('ImportPath').map(node => node.text)).toEqual([
+    '@store',
+    'widgets@ui/controls',
+    './FormattedDate.tsx',
+  ])
+  Tests.expect(tree.rootNode.descendantsOfType('ForeignView')).toHaveLength(1)
+})

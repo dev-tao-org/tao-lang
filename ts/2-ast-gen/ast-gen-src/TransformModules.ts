@@ -21,6 +21,18 @@ export function UsePackageStatement(cst: Parser.SyntaxNode): Nodes.UsePackageSta
   })
 }
 
+/** RequiresDeclaration constructs an authored dependency requirement. */
+export function RequiresDeclaration(cst: Parser.SyntaxNode): Nodes.RequiresDeclaration {
+  const version = cst.childForFieldName('version')
+  const alias = cst.childForFieldName('alias')
+  return AST.Node(cst, 'RequiresDeclaration', {
+    provider: AST.RequiredField(cst, 'provider').text as Nodes.RequiresDeclaration['provider'],
+    identifier: AST.RequiredField(cst, 'identifier').text,
+    ...(version ? { version: version.text } : {}),
+    ...(alias ? { alias: AST.Name(alias) } : {}),
+  })
+}
+
 /** NamedImport constructs a declaration selector and optional local alias. */
 export function NamedImport(cst: Parser.SyntaxNode): Nodes.NamedImport {
   const alias = cst.childForFieldName('alias')

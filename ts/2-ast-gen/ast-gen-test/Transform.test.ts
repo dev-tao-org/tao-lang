@@ -117,3 +117,45 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   Tests.expect(result?.root.declarations[6]).toMatchObject({ kind: 'LetDefinition', visibility: 'public' })
   Tests.expect(result?.root.declarations[0]).toMatchObject({ start: 0, end: source.indexOf('\n') })
 })
+
+Tests.test('requirements and foreign views retain authored fields and source ranges', () => {
+  const source = S`
+    requires github:acme/widgets version v1.2.0 as widgets
+    requires file:../widgets
+    requires npm:date-fns version 4.1.0
+    requires bundled:tao as tao
+    use Button from widgets@ui/controls
+    public view FormattedDate(Value text) from ./FormattedDate.tsx
+  `
+  const { tree } = createParser().parse(source)
+  const result = transform(tree)
+  Tests.expect(result?.root.declarations.map(node => node.kind)).toEqual([
+    'RequiresDeclaration',
+    'RequiresDeclaration',
+    'RequiresDeclaration',
+    'RequiresDeclaration',
+    'UseStatement',
+    'ViewDeclaration',
+  ])
+  Tests.expect(result?.root.declarations.slice(0, 4)).toMatchObject([
+    { provider: 'github', identifier: 'acme/widgets', version: 'v1.2.0', alias: { value: 'widgets' } },
+    { provider: 'file', identifier: '../widgets' },
+    { provider: 'npm', identifier: 'date-fns', version: '4.1.0' },
+    { provider: 'bundled', identifier: 'tao', alias: { value: 'tao' } },
+  ])
+  Tests.expect(result?.root.declarations[4]).toMatchObject({
+    imports: [{ target: { value: 'Button' } }],
+    from: { value: 'widgets@ui/controls' },
+  })
+  Tests.expect(result?.root.declarations[5]).toMatchObject({
+    render: { kind: 'ForeignView', path: { value: './FormattedDate.tsx' } },
+  })
+  Tests.expect(result?.root.declarations.map(node => source.slice(node.start, node.end))).toEqual([
+    'requires github:acme/widgets version v1.2.0 as widgets',
+    'requires file:../widgets',
+    'requires npm:date-fns version 4.1.0',
+    'requires bundled:tao as tao',
+    'use Button from widgets@ui/controls',
+    'public view FormattedDate(Value text) from ./FormattedDate.tsx',
+  ])
+})

@@ -13,6 +13,7 @@ export type ModuleLoadOptions = {
   directory?: string
   stdlibSources: ReadonlyMap<string, string>
   stdlibDirectory?: string
+  resolveProject?: (importer: string, alias: string) => Promise<{ root: string } | undefined>
 }
 
 /** loadModules discovers and parses the source graph reachable from one parsed entry. */
@@ -36,12 +37,14 @@ type LoadState = LoadRequest & {
   entryPath: string
   projectRoot: string
   sources: Map<string, SourceModule>
+  projectRoots: Map<string, string>
   pending: string[]
 }
 
 type Discovery = Map<string, string | undefined> & {
   imports: SourceModule['imports'][number][]
   siblings: string[]
+  projectRoots: Map<string, string>
 }
 
 const loadGraph = Timings.measure('modules.load', async function(request: LoadRequest): Promise<SourceModule[]> {
@@ -56,6 +59,7 @@ const loadGraph = Timings.measure('modules.load', async function(request: LoadRe
     entryPath,
     projectRoot,
     sources: new Map([[entryPath, sourceModule(entryPath, entry.document)]]),
+    projectRoots: new Map(),
     pending: [entryPath],
   }
   while (state.pending.length > 0) {
@@ -70,6 +74,10 @@ const loadGraph = Timings.measure('modules.load', async function(request: LoadRe
         state.sources.set(candidate, sourceModule(candidate, document))
         state.pending.push(candidate)
       }
+      const owner = found.projectRoots.get(candidate)
+      if (owner) {
+        state.projectRoots.set(candidate, owner)
+      }
     }
     source.imports = found.imports
     source.siblings = found.siblings
@@ -80,26 +88,34 @@ const loadGraph = Timings.measure('modules.load', async function(request: LoadRe
 const discover = Timings.measure(
   'modules.discover',
   async function(state: LoadState, source: SourceModule): Promise<Discovery> {
-    const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [] })
+    const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [], projectRoots: new Map() })
+    const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
-      ? within(state.projectRoot, source.path) ? source.path : undefined
-      : realPathInsideProject(source.path, state.projectRoot)
+      ? within(projectRoot, source.path) ? source.path : undefined
+      : realPathInsideProject(source.path, projectRoot)
     if (physical) {
-      found.siblings = await directSourceFiles(Path.dirname(physical), state.projectRoot)
+      found.siblings = await directSourceFiles(Path.dirname(physical), projectRoot)
       for (const path of found.siblings.filter(path => path !== source.path)) {
         found.set(path, undefined)
+        if (state.projectRoots.has(source.path)) {
+          found.projectRoots.set(path, projectRoot)
+        }
       }
     }
     for (const statement of source.document.root.declarations.filter(isImportStatement)) {
       const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+      const context = { ...state, projectRoot }
       const targets = specifier === undefined
-        ? await bareTargets(source.path, physical, state)
-        : await importTargets(specifier, source.path, physical, state)
+        ? await bareTargets(source.path, physical, context)
+        : await importTargets(specifier, source.path, physical, context)
       found.imports.push({
         statement,
         targets: targets.map(({ path, relation }) => ({ path, relation })),
       })
       for (const target of targets) {
+        if (target.projectRoot) {
+          found.projectRoots.set(target.path, target.projectRoot)
+        }
         if (!found.has(target.path)) {
           found.set(target.path, target.source)
         }

@@ -18,6 +18,7 @@ view RootView {
     Text(Title)
     Text(ModuleCaption)
     Text(ImportedCaption)
+    SidecarGreeting("Validated TypeScript sidecar")
     Col {
       let Title = "Nested lexical scope"
       Text(Title)
@@ -68,10 +69,13 @@ public view SaveButton {
   ```
 }
 
+public view SidecarGreeting(Value text) from ./SidecarGreeting.tsx
+
 tests "Kitchen Sink" {
   test "Tagged input and control" {
     run KitchenSink
     expect text "Kitchen Sink"
+    expect text "Sidecar: Validated TypeScript sidecar"
     expect text "Nested lexical scope"
     type "Edited text" into #editable
     press #save

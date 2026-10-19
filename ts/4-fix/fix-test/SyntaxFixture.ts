@@ -8,6 +8,8 @@ export const syntaxFixture = S`
   use all from ./Shared
   use Card as Panel,Heading from @cards
   use Local
+  requires github:acme/widgets version v1.2.0 as widgets
+  requires npm:@date-fns/tz version 4.1.0
   file let Caption is text="Hello"
   folder app Demo{root Root}
   public view Root( Title text,Subtitle text ){
@@ -16,6 +18,7 @@ export const syntaxFixture = S`
   }
   package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text> \`\`\`}
   project let Shared=Caption
+  public view FormattedDate(Value text) from ./FormattedDate.tsx
   tests "Source"{test(Label "Case"){run Demo press #child type "Set" into #child expect text "Ready" expect #child input value "Set" expect #child{text "Ready" input value "Set"} expect{text "Ready"}} test "Short"{} test(){} }
 `
 
@@ -26,6 +29,8 @@ export const formattedSyntaxFixture = S`
   use all from ./Shared
   use Card as Panel, Heading from @cards
   use Local
+  requires github:acme/widgets version v1.2.0 as widgets
+  requires npm:@date-fns/tz version 4.1.0
 
   file
   let Caption is text = "Hello"
@@ -53,6 +58,9 @@ export const formattedSyntaxFixture = S`
 
   project
   let Shared = Caption
+
+  public
+  view FormattedDate(Value text) from ./FormattedDate.tsx
 
   tests "Source" {
     test(Label "Case") {
@@ -93,6 +101,11 @@ export const syntaxKinds = {
   NamedImport: true,
   All: true,
   UsePackageStatement: true,
+  RequiresDeclaration: true,
+  RequirementProvider: true,
+  RequirementIdentifier: true,
+  RequirementVersion: true,
+  ForeignView: true,
   ImportPath: true,
   Visibility: true,
   TestsDeclaration: true,

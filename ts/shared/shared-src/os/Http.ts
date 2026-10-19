@@ -15,9 +15,22 @@ export type HttpRequest = globalThis.Request
 /** HttpResponse describes an outgoing HTTP response at the OS boundary. */
 export type HttpResponse = globalThis.Response
 
+/** Bytes describes raw HTTP response bytes at the platform boundary. */
+export type Bytes = Uint8Array
+
 /** response creates an HTTP response through the platform boundary. */
 export function response(body: BodyInit | null = null, init?: ResponseInit): Response {
   return new Response(body, init)
+}
+
+/** url parses a URL through the platform boundary. */
+export function url(value: string): URL {
+  return new URL(value)
+}
+
+/** bytesResponse creates a response containing one byte sequence. */
+export function bytesResponse(bytes: Uint8Array): Response {
+  return new Response(Buffer.from(bytes))
 }
 
 /** jsonResponse creates a JSON response through the platform boundary. */

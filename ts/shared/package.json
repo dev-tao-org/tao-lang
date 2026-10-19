@@ -10,7 +10,11 @@
     "playwright": "1.58.2",
     "typescript": "5.9.3"
   },
-  "devDependencies": { "@types/bun": "1.4.0" },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "node-addon-api": "8.5.0",
+    "node-gyp": "12.1.0"
+  },
   "exports": {
     ".": "./shared-src/shared.ts",
     "./os": "./shared-src/os.ts",

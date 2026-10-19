@@ -54,6 +54,7 @@ export function expoEnvironment(directory: string): Record<string, string | unde
     EXPO_UNSTABLE_HEADLESS: '1',
     EXPO_OFFLINE: '1',
     EXPO_NO_TELEMETRY: '1',
+    EXPO_NO_TYPESCRIPT_SETUP: '1',
   }
 }
 

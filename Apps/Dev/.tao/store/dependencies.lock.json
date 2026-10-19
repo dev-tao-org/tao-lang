@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "roots": {},
+  "sources": {},
+  "npmGraphs": {
+    "Kitchen Sink/Kitchen Sink.tao": {
+      "fingerprint": "961dd31160e3f0f69719d8c28f29b5d4962781b89e3c9e545f701f9fab3ea995",
+      "lockPath": ".tao/store/npm/961dd31160e3f0f69719d8c28f29b5d4962781b89e3c9e545f701f9fab3ea995.lock",
+      "lockHash": "e0fafc0ed710f61bc360a7da94f04db0d82e0bbae5d3b430210bc0d15e8ab686"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
-import { Artifacts, FileSystem, Repo } from '@shared/os'
+import { Artifacts, Files, FileSystem, Repo } from '@shared/os'
+import { cleanProject } from '@workspace/projects/Clean'
 import { registerCommand } from './_command-runner'
 
 /** cleanCommand removes dependencies, all artifacts, or only expired successful temporary output. */
@@ -19,6 +20,16 @@ export default registerCommand({
       IO.print(`Removed ${removed} temporary artifacts; retained caches, recent output, failures and active runs.`)
       return
     }
+    const projectCleanup = await cleanAppProjects()
+    IO.print(
+      `Removed ${projectCleanup.removed} generated project cache entries across ${projectCleanup.projects} projects.`,
+    )
+    if (projectCleanup.active.length > 0) {
+      IO.print(`Skipped active sessions: ${projectCleanup.active.join(', ')}`)
+    }
+    if (projectCleanup.protected > 0) {
+      IO.print('Preserved project cache while session ownership was uncertain.')
+    }
     await FileSystem.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/7-runtime/_gen_runtime'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
@@ -30,4 +41,24 @@ export default registerCommand({
 
 function hasValidCleanArguments(args: readonly string[]): boolean {
   return args.length <= 1 && args.every(argument => argument === '--full' || argument === '--partial')
+}
+
+async function cleanAppProjects(): Promise<{ projects: number; removed: number; active: string[]; protected: number }> {
+  const roots = await initializedProjects(Repo.resolvePath('Apps'))
+  let removed = 0
+  let protectedCount = 0
+  const active: string[] = []
+  for (const root of roots) {
+    const result = await cleanProject(root)
+    removed += result.removed.length
+    if (result.sharedProtected) {
+      protectedCount++
+    }
+    active.push(...result.skippedActive.map(id => `${root} (${id})`))
+  }
+  return { projects: roots.length, removed, active, protected: protectedCount }
+}
+
+async function initializedProjects(apps: string): Promise<string[]> {
+  return await Files.findProjects(apps)
 }

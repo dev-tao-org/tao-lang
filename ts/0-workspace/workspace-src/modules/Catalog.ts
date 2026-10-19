@@ -72,6 +72,7 @@ export async function namedPackageDirectories(projectRoot: string, name: string)
 /** importableFile confirms an existing Tao file stays within its real project boundary. */
 export async function importableFile(path: string, boundary: string): Promise<boolean> {
   return path.endsWith('.tao') && !excludedPath(path, boundary) && await FileSystem.exists(path)
+    && Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
     && realPathInsideProject(path, boundary) !== undefined
 }
 
@@ -90,7 +91,7 @@ function isSearchDirectory(name: string, isDirectory: boolean): boolean {
 // safeDirectory confirms a directory stays within its real project boundary.
 async function safeDirectory(path: string, boundary: string): Promise<boolean> {
   return !excludedPath(path, boundary) && await FileSystem.exists(path)
-    && Try.WithDefault(false, () => FileSystem.statSync(path).isDirectory())
+    && Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())
     && realPathInsideProject(path, boundary) !== undefined
 }
 

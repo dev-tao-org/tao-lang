@@ -9,6 +9,11 @@ export function homeDirectory(): string {
   return homedir()
 }
 
+/** runtimeVersion returns the active Bun runtime version. */
+export function runtimeVersion(): string {
+  return Bun.version
+}
+
 /** loadModule loads a known runtime module, including native Node-API addons. */
 export function loadModule<Value>(path: string): Value {
   return createRequire(import.meta.url)(path) as Value
@@ -17,6 +22,11 @@ export function loadModule<Value>(path: string): Value {
 /** hashText hashes exact build inputs and generated output for cache validation. */
 export function hashText(source: string): string {
   return createHash('sha256').update(source).digest('hex')
+}
+
+/** hashBytes hashes a byte sequence with the requested digest algorithm. */
+export function hashBytes(bytes: Uint8Array, algorithm: string): string {
+  return createHash(algorithm).update(bytes).digest('base64')
 }
 
 /** isPlatformImport identifies runtime builtins that belong behind the OS boundary. */

@@ -1,0 +1,255 @@
+import * as AST from '@ast-gen/AST'
+import { transform } from '@ast-gen/Transform'
+import { createParser } from '@grammar/parser'
+import { Errors, Try } from '@shared'
+import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { readProjectRequirements } from './dependencies/Requirements'
+import { namedPackageDirectories, recursiveSourceFiles } from './modules/Catalog'
+import { acquireSession } from './projects/Sessions'
+
+/** addModuleNpmDependency writes an exact npm pin into one project-owned named module. */
+export async function addModuleNpmDependency(
+  projectRoot: string,
+  moduleName: string,
+  packageSpec: string,
+  executor: NpmVersionExecutor = resolveNpmVersion,
+): Promise<{ moduleRoot: string; sourcePath: string; packageName: string; version: string }> {
+  const moduleRoot = await resolveModule(projectRoot, moduleName)
+  const { packageName, version: requested } = parsePackageSpec(packageSpec)
+  const version = requested ?? await executor(packageName, projectRoot)
+  validateExactVersion(version)
+  const sourcePath = await writeRequirement(moduleRoot, projectRoot, packageName, version)
+  return { moduleRoot, sourcePath, packageName, version }
+}
+
+/** findPreparationEntry selects an explicit source or an unambiguous app/project source. */
+export async function findPreparationEntry(projectRoot: string, requested?: string): Promise<string> {
+  if (requested) {
+    const path = Path.resolve(requested)
+    if (!await sourceIsInsideProject(path, projectRoot)) {
+      Errors.ThrowUserInput(`Preparation entry must belong to ${projectRoot}: ${path}`)
+    }
+    return path
+  }
+  const sources = (await Files.walk(projectRoot)).filter(path => path.endsWith('.tao'))
+  const apps = (await Promise.all(sources.map(async path => await containsApp(path) ? path : undefined)))
+    .filter((path): path is string => path !== undefined)
+  if (apps.length === 1) {
+    return apps[0]!
+  }
+  if (apps.length > 1) {
+    Errors.ThrowUserInput(`Multiple Tao app entries found; specify one: ${apps.join(', ')}`)
+  }
+  const rootSources = sources.filter(path => Path.dirname(path) === projectRoot)
+  if (rootSources.length === 1) {
+    return rootSources[0]!
+  }
+  Errors.ThrowUserInput(`No unique Tao app entry was found; run tao prepare <entry>.`)
+}
+
+/** listDependencyWork describes authored source and npm requirements before preparation. */
+export async function listDependencyWork(projectRoot: string): Promise<string[]> {
+  const work = [
+    'bundled app runtime',
+    ...(await readProjectRequirements(projectRoot)).map(requirement =>
+      `${requirement.provider}:${requirement.identifier}@${requirement.version}`
+    ),
+  ]
+  for (const path of (await Files.walk(projectRoot)).filter(candidate => candidate.endsWith('.tao'))) {
+    const source = await FileSystem.readFile(path, 'utf8')
+    const document = transform(parser.parse(source).tree)
+    if (!document) {
+      continue
+    }
+    for (const declaration of document.root.declarations) {
+      if (declaration.kind === 'RequiresDeclaration' && declaration.provider === 'npm') {
+        work.push(`npm:${declaration.identifier}${declaration.version ? `@${declaration.version}` : ''}`)
+      }
+      if (AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')) {
+        work.push(`sidecar:${path}`)
+      }
+    }
+  }
+  return [...new Set(work)].sort()
+}
+
+/** withDependencySession holds the standard CLI project lock for one dependency command. */
+export async function withDependencySession<T>(
+  projectRoot: string,
+  sessionId: string | undefined,
+  action: () => Promise<T>,
+  acquireLease: (identity: string) => Promise<() => void> = Storage.acquireCacheLease,
+): Promise<T> {
+  const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
+  const releaseLease = await acquireLease(identity)
+  const session = await Try(() => acquireSession(projectRoot, { id: sessionId, kind: 'cli' }), {
+    catch(error) {
+      releaseLease()
+      return Errors.Throw(error)
+    },
+  })
+  return await Try(action, {
+    finally() {
+      session.release()
+      releaseLease()
+    },
+  })
+}
+
+type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
+
+// resolveNpmVersion asks Bun for the registry's current exact version.
+async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
+  const child = Platform.spawn(['bun', 'info', packageName, 'version', '--json'], {
+    cwd,
+    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.cacheDirectory('bun') },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [status, stdout, stderr] = await Promise.all([
+    child.exited,
+    Platform.readText(child.stdout),
+    Platform.readText(child.stderr),
+  ])
+  if (status !== 0) {
+    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${stderr.trim()}`)
+  }
+  const value = Try.WithDefault(undefined, () => JSON.parse(stdout.trim()) as unknown)
+  const version = typeof value === 'string'
+    ? value
+    : typeof value === 'object' && value !== null && 'version' in value && typeof value.version === 'string'
+    ? value.version
+    : undefined
+  if (!version) {
+    Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)
+  }
+  return version
+}
+
+async function resolveModule(projectRoot: string, moduleName: string): Promise<string> {
+  if (!/^@[A-Za-z0-9][A-Za-z0-9._-]*$/.test(moduleName)) {
+    Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
+  }
+  const matches = await namedPackageDirectories(projectRoot, moduleName)
+  if (matches.length === 0) {
+    Errors.ThrowUserInput(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
+  }
+  if (matches.length > 1) {
+    Errors.ThrowUserInput(`Module ${moduleName} is ambiguous: ${matches.join(', ')}`)
+  }
+  return matches[0]!
+}
+
+function parsePackageSpec(spec: string): { packageName: string; version?: string } {
+  const index = spec.lastIndexOf('@')
+  const packageName = index > 0 ? spec.slice(0, index) : spec
+  const version = index > 0 ? spec.slice(index + 1) : undefined
+  if (!/^(?:@[A-Za-z0-9._-]+\/)?[A-Za-z0-9][A-Za-z0-9._-]*$/.test(packageName)) {
+    Errors.ThrowUserInput(`Invalid npm package name: ${packageName}`)
+  }
+  if (version) {
+    validateExactVersion(version)
+  }
+  return { packageName, ...(version ? { version } : {}) }
+}
+
+function validateExactVersion(version: string): void {
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
+    Errors.ThrowUserInput(`Expected an exact semantic version; received ${version}.`)
+  }
+}
+
+async function writeRequirement(
+  moduleRoot: string,
+  projectRoot: string,
+  packageName: string,
+  version: string,
+): Promise<string> {
+  const files = await recursiveSourceFiles(moduleRoot, moduleRoot, projectRoot)
+  const occurrences = (await Promise.all(files.map(async path => ({
+    path,
+    source: await FileSystem.readFile(path, 'utf8'),
+  })))).flatMap(file => npmRequirementSpans(file.path, file.source, packageName))
+  if (occurrences.length > 0) {
+    await replaceRequirements(occurrences, packageName, version)
+    return occurrences[0]!.path
+  }
+  const sourcePath = Path.join(moduleRoot, 'Dependencies.tao')
+  const existing = await Try.WithDefault('', () => FileSystem.readFile(sourcePath, 'utf8'))
+  await FileSystem.writeFile(
+    sourcePath,
+    `${existing}${existing && !existing.endsWith('\n') ? '\n' : ''}requires npm:${packageName} version ${version}\n`,
+  )
+  return sourcePath
+}
+
+function npmRequirementSpans(
+  path: string,
+  source: string,
+  packageName: string,
+): Array<{ path: string; source: string; start: number; end: number; alias?: string }> {
+  const document = transform(parser.parse(source).tree)
+  if (!document) {
+    Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
+  }
+  return document.root.declarations.flatMap(declaration => {
+    if (
+      declaration.kind !== 'RequiresDeclaration' || declaration.provider !== 'npm'
+      || declaration.identifier !== packageName
+    ) {
+      return []
+    }
+    return [{
+      path,
+      source,
+      start: declaration.start,
+      end: declaration.end,
+      ...(declaration.alias ? { alias: declaration.alias.value } : {}),
+    }]
+  })
+}
+
+async function replaceRequirements(
+  occurrences: Array<{ path: string; source: string; start: number; end: number; alias?: string }>,
+  packageName: string,
+  version: string,
+): Promise<void> {
+  const grouped = new Map<string, typeof occurrences>()
+  for (const occurrence of occurrences) {
+    grouped.set(occurrence.path, [...(grouped.get(occurrence.path) ?? []), occurrence])
+  }
+  for (const [path, values] of grouped) {
+    let bytes = new TextEncoder().encode(values[0]!.source)
+    for (const item of values.sort((left, right) => right.start - left.start)) {
+      const replacement = new TextEncoder().encode(
+        `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
+      )
+      bytes = joinBytes(bytes.slice(0, item.start), replacement, bytes.slice(item.end))
+    }
+    await FileSystem.writeFile(path, new TextDecoder().decode(bytes))
+  }
+}
+
+function joinBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
+  const result = new Uint8Array(parts.reduce((length, part) => length + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    result.set(part, offset)
+    offset += part.length
+  }
+  return result
+}
+
+async function sourceIsInsideProject(path: string, projectRoot: string): Promise<boolean> {
+  const relative = Path.relative(Path.resolve(projectRoot), path)
+  return relative !== '..' && !relative.startsWith('../') && !Path.isAbsolute(relative)
+    && path.endsWith('.tao') && await FileSystem.exists(path)
+}
+
+async function containsApp(path: string): Promise<boolean> {
+  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')).tree)
+  return document?.root.declarations.some((declaration: AST.Declaration) => declaration.kind === 'AppDeclaration')
+    ?? false
+}
+
+const parser = createParser()

@@ -17,12 +17,15 @@
         "@tao/shared": "workspace:*",
         "@tao/stdlib": "workspace:*",
         "@tao/typecheck": "workspace:*",
+        "semver": "7.8.5",
+        "typescript": "5.9.3",
       },
       "devDependencies": {
         "@dprint/json": "0.23.0",
         "@dprint/markdown": "0.23.2",
         "@dprint/typescript": "0.96.1",
         "@types/bun": "1.4.0",
+        "@types/semver": "7.7.1",
       },
     },
     "1-grammar": {
@@ -175,6 +178,8 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
+        "node-addon-api": "8.5.0",
+        "node-gyp": "12.1.0",
       },
     },
     "stdlib": {
@@ -714,6 +719,8 @@
     "@types/react-dom": ["@types/react-dom@19.2.7", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-I8bPpDLcHBv1qiIiXDCy71Rt8eQDKJP0sMSWJphDdAcdqiJ1sGpZamavoEIRZmYzjia9LuEb2HlYdDpmoENpvQ=="],
 
     "@types/sarif": ["@types/sarif@2.1.7", "", {}, "sha512-kRz0VEkJqWLf1LLVN4pT1cg1Z9wAuvI6L97V3m2f5B76Tg8d413ddvLBPTEHAZJlnn4XSvu0FkZtViCQGVyrXQ=="],
+
+    "@types/semver": ["@types/semver@7.7.1", "", {}, "sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA=="],
 
     "@types/vscode": ["@types/vscode@1.110.0", "", {}, "sha512-AGuxUEpU4F4mfuQjxPPaQVyuOMhs+VT/xRok1jiHVBubHK7lBRvCuOMZG0LKUwxncrPorJ5qq/uil3IdZBd5lA=="],
 

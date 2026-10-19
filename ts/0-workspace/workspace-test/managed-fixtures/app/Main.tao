@@ -1,0 +1,3 @@
+requires file:../ui as ui
+use Widget from ui@ui
+app Main { root Widget }

@@ -63,6 +63,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
     },
     UseStatement: Switch.nothing,
     UsePackageStatement: Switch.nothing,
+    RequiresDeclaration: Switch.nothing,
   })
 }
 
@@ -85,6 +86,7 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
         }
       }
     },
+    ForeignView: Switch.nothing,
   })
 }
 

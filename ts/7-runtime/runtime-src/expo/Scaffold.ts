@@ -8,6 +8,7 @@ export async function writeExpoApplication(
   dependencies: Record<string, string>,
   devDependencies: Record<string, string>,
   sourceFiles: string[],
+  options: { watchFolders?: readonly string[]; singletonPackages?: readonly string[] } = {},
 ): Promise<void> {
   await FileSystem.writeIfChanged(
     Path.join(directory, 'package.json'),
@@ -27,6 +28,18 @@ export async function writeExpoApplication(
   await FileSystem.writeIfChanged(Path.join(directory, 'index.ts'), expoEntry)
   await FileSystem.writeIfChanged(Path.join(directory, 'metro.config.js'), metroConfiguration)
   await FileSystem.writeIfChanged(
+    Path.join(directory, 'tao-resolution.json'),
+    JSON.stringify(
+      {
+        watchFolders: options.watchFolders ?? [],
+        singletonPackages: options.singletonPackages
+          ?? ['react', 'react-dom', 'react-native', 'react-native-web', 'expo'],
+      },
+      null,
+      2,
+    ),
+  )
+  await FileSystem.writeIfChanged(
     Path.join(directory, 'app.json'),
     JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2),
   )
@@ -40,10 +53,13 @@ const metroConfiguration = S`
   const fs = require('node:fs');
   const { getDefaultConfig } = require('expo/metro-config');
   const config = getDefaultConfig(__dirname);
+  const tao = require('./tao-resolution.json');
   config.resolver.platforms = ['web', 'native'];
-  config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime'))];
+  config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime')), ...tao.watchFolders];
   config.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules')];
   config.resolver.resolveRequest = (context, name, platform) => {
+    const singleton = tao.singletonPackages.find(id => name === id || name.startsWith(id + '/'));
+    if (singleton) return context.resolveRequest(context, path.join(__dirname, 'node_modules', name), platform);
     if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
     if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
     if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/PreviewPlatform.ts'), platform);

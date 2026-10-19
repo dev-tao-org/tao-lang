@@ -1,8 +1,31 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FileSystem, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
 import { writeExpoApplication } from './expo/Scaffold'
-import { prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
+import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
+
+/** prepareRuntime installs the pinned bundled runtime toolchain into the supplied cache. */
+export async function prepareRuntime(
+  options: Pick<RuntimeCreateOptions, 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'> = {},
+): Promise<string> {
+  const resources = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
+  return await prepareToolchain(
+    Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory()),
+    resources,
+    options.install,
+    options.onProgress,
+  )
+}
+
+/** preparedRuntime returns the bundled runtime toolchain only when it is already cached. */
+export async function preparedRuntime(
+  options: Pick<RuntimeCreateOptions, 'resourcesDirectory' | 'toolchainCacheDirectory'> = {},
+): Promise<string | undefined> {
+  return await findPreparedToolchain(
+    Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory()),
+    Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory()),
+  )
+}
 
 /** create prepares an Expo application from the compiled runtime resources. */
 export async function create(options: RuntimeCreateOptions): Promise<RuntimeApplication> {
@@ -14,7 +37,7 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
   options.onProgress?.('Runtime resources ready.')
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
   await FileSystem.mkdir(directory, { recursive: true })
-  const dependencyDirectory = await prepareToolchain(
+  const dependencyDirectory = options.dependencyDirectory ?? await prepareToolchain(
     cacheDirectory,
     resourcesDirectory,
     options.install,
@@ -27,6 +50,7 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
     resources.dependencies,
     resources.devDependencies,
     resources.sourceFiles,
+    { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages },
   )
   options.onProgress?.('Expo runtime application scaffolded.')
   return await applicationWithToolchain(directory, dependencyDirectory)
@@ -54,9 +78,31 @@ export type RuntimeCreateOptions = {
   toolchainCacheDirectory?: string
   install?: RuntimeInstaller
   onProgress?: (message: string) => void
+  dependencyDirectory?: string
+  watchFolders?: readonly string[]
+  singletonPackages?: readonly string[]
 }
 
 export type { ExpoOptions, ExpoSession } from './expo/Expo'
+export type { RuntimeInstaller } from './expo/Toolchain'
+
+/** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
+export function runtimeDependencies(): Promise<Record<string, string>> {
+  return pinnedDependencies ??= readPinnedDependencies()
+}
+
+let pinnedDependencies: Promise<Record<string, string>> | undefined
+
+async function readPinnedDependencies(): Promise<Record<string, string>> {
+  const directory = defaultResourcesDirectory()
+  const resources = await readRuntimeResources(directory)
+  const lock = JSON.parse(await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8')) as {
+    packages: Record<string, [string, ...unknown[]]>
+  }
+  const types = lock.packages['@types/react']?.[0].slice('@types/react@'.length)
+    ?? Errors.ThrowUnexpected('The runtime lock does not pin React contract types.')
+  return { ...resources.dependencies, '@types/react': types }
+}
 
 type RuntimeResources = {
   identity: string
@@ -155,5 +201,5 @@ function defaultResourcesDirectory(): string {
 }
 
 function defaultToolchainCacheDirectory(): string {
-  return Path.join(Platform.homeDirectory(), '.tao/toolchains')
+  return Storage.cacheDirectory('toolchains')
 }

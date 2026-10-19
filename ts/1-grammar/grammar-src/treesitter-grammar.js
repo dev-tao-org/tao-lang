@@ -14,6 +14,7 @@ export default grammar({
         $.LetDefinition,
         $.UseStatement,
         $.UsePackageStatement,
+        $.RequiresDeclaration,
       ))
     },
 
@@ -39,11 +40,14 @@ export default grammar({
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
-        '{',
-        repeat($.LetDefinition),
-        $.RenderStatement,
-        '}',
+        choice(
+          seq('{', repeat($.LetDefinition), $.RenderStatement, '}'),
+          field('body', $.ForeignView),
+        ),
       )
+    },
+    ForeignView($) {
+      return seq('from', field('path', $.ImportPath))
     },
     RenderStatement($) {
       return seq('render', field('body', choice($.ViewRender, $.Injection)))
@@ -114,8 +118,27 @@ export default grammar({
     UsePackageStatement($) {
       return seq('use', 'package', field('from', $.ImportPath), optional(seq('as', field('alias', $.Identifier))))
     },
+    RequiresDeclaration($) {
+      return seq(
+        'requires',
+        field('provider', $.RequirementProvider),
+        ':',
+        field('identifier', $.RequirementIdentifier),
+        optional(seq('version', field('version', $.RequirementVersion))),
+        optional(seq('as', field('alias', $.Identifier))),
+      )
+    },
+    RequirementProvider() {
+      return choice('github', 'file', 'npm', 'bundled')
+    },
+    RequirementIdentifier() {
+      return token(choice(/\.\.\/[A-Za-z0-9._@/-]+/, /@[A-Za-z0-9._-]+\/[A-Za-z0-9._@/-]+/, /[A-Za-z0-9._@/-]+/))
+    },
+    RequirementVersion() {
+      return token(/[A-Za-z0-9._+-]+/)
+    },
     ImportPath() {
-      return /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)/
+      return /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)|([a-zA-Z0-9._-]+@[a-zA-Z0-9._@/-]+\/?[a-zA-Z0-9._@/-]*)/
     },
     Visibility() {
       return choice('file', 'folder', 'package', 'project', 'public')

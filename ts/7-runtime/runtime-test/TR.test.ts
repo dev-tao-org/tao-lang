@@ -1,7 +1,8 @@
 import { Tests } from '@shared/os'
-import { createElement } from 'react'
+import { createElement, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { App } from '../runtime-src/App'
+import { ForeignView } from '../runtime-src/ForeignView'
 import { Render, ViewDefinition, ViewRenderArgs } from '../runtime-src/View'
 
 Tests.test('Render binds positional view values and supplies children', () => {
@@ -19,6 +20,17 @@ Tests.test('Render binds positional view values and supplies children', () => {
   )
 
   Tests.expect(html).toContain('<main><section>hello</section></main>')
+})
+
+Tests.test('ForeignView renders the named component with Tao values as props', () => {
+  function DateLabel({ Value }: { Value: string }) {
+    const [label] = useState(Value)
+    return createElement('span', null, label)
+  }
+  const FormattedDate = ForeignView('FormattedDate', ['Value'], DateLabel)
+  const html = renderToStaticMarkup(Render(FormattedDate, ViewRenderArgs(['Today'])))
+
+  Tests.expect(html).toBe('<span>Today</span>')
 })
 
 Tests.test('Render binds the legal __proto__ parameter as an ordinary value', () => {

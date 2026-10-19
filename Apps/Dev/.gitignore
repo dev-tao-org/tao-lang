@@ -1,0 +1,8 @@
+# tao-managed-sidecars:begin
+/package.json
+/tsconfig.json
+/node_modules/
+/.tao-managed-module.json
+/.tao-*.contract.ts
+/.tao-*.contract.ts.tao-managed
+# tao-managed-sidecars:end

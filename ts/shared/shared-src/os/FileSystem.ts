@@ -1,9 +1,33 @@
 import { randomUUID } from 'node:crypto'
+import { existsSync as fsExistsSync } from 'node:fs'
 import { access as accessPath, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { dirname, resolve } from 'node:path'
 import { Try } from '../universal/universal'
 
 export { constants, existsSync, lstatSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs'
 export { access, chmod, cp, mkdir, readdir, readFile, rename, rm, rmdir, symlink, writeFile } from 'node:fs/promises'
+
+/** resolveModule resolves a package entry using dependencies visible from a caller-owned directory. */
+export function resolveModule(packageName: string, fromDirectory: string): string {
+  return createRequire(resolve(fromDirectory, 'package.json')).resolve(packageName)
+}
+
+/** resolvePackageDirectory finds the installed package root visible from a caller-owned directory. */
+export function resolvePackageDirectory(packageName: string, fromDirectory: string): string | undefined {
+  let directory = resolve(fromDirectory)
+  while (true) {
+    const packageDirectory = resolve(directory, 'node_modules', packageName)
+    if (fsExistsSync(resolve(packageDirectory, 'package.json'))) {
+      return packageDirectory
+    }
+    const parent = dirname(directory)
+    if (parent === directory) {
+      return undefined
+    }
+    directory = parent
+  }
+}
 
 /** exists reports whether a filesystem path is accessible, including directories. */
 export async function exists(path: string): Promise<boolean> {
