@@ -1,7 +1,7 @@
 import type { compile } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
 import { openProjectWorkspace } from '../ProjectWorkspace'
@@ -69,7 +69,19 @@ type Session = {
 }
 
 async function createTestWorkspace(path: string, app: string, compileApp: typeof compile) {
-  const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
+  const runtimeOptions = {
+    toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains'),
+    install: {
+      async install(directory: string) {
+        await FileSystem.symlink(
+          Repo.resolvePath('ts/7-runtime/node_modules'),
+          Path.join(directory, 'node_modules'),
+          'dir',
+        )
+      },
+    },
+  }
+  await Runtime.prepareRuntime(runtimeOptions)
   const compile: typeof compileApp = (input, options, timings) => compileApp(input, { ...options, app }, timings)
   if (await discoverProject(path)) {
     return await openProjectWorkspace(path, {

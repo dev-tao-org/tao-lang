@@ -1,0 +1,90 @@
+import { Try } from '@shared'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import { prepareManagedModules } from '../sidecars/ManagedModules'
+import type { BunExecutor } from '../sidecars/ManagedModuleTypes'
+
+Tests.test('rejects duplicate versions of an implicitly detected native package', async () => {
+  await withTemporaryDirectory(async directory => {
+    await Tests.rejects(
+      prepareManagedModules(input(directory), nativeGraphExecutor),
+      /incompatible singleton native-fixture.*1\.0\.0.*2\.0\.0/,
+    )
+  })
+})
+
+function input(directory: string) {
+  return {
+    directory,
+    modules: [
+      {
+        directory: Path.join(directory, 'ModuleA'),
+        requirements: [{ name: 'wrapper-a', version: '1.0.0', origin: 'A.tao' }],
+      },
+      {
+        directory: Path.join(directory, 'ModuleB'),
+        requirements: [{ name: 'wrapper-b', version: '1.0.0', origin: 'B.tao' }],
+      },
+    ],
+    target: 'browser',
+    runtimePins: {},
+    bunVersion: '1.2.0',
+  }
+}
+
+const nativeGraphExecutor: BunExecutor = async (_command, args, directory) => {
+  if (args[0] === '--version') {
+    return { status: 0, stdout: '1.2.0\n', stderr: '' }
+  }
+  const dependencies = { 'wrapper-a': '1.0.0', 'wrapper-b': '1.0.0' }
+  await writeLock(directory, dependencies)
+  await writePackage(directory, 'wrapper-a', '1.0.0', { 'native-fixture': '^1.0.0' })
+  await writePackage(directory, 'wrapper-b', '1.0.0', { 'native-fixture': '^2.0.0' })
+  await writeNativePackage(Path.join(directory, 'node_modules', 'wrapper-a', 'node_modules'), '1.0.0')
+  await writeNativePackage(Path.join(directory, 'node_modules', 'wrapper-b', 'node_modules'), '2.0.0')
+  return { status: 0, stdout: '', stderr: '' }
+}
+
+async function writeLock(root: string, dependencies: Record<string, string>): Promise<void> {
+  const packages = Object.fromEntries(
+    Object.entries(dependencies).map(([name, version]) => [
+      name,
+      [`${name}@${version}`, '', {}, `sha512-${name}`],
+    ]),
+  )
+  await FileSystem.writeFile(
+    Path.join(root, 'bun.lock'),
+    JSON.stringify({
+      lockfileVersion: 1,
+      workspaces: { '': { dependencies } },
+      packages,
+    }),
+  )
+}
+
+async function writePackage(
+  root: string,
+  name: string,
+  version: string,
+  dependencies: Record<string, string>,
+): Promise<void> {
+  const directory = Path.join(root, 'node_modules', name)
+  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
+}
+
+async function writeNativePackage(root: string, version: string): Promise<void> {
+  const directory = Path.join(root, 'native-fixture')
+  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.writeFile(
+    Path.join(directory, 'package.json'),
+    JSON.stringify({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
+  )
+}
+
+async function withTemporaryDirectory(action: (directory: string) => Promise<void>): Promise<void> {
+  const directory = Artifacts.resolvePath('tmp', `native-singleton-${Platform.randomUUID()}`)
+  await FileSystem.mkdir(directory, { recursive: true })
+  await Try(() => action(directory), {
+    finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
+  })
+}

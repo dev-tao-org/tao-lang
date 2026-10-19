@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Errors, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Http, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
@@ -40,6 +40,7 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
       })
       workspaceHandles.push(workspace)
       await verifyCompiledSidecar(workspace, entry, ui, published)
+      await verifyRuntimeConflictPreservesPreview(workspace, entry, ui, published)
       await verifyLastGoodSurvivesDrift(workspace, entry, ui, published)
       await workspace.dispose()
       workspaceHandles.length = 0
@@ -279,6 +280,30 @@ async function verifyLastGoodSurvivesDrift(
   Tests.expect(driftFailure.status).toBe('failed')
   Tests.expect(workspace.lastGoodRevision).toBe(repaired)
   Tests.expect(published).toHaveLength(publishedCount)
+}
+
+async function verifyRuntimeConflictPreservesPreview(
+  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  entry: string,
+  ui: string,
+  published: string[],
+): Promise<void> {
+  const path = Path.join(ui, '@ui/Widget.tao')
+  const source = await FileSystem.readFile(path, 'utf8')
+  const lastGood = workspace.lastGoodRevision
+  const publishedCount = published.length
+  await FileSystem.writeFile(path, `${source}\nrequires npm:react version 1.0.0\n`)
+  await Tests.rejects(
+    prepareProject(entry, {
+      runtimePins,
+      executor: async () => Errors.ThrowUnexpected('A runtime conflict must fail before invoking Bun.'),
+    }),
+    /incompatible versions of react/,
+  )
+  Tests.expect((await workspace.files.openFile(entry)).status).toBe('failed')
+  Tests.expect(workspace.lastGoodRevision).toBe(lastGood)
+  Tests.expect(published).toHaveLength(publishedCount)
+  await FileSystem.writeFile(path, source)
 }
 
 type PackageArtifact = { bytes: Http.Bytes; integrity: string }
