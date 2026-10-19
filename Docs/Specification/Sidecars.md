@@ -43,6 +43,10 @@ Tao rejects conflicting direct versions, incompatible peers, and duplicate frame
 packages that require one canonical installation; ordinary private transitive versions are allowed.
 Use `tao test-sidecars @calendar` to run a prepared local module's tests with Tao's pinned Bun.
 
+Installed package trees belong to the host OS and architecture that prepared them. On another
+host, compilation requests preparation; preparation rebuilds the installed tree from the same
+durable lock without changing the pinned dependency graph.
+
 Named sessions in one app reuse its dependency graph. A live external module directory currently
 has one consumer's editor configuration: preparing it for a different consumer fails with an
 ownership diagnostic instead of replacing the first consumer's links. Separate source directories

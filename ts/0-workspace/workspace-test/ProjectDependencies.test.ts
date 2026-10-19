@@ -1,8 +1,30 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as Stdlib from '@stdlib/Stdlib'
+import { projectDependencyOptions } from '../workspace-src/dependencies/Options'
 import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
 import { ProjectDependencies } from '../workspace-src/ProjectDependencies'
+
+Tests.test('the standard project is implicit, locked, and observed like other bundled projects', async () => {
+  const root = Artifacts.resolvePath('tmp', `implicit-standard-project-${Platform.randomUUID()}`)
+  await Try(async () => {
+    await createProject(root)
+    const options = await projectDependencyOptions(root)
+    const requirements = await options.readRequirements(root)
+    Tests.expect(requirements).toEqual([{ provider: 'bundled', identifier: 'tao', version: 'bundled' }])
+    const lock = await prepareDependencies(root, requirements, options)
+    const standardProject = await Stdlib.projectDirectory()
+    Tests.expect(lock.sources['bundled:tao']?.location).toBe(standardProject)
+    const dependencies = new ProjectDependencies(root, options)
+    await dependencies.refresh()
+    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'tao'))
+      .toEqual({ root: standardProject })
+    Tests.expect(dependencies.sourceDirectories()).toContain(standardProject)
+    await FileSystem.writeFile(Path.join(root, 'Dependencies.tao'), 'requires file:../unrelated as tao')
+    await Tests.rejects(options.readRequirements(root), /alias tao belongs to the bundled Tao project/)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test('active dependency graphs require restart when authored requirements change', async () => {
   const root = Artifacts.resolvePath('tmp', `project-dependencies-${Platform.randomUUID()}`)

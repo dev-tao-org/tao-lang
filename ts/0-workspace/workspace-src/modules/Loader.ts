@@ -8,11 +8,9 @@ import { directSourceFiles } from './Catalog'
 import { nearestProjectRoot, realPathInsideProject, within } from './Paths'
 import { bareTargets, importTargets } from './Resolver'
 
-/** ModuleLoadOptions supplies the project fallback and the immutable stdlib source catalog. */
+/** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
   directory?: string
-  stdlibSources: ReadonlyMap<string, string>
-  stdlibDirectory?: string
   resolveProject?: (importer: string, alias: string) => Promise<{ root: string } | undefined>
 }
 

@@ -46,7 +46,7 @@ export class ProjectDependencies {
 
   /** sourceDirectories lists live dependency roots for workspace observation. */
   sourceDirectories(): string[] {
-    return Object.values(this.current.sources).filter(source => source.provider === 'file').map(source =>
+    return Object.values(this.current.sources).filter(source => source.provider !== 'github').map(source =>
       source.location
     )
   }

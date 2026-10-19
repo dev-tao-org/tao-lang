@@ -80,7 +80,11 @@ function compareGroups(left: Group, right: Group): number {
 }
 
 function sourceRank(source: string): number {
-  return source === '' ? 0 : source.startsWith('@') ? 1 : 2
+  return source === '' ? 0 : isExternalProjectAlias(source) ? 1 : 2
+}
+
+function isExternalProjectAlias(source: string): boolean {
+  return source.startsWith('@') || /^[A-Za-z0-9_-]+@/.test(source)
 }
 
 function compareText(left: string, right: string): number {

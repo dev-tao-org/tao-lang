@@ -5,7 +5,7 @@ such as collecting imports, before formatting the result. Formatting runs on doc
 are explicitly requested rather than applied on every save.
 
 ```tao
-use Text, Col from @tao/ui
+use Text, Col from tao@ui
 
 public view Greeting(Title text, Subtitle text) {
 render Col { Text(Title) Text(Subtitle) }
@@ -15,7 +15,7 @@ render Col { Text(Title) Text(Subtitle) }
 Formatting places visibility on its own line, indents bodies, and normalizes spaces and line breaks:
 
 ```tao
-use Text, Col from @tao/ui
+use Text, Col from tao@ui
 
 public
 view Greeting(Title text, Subtitle text) {
@@ -69,13 +69,13 @@ from @example/ui
 Fixing can combine compatible imports, remove exact duplicates, and sort selected names and sources:
 
 ```tao
-use Text from @tao/ui
-use Col from @tao/ui
-use Text from @tao/ui
+use Text from tao@ui
+use Col from tao@ui
+use Text from tao@ui
 ```
 
 ```tao
-use Col, Text from @tao/ui
+use Col, Text from tao@ui
 ```
 
 Aliases remain aliases. Comments travel with their imports, and comment-separated groups are kept
@@ -87,7 +87,7 @@ shadowing, qualified names and explicit native captures. Wildcard imports receiv
 warnings, and declarations visible to other files are not declared unused from a single-file check.
 
 ```tao
-use Text, Col from @tao/ui
+use Text, Col from tao@ui
 
 app Example { root Main }
 view Main { render Text("Hello") }

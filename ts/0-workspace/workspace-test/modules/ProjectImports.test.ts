@@ -71,7 +71,6 @@ async function loadProjectImportGraph(consumer: string, producer: string, icons:
     parseEntry(entryPath, 'use Card from widgets@ui/controls\napp Main { root Card }'),
     {
       directory: consumer,
-      stdlibSources: new Map(),
       resolveProject: projectResolver(consumer, producer, icons).resolveProject,
     },
     createParser(),
@@ -113,40 +112,57 @@ function assertProjectImportGraph(
   Tests.expect(byPath.get(paths.card)!.imports[1]!.targets).toEqual([{ path: paths.label, relation: 'public' }])
 }
 
-Tests.test('tao project imports resolve through the bundled stdlib and legacy paths remain valid', async () => {
+Tests.test('the implicit tao alias resolves standard library modules from an ordinary project', async () => {
   const root = await createProject('stdlib-import')
   await Try(async () => {
     const standardRoot = Path.join(root, 'stdlib')
-    const sourcePath = Path.join(standardRoot, '@tao', 'ui', 'Views.tao')
+    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
+    const sourcePath = Path.join(standardRoot, '@ui', 'Views.tao')
     await writeSource(sourcePath, 'view Text { render Text("Text") }')
-    const virtualPath = Path.join(root, 'virtual', '@tao', 'ui', 'Views.tao')
     const entryPath = Path.join(root, 'Main.tao')
     const modules = await loadModules(
-      parseEntry(
-        entryPath,
-        'use all from tao@ui\nuse all from @tao/ui\nuse all from core@ui\napp Main { root Root }',
-      ),
+      parseEntry(entryPath, 'use all from tao@ui\napp Main { root Root }'),
       {
         directory: root,
-        stdlibDirectory: standardRoot,
-        stdlibSources: new Map([[virtualPath, 'view Text { render Text("Old") }']]),
         resolveProject: async (_importer, alias) =>
-          alias === 'core'
-            ? { root: Path.join(standardRoot, '@tao') }
+          alias === 'tao'
+            ? { root: standardRoot }
             : undefined,
       },
       createParser(),
       new Timings('project-import-test'),
     )
 
-    Tests.expect(modules.filter(module => module.path === virtualPath)).toHaveLength(1)
+    Tests.expect(modules.filter(module => module.path === sourcePath)).toHaveLength(1)
     Tests.expect(modules[0]!.imports.map(imported => imported.targets)).toEqual([
-      [{ path: virtualPath, relation: 'public' }],
-      [{ path: virtualPath, relation: 'public' }],
-      [{ path: virtualPath, relation: 'public' }],
+      [{ path: sourcePath, relation: 'public' }],
     ])
     Tests.expect((modules[1]!.document.root.declarations[0] as AST.ViewDeclaration).name.value).toBe('Text')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('aliased project imports reject missing physical modules', async () => {
+  const consumer = await createProject('missing-consumer')
+  const producer = await createProject('missing-producer')
+  await Try(async () => {
+    await Tests.rejects(
+      loadModules(
+        parseEntry(Path.join(consumer, 'Main.tao'), 'use all from tao@missing\napp Main { root Root }'),
+        {
+          directory: consumer,
+          resolveProject: async (_importer, alias) => alias === 'tao' ? { root: producer } : undefined,
+        },
+        createParser(),
+        new Timings('project-import-test'),
+      ),
+      /Project module tao@missing was not found/,
+    )
+  }, {
+    async finally() {
+      await FileSystem.rm(consumer, { recursive: true, force: true })
+      await FileSystem.rm(producer, { recursive: true, force: true })
+    },
+  })
 })
 
 async function createProject(name: string): Promise<string> {

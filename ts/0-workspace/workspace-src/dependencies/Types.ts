@@ -41,6 +41,6 @@ export type DependencyStoreOptions = {
   storeRoot?: string
   readRequirements(root: string): Promise<DependencyRequirement[]>
   git: GitSourceAdapter
-  bundledRoot?: string
+  bundledProjects?: Readonly<Record<string, string>>
   acquireLock?: (path: string) => Promise<{ release(): void } | undefined>
 }

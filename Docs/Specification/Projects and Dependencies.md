@@ -8,7 +8,7 @@ tao prepare ./Calendar/Calendar.tao --yes
 ```
 
 `tao init <directory>` creates `.tao/` and a stable project identity. It rejects an already
-initialized ancestor or a nested `.tao/` project found beneath the requested directory. The scan
+initialized ancestor, including across Git boundaries, or a nested `.tao/` project found beneath the requested directory. The scan
 does not follow directory symlinks and skips known dependency and repository directories, including
 `node_modules`, `Pods`, `.git`, and `.gradle`. Project discovery walks upward from the requested file or directory and stops at a
 Git repository boundary. Tao commands accept paths from the caller's current directory and resolve
@@ -48,6 +48,21 @@ Local `@module` imports discover named folders within the owning project, includ
 ordinary subfolders. A dependency alias searches the dependency's project in the same way. Duplicate
 module names are an error. Relative imports cannot cross a named module boundary. Tao checks
 declaration visibility: importing another project exposes its public declarations.
+
+The built-in `tao` alias supplies standard-library views without a dependency declaration:
+
+```tao
+use Text, Row, Col, Input from tao@ui
+```
+
+These are the currently implemented standard UI views. The standard library is itself a Tao
+project with an ordinary `@ui` module. Tao supplies its bundled project as the `tao` dependency
+automatically; another project cannot reuse that alias. The standard project follows the same
+module discovery and visibility rules as other dependencies.
+
+During source development, imports read the live standard-library project and watched previews
+observe its source edits. A packaged CLI materializes its embedded standard project in Tao's
+versioned cache before resolving it through the same project mechanism.
 
 The durable source lock belongs to the project whose requirements it records. It also references
 the exact npm graphs retained under `.tao/store/npm/`. Routine compilation

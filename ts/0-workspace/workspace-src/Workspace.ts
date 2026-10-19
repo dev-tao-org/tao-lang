@@ -4,7 +4,7 @@ import { compile } from '@compile/Compile'
 import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample } from '@shared'
-import { Path } from '@shared/os'
+import { Path, WorkspaceWatch } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
 import type { LinkedProgram } from '@typecheck/Modules'
@@ -112,11 +112,18 @@ class WorkspaceSession {
     this.files = new FileManager({
       directory: this.directory,
       outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
-      watchDirectories: [...Stdlib.directory ? [Stdlib.directory] : [], ...options.watchDirectories ?? []],
+      watchDirectories: options.watchDirectories,
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
-      watch: options.watch,
+      watch: async (root, change, error, ignored, additional) =>
+        await (options.watch ?? WorkspaceWatch.watchWorkspace)(
+          root,
+          change,
+          error,
+          ignored,
+          [...new Set([await Stdlib.projectDirectory(), ...additional ?? []])],
+        ),
       schedule: options.schedule,
     })
   }
@@ -196,9 +203,7 @@ class WorkspaceSession {
       { path: request.path ?? '<memory>', document },
       {
         directory: this.directory,
-        stdlibDirectory: Stdlib.directory,
-        stdlibSources: Stdlib.sources,
-        resolveProject: this.options.resolveProject,
+        resolveProject: (importer, alias) => this.resolveProject(importer, alias),
       },
       this.parser,
       request.timings,
@@ -213,6 +218,12 @@ class WorkspaceSession {
     )
     progress?.('App code generation complete.')
     return code
+  }
+
+  private async resolveProject(importer: string, alias: string): Promise<{ root: string } | undefined> {
+    return alias === 'tao'
+      ? { root: await Stdlib.projectDirectory() }
+      : await this.options.resolveProject?.(importer, alias)
   }
 
   private async publish(output: CompiledApp, isCurrent: () => boolean, timings: Timings): Promise<void> {

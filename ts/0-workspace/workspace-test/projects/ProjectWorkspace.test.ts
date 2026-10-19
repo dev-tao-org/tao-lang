@@ -1,6 +1,8 @@
 import * as Runtime from '@runtime/Runtime'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import { projectDependencyOptions } from '../../workspace-src/dependencies/Options'
+import { prepareDependencies } from '../../workspace-src/dependencies/Store'
 import { initializeProject } from '../../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../../workspace-src/ProjectWorkspace'
 
@@ -40,6 +42,8 @@ async function createProjectEntry(root: string): Promise<string> {
     entry,
     'use Text from tao@ui\napp Main { root Greeting }\nview Greeting { render Text("Hi") }',
   )
+  const dependencies = await projectDependencyOptions(root)
+  await prepareDependencies(root, await dependencies.readRequirements(root), dependencies)
   return entry
 }
 

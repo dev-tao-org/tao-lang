@@ -1,6 +1,9 @@
 import { formatTimings, IO } from '@cli-kit'
+import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings } from '@shared'
-import { Platform, Tests } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { projectDependencyOptions } from '@workspace/dependencies/Options'
+import { prepareDependencies } from '@workspace/dependencies/Store'
 import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
@@ -77,13 +80,27 @@ async function runPreview(initialSource?: string) {
   await prepareRuntime()
   const { createProject } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
-  const { Artifacts } = await import('@shared/os')
   const project = await createProject()
+  const dependencies = await projectDependencyOptions(project.directory)
+  await prepareDependencies(project.directory, await dependencies.readRequirements(project.directory), dependencies)
+  const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
+  await Runtime.prepareRuntime({
+    ...runtimeOptions,
+    install: {
+      async install(directory) {
+        await FileSystem.symlink(
+          Repo.resolvePath('ts/7-runtime/node_modules'),
+          Path.join(directory, 'node_modules'),
+          'dir',
+        )
+      },
+    },
+  })
   const result = await previewPerformance({
     project,
     workspace: await openProjectWorkspace(project.directory, {
       id: 'performance',
-      runtimeOptions: { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') },
+      runtimeOptions,
     }),
     initialSource: initialSource ?? await Tests.readApp('Hello World'),
   })

@@ -32,7 +32,7 @@ export async function openProjectWorkspace(
     session.release()
   }
   return await Try(async () => {
-    const dependencies = new ProjectDependencies(project.root, projectDependencyOptions(project.root))
+    const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
     await dependencies.refresh()
     return managedWorkspace(project.root, session.directory, dependencies, options, release)
   }, {

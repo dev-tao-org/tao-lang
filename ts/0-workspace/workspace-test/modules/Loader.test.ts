@@ -17,7 +17,7 @@ Tests.test('loads direct directory imports from a virtual entry and records disc
     const timings = new Timings('module-loader-test')
     const sources = await loadModules(
       parseEntry(Path.join(root, 'Main.virtual.tao'), `use all from ./views\nuse all from ./empty\n${app('Main')}`),
-      { directory: root, stdlibSources: new Map() },
+      { directory: root },
       createParser(),
       timings,
     )
@@ -42,7 +42,7 @@ Tests.test('resolves a named package recursively and reports its import ownershi
     await FileSystem.writeFile(nestedProjectCard, view('Nested'))
     const sources = await loadModules(
       parseEntry(Path.join(root, 'Main.tao'), `use all from @parts\n${app('Main')}`),
-      { directory: root, stdlibSources: new Map() },
+      { directory: root },
       createParser(),
       new Timings('module-loader-test'),
     )
@@ -53,27 +53,26 @@ Tests.test('resolves a named package recursively and reports its import ownershi
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('keeps stdlib directory sources public and reads physical text on every load', async () => {
+Tests.test('loads standard library modules from an ordinary aliased Tao project', async () => {
   const root = await createProject()
   await Try(async () => {
     const standardRoot = Path.join(root, 'standard')
-    const standardPath = Path.join(standardRoot, '@tao', 'ui', 'Views.tao')
+    const standardPath = Path.join(standardRoot, '@ui', 'Views.tao')
+    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
     await FileSystem.mkdir(Path.dirname(standardPath), { recursive: true })
     await FileSystem.writeFile(standardPath, view('Actual'))
-    const virtualPath = Path.join(root, 'virtual-stdlib', '@tao', 'ui', 'Views.tao')
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use all from @tao/ui\n${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use all from tao@ui\n${app('Main')}`),
       {
         directory: root,
-        stdlibDirectory: standardRoot,
-        stdlibSources: new Map([[virtualPath, view('Outdated')]]),
+        resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
       },
       createParser(),
       new Timings('module-loader-test'),
     )
 
-    Tests.expect(sources.map(source => source.path)).toContain(virtualPath)
-    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: virtualPath, relation: 'public' }])
+    Tests.expect(sources.map(source => source.path)).toContain(standardPath)
+    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: standardPath, relation: 'public' }])
     Tests.expect(sources[1]!.document.root.declarations[0]!.kind).toBe('ViewDeclaration')
     Tests.expect((sources[1]!.document.root.declarations[0] as AST.ViewDeclaration).name.value).toBe('Actual')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -92,7 +91,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
     await Tests.rejects(
       loadModules(
         parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao\n${app('Main')}`),
-        { directory: projectRoot, stdlibSources: new Map() },
+        { directory: projectRoot },
         createParser(),
         new Timings('module-loader-test'),
       ),
@@ -104,14 +103,17 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
 Tests.test('loads the real module journey without adopting an unrelated workspace directory', async () => {
   const unrelatedWorkspace = await createProject()
   const entryPath = Repo.resolvePath('Apps/Tests/Modules/Modules.tao')
-  const virtualStdlib = Path.join(unrelatedWorkspace, 'virtual-stdlib/@tao/ui/Views.tao')
+  const standardRoot = Path.join(unrelatedWorkspace, 'standard-library')
+  const standardView = Path.join(standardRoot, '@ui', 'Views.tao')
   await Try(async () => {
+    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
+    await writeSources(standardView, 'public view Text { render Text("Text") }\npublic view Col { render Col {} }')
     const source = await FileSystem.readFile(entryPath, 'utf8')
     const modules = await loadModules(
       parseEntry(entryPath, source),
       {
         directory: unrelatedWorkspace,
-        stdlibSources: new Map([[virtualStdlib, 'public view Text { render Text("Text") }']]),
+        resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
       },
       createParser(),
       new Timings('module-loader-test'),
@@ -123,7 +125,7 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
       'Public/Caption.tao',
       '@cards/Card.tao',
       '@cards/Data/Caption.tao',
-      Path.relative(Path.dirname(entryPath), virtualStdlib),
+      Path.relative(Path.dirname(entryPath), standardView),
     ].sort())
   }, { finally: () => FileSystem.rm(unrelatedWorkspace, { recursive: true, force: true }) })
 })
@@ -132,6 +134,11 @@ async function createProject(): Promise<string> {
   const root = Artifacts.resolvePath('tmp', `module-loader-${Platform.randomUUID()}`)
   await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
   return root
+}
+
+async function writeSources(path: string, source: string): Promise<void> {
+  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.writeFile(path, source)
 }
 
 function parseEntry(path: string, source: string): { path: string; document: AST.Document } {

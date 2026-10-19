@@ -7,17 +7,19 @@ import { format } from '../fix-src/Format'
 
 Tests.test('import organization collects, sorts, merges and deduplicates without removing unused names', () => {
   const source = S`
-    use Text from @tao/ui
+    use Text from tao@ui
     view Main { render Text("Hello") }
-    use Col, Text from @tao/ui
-    use Text as Caption from @tao/ui
-    use package @tao/ui as UI
+    use Col, Text from tao@ui
+    use Text as Caption from tao@ui
+    use package tao@ui as UI
+    use Widget from widgets@ui
     use all from ./Other
   `
   const result = fixed(source)
   Tests.expect(result).toBe(S`
-    use Col, Text, Text as Caption from @tao/ui
-    use package @tao/ui as UI
+    use Col, Text, Text as Caption from tao@ui
+    use package tao@ui as UI
+    use Widget from widgets@ui
     use all from ./Other
 
     view Main {
@@ -29,15 +31,15 @@ Tests.test('import organization collects, sorts, merges and deduplicates without
 
 Tests.test('organizing imports keeps comments and their groups attached, including trailing comments', () => {
   const source = S`
-    use Row from @tao/ui
+    use Row from tao@ui
     // Native views
-    use Text from @tao/ui // Used by Main
-    use Col from @tao/ui
+    use Text from tao@ui // Used by Main
+    use Col from tao@ui
     view Main { render Text("Hello") }
   `
   const result = fixed(source)
-  Tests.expect(result).toContain('// Native views\nuse Text from @tao/ui // Used by Main\n')
-  Tests.expect(result).toContain('use Col from @tao/ui')
+  Tests.expect(result).toContain('// Native views\nuse Text from tao@ui // Used by Main\n')
+  Tests.expect(result).toContain('use Col from tao@ui')
   Tests.expect(fixed(result)).toBe(result)
 })
 

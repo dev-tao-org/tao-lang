@@ -1,4 +1,4 @@
-use Text, Col from @tao/ui
+use Text, Col from tao@ui
 use Card as ImportedCard from @cards
 use package @cards as Cards
 use all from ./Public

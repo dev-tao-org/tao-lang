@@ -211,7 +211,7 @@ async function linkedUIProgram(
   entryPath: string,
   document: AST.Document,
 ): Promise<ReturnType<typeof linkModules>> {
-  const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@tao/ui/Views.tao')
+  const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@ui/Views.tao')
   const uiSource = await FileSystem.readFile(uiPath, 'utf8')
   const uiDocument = transform(createParser().parse(uiSource).tree)!
   const modulesPath = Path.join(Path.dirname(entryPath), 'Modules.tao')
@@ -222,7 +222,7 @@ async function linkedUIProgram(
     .filter((node): node is ResolvedImport['statement'] => AST.IsUseStatement(node) || AST.IsUsePackageStatement(node))
     .map(statement => {
       const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
-      const isUI = from === '@tao/ui'
+      const isUI = from === 'tao@ui'
       return {
         statement,
         targets: [{ path: isUI ? uiPath : modulesPath, relation: isUI ? 'public' : 'same-directory' }],

@@ -7,7 +7,7 @@ It also supports detached, in-memory drafts for preparing creates and updates; a
 This document proposes future language behavior; these examples are not yet executable.
 
 ```tao
-use Button, Col, Text, TextInput from @tao/ui
+use Button, Col, Text, TextInput from tao@ui
 
 data Items / Item {
    Name text,

@@ -39,7 +39,10 @@ const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async
     const path = Repo.resolvePath('Apps/Tests/Hello World.tao')
     const sources = await loadModules(
       { path, document },
-      { stdlibDirectory: Stdlib.directory, stdlibSources: Stdlib.sources },
+      {
+        resolveProject: async (_importer, alias) =>
+          alias === 'tao' ? { root: await Stdlib.projectDirectory() } : undefined,
+      },
       parser,
       timings,
     )

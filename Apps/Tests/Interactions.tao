@@ -1,4 +1,4 @@
-use Col, Input from @tao/ui
+use Col, Input from tao@ui
 
 app Interactions {
   root Form

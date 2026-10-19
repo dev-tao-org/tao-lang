@@ -1,7 +1,7 @@
 // Standard views are ordinary imported Tao declarations.
-use all from @tao/ui
-use Text as Caption from @tao/ui
-use package @tao/ui as UI
+use all from tao@ui
+use Text as Caption from tao@ui
+use package tao@ui as UI
 use ModuleCaption
 use ModuleCaption as ImportedCaption from ./Modules
 

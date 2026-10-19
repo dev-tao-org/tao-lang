@@ -20,7 +20,7 @@ export async function formatterPerformance() {
     },
     {
       scenario: '500-views',
-      source: 'use Text from @tao/ui\nuse Col from @tao/ui\n'
+      source: 'use Text from tao@ui\nuse Col from tao@ui\n'
         + Array.from(
           { length: 500 },
           (_, index) => `view Example${index}(Title text, Subtitle text) { render Col { Text(Title) Text(Subtitle) } }`,

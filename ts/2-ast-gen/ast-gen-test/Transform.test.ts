@@ -74,8 +74,8 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   const source = S`
     use Name, Other as Alias from ./views/common
     use Standalone
-    use all from @tao/ui
-    use package @tao/ui as UI
+    use all from tao@ui
+    use package tao@ui as UI
     file app Demo { root UI . Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
     public let Value is UI.Text = UI.Default
@@ -105,7 +105,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   Tests.expect(result?.root.declarations[2]).toMatchObject({ kind: 'UseStatement', all: true })
   Tests.expect(result?.root.declarations[3]).toMatchObject({
     kind: 'UsePackageStatement',
-    from: { value: '@tao/ui' },
+    from: { value: 'tao@ui' },
     alias: { value: 'UI' },
   })
   Tests.expect(result?.root.declarations[4]).toMatchObject({

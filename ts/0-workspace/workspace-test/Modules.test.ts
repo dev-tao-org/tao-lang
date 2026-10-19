@@ -47,7 +47,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 }
 
 function card(value: string): string {
-  return `use Text from @tao/ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
+  return `use Text from tao@ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
 }
 
 async function changeDependency(

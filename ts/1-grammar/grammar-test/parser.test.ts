@@ -52,8 +52,8 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
   const source = S`
     use Name, Other as Alias from ./views/common
     use Standalone
-    use all from @tao/ui
-    use package @tao/ui as UI
+    use all from tao@ui
+    use package tao@ui as UI
     file app Demo { root UI.Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
     public let Value is UI.Text = UI.Default

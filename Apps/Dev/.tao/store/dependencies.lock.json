@@ -1,7 +1,18 @@
 {
   "version": 1,
-  "roots": {},
-  "sources": {},
+  "roots": {
+    "tao": "bundled:tao@bundled"
+  },
+  "sources": {
+    "bundled:tao": {
+      "identity": "bundled:tao",
+      "provider": "bundled",
+      "identifier": "tao",
+      "version": "bundled",
+      "location": "../../ts/stdlib/stdlib-src",
+      "requirements": []
+    }
+  },
   "npmGraphs": {
     "Kitchen Sink/Kitchen Sink.tao": {
       "fingerprint": "961dd31160e3f0f69719d8c28f29b5d4962781b89e3c9e545f701f9fab3ea995",

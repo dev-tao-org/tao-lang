@@ -13,7 +13,7 @@ export type ModuleTarget = {
   projectRoot?: string
 }
 
-/** ModuleResolutionContext contains the project boundary and configured standard library. */
+/** ModuleResolutionContext contains the owning project boundary and dependency resolver. */
 export type ModuleResolutionContext = { projectRoot: string; options: ModuleLoadOptions }
 
 /** importTargets resolves one authored module path to its source candidates. */
@@ -23,16 +23,13 @@ export async function importTargets(
   physicalImporter: string | undefined,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
-  if (specifier.startsWith('@tao/')) {
-    return await resolveStdlibImport(specifier, context.options)
-  }
   const importedProject = projectImport(specifier)
   if (importedProject) {
     return await projectModuleTargets(importedProject, specifier, importer, context)
   }
   if (specifier.startsWith('@')) {
     const [name, ...parts] = specifier.split('/')
-    if (!/^@[A-Za-z_][\w.-]*$/.test(name!) || name === '@tao') {
+    if (!/^@[A-Za-z_][\w.-]*$/.test(name!)) {
       Errors.ThrowUserInput(`Invalid module path ${specifier}.`)
     }
     return await namedTargets(name!, parts, importer, physicalImporter, context)
@@ -46,17 +43,9 @@ async function projectModuleTargets(
   importer: string,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
-  if (imported.alias === 'tao') {
-    const modulePath = `@tao/${imported.module}${imported.parts.length ? `/${imported.parts.join('/')}` : ''}`
-    return await resolveStdlibImport(modulePath, context.options)
-  }
   const dependency = await context.options.resolveProject?.(importer, imported.alias)
   if (!dependency) {
     Errors.ThrowUserInput(`Project dependency ${imported.alias} is not available while resolving ${specifier}.`)
-  }
-  if (isBundledStdlibRoot(dependency.root, context.options.stdlibDirectory)) {
-    const modulePath = `@tao/${imported.module}${imported.parts.length ? `/${imported.parts.join('/')}` : ''}`
-    return await resolveStdlibImport(modulePath, context.options)
   }
   const projectRoot = canonicalProjectRoot(dependency.root)
   if (!projectRoot) {
@@ -83,15 +72,6 @@ async function projectModuleTargets(
     ? await recursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
     : await directSourceFiles(targetDirectory, projectRoot)
   return files.map(path => ({ path, relation: 'public', projectRoot }))
-}
-
-function isBundledStdlibRoot(root: string, stdlibDirectory: string | undefined): boolean {
-  if (!stdlibDirectory) {
-    return false
-  }
-  const bundledRoot = Try.WithDefault(undefined, () => FileSystem.realpathSync(Path.resolve(stdlibDirectory, '@tao')))
-  const dependencyRoot = Try.WithDefault(undefined, () => FileSystem.realpathSync(root))
-  return bundledRoot !== undefined && dependencyRoot === bundledRoot
 }
 
 async function relativeTargets(
@@ -126,14 +106,6 @@ async function relativeTargets(
     }
   }
   return files.map(path => ({ path, relation: relationFor(importer, path, context.projectRoot) }))
-}
-
-async function resolveStdlibImport(specifier: string, options: ModuleLoadOptions): Promise<ModuleTarget[]> {
-  const resolved = await stdlibTargets(specifier, options)
-  if (resolved.targets.length === 0 && !resolved.exists) {
-    Errors.ThrowUserInput(`Cannot resolve standard library module ${specifier}.`)
-  }
-  return resolved.targets.map(target => ({ ...target, relation: 'public' }))
 }
 
 /** bareTargets resolves unqualified use declarations against the direct folder or named package. */
@@ -205,71 +177,4 @@ async function directImportFiles(target: string, projectRoot: string): Promise<s
     return [file]
   }
   return target.endsWith('.tao') ? [] : await directSourceFiles(target, projectRoot)
-}
-
-async function stdlibTargets(
-  specifier: string,
-  options: ModuleLoadOptions,
-): Promise<{ exists: boolean; targets: Array<{ path: string; source: string }> }> {
-  const relative = specifier.slice('@tao/'.length)
-  const files = [...options.stdlibSources.keys()]
-  const directorySuffix = `/@tao/${relative}`
-  const exactSuffix = relative.endsWith('.tao') ? relative : `${relative}.tao`
-  const authoredRoot = options.stdlibDirectory
-  const authoredAvailable = authoredRoot && isDirectory(authoredRoot)
-  let paths: string[]
-  let exists = false
-  if (authoredAvailable) {
-    const physicalTarget = Path.resolve(authoredRoot, '@tao', relative)
-    exists = await FileSystem.exists(physicalTarget)
-    if (!isStdlibTarget(authoredRoot, physicalTarget, exists)) {
-      return { exists: false, targets: [] }
-    }
-    const directory = Try.WithDefault(false, () => FileSystem.statSync(physicalTarget).isDirectory())
-    paths = directory
-      ? files.filter(path => Path.dirname(path).endsWith(directorySuffix))
-      : files.filter(path => path.endsWith(`/@tao/${exactSuffix}`))
-  } else {
-    const directoryFiles = relative.endsWith('.tao')
-      ? []
-      : files.filter(path => Path.dirname(path).endsWith(directorySuffix))
-    paths = directoryFiles.length > 0
-      ? directoryFiles
-      : files.filter(path => path.endsWith(`/@tao/${exactSuffix}`))
-    exists = paths.length > 0
-  }
-  const targets = await Promise.all(paths.map(async path => {
-    const physical = physicalFileFor(path, options)
-    if (authoredAvailable && (!physical || !await FileSystem.exists(physical))) {
-      Errors.ThrowUserInput(`Standard library source is missing from ${authoredRoot}: ${path}.`)
-    }
-    const source = physical && await FileSystem.exists(physical)
-      ? await FileSystem.readFile(physical, 'utf8')
-      : options.stdlibSources.get(path)!
-    return { path, source }
-  }))
-  return { exists, targets }
-}
-
-function isDirectory(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.statSync(path).isDirectory())
-}
-
-function isStdlibTarget(root: string, target: string, exists: boolean): boolean {
-  const packageRoot = Path.resolve(root, '@tao')
-  return exists && within(packageRoot, target)
-    && realPathInsideDirectory(packageRoot, root) && realPathInsideDirectory(target, packageRoot)
-}
-
-function physicalFileFor(sourcePath: string, options: ModuleLoadOptions): string | undefined {
-  const root = options.stdlibDirectory
-  const marker = '/@tao/'
-  const index = sourcePath.lastIndexOf(marker)
-  return root && index >= 0 ? Path.resolve(root, '@tao', sourcePath.slice(index + marker.length)) : undefined
-}
-
-function realPathInsideDirectory(path: string, root: string): boolean {
-  const realPath = Try.WithDefault(undefined, () => FileSystem.realpathSync(path))
-  const realRoot = Try.WithDefault(undefined, () => FileSystem.realpathSync(root))
-  return realPath !== undefined && realRoot !== undefined && within(realRoot, realPath)
 }

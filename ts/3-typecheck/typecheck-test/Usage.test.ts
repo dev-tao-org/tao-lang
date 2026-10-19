@@ -6,8 +6,8 @@ import { unusedWarnings } from '../typecheck-src/Usage'
 
 Tests.test('unused warnings follow lexical bindings, captures and namespace uses without treating exports as unused', () => {
   const source = S`
-    use Text, Col, Text as Caption from @tao/ui
-    use package @tao/ui as UI
+    use Text, Col, Text as Caption from tao@ui
+    use package tao@ui as UI
     use package @tao/other as Other
     use package @tao/widgets
     use all from ./UnusedWildcard
@@ -46,7 +46,7 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
 
 Tests.test('qualified namespace use ignores an ordinary local binding with the same head', () => {
   const source = S`
-    use package @tao/ui as UI
+    use package tao@ui as UI
     app Demo { root Main }
     view Main {
       let UI = "unused"

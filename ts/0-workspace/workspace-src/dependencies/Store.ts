@@ -50,14 +50,16 @@ export async function readPreparedDependencies(
     preparationNeeded('Dependencies changed; prepare dependencies, then retry.')
   }
   for (const source of Object.values(lock.sources)) {
+    const bundledRoot = options.bundledProjects?.[source.identifier]
+    if (source.provider === 'bundled' && bundledRoot && Path.resolve(bundledRoot) !== Path.resolve(source.location)) {
+      preparationNeeded(`Bundled project ${source.identifier} changed. Run tao prepare, then retry.`)
+    }
     if (!await FileSystem.exists(source.location)) {
       preparationNeeded(
         `Locked source ${source.identifier}@${source.commit} is missing; prepare dependencies, then retry.`,
       )
     }
-    if (source.provider !== 'bundled') {
-      assertTaoProjectRoot(source.location, `Locked source ${source.identifier}`)
-    }
+    assertTaoProjectRoot(source.location, `Locked source ${source.identifier}`)
     const current = await options.readRequirements(source.location)
     if (JSON.stringify(normalizeRequirements(current)) !== JSON.stringify(normalizeRequirements(source.requirements))) {
       preparationNeeded(

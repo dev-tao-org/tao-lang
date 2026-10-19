@@ -163,12 +163,12 @@ Tests.test('managed npm graph references validate paths and survive source prepa
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('bundled sources do not require project marker metadata', async () => {
+Tests.test('bundled sources require ordinary project marker metadata', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-bundled-${Platform.randomUUID()}`)
   const bundledRoot = Path.join(root, 'stdlib-src')
   const requirement: DependencyRequirement = { provider: 'bundled', identifier: 'tao', version: 'bundled' }
   const options: DependencyStoreOptions = {
-    bundledRoot,
+    bundledProjects: { tao: bundledRoot },
     readRequirements: async () => [],
     acquireLock: async () => ({ release() {} }),
     git: {
@@ -182,10 +182,18 @@ Tests.test('bundled sources do not require project marker metadata', async () =>
   }
   await Try(async () => {
     await FileSystem.mkdir(bundledRoot, { recursive: true })
+    await Tests.rejects(prepareDependencies(root, [requirement], options), /must point to a Tao project root/)
+    await FileSystem.mkdir(Path.join(bundledRoot, '.tao'))
     const prepared = await prepareDependencies(root, [requirement], options)
     const loaded = await readPreparedDependencies(root, [requirement], options)
     Tests.expect(loaded.sources['bundled:tao']?.location).toBe(bundledRoot)
     Tests.expect(prepared.roots).toEqual(loaded.roots)
+    const replacement = Path.join(root, 'new-bundle')
+    await FileSystem.mkdir(Path.join(replacement, '.tao'), { recursive: true })
+    const nextOptions = { ...options, bundledProjects: { tao: replacement } }
+    await Tests.rejects(readPreparedDependencies(root, [requirement], nextOptions), /Bundled project tao changed/)
+    const updated = await prepareDependencies(root, [requirement], nextOptions)
+    Tests.expect(updated.sources['bundled:tao']?.location).toBe(replacement)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

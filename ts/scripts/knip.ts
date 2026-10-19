@@ -35,7 +35,7 @@ export default {
       '**/*.test.ts',
     ]),
     shared: packageWorkspace(['**/*.test.ts']),
-    stdlib: packageWorkspace([]),
+    stdlib: packageWorkspace(['**/*.test.ts', 'stdlib-src/.tao/.gitignore.d.ts']),
     'ide-extension': packageWorkspace(['ide-extension-src/extension.ts', '**/*.test.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],

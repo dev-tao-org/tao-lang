@@ -4,7 +4,7 @@ import { S } from '@shared'
 /** syntaxFixture exercises every named rule in the current Tao grammar. */
 export const syntaxFixture = S`
   // Current syntax
-  use package @tao/ui as UI
+  use package tao@ui as UI
   use all from ./Shared
   use Card as Panel,Heading from @cards
   use Local
@@ -25,7 +25,7 @@ export const syntaxFixture = S`
 /** formattedSyntaxFixture pins canonical spacing and layout without changing source tokens. */
 export const formattedSyntaxFixture = S`
   // Current syntax
-  use package @tao/ui as UI
+  use package tao@ui as UI
   use all from ./Shared
   use Card as Panel, Heading from @cards
   use Local

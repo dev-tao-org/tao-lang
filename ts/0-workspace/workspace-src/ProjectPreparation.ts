@@ -5,11 +5,10 @@ import { runtimeDependencies } from '@runtime/Runtime'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
-import * as Stdlib from '@stdlib/Stdlib'
 import type { SourceModule } from '@typecheck/Modules'
 import { recordManagedGraphReference } from './dependencies/LockFile'
 import { projectDependencyOptions } from './dependencies/Options'
-import { readProjectRequirements, validateRequirementPlacement } from './dependencies/Requirements'
+import { validateRequirementPlacement } from './dependencies/Requirements'
 import { prepareDependencies } from './dependencies/Store'
 import type { DependencyStoreOptions } from './dependencies/Types'
 import { readModuleRequirements } from './ModuleRequirements'
@@ -50,15 +49,15 @@ export type PreparationOptions = {
 export async function projectManagedInput(entry: string): Promise<ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
-  const dependencies = new ProjectDependencies(project.root, projectDependencyOptions(project.root))
+  const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
   await dependencies.refresh()
   return await managedModulesInput(project.root, await loadEntry(entry, project.root, dependencies))
 }
 
 async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
-  const services = options.dependencyOptions ?? projectDependencyOptions(root)
+  const services = options.dependencyOptions ?? await projectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
-  await prepareDependencies(root, await readProjectRequirements(root), services, options.update)
+  await prepareDependencies(root, await services.readRequirements(root), services, options.update)
   const dependencies = new ProjectDependencies(root, services)
   await dependencies.refresh()
   const sources = await loadEntry(entry, root, dependencies)
@@ -145,8 +144,6 @@ async function loadEntry(entry: string, root: string, dependencies: ProjectDepen
     { path: entry, document },
     {
       directory: root,
-      stdlibSources: Stdlib.sources,
-      stdlibDirectory: Stdlib.directory,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,
