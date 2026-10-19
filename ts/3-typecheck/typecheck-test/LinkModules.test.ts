@@ -118,6 +118,21 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
   Tests.expect(linkModules(entry.path, [entry, left, right]).modules[0]?.bindings).toEqual([])
   const referenced = source('app/main.tao', [{ ...unreferenced, render: viewRender('Item') }], [left.path, right.path])
   Tests.expect(() => linkModules(referenced.path, [referenced, left, right])).toThrow('ambiguous sibling name Item')
+
+  const parameterView: AST.ViewDeclaration = {
+    ...unreferenced,
+    parameters: [{ kind: 'Parameter', start: 0, end: 0, name: identifier('Item'), type: identifier('text') }],
+    render: renderWithNameArgument('Text', 'Item'),
+  }
+  const parameterSource = source('app/main.tao', [parameterView], [left.path, right.path])
+  Tests.expect(() => linkModules(parameterSource.path, [parameterSource, left, right])).not.toThrow()
+
+  const localLetView: AST.ViewDeclaration = {
+    ...unreferenced,
+    render: viewRender('Col', [letDefinition('Item', 'local'), renderWithNameArgument('Text', 'Item')]),
+  }
+  const localLetSource = source('app/main.tao', [localLetView], [left.path, right.path])
+  Tests.expect(() => linkModules(localLetSource.path, [localLetSource, left, right])).not.toThrow()
 })
 
 Tests.test('cross-module lets are ordered by dependency and cycles are reported', () => {
@@ -206,6 +221,10 @@ function viewRender(target: string, children: AST.ViewRender['children'] = []): 
     arguments: [],
     children,
   }
+}
+
+function renderWithNameArgument(target: string, name: string): AST.ViewRender {
+  return { ...viewRender(target), arguments: [identifier(name)] }
 }
 
 function useNamed(target: string, alias?: string): AST.UseStatement {

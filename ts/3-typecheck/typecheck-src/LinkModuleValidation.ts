@@ -22,18 +22,17 @@ export function referencedNames(document: AST.Document): ReadonlySet<string> {
     if (AST.IsAppDeclaration(declaration)) {
       names.add(declaration.root.value)
     } else if (AST.IsViewDeclaration(declaration)) {
-      for (const parameter of declaration.parameters) {
-        names.add(parameter.type.value)
-      }
+      const localNames = new Set(declaration.parameters.map(parameter => parameter.name.value))
       for (const definition of declaration.definitions) {
-        addLetReferences(definition, names)
+        addScopedLetReferences(definition, names, localNames)
+        localNames.add(definition.name.value)
       }
       if (AST.IsKind(declaration.render, 'ViewRender')) {
-        addRenderReferences(declaration.render, names)
+        addScopedRenderReferences(declaration.render, names, localNames)
       } else if (AST.IsKind(declaration.render, 'Injection')) {
         for (const capture of declaration.render.captures) {
           if (AST.IsKind(capture.value, 'Name')) {
-            names.add(capture.value.value)
+            addReference(capture.value.value, names, localNames)
           }
         }
       }
@@ -82,18 +81,43 @@ function addLetReferences(definition: AST.LetDefinition, names: Set<string>): vo
   }
 }
 
-function addRenderReferences(render: AST.ViewRender, names: Set<string>): void {
-  names.add(render.target.value)
+function addScopedLetReferences(
+  definition: AST.LetDefinition,
+  names: Set<string>,
+  localNames: ReadonlySet<string>,
+): void {
+  if (definition.type) {
+    addReference(definition.type.value, names, localNames)
+  }
+  if (AST.IsKind(definition.value, 'Name')) {
+    addReference(definition.value.value, names, localNames)
+  }
+}
+
+function addScopedRenderReferences(
+  render: AST.ViewRender,
+  names: Set<string>,
+  parentNames: ReadonlySet<string>,
+): void {
+  const localNames = new Set(parentNames)
+  addReference(render.target.value, names, localNames)
   for (const argument of render.arguments) {
     if (AST.IsKind(argument, 'Name')) {
-      names.add(argument.value)
+      addReference(argument.value, names, localNames)
     }
   }
   for (const child of render.children) {
     if (AST.IsLetDefinition(child)) {
-      addLetReferences(child, names)
+      addScopedLetReferences(child, names, localNames)
+      localNames.add(child.name.value)
     } else {
-      addRenderReferences(child, names)
+      addScopedRenderReferences(child, names, localNames)
     }
+  }
+}
+
+function addReference(name: string, names: Set<string>, localNames: ReadonlySet<string>): void {
+  if (!localNames.has(name)) {
+    names.add(name)
   }
 }

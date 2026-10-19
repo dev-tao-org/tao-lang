@@ -73,7 +73,7 @@ export function namedPackageRoot(path: string, projectRoot: string): string | un
   let directory = Path.dirname(path)
   while (within(projectRoot, directory)) {
     const name = Path.basename(directory)
-    if (name.startsWith('@') && name !== '@tao') {
+    if (name.startsWith('@')) {
       return directory
     }
     if (directory === projectRoot) {

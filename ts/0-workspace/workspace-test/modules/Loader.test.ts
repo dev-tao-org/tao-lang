@@ -105,6 +105,22 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('a local @tao folder follows ordinary named-module boundaries', async () => {
+  const root = await createProject()
+  await Try(async () => {
+    await writeSources(Path.join(root, '@tao', 'Card.tao'), view('Card'))
+    await Tests.rejects(
+      loadModules(
+        parseEntry(Path.join(root, 'Main.tao'), `use all from ./@tao\n${app('Main')}`),
+        { directory: root },
+        createParser(),
+        new Timings('module-loader-test'),
+      ),
+      /crosses a named package boundary/,
+    )
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 Tests.test('rejects symlinked source files that resolve outside the owning project', async () => {
   const root = await createProject()
   await Try(async () => {
