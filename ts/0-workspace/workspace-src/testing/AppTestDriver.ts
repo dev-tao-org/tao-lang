@@ -86,6 +86,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   if (await discoverProject(path)) {
     return await openProjectWorkspace(path, {
       id: `test-${Platform.randomUUID()}`,
+      acquireLease: async () => () => {},
       runtimeOptions,
       compile,
     })
