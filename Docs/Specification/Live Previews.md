@@ -1,5 +1,7 @@
 # Live Previews
 
+This document specifies agreed future language behavior; these examples are not yet executable.
+
 A `previews { ... }` block declares live previews and their shared setup. Give the group an optional
 label with `previews "Label of previews" { ... }`. Referenced apps, views, data types and datasource
 implementations are declared elsewhere.

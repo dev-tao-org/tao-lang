@@ -1,4 +1,4 @@
-{ pkgs, inputs, ... }:
+{ pkgs, inputs, lib, ... }:
 
 let
   bunPkgs = import inputs.bun-nixpkgs { system = pkgs.stdenv.system; };
@@ -11,8 +11,12 @@ in
   stdenv = if pkgs.stdenv.isDarwin then pkgs.stdenvNoCC else pkgs.stdenv;
   apple.sdk = null;
 
-  enterShell = ''
+  enterShell = lib.mkAfter ''
     export PATH="$DEVENV_ROOT/ts/node_modules/.bin:$DEVENV_ROOT:$PATH"
+    # Android integration generates this at shell entry; the repository root is not a Gradle project.
+    if [ -f "$DEVENV_ROOT/local.properties" ]; then
+      mv -f "$DEVENV_ROOT/local.properties" "$DEVENV_ROOT/.config/local.properties"
+    fi
   '';
 
   android = {

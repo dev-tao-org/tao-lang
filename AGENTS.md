@@ -42,7 +42,7 @@ These are your rules of usage:
 - During development, briefly tell the developer when an environment complication is discovered. Retain every complication left unresolved in task-local `.artifacts` notes or the checkpoint across interruptions and compaction; record its impact, workaround and open/resolved status. A workaround alone does not resolve the underlying issue.
 - Track meaningful environment friction, including missing helpful tooling, slow or unreliable setup, poor diagnostics, redundant verification without useful caching or test selection, concurrent-work interference, unnecessary permission requests and unavailable actions that reasonably ought to be available. Assess permission friction against actual risk and required developer judgment; recording it does not relax approval or verification requirements.
 - When asked about issues encountered, give a concise executive report from the task's complication record. When asked what remains or whether work is ready to land or archive, also surface every unresolved complication, distinguishing blockers from follow-up improvements.
-- Keep `Docs/Specification/` aligned with language and tooling behavior as implementations change; its `AGENTS.md` owns scope and writing style. Update other repository documents only when the developer instructs you to do so; keep observations and progress in `.artifacts`.
+- Keep `Docs/Specification/` aligned with Tao language behavior as implementations change; its `AGENTS.md` owns scope and writing style. Repository tooling and contributor workflows belong in [Docs/Dev Env](Docs/Dev%20Env/README.md). Update other repository documents only when the developer instructs you to do so; keep observations and progress in `.artifacts`.
 
 ## Your mission
 
@@ -122,5 +122,5 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
 - `.artifacts/` holds generated output, logs, caches, temporary state and retained agent notes/progress; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.
 - `.x-tao-old-v1/` retains the reference language, compiler, runtimes and apps, including Studio, Companion and test apps.
-- `Docs/` contains the active roadmap and documentation.
+- `Docs/Roadmap/` holds project plans, `Docs/Specification/` describes the language for Tao users, and `Docs/Dev Env/` describes repository development and retained performance evidence.
 - Packages own their manifests and TypeScript configs extending `ts/tsconfig.base.json`; `ts/package.json` owns workspace metadata. Runtime scaffold code and instrumentation are consumed by generated apps and the performance harness.

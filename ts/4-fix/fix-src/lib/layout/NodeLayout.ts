@@ -71,10 +71,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     for (let index = first; index < last; index++) {
       this.plan.gaps[index]!.indent++
     }
-    const items = this.node.namedChildren.filter(node =>
-      node.startIndex >= open.endIndex
-      && node.endIndex <= close.startIndex && node.type !== 'Comment'
-    )
+    const items = this.node.namedChildren.filter(node => isBlockItem(node, open, close))
     return this.lineSeparated(items)
   }
 
@@ -116,4 +113,8 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
   private commaBreaks(): number[] {
     return this.node.children.filter(node => node.type === ',').map(node => this.range(node).last + 1)
   }
+}
+
+function isBlockItem(node: SyntaxNode, open: SyntaxNode, close: SyntaxNode): boolean {
+  return node.startIndex >= open.endIndex && node.endIndex <= close.startIndex && node.type !== 'Comment'
 }

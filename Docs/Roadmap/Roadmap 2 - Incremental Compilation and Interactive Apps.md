@@ -38,6 +38,6 @@ Success: developers can explore and test an interactive view in named scenarios 
 - [ ] Select native platforms locally and record cold/warm platform timings.
 - [ ] Run web, iOS and Android in CI with shared generated Tao output and parallel platform jobs; measure total CI time before adding further build infrastructure.
 - [ ] Repair the shared Watchman launchagent's stale executable path when its restart can be coordinated with active sessions.
-- [ ] Revisit deferred legacy maintenance failures only when those workflows are needed again; see [Reference Verification](../Specification/Reference%20Verification.md).
+- [ ] Revisit deferred legacy maintenance failures only when those workflows are needed again; see [Reference Verification](../Dev%20Env/Reference%20Verification.md).
 
 Specs describe behavior; this roadmap tracks the remaining work. Move unrelated follow-up tasks into Goal Misc rather than expanding the three projects implicitly.

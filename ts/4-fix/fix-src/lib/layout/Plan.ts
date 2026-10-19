@@ -47,7 +47,7 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
   const owners: number[] = []
   const valid: boolean[] = []
   for (const [index, node] of tree.rootNode.namedChildren.entries()) {
-    valid[index] = !node.hasError && !node.isMissing && node.type !== 'ERROR'
+    valid[index] = isCompleteNode(node)
     if (!valid[index]) {
       plan.skipped.push({ start: node.startIndex, end: node.endIndex })
     }
@@ -55,6 +55,11 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
   }
   buildGaps(plan, owners, valid, !tree.rootNode.hasError)
   return plan
+}
+
+/** isCompleteNode identifies CST nodes safe for formatting rules and editable layout gaps. */
+export function isCompleteNode(node: SyntaxNode): boolean {
+  return !node.hasError && !node.isMissing && node.type !== 'ERROR'
 }
 
 /** nodeKey identifies the range and kind of a CST node within its owning snapshot. */
@@ -111,7 +116,7 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
     const original = plan.source.slice(start, end)
     const left = owners[index - 1]
     const right = owners[index]
-    const interior = left !== undefined && right !== undefined && valid[left] && valid[right]
+    const interior = hasCompleteNeighbors(left, right, valid)
     plan.gaps.push({
       start,
       end,
@@ -121,4 +126,12 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
       editable: /^\s*$/.test(original) && Boolean(interior || whole),
     })
   }
+}
+
+function hasCompleteNeighbors(
+  left: number | undefined,
+  right: number | undefined,
+  valid: readonly boolean[],
+): boolean {
+  return left !== undefined && right !== undefined && Boolean(valid[left] && valid[right])
 }

@@ -22,4 +22,4 @@ No significant preview slowdown was observed. The overlapping ranges and five sa
 
 Module discovery/loading/linking adds work absent from the baseline. On text edits, final module-load median was `0.330 ms` (including discovery); code generation changed from `0.085` to `0.107 ms`. Those sub-millisecond costs do not explain the roughly 110–135 ms total. The dominant remaining interval is publication through Metro, followed by the app receipt. Formatter/fixer work remains outside this path.
 
-Raw unmodified reports, fixture bytes, run order and phase summaries are retained under `.artifacts/notes/branch-preview-comparison/`. Individual source-commit records are retained separately for publication by the authorized landing workflow. See [Preview Workflow](../Specification/Preview%20Workflow.md) for measurement definitions.
+Raw unmodified reports, fixture bytes, run order and phase summaries are retained under `.artifacts/notes/branch-preview-comparison/`. Individual source-commit records are retained separately for publication by the authorized landing workflow. See [Preview Workflow](../Preview%20Workflow.md) for measurement definitions.

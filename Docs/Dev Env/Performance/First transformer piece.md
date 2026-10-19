@@ -5,10 +5,10 @@ Historical checkpoint: these app-only workloads describe earlier revisions. The 
 see [First Expo preview baseline](First%20Expo%20preview%20baseline.md) for the later pipeline.
 The command below reproduces the described workload only at its recorded historical revision.
 
-This is a review checkpoint, not the completed CST-to-AST slice.
+This records a review checkpoint before completion of the CST-to-AST slice.
 
 The measured input is only the app declaration from `Apps/Tests/Hello World.tao`.
-Views, render calls, injections, code generation and preview refresh remain unimplemented.
+At this checkpoint, views, render calls, injections, code generation and preview refresh were unimplemented.
 The AST contains a file, app declaration and two unresolved names; a separate map stores
 numeric UTF-16 source origins. Every sample constructs a fresh AST and map.
 
@@ -28,13 +28,13 @@ Measured on 2026-10-17, macOS, base `ea2183706` plus the uncommitted first-piece
 Raw report: `.artifacts/logs/performance/parser-a8d46e5f-96c9-4cf4-aada-90a41ef71094.json`.
 The report records the dirty revision, host, runtimes, fixture hash and all samples.
 These tiny warmed measurements do not establish scalability or the sub-100ms preview target.
-Full-app transformation and actual Expo-to-visible-update measurements remain pending.
+Full-app transformation and Expo measurements followed later; see the linked preview baseline.
 
 ## Consolidated-file checkpoint
 
 After grouping the transformer into `AST.ts` and `Transform.ts`, rerun the same app-only
 scenario with unchanged input and sample definitions. Base revision is `f870e4838` plus the
-consolidation changes. The constructor now declares its handlers as ordinary class methods.
+consolidation changes. At that revision the constructor declared its handlers as ordinary class methods.
 
 | Run                                                   | Transform median / p95 | Parse-to-AST median / p95 |
 | ----------------------------------------------------- | ---------------------: | ------------------------: |
@@ -50,7 +50,7 @@ is deferred while the structure is under review.
 ## Generic grammar and Switch dispatch
 
 On base `a40716668` plus the grammar review changes, the same authored fixtures now parse
-through PascalCase rules and generic `ViewRender` nodes. Dispatch uses `Switch.on` with
+through PascalCase rules and generic `ViewRender` nodes. Dispatch at that revision used `Switch.on` with
 handlers bound once per constructor. Keep the original fixture bytes and sample definitions;
 the grammar and CST shape changed, so this measures the integrated review changes.
 
@@ -59,4 +59,4 @@ App-only transformation records median 0.005 / p95 0.012 ms; app-only parse-to-A
 median 0.008 / p95 0.016 ms. Each phase has 100 retained samples after 20 warmups.
 Raw report: `.artifacts/logs/performance/parser-5c697566-430d-472c-8cbb-e6defffda1ad.json`.
 No concurrent agent verification ran during measurement. The app-only combined median is
-unchanged at the reported precision; full view transformation and preview repaint remain pending.
+unchanged at the reported precision; full view transformation and preview measurements were still pending.

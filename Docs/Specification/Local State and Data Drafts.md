@@ -4,7 +4,7 @@ Tao automates syncing state with datasources, supports view-local state, and loc
 
 It also supports detached, in-memory drafts for preparing creates and updates; a draft does not write to a datasource until an explicit create or update action.
 
-This document proposes future behavior; these examples are not yet executable in the new implementation.
+This document proposes future language behavior; these examples are not yet executable.
 
 ```tao
 use Button, Col, Text, TextInput from @tao/ui

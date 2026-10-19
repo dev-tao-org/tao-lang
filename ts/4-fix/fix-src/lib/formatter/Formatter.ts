@@ -1,7 +1,7 @@
 import type { NodeType, SyntaxNode, Tree } from '@grammar/CST'
 import { Timings } from '@shared'
 import { NodeLayout } from '../layout/NodeLayout'
-import { createPlan, type LayoutPlan } from '../layout/Plan'
+import { createPlan, isCompleteNode, type LayoutPlan } from '../layout/Plan'
 import { NodeFormat } from './NodeFormat'
 
 /** FormattingHandlers checks each rule's property and token selectors against generated CST types. */
@@ -32,7 +32,7 @@ const collectRules = Timings.measure('formatter.rules', function(
     visit(tree.rootNode, undefined, plan, formatting, layout)
   } else {
     for (const node of tree.rootNode.namedChildren) {
-      if (!node.hasError && !node.isMissing && node.type !== 'ERROR') {
+      if (isCompleteNode(node)) {
         visit(node, tree.rootNode, plan, formatting, layout)
       }
     }

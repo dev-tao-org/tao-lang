@@ -9,10 +9,8 @@ import { displayStatus, elapsed, wrappedTail } from './Display'
 /** createTUI creates the Ink renderer on the diagnostic terminal. */
 export function createTUI(): OutputRenderer {
   let latest = emptySnapshot()
-  const finishedAt = new Map<string, number>()
-  const previousStatus = new Map<string, OutputSnapshot['main']['status']>()
   let now = Time.nowMs()
-  const instance = render(<TUI snapshot={latest} finishedAt={finishedAt} now={now} />, {
+  const instance = render(<TUI snapshot={latest} now={now} />, {
     stdout: Terminal.stderr,
     stderr: Terminal.stderr,
     patchConsole: false,
@@ -21,14 +19,13 @@ export function createTUI(): OutputRenderer {
   })
   const ticker = createElapsedTicker(() => hasRunningChannel(latest), () => {
     now = Time.nowMs()
-    instance.rerender(<TUI snapshot={latest} finishedAt={finishedAt} now={now} />)
+    instance.rerender(<TUI snapshot={latest} now={now} />)
   })
   return {
     update(snapshot) {
       latest = snapshot
-      captureFinishedTimes(snapshot, previousStatus, finishedAt, Time.nowMs())
       now = Time.nowMs()
-      instance.rerender(<TUI snapshot={latest} finishedAt={finishedAt} now={now} />)
+      instance.rerender(<TUI snapshot={latest} now={now} />)
       ticker.update()
     },
     async dispose() {
@@ -41,7 +38,6 @@ export function createTUI(): OutputRenderer {
 }
 
 function TUI(props: {
-  finishedAt: ReadonlyMap<string, number>
   now: number
   snapshot: OutputSnapshot
 }): JSX.Element {
@@ -54,14 +50,11 @@ function TUI(props: {
   return (
     <Box flexDirection="column" width={width}>
       <Text color={status.color} wrap="truncate">
-        {`${status.mark} ${props.snapshot.main.title}  ${
-          elapsed(props.snapshot.main, props.now, props.finishedAt.get(props.snapshot.main.title))
-        }`}
+        {`${status.mark} ${props.snapshot.main.title}  ${elapsed(props.snapshot.main, props.now)}`}
       </Text>
       {rootLines.map((line, index) => <Text key={index} wrap="truncate">{line || ' '}</Text>)}
       <Columns
         channels={props.snapshot.channels}
-        finishedAt={props.finishedAt}
         now={props.now}
         rows={channelRows}
         width={width}
@@ -77,8 +70,9 @@ function emptySnapshot(): OutputSnapshot {
 function createElapsedTicker(isRunning: () => boolean, tick: () => void): { update(): void; dispose(): void } {
   let cancel: (() => void) | undefined
   let disposed = false
+  const canSchedule = () => !cancel && !disposed && isRunning()
   const schedule = () => {
-    if (cancel || disposed || !isRunning()) {
+    if (!canSchedule()) {
       return
     }
     cancel = Time.schedule(200, () => {
@@ -114,21 +108,4 @@ function hasRunningChannel(snapshot: OutputSnapshot): boolean {
     passed: () => snapshot.channels.some(channel => channel.status === 'running'),
     failed: () => snapshot.channels.some(channel => channel.status === 'running'),
   })
-}
-
-function captureFinishedTimes(
-  snapshot: OutputSnapshot,
-  previousStatus: Map<string, OutputSnapshot['main']['status']>,
-  finishedAt: Map<string, number>,
-  now: number,
-): void {
-  for (const channel of [snapshot.main, ...snapshot.channels]) {
-    const previous = previousStatus.get(channel.title)
-    if (previous === 'running' && channel.status !== 'running') {
-      finishedAt.set(channel.title, now)
-    } else if (channel.status === 'running') {
-      finishedAt.delete(channel.title)
-    }
-    previousStatus.set(channel.title, channel.status)
-  }
 }

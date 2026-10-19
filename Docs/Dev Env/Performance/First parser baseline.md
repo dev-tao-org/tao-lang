@@ -6,11 +6,12 @@ there is no comparable prior new-parser baseline and no speedup claim.
 
 ## Workload and reproduction
 
-Run `./agent setup --frozen-lockfile`, then `./agent performance parser`. `./agent verify` and
-the TypeScript CI workflow also run these measurements automatically. Raw samples and summaries
-are saved under `.artifacts/logs/performance/`, inside CI's uploaded log tree.
+At the recorded revision, run `./agent setup --frozen-lockfile`, then `./agent performance parser`.
+Raw samples and summaries are saved under `.artifacts/logs/performance/`.
+Today's commands and automation boundaries are described in the [performance guide](README.md).
 
-The canonical fixture is [Apps/Tests/Hello World.tao](../../Apps/Tests/Hello%20World.tao).
+The canonical fixture is [Apps/Tests/Hello World.tao](../../../Apps/Tests/Hello%20World.tao);
+its current contents have evolved since this measurement.
 `Tests.readApp('Hello World')` loads it for both correctness and performance consumers.
 Measure the initial source, replace its text, add another Text view, then change Col to Row.
 Every parse processes the complete snapshot; there is no incremental tree reuse.
@@ -62,9 +63,7 @@ declared grammar/dependency/toolchain inputs. A deliberately removed generated a
 frozen setup. The native build still emits node-gyp's upstream Node 24 `DEP0169` deprecation warning.
 These changes establish reproducible setup and phase attribution, not a measured preview speedup.
 
-The tiny fixture's warm parsing cost does not justify adding caches or incremental semantics now.
-Stop parser optimization here and measure the real pipeline as later roadmap slices become runnable.
-Remaining costs include transformation, generation/publication, Metro, HMR/Fast Refresh, runtime view
-work, commit/layout and observed repaint in both iframe sizes. The harness and handwritten runtime
-will expose those phases; the target below 100 ms applies to the complete keystroke-to-visible-update
-path where feasible. This record proves neither that target nor the complete Goal 2 success criteria.
+The tiny fixture's warm parsing cost did not justify adding caches or incremental semantics at this
+checkpoint. Transformation, publication, Metro and app-side refresh were not yet measured. Later
+end-to-end evidence is in the [Roadmap 1 comparison](Roadmap%201%20preview%20comparison.md).
+This parser record alone proves neither the target below 100 ms nor the complete preview behavior.
