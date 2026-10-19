@@ -28,7 +28,7 @@ export async function initializeProject(path: string): Promise<ProjectLayout> {
   return await ensureProjectMetadata(root)
 }
 
-/** ensureProjectMetadata fills durable identity for a project initialized by an earlier Tao version. */
+/** ensureProjectMetadata initializes durable identity and generated-state directories for a project. */
 export async function ensureProjectMetadata(path: string): Promise<ProjectLayout> {
   const root = Path.resolve(path)
   if (!isProjectDirectory(root)) {

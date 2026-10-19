@@ -53,6 +53,18 @@ Tests.test('IO prompt suspends and recreates its configured renderer', async () 
   Tests.expect(stdout).toContain('create,dispose,prompt,create')
 })
 
+Tests.test('IO retries a renderer after disposal fails', async () => {
+  const { status, stdout } = await runFixture('prompt-dispose-recovery')
+  Tests.expect(status).toBe(0)
+  Tests.expect(stdout).toContain('dispose 1,dispose 2,prompt 2,create 1')
+})
+
+Tests.test('IO retries renderer creation after prompt cleanup fails', async () => {
+  const { status, stdout } = await runFixture('prompt-render-recovery')
+  Tests.expect(status).toBe(0)
+  Tests.expect(stdout).toContain('dispose 1,prompt 1,create 1,prompt 2,create 2')
+})
+
 async function runFixture(mode: string, terminalOutput?: string) {
   const child = Platform.spawn('bun run', {
     variadicArgs: [outputFixturePath, mode],

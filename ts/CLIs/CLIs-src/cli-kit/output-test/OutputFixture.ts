@@ -1,5 +1,5 @@
 import '../fatal-errors'
-import { Errors } from '@shared'
+import { Errors, Try } from '@shared'
 import { Platform, Repo, Terminal } from '@shared/os'
 import { runCommand } from '../cmd-exec'
 import { IO, renderOutput } from '../io'
@@ -17,6 +17,10 @@ async function runFixture(): Promise<void> {
   const mode = Platform.argv[2]
   if (mode === 'prompt-lifecycle') {
     await runPromptLifecycleFixture()
+    return
+  }
+  if (mode === 'prompt-dispose-recovery' || mode === 'prompt-render-recovery') {
+    await runPromptRecoveryFixture(mode)
     return
   }
   if (mode === 'delegate') {
@@ -66,4 +70,47 @@ function createRecordingRenderer(events: string[]): OutputRenderer {
       events.push('dispose')
     },
   }
+}
+
+async function runPromptRecoveryFixture(mode: 'prompt-dispose-recovery' | 'prompt-render-recovery'): Promise<void> {
+  const events: string[] = []
+  let disposeAttempts = 0
+  let rendererCreations = 0
+  const renderer = (): OutputRenderer => ({
+    update() {},
+    async dispose() {
+      disposeAttempts++
+      events.push(`dispose ${disposeAttempts}`)
+      if (mode === 'prompt-dispose-recovery' && disposeAttempts === 1) {
+        Errors.ThrowUnexpected('renderer dispose failed')
+      }
+    },
+  })
+  IO.config({ stdout: 'log', stderr: 'log', progress: 'log' })
+  IO.setPromptRenderer(async () => {
+    rendererCreations++
+    events.push(`create ${rendererCreations}`)
+    if (mode === 'prompt-render-recovery' && rendererCreations === 1) {
+      Errors.ThrowUnexpected('renderer creation failed')
+    }
+    return renderer()
+  })
+  renderOutput(renderer())
+  let firstFailed = false
+  await Try(() =>
+    IO.prompt(async () => {
+      events.push('prompt 1')
+    }), {
+    catch() {
+      firstFailed = true
+    },
+  })
+  if (!firstFailed) {
+    Errors.ThrowUnexpected('The first renderer operation unexpectedly succeeded.')
+  }
+  await IO.prompt(async () => {
+    events.push('prompt 2')
+  })
+  Terminal.stdout.write(events.join(',') + '\n')
+  await IO.finish()
 }

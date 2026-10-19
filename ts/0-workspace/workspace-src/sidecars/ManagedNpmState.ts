@@ -87,14 +87,7 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
 
 function profileRequirementsMatch(value: unknown, requirements: [string, string, string][]): boolean {
   const expected = allRequirements(requirements)
-  if (isStringRecord(value)) {
-    return sameStringRecord(value, expected)
-  }
-  if (!isRequirementList(value)) {
-    return false
-  }
-  const actual = Try.WithDefault(undefined, () => allRequirements(value))
-  return actual !== undefined && sameStringRecord(actual, expected)
+  return isStringRecord(value) && sameStringRecord(value, expected)
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -104,9 +97,4 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 
 function sameStringRecord(left: Record<string, string>, right: Record<string, string>): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
-}
-
-function isRequirementList(value: unknown): value is [string, string, string][] {
-  return Array.isArray(value)
-    && value.every(item => Array.isArray(item) && item.length === 3 && item.every(part => typeof part === 'string'))
 }

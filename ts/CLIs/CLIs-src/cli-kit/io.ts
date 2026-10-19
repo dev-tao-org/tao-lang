@@ -82,6 +82,9 @@ const promptLifecycle = createPromptLifecycle({
       renderOutput(await promptRenderer())
     }
   },
+  reportResumeFailure(error) {
+    IO.warn('Could not restore terminal output after the prompt:', error)
+  },
 })
 
 function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {

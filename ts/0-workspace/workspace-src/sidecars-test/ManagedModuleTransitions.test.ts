@@ -1,6 +1,11 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules, readManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
+import {
+  cleanManagedModuleMetadata,
+  prepareManagedModules,
+  readManagedModules,
+  repairManagedModuleFiles,
+} from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
 Tests.test('updates one consumer graph while preserving prior profiles and rejecting authored drift', async () =>
@@ -14,6 +19,20 @@ Tests.test('serializes concurrent consumers publishing one shared module directo
 
 Tests.test('repairs a dangling link recorded by the prior owner profile', async () =>
   await withDirectory('managed-dangling-link', async root => await assertDanglingLinkRepair(root)))
+
+Tests.test('cleans a mixed-case npm package link recorded by the current owner profile', async () =>
+  await withDirectory('managed-mixed-case-cleanup', async root => {
+    const moduleDirectory = Path.join(root, 'Modules')
+    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    const input = moduleInput(root, moduleDirectory, '1.3.5')
+    input.modules[0]!.requirements = [{ name: 'JSONStream', version: '1.3.5', origin: 'Modules/Json.tao' }]
+    await prepareManagedModules(input, executorFor({ react: '19.1.0', JSONStream: '1.3.5' }))
+    const link = Path.join(moduleDirectory, 'node_modules', 'JSONStream')
+    Tests.expect(FileSystem.lstatSync(link).isSymbolicLink()).toBe(true)
+    await cleanManagedModuleMetadata(root)
+    Tests.expect(await FileSystem.exists(link)).toBe(false)
+    Tests.expect(await FileSystem.exists(Path.join(moduleDirectory, '.tao-managed-module.json'))).toBe(false)
+  }))
 
 Tests.test('rejects an unowned module path without creating a Tao project marker', async () =>
   await withDirectory('managed-unowned-module', async root => {
@@ -109,7 +128,7 @@ async function assertProfileTransition(root: string): Promise<void> {
   const initial = moduleInput(root, moduleDirectory, '4.1.0')
   const first = await prepareManagedModules(initial, executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }))
   const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
-  await migrateLegacyMarker(marker)
+  await damageCurrentOwnershipMarker(marker)
   await Tests.rejects(
     prepareManagedModules(initial, executorFor({ react: '19.1.0', 'date-fns': '4.1.0' })),
     /needs repair/,
@@ -165,7 +184,7 @@ async function assertDanglingLinkRepair(root: string): Promise<void> {
   )
 }
 
-async function migrateLegacyMarker(marker: string): Promise<void> {
+async function damageCurrentOwnershipMarker(marker: string): Promise<void> {
   const contents = JSON.parse(await FileSystem.readFile(marker, 'utf8'))
   delete contents.generatedHashes
   await FileSystem.chmod(marker, 0o644)

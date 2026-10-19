@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
+import { isNpmPackageName } from '../NpmPackageName'
 
 /** ManagedModuleOwner records the consumer profile and package links owning generated module files. */
 export type ManagedModuleOwner = {
@@ -92,16 +93,7 @@ function parseOwner(ownerText: string, marker: string): ManagedModuleOwner {
 }
 
 function isPackageName(name: unknown): name is string {
-  if (typeof name !== 'string') {
-    return false
-  }
-  const segments = name.split('/')
-  const scoped = segments.length === 2 && segments[0]!.startsWith('@')
-  return segments.length === (scoped ? 2 : 1)
-    && segments.every((segment, index) => {
-      const validSegment = scoped && index === 0 ? segment.slice(1) : segment
-      return /^[A-Za-z0-9._-]+$/.test(validSegment) && validSegment !== '.' && validSegment !== '..'
-    })
+  return typeof name === 'string' && isNpmPackageName(name)
 }
 
 function validateOwnerProfile(

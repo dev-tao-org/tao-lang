@@ -194,7 +194,7 @@ async function prepareProfile(
     normalized,
     fingerprint,
     graphFingerprint,
-    repair || rebuildHostInstall || hasLegacyRequirementList(metadata),
+    repair || rebuildHostInstall,
   )
 }
 
@@ -332,8 +332,4 @@ function profileMetadata(
     installHost: installHostIdentity(input),
     nativePackages,
   }
-}
-
-function hasLegacyRequirementList(metadata: Record<string, unknown> | undefined): boolean {
-  return Array.isArray(metadata?.requirements)
 }

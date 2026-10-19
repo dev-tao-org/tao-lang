@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
+import { isNpmPackageName } from '../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
 
 /** cleanManagedModuleMetadata removes recorded metadata owned by this consumer project. */
@@ -116,7 +117,7 @@ function isManagedModuleFile(moduleDirectory: string, path: string): boolean {
 }
 
 async function cleanModuleLinks(moduleDirectory: string, profile: string, value: unknown): Promise<void> {
-  if (!Array.isArray(value) || value.some(name => typeof name !== 'string' || !isManagedPackageName(name))) {
+  if (!Array.isArray(value) || value.some(name => typeof name !== 'string' || !isNpmPackageName(name))) {
     Errors.ThrowUserInput(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
   }
   const localModules = Path.join(moduleDirectory, 'node_modules')
@@ -134,11 +135,6 @@ async function cleanModuleLinks(moduleDirectory: string, profile: string, value:
       await removeEmptyParents(Path.dirname(link), Path.join(moduleDirectory, 'node_modules'))
     }
   }
-}
-
-function isManagedPackageName(name: string): boolean {
-  return /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name)
-    && !name.split('/').some(segment => segment === '.' || segment === '..')
 }
 
 async function removeEmptyParents(directory: string, root: string): Promise<void> {

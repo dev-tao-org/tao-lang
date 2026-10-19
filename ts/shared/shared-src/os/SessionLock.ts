@@ -43,20 +43,20 @@ export function isSafeVersionName(identity: string, directory: string): boolean 
 async function readLockPointer(root: string, path: string): Promise<{ identity: string; directory: string }> {
   return await Try(async () => {
     const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
-    if (typeof value !== 'object' || value === null || !('identity' in value)) {
-      Errors.ThrowHostEnvironment(`Native session-lock pointer is invalid: ${path}`)
+    if (typeof value !== 'object' || value === null || !('identity' in value) || !('directory' in value)) {
+      throwInvalidPointer(path)
     }
-    const pointer = value as { identity: unknown; directory?: unknown }
-    const directory = pointer.directory ?? pointer.identity
+    const pointer = value as { identity: unknown; directory: unknown }
+    const directory = pointer.directory
     if (
       typeof pointer.identity !== 'string' || typeof directory !== 'string'
       || !isSafeVersionName(pointer.identity, directory)
     ) {
-      Errors.ThrowHostEnvironment(`Native session-lock pointer is invalid: ${path}`)
+      throwInvalidPointer(path)
     }
     const versionRoot = Path.resolve(root, directory)
     if (!Path.isWithin(root, versionRoot) || Path.dirname(versionRoot) !== Path.resolve(root)) {
-      Errors.ThrowHostEnvironment(`Native session-lock pointer escapes its cache: ${path}`)
+      throwInvalidPointer(path)
     }
     return { identity: pointer.identity, directory }
   }, {
@@ -69,6 +69,12 @@ async function readLockPointer(root: string, path: string): Promise<{ identity: 
       )
     },
   })
+}
+
+function throwInvalidPointer(path: string): never {
+  Errors.ThrowHostEnvironment(
+    `Native session-lock pointer is invalid or outdated. Run ./agent setup to rebuild it. (${path})`,
+  )
 }
 
 async function loadLockBinding(path: string): Promise<{ acquire(path: string): { release(): void } | undefined }> {

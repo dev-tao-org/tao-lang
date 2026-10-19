@@ -74,12 +74,7 @@ export async function acquireCacheLease(identity: string): Promise<() => void | 
       Errors.ThrowHostEnvironment(`Cache lease is already held for identity: ${identity}`)
     }
     activeLeases.add(path)
-    releaseLease = () =>
-      withCacheMutation(async () => {
-        activeLeases.delete(path)
-        lock.release()
-        await rm(path, { force: true })
-      })
+    releaseLease = () => releaseCacheLease(path, lock)
   })
   let release: Promise<void> | undefined
   return () => release ??= releaseLease()
@@ -171,23 +166,59 @@ async function acquireLocalMutation(): Promise<() => void> {
   }
 }
 
+async function releaseCacheLease(path: string, lock: SessionLock.SessionLock): Promise<void> {
+  let released = false
+  const release = () => {
+    if (!released) {
+      released = true
+      activeLeases.delete(path)
+      lock.release()
+    }
+  }
+  await Try(() =>
+    withCacheMutation(async () => {
+      release()
+      await removeLeaseProbe(path)
+    }), { finally: release })
+}
+
+async function removeLeaseProbe(path: string): Promise<boolean> {
+  return await Try(async () => {
+    await rm(path, { force: true })
+    return true
+  }, { catch: error => isUnavailableProbe(error) ? false : Errors.Throw(error) })
+}
+
+function isUnavailableProbe(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error
+    && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
+}
+
 async function hasBusyLease(directory: string): Promise<boolean> {
   const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
-    catch: error => isMissing(error) ? [] : Errors.Throw(error),
+    catch: error => isMissing(error) ? [] : isUnavailableProbe(error) ? undefined : Errors.Throw(error),
   })
+  if (!entries) {
+    return true
+  }
   let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
     if (!entry.isFile()) {
       busy = true
       continue
     }
-    const lock = await SessionLock.acquire(join(directory, entry.name))
+    const path = join(directory, entry.name)
+    const lock = await Try(() => SessionLock.acquire(path), {
+      catch: error => isUnavailableProbe(error) ? undefined : Errors.Throw(error),
+    })
     if (!lock) {
       busy = true
       continue
     }
     lock.release()
-    await rm(join(directory, entry.name), { force: true })
+    if (!await removeLeaseProbe(path)) {
+      busy = true
+    }
   }
   return busy
 }

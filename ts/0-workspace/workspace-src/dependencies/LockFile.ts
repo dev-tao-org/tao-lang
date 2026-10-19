@@ -203,11 +203,7 @@ async function retainedProfileIdentities(directory: string): Promise<Set<string>
       undefined,
       async () => JSON.parse(await FileSystem.readFile(metadataPath, 'utf8')) as Record<string, unknown>,
     )
-    const identity = typeof metadata?.graphFingerprint === 'string'
-      ? metadata.graphFingerprint
-      : typeof metadata?.fingerprint === 'string'
-      ? metadata.fingerprint
-      : undefined
+    const identity = typeof metadata?.graphFingerprint === 'string' ? metadata.graphFingerprint : undefined
     if (!identity) {
       return undefined
     }

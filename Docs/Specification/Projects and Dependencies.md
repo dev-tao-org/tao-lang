@@ -92,7 +92,8 @@ active or uncertain sessions. `tao clean --wipe` also asks the platform cache to
 cache data; it preserves that cache while active consumers hold leases.
 Stable session and cache-mutation lock files remain after release so that concurrent processes
 always lock the same file. Temporary cache leases are removed on release; a later cache operation
-reclaims leases left by crashed processes while preserving live consumers.
+reclaims leases left by crashed processes while preserving live consumers. If a lease cannot be
+inspected or removed, shared-cache cleanup preserves the cache until that uncertainty is resolved.
 
 Session identifiers supplied to CLI commands must match `[a-z0-9][a-z0-9_-]*`. `.cli` and `.studio`
 are reserved internal identifiers. They share the same stable native lock mechanism as other

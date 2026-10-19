@@ -66,6 +66,18 @@ class LockHandle : public Napi::ObjectWrap<LockHandle> {
 
 void ThrowLockError(Napi::Env env, const std::string& path, const char* operation, unsigned long code);
 
+const char* PortableErrorCode(unsigned long code) {
+#ifdef _WIN32
+  if (code == ERROR_SHARING_VIOLATION || code == ERROR_LOCK_VIOLATION) return "EBUSY";
+  if (code == ERROR_ACCESS_DENIED) return "EACCES";
+#else
+  if (code == EBUSY) return "EBUSY";
+  if (code == EACCES) return "EACCES";
+  if (code == EPERM) return "EPERM";
+#endif
+  return "ERR_SESSION_LOCK_OS";
+}
+
 Napi::Value Acquire(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
@@ -120,7 +132,11 @@ Napi::Value Acquire(const Napi::CallbackInfo& info) {
 void ThrowLockError(Napi::Env env, const std::string& path, const char* operation, unsigned long code) {
   std::string message = "Cannot " + std::string(operation) + " session lock file '" + path + "' (OS error "
       + std::to_string(code) + ")";
-  Napi::Error::New(env, message).ThrowAsJavaScriptException();
+  Napi::Error error = Napi::Error::New(env, message);
+  error.Set("code", Napi::String::New(env, PortableErrorCode(code)));
+  error.Set("operation", Napi::String::New(env, operation));
+  error.Set("osCode", Napi::Number::New(env, static_cast<double>(code)));
+  error.ThrowAsJavaScriptException();
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

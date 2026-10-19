@@ -50,6 +50,26 @@ Tests.test('changed exact roots resolve a new graph despite an intact old source
     Tests.expect(await readManagedModules(newInput)).toEqual(prepared)
   }))
 
+Tests.test('missing durable locks are rejected for a prepared current profile', async () =>
+  await withProject(async root => {
+    const moduleDirectory = Path.join(root, 'Modules')
+    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    const current = input(root, [{ directory: moduleDirectory, requirements: [dateFns] }])
+    const prepared = await prepareManagedModules(current, executor(['date-fns', '4.1.0']))
+    const durableLock = Path.join(root, '.tao', 'store', 'npm', `${prepared.graphFingerprint}.lock`)
+    await FileSystem.rm(durableLock, { force: true })
+    await FileSystem.rm(durableLock.replace(/\.lock$/, '.sha256'), { force: true })
+    let invoked = false
+    await Tests.rejects(
+      prepareManagedModules(current, async () => {
+        invoked = true
+        return { status: 0, stdout: '', stderr: '' }
+      }),
+      /durable lock is missing or changed/,
+    )
+    Tests.expect(invoked).toBe(false)
+  }))
+
 Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source references', async () =>
   await withProject(async root => {
     const moduleDirectory = Path.join(root, 'Modules')

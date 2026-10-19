@@ -4,7 +4,7 @@ import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@sh
 import {
   nativeLockVersionRoot,
   publishNativeLockVersion,
-  readNativeLockPointer,
+  readNativeLockPointerForSetup,
   writeNativeLockPointer,
 } from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
@@ -12,6 +12,25 @@ import { nodeGypOptions } from './NodeGyp'
 /** prepareNativeLocks builds the shared kernel-lock addon with the pinned native toolchain. */
 export async function prepareNativeLocks(): Promise<void> {
   await BuildLock.withBuildLock(Artifacts.resolvePath('locks/native-lock-build.lock'), buildNativeLocks)
+}
+
+/** prepareNativeLock reuses verified output or builds a fresh addon after invalidating stale pointer state. */
+export async function prepareNativeLock(
+  root: string,
+  identity: string,
+  canReuse: (pointer: { identity: string; directory: string }) => Promise<boolean>,
+  build: () => Promise<void>,
+): Promise<void> {
+  const current = await readNativeLockPointerForSetup(root)
+  if (current?.identity === identity && await canReuse(current)) {
+    return
+  }
+  const stablePointer = { identity, directory: identity }
+  if (await canReuse(stablePointer)) {
+    await writeNativeLockPointer(root, stablePointer)
+    return
+  }
+  await build()
 }
 
 type NativeInputs = {
@@ -28,22 +47,20 @@ const sourceNames = ['binding.gyp', 'SessionLock.cc']
 
 async function buildNativeLocks(): Promise<void> {
   const inputs = await readInputs()
-  const current = await readNativeLockPointer(outputRoot)
-  if (current?.identity === inputs.identity && await canReusePointer(inputs.identity, current)) {
-    return
-  }
-  const stablePointer = { identity: inputs.identity, directory: inputs.identity }
-  if (await canReusePointer(inputs.identity, stablePointer)) {
-    await writeNativeLockPointer(outputRoot, stablePointer)
-    return
-  }
-  const staging = Artifacts.resolvePath('cache', `.native-locks-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(outputRoot, { recursive: true })
-  await Try(async () => {
-    await writeSources(staging, inputs)
-    await buildStagedAddon(staging, inputs.node)
-    await publishNativeLockVersion(outputRoot, staging, inputs.identity)
-  }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })
+  await prepareNativeLock(
+    outputRoot,
+    inputs.identity,
+    async pointer => await canReusePointer(inputs.identity, pointer),
+    async () => {
+      const staging = Artifacts.resolvePath('cache', `.native-locks-${Platform.randomUUID()}`)
+      await FileSystem.mkdir(outputRoot, { recursive: true })
+      await Try(async () => {
+        await writeSources(staging, inputs)
+        await buildStagedAddon(staging, inputs.node)
+        await publishNativeLockVersion(outputRoot, staging, inputs.identity)
+      }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })
+    },
+  )
 }
 
 async function readInputs(): Promise<NativeInputs> {

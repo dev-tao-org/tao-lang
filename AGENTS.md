@@ -27,8 +27,6 @@ These are your rules of usage:
 
 ## Dependencies and feature planning
 
-- Never preserve backward compatibility. Tao rolls forward only: update affected implementations, callers, formats, fixtures and documentation together. Do not add legacy readers, migration branches, compatibility shims or fallbacks for superseded assumptions.
-- For a large breaking rewrite, coordinate exclusive ownership by one agent with the developer instead of maintaining old and new designs in parallel. Rebuild incompatible generated state explicitly; do not silently discard authored data or re-resolve durable dependency pins.
 - Determine during planning whether new or updated dependencies are needed.
 - Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
@@ -71,6 +69,11 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.
+
+## Implementation policy
+
+- Never preserve backward compatibility. Tao rolls forward only: update affected implementations, callers, formats, fixtures and documentation together. Do not add legacy readers, migration branches, compatibility shims or fallbacks for superseded assumptions.
+- For a large breaking rewrite, coordinate exclusive ownership by one agent with the developer instead of maintaining old and new designs in parallel. Rebuild incompatible generated state explicitly; do not silently discard authored data or re-resolve durable dependency pins.
 
 ## Conformity and style
 

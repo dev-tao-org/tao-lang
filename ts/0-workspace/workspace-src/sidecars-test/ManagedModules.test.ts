@@ -36,8 +36,13 @@ async function assertProfileRepair(fixture: ManagedFixture, fingerprint: string)
   await Tests.rejects(readManagedModules(fixture.input), /manifest drifted/)
   const metadataPath = Path.join(profile, '.tao-managed.json')
   const metadata = JSON.parse(await FileSystem.readFile(metadataPath, 'utf8'))
-  metadata.target = 'tampered'
+  const currentRequirements = metadata.requirements
+  metadata.requirements = [['Modules', 'date-fns', '4.1.0']]
   await FileSystem.chmod(metadataPath, 0o644)
+  await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
+  await Tests.rejects(readManagedModules(fixture.input), /dependencies changed/)
+  metadata.requirements = currentRequirements
+  metadata.target = 'tampered'
   await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
   await Tests.rejects(readManagedModules(fixture.input), /dependencies changed/)
   const repaired = await repairManagedModuleFiles(fixture.input, fixture.executor)

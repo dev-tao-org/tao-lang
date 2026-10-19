@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
-import { defaultSingletonPackages, graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
+import { Path, Platform } from '@shared/os'
+import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
 import type { ManagedModulesInput } from './ManagedModuleTypes'
 import { optionalJson, optionalText } from './ManagedNpmState'
 
@@ -57,13 +57,10 @@ export async function recoverManagedLock(
   graphFingerprint: string,
 ): Promise<string | undefined> {
   const reference = input.previousGraphReference
-  if (reference) {
-    const lock = await readReferencedLock(input, reference, requirements, graphFingerprint)
-    if (lock !== undefined) {
-      return lock
-    }
+  if (!reference) {
+    return undefined
   }
-  return await findUniqueLock(input, requirements, graphFingerprint)
+  return await readReferencedLock(input, reference, requirements, graphFingerprint)
 }
 
 async function readReferencedLock(
@@ -102,80 +99,4 @@ async function validatePresentProfile(
   if (profileLock !== undefined && profileLock !== lock) {
     Errors.ThrowUserInput('Referenced managed npm profile lock differs from its exact source lock reference.')
   }
-}
-
-async function findUniqueLock(
-  input: ManagedModulesInput,
-  requirements: [string, string, string][],
-  graphFingerprint: string,
-): Promise<string | undefined> {
-  const directory = Path.join(input.directory, '.tao', 'store', 'npm')
-  if (!await FileSystem.exists(directory)) {
-    return undefined
-  }
-  const profilesDirectory = Path.join(input.directory, '.tao', 'cache', 'managed-modules')
-  const profiles = await FileSystem.exists(profilesDirectory) ? await FileSystem.readdir(profilesDirectory) : []
-  const candidates: string[] = []
-  for (const filename of await FileSystem.readdir(directory)) {
-    if (!filename.endsWith('.lock')) {
-      continue
-    }
-    const path = Path.join(directory, filename)
-    const lock = await optionalText(path)
-    const hash = await optionalText(path.replace(/\.lock$/, '.sha256'))
-    if (
-      !lock || hash !== `${Platform.hashText(lock)}\n` || !graphContentsMatch(lock, requirements, input.runtimePins)
-    ) {
-      continue
-    }
-    const identity = filename.slice(0, -'.lock'.length)
-    const owners = await matchingProfiles(profilesDirectory, profiles, identity, graphFingerprint)
-    if (owners.length === 0) {
-      Errors.ThrowUserInput(
-        'A compatible managed npm lock exists without verifiable graph metadata; refusing to resolve a new graph.',
-      )
-    }
-    if (owners.some(owner => owner.lockHash === Platform.hashText(lock) && matchesPolicy(owner, input))) {
-      candidates.push(lock)
-    }
-  }
-  const unique = [...new Set(candidates)]
-  if (unique.length > 1) {
-    Errors.ThrowUserInput(
-      'Multiple compatible managed npm locks exist; select or repair the exact graph before preparing.',
-    )
-  }
-  return unique[0]
-}
-
-async function matchingProfiles(
-  directory: string,
-  profiles: string[],
-  legacyIdentity: string,
-  graphFingerprint: string,
-): Promise<Record<string, unknown>[]> {
-  const matches: Record<string, unknown>[] = []
-  for (const profile of profiles) {
-    const metadata = await optionalJson(Path.join(directory, profile, '.tao-managed.json'))
-    if (metadata?.fingerprint === legacyIdentity || metadata?.graphFingerprint === graphFingerprint) {
-      matches.push(metadata)
-    }
-  }
-  return matches
-}
-
-function matchesPolicy(metadata: Record<string, unknown>, input: ManagedModulesInput): boolean {
-  return metadata.target === input.target && sameStringRecord(metadata.runtimePins, input.runtimePins)
-    && metadata.policyRegistryVersion === 1 && Array.isArray(metadata.singletonPackages)
-    && [...metadata.singletonPackages].sort().join('\0')
-      === [...input.singletonPackages ?? defaultSingletonPackages].sort().join('\0')
-}
-
-function sameStringRecord(value: unknown, expected: Record<string, string>): boolean {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false
-  }
-  const entries = Object.entries(value)
-  return entries.length === Object.keys(expected).length
-    && entries.every(([key, item]) => typeof item === 'string' && expected[key] === item)
 }

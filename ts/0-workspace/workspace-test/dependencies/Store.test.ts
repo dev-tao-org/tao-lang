@@ -237,13 +237,14 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
   const profiles = Path.join(root, '.tao', 'cache', 'managed-modules')
   const referenced = Path.join(npm, 'referenced.lock')
   const retained = Path.join(npm, 'retained.lock')
+  const legacyRetained = Path.join(npm, 'legacy-retained.lock')
   const orphan = Path.join(npm, 'orphan.lock')
   await Try(async () => {
     await FileSystem.mkdir(npm, { recursive: true })
     await FileSystem.mkdir(profiles, { recursive: true })
     await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
     await FileSystem.mkdir(Path.join(profiles, 'retained-install'), { recursive: true })
-    for (const path of [referenced, retained, orphan]) {
+    for (const path of [referenced, retained, legacyRetained, orphan]) {
       await FileSystem.writeFile(path, path)
       await FileSystem.writeFile(path.replace(/\.lock$/, '.sha256'), 'hash\n')
     }
@@ -251,10 +252,16 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
       Path.join(profiles, 'retained-install', '.tao-managed.json'),
       JSON.stringify({ graphFingerprint: 'retained' }),
     )
+    await FileSystem.mkdir(Path.join(profiles, 'legacy-install'), { recursive: true })
+    await FileSystem.writeFile(
+      Path.join(profiles, 'legacy-install', '.tao-managed.json'),
+      JSON.stringify({ fingerprint: 'legacy-retained', graphFingerprint: 'different-graph' }),
+    )
     await recordManagedGraphReference(root, 'Main.tao', 'a'.repeat(64), referenced, 'b'.repeat(64))
     await pruneUnreferencedManagedLocks(root)
     Tests.expect(await FileSystem.exists(referenced)).toBe(true)
     Tests.expect(await FileSystem.exists(retained)).toBe(true)
+    Tests.expect(await FileSystem.exists(legacyRetained)).toBe(false)
     Tests.expect(await FileSystem.exists(orphan)).toBe(false)
     Tests.expect(await FileSystem.exists(orphan.replace(/\.lock$/, '.sha256'))).toBe(false)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
