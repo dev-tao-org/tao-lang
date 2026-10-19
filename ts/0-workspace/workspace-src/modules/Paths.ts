@@ -38,14 +38,12 @@ export function nearestProjectRoot(directory: string, homeDirectory = Platform.h
 /** isDiscoverableProjectDirectory excludes legacy home cache directories from project boundaries. */
 export function isDiscoverableProjectDirectory(path: string, home = Platform.homeDirectory()): boolean {
   const tao = Path.join(path, '.tao')
+  if (!Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())) {
+    return false
+  }
   const isHome = canonicalPath(path) === canonicalPath(home)
   const legacyHome = isHome && !FileSystem.existsSync(Path.join(tao, 'store', 'project.json'))
-  return !legacyHome && Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())
-}
-
-function canonicalPath(path: string): string {
-  const absolute = Path.resolve(path)
-  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
+  return !legacyHome
 }
 
 /** realPathInsideProject rejects symlinks that leave the owning Tao project. */
@@ -104,4 +102,9 @@ export function relationFor(
     return 'same-project'
   }
   return 'same-directory'
+}
+
+function canonicalPath(path: string): string {
+  const absolute = Path.resolve(path)
+  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
 }
