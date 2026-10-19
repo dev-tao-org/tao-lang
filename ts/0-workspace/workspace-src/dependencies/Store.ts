@@ -55,7 +55,9 @@ export async function readPreparedDependencies(
         `Locked source ${source.identifier}@${source.commit} is missing; prepare dependencies, then retry.`,
       )
     }
-    assertTaoProjectRoot(source.location, `Locked source ${source.identifier}`)
+    if (source.provider !== 'bundled') {
+      assertTaoProjectRoot(source.location, `Locked source ${source.identifier}`)
+    }
     const current = await options.readRequirements(source.location)
     if (JSON.stringify(normalizeRequirements(current)) !== JSON.stringify(normalizeRequirements(source.requirements))) {
       preparationNeeded(
@@ -87,6 +89,7 @@ export async function prepareDependencies(
       projectRoot,
       requirements,
       materializeSources(previous?.sources ?? {}, projectRoot),
+      previousPins(previous, projectRoot),
       update,
       options,
     )
@@ -105,6 +108,7 @@ async function resolveGraph(
   projectRoot: string,
   requirements: DependencyRequirement[],
   previousSources: Record<string, LockedSource>,
+  previousPins: Map<string, string>,
   update: string[],
   options: DependencyStoreOptions,
 ): Promise<Record<string, LockedSource>> {
@@ -115,12 +119,17 @@ async function resolveGraph(
   while (pending.length > 0) {
     const { requirement, parent } = pending.shift()!
     const identity = sourceIdentity(requirement, parent, projectRoot)
+    const requestedVersionPin = previousPins.get(`${identity}@${requirement.version}`)
+    const sourcePin = previousSources[identity]
+    const prior = requestedVersionPin && sourcePin?.commit
+      ? { ...sourcePin, version: requirement.version, commit: requestedVersionPin }
+      : sourcePin
     const pin = await resolveSource(
       requirement,
       identity,
       projectRoot,
       parent,
-      previousSources[identity],
+      prior,
       update?.includes(requirement.alias ?? defaultSourceAlias(requirement)) === true
         || update?.includes(identity) === true,
       options,
@@ -137,6 +146,33 @@ async function resolveGraph(
     }
   }
   return sources
+}
+
+function previousPins(previous: DependencyLock | undefined, projectRoot: string): Map<string, string> {
+  const pins = new Map<string, string>()
+  if (!previous) {
+    return pins
+  }
+  const sources = materializeSources(previous.sources, projectRoot)
+  for (const value of Object.values(previous.roots)) {
+    const split = value.lastIndexOf('@')
+    const identity = split > 0 ? value.slice(0, split) : ''
+    const version = split > 0 ? value.slice(split + 1) : ''
+    const commit = sources[identity]?.commit
+    if (identity && version && commit) {
+      pins.set(`${identity}@${version}`, commit)
+    }
+  }
+  for (const source of Object.values(sources)) {
+    for (const requirement of source.requirements) {
+      const identity = sourceIdentity(requirement, source.location, projectRoot)
+      const commit = sources[identity]?.commit
+      if (commit) {
+        pins.set(`${identity}@${requirement.version}`, commit)
+      }
+    }
+  }
+  return pins
 }
 
 function rejectCommitConflict(identity: string, commit: string | undefined, resolvedPins: Map<string, string>): void {

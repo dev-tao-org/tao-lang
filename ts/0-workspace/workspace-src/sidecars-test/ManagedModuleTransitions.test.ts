@@ -9,6 +9,27 @@ Tests.test('updates one consumer graph while preserving prior profiles and rejec
 Tests.test('rejects a second consumer graph for a live module without rewiring it', async () =>
   await withDirectory('managed-consumers', async root => await assertConsumerConflict(root)))
 
+Tests.test('rejects unsafe npm package names before starting Bun', async () => {
+  let invoked = false
+  await Tests.rejects(
+    prepareManagedModules({
+      directory: '/unused/project',
+      modules: [{
+        directory: '/unused/project/Module',
+        requirements: [{ name: '../outside', version: '1.0.0', origin: 'Unsafe.tao' }],
+      }],
+      target: 'browser',
+      runtimePins: {},
+      bunVersion: '1.2.0',
+    }, async () => {
+      invoked = true
+      return { status: 0, stdout: '', stderr: '' }
+    }),
+    /package name .*invalid/,
+  )
+  Tests.expect(invoked).toBe(false)
+})
+
 async function assertProfileTransition(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })

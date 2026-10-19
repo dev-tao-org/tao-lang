@@ -54,6 +54,10 @@ async function projectModuleTargets(
   if (!dependency) {
     Errors.ThrowUserInput(`Project dependency ${imported.alias} is not available while resolving ${specifier}.`)
   }
+  if (isBundledStdlibRoot(dependency.root, context.options.stdlibDirectory)) {
+    const modulePath = `@tao/${imported.module}${imported.parts.length ? `/${imported.parts.join('/')}` : ''}`
+    return await resolveStdlibImport(modulePath, context.options)
+  }
   const projectRoot = canonicalProjectRoot(dependency.root)
   if (!projectRoot) {
     Errors.ThrowUserInput(`Project dependency ${imported.alias} has no valid project root.`)
@@ -79,6 +83,15 @@ async function projectModuleTargets(
     ? await recursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
     : await directSourceFiles(targetDirectory, projectRoot)
   return files.map(path => ({ path, relation: 'public', projectRoot }))
+}
+
+function isBundledStdlibRoot(root: string, stdlibDirectory: string | undefined): boolean {
+  if (!stdlibDirectory) {
+    return false
+  }
+  const bundledRoot = Try.WithDefault(undefined, () => FileSystem.realpathSync(Path.resolve(stdlibDirectory, '@tao')))
+  const dependencyRoot = Try.WithDefault(undefined, () => FileSystem.realpathSync(root))
+  return bundledRoot !== undefined && dependencyRoot === bundledRoot
 }
 
 async function relativeTargets(

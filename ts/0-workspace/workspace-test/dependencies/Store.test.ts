@@ -102,17 +102,23 @@ Tests.test('same source at different refs keeps each alias resolvable when commi
   ] satisfies DependencyRequirement[]
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
+    const commits = new Map([['example/shared:v1', 'a'.repeat(40)], ['example/shared:v2', 'a'.repeat(40)]])
+    const calls: string[] = []
+    const options = fixtureOptions(root, commits, calls)
     const lock = await prepareDependencies(
       root,
       requirements,
-      fixtureOptions(
-        root,
-        new Map([['example/shared:v1', 'a'.repeat(40)], ['example/shared:v2', 'a'.repeat(40)]]),
-        [],
-      ),
+      options,
     )
     Tests.expect(resolveLockedAlias(lock, root, 'first', root)?.identity).toBe('github:example/shared')
     Tests.expect(resolveLockedAlias(lock, root, 'second', root)?.identity).toBe('github:example/shared')
+    const resolutionCount = calls.filter(call => call.startsWith('resolve:')).length
+    commits.set('example/shared:v1', 'b'.repeat(40))
+    commits.set('example/shared:v2', 'b'.repeat(40))
+    const unchanged = await prepareDependencies(root, requirements, options)
+    Tests.expect(unchanged.sources['github:example/shared']?.commit).toBe('a'.repeat(40))
+    Tests.expect(calls.filter(call => call.startsWith('resolve:')).length).toBe(resolutionCount)
+    await Tests.rejects(prepareDependencies(root, requirements, options, ['first']), /conflicting commits/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -154,6 +160,32 @@ Tests.test('managed npm graph references validate paths and survive source prepa
     const stored = await FileSystem.readFile(durablePath, 'utf8')
     await FileSystem.writeFile(durablePath, stored.replace('.tao/store/npm/graph.lock', '../outside.lock'))
     await Tests.rejects(readDependencyLock(durablePath), /invalid/)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('bundled sources do not require project marker metadata', async () => {
+  const root = Artifacts.resolvePath('tmp', `dependency-bundled-${Platform.randomUUID()}`)
+  const bundledRoot = Path.join(root, 'stdlib-src')
+  const requirement: DependencyRequirement = { provider: 'bundled', identifier: 'tao', version: 'bundled' }
+  const options: DependencyStoreOptions = {
+    bundledRoot,
+    readRequirements: async () => [],
+    acquireLock: async () => ({ release() {} }),
+    git: {
+      async resolveCommit() {
+        throw new Error('unexpected Git resolution')
+      },
+      async fetchCommit() {
+        throw new Error('unexpected Git fetch')
+      },
+    },
+  }
+  await Try(async () => {
+    await FileSystem.mkdir(bundledRoot, { recursive: true })
+    const prepared = await prepareDependencies(root, [requirement], options)
+    const loaded = await readPreparedDependencies(root, [requirement], options)
+    Tests.expect(loaded.sources['bundled:tao']?.location).toBe(bundledRoot)
+    Tests.expect(prepared.roots).toEqual(loaded.roots)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

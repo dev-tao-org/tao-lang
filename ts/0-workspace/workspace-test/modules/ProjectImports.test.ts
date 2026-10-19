@@ -122,11 +122,18 @@ Tests.test('tao project imports resolve through the bundled stdlib and legacy pa
     const virtualPath = Path.join(root, 'virtual', '@tao', 'ui', 'Views.tao')
     const entryPath = Path.join(root, 'Main.tao')
     const modules = await loadModules(
-      parseEntry(entryPath, 'use all from tao@ui\nuse all from @tao/ui\napp Main { root Root }'),
+      parseEntry(
+        entryPath,
+        'use all from tao@ui\nuse all from @tao/ui\nuse all from core@ui\napp Main { root Root }',
+      ),
       {
         directory: root,
         stdlibDirectory: standardRoot,
         stdlibSources: new Map([[virtualPath, 'view Text { render Text("Old") }']]),
+        resolveProject: async (_importer, alias) =>
+          alias === 'core'
+            ? { root: Path.join(standardRoot, '@tao') }
+            : undefined,
       },
       createParser(),
       new Timings('project-import-test'),
@@ -134,6 +141,7 @@ Tests.test('tao project imports resolve through the bundled stdlib and legacy pa
 
     Tests.expect(modules.filter(module => module.path === virtualPath)).toHaveLength(1)
     Tests.expect(modules[0]!.imports.map(imported => imported.targets)).toEqual([
+      [{ path: virtualPath, relation: 'public' }],
       [{ path: virtualPath, relation: 'public' }],
       [{ path: virtualPath, relation: 'public' }],
     ])

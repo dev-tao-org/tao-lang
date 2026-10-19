@@ -15,10 +15,12 @@ export function allRequirements(
   const versions = new Map<string, Map<string, Set<string>>>()
   for (const [, name, value] of requirements) {
     const [version, origin] = value.split('\n')
+    validatePackageName(name, origin ?? 'module declaration')
     requireExactVersion(name, version!, origin ?? 'module declaration')
     addVersion(versions, name, version!, origin ?? 'module declaration')
   }
   for (const [name, version] of Object.entries(runtimePins)) {
+    validatePackageName(name, 'runtime policy')
     requireExactVersion(name, version, 'runtime policy')
     addVersion(versions, name, version, 'runtime policy')
   }
@@ -31,6 +33,19 @@ export function allRequirements(
   return Object.fromEntries(
     [...versions].map(([name, choices]) => [name, [...choices.keys()][0]!]).sort(([a], [b]) => a.localeCompare(b)),
   )
+}
+
+function validatePackageName(name: string, owner: string): void {
+  const parts = name.split('/')
+  const scoped = parts.length === 2 && parts[0]!.startsWith('@')
+  const valid = parts.length === (scoped ? 2 : 1)
+    && parts.every((part, index) => {
+      const segment = scoped && index === 0 ? part.slice(1) : part
+      return /^[a-z0-9][a-z0-9._-]*$/.test(segment) && segment !== '.' && segment !== '..'
+    })
+  if (!valid) {
+    Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
+  }
 }
 
 function requireExactVersion(name: string, version: string, origin: string): void {
@@ -155,6 +170,7 @@ async function loadPackage(
   optional: boolean,
   peer = false,
 ): Promise<void> {
+  validatePackageName(name, `dependency required by ${from}`)
   const directory = await findPackageDirectory(name, from, optional, peer)
   if (!directory) {
     return
