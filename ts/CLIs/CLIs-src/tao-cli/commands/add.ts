@@ -25,10 +25,12 @@ export default registerCommand({
       ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
     await withDependencySession(project.root, options.session, async () => {
       if (
-        !options.yes && !await Terminal.askConfirm({
-          message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
-          defaultValue: false,
-        })
+        !options.yes && !await IO.prompt(() =>
+          Terminal.askConfirm({
+            message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
+            defaultValue: false,
+          })
+        )
       ) {
         Errors.ThrowUserInput('Dependency addition was declined; rerun with --yes to proceed non-interactively.')
       }

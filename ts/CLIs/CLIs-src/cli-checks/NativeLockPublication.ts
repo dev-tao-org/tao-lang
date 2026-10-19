@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 
 /** NativeLockPointer identifies the immutable addon installation for one build identity. */
 export type NativeLockPointer = { identity: string; directory: string }
@@ -26,7 +26,7 @@ export async function readNativeLockPointer(root: string): Promise<NativeLockPoi
 
 /** nativeLockVersionRoot resolves only a direct, identity-matched addon version directory. */
 export function nativeLockVersionRoot(root: string, pointer: NativeLockPointer): string {
-  if (!isSafeVersionName(pointer.identity, pointer.directory)) {
+  if (!SessionLock.isSafeVersionName(pointer.identity, pointer.directory)) {
     Errors.ThrowHostEnvironment(`Native lock version directory is invalid: ${pointer.directory}`)
   }
   const absoluteRoot = Path.resolve(root)
@@ -59,15 +59,4 @@ export async function writeNativeLockPointer(root: string, pointer: NativeLockPo
     await FileSystem.writeFile(pending, JSON.stringify(pointer))
     await FileSystem.rename(pending, path)
   }, { finally: () => FileSystem.rm(pending, { force: true }) })
-}
-
-function isSafeVersionName(identity: string, directory: string): boolean {
-  if (!/^[a-f0-9]{64}$/.test(identity)) {
-    return false
-  }
-  if (directory === identity) {
-    return true
-  }
-  const suffix = directory.startsWith(`${identity}-`) ? directory.slice(identity.length + 1) : ''
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(suffix)
 }

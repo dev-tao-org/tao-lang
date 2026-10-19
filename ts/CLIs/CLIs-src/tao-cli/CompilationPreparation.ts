@@ -17,10 +17,12 @@ export async function compileWithPreparation(
         Errors.Throw(error)
       }
       IO.warn(String(error))
-      const accepted = await Terminal.askConfirm({
-        message: 'Download and prepare this app’s dependencies now? Rerun compilation after preparation.',
-        defaultValue: false,
-      })
+      const accepted = await IO.prompt(() =>
+        Terminal.askConfirm({
+          message: 'Download and prepare this app’s dependencies now? Rerun compilation after preparation.',
+          defaultValue: false,
+        })
+      )
       if (!accepted) {
         Errors.ThrowUserInput(
           `Dependencies need preparation. Run tao prepare ${JSON.stringify(entry)} --yes, then retry.`,

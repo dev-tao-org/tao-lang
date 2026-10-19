@@ -1,3 +1,4 @@
+import { IO } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
@@ -41,7 +42,7 @@ async function runDirenvSetup(
 
 function liveEnvironment(): SetupEnvironment {
   return {
-    confirm: Terminal.askConfirm,
+    confirm: options => IO.prompt(() => Terminal.askConfirm(options)),
     env: Env.snapshot(),
     interactive: Terminal.isInteractive,
     root: Repo.getWorkspaceRoot,

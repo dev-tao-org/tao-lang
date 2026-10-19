@@ -62,29 +62,27 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
   }, { finally: releaseLocal })
 }
 
-/** acquireCacheLease holds a stable support lock for one active cache consumer. */
-export async function acquireCacheLease(identity: string): Promise<() => void> {
+/** acquireCacheLease holds a removable lease probe; its lifecycle is serialized by the stable cache-mutation lock. */
+export async function acquireCacheLease(identity: string): Promise<() => void | Promise<void>> {
   const path = supportDirectory('leases', `${Platform.hashText(identity)}.lock`)
   await mkdir(dirname(path), { recursive: true })
-  let releaseLease!: () => void
+  let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
+    await hasBusyLease(supportDirectory('leases'))
     const lock = await SessionLock.acquire(path)
     if (!lock) {
       Errors.ThrowHostEnvironment(`Cache lease is already held for identity: ${identity}`)
     }
     activeLeases.add(path)
-    releaseLease = () => {
-      activeLeases.delete(path)
-      lock.release()
-    }
+    releaseLease = () =>
+      withCacheMutation(async () => {
+        activeLeases.delete(path)
+        lock.release()
+        await rm(path, { force: true })
+      })
   })
-  let released = false
-  return () => {
-    if (!released) {
-      released = true
-      releaseLease()
-    }
-  }
+  let release: Promise<void> | undefined
+  return () => release ??= releaseLease()
 }
 
 /** cleanSharedCache removes Tao cache entries only when no consumer lease is active. */
@@ -177,17 +175,21 @@ async function hasBusyLease(directory: string): Promise<boolean> {
   const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
     catch: error => isMissing(error) ? [] : Errors.Throw(error),
   })
+  let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
     if (!entry.isFile()) {
-      return true
+      busy = true
+      continue
     }
     const lock = await SessionLock.acquire(join(directory, entry.name))
     if (!lock) {
-      return true
+      busy = true
+      continue
     }
     lock.release()
+    await rm(join(directory, entry.name), { force: true })
   }
-  return false
+  return busy
 }
 
 async function existingDirectory(path: string): Promise<string | undefined> {

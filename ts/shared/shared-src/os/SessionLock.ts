@@ -28,6 +28,18 @@ export async function acquire(path: string): Promise<SessionLock | undefined> {
   return { release, dispose: release }
 }
 
+/** isSafeVersionName accepts only an addon identity and its optional immutable rebuild suffix. */
+export function isSafeVersionName(identity: string, directory: string): boolean {
+  if (!/^[a-f0-9]{64}$/.test(identity)) {
+    return false
+  }
+  if (directory === identity) {
+    return true
+  }
+  const suffix = directory.startsWith(`${identity}-`) ? directory.slice(identity.length + 1) : ''
+  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(suffix)
+}
+
 async function readLockPointer(root: string, path: string): Promise<{ identity: string; directory: string }> {
   return await Try(async () => {
     const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
@@ -75,15 +87,4 @@ async function loadLockBinding(path: string): Promise<{ acquire(path: string): {
 function isMissingAddon(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error
     && ['ENOENT', 'MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND'].includes(String(error.code))
-}
-
-function isSafeVersionName(identity: string, directory: string): boolean {
-  if (!/^[a-f0-9]{64}$/.test(identity)) {
-    return false
-  }
-  if (directory === identity) {
-    return true
-  }
-  const suffix = directory.startsWith(`${identity}-`) ? directory.slice(identity.length + 1) : ''
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(suffix)
 }

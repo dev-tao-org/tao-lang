@@ -46,6 +46,19 @@ Tests.test('module add resolves bare packages through the injected executor and 
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('module add accepts legacy mixed-case npm package names', async () => {
+  const root = tempRoot()
+  const module = Path.join(root, 'Packages', '@widgets')
+  await Try(async () => {
+    await FileSystem.mkdir(module, { recursive: true })
+    await FileSystem.writeFile(Path.join(root, '.tao'), '')
+    const result = await addModuleNpmDependency(root, '@widgets', 'JSONStream@1.3.5')
+    Tests.expect(result.packageName).toBe('JSONStream')
+    Tests.expect(await FileSystem.readFile(result.sourcePath, 'utf8'))
+      .toBe('requires npm:JSONStream version 1.3.5\n')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 Tests.test('module add rejects ambiguous local names and invalid versions', async () => {
   const root = tempRoot()
   const unique = tempRoot()

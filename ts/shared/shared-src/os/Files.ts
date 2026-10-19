@@ -29,7 +29,7 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
       Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
     }
     if (!existing) {
-      await writeFile(canonical, contents, { flag: 'wx', mode: 0o444 })
+      await createReadOnlyFile(canonical, contents)
     } else if (await readFile(canonical, 'utf8') !== contents) {
       await withOriginalPermissions(canonical, file => file.write(contents))
     }
@@ -65,6 +65,25 @@ export function skipDirectory(name: string, taoBoundary: string | false = '.tao'
 
 const excluded = new Set(['node_modules', '.git', '.hg', '.svn', '.jj', 'Pods', '.gradle', '.venv', '.next', '.nuxt'])
 const queues = new Map<string, Promise<void>>()
+
+async function createReadOnlyFile(path: string, contents: string): Promise<void> {
+  await Try(() => writeFile(path, contents, { flag: 'wx', mode: 0o444 }), {
+    async catch(error) {
+      if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'EEXIST') {
+        Errors.Throw(error)
+      }
+      const info = await lstat(path)
+      if (!info.isFile()) {
+        Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
+      }
+      if (await readFile(path, 'utf8') !== contents) {
+        Errors.ThrowUserInput(
+          `Generated metadata was created concurrently with different contents: ${path}. Retry the command.`,
+        )
+      }
+    },
+  })
+}
 
 async function serialized<Value>(canonical: string, operation: () => Promise<Value>): Promise<Value> {
   const previous = queues.get(canonical) ?? Promise.resolve()

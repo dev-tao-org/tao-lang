@@ -10,6 +10,7 @@ import {
 } from './output/Output'
 import { createPlainOutput } from './output/Plain'
 import { encodeOutputMessage } from './output/ProcessOutput'
+import { createPromptLifecycle } from './output/PromptLifecycle'
 
 /** IO routes direct and process-scoped output through one presentation and file policy. */
 export const IO = {
@@ -19,6 +20,10 @@ export const IO = {
   progress: (message: string) => output.main.progress(message),
   summary: (...values: unknown[]) => output.main.summary(...values),
   channel: (options: { title: string }) => output.channel(options.title),
+  prompt: withPrompt,
+  setPromptRenderer(factory: () => Promise<OutputRenderer>) {
+    promptRenderer = factory
+  },
   config: configureOutput,
   finish: finishOutput,
 }
@@ -62,6 +67,26 @@ let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
 let warningDetails: string[] = []
 let output = createOutput(writeOutput)
+let promptRenderer: (() => Promise<OutputRenderer>) | undefined
+const promptLifecycle = createPromptLifecycle({
+  async suspend() {
+    if (!tui) {
+      return false
+    }
+    await output.finish()
+    tui = false
+    return true
+  },
+  async resume() {
+    if (promptRenderer) {
+      renderOutput(await promptRenderer())
+    }
+  },
+})
+
+function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {
+  return promptLifecycle.run(prompt)
+}
 
 function configureOutput(options: IOConfiguration): void {
   if (tui) {

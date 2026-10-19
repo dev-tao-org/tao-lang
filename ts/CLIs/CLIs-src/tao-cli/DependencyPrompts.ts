@@ -1,3 +1,4 @@
+import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { Terminal } from '@shared/os'
 
@@ -7,7 +8,7 @@ export async function confirmDependencyWork(work: string[], yes: boolean): Promi
     return
   }
   const summary = work.join(', ')
-  if (!await Terminal.askConfirm({ message: `Prepare/download: ${summary}?`, defaultValue: false })) {
+  if (!await IO.prompt(() => Terminal.askConfirm({ message: `Prepare/download: ${summary}?`, defaultValue: false }))) {
     Errors.ThrowUserInput('Dependency preparation was declined; rerun with --yes to proceed non-interactively.')
   }
 }

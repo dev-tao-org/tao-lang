@@ -23,6 +23,9 @@ export function referencedNames(document: AST.Document): ReadonlySet<string> {
       names.add(declaration.root.value)
     } else if (AST.IsViewDeclaration(declaration)) {
       const localNames = new Set(declaration.parameters.map(parameter => parameter.name.value))
+      for (const parameter of declaration.parameters) {
+        addReference(parameter.type.value, names, localNames)
+      }
       for (const definition of declaration.definitions) {
         addScopedLetReferences(definition, names, localNames)
         localNames.add(definition.name.value)

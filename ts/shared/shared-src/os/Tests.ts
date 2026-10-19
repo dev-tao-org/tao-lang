@@ -1,5 +1,8 @@
 import { createRequire } from 'node:module'
+import * as Artifacts from './Artifacts'
+import * as Env from './Env'
 import * as FileSystem from './FileSystem'
+import * as Platform from './Platform'
 import * as Repo from './Repo'
 
 export { rejects, throws } from 'node:assert/strict'
@@ -23,12 +26,30 @@ type TestsModule = typeof import('bun:test')
 
 function testApi<Name extends 'describe' | 'expect' | 'test'>(name: Name): TestsModule[Name] {
   return new Proxy<(...args: unknown[]) => unknown>(function(...args: unknown[]) {
+    prepareTestStorage()
     return Reflect.apply(load('bun:test')[name], undefined, args)
   }, {
     get(_target, property) {
+      prepareTestStorage()
       const api = load('bun:test')[name]
       const value = Reflect.get(api, property, api)
       return typeof value === 'function' ? value.bind(api) : value
     },
   }) as TestsModule[Name]
 }
+
+function prepareTestStorage(): void {
+  if (storagePrepared) {
+    return
+  }
+  storagePrepared = true
+  if (Env.get('TAO_CACHE_DIR') && Env.get('TAO_SUPPORT_DIR')) {
+    return
+  }
+  const root = Artifacts.resolvePath('tmp/test-storage', Platform.randomUUID())
+  Artifacts.trackTemporary(root)
+  Env.set('TAO_CACHE_DIR', Env.get('TAO_CACHE_DIR') || `${root}/cache`)
+  Env.set('TAO_SUPPORT_DIR', Env.get('TAO_SUPPORT_DIR') || `${root}/support`)
+}
+
+let storagePrepared = false

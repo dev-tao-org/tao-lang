@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { Env, FileSystem, Http, Path, Platform, Repo } from '@shared/os'
+import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
 import { initializeProject } from '../projects/Projects'
@@ -25,29 +25,6 @@ export async function createAcceptanceProjects(root: string): Promise<{ app: str
     "import { label } from 'tao-fixture-label'\nexport function Widget() { return label('metro-rendered') }\n",
   )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
-}
-
-/** createLocalRegistry serves the fixture npm package over loopback only. */
-export async function createLocalRegistry(root: string) {
-  const packages = await packageArtifacts(root)
-  const server = Http.serve({
-    hostname: '127.0.0.1',
-    port: 0,
-    fetch(request) {
-      const path = Http.url(request.url).pathname
-      const tarball = /^\/tarballs\/([a-z0-9-]+)\.tgz$/.exec(path)
-      if (tarball) {
-        const artifact = packages.get(tarball[1]!)
-        return artifact ? Http.bytesResponse(artifact.bytes) : Http.response('missing tarball', { status: 404 })
-      }
-      const name = path.slice(1)
-      const artifact = packages.get(name)
-      return artifact
-        ? Http.jsonResponse(metadata(name, artifact, request.url))
-        : Http.response('not found', { status: 404 })
-    },
-  })
-  return { url: `http://127.0.0.1:${server.port}`, stop: (force?: boolean) => server.stop(force) }
 }
 
 /** installFixturePackage uses Bun to install the fixture from the local registry. */
@@ -129,7 +106,7 @@ async function recordProfileInstall(
   const fixtureLock = await readLock(Path.join(Path.dirname(options.fixtureModules), 'bun.lock'))
   lock.workspaces[''].dependencies =
     JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8')).dependencies
-  lock.packages['tao-fixture-label'] = fixtureLock.packages['tao-fixture-label']
+  Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}\n`)
 }
@@ -180,6 +157,7 @@ async function packageSources(options: {
   await scanSources(Repo.resolvePath('ts/node_modules/.bun'), result, true)
   const fixture = Path.join(options.fixtureModules, 'tao-fixture-label')
   result.set('tao-fixture-label@1.0.0', fixture)
+  result.set('string-width@4.1.0', Path.join(options.fixtureModules, 'string-width-cjs'))
   return result
 }
 
@@ -240,7 +218,8 @@ async function linkDependencies(
   const dependencies = { ...stringMap(metadata.dependencies), ...stringMap(metadata.optionalDependencies) }
   const target = Path.join(wrapper, 'node_modules')
   for (const [name, range] of Object.entries(dependencies ?? {})) {
-    const child = packageKey(lock, name, range, key)
+    const dependency = npmDependency(name, range)
+    const child = packageKey(lock, dependency.name, dependency.range, key)
     if (!child) {
       continue
     }
@@ -260,6 +239,17 @@ function packageKey(lock: LockFile, name: string, version: string, parent?: stri
   const candidates = matching
   const root = candidates.find(([key]) => key === name)
   return (nested ?? root ?? candidates[0])?.[0] ?? ''
+}
+
+function npmDependency(name: string, range: string): { name: string; range: string } {
+  if (!range.startsWith('npm:')) {
+    return { name, range }
+  }
+  const target = range.slice('npm:'.length)
+  const separator = target.lastIndexOf('@')
+  return separator > 0
+    ? { name: target.slice(0, separator), range: target.slice(separator + 1) }
+    : { name, range }
 }
 
 function lockIdentity(value: unknown): string {
@@ -293,37 +283,6 @@ async function readLock(path: string): Promise<LockFile> {
   return parsed.config as LockFile
 }
 
-async function packageArtifacts(root: string): Promise<Map<string, PackageArtifact>> {
-  const packages = new Map<string, PackageArtifact>()
-  const source = Repo.resolvePath('ts/0-workspace/workspace-test/managed-fixtures/packages/tao-fixture-label')
-  const directory = Path.join(root, 'registry', 'tao-fixture-label', 'package')
-  await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
-  await FileSystem.cp(source, directory, { recursive: true })
-  await FileSystem.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
-  const archive = Path.join(root, 'registry', 'tao-fixture-label.tgz')
-  await Platform.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
-  const bytes = await FileSystem.readFile(archive)
-  packages.set('tao-fixture-label', { bytes, integrity: Platform.hashBytes(bytes, 'sha512') })
-  return packages
-}
-
-function metadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
-  const version = '1.0.0'
-  const origin = Http.url(requestUrl).origin
-  return {
-    name,
-    versions: {
-      [version]: {
-        name,
-        version,
-        dist: { tarball: `${origin}/tarballs/${name}.tgz`, integrity: `sha512-${artifact.integrity}` },
-      },
-    },
-    'dist-tags': { latest: version },
-  }
-}
-
-type PackageArtifact = { bytes: Http.Bytes; integrity: string }
 type LockFile = {
   workspaces: Record<string, { dependencies: Record<string, string> }>
   packages: Record<string, unknown>

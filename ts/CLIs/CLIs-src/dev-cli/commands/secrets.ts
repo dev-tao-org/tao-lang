@@ -59,12 +59,12 @@ function liveEnvironment(): SecretsEnvironment {
     cipher: createAgeCipher(secretsIdentityPath(), './dev secrets setup'),
     now: Time.date,
     async promptSecret(prompt) {
-      const value = await Terminal.askSecret(prompt)
+      const value = await IO.prompt(() => Terminal.askSecret(prompt))
       if (value === value.trim()) {
         return value
       }
       IO.warn('The value has surrounding whitespace.')
-      const answer = await Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: ')
+      const answer = await IO.prompt(() => Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: '))
       return /^n(o)?$/i.test(answer.trim()) ? value : value.trim()
     },
   }

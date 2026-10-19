@@ -9,7 +9,7 @@ export async function withProjectSessions<Value>(
   paths: readonly string[],
   action: () => Promise<Value>,
   sessionId?: string,
-  acquireLease: (identity: string) => Promise<() => void> = Storage.acquireCacheLease,
+  acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<Value> {
   const roots = await owningProjectRoots(paths)
   return await acquireProjectSessions(roots, sessionId, acquireLease, action)
@@ -56,7 +56,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
 function acquireProjectSessions<Value>(
   roots: readonly string[],
   sessionId: string | undefined,
-  acquireLease: (identity: string) => Promise<() => void>,
+  acquireLease: typeof Storage.acquireCacheLease,
   action: () => Promise<Value>,
 ): Promise<Value> {
   const [root, ...remaining] = roots

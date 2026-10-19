@@ -25,7 +25,7 @@ export function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environmen
 /** configureCLIOutput owns environment reads and lazy TUI setup for all CLI entrypoints. */
 export async function configureCLIOutput(
   entrypoint: CLIEntrypoint,
-  options: { delegate?: boolean; interactive?: boolean } = {},
+  options: { delegate?: boolean } = {},
 ): Promise<void> {
   const resolved = resolveOutputConfiguration(entrypoint, {
     ui: Env.get('TERMINAL_UI'),
@@ -42,8 +42,10 @@ export async function configureCLIOutput(
   if (options.delegate) {
     Env.set('TERMINAL_OUTPUT', resolved.routing.stdout === 'terminal' ? '1' : '0')
     Env.set('TERMINAL_UI', resolved.ui ? '1' : '0')
-  } else if (resolved.ui && options.interactive !== false && !Env.is('CLI_OUTPUT_EVENTS', '1')) {
+  } else if (resolved.ui && !Env.is('CLI_OUTPUT_EVENTS', '1')) {
     const { createTUI } = await import('./tui/TUI')
-    renderOutput(await createTUI())
+    const factory = async () => createTUI()
+    IO.setPromptRenderer(factory)
+    renderOutput(await factory())
   }
 }

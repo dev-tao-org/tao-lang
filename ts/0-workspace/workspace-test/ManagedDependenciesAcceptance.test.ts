@@ -73,15 +73,20 @@ async function createFixtureProjects(root: string): Promise<{ app: string; ui: s
 async function packageArtifacts(root: string): Promise<Map<string, PackageArtifact>> {
   const fixtures = Repo.resolvePath('ts/0-workspace/workspace-test/managed-fixtures/packages')
   const packages = new Map<string, PackageArtifact>()
-  for (const name of ['react', 'tao-fixture-label']) {
+  for (const name of ['react', 'tao-fixture-label', 'string-width']) {
     const directory = Path.join(root, 'registry', name, 'package')
     await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
     await FileSystem.cp(Path.join(fixtures, name), directory, { recursive: true })
     await FileSystem.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
+    const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))
     const archive = Path.join(root, 'registry', `${name}.tgz`)
     await Platform.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
     const bytes = await FileSystem.readFile(archive)
-    packages.set(name, { bytes, integrity: Platform.hashBytes(bytes, 'sha512') })
+    packages.set(name, {
+      bytes,
+      integrity: Platform.hashBytes(bytes, 'sha512'),
+      ...(manifest.dependencies ? { dependencies: manifest.dependencies } : {}),
+    })
   }
   return packages
 }
@@ -110,7 +115,7 @@ function startLocalRegistry(packages: Map<string, PackageArtifact>, requests: st
 }
 
 function metadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
-  const version = name === 'react' ? runtimePins.react : '1.0.0'
+  const version = name === 'react' ? runtimePins.react : name === 'string-width' ? '4.1.0' : '1.0.0'
   const origin = Http.url(requestUrl).origin
   return {
     name,
@@ -118,6 +123,7 @@ function metadata(name: string, artifact: PackageArtifact, requestUrl: string): 
       [version]: {
         name,
         version,
+        ...(artifact.dependencies ? { dependencies: artifact.dependencies } : {}),
         dist: { tarball: `${origin}/tarballs/${name}.tgz`, integrity: `sha512-${artifact.integrity}` },
       },
     },
@@ -191,11 +197,14 @@ async function verifyInstalledGraph(
   const profiles = await FileSystem.readdir(Path.join(app, '.tao/cache/managed-modules'))
   const lock = await FileSystem.readFile(Path.join(app, '.tao/cache/managed-modules', profiles[0]!, 'bun.lock'), 'utf8')
   Tests.expect(lock).toContain(`sha512-${packages.get('tao-fixture-label')!.integrity}`)
+  Tests.expect(lock).toContain(`string-width@4.1.0`)
+  Tests.expect(lock).toContain(`sha512-${packages.get('string-width')!.integrity}`)
   Tests.expect(lock).toContain(registry)
 }
 
 function verifyRegistryRequests(requests: string[], registry: string): void {
   Tests.expect(requests.some(path => path.includes('/tao-fixture-label'))).toBe(true)
+  Tests.expect(requests.some(path => path.includes('/string-width'))).toBe(true)
   Tests.expect(requests.some(path => path.includes('/react'))).toBe(true)
   Tests.expect(requests.some(path => path.includes('/tarballs/tao-fixture-label.tgz'))).toBe(true)
   Tests.expect(requests.some(path => path.includes('/tao-unused-fixture'))).toBe(false)
@@ -306,7 +315,7 @@ async function verifyRuntimeConflictPreservesPreview(
   await FileSystem.writeFile(path, source)
 }
 
-type PackageArtifact = { bytes: Http.Bytes; integrity: string }
+type PackageArtifact = { bytes: Http.Bytes; integrity: string; dependencies?: Record<string, string> }
 
 function ArtifactsRoot(): string {
   return Repo.resolvePath('.artifacts/tmp', `managed-dependencies-${Platform.randomUUID()}`)

@@ -27,17 +27,14 @@ export async function openProjectWorkspace(
       },
     },
   )
-  const release = () => {
-    releaseCache()
-    session.release()
-  }
+  const release = () => Try(releaseCache, { finally: () => session.release() })
   return await Try(async () => {
     const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
     await dependencies.refresh()
     return managedWorkspace(project.root, session.directory, dependencies, options, release)
   }, {
-    catch(error) {
-      release()
+    async catch(error) {
+      await release()
       return Errors.Throw(error)
     },
   })
@@ -50,7 +47,7 @@ function managedWorkspace(
   options: Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
     pipelineServices?: ProjectPipelineServices
   },
-  release: () => void,
+  release: () => void | Promise<void>,
 ) {
   const runtimeOptions = {
     toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),

@@ -127,6 +127,14 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
   const parameterSource = source('app/main.tao', [parameterView], [left.path, right.path])
   Tests.expect(() => linkModules(parameterSource.path, [parameterSource, left, right])).not.toThrow()
 
+  const typedParameterView: AST.ViewDeclaration = {
+    ...unreferenced,
+    parameters: [{ kind: 'Parameter', start: 0, end: 0, name: identifier('value'), type: identifier('Item') }],
+  }
+  const typedParameterSource = source('app/main.tao', [typedParameterView], [left.path, right.path])
+  Tests.expect(() => linkModules(typedParameterSource.path, [typedParameterSource, left, right]))
+    .toThrow('ambiguous sibling name Item')
+
   const localLetView: AST.ViewDeclaration = {
     ...unreferenced,
     render: viewRender('Col', [letDefinition('Item', 'local'), renderWithNameArgument('Text', 'Item')]),

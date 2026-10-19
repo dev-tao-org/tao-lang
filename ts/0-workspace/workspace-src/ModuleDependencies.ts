@@ -6,6 +6,7 @@ import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { namedPackageDirectories, recursiveSourceFiles } from './modules/Catalog'
+import { isNpmPackageName } from './NpmPackageName'
 import { acquireSession } from './projects/Sessions'
 
 /** addModuleNpmDependency writes an exact npm pin into one project-owned named module. */
@@ -79,7 +80,7 @@ export async function withDependencySession<T>(
   projectRoot: string,
   sessionId: string | undefined,
   action: () => Promise<T>,
-  acquireLease: (identity: string) => Promise<() => void> = Storage.acquireCacheLease,
+  acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
   const session = await acquireSession(projectRoot, { id: sessionId, kind: 'cli' })
@@ -90,10 +91,7 @@ export async function withDependencySession<T>(
     },
   })
   return await Try(action, {
-    finally() {
-      session.release()
-      releaseLease()
-    },
+    finally: () => Try(releaseLease, { finally: () => session.release() }),
   })
 }
 
@@ -145,7 +143,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
   const index = spec.lastIndexOf('@')
   const packageName = index > 0 ? spec.slice(0, index) : spec
   const version = index > 0 ? spec.slice(index + 1) : undefined
-  if (!/^(?:@[A-Za-z0-9._-]+\/)?[A-Za-z0-9][A-Za-z0-9._-]*$/.test(packageName)) {
+  if (!isNpmPackageName(packageName)) {
     Errors.ThrowUserInput(`Invalid npm package name: ${packageName}`)
   }
   if (version) {

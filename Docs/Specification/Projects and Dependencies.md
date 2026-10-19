@@ -90,7 +90,9 @@ and session data live under `.tao/cache/`; `.tao/.gitignore` excludes cache and 
 while retaining the store. `tao clean` removes inactive project caches and sessions, preserving
 active or uncertain sessions. `tao clean --wipe` also asks the platform cache to remove shared Tao
 cache data; it preserves that cache while active consumers hold leases.
-Stable lock files remain after release so that concurrent processes always lock the same file.
+Stable session and cache-mutation lock files remain after release so that concurrent processes
+always lock the same file. Temporary cache leases are removed on release; a later cache operation
+reclaims leases left by crashed processes while preserving live consumers.
 
 Session identifiers supplied to CLI commands must match `[a-z0-9][a-z0-9_-]*`. `.cli` and `.studio`
 are reserved internal identifiers. They share the same stable native lock mechanism as other

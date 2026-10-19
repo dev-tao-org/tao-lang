@@ -6,21 +6,21 @@ import { openProjectWorkspace } from '../ProjectWorkspace'
 import {
   acceptanceRoot,
   createAcceptanceProjects,
-  createLocalRegistry,
   installFixturePackage,
   managedGraphExecutor,
 } from './ManagedMetroAcceptanceFixture'
+import { createFixtureRegistry } from './ManagedMetroFixtureRegistry'
 
 Tests.test('external npm-backed foreign view renders through the default Expo Metro pipeline in Chromium', async () => {
   const root = acceptanceRoot()
   const workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
-  let registry: Awaited<ReturnType<typeof createLocalRegistry>> | undefined
+  let registry: Awaited<ReturnType<typeof createFixtureRegistry>> | undefined
   let browser: HeadlessBrowser.TestBrowser | undefined
   let expo: Runtime.ExpoSession | undefined
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
     const projects = await createAcceptanceProjects(root)
-    registry = await createLocalRegistry(root)
+    registry = await createFixtureRegistry(root)
     const fixture = await installFixturePackage(root, registry.url)
     const runtimePins = await Runtime.runtimeDependencies()
     const runtimeResources = FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/_gen_runtime'))

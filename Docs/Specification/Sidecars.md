@@ -46,6 +46,8 @@ Module manifests and TypeScript configuration are read-only. Unexpected changes 
 with the owning declaration and a repair command. Only reachable modules contribute npm packages.
 Tao rejects conflicting direct versions, incompatible peers, and duplicate framework or native
 packages that require one canonical installation; ordinary private transitive versions are allowed.
+Transitive npm aliases resolve through their alias names and retain their target package identities
+for version and singleton checks. Existing mixed-case npm package names are supported.
 Use `tao test-sidecars @calendar` to run a prepared local module's tests with Tao's pinned Bun.
 
 Installed package trees belong to the host OS and architecture that prepared them. On another

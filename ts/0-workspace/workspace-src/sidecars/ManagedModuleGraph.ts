@@ -2,6 +2,7 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { satisfies, valid, validRange } from 'semver'
 import TypeScript from 'typescript'
+import { isNpmPackageName } from '../NpmPackageName'
 import type { ManagedModulesInput } from './ManagedModuleTypes'
 
 /** defaultSingletonPackages lists app frameworks that require one canonical installed path. */
@@ -133,14 +134,7 @@ type InstalledPackage = {
 }
 
 function validatePackageName(name: string, owner: string): void {
-  const parts = name.split('/')
-  const scoped = parts.length === 2 && parts[0]!.startsWith('@')
-  const valid = parts.length === (scoped ? 2 : 1)
-    && parts.every((part, index) => {
-      const segment = scoped && index === 0 ? part.slice(1) : part
-      return /^[a-z0-9][a-z0-9._-]*$/.test(segment) && segment !== '.' && segment !== '..'
-    })
-  if (!valid) {
+  if (!isNpmPackageName(name)) {
     Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
   }
 }
@@ -196,12 +190,13 @@ async function loadPackage(
   peer = false,
 ): Promise<void> {
   validatePackageName(name, `dependency required by ${from}`)
+  const alias = parseNpmAlias(range, name, from)
   const directory = await findPackageDirectory(name, from, optional, peer)
   if (!directory) {
     return
   }
   const metadata = await readJson(Path.join(directory, 'package.json'))
-  validateInstalledMetadata(metadata, directory, name, range, peer, from)
+  validateInstalledMetadata(metadata, directory, name, alias?.name ?? name, alias?.range ?? range, peer, from)
   const canonicalDirectory = FileSystem.realpathSync(directory)
   if (graph.visited.has(canonicalDirectory)) {
     return
@@ -233,6 +228,7 @@ function validateInstalledMetadata(
   metadata: Record<string, unknown>,
   directory: string,
   name: string,
+  expectedName: string,
   range: string | undefined,
   peer: boolean,
   from: string,
@@ -244,7 +240,7 @@ function validateInstalledMetadata(
       } ${name} required by ${from} resolved invalid metadata at ${directory}.`,
     )
   }
-  if (metadata.name !== name) {
+  if (metadata.name !== expectedName) {
     Errors.ThrowUserInput(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
@@ -288,6 +284,24 @@ function validateRange(name: string, actual: string, range: string | undefined, 
       `Managed npm ${peer ? 'peer incompatibility' : 'package mismatch'}: ${name}@${actual} does not satisfy ${range}.`,
     )
   }
+}
+
+function parseNpmAlias(
+  range: string | undefined,
+  name: string,
+  from: string,
+): { name: string; range?: string } | undefined {
+  if (!range?.startsWith('npm:')) {
+    return undefined
+  }
+  const target = range.slice('npm:'.length)
+  const separator = target.lastIndexOf('@')
+  const targetName = separator > 0 ? target.slice(0, separator) : target
+  const targetRange = separator > 0 ? target.slice(separator + 1) : undefined
+  if (!isNpmPackageName(targetName) || targetRange === '') {
+    Errors.ThrowUserInput(`Managed npm alias ${name} required by ${from} has invalid target ${range}.`)
+  }
+  return { name: targetName, range: targetRange }
 }
 
 async function isNativePackage(directory: string, metadata: Record<string, unknown>): Promise<boolean> {
