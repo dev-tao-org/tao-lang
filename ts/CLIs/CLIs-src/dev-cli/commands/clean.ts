@@ -50,6 +50,9 @@ async function cleanAppProjects(): Promise<{ projects: number; removed: number; 
   const active: string[] = []
   for (const root of roots) {
     const result = await cleanProject(root)
+    for (const warning of result.warnings) {
+      IO.warn(warning)
+    }
     removed += result.removed.length
     if (result.sharedProtected) {
       protectedCount++

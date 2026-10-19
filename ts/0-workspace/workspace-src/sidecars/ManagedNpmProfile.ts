@@ -25,16 +25,24 @@ import {
   validateReusableProfile,
 } from './ManagedNpmHost'
 import {
+  managedDurableLockHashPath,
+  managedDurableLockPath,
+  managedGraphFingerprint,
+  managedProfileFingerprint,
+  managedProfilePath,
+  normalizeManagedRequirements,
+} from './ManagedNpmIdentity'
+import {
+  loadDurableLock,
   readManagedProfileLock,
   readManagedProfileMetadata,
-  recoverManagedLock,
-  validateDurableLock,
 } from './ManagedNpmLock'
 import {
+  claimManagedProfile,
   ensureOwnedFile,
-  optionalJson,
-  optionalText,
+  managedProfileManifest,
   readOwnedMetadata,
+  validateManagedProfilePath,
   validateProfileMetadata,
   writeReadOnly,
 } from './ManagedNpmState'
@@ -45,11 +53,11 @@ export async function prepareManagedModules(
   executor: BunExecutor,
   repair = false,
 ): Promise<PreparedManagedModules> {
-  const normalized = normalize(input)
+  const normalized = normalizeManagedRequirements(input)
   allRequirements(normalized, input.runtimePins)
-  const graphFingerprint = graphFingerprintFor(input, normalized)
-  const fingerprint = fingerprintFor(input, graphFingerprint)
-  const profile = profilePath(input, fingerprint)
+  const graphFingerprint = managedGraphFingerprint(input, normalized)
+  const fingerprint = managedProfileFingerprint(input, graphFingerprint)
+  const profile = managedProfilePath(input, fingerprint)
   await prepareProfile(input, normalized, fingerprint, graphFingerprint, profile, executor, repair)
   for (const module of input.modules) {
     await publishModuleResolution(
@@ -66,17 +74,17 @@ export async function prepareManagedModules(
 
 /** readManagedModules validates declarations and durable cache references without auditing packages again. */
 export async function readManagedModules(input: ManagedModulesInput): Promise<PreparedManagedModules> {
-  const normalized = normalize(input)
+  const normalized = normalizeManagedRequirements(input)
   allRequirements(normalized, input.runtimePins)
-  const graphFingerprint = graphFingerprintFor(input, normalized)
-  const fingerprint = fingerprintFor(input, graphFingerprint)
-  const profile = profilePath(input, fingerprint)
+  const graphFingerprint = managedGraphFingerprint(input, normalized)
+  const fingerprint = managedProfileFingerprint(input, graphFingerprint)
+  const profile = managedProfilePath(input, fingerprint)
   const metadata = await readManagedProfileMetadata(profile, normalized)
   await validateProfileMetadata(metadata, input, fingerprint, normalized, graphFingerprint)
   validateInstalledHost(metadata, input)
   const lockfile = Path.join(profile, 'bun.lock')
-  const durableLock = durableLockPath(input, graphFingerprint)
-  const durableHash = durableLockHashPath(input, graphFingerprint)
+  const durableLock = managedDurableLockPath(input, graphFingerprint)
+  const durableHash = managedDurableLockHashPath(input, graphFingerprint)
   const lock = await readManagedProfileLock(lockfile, durableLock, durableHash, graphFingerprint)
   if (metadata.lockHash !== Platform.hashText(lock)) {
     Errors.ThrowUserInput(`Managed npm lock changed. Repair with: tao prepare --repair.`)
@@ -98,50 +106,6 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
   }
 }
 
-function normalize(input: ManagedModulesInput): [string, string, string][] {
-  return input.modules.flatMap(module =>
-    module.requirements.map(item =>
-      [module.directory, item.name, `${item.version}\n${item.origin}`] as [string, string, string]
-    )
-  ).sort((left, right) => left.join('\0').localeCompare(right.join('\0')))
-}
-
-function graphFingerprintFor(input: ManagedModulesInput, normalized: [string, string, string][]): string {
-  const requirements = allRequirements(normalized, input.runtimePins)
-  return Platform.hashText(JSON.stringify({
-    requirements: Object.fromEntries(
-      Object.entries(requirements).sort(([left], [right]) => left.localeCompare(right)),
-    ),
-    target: input.target,
-    runtimePins: Object.fromEntries(
-      Object.entries(input.runtimePins).sort(([left], [right]) => left.localeCompare(right)),
-    ),
-    singletonPackages: [...input.singletonPackages ?? defaultSingletonPackages].sort(),
-    policyRegistryVersion: 1,
-  }))
-}
-
-function fingerprintFor(input: ManagedModulesInput, graphFingerprint: string): string {
-  return Platform.hashText(JSON.stringify({
-    graphFingerprint,
-    bunVersion: input.bunVersion,
-    installHost: installHostIdentity(input),
-    typeScriptDefaultsHash: typeScriptDefaultsHash(),
-  }))
-}
-
-function profilePath(input: ManagedModulesInput, fingerprint: string): string {
-  return Path.join(input.directory, '.tao', 'cache', 'managed-modules', fingerprint)
-}
-
-function durableLockPath(input: ManagedModulesInput, graphFingerprint: string): string {
-  return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.lock`)
-}
-
-function durableLockHashPath(input: ManagedModulesInput, graphFingerprint: string): string {
-  return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.sha256`)
-}
-
 async function prepareProfile(
   input: ManagedModulesInput,
   normalized: [string, string, string][],
@@ -151,21 +115,19 @@ async function prepareProfile(
   executor: BunExecutor,
   repair: boolean,
 ): Promise<void> {
-  const durableLock = durableLockPath(input, graphFingerprint)
+  const durableLock = managedDurableLockPath(input, graphFingerprint)
+  const durableHash = managedDurableLockHashPath(input, graphFingerprint)
+  validateManagedProfilePath(input.directory, profile)
   await FileSystem.mkdir(profile, { recursive: true })
   await FileSystem.mkdir(Path.dirname(durableLock), { recursive: true })
-  await claimProfile(profile, fingerprint)
-  let storedLock = await optionalText(durableLock)
-  let storedHash = await optionalText(durableLockHashPath(input, graphFingerprint))
-  if (storedLock === undefined) {
-    storedLock = await recoverManagedLock(input, normalized, graphFingerprint)
-    if (storedLock !== undefined) {
-      await writeReadOnly(durableLock, storedLock)
-      storedHash = `${Platform.hashText(storedLock)}\n`
-      await writeReadOnly(durableLockHashPath(input, graphFingerprint), storedHash)
-    }
-  }
-  validateDurableLock(storedLock, storedHash, graphFingerprint)
+  const storedLock = await loadDurableLock(input, normalized, graphFingerprint, durableLock, durableHash)
+  await claimManagedProfile(
+    profile,
+    fingerprint,
+    repair,
+    storedLock,
+    managedProfileManifest(normalized, input.runtimePins),
+  )
   const metadata = await readOwnedMetadata(profile, fingerprint, repair, storedLock)
   validateExistingState(metadata !== undefined, storedLock, fingerprint)
   let rebuildHostInstall = false
@@ -209,26 +171,6 @@ async function validateBunVersion(input: ManagedModulesInput, executor: BunExecu
   }
 }
 
-async function claimProfile(profile: string, fingerprint: string): Promise<void> {
-  const metadataPath = Path.join(profile, '.tao-managed.json')
-  if (await FileSystem.exists(metadataPath)) {
-    const metadata = await optionalJson(metadataPath)
-    if (metadata?.fingerprint !== fingerprint || typeof metadata.lockHash !== 'string') {
-      Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
-    }
-    return
-  }
-  const marker = Path.join(profile, '.tao-managed-building')
-  const owner = `${fingerprint}\n`
-  const current = await optionalText(marker)
-  if (current !== owner && (await FileSystem.readdir(profile)).length > 0) {
-    Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
-  }
-  if (current === undefined) {
-    await writeReadOnly(marker, owner)
-  }
-}
-
 function validateExistingState(
   hasMetadata: boolean,
   storedLock: string | undefined,
@@ -238,7 +180,9 @@ function validateExistingState(
     return
   }
   if (storedLock === undefined) {
-    Errors.ThrowUserInput(`Managed npm durable lock is missing or changed for ${fingerprint}.`)
+    Errors.ThrowUserInput(
+      `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control or an exact source reference.`,
+    )
   }
 }
 
@@ -248,13 +192,7 @@ async function ensureProfileManifest(
   runtimePins: Record<string, string>,
   repair: boolean,
 ): Promise<void> {
-  const manifest = {
-    name: 'tao-managed-app',
-    private: true,
-    type: 'module',
-    dependencies: allRequirements(requirements, runtimePins),
-  }
-  await ensureOwnedFile(Path.join(profile, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`, repair)
+  await ensureOwnedFile(Path.join(profile, 'package.json'), managedProfileManifest(requirements, runtimePins), repair)
 }
 
 async function installFrozenGraph(
@@ -296,7 +234,7 @@ async function persistProfile(
   const lock = await FileSystem.readFile(lockfile, 'utf8')
   if (storedLock === undefined) {
     await writeReadOnly(durableLock, lock)
-    await writeReadOnly(durableLockHashPath(input, graphFingerprint), `${Platform.hashText(lock)}\n`)
+    await writeReadOnly(managedDurableLockHashPath(input, graphFingerprint), `${Platform.hashText(lock)}\n`)
   }
   const nativePackages = await nativePackageNames(profile)
   await ensureTypeScriptDefaults(input.directory)

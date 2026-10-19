@@ -14,7 +14,7 @@ export function organizeImports(source: string, tree: Tree, ast: AST.Document): 
   const imported = slices.filter(slice => byStart.has(slice.node.startIndex))
   const remaining = slices.filter(slice => !byStart.has(slice.node.startIndex))
   const newline = source.includes('\r\n') ? '\r\n' : '\n'
-  const importText = importGroups(source, imported, byStart).join(newline)
+  const importText = importGroups(source, imported, byStart, newline).join(newline)
   const body = remaining.map(slice => source.slice(slice.start, slice.end)).join(newline.repeat(2))
   const text = importText + (body ? newline.repeat(2) + body : '')
   const start = slices[0]!.start
@@ -33,6 +33,7 @@ function importGroups(
   source: string,
   slices: readonly StatementSlice[],
   imports: ReadonlyMap<number, Import>,
+  newline: string,
 ): string[] {
   const output: string[] = []
   let groups = new Map<string, Group>()
@@ -46,7 +47,7 @@ function importGroups(
       recordImports(statement, seenImports)
       output.push(
         duplicate
-          ? source.slice(slice.start, slice.node.startIndex) + source.slice(slice.node.endIndex, slice.end)
+          ? retainedComments(source, slice, newline)
           : source.slice(slice.start, slice.end),
       )
     } else {
@@ -55,6 +56,25 @@ function importGroups(
   }
   output.push(...renderGroups(groups))
   return output
+}
+
+function retainedComments(source: string, slice: StatementSlice, newline: string): string {
+  const comments = commentNodes(slice.node).map(node => source.slice(node.startIndex, node.endIndex))
+  const retained = [
+    source.slice(slice.start, slice.node.startIndex),
+    ...comments,
+    source.slice(slice.node.endIndex, slice.end),
+  ]
+    .map(text => text.trim())
+    .filter(Boolean)
+    .join(newline)
+  return retained ? newline + retained : ''
+}
+
+function commentNodes(node: StatementSlice['node']): StatementSlice['node'][] {
+  return node.type === 'Comment'
+    ? [node]
+    : node.namedChildren.flatMap(commentNodes)
 }
 
 function addImport(groups: Map<string, Group>, statement: Import, seenImports: Set<string>): void {

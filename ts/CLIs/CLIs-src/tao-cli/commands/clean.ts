@@ -17,14 +17,17 @@ export default registerCommand({
       Errors.ThrowUserInput(`No Tao project was found from ${resolveCallerPath(path)}.`)
     }
     const result = await cleanProject(project.root)
+    for (const warning of result.warnings) {
+      IO.warn(warning)
+    }
     IO.print(`Removed ${result.removed.length} inactive project cache entries.`)
     reportActiveSessions(result.skippedActive, result.sharedProtected)
     if (options.wipe) {
-      const cleaned = await Storage.cleanSharedCache()
+      const cleaned = await Storage.cleanSharedCache(reason => IO.warn(reason))
       if (cleaned) {
         IO.print('Removed shared Tao cache entries.')
       } else {
-        IO.print('Preserved shared Tao cache because active consumers are using it.')
+        IO.print('Preserved shared Tao cache; see the protection details above.')
       }
     }
   },

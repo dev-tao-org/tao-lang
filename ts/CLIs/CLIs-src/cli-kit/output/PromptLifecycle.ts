@@ -1,33 +1,32 @@
 import { Errors, Try } from '@shared'
 
-/** createPromptLifecycle suspends a terminal renderer for the full duration of nested prompts. */
+/** createPromptLifecycle suspends a terminal renderer for one prompt and rejects overlapping readers. */
 export function createPromptLifecycle(operations: {
   suspend: () => Promise<boolean>
   resume: () => Promise<void>
   reportResumeFailure: (error: unknown) => void
 }) {
-  let activePrompts = 0
+  let promptActive = false
   let suspended = false
   let transition = Promise.resolve()
   return {
     run: <T>(prompt: () => Promise<T>) => beginPrompt(prompt),
   }
 
-  function beginPrompt<T>(prompt: () => Promise<T>): Promise<T> {
-    if (activePrompts === 0) {
-      enqueue(async () => {
-        suspended = await operations.suspend() || suspended
-      })
+  async function beginPrompt<T>(prompt: () => Promise<T>): Promise<T> {
+    if (promptActive) {
+      Errors.ThrowUnexpected('Another prompt is active. Wait for it to finish before starting another prompt.')
     }
-    activePrompts++
-    return runPrompt(prompt, transition, finishPrompt, operations.reportResumeFailure)
+    promptActive = true
+    enqueue(async () => {
+      suspended = await operations.suspend() || suspended
+    })
+    return await runPrompt(prompt, transition, finishPrompt, operations.reportResumeFailure, () => {
+      promptActive = false
+    })
   }
 
   async function finishPrompt(): Promise<CleanupResult> {
-    activePrompts--
-    if (activePrompts !== 0) {
-      return { failed: false }
-    }
     const finish = enqueue(async () => {
       if (suspended) {
         await operations.resume()
@@ -55,6 +54,7 @@ async function runPrompt<T>(
   start: Promise<void>,
   finish: () => Promise<CleanupResult>,
   reportResumeFailure: (error: unknown) => void,
+  complete: () => void,
 ): Promise<T> {
   let promptFailed = false
   let promptError: unknown
@@ -69,6 +69,7 @@ async function runPrompt<T>(
     },
     async finally() {
       cleanup = await finish()
+      complete()
     },
   })
   return resolvePromptResult(result, promptFailed, promptError, cleanup, reportResumeFailure)

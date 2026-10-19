@@ -55,6 +55,21 @@ Tests.test('organizing imports removes duplicates across comment groups and keep
   Tests.expect(result).toContain('// Text is used by the primary view.')
 })
 
+Tests.test('organizing duplicate multiline imports retains their interior comments once', () => {
+  const result = fixed(S`
+    use Text from tao@ui
+    use Text,
+      // Keep this line comment.
+      /* Keep this block comment. */
+      Text from tao@ui
+    view Main { render Text("Hello") }
+  `)
+  Tests.expect(result.match(/use Text from tao@ui/g)).toHaveLength(1)
+  Tests.expect(result.match(/\/\/ Keep this line comment\./g)).toHaveLength(1)
+  Tests.expect(result.match(/\/\* Keep this block comment\. \*\//g)).toHaveLength(1)
+  Tests.expect(fixed(result)).toBe(result)
+})
+
 function fixed(source: string): string {
   const parser = createParser()
   const tree = parser.parse(source).tree

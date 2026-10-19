@@ -11,7 +11,7 @@ import { projectLayout } from './Projects'
 import { isProjectSessionId } from './Sessions'
 
 /** CleanResult reports removed project cache, active sessions, and retained shared project cache. */
-export type CleanResult = { removed: string[]; skippedActive: string[]; sharedProtected: boolean }
+export type CleanResult = { removed: string[]; skippedActive: string[]; sharedProtected: boolean; warnings: string[] }
 
 /** cleanProject removes inactive session and generated project cache state. */
 export async function cleanProject(root: string): Promise<CleanResult> {
@@ -29,22 +29,23 @@ export async function cleanProject(root: string): Promise<CleanResult> {
 async function cleanProjectUnderLifecycle(layout: ReturnType<typeof projectLayout>): Promise<CleanResult> {
   const removed: string[] = []
   const skippedActive: string[] = []
+  const warnings: string[] = []
   const cacheSafe = !pathExists(layout.cacheDirectory) || isRealDirectory(layout.cacheDirectory)
   if (!cacheSafe) {
-    return { removed, skippedActive, sharedProtected: true }
+    return { removed, skippedActive, sharedProtected: true, warnings }
   }
   const lockDirectoryReady = await ensureLockDirectory(layout.sessionLocksDirectory)
   const sessionsDirectorySafe = await ensureSessionDirectory(layout.sessionsDirectory)
   if (!lockDirectoryReady || !sessionsDirectorySafe) {
-    return { removed, skippedActive, sharedProtected: true }
+    return { removed, skippedActive, sharedProtected: true, warnings }
   }
   skippedActive.push(...await cleanInactiveSessions(layout, removed))
   const sharedProtected = skippedActive.length > 0
   if (!sharedProtected) {
-    await cleanManagedModuleMetadata(layout.root, await readFileSourceRoots(layout.root))
+    warnings.push(...await cleanManagedModuleMetadata(layout.root, await readFileSourceRoots(layout.root)))
     await cleanProjectCache(layout.cacheDirectory, removed)
   }
-  return { removed, skippedActive, sharedProtected }
+  return { removed, skippedActive, sharedProtected, warnings }
 }
 
 async function cleanInactiveSessions(layout: ReturnType<typeof projectLayout>, removed: string[]): Promise<string[]> {
@@ -81,7 +82,7 @@ async function cleanSession(layout: ReturnType<typeof projectLayout>, id: string
 }
 
 function emptyCleanResult(): CleanResult {
-  return { removed: [], skippedActive: [], sharedProtected: false }
+  return { removed: [], skippedActive: [], sharedProtected: false, warnings: [] }
 }
 
 async function cleanProjectCache(cache: string, removed: string[]): Promise<void> {

@@ -4,7 +4,7 @@ import { prepareNativeLock } from '../cli-checks/native-lock-build'
 import {
   nativeLockVersionRoot,
   publishNativeLockVersion,
-  readNativeLockPointer,
+  readNativeLockPointerForSetup,
 } from '../cli-checks/NativeLockPublication'
 
 Tests.test('repairs a partial active native-lock version without changing its published files', async () => {
@@ -20,7 +20,7 @@ Tests.test('repairs a partial active native-lock version without changing its pu
     await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity, directory: identity }))
     await publishNativeLockVersion(root, staging, identity)
 
-    const pointer = await readNativeLockPointer(root)
+    const pointer = await readNativeLockPointerForSetup(root)
     Tests.expect(pointer).toBeDefined()
     Tests.expect(pointer!.directory).not.toBe(identity)
     Tests.expect(await FileSystem.readFile(Path.join(active, 'active-addon.marker'), 'utf8')).toBe('keep')
@@ -35,22 +35,22 @@ Tests.test('repairs a partial active native-lock version without changing its pu
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('rejects native-lock pointers that escape the version cache', async () => {
+Tests.test('setup discards native-lock pointers that escape the version cache', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/native-lock-pointer-'))
   await Try(async () => {
     await FileSystem.writeFile(
       Path.join(root, 'current.json'),
       JSON.stringify({ identity: 'a'.repeat(64), directory: '../outside' }),
     )
-    await Tests.rejects(readNativeLockPointer(root), /outdated.*\.\/agent setup/)
+    Tests.expect(await readNativeLockPointerForSetup(root)).toBeUndefined()
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('rejects previous identity-only native-lock pointers with setup guidance', async () => {
+Tests.test('setup discards invalid native-lock pointer shapes', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/native-lock-pointer-old-'))
   await Try(async () => {
     await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity: 'a'.repeat(64) }))
-    await Tests.rejects(readNativeLockPointer(root), /outdated.*\.\/agent setup/)
+    Tests.expect(await readNativeLockPointerForSetup(root)).toBeUndefined()
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -60,7 +60,7 @@ Tests.test('retains the current native-lock pointer directory', async () => {
   const directory = `${identity}-12345678-1234-1234-1234-123456789abc`
   await Try(async () => {
     await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity, directory }))
-    Tests.expect(await readNativeLockPointer(root)).toEqual({ identity, directory })
+    Tests.expect(await readNativeLockPointerForSetup(root)).toEqual({ identity, directory })
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -84,7 +84,7 @@ Tests.test('setup repairs an outdated pointer from independently verified immuta
     })
 
     Tests.expect(built).toBe(false)
-    Tests.expect(await readNativeLockPointer(root)).toEqual({ identity, directory: identity })
+    Tests.expect(await readNativeLockPointerForSetup(root)).toEqual({ identity, directory: identity })
     Tests.expect(await FileSystem.readFile(addon, 'utf8')).toBe('verified-addon')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })

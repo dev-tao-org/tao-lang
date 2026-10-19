@@ -81,13 +81,18 @@ export async function acquireCacheLease(identity: string): Promise<() => void | 
 }
 
 /** cleanSharedCache removes Tao cache entries only when no consumer lease is active. */
-export async function cleanSharedCache(): Promise<boolean> {
+export async function cleanSharedCache(report?: (reason: string) => void): Promise<boolean> {
   return await withCacheMutation(async () => {
     if (activeLeases.size > 0) {
+      report?.(
+        `Active cache consumer leases remain under ${
+          supportDirectory('leases')
+        }. Close their workspaces before retrying.`,
+      )
       return false
     }
     const leases = supportDirectory('leases')
-    if (await hasBusyLease(leases)) {
+    if (await hasBusyLease(leases, report)) {
       return false
     }
     const root = await existingDirectory(cacheDirectory())
@@ -182,11 +187,22 @@ async function releaseCacheLease(path: string, lock: SessionLock.SessionLock): P
     }), { finally: release })
 }
 
-async function removeLeaseProbe(path: string): Promise<boolean> {
+async function removeLeaseProbe(path: string, report?: (reason: string) => void): Promise<boolean> {
   return await Try(async () => {
     await rm(path, { force: true })
     return true
-  }, { catch: error => isUnavailableProbe(error) ? false : Errors.Throw(error) })
+  }, { catch: error => blockedProbe(error, path, report) ? false : Errors.Throw(error) })
+}
+
+function blockedProbe(error: unknown, path: string, report?: (reason: string) => void): boolean {
+  if (!isUnavailableProbe(error)) {
+    return false
+  }
+  const code = String((error as { code: unknown }).code)
+  report?.(
+    `Cannot inspect or remove cache lease ${path} (${code}). Resolve its file access or sharing restriction, then retry tao clean --wipe.`,
+  )
+  return true
 }
 
 function isUnavailableProbe(error: unknown): boolean {
@@ -194,9 +210,9 @@ function isUnavailableProbe(error: unknown): boolean {
     && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
 }
 
-async function hasBusyLease(directory: string): Promise<boolean> {
+async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
   const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
-    catch: error => isMissing(error) ? [] : isUnavailableProbe(error) ? undefined : Errors.Throw(error),
+    catch: error => isMissing(error) ? [] : blockedProbe(error, directory, report) ? undefined : Errors.Throw(error),
   })
   if (!entries) {
     return true
@@ -204,19 +220,23 @@ async function hasBusyLease(directory: string): Promise<boolean> {
   let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
     if (!entry.isFile()) {
+      report?.(`Unexpected lease entry at ${join(directory, entry.name)}. Inspect it before retrying tao clean --wipe.`)
       busy = true
       continue
     }
     const path = join(directory, entry.name)
     const lock = await Try(() => SessionLock.acquire(path), {
-      catch: error => isUnavailableProbe(error) ? undefined : Errors.Throw(error),
+      catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
     })
     if (!lock) {
+      report?.(
+        `Shared cache lease could not be cleared: ${path}. Close its owner or resolve the access issue above before retrying.`,
+      )
       busy = true
       continue
     }
     lock.release()
-    if (!await removeLeaseProbe(path)) {
+    if (!await removeLeaseProbe(path, report)) {
       busy = true
     }
   }

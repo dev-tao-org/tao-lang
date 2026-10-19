@@ -42,6 +42,11 @@ TypeScript configuration, and managed resolution links before preparation. Gener
 run preparation to change them. TypeScript settings extend project-shared defaults under
 `.tao/cache/sidecars/`.
 
+Explicit repair can rebuild corrupt generated metadata when the durable dependency lock and
+remaining generated files prove ownership. It preserves uncertain or authored files and names
+the blocked path. If a durable lock is missing, restore it from version control before repairing;
+repair does not resolve a replacement dependency graph.
+
 Module manifests and TypeScript configuration are read-only. Unexpected changes stop compilation
 with the owning declaration and a repair command. Only reachable modules contribute npm packages.
 Tao rejects conflicting direct versions, incompatible peers, and duplicate framework or native
@@ -56,6 +61,8 @@ durable lock without changing the pinned dependency graph.
 
 Changing the bundled Bun version also rebuilds the installation from that same lock. The exact npm
 graph is independent of machine paths and installation-tool versions.
+Changing a module's npm requirements resolves a new graph, including its transitive packages;
+unchanged graphs keep their durable pins.
 
 Named sessions in one app reuse its dependency graph. A live external module directory currently
 has one consumer's editor configuration: preparing it for a different consumer fails with an

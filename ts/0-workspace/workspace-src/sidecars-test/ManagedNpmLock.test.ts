@@ -65,7 +65,7 @@ Tests.test('missing durable locks are rejected for a prepared current profile', 
         invoked = true
         return { status: 0, stdout: '', stderr: '' }
       }),
-      /durable lock is missing or changed/,
+      /durable lock is missing/,
     )
     Tests.expect(invoked).toBe(false)
   }))

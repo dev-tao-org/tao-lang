@@ -1,8 +1,8 @@
-import { Errors, Time } from '@shared'
+import { Errors } from '@shared'
 import { Tests } from '@shared/os'
 import { createPromptLifecycle } from '../output/PromptLifecycle'
 
-Tests.test('suspends once around nested prompts and resumes after success or failure', async () => {
+Tests.test('rejects a nested prompt clearly and resumes the outer prompt', async () => {
   const events: string[] = []
   const lifecycle = createPromptLifecycle({
     async suspend() {
@@ -16,21 +16,22 @@ Tests.test('suspends once around nested prompts and resumes after success or fai
   })
   await lifecycle.run(async () => {
     events.push('prompt')
-    await lifecycle.run(async () => {
+    await Tests.expect(lifecycle.run(async () => {
       events.push('nested prompt')
-    })
+    }))
+      .rejects.toThrow('Another prompt is active. Wait for it to finish before starting another prompt.')
   })
-  Tests.expect(events).toEqual(['suspend', 'prompt', 'nested prompt', 'resume'])
+  Tests.expect(events).toEqual(['suspend', 'prompt', 'resume'])
   await Tests.expect(lifecycle.run(async () => {
     throw new Error('prompt failed')
   })).rejects.toThrow()
-  Tests.expect(events).toEqual(['suspend', 'prompt', 'nested prompt', 'resume', 'suspend', 'resume'])
+  Tests.expect(events).toEqual(['suspend', 'prompt', 'resume', 'suspend', 'resume'])
 })
 
-Tests.test('keeps the renderer suspended until overlapping prompts have all ended', async () => {
+Tests.test('rejects an overlapping prompt and leaves the first and later prompts usable', async () => {
   const events: string[] = []
+  const enteredFirst = deferred<void>()
   const finishFirst = deferred<void>()
-  const finishSecond = deferred<void>()
   const lifecycle = createPromptLifecycle({
     async suspend() {
       events.push('suspend')
@@ -43,22 +44,24 @@ Tests.test('keeps the renderer suspended until overlapping prompts have all ende
   })
   const first = lifecycle.run(async () => {
     events.push('first')
+    enteredFirst.resolve()
     await finishFirst.promise
   })
-  const second = lifecycle.run(async () => {
-    events.push('second')
-    await finishSecond.promise
-  })
-  await Promise.resolve()
+  await enteredFirst.promise
+  await Tests.expect(lifecycle.run(async () => {
+    events.push('rejected prompt')
+  }))
+    .rejects.toThrow('Another prompt is active. Wait for it to finish before starting another prompt.')
+  Tests.expect(events).toEqual(['suspend', 'first'])
   finishFirst.resolve()
   await first
-  Tests.expect(events).toEqual(['suspend', 'first', 'second'])
-  finishSecond.resolve()
-  await second
-  Tests.expect(events).toEqual(['suspend', 'first', 'second', 'resume'])
+  await lifecycle.run(async () => {
+    events.push('later prompt')
+  })
+  Tests.expect(events).toEqual(['suspend', 'first', 'resume', 'suspend', 'later prompt', 'resume'])
 })
 
-Tests.test('waits for an in-flight resume before suspending for a new prompt', async () => {
+Tests.test('rejects a prompt while the renderer is restoring', async () => {
   const events: string[] = []
   const resumeStarted = deferred<void>()
   const finishResume = deferred<void>()
@@ -82,20 +85,24 @@ Tests.test('waits for an in-flight resume before suspending for a new prompt', a
   const first = lifecycle.run(async () => {
     events.push('first prompt')
   })
-  await Promise.race([resumeStarted.promise, Time.sleep(50)])
-  const second = lifecycle.run(async () => {
-    events.push('second prompt')
-  })
-  Tests.expect(events).not.toContain('second prompt')
+  await resumeStarted.promise
+  await Tests.expect(lifecycle.run(async () => {
+    events.push('rejected prompt')
+  }))
+    .rejects.toThrow('Another prompt is active. Wait for it to finish before starting another prompt.')
+  Tests.expect(events).not.toContain('rejected prompt')
   finishResume.resolve()
-  await Promise.all([first, second])
+  await first
+  await lifecycle.run(async () => {
+    events.push('later prompt')
+  })
   Tests.expect(events).toEqual([
     'suspend',
     'first prompt',
     'resume 1 started',
     'resume 1 finished',
     'suspend',
-    'second prompt',
+    'later prompt',
     'resume 2 started',
     'resume 2 finished',
   ])

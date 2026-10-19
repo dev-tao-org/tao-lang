@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { Path, Platform } from '@shared/os'
+import { Files, Path, Platform } from '@shared/os'
 import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
 import type { ManagedModulesInput } from './ManagedModuleTypes'
 import { optionalJson, optionalText } from './ManagedNpmState'
@@ -31,7 +31,9 @@ export async function readManagedProfileLock(
   const hash = await optionalText(durableHash)
   validateDurableLock(durable, hash, fingerprint)
   if (!profile || !durable) {
-    Errors.ThrowUserInput('Managed npm lock is missing. Repair with: tao prepare --repair.')
+    Errors.ThrowUserInput(
+      'Managed npm lock is missing; restore it and its SHA-256 file from version control, then retry preparation.',
+    )
   }
   if (profile !== durable) {
     Errors.ThrowUserInput('Managed npm lock copies differ. Repair with: tao prepare --repair.')
@@ -39,19 +41,41 @@ export async function readManagedProfileLock(
   return profile
 }
 
-/** validateDurableLock rejects incomplete or altered durable lock records. */
-export function validateDurableLock(
+/** loadDurableLock reads canonical graph bytes or restores the exact verified source lock. */
+export async function loadDurableLock(
+  input: ManagedModulesInput,
+  requirements: [string, string, string][],
+  graphFingerprint: string,
+  durableLock: string,
+  durableHash: string,
+): Promise<string | undefined> {
+  let lock = await optionalText(durableLock)
+  let hash = await optionalText(durableHash)
+  if (lock === undefined) {
+    lock = await recoverManagedLock(input, requirements, graphFingerprint)
+    if (lock !== undefined) {
+      await Files.writeReadOnly(durableLock, lock)
+      hash = `${Platform.hashText(lock)}\n`
+      await Files.writeReadOnly(durableHash, hash)
+    }
+  }
+  validateDurableLock(lock, hash, graphFingerprint)
+  return lock
+}
+
+function validateDurableLock(
   lock: string | undefined,
   hash: string | undefined,
   fingerprint: string,
 ): void {
   if ((lock === undefined) !== (hash === undefined) || lock !== undefined && hash !== `${Platform.hashText(lock)}\n`) {
-    Errors.ThrowUserInput(`Managed npm durable lock is changed or incomplete for ${fingerprint}.`)
+    Errors.ThrowUserInput(
+      `Managed npm durable lock is changed or incomplete for ${fingerprint}; restore it and its SHA-256 file from version control.`,
+    )
   }
 }
 
-/** recoverManagedLock finds an integrity-verified exact graph for frozen installation. */
-export async function recoverManagedLock(
+async function recoverManagedLock(
   input: ManagedModulesInput,
   requirements: [string, string, string][],
   graphFingerprint: string,
@@ -72,7 +96,9 @@ async function readReferencedLock(
   const path = Path.resolve(input.directory, ...reference.lockPath.split('/'))
   const lock = await optionalText(path)
   if (lock === undefined || Platform.hashText(lock) !== reference.lockHash) {
-    Errors.ThrowUserInput('Referenced managed npm graph lock is missing or changed; refusing to resolve a new graph.')
+    Errors.ThrowUserInput(
+      'Referenced managed npm graph lock is missing or changed; restore the source lock and .tao/store lock files from version control.',
+    )
   }
   await validatePresentProfile(input, reference.fingerprint, reference.lockHash, lock)
   if (!graphContentsMatch(lock, requirements, input.runtimePins)) {

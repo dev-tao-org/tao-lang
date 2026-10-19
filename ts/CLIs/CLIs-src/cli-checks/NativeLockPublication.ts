@@ -4,15 +4,6 @@ import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 /** NativeLockPointer identifies the immutable addon installation for one build identity. */
 export type NativeLockPointer = { identity: string; directory: string }
 
-/** readNativeLockPointer reads a validated current addon pointer. */
-export async function readNativeLockPointer(root: string): Promise<NativeLockPointer | undefined> {
-  const result = await readPointer(root)
-  if (result.kind === 'invalid') {
-    throwInvalidPointer(Path.join(root, 'current.json'))
-  }
-  return result.kind === 'valid' ? result.pointer : undefined
-}
-
 /** readNativeLockPointerForSetup ignores invalid generated state so setup can rebuild it. */
 export async function readNativeLockPointerForSetup(root: string): Promise<NativeLockPointer | undefined> {
   const result = await readPointer(root)
@@ -77,10 +68,6 @@ async function readPointer(root: string): Promise<PointerRead> {
   const normalized = { identity: pointer.identity, directory: pointer.directory }
   const versionRoot = Try.WithDefault(undefined, () => nativeLockVersionRoot(root, normalized))
   return versionRoot ? { kind: 'valid', pointer: normalized } : { kind: 'invalid' }
-}
-
-function throwInvalidPointer(path: string): never {
-  Errors.ThrowHostEnvironment(`Native lock pointer is invalid or outdated. Run ./agent setup to rebuild it. (${path})`)
 }
 
 function isMissing(error: unknown): boolean {

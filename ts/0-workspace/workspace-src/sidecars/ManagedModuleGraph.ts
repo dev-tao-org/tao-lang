@@ -32,7 +32,7 @@ export function allRequirements(
     }
   }
   return Object.fromEntries(
-    [...versions].map(([name, choices]) => [name, [...choices.keys()][0]!]).sort(([a], [b]) => a.localeCompare(b)),
+    [...versions.keys()].sort().map(name => [name, [...versions.get(name)!.keys()][0]!]),
   )
 }
 

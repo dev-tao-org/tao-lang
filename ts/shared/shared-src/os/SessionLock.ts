@@ -42,7 +42,8 @@ export function isSafeVersionName(identity: string, directory: string): boolean 
 
 async function readLockPointer(root: string, path: string): Promise<{ identity: string; directory: string }> {
   return await Try(async () => {
-    const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
+    const contents = await FileSystem.readFile(path, 'utf8')
+    const value: unknown = Try(() => JSON.parse(contents), { catch: () => throwInvalidPointer(path) })
     if (typeof value !== 'object' || value === null || !('identity' in value) || !('directory' in value)) {
       throwInvalidPointer(path)
     }

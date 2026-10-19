@@ -3,11 +3,19 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { allRequirements, auditInstalledGraph } from '../sidecars/ManagedModuleGraph'
 import type { ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
-Tests.test('accepts legacy mixed-case npm package names in managed requirements', () => {
+Tests.test('accepts mixed-case npm package names in managed requirements', () => {
   Tests.expect(allRequirements([
     ['', 'JSONStream', '1.3.5\nLegacy.tao'],
     ['', '@scope/JSONStream', '1.3.5\nScoped.tao'],
   ])).toEqual({ '@scope/JSONStream': '1.3.5', JSONStream: '1.3.5' })
+})
+
+Tests.test('orders canonical npm requirements by code point', () => {
+  const requirements = allRequirements([
+    ['', 'alpha', '1.0.0\nLowercase.tao'],
+    ['', 'Alpha', '1.0.0\nUppercase.tao'],
+  ])
+  Tests.expect(Object.keys(requirements)).toEqual(['Alpha', 'alpha'])
 })
 
 Tests.test('checks installed npm aliases against target names, ranges, and singleton versions', async () => {

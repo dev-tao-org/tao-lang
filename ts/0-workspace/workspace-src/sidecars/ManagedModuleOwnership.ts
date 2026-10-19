@@ -22,7 +22,14 @@ export async function validateModuleOwnership(
   if (ownerText === undefined) {
     return undefined
   }
-  const owner = parseOwner(ownerText, marker)
+  const owner = parseOwner(ownerText)
+  if (!owner) {
+    if (!repair) {
+      Errors.ThrowUserInput(`Module metadata ownership marker needs repair: ${marker}. Run tao prepare --repair.`)
+    }
+    await validateCorruptMarkerRecovery(files, profile, projectRoot, marker)
+    return undefined
+  }
   validateOwnerProfile(owner, profile, projectRoot, marker)
   if (ownerText !== expectedOwner && owner.profile === profile && !repair) {
     Errors.ThrowUserInput(`Module metadata ownership marker needs repair: ${marker}`)
@@ -81,13 +88,49 @@ export async function validateModuleLinks(
   }
 }
 
-function parseOwner(ownerText: string, marker: string): ManagedModuleOwner {
+async function validateCorruptMarkerRecovery(
+  files: readonly (readonly [string, string])[],
+  profile: string,
+  projectRoot: string,
+  marker: string,
+): Promise<void> {
+  const cache = Path.join(projectRoot, '.tao', 'cache', 'managed-modules')
+  const profileIsExpected = Path.isWithin(cache, profile)
+    && Path.resolve(Path.dirname(profile)) === Path.resolve(cache)
+  const generatedFilesMatch = files.length > 0
+    && (await Promise.all(
+      files.map(async ([path, contents]) =>
+        await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8')) === contents
+      ),
+    )).every(Boolean)
+  const packageFile = files.find(([path]) => Path.basename(path) === 'package.json')
+  const packages = packageFile && Try.WithDefault(
+    undefined,
+    () => Object.keys((JSON.parse(packageFile[1]) as { dependencies?: Record<string, unknown> }).dependencies ?? {}),
+  )
+  const linksMatch = Boolean(packages?.length)
+    && (await Promise.all(
+      packages!.map(async name =>
+        await pointsToProfile(Path.join(Path.dirname(marker), 'node_modules', name), profile, name)
+      ),
+    )).every(Boolean)
+  if (profileIsExpected && generatedFilesMatch && linksMatch) {
+    return
+  }
+  Errors.ThrowUserInput(
+    `Module ownership marker is corrupt and Tao cannot prove that the generated metadata belongs to this profile: ${marker}. `
+      + `Preserve this marker and any authored package.json or tsconfig.json. Restore a valid marker backup, or inspect those files and `
+      + `the node_modules links; move authored files aside before removing only files confirmed as Tao-generated, then run tao prepare again.`,
+  )
+}
+
+function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
   const owner = Try.WithDefault(undefined, () => JSON.parse(ownerText) as ManagedModuleOwner)
   if (
     !owner || typeof owner.profile !== 'string' || !Array.isArray(owner.packages)
     || !owner.packages.every(isPackageName)
   ) {
-    Errors.ThrowUserInput(`Module metadata ownership marker is invalid: ${marker}`)
+    return undefined
   }
   return owner
 }

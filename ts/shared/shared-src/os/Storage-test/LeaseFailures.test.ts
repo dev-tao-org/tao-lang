@@ -29,28 +29,16 @@ Tests.test('failed cache-mutation acquisition releases lease ownership and retai
 })
 
 Tests.test('blocked lease probes protect the cache without preventing acquisition of an unrelated lease', async () => {
-  for (const [stage, failure] of [['delete', 'EPERM'], ['delete', 'EBUSY'], ['open', 'EACCES'], ['open', 'EBUSY']]) {
+  for (
+    const [stage, failure] of [['delete', 'EPERM'], ['delete', 'EBUSY'], ['open', 'EACCES'], ['open', 'EBUSY'], [
+      'directory',
+      'EACCES',
+    ]]
+  ) {
     await withFailureFixture(async root => {
       const script = S`
         let blocked = true;
-        const remove = fs.rm;
-        const acquire = locks.acquire;
-        mock.module(${JSON.stringify(lockUrl)}, () => ({ ...locks, async acquire(path) {
-          if (blocked && ${
-        JSON.stringify(stage)
-      } === 'open' && path.endsWith('blocked.lock')) throw Object.assign(new Error('blocked probe'), { code: ${
-        JSON.stringify(failure)
-      } });
-          return acquire(path);
-        } }));
-        mock.module('node:fs/promises', () => ({ ...fs, async rm(path, options) {
-          if (blocked && ${
-        JSON.stringify(stage)
-      } === 'delete' && path.endsWith('blocked.lock')) throw Object.assign(new Error('blocked probe'), { code: ${
-        JSON.stringify(failure)
-      } });
-          return remove(path, options);
-        } }));
+        ${blockedProbeAdapters(stage!, failure!)}
         const storage = await import(${JSON.stringify(storageUrl)});
         await fs.mkdir(storage.supportDirectory('leases'), { recursive: true });
         await fs.writeFile(storage.supportDirectory('leases', 'blocked.lock'), '');
@@ -58,17 +46,51 @@ Tests.test('blocked lease probes protect the cache without preventing acquisitio
         await fs.writeFile(storage.cacheDirectory('keep'), 'cached data');
         const release = await storage.acquireCacheLease('unrelated');
         await release();
-        const protectedCache = !(await storage.cleanSharedCache());
+        const reasons = [];
+        const protectedCache = !(await storage.cleanSharedCache(reason => reasons.push(reason)));
+        const named = reasons.some(reason => reason.includes('leases') && reason.includes(${JSON.stringify(failure)}));
         const retained = await fs.readFile(storage.cacheDirectory('keep'), 'utf8');
         blocked = false;
         const reclaimed = await storage.cleanSharedCache();
-        process.stdout.write(JSON.stringify({ protectedCache, retained, reclaimed }));
+        process.stdout.write(JSON.stringify({ protectedCache, retained, reclaimed, named }));
       `
       Tests.expect(JSON.parse(await runFailureScript(root, script)))
-        .toEqual({ protectedCache: true, retained: 'cached data', reclaimed: true })
+        .toEqual({ protectedCache: true, retained: 'cached data', reclaimed: true, named: true })
     })
   }
 })
+
+function blockedProbeAdapters(stage: string, failure: string): string {
+  return S`
+        const remove = fs.rm;
+        const readDirectory = fs.readdir;
+        const acquire = locks.acquire;
+        mock.module(${JSON.stringify(lockUrl)}, () => ({ ...locks, async acquire(path) {
+          if (blocked && ${
+    JSON.stringify(stage)
+  } === 'open' && path.endsWith('blocked.lock')) throw Object.assign(new Error('blocked probe'), { code: ${
+    JSON.stringify(failure)
+  } });
+          return acquire(path);
+        } }));
+        mock.module('node:fs/promises', () => ({ ...fs,
+          async readdir(path, ...args) {
+            if (blocked && ${
+    JSON.stringify(stage)
+  } === 'directory' && path.endsWith('leases')) throw Object.assign(new Error('blocked directory'), { code: ${
+    JSON.stringify(failure)
+  } });
+            return readDirectory(path, ...args);
+          }, async rm(path, options) {
+          if (blocked && ${
+    JSON.stringify(stage)
+  } === 'delete' && path.endsWith('blocked.lock')) throw Object.assign(new Error('blocked probe'), { code: ${
+    JSON.stringify(failure)
+  } });
+          return remove(path, options);
+        } }));
+  `
+}
 
 async function withFailureFixture(operation: (root: string) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `lease-failure-${Platform.randomUUID()}`)

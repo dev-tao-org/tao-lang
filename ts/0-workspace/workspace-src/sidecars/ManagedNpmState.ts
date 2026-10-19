@@ -39,6 +39,89 @@ export async function ensureOwnedFile(path: string, contents: string, repair: bo
   }
 }
 
+/** claimManagedProfile accepts damaged ownership metadata only when its current lock and manifest prove ownership. */
+export async function claimManagedProfile(
+  profile: string,
+  fingerprint: string,
+  repair: boolean,
+  durableLock: string | undefined,
+  expectedManifest: string,
+): Promise<void> {
+  const metadataPath = Path.join(profile, '.tao-managed.json')
+  const marker = Path.join(profile, '.tao-managed-building')
+  const owner = `${fingerprint}\n`
+  const current = await optionalText(marker)
+  if (current !== undefined && current !== owner) {
+    Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+  }
+  const metadataText = await optionalText(metadataPath)
+  if (metadataText !== undefined) {
+    const metadata = Try.WithDefault(undefined, () => JSON.parse(metadataText) as Record<string, unknown>)
+    if (
+      metadata?.fingerprint === fingerprint && typeof metadata.lockHash === 'string'
+      && (durableLock === undefined || metadata.lockHash === Platform.hashText(durableLock))
+    ) {
+      return
+    }
+    if (
+      !repair || durableLock === undefined
+      || metadata?.fingerprint !== undefined && metadata.fingerprint !== fingerprint
+      || !await profileContentsMatch(profile, durableLock, expectedManifest)
+    ) {
+      if (durableLock === undefined) {
+        Errors.ThrowUserInput(
+          `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control.`,
+        )
+      }
+      Errors.ThrowUserInput(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
+    }
+    return
+  }
+  if (current !== owner && (await FileSystem.readdir(profile)).length > 0) {
+    if (!repair || durableLock === undefined || !await profileContentsMatch(profile, durableLock, expectedManifest)) {
+      Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+    }
+    return
+  }
+  if (current === undefined) {
+    await writeReadOnly(marker, owner)
+  }
+}
+
+/** managedProfileManifest serializes exact top-level dependencies for the prepared graph. */
+export function managedProfileManifest(
+  requirements: [string, string, string][],
+  runtimePins: Record<string, string>,
+): string {
+  return `${
+    JSON.stringify(
+      {
+        name: 'tao-managed-app',
+        private: true,
+        type: 'module',
+        dependencies: allRequirements(requirements, runtimePins),
+      },
+      null,
+      2,
+    )
+  }\n`
+}
+
+/** validateManagedProfilePath rejects links and escapes within the generated cache path. */
+export function validateManagedProfilePath(projectRoot: string, profile: string): void {
+  if (!Path.isWithin(projectRoot, profile)) {
+    Errors.ThrowUserInput(`Managed npm cache path is outside the project: ${profile}`)
+  }
+  let directory = profile
+  while (Path.resolve(directory) !== Path.resolve(projectRoot)) {
+    const stat = Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    if (stat?.isSymbolicLink()) {
+      Errors.ThrowUserInput(`Managed npm cache path cannot be a symbolic link: ${directory}`)
+    }
+    directory = Path.dirname(directory)
+  }
+}
+
 /** readOwnedMetadata tolerates damaged generated metadata only when its durable lock proves ownership. */
 export async function readOwnedMetadata(
   profile: string,
@@ -52,7 +135,10 @@ export async function readOwnedMetadata(
     return await optionalJson(path)
   }
   const parsed = await Try.WithDefault(undefined, () => JSON.parse(text) as Record<string, unknown>)
-  if (parsed?.fingerprint === fingerprint && typeof parsed.lockHash === 'string') {
+  if (
+    parsed?.fingerprint === fingerprint && typeof parsed.lockHash === 'string'
+    && (durableLock === undefined || parsed.lockHash === Platform.hashText(durableLock))
+  ) {
     return parsed
   }
   if (durableLock === undefined) {
@@ -75,14 +161,23 @@ export async function optionalJson(path: string): Promise<Record<string, unknown
   if (text === undefined) {
     return undefined
   }
-  return await Try(() => JSON.parse(text) as Record<string, unknown>, {
-    catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}.`),
+  const value = await Try(() => JSON.parse(text) as unknown, {
+    catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao prepare --repair.`),
   })
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao prepare --repair.`)
+  }
+  return value as Record<string, unknown>
 }
 
 /** writeReadOnly writes generated state and restores its read-only permissions. */
 export async function writeReadOnly(path: string, contents: string): Promise<void> {
   await Files.writeReadOnly(path, contents)
+}
+
+async function profileContentsMatch(profile: string, durableLock: string, expectedManifest: string): Promise<boolean> {
+  return await optionalText(Path.join(profile, 'bun.lock')) === durableLock
+    && await optionalText(Path.join(profile, 'package.json')) === expectedManifest
 }
 
 function profileRequirementsMatch(value: unknown, requirements: [string, string, string][]): boolean {

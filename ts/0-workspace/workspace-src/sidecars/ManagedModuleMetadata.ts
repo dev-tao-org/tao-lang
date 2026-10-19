@@ -221,7 +221,8 @@ async function repairModuleFiles(
   await validateModuleLinks(directory, profile, requirements.map(({ name }) => name), previousOwner)
   for (const [path] of files) {
     if (await FileSystem.exists(path) && owner !== expectedOwner) {
-      if (cannotReplaceModuleFile(previousOwner, repair, profile)) {
+      const corruptMarkerRecovery = repair && owner !== undefined && previousOwner === undefined
+      if (!corruptMarkerRecovery && cannotReplaceModuleFile(previousOwner, repair, profile)) {
         Errors.ThrowUserInput(`Module metadata is already owned: ${path}`)
       }
     }
