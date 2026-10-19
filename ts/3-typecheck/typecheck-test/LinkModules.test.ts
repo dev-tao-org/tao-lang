@@ -90,6 +90,36 @@ Tests.test('duplicate local declarations, repeated imports and import collisions
     .toThrow('value and namespace both named UI')
 })
 
+Tests.test('duplicate view bindings fail in their own scope while child scopes may shadow', () => {
+  const duplicate: AST.ViewDeclaration = {
+    ...view('Main', 'file'),
+    definitions: [letDefinition('Title', 'one'), letDefinition('Title', 'two')],
+  }
+  Tests.expect(() => linkModules('app/main.tao', [source('app/main.tao', [duplicate])]))
+    .toThrow('View Main in app/main.tao declares Title more than once in one scope')
+
+  const root: AST.ViewDeclaration = {
+    ...view('Main', 'file'),
+    definitions: [letDefinition('Title', 'outer')],
+    render: viewRender('Col', [
+      letDefinition('Title', 'inner'),
+      viewRender('Row', [letDefinition('Title', 'nested')]),
+    ]),
+  }
+  Tests.expect(() => linkModules('app/main.tao', [source('app/main.tao', [root])])).not.toThrow()
+})
+
+Tests.test('ambiguous sibling names fail only when the module references them', () => {
+  const unreferenced = view('Main', 'file')
+  const left = source('app/left.tao', [view('Item', 'folder')])
+  const right = source('app/right.tao', [view('Item', 'folder')])
+  const entry = source('app/main.tao', [unreferenced], [left.path, right.path])
+
+  Tests.expect(linkModules(entry.path, [entry, left, right]).modules[0]?.bindings).toEqual([])
+  const referenced = source('app/main.tao', [{ ...unreferenced, render: viewRender('Item') }], [left.path, right.path])
+  Tests.expect(() => linkModules(referenced.path, [referenced, left, right])).toThrow('ambiguous sibling name Item')
+})
+
 Tests.test('cross-module lets are ordered by dependency and cycles are reported', () => {
   const importBase = useNamed('Base')
   const entry = source('app/main.tao', [importBase, letReference('Result', 'Base')])
@@ -164,6 +194,17 @@ function view(name: string, visibility: AST.Visibility): AST.ViewDeclaration {
     parameters: [],
     definitions: [],
     render: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+  }
+}
+
+function viewRender(target: string, children: AST.ViewRender['children'] = []): AST.ViewRender {
+  return {
+    kind: 'ViewRender',
+    start: 0,
+    end: 0,
+    target: identifier(target),
+    arguments: [],
+    children,
   }
 }
 

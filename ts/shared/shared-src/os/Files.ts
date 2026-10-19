@@ -1,8 +1,6 @@
-import { chmod, open, opendir, realpath, stat } from 'node:fs/promises'
+import { chmod, lstat, mkdir, open, opendir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { Errors, Try } from '../universal/universal'
-
-const excluded = new Set(['node_modules', '.git', '.hg', '.svn', '.jj', 'Pods', '.gradle', '.venv', '.next', '.nuxt'])
 
 /** withWritableFile serializes writes per canonical path and restores the original permission mode. */
 export async function withWritableFile<Value>(
@@ -10,42 +8,32 @@ export async function withWritableFile<Value>(
   operation: (file: WritableFile) => Promise<Value>,
 ): Promise<Value> {
   const canonical = await canonicalFile(path)
-  const previous = queues.get(canonical) ?? Promise.resolve()
-  let release!: () => void
-  const current = new Promise<void>(resolve => release = resolve)
-  const tail = previous.then(() => current)
-  queues.set(canonical, tail)
-  await previous
-  let mode: number | undefined
-  return await Try(async () => {
-    const original = await stat(canonical)
-    mode = original.mode
-    await chmod(canonical, original.mode | 0o200)
-    return await operation({
-      async write(contents) {
-        const handle = await open(canonical, 'r+')
-        await Try(async () => {
-          await handle.truncate(0)
-          await handle.writeFile(contents)
-        }, {
-          finally: () => handle.close(),
-        })
+  return await serialized(canonical, () => withOriginalPermissions(canonical, operation))
+}
+
+/** writeReadOnly replaces generated regular-file contents and protects the resulting metadata from edits. */
+export async function writeReadOnly(path: string, contents: string): Promise<void> {
+  await mkdir(dirname(resolve(path)), { recursive: true })
+  const canonicalParent = await realpath(dirname(resolve(path)))
+  const canonical = join(canonicalParent, resolve(path).slice(dirname(resolve(path)).length + 1))
+  await serialized(canonical, async () => {
+    const existing = await Try(() => lstat(canonical), {
+      catch(error) {
+        if (!isMissing(error)) {
+          Errors.Throw(error)
+        }
+        return undefined
       },
     })
-  }, {
-    finally: () =>
-      Try(async () => {
-        if (mode !== undefined) {
-          await chmod(canonical, mode)
-        }
-      }, {
-        finally() {
-          release()
-          if (queues.get(canonical) === tail) {
-            queues.delete(canonical)
-          }
-        },
-      }),
+    if (existing && !existing.isFile()) {
+      Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
+    }
+    if (!existing) {
+      await writeFile(canonical, contents, { flag: 'wx', mode: 0o444 })
+    } else if (await readFile(canonical, 'utf8') !== contents) {
+      await withOriginalPermissions(canonical, file => file.write(contents))
+    }
+    await chmod(canonical, 0o444)
   })
 }
 
@@ -73,6 +61,55 @@ export async function findProjects(root: string): Promise<string[]> {
 /** skipDirectory identifies Tao's standard excluded directory names and optional workspace boundary. */
 export function skipDirectory(name: string, taoBoundary: string | false = '.tao'): boolean {
   return excluded.has(name) || taoBoundary !== false && name === taoBoundary
+}
+
+const excluded = new Set(['node_modules', '.git', '.hg', '.svn', '.jj', 'Pods', '.gradle', '.venv', '.next', '.nuxt'])
+const queues = new Map<string, Promise<void>>()
+
+async function serialized<Value>(canonical: string, operation: () => Promise<Value>): Promise<Value> {
+  const previous = queues.get(canonical) ?? Promise.resolve()
+  let release!: () => void
+  const current = new Promise<void>(resolve => release = resolve)
+  const tail = previous.then(() => current)
+  queues.set(canonical, tail)
+  await previous
+  return await Try(operation, {
+    finally() {
+      release()
+      if (queues.get(canonical) === tail) {
+        queues.delete(canonical)
+      }
+    },
+  })
+}
+
+async function withOriginalPermissions<Value>(
+  canonical: string,
+  operation: (file: WritableFile) => Promise<Value>,
+): Promise<Value> {
+  let mode: number | undefined
+  return await Try(async () => {
+    const original = await stat(canonical)
+    mode = original.mode
+    await chmod(canonical, original.mode | 0o200)
+    return await operation({
+      async write(contents) {
+        const handle = await open(canonical, 'r+')
+        await Try(async () => {
+          await handle.truncate(0)
+          await handle.writeFile(contents)
+        }, {
+          finally: () => handle.close(),
+        })
+      },
+    })
+  }, {
+    async finally() {
+      if (mode !== undefined) {
+        await chmod(canonical, mode)
+      }
+    },
+  })
 }
 
 async function walkDirectory(root: string, directory: string, boundary: string): Promise<string[]> {
@@ -168,5 +205,3 @@ async function missingFilePath(absolute: string): Promise<string> {
 function isMissing(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
 }
-
-const queues = new Map<string, Promise<void>>()

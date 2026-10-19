@@ -34,6 +34,52 @@ Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks
     Tests.expect(checks).toBe(2)
   }))
 
+Tests.test('rebuilds a corrupted snapshot without replacing the previously published tree', async () =>
+  await withFixture(async fixture => {
+    const executor = recordingExecutor(() => {})
+    const first = await prepareSidecarPipeline({ ...fixture, executor })
+    const original = first.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const root = Path.dirname(Path.dirname(Path.dirname(original)))
+    await FileSystem.writeFile(Path.join(root, '.tao-sidecar-snapshot.json'), '{broken')
+
+    const repaired = await prepareSidecarPipeline({ ...fixture, executor })
+    const replacement = repaired.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    Tests.expect(replacement).not.toBe(original)
+    Tests.expect(await FileSystem.readFile(original, 'utf8')).toContain("from './format'")
+    Tests.expect(await FileSystem.readFile(replacement, 'utf8')).toContain("from './format'")
+    const cached = await prepareSidecarPipeline({ ...fixture, executor })
+    Tests.expect(cached.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(replacement)
+  }))
+
+Tests.test('collects foreign views through a symlinked project root', async () =>
+  await withFixture(async fixture => {
+    const alias = Path.join(fixture.directory, 'project-alias')
+    await FileSystem.symlink(fixture.projectDirectory, alias, 'dir')
+    const aliasEntry = Path.join(alias, '@calendar', 'Calendar.tao')
+    const prepared = await prepareSidecarPipeline({
+      ...fixture,
+      projectDirectory: alias,
+      program: programFor(aliasEntry, fixture.program.modules[0]!.document),
+      executor: recordingExecutor(() => {}),
+    })
+    const snapshot = prepared.foreignViewPath(aliasEntry, './FormattedDate.tsx')
+    Tests.expect(await FileSystem.readFile(snapshot, 'utf8')).toContain('FormattedDate')
+    Tests.expect(prepared.snapshotDirectories.some(path => path.includes('foreign-views'))).toBe(true)
+  }))
+
+Tests.test('blocks a new snapshot when the active session reaches its snapshot budget', async () =>
+  await withFixture(async fixture => {
+    const options = { ...fixture, executor: recordingExecutor(() => {}), snapshotLimit: 1 }
+    const first = await prepareSidecarPipeline(options)
+    const snapshot = first.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const cached = await prepareSidecarPipeline(options)
+    Tests.expect(cached.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(snapshot)
+    await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "next"\n')
+
+    await Tests.rejects(prepareSidecarPipeline(options), /Restart preview to reclaim sidecar snapshots/)
+    Tests.expect(await FileSystem.readFile(snapshot, 'utf8')).toContain("from './format'")
+  }))
+
 Tests.test('foreign sidecars reject symlink escapes before invoking the checker', async () =>
   await withFixture(async fixture => {
     const outside = Path.join(fixture.directory, 'outside.tsx')

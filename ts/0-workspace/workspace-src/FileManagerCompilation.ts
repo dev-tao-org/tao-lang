@@ -1,6 +1,74 @@
 import { Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
+import { Document } from './Document'
 import type { UpdateResult } from './Workspace'
+
+/** PipelineWatchDirectories tracks the replaceable authored and generated roots of a preview pipeline. */
+export class PipelineWatchDirectories {
+  private authored: string[] = []
+  private snapshots: string[] = []
+
+  constructor(private readonly options: Pick<FileManagerOptions, 'outputDirectory' | 'watchDirectories'>) {}
+
+  update(root: string | undefined, authored: readonly string[], snapshots: readonly string[]): boolean {
+    const nextAuthored = uniquePaths(authored).filter(path => !root || !Path.isWithin(root, path))
+    const nextSnapshots = uniquePaths(snapshots)
+    if (samePaths(this.authored, nextAuthored) && samePaths(this.snapshots, nextSnapshots)) {
+      return false
+    }
+    this.authored = nextAuthored
+    this.snapshots = nextSnapshots
+    return true
+  }
+
+  additional(): string[] {
+    return uniquePaths([...this.options.watchDirectories ?? [], ...this.authored])
+  }
+
+  ignored(): string[] {
+    return uniquePaths([...this.options.outputDirectory ? [this.options.outputDirectory] : [], ...this.snapshots])
+  }
+
+  ignores(path: string): boolean {
+    return (this.options.outputDirectory !== undefined && Path.isWithin(this.options.outputDirectory, path))
+      || this.snapshots.some(directory => Path.isWithin(directory, path))
+  }
+}
+
+/** loadFileManagerInput captures a queued disk or immutable source input as a document snapshot. */
+export async function loadFileManagerInput(
+  request: Pending,
+  documents: Map<string, Document>,
+  read: FileManagerOptions['read'],
+  isCurrent: () => boolean,
+): Promise<LoadedSource | UpdateResult> {
+  if (request.input.kind === 'source') {
+    return {
+      path: request.input.path,
+      source: request.input.source,
+      version: request.input.version,
+      startedAtMs: request.input.startedAtMs,
+      timings: request.input.timings,
+    }
+  }
+  const snapshot = await readSource(request.input.path, request.input.startedAtMs, read)
+  if ('status' in snapshot) {
+    return snapshot
+  }
+  if (!isCurrent()) {
+    return supersededResult(request.id)
+  }
+  const document = documents.get(request.input.path) ?? new Document(request.input.path)
+  documents.set(request.input.path, document)
+  const version = document.replaceSource(snapshot.source).version
+  return {
+    path: request.input.path,
+    source: snapshot.source,
+    version,
+    startedAtMs: snapshot.observedAtMs,
+    timings: snapshot.timings,
+  }
+}
 
 /** FileManagerOptions connects source observation to the workspace compiler. */
 export type FileManagerOptions = {
@@ -117,24 +185,6 @@ export function isRelevantChange(change: WorkspaceWatch.WorkspaceChange): boolea
   return change.kind === 'addDir' || change.kind === 'unlinkDir' || /\.(?:tao|tsx?|jsx?|json)$/.test(change.path)
 }
 
-/** isWithin checks path containment after resolving both paths. */
-export function isWithin(root: string, path: string): boolean {
-  const relative = Path.relative(Path.resolve(root), Path.resolve(path)).replaceAll('\\', '/')
-  return relative === '' || (relative !== '..' && !relative.startsWith('../') && !relative.startsWith('/'))
-}
-
-/** readSource records source observation and disk reading before compilation begins. */
-export async function readSource(
-  path: string,
-  observedAtMs: number,
-  read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult> = defaultRead,
-): Promise<SourceSnapshot | UpdateResult> {
-  const timings = new Timings('workspace:input')
-  timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const snapshot = await readWorkspaceSource(timings, path, observedAtMs, read)
-  return 'status' in snapshot ? snapshot : { ...snapshot, timings }
-}
-
 /** failedResult creates a failed source-read or compiler result. */
 export function failedResult(id: number, error: unknown, timings: Timings['samples']): UpdateResult {
   return {
@@ -166,6 +216,17 @@ export function notifyCompletion(
 
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 
+async function readSource(
+  path: string,
+  observedAtMs: number,
+  read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult> = defaultRead,
+): Promise<SourceSnapshot | UpdateResult> {
+  const timings = new Timings('workspace:input')
+  timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
+  const snapshot = await readWorkspaceSource(timings, path, observedAtMs, read)
+  return 'status' in snapshot ? snapshot : { ...snapshot, timings }
+}
+
 const readWorkspaceSource = Timings.measure('workspace.read', function(
   path: string,
   observedAtMs: number,
@@ -185,6 +246,14 @@ function defaultRead(path: string, observedAtMs: number): Promise<SourceSnapshot
     observedAtMs,
     timings: new Timings('workspace:input'),
   }))
+}
+
+function uniquePaths(paths: readonly string[]): string[] {
+  return [...new Set(paths.map(path => Path.resolve(path)))].sort()
+}
+
+function samePaths(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((path, index) => path === right[index])
 }
 
 function skippedStages(): Extract<UpdateResult, { status: 'failed' }>['stages'] {

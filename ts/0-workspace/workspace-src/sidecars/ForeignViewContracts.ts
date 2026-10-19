@@ -26,10 +26,7 @@ export async function checkForeignViewContract(
     Errors.ThrowUserInput(`Invalid foreign view export name: ${contract.name}`)
   }
   const exportRelativePath = Path.relative(contract.directory, contract.exportFile)
-  if (
-    Path.isAbsolute(exportRelativePath) || exportRelativePath === '..'
-    || exportRelativePath.startsWith(`..${Path.posix.sep}`)
-  ) {
+  if (!Path.isWithin(contract.directory, contract.exportFile)) {
     Errors.ThrowUserInput(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
   }
   for (const name of Object.keys(contract.parameters)) {
@@ -38,7 +35,7 @@ export async function checkForeignViewContract(
     }
   }
   const file = Path.join(contract.directory, `.tao-${contract.name}.contract.ts`)
-  const importPath = exportRelativePath.replace(/\.(?:tsx?|mts|cts)$/, '')
+  const importPath = exportRelativePath.replaceAll('\\', '/').replace(/\.(?:tsx?|mts|cts)$/, '')
   const parameters = Object.entries(contract.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
   const source = `import type * as React from 'react'\nimport { ${contract.name} as TaoForeignView } from ${
     JSON.stringify(
@@ -68,21 +65,7 @@ async function writeOwnedContract(path: string, contents: string): Promise<void>
     Errors.ThrowUserInput(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {
-    await writeGenerated(marker, 'managed-by-tao\n')
-    await FileSystem.chmod(marker, 0o444)
+    await Files.writeReadOnly(marker, 'managed-by-tao\n')
   }
-  await writeGenerated(path, contents)
-  await FileSystem.chmod(path, 0o444)
-}
-
-async function writeGenerated(path: string, contents: string): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-  if (await FileSystem.exists(path)) {
-    if (await FileSystem.readFile(path, 'utf8') === contents) {
-      return
-    }
-    await Files.withWritableFile(path, file => file.write(contents))
-  } else {
-    await FileSystem.writeFile(path, contents)
-  }
+  await Files.writeReadOnly(path, contents)
 }

@@ -9,14 +9,13 @@
       "provider": "bundled",
       "identifier": "tao",
       "version": "bundled",
-      "location": "../../ts/stdlib/stdlib-src",
       "requirements": []
     }
   },
   "npmGraphs": {
     "Kitchen Sink/Kitchen Sink.tao": {
-      "fingerprint": "961dd31160e3f0f69719d8c28f29b5d4962781b89e3c9e545f701f9fab3ea995",
-      "lockPath": ".tao/store/npm/961dd31160e3f0f69719d8c28f29b5d4962781b89e3c9e545f701f9fab3ea995.lock",
+      "fingerprint": "6c62bfdfc2dec96ac186b3693f7f7aeeae6d8d65a885329540ab8f91877bd711",
+      "lockPath": ".tao/store/npm/6c62bfdfc2dec96ac186b3693f7f7aeeae6d8d65a885329540ab8f91877bd711.lock",
       "lockHash": "e0fafc0ed710f61bc360a7da94f04db0d82e0bbae5d3b430210bc0d15e8ab686"
     }
   }

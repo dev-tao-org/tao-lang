@@ -22,6 +22,10 @@
 (All) @keyword
 (UsePackageStatement ["use" "package" "from" "as"] @keyword)
 (NamedImport "as" @keyword)
+(RequiresDeclaration ["requires" "version" "as"] @keyword)
+(RequirementProvider) @type
+(RequirementIdentifier) @string
+(RequirementVersion) @string
 (UseStatement (NamedImport target: (Identifier) @type))
 (ImportPath) @string
 (Visibility) @keyword

@@ -1,7 +1,10 @@
 # Sourced by the thin CLI entrypoints before Bun or workspace dependencies are loaded.
 repository=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 . "$repository/.config/prepared-environment.sh"
-tao_environment_key=$(tao_environment_identity "$repository")
+tao_environment_key=$(tao_environment_identity "$repository") || {
+  printf 'Tao could not fingerprint this checkout environment. Run the command from a complete Git checkout and verify git hash-object works.\n' >&2
+  exit 1
+}
 active_environment=
 if [ -n "${DEVENV_ROOT:-}" ]; then
   active_environment=$(CDPATH= cd -- "$DEVENV_ROOT" 2>/dev/null && pwd -P) || active_environment=

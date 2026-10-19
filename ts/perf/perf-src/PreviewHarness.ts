@@ -10,7 +10,6 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
   const sessionDir = await prepareBrowserClient(options.sessionId)
   return await startHarnessServer({
     ...options,
-    canonicalSource: options.canonicalSource ?? '',
     scenarios: options.scenarios ?? helloWorldScenarios,
   }, sessionDir)
 }
@@ -21,7 +20,7 @@ export type HarnessOptions = {
   previewUrl: string
   sessionId: string
   /** canonicalSource is the authored fixture text restored by the reset scenario. */
-  canonicalSource?: string
+  canonicalSource: string
   /** scenarios is the ordered button cycle. The Hello World cycle is the default. */
   scenarios?: readonly PreviewScenario[]
   onReload?(timing: ReloadTiming): void

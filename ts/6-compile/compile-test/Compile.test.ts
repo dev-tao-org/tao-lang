@@ -188,6 +188,14 @@ Tests.test('injection locals and captures cannot collide with generated callback
   Tests.expect(() => new Function(generatedJavaScript(source))).not.toThrow()
 })
 
+Tests.test('injection captures cannot shadow the runtime or use reserved JavaScript names', () => {
+  for (const capture of ['TR', 'return']) {
+    const source =
+      `app Test { root Root }\nview Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }`
+    Tests.expect(() => generatedJavaScript(source)).toThrow(`Injection capture name ${capture} conflicts`)
+  }
+})
+
 Tests.test('escaped authored identifiers stay inside their own injection scope', () => {
   const source = S`
     app Test { root Root }

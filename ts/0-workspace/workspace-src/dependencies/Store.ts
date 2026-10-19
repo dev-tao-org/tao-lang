@@ -28,31 +28,25 @@ export function resolveLockedAlias(
   return identity ? lock.sources[identity] : undefined
 }
 
-function rootIdentity(lock: DependencyLock, alias: string): string | undefined {
-  const pin = lock.roots[alias]
-  if (!pin) {
-    return undefined
-  }
-  const separator = pin.lastIndexOf('@')
-  const identity = separator > 0 ? pin.slice(0, separator) : undefined
-  return identity && lock.sources[identity] ? identity : undefined
-}
-
 /** readPreparedDependencies reads a matching durable lock without fetching remote sources. */
 export async function readPreparedDependencies(
   projectRoot: string,
   requirements: DependencyRequirement[],
   options: DependencyStoreOptions,
 ): Promise<DependencyLock> {
-  const lock = materializeLocations(await readDependencyLock(dependencyLockPath(projectRoot)), projectRoot)
+  const lock = materializeLocations(
+    await readDependencyLock(dependencyLockPath(projectRoot)),
+    projectRoot,
+    options.bundledProjects,
+  )
   const expected = rootsFor(requirements, projectRoot)
   if (!lock || JSON.stringify(lock.roots) !== JSON.stringify(expected)) {
     preparationNeeded('Dependencies changed; prepare dependencies, then retry.')
   }
   for (const source of Object.values(lock.sources)) {
     const bundledRoot = options.bundledProjects?.[source.identifier]
-    if (source.provider === 'bundled' && bundledRoot && Path.resolve(bundledRoot) !== Path.resolve(source.location)) {
-      preparationNeeded(`Bundled project ${source.identifier} changed. Run tao prepare, then retry.`)
+    if (source.provider === 'bundled' && !bundledRoot) {
+      preparationNeeded(`Bundled project ${source.identifier} is unavailable; prepare dependencies, then retry.`)
     }
     if (!await FileSystem.exists(source.location)) {
       preparationNeeded(
@@ -90,8 +84,8 @@ export async function prepareDependencies(
     const sources = await resolveGraph(
       projectRoot,
       requirements,
-      materializeSources(previous?.sources ?? {}, projectRoot),
-      previousPins(previous, projectRoot),
+      materializeSources(previous?.sources ?? {}, projectRoot, options.bundledProjects),
+      previousPins(previous, projectRoot, options.bundledProjects),
       update,
       options,
     )
@@ -104,6 +98,16 @@ export async function prepareDependencies(
     await writeDependencyLock(path, result, projectRoot)
     return result
   }, { finally: () => lock.release() })
+}
+
+function rootIdentity(lock: DependencyLock, alias: string): string | undefined {
+  const pin = lock.roots[alias]
+  if (!pin) {
+    return undefined
+  }
+  const separator = pin.lastIndexOf('@')
+  const identity = separator > 0 ? pin.slice(0, separator) : undefined
+  return identity && lock.sources[identity] ? identity : undefined
 }
 
 async function resolveGraph(
@@ -150,12 +154,16 @@ async function resolveGraph(
   return sources
 }
 
-function previousPins(previous: DependencyLock | undefined, projectRoot: string): Map<string, string> {
+function previousPins(
+  previous: DependencyLock | undefined,
+  projectRoot: string,
+  bundledProjects?: Readonly<Record<string, string>>,
+): Map<string, string> {
   const pins = new Map<string, string>()
   if (!previous) {
     return pins
   }
-  const sources = materializeSources(previous.sources, projectRoot)
+  const sources = materializeSources(previous.sources, projectRoot, bundledProjects)
   for (const value of Object.values(previous.roots)) {
     const split = value.lastIndexOf('@')
     const identity = split > 0 ? value.slice(0, split) : ''

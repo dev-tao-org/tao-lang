@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { Platform, Text } from '@shared/os'
+import { Platform, Terminal, Text } from '@shared/os'
 import { IO } from './cli-kit'
 
 Platform.onUncaughtException(fatalError)
@@ -13,10 +13,16 @@ async function fatalError(error: unknown): Promise<void> {
     IO.summary(`Failed: ${Errors.fromUnknown(error).message.split('\n')[0]!.slice(0, 240)}`)
     await IO.finish('failed')
   }, {
+    catch: () => writeFallbackError(error),
     finally() {
       Platform.exit(status ?? 1)
     },
   })
+}
+
+function writeFallbackError(error: unknown): void {
+  const { stacks, details } = Errors.describe(error)
+  Terminal.stderr.write(`${[...stacks, Text.inspect(details)].filter(Boolean).join('\n')}\n`)
 }
 
 function printError(error: unknown): void {

@@ -11,6 +11,7 @@ import {
   uniqueDiagnostics,
   uniqueTokens,
 } from './QueryResults'
+import { createRetryableInitialization } from './RetryableInitialization'
 import { editTreeForSource } from './SourceEdit'
 
 /** DocumentSession owns one incrementally updated Tao tree for one document. */
@@ -182,18 +183,15 @@ function trackedDocument(session: DocumentSession, sessions: Set<DocumentSession
   }
 }
 
-let parserInitialization: Promise<void> | undefined
-
-function initializeParser(runtimeWasmPath?: string): Promise<void> {
-  parserInitialization ??= WebParser.init(
+const initializeParser = createRetryableInitialization((runtimeWasmPath?: string) =>
+  WebParser.init(
     runtimeWasmPath
       ? {
         locateFile: () => runtimeWasmPath,
       }
       : undefined,
   )
-  return parserInitialization
-}
+)
 
 const fencePrefix = '```ts'
 const fenceSuffix = '```'

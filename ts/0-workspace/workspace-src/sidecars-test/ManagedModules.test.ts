@@ -156,20 +156,29 @@ async function assertFrozenReuseAndClean(fixture: ManagedFixture, fingerprint: s
   await prepareManagedModules(fixture.input, fixture.executor)
   Tests.expect(fixture.frozen()).toBe(true)
   await Tests.rejects(readManagedModules({ ...fixture.input, modules: [] }), /changed/)
-  const lock = Path.join(fixture.directory, '.tao', 'store', 'npm', `${fingerprint}.lock`)
+  const lock = Path.join(
+    fixture.directory,
+    '.tao',
+    'store',
+    'npm',
+    `${(await readManagedModules(fixture.input)).graphFingerprint}.lock`,
+  )
   Tests.expect(await FileSystem.exists(lock.replace(/\.lock$/, '.sha256'))).toBe(true)
   await FileSystem.chmod(lock, 0o644)
   await FileSystem.writeFile(lock, 'tampered')
   await Tests.rejects(readManagedModules(fixture.input), /durable lock is changed/)
-  await cleanManagedModuleMetadata(fixture.directory)
+  await cleanManagedModuleMetadata(fixture.externalModule)
+  Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'package.json'))).toBe(true)
+  await FileSystem.rm(profile, { recursive: true, force: true })
+  await cleanManagedModuleMetadata(fixture.directory, [fixture.externalModule])
   await assertCleanupPreservesUserFiles(fixture)
 }
 
 async function assertCleanupPreservesUserFiles(fixture: ManagedFixture): Promise<void> {
   Tests.expect(await FileSystem.exists(Path.join(fixture.moduleDirectory, 'package.json'))).toBe(false)
   Tests.expect(await FileSystem.readdir(Path.join(fixture.moduleDirectory, 'node_modules'))).toEqual([])
-  Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'package.json'))).toBe(true)
-  Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'node_modules', 'react'))).toBe(true)
+  Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'package.json'))).toBe(false)
+  Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'node_modules', 'react'))).toBe(false)
   Tests.expect(await FileSystem.exists(Path.join(fixture.directory, 'Other', 'package.json'))).toBe(true)
 }
 

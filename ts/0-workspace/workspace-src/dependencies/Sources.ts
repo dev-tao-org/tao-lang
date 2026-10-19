@@ -49,6 +49,11 @@ function canonicalFileSource(parent: string, identifier: string): string {
   return Try.WithDefault(path, () => FileSystem.realpathSync(path))
 }
 
+/** assertTaoProjectRoot rejects source locations without Tao project metadata. */
+export function assertTaoProjectRoot(location: string, label: string): void {
+  requireProjectRoot(location, label)
+}
+
 function requireProjectRoot(location: string, label: string): void {
   const marker = Path.join(location, '.tao')
   const valid = Try.WithDefault(false, () => FileSystem.lstatSync(location).isDirectory())
@@ -56,11 +61,6 @@ function requireProjectRoot(location: string, label: string): void {
   if (!valid) {
     preparationNeeded(`${label} must point to a Tao project root containing .tao/.`)
   }
-}
-
-/** assertTaoProjectRoot rejects source locations without Tao project metadata. */
-export function assertTaoProjectRoot(location: string, label: string): void {
-  requireProjectRoot(location, label)
 }
 
 function resolveFileSource(
@@ -184,8 +184,7 @@ async function githubProjectLocation(
     preparationNeeded(`GitHub source ${identity} has an invalid project subdirectory.`)
   }
   const location = subdirectory ? Path.resolve(cacheLocation, ...subdirectory.split('/')) : cacheLocation
-  const relative = Path.relative(cacheLocation, location).replaceAll('\\', '/')
-  if (relative === '..' || relative.startsWith('../') || Path.isAbsolute(relative)) {
+  if (subdirectory && !Path.isWithin(cacheLocation, location)) {
     preparationNeeded(`GitHub source ${identity} has an invalid project subdirectory.`)
   }
   if (!await FileSystem.exists(location)) {

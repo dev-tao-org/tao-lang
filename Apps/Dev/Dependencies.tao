@@ -1,0 +1,2 @@
+// Optional explicit declaration of the automatically included standard project.
+requires bundled:tao

@@ -3,6 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
+import { defaultSourceAlias } from './Sources'
 import type { DependencyRequirement } from './Types'
 
 /** readProjectRequirements extracts cached direct project source requirements. */
@@ -81,7 +82,7 @@ function defaultVersion(provider: Exclude<DependencyRequirement['provider'], 'gi
 function validateAliases(requirements: DependencyRequirement[]): void {
   const aliases = new Set<string>()
   for (const requirement of requirements) {
-    const alias = requirement.alias ?? defaultAlias(requirement)
+    const alias = requirement.alias ?? defaultSourceAlias(requirement)
     if (aliases.has(alias)) {
       Errors.ThrowUserInput(`Dependency alias ${alias} is declared more than once.`)
     }
@@ -89,16 +90,5 @@ function validateAliases(requirements: DependencyRequirement[]): void {
   }
 }
 
-function defaultAlias(requirement: DependencyRequirement): string {
-  return requirement.provider === 'github'
-    ? requirement.identifier.replace(/\.git$/, '').split('/').at(-1)!
-    : Path.basename(requirement.identifier.replaceAll('\\', '/'))
-}
-
 const parser = createParser()
 const parsedFiles = new Map<string, { source: string; requirements: DependencyRequirement[] }>()
-
-/** clearRequirementSourceCache clears parsed text after tests replace project paths. */
-export function clearRequirementSourceCache(): void {
-  parsedFiles.clear()
-}

@@ -3,6 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { namedPackageDirectories, recursiveSourceFiles } from './modules/Catalog'
 import { acquireSession } from './projects/Sessions'
@@ -81,10 +82,10 @@ export async function withDependencySession<T>(
   acquireLease: (identity: string) => Promise<() => void> = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
-  const releaseLease = await acquireLease(identity)
-  const session = await Try(() => acquireSession(projectRoot, { id: sessionId, kind: 'cli' }), {
+  const session = await acquireSession(projectRoot, { id: sessionId, kind: 'cli' })
+  const releaseLease = await Try(() => acquireLease(identity), {
     catch(error) {
-      releaseLease()
+      session.release()
       return Errors.Throw(error)
     },
   })
@@ -154,7 +155,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
 }
 
 function validateExactVersion(version: string): void {
-  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
+  if (valid(version) !== version) {
     Errors.ThrowUserInput(`Expected an exact semantic version; received ${version}.`)
   }
 }
@@ -241,8 +242,7 @@ function joinBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
 }
 
 async function sourceIsInsideProject(path: string, projectRoot: string): Promise<boolean> {
-  const relative = Path.relative(Path.resolve(projectRoot), path)
-  return relative !== '..' && !relative.startsWith('../') && !Path.isAbsolute(relative)
+  return Path.isWithin(projectRoot, path)
     && path.endsWith('.tao') && await FileSystem.exists(path)
 }
 

@@ -51,12 +51,3 @@ function validateCommit(commit: string | undefined, repository: string, version:
 function isCommit(value: string | undefined): value is string {
   return value !== undefined && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(value)
 }
-
-/** localGitRepository initializes and commits an isolated fixture repository. */
-export async function localGitRepository(root: string): Promise<string> {
-  await FileSystem.mkdir(root, { recursive: true })
-  await Platform.capture('git', { variadicArgs: ['init', '--quiet', root] })
-  await Platform.capture('git', { variadicArgs: ['-C', root, 'config', 'user.email', 'tao-test@example.invalid'] })
-  await Platform.capture('git', { variadicArgs: ['-C', root, 'config', 'user.name', 'Tao Test'] })
-  return root
-}

@@ -34,12 +34,13 @@ export async function validateReusableProfile(
   input: ManagedModulesInput,
   requirements: [string, string, string][],
   fingerprint: string,
+  graphFingerprint: string,
   storedLock: string,
   repair: boolean,
 ): Promise<boolean> {
   validateDurableOwnership(metadata, fingerprint, storedLock)
   if (!repair) {
-    await validateProfileMetadata(metadata, input, fingerprint, requirements)
+    await validateProfileMetadata(metadata, input, fingerprint, requirements, graphFingerprint)
   }
   await validateProfileLock(profile, storedLock, repair)
   if (hostMatches(metadata, input)) {

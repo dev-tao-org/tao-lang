@@ -3,7 +3,6 @@ import { createParser } from '@grammar/parser'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import {
-  clearRequirementSourceCache,
   readProjectRequirements,
   validateRequirementPlacement,
 } from '../../workspace-src/dependencies/Requirements'
@@ -35,7 +34,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
       async () => validateRequirementPlacement(nested.root.declarations, Path.join(root, 'nested', 'Module.tao'), root),
       /project-root Tao files/,
     )
-  }, { finally: () => clearAndRemove(root) })
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
 Tests.test('project source scanning rejects missing GitHub versions and duplicate aliases', async () => {
@@ -53,10 +52,5 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
       ].join('\n'),
     )
     await Tests.rejects(readProjectRequirements(root), /declared more than once/)
-  }, { finally: () => clearAndRemove(root) })
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
-
-async function clearAndRemove(root: string): Promise<void> {
-  clearRequirementSourceCache()
-  await FileSystem.rm(root, { recursive: true, force: true })
-}

@@ -43,6 +43,18 @@ Tests.test('organizing imports keeps comments and their groups attached, includi
   Tests.expect(fixed(result)).toBe(result)
 })
 
+Tests.test('organizing imports removes duplicates across comment groups and keeps the comments', () => {
+  const result = fixed(S`
+    use Text from tao@ui
+    // Text is used by the primary view.
+    use Text from tao@ui
+    view Main { render Text("Hello") }
+  `)
+  const importedText = 'use Text from tao@ui'
+  Tests.expect(result.indexOf(importedText)).toBe(result.lastIndexOf(importedText))
+  Tests.expect(result).toContain('// Text is used by the primary view.')
+})
+
 function fixed(source: string): string {
   const parser = createParser()
   const tree = parser.parse(source).tree

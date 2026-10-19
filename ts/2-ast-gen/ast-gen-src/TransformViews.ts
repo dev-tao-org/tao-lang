@@ -5,7 +5,7 @@ import * as AST from './Construction'
 /** ViewDeclaration constructs a view and its render body. */
 export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
   const parameters = cst.childForFieldName('parameters')
-  const visibility = cst.childForFieldName('visibility')?.text as Nodes.Visibility | undefined
+  const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'ViewDeclaration', {
     name: AST.Field(cst, 'name', 'Name'),
     parameters: parameters ? AST.List(parameters, ['Parameter']) : [],
@@ -14,13 +14,6 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
     render: viewBody(cst),
     ...(visibility ? { visibility } : {}),
   })
-}
-
-function viewBody(cst: Parser.SyntaxNode): Nodes.ViewDeclaration['render'] {
-  const body = cst.namedChildren.find(child => child.type === 'ForeignView')
-  return body
-    ? AST.Construct(body, 'ForeignView')
-    : AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection'])
 }
 
 /** ForeignView constructs a module-backed view body. */
@@ -65,4 +58,11 @@ export function ContextReference(cst: Parser.SyntaxNode): Nodes.ContextReference
 /** TextLiteral constructs a decoded authored text value. */
 export function TextLiteral(cst: Parser.SyntaxNode): Nodes.TextLiteral {
   return AST.Node(cst, 'TextLiteral', { value: JSON.parse(cst.text) as string })
+}
+
+function viewBody(cst: Parser.SyntaxNode): Nodes.ViewDeclaration['render'] {
+  const body = cst.namedChildren.find(child => child.type === 'ForeignView')
+  return body
+    ? AST.Construct(body, 'ForeignView')
+    : AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection'])
 }

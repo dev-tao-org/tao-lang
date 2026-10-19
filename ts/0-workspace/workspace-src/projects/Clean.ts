@@ -1,17 +1,22 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
+import { readFileSourceRoots } from '../dependencies/LockFile'
 import { cleanManagedModuleMetadata } from '../sidecars/ManagedModules'
 import {
   acquireProjectLifecycle,
-  isRealDirectory as isRealStateDirectory,
-  pathExists as statePathExists,
+  isRealDirectory,
+  pathExists,
 } from './Lifecycle'
 import { projectLayout } from './Projects'
+import { isProjectSessionId } from './Sessions'
+
+/** CleanResult reports removed project cache, active sessions, and retained shared project cache. */
+export type CleanResult = { removed: string[]; skippedActive: string[]; sharedProtected: boolean }
 
 /** cleanProject removes inactive session and generated project cache state. */
 export async function cleanProject(root: string): Promise<CleanResult> {
   const layout = projectLayout(Path.resolve(root))
-  if (!isRealStateDirectory(layout.taoDirectory)) {
+  if (!isRealDirectory(layout.taoDirectory)) {
     return emptyCleanResult()
   }
   const lifecycle = await acquireProjectLifecycle(layout.root)
@@ -24,56 +29,60 @@ export async function cleanProject(root: string): Promise<CleanResult> {
 async function cleanProjectUnderLifecycle(layout: ReturnType<typeof projectLayout>): Promise<CleanResult> {
   const removed: string[] = []
   const skippedActive: string[] = []
+  const cacheSafe = !pathExists(layout.cacheDirectory) || isRealDirectory(layout.cacheDirectory)
+  if (!cacheSafe) {
+    return { removed, skippedActive, sharedProtected: true }
+  }
   const lockDirectoryReady = await ensureLockDirectory(layout.sessionLocksDirectory)
   const sessionsDirectorySafe = await ensureSessionDirectory(layout.sessionsDirectory)
   if (!lockDirectoryReady || !sessionsDirectorySafe) {
     return { removed, skippedActive, sharedProtected: true }
   }
-  const sessions = await directoryNames(layout.sessionsDirectory)
-  const locks = (await directoryNames(layout.sessionLocksDirectory))
-    .filter(name => name.endsWith('.lock'))
-    .map(name => name.slice(0, -'.lock'.length))
-  for (const id of [...new Set([...sessions, ...locks])].sort()) {
-    if (!isSessionId(id)) {
-      continue
-    }
-    const sessionPath = Path.join(layout.sessionsDirectory, id)
-    if (statePathExists(sessionPath) && !isSessionDirectory(sessionPath)) {
-      skippedActive.push(id)
-      continue
-    }
-    const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
-    if (statePathExists(lockPath) && !isRegularFile(lockPath)) {
-      skippedActive.push(id)
-      continue
-    }
-    const lock = await SessionLock.acquire(lockPath)
-    if (!lock) {
-      skippedActive.push(id)
-      continue
-    }
-    await Try(async () => {
-      if (isSessionDirectory(sessionPath)) {
-        await FileSystem.rm(sessionPath, { recursive: true, force: true })
-        removed.push(id)
-      }
-    }, { finally: lock.release })
-  }
-  const cacheSafe = !isPathPresent(layout.cacheDirectory) || isRealDirectory(layout.cacheDirectory)
-  const sharedProtected = skippedActive.length > 0 || !cacheSafe
-  if (!sharedProtected && cacheSafe) {
-    await cleanManagedModuleMetadata(layout.root)
+  skippedActive.push(...await cleanInactiveSessions(layout, removed))
+  const sharedProtected = skippedActive.length > 0
+  if (!sharedProtected) {
+    await cleanManagedModuleMetadata(layout.root, await readFileSourceRoots(layout.root))
     await cleanProjectCache(layout.cacheDirectory, removed)
   }
   return { removed, skippedActive, sharedProtected }
 }
 
+async function cleanInactiveSessions(layout: ReturnType<typeof projectLayout>, removed: string[]): Promise<string[]> {
+  const sessions = await directoryNames(layout.sessionsDirectory)
+  const locks = (await directoryNames(layout.sessionLocksDirectory))
+    .filter(name => name.endsWith('.lock'))
+    .map(name => name.slice(0, -'.lock'.length))
+  const skipped: string[] = []
+  for (const id of [...new Set([...sessions, ...locks])].sort()) {
+    if (isProjectSessionId(id) && await cleanSession(layout, id, removed)) {
+      skipped.push(id)
+    }
+  }
+  return skipped
+}
+
+async function cleanSession(layout: ReturnType<typeof projectLayout>, id: string, removed: string[]): Promise<boolean> {
+  const sessionPath = Path.join(layout.sessionsDirectory, id)
+  const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
+  if (pathExists(sessionPath) && !isRealDirectory(sessionPath) || pathExists(lockPath) && !isRegularFile(lockPath)) {
+    return true
+  }
+  const lock = await SessionLock.acquire(lockPath)
+  if (!lock) {
+    return true
+  }
+  await Try(async () => {
+    if (isRealDirectory(sessionPath)) {
+      await FileSystem.rm(sessionPath, { recursive: true, force: true })
+      removed.push(id)
+    }
+  }, { finally: lock.release })
+  return false
+}
+
 function emptyCleanResult(): CleanResult {
   return { removed: [], skippedActive: [], sharedProtected: false }
 }
-
-/** CleanResult reports removed project cache, active sessions, and retained shared project cache. */
-export type CleanResult = { removed: string[]; skippedActive: string[]; sharedProtected: boolean }
 
 async function cleanProjectCache(cache: string, removed: string[]): Promise<void> {
   if (!isRealDirectory(cache)) {
@@ -88,29 +97,13 @@ async function cleanProjectCache(cache: string, removed: string[]): Promise<void
   }
 }
 
-function isSessionId(id: string): boolean {
-  return id === '.cli' || id === '.studio' || /^[a-z0-9][a-z0-9_-]*$/.test(id)
-}
-
-function isSessionDirectory(path: string): boolean {
-  return isRealDirectory(path)
-}
-
 function isRegularFile(path: string): boolean {
   return Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
 }
 
-function isPathPresent(path: string): boolean {
-  return statePathExists(path)
-}
-
-function isRealDirectory(path: string): boolean {
-  return isRealStateDirectory(path)
-}
-
 async function ensureLockDirectory(path: string): Promise<boolean> {
   const parent = Path.dirname(path)
-  if (isPathPresent(parent) && !isRealDirectory(parent)) {
+  if (pathExists(parent) && !isRealDirectory(parent)) {
     return false
   }
   await FileSystem.mkdir(path, { recursive: true })
@@ -118,7 +111,7 @@ async function ensureLockDirectory(path: string): Promise<boolean> {
 }
 
 async function ensureSessionDirectory(path: string): Promise<boolean> {
-  if (!isPathPresent(path)) {
+  if (!pathExists(path)) {
     return true
   }
   return isRealDirectory(path)

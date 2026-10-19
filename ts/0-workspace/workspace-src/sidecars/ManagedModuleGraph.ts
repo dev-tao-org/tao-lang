@@ -35,25 +35,6 @@ export function allRequirements(
   )
 }
 
-function validatePackageName(name: string, owner: string): void {
-  const parts = name.split('/')
-  const scoped = parts.length === 2 && parts[0]!.startsWith('@')
-  const valid = parts.length === (scoped ? 2 : 1)
-    && parts.every((part, index) => {
-      const segment = scoped && index === 0 ? part.slice(1) : part
-      return /^[a-z0-9][a-z0-9._-]*$/.test(segment) && segment !== '.' && segment !== '..'
-    })
-  if (!valid) {
-    Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
-  }
-}
-
-function requireExactVersion(name: string, version: string, origin: string): void {
-  if (valid(version) === null) {
-    Errors.ThrowUserInput(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
-  }
-}
-
 /** validateGraph checks exact top-level pins against the immutable Bun lockfile. */
 export async function validateGraph(
   profile: string,
@@ -61,12 +42,34 @@ export async function validateGraph(
   runtimePins: Record<string, string>,
 ): Promise<void> {
   const source = await FileSystem.readFile(Path.join(profile, 'bun.lock'), 'utf8')
+  validateGraphContents(source, requirements, runtimePins)
+}
+
+/** validateGraphContents validates exact top-level pins in a serialized Bun lock. */
+export function validateGraphContents(
+  source: string,
+  requirements: [string, string, string][],
+  runtimePins: Record<string, string>,
+): void {
+  if (!graphContentsMatch(source, requirements, runtimePins)) {
+    Errors.ThrowUserInput(
+      'Managed npm lock does not match exact top-level requirements; repair it with: tao prepare --repair.',
+    )
+  }
+}
+
+/** graphContentsMatch checks whether a serialized Bun lock has the required direct package pins. */
+export function graphContentsMatch(
+  source: string,
+  requirements: [string, string, string][],
+  runtimePins: Record<string, string>,
+): boolean {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
   if (parsed.error) {
-    Errors.ThrowUserInput('Managed npm lockfile is invalid; repair it with: tao prepare --repair.')
+    return false
   }
   if (!parsed.config || typeof parsed.config !== 'object' || Array.isArray(parsed.config)) {
-    Errors.ThrowUserInput('Managed npm lockfile is invalid; repair it with: tao prepare --repair.')
+    return false
   }
   const lock = parsed.config as Record<string, unknown>
   const workspaces = lock.workspaces && typeof lock.workspaces === 'object'
@@ -80,18 +83,17 @@ export async function validateGraph(
     ? lock.packages as Record<string, unknown>
     : undefined
   if (!workspaces || !packages) {
-    Errors.ThrowUserInput('Managed npm lockfile is invalid; repair it with: tao prepare --repair.')
+    return false
   }
-  for (const [name, expected] of Object.entries(allRequirements(requirements, runtimePins))) {
-    const identity = packageIdentity(packages[name])
-    if (dependencies[name] !== expected || identity !== `${name}@${expected}`) {
-      Errors.ThrowUserInput(`Managed npm lock does not pin ${name}@${expected}; repair it with: tao prepare --repair.`)
-    }
-  }
-}
-
-function packageIdentity(value: unknown): string | undefined {
-  return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined
+  const expectedRequirements = allRequirements(requirements, runtimePins)
+  const actualNames = Object.keys(dependencies).sort()
+  const expectedNames = Object.keys(expectedRequirements).sort()
+  return actualNames.length === expectedNames.length
+    && actualNames.every((name, index) => name === expectedNames[index])
+    && Object.entries(expectedRequirements).every(([name, expected]) => {
+      const identity = packageIdentity(packages[name])
+      return dependencies[name] === expected && identity === `${name}@${expected}`
+    })
 }
 
 /** auditInstalledGraph resolves every reachable dependency and validates peers and singleton paths. */
@@ -128,6 +130,29 @@ type InstalledPackage = {
   name: string
   version: string
   native: boolean
+}
+
+function validatePackageName(name: string, owner: string): void {
+  const parts = name.split('/')
+  const scoped = parts.length === 2 && parts[0]!.startsWith('@')
+  const valid = parts.length === (scoped ? 2 : 1)
+    && parts.every((part, index) => {
+      const segment = scoped && index === 0 ? part.slice(1) : part
+      return /^[a-z0-9][a-z0-9._-]*$/.test(segment) && segment !== '.' && segment !== '..'
+    })
+  if (!valid) {
+    Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
+  }
+}
+
+function requireExactVersion(name: string, version: string, origin: string): void {
+  if (valid(version) !== version) {
+    Errors.ThrowUserInput(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
+  }
+}
+
+function packageIdentity(value: unknown): string | undefined {
+  return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined
 }
 
 function addVersion(

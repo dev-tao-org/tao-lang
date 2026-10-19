@@ -1,21 +1,21 @@
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
-export function installWorkspace(): void {
+export async function installWorkspace(completionScript: string): Promise<void> {
   const arguments_ = process.argv.slice(process.argv[2] === '--agent' ? 3 : 2)
   const logDirectory = resolve('..', '.artifacts', 'logs', 'setup')
   mkdirSync(logDirectory, { recursive: true })
   const logPath = resolve(logDirectory, 'bootstrap.log')
   writeFileSync(logPath, '')
   process.stderr.write('\u001b[90mInstalling workspace dependencies…\u001b[0m\n')
-  const installStatus = runLogged(['install', ...arguments_], logPath)
+  const installStatus = await runLogged(['install', ...arguments_], logPath)
   if (installStatus !== 0) {
     process.stderr.write(`Workspace installation failed. See ${logPath}\n`)
     process.exit(installStatus)
   }
-  const completeStatus = runLogged(['run', './CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts'], logPath)
+  const completeStatus = await runLogged(['run', completionScript], logPath)
   if (completeStatus !== 0) {
     process.stderr.write(`Workspace setup completion failed. See ${logPath}\n`)
     process.exit(completeStatus)
@@ -23,16 +23,27 @@ export function installWorkspace(): void {
   process.stderr.write(`Workspace dependencies installed. Log: ${logPath}\n`)
 }
 
-function runLogged(arguments_: string[], logPath: string): number {
-  const result = spawnSync('bun', arguments_, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
-  const stdout = result.stdout ?? ''
-  const stderr = [result.stderr, result.error?.message].filter(Boolean).join('\n')
-  process.stdout.write(stdout)
-  process.stderr.write(stderr)
-  writeFileSync(logPath, `${formatOutput(arguments_, stdout, stderr)}`, { flag: 'a' })
-  return result.error || result.status === null ? 1 : result.status
-}
-
-function formatOutput(arguments_: string[], stdout: string, stderr: string): string {
-  return `\n$ bun ${arguments_.join(' ')}\n[stdout]\n${stdout}\n[stderr]\n${stderr}\n`
+function runLogged(arguments_: string[], logPath: string): Promise<number> {
+  appendFileSync(logPath, `\n$ bun ${arguments_.join(' ')}\n`)
+  const child = spawn('bun', arguments_, { stdio: ['inherit', 'pipe', 'pipe'] })
+  let lastStream = ''
+  const forward = (stream: 'stdout' | 'stderr', chunk: Buffer) => {
+    if (lastStream !== stream) {
+      appendFileSync(logPath, `\n[${stream}]\n`)
+      lastStream = stream
+    }
+    const output = stream === 'stdout' ? process.stdout : process.stderr
+    output.write(chunk)
+    appendFileSync(logPath, chunk)
+  }
+  child.stdout.on('data', (chunk: Buffer) => forward('stdout', chunk))
+  child.stderr.on('data', (chunk: Buffer) => forward('stderr', chunk))
+  return new Promise(resolve => {
+    child.once('error', error => {
+      process.stderr.write(`${error.message}\n`)
+      appendFileSync(logPath, `[spawn error] ${error.message}\n`)
+      resolve(1)
+    })
+    child.once('close', status => resolve(status ?? 1))
+  })
 }

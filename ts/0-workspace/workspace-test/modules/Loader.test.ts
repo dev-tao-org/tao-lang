@@ -30,6 +30,33 @@ Tests.test('loads direct directory imports from a virtual entry and records disc
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('loads a project through a symlink using canonical source roots', async () => {
+  const root = await createProject()
+  const alias = `${root}-alias`
+  await Try(async () => {
+    const entry = Path.join(root, 'Main.tao')
+    const sibling = Path.join(root, 'Nearby.tao')
+    await FileSystem.writeFile(entry, app('Main'))
+    await FileSystem.writeFile(sibling, view('Nearby'))
+    await FileSystem.symlink(root, alias)
+    const aliasEntry = Path.join(alias, 'Main.tao')
+    const sources = await loadModules(
+      parseEntry(aliasEntry, `use Nearby\n${app('Main')}`),
+      { directory: alias },
+      createParser(),
+      new Timings('module-loader-test'),
+    )
+
+    Tests.expect(sources.map(source => source.path)).toEqual([entry, sibling])
+    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: sibling, relation: 'same-directory' }])
+  }, {
+    async finally() {
+      await FileSystem.rm(root, { recursive: true, force: true })
+      await FileSystem.rm(alias, { force: true })
+    },
+  })
+})
+
 Tests.test('resolves a named package recursively and reports its import ownership', async () => {
   const root = await createProject()
   await Try(async () => {

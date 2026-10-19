@@ -36,19 +36,32 @@ function importGroups(
 ): string[] {
   const output: string[] = []
   let groups = new Map<string, Group>()
+  const seenImports = new Set<string>()
   for (const slice of slices) {
     if (slice.commented) {
-      output.push(...renderGroups(groups), source.slice(slice.start, slice.end))
+      output.push(...renderGroups(groups))
       groups = new Map()
+      const statement = imports.get(slice.node.startIndex)!
+      const duplicate = isDuplicateImport(statement, seenImports)
+      recordImports(statement, seenImports)
+      output.push(
+        duplicate
+          ? source.slice(slice.start, slice.node.startIndex) + source.slice(slice.node.endIndex, slice.end)
+          : source.slice(slice.start, slice.end),
+      )
     } else {
-      addImport(groups, imports.get(slice.node.startIndex)!)
+      addImport(groups, imports.get(slice.node.startIndex)!, seenImports)
     }
   }
   output.push(...renderGroups(groups))
   return output
 }
 
-function addImport(groups: Map<string, Group>, statement: Import): void {
+function addImport(groups: Map<string, Group>, statement: Import, seenImports: Set<string>): void {
+  if (isDuplicateImport(statement, seenImports)) {
+    return
+  }
+  recordImports(statement, seenImports)
   const source = statement.from?.value ?? ''
   if (AST.IsUsePackageStatement(statement)) {
     const text = `use package ${source}${statement.alias ? ` as ${statement.alias.value}` : ''}`
@@ -59,9 +72,33 @@ function addImport(groups: Map<string, Group>, statement: Import): void {
   const key = `${form}:${source}`
   const group = groups.get(key) ?? { source, form, names: new Set<string>() }
   for (const imported of statement.imports) {
-    group.names.add(imported.target.value + (imported.alias ? ` as ${imported.alias.value}` : ''))
+    const name = imported.target.value + (imported.alias ? ` as ${imported.alias.value}` : '')
+    group.names.add(name)
   }
-  groups.set(key, group)
+  if (statement.all || group.names.size > 0) {
+    groups.set(key, group)
+  }
+}
+
+function isDuplicateImport(statement: Import, seenImports: ReadonlySet<string>): boolean {
+  return importIdentities(statement).every(identity => seenImports.has(identity))
+}
+
+function recordImports(statement: Import, seenImports: Set<string>): void {
+  for (const identity of importIdentities(statement)) {
+    seenImports.add(identity)
+  }
+}
+
+function importIdentities(statement: Import): string[] {
+  const source = statement.from?.value ?? ''
+  if (AST.IsUsePackageStatement(statement)) {
+    return [`package:${source}:${statement.alias?.value ?? ''}`]
+  }
+  if (statement.all) {
+    return [`all:${source}`]
+  }
+  return statement.imports.map(imported => `named:${source}:${imported.target.value}:${imported.alias?.value ?? ''}`)
 }
 
 function renderGroups(groups: ReadonlyMap<string, Group>): string[] {

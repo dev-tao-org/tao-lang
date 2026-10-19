@@ -127,12 +127,7 @@ async function replaceIncompleteRoot(root: string, cacheRoot: string): Promise<v
 function assertContainedPath(path: string, parent: string): void {
   const resolvedParent = Try.WithDefault(undefined, () => FileSystem.realpathSync(parent))
   const canonicalPath = Try.WithDefault(undefined, () => FileSystem.realpathSync(path))
-  const relative = resolvedParent && canonicalPath
-    ? Path.relative(resolvedParent, canonicalPath).replaceAll('\\', '/')
-    : '..'
-  if (
-    !resolvedParent || !canonicalPath || relative === '..' || relative.startsWith('../') || Path.isAbsolute(relative)
-  ) {
+  if (!resolvedParent || !canonicalPath || !Path.isWithin(resolvedParent, canonicalPath)) {
     Errors.ThrowUserInput(`Stdlib project cache path escapes its cache root: ${path}`)
   }
 }

@@ -58,13 +58,22 @@ export async function validateModuleLinks(
   previousOwner?: ManagedModuleOwner,
 ): Promise<void> {
   const localModules = Path.join(directory, 'node_modules')
+  if (isSymbolicLink(localModules)) {
+    Errors.ThrowUserInput(`Module resolution directory is already owned: ${localModules}`)
+  }
   for (const name of new Set([...packages, ...previousOwner?.packages ?? []])) {
     const link = Path.join(localModules, name)
-    if (!FileSystem.existsSync(link)) {
+    if (Path.dirname(link) !== localModules && isSymbolicLink(Path.dirname(link))) {
+      Errors.ThrowUserInput(`Module resolution path is not owned by the current or prior profile: ${link}`)
+    }
+    if (!isSymbolicLink(link)) {
+      if (FileSystem.existsSync(link)) {
+        Errors.ThrowUserInput(`Module resolution path is not owned by the current or prior profile: ${link}`)
+      }
       continue
     }
     const pointsToTarget = await pointsToProfile(link, profile, name)
-    const pointsToPriorOwner = previousOwner && await pointsToProfile(link, previousOwner.profile, name)
+    const pointsToPriorOwner = previousOwner && pointsToRecordedProfile(link, previousOwner.profile, name)
     if (!pointsToTarget && !pointsToPriorOwner) {
       Errors.ThrowUserInput(`Module resolution path is not owned by the current or prior profile: ${link}`)
     }
@@ -105,7 +114,10 @@ function validateOwnerProfile(
     return
   }
   const cache = Path.resolve(projectRoot, '.tao', 'cache', 'managed-modules')
-  if (Path.dirname(owner.profile) === cache) {
+  if (
+    Path.isWithin(cache, owner.profile)
+    && Path.resolve(Path.dirname(owner.profile)) === Path.resolve(cache)
+  ) {
     return
   }
   Errors.ThrowUserInput(
@@ -145,12 +157,20 @@ async function linkPackage(
   const link = Path.join(localModules, name)
   const target = Path.join(profile, 'node_modules', name)
   await FileSystem.mkdir(Path.dirname(link), { recursive: true })
-  if (!await FileSystem.exists(link)) {
-    if (FileSystem.existsSync(link)) {
-      Errors.ThrowUserInput(`Module resolution path is already owned: ${link}`)
-    }
+  if (!isSymbolicLink(link) && !FileSystem.existsSync(link)) {
     await FileSystem.symlink(target, link, 'dir')
     return
+  }
+  if (!isSymbolicLink(link)) {
+    Errors.ThrowUserInput(`Module resolution path is already owned: ${link}`)
+  }
+  if (!FileSystem.existsSync(link)) {
+    if (previousOwner && await pointsToRecordedProfile(link, previousOwner.profile, name)) {
+      await FileSystem.rm(link, { force: true })
+      await FileSystem.symlink(target, link, 'dir')
+      return
+    }
+    Errors.ThrowUserInput(`Module resolution path is already owned: ${link}`)
   }
   const currentTarget = FileSystem.realpathSync(link)
   if (currentTarget === FileSystem.realpathSync(target)) {
@@ -165,19 +185,32 @@ async function linkPackage(
 
 async function removeOwnedLink(localModules: string, name: string, profile: string): Promise<void> {
   const link = Path.join(localModules, name)
-  if (!FileSystem.existsSync(link)) {
+  if (!isSymbolicLink(link) && !FileSystem.existsSync(link)) {
     return
   }
-  if (!await pointsToProfile(link, profile, name)) {
+  if (!isSymbolicLink(link) || !await pointsToRecordedProfile(link, profile, name)) {
     Errors.ThrowUserInput(`Cannot remove module resolution path not owned by the prior profile: ${link}`)
   }
   await FileSystem.rm(link, { force: true })
 }
 
 async function pointsToProfile(link: string, profile: string, name: string): Promise<boolean> {
-  if (!FileSystem.lstatSync(link).isSymbolicLink()) {
+  if (!isSymbolicLink(link)) {
     return false
   }
   const expected = Path.join(profile, 'node_modules', name)
-  return await FileSystem.exists(expected) && FileSystem.realpathSync(link) === FileSystem.realpathSync(expected)
+  return await FileSystem.exists(expected) && Try.WithDefault(
+    false,
+    () => FileSystem.realpathSync(link) === FileSystem.realpathSync(expected),
+  )
+}
+
+function pointsToRecordedProfile(link: string, profile: string, name: string): boolean {
+  const expected = Path.resolve(profile, 'node_modules', name)
+  const recorded = FileSystem.readlinkSync(link)
+  return Path.resolve(Path.dirname(link), recorded) === expected
+}
+
+function isSymbolicLink(path: string): boolean {
+  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
 }

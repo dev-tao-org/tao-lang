@@ -84,17 +84,35 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   await Runtime.prepareRuntime(runtimeOptions)
   const compile: typeof compileApp = (input, options, timings) => compileApp(input, { ...options, app }, timings)
   if (await discoverProject(path)) {
-    return await openProjectWorkspace(path, {
-      id: `test-${Platform.randomUUID()}`,
-      acquireLease: async () => () => {},
-      runtimeOptions,
-      compile,
-    })
+    return await openTestProject(path, app, { runtimeOptions, compile })
   }
   await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
   Artifacts.trackTemporary(directory)
   return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
+}
+
+async function openTestProject(
+  path: string,
+  app: string,
+  options: Parameters<typeof openProjectWorkspace>[1],
+) {
+  const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}`).slice(0, 16)}`
+  for (let slot = 0; slot < 16; slot++) {
+    const id = `${prefix}-${slot}`
+    const workspace = await Try(() => openProjectWorkspace(path, { ...options, id }), {
+      catch(error) {
+        if (!Errors.isTaoError(error) || error.message !== `Project session is already active: ${id}`) {
+          Errors.Throw(error)
+        }
+        return undefined
+      },
+    })
+    if (workspace) {
+      return workspace
+    }
+  }
+  return Errors.ThrowHostEnvironment(`All app-test sessions are active for ${path}; retry after a run finishes.`)
 }
 
 function browser(state: Session): TestBrowser {
@@ -110,16 +128,19 @@ async function disposeSession(state: Session): Promise<void> {
         await state.expo?.dispose()
       }, {
         async finally() {
-          await state.workspace?.dispose()
-          if (state.expo && state.workspace?.runtime) {
-            const output = await state.expo.output()
-            await FileSystem.writeFile(
-              Path.join(state.workspace.runtime.directory, 'expo.log'),
-              [output.stdout, output.stderr].join('\n'),
-            )
-          }
+          await Try(() => retainExpoOutput(state), { finally: () => state.workspace?.dispose() })
         },
       })
     },
   })
+}
+
+async function retainExpoOutput(state: Session): Promise<void> {
+  if (state.expo && state.workspace?.runtime) {
+    const output = await state.expo.output()
+    await FileSystem.writeFile(
+      Path.join(state.workspace.runtime.directory, 'expo.log'),
+      [output.stdout, output.stderr].join('\n'),
+    )
+  }
 }

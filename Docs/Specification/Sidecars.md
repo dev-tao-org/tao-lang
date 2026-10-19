@@ -30,6 +30,11 @@ relative helpers, and supported assets in an immutable snapshot. Unchanged input
 snapshot; changed inputs receive a new one. A failed check does not replace an already prepared
 snapshot. Editing Tao source alone does not require rechecking an unchanged sidecar graph.
 
+Watched previews observe sidecar helpers as well as Tao files. Snapshot files remain immutable for
+the active preview. After 128 distinct snapshots, Tao preserves the last working preview and asks
+you to restart it; restarting reclaims the old session snapshots without reinstalling dependencies.
+Damaged generated snapshot metadata is rebuilt into a separate snapshot.
+
 `tao add @calendar --npm date-fns --yes` writes an exact npm pin to the module and prepares the
 reachable graph. `tao prepare Calendar.tao --repair --yes` can repair generated manifests,
 TypeScript configuration, and managed resolution links before preparation. Generated module
@@ -47,11 +52,17 @@ Installed package trees belong to the host OS and architecture that prepared the
 host, compilation requests preparation; preparation rebuilds the installed tree from the same
 durable lock without changing the pinned dependency graph.
 
+Changing the bundled Bun version also rebuilds the installation from that same lock. The exact npm
+graph is independent of machine paths and installation-tool versions.
+
 Named sessions in one app reuse its dependency graph. A live external module directory currently
 has one consumer's editor configuration: preparing it for a different consumer fails with an
 ownership diagnostic instead of replacing the first consumer's links. Separate source directories
 are needed for independent consumer configurations. Concurrent preparation or cleanup of the same
 module reports that its tooling is busy; it cannot overwrite another operation's metadata.
+
+Cleaning a consumer project also removes its unchanged generated metadata and package links from
+live dependency modules. Cleaning a producer preserves metadata owned by an active consumer project.
 
 Native runtime dependencies are tracked separately from source and sidecar validation. Preparing
 or changing a dependency does not establish that a native platform package has been rebuilt or

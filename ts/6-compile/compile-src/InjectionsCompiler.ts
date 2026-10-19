@@ -21,6 +21,7 @@ function compileCapture(
   bindings: ReadonlySet<string>,
   callbackNames: CallbackNames,
 ): string {
+  assertCaptureName(node.name.value)
   const value = Switch.kind(node.value, {
     Name(name) {
       const nativeType = bindings.has(name.value) ? ' as string' : ''
@@ -33,3 +34,59 @@ function compileCapture(
   })
   return `const ${node.name.value} = ${value};`
 }
+
+function assertCaptureName(name: string): void {
+  if (name === 'TR' || reservedCaptureNames.has(name)) {
+    Errors.ThrowUserInput(`Injection capture name ${name} conflicts with generated JavaScript.`)
+  }
+}
+
+const reservedCaptureNames = new Set([
+  'arguments',
+  'await',
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'eval',
+  'export',
+  'extends',
+  'false',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'implements',
+  'import',
+  'in',
+  'instanceof',
+  'interface',
+  'let',
+  'new',
+  'null',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'return',
+  'static',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'yield',
+])

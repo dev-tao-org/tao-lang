@@ -9,7 +9,6 @@
       "provider": "bundled",
       "identifier": "tao",
       "version": "bundled",
-      "location": "../../ts/stdlib/stdlib-src",
       "requirements": []
     }
   }

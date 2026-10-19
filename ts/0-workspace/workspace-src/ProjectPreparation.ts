@@ -6,7 +6,11 @@ import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
-import { recordManagedGraphReference } from './dependencies/LockFile'
+import {
+  pruneUnreferencedManagedLocks,
+  readDependencyLock,
+  recordManagedGraphReference,
+} from './dependencies/LockFile'
 import { projectDependencyOptions } from './dependencies/Options'
 import { validateRequirementPlacement } from './dependencies/Requirements'
 import { prepareDependencies } from './dependencies/Store'
@@ -52,30 +56,6 @@ export async function projectManagedInput(entry: string): Promise<ManagedModules
   const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
   await dependencies.refresh()
   return await managedModulesInput(project.root, await loadEntry(entry, project.root, dependencies))
-}
-
-async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
-  const services = options.dependencyOptions ?? await projectDependencyOptions(root)
-  const executor = options.executor ?? executeManagedTool
-  await prepareDependencies(root, await services.readRequirements(root), services, options.update)
-  const dependencies = new ProjectDependencies(root, services)
-  await dependencies.refresh()
-  const sources = await loadEntry(entry, root, dependencies)
-  const input = await managedModulesInput(root, sources, options.runtimePins)
-  if (!input) {
-    await Runtime.prepareRuntime({
-      toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
-      install: options.runtimeInstaller,
-    })
-    return
-  }
-  const prepared = options.repair
-    ? await repairManagedModuleFiles(input, executor)
-    : await prepareManagedModules(input, executor)
-  const graphKey = Path.relative(root, entry).replaceAll('\\', '/')
-  const durableLockPath = Path.join(root, '.tao/store/npm', `${prepared.fingerprint}.lock`)
-  const lockHash = Platform.hashText(await FileSystem.readFile(prepared.lockfile, 'utf8'))
-  await recordManagedGraphReference(root, graphKey, prepared.fingerprint, durableLockPath, lockHash)
 }
 
 /** managedModulesInput derives an app installation from reachable module-owned npm declarations. */
@@ -134,6 +114,33 @@ export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
     Platform.readText(child.stderr),
   ])
   return { status, stdout, stderr }
+}
+
+async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
+  const services = options.dependencyOptions ?? await projectDependencyOptions(root)
+  const executor = options.executor ?? executeManagedTool
+  await prepareDependencies(root, await services.readRequirements(root), services, options.update)
+  const dependencies = new ProjectDependencies(root, services)
+  await dependencies.refresh()
+  const sources = await loadEntry(entry, root, dependencies)
+  const input = await managedModulesInput(root, sources, options.runtimePins)
+  if (!input) {
+    await Runtime.prepareRuntime({
+      toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
+      install: options.runtimeInstaller,
+    })
+    return
+  }
+  const graphKey = Path.relative(root, entry).replaceAll('\\', '/')
+  input.previousGraphReference = (await readDependencyLock(Path.join(root, '.tao/store/dependencies.lock.json')))
+    ?.npmGraphs?.[graphKey]
+  const prepared = options.repair
+    ? await repairManagedModuleFiles(input, executor)
+    : await prepareManagedModules(input, executor)
+  const durableLockPath = Path.join(root, '.tao/store/npm', `${prepared.graphFingerprint}.lock`)
+  const lockHash = Platform.hashText(await FileSystem.readFile(prepared.lockfile, 'utf8'))
+  await recordManagedGraphReference(root, graphKey, prepared.graphFingerprint, durableLockPath, lockHash)
+  await pruneUnreferencedManagedLocks(root)
 }
 
 async function loadEntry(entry: string, root: string, dependencies: ProjectDependencies): Promise<SourceModule[]> {

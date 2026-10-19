@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto'
 import { lstat, mkdir, readdir, realpath, rm } from 'node:fs/promises'
-import { dirname, isAbsolute, join, posix, relative, resolve, sep, win32 } from 'node:path'
+import { dirname, join, posix, resolve, win32 } from 'node:path'
 import { Errors, Time, Try } from '../universal/universal'
 import * as Env from './Env'
+import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
 
@@ -64,7 +64,7 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
 
 /** acquireCacheLease holds a stable support lock for one active cache consumer. */
 export async function acquireCacheLease(identity: string): Promise<() => void> {
-  const path = supportDirectory('leases', `${hashIdentity(identity)}.lock`)
+  const path = supportDirectory('leases', `${Platform.hashText(identity)}.lock`)
   await mkdir(dirname(path), { recursive: true })
   let releaseLease!: () => void
   await withCacheMutation(async () => {
@@ -138,15 +138,10 @@ function xdgPath(value: string | undefined, fallback: string): string {
 
 function resolveBelow(root: string, segments: readonly string[]): string {
   const result = resolve(root, ...segments)
-  const remainder = relative(root, result)
-  if (remainder === '..' || remainder.startsWith(`..${sep}`) || isAbsolute(remainder)) {
+  if (!Path.isWithin(root, result)) {
     Errors.ThrowUserInput(`Storage path escapes its configured root: ${result}`)
   }
   return result
-}
-
-function hashIdentity(identity: string): string {
-  return createHash('sha256').update(identity).digest('hex')
 }
 
 async function acquireMutationLock(path: string): Promise<SessionLock.SessionLock> {

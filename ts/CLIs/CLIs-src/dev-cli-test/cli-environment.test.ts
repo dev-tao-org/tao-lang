@@ -70,3 +70,59 @@ Tests.test('fresh setup finds package tools installed after the launcher prepare
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
 })
+
+Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async () => {
+  await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-environment-failure-'))
+  await Try(async () => {
+    const repository = Path.join(root, 'repo')
+    const bin = Path.join(root, 'bin')
+    await FileSystem.mkdir(Path.join(repository, '.config'), { recursive: true })
+    await FileSystem.mkdir(bin, { recursive: true })
+    await FileSystem.cp(
+      Repo.resolvePath('.config/prepared-environment.sh'),
+      Path.join(repository, '.config/prepared-environment.sh'),
+    )
+    await FileSystem.cp(
+      Repo.resolvePath('.config/cli-environment.sh'),
+      Path.join(repository, '.config/cli-environment.sh'),
+    )
+    const git = Path.join(bin, 'git')
+    await FileSystem.writeFile(git, '#!/bin/sh\necho fixture-git-failure >&2\nexit 1\n', 'utf8')
+    await FileSystem.chmod(git, 0o755)
+    const child = Platform.spawn('sh', {
+      variadicArgs: [
+        '-c',
+        '. "$1"',
+        Path.join(repository, 'agent'),
+        Path.join(repository, '.config/cli-environment.sh'),
+      ],
+      env: { ...Env.snapshot(), PATH: `${bin}:${Env.get('PATH') ?? ''}`, TAO_DEVENV: '1', DEVENV_ROOT: repository },
+      cwd: repository,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
+    Tests.expect(status).toBe(1)
+    Tests.expect(stderr).toContain('Tao could not fingerprint this checkout environment.')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('fatal CLI errors remain visible when the configured log path is unwritable', async () => {
+  const child = Platform.spawn(Repo.resolvePath('agent'), {
+    variadicArgs: ['unrecognized-command'],
+    cwd: Repo.getWorkspaceRoot(),
+    env: {
+      ...Env.snapshot(),
+      OUTPUT_LOG_FILE: 'ts',
+      TERMINAL_OUTPUT: '1',
+      TERMINAL_UI: '0',
+    },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
+  Tests.expect(status).toBe(1)
+  Tests.expect(stderr).toContain('EISDIR')
+  Tests.expect(stderr).toContain(Repo.resolvePath('ts'))
+})

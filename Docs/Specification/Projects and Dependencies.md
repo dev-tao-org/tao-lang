@@ -63,6 +63,7 @@ module discovery and visibility rules as other dependencies.
 During source development, imports read the live standard-library project and watched previews
 observe its source edits. A packaged CLI materializes its embedded standard project in Tao's
 versioned cache before resolving it through the same project mechanism.
+The source lock does not record that machine-specific bundled-project location.
 
 The durable source lock belongs to the project whose requirements it records. It also references
 the exact npm graphs retained under `.tao/store/npm/`. Routine compilation
@@ -89,6 +90,7 @@ and session data live under `.tao/cache/`; `.tao/.gitignore` excludes cache and 
 while retaining the store. `tao clean` removes inactive project caches and sessions, preserving
 active or uncertain sessions. `tao clean --wipe` also asks the platform cache to remove shared Tao
 cache data; it preserves that cache while active consumers hold leases.
+Stable lock files remain after release so that concurrent processes always lock the same file.
 
 Session identifiers supplied to CLI commands must match `[a-z0-9][a-z0-9_-]*`. `.cli` and `.studio`
 are reserved internal identifiers. They share the same stable native lock mechanism as other

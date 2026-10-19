@@ -133,6 +133,85 @@ Tests.test('source notifications refresh the selected entry and ignore output, u
   Tests.expect(fixture.closed).toBe(1)
 })
 
+Tests.test('pipeline watches update dynamically and exclude immutable snapshot trees', async () => {
+  const fixture = dynamicWatchFixture()
+  const compiled = new Promise<UpdateResult>(resolve =>
+    fixture.manager.onCompiled(event => event.source === 'read-2' && resolve(event.result))
+  )
+  await fixture.manager.openFile('/workspace/App.tao')
+  await fixture.manager.updatePipelineDirectories(
+    ['/workspace/source', '/dependencies/producer/src'],
+    ['/workspace/.tao/cache/snapshots'],
+  )
+  await fixture.manager.updatePipelineDirectories(
+    ['/workspace/source', '/dependencies/producer/src'],
+    ['/workspace/.tao/cache/snapshots'],
+  )
+  Tests.expect(fixture.watchCalls()).toBe(1)
+  Tests.expect(fixture.updates()).toEqual([{
+    directories: ['/dependencies/producer/src', '/workspace/static'],
+    ignored: ['/workspace/.tao/cache/snapshots', '/workspace/output'],
+  }])
+  fixture.change({
+    path: '/workspace/.tao/cache/snapshots/foreign.tsx',
+    kind: 'change',
+    observedAtMs: Time.timestampMs(),
+  })
+  Tests.expect(fixture.scheduled()).toBeUndefined()
+  fixture.change({ path: '/dependencies/producer/src/View.tao', kind: 'change', observedAtMs: Time.timestampMs() })
+  fixture.flush()
+  Tests.expect(await compiled).toMatchObject({ status: 'published' })
+  await fixture.manager.updatePipelineDirectories([], [])
+  Tests.expect(fixture.updates()).toHaveLength(2)
+  Tests.expect(fixture.updates()[1]!.directories).toEqual(['/workspace/static'])
+  await fixture.manager.dispose()
+})
+
+function dynamicWatchFixture() {
+  let changed: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
+  let scheduled: (() => void) | undefined
+  let watches = 0
+  const updates: Array<{ directories: readonly string[]; ignored: readonly string[] }> = []
+  let reads = 0
+  const manager = new FileManager({
+    directory: '/workspace',
+    outputDirectory: '/workspace/output',
+    watchDirectories: ['/workspace/static'],
+    async watch(_root, onChange) {
+      watches++
+      changed = onChange
+      return {
+        async updateDirectories(directories, ignored) {
+          updates.push({ directories, ignored })
+        },
+        async dispose() {},
+      }
+    },
+    read: async (_path, observedAtMs) => ({
+      source: `read-${++reads}`,
+      observedAtMs,
+      timings: new Timings('watch:test'),
+    }),
+    schedule(_delay, callback) {
+      scheduled = callback
+      return () => scheduled = undefined
+    },
+    compile: async (_request, isCurrent) => result(isCurrent() ? 'published' : 'superseded'),
+  })
+  return {
+    manager,
+    watchCalls: () => watches,
+    updates: () => updates,
+    scheduled: () => scheduled,
+    change: (change: WorkspaceWatch.WorkspaceChange) => changed?.(change),
+    flush() {
+      const callback = scheduled
+      scheduled = undefined
+      callback?.()
+    },
+  }
+}
+
 type ManagerFixtureState = {
   onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
   scheduled: (() => void) | undefined

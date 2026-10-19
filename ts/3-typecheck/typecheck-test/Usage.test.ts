@@ -57,3 +57,11 @@ Tests.test('qualified namespace use ignores an ordinary local binding with the s
   Tests.expect(unusedWarnings(ast).map(warning => [warning.code, source.slice(warning.start, warning.end)]))
     .toEqual([['unused-declaration', 'UI']])
 })
+
+Tests.test('foreign view parameters are consumed by the external view contract', () => {
+  const source = S`
+    public view External(Value text, Optional text) from ./External.tsx
+  `
+  const ast = transform(createParser().parse(source).tree)!
+  Tests.expect(unusedWarnings(ast)).toEqual([])
+})

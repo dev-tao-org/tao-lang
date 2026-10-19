@@ -5,6 +5,25 @@ import { directSourceFiles, importableFile, namedPackageDirectories, recursiveSo
 import type { ModuleLoadOptions } from './Loader'
 import { canonicalProjectRoot, namedPackageRoot, realPathInsideProject, relationFor, within } from './Paths'
 
+/** bareTargets resolves unqualified use declarations against the direct folder or named package. */
+export async function bareTargets(
+  importer: string,
+  physicalImporter: string | undefined,
+  context: ModuleResolutionContext,
+): Promise<ModuleTarget[]> {
+  if (!physicalImporter) {
+    return []
+  }
+  const packageRoot = namedPackageRoot(importer, context.projectRoot)
+  const paths = packageRoot
+    ? await recursiveSourceFiles(packageRoot, packageRoot, context.projectRoot)
+    : await directSourceFiles(Path.dirname(physicalImporter), context.projectRoot)
+  return paths.filter(path => path !== importer).map(path => ({
+    path,
+    relation: packageRoot ? 'same-package' : 'same-directory',
+  }))
+}
+
 /** ModuleTarget identifies one discovered source and its visibility relation to the importer. */
 export type ModuleTarget = {
   path: string
@@ -106,25 +125,6 @@ async function relativeTargets(
     }
   }
   return files.map(path => ({ path, relation: relationFor(importer, path, context.projectRoot) }))
-}
-
-/** bareTargets resolves unqualified use declarations against the direct folder or named package. */
-export async function bareTargets(
-  importer: string,
-  physicalImporter: string | undefined,
-  context: ModuleResolutionContext,
-): Promise<ModuleTarget[]> {
-  if (!physicalImporter) {
-    return []
-  }
-  const packageRoot = namedPackageRoot(importer, context.projectRoot)
-  const paths = packageRoot
-    ? await recursiveSourceFiles(packageRoot, packageRoot, context.projectRoot)
-    : await directSourceFiles(Path.dirname(physicalImporter), context.projectRoot)
-  return paths.filter(path => path !== importer).map(path => ({
-    path,
-    relation: packageRoot ? 'same-package' : 'same-directory',
-  }))
 }
 
 async function namedTargets(

@@ -1,5 +1,15 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
+import { isDiscoverableProjectDirectory } from '../modules/Paths'
+
+/** ProjectLayout describes durable project metadata and generated state locations. */
+export type ProjectLayout = {
+  root: string
+  taoDirectory: string
+  cacheDirectory: string
+  sessionsDirectory: string
+  sessionLocksDirectory: string
+}
 
 /** initializeProject creates Tao's durable project metadata directory. */
 export async function initializeProject(path: string): Promise<ProjectLayout> {
@@ -37,13 +47,16 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
 }
 
 /** discoverProject resolves an initialized Tao project from a file or directory path. */
-export async function discoverProject(path: string): Promise<ProjectLayout | undefined> {
-  let current = Path.resolve(path)
+export async function discoverProject(
+  path: string,
+  homeDirectory = Platform.homeDirectory(),
+): Promise<ProjectLayout | undefined> {
+  let current = canonicalExistingPath(path)
   if (!isDirectory(current)) {
     current = Path.dirname(current)
   }
   while (true) {
-    if (isProjectDirectory(current)) {
+    if (isDiscoverableProjectDirectory(current, homeDirectory)) {
       return projectLayout(current)
     }
     if (await FileSystem.exists(Path.join(current, '.git'))) {
@@ -57,15 +70,6 @@ export async function discoverProject(path: string): Promise<ProjectLayout | und
   }
 }
 
-/** ProjectLayout describes durable project metadata and generated state locations. */
-export type ProjectLayout = {
-  root: string
-  taoDirectory: string
-  cacheDirectory: string
-  sessionsDirectory: string
-  sessionLocksDirectory: string
-}
-
 /** projectLayout derives the stable metadata paths for a project. */
 export function projectLayout(root: string): ProjectLayout {
   const taoDirectory = Path.join(root, '.tao')
@@ -76,6 +80,11 @@ export function projectLayout(root: string): ProjectLayout {
     sessionsDirectory: Path.join(taoDirectory, 'cache', 'sessions'),
     sessionLocksDirectory: Path.join(taoDirectory, 'locks', 'sessions'),
   }
+}
+
+function canonicalExistingPath(path: string): string {
+  const absolute = Path.resolve(path)
+  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
 }
 
 async function rejectNestedProject(root: string): Promise<void> {
@@ -105,14 +114,7 @@ function canonicalProjectTarget(path: string): string {
 }
 
 function isProjectAncestor(path: string): boolean {
-  return isProjectDirectory(path) && !isLegacyToolchainHome(path)
-}
-
-function isLegacyToolchainHome(path: string): boolean {
-  const home = Path.resolve(Platform.homeDirectory())
-  const toolchains = Path.join(home, '.tao', 'toolchains')
-  return Path.resolve(path) === home && isDirectory(toolchains)
-    && !FileSystem.existsSync(Path.join(home, '.tao', 'store', 'project.json'))
+  return isDiscoverableProjectDirectory(path)
 }
 
 function pathEntryExists(path: string): boolean {

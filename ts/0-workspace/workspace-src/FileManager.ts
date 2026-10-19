@@ -11,12 +11,11 @@ import {
   type FileManagerOptions,
   inputPath,
   isRelevantChange,
-  isWithin,
-  type LoadedSource,
+  loadFileManagerInput,
   newRefresh,
   notifyCompletion,
   type Pending,
-  readSource,
+  PipelineWatchDirectories,
   type Refresh,
   supersededInput,
   supersededResult,
@@ -35,6 +34,7 @@ export class FileManager {
   private watcherStart: Promise<WorkspaceWatch.WorkspaceWatcher> | undefined
   private watcherRoot: string | undefined
   private workspaceRoot: string | undefined
+  private readonly pipelineDirectories: PipelineWatchDirectories
   private entryGeneration = 0
   private observationGeneration = 0
   private refreshTimer: (() => void) | undefined
@@ -47,6 +47,7 @@ export class FileManager {
 
   constructor(private readonly options: FileManagerOptions) {
     this.workspaceRoot = options.directory ? Path.resolve(options.directory) : undefined
+    this.pipelineDirectories = new PipelineWatchDirectories(options)
   }
 
   /** onCompiled observes completion for file-backed and in-memory source updates. */
@@ -89,6 +90,17 @@ export class FileManager {
       undefined,
       this.observationGeneration,
     )
+  }
+
+  /** updatePipelineDirectories refreshes source and snapshot watch roots after dependency preparation. */
+  async updatePipelineDirectories(
+    watchDirectories: readonly string[],
+    snapshotDirectories: readonly string[],
+  ): Promise<void> {
+    if (!this.pipelineDirectories.update(this.workspaceRoot, watchDirectories, snapshotDirectories)) {
+      return
+    }
+    await this.updateWatcherDirectories()
   }
 
   /** update queues an immutable in-memory source version without writing it to disk. */
@@ -165,13 +177,13 @@ export class FileManager {
       return
     }
     this.watcherRoot = root
-    const ignoredDirectories = this.options.outputDirectory ? [this.options.outputDirectory] : []
+    const ignoredDirectories = this.pipelineDirectories.ignored()
     this.watcherStart = (this.options.watch ?? WorkspaceWatch.watchWorkspace)(
       root,
       change => this.onChange(change),
       error => this.options.onSourceError?.(error),
       ignoredDirectories,
-      this.options.watchDirectories,
+      this.pipelineDirectories.additional(),
     ).then(watcher => {
       this.watcher = watcher
       return watcher
@@ -227,7 +239,7 @@ export class FileManager {
     if (!this.isCurrent(request)) {
       return supersededInput(request)
     }
-    const loaded = await this.loadInput(request)
+    const loaded = await loadFileManagerInput(request, this.documents, this.options.read, () => this.isCurrent(request))
     if ('status' in loaded) {
       if (loaded.status === 'failed' && request.input.kind === 'disk' && this.isCurrent(request)) {
         this.options.onSourceError?.(loaded.error)
@@ -252,35 +264,6 @@ export class FileManager {
     return { result, path: loaded.path, source: loaded.source, version: loaded.version }
   }
 
-  private async loadInput(request: Pending): Promise<LoadedSource | UpdateResult> {
-    if (request.input.kind === 'source') {
-      return {
-        path: request.input.path,
-        source: request.input.source,
-        version: request.input.version,
-        startedAtMs: request.input.startedAtMs,
-        timings: request.input.timings,
-      }
-    }
-    const snapshot = await readSource(request.input.path, request.input.startedAtMs, this.options.read)
-    if ('status' in snapshot) {
-      return snapshot
-    }
-    if (!this.isCurrent(request)) {
-      return supersededResult(request.id)
-    }
-    const document = this.documents.get(request.input.path) ?? new Document(request.input.path)
-    this.documents.set(request.input.path, document)
-    const version = document.replaceSource(snapshot.source).version
-    return {
-      path: request.input.path,
-      source: snapshot.source,
-      version,
-      startedAtMs: snapshot.observedAtMs,
-      timings: snapshot.timings,
-    }
-  }
-
   private snapshotInput(source: string | Document, startedAtMs: number): FileManagerInput {
     const timings = new Timings('workspace:input')
     const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
@@ -294,7 +277,7 @@ export class FileManager {
 
   private selectWorkspaceRoot(entry: string): void {
     this.workspaceRoot ??= nearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
-    if (!isWithin(this.workspaceRoot, entry)) {
+    if (!Path.isWithin(this.workspaceRoot, entry)) {
       Errors.ThrowUserInput(`Entry file must be inside the workspace root: ${entry}`)
     }
   }
@@ -309,7 +292,17 @@ export class FileManager {
   }
 
   private isOutputChange(path: string): boolean {
-    return this.options.outputDirectory !== undefined && isWithin(this.options.outputDirectory, path)
+    return this.pipelineDirectories.ignores(path)
+  }
+
+  private async updateWatcherDirectories(): Promise<void> {
+    let watcher = this.watcher
+    if (!watcher && this.watcherStart) {
+      watcher = await this.watcherStart
+    }
+    if (!this.disposed) {
+      await watcher?.updateDirectories?.(this.pipelineDirectories.additional(), this.pipelineDirectories.ignored())
+    }
   }
 
   private isCurrent(request: Pending): boolean {

@@ -3,7 +3,7 @@ import { Tests } from '@shared/os'
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { findProjectMarker, findProjects, walk, withWritableFile } from '../Files'
+import { findProjectMarker, findProjects, walk, withWritableFile, writeReadOnly } from '../Files'
 
 Tests.test('walk skips dependency and VCS trees and does not follow directory symlinks', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tao-files-'))
@@ -126,4 +126,20 @@ Tests.test('withWritableFile serializes concurrent callbacks for one canonical p
       await rm(root, { recursive: true, force: true })
     },
   })
+})
+
+Tests.test('generated metadata is read-only and refuses dangling symlink destinations', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tao-generated-'))
+  await Try(async () => {
+    const path = join(root, 'metadata')
+    await writeReadOnly(path, 'initial')
+    await writeReadOnly(path, 'updated')
+    Tests.expect(await readFile(path, 'utf8')).toBe('updated')
+    Tests.expect((await stat(path)).mode & 0o222).toBe(0)
+    const missing = join(root, 'missing')
+    const link = join(root, 'link')
+    await symlink(missing, link)
+    await Tests.expect(() => writeReadOnly(link, 'unsafe')).toThrow('regular file')
+    await Tests.expect(() => stat(missing)).toThrow()
+  }, { finally: () => rm(root, { recursive: true, force: true }) })
 })

@@ -37,7 +37,10 @@ export type WorkspaceOptions = {
   resolveProject?: ModuleLoadOptions['resolveProject']
   beforeLoad?: () => Promise<void>
   watchDirectories?: readonly string[]
-  beforeCompile?: (program: LinkedProgram) => Promise<Pick<ProjectPipelineResult, 'foreignViewPath'>>
+  beforeCompile?: (program: LinkedProgram) => Promise<
+    & Pick<ProjectPipelineResult, 'foreignViewPath'>
+    & Partial<Pick<ProjectPipelineResult, 'watchDirectories' | 'snapshotDirectories'>>
+  >
 }
 
 /** Publication records the exact revision and measured pipeline when output reaches disk. */
@@ -116,14 +119,22 @@ class WorkspaceSession {
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
-      watch: async (root, change, error, ignored, additional) =>
-        await (options.watch ?? WorkspaceWatch.watchWorkspace)(
+      async watch(root, change, error, ignored, additional) {
+        const stdlib = await Stdlib.projectDirectory()
+        const watcher = await (options.watch ?? WorkspaceWatch.watchWorkspace)(
           root,
           change,
           error,
           ignored,
-          [...new Set([await Stdlib.projectDirectory(), ...additional ?? []])],
-        ),
+          [...new Set([stdlib, ...additional ?? []])],
+        )
+        return {
+          dispose: () => watcher.dispose(),
+          async updateDirectories(directories, excluded) {
+            await watcher.updateDirectories?.([...new Set([stdlib, ...directories])], excluded)
+          },
+        }
+      },
       schedule: options.schedule,
     })
   }
@@ -210,6 +221,7 @@ class WorkspaceSession {
     )
     const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
     const prepared = await PrepareDependencies(request.timings, this.options.beforeCompile, program)
+    await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
     const code = (this.options.compile ?? compile)(
       document,

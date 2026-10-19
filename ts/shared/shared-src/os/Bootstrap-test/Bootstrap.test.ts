@@ -13,6 +13,7 @@ Tests.test('bootstrap imports independently and forwards setup output and flags'
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.stdout).toContain('install-output')
     Tests.expect(result.stderr).toContain('install-error')
+    Tests.expect(result.stderr).toContain('Installing workspace dependencies…')
     Tests.expect(await readFile(join(root, 'calls'), 'utf8')).toBe(
       'install --no-save --verbose\nrun ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts\n',
     )
@@ -36,7 +37,7 @@ async function runBootstrap(
   await writeStub(bin, failureStatus)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${JSON.stringify(pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
-    + `bootstrap.installWorkspace();`
+    + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const child = Platform.spawn(process.execPath, {
     variadicArgs: ['-e', script],
     cwd: ts,

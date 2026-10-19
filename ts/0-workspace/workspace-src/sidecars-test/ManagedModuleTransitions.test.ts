@@ -12,6 +12,9 @@ Tests.test('rejects a second consumer graph for a live module without rewiring i
 Tests.test('serializes concurrent consumers publishing one shared module directory', async () =>
   await withDirectory('managed-consumer-race', async root => await assertConcurrentConsumerRace(root)))
 
+Tests.test('repairs a dangling link recorded by the prior owner profile', async () =>
+  await withDirectory('managed-dangling-link', async root => await assertDanglingLinkRepair(root)))
+
 Tests.test('rejects an unowned module path without creating a Tao project marker', async () =>
   await withDirectory('managed-unowned-module', async root => {
     const consumer = Path.join(root, 'consumer')
@@ -80,16 +83,17 @@ async function assertHostCacheRebuild(root: string): Promise<void> {
     return { status: 0, stdout: '', stderr: '' }
   }
   const first = await prepareManagedModules(input, executor)
-  const durableLock = Path.join(root, '.tao', 'store', 'npm', `${first.fingerprint}.lock`)
+  const durableLock = Path.join(root, '.tao', 'store', 'npm', `${first.graphFingerprint}.lock`)
   const lockBytes = await FileSystem.readFile(durableLock, 'utf8')
   const sentinel = Path.join(first.packageDirectory, 'node_modules', '.host-a-sentinel')
   await FileSystem.writeFile(sentinel, 'keep')
   await prepareManagedModules(input, executor)
   Tests.expect(await FileSystem.readFile(sentinel, 'utf8')).toBe('keep')
   const otherHost = { ...input, hostIdentity: { os: 'host-b', architecture: 'x64' } }
-  await Tests.rejects(readManagedModules(otherHost), /belongs to .*host is .*Run tao prepare/)
+  await Tests.rejects(readManagedModules(otherHost), /Managed npm declarations changed or are not prepared/)
   const rebuiltProfile = await prepareManagedModules(otherHost, executor)
-  Tests.expect(rebuiltProfile.fingerprint).toBe(first.fingerprint)
+  Tests.expect(rebuiltProfile.fingerprint).not.toBe(first.fingerprint)
+  Tests.expect(rebuiltProfile.graphFingerprint).toBe(first.graphFingerprint)
   Tests.expect(rebuilt).toBe(true)
   Tests.expect(await FileSystem.readFile(durableLock, 'utf8')).toBe(lockBytes)
 }
@@ -135,6 +139,30 @@ async function assertProfileTransition(root: string): Promise<void> {
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
   await repairManagedModuleFiles(next, executorFor({ react: '19.1.0', 'date-fns': '4.3.0' }))
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toContain('4.3.0')
+}
+
+async function assertDanglingLinkRepair(root: string): Promise<void> {
+  const moduleDirectory = Path.join(root, 'Modules')
+  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  const first = await prepareManagedModules(
+    moduleInput(root, moduleDirectory, '4.1.0'),
+    executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+  )
+  const second = await prepareManagedModules(
+    moduleInput(root, moduleDirectory, '4.2.0'),
+    executorFor({ react: '19.1.0', 'date-fns': '4.2.0' }),
+  )
+  const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
+  await FileSystem.rm(second.packageDirectory, { recursive: true, force: true })
+  Tests.expect(Try.WithDefault(false, () => FileSystem.lstatSync(link).isSymbolicLink())).toBe(true)
+  const third = await prepareManagedModules(
+    moduleInput(root, moduleDirectory, '4.3.0'),
+    executorFor({ react: '19.1.0', 'date-fns': '4.3.0' }),
+  )
+  Tests.expect(first.packageDirectory).not.toBe(third.packageDirectory)
+  Tests.expect(FileSystem.realpathSync(link)).toBe(
+    FileSystem.realpathSync(Path.join(third.packageDirectory, 'node_modules', 'date-fns')),
+  )
 }
 
 async function migrateLegacyMarker(marker: string): Promise<void> {

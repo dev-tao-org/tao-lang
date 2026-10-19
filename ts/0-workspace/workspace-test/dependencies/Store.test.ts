@@ -1,6 +1,10 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { readDependencyLock, recordManagedGraphReference } from '../../workspace-src/dependencies/LockFile'
+import {
+  pruneUnreferencedManagedLocks,
+  readDependencyLock,
+  recordManagedGraphReference,
+} from '../../workspace-src/dependencies/LockFile'
 import {
   prepareDependencies,
   readPreparedDependencies,
@@ -45,23 +49,33 @@ Tests.test('changed requirements require preparation and file dependencies remai
 
   await Try(async () => {
     await createProjectMarker(source)
-    const lock = await prepareDependencies(root, initial, options)
-    Tests.expect(lock.sources['file:local-source']?.location).toBe(source)
-    await recordManagedGraphReference(
-      root,
-      'Main.tao',
-      'a'.repeat(64),
-      Path.join(root, '.tao', 'store', 'npm', 'app.lock'),
-      'b'.repeat(64),
-    )
-    Tests.expect((await readPreparedDependencies(root, initial, options)).sources['file:local-source']?.location).toBe(
-      source,
-    )
-    await readPreparedDependencies(root, initial, options)
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
+    await prepareFileSourceAndGraph(root, source, initial, options)
     nested = [{ provider: 'file', identifier: '../other', version: '*', alias: '@other' }]
     await Tests.rejects(readPreparedDependencies(root, initial, options), /prepare dependencies, then retry/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
+
+async function prepareFileSourceAndGraph(
+  root: string,
+  source: string,
+  requirements: DependencyRequirement[],
+  options: DependencyStoreOptions,
+): Promise<void> {
+  const lock = await prepareDependencies(root, requirements, options)
+  Tests.expect(lock.sources['file:local-source']?.location).toBe(source)
+  const durable = Path.join(root, '.tao', 'store', 'npm', 'app.lock')
+  await FileSystem.mkdir(Path.dirname(durable), { recursive: true })
+  await FileSystem.writeFile(durable, 'graph')
+  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash\n')
+  await recordManagedGraphReference(root, 'Main.tao', 'a'.repeat(64), durable, 'b'.repeat(64))
+  const roundTripped = await readDependencyLock(Path.join(root, '.tao', 'store', 'dependencies.lock.json'))
+  Tests.expect(roundTripped?.sources['file:local-source']?.location).toBe('local-source')
+  await pruneUnreferencedManagedLocks(root)
+  Tests.expect(await FileSystem.exists(durable)).toBe(true)
+  const restored = await readPreparedDependencies(root, requirements, options)
+  Tests.expect(restored.sources['file:local-source']?.location).toBe(source)
+}
 
 Tests.test('transitive requirements cannot pin one Git source to two commits', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-conflict-${Platform.randomUUID()}`)
@@ -182,18 +196,67 @@ Tests.test('bundled sources require ordinary project marker metadata', async () 
   }
   await Try(async () => {
     await FileSystem.mkdir(bundledRoot, { recursive: true })
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
     await Tests.rejects(prepareDependencies(root, [requirement], options), /must point to a Tao project root/)
     await FileSystem.mkdir(Path.join(bundledRoot, '.tao'))
     const prepared = await prepareDependencies(root, [requirement], options)
+    const portableLock = await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8')
+    Tests.expect(portableLock).not.toContain(bundledRoot)
+    Tests.expect(JSON.parse(portableLock).sources['bundled:tao'].location).toBeUndefined()
     const loaded = await readPreparedDependencies(root, [requirement], options)
     Tests.expect(loaded.sources['bundled:tao']?.location).toBe(bundledRoot)
     Tests.expect(prepared.roots).toEqual(loaded.roots)
     const replacement = Path.join(root, 'new-bundle')
     await FileSystem.mkdir(Path.join(replacement, '.tao'), { recursive: true })
     const nextOptions = { ...options, bundledProjects: { tao: replacement } }
-    await Tests.rejects(readPreparedDependencies(root, [requirement], nextOptions), /Bundled project tao changed/)
+    const restored = await readPreparedDependencies(root, [requirement], nextOptions)
+    Tests.expect(restored.sources['bundled:tao']?.location).toBe(replacement)
+    Tests.expect(await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8'))
+      .toBe(portableLock)
     const updated = await prepareDependencies(root, [requirement], nextOptions)
     Tests.expect(updated.sources['bundled:tao']?.location).toBe(replacement)
+    await roundTripBundledLock(root)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+async function roundTripBundledLock(root: string): Promise<void> {
+  const durable = Path.join(root, '.tao', 'store', 'npm', 'bundled.lock')
+  await FileSystem.mkdir(Path.dirname(durable), { recursive: true })
+  await FileSystem.writeFile(durable, 'graph')
+  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash\n')
+  await recordManagedGraphReference(root, 'Main.tao', 'c'.repeat(64), durable, 'd'.repeat(64))
+  const lock = await readDependencyLock(Path.join(root, '.tao', 'store', 'dependencies.lock.json'))
+  Tests.expect(lock?.sources['bundled:tao']?.location).toBeUndefined()
+  await pruneUnreferencedManagedLocks(root)
+  Tests.expect(await FileSystem.exists(durable)).toBe(true)
+}
+
+Tests.test('prunes only npm locks without source graph or retained profile references', async () => {
+  const root = Artifacts.resolvePath('tmp', `dependency-prune-${Platform.randomUUID()}`)
+  const npm = Path.join(root, '.tao', 'store', 'npm')
+  const profiles = Path.join(root, '.tao', 'cache', 'managed-modules')
+  const referenced = Path.join(npm, 'referenced.lock')
+  const retained = Path.join(npm, 'retained.lock')
+  const orphan = Path.join(npm, 'orphan.lock')
+  await Try(async () => {
+    await FileSystem.mkdir(npm, { recursive: true })
+    await FileSystem.mkdir(profiles, { recursive: true })
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
+    await FileSystem.mkdir(Path.join(profiles, 'retained-install'), { recursive: true })
+    for (const path of [referenced, retained, orphan]) {
+      await FileSystem.writeFile(path, path)
+      await FileSystem.writeFile(path.replace(/\.lock$/, '.sha256'), 'hash\n')
+    }
+    await FileSystem.writeFile(
+      Path.join(profiles, 'retained-install', '.tao-managed.json'),
+      JSON.stringify({ graphFingerprint: 'retained' }),
+    )
+    await recordManagedGraphReference(root, 'Main.tao', 'a'.repeat(64), referenced, 'b'.repeat(64))
+    await pruneUnreferencedManagedLocks(root)
+    Tests.expect(await FileSystem.exists(referenced)).toBe(true)
+    Tests.expect(await FileSystem.exists(retained)).toBe(true)
+    Tests.expect(await FileSystem.exists(orphan)).toBe(false)
+    Tests.expect(await FileSystem.exists(orphan.replace(/\.lock$/, '.sha256'))).toBe(false)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

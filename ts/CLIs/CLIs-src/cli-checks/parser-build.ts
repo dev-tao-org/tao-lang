@@ -2,6 +2,7 @@ import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { writeCSTTypes } from './cst-types'
+import { nodeGypOptions } from './NodeGyp'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
@@ -50,10 +51,11 @@ const generateParser = Timings.measure('parser.generate', async function(): Prom
 const buildParserNative = Timings.measure('parser.native-build', async function(
   inputs: Awaited<ReturnType<typeof readInputs>>,
 ): Promise<void> {
+  const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [outputRoot, ...nodeHeaders(inputs.node.executable)],
+    variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
-    env: nodeGypEnvironment(),
+    env: options.environment,
   })
 })
 
@@ -78,20 +80,6 @@ async function readInputs() {
     },
     environment: await environmentInputs(),
   }
-}
-
-function nodeHeaders(executable: string): string[] {
-  const root = Path.dirname(Path.dirname(executable))
-  return FileSystem.existsSync(Path.join(root, 'include/node/node.h')) ? ['--nodedir', root] : []
-}
-
-function nodeGypEnvironment(): Record<string, string | undefined> {
-  const flag = '--disable-warning=DEP0169'
-  const options = (Env.get('NODE_OPTIONS') ?? '').split(/\s+/).filter(Boolean)
-  if (!options.includes(flag)) {
-    options.push(flag)
-  }
-  return { NODE_OPTIONS: options.join(' ') }
 }
 
 async function environmentInputs(): Promise<string> {

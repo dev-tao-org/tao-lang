@@ -10,8 +10,11 @@ export type WorkspaceChange = {
   observedAtMs: number
 }
 
-/** WorkspaceWatcher releases one workspace tree's native subscriptions. */
-export type WorkspaceWatcher = { dispose(): Promise<void> }
+/** WorkspaceWatcher updates dynamic observation roots and releases native subscriptions. */
+export type WorkspaceWatcher = {
+  updateDirectories?(additionalDirectories: readonly string[], ignoredDirectories: readonly string[]): Promise<void>
+  dispose(): Promise<void>
+}
 
 /** watchWorkspace observes a source tree without following links or debouncing compilation.
  *  Resolves after initial discovery; generated, hidden and installed trees are excluded. */
@@ -23,8 +26,8 @@ export async function watchWorkspace(
   additionalDirectories: readonly string[] = [],
 ): Promise<WorkspaceWatcher> {
   const root = Path.resolve(directory)
-  const excluded = ignoredDirectories.map(path => Path.resolve(path))
-  const roots = [root, ...additionalDirectories.map(directory => Path.resolve(directory))]
+  const excluded = uniquePaths(ignoredDirectories)
+  const roots = [root, ...uniquePaths(additionalDirectories).filter(path => path !== root)]
   const watcher = await createWatcher(roots, excluded)
   let ready = false
   let disposed = false
@@ -58,10 +61,44 @@ export async function watchWorkspace(
       Errors.Throw(error)
     },
   })
+  return dynamicWatcher(watcher, root, roots, excluded, reconciliation, () => disposed, () => disposed = true)
+}
+
+function dynamicWatcher(
+  watcher: Awaited<ReturnType<typeof createWatcher>>,
+  root: string,
+  roots: string[],
+  excluded: string[],
+  reconciliation: ReturnType<typeof reconcileWatchChanges>,
+  isDisposed: () => boolean,
+  dispose: () => void,
+): WorkspaceWatcher {
+  let updates = Promise.resolve()
   return {
+    updateDirectories(additional, ignored) {
+      const update = updates.then(async () => {
+        if (isDisposed()) {
+          return
+        }
+        const nextRoots = [root, ...uniquePaths(additional).filter(path => path !== root)]
+        const removed = roots.filter(path => path !== root && !nextRoots.includes(path))
+        const added = nextRoots.filter(path => !roots.includes(path))
+        roots.splice(0, roots.length, ...nextRoots)
+        excluded.splice(0, excluded.length, ...uniquePaths(ignored))
+        if (removed.length > 0) {
+          await watcher.unwatch(removed)
+        }
+        if (!isDisposed() && added.length > 0) {
+          watcher.add(added)
+        }
+      })
+      updates = update.catch(() => {})
+      return update
+    },
     async dispose() {
-      disposed = true
+      dispose()
       reconciliation.dispose()
+      await updates
       await watcher.close()
     },
   }
@@ -95,8 +132,11 @@ function ignoredPath(root: string, path: string, excluded: readonly string[], st
 }
 
 function withinDirectory(root: string, path: string): boolean {
-  const relative = Path.relative(root, path)
-  return relative === '' || (!Path.isAbsolute(relative) && relative.split(/[\\/]/)[0] !== '..')
+  return Path.isWithin(root, path)
+}
+
+function uniquePaths(paths: readonly string[]): string[] {
+  return [...new Set(paths.map(path => Path.resolve(path)))].sort()
 }
 
 function ignoredName(name: string): boolean {

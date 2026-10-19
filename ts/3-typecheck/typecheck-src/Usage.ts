@@ -71,7 +71,7 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
   const scope = childScope(parent)
   for (const parameter of node.parameters) {
     reference(parent, parameter.type)
-    declare(scope, parameter.name)
+    declare(scope, parameter.name, 'local', !AST.IsKind(node.render, 'ForeignView'))
   }
   for (const definition of node.definitions) {
     visitLet(definition, scope)

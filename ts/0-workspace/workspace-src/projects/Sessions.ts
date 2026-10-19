@@ -1,6 +1,12 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
-import { acquireProjectLifecycle, ensureProjectDirectory, isRegularFile, pathExists } from './Lifecycle'
+import {
+  acquireProjectLifecycle,
+  ensureProjectDirectory,
+  isRealDirectory,
+  isRegularFile,
+  pathExists,
+} from './Lifecycle'
 import { projectLayout } from './Projects'
 
 /** acquireSession opens a named or internal CLI/Studio project session. */
@@ -41,10 +47,19 @@ export type ProjectSession = {
 /** SessionOptions selects a public session ID or an internal CLI/Studio session. */
 export type SessionOptions = { id?: string; kind?: 'cli' | 'studio' }
 
+/** isProjectSessionId accepts public and internal project session directory names. */
+export function isProjectSessionId(id: string): boolean {
+  return id === '.cli' || id === '.studio' || isUserSessionId(id)
+}
+
 function validateSessionId(id: string): void {
-  if (!/^[a-z0-9][a-z0-9_-]*$/.test(id)) {
+  if (!isUserSessionId(id)) {
     Errors.ThrowUserInput(`Invalid project session ID: ${id}`)
   }
+}
+
+function isUserSessionId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9_-]*$/.test(id)
 }
 
 function internalId(kind: 'cli' | 'studio'): string {
@@ -83,7 +98,19 @@ async function prepareSession(id: string, layout: ReturnType<typeof projectLayou
   const directory = Path.join(layout.sessionsDirectory, id)
   await ensureProjectDirectory(directory)
   await ensureSessionState(directory)
+  await clearPreviousSidecarSnapshots(directory)
   return { id, directory, lockPath: Path.join(layout.sessionLocksDirectory, `${id}.lock`), release: lock.release }
+}
+
+async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
+  const snapshots = Path.join(directory, 'foreign-views')
+  if (!pathExists(snapshots)) {
+    return
+  }
+  if (!isRealDirectory(snapshots)) {
+    Errors.ThrowUserInput(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
+  }
+  await FileSystem.rm(snapshots, { recursive: true, force: true })
 }
 
 type SessionHandle = NonNullable<Awaited<ReturnType<typeof SessionLock.acquire>>>

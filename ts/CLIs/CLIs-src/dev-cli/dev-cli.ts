@@ -33,6 +33,10 @@ import './commands/verify'
 import { execute } from './commands/_command-runner'
 
 if (Platform.isMain(import.meta)) {
-  await configureCLIOutput('dev')
+  await configureCLIOutput('dev', { interactive: !usesInteractivePrompt(Platform.argv[2]) })
   await execute()
+}
+
+function usesInteractivePrompt(command: string | undefined): boolean {
+  return ['add', 'compile', 'prepare', 'secrets', 'test-sidecars', 'update'].includes(command ?? '')
 }

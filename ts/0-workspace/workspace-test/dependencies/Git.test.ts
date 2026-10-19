@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { fetchGitHubCommit, localGitRepository, resolveGitHubCommit } from '../../workspace-src/dependencies/Git'
+import { fetchGitHubCommit, resolveGitHubCommit } from '../../workspace-src/dependencies/Git'
 
 Tests.test('Git adapter resolves a local tag and materializes the exact commit', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-git-${Platform.randomUUID()}`)
@@ -20,3 +20,10 @@ Tests.test('Git adapter resolves a local tag and materializes the exact commit',
     Tests.expect(await FileSystem.readFile(Path.join(destination, 'Main.tao'), 'utf8')).toContain('fixture')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
+
+async function localGitRepository(root: string): Promise<void> {
+  await FileSystem.mkdir(root, { recursive: true })
+  await Platform.capture('git', { variadicArgs: ['init', '--quiet', root] })
+  await Platform.capture('git', { variadicArgs: ['-C', root, 'config', 'user.email', 'tao-test@example.invalid'] })
+  await Platform.capture('git', { variadicArgs: ['-C', root, 'config', 'user.name', 'Tao Test'] })
+}

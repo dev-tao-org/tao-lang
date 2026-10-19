@@ -97,8 +97,8 @@ ${Text.indentLines(hostOperations.join('\n'), 2)}
 Examples:
   ./agent bench
   ./agent bench 25
-  ./agent unsandboxed test
-  ./agent test "presses action buttons"
+  ./agent test
+  ./agent test "formats imports"
   ./agent test packages/language/parser/parser-tests/Parser.test.ts
   ./agent test-all
   ./agent test-file packages/language/parser/parser-tests/Parser.test.ts
@@ -106,7 +106,7 @@ Examples:
   ./agent test-changed
   ./agent test-retry
   ./agent verify-changed
-  ./agent unsandboxed verify
+  ./agent verify
   ./agent unsandboxed verify-full
   ./agent verify-full-sandbox
   ./agent unsandboxed open-pr --auto-merge
@@ -205,10 +205,9 @@ bun.lock.
 
 test takes one optional target and decides by whether it exists on disk: an existing file or
 directory is a path, anything else is a test-name pattern. It prints which reading it chose. A bare
-test runs representative Tao journeys and Studio launch/readiness/cleanup; use unsandboxed test
-for Studio's host access. A name pattern filters the reference journeys. Explicit Tao paths run
-app journeys and package paths run their selected unit tests. test-all retains the broader
-maintenance suite, with an optional name filter; a reference pass does not establish its verdict.
+test runs the suites the branch diff reaches, which can be green while a suite the change broke
+never ran; a name pattern filters those same suites rather than widening back out to all of them.
+test-all runs every suite, and takes an optional name pattern of its own.
 
 test-source-file runs an explicit file/directory after parser generation, without building the
 reference app. Use it for language bootstrap when the new parser cannot compile that app yet;
@@ -222,11 +221,10 @@ Explicit file/directory/name targets and test-retry collect failures in that sco
 target remains broad. Individual checkers retain their diagnostics. Filtered or aborted runs are
 never complete coverage: diagnose the failed scope, fix it, then repeat broad verification.
 
-check compiles the reference app and validates selected Tao sources. ./agent unsandboxed verify
-adds the reference journeys and Studio launch proof. These defaults keep the retired implementation
-usable as a language and Studio reference; they are not a maintenance or landing verdict.
-verify-changed retains the broader gates and tests selected from the branch diff.
-./agent unsandboxed verify-full retains repository-wide maintenance, browser, native, and bundle
+Each verification scope is its own command rather than a flag: verify-changed runs the gates plus
+the test suites the branch diff reaches (iterate with it); verify runs every suite locally when
+useful or when CI is unreachable. Hosted CI is the default portable final proof; ./agent unsandboxed
+verify-full adds the browser, native, and bundle
 lanes, two of which take a machine-wide lease on the window server for as long as they run;
 verify-full-sandbox runs that same membership in a managed shell without claiming its host-only
 lanes passed. A lane whose tree is already recorded green prints that run's

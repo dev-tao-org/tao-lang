@@ -49,9 +49,13 @@ function requireRealDirectory(path: string, description: string): void {
 }
 
 function ensureDirectoryParent(parent: string, child: string): void {
-  if (!isRealDirectory(parent) || pathExists(child) && !isRealDirectory(child)) {
+  if (isUnsafeDirectoryParent(parent, child)) {
     Errors.ThrowUserInput(`Project lock path is not a real directory: ${child}`)
   }
+}
+
+function isUnsafeDirectoryParent(parent: string, child: string): boolean {
+  return !isRealDirectory(parent) || pathExists(child) && !isRealDirectory(child)
 }
 
 function ensureRegularLockPath(path: string): void {

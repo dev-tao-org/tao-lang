@@ -60,10 +60,10 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
     Errors.ThrowUserInput(`TypeScript defaults ownership marker is invalid: ${marker}`)
   }
   if (owned === undefined) {
-    await writeReadOnly(marker, 'managed-by-tao\n')
+    await Files.writeReadOnly(marker, 'managed-by-tao\n')
   }
   if (current !== typeScriptDefaults) {
-    await writeReadOnly(path, typeScriptDefaults)
+    await Files.writeReadOnly(path, typeScriptDefaults)
   }
 }
 
@@ -100,17 +100,6 @@ export function typeScriptDefaultsHash(): string {
   return Platform.hashText(typeScriptDefaults)
 }
 
-// typescriptDefaultsPath returns the shared generated compiler configuration path.
-function typescriptDefaultsPath(projectRoot: string): string {
-  return Path.join(projectRoot, '.tao', 'cache', 'sidecars', 'typescript-defaults.json')
-}
-
-function moduleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
-  const relative = Path.relative(moduleDirectory, defaultsPath).replaceAll('\\', '/')
-  const extendsPath = relative.startsWith('.') ? relative : `./${relative}`
-  return `${JSON.stringify({ extends: extendsPath, include: ['**/*.ts', '**/*.tsx'] }, null, 2)}\n`
-}
-
 /** typescriptDefaultsDrift reports missing or changed shared compiler defaults. */
 export async function typescriptDefaultsDrift(
   projectRoot: string,
@@ -128,6 +117,17 @@ export async function typescriptDefaultsDrift(
       owner: 'project runtime policy',
       repair: 'tao prepare --repair',
     }]
+}
+
+// typescriptDefaultsPath returns the shared generated compiler configuration path.
+function typescriptDefaultsPath(projectRoot: string): string {
+  return Path.join(projectRoot, '.tao', 'cache', 'sidecars', 'typescript-defaults.json')
+}
+
+function moduleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
+  const relative = Path.relative(moduleDirectory, defaultsPath).replaceAll('\\', '/')
+  const extendsPath = relative.startsWith('.') ? relative : `./${relative}`
+  return `${JSON.stringify({ extends: extendsPath, include: ['**/*.ts', '**/*.tsx'] }, null, 2)}\n`
 }
 
 async function moduleDrift(
@@ -157,9 +157,7 @@ async function moduleDrift(
   for (const name of Object.keys(merged)) {
     const path = Path.join(directory, 'node_modules', name)
     const expected = Path.join(managed.packageDirectory, 'node_modules', name)
-    const linked = await FileSystem.exists(path) && await FileSystem.exists(expected)
-      && FileSystem.realpathSync(path) === FileSystem.realpathSync(expected)
-    if (!linked) {
+    if (!await moduleLinkMatches(path, expected)) {
       drift.push({
         path,
         owner: requirements.find(item => item.name === name)?.origin ?? 'runtime policy',
@@ -175,6 +173,13 @@ async function moduleDrift(
     })
   }
   return drift
+}
+
+async function moduleLinkMatches(path: string, expected: string): Promise<boolean> {
+  if (!await FileSystem.exists(path) || !await FileSystem.exists(expected)) {
+    return false
+  }
+  return Try.WithDefault(false, () => FileSystem.realpathSync(path) === FileSystem.realpathSync(expected))
 }
 
 async function repairModuleFiles(
@@ -216,19 +221,27 @@ async function repairModuleFiles(
   await validateModuleLinks(directory, profile, requirements.map(({ name }) => name), previousOwner)
   for (const [path] of files) {
     if (await FileSystem.exists(path) && owner !== expectedOwner) {
-      if (!previousOwner || !repair && previousOwner.profile === profile) {
+      if (cannotReplaceModuleFile(previousOwner, repair, profile)) {
         Errors.ThrowUserInput(`Module metadata is already owned: ${path}`)
       }
     }
   }
   for (const [path, contents] of files) {
-    await writeReadOnly(path, contents)
+    await Files.writeReadOnly(path, contents)
   }
   if (owner !== expectedOwner) {
-    await writeReadOnly(marker, expectedOwner)
+    await Files.writeReadOnly(marker, expectedOwner)
   }
   await ensureModuleIgnore(directory, owner !== undefined)
   return previousOwner
+}
+
+function cannotReplaceModuleFile(
+  previousOwner: ManagedModuleOwner | undefined,
+  repair: boolean,
+  profile: string,
+): boolean {
+  return previousOwner === undefined || (!repair && previousOwner.profile === profile)
 }
 
 function moduleOwnerMarker(
@@ -296,24 +309,8 @@ function moduleIgnoreBlock(): string {
   return '# tao-managed-sidecars:begin\n/package.json\n/tsconfig.json\n/node_modules/\n/.tao-managed-module.json\n/.tao-*.contract.ts\n/.tao-*.contract.ts.tao-managed\n# tao-managed-sidecars:end\n'
 }
 
-async function writeReadOnly(path: string, contents: string): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-  if (FileSystem.existsSync(path) && FileSystem.lstatSync(path).isSymbolicLink()) {
-    Errors.ThrowUserInput(`Generated module metadata cannot be a symbolic link: ${path}`)
-  }
-  if (await FileSystem.exists(path)) {
-    if (await FileSystem.readFile(path, 'utf8') === contents) {
-      return
-    }
-    await Files.withWritableFile(path, file => file.write(contents))
-  } else {
-    await FileSystem.writeFile(path, contents)
-  }
-  await FileSystem.chmod(path, 0o444)
-}
-
 function rejectSymlink(path: string): void {
-  if (FileSystem.existsSync(path) && FileSystem.lstatSync(path).isSymbolicLink()) {
+  if (Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())) {
     Errors.ThrowUserInput(`Generated module metadata cannot be a symbolic link: ${path}`)
   }
 }

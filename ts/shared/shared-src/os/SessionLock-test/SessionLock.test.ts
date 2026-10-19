@@ -40,8 +40,11 @@ Tests.test('session locks are released by the kernel when their owning process e
   const root = await mkdtemp(join(tmpdir(), 'tao-session-lock-child-'))
   const path = join(root, 'session.lock')
   const output = Artifacts.resolvePath('cache/native-locks')
-  const pointer = JSON.parse(await readFile(join(output, 'current.json'), 'utf8')) as { identity: string }
-  const addon = join(output, pointer.identity, 'build/Release/tao_os_locks.node')
+  const pointer = JSON.parse(await readFile(join(output, 'current.json'), 'utf8')) as {
+    identity: string
+    directory?: string
+  }
+  const addon = join(output, pointer.directory ?? pointer.identity, 'build/Release/tao_os_locks.node')
   await Try(async () => {
     const script = `const lock = require(${
       JSON.stringify(addon)

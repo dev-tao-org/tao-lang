@@ -78,6 +78,7 @@ function fakeServices(
     async readManaged() {
       events.push('read')
       return {
+        graphFingerprint: 'graph-key',
         fingerprint: 'graph',
         packageDirectory: '/profile',
         lockfile: '/profile/bun.lock',

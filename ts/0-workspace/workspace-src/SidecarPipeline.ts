@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors } from '@shared'
+import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { namedPackageRoot, nearestProjectRoot, realPathInsideProject, within } from './modules/Paths'
@@ -24,6 +24,7 @@ export type SidecarPipelineOptions = {
   compiler?: string
   projectDirectory?: string
   typescriptDefaultsPath?: string
+  snapshotLimit?: number
 }
 
 /** PreparedSidecars exposes only validated snapshots to generated app compilation. */
@@ -45,22 +46,28 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
     )
   const defaultsContents = await FileSystem.readFile(defaultsPath, 'utf8')
   const fingerprint = fingerprintFor(options, nodeModulesDirectory, groups, defaultsContents)
-  const snapshotRoot = Path.join(options.sessionBuildDirectory, 'foreign-views', fingerprint)
-  const snapshotDirectories = groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot))
-  if (!await cachedSnapshotMatches(snapshotRoot, fingerprint, nodeModulesDirectory, snapshotDirectories)) {
-    await buildSnapshot(options, groups, snapshotRoot, fingerprint, nodeModulesDirectory, defaultsPath)
+  const requestedSnapshotRoot = Path.join(options.sessionBuildDirectory, 'foreign-views', fingerprint)
+  const cachedRoot = await findCachedSnapshot(
+    requestedSnapshotRoot,
+    groups,
+    fingerprint,
+    nodeModulesDirectory,
+  )
+  let snapshotRoot = cachedRoot ?? requestedSnapshotRoot
+  let snapshotDirectories = groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot))
+  if (!cachedRoot) {
+    snapshotRoot = await buildSnapshot(
+      options,
+      groups,
+      requestedSnapshotRoot,
+      fingerprint,
+      nodeModulesDirectory,
+      defaultsPath,
+      options.snapshotLimit,
+    )
+    snapshotDirectories = groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot))
   }
-  const pathMap = new Map<string, string>()
-  groups.forEach((group, index) => {
-    const snapshotDirectory = snapshotDirectories[index]!
-    for (const view of group.views) {
-      const render = AST.IsKind(view.declaration.render, 'ForeignView')
-        ? view.declaration.render
-        : Errors.Throw(`Expected a foreign view render for ${view.declaration.name.value}.`)
-      const authored = authoredForeignPath(view.module.path, render)
-      pathMap.set(foreignViewKey(view.module.path, authored), Path.join(snapshotDirectory, view.relativeSidecarPath))
-    }
-  })
+  const pathMap = snapshotForeignViewPaths(groups, snapshotDirectories)
   return {
     fingerprint,
     foreignViewPath(modulePath, authoredPath) {
@@ -70,6 +77,50 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
     watchDirectories: [...new Set(groups.flatMap(group => [...group.files.keys()].map(Path.dirname)))].sort(),
     snapshotDirectories: [snapshotRoot, ...snapshotDirectories],
   }
+}
+
+function snapshotForeignViewPaths(
+  groups: readonly SidecarGroup[],
+  directories: readonly string[],
+): Map<string, string> {
+  const pathMap = new Map<string, string>()
+  groups.forEach((group, index) => {
+    const directory = directories[index]!
+    for (const view of group.views) {
+      const render = AST.IsKind(view.declaration.render, 'ForeignView')
+        ? view.declaration.render
+        : Errors.Throw(`Expected a foreign view render for ${view.declaration.name.value}.`)
+      pathMap.set(
+        foreignViewKey(view.module.path, authoredForeignPath(view.module.path, render)),
+        Path.join(directory, view.relativeSidecarPath),
+      )
+    }
+  })
+  return pathMap
+}
+
+async function findCachedSnapshot(
+  requestedRoot: string,
+  groups: readonly SidecarGroup[],
+  fingerprint: string,
+  nodeModulesDirectory: string,
+): Promise<string | undefined> {
+  const requestedDirectories = groups.map(group => snapshotModuleDirectory(requestedRoot, group.moduleRoot))
+  if (await cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, requestedDirectories)) {
+    return requestedRoot
+  }
+  const parent = Path.dirname(requestedRoot)
+  const recoveryPrefix = `${Path.basename(requestedRoot)}.recovered`
+  const siblings = await Try.WithDefault<Promise<string[]>, string[]>([], () => FileSystem.readdir(parent))
+  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
+    .map(name => Path.join(parent, name))
+  for (const candidate of candidates) {
+    const directories = groups.map(group => snapshotModuleDirectory(candidate, group.moduleRoot))
+    if (await cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, directories)) {
+      return candidate
+    }
+  }
+  return undefined
 }
 
 async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<SidecarGroup[]> {
@@ -84,7 +135,7 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Si
       if (!AST.IsKind(declaration.render, 'ForeignView')) {
         continue
       }
-      const modulePath = Path.resolve(module.path)
+      const modulePath = FileSystem.realpathSync(Path.resolve(module.path))
       const projectRoot = FileSystem.realpathSync(
         nearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
       )

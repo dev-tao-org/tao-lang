@@ -1,11 +1,9 @@
 import { Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FileSystem, Path, Platform } from '@shared/os'
 
 /** within identifies paths whose normalized relative path stays inside a root. */
 export function within(root: string, path: string): boolean {
-  const relative = Path.relative(root, path)
-  const portable = relative.replaceAll('\\', '/')
-  return portable === '' || (portable !== '..' && !portable.startsWith('../') && !Path.isAbsolute(relative))
+  return Path.isWithin(root, path)
 }
 
 /** excludedPath filters hidden, generated, dependency and output paths from Tao source discovery. */
@@ -19,11 +17,11 @@ export function excludedName(name: string): boolean {
 }
 
 /** nearestProjectRoot finds the closest ancestor containing a .tao directory. */
-export function nearestProjectRoot(directory: string): string | undefined {
-  let current = Path.resolve(directory)
+export function nearestProjectRoot(directory: string, homeDirectory = Platform.homeDirectory()): string | undefined {
+  const absolute = Path.resolve(directory)
+  let current = Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
   while (true) {
-    const marker = Path.join(current, '.tao')
-    if (FileSystem.existsSync(marker) && FileSystem.statSync(marker).isDirectory()) {
+    if (isDiscoverableProjectDirectory(current, homeDirectory)) {
       return current
     }
     if (FileSystem.existsSync(Path.join(current, '.git'))) {
@@ -35,6 +33,19 @@ export function nearestProjectRoot(directory: string): string | undefined {
     }
     current = parent
   }
+}
+
+/** isDiscoverableProjectDirectory excludes legacy home cache directories from project boundaries. */
+export function isDiscoverableProjectDirectory(path: string, home = Platform.homeDirectory()): boolean {
+  const tao = Path.join(path, '.tao')
+  const isHome = canonicalPath(path) === canonicalPath(home)
+  const legacyHome = isHome && !FileSystem.existsSync(Path.join(tao, 'store', 'project.json'))
+  return !legacyHome && Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())
+}
+
+function canonicalPath(path: string): string {
+  const absolute = Path.resolve(path)
+  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
 }
 
 /** realPathInsideProject rejects symlinks that leave the owning Tao project. */

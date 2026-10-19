@@ -166,7 +166,7 @@ export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
 }
 
 function isWithinDirectory(path: string, directory: string): boolean {
-  return path === directory || path.startsWith(`${directory}/`)
+  return Path.isWithin(directory, path)
 }
 
 const legacyRoot = Repo.resolvePath('.x-tao-old-v1')

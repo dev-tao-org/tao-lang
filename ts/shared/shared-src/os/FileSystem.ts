@@ -5,8 +5,30 @@ import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { Try } from '../universal/universal'
 
-export { constants, existsSync, lstatSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs'
-export { access, chmod, cp, mkdir, readdir, readFile, rename, rm, rmdir, symlink, writeFile } from 'node:fs/promises'
+export {
+  constants,
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  renameSync,
+  statSync,
+} from 'node:fs'
+export {
+  access,
+  chmod,
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  readlink,
+  rename,
+  rm,
+  rmdir,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 
 /** resolveModule resolves a package entry using dependencies visible from a caller-owned directory. */
 export function resolveModule(packageName: string, fromDirectory: string): string {

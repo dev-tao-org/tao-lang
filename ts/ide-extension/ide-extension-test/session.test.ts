@@ -45,6 +45,23 @@ Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', asyn
   }, { finally: runtime.dispose })
 })
 
+Tests.test('requirements and import source markers receive keyword highlights', async () => {
+  const runtime = await loadRuntime()
+  Try(() => {
+    const source = 'requires npm:date-fns version 4.1.0 as dateFns\nuse Text from tao@ui'
+    const result = runtime.document.update(source)
+    Tests.expect(result.diagnostics).toEqual([])
+    for (const keyword of ['requires', 'version', 'as', 'from']) {
+      const start = source.indexOf(keyword)
+      Tests.expect(
+        result.tokens.some(token =>
+          token.kind === 'keyword' && token.start === start && source.slice(token.start, token.end) === keyword
+        ),
+      ).toBe(true)
+    }
+  }, { finally: runtime.dispose })
+})
+
 Tests.test('incremental malformed edits recover without affecting another open document', async () => {
   const runtime = await loadRuntime()
   Try(() => {

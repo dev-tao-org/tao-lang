@@ -49,6 +49,12 @@ export {
 }
 export { ImportPath, NamedImport, QualifiedName, RequiresDeclaration, UsePackageStatement, UseStatement }
 
+/** OptionalVisibility reads an optional declaration visibility field from its CST node. */
+export function OptionalVisibility(cst: Parser.SyntaxNode): AST.Visibility | undefined {
+  const visibility = cst.childForFieldName('visibility')
+  return visibility ? visibility.text as AST.Visibility : undefined
+}
+
 /** Field constructs one required CST field with an expected semantic kind. */
 export function Field<Kind extends AST.Node['kind']>(
   cst: Parser.SyntaxNode,

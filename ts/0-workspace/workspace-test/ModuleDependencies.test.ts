@@ -79,6 +79,24 @@ Tests.test('prepare entry discovery picks one app and releases injected cache le
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('dependency session contention fails before acquiring another cache lease', async () => {
+  const root = tempRoot()
+  let leases = 0
+  const lease = async () => {
+    leases++
+    return () => {}
+  }
+  await Try(async () => {
+    await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+    await withDependencySession(root, 'busy', async () => {
+      await Tests.rejects(withDependencySession(root, 'busy', async () => {}, lease), /session is already active/)
+      Tests.expect(leases).toBe(1)
+    }, lease)
+    await withDependencySession(root, 'busy', async () => {}, lease)
+    Tests.expect(leases).toBe(2)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 function tempRoot(): string {
   return Artifacts.resolvePath('tmp', `module-dependencies-${Platform.randomUUID()}`)
 }

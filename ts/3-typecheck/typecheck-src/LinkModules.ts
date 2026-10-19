@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
 import { orderDefinitions } from './LinkModuleDefinitions'
+import { assertUniqueLocalBindings, referencedNames } from './LinkModuleValidation'
 import { type LinkedProgram, type ModuleBinding, namespaceFromPath, type SourceModule } from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
@@ -14,8 +15,9 @@ export function linkModules(entry: string, sources: readonly SourceModule[]): Li
 
   for (const source of sources) {
     assertUniqueOwnDeclarations(source)
+    assertUniqueLocalBindings(source)
     addExplicitBindings(source, modules, bindings, ownNames.get(source.path)!)
-    addImplicitSiblingBindings(source, modules, bindings, ownNames.get(source.path)!)
+    addImplicitSiblingBindings(source, modules, bindings, ownNames.get(source.path)!, referencedNames(source.document))
     assertUniqueBindings(source, bindings.get(source.path)!, ownNames.get(source.path)!)
   }
 
@@ -51,6 +53,7 @@ function addImplicitSiblingBindings(
   modules: ReadonlyMap<string, SourceModule>,
   bindings: Map<string, ModuleBinding[]>,
   ownNames: ReadonlySet<string>,
+  references: ReadonlySet<string>,
 ): void {
   const candidates = new Map<string, ModuleBinding[]>()
   const localNames = new Set(bindings.get(source.path)!.map(binding => binding.name))
@@ -70,7 +73,10 @@ function addImplicitSiblingBindings(
   }
   for (const [name, matches] of candidates) {
     if (matches.length > 1) {
-      Errors.ThrowUserInput(`Module ${source.path} has ambiguous sibling name ${name}.`)
+      if (references.has(name)) {
+        Errors.ThrowUserInput(`Module ${source.path} has ambiguous sibling name ${name}.`)
+      }
+      continue
     }
     bindings.get(source.path)!.push(matches[0]!)
   }

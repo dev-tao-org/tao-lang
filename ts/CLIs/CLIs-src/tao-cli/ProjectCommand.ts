@@ -48,8 +48,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
   }
   const root = FileSystem.realpathSync(projectRoot)
   const physical = FileSystem.realpathSync(path)
-  const relative = Path.relative(root, physical)
-  if (relative === '..' || relative.startsWith('../') || Path.isAbsolute(relative)) {
+  if (!Path.isWithin(root, physical)) {
     Errors.ThrowUserInput(`Project command path escapes its Tao project: ${path}`)
   }
 }

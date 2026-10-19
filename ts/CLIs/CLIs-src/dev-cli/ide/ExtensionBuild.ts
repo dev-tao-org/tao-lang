@@ -1,6 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Try } from '@shared'
+import { Errors, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
@@ -105,10 +105,11 @@ async function copyAssets(): Promise<void> {
 async function copyFormatter(): Promise<string> {
   const bytes = await FormatterResources.typeScriptFormatterBytes()
   await FileSystem.writeFile(Path.join(packageRoot, 'runtime/typescript-formatter.wasm'), bytes)
-  const wrapperLicense = await FileSystem.readFile(
-    Repo.resolvePath('ts/4-fix/node_modules/@dprint/formatter/LICENSE'),
-    'utf8',
-  )
+  const formatterPackage = FileSystem.resolvePackageDirectory('@dprint/formatter', Repo.resolvePath('ts/4-fix'))
+  if (!formatterPackage) {
+    Errors.ThrowHostEnvironment('Cannot locate the installed @dprint/formatter package for extension licensing.')
+  }
+  const wrapperLicense = await FileSystem.readFile(Path.join(formatterPackage, 'LICENSE'), 'utf8')
   return `@dprint/formatter\n\n${wrapperLicense}\n\n@dprint/typescript\n\n${createTypeScriptFormatter(bytes).license}`
 }
 

@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Timings } from '@shared'
+import { Errors, Timings, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import { directSourceFiles } from './Catalog'
@@ -47,7 +47,8 @@ type Discovery = Map<string, string | undefined> & {
 
 const loadGraph = Timings.measure('modules.load', async function(request: LoadRequest): Promise<SourceModule[]> {
   const { entry, options, parser, timings } = request
-  const entryPath = Path.resolve(entry.path)
+  const absoluteEntryPath = Path.resolve(entry.path)
+  const entryPath = Try.WithDefault(absoluteEntryPath, () => FileSystem.realpathSync(absoluteEntryPath))
   const entryDirectory = Path.dirname(entryPath)
   const configuredDirectory = options.directory && Path.resolve(options.directory)
   const projectRoot = nearestProjectRoot(entryDirectory)

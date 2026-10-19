@@ -10,6 +10,7 @@ export type ManagedModulesInput = {
   bunVersion: string
   singletonPackages?: string[]
   hostIdentity?: { os: string; architecture: string }
+  previousGraphReference?: ManagedGraphReference
 }
 
 /** BunExecutor runs a pinned Bun command without exposing host process details to orchestration. */
@@ -21,8 +22,10 @@ export type BunExecutor = (
 
 /** PreparedManagedModules identifies the validated app graph and its declaration fingerprint. */
 export type PreparedManagedModules = {
+  graphFingerprint: string
   fingerprint: string
   packageDirectory: string
   lockfile: string
   nativePackages: string[]
 }
+import type { ManagedGraphReference } from '../dependencies/Types'

@@ -2,7 +2,7 @@ import { IO, type OutputChannel, runCommand } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
-import { findTaoTestFiles } from './TaoTests'
+import { findTaoTestFiles } from './TaoTestDiscovery'
 import {
   assertTestRunActive,
   executeTestSections,
@@ -26,7 +26,8 @@ export async function runTestPlan(
 ): Promise<void> {
   const controller = Http.createAbortController()
   const stop = Lifecycle.onTermination(() => controller.abort())
-  await Try(() => executeTestPlan(options, controller.signal), { finally: stop })
+  const workerEnvironment = testWorkerEnvironment()
+  await Try(() => executeTestPlan(options, controller.signal, workerEnvironment), { finally: stop })
 }
 
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
@@ -69,14 +70,15 @@ export async function runTaoTestFiles(
 async function executeTestPlan(
   options: Parameters<typeof runTestPlan>[0],
   signal: TestRunSignal,
+  workerEnvironment: Record<string, string>,
 ): Promise<void> {
   const startedAtMs = Time.nowMs()
   const plan = planTestExecution(options)
   const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
   const taoChannels: OutputChannel[] = []
   const operations = {
-    typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal),
-    tao: () => runTaoTests(plan, taoChannels, signal),
+    typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal, workerEnvironment),
+    tao: () => runTaoTests(plan, taoChannels, signal, workerEnvironment),
   }
   const outcomes = await executeTestSections(plan, operations, signal)
   typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
@@ -98,6 +100,7 @@ async function runTypeScriptTests(
   channel: OutputChannel | undefined,
   slowSeconds: number | undefined,
   signal: TestRunSignal,
+  workerEnvironment: Record<string, string>,
 ): Promise<void> {
   if (!plan.typescript || !channel) {
     return
@@ -112,7 +115,7 @@ async function runTypeScriptTests(
           cwd: Repo.resolvePath('ts'),
           output: channel,
           signal,
-          env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+          env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
         }),
       slowSeconds,
       channel,
@@ -124,11 +127,16 @@ async function runTypeScriptTests(
   })
 }
 
-async function runTaoTests(plan: TestPlan, channels: OutputChannel[], signal: TestRunSignal): Promise<void> {
+async function runTaoTests(
+  plan: TestPlan,
+  channels: OutputChannel[],
+  signal: TestRunSignal,
+  workerEnvironment: Record<string, string>,
+): Promise<void> {
   if (!plan.tao) {
     return
   }
-  await Try(() => executeTaoTests(plan, channels, signal), {
+  await Try(() => executeTaoTests(plan, channels, signal, workerEnvironment), {
     catch(error) {
       channels.forEach((channel, index) => {
         channel.finish(error instanceof TaoWorkerFailure && !error.workerFailures.includes(index) ? 'passed' : 'failed')
@@ -138,7 +146,12 @@ async function runTaoTests(plan: TestPlan, channels: OutputChannel[], signal: Te
   })
 }
 
-async function executeTaoTests(plan: TestPlan, channels: OutputChannel[], signal: TestRunSignal): Promise<void> {
+async function executeTaoTests(
+  plan: TestPlan,
+  channels: OutputChannel[],
+  signal: TestRunSignal,
+  workerEnvironment: Record<string, string>,
+): Promise<void> {
   if (!plan.tao) {
     return
   }
@@ -156,7 +169,7 @@ async function executeTaoTests(plan: TestPlan, channels: OutputChannel[], signal
   const workers = planTaoWorkers(files, reportPaths)
   const results = await runWorkerBatch(
     workers,
-    worker => runTaoWorker(worker, channels[worker.index]!, signal),
+    worker => runTaoWorker(worker, channels[worker.index]!, signal, workerEnvironment),
     (worker, error) => ({ passed: 0, failed: 0, error: `Tao worker ${worker.index + 1} failed: ${String(error)}` }),
   )
   const failures = results.flatMap((result, index) => result.failed > 0 || result.error ? [index] : [])
@@ -175,6 +188,7 @@ async function runTaoWorker(
   worker: TaoWorkerPlan,
   channel: OutputChannel,
   signal: TestRunSignal,
+  workerEnvironment: Record<string, string>,
 ): Promise<TaoWorkerReport> {
   assertTestRunActive(signal)
   channel.start()
@@ -192,7 +206,7 @@ async function runTaoWorker(
       cwd: Repo.getWorkspaceRoot(),
       output: channel,
       signal,
-      env: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+      env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
     }), {
     catch(error) {
       commandFailure = String(error)
@@ -240,6 +254,11 @@ function isTaoWorkerReport(value: unknown): value is TaoWorkerReport {
 
 function taoWorkerReportPath(index: number): string {
   return Artifacts.resolvePath('logs', 'test', `${Time.now()}-${index}-${Platform.randomUUID()}.json`)
+}
+
+function testWorkerEnvironment(): Record<string, string> {
+  const root = Artifacts.resolvePath('tmp/test-workers', Platform.randomUUID())
+  return { TAO_CACHE_DIR: Path.join(root, 'cache'), TAO_SUPPORT_DIR: Path.join(root, 'support') }
 }
 
 class TaoWorkerFailure extends Error {

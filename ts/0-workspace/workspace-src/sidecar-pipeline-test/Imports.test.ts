@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import { moduleSpecifiers } from '../../workspace-src/sidecar-pipeline/Imports'
+import { moduleSpecifiers } from '../sidecar-pipeline/Imports'
 
 Tests.test('sidecar import closure includes TypeScript module forms and ignores non-code text', () => {
   const source = S`
