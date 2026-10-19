@@ -31,6 +31,8 @@ These are your rules of usage:
 - Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
 - Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.
+- Consider Windows, Linux, macOS, iOS and Android as eventual runtime targets when developing and choosing dependencies: Studio and CLI target at least Windows/Linux/macOS, Companion targets iOS/Android, and standalone Studio-like authoring on iPad remains a future possibility. Keep platform-specific assumptions behind explicit boundaries; this does not require implementing every target in each slice.
+- Keep CLI/Studio file access sandbox-compatible by default: use user-authorized project directories and platform-provided app cache, support or container directories. If access outside that boundary would materially simplify implementation, surface the benefit and sandbox/distribution tradeoff rather than silently assuming access; preserve native permission flows.
 
 ## Decisions and communication
 
