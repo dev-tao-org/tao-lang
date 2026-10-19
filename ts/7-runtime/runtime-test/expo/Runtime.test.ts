@@ -2,6 +2,7 @@ import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
+import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
 import * as Runtime from '../../runtime-src/Runtime'
 import { RuntimeSourceResources } from '../../runtime-src/RuntimeResources'
 
@@ -42,6 +43,31 @@ Tests.test('runtime preparation installs a cold pinned cache and reuses it', asy
     await Runtime.prepareRuntime(options)
     Tests.expect(installs).toBe(1)
     Tests.expect(await Runtime.preparedRuntime(options)).toBeDefined()
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('runtime toolchain cache identity includes runtime version and reuses matching inputs', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-toolchain-identity-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    await writeResources(resources, { expo: '57.0.30' }, 'identity')
+    let installs = 0
+    const installer = {
+      async install(directory: string) {
+        installs++
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+      },
+    }
+    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
+    await prepareToolchain(cache, resources, installer, undefined, inputs)
+    await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(installs).toBe(1)
+    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeDefined()
+    const changedInputs = { ...inputs, runtimeVersion: '1.5.0' }
+    Tests.expect(await findPreparedToolchain(cache, resources, changedInputs)).toBeUndefined()
+    await prepareToolchain(cache, resources, installer, undefined, changedInputs)
+    Tests.expect(installs).toBe(2)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

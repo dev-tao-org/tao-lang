@@ -1,5 +1,30 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
+import { defaultSingletonPackages } from './ManagedModuleGraph'
+import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
+import type { ManagedModulesInput } from './ManagedModuleTypes'
+
+/** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
+export async function validateProfileMetadata(
+  metadata: Record<string, unknown>,
+  input: ManagedModulesInput,
+  fingerprint: string,
+  requirements: [string, string, string][],
+): Promise<void> {
+  if (
+    metadata.fingerprint !== fingerprint || metadata.target !== input.target || metadata.bunVersion !== input.bunVersion
+    || metadata.policyRegistryVersion !== 1 || metadata.typeScriptDefaultsHash !== typeScriptDefaultsHash()
+    || JSON.stringify(metadata.runtimePins) !== JSON.stringify(input.runtimePins)
+    || JSON.stringify(metadata.singletonPackages)
+      !== JSON.stringify(input.singletonPackages ?? defaultSingletonPackages)
+    || JSON.stringify(metadata.requirements) !== JSON.stringify(requirements)
+  ) {
+    const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
+    Errors.ThrowUserInput(
+      `Managed npm dependencies changed. Repair with: tao prepare --repair (owning declaration: ${owner})`,
+    )
+  }
+}
 
 /** ensureOwnedFile checks generated state and rewrites it only during explicit repair. */
 export async function ensureOwnedFile(path: string, contents: string, repair: boolean): Promise<void> {

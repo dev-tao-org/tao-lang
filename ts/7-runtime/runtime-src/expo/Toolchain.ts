@@ -7,9 +7,10 @@ export async function prepareToolchain(
   resourcesDirectory: string,
   installer: RuntimeInstaller = managedInstaller,
   onProgress?: (message: string) => void,
+  identityInputs?: ToolchainIdentityInputs,
 ): Promise<string> {
   onProgress?.('Resolving runtime toolchain cache identity…')
-  const toolchainKey = await toolchainIdentity(resourcesDirectory)
+  const toolchainKey = await toolchainIdentity(resourcesDirectory, identityInputs)
   const target = Path.join(cacheDirectory, toolchainKey)
   await BuildLock.withBuildLock(Path.join(cacheDirectory, `${toolchainKey}.lock`), async () => {
     await FileSystem.mkdir(target, { recursive: true })
@@ -40,8 +41,9 @@ export async function prepareToolchain(
 export async function findPreparedToolchain(
   cacheDirectory: string,
   resourcesDirectory: string,
+  identityInputs?: ToolchainIdentityInputs,
 ): Promise<string | undefined> {
-  const key = await toolchainIdentity(resourcesDirectory)
+  const key = await toolchainIdentity(resourcesDirectory, identityInputs)
   const target = Path.join(cacheDirectory, key)
   const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(Path.join(target, '.ready'), 'utf8'))
   return ready === key && await FileSystem.exists(Path.join(target, 'node_modules'))
@@ -79,11 +81,23 @@ const managedInstaller: RuntimeInstaller = {
   },
 }
 
-async function toolchainIdentity(resourcesDirectory: string): Promise<string> {
+type ToolchainIdentityInputs = { runtimeVersion: string; os: string; architecture: string }
+
+const toolchainCachePolicy = 'bun-frozen-ignore-scripts-v1'
+
+async function toolchainIdentity(
+  resourcesDirectory: string,
+  identityInputs?: ToolchainIdentityInputs,
+): Promise<string> {
   const [manifest, lockfile] = await Promise.all([
     FileSystem.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
     FileSystem.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
   ])
   const platform = Platform.systemInfo()
-  return Platform.hashText(`${manifest}\0${lockfile}\0${platform.os}\0${platform.architecture}`)
+  const runtimeVersion = identityInputs?.runtimeVersion ?? Platform.runtimeVersion()
+  const os = identityInputs?.os ?? platform.os
+  const architecture = identityInputs?.architecture ?? platform.architecture
+  return Platform.hashText(
+    `${manifest}\0${lockfile}\0${runtimeVersion}\0${os}\0${architecture}\0${toolchainCachePolicy}`,
+  )
 }

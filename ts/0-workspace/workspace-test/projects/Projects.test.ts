@@ -138,6 +138,39 @@ Tests.test('session identifiers reject paths and reserved project ancestors', as
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('initialization rejects an ancestor project across a child Git boundary', async () => {
+  const root = temporaryProject()
+  await Try(async () => {
+    await initializeProject(root)
+    const childGitRoot = Path.join(root, 'child')
+    await FileSystem.mkdir(Path.join(childGitRoot, '.git'), { recursive: true })
+    const nested = Path.join(childGitRoot, 'nested')
+
+    await expectFailure(() => initializeProject(nested))
+    Tests.expect(await discoverProject(nested)).toBeUndefined()
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('initialization canonicalizes symlinked target ancestors before checking project parents', async () => {
+  const root = temporaryProject()
+  const aliases = temporaryProject()
+  await Try(async () => {
+    await initializeProject(root)
+    const child = Path.join(root, 'child')
+    await FileSystem.mkdir(child, { recursive: true })
+    await FileSystem.mkdir(aliases, { recursive: true })
+    await FileSystem.symlink(child, Path.join(aliases, 'alias'))
+
+    await expectFailure(() => initializeProject(Path.join(aliases, 'alias', 'nested')))
+    Tests.expect(await FileSystem.exists(Path.join(child, 'nested', '.tao'))).toBe(false)
+  }, {
+    async finally() {
+      await FileSystem.rm(root, { recursive: true, force: true })
+      await FileSystem.rm(aliases, { recursive: true, force: true })
+    },
+  })
+})
+
 Tests.test('project initialization skips nested markers reached only through directory symlinks', async () => {
   const root = temporaryProject()
   const external = temporaryProject()

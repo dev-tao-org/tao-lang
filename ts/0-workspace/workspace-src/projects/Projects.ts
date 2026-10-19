@@ -3,7 +3,7 @@ import { Files, FileSystem, Path, Platform } from '@shared/os'
 
 /** initializeProject creates Tao's durable project metadata directory. */
 export async function initializeProject(path: string): Promise<ProjectLayout> {
-  const root = Path.resolve(path)
+  const root = canonicalProjectTarget(path)
   if (isProjectDirectory(root)) {
     Errors.ThrowUserInput(`A Tao project is already initialized at ${root}`)
   }
@@ -81,14 +81,42 @@ export function projectLayout(root: string): ProjectLayout {
 async function rejectNestedProject(root: string): Promise<void> {
   let current = Path.dirname(root)
   while (current !== Path.dirname(current)) {
-    if (isProjectDirectory(current)) {
+    if (isProjectAncestor(current)) {
       Errors.ThrowUserInput(`Cannot initialize a nested Tao project inside ${current}`)
-    }
-    if (await FileSystem.exists(Path.join(current, '.git'))) {
-      return
     }
     current = Path.dirname(current)
   }
+}
+
+function canonicalProjectTarget(path: string): string {
+  let current = Path.resolve(path)
+  const missing: string[] = []
+  while (!pathEntryExists(current)) {
+    const parent = Path.dirname(current)
+    if (parent === current) {
+      break
+    }
+    missing.unshift(Path.basename(current))
+    current = parent
+  }
+  const physical = Try.WithDefault(undefined, () => FileSystem.realpathSync(current))
+    ?? Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+  return missing.reduce((directory, name) => Path.join(directory, name), physical)
+}
+
+function isProjectAncestor(path: string): boolean {
+  return isProjectDirectory(path) && !isLegacyToolchainHome(path)
+}
+
+function isLegacyToolchainHome(path: string): boolean {
+  const home = Path.resolve(Platform.homeDirectory())
+  const toolchains = Path.join(home, '.tao', 'toolchains')
+  return Path.resolve(path) === home && isDirectory(toolchains)
+    && !FileSystem.existsSync(Path.join(home, '.tao', 'store', 'project.json'))
+}
+
+function pathEntryExists(path: string): boolean {
+  return Try.WithDefault(false, () => FileSystem.lstatSync(path) !== undefined)
 }
 
 function isDirectory(path: string): boolean {

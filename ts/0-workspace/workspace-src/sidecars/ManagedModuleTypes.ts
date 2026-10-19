@@ -9,6 +9,7 @@ export type ManagedModulesInput = {
   runtimePins: Record<string, string>
   bunVersion: string
   singletonPackages?: string[]
+  hostIdentity?: { os: string; architecture: string }
 }
 
 /** BunExecutor runs a pinned Bun command without exposing host process details to orchestration. */

@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
+import { prepareManagedModules, readManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
 Tests.test('updates one consumer graph while preserving prior profiles and rejecting authored drift', async () =>
@@ -29,6 +29,53 @@ Tests.test('rejects unsafe npm package names before starting Bun', async () => {
   )
   Tests.expect(invoked).toBe(false)
 })
+
+Tests.test('rebuilds a host-specific installed tree from the unchanged durable lock', async () =>
+  await withDirectory('managed-host-cache', async root => await assertHostCacheRebuild(root)))
+
+async function assertHostCacheRebuild(root: string): Promise<void> {
+  const moduleDirectory = Path.join(root, 'Module')
+  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  const input = {
+    ...moduleInput(root, moduleDirectory, '4.1.0'),
+    hostIdentity: { os: 'host-a', architecture: 'arm64' },
+  }
+  let rebuilt = false
+  const executor: BunExecutor = async (_command, args, cwd) => {
+    if (args[0] === '--version') {
+      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    }
+    const nodeModules = Path.join(cwd, 'node_modules')
+    if (args.includes('--frozen-lockfile')) {
+      if (!await FileSystem.exists(nodeModules)) {
+        rebuilt = true
+        await writeInstalledPackages(cwd)
+      }
+      return { status: 0, stdout: '', stderr: '' }
+    }
+    await writeLock(cwd, { react: '19.1.0', 'date-fns': '4.1.0' })
+    await writeInstalledPackages(cwd)
+    return { status: 0, stdout: '', stderr: '' }
+  }
+  const first = await prepareManagedModules(input, executor)
+  const durableLock = Path.join(root, '.tao', 'store', 'npm', `${first.fingerprint}.lock`)
+  const lockBytes = await FileSystem.readFile(durableLock, 'utf8')
+  const sentinel = Path.join(first.packageDirectory, 'node_modules', '.host-a-sentinel')
+  await FileSystem.writeFile(sentinel, 'keep')
+  await prepareManagedModules(input, executor)
+  Tests.expect(await FileSystem.readFile(sentinel, 'utf8')).toBe('keep')
+  const otherHost = { ...input, hostIdentity: { os: 'host-b', architecture: 'x64' } }
+  await Tests.rejects(readManagedModules(otherHost), /belongs to .*host is .*Run tao prepare/)
+  const rebuiltProfile = await prepareManagedModules(otherHost, executor)
+  Tests.expect(rebuiltProfile.fingerprint).toBe(first.fingerprint)
+  Tests.expect(rebuilt).toBe(true)
+  Tests.expect(await FileSystem.readFile(durableLock, 'utf8')).toBe(lockBytes)
+}
+
+async function writeInstalledPackages(root: string): Promise<void> {
+  await writePackage(root, 'react', '19.1.0')
+  await writePackage(root, 'date-fns', '4.1.0')
+}
 
 async function assertProfileTransition(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')

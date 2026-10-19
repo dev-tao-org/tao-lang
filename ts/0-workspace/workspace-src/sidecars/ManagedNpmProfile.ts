@@ -14,12 +14,22 @@ import {
   validateManagedManifest,
   validateTypeScriptDefaults,
 } from './ManagedModuleMetadata'
-import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
+import type {
+  BunExecutor,
+  ManagedModulesInput,
+  PreparedManagedModules,
+} from './ManagedModuleTypes'
+import {
+  installHostIdentity,
+  validateInstalledHost,
+  validateReusableProfile,
+} from './ManagedNpmHost'
 import {
   ensureOwnedFile,
   optionalJson,
   optionalText,
   readOwnedMetadata,
+  validateProfileMetadata,
   writeReadOnly,
 } from './ManagedNpmState'
 
@@ -54,7 +64,8 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
   const fingerprint = fingerprintFor(input, normalized)
   const profile = profilePath(input, fingerprint)
   const metadata = await readProfileMetadata(profile, normalized)
-  await validateProfileMetadata(metadata, input, fingerprint)
+  await validateProfileMetadata(metadata, input, fingerprint, normalized)
+  validateInstalledHost(metadata, input)
   const lockfile = Path.join(profile, 'bun.lock')
   const durableLock = durableLockPath(input, fingerprint)
   const durableHash = durableLockHashPath(input, fingerprint)
@@ -133,12 +144,24 @@ async function prepareProfile(
   validateDurableLock(storedLock, storedHash, fingerprint)
   const metadata = await readOwnedMetadata(profile, fingerprint, repair, storedLock)
   validateExistingState(metadata !== undefined, storedLock, fingerprint)
+  let rebuildHostInstall = false
+  if (storedLock !== undefined && metadata !== undefined) {
+    rebuildHostInstall = await validateReusableProfile(
+      profile,
+      metadata,
+      input,
+      normalized,
+      fingerprint,
+      storedLock,
+      repair,
+    )
+  }
   await validateBunVersion(input, executor)
   await ensureProfileManifest(profile, normalized, input.runtimePins, repair || storedLock === undefined)
   await installFrozenGraph(profile, storedLock, executor, repair)
   await validateGraph(profile, normalized, input.runtimePins)
   await auditInstalledGraph(profile, input, normalized)
-  await persistProfile(profile, durableLock, storedLock, input, normalized, fingerprint, repair)
+  await persistProfile(profile, durableLock, storedLock, input, normalized, fingerprint, repair || rebuildHostInstall)
 }
 
 async function validateBunVersion(input: ManagedModulesInput, executor: BunExecutor): Promise<void> {
@@ -269,6 +292,7 @@ function profileMetadata(
     policyRegistryVersion: 1,
     typeScriptDefaultsHash: typeScriptDefaultsHash(),
     lockHash: Platform.hashText(lock),
+    installHost: installHostIdentity(input),
     nativePackages,
   }
 }
@@ -285,27 +309,6 @@ async function readProfileMetadata(
     )
   }
   return metadata
-}
-
-async function validateProfileMetadata(
-  metadata: Record<string, unknown>,
-  input: ManagedModulesInput,
-  fingerprint: string,
-): Promise<void> {
-  const requirements = normalize(input)
-  if (
-    metadata.fingerprint !== fingerprint || metadata.target !== input.target || metadata.bunVersion !== input.bunVersion
-    || metadata.policyRegistryVersion !== 1 || metadata.typeScriptDefaultsHash !== typeScriptDefaultsHash()
-    || JSON.stringify(metadata.runtimePins) !== JSON.stringify(input.runtimePins)
-    || JSON.stringify(metadata.singletonPackages)
-      !== JSON.stringify(input.singletonPackages ?? defaultSingletonPackages)
-    || JSON.stringify(metadata.requirements) !== JSON.stringify(requirements)
-  ) {
-    const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
-    Errors.ThrowUserInput(
-      `Managed npm dependencies changed. Repair with: tao prepare --repair (owning declaration: ${owner})`,
-    )
-  }
 }
 
 async function readManagedLock(
