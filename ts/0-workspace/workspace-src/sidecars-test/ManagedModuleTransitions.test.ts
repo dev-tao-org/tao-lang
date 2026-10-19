@@ -9,6 +9,28 @@ Tests.test('updates one consumer graph while preserving prior profiles and rejec
 Tests.test('rejects a second consumer graph for a live module without rewiring it', async () =>
   await withDirectory('managed-consumers', async root => await assertConsumerConflict(root)))
 
+Tests.test('serializes concurrent consumers publishing one shared module directory', async () =>
+  await withDirectory('managed-consumer-race', async root => await assertConcurrentConsumerRace(root)))
+
+Tests.test('rejects an unowned module path without creating a Tao project marker', async () =>
+  await withDirectory('managed-unowned-module', async root => {
+    const consumer = Path.join(root, 'consumer')
+    const unowned = Path.join(root, 'unowned')
+    await FileSystem.mkdir(consumer, { recursive: true })
+    await FileSystem.mkdir(unowned, { recursive: true })
+    await Tests.rejects(
+      prepareManagedModules({
+        directory: consumer,
+        modules: [{ directory: unowned, requirements: [] }],
+        target: 'browser',
+        runtimePins: {},
+        bunVersion: '1.2.0',
+      }, executorFor({})),
+      /outside a Tao project/,
+    )
+    Tests.expect(await FileSystem.exists(Path.join(unowned, '.tao'))).toBe(false)
+  }))
+
 Tests.test('rejects unsafe npm package names before starting Bun', async () => {
   let invoked = false
   await Tests.rejects(
@@ -126,6 +148,7 @@ async function assertConsumerConflict(root: string): Promise<void> {
   const sharedModule = Path.join(root, 'Shared')
   const firstRoot = Path.join(root, 'first')
   const secondRoot = Path.join(root, 'second')
+  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
   await FileSystem.mkdir(sharedModule, { recursive: true })
   const firstInput = {
     ...moduleInput(firstRoot, sharedModule, '4.1.0'),
@@ -142,6 +165,53 @@ async function assertConsumerConflict(root: string): Promise<void> {
   )
   Tests.expect(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')).toBe(manifest)
   Tests.expect(FileSystem.realpathSync(reactLink)).toBe(linkTarget)
+}
+
+async function assertConcurrentConsumerRace(root: string): Promise<void> {
+  const sourceRoot = Path.join(root, 'SharedProject')
+  const sharedModule = Path.join(sourceRoot, 'Modules', 'Shared')
+  await FileSystem.mkdir(Path.join(sourceRoot, '.tao'), { recursive: true })
+  await FileSystem.mkdir(sharedModule, { recursive: true })
+  let release!: () => void
+  const gate = new Promise<void>(resolve => {
+    release = resolve
+  })
+  let ready = 0
+  const executor = (version: string): BunExecutor => async (_command, args, cwd) => {
+    if (args[0] === '--version') {
+      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    }
+    await writeLock(cwd, { react: version })
+    await writePackage(cwd, 'react', version)
+    ready += 1
+    if (ready === 2) {
+      release()
+    }
+    await gate
+    return { status: 0, stdout: '', stderr: '' }
+  }
+  const firstInput = {
+    directory: Path.join(root, 'consumer-a'),
+    modules: [{ directory: sharedModule, requirements: [] }],
+    target: 'browser',
+    runtimePins: { react: '19.1.0' },
+    bunVersion: '1.2.0',
+  }
+  const secondInput = { ...firstInput, directory: Path.join(root, 'consumer-b'), runtimePins: { react: '18.3.1' } }
+  const results = await Promise.allSettled([
+    prepareManagedModules(firstInput, executor('19.1.0')),
+    prepareManagedModules(secondInput, executor('18.3.1')),
+  ])
+  Tests.expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
+  const failure = results.find(result => result.status === 'rejected')!
+  Tests.expect(String(failure.status === 'rejected' ? failure.reason : '')).toMatch(/already owned|being updated/)
+  const owner = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, '.tao-managed-module.json'), 'utf8'))
+  const manifest = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8'))
+  const profileManifest = JSON.parse(await FileSystem.readFile(Path.join(owner.profile, 'package.json'), 'utf8'))
+  Tests.expect(manifest.dependencies).toEqual(profileManifest.dependencies)
+  Tests.expect(FileSystem.realpathSync(Path.join(sharedModule, 'node_modules', 'react'))).toBe(
+    FileSystem.realpathSync(Path.join(owner.profile, 'node_modules', 'react')),
+  )
 }
 
 function moduleInput(root: string, directory: string, version: string): ManagedModulesInput {

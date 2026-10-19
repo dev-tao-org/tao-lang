@@ -71,6 +71,8 @@ async function createManagedFixture(): Promise<ManagedFixture> {
   const externalModule = Artifacts.resolvePath('tmp', `external-module-${Platform.randomUUID()}`)
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
   await FileSystem.mkdir(externalModule, { recursive: true })
+  await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
+  await FileSystem.mkdir(Path.join(externalModule, '.tao'), { recursive: true })
   await FileSystem.mkdir(Path.join(directory, 'Other'), { recursive: true })
   await FileSystem.writeFile(Path.join(moduleDirectory, '.gitignore'), '# authored\nlocal.txt\n')
   await FileSystem.writeFile(Path.join(directory, 'Other', 'package.json'), '{"name":"user-owned"}\n')

@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
+import { withManagedModuleLock } from './ManagedModuleLock'
 
 /** cleanManagedModuleMetadata removes only Tao-owned metadata and links inside one project. */
 export async function cleanManagedModuleMetadata(projectRoot: string): Promise<void> {
@@ -10,6 +11,10 @@ export async function cleanManagedModuleMetadata(projectRoot: string): Promise<v
 }
 
 async function cleanModuleMarker(projectRoot: string, marker: string): Promise<void> {
+  await withManagedModuleLock(Path.dirname(marker), () => cleanOwnedModuleMarker(projectRoot, marker))
+}
+
+async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Promise<void> {
   rejectSymlink(marker)
   const metadata = await Try(
     async () => JSON.parse(await FileSystem.readFile(marker, 'utf8')) as Record<string, unknown>,

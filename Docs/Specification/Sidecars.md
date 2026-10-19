@@ -50,7 +50,8 @@ durable lock without changing the pinned dependency graph.
 Named sessions in one app reuse its dependency graph. A live external module directory currently
 has one consumer's editor configuration: preparing it for a different consumer fails with an
 ownership diagnostic instead of replacing the first consumer's links. Separate source directories
-are needed for independent consumer configurations.
+are needed for independent consumer configurations. Concurrent preparation or cleanup of the same
+module reports that its tooling is busy; it cannot overwrite another operation's metadata.
 
 Native runtime dependencies are tracked separately from source and sidecar validation. Preparing
 or changing a dependency does not establish that a native platform package has been rebuilt or

@@ -1,6 +1,7 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { allRequirements } from './ManagedModuleGraph'
+import { withManagedModuleLock } from './ManagedModuleLock'
 import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from './ManagedModuleOwnership'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
 import type { ManagedModuleRequirement, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
@@ -21,7 +22,7 @@ export async function generatedModuleFiles(
 }
 
 /** publishModuleResolution writes owned module metadata and links packages to the shared app profile. */
-export async function publishModuleResolution(
+export function publishModuleResolution(
   directory: string,
   profile: string,
   requirements: ManagedModuleRequirement[],
@@ -29,17 +30,19 @@ export async function publishModuleResolution(
   projectRoot: string,
   repair = false,
 ): Promise<void> {
-  const merged = { ...runtimePins, ...Object.fromEntries(requirements.map(({ name, version }) => [name, version])) }
-  const localRequirements = Object.entries(merged).map(([name, version]) => ({ name, version, origin: 'runtime' }))
-  const previousOwner = await repairModuleFiles(
-    directory,
-    profile,
-    localRequirements,
-    typescriptDefaultsPath(projectRoot),
-    projectRoot,
-    repair,
-  )
-  await linkModulePackages(directory, profile, Object.keys(merged), previousOwner)
+  return withManagedModuleLock(directory, async () => {
+    const merged = { ...runtimePins, ...Object.fromEntries(requirements.map(({ name, version }) => [name, version])) }
+    const localRequirements = Object.entries(merged).map(([name, version]) => ({ name, version, origin: 'runtime' }))
+    const previousOwner = await repairModuleFiles(
+      directory,
+      profile,
+      localRequirements,
+      typescriptDefaultsPath(projectRoot),
+      projectRoot,
+      repair,
+    )
+    await linkModulePackages(directory, profile, Object.keys(merged), previousOwner)
+  })
 }
 
 /** ensureTypeScriptDefaults creates the project-shared immutable compiler configuration. */
