@@ -111,7 +111,12 @@ async function runTypeScriptTests(
     withTestTimings(
       reportPath =>
         runCommand(`bun test --parallel=${workers}`, {
-          variadicArgs: reportPath ? [...args, '--reporter=junit', '--reporter-outfile', reportPath] : [...args],
+          variadicArgs: [
+            '--tsconfig-override',
+            Repo.resolvePath('ts/tsconfig.base.json'),
+            ...args,
+            ...reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : [],
+          ],
           cwd: Repo.resolvePath('ts'),
           output: channel,
           signal,

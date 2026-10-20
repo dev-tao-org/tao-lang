@@ -1,0 +1,231 @@
+import { Errors, Try } from '@shared'
+import { FileSystem, Path, Platform } from '@shared/os'
+import { git, head, indexHash, indexPath, pathEntries, readJson, snapshot, tree, writeJson } from './ReviewGit'
+import { replaceEntries, validateSelection } from './ReviewPlan'
+import { assertOwnedSession, assertReviewedSnapshot, saveSession } from './ReviewSession'
+import type { ReviewHooks, ReviewJournal, ReviewSelection, ReviewSession } from './ReviewTypes'
+
+/** acceptSelection validates both trees and journals exact commits before advancing either branch. */
+export async function acceptSelection(
+  session: ReviewSession,
+  selection: ReviewSelection,
+  hooks: ReviewHooks = {},
+): Promise<void> {
+  await requireFinishedJournal(session)
+  await validateSelection(session, selection)
+  const journal = await prepareJournal(session, selection)
+  await writeJson(journalPath(session), journal)
+  await finishJournal(session, journal, hooks)
+}
+
+/** recoverAcceptance completes a frozen journal idempotently without reverting source edits. */
+export async function recoverAcceptance(session: ReviewSession): Promise<void> {
+  const journal = await readJson<ReviewJournal>(journalPath(session))
+  if (journal.phase === 'complete') {
+    return
+  }
+  if (journal.selection.session !== session.id) {
+    Errors.ThrowUserInput('Recovery journal belongs to a different review session.')
+  }
+  await finishJournal(session, journal)
+}
+
+async function prepareJournal(session: ReviewSession, selection: ReviewSelection): Promise<ReviewJournal> {
+  const index = await indexPath(session.root)
+  const originalIndexHash = await indexHash(index)
+  const reconciledIndex = Path.join(session.directory, `${Platform.randomUUID()}.reconciled.index`)
+  await FileSystem.cp(index, reconciledIndex)
+  if (
+    await pathEntries(session.root, selection.indexTree, selection.files)
+      !== await pathEntries(session.root, selection.reconciledIndexTree, selection.files)
+  ) {
+    await replaceEntries(session.root, reconciledIndex, selection.reconciledIndexTree, selection.files)
+  }
+  const sourceCommit = await createCommit(
+    session,
+    selection.sourceHead,
+    selection.sourceTree,
+    'Accept reviewed source corrections',
+  )
+  const reviewedCommit = await createCommit(
+    session,
+    selection.reviewedHead,
+    selection.reviewedTree,
+    reviewedMessage(selection, sourceCommit),
+  )
+  return {
+    selection,
+    sourceCommit,
+    reviewedCommit,
+    originalIndexHash,
+    reconciledIndexHash: await indexHash(reconciledIndex),
+    reconciledIndex,
+    phase: 'prepared',
+  }
+}
+
+function reviewedMessage(selection: ReviewSelection, sourceCommit: string): string {
+  const action = selection.kind === 'reopen' ? 'reopen' : 'accept'
+  return [
+    `Review: ${action} ${selection.files.length} path(s)`,
+    '',
+    `Source: ${sourceCommit}`,
+    `Approval: ${selection.proposal}`,
+    `Kind: ${selection.kind}`,
+    ...selection.files.map(path => `Path: ${JSON.stringify(path)}`),
+  ].join('\n')
+}
+
+async function requireFinishedJournal(session: ReviewSession): Promise<void> {
+  if (await FileSystem.exists(journalPath(session))) {
+    const journal = await readJson<ReviewJournal>(journalPath(session))
+    if (journal.phase !== 'complete') {
+      Errors.ThrowUserInput('An interrupted acceptance is pending. Run recover before accepting another selection.')
+    }
+  }
+}
+
+async function createCommit(
+  session: ReviewSession,
+  parent: string,
+  candidate: string,
+  message: string,
+): Promise<string> {
+  if (await head(session.root, `${parent}^{tree}`) === candidate) {
+    return parent
+  }
+  return (await git(session.root, ['commit-tree', candidate, '-p', parent, '-m', message])).trim()
+}
+
+async function finishJournal(session: ReviewSession, journal: ReviewJournal, hooks: ReviewHooks = {}): Promise<void> {
+  await assertOwnedSession(session)
+  await assertReviewedSnapshot(session, journal)
+  await requireExpectedRefs(session, journal)
+  const sourceIndex = await indexPath(session.root)
+  const lock = `${sourceIndex}.lock`
+  await acquireIndexLock(lock, session, journal)
+  await Try(async () => {
+    await requireExpectedIndex(sourceIndex, journal)
+    await requirePreparedDisk(session, journal)
+    if (await head(session.root) === journal.selection.sourceHead) {
+      await git(session.root, [
+        'update-ref',
+        `refs/heads/${session.sourceBranch}`,
+        journal.sourceCommit,
+        journal.selection.sourceHead,
+      ])
+    }
+    await recordPhase(session, journal, 'source')
+    await hooks.atPhase?.('source')
+    await installIndex(sourceIndex, lock, journal)
+    await recordPhase(session, journal, 'index')
+    await hooks.atPhase?.('index')
+    await finishReviewed(session, journal, hooks)
+  }, { finally: () => FileSystem.rm(lock, { force: true }) })
+  for (const path of journal.selection.files) {
+    if (journal.selection.kind === 'reopen') {
+      delete session.accepted[path]
+    } else {
+      session.accepted[path] = await pathEntries(session.root, journal.selection.diskTree, [path])
+    }
+  }
+  if (journal.selection.kind !== 'partial') {
+    session.recheck = session.recheck.filter(path => !journal.selection.files.includes(path))
+  }
+  await saveSession(session)
+  await hooks.atPhase?.('session')
+  await recordPhase(session, journal, 'complete')
+}
+
+async function requireExpectedRefs(session: ReviewSession, journal: ReviewJournal): Promise<void> {
+  const source = await head(session.root)
+  const reviewed = await head(session.reviewedRoot)
+  if (![journal.selection.sourceHead, journal.sourceCommit].includes(source)) {
+    Errors.ThrowUserInput('Implementation branch moved outside the frozen journal; recovery will not overwrite it.')
+  }
+  if (![journal.selection.reviewedHead, journal.reviewedCommit].includes(reviewed)) {
+    Errors.ThrowUserInput('Reviewed branch moved outside the frozen journal; recovery will not overwrite it.')
+  }
+}
+
+async function requirePreparedDisk(session: ReviewSession, journal: ReviewJournal): Promise<void> {
+  if (journal.phase !== 'prepared' || await head(session.root) !== journal.selection.sourceHead) {
+    return
+  }
+  const selection = journal.selection
+  const disk = await snapshot(session.root, session.directory, selection.sourceHead, selection.files)
+  if (
+    await pathEntries(session.root, disk, selection.files)
+      !== await pathEntries(session.root, selection.diskTree, selection.files)
+  ) {
+    Errors.ThrowUserInput(
+      'Saved selected content changed before the source commit. Recovery will not accept unseen changes.',
+    )
+  }
+}
+
+async function requireExpectedIndex(path: string, journal: ReviewJournal): Promise<void> {
+  const hash = await indexHash(path)
+  if (![journal.originalIndexHash, journal.reconciledIndexHash].includes(hash)) {
+    Errors.ThrowUserInput(
+      'The implementation index changed during acceptance; recovery will not overwrite staged work.',
+    )
+  }
+  if (await indexHash(journal.reconciledIndex) !== journal.reconciledIndexHash) {
+    Errors.ThrowUserInput('The retained reconciled index changed; recovery cannot safely continue.')
+  }
+}
+
+async function installIndex(path: string, lock: string, journal: ReviewJournal): Promise<void> {
+  if (await indexHash(path) !== journal.reconciledIndexHash) {
+    const pending = `${lock}.${Platform.randomUUID()}.pending`
+    await FileSystem.cp(journal.reconciledIndex, pending)
+    await FileSystem.rename(pending, path)
+  }
+}
+
+async function finishReviewed(session: ReviewSession, journal: ReviewJournal, hooks: ReviewHooks): Promise<void> {
+  await assertReviewedSnapshot(session, journal)
+  if (await head(session.reviewedRoot) !== journal.reviewedCommit) {
+    if (await tree(session.reviewedRoot) !== journal.selection.reviewedTree) {
+      await git(session.reviewedRoot, ['read-tree', '-u', '-m', journal.selection.reviewedHead, journal.reviewedCommit])
+    }
+    await hooks.atPhase?.('reviewed-tree')
+    await git(session.root, [
+      'update-ref',
+      `refs/heads/${session.reviewedBranch}`,
+      journal.reviewedCommit,
+      journal.selection.reviewedHead,
+    ])
+  }
+  await recordPhase(session, journal, 'reviewed')
+  await hooks.atPhase?.('reviewed-ref')
+}
+
+async function acquireIndexLock(path: string, session: ReviewSession, journal: ReviewJournal): Promise<void> {
+  const token = JSON.stringify({ session: session.id, proposal: journal.selection.proposal })
+  if (await FileSystem.exists(path)) {
+    if (await FileSystem.readFile(path, 'utf8') !== token) {
+      Errors.ThrowUserInput('A foreign Git index lock exists; recovery will not remove it.')
+    }
+    await FileSystem.rm(path)
+  }
+  await FileSystem.writeFile(path, token, { flag: 'wx' })
+}
+
+async function recordPhase(
+  session: ReviewSession,
+  journal: ReviewJournal,
+  phase: ReviewJournal['phase'],
+): Promise<void> {
+  journal.phase = phase
+  if (phase === 'complete') {
+    await FileSystem.mkdir(Path.join(session.directory, 'receipts'), { recursive: true })
+    await writeJson(Path.join(session.directory, 'receipts', `${journal.selection.proposal}.json`), journal)
+  }
+  await writeJson(journalPath(session), journal)
+}
+
+function journalPath(session: ReviewSession): string {
+  return Path.join(session.directory, 'journal.json')
+}

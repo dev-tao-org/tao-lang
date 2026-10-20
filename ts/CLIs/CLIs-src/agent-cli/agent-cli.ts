@@ -1,6 +1,7 @@
 import '../cli-kit/fatal-errors'
 import { configureCLIOutput, IO } from '@cli-kit'
 import { Platform } from '@shared/os'
+import './commands/skill-script'
 import unsandboxed from './commands/unsandboxed'
 import '../dev-cli/dev-cli'
 import { execute } from '../dev-cli/commands/_command-runner'

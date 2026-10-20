@@ -24,6 +24,7 @@ export default {
       'CLIs-src/dev-cli/commands/_setup.ts',
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
       'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
+      '../../agents/skills/*/scripts/*.ts',
       '**/*.test.ts',
     ]),
     perf: packageWorkspace([
@@ -44,7 +45,12 @@ export default {
 function packageWorkspace(entry: string[]) {
   return {
     ...(entry.length > 0 ? { entry } : {}),
-    project: ['**/*.{ts,tsx}'],
+    project: [
+      '**/*.{ts,tsx}',
+      ...entry.some(path => path.includes('agents/skills'))
+        ? ['../../agents/skills/*/scripts/**/*.ts']
+        : [],
+    ],
     paths: {
       '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],

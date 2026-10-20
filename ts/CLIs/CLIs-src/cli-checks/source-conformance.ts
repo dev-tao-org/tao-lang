@@ -13,7 +13,11 @@ import { sourceSizeDiagnostics } from './source-size'
 export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
-  for (const filename of await FileSystem.sourceFiles(root + '/ts')) {
+  const sources = [
+    ...await FileSystem.sourceFiles(root + '/ts'),
+    ...(await FileSystem.sourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
+  ]
+  for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const source = await FileSystem.file(filename).text()
     issues.push(...sourceConformanceIssues(relative, source))
