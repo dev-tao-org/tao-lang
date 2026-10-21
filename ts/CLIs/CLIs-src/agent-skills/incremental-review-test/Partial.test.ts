@@ -151,7 +151,7 @@ Tests.test('a pending reviewed correction requires its source patch before eithe
 
 Tests.test('entry plan and accept use a frozen JSON proposal; help needs no session', async () => {
   Tests.expect((await runReview(['--help'])).commands).toContain('status')
-  const entry = Repo.resolvePath('agents/skills/incremental-review/scripts/review.ts')
+  const entry = Repo.resolvePath('agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts')
   await withFixture({ content: 'base\n' }, async ({ root, session }) => {
     await put(root, 'content', 'approved\n')
     const out = Path.join(session.directory, 'proposal.json')

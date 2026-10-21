@@ -1,5 +1,5 @@
 ---
-name: incremental-review
+name: partial-stepwise-big-incremental-review
 description: >-
   Guide a developer through a large branch review in small chunks, track explicitly accepted
   files or changes on a separate review branch, implement requested corrections, and resume
@@ -8,7 +8,7 @@ description: >-
   remain with code-review.
 ---
 
-# Incremental Review
+# Partial Stepwise Big Incremental Review
 
 ## Guide the review
 

@@ -3,7 +3,7 @@
 Run the repository-owned TypeScript entry through the generic runner:
 
 ```sh
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- <operation> <arguments>
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- <operation> <arguments>
 ```
 
 The skill entry imports [the implementation](../../../../ts/CLIs/CLIs-src/agent-skills/incremental-review/incremental-review.ts).
@@ -17,8 +17,8 @@ restricted harness may require its normal permission flow for repository Git wri
 ## Establish a session
 
 ```sh
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- start --base main --branch feat/reviewed-projects
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- status
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- start --base main --branch feat/reviewed-projects
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- status
 ```
 
 Use `--repo <absolute-checkout>` for an explicitly selected repository. Start creates its own
@@ -35,7 +35,7 @@ selection is independent of this comparison. Commit-to-commit views may need ref
 An unambiguous whole-file request takes one call:
 
 ```sh
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- accept --files 'Docs/Specification/Sidecars.md'
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- accept --files 'Docs/Specification/Sidecars.md'
 ```
 
 Multiple literal files or folders are supported. A folder means all selected descendants, including
@@ -57,8 +57,8 @@ content, since their starting trees differ. Omit the source patch for already co
 Pending corrections included in the reviewed patch must also be included in the source patch.
 
 ```sh
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- plan --files path/to/file.ts --source-patch /absolute/fix.patch --reviewed-patch /absolute/accepted.patch --out /absolute/selection.json
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- accept --selection /absolute/selection.json
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- plan --files path/to/file.ts --source-patch /absolute/fix.patch --reviewed-patch /absolute/accepted.patch --out /absolute/selection.json
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- accept --selection /absolute/selection.json
 ```
 
 `plan` freezes the candidates and source/index observations. Treat its output as evidence of scope,
@@ -72,11 +72,11 @@ normalization uses Git's canonical content. Implementation worktree bytes remain
 ## Reopen, track and recover
 
 ```sh
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- reopen --files path/to/file.ts
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- recheck --files path/to/caller.ts --state pending
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- recheck --files path/to/caller.ts --state clear
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- note --text 'Current chunk: project lifecycle; pending: confirm cleanup message scope.'
-./agent skill-script agents/skills/incremental-review/scripts/review.ts -- recover
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- reopen --files path/to/file.ts
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- recheck --files path/to/caller.ts --state pending
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- recheck --files path/to/caller.ts --state clear
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- note --text 'Current chunk: project lifecycle; pending: confirm cleanup message scope.'
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- recover
 ```
 
 Reopening removes acceptance for selected content while preserving implementation files. Record
