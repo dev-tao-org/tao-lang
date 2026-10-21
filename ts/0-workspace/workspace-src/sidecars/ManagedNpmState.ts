@@ -2,14 +2,14 @@ import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { allRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
-import type { ManagedModulesInput } from './ManagedModuleTypes'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
   metadata: Record<string, unknown>,
   input: ManagedModulesInput,
   fingerprint: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): Promise<void> {
   if (
@@ -21,7 +21,7 @@ export async function validateProfileMetadata(
       !== JSON.stringify(input.singletonPackages ?? defaultSingletonPackages)
     || !profileRequirementsMatch(metadata.requirements, requirements)
   ) {
-    const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
+    const owner = requirements[0]?.origin ?? 'project runtime'
     Errors.ThrowUserInput(
       `Managed npm dependencies changed. Repair with: tao setup --repair (owning declaration: ${owner})`,
     )
@@ -90,7 +90,7 @@ export async function claimManagedProfile(
 
 /** managedProfileManifest serializes exact top-level dependencies for the prepared graph. */
 export function managedProfileManifest(
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): string {
   return `${
@@ -105,6 +105,19 @@ export function managedProfileManifest(
       2,
     )
   }\n`
+}
+
+/** validateManagedManifest checks the generated exact dependency manifest against declarations. */
+export async function validateManagedManifest(
+  profile: string,
+  requirements: readonly NormalizedManagedRequirement[],
+  runtimePins: Record<string, string>,
+): Promise<void> {
+  const expected = managedProfileManifest(requirements, runtimePins)
+  const path = Path.join(profile, 'package.json')
+  if (!await FileSystem.exists(path) || await FileSystem.readFile(path, 'utf8') !== expected) {
+    Errors.ThrowUserInput('Managed npm manifest drifted. Repair with: tao setup --repair.')
+  }
 }
 
 /** validateManagedProfilePath rejects links and escapes within the generated cache path. */
@@ -180,7 +193,7 @@ async function profileContentsMatch(profile: string, durableLock: string, expect
     && await optionalText(Path.join(profile, 'package.json')) === expectedManifest
 }
 
-function profileRequirementsMatch(value: unknown, requirements: [string, string, string][]): boolean {
+function profileRequirementsMatch(value: unknown, requirements: readonly NormalizedManagedRequirement[]): boolean {
   const expected = allRequirements(requirements)
   return isStringRecord(value) && sameStringRecord(value, expected)
 }

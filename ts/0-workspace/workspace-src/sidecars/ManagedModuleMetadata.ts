@@ -1,6 +1,5 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
-import { allRequirements } from './ManagedModuleGraph'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from './ManagedModuleOwnership'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
@@ -74,27 +73,6 @@ export async function validateTypeScriptDefaults(projectRoot: string): Promise<v
   }
 }
 
-/** validateManagedManifest checks the generated exact dependency manifest against declarations. */
-export async function validateManagedManifest(
-  profile: string,
-  requirements: [string, string, string][],
-  runtimePins: Record<string, string>,
-): Promise<void> {
-  const expected = {
-    name: 'tao-managed-app',
-    private: true,
-    type: 'module',
-    dependencies: allRequirements(requirements, runtimePins),
-  }
-  const path = Path.join(profile, 'package.json')
-  if (
-    !await FileSystem.exists(path)
-    || await FileSystem.readFile(path, 'utf8') !== `${JSON.stringify(expected, null, 2)}\n`
-  ) {
-    Errors.ThrowUserInput(`Managed npm manifest drifted. Repair with: tao setup --repair.`)
-  }
-}
-
 /** typeScriptDefaultsHash fingerprints the compiler settings shared by every Tao module. */
 export function typeScriptDefaultsHash(): string {
   return Platform.hashText(typeScriptDefaults)
@@ -141,7 +119,7 @@ async function moduleDrift(
   const files = [
     [
       Path.join(directory, 'package.json'),
-      JSON.stringify({ private: true, type: 'module', dependencies: merged }, null, 2) + '\n',
+      moduleManifest(merged),
     ],
     [
       Path.join(directory, 'tsconfig.json'),
@@ -190,19 +168,9 @@ async function repairModuleFiles(
   projectRoot: string,
   repair: boolean,
 ): Promise<ManagedModuleOwner | undefined> {
+  const dependencies = Object.fromEntries(requirements.map(({ name, version }) => [name, version]))
   const files = [
-    [
-      Path.join(directory, 'package.json'),
-      JSON.stringify(
-        {
-          private: true,
-          type: 'module',
-          dependencies: Object.fromEntries(requirements.map(({ name, version }) => [name, version])),
-        },
-        null,
-        2,
-      ) + '\n',
-    ],
+    [Path.join(directory, 'package.json'), moduleManifest(dependencies)],
     [Path.join(directory, 'tsconfig.json'), moduleTypeScriptConfig(directory, defaultsPath)],
   ] as const
   const marker = Path.join(directory, '.tao-managed-module.json')
@@ -235,6 +203,10 @@ async function repairModuleFiles(
   }
   await ensureModuleIgnore(directory, owner !== undefined)
   return previousOwner
+}
+
+function moduleManifest(dependencies: Record<string, string>): string {
+  return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`
 }
 
 function cannotReplaceModuleFile(

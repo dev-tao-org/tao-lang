@@ -1,5 +1,10 @@
+import type { ManagedGraphReference } from '../dependencies/Types'
+
 /** ManagedModuleRequirement pins one npm package to the declaration that owns it. */
 export type ManagedModuleRequirement = { name: string; version: string; origin: string }
+
+/** NormalizedManagedRequirement retains declaration ownership while ordering requirements across modules. */
+export type NormalizedManagedRequirement = ManagedModuleRequirement & { directory: string }
 
 /** ManagedModulesInput describes the reachable Tao modules and app runtime policy. */
 export type ManagedModulesInput = {
@@ -28,4 +33,3 @@ export type PreparedManagedModules = {
   lockfile: string
   nativePackages: string[]
 }
-import type { ManagedGraphReference } from '../dependencies/Types'

@@ -2,17 +2,17 @@ import { Errors } from '@shared'
 import { Files, Path, Platform } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
-import type { ManagedModulesInput } from './ManagedModuleTypes'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { optionalJson, optionalText } from './ManagedNpmState'
 
 /** readManagedProfileMetadata requires prepared metadata for the active install profile. */
 export async function readManagedProfileMetadata(
   profile: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
 ): Promise<Record<string, unknown>> {
   const metadata = await optionalJson(Path.join(profile, '.tao-managed.json'))
   if (!metadata) {
-    const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
+    const owner = requirements[0]?.origin ?? 'project runtime'
     requireSetup(
       `Managed npm declarations changed or are not prepared. Repair with: tao setup --repair (owning declaration: ${owner})`,
     )
@@ -48,7 +48,7 @@ export async function readManagedProfileLock(
 /** loadDurableLock reads canonical graph bytes or restores the exact verified source lock. */
 export async function loadDurableLock(
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
   durableLock: string,
   durableHash: string,
@@ -81,7 +81,7 @@ function validateDurableLock(
 
 async function recoverManagedLock(
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): Promise<string | undefined> {
   const reference = input.previousGraphReference
@@ -94,7 +94,7 @@ async function recoverManagedLock(
 async function readReferencedLock(
   input: ManagedModulesInput,
   reference: NonNullable<ManagedModulesInput['previousGraphReference']>,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): Promise<string | undefined> {
   const path = Path.resolve(input.directory, ...reference.lockPath.split('/'))

@@ -1,17 +1,14 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
-import type { ManagedModulesInput } from './ManagedModuleTypes'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
 const installPolicyVersion = 1
 
 /** installHostIdentity returns the host and policy identity stored with generated node_modules. */
 export function installHostIdentity(input: ManagedModulesInput): Record<string, string | number> {
-  const host = input.hostIdentity ?? {
-    os: Platform.systemInfo().os,
-    architecture: Platform.systemInfo().architecture,
-  }
+  const host = input.hostIdentity ?? Platform.systemInfo()
   return { os: host.os, architecture: host.architecture, installPolicyVersion }
 }
 
@@ -33,7 +30,7 @@ export async function validateReusableProfile(
   profile: string,
   metadata: Record<string, unknown>,
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   fingerprint: string,
   graphFingerprint: string,
   storedLock: string,

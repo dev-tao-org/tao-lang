@@ -12,12 +12,12 @@ import {
   ensureTypeScriptDefaults,
   publishModuleResolution,
   typeScriptDefaultsHash,
-  validateManagedManifest,
   validateTypeScriptDefaults,
 } from './ManagedModuleMetadata'
 import type {
   BunExecutor,
   ManagedModulesInput,
+  NormalizedManagedRequirement,
   PreparedManagedModules,
 } from './ManagedModuleTypes'
 import {
@@ -43,6 +43,7 @@ import {
   ensureOwnedFile,
   managedProfileManifest,
   readOwnedMetadata,
+  validateManagedManifest,
   validateManagedProfilePath,
   validateProfileMetadata,
   writeReadOnly,
@@ -109,7 +110,7 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
 
 async function prepareProfile(
   input: ManagedModulesInput,
-  normalized: [string, string, string][],
+  normalized: readonly NormalizedManagedRequirement[],
   fingerprint: string,
   graphFingerprint: string,
   profile: string,
@@ -189,7 +190,7 @@ function validateExistingState(
 
 async function ensureProfileManifest(
   profile: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
   repair: boolean,
 ): Promise<void> {
@@ -226,7 +227,7 @@ async function persistProfile(
   durableLock: string,
   storedLock: string | undefined,
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   fingerprint: string,
   graphFingerprint: string,
   repair: boolean,
@@ -251,7 +252,7 @@ async function persistProfile(
 
 function profileMetadata(
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   fingerprint: string,
   graphFingerprint: string,
   lock: string,

@@ -3,22 +3,21 @@ import { FileSystem, Path } from '@shared/os'
 import { satisfies, valid, validRange } from 'semver'
 import TypeScript from 'typescript'
 import { isNpmPackageName } from '../NpmPackageName'
-import type { ManagedModulesInput } from './ManagedModuleTypes'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 
 /** defaultSingletonPackages lists app frameworks that require one canonical installed path. */
 export const defaultSingletonPackages = ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
 
 /** allRequirements combines Tao declarations and centrally pinned app runtime packages. */
 export function allRequirements(
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string> = {},
 ): Record<string, string> {
   const versions = new Map<string, Map<string, Set<string>>>()
-  for (const [, name, value] of requirements) {
-    const [version, origin] = value.split('\n')
-    validatePackageName(name, origin ?? 'module declaration')
-    requireExactVersion(name, version!, origin ?? 'module declaration')
-    addVersion(versions, name, version!, origin ?? 'module declaration')
+  for (const { name, version, origin } of requirements) {
+    validatePackageName(name, origin)
+    requireExactVersion(name, version, origin)
+    addVersion(versions, name, version, origin)
   }
   for (const [name, version] of Object.entries(runtimePins)) {
     validatePackageName(name, 'runtime policy')
@@ -39,7 +38,7 @@ export function allRequirements(
 /** validateGraph checks exact top-level pins against the immutable Bun lockfile. */
 export async function validateGraph(
   profile: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): Promise<void> {
   const source = await FileSystem.readFile(Path.join(profile, 'bun.lock'), 'utf8')
@@ -49,7 +48,7 @@ export async function validateGraph(
 /** validateGraphContents validates exact top-level pins in a serialized Bun lock. */
 export function validateGraphContents(
   source: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): void {
   if (!graphContentsMatch(source, requirements, runtimePins)) {
@@ -62,7 +61,7 @@ export function validateGraphContents(
 /** graphContentsMatch checks whether a serialized Bun lock has the required direct package pins. */
 export function graphContentsMatch(
   source: string,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): boolean {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
@@ -101,7 +100,7 @@ export function graphContentsMatch(
 export async function auditInstalledGraph(
   profile: string,
   input: ManagedModulesInput,
-  requirements: [string, string, string][],
+  requirements: readonly NormalizedManagedRequirement[],
 ): Promise<void> {
   const packages = await installedPackages(profile, allRequirements(requirements, input.runtimePins))
   const singletons = new Set([
