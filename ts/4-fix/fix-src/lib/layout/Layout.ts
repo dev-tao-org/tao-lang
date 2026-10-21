@@ -1,3 +1,4 @@
+import * as CST from '@cst'
 import { Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
@@ -50,7 +51,7 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     return token.text
   }
   const level = plan.gaps[index]!.indent
-  const body = timings.run(formatEmbedded, options.typescript, token.text.slice(5, -3), {
+  const body = timings.run(formatEmbedded, options.typescript, CST.TypeScriptBody(token), {
     indent: options.indent ?? 2,
     level: level + 1,
     width: options.width ?? 120,

@@ -21,3 +21,9 @@ export function RequiredChild(cst: SyntaxNode, type: string): SyntaxNode {
   return cst.namedChildren.find(child => child.type === type)
     ?? Errors.ThrowShouldNeverHappen(`Missing CST child ${type} on ${cst.type}.`)
 }
+
+/** TypeScriptBody extracts a TypeScript CST node's fenced source, preserving its interior whitespace. */
+export function TypeScriptBody(cst: Pick<SyntaxNode, 'text'>): string {
+  // ex: "```ts\nX\n```" -> "\nX\n"
+  return cst.text.slice(5, -3)
+}

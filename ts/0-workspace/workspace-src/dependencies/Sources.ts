@@ -5,7 +5,7 @@ import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from
 /** defaultSourceAlias chooses an import alias from the source identifier. */
 export function defaultSourceAlias(requirement: DependencyRequirement): string {
   return requirement.provider === 'github'
-    ? requirement.identifier.replace(/\.git$/, '').split('/').at(-1)!
+    ? githubIdentifierPath(requirement.identifier).split('/').at(-1)!
     : Path.basename(requirement.identifier.replaceAll('\\', '/'))
 }
 
@@ -131,7 +131,7 @@ async function resolveGitHubSource(
     preparationNeeded(`GitHub source ${identity} did not resolve to an immutable commit ID.`)
   }
   const root = Path.resolve(options.storeRoot ?? Path.join(projectRoot, '.tao', 'cache', 'dependencies'))
-  const cacheLocation = Path.join(root, 'github', safeName(coordinates.repository), commit)
+  const cacheLocation = Path.join(root, 'github', githubCacheName(coordinates.repository), commit)
   await materializeGitHubCache(coordinates.repository, commit, cacheLocation, options)
   const location = await githubProjectLocation(requirement, identity, coordinates.subdirectory, cacheLocation)
   requireProjectRoot(location, `GitHub source ${identity}`)
@@ -193,13 +193,15 @@ function normalizedSubdirectory(value: string | undefined): string | undefined {
     return undefined
   }
   const normalized = value.replaceAll('\\', '/')
+  // ex: ui/forms -> ui/forms | ex: ../forms -> undefined
   return normalized.startsWith('/') || normalized.split('/').some(part => ['..', '.', ''].includes(part))
     ? undefined
     : normalized
 }
 
 function githubCoordinates(identifier: string): { repository: string; subdirectory?: string } {
-  const normalized = identifier.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '')
+  const normalized = githubIdentifierPath(identifier).replace(/\/$/, '')
+  // ex: x/foo/ui/forms -> owner x, name foo, subdirectory [ui, forms]
   const [owner, name, ...subdirectory] = normalized.split('/')
   if (!owner || !name || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name)) {
     Errors.ThrowUserInput(`Invalid GitHub dependency identifier ${identifier}.`)
@@ -210,6 +212,12 @@ function githubCoordinates(identifier: string): { repository: string; subdirecto
   }
 }
 
-function safeName(repository: string): string {
-  return repository.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '').replaceAll('/', '--')
+function githubCacheName(repository: string): string {
+  // ex: https://github.com/x/foo.git -> x--foo
+  return githubIdentifierPath(repository).replaceAll('/', '--')
+}
+
+function githubIdentifierPath(identifier: string): string {
+  // ex: https://github.com/x/foo.git -> x/foo
+  return identifier.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '')
 }

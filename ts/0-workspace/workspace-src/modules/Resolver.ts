@@ -166,6 +166,7 @@ async function namedTargets(
 }
 
 function projectImport(specifier: string): { alias: string; module: string; parts: string[] } | undefined {
+  // ex: x@ui/forms -> { alias: x, module: ui, parts: [forms] }
   const [segment, ...parts] = specifier.split('/')
   const match = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/.exec(segment!)
   return match ? { alias: match[1]!, module: match[2]!, parts } : undefined

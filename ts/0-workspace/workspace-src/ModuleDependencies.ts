@@ -140,6 +140,7 @@ async function resolveModule(projectRoot: string, moduleName: string): Promise<s
 }
 
 function parsePackageSpec(spec: string): { packageName: string; version?: string } {
+  // ex: @x/foo@1.2.3 -> packageName @x/foo, version 1.2.3
   const index = spec.lastIndexOf('@')
   const packageName = index > 0 ? spec.slice(0, index) : spec
   const version = index > 0 ? spec.slice(index + 1) : undefined

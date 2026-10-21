@@ -168,6 +168,7 @@ function previousPins(
   }
   const sources = materializeSources(previous.sources, projectRoot, bundledProjects)
   for (const value of Object.values(previous.roots)) {
+    // ex: github:x/foo@v1 -> identity github:x/foo, version v1
     const split = value.lastIndexOf('@')
     const identity = split > 0 ? value.slice(0, split) : ''
     const version = split > 0 ? value.slice(split + 1) : ''

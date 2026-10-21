@@ -30,10 +30,22 @@ export type LinkedProgram = {
 
 /** namespaceFromPath derives the default namespace of a package import. */
 export function namespaceFromPath(path: string): string | undefined {
-  const parts = path.split('/').filter(part => part !== '' && part !== '.' && part !== '..')
+  // ex: ../@Foo.tao/ -> [@Foo.tao]
+  const parts = path.split('/').filter(isNamedImportPathSegment)
+  // ex: [@Foo.tao] -> @Foo
   const last = parts.at(-1)?.replace(/\.tao$/, '')
+  // ex: @Foo -> Foo
   const name = last?.startsWith('@') ? last.slice(1) : last
-  return name && /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name) ? name : undefined
+  return isTaoIdentifier(name) ? name : undefined
+}
+
+function isNamedImportPathSegment(part: string): boolean {
+  return part !== '' && part !== '.' && part !== '..'
+}
+
+function isTaoIdentifier(name: string | undefined): name is string {
+  // ex: Foo -> true | ex: Foo-bar -> false
+  return name !== undefined && /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name)
 }
 
 type ResolvedImport = {

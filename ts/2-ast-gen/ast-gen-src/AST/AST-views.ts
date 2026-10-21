@@ -69,7 +69,7 @@ export function Injection(cst: CST.SyntaxNode): Injection {
     captures: cst.namedChildren.filter(child => child.type === 'InjectionCapture').map(child =>
       AST.Construct(child, 'Capture')
     ),
-    code: CST.RequiredField(cst, 'code').text.slice(5, -3).trim(),
+    code: CST.TypeScriptBody(CST.RequiredField(cst, 'code')).trim(),
   })
 }
 
