@@ -126,7 +126,7 @@ const discover = Timings.measure(
         }
       }
     }
-    for (const statement of source.document.root.declarations.filter(isImportStatement)) {
+    for (const statement of source.document.root.declarations.filter(AST.IsImportStatement)) {
       const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
       const context = { ...state, projectRoot }
       const targets = specifier === undefined
@@ -187,10 +187,4 @@ function parseDocument(
 
 function sourceModule(path: string, document: AST.Document): SourceModule {
   return { path, document, imports: [], siblings: [] }
-}
-
-function isImportStatement(
-  declaration: AST.Declaration,
-): declaration is AST.UseStatement | AST.UsePackageStatement {
-  return AST.IsUseStatement(declaration) || AST.IsUsePackageStatement(declaration)
 }

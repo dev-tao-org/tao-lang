@@ -6,7 +6,7 @@ import type { SourceEdit } from '../Source'
 
 /** organizeImports collects imports while keeping aliases, comments and unresolved names intact. */
 export function organizeImports(source: string, tree: Tree, ast: AST.Document): SourceEdit[] {
-  const imports = ast.root.declarations.filter(isImport)
+  const imports = ast.root.declarations.filter(AST.IsImportStatement)
   if (imports.length === 0) {
     return []
   }
@@ -25,10 +25,6 @@ export function organizeImports(source: string, tree: Tree, ast: AST.Document): 
 
 type Import = AST.UseStatement | AST.UsePackageStatement
 type Group = { source: string; form: string; names: Set<string>; text?: string }
-
-function isImport(node: AST.Declaration): node is Import {
-  return AST.IsUseStatement(node) || AST.IsUsePackageStatement(node)
-}
 
 function importGroups(
   source: string,

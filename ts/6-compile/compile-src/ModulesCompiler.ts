@@ -6,12 +6,15 @@ import { literal } from './codegen-util'
 import { compileLetDefinition } from './ValuesCompiler'
 import { compileViewDeclaration } from './ViewsCompiler'
 
+/** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
+export type ForeignViewPathResolver = (modulePath: string, authoredPath: string) => string
+
 /** compileProgram emits one app module from its already linked source modules. */
 export function compileProgram(
   program: LinkedProgram,
   revision: string,
   appName?: string,
-  foreignViewPath?: (modulePath: string, authoredPath: string) => string,
+  foreignViewPath?: ForeignViewPathResolver,
 ): string {
   const selected = selectApp(program, appName)
   const moduleIndexes = new Map(program.modules.map((module, index) => [module.path, index]))
@@ -88,7 +91,7 @@ function compileViews(
 
 function foreignViews(
   program: LinkedProgram,
-  resolvePath?: (modulePath: string, authoredPath: string) => string,
+  resolvePath?: ForeignViewPathResolver,
 ): { imports: string; names: ReadonlyMap<string, string> } {
   const views = program.modules.flatMap(module =>
     module.document.root.declarations

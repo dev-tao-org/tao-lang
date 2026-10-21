@@ -50,6 +50,11 @@ export function IsUsePackageStatement(node: AST.Node): node is AST.UsePackageSta
   return IsKind(node, 'UsePackageStatement')
 }
 
+/** IsImportStatement narrows a semantic node to a declaration or package import. */
+export function IsImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
+  return IsUseStatement(node) || IsUsePackageStatement(node)
+}
+
 /** IsViewRender narrows a semantic node to a view invocation. */
 export function IsViewRender(node: AST.Node): node is AST.ViewRender {
   return IsKind(node, 'ViewRender')

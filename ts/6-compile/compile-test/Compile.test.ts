@@ -227,9 +227,7 @@ async function linkedUIProgram(
     ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')))
     : undefined
   const imports: SourceModule['imports'][number][] = document.root.declarations
-    .filter((node): node is SourceModule['imports'][number]['statement'] =>
-      AST.IsUseStatement(node) || AST.IsUsePackageStatement(node)
-    )
+    .filter(AST.IsImportStatement)
     .map(statement => {
       const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
       const isUI = from === 'tao@ui'
