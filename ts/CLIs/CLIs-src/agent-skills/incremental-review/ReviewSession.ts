@@ -3,11 +3,6 @@ import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import { assertSupportedTransforms, git, head, readJson, snapshot, tree, writeJson } from './ReviewGit'
 import type { ReviewJournal, ReviewSession } from './ReviewTypes'
 
-/** sessionDirectory locates retained state in the implementation checkout. */
-export function sessionDirectory(root: string): string {
-  return Path.join(root, '.artifacts/notes/incremental-review/active')
-}
-
 /** withReviewLock serializes operations without leaving stale locks after interruption. */
 export async function withReviewLock<Value>(root: string, action: () => Promise<Value>): Promise<Value> {
   const directory = sessionDirectory(root)
@@ -185,4 +180,8 @@ async function changedAcceptedPaths(session: ReviewSession, diskTree: string): P
     }
   }
   return result
+}
+
+function sessionDirectory(root: string): string {
+  return Path.join(root, '.artifacts/notes/incremental-review/active')
 }

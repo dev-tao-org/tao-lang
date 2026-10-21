@@ -102,6 +102,9 @@ function hasValidPrefixTokens(tokens: readonly string[]): boolean {
 }
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {
+  if (prefix.text === 'push') {
+    return { command: './agent push', variadicArgs: trailing }
+  }
   if (prefix.text === 'performance preview' || prefix.text === 'performance record') {
     return { command: './dev ' + prefix.text, variadicArgs: trailing }
   }

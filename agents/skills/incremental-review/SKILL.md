@@ -53,6 +53,8 @@ description: >-
 - Use the path-based `./agent skill-script` runner for [the review script](scripts/review.ts).
   Follow [script operations](references/operations.md) for exact commands and partial selections.
   Whole-file approval has a single fast script call; do not repeat planning or tests for it.
+- Keep executable mechanics in `ts/CLIs/CLIs-src/agent-skills/incremental-review/`; the skill's
+  script is a thin relative-import entry. Tests live in the sibling `incremental-review-test/`.
 - Scripts own exact snapshots, literal path expansion, isolated commits, preservation of other
   edits and staging, and interrupted-transfer recovery. They do not interpret natural language,
   decide review quality or grant approval. Do not substitute stash/reset/copy shell sequences.

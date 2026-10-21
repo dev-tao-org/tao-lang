@@ -1,6 +1,7 @@
-import { FileSystem, Path, Tests } from '@shared/os'
-import { runReview } from '../../../../../agents/skills/incremental-review/scripts/review'
-import { acceptSelection } from '../../../../../agents/skills/incremental-review/scripts/ReviewAccept'
+import { FileSystem, Path, Repo, Tests } from '@shared/os'
+import { runSkillScript } from '../../agent-cli/skills/SkillScript'
+import { runReview } from '../incremental-review/incremental-review'
+import { acceptSelection } from '../incremental-review/ReviewAccept'
 import {
   diffPatch,
   git,
@@ -8,8 +9,8 @@ import {
   privateIndex,
   snapshot,
   tree,
-} from '../../../../../agents/skills/incremental-review/scripts/ReviewGit'
-import { planSelection } from '../../../../../agents/skills/incremental-review/scripts/ReviewPlan'
+} from '../incremental-review/ReviewGit'
+import { planSelection } from '../incremental-review/ReviewPlan'
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('partial correction preserves separate staged and unstaged hunks in the same file', async () => {
@@ -150,13 +151,18 @@ Tests.test('a pending reviewed correction requires its source patch before eithe
 
 Tests.test('entry plan and accept use a frozen JSON proposal; help needs no session', async () => {
   Tests.expect((await runReview(['--help'])).commands).toContain('status')
+  const entry = Repo.resolvePath('agents/skills/incremental-review/scripts/review.ts')
   await withFixture({ content: 'base\n' }, async ({ root, session }) => {
     await put(root, 'content', 'approved\n')
     const out = Path.join(session.directory, 'proposal.json')
-    const result = await runReview(['plan', '--repo', root, '--files', 'content', '--out', out])
-    Tests.expect(result.proposal).toBe(out)
-    await runReview(['accept', '--repo', root, '--selection', out])
+    await runSkillScript(entry, ['plan', '--repo', root, '--files', 'content', '--out', out])
+    Tests.expect(await FileSystem.exists(out)).toBe(true)
+    await runSkillScript(entry, ['status', '--repo', root])
+    await runSkillScript(entry, ['accept', '--repo', root, '--selection', out])
+    Tests.expect(await git(root, ['show', 'HEAD:content'])).toBe('approved\n')
     Tests.expect(await read(session.reviewedRoot, 'content')).toBe('approved\n')
+  }, async root => {
+    await runSkillScript(entry, ['start', '--repo', root, '--base', 'main', '--branch', 'feat/reviewed-fixture'])
   })
 })
 

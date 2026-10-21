@@ -1,8 +1,8 @@
 import { Try } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
-import { git } from '../../../../../agents/skills/incremental-review/scripts/ReviewGit'
-import { startReview, withReviewLock } from '../../../../../agents/skills/incremental-review/scripts/ReviewSession'
-import type { ReviewSession } from '../../../../../agents/skills/incremental-review/scripts/ReviewTypes'
+import { git } from '../incremental-review/ReviewGit'
+import { startReview, withReviewLock } from '../incremental-review/ReviewSession'
+import type { ReviewSession } from '../incremental-review/ReviewTypes'
 
 /** ReviewFixture owns a temporary local repository, its reviewed checkout and saved source files. */
 export type ReviewFixture = { root: string; session: ReviewSession }

@@ -12,12 +12,20 @@ description: >-
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
-`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Periodic
-backup pushes are authorized below; other publication needs the Developer's authorization.
+`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Non-main
+branch pushes through the guarded route are authorized; other publication needs the Developer's authorization.
+
+## Guarded branch pushes
+
+- Use `./agent unsandboxed push <remote> <branch>` to publish the matching local branch. For a
+  different destination, use `--source <local-branch>`, such as
+  `./agent unsandboxed push origin backup/feat/work --source feat/work`.
+- Keep raw `git push` outside the generic host allowlist. Force pushes, remote deletions and
+  landing still need separate explicit authorization; this command does not perform them.
 
 ## Backup pushes
 
-- Use `./agent unsandboxed git <operation>` for supported Git mutations; the harness must grant host execution. Keep ordinary read-only Git inspection sandboxed. Do not install machine-local Git filesystem grants as a prerequisite.
+- Use the guarded push command above for backups and `./agent unsandboxed git <operation>` for other supported Git mutations; the harness must grant host execution. Keep ordinary read-only Git inspection sandboxed. Do not install machine-local Git filesystem grants as a prerequisite.
 
 - Push committed work to `origin` after a meaningful completed chunk or before a substantial
   handoff, rather than after every commit. Report a failed backup and retain it as an unresolved

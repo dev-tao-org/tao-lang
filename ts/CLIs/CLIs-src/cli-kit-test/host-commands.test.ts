@@ -27,6 +27,13 @@ Tests.test('native Git arguments stay literal and in their original order', () =
   })
 })
 
+Tests.test('push host routing uses the guarded command and never permits raw git push', () => {
+  Tests.expect(resolveHostCommand(['push', 'origin', 'feat/work'], ['push']))
+    .toEqual({ command: './agent push', variadicArgs: ['origin', 'feat/work'] })
+  Tests.expect(() => resolveHostCommand(['git', 'push', 'origin', 'main'], ['git push']))
+    .toThrow('no supported target')
+})
+
 Tests.test('host routing rejects empty, option-led, substring, and unsupported legacy requests', () => {
   Tests.expect(() => resolveHostCommand([], ['git status'])).toThrow('Name an allowlisted host command')
   Tests.expect(() => resolveHostCommand(['--help'], ['git status'])).toThrow('without leading options')

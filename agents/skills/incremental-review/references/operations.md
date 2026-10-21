@@ -6,6 +6,10 @@ Run the repository-owned TypeScript entry through the generic runner:
 ./agent skill-script agents/skills/incremental-review/scripts/review.ts -- <operation> <arguments>
 ```
 
+The skill entry imports [the implementation](../../../../ts/CLIs/CLIs-src/agent-skills/incremental-review/incremental-review.ts).
+Implementation and sibling `incremental-review-test/` tests live inside the TypeScript workspace;
+normal workspace aliases and checks apply without a runner-specific tsconfig override.
+
 The runner supplies pinned tooling and preserves argument boundaries; it does not grant host
 permissions. Do not put this generic executor on the unrestricted host-operation allowlist. A
 restricted harness may require its normal permission flow for repository Git writes.

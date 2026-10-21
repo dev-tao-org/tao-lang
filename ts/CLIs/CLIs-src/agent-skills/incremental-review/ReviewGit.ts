@@ -93,16 +93,6 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: str
   return files
 }
 
-/** safePath rejects paths outside the checkout and internal Git or review state. */
-export function safePath(root: string, input: string): string {
-  const absolute = Path.resolve(root, input)
-  const path = Path.relative(root, absolute).replaceAll('\\', '/')
-  if (!Path.isWithin(root, absolute) || path === '.git' || path.startsWith('.git/') || path.startsWith('.artifacts/')) {
-    Errors.ThrowUserInput(`Selection must stay inside authored checkout paths: ${input}`)
-  }
-  return path || '.'
-}
-
 /** pathEntries returns exact mode/object entries, including absence, for selected paths. */
 export async function pathEntries(root: string, revision: string, files: string[]): Promise<string> {
   return await git(root, ['ls-tree', '-z', revision, '--', ...files])
@@ -164,6 +154,15 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
 }
 
 type GitOptions = { index?: string; input?: string | Uint8Array }
+
+function safePath(root: string, input: string): string {
+  const absolute = Path.resolve(root, input)
+  const path = Path.relative(root, absolute).replaceAll('\\', '/')
+  if (!Path.isWithin(root, absolute) || path === '.git' || path.startsWith('.git/') || path.startsWith('.artifacts/')) {
+    Errors.ThrowUserInput(`Selection must stay inside authored checkout paths: ${input}`)
+  }
+  return path || '.'
+}
 
 function assertNoParentLink(root: string, path: string): void {
   let directory = Path.dirname(Path.join(root, path))

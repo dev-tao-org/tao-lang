@@ -122,6 +122,7 @@
       "./agent unsandboxed git add *",
       "./agent unsandboxed git commit *",
       "./agent unsandboxed git fetch *",
+      "./agent unsandboxed push *",
       "./agent unsandboxed git switch *",
       "./agent unsandboxed git merge *",
       "./agent unsandboxed notify-developer",

@@ -13,9 +13,9 @@ export async function runSkillScript(
     Errors.ThrowUserInput('The repository workspace root is unavailable.')
   }
   const script = resolveSkillScript(entryPath, root)
-  await runCommand(['bun', 'run', '--tsconfig-override', 'ts/tsconfig.base.json', script], {
-    variadicArgs: args,
-    cwd: Repo.getWorkspaceRoot(),
+  await runCommand('bun run', {
+    variadicArgs: [script, ...args],
+    cwd: root,
   })
 }
 

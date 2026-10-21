@@ -24,7 +24,7 @@ export default {
       'CLIs-src/dev-cli/commands/_setup.ts',
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
       'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
-      '../../agents/skills/*/scripts/*.ts',
+      ...await skillEntries(),
       '**/*.test.ts',
     ]),
     perf: packageWorkspace([
@@ -45,12 +45,7 @@ export default {
 function packageWorkspace(entry: string[]) {
   return {
     ...(entry.length > 0 ? { entry } : {}),
-    project: [
-      '**/*.{ts,tsx}',
-      ...entry.some(path => path.includes('agents/skills'))
-        ? ['../../agents/skills/*/scripts/**/*.ts']
-        : [],
-    ],
+    project: ['**/*.{ts,tsx}'],
     paths: {
       '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],
@@ -81,4 +76,20 @@ function commandEntries(registry: string): string[] {
   const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
   return [...source.matchAll(/^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm)]
     .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
+}
+
+async function skillEntries(): Promise<string[]> {
+  const root = Repo.resolvePath('ts/CLIs/CLIs-src/agent-skills')
+  const entries: string[] = []
+  for (const folder of await FileSystem.readdir(root, { withFileTypes: true })) {
+    if (!folder.isDirectory()) {
+      continue
+    }
+    const name = folder.name
+    const path = Path.join(root, name, `${name}.ts`)
+    if (FileSystem.existsSync(path) && FileSystem.statSync(path).isFile()) {
+      entries.push(`CLIs-src/agent-skills/${name}/${name}.ts`)
+    }
+  }
+  return entries.sort()
 }

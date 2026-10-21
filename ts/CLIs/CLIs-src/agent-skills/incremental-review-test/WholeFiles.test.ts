@@ -1,13 +1,13 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Tests } from '@shared/os'
-import { runReview } from '../../../../../agents/skills/incremental-review/scripts/review'
+import { runReview } from '../incremental-review/incremental-review'
 import {
   acceptSelection,
   recoverAcceptance,
-} from '../../../../../agents/skills/incremental-review/scripts/ReviewAccept'
-import { git, head, indexPath, readJson } from '../../../../../agents/skills/incremental-review/scripts/ReviewGit'
-import { planSelection } from '../../../../../agents/skills/incremental-review/scripts/ReviewPlan'
-import { reviewStatus, startReview } from '../../../../../agents/skills/incremental-review/scripts/ReviewSession'
+} from '../incremental-review/ReviewAccept'
+import { git, head, indexPath, readJson } from '../incremental-review/ReviewGit'
+import { planSelection } from '../incremental-review/ReviewPlan'
+import { reviewStatus, startReview } from '../incremental-review/ReviewSession'
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('whole-file acceptance commits only saved approved files and retains unrelated staging and bytes', async () => {

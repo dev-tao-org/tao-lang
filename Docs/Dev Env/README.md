@@ -11,3 +11,9 @@ describe Tao for app authors; the [roadmaps](../Roadmap/) track planned work.
 
 Keep temporary investigations and task progress in `.artifacts/notes/`, `.artifacts/checkpoint/`
 or `.artifacts/progress/`. Those survive ordinary cleanup; they are not documentation of current behavior.
+
+Agent branch publication uses `./agent unsandboxed push origin <branch>`. It pins the matching local
+branch's commit and publishes only that destination. Use `--source <local-branch>` for a different
+destination, such as a backup branch. The guard rejects `main`, force pushes, deletions and bulk
+pushes, and disables implicit mirror, tag and submodule publication. Landing remains separately
+authorized. Native agent permissions allow this guarded operation rather than unrestricted Git pushes.

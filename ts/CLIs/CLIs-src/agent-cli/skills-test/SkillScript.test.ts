@@ -5,7 +5,7 @@ import { runSkillScript } from '../skills/SkillScript'
 Tests.test('runs an installed skill script with exact argv values', async () => {
   await withFixture(async root => {
     const entry = await addSkill(root)
-    const args = ['has spaces', '$HOME', '$(touch nope)', '--flag']
+    const args = ['has spaces', '', 'λ', '$HOME', '$(touch nope)', '--flag', '--']
     await runSkillScript(entry, args, root)
     Tests.expect(JSON.parse(await FileSystem.readFile(Path.join(root, 'captured.json'), 'utf8'))).toEqual({
       args,
@@ -74,9 +74,18 @@ async function addSkill(root: string): Promise<string> {
   await FileSystem.writeFile(Path.join(root, 'agents/skills/demo/SKILL.md'), '---\nname: demo\n---\n')
   const entry = Path.join(scripts, 'run.ts')
   const capture = JSON.stringify(Path.join(root, 'captured.json'))
+  await FileSystem.mkdir(Path.join(root, 'ts'), { recursive: true })
+  await FileSystem.writeFile(
+    Path.join(root, 'ts/tsconfig.json'),
+    JSON.stringify({ extends: Repo.resolvePath('ts/tsconfig.base.json') }),
+  )
   await FileSystem.writeFile(
     entry,
-    `import { Try } from '@shared'\nawait Bun.write(${capture}, JSON.stringify({ args: process.argv.slice(2), aliasResolved: typeof Try === 'function' }))\n`,
+    "import { main } from '../../../../ts/implementation'\nawait main()\n",
+  )
+  await FileSystem.writeFile(
+    Path.join(root, 'ts/implementation.ts'),
+    `import { Try } from '@shared'\nimport { FileSystem, Platform } from '@shared/os'\nexport async function main() { await FileSystem.writeFile(${capture}, JSON.stringify({ args: Platform.argv.slice(2), aliasResolved: typeof Try === 'function' })) }\n`,
   )
   return entry
 }
