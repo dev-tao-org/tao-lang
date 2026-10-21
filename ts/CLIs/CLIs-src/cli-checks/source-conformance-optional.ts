@@ -1,3 +1,4 @@
+import { Errors } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** optionalAccessIssue reports ternary member reads whose truthiness check is equivalent to a nullish check. */
@@ -26,6 +27,32 @@ export function optionalAccessIssue(node: TypeScript.Node, checker: TypeScript.T
   return 'prefer optional access over a nullish-only ternary member read; include undefined in any result assertion'
 }
 
+/** optionalAccessResult replaces a checked member read while retaining its result assertions. */
+export function optionalAccessResult(expression: TypeScript.Expression): TypeScript.Expression {
+  const factory = TypeScript.factory
+  if (TypeScript.isParenthesizedExpression(expression)) {
+    return factory.updateParenthesizedExpression(expression, optionalAccessResult(expression.expression))
+  }
+  if (TypeScript.isAsExpression(expression)) {
+    return factory.updateAsExpression(
+      expression,
+      optionalAccessResult(expression.expression),
+      factory.createUnionTypeNode([
+        expression.type,
+        factory.createKeywordTypeNode(TypeScript.SyntaxKind.UndefinedKeyword),
+      ]),
+    )
+  }
+  const token = factory.createToken(TypeScript.SyntaxKind.QuestionDotToken)
+  if (TypeScript.isPropertyAccessExpression(expression)) {
+    return factory.createPropertyAccessChain(expression.expression, token, expression.name)
+  }
+  if (TypeScript.isElementAccessExpression(expression)) {
+    return factory.createElementAccessChain(expression.expression, token, expression.argumentExpression)
+  }
+  return Errors.ThrowShouldNeverHappen('Optional access fixing requires a checked member read.')
+}
+
 function isUndefinedIdentifier(expression: TypeScript.Expression): boolean {
   return TypeScript.isIdentifier(expression) && expression.text === 'undefined'
 }
@@ -48,7 +75,8 @@ function isMemberRead(node: TypeScript.Expression): node is
   | TypeScript.PropertyAccessExpression
   | TypeScript.ElementAccessExpression
 {
-  return TypeScript.isPropertyAccessExpression(node) || TypeScript.isElementAccessExpression(node)
+  return (TypeScript.isPropertyAccessExpression(node) && !TypeScript.isPrivateIdentifier(node.name))
+    || TypeScript.isElementAccessExpression(node)
 }
 
 function isSameIdentifier(expression: TypeScript.Expression, condition: TypeScript.Identifier): boolean {

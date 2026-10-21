@@ -1,5 +1,5 @@
 import { Errors, Time } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
@@ -8,17 +8,14 @@ import { objectFunctionStyleIssue } from './source-conformance-functions'
 import { functionBody, functionBodyLineCount, multilineStringIssue } from './source-conformance-layout'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
-import { createConformanceProgram } from './source-conformance-program'
+import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
 export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
-  const sources = [
-    ...await FileSystem.sourceFiles(root + '/ts'),
-    ...(await FileSystem.sourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
-  ]
+  const sources = await conformanceSources(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
   for (const filename of sources) {
