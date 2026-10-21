@@ -62,6 +62,7 @@
     "devenv.yaml": true,
     "**/tsconfig.tsbuildinfo": true,
     "local.properties": true,
+    ".x-tao-old-v1/**": true,
     ".x-tao-old-v1/**/node_modules": true,
     "old-packages/**/node_modules": true,
     ".x-tao-old-v1/Apps/Tao Studio/tsconfig.json": true,
