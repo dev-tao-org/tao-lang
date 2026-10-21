@@ -46,7 +46,6 @@
       "dependencies": {
         "@tao/grammar": "workspace:*",
         "@tao/shared": "workspace:*",
-        "tree-sitter": "0.25.1",
       },
       "devDependencies": {
         "@types/bun": "1.4.0",

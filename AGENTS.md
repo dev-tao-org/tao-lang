@@ -28,7 +28,7 @@ These are your rules of usage:
 ## Dependencies and feature planning
 
 - Determine during planning whether new or updated dependencies are needed.
-- Ask the developer before installing or updating dependencies, including manifest or lockfile changes. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
+- Ask the developer before installing, adding or updating dependencies, including manifest or lockfile changes. Removing dependencies and updating the corresponding manifests and lockfiles does not require approval. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
 - Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.
 - Consider Windows, Linux, macOS, iOS and Android as eventual runtime targets when developing and choosing dependencies: Studio and CLI target at least Windows/Linux/macOS, Companion targets iOS/Android, and standalone Studio-like authoring on iPad remains a future possibility. Keep platform-specific assumptions behind explicit boundaries; this does not require implementing every target in each slice.
