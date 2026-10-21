@@ -25,7 +25,8 @@ A project contains a `.tao` folder at its root. The folder contains project conf
 
 Commands resolve paths from the caller's directory and discover the owning project upward,
 stopping at a Git boundary. Initialize the project before using project-scoped imports or
-dependency commands; `tao prepare ./Calendar/Calendar.tao --yes` prepares its dependencies.
+dependency commands. Running an app offers any required setup and continues after approval;
+`tao setup ./Calendar/Calendar.tao --yes` can perform that setup explicitly.
 
 #### `requires github:acme/widgets version v1.2.0 as widgets`
 
@@ -57,10 +58,13 @@ project with an `@ui` module; another dependency cannot reuse the alias. Develop
 source and watches edits. Packaged tools materialize the versioned bundled project without
 recording its machine-specific location in the source lock.
 
-#### `tao prepare` and `tao update`
+#### `tao setup` and `tao update`
 
-Routine compilation uses durable locks without resolving newer refs or reinstalling dependencies.
-Missing or changed dependencies require explicit preparation, followed by retrying the command.
+Compilation, developer web preview and tests check their requirements and offer missing setup,
+defaulting to Yes, then continue automatically. Noninteractive setup requires `--yes`.
+Ordinary preview edits reuse ready session inputs; dependency changes preserve the last working
+preview, request setup approval, and restart in a fresh session, which resets running app state.
+Routine setup uses durable locks without resolving newer refs or reinstalling unchanged dependencies.
 `tao update widgets --yes` refreshes that direct source pin; `tao update --yes` refreshes all direct
 source pins while preserving unrelated pins. Source locks also reference exact npm graphs in
 `.tao/store/npm/`.
@@ -73,7 +77,9 @@ requirements need exact semantic versions. Runtime conflicts are reported rather
 
 #### Store, cache and sessions
 
-`.tao/store/` retains identity and locks; `.tao/cache/` holds generated state, including reusable
+`.tao/store/` retains identity, locks and `dependencies.initialized`; keep these in version control.
+The marker prevents a deleted source lock from silently resolving new pins: restore the lock instead.
+`.tao/cache/` holds generated state, including reusable
 `sessions/.cli/` output. `.tao/.gitignore` excludes caches and session locks, retaining the store.
 Session names match `[a-z0-9][a-z0-9_-]*`; `.cli` and `.studio` are reserved. Preparation and updates
 hold session and dependency locks; contention fails immediately with a retryable message.

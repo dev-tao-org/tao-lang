@@ -1,8 +1,10 @@
+import * as AST from '@ast-gen/AST'
 import * as Runtime from '@runtime/Runtime'
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { executeManagedTool, managedModulesInput } from './ProjectPreparation'
+import { requireSetup } from './SetupRequired'
 import { type PreparedSidecars, prepareSidecarPipeline } from './SidecarPipeline'
 import { generatedModuleFiles, type ManagedModulesInput, readManagedModules } from './sidecars/ManagedModules'
 
@@ -35,7 +37,10 @@ export type ProjectPipelineServices = {
   prepareSidecars(options: Parameters<typeof prepareSidecarPipeline>[0]): ReturnType<typeof prepareSidecarPipeline>
 }
 
-/** createProjectPipeline binds prepared project dependencies and immutable sidecar snapshots to a session. */
+/** createProjectPipeline binds prepared dependencies and immutable sidecar snapshots to a session.
+ *  Readiness and generated metadata are validated at startup. Reuse matches reachable paths, exact dependency
+ *  declarations and foreign-view presence; any changed identity recomputes managed input. Sidecar source
+ *  snapshots remain authoritative on every compile, and changed setup inputs require a new session. */
 export function createProjectPipeline(
   root: string,
   sessionDirectory: string,
@@ -55,6 +60,8 @@ class PipelineSession implements ProjectPipeline {
   private preparedFingerprint: string | undefined
   private managedProfile: Awaited<ReturnType<typeof readManagedModules>> | undefined
   private readonly baseWatchFolders: readonly string[]
+  private declarations: string | undefined
+  private input: ManagedModulesInput | undefined
 
   constructor(
     private readonly root: string,
@@ -66,7 +73,10 @@ class PipelineSession implements ProjectPipeline {
   }
 
   async beforeCompile(program: LinkedProgram): Promise<ProjectPipelineResult> {
-    const input = await this.services.managedInput(this.root, program)
+    const declarations = declarationKey(program)
+    const input = declarations === this.declarations
+      ? this.input
+      : await this.services.managedInput(this.root, program)
     const key = input ? managedGraphKey(input) : emptyManagedGraphKey()
     this.rejectChangedGraph(key)
     if (!input) {
@@ -75,18 +85,24 @@ class PipelineSession implements ProjectPipeline {
           toolchainCacheDirectory: this.runtimeOptions.toolchainCacheDirectory,
           resourcesDirectory: this.runtimeOptions.resourcesDirectory,
         })
-          ?? Errors.ThrowUserInput(
-            'Runtime is not prepared. Prepare dependencies with tao prepare <entry>, then retry.',
+          ?? requireSetup(
+            'Runtime is not prepared. Prepare dependencies with tao setup <entry>, then retry.',
           )
       }
       this.graphKey = key
+      this.declarations = declarations
+      this.input = input
       return { watchDirectories: [], snapshotDirectories: [] }
     }
     const managed = await this.readManagedProfile(input, key)
-    await validateGeneratedFiles(this.services, input)
+    if (this.graphKey === undefined) {
+      await validateGeneratedFiles(this.services, input)
+    }
     const sidecars = await this.prepareSidecars(program, managed)
     this.updateRuntimeOptions(input, managed)
     this.graphKey = key
+    this.declarations = declarations
+    this.input = input
     return result(sidecars)
   }
 
@@ -97,7 +113,7 @@ class PipelineSession implements ProjectPipeline {
     const native = (this.managedProfile?.nativePackages.length ?? 0) > 0
       ? ' A native rebuild is also required.'
       : ''
-    Errors.ThrowUserInput(`Dependency graph changed. Run tao prepare, then restart preview.${native}`)
+    requireSetup(`Dependency graph changed. Setup and preview restart are required.${native}`)
   }
 
   private async readManagedProfile(input: ManagedModulesInput, key: string) {
@@ -126,6 +142,28 @@ class PipelineSession implements ProjectPipeline {
   ): void {
     runtimeDependencyOptions(this.runtimeOptions, input, managed, this.baseWatchFolders, this.sessionDirectory)
   }
+}
+
+// declarationKey includes reachable files, npm declarations and foreign-view presence.
+// Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
+function declarationKey(program: LinkedProgram): string {
+  return JSON.stringify(program.modules.map(module => ({
+    path: module.path,
+    declarations: module.document.root.declarations.flatMap(declaration => {
+      if (AST.IsKind(declaration, 'RequiresDeclaration')) {
+        return [[
+          'requires',
+          declaration.provider,
+          declaration.identifier,
+          declaration.version,
+          declaration.alias?.value,
+        ]]
+      }
+      return AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')
+        ? [['foreign']]
+        : []
+    }),
+  })))
 }
 
 function managedGraphKey(input: ManagedModulesInput): string {

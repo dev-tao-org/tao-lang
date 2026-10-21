@@ -46,7 +46,7 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
   if (rootSources.length === 1) {
     return rootSources[0]!
   }
-  Errors.ThrowUserInput(`No unique Tao app entry was found; run tao prepare <entry>.`)
+  Errors.ThrowUserInput(`No unique Tao app entry was found; run tao setup <entry>.`)
 }
 
 /** listDependencyWork describes authored source and npm requirements before preparation. */

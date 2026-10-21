@@ -23,7 +23,7 @@ export async function validateProfileMetadata(
   ) {
     const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
     Errors.ThrowUserInput(
-      `Managed npm dependencies changed. Repair with: tao prepare --repair (owning declaration: ${owner})`,
+      `Managed npm dependencies changed. Repair with: tao setup --repair (owning declaration: ${owner})`,
     )
   }
 }
@@ -32,7 +32,7 @@ export async function validateProfileMetadata(
 export async function ensureOwnedFile(path: string, contents: string, repair: boolean): Promise<void> {
   const current = await optionalText(path)
   if (current !== undefined && current !== contents && !repair) {
-    Errors.ThrowUserInput(`Managed npm metadata drifted. Repair with: tao prepare --repair.`)
+    Errors.ThrowUserInput(`Managed npm metadata drifted. Repair with: tao setup --repair.`)
   }
   if (current !== contents) {
     await writeReadOnly(path, contents)
@@ -162,10 +162,10 @@ export async function optionalJson(path: string): Promise<Record<string, unknown
     return undefined
   }
   const value = await Try(() => JSON.parse(text) as unknown, {
-    catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao prepare --repair.`),
+    catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`),
   })
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao prepare --repair.`)
+    Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`)
   }
   return value as Record<string, unknown>
 }

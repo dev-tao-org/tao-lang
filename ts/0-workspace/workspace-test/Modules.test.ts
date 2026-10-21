@@ -35,6 +35,37 @@ Tests.test('dependency changes reload modules and recover invalid source', async
   })
 })
 
+Tests.test('root requirement observation never links unrelated root declarations into a nested entry', async () => {
+  const directory = Artifacts.resolvePath('tmp', `root-observation-${Platform.randomUUID()}`)
+  const publications: string[] = []
+  const observed: string[] = []
+  const workspace = createWorkspace({
+    ...createWatchFixture().options,
+    observeProjectSources(_root, sources) {
+      observed.push(...sources.map(source => source.path))
+    },
+    includeModuleRequirements: true,
+    async publish(app) {
+      publications.push(app.code)
+    },
+  })
+  await Try(async () => {
+    await writeFixture(directory, Path.join(directory, '@cards/Card.tao'))
+    const rootFile = Path.join(directory, 'Unrelated.tao')
+    await FileSystem.writeFile(rootFile, 'view Hidden { render Unknown }\napp Other { root Hidden }')
+    const result = await workspace.openFile(Path.join(directory, 'feature/App.tao'))
+    Tests.expect(result.status).toBe('published')
+    Tests.expect(observed).toContain(rootFile)
+    Tests.expect(publications[0]).not.toContain('Hidden')
+    Tests.expect(publications[0]).not.toContain('Unknown')
+  }, {
+    async finally() {
+      await workspace.dispose()
+      await FileSystem.rm(directory, { recursive: true, force: true })
+    },
+  })
+})
+
 async function writeFixture(directory: string, dependency: string): Promise<void> {
   await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
   await FileSystem.mkdir(Path.dirname(dependency), { recursive: true })

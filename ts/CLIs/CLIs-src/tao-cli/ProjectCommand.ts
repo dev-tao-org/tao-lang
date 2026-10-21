@@ -2,7 +2,6 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Storage } from '@shared/os'
 import { withDependencySession } from '@workspace/ModuleDependencies'
 import { discoverProject } from '@workspace/projects/Projects'
-import type { BunExecutor } from '@workspace/sidecars/ManagedModules'
 
 /** withProjectSessions runs a mutation while holding stable sessions for every owning project. */
 export async function withProjectSessions<Value>(
@@ -13,17 +12,6 @@ export async function withProjectSessions<Value>(
 ): Promise<Value> {
   const roots = await owningProjectRoots(paths)
   return await acquireProjectSessions(roots, sessionId, acquireLease, action)
-}
-
-/** runSidecarTests invokes the pinned Bun test runner from one local module directory. */
-export async function runSidecarTests(
-  moduleRoot: string,
-  executor: BunExecutor,
-): Promise<void> {
-  const result = await executor('bun', ['test'], moduleRoot)
-  if (result.status !== 0) {
-    Errors.ThrowUserInput(`Sidecar tests failed in ${moduleRoot}. ${result.stderr || result.stdout}`)
-  }
 }
 
 async function owningProjectRoots(paths: readonly string[]): Promise<string[]> {

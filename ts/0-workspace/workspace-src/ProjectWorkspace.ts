@@ -58,13 +58,18 @@ function managedWorkspace(
     ...options,
     directory: root,
     outputDirectory: output,
-    beforeLoad: () => dependencies.refresh(),
     resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
+    observeProjectSources: (root, sources) => dependencies.observeProjectSources(root, sources),
+    includeModuleRequirements: true,
     watchDirectories: [...dependencies.sourceDirectories(), ...options.watchDirectories ?? []],
     async beforeCompile(program) {
       const managed = await pipeline.beforeCompile(program)
       const custom = await options.beforeCompile?.(program)
-      return { ...managed, ...custom }
+      return {
+        ...managed,
+        watchDirectories: [...dependencies.sourceDirectories(), ...managed.watchDirectories],
+        ...custom,
+      }
     },
     runtimeOptions,
   })

@@ -57,7 +57,7 @@ jobs:
       - name: Check workspace
         run: ./agent check
       - name: Test workspace
-        run: ./agent test
+        run: ./agent test --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Upload logs and test timings

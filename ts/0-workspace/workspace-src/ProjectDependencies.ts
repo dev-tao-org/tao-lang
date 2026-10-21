@@ -1,53 +1,90 @@
 import { Errors } from '@shared'
-import { Path } from '@shared/os'
-import { readPreparedDependencies, resolveLockedAlias } from './dependencies/Store'
-import type { DependencyLock, DependencyStoreOptions } from './dependencies/Types'
+import { FileSystem, Path } from '@shared/os'
+import type { SourceModule } from '@typecheck/Modules'
+import { dependencyLockPath, materializeLocations, readDependencyLock } from './dependencies/LockFile'
+import { sourceRequirements, validateSourceRequirements } from './dependencies/Requirements'
+import { defaultSourceAlias, sourceIdentity } from './dependencies/Sources'
+import { resolveLockedAlias } from './dependencies/Store'
+import type { DependencyLock, DependencyRequirement, DependencyStoreOptions } from './dependencies/Types'
 import { nearestProjectRoot } from './modules/Paths'
+import { requireSetup } from './SetupRequired'
 
-/** ProjectDependencies reuses validated source graphs until their authored requirements change. */
+/** ProjectDependencies resolves reachable locked aliases and observes declarations through the parsed graph. */
 export class ProjectDependencies {
   private current: DependencyLock = { version: 1, roots: {}, sources: {} }
-  private signature: string | undefined
+  private readonly requirements = new Map<string, DependencyRequirement[]>()
+  private readonly used = new Set<string>()
 
   constructor(readonly root: string, private readonly options: DependencyStoreOptions) {}
 
-  /** refresh validates changed requirements without resolving remote versions on ordinary edits. */
+  /** refresh reads initial durable state; ordinary edits observe parsed inputs instead of rescanning requirements. */
   async refresh(): Promise<void> {
-    const requirements = await this.options.readRequirements(this.root)
-    const nested = await Promise.all(
-      Object.values(this.current.sources).map(async source => [
-        source.identity,
-        await this.options.readRequirements(source.location),
-      ]),
-    )
-    const signature = JSON.stringify({ requirements, nested })
-    if (signature === this.signature) {
-      return
-    }
-    if (this.signature !== undefined) {
-      Errors.ThrowUserInput('Dependency graph changed. Run tao prepare, then restart preview.')
-    }
-    this.current = requirements.length === 0
-      ? { version: 1, roots: {}, sources: {} }
-      : await readPreparedDependencies(this.root, requirements, this.options)
-    this.signature = JSON.stringify({
-      requirements,
-      nested: Object.values(this.current.sources).map(source => [source.identity, source.requirements]),
-    })
+    this.current = materializeLocations(
+      await readDependencyLock(dependencyLockPath(this.root)),
+      this.root,
+      this.options.bundledProjects,
+    ) ?? { version: 1, roots: {}, sources: {} }
+    this.requirements.set(this.root, await this.options.readRequirements(this.root))
   }
 
-  /** resolveProject resolves imports in their producer's alias scope. */
+  /** observeProjectSources detects complete dependency changes in normal resolution without linking root declarations.
+   *  Invalid syntax never reaches this method; a new session after setup replaces established requirements. */
+  observeProjectSources(owner: string, sources: readonly Pick<SourceModule, 'path' | 'document'>[]): void {
+    const actual = sources.flatMap(source => sourceRequirements(source.document.root.declarations, source.path))
+    validateSourceRequirements(actual)
+    const expected = this.requirements.get(owner)
+    if (!expected) {
+      const known = owner === this.root || Object.values(this.options.bundledProjects ?? {}).includes(owner)
+        || Object.values(this.current.sources).some(source => source.location === owner)
+      if (!known) {
+        requireSetup('Project source ownership changed; preview restart is required.')
+      }
+      return
+    }
+    if (signature(actual) !== signature(expected)) {
+      if (
+        Object.values(this.current.sources).some(source => source.location === owner && source.provider === 'github')
+      ) {
+        Errors.ThrowUserInput('Pinned remote dependency declarations changed; restore the exact pinned source.')
+      }
+      requireSetup('Dependency declarations changed; setup and preview restart are required.')
+    }
+  }
+
+  /** resolveProject validates only a requested alias without resolving versions or claiming source edit ownership. */
   async resolveProject(importer: string, alias: string): Promise<{ root: string }> {
     const owner = nearestProjectRoot(Path.dirname(importer)) ?? this.root
+    const requirements = this.requirements.get(owner) ?? await this.options.readRequirements(owner)
+    this.requirements.set(owner, requirements)
+    const requirement = requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
+      ?? Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
-      ?? Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}. Declare it and run tao prepare.`)
+      ?? requireSetup(`Dependency ${alias} needs setup.`)
+    if (source.identity !== sourceIdentity(requirement, owner, this.root) || source.version !== requirement.version) {
+      requireSetup(`Dependency ${alias} needs setup.`)
+    }
+    if (!await FileSystem.exists(source.location)) {
+      requireSetup(`Locked source ${source.identifier}@${source.commit} is missing; setup restores its exact pin.`)
+    }
+    this.used.add(source.identity)
+    if (!this.requirements.has(source.location)) {
+      this.requirements.set(source.location, source.requirements)
+    }
     return { root: source.location }
   }
 
-  /** sourceDirectories lists live dependency roots for workspace observation. */
+  /** sourceDirectories lists only used live dependency roots for workspace observation. */
   sourceDirectories(): string[] {
-    return Object.values(this.current.sources).filter(source => source.provider !== 'github').map(source =>
-      source.location
-    )
+    return [...this.used].flatMap(identity => {
+      const source = this.current.sources[identity]!
+      return source.provider === 'github' ? [] : [source.location]
+    })
   }
+}
+
+function signature(requirements: DependencyRequirement[]): string {
+  return JSON.stringify(
+    requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
+      .map(item => JSON.stringify(item)).sort(),
+  )
 }

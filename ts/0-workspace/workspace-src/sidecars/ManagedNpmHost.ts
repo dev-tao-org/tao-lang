@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
+import { requireSetup } from '../SetupRequired'
 import type { ManagedModulesInput } from './ManagedModuleTypes'
 import { optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
@@ -21,9 +22,9 @@ export function validateInstalledHost(metadata: Record<string, unknown>, input: 
   }
   const recorded = JSON.stringify(metadata.installHost ?? 'unknown host')
   const current = JSON.stringify(installHostIdentity(input))
-  Errors.ThrowUserInput(
+  requireSetup(
     `Managed npm install tree belongs to ${recorded}, but this host is ${current}. `
-      + `Run tao prepare to rebuild it from the durable lock.`,
+      + `Run tao setup to rebuild it from the durable lock.`,
   )
 }
 
@@ -63,7 +64,7 @@ async function validateProfileLock(profile: string, storedLock: string, repair: 
     return
   }
   if (!repair) {
-    Errors.ThrowUserInput(`Managed npm lock copies differ. Repair with: tao prepare --repair.`)
+    Errors.ThrowUserInput(`Managed npm lock copies differ. Repair with: tao setup --repair.`)
   }
   await writeReadOnly(lockfile, storedLock)
 }

@@ -45,10 +45,10 @@ incompatible peers, and duplicate framework/native singletons are rejected; ordi
 transitive versions are allowed. Transitive aliases retain target identities for version and
 singleton checks, and existing mixed-case npm package names are supported.
 
-#### `tao prepare Calendar.tao --repair --yes`
+#### `tao setup Calendar.tao --repair --yes`
 
 Generated manifests, TypeScript configurations and resolution links belong to Tao; edit requirements
-and prepare instead of editing generated files. Manifests and configurations are read-only, and
+and use setup instead of editing generated files. Manifests and configurations are read-only, and
 unexpected changes stop compilation with the owning declaration and repair command. Shared
 TypeScript defaults live under `.tao/cache/sidecars/`.
 
@@ -77,7 +77,7 @@ dependency modules. Cleaning a producer preserves metadata owned by an active co
 
 #### `tao test-sidecars @calendar`
 
-Runs a prepared local module's tests with Tao's pinned Bun.
+Runs a local module's tests with Tao's pinned Bun, offering required setup before continuing.
 
 #### Native dependencies
 

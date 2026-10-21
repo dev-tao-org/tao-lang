@@ -86,7 +86,7 @@ Tests.test('cold project compilation requests preparation without installing run
       Platform.readText(child.stderr),
     ])
     Tests.expect(status).toBe(1)
-    Tests.expect(stdout + stderr).toContain('tao prepare')
+    Tests.expect(stdout + stderr).toContain('tao setup')
     Tests.expect(await FileSystem.exists(Path.join(directory, '.tao/cache/runtime-toolchains'))).toBe(false)
   }, { finally: () => FileSystem.rm(directory, { recursive: true, force: true }) })
 }, 30_000)

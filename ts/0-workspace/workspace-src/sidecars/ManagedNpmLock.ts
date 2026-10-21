@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import { Files, Path, Platform } from '@shared/os'
+import { requireSetup } from '../SetupRequired'
 import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
 import type { ManagedModulesInput } from './ManagedModuleTypes'
 import { optionalJson, optionalText } from './ManagedNpmState'
@@ -12,8 +13,8 @@ export async function readManagedProfileMetadata(
   const metadata = await optionalJson(Path.join(profile, '.tao-managed.json'))
   if (!metadata) {
     const owner = requirements[0]?.[2].split('\n')[1] ?? 'project runtime'
-    Errors.ThrowUserInput(
-      `Managed npm declarations changed or are not prepared. Repair with: tao prepare --repair (owning declaration: ${owner})`,
+    requireSetup(
+      `Managed npm declarations changed or are not prepared. Repair with: tao setup --repair (owning declaration: ${owner})`,
     )
   }
   return metadata
@@ -30,13 +31,16 @@ export async function readManagedProfileLock(
   const durable = await optionalText(durableLock)
   const hash = await optionalText(durableHash)
   validateDurableLock(durable, hash, fingerprint)
+  if (!profile && durable) {
+    requireSetup('The installed npm lock is missing; setup restores it from the exact durable lock.')
+  }
   if (!profile || !durable) {
     Errors.ThrowUserInput(
       'Managed npm lock is missing; restore it and its SHA-256 file from version control, then retry preparation.',
     )
   }
   if (profile !== durable) {
-    Errors.ThrowUserInput('Managed npm lock copies differ. Repair with: tao prepare --repair.')
+    Errors.ThrowUserInput('Managed npm lock copies differ. Repair with: tao setup --repair.')
   }
   return profile
 }

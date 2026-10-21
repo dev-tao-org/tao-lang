@@ -18,16 +18,23 @@ export function writeLine(message = ''): void {
   stdout.write(`${message}\n`)
 }
 
-/** askConfirm prompts for a yes/no response. */
-export async function askConfirm(options: { defaultValue?: boolean; message: string }): Promise<boolean> {
-  if (!isInteractive()) {
+/** askConfirm prompts for a yes/no response and closes its reader when the caller cancels. */
+export async function askConfirm(
+  options: { defaultValue?: boolean; message: string; signal?: AbortSignal },
+  terminal: ConfirmationTerminal = confirmationTerminal,
+): Promise<boolean> {
+  if (options.signal?.aborted) {
+    Errors.ThrowUserInput('Confirmation cancelled.')
+  }
+  if (!terminal.isInteractive()) {
     return options.defaultValue ?? false
   }
   const suffix = options.defaultValue ? '[Y/n]' : '[y/N]'
-  const readline = createInterface(confirmReadlineOptions())
+  const readline = terminal.open()
   return await Try(async () => {
     while (true) {
-      const answer = (await readline.question(`${options.message} ${suffix} `)).trim().toLowerCase()
+      const answer = (await readline.question(`${options.message} ${suffix} `, { signal: options.signal }))
+        .trim().toLowerCase()
       if (answer === '' && options.defaultValue !== undefined) {
         return options.defaultValue
       }
@@ -37,9 +44,15 @@ export async function askConfirm(options: { defaultValue?: boolean; message: str
       if (answer === 'n' || answer === 'no') {
         return false
       }
-      stderr.write('Answer yes or no.\n')
+      terminal.write('Answer yes or no.\n')
     }
   }, {
+    catch(error) {
+      if (options.signal?.aborted) {
+        Errors.ThrowUserInput('Confirmation cancelled.')
+      }
+      return Errors.Throw(error)
+    },
     finally() {
       readline.close()
     },
@@ -83,6 +96,20 @@ export async function askSecret(prompt: string): Promise<string> {
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
+
+type ConfirmationTerminal = {
+  isInteractive(): boolean
+  open(): { question(message: string, options: { signal?: AbortSignal }): Promise<string>; close(): void }
+  write(message: string): void
+}
+
+const confirmationTerminal: ConfirmationTerminal = {
+  isInteractive,
+  open: () => createInterface(confirmReadlineOptions()),
+  write(message) {
+    stderr.write(message)
+  },
+}
 
 function confirmReadlineOptions(): ReadLineOptions {
   return {

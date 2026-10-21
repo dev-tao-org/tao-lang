@@ -54,7 +54,7 @@ export function validateGraphContents(
 ): void {
   if (!graphContentsMatch(source, requirements, runtimePins)) {
     Errors.ThrowUserInput(
-      'Managed npm lock does not match exact top-level requirements; repair it with: tao prepare --repair.',
+      'Managed npm lock does not match exact top-level requirements; repair it with: tao setup --repair.',
     )
   }
 }
@@ -168,7 +168,7 @@ function validateSingleton(name: string, packages: InstalledPackage[], expected?
   if (canonical.size > 1 || expected && instances.some(item => item.version !== expected)) {
     const details = instances.map(item => `${item.directory}@${item.version}`).join(', ')
     Errors.ThrowUserInput(
-      `Managed npm graph has incompatible singleton ${name}: ${details}. Change owning npm requirements to compatible versions, then run tao prepare --repair.`,
+      `Managed npm graph has incompatible singleton ${name}: ${details}. Change owning npm requirements to compatible versions, then run tao setup --repair.`,
     )
   }
 }
@@ -334,6 +334,6 @@ function optionalPeerNames(value: unknown): Set<string> {
 async function readJson(path: string): Promise<Record<string, unknown>> {
   return await Try(async () => JSON.parse(await FileSystem.readFile(path, 'utf8')) as Record<string, unknown>, {
     catch: () =>
-      Errors.ThrowUserInput(`Managed npm state is missing or invalid at ${path}; repair with: tao prepare --repair.`),
+      Errors.ThrowUserInput(`Managed npm state is missing or invalid at ${path}; repair with: tao setup --repair.`),
   })
 }

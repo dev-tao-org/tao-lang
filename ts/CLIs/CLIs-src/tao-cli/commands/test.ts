@@ -14,6 +14,9 @@ export default registerCommand({
     flags: '--serial',
     description: 'Run Tao test files with one worker.',
   }, {
+    flags: '--yes',
+    description: 'Authorize required app dependency setup.',
+  }, {
     flags: '--parallel [workers]',
     description: 'Run concurrently; optionally override the worker budget (default: 4).',
   }, {

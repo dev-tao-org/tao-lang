@@ -10,6 +10,9 @@ export function dependencyLockPath(projectRoot: string): string {
 /** readDependencyLock reads a validated lock file without resolving or fetching sources. */
 export async function readDependencyLock(path: string): Promise<DependencyLock | undefined> {
   if (!await FileSystem.exists(path)) {
+    if (await FileSystem.exists(Path.join(Path.dirname(path), 'dependencies.initialized'))) {
+      Errors.ThrowUserInput(`Dependency lock ${path} is missing; restore the exact durable lock from version control.`)
+    }
     return undefined
   }
   const parsed = await Try(
@@ -111,6 +114,7 @@ export async function writeDependencyLock(path: string, lock: DependencyLock, pr
   await Try(async () => {
     await FileSystem.writeFile(temporary, contents)
     await FileSystem.rename(temporary, path)
+    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), '1\n')
   }, { finally: () => FileSystem.rm(temporary, { force: true }) })
 }
 

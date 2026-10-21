@@ -13,17 +13,20 @@ import {
 } from './dependencies/LockFile'
 import { projectDependencyOptions } from './dependencies/Options'
 import { validateRequirementPlacement } from './dependencies/Requirements'
-import { prepareDependencies } from './dependencies/Store'
+import { prepareDependencies, prepareSourceDependency } from './dependencies/Store'
 import type { DependencyStoreOptions } from './dependencies/Types'
-import { readModuleRequirements } from './ModuleRequirements'
+import { moduleRequirements } from './ModuleRequirements'
 import { loadModules } from './modules/Loader'
 import { namedPackageRoot, nearestProjectRoot } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
-import { discoverProject } from './projects/Projects'
+import { discoverProject, ensureProjectMetadata } from './projects/Projects'
+import { requireSetup } from './SetupRequired'
 import {
   type BunExecutor,
+  generatedModuleFiles,
   type ManagedModulesInput,
   prepareManagedModules,
+  readManagedModules,
   repairManagedModuleFiles,
 } from './sidecars/ManagedModules'
 
@@ -34,6 +37,7 @@ export async function prepareProject(
 ): Promise<void> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  await ensureProjectMetadata(project.root)
   const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
     ?? Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
   return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
@@ -49,13 +53,39 @@ export type PreparationOptions = {
   dependencyOptions?: DependencyStoreOptions
 }
 
-/** projectManagedInput reads the already locked graph for module tests without downloading dependencies. */
-export async function projectManagedInput(entry: string): Promise<ManagedModulesInput | undefined> {
+/** inspectProjectPreparation checks initial workflow readiness without installing or resolving pins. */
+export async function inspectProjectPreparation(
+  entry: string,
+  options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> & { moduleRoot?: string; runtime?: boolean } =
+    {},
+): Promise<void> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
-  const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
-  await dependencies.refresh()
-  return await managedModulesInput(project.root, await loadEntry(entry, project.root, dependencies))
+  const input = await projectManagedInput(entry, options)
+  if (
+    options.moduleRoot
+    && !input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(options.moduleRoot!))
+  ) {
+    Errors.ThrowUserInput(`Module ${options.moduleRoot} has no reachable managed npm or sidecar profile.`)
+  }
+  if (!input) {
+    if (options.runtime === false) {
+      return
+    }
+    if (
+      !await Runtime.preparedRuntime({
+        toolchainCacheDirectory: Path.join(project.root, '.tao/cache/runtime-toolchains'),
+      })
+    ) {
+      requireSetup('The app runtime needs setup.')
+    }
+    return
+  }
+  await readManagedModules(input)
+  const drift = await generatedModuleFiles(input)
+  if (drift.length > 0) {
+    Errors.ThrowUserInput(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
+  }
 }
 
 /** managedModulesInput derives an app installation from reachable module-owned npm declarations. */
@@ -66,14 +96,13 @@ export async function managedModulesInput(
 ): Promise<ManagedModulesInput | undefined> {
   const modules = new Map<string, ManagedModulesInput['modules'][number]>()
   const needed = new Set<string>()
-  const owners = new Map<string, string>()
   let foreign = false
   for (const source of sources) {
     const owner = nearestProjectRoot(Path.dirname(source.path)) ?? root
     validateRequirementPlacement(source.document.root.declarations, source.path, owner)
     const directory = namedPackageRoot(source.path, owner) ?? owner
-    owners.set(directory, owner)
     const module = modules.get(directory) ?? { directory, requirements: [] }
+    module.requirements.push(...moduleRequirements(source.document.root.declarations, source.path))
     for (const declaration of source.document.root.declarations) {
       foreign ||= AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')
       if (AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')) {
@@ -83,7 +112,6 @@ export async function managedModulesInput(
     modules.set(directory, module)
   }
   for (const module of modules.values()) {
-    module.requirements = await readModuleRequirements(module.directory, owners.get(module.directory)!)
     if (module.requirements.length > 0) {
       needed.add(module.directory)
     }
@@ -116,13 +144,32 @@ export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
   return { status, stdout, stderr }
 }
 
+// projectManagedInput reads the reachable locked graph without downloading dependencies.
+async function projectManagedInput(
+  entry: string,
+  options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> = {},
+): Promise<ManagedModulesInput | undefined> {
+  const project = await discoverProject(entry)
+    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  const dependencies = new ProjectDependencies(
+    project.root,
+    options.dependencyOptions ?? await projectDependencyOptions(project.root),
+  )
+  await dependencies.refresh()
+  return await managedModulesInput(
+    project.root,
+    await loadEntry(entry, project.root, dependencies),
+    options.runtimePins,
+  )
+}
+
 async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
   const services = options.dependencyOptions ?? await projectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
-  await prepareDependencies(root, await services.readRequirements(root), services, options.update)
-  const dependencies = new ProjectDependencies(root, services)
-  await dependencies.refresh()
-  const sources = await loadEntry(entry, root, dependencies)
+  if (options.update?.length) {
+    await prepareDependencies(root, await services.readRequirements(root), services, options.update)
+  }
+  const sources = await prepareEntrySources(entry, root, services)
   const input = await managedModulesInput(root, sources, options.runtimePins)
   if (!input) {
     await Runtime.prepareRuntime({
@@ -143,7 +190,31 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
   await pruneUnreferencedManagedLocks(root)
 }
 
-async function loadEntry(entry: string, root: string, dependencies: ProjectDependencies): Promise<SourceModule[]> {
+async function prepareEntrySources(
+  entry: string,
+  root: string,
+  services: DependencyStoreOptions,
+): Promise<SourceModule[]> {
+  const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
+    ?? Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
+  const resolutions = new Map<string, Promise<{ root: string }>>()
+  return await Try(() =>
+    loadEntry(entry, root, {
+      resolveProject(importer, alias) {
+        const owner = nearestProjectRoot(Path.dirname(importer)) ?? root
+        const key = `${owner}:${alias}`
+        const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services)
+        resolutions.set(key, resolved)
+        return resolved
+      },
+    }), { finally: lock.release })
+}
+
+async function loadEntry(
+  entry: string,
+  root: string,
+  dependencies: Pick<ProjectDependencies, 'resolveProject'>,
+): Promise<SourceModule[]> {
   const parser = createParser()
   const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')).tree)
     ?? Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
@@ -151,6 +222,7 @@ async function loadEntry(entry: string, root: string, dependencies: ProjectDepen
     { path: entry, document },
     {
       directory: root,
+      includeModuleRequirements: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,
