@@ -5,7 +5,7 @@ import TypeScript from 'typescript'
 export function runtimeLock(source: string, manifest: RuntimeManifest): string {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
   if (parsed.error) {
-    Errors.ThrowUnexpected('The workspace dependency lock could not be read for runtime packaging.')
+    Errors.ThrowShouldNeverHappen('The workspace dependency lock could not be read for runtime packaging.')
   }
   const lock = parsed.config as WorkspaceLock
   const packages = Object.fromEntries(

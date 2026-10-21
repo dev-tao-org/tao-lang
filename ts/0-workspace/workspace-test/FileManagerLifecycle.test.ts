@@ -55,13 +55,13 @@ Tests.test('observer failures are reported without stranding the compilation lan
   const errors: unknown[] = []
   const fixture = managerFixture({
     onSourceUpdate() {
-      Errors.ThrowUnexpected('observer failed')
+      Errors.ThrowShouldNeverHappen('observer failed')
     },
     onSourceError(error) {
       errors.push(error)
     },
   })
-  fixture.manager.onCompiled(() => Errors.ThrowUnexpected('listener failed'))
+  fixture.manager.onCompiled(() => Errors.ThrowShouldNeverHappen('listener failed'))
   Tests.expect((await fixture.manager.update('first')).status).toBe('published')
   Tests.expect((await fixture.manager.update('second')).status).toBe('published')
   Tests.expect(fixture.compiled).toEqual(['first', 'second'])
@@ -71,7 +71,7 @@ Tests.test('observer failures are reported without stranding the compilation lan
 
 Tests.test('disk compilation failures retain the source identity for edit observers', async () => {
   const fixture = managerFixture({
-    compile: async () => Errors.ThrowUnexpected('compile failed'),
+    compile: async () => Errors.ThrowShouldNeverHappen('compile failed'),
   })
   const events: unknown[] = []
   fixture.manager.onCompiled(event => {

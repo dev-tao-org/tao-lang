@@ -42,7 +42,7 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
   Artifacts.trackTemporary(directory)
   const build = await Browser.build([Repo.resolvePath('ts/perf/perf-src/preview-browser.ts')], directory)
   if (!build.success) {
-    Errors.ThrowUnexpected(
+    Errors.ThrowShouldNeverHappen(
       'Could not bundle the preview harness browser client: ' + build.logs.map(log => log.message).join('\n'),
     )
   }

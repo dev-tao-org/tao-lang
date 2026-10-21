@@ -12,7 +12,7 @@ export function applyEdits(source: string, edits: readonly SourceEdit[]): string
   let offset = 0
   for (const edit of edits) {
     if (isInvalidEdit(edit, offset, source.length)) {
-      Errors.ThrowUnexpected('Source edits overlap or leave their snapshot.')
+      Errors.ThrowShouldNeverHappen('Source edits overlap or leave their snapshot.')
     }
     parts.push(source.slice(offset, edit.start), edit.text)
     offset = edit.end

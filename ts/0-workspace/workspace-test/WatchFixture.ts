@@ -21,7 +21,7 @@ export function createWatchFixture() {
   return {
     options,
     notify(path: string): void {
-      const notify = changed ?? Errors.ThrowUnexpected('Open the workspace before notifying it.')
+      const notify = changed ?? Errors.ThrowShouldNeverHappen('Open the workspace before notifying it.')
       notify({ kind: 'change', path, observedAtMs: Time.timestampMs() })
       const callback = scheduled
       scheduled = undefined

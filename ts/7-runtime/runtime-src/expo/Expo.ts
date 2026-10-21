@@ -63,7 +63,7 @@ function unusedPort(): number {
     port: 0,
     fetch: () => Http.response(),
   })
-  const port = server.port ?? Errors.ThrowUnexpected('Could not reserve a local Expo port.')
+  const port = server.port ?? Errors.ThrowShouldNeverHappen('Could not reserve a local Expo port.')
   server.stop(true)
   return port
 }

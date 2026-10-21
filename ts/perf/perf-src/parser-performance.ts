@@ -110,7 +110,7 @@ const sampleWarmParser = Timings.topLevelTimer(
   ) {
     const tree = timings.run(parser.parse, fixture.source)
     if (tree.rootNode.hasError || tree.rootNode.text !== fixture.source) {
-      Errors.ThrowUnexpected('Warm parser sample did not parse the complete ' + fixture.scenario + ' fixture.')
+      Errors.ThrowShouldNeverHappen('Warm parser sample did not parse the complete ' + fixture.scenario + ' fixture.')
     }
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))

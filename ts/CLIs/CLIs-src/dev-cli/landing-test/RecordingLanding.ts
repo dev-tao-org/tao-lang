@@ -14,7 +14,7 @@ export function recordingLanding() {
     async read(path) {
       const content = files.get(path)
       if (content === undefined) {
-        Errors.ThrowUnexpected(`Missing recording file: ${path}`)
+        Errors.ThrowShouldNeverHappen(`Missing recording file: ${path}`)
       }
       return content
     },
@@ -143,7 +143,7 @@ function gitReply(args: readonly string[], state: ReturnType<typeof initialState
   if (['worktree', 'fetch', 'merge', 'push', 'add', 'commit', 'submodule', 'diff', 'update-index'].includes(args[0])) {
     return ''
   }
-  Errors.ThrowUnexpected(`Unrecognized recording Git command: ${words}`)
+  Errors.ThrowShouldNeverHappen(`Unrecognized recording Git command: ${words}`)
 }
 
 function applyGitChanges(args: readonly string[], state: ReturnType<typeof initialState>, storage: boolean): void {

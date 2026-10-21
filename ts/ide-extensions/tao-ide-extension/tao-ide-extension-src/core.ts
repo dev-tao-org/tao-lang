@@ -70,7 +70,7 @@ export async function createWasmDocumentSession(
     document,
     createDocument() {
       if (disposed) {
-        Errors.ThrowUnexpected('Cannot create a document from a disposed parser')
+        Errors.ThrowShouldNeverHappen('Cannot create a document from a disposed parser')
       }
       const session = createDocumentSession({ taoParser, tsxParser, taoQuery, tsxQuery, measure })
       return trackedDocument(session, documents)
@@ -105,13 +105,13 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
   return {
     format(options) {
       if (disposed || !taoTree) {
-        Errors.ThrowUnexpected('Cannot format an unavailable Tao document session')
+        Errors.ThrowShouldNeverHappen('Cannot format an unavailable Tao document session')
       }
       return format({ source, tree: taoTree }, options)
     },
     update(nextSource) {
       if (disposed) {
-        Errors.ThrowUnexpected('Cannot update a disposed Tao document session')
+        Errors.ThrowShouldNeverHappen('Cannot update a disposed Tao document session')
       }
       const previousTree = taoTree
       taoTree = undefined
@@ -124,7 +124,7 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
         },
       }) ?? undefined
       if (!taoTree) {
-        Errors.ThrowUnexpected('Tao parsing was cancelled unexpectedly')
+        Errors.ThrowShouldNeverHappen('Tao parsing was cancelled unexpectedly')
       }
       source = nextSource
       return collectResults(options, taoTree, source)

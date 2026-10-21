@@ -31,7 +31,7 @@ const sampleCompilation = Timings.topLevelTimer(
     const document = await timings.run(parseTransformAndCompile, source, parser)
     const app = document?.root.declarations.find(AST.IsAppDeclaration)
     if (app?.name.value !== 'HelloWorld') {
-      Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
+      Errors.ThrowShouldNeverHappen('Hello World compiler sample did not produce the expected app.')
     }
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'hello-world-compile' })))

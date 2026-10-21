@@ -99,9 +99,9 @@ async function startDevRuntime(state: DevSession): Promise<void> {
   if (state.stopped) {
     return
   }
-  const workspace = state.workspace ?? Errors.ThrowUnexpected('Preview workspace is unavailable.')
+  const workspace = state.workspace ?? Errors.ThrowShouldNeverHappen('Preview workspace is unavailable.')
   const entryPath = workspace.files.entryPath
-    ?? Errors.ThrowUnexpected('Preview did not register an entry path for preview edits.')
+    ?? Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
   state.preview = await createPreviewHarness({
     workspace,

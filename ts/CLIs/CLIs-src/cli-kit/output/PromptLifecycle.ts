@@ -15,7 +15,7 @@ export function createPromptLifecycle(operations: {
 
   async function beginPrompt<T>(prompt: () => Promise<T>): Promise<T> {
     if (promptActive) {
-      Errors.ThrowUnexpected('Another prompt is active. Wait for it to finish before starting another prompt.')
+      Errors.ThrowShouldNeverHappen('Another prompt is active. Wait for it to finish before starting another prompt.')
     }
     promptActive = true
     enqueue(async () => {

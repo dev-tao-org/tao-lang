@@ -73,7 +73,7 @@ async function captureContext(git: Git): Promise<Context> {
   const sourceCommit = (await git(['rev-parse', 'HEAD'])).trim()
   const sourceTree = (await git(['rev-parse', `${sourceCommit}^{tree}`])).trim()
   if (!/^[a-f0-9]{40}$/.test(sourceCommit) || !/^[a-f0-9]{40}$/.test(sourceTree)) {
-    Errors.ThrowUnexpected('Performance recording requires full Git commit and tree identities.')
+    Errors.ThrowShouldNeverHappen('Performance recording requires full Git commit and tree identities.')
   }
   const source = await git(['show', `${sourceCommit}:${fixturePath}`], true)
   return { sourceCommit, sourceTree, source, fixtureSha256: Platform.hashText(source) }

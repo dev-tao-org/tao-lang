@@ -45,10 +45,13 @@ export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): 
   throw new UserInputError(messageForUser, details)
 }
 
-/** ThrowUnexpected throws an internal Tao error.
+/** ThrowShouldNeverHappen throws an internal Tao error.
  *  Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
  *  the reader and recovery owner is a Tao developer. */
-export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
+export function ThrowShouldNeverHappen(
+  messageForUser: string,
+  opts?: { cause?: unknown; details?: ErrorDetails },
+): never {
   throw new UnexpectedBehaviorError(messageForUser, opts)
 }
 

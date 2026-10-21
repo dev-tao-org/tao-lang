@@ -114,6 +114,6 @@ function createFixture(root: string) {
     if (args.at(-1) === '--show-superproject-working-tree') {
       return root
     }
-    return Errors.ThrowUnexpected('Unexpected Git operation: ' + operation)
+    return Errors.ThrowShouldNeverHappen('Unexpected Git operation: ' + operation)
   }
 }

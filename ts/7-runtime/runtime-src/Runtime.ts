@@ -100,7 +100,7 @@ async function readPinnedDependencies(): Promise<Record<string, string>> {
     packages: Record<string, [string, ...unknown[]]>
   }
   const types = lock.packages['@types/react']?.[0].slice('@types/react@'.length)
-    ?? Errors.ThrowUnexpected('The runtime lock does not pin React contract types.')
+    ?? Errors.ThrowShouldNeverHappen('The runtime lock does not pin React contract types.')
   return { ...resources.dependencies, '@types/react': types }
 }
 

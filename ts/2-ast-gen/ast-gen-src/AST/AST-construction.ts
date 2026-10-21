@@ -9,7 +9,7 @@ export function Construct<Kind extends AST.Node['kind']>(
 ): AST.OfKind<Kind> {
   const result = Switch.on<Parser.SyntaxNode, 'type', AST.Node>(cst, 'type', constructors)
   if (!AST.IsKind(result, kind)) {
-    Errors.ThrowUnexpected(`Unexpected ${result.kind} for CST ${cst.type}.`)
+    Errors.ThrowShouldNeverHappen(`Unexpected ${result.kind} for CST ${cst.type}.`)
   }
   return result
 }
@@ -39,13 +39,13 @@ export function List<Kind extends AST.Node['kind']>(
 
 /** RequiredField returns a required CST field. */
 export function RequiredField(cst: Parser.SyntaxNode, field: string): Parser.SyntaxNode {
-  return cst.childForFieldName(field) ?? Errors.ThrowUnexpected(`Missing CST field ${field} on ${cst.type}.`)
+  return cst.childForFieldName(field) ?? Errors.ThrowShouldNeverHappen(`Missing CST field ${field} on ${cst.type}.`)
 }
 
 /** RequiredChild returns a required named CST child of the requested type. */
 export function RequiredChild(cst: Parser.SyntaxNode, type: string): Parser.SyntaxNode {
   return cst.namedChildren.find(child => child.type === type)
-    ?? Errors.ThrowUnexpected(`Missing CST child ${type} on ${cst.type}.`)
+    ?? Errors.ThrowShouldNeverHappen(`Missing CST child ${type} on ${cst.type}.`)
 }
 
 const constructors = {

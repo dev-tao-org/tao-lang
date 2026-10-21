@@ -57,18 +57,19 @@ async function openPreview(entry: string, events: string[], published: string[])
             events.push('input')
             return await managedModulesInput(directory, program.modules, {})
           },
-          readManaged: async () => Errors.ThrowUnexpected('No managed profile should be inspected on this session.'),
-          generatedFiles: async () => Errors.ThrowUnexpected('No generated setup scan should run.'),
-          prepareSidecars: async () => Errors.ThrowUnexpected('No sidecar should be installed.'),
+          readManaged: async () =>
+            Errors.ThrowShouldNeverHappen('No managed profile should be inspected on this session.'),
+          generatedFiles: async () => Errors.ThrowShouldNeverHappen('No generated setup scan should run.'),
+          prepareSidecars: async () => Errors.ThrowShouldNeverHappen('No sidecar should be installed.'),
         },
       },
     },
-    { confirm: async () => Errors.ThrowUnexpected('An ordinary edit must not prompt.') },
+    { confirm: async () => Errors.ThrowShouldNeverHappen('An ordinary edit must not prompt.') },
     {
       async inspect() {
         events.push('startup')
       },
-      setup: async () => Errors.ThrowUnexpected('An ordinary edit must not install.'),
+      setup: async () => Errors.ThrowShouldNeverHappen('An ordinary edit must not install.'),
     },
   )
 }

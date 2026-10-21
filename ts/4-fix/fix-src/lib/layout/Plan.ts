@@ -74,7 +74,7 @@ export function spaceAt(plan: LayoutPlan, index: number, spaces: number): void {
     return
   }
   if (gap.explicitSpace !== undefined && gap.explicitSpace !== spaces) {
-    Errors.ThrowUnexpected(`Conflicting spacing rules at ${gap.start}.`)
+    Errors.ThrowShouldNeverHappen(`Conflicting spacing rules at ${gap.start}.`)
   }
   gap.spaces = spaces
   if (gap.explicitLines === undefined) {
@@ -90,7 +90,7 @@ export function linesAt(plan: LayoutPlan, index: number, lines: number): void {
     return
   }
   if (gap.explicitLines !== undefined && gap.explicitLines !== lines) {
-    Errors.ThrowUnexpected(`Conflicting layout rules at ${gap.start}.`)
+    Errors.ThrowShouldNeverHappen(`Conflicting layout rules at ${gap.start}.`)
   }
   gap.lines = lines
   gap.explicitLines = lines

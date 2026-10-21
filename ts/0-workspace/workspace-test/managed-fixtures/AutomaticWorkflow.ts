@@ -41,8 +41,8 @@ export async function openAutomaticWorkspace(
         dependencyOptions: {
           ...dependencyOptions,
           git: {
-            resolveCommit: async () => Errors.ThrowUnexpected('An unreachable source must not resolve.'),
-            fetchCommit: async () => Errors.ThrowUnexpected('An unreachable source must not download.'),
+            resolveCommit: async () => Errors.ThrowShouldNeverHappen('An unreachable source must not resolve.'),
+            fetchCommit: async () => Errors.ThrowShouldNeverHappen('An unreachable source must not download.'),
           },
         },
       }),

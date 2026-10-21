@@ -97,7 +97,7 @@ async function runScenarios(page: HeadlessBrowser.Page): Promise<PreviewResult[]
     )
     const state: BrowserRuntime.PageState = await page.evaluate(() => window.__taoPreviewState)
     if (state.status === 'failed') {
-      Errors.ThrowUnexpected(state.error ?? 'Preview update failed.')
+      Errors.ThrowShouldNeverHappen(state.error ?? 'Preview update failed.')
     }
     await assertScenario(page, scenario)
   }
@@ -131,10 +131,10 @@ async function assertScenario(page: HeadlessBrowser.Page, scenario: typeof scena
     if (scenario === 'reset') {
       await frame.getByText('Hello World', { exact: true }).waitFor()
       if (await frame.getByText('Hello Tao', { exact: true }).count() > 0) {
-        Errors.ThrowUnexpected(`${frameId} frame still showed edited text after reset.`)
+        Errors.ThrowShouldNeverHappen(`${frameId} frame still showed edited text after reset.`)
       }
       if (await frame.getByText('Second view', { exact: true }).count() > 0) {
-        Errors.ThrowUnexpected(`${frameId} frame still showed the added view after reset.`)
+        Errors.ThrowShouldNeverHappen(`${frameId} frame still showed the added view after reset.`)
       }
       continue
     }
@@ -143,7 +143,7 @@ async function assertScenario(page: HeadlessBrowser.Page, scenario: typeof scena
       await frame.getByText('Second view', { exact: true }).waitFor()
     }
     if (scenario === 'row' && !await hasRowLayout(frame)) {
-      Errors.ThrowUnexpected(`${frameId} frame did not place both Text children in a Row layout.`)
+      Errors.ThrowShouldNeverHappen(`${frameId} frame did not place both Text children in a Row layout.`)
     }
   }
 }
@@ -198,7 +198,7 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
 
 function requirePublished(result: UpdateResult): void {
   if (result.status !== 'published') {
-    Errors.ThrowUnexpected(`Initial preview source was ${result.status}.`)
+    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.`)
   }
 }
 
@@ -206,7 +206,7 @@ async function waitForReloadReports(owned: Resources): Promise<void> {
   const deadline = Time.nowMs() + 5000
   while (owned.reloads.length < scenarios.length) {
     if (Time.nowMs() >= deadline) {
-      Errors.ThrowUnexpected('Preview receipts did not reach the terminal timing reporter.')
+      Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
     }
     await Time.sleep(10)
   }

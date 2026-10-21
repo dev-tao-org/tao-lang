@@ -116,7 +116,7 @@ Tests.test('reports suspend failure without running the prompt and retries the n
       suspends++
       events.push(`suspend ${suspends}`)
       if (suspends === 1) {
-        Errors.ThrowUnexpected('suspend failed')
+        Errors.ThrowShouldNeverHappen('suspend failed')
       }
       return true
     },
@@ -147,7 +147,7 @@ Tests.test('reports resume failure and retries the renderer on a later prompt', 
       resumes++
       events.push(`resume ${resumes}`)
       if (resumes === 1) {
-        Errors.ThrowUnexpected('resume failed')
+        Errors.ThrowShouldNeverHappen('resume failed')
       }
     },
     reportResumeFailure() {},
@@ -166,7 +166,7 @@ Tests.test('keeps the prompt failure primary while exposing a failed renderer re
   const lifecycle = createPromptLifecycle({
     suspend: async () => true,
     async resume() {
-      Errors.ThrowUnexpected('renderer resume failed')
+      Errors.ThrowShouldNeverHappen('renderer resume failed')
     },
     reportResumeFailure(error) {
       reported.push(error)

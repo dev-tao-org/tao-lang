@@ -11,7 +11,7 @@ const main = Timings.topLevelTimer(async function(timings) {
   const source = (await parserFixtures())[0]!.source
   const tree = timings.run(parser.parse, source)
   if (tree.rootNode.hasError || tree.rootNode.text !== source) {
-    Errors.ThrowUnexpected('Cold parser sample did not parse the complete HelloWorld fixture.')
+    Errors.ThrowShouldNeverHappen('Cold parser sample did not parse the complete HelloWorld fixture.')
   }
   IO.print(JSON.stringify(timings.samples))
 })

@@ -93,7 +93,7 @@ function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {
 
 function configureOutput(options: IOConfiguration): void {
   if (tui) {
-    Errors.ThrowUnexpected('Cannot reconfigure output while a TUI is active.')
+    Errors.ThrowShouldNeverHappen('Cannot reconfigure output while a TUI is active.')
   }
   configuration = options
   lastMainOutput = ''

@@ -275,7 +275,8 @@ class WorkspaceSession {
   }
 
   private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
-    const output = this.output ?? Errors.ThrowUnexpected('Runtime compilation requires a workspace output directory.')
+    const output = this.output
+      ?? Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
     this.application ??= await Runtime.create({
       ...this.options.runtimeOptions,
       directory: output.runtimeDirectory,

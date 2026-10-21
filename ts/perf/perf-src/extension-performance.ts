@@ -28,7 +28,7 @@ export async function extensionPerformance() {
       semanticTokenRanges(result.tokens)
       current.push({ phase: 'editor.token-ranges', durationMs: Time.nowMs() - rangesStarted })
       if (result.diagnostics.length > 0 || result.tokens.length === 0) {
-        Errors.ThrowUnexpected('Extension performance fixture did not produce valid highlighted syntax.')
+        Errors.ThrowShouldNeverHappen('Extension performance fixture did not produce valid highlighted syntax.')
       }
       if (index >= 20) {
         samples.push(...current)

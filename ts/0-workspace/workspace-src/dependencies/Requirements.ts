@@ -81,7 +81,7 @@ function requirementFromDeclaration(
 ): DependencyRequirement {
   const provider = declaration.provider
   if (provider === 'npm') {
-    Errors.ThrowUnexpected('npm requirements belong to the sidecar resolver.')
+    Errors.ThrowShouldNeverHappen('npm requirements belong to the sidecar resolver.')
   }
   if (provider === 'github' && !declaration.version) {
     Errors.ThrowUserInput(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)

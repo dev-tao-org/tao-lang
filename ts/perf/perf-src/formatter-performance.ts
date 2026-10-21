@@ -56,7 +56,7 @@ export const formatterPerformance = Timings.topLevelTimer(async function(initial
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {
   const tree = createParser().parse(fixture.source)
-  const ast = transform(tree) ?? Errors.ThrowUnexpected('Formatter performance fixture has invalid syntax.')
+  const ast = transform(tree) ?? Errors.ThrowShouldNeverHappen('Formatter performance fixture has invalid syntax.')
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
     sampleFormatting(fixture, typescript, tree, ast, index, samples)

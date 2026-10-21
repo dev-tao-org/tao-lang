@@ -27,7 +27,7 @@ Tests.test(
     const { root } = result!
     const app = root.declarations[0]!
     if (!AST.IsAppDeclaration(app)) {
-      Errors.ThrowUnexpected('Expected app')
+      Errors.ThrowShouldNeverHappen('Expected app')
     }
     const second = transform(tree)
     Tests.expect(second?.root).not.toBe(root)

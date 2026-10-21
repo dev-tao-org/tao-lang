@@ -17,7 +17,7 @@ export function compileViewDeclaration(
       Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
     }
     const component = foreignComponent
-      ?? Errors.ThrowUnexpected(`Missing compiled import for foreign view ${node.name.value}.`)
+      ?? Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
     return `TR.LetDefinition(${scope}, ${literal(node.name)}, TR.ForeignView(${
       literal(node.name)
     }, ${parameters}, ${component}, ${scope}));`

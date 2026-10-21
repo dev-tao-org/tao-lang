@@ -20,7 +20,7 @@ export const prepareRuntime = Timings.topLevelTimer(async function(timings): Pro
 async function writeRuntimeSources(directory: string, sources: Record<string, string>): Promise<void> {
   for (const [resource, sourcePath] of Object.entries(RuntimeSourceResources)) {
     const source = sources[Repo.resolvePath(sourcePath)]
-      ?? Errors.ThrowUnexpected(`Runtime source was not captured: ${sourcePath}`)
+      ?? Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
     const target = Path.join(directory, resource)
     await FileSystem.mkdir(Path.dirname(target), { recursive: true })
     await FileSystem.writeFile(target, source)
@@ -88,7 +88,7 @@ function runtimeManifest(source: string): RuntimeManifest {
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
   }
-  const dependencies = parsed.dependencies ?? Errors.ThrowUnexpected('Runtime package has no dependencies.')
+  const dependencies = parsed.dependencies ?? Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
   const devDependencies = parsed.devDependencies ?? {}
   return {
     name: 'tao-expo-toolchain',

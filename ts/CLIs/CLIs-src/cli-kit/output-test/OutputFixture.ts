@@ -37,7 +37,7 @@ async function runFixture(): Promise<void> {
     await runCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
   }
   if (mode === 'failed') {
-    Errors.ThrowUnexpected('fixture failure')
+    Errors.ThrowShouldNeverHappen('fixture failure')
   }
   IO.summary('fixture result')
   await IO.finish()
@@ -57,7 +57,7 @@ async function runPromptLifecycleFixture(): Promise<void> {
     events.push('prompt')
   })
   if (events.join(',') !== 'create,dispose,prompt,create') {
-    Errors.ThrowUnexpected(`Unexpected prompt renderer lifecycle: ${events.join(',')}`)
+    Errors.ThrowShouldNeverHappen(`Unexpected prompt renderer lifecycle: ${events.join(',')}`)
   }
   Terminal.stdout.write(events.join(',') + '\n')
   await IO.finish()
@@ -82,7 +82,7 @@ async function runPromptRecoveryFixture(mode: 'prompt-dispose-recovery' | 'promp
       disposeAttempts++
       events.push(`dispose ${disposeAttempts}`)
       if (mode === 'prompt-dispose-recovery' && disposeAttempts === 1) {
-        Errors.ThrowUnexpected('renderer dispose failed')
+        Errors.ThrowShouldNeverHappen('renderer dispose failed')
       }
     },
   })
@@ -91,7 +91,7 @@ async function runPromptRecoveryFixture(mode: 'prompt-dispose-recovery' | 'promp
     rendererCreations++
     events.push(`create ${rendererCreations}`)
     if (mode === 'prompt-render-recovery' && rendererCreations === 1) {
-      Errors.ThrowUnexpected('renderer creation failed')
+      Errors.ThrowShouldNeverHappen('renderer creation failed')
     }
     return renderer()
   })
@@ -106,7 +106,7 @@ async function runPromptRecoveryFixture(mode: 'prompt-dispose-recovery' | 'promp
     },
   })
   if (!firstFailed) {
-    Errors.ThrowUnexpected('The first renderer operation unexpectedly succeeded.')
+    Errors.ThrowShouldNeverHappen('The first renderer operation unexpectedly succeeded.')
   }
   await IO.prompt(async () => {
     events.push('prompt 2')

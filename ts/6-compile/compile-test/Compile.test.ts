@@ -16,7 +16,7 @@ Tests.test('Hello World generates generic runtime calls and authored native inje
   const entryPath = Repo.resolvePath('Apps/Tests/Hello World.tao')
   const root = document.root.declarations.find(AST.IsViewDeclaration)!.render
   if (!AST.IsViewRender(root)) {
-    Errors.ThrowUnexpected('Expected a root render.')
+    Errors.ThrowShouldNeverHappen('Expected a root render.')
   }
   const program = await linkedUIProgram(entryPath, document)
   const code = compile(document, { revision: 'test-1', program })

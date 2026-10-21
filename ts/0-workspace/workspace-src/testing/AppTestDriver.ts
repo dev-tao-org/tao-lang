@@ -118,7 +118,7 @@ async function openTestProject(
 }
 
 function browser(state: Session): TestBrowser {
-  return state.browser ?? Errors.ThrowUnexpected('Run an app before interacting with it.')
+  return state.browser ?? Errors.ThrowShouldNeverHappen('Run an app before interacting with it.')
 }
 
 async function disposeSession(state: Session): Promise<void> {

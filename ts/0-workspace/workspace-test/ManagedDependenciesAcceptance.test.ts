@@ -303,7 +303,7 @@ async function verifyRuntimeConflictPreservesPreview(
   await Tests.rejects(
     prepareProject(entry, {
       runtimePins,
-      executor: async () => Errors.ThrowUnexpected('A runtime conflict must fail before invoking Bun.'),
+      executor: async () => Errors.ThrowShouldNeverHappen('A runtime conflict must fail before invoking Bun.'),
     }),
     /incompatible versions of react/,
   )
