@@ -25,7 +25,9 @@ description: >-
 
 ## Response
 
-- Be brief and terse; let the user request detail. Group by broad topic, such as Storage, rather than
+- Default to a short assessment and only the most material recommendations; let the user ask for
+  details rather than anticipating every follow-up. Avoid exhaustive alternatives, long examples
+  and background explanations unless requested. Group by broad topic, such as Storage, rather than
   splitting each consideration into its own critique. Announce tool-assisted critiques before research.
 - Use the opening below, without a blank line between separator and bold header where rendering
   permits. Follow it with an unlabeled executive summary, usually one or two short sentences. Use a
