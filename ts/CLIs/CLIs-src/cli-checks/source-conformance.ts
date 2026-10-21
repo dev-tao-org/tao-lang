@@ -28,8 +28,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
   }
 }
 
-/** sourceConformanceIssues checks repository-relative TypeScript source for API docs and source conventions. */
-export function sourceConformanceIssues(filename: string, source: string): string[] {
+function sourceConformanceIssues(filename: string, source: string): string[] {
   const { error } = sourceSizeDiagnostics(filename, source)
   return [...error ? [error] : [], ...new SourceConformanceChecker(filename, source).check()]
 }

@@ -99,9 +99,6 @@ export type CompileRequest = {
   version?: number
 }
 
-/** SourceSnapshot carries one disk read and its input timings into the compiler queue. */
-export type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
-
 /** FileManagerInput holds either a frozen source or a disk read deferred until its queue turn. */
 export type FileManagerInput =
   | {
@@ -217,6 +214,7 @@ export function notifyCompletion(
 }
 
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
+type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
 const readSource = Timings.topLevelTimer(async function(
   timings,

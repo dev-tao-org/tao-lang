@@ -29,8 +29,16 @@ export async function withTestTimings(
   })
 }
 
-/** slowTestWarnings formats executed Bun JUnit cases strictly exceeding the supplied seconds. */
-export function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
+/** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */
+export function parseSlowTestSeconds(value = '0.075'): number {
+  const seconds = Number(value)
+  if (!value.trim() || !Number.isFinite(seconds) || seconds < 0) {
+    Errors.ThrowUserInput('--slow requires a finite, non-negative duration in seconds.')
+  }
+  return seconds
+}
+
+function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
   const slow = readTestCases(report).filter(test => isSlowTest(test, slowSeconds))
     .sort((left, right) => right.seconds - left.seconds)
   if (slow.length === 0) {
@@ -40,15 +48,6 @@ export function slowTestWarnings(report: string, slowSeconds = 0.075): string[] 
     `Slow tests (>${slowSeconds * 1000} ms):`,
     ...slow.map(formatSlowTest),
   ]
-}
-
-/** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */
-export function parseSlowTestSeconds(value = '0.075'): number {
-  const seconds = Number(value)
-  if (!value.trim() || !Number.isFinite(seconds) || seconds < 0) {
-    Errors.ThrowUserInput('--slow requires a finite, non-negative duration in seconds.')
-  }
-  return seconds
 }
 
 async function prepareTestReport(): Promise<string | undefined> {

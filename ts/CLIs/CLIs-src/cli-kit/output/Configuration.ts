@@ -4,24 +4,6 @@ import { IO, type IOConfiguration, renderOutput } from '../io'
 /** CLIEntrypoint names the caller whose default presentation and routing are configured. */
 export type CLIEntrypoint = 'dev' | 'agent' | 'tao'
 
-/** resolveOutputConfiguration determines presentation once without affecting worker output identities. */
-export function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environment: {
-  ui?: string
-  terminalOutput?: string
-  tty: boolean
-}) {
-  const ui = environment.tty && (environment.ui ?? (entrypoint === 'dev' ? '1' : '0')) === '1'
-  const terminal = environment.terminalOutput === '1'
-    || (environment.terminalOutput === undefined && entrypoint !== 'agent')
-  const routing: IOConfiguration = {
-    stdout: terminal ? 'terminal' : 'log',
-    stderr: terminal ? 'terminal' : 'log',
-    progress: terminal ? 'terminal' : 'log',
-    logDirectory: entrypoint === 'agent' ? 'agent' : 'dev',
-  }
-  return { ui, routing }
-}
-
 /** configureCLIOutput owns environment reads and lazy TUI setup for all CLI entrypoints. */
 export async function configureCLIOutput(
   entrypoint: CLIEntrypoint,
@@ -48,4 +30,21 @@ export async function configureCLIOutput(
     IO.setPromptRenderer(factory)
     renderOutput(await factory())
   }
+}
+
+function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environment: {
+  ui?: string
+  terminalOutput?: string
+  tty: boolean
+}) {
+  const ui = environment.tty && (environment.ui ?? (entrypoint === 'dev' ? '1' : '0')) === '1'
+  const terminal = environment.terminalOutput === '1'
+    || (environment.terminalOutput === undefined && entrypoint !== 'agent')
+  const routing: IOConfiguration = {
+    stdout: terminal ? 'terminal' : 'log',
+    stderr: terminal ? 'terminal' : 'log',
+    progress: terminal ? 'terminal' : 'log',
+    logDirectory: entrypoint === 'agent' ? 'agent' : 'dev',
+  }
+  return { ui, routing }
 }

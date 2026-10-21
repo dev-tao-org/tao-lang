@@ -2,9 +2,6 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
 import { runCommand } from './cli-kit'
 
-/** HostCommandRoute identifies a supported host command and unchanged trailing arguments. */
-export type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
-
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
 export async function runHostCommand(argv: readonly string[]): Promise<void> {
   const cwd = Repo.getWorkspaceRoot()
@@ -16,8 +13,9 @@ export async function runHostCommand(argv: readonly string[]): Promise<void> {
   await runCommand(route.command, { variadicArgs: route.variadicArgs, cwd })
 }
 
-/** resolveHostCommand applies the longest exact-token permission prefix to a supported target. */
-export function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
+type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
+
+function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
   if (isInvalidHostCommand(argv)) {
     Errors.ThrowUserInput('Name an allowlisted host command without leading options.')
   }

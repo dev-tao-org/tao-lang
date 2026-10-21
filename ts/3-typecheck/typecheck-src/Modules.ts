@@ -1,11 +1,5 @@
 import type * as AST from '@ast-gen/AST'
 
-/** ResolvedImport attaches filesystem targets to an authored use statement. */
-export type ResolvedImport = {
-  statement: AST.UseStatement | AST.UsePackageStatement
-  targets: readonly ImportTarget[]
-}
-
 /** SourceModule owns an immutable source AST and its resolved import candidates. */
 export type SourceModule = {
   path: string
@@ -40,6 +34,11 @@ export function namespaceFromPath(path: string): string | undefined {
   const last = parts.at(-1)?.replace(/\.tao$/, '')
   const name = last?.startsWith('@') ? last.slice(1) : last
   return name && /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name) ? name : undefined
+}
+
+type ResolvedImport = {
+  statement: AST.UseStatement | AST.UsePackageStatement
+  targets: readonly ImportTarget[]
 }
 
 type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'

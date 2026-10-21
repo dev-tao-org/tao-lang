@@ -14,8 +14,7 @@ export async function prepareNativeLocks(): Promise<void> {
   await BuildLock.withBuildLock(Artifacts.resolvePath('locks/native-lock-build.lock'), buildNativeLocks)
 }
 
-/** prepareNativeLock reuses verified output or builds a fresh addon after invalidating stale pointer state. */
-export async function prepareNativeLock(
+async function prepareNativeLock(
   root: string,
   identity: string,
   canReuse: (pointer: { identity: string; directory: string }) => Promise<boolean>,

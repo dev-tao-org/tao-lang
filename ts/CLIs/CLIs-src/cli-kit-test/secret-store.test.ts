@@ -4,7 +4,6 @@ import {
   type Cipher,
   decryptSecretValues,
   formatSecretStore,
-  isStoreKeyArmor,
   parseSecretStore,
   renderSecretEnvFile,
   requireSecretName,
@@ -69,14 +68,9 @@ TestCase('secret store format > formats entries in sorted order and renders sort
   )
 })
 
-TestCase('secret store format > validates environment variable names and recognizes store-key armor headers', () => {
+TestCase('secret store format > validates environment variable names', () => {
   Expect(requireSecretName('ANTHROPIC_API_KEY')).toBe('ANTHROPIC_API_KEY')
   Expect(() => requireSecretName('bad-name')).toThrow()
-  const payload = 'YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=' // age-encryption.org/v1\n-> X25519 age1\n\n
-  Expect(isStoreKeyArmor(`-----BEGIN AGE ENCRYPTED FILE-----\n${payload}\n-----END AGE ENCRYPTED FILE-----`)).toBe(
-    true,
-  )
-  Expect(isStoreKeyArmor('not an age armor')).toBe(false)
 })
 
 TestCase('secret store format > unwraps the store key once and decrypts values with the software key', async () => {

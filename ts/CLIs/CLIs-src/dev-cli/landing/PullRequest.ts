@@ -6,15 +6,6 @@ import { requireSourceHead } from './SourceIdentity'
 /** LandingProof retains GitHub's merged identity plus the authoritative main ancestry confirmation. */
 export type LandingProof = { branch: string; url: string; sourceCommit: string; mergeCommit: string; mergedAt: string }
 
-/** proveLanded queries merged pull requests and proves that their merge commit remains on remote main. */
-export async function proveLanded(io: LandingIO, branch: string): Promise<LandingProof> {
-  const proof = await inspectLanding(io, branch)
-  if (!proof) {
-    Errors.ThrowUserInput(`No authoritative merged pull request was found for ${branch}.`)
-  }
-  return proof
-}
-
 /** inspectLanding distinguishes a successful unmerged lookup from unavailable or contradictory remote evidence. */
 export async function inspectLanding(io: LandingIO, branch: string): Promise<LandingProof | undefined> {
   requireFeatureBranch(branch)
@@ -72,6 +63,14 @@ export async function publishAndMerge(
   const proof = await proveLanded(io, branch)
   if (proof.sourceCommit !== head) {
     Errors.ThrowHostEnvironment('GitHub did not confirm the requested source commit as merged.')
+  }
+  return proof
+}
+
+async function proveLanded(io: LandingIO, branch: string): Promise<LandingProof> {
+  const proof = await inspectLanding(io, branch)
+  if (!proof) {
+    Errors.ThrowUserInput(`No authoritative merged pull request was found for ${branch}.`)
   }
   return proof
 }

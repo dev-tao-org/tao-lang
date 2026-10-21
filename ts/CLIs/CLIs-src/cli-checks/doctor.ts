@@ -20,21 +20,25 @@ export async function doctorReport(fingerprintOnly = false): Promise<{
   return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
 }
 
-/** safeToken admits only plain version and identifier tokens into the pasteable fingerprint. */
-export function safeToken(value: string | undefined): string | undefined {
+/** assertDoctorReady raises the diagnosis after its report has been printed. */
+export function assertDoctorReady(status: Check['status']): void {
+  if (status === 'fail') {
+    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
+  }
+}
+
+function safeToken(value: string | undefined): string | undefined {
   const token = value?.trim()
   return token && /^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(token) ? token : undefined
 }
 
-/** toolVersion extracts a version token while dropping paths and other identifying output. */
-export function toolVersion(output: string | undefined): string | undefined {
+function toolVersion(output: string | undefined): string | undefined {
   const token = output?.split('\n')[0]?.trim().split(/\s+/).map(value => value.replace(/,$/, ''))
     .find(value => /^v?[0-9][0-9A-Za-z._+-]*$/.test(value))
   return safeToken(token?.replace(/^v/, ''))
 }
 
-/** diagnoseTools classifies required runtime versions and optional local-service tools. */
-export function diagnoseTools(
+function diagnoseTools(
   tools: readonly string[],
   versions: readonly (string | undefined)[],
   failures: readonly (string | undefined)[] = [],
@@ -61,13 +65,6 @@ export function diagnoseTools(
     }
     return { name, status: 'pass', detail: version }
   })
-}
-
-/** assertDoctorReady raises the diagnosis after its report has been printed. */
-export function assertDoctorReady(status: Check['status']): void {
-  if (status === 'fail') {
-    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
-  }
 }
 
 type Check = { name: string; status: 'pass' | 'warn' | 'fail'; detail: string; remediation?: string }

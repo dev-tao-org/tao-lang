@@ -1,6 +1,6 @@
 import { Time, Try } from '@shared'
 import { Tests, WorkspaceWatch } from '@shared/os'
-import { FileManager, type FileManagerOptions, type SourceSnapshot } from '../workspace-src/FileManager'
+import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
 Tests.test('opening waits for the latest selected-entry read after an observed change', async () => {
@@ -210,6 +210,8 @@ function dynamicWatchFixture() {
   }
 }
 
+type ReadSnapshot = Exclude<Awaited<ReturnType<NonNullable<FileManagerOptions['read']>>>, UpdateResult>
+
 type ManagerFixtureState = {
   onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
   scheduled: (() => void) | undefined
@@ -223,7 +225,7 @@ type ManagerFixtureState = {
 }
 
 function createManagerFixture(
-  read: (path: string, observedAtMs: number, index: number) => Promise<Omit<SourceSnapshot, 'timings'>>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
     result(isCurrent() ? 'published' : 'superseded'),
   options: Partial<FileManagerOptions> = {},
@@ -275,7 +277,7 @@ function createManagerFixture(
 }
 
 function createFixtureManager(
-  read: (path: string, observedAtMs: number, index: number) => Promise<Omit<SourceSnapshot, 'timings'>>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult>,
   state: ManagerFixtureState,
   options: Partial<FileManagerOptions>,
@@ -313,7 +315,7 @@ function createFixtureManager(
   return manager
 }
 
-function snapshot(source: string): Omit<SourceSnapshot, 'timings'> {
+function snapshot(source: string): ReadSnapshot {
   return { source, observedAtMs: Time.timestampMs() }
 }
 

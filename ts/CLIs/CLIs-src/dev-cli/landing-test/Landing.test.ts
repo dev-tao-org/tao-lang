@@ -3,7 +3,7 @@ import { publishPreviewArchive } from '../landing/Archive'
 import { integrateMain } from '../landing/Integration'
 import { land } from '../landing/Land'
 import { pendingPreviewRecords } from '../landing/PreviewRecords'
-import { inspectLanding, proveLanded, publishAndMerge } from '../landing/PullRequest'
+import { inspectLanding, publishAndMerge } from '../landing/PullRequest'
 import { recordingLanding } from './RecordingLanding'
 
 Tests.test('landing orders verification, archive publication, remote confirmation, source push, checks and pinned merge', async () => {
@@ -107,10 +107,9 @@ Tests.test('a changed PR head and failed required checks cannot issue a merge', 
 Tests.test('landed requires merged PR ancestry and propagates authentication failures', async () => {
   const f = recordingLanding()
   Tests.expect(await inspectLanding(f.io, f.branch)).toBeUndefined()
-  await Tests.rejects(proveLanded(f.io, f.branch))
   f.state.merged = true
   f.state.fail = 'gh api'
-  await Tests.rejects(proveLanded(f.io, f.branch))
+  await Tests.rejects(inspectLanding(f.io, f.branch))
   Tests.expect(f.calls.every(call => call.startsWith('gh '))).toBe(true)
 })
 

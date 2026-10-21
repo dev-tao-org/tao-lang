@@ -8,7 +8,7 @@ import {
   readDependencyLock,
   writeDependencyLock,
 } from './LockFile'
-import { assertTaoProjectRoot, defaultSourceAlias, resolveSource, sourceIdentity } from './Sources'
+import { defaultSourceAlias, resolveSource, sourceIdentity } from './Sources'
 import type { DependencyLock, DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
 /** resolveLockedAlias maps an import alias to its producing source root. */
@@ -27,42 +27,6 @@ export function resolveLockedAlias(
   const requirement = owner?.requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
   const identity = requirement ? sourceIdentity(requirement, owner!.location, projectRoot) : rootIdentity(lock, alias)
   return identity ? lock.sources[identity] : undefined
-}
-
-/** readPreparedDependencies reads a matching durable lock without fetching remote sources. */
-export async function readPreparedDependencies(
-  projectRoot: string,
-  requirements: DependencyRequirement[],
-  options: DependencyStoreOptions,
-): Promise<DependencyLock> {
-  const lock = materializeLocations(
-    await readDependencyLock(dependencyLockPath(projectRoot)),
-    projectRoot,
-    options.bundledProjects,
-  )
-  const expected = rootsFor(requirements, projectRoot)
-  if (!lock || JSON.stringify(lock.roots) !== JSON.stringify(expected)) {
-    preparationNeeded('Dependencies changed; prepare dependencies, then retry.')
-  }
-  for (const source of Object.values(lock.sources)) {
-    const bundledRoot = options.bundledProjects?.[source.identifier]
-    if (source.provider === 'bundled' && !bundledRoot) {
-      preparationNeeded(`Bundled project ${source.identifier} is unavailable; prepare dependencies, then retry.`)
-    }
-    if (!await FileSystem.exists(source.location)) {
-      preparationNeeded(
-        `Locked source ${source.identifier}@${source.commit} is missing; prepare dependencies, then retry.`,
-      )
-    }
-    assertTaoProjectRoot(source.location, `Locked source ${source.identifier}`)
-    const current = await options.readRequirements(source.location)
-    if (JSON.stringify(normalizeRequirements(current)) !== JSON.stringify(normalizeRequirements(source.requirements))) {
-      preparationNeeded(
-        `Requirements changed in ${source.identifier}; prepare dependencies, then retry.`,
-      )
-    }
-  }
-  return lock
 }
 
 /** prepareDependencies resolves requirements and downloads only missing pinned Git sources. */
@@ -242,10 +206,6 @@ function rootsFor(requirements: DependencyRequirement[], projectRoot: string): R
       `${sourceIdentity(requirement, projectRoot, projectRoot)}@${requirement.version}`,
     ]).sort(),
   )
-}
-
-function normalizeRequirements(requirements: DependencyRequirement[]): string[] {
-  return requirements.map(requirement => JSON.stringify(requirement)).sort()
 }
 
 function preparationNeeded(message: string): never {

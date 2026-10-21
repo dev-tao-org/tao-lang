@@ -23,7 +23,7 @@ import {
 import { nearestProjectRoot } from './modules/Paths'
 import type { UpdateResult } from './Workspace'
 
-export type { CompiledEvent, CompileRequest, FileManagerOptions, SourceSnapshot } from './FileManagerCompilation'
+export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileManagerCompilation'
 
 /** FileManager owns workspace documents, recursive observation, and the bounded compile lane. */
 export class FileManager {

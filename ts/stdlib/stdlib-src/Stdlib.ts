@@ -9,17 +9,6 @@ export function projectDirectory(): Promise<string> {
   return defaultProjectDirectory ??= resolveDefaultProjectDirectory()
 }
 
-/** locateProject selects a live project or materializes embedded project files. */
-export async function locateProject(
-  candidate: string | undefined,
-  cacheRoot: string,
-  resources: Readonly<Record<string, string>> = embeddedFiles,
-  withLock: <Value>(operation: () => Promise<Value>) => Promise<Value> = Storage.withCacheMutation,
-): Promise<string> {
-  const live = liveProjectRoot(candidate)
-  return live ?? await withLock(() => materializeProject(cacheRoot, resources))
-}
-
 let defaultProjectDirectory: Promise<string> | undefined
 
 const embeddedFiles = {
@@ -31,6 +20,15 @@ const embeddedFiles = {
 async function resolveDefaultProjectDirectory(): Promise<string> {
   const candidate = Path.dirname(Path.fileURLToPath(import.meta.url))
   return await locateProject(candidate, Storage.cacheDirectory('stdlib'), embeddedFiles)
+}
+
+async function locateProject(
+  candidate: string | undefined,
+  cacheRoot: string,
+  resources: Readonly<Record<string, string>>,
+): Promise<string> {
+  const live = liveProjectRoot(candidate)
+  return live ?? await Storage.withCacheMutation(() => materializeProject(cacheRoot, resources))
 }
 
 function liveProjectRoot(candidate: string | undefined): string | undefined {

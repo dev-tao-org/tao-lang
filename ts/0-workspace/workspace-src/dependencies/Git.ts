@@ -8,8 +8,7 @@ export const gitSourceAdapter: GitSourceAdapter = {
   fetchCommit: fetchGitHubCommit,
 }
 
-/** resolveGitHubCommit maps an exact commit or advertised ref to a full commit ID. */
-export async function resolveGitHubCommit(repository: string, version: string): Promise<string> {
+async function resolveGitHubCommit(repository: string, version: string): Promise<string> {
   if (isCommit(version)) {
     return version.toLowerCase()
   }
@@ -20,8 +19,7 @@ export async function resolveGitHubCommit(repository: string, version: string): 
   return validateCommit(commit, repository, version)
 }
 
-/** fetchGitHubCommit materializes one requested commit and verifies the checked-out identity. */
-export async function fetchGitHubCommit(repository: string, commit: string, destination: string): Promise<void> {
+async function fetchGitHubCommit(repository: string, commit: string, destination: string): Promise<void> {
   if (!isCommit(commit)) {
     Errors.ThrowUserInput(`Invalid immutable Git commit ID ${commit}.`)
   }

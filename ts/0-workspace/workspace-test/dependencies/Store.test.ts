@@ -7,7 +7,6 @@ import {
 } from '../../workspace-src/dependencies/LockFile'
 import {
   prepareDependencies,
-  readPreparedDependencies,
   resolveLockedAlias,
 } from '../../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../../workspace-src/dependencies/Types'
@@ -24,7 +23,7 @@ Tests.test('prepared Git sources reuse immutable pins and explicit updates leave
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('changed requirements require preparation and file dependencies remain live', async () => {
+Tests.test('file dependencies remain live and retain their managed graph references', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-live-${Platform.randomUUID()}`)
   const source = Path.join(root, 'local-source')
   const initial: DependencyRequirement[] = [{
@@ -33,9 +32,8 @@ Tests.test('changed requirements require preparation and file dependencies remai
     version: '*',
     alias: '@local',
   }]
-  let nested: DependencyRequirement[] = []
   const options: DependencyStoreOptions = {
-    readRequirements: async () => nested,
+    readRequirements: async () => [],
     acquireLock: async () => ({ release() {} }),
     git: {
       async resolveCommit() {
@@ -51,8 +49,6 @@ Tests.test('changed requirements require preparation and file dependencies remai
     await createProjectMarker(source)
     await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
     await prepareFileSourceAndGraph(root, source, initial, options)
-    nested = [{ provider: 'file', identifier: '../other', version: '*', alias: '@other' }]
-    await Tests.rejects(readPreparedDependencies(root, initial, options), /prepare dependencies, then retry/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -73,8 +69,6 @@ async function prepareFileSourceAndGraph(
   Tests.expect(roundTripped?.sources['file:local-source']?.location).toBe('local-source')
   await pruneUnreferencedManagedLocks(root)
   Tests.expect(await FileSystem.exists(durable)).toBe(true)
-  const restored = await readPreparedDependencies(root, requirements, options)
-  Tests.expect(restored.sources['file:local-source']?.location).toBe(source)
 }
 
 Tests.test('transitive requirements cannot pin one Git source to two commits', async () => {
@@ -199,20 +193,13 @@ Tests.test('bundled sources require ordinary project marker metadata', async () 
     await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
     await Tests.rejects(prepareDependencies(root, [requirement], options), /must point to a Tao project root/)
     await FileSystem.mkdir(Path.join(bundledRoot, '.tao'))
-    const prepared = await prepareDependencies(root, [requirement], options)
+    await prepareDependencies(root, [requirement], options)
     const portableLock = await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8')
     Tests.expect(portableLock).not.toContain(bundledRoot)
     Tests.expect(JSON.parse(portableLock).sources['bundled:tao'].location).toBeUndefined()
-    const loaded = await readPreparedDependencies(root, [requirement], options)
-    Tests.expect(loaded.sources['bundled:tao']?.location).toBe(bundledRoot)
-    Tests.expect(prepared.roots).toEqual(loaded.roots)
     const replacement = Path.join(root, 'new-bundle')
     await FileSystem.mkdir(Path.join(replacement, '.tao'), { recursive: true })
     const nextOptions = { ...options, bundledProjects: { tao: replacement } }
-    const restored = await readPreparedDependencies(root, [requirement], nextOptions)
-    Tests.expect(restored.sources['bundled:tao']?.location).toBe(replacement)
-    Tests.expect(await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8'))
-      .toBe(portableLock)
     const updated = await prepareDependencies(root, [requirement], nextOptions)
     Tests.expect(updated.sources['bundled:tao']?.location).toBe(replacement)
     await roundTripBundledLock(root)
@@ -288,7 +275,6 @@ async function verifyPinnedUpdates(root: string, requirements: DependencyRequire
     `fetch:${'2'.repeat(40)}`,
     `fetch:${'3'.repeat(40)}`,
   ])
-  Tests.expect((await readPreparedDependencies(root, requirements, options)).roots).toEqual(updated.roots)
 }
 
 function fixtureOptions(

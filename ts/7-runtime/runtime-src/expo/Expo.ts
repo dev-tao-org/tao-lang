@@ -44,8 +44,7 @@ export type ExpoSession = {
 /** ExpoOptions streams Expo output while retaining a copy for diagnostics. */
 export type ExpoOptions = { onOutput?: (stream: 'stdout' | 'stderr', text: string) => void; signal?: AbortSignal }
 
-/** expoEnvironment keeps managed web refresh active without native debugger preparation or browser auto-opening. */
-export function expoEnvironment(directory: string): Record<string, string | undefined> {
+function expoEnvironment(directory: string): Record<string, string | undefined> {
   return {
     ...Env.snapshot(),
     PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),

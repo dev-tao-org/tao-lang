@@ -5,18 +5,16 @@ export default {
   workspaces: {
     '0-workspace': packageWorkspace([
       'workspace-src/Workspace.ts',
-      '**/*.test.ts',
     ]),
-    '1-grammar': packageWorkspace(['**/*.test.ts']),
-    '2-ast-gen': packageWorkspace(['**/*.test.ts']),
-    '3-typecheck': packageWorkspace(['**/*.test.ts']),
-    '4-fix': packageWorkspace(['**/*.test.ts']),
-    '5-check': packageWorkspace([]),
-    '6-compile': packageWorkspace(['**/*.test.ts']),
+    '1-grammar': packageWorkspace([]),
+    '2-ast-gen': packageWorkspace([]),
+    '3-typecheck': packageWorkspace([]),
+    '4-fix': packageWorkspace([]),
+    '5-check': { ...packageWorkspace([]), entry: [] },
+    '6-compile': packageWorkspace([]),
     '7-runtime': packageWorkspace([
       'runtime-src/TR.ts',
       'runtime-src/HMRClient.ts',
-      '**/*.test.ts',
     ]),
     CLIs: packageWorkspace([
       ...cliEntries(),
@@ -25,7 +23,6 @@ export default {
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
       'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
       ...await skillEntries(),
-      '**/*.test.ts',
     ]),
     perf: packageWorkspace([
       'perf-src/parser-sample.ts',
@@ -33,20 +30,19 @@ export default {
       'perf-src/preview-performance.ts',
       'perf-src/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
-      '**/*.test.ts',
     ]),
-    shared: packageWorkspace(['**/*.test.ts']),
-    stdlib: packageWorkspace(['**/*.test.ts', 'stdlib-src/.tao/.gitignore.d.ts']),
-    'ide-extensions/tao-ide-extension': nestedPackageWorkspace(['tao-ide-extension-src/extension.ts', '**/*.test.ts']),
-    'ide-extensions/dev-tao-org': nestedPackageWorkspace(['dev-tao-org-src/extension.ts', '**/*.test.ts']),
+    shared: packageWorkspace([]),
+    stdlib: packageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
+    'ide-extensions/tao-ide-extension': nestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
+    'ide-extensions/dev-tao-org': nestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 }
 
 function packageWorkspace(entry: string[]) {
   return {
-    ...(entry.length > 0 ? { entry } : {}),
-    project: ['**/*.{ts,tsx}'],
+    entry: [...entry.map(pattern => `${pattern}!`), '**/*.test.ts'],
+    project: ['**/*.{ts,tsx}!', '!**/*-test/**!', '!**/*.test.ts!'],
     paths: {
       '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],

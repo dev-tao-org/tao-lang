@@ -17,8 +17,7 @@ export const prepareRuntime = Timings.topLevelTimer(async function(timings): Pro
   })
 })
 
-/** writeRuntimeSources packages only captured, declared source resources. */
-export async function writeRuntimeSources(directory: string, sources: Record<string, string>): Promise<void> {
+async function writeRuntimeSources(directory: string, sources: Record<string, string>): Promise<void> {
   for (const [resource, sourcePath] of Object.entries(RuntimeSourceResources)) {
     const source = sources[Repo.resolvePath(sourcePath)]
       ?? Errors.ThrowUnexpected(`Runtime source was not captured: ${sourcePath}`)

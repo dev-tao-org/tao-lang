@@ -49,11 +49,6 @@ function canonicalFileSource(parent: string, identifier: string): string {
   return Try.WithDefault(path, () => FileSystem.realpathSync(path))
 }
 
-/** assertTaoProjectRoot rejects source locations without Tao project metadata. */
-export function assertTaoProjectRoot(location: string, label: string): void {
-  requireProjectRoot(location, label)
-}
-
 function requireProjectRoot(location: string, label: string): void {
   const marker = Path.join(location, '.tao')
   const valid = Try.WithDefault(false, () => FileSystem.lstatSync(location).isDirectory())

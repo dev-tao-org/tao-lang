@@ -115,6 +115,7 @@ export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
   await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
+  await runCommand('knip --config scripts/knip.ts --no-progress --production', { cwd: Repo.resolvePath('ts') })
 }
 
 /** workspaceTests prepares shared assets once and runs the selected suites with bounded workers. */
@@ -140,8 +141,7 @@ export async function workspaceTests(
   await runTestPlan({ ...selection, slowSeconds })
 }
 
-/** shouldPrepareExtensionAssets selects test runs that need the authored IDE asset tree. */
-export function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
+function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   if (args.length === 0) {
     return true
   }

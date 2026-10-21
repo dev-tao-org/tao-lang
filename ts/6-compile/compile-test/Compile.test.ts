@@ -6,7 +6,7 @@ import { ViewDefinition, ViewReference } from '@runtime/View'
 import { Errors, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
-import type { LinkedProgram, ResolvedImport, SourceModule } from '@typecheck/Modules'
+import type { LinkedProgram, SourceModule } from '@typecheck/Modules'
 import { compile } from '../compile-src/Compile'
 
 Tests.test('Hello World generates generic runtime calls and authored native injections', async () => {
@@ -226,8 +226,10 @@ async function linkedUIProgram(
   const modulesDocument = FileSystem.existsSync(modulesPath)
     ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')))
     : undefined
-  const imports: ResolvedImport[] = document.root.declarations
-    .filter((node): node is ResolvedImport['statement'] => AST.IsUseStatement(node) || AST.IsUsePackageStatement(node))
+  const imports: SourceModule['imports'][number][] = document.root.declarations
+    .filter((node): node is SourceModule['imports'][number]['statement'] =>
+      AST.IsUseStatement(node) || AST.IsUsePackageStatement(node)
+    )
     .map(statement => {
       const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
       const isUI = from === 'tao@ui'
