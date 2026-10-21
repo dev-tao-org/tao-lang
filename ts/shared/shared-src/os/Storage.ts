@@ -1,6 +1,6 @@
 import { lstat, mkdir, readdir, realpath, rm } from 'node:fs/promises'
 import { dirname, join, posix, resolve, win32 } from 'node:path'
-import { Errors, Time, Try } from '../universal/universal'
+import { Errors, Switch, Time, Try } from '../universal/universal'
 import * as Env from './Env'
 import * as Path from './Path'
 import * as Platform from './Platform'
@@ -19,25 +19,24 @@ export function resolveStorage(
   environment: Record<string, string | undefined>,
 ): StorageRoots {
   const pathApi = platform === 'windows' ? win32 : posix
-  const cacheBase = platform === 'macos'
-    ? pathApi.join(home, 'Library', 'Caches')
-    : platform === 'windows'
-    ? pathApi.join(environment.LOCALAPPDATA || pathApi.join(home, 'AppData', 'Local'), 'Tao', 'Cache')
-    : xdgPath(environment.XDG_CACHE_HOME, pathApi.join(home, '.cache'))
-  const supportBase = platform === 'macos'
-    ? pathApi.join(home, 'Library', 'Application Support')
-    : platform === 'windows'
-    ? pathApi.join(environment.LOCALAPPDATA || pathApi.join(home, 'AppData', 'Local'), 'Tao', 'Support')
-    : xdgPath(environment.XDG_DATA_HOME, pathApi.join(home, '.local', 'share'))
+  const bases = Switch<StoragePlatform, StorageRoots>(platform, {
+    macos: () => ({
+      cache: posix.join(home, 'Library', 'Caches'),
+      support: posix.join(home, 'Library', 'Application Support'),
+    }),
+    windows() {
+      const localAppData = environment.LOCALAPPDATA || win32.join(home, 'AppData', 'Local')
+      return { cache: win32.join(localAppData, 'Tao', 'Cache'), support: win32.join(localAppData, 'Tao', 'Support') }
+    },
+    linux: () => ({
+      cache: xdgPath(environment.XDG_CACHE_HOME, posix.join(home, '.cache')),
+      support: xdgPath(environment.XDG_DATA_HOME, posix.join(home, '.local', 'share')),
+    }),
+  })
+  const suffix = platform === 'windows' ? [] : ['Tao']
   return {
-    cache: resolveOverride(environment.TAO_CACHE_DIR, cacheBase, platform === 'windows' ? [] : ['Tao'], home, pathApi),
-    support: resolveOverride(
-      environment.TAO_SUPPORT_DIR,
-      supportBase,
-      platform === 'windows' ? [] : ['Tao'],
-      home,
-      pathApi,
-    ),
+    cache: resolveOverride(environment.TAO_CACHE_DIR, bases.cache, suffix, home, pathApi),
+    support: resolveOverride(environment.TAO_SUPPORT_DIR, bases.support, suffix, home, pathApi),
   }
 }
 

@@ -40,6 +40,11 @@ export function ValueDeclarations(file: AST.File): AST.ValueDeclaration[] {
   return file.declarations.filter(IsValueDeclaration)
 }
 
+/** DeclarationVisibility resolves explicit visibility and the app/folder or value/file defaults. */
+export function DeclarationVisibility(node: AST.ValueDeclaration): AST.Visibility {
+  return node.visibility ?? (IsAppDeclaration(node) ? 'folder' : 'file')
+}
+
 /** IsUseStatement narrows a semantic node to a declaration import. */
 export function IsUseStatement(node: AST.Node): node is AST.UseStatement {
   return IsKind(node, 'UseStatement')

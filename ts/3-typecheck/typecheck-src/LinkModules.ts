@@ -91,8 +91,7 @@ function isImplicitCandidate(
 }
 
 function isImplicitlyVisible(declaration: AST.ValueDeclaration): boolean {
-  return declaration.visibility === 'folder'
-    || (AST.IsAppDeclaration(declaration) && declaration.visibility === undefined)
+  return AST.DeclarationVisibility(declaration) === 'folder'
 }
 
 function addExplicitBindings(
@@ -314,7 +313,7 @@ function isVisible(
   if (relation === 'same-file') {
     return true
   }
-  const visibility = declaration.visibility ?? (AST.IsAppDeclaration(declaration) ? 'folder' : 'file')
+  const visibility = AST.DeclarationVisibility(declaration)
   return visibleRelations[visibility].includes(relation)
 }
 

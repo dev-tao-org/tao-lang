@@ -33,8 +33,8 @@ const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Do
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
-    const visibility = node.visibility ?? (AST.IsAppDeclaration(node) ? 'folder' : 'file')
-    declare(scope, node.name, 'local', visibility === 'file')
+    const reportUnused = AST.DeclarationVisibility(node) === 'file'
+    declare(scope, node.name, 'local', reportUnused)
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
       declare(scope, item.alias ?? item.target, 'import')

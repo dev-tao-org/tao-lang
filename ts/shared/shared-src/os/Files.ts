@@ -1,5 +1,5 @@
 import { chmod, lstat, mkdir, open, opendir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { Errors, Try } from '../universal/universal'
 
 /** withWritableFile serializes writes per canonical path and restores the original permission mode. */
@@ -13,9 +13,11 @@ export async function withWritableFile<Value>(
 
 /** writeReadOnly replaces generated regular-file contents and protects the resulting metadata from edits. */
 export async function writeReadOnly(path: string, contents: string): Promise<void> {
-  await mkdir(dirname(resolve(path)), { recursive: true })
-  const canonicalParent = await realpath(dirname(resolve(path)))
-  const canonical = join(canonicalParent, resolve(path).slice(dirname(resolve(path)).length + 1))
+  const absolute = resolve(path)
+  const parent = dirname(absolute)
+  await mkdir(parent, { recursive: true })
+  const canonicalParent = await realpath(parent)
+  const canonical = join(canonicalParent, basename(absolute))
   await serialized(canonical, async () => {
     const existing = await Try(() => lstat(canonical), {
       catch(error) {

@@ -67,11 +67,9 @@ async function readInputs(): Promise<NativeInputs> {
     sourceNames.map(name => FileSystem.readFile(Path.join(sourceRoot, name), 'utf8')),
   )
   const builderSource = await FileSystem.readFile(import.meta.filename, 'utf8')
-  const node = JSON.parse(
-    await Platform.capture(
-      'node -p JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})',
-    ),
-  ) as NativeInputs['node']
+  const nodeMetadataCommand =
+    'node -p JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})'
+  const node = JSON.parse(await Platform.capture(nodeMetadataCommand)) as NativeInputs['node']
   const [addon, nodeGyp, include] = await Promise.all([
     packageMetadata('node-addon-api'),
     packageMetadata('node-gyp'),
@@ -84,6 +82,7 @@ async function readInputs(): Promise<NativeInputs> {
     : 'node-gyp-managed-headers'
   const lockHash = Platform.hashText(await FileSystem.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'))
   const environment = await toolchainEnvironment()
+  const system = Platform.systemInfo()
   const identity = Platform.hashText(JSON.stringify({
     sources: sourceContents,
     builderSource,
@@ -91,8 +90,8 @@ async function readInputs(): Promise<NativeInputs> {
     nodeVersionHeader: headerHash,
     nodeAddonApi: addon.version,
     nodeGyp: nodeGyp.version,
-    architecture: Platform.systemInfo().architecture,
-    system: Platform.systemInfo(),
+    architecture: system.architecture,
+    system,
     bun: Platform.runtimeVersion(),
     lockHash,
     environment,
