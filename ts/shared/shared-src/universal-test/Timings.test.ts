@@ -14,6 +14,40 @@ const failPublish = Timings.measure('publish', async (clock: { now: number }, fa
   Errors.Throw(failure)
 })
 
+Tests.test('inline timings preserve synchronous results and nested operation spans', () => {
+  const ticks = [1, 2, 4, 7]
+  const timings = new Timings('inline', () => ticks.shift()!)
+  const result = timings.exec('outer', () => timings.exec('inner', () => 42))
+  Tests.expect(result).toBe(42)
+  Tests.expect(timings.samples.map(sample => [sample.name, sample.durationMs, sample.status])).toEqual([
+    ['inner', 2, 'succeeded'],
+    ['outer', 6, 'succeeded'],
+  ])
+})
+
+Tests.test('inline timings wait for promise settlement and preserve the original failure', async () => {
+  let now = 0
+  const timings = new Timings('inline', () => now)
+  const pending = timings.exec('async', async () => {
+    await Promise.resolve()
+    now = 5
+    return 'done'
+  })
+  Tests.expect(timings.samples).toEqual([])
+  Tests.expect(await pending).toBe('done')
+  const failure = Try(() => Errors.ThrowUserInput('Inline failure'), { catch: error => error })
+  const observed = await Try(() =>
+    timings.exec('failure', async () => {
+      now = 9
+      Errors.Throw(failure)
+    }), { catch: error => error })
+  Tests.expect(observed).toBe(failure)
+  Tests.expect(timings.samples.map(sample => [sample.durationMs, sample.status])).toEqual([
+    [5, 'succeeded'],
+    [4, 'failed'],
+  ])
+})
+
 Tests.test('measured functions start on each invocation and preserve arguments', () => {
   const ticks = [4, 7, 10, 15]
   const timings = new Timings('server:reusable', () => ticks.shift()!)

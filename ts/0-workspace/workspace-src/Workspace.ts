@@ -83,19 +83,6 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
-const LinkModules = Timings.measure('modules.link', linkModules)
-const RefreshDependencies = Timings.measure('dependencies.sources', async function(
-  refresh: WorkspaceOptions['beforeLoad'],
-) {
-  await refresh?.()
-})
-const PrepareDependencies = Timings.measure('dependencies.prepared', async function(
-  prepare: WorkspaceOptions['beforeCompile'],
-  program: LinkedProgram,
-) {
-  return await prepare?.(program)
-})
-
 class WorkspaceSession {
   readonly directory: string | undefined
   private readonly output: ReturnType<typeof outputPaths>
@@ -183,7 +170,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await publishWorkspace(timings, this.publishCallback, output, isCurrent, timings)
+    await timings.exec('workspace.publish', () => this.publishCallback(output, isCurrent, timings))
     if (!isCurrent()) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -209,7 +196,7 @@ class WorkspaceSession {
       return undefined
     }
     progress?.('Resolving source modules and visibility…')
-    await RefreshDependencies(request.timings, this.options.beforeLoad)
+    await request.timings.exec('dependencies.sources', async () => await this.options.beforeLoad?.())
     const sources = await loadModules(
       { path: request.path ?? '<memory>', document },
       {
@@ -219,8 +206,14 @@ class WorkspaceSession {
       this.parser,
       request.timings,
     )
-    const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
-    const prepared = await PrepareDependencies(request.timings, this.options.beforeCompile, program)
+    const program = request.timings.exec(
+      'modules.link',
+      () => linkModules(Path.resolve(request.path ?? '<memory>'), sources),
+    )
+    const prepared = await request.timings.exec(
+      'dependencies.prepared',
+      async () => await this.options.beforeCompile?.(program),
+    )
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
     const code = (this.options.compile ?? compile)(
@@ -266,15 +259,6 @@ class WorkspaceSession {
     return this.application
   }
 }
-
-const publishWorkspace = Timings.measure('workspace.publish', function(
-  publish: (output: CompiledApp, isCurrent: () => boolean, timings: Timings) => Promise<void>,
-  output: CompiledApp,
-  isCurrent: () => boolean,
-  timings: Timings,
-): Promise<void> {
-  return publish(output, isCurrent, timings)
-})
 
 function skippedStages(): PipelineStages {
   return { typecheck: typecheck(), fix: { stage: 'fix', status: 'skipped' }, check: check() }

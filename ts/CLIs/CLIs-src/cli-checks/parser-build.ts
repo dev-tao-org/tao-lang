@@ -34,19 +34,16 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   for (const filename of ['binding.gyp', 'binding.cc']) {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
-  await generateParser(timings)
+  await timings.exec('parser.generate', () =>
+    runCommand('tree-sitter generate --abi 15 --output', {
+      variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
+      cwd: grammarRoot,
+    }))
   await writeCSTTypes(outputRoot)
   await buildParserNative(timings, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
 }
-
-const generateParser = Timings.measure('parser.generate', async function(): Promise<void> {
-  await runCommand('tree-sitter generate --abi 15 --output', {
-    variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
-    cwd: grammarRoot,
-  })
-})
 
 const buildParserNative = Timings.measure('parser.native-build', async function(
   inputs: Awaited<ReturnType<typeof readInputs>>,

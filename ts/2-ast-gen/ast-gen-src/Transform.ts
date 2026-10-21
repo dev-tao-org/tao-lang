@@ -12,7 +12,7 @@ export function transform(
   if (tree.rootNode.hasError) {
     return undefined
   }
-  return transformDocument(timings, tree)
+  return timings.exec('transformer.transform', () => ({ root: AST.Construct(tree.rootNode, 'File') }))
 }
 
 /** Construct dispatches a CST node to its stateless semantic transformer. */
@@ -57,7 +57,3 @@ const constructors = {
   InputExpectation: AST.InputExpectation,
   InputValueExpectation: AST.InputExpectation,
 }
-
-const transformDocument = Timings.measure('transformer.transform', function(tree: Parser.Tree): AST.Document {
-  return { root: AST.Construct(tree.rootNode, 'File') }
-})

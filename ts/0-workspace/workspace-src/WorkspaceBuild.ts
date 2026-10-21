@@ -19,18 +19,12 @@ export async function publishBuild(
     return
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
-  const runtime = await runPrepareRuntime(timings, prepareRuntime)
+  const runtime = await timings.exec('workspace.runtime.prepare', prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
   onProgress?.('Publishing changed runtime app files…')
   await publishChanged(timings, path, runtime.appPath, isCurrent)
   onProgress?.('Runtime app file publication complete.')
 }
-
-const runPrepareRuntime = Timings.measure('workspace.runtime.prepare', function(
-  prepareRuntime: () => Promise<RuntimeApplication>,
-): Promise<RuntimeApplication> {
-  return prepareRuntime()
-})
 
 const writeBuild = Timings.measure(
   'workspace.build.write',

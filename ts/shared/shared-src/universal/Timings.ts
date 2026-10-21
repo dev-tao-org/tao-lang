@@ -11,7 +11,7 @@ export type TimingSample = {
 }
 
 /** Timings collects operation spans for one request or bounded measurement run.
- *  Create measured functions at module scope and pass their recorder on each call.
+ *  Use exec for inline operations; create reusable measured functions at module scope.
  *  Discard the collector with its request; timestamps from different clock domains cannot be subtracted. */
 export class Timings {
   readonly samples: TimingSample[] = []
@@ -22,23 +22,26 @@ export class Timings {
     this.samples.push({ name, clock: this.clock, startMs, durationMs: this.now() - startMs, status: 'succeeded' })
   }
 
+  /** exec measures an inline operation through synchronous completion or promise settlement. */
+  exec<Value>(name: string, action: () => Value): Value {
+    const startMs = this.now()
+    return Try(action, {
+      finally: (_thrown, error) => {
+        this.samples.push({
+          name,
+          clock: this.clock,
+          startMs,
+          durationMs: this.now() - startMs,
+          status: error ? 'failed' : 'succeeded',
+        })
+      },
+    }) as Value
+  }
+
   static measure<Arguments extends unknown[], Value>(
     name: string,
     action: (...arguments_: Arguments) => Value,
   ): (timings: Timings, ...arguments_: Arguments) => Value {
-    return (timings: Timings, ...arguments_: Arguments): Value => {
-      const startMs = timings.now()
-      return Try(() => action(...arguments_), {
-        finally(_thrown, error) {
-          timings.samples.push({
-            name,
-            clock: timings.clock,
-            startMs,
-            durationMs: timings.now() - startMs,
-            status: error ? 'failed' : 'succeeded',
-          })
-        },
-      }) as Value
-    }
+    return (timings: Timings, ...arguments_: Arguments): Value => timings.exec(name, () => action(...arguments_))
   }
 }

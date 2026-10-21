@@ -26,6 +26,9 @@ description: >-
   a starting line and describe the relevant range or functionality. Never invent range-link syntax.
   Order files for understanding and nest them by folder or functional part. Explain partial-file
   scope in one succinct sentence, at most two. End the presentation immediately after the file list.
+- Number file entries consecutively within each presented review group, including across folder
+  or conceptual subgroups, so the developer can approve files by number. Keep the displayed
+  number-to-path mapping stable until that group is completed or explicitly revised.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
