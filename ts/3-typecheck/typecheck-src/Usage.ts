@@ -40,9 +40,11 @@ function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
       declare(scope, item.alias ?? item.target, 'import')
     }
   } else if (AST.IsUsePackageStatement(node)) {
+    // ex: use package @Foo as Bar -> Bar
     const value = node.alias?.value ?? namespaceFromPath(node.from.value)
     if (value) {
-      declare(scope, node.alias ?? { ...node.from, kind: 'Name', value }, 'namespace')
+      const namespaceName: AST.Name = node.alias ?? { ...node.from, kind: 'Name', value }
+      declare(scope, namespaceName, 'namespace')
     }
   } else {
     // Requirements and test suites do not declare module-level values.
@@ -71,9 +73,10 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 
 function visitView(node: AST.ViewDeclaration, parent: Scope): void {
   const scope = childScope(parent)
+  const reportUnusedParameters = !AST.IsKind(node.render, 'ForeignView')
   for (const parameter of node.parameters) {
     reference(parent, parameter.type)
-    declare(scope, parameter.name, 'local', !AST.IsKind(node.render, 'ForeignView'))
+    declare(scope, parameter.name, 'local', reportUnusedParameters)
   }
   for (const definition of node.definitions) {
     visitLet(definition, scope)
@@ -125,7 +128,9 @@ function childScope(parent?: Scope): Scope {
 
 function declare(scope: Scope, name: AST.Name, kind: Binding['kind'] = 'local', report = true): void {
   const binding = { name, kind, report, used: false }
-  scope.bindings.set(name.value, [...scope.bindings.get(name.value) ?? [], binding])
+  const previousBindings = scope.bindings.get(name.value) ?? []
+  const bindingsForName = [...previousBindings, binding]
+  scope.bindings.set(name.value, bindingsForName)
   scope.all.push(binding)
 }
 
@@ -145,12 +150,13 @@ function reference(scope: Scope, name: AST.Name): void {
 }
 
 function warningFor(binding: Binding): UsageWarning {
+  const code = binding.kind === 'local' ? 'unused-declaration' : 'unused-import'
+  const label = binding.kind === 'local' ? 'Declaration' : 'Imported name'
+  const message = `${label} '${binding.name.value}' is not used in this file.`
   return {
     severity: 'warning',
-    code: binding.kind === 'local' ? 'unused-declaration' : 'unused-import',
-    message: `${
-      binding.kind === 'local' ? 'Declaration' : 'Imported name'
-    } '${binding.name.value}' is not used in this file.`,
+    code,
+    message,
     start: binding.name.start,
     end: binding.name.end,
   }
