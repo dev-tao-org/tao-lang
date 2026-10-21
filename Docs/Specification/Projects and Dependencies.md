@@ -1,111 +1,92 @@
-# Projects and Dependencies
+# Projects and Dependencies WIP
 
-Initialize a project at its root before using project-scoped imports or dependency commands:
-
-```sh
-tao init ./Calendar
-tao prepare ./Calendar/Calendar.tao --yes
-```
-
-`tao init <directory>` creates `.tao/` and a stable project identity. It rejects an already
-initialized ancestor, including across Git boundaries, or a nested `.tao/` project found beneath the requested directory. The scan
-does not follow directory symlinks and skips known dependency and repository directories, including
-`node_modules`, `Pods`, `.git`, and `.gradle`. Project discovery walks upward from the requested file or directory and stops at a
-Git repository boundary. Tao commands accept paths from the caller's current directory and resolve
-them to the owning project.
-
-The project root contains its direct source dependency declarations:
+A Tao project owns its source modules, dependency declarations, durable pins and isolated working sessions.
 
 ```tao
 requires github:acme/widgets version v1.2.0 as widgets
 requires file:../shared-widgets as shared
-requires bundled:tao
-```
 
-GitHub dependencies require a version token, which may name a tag, branch, or commit. Preparation
-resolves that token to an immutable commit and records it in `.tao/store/dependencies.lock.json`.
-`file:` dependencies are live paths relative to the declaring project or dependency; their optional
-version token is descriptive and defaults to `live`. Bundled dependencies use Tao's bundled source
-tree. Aliases default from the source name when `as` is omitted and must be unique in that
-declaration scope.
+...
 
-An alias imports the dependency's local module. A module may import its own dependency through the
-same alias:
-
-```tao
 use Button from widgets@ui/controls
-```
-
-Here `widgets` is the dependency alias, `ui` is the package, and `controls` selects a subdirectory.
-The selected directory contributes its direct `.tao` files; omitting the subdirectory selects the
-package tree. A local package is addressed directly by its `@name`:
-
-```tao
 use Badge from @widgets/ui
-```
-
-Local `@module` imports discover named folders within the owning project, including modules beneath
-ordinary subfolders. A dependency alias searches the dependency's project in the same way. Duplicate
-module names are an error. Relative imports cannot cross a named module boundary. Tao checks
-declaration visibility: importing another project exposes its public declarations.
-
-The built-in `tao` alias supplies standard-library views without a dependency declaration:
-
-```tao
 use Text, Row, Col, Input from tao@ui
 ```
 
-These are the currently implemented standard UI views. The standard library is itself a Tao
-project with an ordinary `@ui` module. Tao supplies its bundled project as the `tao` dependency
-automatically; another project cannot reuse that alias. The standard project follows the same
-module discovery and visibility rules as other dependencies.
+#### `tao init ./Calendar`
 
-During source development, imports read the live standard-library project and watched previews
-observe its source edits. A packaged CLI materializes its embedded standard project in Tao's
-versioned cache before resolving it through the same project mechanism.
-The source lock does not record that machine-specific bundled-project location.
+Create a new project, name "Calendar". It ensures that the folder doesn't already exist, and that it isn't nested within another tao project.
 
-The durable source lock belongs to the project whose requirements it records. It also references
-the exact npm graphs retained under `.tao/store/npm/`. Routine compilation
-uses that lock without resolving newer refs. Update selected direct dependencies explicitly:
+#### `.tao` folder
 
-```sh
-tao update widgets --yes
-tao update --yes
-```
+A project contains a `.tao` folder at its root. The folder contains project configuration, metadata, caches, builds, and so on. Some of its contents are gitignored, and some is tracked and should be committed.
 
-The first command refreshes the `widgets` pin; the second refreshes all direct source pins. The
-updated lock records immutable commits while preserving unrelated pins. Preparation and updates
-hold project session and dependency locks; a busy session fails immediately with a retryable message.
-Ordinary source edits do not check remote versions or reinstall dependencies. Missing or changed
-dependencies require explicit preparation; after installation, retry the original command.
+#### Project discovery
 
-`tao add @widgets --npm date-fns --yes` resolves an exact npm version, writes an exact
-`requires npm:date-fns version ...` declaration to the local module, then prepares its reachable
-dependency graph. Scoped npm package names are supported. Direct npm requirements need exact
-semantic versions. Runtime package conflicts are reported rather than silently overridden.
+Commands resolve paths from the caller's directory and discover the owning project upward,
+stopping at a Git boundary. Initialize the project before using project-scoped imports or
+dependency commands; `tao prepare ./Calendar/Calendar.tao --yes` prepares its dependencies.
 
-Tao writes a durable project identity and dependency locks under `.tao/store/`. Generated caches
-and session data live under `.tao/cache/`; `.tao/.gitignore` excludes cache and session-lock state
-while retaining the store. `tao clean` removes inactive project caches and sessions, preserving
-active or uncertain sessions. `tao clean --wipe` also asks the platform cache to remove shared Tao
-cache data; it preserves that cache while active consumers hold leases.
-Stable session and cache-mutation lock files remain after release so that concurrent processes
-always lock the same file. Temporary cache leases are removed on release; a later cache operation
-reclaims leases left by crashed processes while preserving live consumers. If a lease cannot be
-inspected or removed, shared-cache cleanup preserves the cache until that uncertainty is resolved.
-It reports the blocked path and access or sharing failure. Corrupt module-tooling metadata is
-preserved with a recovery warning; it does not prevent cleaning other inactive project caches.
+#### `requires github:acme/widgets version v1.2.0 as widgets`
 
-Session identifiers supplied to CLI commands must match `[a-z0-9][a-z0-9_-]*`. `.cli` and `.studio`
-are reserved internal identifiers. They share the same stable native lock mechanism as other
-project sessions. `.studio` is reserved session infrastructure; it does not mean a Studio
-application is included in this implementation. These workflows prepare source projects; they do
-not define a published-app dependency installation or distribution format.
+Project-root declarations select direct source dependencies. GitHub versions may name tags,
+branches or commits; preparation records immutable commits in `.tao/store/dependencies.lock.json`.
+Aliases default from the source name and must be unique in their declaration scope.
 
-```text
-.tao/
-  store/                 # durable identity and dependency locks
-  locks/                 # stable OS-backed lock files
-  cache/sessions/.cli/    # generated CLI output, retained between runs
-```
+#### `requires file:../shared-widgets as shared`
+
+File dependencies are live paths relative to the declaring project or dependency. Their optional
+version is descriptive and defaults to `live`. `requires bundled:tao` selects bundled source.
+
+#### `use Button from widgets@ui/controls`
+
+The alias selects a dependency project, `ui` selects its named module, and `controls` selects a
+subdirectory's direct Tao files. Omitting the subdirectory selects the module tree. Modules can
+use their own project's dependency aliases; imports expose public declarations across projects.
+
+#### `use Badge from @widgets/ui`
+
+Local imports discover named module folders, including beneath ordinary subfolders. Duplicate
+module names are errors; relative imports cannot cross named module boundaries. Dependency
+projects follow the same discovery rules.
+
+#### `use Text, Row, Col, Input from tao@ui`
+
+The automatically supplied `tao` alias exposes these standard views from an ordinary bundled
+project with an `@ui` module; another dependency cannot reuse the alias. Development uses its live
+source and watches edits. Packaged tools materialize the versioned bundled project without
+recording its machine-specific location in the source lock.
+
+#### `tao prepare` and `tao update`
+
+Routine compilation uses durable locks without resolving newer refs or reinstalling dependencies.
+Missing or changed dependencies require explicit preparation, followed by retrying the command.
+`tao update widgets --yes` refreshes that direct source pin; `tao update --yes` refreshes all direct
+source pins while preserving unrelated pins. Source locks also reference exact npm graphs in
+`.tao/store/npm/`.
+
+#### `tao add @widgets --npm date-fns --yes`
+
+Adding resolves an exact npm version, writes `requires npm:date-fns version ...` in the local
+module, and prepares its reachable dependency graph. Scoped names are supported; direct npm
+requirements need exact semantic versions. Runtime conflicts are reported rather than overridden.
+
+#### Store, cache and sessions
+
+`.tao/store/` retains identity and locks; `.tao/cache/` holds generated state, including reusable
+`sessions/.cli/` output. `.tao/.gitignore` excludes caches and session locks, retaining the store.
+Session names match `[a-z0-9][a-z0-9_-]*`; `.cli` and `.studio` are reserved. Preparation and updates
+hold session and dependency locks; contention fails immediately with a retryable message.
+
+#### `tao clean`
+
+Cleaning removes inactive caches and sessions, preserving active or uncertain sessions and durable
+store data. `--wipe` also requests shared platform-cache cleanup, which preserves caches with
+active leases. Stable lock files remain after release; temporary leases are removed or reclaimed
+after a crash. Uninspectable leases preserve the cache and report the blocked path and failure.
+Corrupt module-tooling metadata is preserved with a warning while other safe caches are cleaned.
+
+#### Scope
+
+The reserved `.studio` session does not supply a Studio application. Project preparation does
+not define published-app dependency installation or distribution.

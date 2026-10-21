@@ -1,18 +1,6 @@
-# Formatting and Fixing
+# Formatting and Fixing WIP
 
-Formatting changes whitespace without changing the meaning of Tao code. Fixing reorganizes source,
-such as collecting imports, before formatting the result. Formatting runs on document save; fixes
-are explicitly requested rather than applied on every save.
-
-```tao
-use Text, Col from tao@ui
-
-public view Greeting(Title text, Subtitle text) {
-render Col { Text(Title) Text(Subtitle) }
-}
-```
-
-Formatting places visibility on its own line, indents bodies, and normalizes spaces and line breaks:
+Formatting normalizes Tao layout without changing meaning; explicitly requested fixing reorganizes imports and reports unused bindings.
 
 ```tao
 use Text, Col from tao@ui
@@ -24,12 +12,7 @@ view Greeting(Title text, Subtitle text) {
     Text(Subtitle)
   }
 }
-```
 
-Formatting preserves an authored multiline argument or parameter list. An inline list stays inline
-when it fits; when it exceeds the soft width of 120 columns, its items occupy separate indented lines:
-
-```tao
 view Welcome {
   render Greeting(
     "Welcome to your workspace",
@@ -38,79 +21,45 @@ view Welcome {
 }
 ```
 
-The formatter does not split Tao text literals to meet the width.
-Nested render tags appear above their render line; root tags keep the current `render #tag View` form.
-Comments stay with their surrounding code. Ordinary
-statement gaps preserve up to one existing blank line; contextual rules require separation between
-top-level declarations and remove empty padding immediately inside braces. Tao strings retain their contents.
+#### Formatting
 
-Fenced TypeScript is formatted as TSX with the same width and indentation:
+Visibility occupies its own line; bodies use two-space indentation. Inline argument and parameter
+lists stay inline when they fit, while authored multiline lists remain multiline. Lists exceeding
+the soft width of 120 columns use separate indented lines; text literals are not split.
 
-````tao
-view Caption(Value text) {
-  render inject Value ```ts
-    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
-  ```
-}
-````
+#### Tags, comments and spacing
 
-Formatting preserves meaningful whitespace inside multiline literals. An incomplete TypeScript body
-is left unchanged while complete surrounding Tao syntax can still be formatted.
+Nested render tags appear above their render line; root tags keep `render #tag View`. Comments
+stay with surrounding code. Statement gaps retain at most one existing blank line; top-level
+declarations are separated and padding immediately inside braces is removed. String contents stay
+unchanged.
 
-Long named-import lists use a hanging indent, with their source on the following line:
+#### Embedded TypeScript
 
-```tao
-use FirstView,
-  SecondView,
-  ThirdView
-from @example/ui
-```
+Fenced TypeScript is formatted as TSX with the same width and indentation, preserving meaningful
+literal whitespace. An incomplete TypeScript body stays unchanged while complete surrounding Tao
+syntax can still be formatted.
 
-Fixing can combine compatible imports, remove exact duplicates, and sort selected names and sources:
+#### `use Col, Text from tao@ui`
 
-```tao
-use Text from tao@ui
-use Col from tao@ui
-use Text from tao@ui
-```
+Fixing combines compatible imports, removes exact duplicates, and sorts selected names and
+sources. Aliases and comment-separated groups remain intact. Long named-import lists use a hanging
+indent, with `from ...` on the following line.
 
-```tao
-use Col, Text from tao@ui
-```
+#### Unused bindings
 
-Aliases remain aliases. Comments travel with their imports, and comment-separated groups are kept
-separate where combining them would lose their grouping.
+Fixing warns about unused named imports, namespaces, private declarations and local bindings
+without deleting them. References respect lexical shadowing, qualified names and explicit native
+captures. Wildcard exports receive no individual warnings; single-file checks do not call
+declarations unused when other files can access them. Warning locations refer to formatted source.
 
-`tao fix` warns about unused named imports, package namespaces, private declarations and local
-bindings. It retains them all: a declaration may be work in progress. References respect lexical
-shadowing, qualified names and explicit native captures. Wildcard imports receive no per-export
-warnings, and declarations visible to other files are not declared unused from a single-file check.
+#### Incomplete source
 
-```tao
-use Text, Col from tao@ui
+Formatting handles complete top-level declarations and preserves unfinished declarations and
+uncertain surrounding whitespace. Fixing requires syntactically complete source; import
+organization and local usage analysis do not require imports to resolve or replace type checking.
 
-app Example { root Main }
-view Main { render Text("Hello") }
-```
+#### `tao fmt` and `tao fix`
 
-Fixing this file reports that `Col` is unused, while keeping the import. Warning locations refer to
-the final, formatted source. This local usage analysis does not require imported modules to resolve
-and does not replace full type checking.
-
-While a document is incomplete, formatting applies only to complete top-level declarations. An
-unfinished declaration and uncertain whitespace around it are left alone:
-
-```tao
-view Greeting {
-  render Text("Hello")
-}
-
-view BeingEdited(
-```
-
-Fixing requires syntactically complete source. Import organization works even when imported modules
-cannot be resolved; future semantic fixes can require resolved references.
-
-`tao fmt path/to/File.tao` formats one source file and
-`tao fix path/to/File.tao` organizes its imports before formatting. Editor format-on-save uses the
-same formatting behavior.
+`tao fmt path/to/File.tao` formats a file; `tao fix path/to/File.tao` organizes imports before
+formatting. Editor format-on-save uses the same formatting behavior without applying fixes.

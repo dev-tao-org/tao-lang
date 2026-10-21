@@ -1,10 +1,6 @@
-# Live Previews
+# Live Previews WIP
 
-This document specifies agreed future language behavior; these examples are not yet executable.
-
-A `previews { ... }` block declares live previews and their shared setup. Give the group an optional
-label with `previews "Label of previews" { ... }`. Referenced apps, views, data types and datasource
-implementations are declared elsewhere.
+A `previews { ... }` block declares live previews and their shared setup.
 
 ```tao
 previews "Widget workspace" {
@@ -49,17 +45,25 @@ previews "Widget workspace" {
 }
 ```
 
-`preview(...)` accepts an app or configured view, a display, an optional datasource override, and an
+#### `preview "Preview label" (...)`
+
+`preview(...)`: accepts an app or configured view, a display, an optional datasource override, and an
 optional `Label "Foo bar"`. Arguments follow ordinary type matching; their order is not significant.
 The short form `preview View(...) in Display` uses the display's datasource default.
+
+#### `display DisplayName { ... }`
 
 A display supplies frame dimensions and platform inputs, including appearance, accessibility,
 locale and time. `with` copies its configuration while preserving referenced instances. An explicit
 preview datasource overrides the display's default without modifying the display.
 
+#### `InMemory(...)` and shared data
+
 Datasource values are instances: previews referencing `SampleData` share data and observe each other's
 changes. `InMemory(...)` constructs one instance and runs its initialization action against it;
 another call constructs another instance. Rerendering a preview does not rerun that setup.
+
+#### `state Username = "admin"`
 
 Specifications inside a rendered view's body configure that instance. `state Username = "admin"`
 replaces the declared state's default initializer before the first render; subsequent rerenders do

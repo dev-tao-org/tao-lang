@@ -1,10 +1,6 @@
-# Local State and Data Drafts
+# Local State and Data Drafts WIP
 
-Tao automates syncing state with datasources, supports view-local state, and locally persisted values.
-
-It also supports detached, in-memory drafts for preparing creates and updates; a draft does not write to a datasource until an explicit create or update action.
-
-This document proposes future language behavior; these examples are not yet executable.
+Proposed local state and detached in-memory drafts support editing datasource values before explicitly saving them; these examples are not yet executable.
 
 ```tao
 use Button, Col, Text, TextInput from tao@ui
@@ -53,34 +49,46 @@ view ItemCrud(Item) {
 }
 ```
 
-## Draft lifetime
+#### Local state
 
-`state Draft = draft Item` initializes once for the mounted `ItemCrud` instance. Ordinary rerenders and datasource refreshes do not recreate the draft or discard edits.
+The proposed model includes view-local and locally persisted values alongside datasource-synced
+state; detached drafts prepare changes without immediately syncing them.
 
-Repeated item views retain their state by stable data-item identity, so reordering the query does not move one item's edits into another item. Removing a view ends its local draft lifetime.
+#### `state Draft = draft Item`
 
-TODO: If a retained view receives a different item's identity, should its draft reset automatically, or should the caller explicitly replace the view instance?
+A draft initializes once per mounted view instance; rerenders and datasource refreshes do not
+discard edits. Repeated item views retain state by stable data-item identity across reordering;
+removing a view ends its draft lifetime.
 
-## Decisions and remaining questions
+#### `create Item with Draft` and `update Item with Draft`
 
-Stored data lists are has-many relations to other data items; scalar lists such as `Parts [text]` are not supported in stored data. This does not prohibit ordinary in-memory lists of scalar values.
+A draft does not write to a datasource until an explicit create or update. Updates are intended
+to include only draft-modified properties.
 
-TODO: What is the draft's dirty baseline? Specify whether reverting a field to its original value clears its dirty status, and whether a successful save advances that baseline.
+#### Related items
 
-### TODO: Editing related items through a draft
+Stored data lists are has-many relations, so `Parts` contains `Part` items rather than scalar
+values. `TextInput(Part.Name)` targets a data-item property. Ordinary in-memory scalar lists remain
+allowed; this example does not introduce writable scalar loop references.
 
-The original scalar-list example raised a question: could a loop value be a distinct, writable reference whose edits update its source, rather than an ordinary `text` value? The developer suggested a reference type; an alternative would require explicitly replacing the source list element. Both introduce element identity and update semantics that ordinary scalar values do not have.
+#### Draft identity — unresolved
 
-The agreed has-many-only restriction removes that need from this example: `Part` is a data item and the input targets `Part.Name`, using a normal property binding rather than a writable scalar loop variable.
+If a retained view receives a different item's identity, should its draft reset automatically or
+must the caller replace the view instance?
 
-TODO: Decide whether `draft Item` includes detached drafts of related `Parts`, or only their references. If only references are copied, editing `Part.Name` could update live data before the parent Save button is pressed; the intended isolation must be explicit before implementing this example.
+#### Dirty state and source changes — unresolved
 
-TODO: Specify how to create and add a detached related part, and whether saving the parent also creates or updates related items atomically. The example deliberately omits the former scalar Add Part operation until this is decided.
+What establishes the dirty baseline, does reverting a field clear it, and does saving advance it?
+Decide whether drafts track their original datasource item and how saving handles concurrent
+source changes.
 
-TODO: Decide whether the create form clears or replaces its draft after a successful create, to avoid accidentally submitting it twice.
+#### Related drafts — unresolved
 
-## Implementation notes:
+Does `draft Item` copy related items into detached drafts or retain their references? References
+could make `Part.Name` edits affect live data before Save. Define related-item creation and whether
+saving a parent also saves related changes atomically; the example omits adding related parts
+until those semantics are settled.
 
-- [ ] Drafts may want to keep a link of the original data object, and declare what to do if the linked object is updated.
-  - [ ] It may also want to specify what should happen when a draft is saved, if the linked object is different when retrieved from server than it was when the draft was created (to avoid overwriting changes).
-- [ ] Only draft-modified properties get added to the update.
+#### Create-form reset — unresolved
+
+Decide whether a successful create clears or replaces the draft to prevent accidental resubmission.
