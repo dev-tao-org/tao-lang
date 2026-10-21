@@ -27,41 +27,37 @@ export type ImportPath = AST.Semantic<'ImportPath', { value: string }>
 
 /** UseStatement constructs selected or wildcard declaration imports. */
 export function UseStatement(cst: CST.SyntaxNode): UseStatement {
-  const from = cst.childForFieldName('from')
   return AST.Node(cst, 'UseStatement', {
-    imports: cst.childrenForFieldName('imports').map(child => AST.Construct(child, 'NamedImport')),
-    from: from ? AST.Construct(from, 'ImportPath') : undefined,
+    imports: AST.FieldList(cst, 'imports', 'NamedImport'),
+    from: AST.OptionalField(cst, 'from', 'ImportPath'),
     all: cst.childForFieldName('all') !== null,
   })
 }
 
 /** UsePackageStatement constructs a package namespace import. */
 export function UsePackageStatement(cst: CST.SyntaxNode): UsePackageStatement {
-  const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'UsePackageStatement', {
     from: AST.Field(cst, 'from', 'ImportPath'),
-    alias: alias ? AST.Name(alias) : undefined,
+    alias: AST.OptionalField(cst, 'alias', 'Name'),
   })
 }
 
 /** RequiresDeclaration constructs an authored dependency requirement. */
 export function RequiresDeclaration(cst: CST.SyntaxNode): RequiresDeclaration {
   const version = cst.childForFieldName('version')
-  const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'RequiresDeclaration', {
     provider: CST.RequiredField(cst, 'provider').text as RequiresDeclaration['provider'],
     identifier: CST.RequiredField(cst, 'identifier').text,
     version: version?.text,
-    alias: alias ? AST.Name(alias) : undefined,
+    alias: AST.OptionalField(cst, 'alias', 'Name'),
   })
 }
 
 /** NamedImport constructs a declaration selector and optional local alias. */
 export function NamedImport(cst: CST.SyntaxNode): NamedImport {
-  const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'NamedImport', {
     target: AST.Field(cst, 'target', 'Name'),
-    alias: alias ? AST.Name(alias) : undefined,
+    alias: AST.OptionalField(cst, 'alias', 'Name'),
   })
 }
 

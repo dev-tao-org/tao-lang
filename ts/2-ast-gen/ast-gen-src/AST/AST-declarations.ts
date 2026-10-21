@@ -54,11 +54,10 @@ export function Parameter(cst: CST.SyntaxNode): Parameter {
 
 /** LetDefinition constructs an ordered lexical value binding. */
 export function LetDefinition(cst: CST.SyntaxNode): LetDefinition {
-  const type = cst.childForFieldName('type')
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'LetDefinition', {
     name: AST.Field(cst, 'name', 'Name'),
-    type: type ? AST.Name(type) : undefined,
+    type: AST.OptionalField(cst, 'type', 'Name'),
     value: AST.Field(cst, 'value', ['Name', 'TextLiteral']),
     visibility,
   })

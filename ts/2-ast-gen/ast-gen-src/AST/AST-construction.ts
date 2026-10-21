@@ -29,6 +29,25 @@ export function Field<Kind extends AST.Node['kind']>(
   return Construct(CST.RequiredField(cst, field), kind)
 }
 
+/** OptionalField constructs a present CST field or returns undefined when absent. */
+export function OptionalField<Kind extends AST.Node['kind']>(
+  cst: CST.SyntaxNode,
+  field: string,
+  kind: Kind | readonly Kind[],
+): AST.OfKind<Kind> | undefined {
+  const child = cst.childForFieldName(field)
+  return child ? Construct(child, kind) : undefined
+}
+
+/** FieldList constructs repeated CST fields in their authored order. */
+export function FieldList<Kind extends AST.Node['kind']>(
+  cst: CST.SyntaxNode,
+  field: string,
+  kind: Kind | readonly Kind[],
+): AST.OfKind<Kind>[] {
+  return cst.childrenForFieldName(field).map(child => Construct(child, kind))
+}
+
 /** List constructs each named child with one of the expected semantic kinds. */
 export function List<Kind extends AST.Node['kind']>(
   cst: CST.SyntaxNode,

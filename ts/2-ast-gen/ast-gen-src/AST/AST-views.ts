@@ -55,12 +55,11 @@ export function ForeignView(cst: CST.SyntaxNode): ForeignView {
 /** ViewRender constructs a view invocation with arguments and child renders. */
 export function ViewRender(cst: CST.SyntaxNode): ViewRender {
   const argumentsNode = cst.childForFieldName('argumentList')
-  const tag = cst.childForFieldName('tag')
   return AST.Node(cst, 'ViewRender', {
-    tag: tag ? AST.RenderTag(tag) : undefined,
+    tag: AST.OptionalField(cst, 'tag', 'RenderTag'),
     target: AST.Field(cst, 'view', 'Name'),
     arguments: argumentsNode ? AST.List(argumentsNode, ['Name', 'TextLiteral']) : [],
-    children: cst.childrenForFieldName('children').map(child => AST.Construct(child, ['ViewRender', 'LetDefinition'])),
+    children: AST.FieldList(cst, 'children', ['ViewRender', 'LetDefinition']),
   })
 }
 
@@ -77,8 +76,10 @@ export function Injection(cst: CST.SyntaxNode): Injection {
 /** Capture constructs a native binding and its Tao value or contextual reference. */
 export function Capture(cst: CST.SyntaxNode): Capture {
   const name = AST.Field(cst, 'name', 'Name')
-  const value = cst.childForFieldName('value')
-  return AST.Node(cst, 'Capture', { name, value: value ? AST.Construct(value, ['Name', 'ContextReference']) : name })
+  return AST.Node(cst, 'Capture', {
+    name,
+    value: AST.OptionalField(cst, 'value', ['Name', 'ContextReference']) ?? name,
+  })
 }
 
 /** ContextReference constructs an unresolved contextual capture such as @@children. */

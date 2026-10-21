@@ -43,7 +43,7 @@ export type InputExpectation = AST.Semantic<'InputExpectation', {
 /** TestsDeclaration constructs a labeled group of app journeys. */
 export function TestsDeclaration(cst: CST.SyntaxNode): TestsDeclaration {
   return AST.Node(cst, 'TestsDeclaration', {
-    label: optionalText(cst, 'label'),
+    label: AST.OptionalField(cst, 'label', 'TextLiteral'),
     tests: cst.namedChildren.filter(child => child.type === 'TestDeclaration').map(AST.TestDeclaration),
   })
 }
@@ -51,7 +51,7 @@ export function TestsDeclaration(cst: CST.SyntaxNode): TestsDeclaration {
 /** TestDeclaration constructs one app journey's ordered steps. */
 export function TestDeclaration(cst: CST.SyntaxNode): TestDeclaration {
   return AST.Node(cst, 'TestDeclaration', {
-    label: optionalText(cst, 'label'),
+    label: AST.OptionalField(cst, 'label', 'TextLiteral'),
     steps: cst.namedChildren.filter(child => child.type !== 'TextLiteral' && CST.IsSemanticNode(child)).map(child =>
       AST.Construct(child, ['RunStatement', 'PressStatement', 'TypeStatement', 'ExpectStatement'])
     ),
@@ -78,9 +78,8 @@ export function TypeStatement(cst: CST.SyntaxNode): TypeStatement {
 
 /** ExpectStatement constructs direct or grouped visible assertions. */
 export function ExpectStatement(cst: CST.SyntaxNode): ExpectStatement {
-  const target = cst.childForFieldName('target')
   return AST.Node(cst, 'ExpectStatement', {
-    target: target ? AST.RenderTag(target) : undefined,
+    target: AST.OptionalField(cst, 'target', 'RenderTag'),
     expectations: cst.namedChildren.filter(child => child.type !== 'RenderTag' && CST.IsSemanticNode(child)).map(
       child => AST.Construct(child, ['TextExpectation', 'InputExpectation']),
     ),
@@ -94,9 +93,8 @@ export function TextExpectation(cst: CST.SyntaxNode): TextExpectation {
 
 /** InputExpectation constructs an input assertion with an explicit or inherited target. */
 export function InputExpectation(cst: CST.SyntaxNode): InputExpectation {
-  const target = cst.childForFieldName('target')
   return AST.Node(cst, 'InputExpectation', {
-    target: target ? AST.RenderTag(target) : undefined,
+    target: AST.OptionalField(cst, 'target', 'RenderTag'),
     value: AST.Field(cst, 'value', 'TextLiteral'),
   })
 }
@@ -104,9 +102,4 @@ export function InputExpectation(cst: CST.SyntaxNode): InputExpectation {
 /** RenderTag constructs a render selector without its syntax marker. */
 export function RenderTag(cst: CST.SyntaxNode): RenderTag {
   return AST.Node(cst, 'RenderTag', { value: cst.text.slice(1) })
-}
-
-function optionalText(cst: CST.SyntaxNode, field: string): AST.TextLiteral | undefined {
-  const child = cst.childForFieldName(field)
-  return child ? AST.TextLiteral(child) : undefined
 }
