@@ -27,9 +27,10 @@ branch pushes through the guarded route are authorized; other publication needs 
 
 - Use the guarded push command above for backups and `./agent unsandboxed git <operation>` for other supported Git mutations; the harness must grant host execution. Keep ordinary read-only Git inspection sandboxed. Do not install machine-local Git filesystem grants as a prerequisite.
 
-- Push committed work to `origin` after a meaningful completed chunk or before a substantial
-  handoff, rather than after every commit. Report a failed backup and retain it as an unresolved
-  task complication; local commits alone are not an origin backup.
+- Before ending any round of work that created commits, push those commits to `origin` through
+  the guarded route without opening a PR or asking for separate push approval. Batch the round's
+  commits into one backup push. Confirm the remote destination contains the committed tip;
+  report a failed backup and retain it as an unresolved task complication.
 - Backup pushes must not trigger CI unless the Developer requests CI for that push. Check current
   workflow triggers and open pull requests before choosing a destination. With the current
   workflows, pushing a feature branch without an open PR does not start CI; updating an open PR does.
@@ -45,6 +46,10 @@ branch pushes through the guarded route are authorized; other publication needs 
 
 `git worktree list` routinely shows fifteen or more checkouts sharing one object store, worked in concurrently by other agents and the Developer.
 
+- Creating a fresh `feat/*` branch for authorized work needs no separate Developer confirmation.
+  If the sandbox blocks Git metadata writes, use
+  `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
+  switch, replace an existing branch, or discard dirty work under this authorization.
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
   root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a

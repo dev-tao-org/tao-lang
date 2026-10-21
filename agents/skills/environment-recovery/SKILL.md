@@ -57,12 +57,16 @@ behind it.
 - Opt-in permission profiles launch as harness sessions — see `just --list`'s Sessions group.
   Codex reads the same profiles as `tao-review`, `tao-native`, `tao-local-services`, and
   `tao-release`, defaulting to `tao-workspace`.
-- On a sandbox violation, use the failed command's report and `./agent unsandboxed capabilities` to distinguish
-  a host requirement from a broken command. If a write needs host access, tell the Developer the exact
-  operation and why, then pause until the Developer explicitly approves it in the conversation. Tool-level
-  auto-review is not the Developer's approval. Do not try alternate spellings, a host session, or a policy
-  change to route around the denial. `.rulesync/permissions.jsonc` grants only the named
-  `./agent unsandboxed` host commands in default sessions; landing still needs authorization for the named slice.
+- A sandbox denial alone needs no Developer notification or conversational approval. Diagnose from
+  the failed command's report and use an existing permitted `./agent unsandboxed` operation when
+  the task authorizes the action. Quietly use that route, including its normal harness approval,
+  without announcing the denial or host execution.
+- If the needed operation has no permitted host route, or the harness refuses that route, explain
+  what operation is needed, why it is necessary, and the exact command or narrowly scoped access
+  change proposed. Obtain Developer approval before adding access; continue independent work.
+  Do not use alternate spellings, a broader host session, or policy changes to bypass a refusal.
+- Host access does not authorize the action itself. Preserve separate approval requirements for
+  dependencies, destructive operations, publication, landing and visible UI.
 - No agent sandbox reaches Watchman's socket, and only the opt-in `tao-local-services` profile
   reaches Docker's, by design: both sockets live under a developer's home directory, which a tracked
   config cannot name. Run file-watching dev loops with

@@ -4,9 +4,11 @@ import { FileSystem, Path, Repo } from '@shared/os'
 import { prepareNativeLocks } from '../../cli-checks/native-lock-build'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
+import { setupStorage } from '../SetupStorage'
 import { runDirenvSetup } from '../shell/DirenvSetup'
 
 await configureCLIOutput('agent')
+await setupStorage()
 await prepareParser()
 await prepareNativeLocks()
 await prepareRuntime()
