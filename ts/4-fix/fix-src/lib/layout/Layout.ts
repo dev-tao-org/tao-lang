@@ -8,13 +8,13 @@ export type LayoutOptions = { width?: number; indent?: number; typescript?: Embe
 
 /** layout resolves breakable lists and emits only changed whitespace boundaries. */
 export function layout(plan: LayoutPlan, options: LayoutOptions, timings: Timings): SourceEdit[] {
-  return emitLayout(timings, plan, options, timings)
+  return timings.run(emitLayout, plan, options)
 }
 
 const emitLayout = Timings.measure('formatter.layout', function(
+  timings,
   plan: LayoutPlan,
   options: LayoutOptions,
-  timings: Timings,
 ): SourceEdit[] {
   const edits: SourceEdit[] = []
   const groups = new Map(plan.groups.map(group => [group.first, group]))
@@ -50,7 +50,7 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     return token.text
   }
   const level = plan.gaps[index]!.indent
-  const body = formatEmbedded(timings, options.typescript, token.text.slice(5, -3), {
+  const body = timings.run(formatEmbedded, options.typescript, token.text.slice(5, -3), {
     indent: options.indent ?? 2,
     level: level + 1,
     width: options.width ?? 120,
@@ -64,7 +64,7 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     + plan.newline + ' '.repeat(level * (options.indent ?? 2)) + '```'
 }
 
-const formatEmbedded = Timings.measure('formatter.typescript', function(
+const formatEmbedded = Timings.measured('formatter.typescript', function(
   formatter: EmbeddedFormatter,
   body: string,
   options: Parameters<EmbeddedFormatter>[1],

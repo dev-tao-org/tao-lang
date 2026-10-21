@@ -17,7 +17,7 @@ export async function runAppTests(
   signal?: AbortSignal,
 ): Promise<TestResult[]> {
   const source = await FileSystem.readFile(path, 'utf8')
-  const document = transform(createParser().parse(source).tree)
+  const document = transform(createParser().parse(source))
     ?? Errors.ThrowUserInput(`Invalid Tao test source: ${path}`)
   return await runTests(document, {
     path,

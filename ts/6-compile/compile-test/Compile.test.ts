@@ -11,7 +11,7 @@ import { compile } from '../compile-src/Compile'
 
 Tests.test('Hello World generates generic runtime calls and authored native injections', async () => {
   const source = await Tests.readApp('Hello World')
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const document = transform(tree)!
   const entryPath = Repo.resolvePath('Apps/Tests/Hello World.tao')
   const root = document.root.declarations.find(AST.IsViewDeclaration)!.render
@@ -32,7 +32,7 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
     app Calendar { root FormattedDate }
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
-  const document = transform(createParser().parse(source).tree)!
+  const document = transform(createParser().parse(source))!
   const code = compile(document, {
     revision: 'foreign-view',
     foreignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
@@ -44,7 +44,7 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
 
 Tests.test('foreign views reject non-text parameter contracts', () => {
   const source = 'app Calendar { root FormattedDate } view FormattedDate(Value number) from ./FormattedDate.tsx'
-  const document = transform(createParser().parse(source).tree)!
+  const document = transform(createParser().parse(source))!
 
   Tests.expect(() => compile(document, { revision: 'foreign-view-type' }))
     .toThrow('parameters must all use the text type')
@@ -57,13 +57,13 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
     createParser().parse(S`
       app HelloWorld { root RootView }
       view RootView { render inject \`\`\`ts return null \`\`\` }
-    `).tree,
+    `),
   )!
   const interactions = transform(
     createParser().parse(S`
       app Interactions { root Form }
       view Form { render inject \`\`\`ts return null \`\`\` }
-    `).tree,
+    `),
   )!
   const program = linkModules(helloPath, [
     { path: helloPath, document: hello, imports: [], siblings: [interactionsPath] },
@@ -90,7 +90,7 @@ Tests.test('app registration waits until its root alias is initialized', () => {
 
 Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {
   const source = await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const document = transform(tree)
   Tests.expect(document).toBeDefined()
   const entryPath = Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao')
@@ -132,14 +132,14 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
       app Main { root UI.Root }
       view Shared { render UI.Root }
       let Caption = "module value"
-    `).tree,
+    `),
   )!
   const common = transform(
     createParser().parse(S`
       use Shared as Entry from ./entry
       app Extra { root Root }
       view Root { render Entry.Shared }
-    `).tree,
+    `),
   )!
   return {
     entry,
@@ -170,7 +170,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
 }
 
 Tests.test('standalone compilation rejects unresolved use statements', () => {
-  const { tree } = createParser().parse('use package @common as UI\napp Main { root UI.Root }')
+  const tree = createParser().parse('use package @common as UI\napp Main { root UI.Root }')
   const document = transform(tree)!
 
   Tests.expect(() => compile(document, { revision: 'standalone' })).toThrow('linked program')
@@ -208,7 +208,7 @@ Tests.test('escaped authored identifiers stay inside their own injection scope',
 })
 
 function generatedJavaScript(source: string): string {
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   return compile(transform(tree)!, { revision: 'hygiene' })
     .replace(/^import \* as TR from '@runtime';\n/m, '')
@@ -221,10 +221,10 @@ async function linkedUIProgram(
 ): Promise<ReturnType<typeof linkModules>> {
   const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@ui/Views.tao')
   const uiSource = await FileSystem.readFile(uiPath, 'utf8')
-  const uiDocument = transform(createParser().parse(uiSource).tree)!
+  const uiDocument = transform(createParser().parse(uiSource))!
   const modulesPath = Path.join(Path.dirname(entryPath), 'Modules.tao')
   const modulesDocument = FileSystem.existsSync(modulesPath)
-    ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')).tree)
+    ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')))
     : undefined
   const imports: ResolvedImport[] = document.root.declarations
     .filter((node): node is ResolvedImport['statement'] => AST.IsUseStatement(node) || AST.IsUsePackageStatement(node))

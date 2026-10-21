@@ -12,14 +12,14 @@ export type UsageWarning = {
 }
 
 /** unusedWarnings checks lexical references in a complete AST without loading other modules. */
-export function unusedWarnings(document: AST.Document, timings = new Timings()): UsageWarning[] {
-  return analyzeUsage(timings, document)
-}
+export const unusedWarnings = Timings.topLevelTimer(function(timings, document: AST.Document): UsageWarning[] {
+  return timings.run(analyzeUsage, document)
+})
 
 type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
-const analyzeUsage = Timings.measure('usage.analyze', function(document: AST.Document): UsageWarning[] {
+const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Document): UsageWarning[] {
   const scope = childScope()
   for (const declaration of document.root.declarations) {
     declareModuleBinding(declaration, scope)

@@ -13,15 +13,15 @@ Tests.test('authored apps and standard views preserve semantic structure and for
   for (const path of paths) {
     const source = await FileSystem.readFile(path, 'utf8')
     const parser = createParser()
-    const tree = parser.parse(source).tree
+    const tree = parser.parse(source)
     const ast = transform(tree) ?? Errors.ThrowUnexpected(`Invalid corpus file: ${path}`)
-    const formatted = format({ source, tree }, undefined, { typescript })
+    const formatted = format({ source, tree }, { typescript })
     Tests.expect(formatted.status).toBe('formatted')
-    const resultTree = parser.parse(formatted.text).tree
+    const resultTree = parser.parse(formatted.text)
     Tests.expect(semanticStructure(transform(resultTree), typescript)).toBe(semanticStructure(ast, typescript))
-    Tests.expect(format({ source: formatted.text, tree: resultTree }, undefined, { typescript }).edits).toEqual([])
+    Tests.expect(format({ source: formatted.text, tree: resultTree }, { typescript }).edits).toEqual([])
     const fixed = fix({ source, tree, ast })
-    const fixedTree = parser.parse(fixed.text).tree
+    const fixedTree = parser.parse(fixed.text)
     const fixedAst = transform(fixedTree) ?? Errors.ThrowUnexpected(`Invalid fixed file: ${path}`)
     Tests.expect(fix({ source: fixed.text, tree: fixedTree, ast: fixedAst }).edits).toEqual([])
   }

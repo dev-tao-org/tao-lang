@@ -4,46 +4,49 @@ import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../ast-gen-src/Transform'
 
-Tests.test('an app becomes semantic declarations and names with source origins', async () => {
-  const source = await readAppDeclaration()
-  const timings = new Timings('transform-test')
-  const { tree } = createParser().parse(source)
-  const result = transform(tree, timings)
-  Tests.expect(result?.root).toEqual({
-    kind: 'File',
-    start: 0,
-    end: 34,
-    declarations: [{
-      kind: 'AppDeclaration',
+Tests.test(
+  'an app becomes semantic declarations and names with source origins',
+  Timings.topLevelTimer(async timings => {
+    const source = await readAppDeclaration()
+
+    const tree = createParser().parse(source)
+    const result = timings.run(transform, tree)
+    Tests.expect(result?.root).toEqual({
+      kind: 'File',
       start: 0,
       end: 34,
-      name: { kind: 'Name', start: 4, end: 14, value: 'HelloWorld' },
-      root: { kind: 'Name', start: 24, end: 32, value: 'RootView' },
-    }],
-  })
-  const { root } = result!
-  const app = root.declarations[0]!
-  if (!AST.IsAppDeclaration(app)) {
-    Errors.ThrowUnexpected('Expected app')
-  }
-  const second = transform(tree)
-  Tests.expect(second?.root).not.toBe(root)
-  Tests.expect(second?.root.declarations[0]?.start).toBe(app.start)
-  Tests.expect(timings.samples.map(sample => [sample.name, sample.status])).toEqual([
-    ['transformer.transform', 'succeeded'],
-  ])
-})
+      declarations: [{
+        kind: 'AppDeclaration',
+        start: 0,
+        end: 34,
+        name: { kind: 'Name', start: 4, end: 14, value: 'HelloWorld' },
+        root: { kind: 'Name', start: 24, end: 32, value: 'RootView' },
+      }],
+    })
+    const { root } = result!
+    const app = root.declarations[0]!
+    if (!AST.IsAppDeclaration(app)) {
+      Errors.ThrowUnexpected('Expected app')
+    }
+    const second = transform(tree)
+    Tests.expect(second?.root).not.toBe(root)
+    Tests.expect(second?.root.declarations[0]?.start).toBe(app.start)
+    Tests.expect(timings.samples.map(sample => [sample.name, sample.status])).toEqual([
+      ['transformer.transform', 'succeeded'],
+    ])
+  }),
+)
 
 Tests.test('an unfinished app produces no AST', async () => {
   const source = await readAppDeclaration()
-  const { tree } = createParser().parse(source.slice(0, -1))
+  const tree = createParser().parse(source.slice(0, -1))
   Tests.expect(tree.rootNode.hasError).toBe(true)
   Tests.expect(transform(tree)).toBeUndefined()
 })
 
 Tests.test('Hello World transforms imported generic renders', async () => {
   const source = await Tests.readApp('Hello World')
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const result = transform(tree)
   const view = result?.root.declarations.find(AST.IsViewDeclaration)
   Tests.expect(view).toMatchObject({
@@ -80,7 +83,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
     folder view Home(Value UI.Text) { render UI.Text(Value) }
     public let Value is UI.Text = UI.Default
   `
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const result = transform(tree)
   Tests.expect(result?.root.declarations.map(node => node.kind)).toEqual([
     'UseStatement',
@@ -127,7 +130,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     use Button from widgets@ui/controls
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const result = transform(tree)
   Tests.expect(result?.root.declarations.map(node => node.kind)).toEqual([
     'RequiresDeclaration',

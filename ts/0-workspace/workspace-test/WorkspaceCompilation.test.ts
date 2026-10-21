@@ -1,5 +1,5 @@
 import { RuntimeSourceResources } from '@runtime/RuntimeResources'
-import { Try } from '@shared'
+import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { createProject, createWorkspace } from '../workspace-src/Workspace'
 
@@ -70,7 +70,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
         },
       },
     },
-    compile: () => code,
+    compile: Timings.topLevelTimer(() => code),
   })
   await Try(async () => {
     Tests.expect((await workspace.update('app')).status).toBe('invalid')

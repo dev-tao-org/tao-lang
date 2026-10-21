@@ -20,18 +20,18 @@ export type FormatResult = {
 }
 
 /** format proposes whitespace edits for one parsed Tao source without file access or mutation. */
-export function format(
+export const format = Timings.topLevelTimer(function(
+  timings,
   input: FormatInput,
-  timings = new Timings(),
   options: LayoutOptions = {},
 ): FormatResult {
-  return formatSource(timings, input, options, timings)
-}
+  return timings.run(formatSource, input, options)
+})
 
 const formatSource = Timings.measure('formatter.format', function(
+  timings,
   input: FormatInput,
   options: LayoutOptions,
-  timings: Timings,
 ): FormatResult {
   if (input.tree.rootNode.type !== 'SourceFile') {
     return { status: 'invalid', text: input.source, edits: [], skipped: [{ start: 0, end: input.source.length }] }

@@ -29,7 +29,7 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
     }
     tests { test { run Demo } }
   `
-  const ast = transform(createParser().parse(source).tree)!
+  const ast = transform(createParser().parse(source))!
   Tests.expect(ast).toBeDefined()
   const warnings = unusedWarnings(ast)
   Tests.expect(warnings.map(warning => [warning.code, source.slice(warning.start, warning.end)]))
@@ -53,7 +53,7 @@ Tests.test('qualified namespace use ignores an ordinary local binding with the s
       render UI.Text("shown")
     }
   `
-  const ast = transform(createParser().parse(source).tree)!
+  const ast = transform(createParser().parse(source))!
   Tests.expect(unusedWarnings(ast).map(warning => [warning.code, source.slice(warning.start, warning.end)]))
     .toEqual([['unused-declaration', 'UI']])
 })
@@ -62,6 +62,6 @@ Tests.test('foreign view parameters are consumed by the external view contract',
   const source = S`
     public view External(Value text, Optional text) from ./External.tsx
   `
-  const ast = transform(createParser().parse(source).tree)!
+  const ast = transform(createParser().parse(source))!
   Tests.expect(unusedWarnings(ast)).toEqual([])
 })

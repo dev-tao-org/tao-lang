@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, Document } from '../workspace-src/Workspace'
 
@@ -15,10 +15,10 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
     onExpected(revision, startedAtMs) {
       expected.push([revision, startedAtMs])
     },
-    compile(_document, options) {
+    compile: Timings.topLevelTimer((_timings, _document, options) => {
       compiled.push(options.revision)
       return 'compiled ' + options.revision
-    },
+    }),
     async publish(app, isCurrent) {
       if (app.revision === 'r1') {
         enteredFirst()
@@ -48,7 +48,7 @@ Tests.test('invalid source retains the last published application', async () => 
   const source = await Tests.readApp('Hello World')
   let publishCount = 0
   const workspace = createWorkspace({
-    compile: () => 'compiled app',
+    compile: Timings.topLevelTimer(() => 'compiled app'),
     async publish() {
       publishCount++
     },
@@ -69,7 +69,7 @@ Tests.test('a virtual document queues immutable versions without reading its ent
   const firstEntered = new Promise<void>(resolve => enteredFirst = resolve)
   const events: { path: string | undefined; source: string; version: number | undefined }[] = []
   const workspace = createWorkspace({
-    compile: (_document, options) => options.revision,
+    compile: Timings.topLevelTimer((_timings, _document, options) => options.revision),
     async publish(app, isCurrent) {
       if (app.revision === 'r1') {
         enteredFirst()
@@ -112,7 +112,7 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
   const enteredPublishA = new Promise<void>(resolve => enteredA = resolve)
   const published: string[] = []
   const workspace = createWorkspace({
-    compile: (_document, options) => options.revision,
+    compile: Timings.topLevelTimer((_timings, _document, options) => options.revision),
     async publish(app, isCurrent) {
       if (app.source === source) {
         enteredA()

@@ -15,8 +15,20 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   const parser = createParser()
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
-    const timings = new Timings()
-    const document = await parseTransformAndCompile(timings, source, parser, timings)
+    await sampleCompilation(source, parser, index, samples)
+  }
+  return samples
+}
+
+const sampleCompilation = Timings.topLevelTimer(
+  async function(
+    timings,
+    source: string,
+    parser: ReturnType<typeof createParser>,
+    index: number,
+    samples: (TimingSample & { scenario: string })[],
+  ) {
+    const document = await timings.run(parseTransformAndCompile, source, parser)
     const app = document?.root.declarations.find(AST.IsAppDeclaration)
     if (app?.name.value !== 'HelloWorld') {
       Errors.ThrowUnexpected('Hello World compiler sample did not produce the expected app.')
@@ -24,29 +36,28 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'hello-world-compile' })))
     }
-  }
-  return samples
-}
+  },
+)
 
 const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async function(
+  timings,
   source: string,
   parser: ReturnType<typeof createParser>,
-  timings: Timings,
 ) {
-  const { tree } = parser.parse(source, timings)
-  const document = transform(tree, timings)
+  const tree = timings.run(parser.parse, source)
+  const document = timings.run(transform, tree)
   if (document) {
     const path = Repo.resolvePath('Apps/Tests/Hello World.tao')
-    const sources = await loadModules(
+    const sources = await timings.run(
+      loadModules,
       { path, document },
       {
         resolveProject: async (_importer, alias) =>
           alias === 'tao' ? { root: await Stdlib.projectDirectory() } : undefined,
       },
       parser,
-      timings,
     )
-    compile(document, { revision: 'benchmark', program: linkModules(path, sources) }, timings)
+    timings.run(compile, document, { revision: 'benchmark', program: linkModules(path, sources) })
   }
   return document
 })

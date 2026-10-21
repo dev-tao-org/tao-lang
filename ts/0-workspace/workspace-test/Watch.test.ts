@@ -1,4 +1,4 @@
-import { Time, Timings, Try } from '@shared'
+import { Time, Try } from '@shared'
 import { Tests, WorkspaceWatch } from '@shared/os'
 import { FileManager, type FileManagerOptions, type SourceSnapshot } from '../workspace-src/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
@@ -88,7 +88,6 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
     read: async (_path, observedAtMs) => ({
       source: 'source',
       observedAtMs,
-      timings: new Timings('workspace:test'),
     }),
     compile: async () => result('published'),
   })
@@ -190,7 +189,6 @@ function dynamicWatchFixture() {
     read: async (_path, observedAtMs) => ({
       source: `read-${++reads}`,
       observedAtMs,
-      timings: new Timings('watch:test'),
     }),
     schedule(_delay, callback) {
       scheduled = callback
@@ -225,7 +223,7 @@ type ManagerFixtureState = {
 }
 
 function createManagerFixture(
-  read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<Omit<SourceSnapshot, 'timings'>>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
     result(isCurrent() ? 'published' : 'superseded'),
   options: Partial<FileManagerOptions> = {},
@@ -277,7 +275,7 @@ function createManagerFixture(
 }
 
 function createFixtureManager(
-  read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<Omit<SourceSnapshot, 'timings'>>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult>,
   state: ManagerFixtureState,
   options: Partial<FileManagerOptions>,
@@ -315,8 +313,8 @@ function createFixtureManager(
   return manager
 }
 
-function snapshot(source: string): SourceSnapshot {
-  return { source, observedAtMs: Time.timestampMs(), timings: new Timings('workspace:test') }
+function snapshot(source: string): Omit<SourceSnapshot, 'timings'> {
+  return { source, observedAtMs: Time.timestampMs() }
 }
 
 function result(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {

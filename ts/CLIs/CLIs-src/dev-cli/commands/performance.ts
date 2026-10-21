@@ -18,7 +18,7 @@ export default registerCommand({
     description: 'parser, formatter, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
-  async action(target: string) {
+  action: Timings.topLevelTimer(async function(timings, target: string) {
     if (target === 'formatter') {
       return runFormatter()
     }
@@ -28,8 +28,7 @@ export default registerCommand({
     if (!['parser', 'preview', 'record'].includes(target)) {
       Errors.ThrowUserInput('Available performance targets: parser, formatter, extension, preview, record')
     }
-    const timings = new Timings()
-    await prepareParser(target === 'parser', timings)
+    await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
       const { recordPreviewPerformance } = await import('../../../../perf/perf-src/PreviewHistory')
       const record = await recordPreviewPerformance(runPreview)
@@ -48,7 +47,7 @@ export default registerCommand({
       )
     }
     IO.print('Performance report: ' + path)
-  },
+  }),
 })
 
 async function runFormatter(): Promise<void> {

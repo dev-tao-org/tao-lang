@@ -69,16 +69,19 @@ type Sample = TimingSample & { scenario: string }
 async function coldSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
   for (let index = 0; index < 5; index++) {
-    const timings = new Timings()
-    const output = await runParserProcess(timings)
-    const child: TimingSample[] = JSON.parse(output)
-    samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
-    samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'cold-initial' })))
+    await sampleColdParser(samples)
   }
   return samples
 }
 
-const runParserProcess = Timings.measure('parser.process-wall', async function(): Promise<string> {
+const sampleColdParser = Timings.topLevelTimer(async function(timings, samples: Sample[]) {
+  const output = await timings.run(runParserProcess)
+  const child: TimingSample[] = JSON.parse(output)
+  samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
+  samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'cold-initial' })))
+})
+
+const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {
   return await Platform.capture('bun run', {
     variadicArgs: [Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')],
     cwd: Repo.resolvePath('ts'),
@@ -91,14 +94,26 @@ async function warmSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
   for (const fixture of await parserFixtures()) {
     for (let index = 0; index < 120; index++) {
-      const { tree, timings } = parser.parse(fixture.source)
-      if (tree.rootNode.hasError || tree.rootNode.text !== fixture.source) {
-        Errors.ThrowUnexpected('Warm parser sample did not parse the complete ' + fixture.scenario + ' fixture.')
-      }
-      if (index >= 20) {
-        samples.push(...timings.map(sample => ({ ...sample, scenario: fixture.scenario })))
-      }
+      sampleWarmParser(parser, fixture, index, samples)
     }
   }
   return samples
 }
+
+const sampleWarmParser = Timings.topLevelTimer(
+  function(
+    timings,
+    parser: ReturnType<typeof import('../../1-grammar/grammar-src/parser').createParser>,
+    fixture: Awaited<ReturnType<typeof parserFixtures>>[number],
+    index: number,
+    samples: Sample[],
+  ) {
+    const tree = timings.run(parser.parse, fixture.source)
+    if (tree.rootNode.hasError || tree.rootNode.text !== fixture.source) {
+      Errors.ThrowUnexpected('Warm parser sample did not parse the complete ' + fixture.scenario + ' fixture.')
+    }
+    if (index >= 20) {
+      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
+    }
+  },
+)

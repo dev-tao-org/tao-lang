@@ -58,7 +58,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   if (cached?.source === source) {
     return cached.requirements
   }
-  const document = transform(parser.parse(source).tree)
+  const document = transform(parser.parse(source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot read requirements from invalid Tao source: ${path}.`)
   }

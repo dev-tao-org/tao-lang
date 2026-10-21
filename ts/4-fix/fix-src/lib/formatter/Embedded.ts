@@ -5,13 +5,13 @@ import { Timings, Try } from '@shared'
 export type EmbeddedFormatter = (source: string, options: EmbeddedOptions) => string | undefined
 
 /** createTypeScriptFormatter initializes one reusable TSX formatter from externally loaded WASM. */
-export function createTypeScriptFormatter(bytes: Uint8Array, timings = new Timings()) {
-  return initialize(timings, bytes)
-}
+export const createTypeScriptFormatter = Timings.topLevelTimer(function(timings, bytes: Uint8Array) {
+  return timings.run(initialize, bytes)
+})
 
 type EmbeddedOptions = { indent: number; level: number; width: number; newline: string }
 
-const initialize = Timings.measure('formatter.typescript.initialize', function(bytes: Uint8Array) {
+const initialize = Timings.measured('formatter.typescript.initialize', function(bytes: Uint8Array) {
   const formatter = createFromBuffer(Uint8Array.from(bytes))
   formatter.setConfig({}, { semiColons: 'asi', quoteStyle: 'preferSingle', 'jsx.quoteStyle': 'preferDouble' })
   const format: EmbeddedFormatter = (source, options) =>

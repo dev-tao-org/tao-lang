@@ -1,4 +1,4 @@
-import { Errors, Time, Timings } from '@shared'
+import { Errors, Time } from '@shared'
 import { Tests, WorkspaceWatch } from '@shared/os'
 import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
@@ -12,7 +12,7 @@ Tests.test('switching entries cancels the previous entry debounce', async () => 
         reading.resolve()
         await release.promise
       }
-      return { source: path, observedAtMs, timings: new Timings('test') }
+      return { source: path, observedAtMs }
     },
   })
   await fixture.manager.openFile('/workspace/A.tao')
@@ -33,7 +33,7 @@ Tests.test('a superseded disk read cannot overwrite a newer in-memory document',
     async read(_path, observedAtMs) {
       reading.resolve()
       await release.promise
-      return { source: 'old', observedAtMs, timings: new Timings('test') }
+      return { source: 'old', observedAtMs }
     },
   })
   const opening = fixture.manager.openFile('/workspace/A.tao')
@@ -89,7 +89,7 @@ function managerFixture(options: Partial<FileManagerOptions> = {}) {
   const compiled: string[] = []
   const manager = new FileManager({
     directory: '/workspace',
-    read: async (_path, observedAtMs) => ({ source: 'source', observedAtMs, timings: new Timings('test') }),
+    read: async (_path, observedAtMs) => ({ source: 'source', observedAtMs }),
     async watch(_root, changed) {
       notify = changed
       return { async dispose() {} }

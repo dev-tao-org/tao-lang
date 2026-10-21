@@ -17,7 +17,7 @@ Tests.test('lets retain their lexical owner and ordered render block', () => {
       }
     }
   `
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   const document = transform(tree)!
   Tests.expect(document.root.declarations[0]).toMatchObject({

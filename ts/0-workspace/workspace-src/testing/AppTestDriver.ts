@@ -1,6 +1,6 @@
 import type { compile } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Try } from '@shared'
+import { Errors, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
@@ -82,7 +82,9 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
     },
   }
   await Runtime.prepareRuntime(runtimeOptions)
-  const compile: typeof compileApp = (input, options, timings) => compileApp(input, { ...options, app }, timings)
+  const compile: typeof compileApp = Timings.topLevelTimer((timings, input, options) =>
+    timings.run(compileApp, input, { ...options, app })
+  )
   if (await discoverProject(path)) {
     return await openTestProject(path, app, { runtimeOptions, compile })
   }

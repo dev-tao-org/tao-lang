@@ -5,30 +5,33 @@ import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
-Tests.test('loads direct directory imports from a virtual entry and records discovery timings', async () => {
-  const root = await createProject()
-  await Try(async () => {
-    const directory = Path.join(root, 'views')
-    const emptyDirectory = Path.join(root, 'empty')
-    await FileSystem.mkdir(directory, { recursive: true })
-    await FileSystem.mkdir(emptyDirectory, { recursive: true })
-    const target = Path.join(directory, 'Card.tao')
-    await FileSystem.writeFile(target, view('Card'))
-    const timings = new Timings('module-loader-test')
-    const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.virtual.tao'), `use all from ./views\nuse all from ./empty\n${app('Main')}`),
-      { directory: root },
-      createParser(),
-      timings,
-    )
+Tests.test(
+  'loads direct directory imports from a virtual entry and records discovery timings',
+  Timings.topLevelTimer(async timings => {
+    const root = await createProject()
+    await Try(async () => {
+      const directory = Path.join(root, 'views')
+      const emptyDirectory = Path.join(root, 'empty')
+      await FileSystem.mkdir(directory, { recursive: true })
+      await FileSystem.mkdir(emptyDirectory, { recursive: true })
+      const target = Path.join(directory, 'Card.tao')
+      await FileSystem.writeFile(target, view('Card'))
 
-    Tests.expect(sources.map(source => source.path)).toEqual([Path.join(root, 'Main.virtual.tao'), target])
-    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'same-directory' }])
-    Tests.expect(sources[0]!.imports[1]!.targets).toEqual([])
-    Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.load')
-    Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.discover')
-  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
-})
+      const sources = await timings.run(
+        loadModules,
+        parseEntry(Path.join(root, 'Main.virtual.tao'), `use all from ./views\nuse all from ./empty\n${app('Main')}`),
+        { directory: root },
+        createParser(),
+      )
+
+      Tests.expect(sources.map(source => source.path)).toEqual([Path.join(root, 'Main.virtual.tao'), target])
+      Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'same-directory' }])
+      Tests.expect(sources[0]!.imports[1]!.targets).toEqual([])
+      Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.load')
+      Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.discover')
+    }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+  }),
+)
 
 Tests.test('loads a project through a symlink using canonical source roots', async () => {
   const root = await createProject()
@@ -44,7 +47,6 @@ Tests.test('loads a project through a symlink using canonical source roots', asy
       parseEntry(aliasEntry, `use Nearby\n${app('Main')}`),
       { directory: alias },
       createParser(),
-      new Timings('module-loader-test'),
     )
 
     Tests.expect(sources.map(source => source.path)).toEqual([entry, sibling])
@@ -71,7 +73,6 @@ Tests.test('resolves a named package recursively and reports its import ownershi
       parseEntry(Path.join(root, 'Main.tao'), `use all from @parts\n${app('Main')}`),
       { directory: root },
       createParser(),
-      new Timings('module-loader-test'),
     )
 
     Tests.expect(sources.map(source => source.path)).toContain(card)
@@ -95,7 +96,6 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
         resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
       },
       createParser(),
-      new Timings('module-loader-test'),
     )
 
     Tests.expect(sources.map(source => source.path)).toContain(standardPath)
@@ -114,7 +114,6 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
         parseEntry(Path.join(root, 'Main.tao'), `use all from ./@tao\n${app('Main')}`),
         { directory: root },
         createParser(),
-        new Timings('module-loader-test'),
       ),
       /crosses a named package boundary/,
     )
@@ -136,7 +135,6 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
         parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao\n${app('Main')}`),
         { directory: projectRoot },
         createParser(),
-        new Timings('module-loader-test'),
       ),
       /leaves the owning Tao project/,
     )
@@ -159,7 +157,6 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
         resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
       },
       createParser(),
-      new Timings('module-loader-test'),
     )
 
     Tests.expect(modules.map(module => Path.relative(Path.dirname(entryPath), module.path)).sort()).toEqual([
@@ -185,7 +182,7 @@ async function writeSources(path: string, source: string): Promise<void> {
 }
 
 function parseEntry(path: string, source: string): { path: string; document: AST.Document } {
-  const document = transform(createParser().parse(source).tree)
+  const document = transform(createParser().parse(source))
   Tests.expect(document).toBeDefined()
   return { path, document: document! }
 }

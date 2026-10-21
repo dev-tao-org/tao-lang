@@ -147,7 +147,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     const dependencyDocument = transform(
       createParser().parse(
         'public view FormattedDate(Value text) from ./FormattedDate.tsx',
-      ).tree,
+      ),
     )!
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
     const prepared = await prepareSidecarPipeline({ ...fixture, executor: executeTypeScript })
@@ -176,7 +176,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     const dependencyDocument = transform(
       createParser().parse(
         'public view FormattedDate(Value text) from ./FormattedDate.tsx',
-      ).tree,
+      ),
     )!
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
     await Tests.rejects(
@@ -270,7 +270,7 @@ async function createFixture(): Promise<Fixture> {
   const document = transform(
     createParser().parse(
       'app Calendar { root FormattedDate } public view FormattedDate(Value text) from ./FormattedDate.tsx',
-    ).tree,
+    ),
   )!
   return {
     projectDirectory,

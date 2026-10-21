@@ -107,7 +107,7 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
       if (disposed || !taoTree) {
         Errors.ThrowUnexpected('Cannot format an unavailable Tao document session')
       }
-      return format({ source, tree: taoTree }, undefined, options)
+      return format({ source, tree: taoTree }, options)
     },
     update(nextSource) {
       if (disposed) {

@@ -3,7 +3,7 @@ import { Tests } from '@shared/os'
 import { createParser } from '../grammar-src/parser'
 
 Tests.test('app journeys parse render tags, interactions and grouped expectations', () => {
-  const { tree } = createParser().parse(S`
+  const tree = createParser().parse(S`
     app Example { root Form }
     view Form { render #form Col { #username Input #save Button } }
     tests "Forms" {

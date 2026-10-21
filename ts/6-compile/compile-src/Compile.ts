@@ -6,7 +6,8 @@ import { compileProgram } from './ModulesCompiler'
 
 /** compile emits a single Expo app module through typed Tao runtime APIs.
  *  Full compilation consumes one immutable AST; no previous result is reused. */
-export function compile(
+export const compile = Timings.topLevelTimer(function(
+  timings,
   document: AST.Document,
   options: {
     revision: string
@@ -14,12 +15,11 @@ export function compile(
     program?: LinkedProgram
     foreignViewPath?: (modulePath: string, authoredPath: string) => string
   },
-  timings = new Timings(),
 ): string {
-  return generate(timings, document, options)
-}
+  return timings.run(generate, document, options)
+})
 
-const generate = Timings.measure('compiler.generate', function(
+const generate = Timings.measured('compiler.generate', function(
   document: AST.Document,
   options: {
     revision: string

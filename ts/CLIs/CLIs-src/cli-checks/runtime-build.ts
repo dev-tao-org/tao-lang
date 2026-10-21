@@ -4,18 +4,18 @@ import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/
 import { runtimeLock, type RuntimeManifest } from './runtime-lock'
 
 /** prepareRuntime builds versioned, relocatable Expo runtime resources from declared source inputs. */
-export async function prepareRuntime(timings = new Timings()): Promise<string> {
+export const prepareRuntime = Timings.topLevelTimer(async function(timings): Promise<string> {
   return await BuildLock.withBuildLock(Artifacts.resolvePath('locks/runtime-build.lock'), async () => {
     const inputs = await readInputs()
     const identity = Platform.hashText(JSON.stringify(inputs))
     const directory = Artifacts.resolvePath('cache/runtime-build', identity)
     if (!resourceFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
-      await buildResources(timings, directory, identity, inputs)
+      await timings.run(buildResources, directory, identity, inputs)
     }
     await publishResources(directory)
     return directory
   })
-}
+})
 
 /** writeRuntimeSources packages only captured, declared source resources. */
 export async function writeRuntimeSources(directory: string, sources: Record<string, string>): Promise<void> {
@@ -45,7 +45,7 @@ async function readInputs() {
   return { sources: Object.fromEntries(sources) }
 }
 
-const buildResources = Timings.measure('runtime.build', async function(
+const buildResources = Timings.measured('runtime.build', async function(
   directory: string,
   identity: string,
   inputs: Awaited<ReturnType<typeof readInputs>>,

@@ -3,7 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { runtimeDependencies } from '@runtime/Runtime'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Timings, Try } from '@shared'
+import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import {
@@ -216,7 +216,7 @@ async function loadEntry(
   dependencies: Pick<ProjectDependencies, 'resolveProject'>,
 ): Promise<SourceModule[]> {
   const parser = createParser()
-  const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')).tree)
+  const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')))
     ?? Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
   return await loadModules(
     { path: entry, document },
@@ -226,6 +226,5 @@ async function loadEntry(
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,
-    new Timings(),
   )
 }

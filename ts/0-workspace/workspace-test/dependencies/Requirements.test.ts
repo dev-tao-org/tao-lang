@@ -28,7 +28,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
       { provider: 'bundled', identifier: 'tao', version: 'bundled' },
     ])
     const nested = transform(
-      createParser().parse(await FileSystem.readFile(Path.join(root, 'nested', 'Module.tao'), 'utf8')).tree,
+      createParser().parse(await FileSystem.readFile(Path.join(root, 'nested', 'Module.tao'), 'utf8')),
     )!
     await Tests.rejects(
       async () => validateRequirementPlacement(nested.root.declarations, Path.join(root, 'nested', 'Module.tao'), root),

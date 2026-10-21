@@ -13,20 +13,25 @@ export async function publishBuild(
   onProgress?: (message: string) => void,
 ): Promise<void> {
   onProgress?.('Writing generated app build…')
-  const path = await writeBuild(timings, buildDirectory, code)
+  const path = await timings.run(writeBuild, buildDirectory, code)
   onProgress?.('Generated app build write complete.')
   if (!isCurrent()) {
     return
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
-  const runtime = await Timings.exec(timings, 'workspace.runtime.prepare', prepareRuntime)
+  const runtime = await timings.run(prepareApplication, prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
   onProgress?.('Publishing changed runtime app files…')
-  await publishChanged(timings, path, runtime.appPath, isCurrent)
+  await timings.run(publishChanged, path, runtime.appPath, isCurrent)
   onProgress?.('Runtime app file publication complete.')
 }
 
-const writeBuild = Timings.measure(
+const prepareApplication = Timings.measured(
+  'workspace.runtime.prepare',
+  (prepare: () => Promise<RuntimeApplication>) => prepare(),
+)
+
+const writeBuild = Timings.measured(
   'workspace.build.write',
   async function(directory: string, code: string): Promise<string> {
     await FileSystem.mkdir(directory, { recursive: true })
@@ -36,7 +41,7 @@ const writeBuild = Timings.measure(
   },
 )
 
-const publishChanged = Timings.measure('workspace.runtime.publish-changed', async function(
+const publishChanged = Timings.measured('workspace.runtime.publish-changed', async function(
   buildPath: string,
   target: string,
   isCurrent: () => boolean,

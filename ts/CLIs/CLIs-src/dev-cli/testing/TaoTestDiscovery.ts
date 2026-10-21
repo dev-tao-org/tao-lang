@@ -15,7 +15,7 @@ export async function findTaoTestFiles(path: string, parser = createParser()): P
     if (entry.isDirectory()) {
       paths.push(...await findTaoTestFiles(child, parser))
     } else if (entry.name.endsWith('.tao')) {
-      const { tree } = parser.parse(await FileSystem.readFile(child, 'utf8'))
+      const tree = parser.parse(await FileSystem.readFile(child, 'utf8'))
       if (tree.rootNode.descendantsOfType('TestsDeclaration').length > 0) {
         paths.push(child)
       }

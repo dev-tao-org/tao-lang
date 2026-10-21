@@ -81,7 +81,7 @@ export type FileManagerOptions = {
   onSourceUpdate?: (result: UpdateResult) => void
   onSourceError?: (error: unknown) => void
   watch?: typeof WorkspaceWatch.watchWorkspace
-  read?: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult>
+  read?: (path: string, observedAtMs: number) => Promise<ReadResult>
   schedule?: (delayMs: number, callback: () => void) => () => void
 }
 
@@ -172,9 +172,9 @@ export function supersededInput(request: QueuedInput): CompletedInput {
 export function failedInput(request: QueuedInput, error: unknown): CompletedInput {
   const source = request.input.kind === 'source' ? request.input.source : ''
   const version = request.input.kind === 'source' ? request.input.version : undefined
-  const timings = request.input.kind === 'source' ? request.input.timings : new Timings()
+  const samples = request.input.kind === 'source' ? request.input.timings.samples : []
   return {
-    result: failedResult(request.id, error, timings.samples),
+    result: failedResult(request.id, error, samples),
     path: inputPath(request.input),
     source,
     version,
@@ -218,21 +218,21 @@ export function notifyCompletion(
 
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 
-async function readSource(
+const readSource = Timings.topLevelTimer(async function(
+  timings,
   path: string,
   observedAtMs: number,
-  read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult> = defaultRead,
+  read: (path: string, observedAtMs: number) => Promise<ReadResult> = defaultRead,
 ): Promise<SourceSnapshot | UpdateResult> {
-  const timings = new Timings()
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const snapshot = await readWorkspaceSource(timings, path, observedAtMs, read)
+  const snapshot = await timings.run(readWorkspaceSource, path, observedAtMs, read)
   return 'status' in snapshot ? snapshot : { ...snapshot, timings }
-}
+})
 
-const readWorkspaceSource = Timings.measure('workspace.read', function(
+const readWorkspaceSource = Timings.measured('workspace.read', function(
   path: string,
   observedAtMs: number,
-  read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult>,
+  read: (path: string, observedAtMs: number) => Promise<ReadResult>,
 ): Promise<ReadResult> {
   return read(path, observedAtMs).then(result => {
     if ('status' in result) {
@@ -242,11 +242,10 @@ const readWorkspaceSource = Timings.measure('workspace.read', function(
   })
 })
 
-function defaultRead(path: string, observedAtMs: number): Promise<SourceSnapshot> {
+function defaultRead(path: string, observedAtMs: number): Promise<ReadResult> {
   return FileSystem.readFile(path, 'utf8').then(source => ({
     source,
     observedAtMs,
-    timings: new Timings(),
   }))
 }
 

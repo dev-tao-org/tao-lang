@@ -6,7 +6,7 @@ import { format } from '../fix-src/Format'
 import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './SyntaxFixture'
 
 Tests.test('all current grammar rules format canonically and remain stable across reflow', () => {
-  const tree = createParser().parse(syntaxFixture).tree
+  const tree = createParser().parse(syntaxFixture)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(Object.keys(syntaxKinds).sort())
   assertFormatted(syntaxFixture, formattedSyntaxFixture)
@@ -53,17 +53,17 @@ Tests.test('argument and parameter lists wrap at the width and retain authored l
 Tests.test('formatting protects unfinished declarations while formatting complete neighbors', () => {
   const source = 'view Ready{render Text( "Hi" )}\n\nview Editing('
   const parser = createParser()
-  const result = format({ source, tree: parser.parse(source).tree })
+  const result = format({ source, tree: parser.parse(source) })
   Tests.expect(result.text).toBe('view Ready {\n  render Text("Hi")\n}\n\nview Editing(')
   Tests.expect(result.skipped.length).toBeGreaterThan(0)
   Tests.expect(formatted(result.text)).toBe(result.text)
   const invalid = 'public view Root {'
-  Tests.expect(format({ source: invalid, tree: parser.parse(invalid).tree }))
+  Tests.expect(format({ source: invalid, tree: parser.parse(invalid) }))
     .toEqual({ status: 'invalid', text: invalid, edits: [], skipped: [{ start: 0, end: invalid.length }] })
 })
 
 function formatted(source: string, width?: number): string {
-  return format({ source, tree: createParser().parse(source).tree }, undefined, { width }).text
+  return format({ source, tree: createParser().parse(source) }, { width }).text
 }
 
 function namedKinds(node: SyntaxNode, kinds = new Set<string>()): Set<string> {
@@ -74,19 +74,18 @@ function namedKinds(node: SyntaxNode, kinds = new Set<string>()): Set<string> {
   return kinds
 }
 
-function assertFormatted(source: string, expected: string): void {
+const assertFormatted = Timings.topLevelTimer(function(timings, source: string, expected: string): void {
   const parser = createParser()
-  const tree = parser.parse(source).tree
-  const timings = new Timings('format-test')
-  const result = format({ source, tree }, timings)
+  const tree = parser.parse(source)
+  const result = timings.run(format, { source, tree })
   Tests.expect(result.status).toBe('formatted')
   Tests.expect(result.text).toBe(expected)
   Tests.expect(tree.rootNode.text).toBe(source)
-  Tests.expect(parser.parse(result.text).tree.rootNode.hasError).toBe(false)
-  Tests.expect(format({ source: result.text, tree: parser.parse(result.text).tree }).edits).toEqual([])
+  Tests.expect(parser.parse(result.text).rootNode.hasError).toBe(false)
+  Tests.expect(format({ source: result.text, tree: parser.parse(result.text) }).edits).toEqual([])
   Tests.expect(timings.samples.map(sample => sample.name))
     .toEqual(['formatter.rules', 'formatter.layout', 'formatter.format'])
-}
+})
 
 const sourceFixture = S`
   // Greetings

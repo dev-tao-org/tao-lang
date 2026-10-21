@@ -29,7 +29,7 @@ async function readFileRequirements(path: string, projectRoot: string): Promise<
   if (cached?.source === source) {
     return cached.requirements
   }
-  const document = transform(parser.parse(source).tree)
+  const document = transform(parser.parse(source))
     ?? Errors.ThrowUserInput(`Cannot read module requirements from invalid Tao source: ${path}.`)
   validateRequirementPlacement(document.root.declarations, path, projectRoot)
   const requirements = document.root.declarations

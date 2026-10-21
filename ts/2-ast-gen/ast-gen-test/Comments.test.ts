@@ -18,7 +18,7 @@ Tests.test('comments between syntax nodes do not become declarations, parameters
       }
     }
   `
-  const ast = transform(createParser().parse(source).tree)!
+  const ast = transform(createParser().parse(source))!
   Tests.expect(ast.root.declarations).toHaveLength(2)
   Tests.expect(ast.root.declarations[0]).toMatchObject({
     kind: 'ViewDeclaration',

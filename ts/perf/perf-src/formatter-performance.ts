@@ -9,10 +9,9 @@ import { unusedWarnings } from '@typecheck/Usage'
 import { summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
-export async function formatterPerformance() {
-  const initialization = new Timings()
+export const formatterPerformance = Timings.topLevelTimer(async function(initialization) {
   const bytes = await FormatterResources.typeScriptFormatterBytes()
-  const typescript = createTypeScriptFormatter(bytes, initialization)
+  const typescript = initialization.run(createTypeScriptFormatter, bytes)
   const fixtures = [
     {
       scenario: 'kitchen-sink',
@@ -53,20 +52,33 @@ export async function formatterPerformance() {
     ),
   )
   return { path, summary }
-}
+})
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {
-  const tree = createParser().parse(fixture.source).tree
+  const tree = createParser().parse(fixture.source)
   const ast = transform(tree) ?? Errors.ThrowUnexpected('Formatter performance fixture has invalid syntax.')
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
-    const timings = new Timings()
-    format({ source: fixture.source, tree }, timings, { typescript })
-    fix({ source: fixture.source, tree, ast }, timings)
-    unusedWarnings(ast, timings)
-    if (index >= 20) {
-      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
-    }
+    sampleFormatting(fixture, typescript, tree, ast, index, samples)
   }
   return samples
 }
+
+const sampleFormatting = Timings.topLevelTimer(
+  function(
+    timings,
+    fixture: { source: string; scenario: string },
+    typescript: EmbeddedFormatter,
+    tree: Parameters<typeof format>[0]['tree'],
+    ast: Parameters<typeof fix>[0]['ast'],
+    index: number,
+    samples: (TimingSample & { scenario: string })[],
+  ) {
+    timings.run(format, { source: fixture.source, tree }, { typescript })
+    timings.run(fix, { source: fixture.source, tree, ast })
+    timings.run(unusedWarnings, ast)
+    if (index >= 20) {
+      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
+    }
+  },
+)

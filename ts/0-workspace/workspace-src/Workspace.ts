@@ -92,12 +92,25 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
-const LinkModules = Timings.measure('modules.link', linkModules)
-const PrepareDependencies = Timings.measure('dependencies.prepared', async function(
+const LinkModules = Timings.measured('modules.link', linkModules)
+const PrepareDependencies = Timings.measured('dependencies.prepared', async function(
   prepare: WorkspaceOptions['beforeCompile'],
   program: LinkedProgram,
 ) {
   return await prepare?.(program)
+})
+
+const LoadSources = Timings.measured(
+  'dependencies.sources',
+  async (load: WorkspaceOptions['beforeLoad']) => await load?.(),
+)
+const Publish = Timings.measure('workspace.publish', async function(
+  timings,
+  publish: (timings: Timings, output: CompiledApp, isCurrent: () => boolean) => Promise<void>,
+  output: CompiledApp,
+  isCurrent: () => boolean,
+) {
+  await publish(timings, output, isCurrent)
 })
 
 class WorkspaceSession {
@@ -187,7 +200,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await Timings.exec(timings, 'workspace.publish', () => this.publishCallback(output, isCurrent, timings))
+    await timings.run(Publish, this.publishCallback, output, isCurrent)
     if (!isCurrent()) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -206,15 +219,16 @@ class WorkspaceSession {
   private async build(request: CompileRequest): Promise<string | undefined> {
     const progress = this.options.onProgress
     progress?.('Parsing Tao source…')
-    const { tree } = this.parser.parse(request.source, request.timings)
+    const tree = request.timings.run(this.parser.parse, request.source)
     progress?.('Tao source parsing complete; transforming AST…')
-    const document = transform(tree, request.timings)
+    const document = request.timings.run(transform, tree)
     if (!document) {
       return undefined
     }
     progress?.('Resolving source modules and visibility…')
-    await Timings.exec(request.timings, 'dependencies.sources', async () => await this.options.beforeLoad?.())
-    const sources = await loadModules(
+    await request.timings.run(LoadSources, this.options.beforeLoad)
+    const sources = await request.timings.run(
+      loadModules,
       { path: request.path ?? '<memory>', document },
       {
         directory: this.directory,
@@ -223,17 +237,16 @@ class WorkspaceSession {
         includeModuleRequirements: this.options.includeModuleRequirements,
       },
       this.parser,
-      request.timings,
     )
-    const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
-    const prepared = await PrepareDependencies(request.timings, this.options.beforeCompile, program)
+    const program = request.timings.run(LinkModules, Path.resolve(request.path ?? '<memory>'), sources)
+    const prepared = await request.timings.run(PrepareDependencies, this.options.beforeCompile, program)
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
-    const code = (this.options.compile ?? compile)(
-      document,
-      { revision: `r${request.id}`, program, ...prepared },
-      request.timings,
-    )
+    const code = request.timings.run(this.options.compile ?? compile, document, {
+      revision: `r${request.id}`,
+      program,
+      ...prepared,
+    })
     progress?.('App code generation complete.')
     return code
   }
@@ -244,7 +257,7 @@ class WorkspaceSession {
       : await this.options.resolveProject?.(importer, alias)
   }
 
-  private async publish(output: CompiledApp, isCurrent: () => boolean, timings: Timings): Promise<void> {
+  private async publish(timings: Timings, output: CompiledApp, isCurrent: () => boolean): Promise<void> {
     if (this.options.publish) {
       await this.options.publish(output, isCurrent)
       return

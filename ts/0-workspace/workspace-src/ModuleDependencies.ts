@@ -59,7 +59,7 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
   ]
   for (const path of (await Files.walk(projectRoot)).filter(candidate => candidate.endsWith('.tao'))) {
     const source = await FileSystem.readFile(path, 'utf8')
-    const document = transform(parser.parse(source).tree)
+    const document = transform(parser.parse(source))
     if (!document) {
       continue
     }
@@ -187,7 +187,7 @@ function npmRequirementSpans(
   source: string,
   packageName: string,
 ): Array<{ path: string; source: string; start: number; end: number; alias?: string }> {
-  const document = transform(parser.parse(source).tree)
+  const document = transform(parser.parse(source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
   }
@@ -245,7 +245,7 @@ async function sourceIsInsideProject(path: string, projectRoot: string): Promise
 }
 
 async function containsApp(path: string): Promise<boolean> {
-  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')).tree)
+  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')))
   return document?.root.declarations.some((declaration: AST.Declaration) => declaration.kind === 'AppDeclaration')
     ?? false
 }

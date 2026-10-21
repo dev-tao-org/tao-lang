@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Timings, Try } from '@shared'
+import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
@@ -74,7 +74,6 @@ async function loadProjectImportGraph(consumer: string, producer: string, icons:
       resolveProject: projectResolver(consumer, producer, icons).resolveProject,
     },
     createParser(),
-    new Timings('project-import-test'),
   )
 }
 
@@ -130,7 +129,6 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
             : undefined,
       },
       createParser(),
-      new Timings('project-import-test'),
     )
 
     Tests.expect(modules.filter(module => module.path === sourcePath)).toHaveLength(1)
@@ -153,7 +151,6 @@ Tests.test('aliased project imports reject missing physical modules', async () =
           resolveProject: async (_importer, alias) => alias === 'tao' ? { root: producer } : undefined,
         },
         createParser(),
-        new Timings('project-import-test'),
       ),
       /Project module tao@missing was not found/,
     )
@@ -182,7 +179,7 @@ async function writeSource(path: string, source: string): Promise<void> {
 }
 
 function parseEntry(path: string, source: string): { path: string; document: AST.Document } {
-  const document = transform(createParser().parse(source).tree)
+  const document = transform(createParser().parse(source))
   Tests.expect(document).toBeDefined()
   return { path, document: document! }
 }

@@ -18,20 +18,19 @@ export type ModuleLoadOptions = {
 }
 
 /** loadModules discovers and parses the source graph reachable from one parsed entry. */
-export function loadModules(
+export const loadModules = Timings.topLevelTimer(function(
+  timings,
   entry: { path: string; document: AST.Document },
   options: ModuleLoadOptions,
   parser: ReturnType<typeof createParser>,
-  timings: Timings,
 ): Promise<SourceModule[]> {
-  return loadGraph(timings, { entry, options, parser, timings })
-}
+  return timings.run(loadGraph, { entry, options, parser })
+})
 
 type LoadRequest = {
   entry: { path: string; document: AST.Document }
   options: ModuleLoadOptions
   parser: ReturnType<typeof createParser>
-  timings: Timings
 }
 
 type LoadState = LoadRequest & {
@@ -50,49 +49,52 @@ type Discovery = Map<string, string | undefined> & {
   projectRoots: Map<string, string>
 }
 
-const loadGraph = Timings.measure('modules.load', async function(request: LoadRequest): Promise<SourceModule[]> {
-  const { entry, options, parser, timings } = request
-  const absoluteEntryPath = Path.resolve(entry.path)
-  const entryPath = Try.WithDefault(absoluteEntryPath, () => FileSystem.realpathSync(absoluteEntryPath))
-  const entryDirectory = Path.dirname(entryPath)
-  const configuredDirectory = options.directory && Path.resolve(options.directory)
-  const projectRoot = nearestProjectRoot(entryDirectory)
-    ?? (configuredDirectory && within(configuredDirectory, entryPath) ? configuredDirectory : entryDirectory)
-  const state: LoadState = {
-    ...request,
-    entryPath,
-    projectRoot,
-    sources: new Map([[entryPath, sourceModule(entryPath, entry.document)]]),
-    projectRoots: new Map(),
-    pending: [entryPath],
-    observedRoots: new Set(),
-    documents: new Map([[entryPath, entry.document]]),
-  }
-  while (state.pending.length > 0) {
-    const path = state.pending.shift()!
-    const source = state.sources.get(path)!
-    const found = await discover(timings, state, source)
-    for (const [candidate, text] of found) {
-      if (!state.sources.has(candidate)) {
-        const document = text === undefined
-          ? await readDocument(candidate, parser, state.documents)
-          : parseDocument(text, candidate, parser)
-        state.documents.set(candidate, document)
-        state.sources.set(candidate, sourceModule(candidate, document))
-        state.pending.push(candidate)
-      }
-      const owner = found.projectRoots.get(candidate)
-      if (owner) {
-        state.projectRoots.set(candidate, owner)
-      }
+const loadGraph = Timings.measure(
+  'modules.load',
+  async function(timings, request: LoadRequest): Promise<SourceModule[]> {
+    const { entry, options, parser } = request
+    const absoluteEntryPath = Path.resolve(entry.path)
+    const entryPath = Try.WithDefault(absoluteEntryPath, () => FileSystem.realpathSync(absoluteEntryPath))
+    const entryDirectory = Path.dirname(entryPath)
+    const configuredDirectory = options.directory && Path.resolve(options.directory)
+    const projectRoot = nearestProjectRoot(entryDirectory)
+      ?? (configuredDirectory && within(configuredDirectory, entryPath) ? configuredDirectory : entryDirectory)
+    const state: LoadState = {
+      ...request,
+      entryPath,
+      projectRoot,
+      sources: new Map([[entryPath, sourceModule(entryPath, entry.document)]]),
+      projectRoots: new Map(),
+      pending: [entryPath],
+      observedRoots: new Set(),
+      documents: new Map([[entryPath, entry.document]]),
     }
-    source.imports = found.imports
-    source.siblings = found.siblings
-  }
-  return await completedGraph(state)
-})
+    while (state.pending.length > 0) {
+      const path = state.pending.shift()!
+      const source = state.sources.get(path)!
+      const found = await timings.run(discover, state, source)
+      for (const [candidate, text] of found) {
+        if (!state.sources.has(candidate)) {
+          const document = text === undefined
+            ? await readDocument(candidate, parser, state.documents, timings)
+            : parseDocument(text, candidate, parser, timings)
+          state.documents.set(candidate, document)
+          state.sources.set(candidate, sourceModule(candidate, document))
+          state.pending.push(candidate)
+        }
+        const owner = found.projectRoots.get(candidate)
+        if (owner) {
+          state.projectRoots.set(candidate, owner)
+        }
+      }
+      source.imports = found.imports
+      source.siblings = found.siblings
+    }
+    return await completedGraph(state, timings)
+  },
+)
 
-async function completedGraph(state: LoadState): Promise<SourceModule[]> {
+async function completedGraph(state: LoadState, timings: Timings): Promise<SourceModule[]> {
   const sources = [...state.sources.values()]
   return state.options.includeModuleRequirements
     ? [
@@ -100,7 +102,7 @@ async function completedGraph(state: LoadState): Promise<SourceModule[]> {
       ...await loadRequirementModules(
         sources,
         state.projectRoot,
-        path => readDocument(path, state.parser, state.documents),
+        path => readDocument(path, state.parser, state.documents, timings),
       ),
     ]
     : sources
@@ -108,10 +110,10 @@ async function completedGraph(state: LoadState): Promise<SourceModule[]> {
 
 const discover = Timings.measure(
   'modules.discover',
-  async function(state: LoadState, source: SourceModule): Promise<Discovery> {
+  async function(timings, state: LoadState, source: SourceModule): Promise<Discovery> {
     const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [], projectRoots: new Map() })
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
-    await observeProject(state, projectRoot)
+    await observeProject(state, projectRoot, timings)
     const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
       ? within(projectRoot, source.path) ? source.path : undefined
       : realPathInsideProject(source.path, projectRoot)
@@ -147,14 +149,14 @@ const discover = Timings.measure(
   },
 )
 
-async function observeProject(state: LoadState, root: string): Promise<void> {
+async function observeProject(state: LoadState, root: string, timings: Timings): Promise<void> {
   if (state.observedRoots.has(root) || !state.options.observeProjectSources) {
     return
   }
   state.observedRoots.add(root)
   const sources = await Promise.all((await directSourceFiles(root, root)).map(async path => ({
     path,
-    document: await readDocument(path, state.parser, state.documents),
+    document: await readDocument(path, state.parser, state.documents, timings),
   })))
   state.options.observeProjectSources(root, sources)
 }
@@ -163,14 +165,20 @@ async function readDocument(
   path: string,
   parser: ReturnType<typeof createParser>,
   documents: Map<string, AST.Document>,
+  timings: Timings,
 ): Promise<AST.Document> {
-  const document = documents.get(path) ?? parseDocument(await FileSystem.readFile(path, 'utf8'), path, parser)
+  const document = documents.get(path) ?? parseDocument(await FileSystem.readFile(path, 'utf8'), path, parser, timings)
   documents.set(path, document)
   return document
 }
 
-function parseDocument(source: string, path: string, parser: ReturnType<typeof createParser>): AST.Document {
-  const document = transform(parser.parse(source).tree)
+function parseDocument(
+  source: string,
+  path: string,
+  parser: ReturnType<typeof createParser>,
+  timings: Timings,
+): AST.Document {
+  const document = timings.run(transform, timings.run(parser.parse, source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot load Tao module with invalid syntax: ${path}.`)
   }

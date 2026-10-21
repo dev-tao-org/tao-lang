@@ -72,10 +72,10 @@ Tests.test('organizing duplicate multiline imports retains their interior commen
 
 function fixed(source: string): string {
   const parser = createParser()
-  const tree = parser.parse(source).tree
+  const tree = parser.parse(source)
   const ast = transform(tree)!
   Tests.expect(ast).toBeDefined()
   const result = fix({ source, tree, ast })
   Tests.expect(tree.rootNode.text).toBe(source)
-  return format({ source: result.text, tree: parser.parse(result.text).tree }).text
+  return format({ source: result.text, tree: parser.parse(result.text) }).text
 }

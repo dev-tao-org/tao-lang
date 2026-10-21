@@ -16,7 +16,7 @@ Tests.test('test suites become tagged app actions and grouped assertions', () =>
       }
     }
   `
-  const { tree } = createParser().parse(source)
+  const tree = createParser().parse(source)
   const document = transform(tree)!
   Tests.expect(document.root.declarations[0]).toMatchObject({
     kind: 'TestsDeclaration',

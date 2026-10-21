@@ -18,10 +18,10 @@ export function formattingPlan(
   layout: LayoutHandlers,
   timings: Timings,
 ): LayoutPlan {
-  return collectRules(timings, source, tree, formatting, layout)
+  return timings.run(collectRules, source, tree, formatting, layout)
 }
 
-const collectRules = Timings.measure('formatter.rules', function(
+const collectRules = Timings.measured('formatter.rules', function(
   source: string,
   tree: Tree,
   formatting: FormattingHandlers,

@@ -95,7 +95,7 @@ Tests.test('interrupting a journey disposes its driver and skips remaining cases
 })
 
 function parse(source: string) {
-  return transform(createParser().parse(source).tree)!
+  return transform(createParser().parse(source))!
 }
 
 function recordingDriver(operations: string[]): TestDriver {

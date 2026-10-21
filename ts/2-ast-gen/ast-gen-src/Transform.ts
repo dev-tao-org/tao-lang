@@ -4,15 +4,19 @@ import * as AST from './Construction'
 
 /** transform constructs an AST only for a syntactically valid source snapshot.
  *  Returned semantic nodes and numeric origins do not retain the caller-owned CST. */
-export function transform(
+export const transform = Timings.topLevelTimer(function(
+  timings,
   tree: Parser.Tree,
-  timings = new Timings(),
 ): AST.Document | undefined {
   if (tree.rootNode.hasError) {
     return undefined
   }
-  return Timings.exec(timings, 'transformer.transform', () => ({ root: AST.Construct(tree.rootNode, 'File') }))
-}
+  return timings.run(transformTree, tree)
+})
+
+const transformTree = Timings.measured('transformer.transform', (tree: Parser.Tree) => ({
+  root: AST.Construct(tree.rootNode, 'File'),
+}))
 
 /** Construct dispatches a CST node to its stateless semantic transformer. */
 export function Construct<Kind extends AST.Node['kind']>(

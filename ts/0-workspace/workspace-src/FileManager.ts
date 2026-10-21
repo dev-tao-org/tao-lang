@@ -264,16 +264,17 @@ export class FileManager {
     return { result, path: loaded.path, source: loaded.source, version: loaded.version }
   }
 
-  private snapshotInput(source: string | Document, startedAtMs: number): FileManagerInput {
-    const timings = new Timings()
-    const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
-    const document = source instanceof Document ? source : this.documents.get(path) ?? new Document(path)
-    this.documents.set(path, document)
-    const snapshot: DocumentSnapshot = source instanceof Document
-      ? source.snapshot()
-      : document.replaceSource(source)
-    return { kind: 'source', ...snapshot, startedAtMs, timings }
-  }
+  private readonly snapshotInput = Timings.topLevelTimer(
+    (timings, source: string | Document, startedAtMs: number): FileManagerInput => {
+      const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
+      const document = source instanceof Document ? source : this.documents.get(path) ?? new Document(path)
+      this.documents.set(path, document)
+      const snapshot: DocumentSnapshot = source instanceof Document
+        ? source.snapshot()
+        : document.replaceSource(source)
+      return { kind: 'source', ...snapshot, startedAtMs, timings }
+    },
+  )
 
   private selectWorkspaceRoot(entry: string): void {
     this.workspaceRoot ??= nearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)

@@ -6,9 +6,9 @@ import { nodeGypOptions } from './NodeGyp'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
-export async function prepareParser(force = false, timings = new Timings()): Promise<void> {
+export const prepareParser = Timings.topLevelTimer(async function(timings, force: boolean = false): Promise<void> {
   await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
-}
+})
 
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
 const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
@@ -34,21 +34,21 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   for (const filename of ['binding.gyp', 'binding.cc']) {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
-  await generateParser(timings)
+  await timings.run(generateParser)
   await writeCSTTypes(outputRoot)
-  await buildParserNative(timings, inputs)
+  await timings.run(buildParserNative, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
 }
 
-const generateParser = Timings.measure('parser.generate', async function(): Promise<void> {
+const generateParser = Timings.measured('parser.generate', async function(): Promise<void> {
   await runCommand('tree-sitter generate --abi 15 --output', {
     variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
     cwd: grammarRoot,
   })
 })
 
-const buildParserNative = Timings.measure('parser.native-build', async function(
+const buildParserNative = Timings.measured('parser.native-build', async function(
   inputs: Awaited<ReturnType<typeof readInputs>>,
 ): Promise<void> {
   const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
