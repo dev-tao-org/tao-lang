@@ -9,22 +9,25 @@ export function createParser(initialization = new Timings(`process:${Platform.pi
   const parser = initializeParser(initialization, initialization)
   return {
     initialization: initialization.samples,
-    parse(source: string, timings = new Timings(`process:${Platform.pid}`)) {
-      const tree = timings.exec('parser.parse', () => parser.parse(source))
-      return { tree, timings: timings.samples }
-    },
+    parse: (source: string, timings = new Timings(`process:${Platform.pid}`)) => ({
+      tree: timings.exec('parser.parse', () => parser.parse(source)),
+      timings: timings.samples,
+    }),
   }
 }
 
 const initializeParser = Timings.measure('parser.initialize', function(initialization: Timings): Parser {
   const instance = new Parser()
-  const language = initialization.exec('parser.native-load', () =>
-    Platform.loadModule<Parser.Language>(
-      Repo.resolvePath('ts/1-grammar/_gen_parser/build/Release/tree_sitter_tao_binding.node'),
-    ))
+  const language = loadNativeLanguage(initialization)
   language.nodeTypeInfo = Platform.loadModule<Parser.NodeInfo[]>(
     Repo.resolvePath('ts/1-grammar/_gen_parser/src/node-types.json'),
   )
   instance.setLanguage(language)
   return instance
+})
+
+const loadNativeLanguage = Timings.measure('parser.native-load', function(): Parser.Language {
+  return Platform.loadModule<Parser.Language>(
+    Repo.resolvePath('ts/1-grammar/_gen_parser/build/Release/tree_sitter_tao_binding.node'),
+  )
 })

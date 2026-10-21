@@ -84,7 +84,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Other comments use `//`.
   - Multiline JSDoc: `/** <NAME> <VERB> ...`, aligned ` *  <text>`, and text-ending ` */`.
   - Use `Try`; native exception handling belongs only in `universal/TryCatch.ts`.
-  - Inline single-use timing wrappers whose body only forwards one expression with `timings.exec('operation', () => expression)`; keep named measured functions for substantive operations or reuse.
+  - Inline single-use timing wrappers only when `timings.exec('operation', () => expression)` fits on one line without extra locals or control flow; otherwise retain the named measured function.
   - Use `Switch(...)` or `Switch.*` from `@shared` for switch dispatch; never use native `switch` statements.
   - Multiline strings use indented `S` templates with aligned closing backticks.
   - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.

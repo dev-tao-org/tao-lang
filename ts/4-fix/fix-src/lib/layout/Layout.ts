@@ -46,18 +46,16 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
   if (!token) {
     return ''
   }
-  const formatter = options.typescript
-  if (token.type !== 'TypeScript' || !formatter) {
+  if (token.type !== 'TypeScript' || !options.typescript) {
     return token.text
   }
   const level = plan.gaps[index]!.indent
-  const body = timings.exec('formatter.typescript', () =>
-    formatter(token.text.slice(5, -3), {
-      indent: options.indent ?? 2,
-      level: level + 1,
-      width: options.width ?? 120,
-      newline: plan.newline,
-    }))
+  const body = formatEmbedded(timings, options.typescript, token.text.slice(5, -3), {
+    indent: options.indent ?? 2,
+    level: level + 1,
+    width: options.width ?? 120,
+    newline: plan.newline,
+  })
   if (body === undefined) {
     plan.skipped.push({ start: token.startIndex, end: token.endIndex })
     return token.text
@@ -65,6 +63,14 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
   return '```ts' + plan.newline + body.trimEnd()
     + plan.newline + ' '.repeat(level * (options.indent ?? 2)) + '```'
 }
+
+const formatEmbedded = Timings.measure('formatter.typescript', function(
+  formatter: EmbeddedFormatter,
+  body: string,
+  options: Parameters<EmbeddedFormatter>[1],
+): string | undefined {
+  return formatter(body, options)
+})
 
 function flatWidths(plan: LayoutPlan): number[] {
   const widths = [0]

@@ -83,6 +83,14 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
+const LinkModules = Timings.measure('modules.link', linkModules)
+const PrepareDependencies = Timings.measure('dependencies.prepared', async function(
+  prepare: WorkspaceOptions['beforeCompile'],
+  program: LinkedProgram,
+) {
+  return await prepare?.(program)
+})
+
 class WorkspaceSession {
   readonly directory: string | undefined
   private readonly output: ReturnType<typeof outputPaths>
@@ -206,14 +214,8 @@ class WorkspaceSession {
       this.parser,
       request.timings,
     )
-    const program = request.timings.exec(
-      'modules.link',
-      () => linkModules(Path.resolve(request.path ?? '<memory>'), sources),
-    )
-    const prepared = await request.timings.exec(
-      'dependencies.prepared',
-      async () => await this.options.beforeCompile?.(program),
-    )
+    const program = LinkModules(request.timings, Path.resolve(request.path ?? '<memory>'), sources)
+    const prepared = await PrepareDependencies(request.timings, this.options.beforeCompile, program)
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
     const code = (this.options.compile ?? compile)(
