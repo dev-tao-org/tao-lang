@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, S, Switch } from '@shared'
-import { type CallbackNames, listMap, literal, unusedName } from './codegen-util'
+import { compileBinding, compileViewReference } from './BindingsCompiler'
+import { type CallbackNames, compileName, listMap, literal, unusedName } from './codegen-util'
 import { compileInjection } from './InjectionsCompiler'
 import { compileExpression, compileLetDefinition, textBindings } from './ValuesCompiler'
 
@@ -11,16 +12,15 @@ export function compileViewDeclaration(
   scope: string,
   foreignComponent?: string,
 ): string {
-  const parameters = listMap(node.parameters, parameter => literal(parameter.name))
+  const parameters = listMap(node.parameters, compileName)
   if (AST.IsKind(node.render, 'ForeignView')) {
     if (node.parameters.some(parameter => parameter.type.value !== 'text')) {
       Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
     }
     const component = foreignComponent
       ?? Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
-    return `TR.LetDefinition(${scope}, ${literal(node.name)}, TR.ForeignView(${
-      literal(node.name)
-    }, ${parameters}, ${component}, ${scope}));`
+    const definition = `TR.ForeignView(${compileName(node)}, ${parameters}, ${component}, ${scope})`
+    return compileBinding(node, scope, definition)
   }
   const callbackNames = callbackNamesFor(node)
   const definitions = node.definitions
@@ -32,12 +32,12 @@ export function compileViewDeclaration(
     callbackNames,
   )
   const definition = S`
-    TR.ViewDefinition(${literal(node.name)}, ${parameters}, (${callbackNames.values}, ${callbackNames.children}) => {
+    TR.ViewDefinition(${compileName(node)}, ${parameters}, (${callbackNames.values}, ${callbackNames.children}) => {
       ${definitions}
       ${render}
     }, ${scope})
   `
-  return `TR.LetDefinition(${scope}, ${literal(node.name)}, ${definition});`
+  return compileBinding(node, scope, definition)
 }
 
 function compileNode(
@@ -56,7 +56,7 @@ function compileViewRender(
   callbackNames: CallbackNames,
   scope: string,
 ): string {
-  return `TR.Render(TR.ViewReference(${scope}, ${literal(node.target)}), TR.ViewRenderArgs(${
+  return `TR.Render(${compileViewReference(node.target, scope)}, TR.ViewRenderArgs(${
     listMap(
       node.arguments,
       argument => compileExpression(argument, callbackNames.values),

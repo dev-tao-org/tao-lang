@@ -1,18 +1,19 @@
 import * as AST from '@ast-gen/AST'
 import { Switch } from '@shared'
+import { compileBinding, compileValueReference } from './BindingsCompiler'
 import { literal } from './codegen-util'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: string): string {
   return Switch.kind(node, {
-    Name: name => `TR.Value(${scope}, ${literal(name)})`,
+    Name: name => compileValueReference(name, scope),
     TextLiteral: literal,
   })
 }
 
 /** compileLetDefinition emits one ordered immutable scope binding. */
 export function compileLetDefinition(node: AST.LetDefinition, scope: string): string {
-  return `TR.LetDefinition(${scope}, ${literal(node.name)}, ${compileExpression(node.value, scope)});`
+  return compileBinding(node, scope, compileExpression(node.value, scope))
 }
 
 /** textBindings identifies the implemented text expressions for native capture annotations. */

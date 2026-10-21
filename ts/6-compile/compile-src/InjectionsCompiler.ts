@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import { type CallbackNames, literal } from './codegen-util'
+import { compileValueReference } from './BindingsCompiler'
+import { type CallbackNames, compileIdentifier } from './codegen-util'
 
 /** compileInjection emits authored TypeScript inside a view callback. */
 export function compileInjection(
@@ -25,14 +26,14 @@ function compileCapture(
   const value = Switch.kind(node.value, {
     Name(name) {
       const nativeType = bindings.has(name.value) ? ' as string' : ''
-      return `TR.Value(${callbackNames.values}, ${literal(name)})${nativeType}`
+      return `${compileValueReference(name, callbackNames.values)}${nativeType}`
     },
     ContextReference: reference =>
       reference.value === 'children'
         ? callbackNames.children
         : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
   })
-  return `const ${node.name.value} = ${value};`
+  return `const ${compileIdentifier(node)} = ${value};`
 }
 
 function assertCaptureName(name: string): void {

@@ -47,11 +47,9 @@ description: >-
 - Number file entries consecutively within each presented review group, including across folder
   or conceptual subgroups, so the developer can approve files by number. Keep the displayed
   number-to-path mapping stable until that group is completed or explicitly revised.
-- After recording approvals or finishing requested corrections, end with the remaining files in
-  the current group; if none remain, present the next agreed group in the same response. Preserve
-  existing numbering for a partial group and use the presentation format below. Do not stop at a
-  completion recap when further review remains; pause this progression only when the developer
-  asks or a blocking decision requires their input.
+- After approvals or corrections, end with remaining group files or the next agreed group using
+  the format below. Preserve partial-group numbering. Pause only at developer request or for a
+  blocking decision; a completion recap alone is insufficient when review remains.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
@@ -84,35 +82,21 @@ description: >-
 
 ## Presentation formats
 
-Initial proposal (repeat feature sets and their groups; counts and descriptions stay separate):
-
-```text
-- Feature set: **<Title>**
-  - X folders, Y files, Z diffs
-  - <Brief functional overview.>
-  - <Minimal Tao usage example, if language is affected.>
-  - <Review group title>
-    - X folders, Y files, Z diffs
-    - <Even briefer overview of this group's contribution.>
-  - ...
-```
-
-Ask for agreement after the complete proposal; do not begin a group before agreement.
-
-Shortened example of the agreed format (replace count placeholders with current diff counts):
+Initial proposal example: repeat feature sets and groups, keep counts and descriptions separate,
+and replace placeholders with current counts. Get agreement before beginning a group.
 
 ```text
 - Feature set: **Projects, sessions and storage**
   - X folders, Y files, Z diffs
-  - Gives projects an identity, owns editing sessions and keeps generated state separate.
+  - Owns project identity, editing sessions and generated state.
   - `project { ... }`
   - Project initialization and discovery
     - X folders, Y files, Z diffs
-    - Finds project roots and establishes their identity; includes the project specification.
+    - Finds project roots; includes their specification.
   - ...
 - Feature set: **Dependencies and source modules**
   - X folders, Y files, Z diffs
-  - Resolves required projects and makes their declarations available to imports.
+  - Makes required projects available to imports.
   - In `project`: `requires github://example/name version 1.2.3`
   - Source modules and dependency resolution
     - X folders, Y files, Z diffs
@@ -149,7 +133,8 @@ an outstanding subagent-readiness footer: no recap, approval question, next step
 
 ## Interpret approval
 
-- Interpret `<number>y`, such as `1y`, as explicit approval of that numbered file in the current review group, including its saved changes. Preserve the group's numbering when recording approvals.
+- Interpret `F<number>`, such as `F2`, as a reference to that numbered file in the current group; it does not by itself approve the file.
+- `<number>y`, such as `1y`, approves that numbered file's saved contents in the current group. Preserve its numbering.
 - "Mark file X reviewed" approves its saved disk contents, including pending edits. "Approve
   changes X" approves only those changes. Resolve semantic requests such as "approve the new error
   messages" to the narrowest sound content using the conversation and current diff.

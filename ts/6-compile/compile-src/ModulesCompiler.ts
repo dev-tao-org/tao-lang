@@ -2,7 +2,8 @@ import * as AST from '@ast-gen/AST'
 import { Errors, S } from '@shared'
 import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
-import { literal } from './codegen-util'
+import { compileLazyBinding, compileValueReference, compileViewReference } from './BindingsCompiler'
+import { compileIdentifier, stringLiteral } from './codegen-util'
 import { compileLetDefinition } from './ValuesCompiler'
 import { compileViewDeclaration } from './ViewsCompiler'
 
@@ -18,7 +19,7 @@ export function compileProgram(
 ): string {
   const selected = selectApp(program, appName)
   const moduleIndexes = new Map(program.modules.map((module, index) => [module.path, index]))
-  const moduleIndex = (path: string) =>
+  const moduleIndex: ModuleIndexResolver = path =>
     moduleIndexes.get(path)
       ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${path}.`)
   const foreign = foreignViews(program, foreignViewPath)
@@ -26,33 +27,39 @@ export function compileProgram(
   const aliases = compileAliases(program, moduleIndex)
   const views = compileViews(program, moduleTextBindings(program), foreign.names)
   const apps = compileAppRegistrations(program)
-  const definitions = program.definitions.map(definition =>
-    compileLetDefinition(definition.declaration, scopeName(moduleIndex(definition.source)))
-  ).join('\n')
+  const definitions = compileDefinitions(program, moduleIndex)
   const rootScope = scopeName(moduleIndex(selected.source))
   return S`
     import * as TR from '@runtime';
     ${foreign.imports}
-    TR.ModuleApplied(${JSON.stringify(revision)});
+    TR.ModuleApplied(${stringLiteral(revision)});
     ${scopes}
     ${aliases}
     ${views}
     ${apps}
     ${definitions}
     export default function App() {
-      return TR.App(TR.ViewReference(${rootScope}, ${literal(selected.declaration.root)}), ${JSON.stringify(revision)});
+      return TR.App(${compileViewReference(selected.declaration.root, rootScope)}, ${stringLiteral(revision)});
     }
   `
 }
 
-function compileAliases(program: LinkedProgram, moduleIndex: (path: string) => number): string {
+type ModuleIndexResolver = (path: string) => number
+
+function compileDefinitions(program: LinkedProgram, moduleIndex: ModuleIndexResolver): string {
+  return program.definitions.map(definition =>
+    compileLetDefinition(definition.declaration, scopeName(moduleIndex(definition.source)))
+  ).join('\n')
+}
+
+function compileAliases(program: LinkedProgram, moduleIndex: ModuleIndexResolver): string {
   return program.modules.flatMap((module, index) =>
     module.bindings.map(binding =>
-      `TR.LetReference(${scopeName(index)}, ${JSON.stringify(binding.name)}, () => TR.Value(${
-        scopeName(
-          moduleIndex(binding.source),
-        )
-      }, ${JSON.stringify(binding.target)}));`
+      compileLazyBinding(
+        binding,
+        scopeName(index),
+        compileValueReference(binding, scopeName(moduleIndex(binding.source))),
+      )
     )
   ).join('\n')
 }
@@ -62,11 +69,7 @@ function compileAppRegistrations(program: LinkedProgram): string {
   return program.modules.flatMap((module, index) =>
     module.document.root.declarations
       .filter(AST.IsAppDeclaration)
-      .map(app =>
-        `TR.LetReference(${scopeName(index)}, ${literal(app.name)}, () => TR.ViewReference(${scopeName(index)}, ${
-          literal(app.root)
-        }));`
-      )
+      .map(app => compileLazyBinding(app, scopeName(index), compileViewReference(app.root, scopeName(index))))
   ).join('\n')
 }
 
@@ -117,7 +120,7 @@ function foreignViews(
   const imports = views.map((item, index) => {
     const alias = `_taoForeignView${index}`
     names.set(foreignViewKey(item.module, item.view.start), alias)
-    return `import { ${item.view.name.value} as ${alias} } from ${JSON.stringify(item.path)};`
+    return `import { ${compileIdentifier(item.view)} as ${alias} } from ${stringLiteral(item.path)};`
   }).join('\n')
   return { imports, names }
 }
