@@ -13,6 +13,7 @@ export const RuntimeSourceResources = {
   'shared/universal/universal.ts': 'ts/shared/shared-src/universal/universal.ts',
   'shared/universal/Errors.ts': 'ts/shared/shared-src/universal/Errors.ts',
   'shared/universal/S.ts': 'ts/shared/shared-src/universal/S.ts',
+  'shared/universal/SourcePosition.ts': 'ts/shared/shared-src/universal/SourcePosition.ts',
   'shared/universal/Switch_TypeSafe.ts': 'ts/shared/shared-src/universal/Switch_TypeSafe.ts',
   'shared/universal/Time.ts': 'ts/shared/shared-src/universal/Time.ts',
   'shared/universal/Timings.ts': 'ts/shared/shared-src/universal/Timings.ts',

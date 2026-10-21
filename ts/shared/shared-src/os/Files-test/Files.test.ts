@@ -97,6 +97,8 @@ Tests.test('withWritableFile serializes concurrent callbacks for one canonical p
   const root = await mkdtemp(join(tmpdir(), 'tao-write-queue-'))
   const path = join(root, 'shared')
   let finishFirst!: () => void
+  let firstIsReady!: () => void
+  const firstReady = new Promise<void>(resolve => firstIsReady = resolve)
   let active = 0
   let maximum = 0
   await Try(async () => {
@@ -106,10 +108,13 @@ Tests.test('withWritableFile serializes concurrent callbacks for one canonical p
     const first = withWritableFile(path, async file => {
       maximum = Math.max(maximum, ++active)
       await file.write('first')
-      await new Promise<void>(resolve => finishFirst = resolve)
+      await new Promise<void>(resolve => {
+        finishFirst = resolve
+        firstIsReady()
+      })
       active--
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await firstReady
     const second = withWritableFile(alias, async file => {
       maximum = Math.max(maximum, ++active)
       await file.write('second')

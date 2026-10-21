@@ -7,7 +7,12 @@ import { installHostIdentity } from './ManagedNpmHost'
 /** normalizeManagedRequirements sorts declaration inputs with locale-independent code-point order. */
 export function normalizeManagedRequirements(input: ManagedModulesInput): NormalizedManagedRequirement[] {
   return input.modules.flatMap(module =>
-    module.requirements.map(requirement => ({ directory: module.directory, ...requirement }))
+    module.requirements.map(requirement => ({
+      directory: module.directory,
+      name: requirement.name,
+      version: requirement.version,
+      origin: requirement.origin,
+    }))
   ).sort((left, right) => {
     const leftKey = requirementOrderKey(left)
     const rightKey = requirementOrderKey(right)

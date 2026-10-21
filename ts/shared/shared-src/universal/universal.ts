@@ -1,5 +1,6 @@
 export * as Errors from './Errors'
 export * from './S'
+export * from './SourcePosition'
 export { default as Switch } from './Switch_TypeSafe'
 export * as Time from './Time'
 export * from './Timings'

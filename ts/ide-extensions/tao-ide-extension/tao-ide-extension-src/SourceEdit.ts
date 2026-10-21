@@ -1,3 +1,4 @@
+import { sourcePositionAt } from '@shared'
 import { Edit, type Tree } from 'web-tree-sitter'
 
 /** editTreeForSource applies the smallest safe UTF-16 edit to an old syntax tree. */
@@ -42,8 +43,8 @@ function commonSuffixStart(left: string, right: string, prefix: number): number 
 }
 
 function pointAt(source: string, index: number): { row: number; column: number } {
-  const lines = source.slice(0, index).split('\n')
-  return { row: lines.length - 1, column: lines[lines.length - 1].length }
+  const position = sourcePositionAt(source, index)
+  return { row: position.line, column: position.column }
 }
 
 function isHighSurrogate(value: number): boolean {

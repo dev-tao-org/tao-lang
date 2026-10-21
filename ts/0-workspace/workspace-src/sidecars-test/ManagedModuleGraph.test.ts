@@ -6,9 +6,10 @@ import { managedGraphFingerprint, normalizeManagedRequirements } from '../sideca
 
 Tests.test('normalization retains named requirement fields without changing the durable graph identity', () => {
   const input = managedInput('/project')
+  const requirement = { name: 'Alpha', version: '1.0.0', origin: 'A.tao\nDetails', directory: '/ignored' }
   input.modules = [
     { directory: '/project/z', requirements: [{ name: 'alpha', version: '1.0.0', origin: 'Z.tao' }] },
-    { directory: '/project/a', requirements: [{ name: 'Alpha', version: '1.0.0', origin: 'A.tao\nDetails' }] },
+    { directory: '/project/a', requirements: [requirement] },
   ]
   const normalized = normalizeManagedRequirements(input)
   Tests.expect(normalized).toEqual([

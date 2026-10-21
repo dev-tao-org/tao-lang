@@ -25,6 +25,8 @@ export async function openAutomaticWorkspace(
         published.push(output.code)
       },
       acquireLease: async () => () => {},
+      // Explicit openFile calls drive refreshes in this setup acceptance test.
+      watch: async () => ({ async dispose() {} }),
       pipelineServices,
     },
   }, {
