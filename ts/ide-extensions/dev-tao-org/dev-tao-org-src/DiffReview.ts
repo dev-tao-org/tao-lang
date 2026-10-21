@@ -40,7 +40,7 @@ export async function chooseDiffBase(
   return undefined
 }
 
-/** diffArguments places the current working file left of the selected comparison branch. */
+/** diffArguments places the comparison branch left of the current working file, preserving addition semantics. */
 export function diffArguments<Uri>(repoPath: string, base: string, uri: Uri) {
-  return { repoPath, lhs: { sha: '', uri }, rhs: { sha: base, uri }, fromComparison: true, range: null }
+  return { repoPath, lhs: { sha: base, uri }, rhs: { sha: '', uri }, fromComparison: true, range: null }
 }
