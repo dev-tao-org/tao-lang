@@ -1,9 +1,44 @@
 import type Parser from 'tree-sitter'
-import type * as Nodes from './AST'
-import * as AST from './Construction'
+import * as AST from '../AST'
+
+/** RenderTag identifies one authored render occurrence for interaction tests. */
+export type RenderTag = AST.Semantic<'RenderTag', { value: string }>
+
+/** TestsDeclaration groups app journeys under an optional label. */
+export type TestsDeclaration = AST.Semantic<'TestsDeclaration', {
+  label?: AST.TextLiteral
+  tests: readonly TestDeclaration[]
+}>
+
+/** TestDeclaration contains one isolated app journey. */
+export type TestDeclaration = AST.Semantic<
+  'TestDeclaration',
+  { label?: AST.TextLiteral; steps: readonly AST.TestStep[] }
+>
+
+/** RunStatement launches an app declaration in a fresh test session. */
+export type RunStatement = AST.Semantic<'RunStatement', { app: AST.Name }>
+
+/** PressStatement activates one tagged render. */
+export type PressStatement = AST.Semantic<'PressStatement', { target: RenderTag }>
+
+/** TypeStatement replaces a tagged input's current text. */
+export type TypeStatement = AST.Semantic<'TypeStatement', { target: RenderTag; value: AST.TextLiteral }>
+
+/** ExpectStatement groups visible assertions under an optional tagged render. */
+export type ExpectStatement = AST.Semantic<'ExpectStatement', {
+  target?: RenderTag
+  expectations: readonly AST.Expectation[]
+}>
+
+/** TextExpectation matches exact visible text. */
+export type TextExpectation = AST.Semantic<'TextExpectation', { value: AST.TextLiteral }>
+
+/** InputExpectation checks a tagged input's current value. */
+export type InputExpectation = AST.Semantic<'InputExpectation', { target?: RenderTag; value: AST.TextLiteral }>
 
 /** TestsDeclaration constructs a labeled group of app journeys. */
-export function TestsDeclaration(cst: Parser.SyntaxNode): Nodes.TestsDeclaration {
+export function TestsDeclaration(cst: Parser.SyntaxNode): TestsDeclaration {
   return AST.Node(cst, 'TestsDeclaration', {
     label: optionalText(cst, 'label'),
     tests: cst.namedChildren.filter(child => child.type === 'TestDeclaration').map(AST.TestDeclaration),
@@ -11,7 +46,7 @@ export function TestsDeclaration(cst: Parser.SyntaxNode): Nodes.TestsDeclaration
 }
 
 /** TestDeclaration constructs one app journey's ordered steps. */
-export function TestDeclaration(cst: Parser.SyntaxNode): Nodes.TestDeclaration {
+export function TestDeclaration(cst: Parser.SyntaxNode): TestDeclaration {
   return AST.Node(cst, 'TestDeclaration', {
     label: optionalText(cst, 'label'),
     steps: cst.namedChildren.filter(child => child.type !== 'TextLiteral' && child.type !== 'Comment').map(child =>
@@ -21,17 +56,17 @@ export function TestDeclaration(cst: Parser.SyntaxNode): Nodes.TestDeclaration {
 }
 
 /** RunStatement constructs a named app launch. */
-export function RunStatement(cst: Parser.SyntaxNode): Nodes.RunStatement {
+export function RunStatement(cst: Parser.SyntaxNode): RunStatement {
   return AST.Node(cst, 'RunStatement', { app: AST.Field(cst, 'app', 'Name') })
 }
 
 /** PressStatement constructs a tagged control activation. */
-export function PressStatement(cst: Parser.SyntaxNode): Nodes.PressStatement {
+export function PressStatement(cst: Parser.SyntaxNode): PressStatement {
   return AST.Node(cst, 'PressStatement', { target: AST.Field(cst, 'target', 'RenderTag') })
 }
 
 /** TypeStatement constructs a tagged input replacement. */
-export function TypeStatement(cst: Parser.SyntaxNode): Nodes.TypeStatement {
+export function TypeStatement(cst: Parser.SyntaxNode): TypeStatement {
   return AST.Node(cst, 'TypeStatement', {
     target: AST.Field(cst, 'target', 'RenderTag'),
     value: AST.Field(cst, 'value', 'TextLiteral'),
@@ -39,7 +74,7 @@ export function TypeStatement(cst: Parser.SyntaxNode): Nodes.TypeStatement {
 }
 
 /** ExpectStatement constructs direct or grouped visible assertions. */
-export function ExpectStatement(cst: Parser.SyntaxNode): Nodes.ExpectStatement {
+export function ExpectStatement(cst: Parser.SyntaxNode): ExpectStatement {
   const target = cst.childForFieldName('target')
   return AST.Node(cst, 'ExpectStatement', {
     target: target ? AST.RenderTag(target) : undefined,
@@ -50,12 +85,12 @@ export function ExpectStatement(cst: Parser.SyntaxNode): Nodes.ExpectStatement {
 }
 
 /** TextExpectation constructs an exact visible-text assertion. */
-export function TextExpectation(cst: Parser.SyntaxNode): Nodes.TextExpectation {
+export function TextExpectation(cst: Parser.SyntaxNode): TextExpectation {
   return AST.Node(cst, 'TextExpectation', { value: AST.Field(cst, 'value', 'TextLiteral') })
 }
 
 /** InputExpectation constructs an input assertion with an explicit or inherited target. */
-export function InputExpectation(cst: Parser.SyntaxNode): Nodes.InputExpectation {
+export function InputExpectation(cst: Parser.SyntaxNode): InputExpectation {
   const target = cst.childForFieldName('target')
   return AST.Node(cst, 'InputExpectation', {
     target: target ? AST.RenderTag(target) : undefined,
@@ -64,11 +99,11 @@ export function InputExpectation(cst: Parser.SyntaxNode): Nodes.InputExpectation
 }
 
 /** RenderTag constructs a render selector without its syntax marker. */
-export function RenderTag(cst: Parser.SyntaxNode): Nodes.RenderTag {
+export function RenderTag(cst: Parser.SyntaxNode): RenderTag {
   return AST.Node(cst, 'RenderTag', { value: cst.text.slice(1) })
 }
 
-function optionalText(cst: Parser.SyntaxNode, field: string): Nodes.TextLiteral | undefined {
+function optionalText(cst: Parser.SyntaxNode, field: string): AST.TextLiteral | undefined {
   const child = cst.childForFieldName(field)
   return child ? AST.TextLiteral(child) : undefined
 }

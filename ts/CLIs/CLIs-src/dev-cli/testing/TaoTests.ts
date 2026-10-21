@@ -5,7 +5,7 @@ import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { planTestExecution } from './TestPlan'
 import { runTestPlan, type TestExecutionOptions } from './TestWorkers'
 
-export { findTaoTestFiles } from './TaoTestDiscovery'
+export * from './TaoTestDiscovery'
 
 /** runTaoTests runs self-contained app journeys using the default headless web target. */
 export async function runTaoTests(target: string, options: TestExecutionOptions = {}): Promise<void> {

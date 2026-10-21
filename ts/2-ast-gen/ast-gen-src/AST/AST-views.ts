@@ -1,9 +1,40 @@
 import type Parser from 'tree-sitter'
-import type * as Nodes from './AST'
-import * as AST from './Construction'
+import * as AST from '../AST'
+
+/** ViewDeclaration defines parameters and one render body. */
+export type ViewDeclaration = AST.Semantic<'ViewDeclaration', {
+  name: AST.Name
+  visibility?: AST.Visibility
+  parameters: readonly AST.Parameter[]
+  definitions: readonly AST.LetDefinition[]
+  render: ViewRender | Injection | ForeignView
+}>
+
+/** ForeignView identifies a TypeScript module implementing a view declaration. */
+export type ForeignView = AST.Semantic<'ForeignView', { path: AST.ImportPath }>
+
+/** ViewRender invokes a view with positional arguments and child renders. */
+export type ViewRender = AST.Semantic<'ViewRender', {
+  tag?: AST.RenderTag
+  target: AST.Name
+  arguments: readonly AST.Expression[]
+  children: readonly (ViewRender | AST.LetDefinition)[]
+}>
+
+/** Injection preserves an opaque TypeScript body and explicit capture bindings. */
+export type Injection = AST.Semantic<'Injection', { captures: readonly Capture[]; code: string }>
+
+/** Capture binds a native local to a Tao value or contextual children. */
+export type Capture = AST.Semantic<'Capture', { name: AST.Name; value: AST.Name | ContextReference }>
+
+/** ContextReference preserves an unresolved contextual capture such as @@children. */
+export type ContextReference = AST.Semantic<'ContextReference', { value: string }>
+
+/** TextLiteral contains a decoded authored text value. */
+export type TextLiteral = AST.Semantic<'TextLiteral', { value: string }>
 
 /** ViewDeclaration constructs a view and its render body. */
-export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
+export function ViewDeclaration(cst: Parser.SyntaxNode): ViewDeclaration {
   const parameters = cst.childForFieldName('parameters')
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'ViewDeclaration', {
@@ -17,12 +48,12 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): Nodes.ViewDeclaration {
 }
 
 /** ForeignView constructs a module-backed view body. */
-export function ForeignView(cst: Parser.SyntaxNode): Nodes.ForeignView {
+export function ForeignView(cst: Parser.SyntaxNode): ForeignView {
   return AST.Node(cst, 'ForeignView', { path: AST.Field(cst, 'path', 'ImportPath') })
 }
 
 /** ViewRender constructs a view invocation with arguments and child renders. */
-export function ViewRender(cst: Parser.SyntaxNode): Nodes.ViewRender {
+export function ViewRender(cst: Parser.SyntaxNode): ViewRender {
   const argumentsNode = cst.childForFieldName('argumentList')
   const tag = cst.childForFieldName('tag')
   return AST.Node(cst, 'ViewRender', {
@@ -34,7 +65,7 @@ export function ViewRender(cst: Parser.SyntaxNode): Nodes.ViewRender {
 }
 
 /** Injection constructs an opaque TypeScript body and its capture bindings. */
-export function Injection(cst: Parser.SyntaxNode): Nodes.Injection {
+export function Injection(cst: Parser.SyntaxNode): Injection {
   return AST.Node(cst, 'Injection', {
     captures: cst.namedChildren.filter(child => child.type === 'InjectionCapture').map(child =>
       AST.Construct(child, 'Capture')
@@ -44,23 +75,23 @@ export function Injection(cst: Parser.SyntaxNode): Nodes.Injection {
 }
 
 /** Capture constructs a native binding and its Tao value or contextual reference. */
-export function Capture(cst: Parser.SyntaxNode): Nodes.Capture {
+export function Capture(cst: Parser.SyntaxNode): Capture {
   const name = AST.Field(cst, 'name', 'Name')
   const value = cst.childForFieldName('value')
   return AST.Node(cst, 'Capture', { name, value: value ? AST.Construct(value, ['Name', 'ContextReference']) : name })
 }
 
 /** ContextReference constructs an unresolved contextual capture such as @@children. */
-export function ContextReference(cst: Parser.SyntaxNode): Nodes.ContextReference {
+export function ContextReference(cst: Parser.SyntaxNode): ContextReference {
   return AST.Node(cst, 'ContextReference', { value: cst.text.slice(2) })
 }
 
 /** TextLiteral constructs a decoded authored text value. */
-export function TextLiteral(cst: Parser.SyntaxNode): Nodes.TextLiteral {
+export function TextLiteral(cst: Parser.SyntaxNode): TextLiteral {
   return AST.Node(cst, 'TextLiteral', { value: JSON.parse(cst.text) as string })
 }
 
-function viewBody(cst: Parser.SyntaxNode): Nodes.ViewDeclaration['render'] {
+function viewBody(cst: Parser.SyntaxNode): ViewDeclaration['render'] {
   const body = cst.namedChildren.find(child => child.type === 'ForeignView')
   return body
     ? AST.Construct(body, 'ForeignView')

@@ -13,11 +13,10 @@ export const ReactNative = Object.create(Native, {
   Text: ForwardRefExoticComponent<Native.TextProps & RefAttributes<Native.Text>>
   TextInput: ForwardRefExoticComponent<Native.TextInputProps & RefAttributes<Native.TextInput>>
 }
-export { App } from './App'
-export { ForeignView } from './ForeignView'
-export type { ForeignViewComponent } from './ForeignView'
+export * from './App'
+export * from './ForeignView'
 export { ModuleApplied } from './Preview'
-export { LetDefinition, LetReference, RenderChildren, Scope, Value } from './Scope'
+export * from './Scope'
 export type { Scope as RuntimeScope } from './Scope'
 export { Render, ViewDefinition, ViewReference, ViewRenderArgs } from './View'
 export type { AppOptions, RuntimeObserver, RuntimeTiming, View, ViewRenderer } from './View'

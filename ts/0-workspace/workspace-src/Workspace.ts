@@ -17,8 +17,7 @@ import type { ProjectPipelineResult } from './ProjectPipeline'
 import { publishBuild } from './WorkspaceBuild'
 
 export { Document } from './Document'
-export { createProject } from './Project'
-export type { Project, ProjectOptions } from './Project'
+export * from './Project'
 
 /** WorkspaceOptions configures output publication for a single compile session. */
 export type WorkspaceOptions = {

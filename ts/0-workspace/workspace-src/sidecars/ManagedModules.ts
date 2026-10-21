@@ -6,12 +6,7 @@ import {
 import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
 import { prepareManagedModules as prepareProfile, readManagedModules as readProfile } from './ManagedNpmProfile'
 
-export type {
-  BunExecutor,
-  ManagedModuleRequirement,
-  ManagedModulesInput,
-  PreparedManagedModules,
-} from './ManagedModuleTypes'
+export type * from './ManagedModuleTypes'
 
 export { cleanManagedModuleMetadata }
 
