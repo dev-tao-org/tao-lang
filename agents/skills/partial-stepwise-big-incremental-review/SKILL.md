@@ -27,6 +27,18 @@ description: >-
   Folder counts use distinct folder entries shown in the proposal; do not sum overlapping group
   folders for a feature-set total. Show binary changes separately from
   textual hunk counts rather than inventing hunks.
+- At review start, freeze the original change inventory, baseline and source snapshot in the session
+  notes. Record its file/hunk totals and review units: one per original diff hunk, plus one per binary
+  or zero-hunk change. Keep this denominator fixed throughout the review.
+- Track completed original units from explicit developer approvals, mapping renames, splits and
+  replacements back to their original changes without double counting. Partial approvals earn only
+  the corresponding original units. Added fixes, tests and refactors are additional completed work,
+  not additional review units; they must not enlarge the denominator or reduce earned progress.
+- Present `X% done` before the remaining-groups list whenever introducing the next group, calculated
+  as completed original units divided by frozen original units. Retain earned credit when corrections
+  reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
+  original review does not declare those follow-ups complete. Preserve the inventory and credited
+  units across interruptions; never recalculate progress from the growing current diff.
 - Present each agreed group using the format below, with clickable absolute file links and useful
   starting lines. Use a selected line range only when the editor/tool supports it; otherwise use
   a starting line and describe the relevant range or functionality. Never invent range-link syntax.
@@ -108,6 +120,8 @@ Each turn presents remaining groups for the current feature set, then only the n
 
 ```text
 ### <Feature set, when applicable>
+
+**X% done** — <completed>/<frozen total> original review units.
 
 Remaining groups:
 - **Next: <Review group>**
