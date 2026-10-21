@@ -13,7 +13,7 @@
     "6-compile",
     "7-runtime",
     "CLIs",
-    "ide-extension",
+    "ide-extensions/*",
     "perf",
     "shared",
     "stdlib"

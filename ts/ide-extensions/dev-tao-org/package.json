@@ -1,0 +1,28 @@
+{
+  "name": "@tao/dev-tao-org",
+  "displayName": "Dev Tao Org",
+  "version": "0.0.1",
+  "description": "Tao repository review commands for VS Code and Cursor.",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": { "vscode": "^1.100.0" },
+  "extensionDependencies": ["vscode.git", "eamodio.gitlens"],
+  "contributes": {
+    "commands": [
+      { "command": "dev-tao-org.diffWithBase", "title": "Dev Tao: Compare Current File with Review Base" },
+      { "command": "dev-tao-org.changeDiffBase", "title": "Dev Tao: Change Diff Base" }
+    ],
+    "keybindings": [
+      {
+        "command": "dev-tao-org.diffWithBase",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "editorTextFocus && resourceScheme == file"
+      }
+    ]
+  },
+  "files": ["dist/**", "LICENSE", "README.md"],
+  "repository": { "type": "git", "url": "https://github.com/tao-dev-org/tao-lang.git" },
+  "devDependencies": { "@types/bun": "1.4.0", "@types/vscode": "1.110.0" }
+}

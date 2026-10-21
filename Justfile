@@ -101,7 +101,7 @@ dev:
 performance:
     ./dev performance preview
 
-# Build the Tao extension once and install it into Cursor and VS Code
+# Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]
 install-ide-extension:
     ./dev install-ide-extension

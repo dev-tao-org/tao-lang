@@ -6,7 +6,7 @@
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "js/ts.experimental.useTsgo": false,
   "typescript.experimental.useTsgo": false,
-  // Build and install the IDE extension, then restart the extension host (requires extension ryuta46.multi-command).
+  // Build and install both IDE extensions, then restart the extension host (requires extension ryuta46.multi-command).
   "tao.workspaceKeybinding.buildAndRestart": true,
   "multiCommand.commands": [
     {

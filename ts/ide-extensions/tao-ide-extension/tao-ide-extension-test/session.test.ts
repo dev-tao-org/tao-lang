@@ -1,7 +1,7 @@
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
 import { Try } from '@shared'
 import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
-import { createWasmDocumentSession } from '../ide-extension-src/core'
+import { createWasmDocumentSession } from '../tao-ide-extension-src/core'
 
 Tests.test('save formatting uses the WASM snapshot, preserving partial edits and parser ownership', async () => {
   const runtime = await loadRuntime()

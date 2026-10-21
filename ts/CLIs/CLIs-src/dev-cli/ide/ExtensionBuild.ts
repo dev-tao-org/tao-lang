@@ -7,7 +7,7 @@ import { prepareParser } from '../../cli-checks/parser-build'
 /** buildExtension packages the current Tao grammar and editor adapter into one standalone VSIX. */
 export async function buildExtension(): Promise<string> {
   await prepareExtensionAssets()
-  await Bundle.bundleNode(Path.join(sourceRoot, 'ide-extension-src/extension.ts'), Path.join(packageRoot, 'dist'), [
+  await Bundle.bundleNode(Path.join(sourceRoot, 'tao-ide-extension-src/extension.ts'), Path.join(packageRoot, 'dist'), [
     'vscode',
   ])
   await validateRelocatedPackage()
@@ -53,7 +53,7 @@ export async function prepareExtensionAssets(): Promise<void> {
   )
 }
 
-const sourceRoot = Repo.resolvePath('ts/ide-extension')
+const sourceRoot = Repo.resolvePath('ts/ide-extensions/tao-ide-extension')
 const packageRoot = Repo.resolvePath('.artifacts/ide-extension/package')
 const vsixPath = Repo.resolvePath('.artifacts/ide-extension/tao-language.vsix')
 

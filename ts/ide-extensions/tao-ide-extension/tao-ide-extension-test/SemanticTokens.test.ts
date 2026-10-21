@@ -1,5 +1,5 @@
 import { Tests } from '@shared/os'
-import { semanticTokenRanges } from '../ide-extension-src/SemanticTokens'
+import { semanticTokenRanges } from '../tao-ide-extension-src/SemanticTokens'
 
 Tests.test('editor tokens retain expressions inside template strings without overlapping', () => {
   const source = '`Hello ${name.toUpperCase()}`'

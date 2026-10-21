@@ -37,7 +37,8 @@ export default {
     ]),
     shared: packageWorkspace(['**/*.test.ts']),
     stdlib: packageWorkspace(['**/*.test.ts', 'stdlib-src/.tao/.gitignore.d.ts']),
-    'ide-extension': packageWorkspace(['ide-extension-src/extension.ts', '**/*.test.ts']),
+    'ide-extensions/tao-ide-extension': nestedPackageWorkspace(['tao-ide-extension-src/extension.ts', '**/*.test.ts']),
+    'ide-extensions/dev-tao-org': nestedPackageWorkspace(['dev-tao-org-src/extension.ts', '**/*.test.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 }
@@ -61,6 +62,16 @@ function packageWorkspace(entry: string[]) {
       '@workspace/*': ['../0-workspace/workspace-src/*'],
       '@stdlib/*': ['../stdlib/stdlib-src/*'],
     },
+  }
+}
+
+function nestedPackageWorkspace(entry: string[]) {
+  const configuration = packageWorkspace(entry)
+  return {
+    ...configuration,
+    paths: Object.fromEntries(
+      Object.entries(configuration.paths).map(([name, paths]) => [name, paths.map(path => `../${path}`)]),
+    ),
   }
 }
 

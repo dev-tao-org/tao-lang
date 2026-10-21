@@ -1,7 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { createWasmDocumentSession } from '../../ide-extension/ide-extension-src/core'
-import { semanticTokenRanges } from '../../ide-extension/ide-extension-src/SemanticTokens'
+import { createWasmDocumentSession } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/core'
+import { semanticTokenRanges } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/SemanticTokens'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {

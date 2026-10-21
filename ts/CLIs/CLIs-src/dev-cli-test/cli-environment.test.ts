@@ -31,7 +31,7 @@ Tests.test('agent test summarizes results and warnings while retaining full outp
   Tests.expect(stdout).toMatch(/\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/)
 })
 
-Tests.test('fresh setup finds package tools installed after the launcher prepares PATH', async () => {
+Tests.test('fresh setup finds nested extension tools installed after the launcher prepares PATH', async () => {
   await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-environment-'))
   await Try(async () => {
@@ -44,8 +44,8 @@ Tests.test('fresh setup finds package tools installed after the launcher prepare
     for (const file of ['devenv.nix', 'devenv.yaml', 'devenv.lock']) {
       await FileSystem.writeFile(Path.join(root, file), '', 'utf8')
     }
-    await FileSystem.mkdir(Path.join(root, 'ts/1-grammar'), { recursive: true })
-    await FileSystem.writeFile(Path.join(root, 'ts/1-grammar/package.json'), '{}', 'utf8')
+    await FileSystem.mkdir(Path.join(root, 'ts/ide-extensions/tao-ide-extension'), { recursive: true })
+    await FileSystem.writeFile(Path.join(root, 'ts/ide-extensions/tao-ide-extension/package.json'), '{}', 'utf8')
     const tool = Path.join(root, 'fixture-tool')
     await FileSystem.writeFile(tool, '#!/bin/sh\n', 'utf8')
     await FileSystem.chmod(tool, 0o755)
@@ -56,8 +56,8 @@ Tests.test('fresh setup finds package tools installed after the launcher prepare
           DEVENV_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
           export DEVENV_ROOT TAO_DEVENV=1
           . "$1"
-          mkdir -p "$repository/ts/1-grammar/node_modules/.bin"
-          cp "$2" "$repository/ts/1-grammar/node_modules/.bin/tao-fixture-tool"
+          mkdir -p "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin"
+          cp "$2" "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin/tao-fixture-tool"
           command -v tao-fixture-tool
         `,
         Path.join(root, 'agent'),
@@ -65,7 +65,7 @@ Tests.test('fresh setup finds package tools installed after the launcher prepare
         tool,
       ],
     })
-    Tests.expect(path).toBe(Path.join(root, 'ts/1-grammar/node_modules/.bin/tao-fixture-tool'))
+    Tests.expect(path).toBe(Path.join(root, 'ts/ide-extensions/tao-ide-extension/node_modules/.bin/tao-fixture-tool'))
   }, {
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })

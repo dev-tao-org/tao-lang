@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Tests } from '@shared/os'
-import { createRetryableInitialization } from '../ide-extension-src/RetryableInitialization'
+import { createRetryableInitialization } from '../tao-ide-extension-src/RetryableInitialization'
 
 Tests.test('WASM initialization retries after rejection and caches a successful result', async () => {
   let attempts = 0

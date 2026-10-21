@@ -1,11 +1,11 @@
 import { registerCommand } from './_command-runner'
 
-/** buildIdeExtensionCommand builds one self-contained Tao extension VSIX. */
+/** buildIdeExtensionCommand builds self-contained language and developer extension VSIX packages. */
 export default registerCommand({
   name: 'build-ide-extension',
-  description: 'Build the Tao Tree-sitter extension VSIX without installing it.',
+  description: 'Build both Tao extension VSIX packages without installing them.',
   async action() {
-    const { buildExtension } = await import('../ide/ExtensionBuild')
-    await buildExtension()
+    const { buildExtensions } = await import('../ide/Extensions')
+    await buildExtensions()
   },
 })

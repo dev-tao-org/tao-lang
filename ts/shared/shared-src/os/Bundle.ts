@@ -26,6 +26,7 @@ export async function validateEditorBundle(path: string): Promise<void> {
     const paths = require('node:path');
     const disposable = () => ({ dispose() {} });
     const editor = {
+      commands: { registerCommand: disposable },
       Uri: { joinPath(base, ...parts) { return { fsPath: paths.join(base.fsPath, ...parts) }; } },
       SemanticTokensLegend: class { constructor(types) { this.tokenTypes = types; } },
       languages: {
@@ -47,7 +48,7 @@ export async function validateEditorBundle(path: string): Promise<void> {
     };
     const extension = require(process.argv[1]);
     const context = { extensionUri: { fsPath: paths.dirname(paths.dirname(process.argv[1])) }, subscriptions: [] };
-    extension.activate(context).then(() => {
+    Promise.resolve(extension.activate(context)).then(() => {
       for (const subscription of context.subscriptions) subscription.dispose();
     }).catch(error => { console.error(error); process.exit(1); });
   `

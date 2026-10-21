@@ -137,7 +137,15 @@
         "rulesync": "16.18.0",
       },
     },
-    "ide-extension": {
+    "ide-extensions/dev-tao-org": {
+      "name": "@tao/dev-tao-org",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/bun": "1.4.0",
+        "@types/vscode": "1.110.0",
+      },
+    },
+    "ide-extensions/tao-ide-extension": {
       "name": "@tao/ide-extension",
       "version": "0.0.1",
       "dependencies": {
@@ -666,11 +674,13 @@
 
     "@tao/compile": ["@tao/compile@workspace:6-compile"],
 
+    "@tao/dev-tao-org": ["@tao/dev-tao-org@workspace:ide-extensions/dev-tao-org"],
+
     "@tao/fix": ["@tao/fix@workspace:4-fix"],
 
     "@tao/grammar": ["@tao/grammar@workspace:1-grammar"],
 
-    "@tao/ide-extension": ["@tao/ide-extension@workspace:ide-extension"],
+    "@tao/ide-extension": ["@tao/ide-extension@workspace:ide-extensions/tao-ide-extension"],
 
     "@tao/perf": ["@tao/perf@workspace:perf"],
 

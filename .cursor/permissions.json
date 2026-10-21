@@ -14,7 +14,7 @@
       "Allow ./agent unsandboxed performance record to capture commit-linked preview timings into local storage or pending notes; it does not push or land.",
       "Allow ./agent unsandboxed push <remote> <branch> with optional --source <branch>. This guarded command permits non-main branch pushes and rejects main, force, deletion and bulk pushes.",
       "Allow read-only ./agent unsandboxed landed. ./agent unsandboxed merge-main integrates origin/main locally; ./agent unsandboxed land publishes archives and lands only with the developer's explicit landing authorization.",
-      "Allow ./agent unsandboxed install-ide-extension to replace devtao.tao and remove the accidental tao.tao-language installation in Cursor and VS Code."
+      "Allow ./agent unsandboxed install-ide-extension to install devtao.tao and devtao.dev-tao-org and remove the accidental tao.tao-language installation in Cursor and VS Code."
     ],
     "block_instructions": [
       "Require review for commands that delete or substantially overwrite user or repository data.",
