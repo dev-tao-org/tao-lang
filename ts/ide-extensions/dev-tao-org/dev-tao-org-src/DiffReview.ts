@@ -1,23 +1,36 @@
-/** DiffBaseStorage persists a review base independently for each Git worktree root. */
+import { Errors } from '@shared'
+
+/** DiffBaseStorage persists an explicit review base for each worktree and working branch. */
 export interface DiffBaseStorage {
   get(key: string): string | undefined
   update(key: string, value: string): PromiseLike<void>
 }
 
-/** chooseDiffBase reuses a valid saved branch or prompts; cancellation never updates the saved choice. */
+/** chooseDiffBase uses the approved-branch convention or an explicit override, reporting missing refs. */
 export async function chooseDiffBase(
   root: string,
+  currentBranch: string | undefined,
   branches: readonly string[],
   storage: DiffBaseStorage,
   pick: (branches: readonly string[], selected: string | undefined) => Promise<string | undefined>,
   force = false,
 ): Promise<string | undefined> {
-  const key = `reviewBase:${root}`
+  const key = `reviewBase:${root}:${currentBranch ?? '<detached>'}`
   const saved = storage.get(key)
-  if (!force && saved && branches.includes(saved)) {
-    return saved
+  const inferred = currentBranch ? `${currentBranch}-incremental-review-approved` : undefined
+  if (!force) {
+    const base = saved ?? inferred
+    if (base && branches.includes(base)) {
+      return base
+    }
+    return Errors.ThrowUserInput(
+      base
+        ? `Review comparison branch "${base}" does not exist. Use Dev Tao: Change Diff Base to select an existing branch.`
+        : 'This worktree has a detached HEAD. Use Dev Tao: Change Diff Base to select an existing branch.',
+    )
   }
-  const selected = saved && branches.includes(saved) ? saved : branches.find(branch => branch === 'main')
+  const preferred = saved ?? inferred
+  const selected = preferred && branches.includes(preferred) ? preferred : branches.find(branch => branch === 'main')
     ?? branches.find(branch => branch === 'origin/main')
   const chosen = await pick(branches, selected)
   if (chosen && branches.includes(chosen)) {

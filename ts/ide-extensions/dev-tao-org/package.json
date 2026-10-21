@@ -19,6 +19,12 @@
         "key": "ctrl+shift+d",
         "mac": "cmd+shift+d",
         "when": "editorTextFocus && resourceScheme == file"
+      },
+      {
+        "command": "dev-tao-org.changeDiffBase",
+        "key": "ctrl+alt+shift+d",
+        "mac": "cmd+shift+ctrl+d",
+        "when": "editorTextFocus && resourceScheme == file"
       }
     ]
   },

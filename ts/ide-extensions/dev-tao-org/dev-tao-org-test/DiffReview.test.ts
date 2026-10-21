@@ -1,7 +1,7 @@
 import { Tests } from '@shared/os'
 import { chooseDiffBase, diffArguments, type DiffBaseStorage } from '../dev-tao-org-src/DiffReview'
 
-Tests.test('review bases persist per worktree, reprompt when missing, and preserve canceled choices', async () => {
+Tests.test('review convention is automatic and overrides belong to one worktree and source branch', async () => {
   const values = new Map<string, string>()
   const storage: DiffBaseStorage = {
     get: key => values.get(key),
@@ -15,17 +15,34 @@ Tests.test('review bases persist per worktree, reprompt when missing, and preser
     prompts.push({ branches, selected })
     return 'main'
   }
-  const branches = ['feature', 'main']
-  Tests.expect(await chooseDiffBase('/worktree/one', branches, storage, pick)).toBe('main')
-  Tests.expect(await chooseDiffBase('/worktree/one', branches, storage, pick)).toBe('main')
-  Tests.expect(prompts).toHaveLength(1)
-  await chooseDiffBase('/worktree/two', branches, storage, pick)
-  Tests.expect(prompts).toHaveLength(2)
-  Tests.expect(prompts[0]).toEqual({ branches, selected: 'main' })
-  Tests.expect(await chooseDiffBase('/worktree/one', branches, storage, async () => undefined, true))
+  const a = 'feat/a-incremental-review-approved'
+  const b = 'feat/b-incremental-review-approved'
+  const branches = [a, b, 'main']
+  Tests.expect(await chooseDiffBase('/worktree/one', 'feat/a', branches, storage, pick)).toBe(a)
+  Tests.expect(prompts).toHaveLength(0)
+  await chooseDiffBase('/worktree/one', 'feat/a', branches, storage, pick, true)
+  Tests.expect(prompts[0]).toEqual({ branches, selected: a })
+  Tests.expect(await chooseDiffBase('/worktree/one', 'feat/a', branches, storage, pick)).toBe('main')
+  Tests.expect(await chooseDiffBase('/worktree/two', 'feat/a', branches, storage, pick)).toBe(a)
+  Tests.expect(await chooseDiffBase('/worktree/one', 'feat/b', branches, storage, pick)).toBe(b)
+  Tests.expect(await chooseDiffBase('/worktree/one', 'feat/a', branches, storage, async () => undefined, true))
     .toBeUndefined()
-  Tests.expect(await chooseDiffBase('/worktree/one', branches, storage, pick)).toBe('main')
-  Tests.expect(await chooseDiffBase('/worktree/one', ['feature'], storage, async () => 'feature')).toBe('feature')
+  Tests.expect(await chooseDiffBase('/worktree/one', 'feat/a', branches, storage, pick)).toBe('main')
+})
+
+Tests.test('missing review branches and detached worktrees report the problem without a fallback picker', async () => {
+  const storage: DiffBaseStorage = { get: () => undefined, update: () => Promise.resolve() }
+  let prompts = 0
+  const pick = async () => {
+    prompts++
+    return 'main'
+  }
+  await Tests.expect(chooseDiffBase('/one', 'feat/a', ['main'], storage, pick))
+    .rejects.toThrow('feat/a-incremental-review-approved')
+  await Tests.expect(chooseDiffBase('/one', undefined, ['main'], storage, pick))
+    .rejects.toThrow('detached')
+  Tests.expect(prompts).toBe(0)
+  Tests.expect(await chooseDiffBase('/one', 'feat/a', ['main'], storage, pick, true)).toBe('main')
 })
 
 Tests.test('file comparison uses the selected repository, branch and working copy with no selection', () => {

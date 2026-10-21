@@ -16,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 interface GitRepository {
   rootUri: vscode.Uri
+  state: { HEAD?: { name?: string } }
   getBranches(query: { remote: boolean }): Promise<{ name?: string }[]>
 }
 
@@ -43,6 +44,7 @@ async function reviewFile(context: vscode.ExtensionContext, force: boolean): Pro
   ].sort()
   const base = await chooseDiffBase(
     repository.rootUri.toString(),
+    repository.state.HEAD?.name,
     branches,
     {
       get: key => context.globalState.get<string>(key),
