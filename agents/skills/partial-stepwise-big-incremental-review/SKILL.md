@@ -16,10 +16,16 @@ description: >-
   developer's explicit agreement, or iterate on the grouping, before presenting the first group.
   Group one feature at a time; combine features only when each is required to review the other.
   Projects and Dependencies and Sidecars normally belong in separate groups.
+- Organize large reviews into functional feature sets containing review groups. Include each
+  specification with its first related implementation group; keep design-only specifications with
+  related planning. Give each feature set and group a brief cognitive overview of its contribution.
+  For language changes, follow the feature-set overview with minimal Tao usage snippets, preferably
+  single-line with unrelated parts replaced by `...`; label design-only syntax explicitly.
 - Count remaining changed files and Git diff hunks against the reviewed branch, including saved
   pending edits. A diff means one `@@` hunk using normal three-line context. Count only the hunks
   assigned to that group; account for shared files explicitly without counting the same hunk twice.
-  Folder counts use the folder entries shown in the proposal. Show binary changes separately from
+  Folder counts use distinct folder entries shown in the proposal; do not sum overlapping group
+  folders for a feature-set total. Show binary changes separately from
   textual hunk counts rather than inventing hunks.
 - Present each agreed group using the format below, with clickable absolute file links and useful
   starting lines. Use a selected line range only when the editor/tool supports it; otherwise use
@@ -32,6 +38,11 @@ description: >-
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
+- Name the approved-content branch `<working-branch>-incremental-review-approved`, for example
+  `feat/topic-incremental-review-approved` alongside `feat/topic`. If it is missing, tell the
+  developer; do not create it without an explicit review-session or branch-creation instruction.
+  Keep the working branch unchanged. Use the review script's rename operation when an authorized
+  rename must update an existing session.
 - Default to responsive guidance with selective [critique](../critique-mode/SKILL.md). Propose deeper
   critical discussion for consequential decisions or substantial accumulated corrections. Do not
   switch models or weaken scrutiny silently. Use [repository guidance](references/repo-guide.md)
@@ -44,39 +55,78 @@ description: >-
   acknowledges postponing it. This readiness footer is the exception to ending at the file list.
   Retain postponed work and remind the developer periodically during review (about every three
   groups, or sooner when its integration affects the current group).
-- Leave corrections pending for inspection until approved; preserve the developer's staging
-  choices. Staging is an optional inspection/selection tool, never approval. Verify intermittently
+- Merge subagent work only when the reviewing developer explicitly says they are ready for that
+  integration; completion and passing checks do not authorize merging.
+- Leave corrections pending for inspection until approved. Apply root Git authorization rules:
+  the developer controls the review worktree's index; content approval authorizes recording it on
+  the separate reviewed branch, not staging or committing pending source edits. Staging is never
+  approval. Verify intermittently
   in proportion to changed behavior. Focused checks may replace the full pre-commit gate for
   this workflow's checkpoints; run full verification before readiness to land. Do not keep a
   detailed test ledger or rerun application tests for acceptance-only transfers.
 
 ## Presentation formats
 
-Initial proposal (repeat for every group and folder):
+Initial proposal (repeat feature sets and their groups; counts and descriptions stay separate):
 
 ```text
-- <Group name> - X folders, Y files
-  - <Folder> - X files, Y diffs
-  - <Folder 2> - X files, Y diffs
+- Feature set: **<Title>**
+  - X folders, Y files, Z diffs
+  - <Brief functional overview.>
+  - <Minimal Tao usage example, if language is affected.>
+  - <Review group title>
+    - X folders, Y files, Z diffs
+    - <Even briefer overview of this group's contribution.>
+  - ...
 ```
 
 Ask for agreement after the complete proposal; do not begin a group before agreement.
 
-Each group:
+Shortened example of the agreed format (replace count placeholders with current diff counts):
 
 ```text
-## <Group name>
+- Feature set: **Projects, sessions and storage**
+  - X folders, Y files, Z diffs
+  - Gives projects an identity, owns editing sessions and keeps generated state separate.
+  - `project { ... }`
+  - Project initialization and discovery
+    - X folders, Y files, Z diffs
+    - Finds project roots and establishes their identity; includes the project specification.
+  - ...
+- Feature set: **Dependencies and source modules**
+  - X folders, Y files, Z diffs
+  - Resolves required projects and makes their declarations available to imports.
+  - In `project`: `requires github://example/name version 1.2.3`
+  - Source modules and dependency resolution
+    - X folders, Y files, Z diffs
+    - Resolves dependency sources and module names.
+  - ...
+...
+```
+
+Each turn presents remaining groups for the current feature set, then only the next group:
+
+```text
+### <Feature set, when applicable>
+
+Remaining groups:
+- **Next: <Review group>**
+- <Later group>
+- ...
 
 **<One-line summary of what we are reviewing.>**
 
 <Particular complexity or dependencies to keep in mind, only if needed.>
 
-- <Folder path or functional part> - X diffs
-  - <Clickable file path:starting line> - X diffs
-  - <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
+- <Review group / folder / conceptual chunk> - X folders, Y files, Z diffs
+  1. <Clickable file path:starting line> - X diffs
+  2. <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
+- <Another chunk, when useful> - X folders, Y files, Z diffs
+  3. <Clickable file path:starting line> - X diffs
 ```
 
-Nothing follows the file list: no recap, approval question, next steps or closing sentence.
+Omit the feature-set heading when there is no feature set. Nothing follows the file list except
+an outstanding subagent-readiness footer: no recap, approval question, next steps or closing sentence.
 
 ## Interpret approval
 

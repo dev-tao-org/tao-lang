@@ -17,13 +17,22 @@ restricted harness may require its normal permission flow for repository Git wri
 ## Establish a session
 
 ```sh
-./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- start --base main --branch feat/reviewed-projects
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- start --base main --branch feat/projects-incremental-review-approved
 ./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- status
 ```
 
 Use `--repo <absolute-checkout>` for an explicitly selected repository. Start creates its own
 review worktree and fixes the baseline commit. It must not switch the implementation checkout or
 reuse a foreign or dirty review worktree. Do not advance main or the reviewed baseline mid-review.
+
+Use `<working-branch>-incremental-review-approved` for the approved-content branch. If it does not
+exist, report that before proceeding; creation needs an explicit developer instruction. The
+editor derives that name automatically and never creates it. After an explicitly requested rename,
+update the branch and retained session together:
+
+```sh
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- rename --branch feat/projects-incremental-review-approved
+```
 
 Keep the implementation checkout open in Cursor. In GitLens Search & Compare compare the reviewed
 branch directly with Working Tree, then use the overall Files Changed tree. This includes pending
@@ -44,7 +53,10 @@ both old and new paths or the agreed containing folder. Whole-file approval incl
 edits to those paths; unsaved editor buffers are not filesystem contents.
 
 Already committed contents need only a review checkpoint. Selected pending corrections also need
-an implementation commit; other edits and staging selections must remain intact. Do not run full
+an implementation commit, which requires an explicit developer instruction to commit. Content
+approval alone does not grant that instruction: retain the approval as pending and explain the
+required source commit before running a transfer that would create it. Other edits and staging
+selections must remain intact. Do not run full
 verification merely to copy previously committed approved contents. For implementation corrections,
 choose proportionate intermittent checks and retain actionable failures.
 

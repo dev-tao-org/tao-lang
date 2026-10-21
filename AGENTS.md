@@ -112,10 +112,12 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Git workflow
 
+- Change Git state only when the developer instructs the agent to perform that action. Editing or reviewing code does not by itself authorize staging, unstaging, committing, switching or moving branches, merging, rebasing, stashing, resetting, or restoring files; preserve the developer's index and worktree selections.
+- Before launching a subagent from a branch with relevant uncommitted changes, warn the developer which changes its baseline would omit and establish the intended snapshot. Never automatically stage, commit, stash or copy those changes to prepare a handoff.
 - Land only when explicitly instructed by the developer. A pause or stop revokes authorization until explicitly renewed.
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
-- Always create a new feature branch for your new worktree.
-- Make commits as you implement parts. Run `./agent verify` before committing, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
+- When the developer authorizes creating a worktree, create a new feature branch for it.
+- Commit only when instructed by the developer. Run `./agent verify` before an authorized commit, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
 - Back up committed work to `origin` after meaningful implementation chunks, rather than after every commit; `git-workflow` owns backup pushes and keeping them from triggering CI unless requested.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 - Always compare preview performance from the branch's starting baseline to its final implementation before landing. Use `pipeline-performance` for comparisons and promptly flagging significant changes during development.

@@ -46,7 +46,8 @@ branch pushes through the guarded route are authorized; other publication needs 
 
 `git worktree list` routinely shows fifteen or more checkouts sharing one object store, worked in concurrently by other agents and the Developer.
 
-- Creating a fresh `feat/*` branch for authorized work needs no separate Developer confirmation.
+- Create a fresh `feat/*` branch only when the Developer instructs branch or worktree creation;
+  permission to edit code alone does not authorize changing branches.
   If the sandbox blocks Git metadata writes, use
   `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
   switch, replace an existing branch, or discard dirty work under this authorization.
