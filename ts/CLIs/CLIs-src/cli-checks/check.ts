@@ -102,7 +102,7 @@ export async function workspaceShellSyntax(): Promise<void> {
   }
 }
 
-/** workspaceConformance checks API documentation and exception/comment syntax without a type checker. */
+/** workspaceConformance checks API documentation, source syntax and type-aware style rules. */
 export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   // Formatting and test execution also import this module; load the compiler only for source checks.

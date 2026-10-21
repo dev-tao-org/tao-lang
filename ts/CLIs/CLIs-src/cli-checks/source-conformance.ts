@@ -6,10 +6,12 @@ import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import { functionBody, functionBodyLineCount, multilineStringIssue } from './source-conformance-layout'
+import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
+import { createConformanceProgram } from './source-conformance-program'
 import { sourceSizeDiagnostics } from './source-size'
 
-/** checkSourceConformance checks new TypeScript sources without running tests or loading a type checker. */
+/** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
 export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
@@ -17,10 +19,13 @@ export async function checkSourceConformance(root: string): Promise<void> {
     ...await FileSystem.sourceFiles(root + '/ts'),
     ...(await FileSystem.sourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
   ]
+  const program = createConformanceProgram(root, sources)
+  const checker = program.getTypeChecker()
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
-    const source = await FileSystem.file(filename).text()
-    issues.push(...sourceConformanceIssues(relative, source))
+    const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)
+    const { error } = sourceSizeDiagnostics(relative, file.text)
+    issues.push(...error ? [error] : [], ...new SourceConformanceChecker(relative, file, checker).check())
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
@@ -28,22 +33,21 @@ export async function checkSourceConformance(root: string): Promise<void> {
   }
 }
 
-function sourceConformanceIssues(filename: string, source: string): string[] {
-  const { error } = sourceSizeDiagnostics(filename, source)
-  return [...error ? [error] : [], ...new SourceConformanceChecker(filename, source).check()]
-}
-
 class SourceConformanceChecker {
-  private readonly file: TypeScript.SourceFile
+  private readonly source: string
   private readonly issues: string[] = []
   private readonly publicDocs = new Set<number>()
   private readonly comments = new Map<number, TypeScript.CommentRange>()
   private readonly api: ExportedApiChecker
 
-  constructor(private readonly filename: string, private readonly source: string) {
-    this.file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
+  constructor(
+    private readonly filename: string,
+    private readonly file: TypeScript.SourceFile,
+    private readonly checker: TypeScript.TypeChecker,
+  ) {
+    this.source = file.text
     this.api = new ExportedApiChecker(
-      source,
+      this.source,
       this.file,
       this.publicDocs,
       (position, message) => this.report(position, message),
@@ -67,6 +71,10 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
+    const optionalIssue = optionalAccessIssue(node, this.checker)
+    if (optionalIssue) {
+      this.report(node.getStart(this.file), optionalIssue)
+    }
     const functionIssue = objectFunctionStyleIssue(node, this.source)
     if (functionIssue) {
       this.report(node.getStart(this.file), functionIssue)
