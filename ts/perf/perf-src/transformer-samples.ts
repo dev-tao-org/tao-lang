@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Timings, type TimingSample } from '@shared'
-import { Platform, Repo, Tests } from '@shared/os'
+import { Repo, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
 import { loadModules } from '@workspace/modules/Loader'
@@ -15,7 +15,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   const parser = createParser()
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
-    const timings = new Timings(`process:${Platform.pid}`)
+    const timings = new Timings()
     const document = await parseTransformAndCompile(timings, source, parser, timings)
     const app = document?.root.declarations.find(AST.IsAppDeclaration)
     if (app?.name.value !== 'HelloWorld') {

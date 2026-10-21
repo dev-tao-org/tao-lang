@@ -1,7 +1,7 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, FileSystem, Path, Repo, Tests } from '@shared/os'
 import { projectDependencyOptions } from '@workspace/dependencies/Options'
 import { prepareDependencies } from '@workspace/dependencies/Store'
 import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
@@ -28,7 +28,7 @@ export default registerCommand({
     if (!['parser', 'preview', 'record'].includes(target)) {
       Errors.ThrowUserInput('Available performance targets: parser, formatter, extension, preview, record')
     }
-    const timings = new Timings(`process:${Platform.pid}`)
+    const timings = new Timings()
     await prepareParser(target === 'parser', timings)
     if (target === 'record') {
       const { recordPreviewPerformance } = await import('../../../../perf/perf-src/PreviewHistory')

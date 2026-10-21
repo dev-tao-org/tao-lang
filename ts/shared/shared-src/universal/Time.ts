@@ -1,3 +1,6 @@
+/** clockIdentity identifies this runtime's monotonic clock; distinct identities cannot share relative timestamps. */
+export const clockIdentity = `runtime:${performance.timeOrigin}:${Math.random().toString(36).slice(2)}`
+
 /** nowMs returns a monotonic millisecond reading for duration measurements. */
 export function nowMs(): number {
   return performance.now()

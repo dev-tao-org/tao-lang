@@ -154,6 +154,6 @@ async function loadEntry(entry: string, root: string, dependencies: ProjectDepen
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,
-    new Timings('dependency-preparation'),
+    new Timings(),
   )
 }

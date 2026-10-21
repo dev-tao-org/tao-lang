@@ -5,12 +5,12 @@ import Parser from 'tree-sitter'
 /** createParser creates a session parsing complete source snapshots without reusing prior CSTs.
  *  Each parse returns its own timings by default; callers may supply their request's collector.
  *  Returned CSTs remain caller-owned and are reclaimed by the native binding's garbage collector. */
-export function createParser(initialization = new Timings(`process:${Platform.pid}`)) {
+export function createParser(initialization = new Timings()) {
   const parser = initializeParser(initialization, initialization)
   return {
     initialization: initialization.samples,
-    parse: (source: string, timings = new Timings(`process:${Platform.pid}`)) => ({
-      tree: timings.exec('parser.parse', () => parser.parse(source)),
+    parse: (source: string, timings = new Timings()) => ({
+      tree: Timings.exec(timings, 'parser.parse', () => parser.parse(source)),
       timings: timings.samples,
     }),
   }

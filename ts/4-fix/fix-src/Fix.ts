@@ -11,7 +11,7 @@ export type FixInput = { source: string; tree: Tree; ast: AST.Document }
 export type FixResult = { text: string; edits: readonly SourceEdit[] }
 
 /** fix organizes a complete document before formatting, without requiring name resolution. */
-export function fix(input: FixInput, timings = new Timings('fixer')): FixResult {
+export function fix(input: FixInput, timings = new Timings()): FixResult {
   return fixSource(timings, input)
 }
 

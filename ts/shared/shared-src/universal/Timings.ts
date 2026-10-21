@@ -11,27 +11,28 @@ export type TimingSample = {
 }
 
 /** Timings collects operation spans for one request or bounded measurement run.
- *  Use exec for inline operations; create reusable measured functions at module scope.
+ *  Use Timings.exec for inline operations; create reusable measured functions at module scope.
+ *  Default collectors use the runtime's clock identity; injected clocks require an explicit identity.
  *  Discard the collector with its request; timestamps from different clock domains cannot be subtracted. */
 export class Timings {
   readonly samples: TimingSample[] = []
 
-  constructor(readonly clock: string, private readonly now = Time.nowMs) {}
+  constructor(readonly clock = Time.clockIdentity, private readonly now = Time.nowMs) {}
 
   record(name: string, startMs: number): void {
     this.samples.push({ name, clock: this.clock, startMs, durationMs: this.now() - startMs, status: 'succeeded' })
   }
 
   /** exec measures an inline operation through synchronous completion or promise settlement. */
-  exec<Value>(name: string, action: () => Value): Value {
-    const startMs = this.now()
+  static exec<Value>(timings: Timings, name: string, action: () => Value): Value {
+    const startMs = timings.now()
     return Try(action, {
-      finally: (_thrown, error) => {
-        this.samples.push({
+      finally(_thrown, error) {
+        timings.samples.push({
           name,
-          clock: this.clock,
+          clock: timings.clock,
           startMs,
-          durationMs: this.now() - startMs,
+          durationMs: timings.now() - startMs,
           status: error ? 'failed' : 'succeeded',
         })
       },
@@ -42,6 +43,7 @@ export class Timings {
     name: string,
     action: (...arguments_: Arguments) => Value,
   ): (timings: Timings, ...arguments_: Arguments) => Value {
-    return (timings: Timings, ...arguments_: Arguments): Value => timings.exec(name, () => action(...arguments_))
+    return (timings: Timings, ...arguments_: Arguments): Value =>
+      Timings.exec(timings, name, () => action(...arguments_))
   }
 }

@@ -17,7 +17,7 @@ const failPublish = Timings.measure('publish', async (clock: { now: number }, fa
 Tests.test('inline timings preserve synchronous results and nested operation spans', () => {
   const ticks = [1, 2, 4, 7]
   const timings = new Timings('inline', () => ticks.shift()!)
-  const result = timings.exec('outer', () => timings.exec('inner', () => 42))
+  const result = Timings.exec(timings, 'outer', () => Timings.exec(timings, 'inner', () => 42))
   Tests.expect(result).toBe(42)
   Tests.expect(timings.samples.map(sample => [sample.name, sample.durationMs, sample.status])).toEqual([
     ['inner', 2, 'succeeded'],
@@ -28,7 +28,7 @@ Tests.test('inline timings preserve synchronous results and nested operation spa
 Tests.test('inline timings wait for promise settlement and preserve the original failure', async () => {
   let now = 0
   const timings = new Timings('inline', () => now)
-  const pending = timings.exec('async', async () => {
+  const pending = Timings.exec(timings, 'async', async () => {
     await Promise.resolve()
     now = 5
     return 'done'
@@ -37,7 +37,7 @@ Tests.test('inline timings wait for promise settlement and preserve the original
   Tests.expect(await pending).toBe('done')
   const failure = Try(() => Errors.ThrowUserInput('Inline failure'), { catch: error => error })
   const observed = await Try(() =>
-    timings.exec('failure', async () => {
+    Timings.exec(timings, 'failure', async () => {
       now = 9
       Errors.Throw(failure)
     }), { catch: error => error })
@@ -46,6 +46,16 @@ Tests.test('inline timings wait for promise settlement and preserve the original
     [5, 'succeeded'],
     [4, 'failed'],
   ])
+})
+
+Tests.test('default collectors share their clock identity and retain independent samples', () => {
+  const first = new Timings()
+  const second = new Timings()
+  Tests.expect(first.clock).toBe(second.clock)
+  Tests.expect(first.clock).toMatch(/^runtime:/)
+  Tests.expect(Timings.exec(first, 'parse', () => 42)).toBe(42)
+  Tests.expect(first.samples[0]?.clock).toBe(first.clock)
+  Tests.expect(second.samples).toEqual([])
 })
 
 Tests.test('measured functions start on each invocation and preserve arguments', () => {

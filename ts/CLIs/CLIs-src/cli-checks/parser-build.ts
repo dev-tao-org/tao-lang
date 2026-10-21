@@ -6,7 +6,7 @@ import { nodeGypOptions } from './NodeGyp'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
-export async function prepareParser(force = false, timings = new Timings(`process:${Platform.pid}`)): Promise<void> {
+export async function prepareParser(force = false, timings = new Timings()): Promise<void> {
   await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
 }
 

@@ -14,7 +14,7 @@ export function compile(
     program?: LinkedProgram
     foreignViewPath?: (modulePath: string, authoredPath: string) => string
   },
-  timings = new Timings('compiler'),
+  timings = new Timings(),
 ): string {
   return generate(timings, document, options)
 }

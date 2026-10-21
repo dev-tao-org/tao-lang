@@ -10,7 +10,7 @@ import { summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
 export async function formatterPerformance() {
-  const initialization = new Timings('formatter-initialize')
+  const initialization = new Timings()
   const bytes = await FormatterResources.typeScriptFormatterBytes()
   const typescript = createTypeScriptFormatter(bytes, initialization)
   const fixtures = [
@@ -60,7 +60,7 @@ function sampleFixture(fixture: { source: string; scenario: string }, typescript
   const ast = transform(tree) ?? Errors.ThrowUnexpected('Formatter performance fixture has invalid syntax.')
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
-    const timings = new Timings('formatter-performance')
+    const timings = new Timings()
     format({ source: fixture.source, tree }, timings, { typescript })
     fix({ source: fixture.source, tree, ast }, timings)
     unusedWarnings(ast, timings)

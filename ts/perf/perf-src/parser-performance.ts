@@ -69,7 +69,7 @@ type Sample = TimingSample & { scenario: string }
 async function coldSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
   for (let index = 0; index < 5; index++) {
-    const timings = new Timings(`process:${Platform.pid}`)
+    const timings = new Timings()
     const output = await runParserProcess(timings)
     const child: TimingSample[] = JSON.parse(output)
     samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))

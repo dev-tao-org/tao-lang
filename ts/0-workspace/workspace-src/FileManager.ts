@@ -265,7 +265,7 @@ export class FileManager {
   }
 
   private snapshotInput(source: string | Document, startedAtMs: number): FileManagerInput {
-    const timings = new Timings('workspace:input')
+    const timings = new Timings()
     const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
     const document = source instanceof Document ? source : this.documents.get(path) ?? new Document(path)
     this.documents.set(path, document)

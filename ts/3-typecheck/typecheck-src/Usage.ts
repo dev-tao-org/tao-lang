@@ -12,7 +12,7 @@ export type UsageWarning = {
 }
 
 /** unusedWarnings checks lexical references in a complete AST without loading other modules. */
-export function unusedWarnings(document: AST.Document, timings = new Timings('usage')): UsageWarning[] {
+export function unusedWarnings(document: AST.Document, timings = new Timings()): UsageWarning[] {
   return analyzeUsage(timings, document)
 }
 

@@ -1,5 +1,4 @@
 import { Errors, Switch, Timings } from '@shared'
-import { Platform } from '@shared/os'
 import type Parser from 'tree-sitter'
 import * as AST from './Construction'
 
@@ -7,12 +6,12 @@ import * as AST from './Construction'
  *  Returned semantic nodes and numeric origins do not retain the caller-owned CST. */
 export function transform(
   tree: Parser.Tree,
-  timings = new Timings(`process:${Platform.pid}`),
+  timings = new Timings(),
 ): AST.Document | undefined {
   if (tree.rootNode.hasError) {
     return undefined
   }
-  return timings.exec('transformer.transform', () => ({ root: AST.Construct(tree.rootNode, 'File') }))
+  return Timings.exec(timings, 'transformer.transform', () => ({ root: AST.Construct(tree.rootNode, 'File') }))
 }
 
 /** Construct dispatches a CST node to its stateless semantic transformer. */

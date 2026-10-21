@@ -5,7 +5,7 @@ import { Timings, Try } from '@shared'
 export type EmbeddedFormatter = (source: string, options: EmbeddedOptions) => string | undefined
 
 /** createTypeScriptFormatter initializes one reusable TSX formatter from externally loaded WASM. */
-export function createTypeScriptFormatter(bytes: Uint8Array, timings = new Timings('formatter')) {
+export function createTypeScriptFormatter(bytes: Uint8Array, timings = new Timings()) {
   return initialize(timings, bytes)
 }
 

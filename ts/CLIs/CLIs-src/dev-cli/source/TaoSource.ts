@@ -18,7 +18,7 @@ export async function updateTaoSource(
 ): Promise<void> {
   await prepareParser()
   const parser = createParser()
-  const timings = new Timings('source-tools')
+  const timings = new Timings()
   let source = await FileSystem.readFile(path, 'utf8')
   let { tree } = parser.parse(source, timings)
   if (mode === 'fix') {

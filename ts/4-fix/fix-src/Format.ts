@@ -22,7 +22,7 @@ export type FormatResult = {
 /** format proposes whitespace edits for one parsed Tao source without file access or mutation. */
 export function format(
   input: FormatInput,
-  timings = new Timings('formatter'),
+  timings = new Timings(),
   options: LayoutOptions = {},
 ): FormatResult {
   return formatSource(timings, input, options, timings)

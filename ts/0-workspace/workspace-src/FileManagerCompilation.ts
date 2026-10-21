@@ -171,7 +171,7 @@ export function supersededInput(request: QueuedInput): CompletedInput {
 export function failedInput(request: QueuedInput, error: unknown): CompletedInput {
   const source = request.input.kind === 'source' ? request.input.source : ''
   const version = request.input.kind === 'source' ? request.input.version : undefined
-  const timings = request.input.kind === 'source' ? request.input.timings : new Timings('workspace:input')
+  const timings = request.input.kind === 'source' ? request.input.timings : new Timings()
   return {
     result: failedResult(request.id, error, timings.samples),
     path: inputPath(request.input),
@@ -221,7 +221,7 @@ async function readSource(
   observedAtMs: number,
   read: (path: string, observedAtMs: number) => Promise<SourceSnapshot | UpdateResult> = defaultRead,
 ): Promise<SourceSnapshot | UpdateResult> {
-  const timings = new Timings('workspace:input')
+  const timings = new Timings()
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
   const snapshot = await readWorkspaceSource(timings, path, observedAtMs, read)
   return 'status' in snapshot ? snapshot : { ...snapshot, timings }
@@ -244,7 +244,7 @@ function defaultRead(path: string, observedAtMs: number): Promise<SourceSnapshot
   return FileSystem.readFile(path, 'utf8').then(source => ({
     source,
     observedAtMs,
-    timings: new Timings('workspace:input'),
+    timings: new Timings(),
   }))
 }
 

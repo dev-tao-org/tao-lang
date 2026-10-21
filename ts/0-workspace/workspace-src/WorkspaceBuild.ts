@@ -19,7 +19,7 @@ export async function publishBuild(
     return
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
-  const runtime = await timings.exec('workspace.runtime.prepare', prepareRuntime)
+  const runtime = await Timings.exec(timings, 'workspace.runtime.prepare', prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
   onProgress?.('Publishing changed runtime app files…')
   await publishChanged(timings, path, runtime.appPath, isCurrent)

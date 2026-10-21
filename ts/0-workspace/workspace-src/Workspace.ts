@@ -178,7 +178,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await timings.exec('workspace.publish', () => this.publishCallback(output, isCurrent, timings))
+    await Timings.exec(timings, 'workspace.publish', () => this.publishCallback(output, isCurrent, timings))
     if (!isCurrent()) {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
@@ -204,7 +204,7 @@ class WorkspaceSession {
       return undefined
     }
     progress?.('Resolving source modules and visibility…')
-    await request.timings.exec('dependencies.sources', async () => await this.options.beforeLoad?.())
+    await Timings.exec(request.timings, 'dependencies.sources', async () => await this.options.beforeLoad?.())
     const sources = await loadModules(
       { path: request.path ?? '<memory>', document },
       {
