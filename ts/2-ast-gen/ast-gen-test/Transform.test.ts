@@ -11,7 +11,7 @@ Tests.test(
 
     const tree = createParser().parse(source)
     const result = timings.run(transform, tree)
-    Tests.expect(result?.root).toEqual({
+    Tests.expect(result?.root).toStrictEqual({
       kind: 'File',
       start: 0,
       end: 34,
@@ -21,6 +21,7 @@ Tests.test(
         end: 34,
         name: { kind: 'Name', start: 4, end: 14, value: 'HelloWorld' },
         root: { kind: 'Name', start: 24, end: 32, value: 'RootView' },
+        visibility: undefined,
       }],
     })
     const { root } = result!

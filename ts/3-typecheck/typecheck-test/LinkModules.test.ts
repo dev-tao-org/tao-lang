@@ -191,8 +191,9 @@ function letDefinition(name: string, value: string, visibility?: AST.Visibility)
     start: 0,
     end: 0,
     name: identifier(name),
+    type: undefined,
     value: { kind: 'TextLiteral', start: 0, end: 0, value },
-    ...(visibility ? { visibility } : {}),
+    visibility,
   }
 }
 
@@ -202,8 +203,9 @@ function letReference(name: string, value: string, visibility?: AST.Visibility):
     start: 0,
     end: 0,
     name: identifier(name),
+    type: undefined,
     value: identifier(value),
-    ...(visibility ? { visibility } : {}),
+    visibility,
   }
 }
 
@@ -225,6 +227,7 @@ function viewRender(target: string, children: AST.ViewRender['children'] = []): 
     kind: 'ViewRender',
     start: 0,
     end: 0,
+    tag: undefined,
     target: identifier(target),
     arguments: [],
     children,
@@ -241,18 +244,19 @@ function useNamed(target: string, alias?: string): AST.UseStatement {
     start: 0,
     end: 0,
     all: false,
+    from: undefined,
     imports: [{
       kind: 'NamedImport',
       start: 0,
       end: 0,
       target: identifier(target),
-      ...(alias ? { alias: identifier(alias) } : {}),
+      alias: alias ? identifier(alias) : undefined,
     }],
   }
 }
 
 function useAll(): AST.UseStatement {
-  return { kind: 'UseStatement', start: 0, end: 0, all: true, imports: [] }
+  return { kind: 'UseStatement', start: 0, end: 0, all: true, imports: [], from: undefined }
 }
 
 function usePackage(path: string, alias?: string): AST.UsePackageStatement {
@@ -261,7 +265,7 @@ function usePackage(path: string, alias?: string): AST.UsePackageStatement {
     start: 0,
     end: 0,
     from: { kind: 'ImportPath', start: 0, end: 0, value: path },
-    ...(alias ? { alias: identifier(alias) } : {}),
+    alias: alias ? identifier(alias) : undefined,
   }
 }
 

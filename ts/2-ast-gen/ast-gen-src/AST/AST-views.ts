@@ -4,7 +4,7 @@ import * as AST from '../AST'
 /** ViewDeclaration defines parameters and one render body. */
 export type ViewDeclaration = AST.Semantic<'ViewDeclaration', {
   name: AST.Name
-  visibility?: AST.Visibility
+  visibility: AST.Visibility | undefined
   parameters: readonly AST.Parameter[]
   definitions: readonly AST.LetDefinition[]
   render: ViewRender | Injection | ForeignView
@@ -15,7 +15,7 @@ export type ForeignView = AST.Semantic<'ForeignView', { path: AST.ImportPath }>
 
 /** ViewRender invokes a view with positional arguments and child renders. */
 export type ViewRender = AST.Semantic<'ViewRender', {
-  tag?: AST.RenderTag
+  tag: AST.RenderTag | undefined
   target: AST.Name
   arguments: readonly AST.Expression[]
   children: readonly (ViewRender | AST.LetDefinition)[]
@@ -43,7 +43,7 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): ViewDeclaration {
     definitions: cst.namedChildren.filter(child => child.type === 'LetDefinition')
       .map(child => AST.Construct(child, 'LetDefinition')),
     render: viewBody(cst),
-    ...(visibility ? { visibility } : {}),
+    visibility,
   })
 }
 
@@ -57,7 +57,7 @@ export function ViewRender(cst: Parser.SyntaxNode): ViewRender {
   const argumentsNode = cst.childForFieldName('argumentList')
   const tag = cst.childForFieldName('tag')
   return AST.Node(cst, 'ViewRender', {
-    ...(tag ? { tag: AST.RenderTag(tag) } : {}),
+    tag: tag ? AST.RenderTag(tag) : undefined,
     target: AST.Field(cst, 'view', 'Name'),
     arguments: argumentsNode ? AST.List(argumentsNode, ['Name', 'TextLiteral']) : [],
     children: cst.childrenForFieldName('children').map(child => AST.Construct(child, ['ViewRender', 'LetDefinition'])),

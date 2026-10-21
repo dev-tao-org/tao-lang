@@ -4,23 +4,23 @@ import * as AST from '../AST'
 /** UseStatement imports declarations from an optional path or imports every declaration from one path. */
 export type UseStatement = AST.Semantic<'UseStatement', {
   imports: readonly NamedImport[]
-  from?: ImportPath
+  from: ImportPath | undefined
   all: boolean
 }>
 
 /** UsePackageStatement imports a package under an optional namespace alias. */
-export type UsePackageStatement = AST.Semantic<'UsePackageStatement', { from: ImportPath; alias?: AST.Name }>
+export type UsePackageStatement = AST.Semantic<'UsePackageStatement', { from: ImportPath; alias: AST.Name | undefined }>
 
 /** RequiresDeclaration records one authored package or file dependency. */
 export type RequiresDeclaration = AST.Semantic<'RequiresDeclaration', {
   provider: 'github' | 'file' | 'npm' | 'bundled'
   identifier: string
-  version?: string
-  alias?: AST.Name
+  version: string | undefined
+  alias: AST.Name | undefined
 }>
 
 /** NamedImport selects one declaration with an optional local alias. */
-export type NamedImport = AST.Semantic<'NamedImport', { target: AST.Name; alias?: AST.Name }>
+export type NamedImport = AST.Semantic<'NamedImport', { target: AST.Name; alias: AST.Name | undefined }>
 
 /** ImportPath preserves an authored module path. */
 export type ImportPath = AST.Semantic<'ImportPath', { value: string }>
@@ -30,7 +30,7 @@ export function UseStatement(cst: Parser.SyntaxNode): UseStatement {
   const from = cst.childForFieldName('from')
   return AST.Node(cst, 'UseStatement', {
     imports: cst.childrenForFieldName('imports').map(child => AST.Construct(child, 'NamedImport')),
-    ...(from ? { from: AST.Construct(from, 'ImportPath') } : {}),
+    from: from ? AST.Construct(from, 'ImportPath') : undefined,
     all: cst.childForFieldName('all') !== null,
   })
 }
@@ -40,7 +40,7 @@ export function UsePackageStatement(cst: Parser.SyntaxNode): UsePackageStatement
   const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'UsePackageStatement', {
     from: AST.Field(cst, 'from', 'ImportPath'),
-    ...(alias ? { alias: AST.Name(alias) } : {}),
+    alias: alias ? AST.Name(alias) : undefined,
   })
 }
 
@@ -51,8 +51,8 @@ export function RequiresDeclaration(cst: Parser.SyntaxNode): RequiresDeclaration
   return AST.Node(cst, 'RequiresDeclaration', {
     provider: AST.RequiredField(cst, 'provider').text as RequiresDeclaration['provider'],
     identifier: AST.RequiredField(cst, 'identifier').text,
-    ...(version ? { version: version.text } : {}),
-    ...(alias ? { alias: AST.Name(alias) } : {}),
+    version: version?.text,
+    alias: alias ? AST.Name(alias) : undefined,
   })
 }
 
@@ -61,7 +61,7 @@ export function NamedImport(cst: Parser.SyntaxNode): NamedImport {
   const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'NamedImport', {
     target: AST.Field(cst, 'target', 'Name'),
-    ...(alias ? { alias: AST.Name(alias) } : {}),
+    alias: alias ? AST.Name(alias) : undefined,
   })
 }
 

@@ -8,7 +8,7 @@ export type File = AST.Semantic<'File', { declarations: readonly AST.Declaration
 export type AppDeclaration = AST.Semantic<'AppDeclaration', {
   name: AST.Name
   root: AST.Name
-  visibility?: AST.Visibility
+  visibility: AST.Visibility | undefined
 }>
 
 /** Parameter preserves an authored parameter name and unresolved type. */
@@ -17,9 +17,9 @@ export type Parameter = AST.Semantic<'Parameter', { name: AST.Name; type: AST.Na
 /** LetDefinition binds a value in its containing lexical scope. */
 export type LetDefinition = AST.Semantic<'LetDefinition', {
   name: AST.Name
-  type?: AST.Name
+  type: AST.Name | undefined
   value: AST.Expression
-  visibility?: AST.Visibility
+  visibility: AST.Visibility | undefined
 }>
 
 /** File constructs the semantic declaration list for one source file. */
@@ -43,7 +43,7 @@ export function AppDeclaration(cst: Parser.SyntaxNode): AppDeclaration {
   return AST.Node(cst, 'AppDeclaration', {
     name: AST.Field(cst, 'name', 'Name'),
     root: AST.Field(AST.RequiredChild(cst, 'RootDeclaration'), 'view', 'Name'),
-    ...(visibility ? { visibility } : {}),
+    visibility,
   })
 }
 
@@ -58,8 +58,8 @@ export function LetDefinition(cst: Parser.SyntaxNode): LetDefinition {
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'LetDefinition', {
     name: AST.Field(cst, 'name', 'Name'),
-    ...(type ? { type: AST.Name(type) } : {}),
+    type: type ? AST.Name(type) : undefined,
     value: AST.Field(cst, 'value', ['Name', 'TextLiteral']),
-    ...(visibility ? { visibility } : {}),
+    visibility,
   })
 }

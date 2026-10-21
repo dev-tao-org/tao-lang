@@ -6,14 +6,14 @@ export type RenderTag = AST.Semantic<'RenderTag', { value: string }>
 
 /** TestsDeclaration groups app journeys under an optional label. */
 export type TestsDeclaration = AST.Semantic<'TestsDeclaration', {
-  label?: AST.TextLiteral
+  label: AST.TextLiteral | undefined
   tests: readonly TestDeclaration[]
 }>
 
 /** TestDeclaration contains one isolated app journey. */
 export type TestDeclaration = AST.Semantic<
   'TestDeclaration',
-  { label?: AST.TextLiteral; steps: readonly AST.TestStep[] }
+  { label: AST.TextLiteral | undefined; steps: readonly AST.TestStep[] }
 >
 
 /** RunStatement launches an app declaration in a fresh test session. */
@@ -27,7 +27,7 @@ export type TypeStatement = AST.Semantic<'TypeStatement', { target: RenderTag; v
 
 /** ExpectStatement groups visible assertions under an optional tagged render. */
 export type ExpectStatement = AST.Semantic<'ExpectStatement', {
-  target?: RenderTag
+  target: RenderTag | undefined
   expectations: readonly AST.Expectation[]
 }>
 
@@ -35,7 +35,10 @@ export type ExpectStatement = AST.Semantic<'ExpectStatement', {
 export type TextExpectation = AST.Semantic<'TextExpectation', { value: AST.TextLiteral }>
 
 /** InputExpectation checks a tagged input's current value. */
-export type InputExpectation = AST.Semantic<'InputExpectation', { target?: RenderTag; value: AST.TextLiteral }>
+export type InputExpectation = AST.Semantic<'InputExpectation', {
+  target: RenderTag | undefined
+  value: AST.TextLiteral
+}>
 
 /** TestsDeclaration constructs a labeled group of app journeys. */
 export function TestsDeclaration(cst: Parser.SyntaxNode): TestsDeclaration {
