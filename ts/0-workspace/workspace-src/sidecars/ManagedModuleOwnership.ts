@@ -25,7 +25,7 @@ export async function validateModuleOwnership(
   const owner = parseOwner(ownerText)
   if (!owner) {
     if (!repair) {
-      Errors.ThrowUserInput(`Module metadata ownership marker needs repair: ${marker}. Run tao prepare --repair.`)
+      Errors.ThrowUserInput(`Module metadata ownership marker needs repair: ${marker}. Run tao setup --repair.`)
     }
     await validateCorruptMarkerRecovery(files, profile, projectRoot, marker)
     return undefined
@@ -120,7 +120,7 @@ async function validateCorruptMarkerRecovery(
   Errors.ThrowUserInput(
     `Module ownership marker is corrupt and Tao cannot prove that the generated metadata belongs to this profile: ${marker}. `
       + `Preserve this marker and any authored package.json or tsconfig.json. Restore a valid marker backup, or inspect those files and `
-      + `the node_modules links; move authored files aside before removing only files confirmed as Tao-generated, then run tao prepare again.`,
+      + `the node_modules links; move authored files aside before removing only files confirmed as Tao-generated, then run tao setup again.`,
   )
 }
 
@@ -176,7 +176,7 @@ async function validateGeneratedFiles(
     const current = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
     if (current === undefined || hash === undefined || hash !== Platform.hashText(current)) {
       Errors.ThrowUserInput(
-        `Owned module metadata drifted at ${path}; preserve edits or run tao prepare --repair before changing requirements. `
+        `Owned module metadata drifted at ${path}; preserve edits or run tao setup --repair before changing requirements. `
           + `Owner marker: ${marker}`,
       )
     }

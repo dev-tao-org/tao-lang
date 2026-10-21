@@ -1,7 +1,10 @@
 import { IO, type OutputChannel, runCommand } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
+import { discoverProject } from '@workspace/projects/Projects'
+import { execute } from '@workspace/Workflow'
 import { withTestTimings } from '../../cli-checks/slow-tests'
+import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { findTaoTestFiles } from './TaoTestDiscovery'
 import {
   assertTestRunActive,
@@ -35,14 +38,21 @@ export async function runTaoTestFiles(
   paths: readonly string[],
   signal?: ReturnType<typeof Http.createAbortController>['signal'],
 ): Promise<{ passed: number; failed: number }> {
-  const { runAppTests } = await import('@workspace/testing/AppTests')
   const progress = (message: string) => IO.progress(message)
   const results = await runFilesSequentially(paths, signal, async file => {
     const relativePath = Path.relative(Repo.getWorkspaceRoot(), file)
     IO.progress(`Testing ${relativePath}…`)
     let passed = 0
     let failed = 0
-    for (const result of await runAppTests(file, HeadlessBrowser.openTestBrowser, progress, signal)) {
+    for (
+      const result of await execute({
+        kind: 'app-tests',
+        entry: file,
+        openBrowser: HeadlessBrowser.openTestBrowser,
+        onProgress: progress,
+        signal,
+      }, workflowUI(false, signal))
+    ) {
       const location = `${relativePath}:${result.line}`
       IO.print(
         `${result.status === 'passed' ? 'PASS' : 'FAIL'} ${result.label} (${location}, ${
@@ -78,7 +88,7 @@ async function executeTestPlan(
   const taoChannels: OutputChannel[] = []
   const operations = {
     typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal, workerEnvironment),
-    tao: () => runTaoTests(plan, taoChannels, signal, workerEnvironment),
+    tao: () => runTaoTests(plan, taoChannels, signal, workerEnvironment, options.yes),
   }
   const outcomes = await executeTestSections(plan, operations, signal)
   typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
@@ -135,11 +145,12 @@ async function runTaoTests(
   channels: OutputChannel[],
   signal: TestRunSignal,
   workerEnvironment: Record<string, string>,
+  yes?: boolean,
 ): Promise<void> {
   if (!plan.tao) {
     return
   }
-  await Try(() => executeTaoTests(plan, channels, signal, workerEnvironment), {
+  await Try(() => executeTaoTests(plan, channels, signal, workerEnvironment, yes), {
     catch(error) {
       channels.forEach((channel, index) => {
         channel.finish(error instanceof TaoWorkerFailure && !error.workerFailures.includes(index) ? 'passed' : 'failed')
@@ -154,6 +165,7 @@ async function executeTaoTests(
   channels: OutputChannel[],
   signal: TestRunSignal,
   workerEnvironment: Record<string, string>,
+  yes?: boolean,
 ): Promise<void> {
   if (!plan.tao) {
     return
@@ -162,6 +174,11 @@ async function executeTaoTests(
   assertTestRunActive(signal)
   if (files.length === 0) {
     Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
+  }
+  for (const entry of files) {
+    if (await discoverProject(entry)) {
+      await execute({ kind: 'setup', entry, for: 'app-tests' }, workflowUI(yes, signal))
+    }
   }
   channels.push(...Array.from(
     { length: Math.min(files.length, plan.tao.workers) },

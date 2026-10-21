@@ -19,6 +19,9 @@ export default registerCommand({
     description: 'Warn for TypeScript tests exceeding this duration in seconds.',
     defaultValue: '0.075',
   }, {
+    flags: '--yes',
+    description: 'Authorize required app dependency setup.',
+  }, {
     flags: '--serial',
     description: 'Run TypeScript then Tao tests with one worker each.',
   }, {
@@ -27,7 +30,7 @@ export default registerCommand({
   }],
   async action(target?: string, options: { slow?: string } & TestExecutionOptions = {}) {
     const slowSeconds = parseSlowTestSeconds(options.slow)
-    const execution = { serial: options.serial, parallel: options.parallel }
+    const execution = { serial: options.serial, parallel: options.parallel, yes: options.yes }
     planTestExecution(execution)
     if (target?.endsWith('.tao')) {
       const path = Repo.resolvePath(target)

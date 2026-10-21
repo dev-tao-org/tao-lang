@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import { Http } from '@shared/os'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
-export type TestExecutionOptions = { serial?: boolean; parallel?: string | boolean }
+export type TestExecutionOptions = { serial?: boolean; parallel?: string | boolean; yes?: boolean }
 
 /** TestPlan describes the selected suites and worker budget for one test run. */
 export type TestPlan = {

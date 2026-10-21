@@ -35,6 +35,8 @@ export type WorkspaceOptions = {
   watch?: FileManagerOptions['watch']
   schedule?: FileManagerOptions['schedule']
   resolveProject?: ModuleLoadOptions['resolveProject']
+  observeProjectSources?: ModuleLoadOptions['observeProjectSources']
+  includeModuleRequirements?: boolean
   beforeLoad?: () => Promise<void>
   watchDirectories?: readonly string[]
   beforeCompile?: (program: LinkedProgram) => Promise<
@@ -68,7 +70,14 @@ export type UpdateResult =
     timings: TimingSample[]
     stages: PipelineStages
   }
-  | { status: 'failed'; revision: string; error: string; timings: TimingSample[]; stages: PipelineStages }
+  | {
+    status: 'failed'
+    revision: string
+    error: string
+    setupRequired?: boolean
+    timings: TimingSample[]
+    stages: PipelineStages
+  }
 
 /** PipelineStages names downstream passes that are explicitly skipped by workspace compilation. */
 export type PipelineStages = {
@@ -215,6 +224,8 @@ class WorkspaceSession {
       {
         directory: this.directory,
         resolveProject: (importer, alias) => this.resolveProject(importer, alias),
+        observeProjectSources: this.options.observeProjectSources,
+        includeModuleRequirements: this.options.includeModuleRequirements,
       },
       this.parser,
       request.timings,

@@ -1,6 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
+import type { SourceModule } from '@typecheck/Modules'
 import { projectDependencyOptions } from '../workspace-src/dependencies/Options'
 import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
@@ -50,21 +51,40 @@ Tests.test('active dependency graphs require restart when authored requirements 
     const dependencies = new ProjectDependencies(root, options)
     await dependencies.refresh()
     await dependencies.refresh()
+    await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'local')
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
 
     requirements = [fileRequirement('./second')]
-    await Tests.rejects(dependencies.refresh(), /Dependency graph changed\. Run tao prepare, then restart preview\./)
+    Tests.expect(() => dependencies.observeProjectSources(root, parsed(root, requirements)))
+      .toThrow(/Dependency declarations changed/)
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
     Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'local')).toEqual({ root: first })
 
     requirements = [fileRequirement('./first')]
-    await dependencies.refresh()
+    dependencies.observeProjectSources(root, parsed(root, requirements))
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
+    await FileSystem.rm(Path.join(root, '.tao/store/dependencies.lock.json'))
+    await Tests.rejects(dependencies.refresh(), /missing; restore the exact durable lock/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
 function fileRequirement(identifier: string): DependencyRequirement {
-  return { provider: 'file', identifier, version: '*', alias: 'local' }
+  return { provider: 'file', identifier, version: 'live', alias: 'local' }
+}
+
+function parsed(root: string, requirements: DependencyRequirement[]): Pick<SourceModule, 'path' | 'document'>[] {
+  return [{
+    path: Path.join(root, 'Main.tao'),
+    document: {
+      root: {
+        declarations: requirements.map(item => ({
+          kind: 'RequiresDeclaration',
+          ...item,
+          alias: { value: item.alias },
+        })),
+      },
+    },
+  }] as unknown as Pick<SourceModule, 'path' | 'document'>[]
 }
 
 async function createProject(path: string): Promise<void> {

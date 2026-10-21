@@ -15,7 +15,7 @@ export async function readProjectRequirements(projectRoot: string): Promise<Depe
   const requirements = (await Promise.all(paths.map(async path => {
     return readRequirementsFromSource(await FileSystem.readFile(path, 'utf8'), path)
   }))).flat()
-  validateAliases(requirements)
+  validateSourceRequirements(requirements)
   return requirements
 }
 
@@ -30,6 +30,26 @@ export function validateRequirementPlacement(
   }
   if (declarations.some(isSourceRequirement)) {
     Errors.ThrowUserInput(`Source requirement declarations belong in project-root Tao files: ${sourcePath}.`)
+  }
+}
+
+/** sourceRequirements reads complete declarations already parsed by module resolution. */
+export function sourceRequirements(declarations: readonly AST.Declaration[], path: string): DependencyRequirement[] {
+  return declarations.filter(isSourceRequirement).map(declaration => requirementFromDeclaration(declaration, path))
+}
+
+/** validateSourceRequirements rejects duplicate aliases and overrides of the bundled Tao project. */
+export function validateSourceRequirements(requirements: DependencyRequirement[]): void {
+  const aliases = new Set<string>()
+  for (const requirement of requirements) {
+    const alias = requirement.alias ?? defaultSourceAlias(requirement)
+    if (alias === 'tao' && (requirement.provider !== 'bundled' || requirement.identifier !== 'tao')) {
+      Errors.ThrowUserInput('Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.')
+    }
+    if (aliases.has(alias)) {
+      Errors.ThrowUserInput(`Dependency alias ${alias} is declared more than once.`)
+    }
+    aliases.add(alias)
   }
 }
 
@@ -77,17 +97,6 @@ function requirementFromDeclaration(
 
 function defaultVersion(provider: Exclude<DependencyRequirement['provider'], 'github'>): string {
   return provider === 'file' ? 'live' : 'bundled'
-}
-
-function validateAliases(requirements: DependencyRequirement[]): void {
-  const aliases = new Set<string>()
-  for (const requirement of requirements) {
-    const alias = requirement.alias ?? defaultSourceAlias(requirement)
-    if (aliases.has(alias)) {
-      Errors.ThrowUserInput(`Dependency alias ${alias} is declared more than once.`)
-    }
-    aliases.add(alias)
-  }
 }
 
 const parser = createParser()

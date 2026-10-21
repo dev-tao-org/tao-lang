@@ -18,6 +18,11 @@ export async function readModuleRequirements(
   return requirements
 }
 
+/** moduleRequirements reads exact npm declarations from an already parsed reachable source. */
+export function moduleRequirements(declarations: readonly AST.Declaration[], path: string): ManagedModuleRequirement[] {
+  return declarations.filter(isNpmRequirement).map(declaration => moduleRequirement(declaration, path))
+}
+
 async function readFileRequirements(path: string, projectRoot: string): Promise<ManagedModuleRequirement[]> {
   const source = await FileSystem.readFile(path, 'utf8')
   const cached = parsedFiles.get(path)

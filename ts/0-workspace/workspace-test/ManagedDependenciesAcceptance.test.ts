@@ -2,13 +2,14 @@ import { Errors, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Http, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
-import { managedModulesInput, prepareProject } from '../workspace-src/ProjectPreparation'
+import { inspectProjectPreparation, managedModulesInput, prepareProject } from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 import { prepareSidecarPipeline } from '../workspace-src/SidecarPipeline'
 import type { BunExecutor } from '../workspace-src/sidecars/ManagedModules'
 import { generatedModuleFiles, readManagedModules } from '../workspace-src/sidecars/ManagedModules'
+import { openAutomaticWorkspace } from './managed-fixtures/AutomaticWorkflow'
 
 const runtimePins = { react: '0.0.0-tao-fixture' }
 
@@ -24,20 +25,15 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
     await Try(async () => {
       const registry = `http://127.0.0.1:${server.port}`
       await expectInstallRetry(entry, root)
-      await prepareProject(entry, {
-        executor: bunExecutor(root, registry),
-        runtimePins,
-      })
-      await verifyInstalledGraph(app, ui, artifacts, registry)
       const published: string[] = []
-      const workspace = await openProjectWorkspace(entry, {
-        id: 'managed-acceptance',
-        async publish(output) {
-          published.push(output.code)
-        },
-        acquireLease: async () => () => {},
-        pipelineServices: pipelineServices(),
-      })
+      const workspace = await openAutomaticWorkspace(
+        entry,
+        published,
+        bunExecutor(root, registry),
+        runtimePins,
+        pipelineServices(),
+      )
+      await verifyInstalledGraph(app, ui, artifacts, registry)
       workspaceHandles.push(workspace)
       await verifyCompiledSidecar(workspace, entry, ui, published)
       await verifyRuntimeConflictPreservesPreview(workspace, entry, ui, published)
@@ -67,6 +63,7 @@ async function createFixtureProjects(root: string): Promise<{ app: string; ui: s
   await FileSystem.cp(Path.join(fixtures, 'app'), app, { recursive: true })
   await FileSystem.cp(Path.join(fixtures, 'ui'), ui, { recursive: true })
   await FileSystem.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
+  await FileSystem.writeFile(Path.join(app, 'Unused.tao'), 'requires github:unused/project version v1 as unused\n')
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
 
@@ -229,7 +226,7 @@ async function verifyCompiledSidecar(
   const initial = await workspace.files.openFile(entry)
   const result = initial.status === 'published' ? 'published' : 'error' in initial ? initial.error : initial.status
   Tests.expect(result).toBe('published')
-  Tests.expect(published).toHaveLength(1)
+  Tests.expect(published).toHaveLength(2)
   Tests.expect(published[0]).toContain('foreign-views')
   Tests.expect(FileSystem.resolveModule('react', Path.join(ui, '@ui'))).toContain('node_modules/react')
   const importPath = /import\s+\{\s*Widget as _taoForeignView\d+\s*\}\s+from\s+("(?:[^"\\]|\\.)*")/.exec(published[0]!)
@@ -286,9 +283,10 @@ async function verifyLastGoodSurvivesDrift(
   const moduleConfig = Path.join(ui, '@ui/tsconfig.json')
   await Files.withWritableFile(moduleConfig, file => file.write('{ drifted }\n'))
   const driftFailure = await workspace.files.openFile(entry)
-  Tests.expect(driftFailure.status).toBe('failed')
-  Tests.expect(workspace.lastGoodRevision).toBe(repaired)
-  Tests.expect(published).toHaveLength(publishedCount)
+  Tests.expect(driftFailure.status).toBe('published')
+  Tests.expect(workspace.lastGoodRevision).not.toBe(repaired)
+  Tests.expect(published).toHaveLength(publishedCount + 1)
+  await Tests.rejects(inspectProjectPreparation(entry, { runtimePins }), /drifted|Generated dependency files changed/)
 }
 
 async function verifyRuntimeConflictPreservesPreview(

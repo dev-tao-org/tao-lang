@@ -1,6 +1,7 @@
 import { Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
 import { Document } from './Document'
+import { isSetupRequired } from './SetupRequired'
 import type { UpdateResult } from './Workspace'
 
 /** PipelineWatchDirectories tracks the replaceable authored and generated roots of a preview pipeline. */
@@ -191,6 +192,7 @@ export function failedResult(id: number, error: unknown, timings: Timings['sampl
     status: 'failed',
     revision: `r${id}`,
     error: String(error),
+    setupRequired: isSetupRequired(error),
     timings,
     stages: skippedStages(),
   }

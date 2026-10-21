@@ -16,7 +16,7 @@ Tests.test('a prepared graph is validated once and reused for later source edits
   const first = await pipeline.beforeCompile(program('first source', '1.0.0'))
   const second = await pipeline.beforeCompile(program('second source', '1.0.0'))
 
-  Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'input', 'drift', 'sidecars'])
+  Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'sidecars'])
   Tests.expect(second.snapshotDirectories).toEqual(first.snapshotDirectories)
   Tests.expect(runtimeOptions.dependencyDirectory).toBe('/profile/node_modules')
   Tests.expect(runtimeOptions.watchFolders).toEqual(['/base', '/profile', '/session/foreign-views'])
@@ -30,7 +30,7 @@ Tests.test('a changed dependency graph requests preview restart and retains the 
 
   await Tests.rejects(
     pipeline.beforeCompile(program('changed graph', '2.0.0')),
-    /Dependency graph changed\. Run tao prepare, then restart preview\.(?! A native rebuild)/,
+    /Dependency graph changed\. Setup and preview restart are required\.(?! A native rebuild)/,
   )
   Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'input'])
 })
@@ -41,17 +41,17 @@ Tests.test('a changed graph with native packages calls out the native rebuild', 
 
   await Tests.rejects(
     pipeline.beforeCompile(program('changed graph', '2.0.0')),
-    /Dependency graph changed\. Run tao prepare, then restart preview\. A native rebuild is also required\./,
+    /Dependency graph changed\. Setup and preview restart are required\. A native rebuild is also required\./,
   )
 })
 
-Tests.test('generated-file drift on a later compile blocks the new preview', async () => {
+Tests.test('ordinary source edits do not inspect generated setup files again', async () => {
   const events: string[] = []
   const pipeline = createProjectPipeline('/project', '/session', {}, fakeServices(events, 2))
   await pipeline.beforeCompile(program('first source', '1.0.0'))
 
-  await Tests.rejects(pipeline.beforeCompile(program('edited source', '1.0.0')), /Generated dependency files changed/)
-  Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'input', 'drift'])
+  await pipeline.beforeCompile(program('edited source', '1.0.0'))
+  Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'sidecars'])
 })
 
 function fakeServices(
@@ -89,7 +89,7 @@ function fakeServices(
       events.push('drift')
       driftCount++
       return driftCount === driftOnCall
-        ? [{ path: '/project/tsconfig.json', owner: '/project', repair: 'tao prepare --repair' }]
+        ? [{ path: '/project/tsconfig.json', owner: '/project', repair: 'tao setup --repair' }]
         : []
     },
     async prepareSidecars() {
@@ -110,7 +110,14 @@ function program(source: string, requirement: string): LinkedProgram {
     entry: '/project/main.tao',
     modules: [{
       path: '/project/main.tao',
-      document: { root: { declarations: [{ kind: 'ViewDeclaration', source }] } },
+      document: {
+        root: {
+          declarations: [
+            { kind: 'ViewDeclaration', source, render: { kind: 'RenderView' } },
+            { kind: 'RequiresDeclaration', provider: 'npm', identifier: 'dep', version: requirement },
+          ],
+        },
+      },
       bindings: [],
     }],
     definitions: [],

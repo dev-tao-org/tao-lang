@@ -2,7 +2,8 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { initializeProject } from '@workspace/projects/Projects'
 import type { BunExecutor } from '@workspace/sidecars/ManagedModules'
-import { runSidecarTests, withProjectSessions } from '../tao-cli/ProjectCommand'
+import { runSidecarTests } from '@workspace/testing/SidecarTests'
+import { withProjectSessions } from '../tao-cli/ProjectCommand'
 
 Tests.test('project command sessions acquire distinct projects in stable order and release all leases', async () => {
   const first = tempProject('first')

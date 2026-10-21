@@ -70,7 +70,7 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
 /** validateTypeScriptDefaults rejects changed compiler defaults before invoking module tools. */
 export async function validateTypeScriptDefaults(projectRoot: string): Promise<void> {
   if (await typescriptDefaultsDrift(projectRoot).then(items => items.length > 0)) {
-    Errors.ThrowUserInput(`TypeScript defaults drifted. Repair with: tao prepare --repair.`)
+    Errors.ThrowUserInput(`TypeScript defaults drifted. Repair with: tao setup --repair.`)
   }
 }
 
@@ -91,7 +91,7 @@ export async function validateManagedManifest(
     !await FileSystem.exists(path)
     || await FileSystem.readFile(path, 'utf8') !== `${JSON.stringify(expected, null, 2)}\n`
   ) {
-    Errors.ThrowUserInput(`Managed npm manifest drifted. Repair with: tao prepare --repair.`)
+    Errors.ThrowUserInput(`Managed npm manifest drifted. Repair with: tao setup --repair.`)
   }
 }
 
@@ -115,7 +115,7 @@ export async function typescriptDefaultsDrift(
     : [{
       path: current === typeScriptDefaults ? marker : path,
       owner: 'project runtime policy',
-      repair: 'tao prepare --repair',
+      repair: 'tao setup --repair',
     }]
 }
 
@@ -151,7 +151,7 @@ async function moduleDrift(
   const drift = [] as { path: string; owner: string; repair: string }[]
   for (const [path, expected] of files) {
     if (!await FileSystem.exists(path) || await FileSystem.readFile(path, 'utf8') !== expected) {
-      drift.push({ path, owner: requirements[0]?.origin ?? 'runtime policy', repair: 'tao prepare --repair' })
+      drift.push({ path, owner: requirements[0]?.origin ?? 'runtime policy', repair: 'tao setup --repair' })
     }
   }
   for (const name of Object.keys(merged)) {
@@ -161,7 +161,7 @@ async function moduleDrift(
       drift.push({
         path,
         owner: requirements.find(item => item.name === name)?.origin ?? 'runtime policy',
-        repair: 'tao prepare --repair',
+        repair: 'tao setup --repair',
       })
     }
   }
@@ -169,7 +169,7 @@ async function moduleDrift(
     drift.push({
       path: Path.join(directory, '.gitignore'),
       owner: requirements[0]?.origin ?? 'runtime policy',
-      repair: 'tao prepare --repair',
+      repair: 'tao setup --repair',
     })
   }
   return drift

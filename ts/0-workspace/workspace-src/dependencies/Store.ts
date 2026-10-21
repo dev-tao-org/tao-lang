@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
+import { requireSetup } from '../SetupRequired'
 import {
   dependencyLockPath,
   materializeLocations,
@@ -98,6 +99,44 @@ export async function prepareDependencies(
     await writeDependencyLock(path, result, projectRoot)
     return result
   }, { finally: () => lock.release() })
+}
+
+/** prepareSourceDependency materializes only an alias reached by entry resolution, retaining existing pins. */
+export async function prepareSourceDependency(
+  projectRoot: string,
+  owner: string,
+  alias: string,
+  options: DependencyStoreOptions,
+): Promise<{ root: string }> {
+  const requirements = await options.readRequirements(owner)
+  const requirement = requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
+    ?? Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
+  const path = dependencyLockPath(projectRoot)
+  const previous = materializeLocations(await readDependencyLock(path), projectRoot, options.bundledProjects)
+    ?? { version: 1 as const, roots: {}, sources: {} }
+  const identity = sourceIdentity(requirement, owner, projectRoot)
+  const source = await resolveSource(
+    requirement,
+    identity,
+    projectRoot,
+    owner,
+    previous.sources[identity],
+    false,
+    options,
+  )
+  const result = {
+    ...previous,
+    roots: Path.resolve(owner) === Path.resolve(projectRoot)
+      ? { ...previous.roots, [alias]: `${identity}@${requirement.version}` }
+      : previous.roots,
+    sources: {
+      ...previous.sources,
+      [identity]: { ...source, requirements: await options.readRequirements(source.location) },
+    },
+  }
+  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await writeDependencyLock(path, result, projectRoot)
+  return { root: source.location }
 }
 
 function rootIdentity(lock: DependencyLock, alias: string): string | undefined {
@@ -210,5 +249,5 @@ function normalizeRequirements(requirements: DependencyRequirement[]): string[] 
 }
 
 function preparationNeeded(message: string): never {
-  Errors.ThrowUserInput(message)
+  return requireSetup(message)
 }
