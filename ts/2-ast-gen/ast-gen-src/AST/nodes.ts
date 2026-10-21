@@ -1,4 +1,34 @@
+import type * as CST from '@cst'
 import type * as AST from '../AST'
+
+/** Node represents a semantic node without retaining its source CST. */
+export type Node =
+  | AST.File
+  | AST.Declaration
+  | AST.NamedImport
+  | AST.ImportPath
+  | AST.RequiresDeclaration
+  | AST.Name
+  | AST.Parameter
+  | AST.ViewRender
+  | AST.Injection
+  | AST.ForeignView
+  | AST.Capture
+  | AST.Expression
+  | AST.ContextReference
+  | AST.TestDeclaration
+  | AST.TestStep
+  | AST.Expectation
+  | AST.RenderTag
+
+/** Node constructs a semantic node with its source range. */
+export function Node<Kind extends AST.Node['kind']>(
+  cst: CST.SyntaxNode,
+  kind: Kind,
+  fields: Fields<Kind>,
+): AST.OfKind<Kind> {
+  return { ...fields, kind, start: cst.startIndex, end: cst.endIndex } as AST.OfKind<Kind>
+}
 
 /** OfKind selects semantic nodes with one of the supplied discriminants. */
 export type OfKind<Kind extends AST.Node['kind']> = Extract<AST.Node, { kind: Kind }>
@@ -37,3 +67,5 @@ export type Semantic<Kind extends string, Fields> = {
   readonly start: number
   readonly end: number
 } & Readonly<Fields>
+
+type Fields<Kind extends AST.Node['kind']> = Omit<AST.OfKind<Kind>, 'kind' | 'start' | 'end'>

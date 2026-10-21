@@ -1,42 +1,13 @@
-import * as CST from '@cst'
-import type * as AST from '../AST'
-
-/** Node represents a semantic node without retaining its source CST. */
-export type Node =
-  | AST.File
-  | AST.Declaration
-  | AST.NamedImport
-  | AST.ImportPath
-  | AST.RequiresDeclaration
-  | Name
-  | AST.Parameter
-  | AST.ViewRender
-  | AST.Injection
-  | AST.ForeignView
-  | AST.Capture
-  | AST.Expression
-  | AST.ContextReference
-  | AST.TestDeclaration
-  | AST.TestStep
-  | AST.Expectation
-  | AST.RenderTag
+import type * as CST from '@cst'
+import * as AST from '../AST'
 
 /** Name preserves an authored identifier without resolving it. */
 export type Name = AST.Semantic<'Name', { value: string }>
 
-/** Node constructs a semantic node with its source range. */
-export function Node<Kind extends AST.Node['kind']>(
-  cst: CST.SyntaxNode,
-  kind: Kind,
-  fields: Fields<Kind>,
-): AST.OfKind<Kind> {
-  return { ...fields, kind, start: cst.startIndex, end: cst.endIndex } as AST.OfKind<Kind>
-}
-
 /** Name constructs a semantic identifier from its CST node. */
 export function Name(cst: CST.SyntaxNode): AST.Name {
   const parts = cst.namedChildren.filter(child => child.type === 'Identifier')
-  return Node(cst, 'Name', { value: parts.length ? parts.map(child => child.text).join('.') : cst.text })
+  return AST.Node(cst, 'Name', { value: parts.length ? parts.map(child => child.text).join('.') : cst.text })
 }
 
 /** IsAppDeclaration narrows a semantic node to an app declaration. */
@@ -91,5 +62,3 @@ export function IsKind<Kind extends AST.Node['kind']>(
 ): node is AST.OfKind<Kind> {
   return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
 }
-
-type Fields<Kind extends AST.Node['kind']> = Omit<AST.OfKind<Kind>, 'kind' | 'start' | 'end'>
