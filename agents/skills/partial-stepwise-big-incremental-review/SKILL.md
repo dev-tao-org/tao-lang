@@ -39,6 +39,11 @@ description: >-
 - Answer questions directly. Investigate whether a requested correction applies elsewhere in the
   review diff and affected contracts. Apply clear equivalents and necessary supporting changes;
   explain expanded scope briefly and ask before semantic changes or unrelated cleanup.
+- Track implementation subagents alongside review progress. When one is ready for integration,
+  end each message with `subagent <name> ready to be merged` until it is merged or the developer
+  acknowledges postponing it. This readiness footer is the exception to ending at the file list.
+  Retain postponed work and remind the developer periodically during review (about every three
+  groups, or sooner when its integration affects the current group).
 - Leave corrections pending for inspection until approved; preserve the developer's staging
   choices. Staging is an optional inspection/selection tool, never approval. Verify intermittently
   in proportion to changed behavior. Focused checks may replace the full pre-commit gate for
