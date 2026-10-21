@@ -12,8 +12,21 @@ description: >-
 
 ## Guide the review
 
-- Agree on a rough review order, then guide small groups of related files with terse purpose,
-  dependencies and clickable absolute file/line links. Accept content outside the current group.
+- Start with the complete proposed grouping in review order, using the format below. Get the
+  developer's explicit agreement, or iterate on the grouping, before presenting the first group.
+  Group one feature at a time; combine features only when each is required to review the other.
+  Projects and Dependencies and Sidecars normally belong in separate groups.
+- Count remaining changed files and Git diff hunks against the reviewed branch, including saved
+  pending edits. A diff means one `@@` hunk using normal three-line context. Count only the hunks
+  assigned to that group; account for shared files explicitly without counting the same hunk twice.
+  Folder counts use the folder entries shown in the proposal. Show binary changes separately from
+  textual hunk counts rather than inventing hunks.
+- Present each agreed group using the format below, with clickable absolute file links and useful
+  starting lines. Use a selected line range only when the editor/tool supports it; otherwise use
+  a starting line and describe the relevant range or functionality. Never invent range-link syntax.
+  Order files for understanding and nest them by folder or functional part. Explain partial-file
+  scope in one succinct sentence, at most two. End the presentation immediately after the file list.
+- Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
 - Default to responsive guidance with selective [critique](../critique-mode/SKILL.md). Propose deeper
@@ -28,6 +41,34 @@ description: >-
   in proportion to changed behavior. Focused checks may replace the full pre-commit gate for
   this workflow's checkpoints; run full verification before readiness to land. Do not keep a
   detailed test ledger or rerun application tests for acceptance-only transfers.
+
+## Presentation formats
+
+Initial proposal (repeat for every group and folder):
+
+```text
+- <Group name> - X folders, Y files
+  - <Folder> - X files, Y diffs
+  - <Folder 2> - X files, Y diffs
+```
+
+Ask for agreement after the complete proposal; do not begin a group before agreement.
+
+Each group:
+
+```text
+## <Group name>
+
+**<One-line summary of what we are reviewing.>**
+
+<Particular complexity or dependencies to keep in mind, only if needed.>
+
+- <Folder path or functional part> - X diffs
+  - <Clickable file path:starting line> - X diffs
+  - <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
+```
+
+Nothing follows the file list: no recap, approval question, next steps or closing sentence.
 
 ## Interpret approval
 
