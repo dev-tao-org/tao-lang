@@ -40,7 +40,7 @@ export async function chooseDiffBase(
   return undefined
 }
 
-/** diffArguments compares a selected branch with the current working file, revealing its first change. */
+/** diffArguments places the current working file left of the selected comparison branch. */
 export function diffArguments<Uri>(repoPath: string, base: string, uri: Uri) {
-  return { repoPath, lhs: { sha: base, uri }, rhs: { sha: '', uri }, fromComparison: true, range: null }
+  return { repoPath, lhs: { sha: '', uri }, rhs: { sha: base, uri }, fromComparison: true, range: null }
 }

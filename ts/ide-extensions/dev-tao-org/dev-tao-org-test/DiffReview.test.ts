@@ -45,12 +45,12 @@ Tests.test('missing review branches and detached worktrees report the problem wi
   Tests.expect(await chooseDiffBase('/one', 'feat/a', ['main'], storage, pick, true)).toBe('main')
 })
 
-Tests.test('file comparison uses the selected repository, branch and working copy with no selection', () => {
+Tests.test('file comparison places the working copy left of the selected branch with no selection', () => {
   const uri = { fsPath: '/worktree with spaces/file.ts' }
   Tests.expect(diffArguments('/worktree with spaces', 'origin/review', uri)).toEqual({
     repoPath: '/worktree with spaces',
-    lhs: { sha: 'origin/review', uri },
-    rhs: { sha: '', uri },
+    lhs: { sha: '', uri },
+    rhs: { sha: 'origin/review', uri },
     fromComparison: true,
     range: null,
   })

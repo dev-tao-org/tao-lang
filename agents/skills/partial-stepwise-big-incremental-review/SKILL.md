@@ -144,6 +144,7 @@ an outstanding subagent-readiness footer: no recap, approval question, next step
 
 ## Interpret approval
 
+- Interpret `<number>y`, such as `1y`, as explicit approval of that numbered file in the current review group, including its saved changes. Preserve the group's numbering when recording approvals.
 - "Mark file X reviewed" approves its saved disk contents, including pending edits. "Approve
   changes X" approves only those changes. Resolve semantic requests such as "approve the new error
   messages" to the narrowest sound content using the conversation and current diff.
