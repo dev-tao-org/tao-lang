@@ -47,6 +47,11 @@ description: >-
 - Number file entries consecutively within each presented review group, including across folder
   or conceptual subgroups, so the developer can approve files by number. Keep the displayed
   number-to-path mapping stable until that group is completed or explicitly revised.
+- After recording approvals or finishing requested corrections, end with the remaining files in
+  the current group; if none remain, present the next agreed group in the same response. Preserve
+  existing numbering for a partial group and use the presentation format below. Do not stop at a
+  completion recap when further review remains; pause this progression only when the developer
+  asks or a blocking decision requires their input.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
