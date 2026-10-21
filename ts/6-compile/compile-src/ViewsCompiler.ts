@@ -3,7 +3,7 @@ import { Errors, S, Switch } from '@shared'
 import { compileBinding, compileViewReference } from './BindingsCompiler'
 import { type CallbackNames, compileName, listMap, literal, unusedName } from './codegen-util'
 import { compileInjection } from './InjectionsCompiler'
-import { compileExpression, compileLetDefinition, textBindings } from './ValuesCompiler'
+import { compileExpression, compileLetDefinition, isTextParameter, textBindings } from './ValuesCompiler'
 
 /** compileViewDeclaration registers a view in its owning module scope. */
 export function compileViewDeclaration(
@@ -14,7 +14,7 @@ export function compileViewDeclaration(
 ): string {
   const parameters = listMap(node.parameters, compileName)
   if (AST.IsKind(node.render, 'ForeignView')) {
-    if (node.parameters.some(parameter => parameter.type.value !== 'text')) {
+    if (!node.parameters.every(isTextParameter)) {
       Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
     }
     const component = foreignComponent

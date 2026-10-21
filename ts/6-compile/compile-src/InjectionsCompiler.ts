@@ -2,6 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
 import { compileValueReference } from './BindingsCompiler'
 import { type CallbackNames, compileIdentifier } from './codegen-util'
+import { isTextExpression } from './ValuesCompiler'
 
 /** compileInjection emits authored TypeScript inside a view callback. */
 export function compileInjection(
@@ -25,7 +26,7 @@ function compileCapture(
   assertCaptureName(node.name.value)
   const value = Switch.kind(node.value, {
     Name(name) {
-      const nativeType = bindings.has(name.value) ? ' as string' : ''
+      const nativeType = isTextExpression(name, reference => bindings.has(reference.value)) ? ' as string' : ''
       return `${compileValueReference(name, callbackNames.values)}${nativeType}`
     },
     ContextReference: reference =>

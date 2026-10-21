@@ -4,7 +4,7 @@ import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { compileLazyBinding, compileValueReference, compileViewReference } from './BindingsCompiler'
 import { compileIdentifier, stringLiteral } from './codegen-util'
-import { compileLetDefinition } from './ValuesCompiler'
+import { compileLetDefinition, isTextExpression } from './ValuesCompiler'
 import { compileViewDeclaration } from './ViewsCompiler'
 
 /** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
@@ -138,10 +138,11 @@ function moduleTextBindings(program: LinkedProgram): ReadonlyMap<string, Readonl
   const viewModules = program.modules.filter(module => module.document.root.declarations.some(AST.IsViewDeclaration))
   const ownTextNames = new Map(viewModules.map(module => [module.path, new Set<string>()]))
   for (const definition of program.definitions) {
-    const value = definition.declaration.value
-    const binding = bindingsByModule.get(definition.source)?.get(value.value)
-    const target = declarationKey(binding?.source ?? definition.source, binding?.target ?? value.value)
-    const isText = AST.IsKind(value, 'TextLiteral') || textByDeclaration.get(target) === true
+    const isText = isTextExpression(definition.declaration.value, name => {
+      const binding = bindingsByModule.get(definition.source)?.get(name.value)
+      const target = declarationKey(binding?.source ?? definition.source, binding?.target ?? name.value)
+      return textByDeclaration.get(target) === true
+    })
     textByDeclaration.set(declarationKey(definition.source, definition.declaration.name.value), isText)
     if (isText) {
       ownTextNames.get(definition.source)?.add(definition.declaration.name.value)

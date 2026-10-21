@@ -16,6 +16,16 @@ export function compileLetDefinition(node: AST.LetDefinition, scope: string): st
   return compileBinding(node, scope, compileExpression(node.value, scope))
 }
 
+/** isTextParameter identifies a parameter declared with Tao's text type. */
+export function isTextParameter(node: AST.Parameter): boolean {
+  return node.type.value === 'text'
+}
+
+/** isTextExpression recognizes text literals or names resolved as text in their owning scope. */
+export function isTextExpression(node: AST.Expression, resolveName: (name: AST.Name) => boolean): boolean {
+  return AST.IsKind(node, 'TextLiteral') || resolveName(node)
+}
+
 /** textBindings identifies the implemented text expressions for native capture annotations. */
 export function textBindings(
   definitions: readonly AST.LetDefinition[],
@@ -24,10 +34,10 @@ export function textBindings(
 ): ReadonlySet<string> {
   const names = new Set(inherited)
   for (const parameter of parameters) {
-    updateBinding(names, parameter.name.value, parameter.type.value === 'text')
+    updateBinding(names, parameter.name.value, isTextParameter(parameter))
   }
   for (const definition of definitions) {
-    const isText = AST.IsKind(definition.value, 'TextLiteral') || names.has(definition.value.value)
+    const isText = isTextExpression(definition.value, name => names.has(name.value))
     updateBinding(names, definition.name.value, isText)
   }
   return names
