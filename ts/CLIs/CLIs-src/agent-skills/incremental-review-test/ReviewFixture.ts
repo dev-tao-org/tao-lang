@@ -28,7 +28,10 @@ export async function withFixture(
     await git(root, ['commit', '-m', 'Fixture baseline'])
     await git(root, ['switch', '-c', 'feat/implementation'])
     await prepare?.(root)
-    const session = await withReviewLock(root, () => startReview(root, 'main', 'feat/reviewed-fixture'))
+    const session = await withReviewLock(
+      root,
+      () => startReview(root, 'main', 'feat/implementation-incremental-review-approved'),
+    )
     await action({ root, session })
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 }

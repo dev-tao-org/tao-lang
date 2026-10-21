@@ -35,8 +35,8 @@ export async function startReview(
     return existing
   }
   const sourceBranch = (await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
-  if (!branch.startsWith('feat/') || branch === sourceBranch) {
-    Errors.ThrowUserInput('Use a new feat/ reviewed branch distinct from the implementation branch.')
+  if (!sourceBranch.startsWith('feat/') || branch !== `${sourceBranch}-incremental-review-approved`) {
+    Errors.ThrowUserInput(`Use the approved-content branch ${sourceBranch}-incremental-review-approved.`)
   }
   const baseCommit = await head(root, `${base}^{commit}`)
   const reviewedRoot = Path.resolve(worktree ?? Path.join(directory, 'reviewed'))
@@ -68,7 +68,7 @@ export async function loadSession(root: string): Promise<ReviewSession> {
   const path = Path.join(sessionDirectory(root), 'session.json')
   if (!await FileSystem.exists(path)) {
     Errors.ThrowUserInput(
-      'No incremental review session exists. Run start --base main --branch feat/reviewed-name first.',
+      'No incremental review session exists. Run start --base main --branch feat/<topic>-incremental-review-approved first.',
     )
   }
   const session = await readJson<ReviewSession>(path)
@@ -81,6 +81,24 @@ export async function loadSession(root: string): Promise<ReviewSession> {
 /** saveSession persists review notes and recheck state. */
 export async function saveSession(session: ReviewSession): Promise<void> {
   await writeJson(Path.join(session.directory, 'session.json'), session)
+}
+
+/** renameReviewBranch renames only the owned approved branch and retains its session identity and content. */
+export async function renameReviewBranch(session: ReviewSession, branch: string): Promise<void> {
+  await requireIdleSession(session)
+  if (branch !== `${session.sourceBranch}-incremental-review-approved`) {
+    Errors.ThrowUserInput(`Use the approved-content branch ${session.sourceBranch}-incremental-review-approved.`)
+  }
+  const actual = (await git(session.reviewedRoot, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
+  if (actual !== session.reviewedBranch && actual !== branch) {
+    Errors.ThrowUserInput('The approved checkout changed branches; preserve it and resolve ownership first.')
+  }
+  await assertOwnedSession({ ...session, reviewedBranch: actual })
+  if (actual !== branch) {
+    await git(session.reviewedRoot, ['branch', '-m', branch])
+  }
+  session.reviewedBranch = branch
+  await saveSession(session)
 }
 
 /** requireIdleSession refuses to replace a transaction interrupted between source and reviewed updates. */

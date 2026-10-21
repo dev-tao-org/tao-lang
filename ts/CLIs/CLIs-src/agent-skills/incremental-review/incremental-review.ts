@@ -4,7 +4,14 @@ import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
-import { loadSession, reviewStatus, saveSession, startReview, withReviewLock } from './ReviewSession'
+import {
+  loadSession,
+  renameReviewBranch,
+  reviewStatus,
+  saveSession,
+  startReview,
+  withReviewLock,
+} from './ReviewSession'
 import type { ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
@@ -18,7 +25,8 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
   if (!command || ['help', '--help', '-h'].includes(command)) {
     return {
       commands: [
-        'start --base main --branch feat/reviewed-name [--worktree PATH]',
+        'start --base main --branch feat/<topic>-incremental-review-approved [--worktree PATH]',
+        'rename --branch feat/<topic>-incremental-review-approved',
         'status',
         'plan --files PATH... --out JSON [--source-patch PATCH --reviewed-patch PATCH]',
         'accept --files PATH... | accept --selection JSON',
@@ -58,6 +66,10 @@ async function runSessionCommand(
 ): Promise<Record<string, unknown>> {
   if (command === 'status') {
     return await reviewStatus(session)
+  }
+  if (command === 'rename') {
+    await renameReviewBranch(session, required(options, 'branch'))
+    return { reviewedBranch: session.reviewedBranch }
   }
   if (command === 'recover') {
     await recoverAcceptance(session)

@@ -132,7 +132,9 @@ Tests.test('Git external content transforms refuse before snapshotting selected 
 
 Tests.test('resume checks ownership, stale proposals refuse and semantic rechecks can clear', async () => {
   await withFixture({ accepted: 'before\n' }, async ({ root, session }) => {
-    Tests.expect((await startReview(root, 'main', 'feat/reviewed-fixture')).id).toBe(session.id)
+    Tests.expect((await startReview(root, 'main', 'feat/implementation-incremental-review-approved')).id).toBe(
+      session.id,
+    )
     await put(root, 'accepted', 'first proposal\n')
     const selection = await planSelection(session, ['accepted'])
     await put(root, 'accepted', 'unseen edit\n')

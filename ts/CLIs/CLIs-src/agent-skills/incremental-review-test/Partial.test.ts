@@ -162,7 +162,15 @@ Tests.test('entry plan and accept use a frozen JSON proposal; help needs no sess
     Tests.expect(await git(root, ['show', 'HEAD:content'])).toBe('approved\n')
     Tests.expect(await read(session.reviewedRoot, 'content')).toBe('approved\n')
   }, async root => {
-    await runSkillScript(entry, ['start', '--repo', root, '--base', 'main', '--branch', 'feat/reviewed-fixture'])
+    await runSkillScript(entry, [
+      'start',
+      '--repo',
+      root,
+      '--base',
+      'main',
+      '--branch',
+      'feat/implementation-incremental-review-approved',
+    ])
   })
 })
 
