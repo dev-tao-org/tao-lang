@@ -45,6 +45,7 @@ function packageWorkspace(entry: string[]) {
     project: ['**/*.{ts,tsx}!', '!**/*-test/**!', '!**/*.test.ts!'],
     paths: {
       '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
+      '@cst': ['../1-grammar/grammar-src/CST.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],
       '@shared/os': ['../shared/shared-src/os.ts'],
       '@shared/os/preview': ['../shared/shared-src/os/PreviewPlatform.ts'],

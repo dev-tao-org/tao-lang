@@ -1,4 +1,4 @@
-import type Parser from 'tree-sitter'
+import * as CST from '@cst'
 import * as AST from '../AST'
 
 /** UseStatement imports declarations from an optional path or imports every declaration from one path. */
@@ -26,7 +26,7 @@ export type NamedImport = AST.Semantic<'NamedImport', { target: AST.Name; alias:
 export type ImportPath = AST.Semantic<'ImportPath', { value: string }>
 
 /** UseStatement constructs selected or wildcard declaration imports. */
-export function UseStatement(cst: Parser.SyntaxNode): UseStatement {
+export function UseStatement(cst: CST.SyntaxNode): UseStatement {
   const from = cst.childForFieldName('from')
   return AST.Node(cst, 'UseStatement', {
     imports: cst.childrenForFieldName('imports').map(child => AST.Construct(child, 'NamedImport')),
@@ -36,7 +36,7 @@ export function UseStatement(cst: Parser.SyntaxNode): UseStatement {
 }
 
 /** UsePackageStatement constructs a package namespace import. */
-export function UsePackageStatement(cst: Parser.SyntaxNode): UsePackageStatement {
+export function UsePackageStatement(cst: CST.SyntaxNode): UsePackageStatement {
   const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'UsePackageStatement', {
     from: AST.Field(cst, 'from', 'ImportPath'),
@@ -45,19 +45,19 @@ export function UsePackageStatement(cst: Parser.SyntaxNode): UsePackageStatement
 }
 
 /** RequiresDeclaration constructs an authored dependency requirement. */
-export function RequiresDeclaration(cst: Parser.SyntaxNode): RequiresDeclaration {
+export function RequiresDeclaration(cst: CST.SyntaxNode): RequiresDeclaration {
   const version = cst.childForFieldName('version')
   const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'RequiresDeclaration', {
-    provider: AST.RequiredField(cst, 'provider').text as RequiresDeclaration['provider'],
-    identifier: AST.RequiredField(cst, 'identifier').text,
+    provider: CST.RequiredField(cst, 'provider').text as RequiresDeclaration['provider'],
+    identifier: CST.RequiredField(cst, 'identifier').text,
     version: version?.text,
     alias: alias ? AST.Name(alias) : undefined,
   })
 }
 
 /** NamedImport constructs a declaration selector and optional local alias. */
-export function NamedImport(cst: Parser.SyntaxNode): NamedImport {
+export function NamedImport(cst: CST.SyntaxNode): NamedImport {
   const alias = cst.childForFieldName('alias')
   return AST.Node(cst, 'NamedImport', {
     target: AST.Field(cst, 'target', 'Name'),
@@ -66,11 +66,11 @@ export function NamedImport(cst: Parser.SyntaxNode): NamedImport {
 }
 
 /** ImportPath constructs a semantic module path. */
-export function ImportPath(cst: Parser.SyntaxNode): ImportPath {
+export function ImportPath(cst: CST.SyntaxNode): ImportPath {
   return AST.Node(cst, 'ImportPath', { value: cst.text })
 }
 
 /** QualifiedName normalizes identifier segments while preserving the authored source range. */
-export function QualifiedName(cst: Parser.SyntaxNode): AST.Name {
+export function QualifiedName(cst: CST.SyntaxNode): AST.Name {
   return AST.Name(cst)
 }

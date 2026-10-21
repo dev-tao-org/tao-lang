@@ -1,4 +1,5 @@
-import type { Field, NodeType, SyntaxNode, Token } from '@grammar/CST'
+import * as CST from '@cst'
+import type { Field, NodeType, SyntaxNode, Token } from '@cst'
 import { type LayoutPlan, nodeKey, spaceAt } from '../layout/Plan'
 
 /** NodeContext supplies source-anchored selections shared by both handler tables. */
@@ -15,7 +16,7 @@ export class NodeContext<Kind extends NodeType> {
 
   hasComments(): boolean {
     const range = this.range(this.node)
-    return this.plan.tokens.slice(range.first, range.last + 1).some(node => node.type === 'Comment')
+    return this.plan.tokens.slice(range.first, range.last + 1).some(node => CST.IsComment(node))
   }
 
   protected property(name: Field<Kind>): SyntaxNode | null {

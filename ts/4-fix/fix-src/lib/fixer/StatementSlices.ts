@@ -1,4 +1,5 @@
-import type { SyntaxNode, Tree } from '@grammar/CST'
+import * as CST from '@cst'
+import type { SyntaxNode, Tree } from '@cst'
 import type { SourceRange } from '../../Source'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
@@ -10,7 +11,7 @@ export function statementSlices(source: string, tree: Tree): StatementSlice[] {
   let leading: number | undefined
   for (const node of tree.rootNode.namedChildren) {
     const previous = slices.at(-1)
-    if (node.type === 'Comment') {
+    if (CST.IsComment(node)) {
       if (previous && !source.slice(previous.end, node.startIndex).includes('\n')) {
         previous.end = node.endIndex
         previous.commented = true
@@ -31,5 +32,5 @@ export function statementSlices(source: string, tree: Tree): StatementSlice[] {
 }
 
 function containsComment(node: SyntaxNode): boolean {
-  return node.type === 'Comment' || node.namedChildren.some(containsComment)
+  return CST.IsComment(node) || node.namedChildren.some(containsComment)
 }

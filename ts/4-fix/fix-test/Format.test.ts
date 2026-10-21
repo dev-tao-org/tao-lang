@@ -1,4 +1,4 @@
-import type { SyntaxNode } from '@grammar/CST'
+import type { SyntaxNode } from '@cst'
 import { createParser } from '@grammar/parser'
 import { S, Timings } from '@shared'
 import { Tests } from '@shared/os'

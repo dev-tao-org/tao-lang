@@ -1,4 +1,4 @@
-import type { SyntaxNode, Tree } from '@grammar/CST'
+import type { SyntaxNode, Tree } from '@cst'
 import { Errors } from '@shared'
 import type { SourceRange } from '../../Source'
 

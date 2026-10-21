@@ -1,4 +1,4 @@
-import type Parser from 'tree-sitter'
+import * as CST from '@cst'
 import * as AST from '../AST'
 
 /** ViewDeclaration defines parameters and one render body. */
@@ -34,7 +34,7 @@ export type ContextReference = AST.Semantic<'ContextReference', { value: string 
 export type TextLiteral = AST.Semantic<'TextLiteral', { value: string }>
 
 /** ViewDeclaration constructs a view and its render body. */
-export function ViewDeclaration(cst: Parser.SyntaxNode): ViewDeclaration {
+export function ViewDeclaration(cst: CST.SyntaxNode): ViewDeclaration {
   const parameters = cst.childForFieldName('parameters')
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'ViewDeclaration', {
@@ -48,12 +48,12 @@ export function ViewDeclaration(cst: Parser.SyntaxNode): ViewDeclaration {
 }
 
 /** ForeignView constructs a module-backed view body. */
-export function ForeignView(cst: Parser.SyntaxNode): ForeignView {
+export function ForeignView(cst: CST.SyntaxNode): ForeignView {
   return AST.Node(cst, 'ForeignView', { path: AST.Field(cst, 'path', 'ImportPath') })
 }
 
 /** ViewRender constructs a view invocation with arguments and child renders. */
-export function ViewRender(cst: Parser.SyntaxNode): ViewRender {
+export function ViewRender(cst: CST.SyntaxNode): ViewRender {
   const argumentsNode = cst.childForFieldName('argumentList')
   const tag = cst.childForFieldName('tag')
   return AST.Node(cst, 'ViewRender', {
@@ -65,35 +65,35 @@ export function ViewRender(cst: Parser.SyntaxNode): ViewRender {
 }
 
 /** Injection constructs an opaque TypeScript body and its capture bindings. */
-export function Injection(cst: Parser.SyntaxNode): Injection {
+export function Injection(cst: CST.SyntaxNode): Injection {
   return AST.Node(cst, 'Injection', {
     captures: cst.namedChildren.filter(child => child.type === 'InjectionCapture').map(child =>
       AST.Construct(child, 'Capture')
     ),
-    code: AST.RequiredField(cst, 'code').text.slice(5, -3).trim(),
+    code: CST.RequiredField(cst, 'code').text.slice(5, -3).trim(),
   })
 }
 
 /** Capture constructs a native binding and its Tao value or contextual reference. */
-export function Capture(cst: Parser.SyntaxNode): Capture {
+export function Capture(cst: CST.SyntaxNode): Capture {
   const name = AST.Field(cst, 'name', 'Name')
   const value = cst.childForFieldName('value')
   return AST.Node(cst, 'Capture', { name, value: value ? AST.Construct(value, ['Name', 'ContextReference']) : name })
 }
 
 /** ContextReference constructs an unresolved contextual capture such as @@children. */
-export function ContextReference(cst: Parser.SyntaxNode): ContextReference {
+export function ContextReference(cst: CST.SyntaxNode): ContextReference {
   return AST.Node(cst, 'ContextReference', { value: cst.text.slice(2) })
 }
 
 /** TextLiteral constructs a decoded authored text value. */
-export function TextLiteral(cst: Parser.SyntaxNode): TextLiteral {
+export function TextLiteral(cst: CST.SyntaxNode): TextLiteral {
   return AST.Node(cst, 'TextLiteral', { value: JSON.parse(cst.text) as string })
 }
 
-function viewBody(cst: Parser.SyntaxNode): ViewDeclaration['render'] {
+function viewBody(cst: CST.SyntaxNode): ViewDeclaration['render'] {
   const body = cst.namedChildren.find(child => child.type === 'ForeignView')
   return body
     ? AST.Construct(body, 'ForeignView')
-    : AST.Field(AST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection'])
+    : AST.Field(CST.RequiredChild(cst, 'RenderStatement'), 'body', ['ViewRender', 'Injection'])
 }

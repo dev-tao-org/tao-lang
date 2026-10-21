@@ -1,0 +1,15 @@
+import * as CST from '@cst'
+import { Tests } from '@shared/os'
+import { createParser } from '../grammar-src/parser'
+
+Tests.test('CST helpers > distinguish grammar extras from comments and require structural children', () => {
+  const root = createParser().parse('// heading\nview Main { render Text("Hi") }').rootNode
+  const declaration = CST.RequiredChild(root, 'ViewDeclaration')
+  Tests.expect(root.namedChildren.filter(CST.IsSemanticNode).map(node => node.type)).toEqual(['ViewDeclaration'])
+  Tests.expect(root.namedChildren.filter(CST.IsComment).map(node => node.text)).toEqual(['// heading'])
+  Tests.expect(CST.IsSemanticNode({ isExtra: true })).toBe(false)
+  Tests.expect(CST.IsComment({ type: 'OtherExtra' })).toBe(false)
+  Tests.expect(CST.RequiredField(declaration, 'name').text).toBe('Main')
+  Tests.expect(() => CST.RequiredField(declaration, 'missing')).toThrow('Missing CST field missing')
+  Tests.expect(() => CST.RequiredChild(root, 'Missing')).toThrow('Missing CST child Missing')
+})

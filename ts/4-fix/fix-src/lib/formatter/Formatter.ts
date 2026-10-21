@@ -1,4 +1,5 @@
-import type { NodeType, SyntaxNode, Tree } from '@grammar/CST'
+import * as CST from '@cst'
+import type { NodeType, SyntaxNode, Tree } from '@cst'
 import { Timings } from '@shared'
 import { NodeLayout } from '../layout/NodeLayout'
 import { createPlan, isCompleteNode, type LayoutPlan } from '../layout/Plan'
@@ -60,7 +61,7 @@ function visit(
 
 function protectComments(plan: LayoutPlan): void {
   for (const [index, token] of plan.tokens.entries()) {
-    if (token.type !== 'Comment') {
+    if (!CST.IsComment(token)) {
       continue
     }
     const after = plan.gaps[index + 1]!

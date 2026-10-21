@@ -1,4 +1,4 @@
-import type Parser from 'tree-sitter'
+import * as CST from '@cst'
 import * as AST from '../AST'
 
 /** File contains the declarations in one source snapshot. */
@@ -23,7 +23,7 @@ export type LetDefinition = AST.Semantic<'LetDefinition', {
 }>
 
 /** File constructs the semantic declaration list for one source file. */
-export function File(cst: Parser.SyntaxNode): File {
+export function File(cst: CST.SyntaxNode): File {
   return AST.Node(cst, 'File', {
     declarations: AST.List(cst, [
       'AppDeclaration',
@@ -38,22 +38,22 @@ export function File(cst: Parser.SyntaxNode): File {
 }
 
 /** AppDeclaration constructs an app and its unresolved root view. */
-export function AppDeclaration(cst: Parser.SyntaxNode): AppDeclaration {
+export function AppDeclaration(cst: CST.SyntaxNode): AppDeclaration {
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'AppDeclaration', {
     name: AST.Field(cst, 'name', 'Name'),
-    root: AST.Field(AST.RequiredChild(cst, 'RootDeclaration'), 'view', 'Name'),
+    root: AST.Field(CST.RequiredChild(cst, 'RootDeclaration'), 'view', 'Name'),
     visibility,
   })
 }
 
 /** Parameter constructs an authored parameter and its unresolved type. */
-export function Parameter(cst: Parser.SyntaxNode): Parameter {
+export function Parameter(cst: CST.SyntaxNode): Parameter {
   return AST.Node(cst, 'Parameter', { name: AST.Field(cst, 'name', 'Name'), type: AST.Field(cst, 'type', 'Name') })
 }
 
 /** LetDefinition constructs an ordered lexical value binding. */
-export function LetDefinition(cst: Parser.SyntaxNode): LetDefinition {
+export function LetDefinition(cst: CST.SyntaxNode): LetDefinition {
   const type = cst.childForFieldName('type')
   const visibility = AST.OptionalVisibility(cst)
   return AST.Node(cst, 'LetDefinition', {

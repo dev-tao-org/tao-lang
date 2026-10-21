@@ -45,7 +45,7 @@ export const updateTaoSource = Timings.topLevelTimer(async function(
 
 function printUsageWarnings(
   path: string,
-  tree: Parameters<typeof transform>[0],
+  tree: ReturnType<ReturnType<typeof createParser>['parse']>,
   timings: Timings,
   warn: (message: string) => void,
 ): void {

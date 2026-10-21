@@ -1,4 +1,4 @@
-import type { NodeType } from '@grammar/CST'
+import type { NodeType } from '@cst'
 import { S } from '@shared'
 
 /** syntaxFixture exercises every named rule in the current Tao grammar. */

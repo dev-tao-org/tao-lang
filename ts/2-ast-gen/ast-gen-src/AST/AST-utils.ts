@@ -1,4 +1,4 @@
-import type Parser from 'tree-sitter'
+import * as CST from '@cst'
 import type * as AST from '../AST'
 
 /** Node represents a semantic node without retaining its source CST. */
@@ -26,7 +26,7 @@ export type Name = AST.Semantic<'Name', { value: string }>
 
 /** Node constructs a semantic node with its source range. */
 export function Node<Kind extends AST.Node['kind']>(
-  cst: Parser.SyntaxNode,
+  cst: CST.SyntaxNode,
   kind: Kind,
   fields: Fields<Kind>,
 ): AST.OfKind<Kind> {
@@ -34,7 +34,7 @@ export function Node<Kind extends AST.Node['kind']>(
 }
 
 /** Name constructs a semantic identifier from its CST node. */
-export function Name(cst: Parser.SyntaxNode): AST.Name {
+export function Name(cst: CST.SyntaxNode): AST.Name {
   const parts = cst.namedChildren.filter(child => child.type === 'Identifier')
   return Node(cst, 'Name', { value: parts.length ? parts.map(child => child.text).join('.') : cst.text })
 }

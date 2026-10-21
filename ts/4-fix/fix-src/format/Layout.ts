@@ -1,4 +1,5 @@
-import type { SyntaxNode } from '@grammar/CST'
+import * as CST from '@cst'
+import type { SyntaxNode } from '@cst'
 import type { LayoutHandlers } from '../lib/formatter/Formatter'
 
 /** Layout defines Tao line boundaries, indentation and preserved list wrapping. */
@@ -6,7 +7,7 @@ export const Layout = {
   SourceFile(lm) {
     let previous: SyntaxNode | undefined
     for (const node of lm.node.namedChildren) {
-      if (previous && node.type !== 'Comment' && previous.type !== 'Comment') {
+      if (previous && !CST.IsComment(node) && !CST.IsComment(previous)) {
         if (isImport(node) && isImport(previous)) {
           lm.lineBefore(node)
         } else {

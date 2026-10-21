@@ -1,4 +1,4 @@
-import type { Tree } from '@grammar/CST'
+import type { Tree } from '@cst'
 import { Timings } from '@shared'
 import { Formatting } from './format/Formatting'
 import { Layout } from './format/Layout'

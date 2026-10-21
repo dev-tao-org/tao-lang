@@ -1,4 +1,5 @@
-import type { Field, NodeType, SyntaxNode, Token } from '@grammar/CST'
+import * as CST from '@cst'
+import type { Field, NodeType, SyntaxNode, Token } from '@cst'
 import { NodeContext } from '../formatter/NodeFormat'
 import { linesAt } from './Plan'
 
@@ -101,7 +102,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     this.plan.groups.push({
       first,
       last: suffix?.type === 'TypeScript' ? end - 1 : last,
-      preserve: this.plan.tokens.slice(first, end).some(node => node.type === 'Comment')
+      preserve: this.plan.tokens.slice(first, end).some(node => CST.IsComment(node))
         || this.plan.source.slice(this.node.startIndex, this.plan.tokens[end - 1]!.endIndex).includes('\n'),
       breaks: [...breaks, ...suffix ? [end] : []],
       indentStart: first + 1,
@@ -116,5 +117,5 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
 }
 
 function isBlockItem(node: SyntaxNode, open: SyntaxNode, close: SyntaxNode): boolean {
-  return node.startIndex >= open.endIndex && node.endIndex <= close.startIndex && node.type !== 'Comment'
+  return node.startIndex >= open.endIndex && node.endIndex <= close.startIndex && !CST.IsComment(node)
 }

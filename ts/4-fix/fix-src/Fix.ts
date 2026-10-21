@@ -1,5 +1,5 @@
 import type * as AST from '@ast-gen/AST'
-import type { Tree } from '@grammar/CST'
+import type { Tree } from '@cst'
 import { Errors, Timings } from '@shared'
 import { organizeImports } from './fix/Imports'
 import { applyEdits, type SourceEdit } from './Source'

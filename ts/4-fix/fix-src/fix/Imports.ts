@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen/AST'
-import type { Tree } from '@grammar/CST'
+import * as CST from '@cst'
+import type { Tree } from '@cst'
 import { type StatementSlice, statementSlices } from '../lib/fixer/StatementSlices'
 import type { SourceEdit } from '../Source'
 
@@ -72,7 +73,7 @@ function retainedComments(source: string, slice: StatementSlice, newline: string
 }
 
 function commentNodes(node: StatementSlice['node']): StatementSlice['node'][] {
-  return node.type === 'Comment'
+  return CST.IsComment(node)
     ? [node]
     : node.namedChildren.flatMap(commentNodes)
 }

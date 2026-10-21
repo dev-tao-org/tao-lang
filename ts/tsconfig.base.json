@@ -15,6 +15,7 @@
     "skipLibCheck": true,
     "paths": {
       "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
+      "@cst": ["./1-grammar/grammar-src/CST.ts"],
       "@shared": ["./shared/shared-src/shared.ts"],
       "@shared/os": ["./shared/shared-src/os.ts"],
       "@shared/os/browser": ["./shared/shared-src/os/BrowserRuntime.ts"],
