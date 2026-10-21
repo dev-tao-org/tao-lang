@@ -140,6 +140,8 @@ function countDiagnostic(event: OutputEvent): void {
     }
   } else if (diagnostics.error === 1 && isQuiet() && !configuration.forwardEvents && !tui) {
     Terminal.stderr.write('Error recorded: See the log for details.\n')
+  } else {
+    // Other errors are already routed, or the quiet-mode notice was printed for the first error.
   }
 }
 

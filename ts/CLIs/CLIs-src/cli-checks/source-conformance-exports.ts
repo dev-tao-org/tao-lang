@@ -46,6 +46,8 @@ export class ExportedApiChecker {
         this.addVariableDeclarations(statement, implicitExports, groups, anonymous)
       } else if (isApiDeclaration(statement)) {
         this.addApiGroup(statement.name?.text, [statement], implicitExports || isExported(statement), groups, anonymous)
+      } else {
+        // Imports, forwarding exports and executable statements do not define local API groups.
       }
     }
   }
@@ -98,6 +100,8 @@ export class ExportedApiChecker {
         this.collectForwardingExport(statement, groups)
       } else if (TypeScript.isExportAssignment(statement)) {
         this.collectDefaultExport(statement, groups, anonymous)
+      } else {
+        // Declaration exports were collected earlier; other statements add no forwarding exports.
       }
     }
   }

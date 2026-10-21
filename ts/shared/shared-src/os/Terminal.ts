@@ -153,6 +153,8 @@ function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecr
       state.value = [...state.value].slice(0, -1).join('')
     } else if (character >= ' ' && character !== '\u001b') {
       state.value += character
+    } else {
+      // Ignore unsupported control characters instead of adding them to the secret.
     }
   }
 }

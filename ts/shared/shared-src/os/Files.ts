@@ -32,6 +32,8 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
       await createReadOnlyFile(canonical, contents)
     } else if (await readFile(canonical, 'utf8') !== contents) {
       await withOriginalPermissions(canonical, file => file.write(contents))
+    } else {
+      // Matching contents need no write; the permission check below still runs.
     }
     await chmod(canonical, 0o444)
   })
@@ -146,6 +148,8 @@ async function walkDirectory(root: string, directory: string, boundary: string):
       result.push(...await walkDirectory(root, path, boundary))
     } else if (entry.isFile()) {
       result.push(path)
+    } else {
+      // Sockets, devices and other special entries are not source files.
     }
   }
   return result

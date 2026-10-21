@@ -135,6 +135,8 @@ class SourceConformanceChecker {
         range.pos,
         'multiline JSDoc needs opening-line text, aligned *  continuation lines, and */ after the last text',
       )
+    } else {
+      // Properly formatted public JSDoc needs no diagnostic.
     }
   }
 

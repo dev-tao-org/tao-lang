@@ -90,6 +90,8 @@ function readTestCases(report: string): TimedTest[] {
         suites.pop()
       } else if (!token.endsWith('/>')) {
         suites.push(xmlAttributes(token))
+      } else {
+        // A self-closing suite contains no cases and opens no nesting scope.
       }
     } else if (tag[2] === 'testcase') {
       if (closing) {
@@ -106,6 +108,8 @@ function readTestCases(report: string): TimedTest[] {
       }
     } else if (current && !closing) {
       current.skipped = true
+    } else {
+      // Closing skipped tags and skipped tags outside a test case add no timing information.
     }
   }
   return cases

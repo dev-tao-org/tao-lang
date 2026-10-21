@@ -116,6 +116,8 @@ async function linkRuntimeSources(directory: string, resourcesDirectory: string,
     await FileSystem.rmdir(target)
   } else if (current) {
     Errors.ThrowUserInput(`Generated runtime source path is not a directory: ${target}`)
+  } else {
+    // A missing target needs no cleanup before creating the runtime source link.
   }
   await FileSystem.symlink(resourcesDirectory, target, 'dir')
 }

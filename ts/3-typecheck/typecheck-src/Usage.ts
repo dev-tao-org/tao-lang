@@ -44,6 +44,8 @@ function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
     if (value) {
       declare(scope, node.alias ?? { ...node.from, kind: 'Name', value }, 'namespace')
     }
+  } else {
+    // Requirements and test suites do not declare module-level values.
   }
 }
 
@@ -137,6 +139,8 @@ function reference(scope: Scope, name: AST.Name): void {
     }
   } else if (scope.parent) {
     reference(scope.parent, name)
+  } else {
+    // Unresolved references are diagnosed by linking; usage analysis marks known bindings only.
   }
 }
 

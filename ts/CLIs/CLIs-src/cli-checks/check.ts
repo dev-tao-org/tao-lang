@@ -46,6 +46,8 @@ export async function assertNewWorkspaceTree(): Promise<void> {
         }
       } else if (entry.isDirectory()) {
         await visit(path)
+      } else {
+        // Ordinary files and special entries do not introduce traversable source links.
       }
     }
   }

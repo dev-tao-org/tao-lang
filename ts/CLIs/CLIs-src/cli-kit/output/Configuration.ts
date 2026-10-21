@@ -29,6 +29,8 @@ export async function configureCLIOutput(
     const factory = async () => createTUI()
     IO.setPromptRenderer(factory)
     renderOutput(await factory())
+  } else {
+    // Headless or event-forwarded output already has routing and needs no local TUI.
   }
 }
 

@@ -19,6 +19,8 @@ export async function findTaoTestFiles(path: string, parser = createParser()): P
       if (tree.rootNode.descendantsOfType('TestsDeclaration').length > 0) {
         paths.push(child)
       }
+    } else {
+      // Non-Tao files cannot contain authored Tao test suites.
     }
   }
   return paths.sort()

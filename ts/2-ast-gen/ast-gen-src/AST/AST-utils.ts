@@ -35,6 +35,11 @@ export function IsValueDeclaration(node: AST.Node): node is AST.ValueDeclaration
   return IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDefinition'])
 }
 
+/** ValueDeclarations lists the named values declared by a source file. */
+export function ValueDeclarations(file: AST.File): AST.ValueDeclaration[] {
+  return file.declarations.filter(IsValueDeclaration)
+}
+
 /** IsUseStatement narrows a semantic node to a declaration import. */
 export function IsUseStatement(node: AST.Node): node is AST.UseStatement {
   return IsKind(node, 'UseStatement')

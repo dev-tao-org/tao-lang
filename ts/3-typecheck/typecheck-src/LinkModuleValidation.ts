@@ -38,6 +38,8 @@ export function referencedNames(document: AST.Document): ReadonlySet<string> {
             addReference(capture.value.value, names, localNames)
           }
         }
+      } else {
+        // Foreign views carry TypeScript code rather than Tao render references.
       }
     } else if (AST.IsLetDefinition(declaration)) {
       addLetReferences(declaration, names)
@@ -49,6 +51,8 @@ export function referencedNames(document: AST.Document): ReadonlySet<string> {
           }
         }
       }
+    } else {
+      // Imports and requirements introduce bindings but do not reference Tao values.
     }
   }
   return names

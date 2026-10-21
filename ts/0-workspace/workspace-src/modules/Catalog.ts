@@ -40,6 +40,8 @@ export async function recursiveSourceFiles(
       files.push(path)
     } else if (await canDescendPackage(entry.name, entry.isDirectory(), path)) {
       files.push(...await recursiveSourceFiles(path, packageRoot, projectRoot))
+    } else {
+      // Other file types, nested packages and project boundaries are outside this package's sources.
     }
   }
   return files.sort()
@@ -60,6 +62,8 @@ export async function namedPackageDirectories(projectRoot: string, name: string)
         }
       } else if (!await FileSystem.exists(Path.join(path, '.tao'))) {
         await visit(path)
+      } else {
+        // Nested projects own their packages and are not searched from this project.
       }
     }
   }

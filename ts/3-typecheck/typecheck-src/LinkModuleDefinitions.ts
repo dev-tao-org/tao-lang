@@ -9,13 +9,7 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
     definitions.map(item => [definitionKey(item.source, item.declaration.name.value), item]),
   )
   const moduleByPath = new Map(modules.map(module => [module.path, module]))
-  const knownNames = new Map(modules.map(module => [
-    module.path,
-    new Set([
-      ...module.document.root.declarations.filter(AST.IsValueDeclaration).map(declaration => declaration.name.value),
-      ...module.bindings.map(binding => binding.name),
-    ]),
-  ]))
+  const knownNames = new Map(modules.map(module => [module.path, moduleKnownNames(module)]))
   const ordered: LinkedDefinition[] = []
   const visiting = new Set<string>()
   const visited = new Set<string>()
@@ -51,6 +45,12 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
 }
 
 type DependencyDefinition = { source: string; declaration: AST.LetDefinition | AST.AppDeclaration }
+
+function moduleKnownNames(module: LinkedModule): Set<string> {
+  const declaredNames = AST.ValueDeclarations(module.document.root).map(declaration => declaration.name.value)
+  const importedNames = module.bindings.map(binding => binding.name)
+  return new Set([...declaredNames, ...importedNames])
+}
 
 function dependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefinition[] {
   return modules.flatMap(module =>

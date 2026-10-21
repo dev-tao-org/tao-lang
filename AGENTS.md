@@ -93,6 +93,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Never name handwritten files `index.ts`. Name directory entrypoints after their parent folder, such as `incremental-review/incremental-review.ts`.
   - Object functions with only a returned expression use expression-bodied arrow properties: `Name: name => value`. Other object functions use method syntax; retain methods when arrows would change `this`, `arguments`, `super` or generator behavior.
 - Review:
+  - Nontrivial `if` / `else if` chains must account for unmatched input: use a final `else` explaining intentional no action, or fail explicitly when that state is impossible. Preserve concise guard clauses and exhaustive dispatch instead of adding redundant branches.
   - Put all exports immediately after imports, before private definitions.
   - Follow nearby conventions; seek DRY, efficient shared behavior. Extract conditions with three or more checks into named predicates; extract unclear two-check conditions too.
   - Extract repeated behavior with matching semantics, domain policies and calculations with independently meaningful steps into specifically named functions, even below the line limit. Search related code for shared suboperations; preserve meaningful differences. Keep short, single-use transformations local when extraction adds navigation without improving understanding.
