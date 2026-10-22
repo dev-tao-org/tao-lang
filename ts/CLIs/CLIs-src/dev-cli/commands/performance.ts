@@ -15,10 +15,13 @@ export default registerCommand({
   description: 'Measure language phases, reactive policies, editor updates or live Expo previews; save raw samples.',
   arguments: [{
     name: 'target',
-    description: 'parser, formatter, reactivity, extension, preview or record (current commit).',
+    description: 'parser, formatter, reactivity, modules, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
   action: Timings.createTopLevelTimer(async function(timings, target: string) {
+    if (target === 'modules') {
+      return runModules()
+    }
     if (target === 'reactivity') {
       return runReactivity()
     }
@@ -29,7 +32,9 @@ export default registerCommand({
       return runExtension()
     }
     if (!['parser', 'preview', 'record'].includes(target)) {
-      Errors.ThrowUserInput('Available performance targets: parser, formatter, reactivity, extension, preview, record')
+      Errors.ThrowUserInput(
+        'Available performance targets: parser, formatter, reactivity, modules, extension, preview, record',
+      )
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
@@ -52,6 +57,16 @@ export default registerCommand({
     IO.print('Performance report: ' + path)
   }),
 })
+
+async function runModules(): Promise<void> {
+  await prepareRuntime()
+  const { moduleRefreshPerformance } = await import('../../../../perf/perf-src/module-refresh-performance')
+  const { path, summary } = await moduleRefreshPerformance()
+  for (const result of summary) {
+    IO.print(`${result.layout}: median ${result.medianMs.toFixed(1)} ms, p95 ${result.p95Ms.toFixed(1)} ms`)
+  }
+  IO.print('Experimental module refresh report: ' + path)
+}
 
 async function runReactivity(): Promise<void> {
   const { reactivityPerformance } = await import('../../../../perf/perf-src/reactivity-performance')

@@ -14,9 +14,9 @@
   },
   "npmGraphs": {
     "Kitchen Sink/Kitchen Sink.tao": {
-      "fingerprint": "6c62bfdfc2dec96ac186b3693f7f7aeeae6d8d65a885329540ab8f91877bd711",
-      "lockPath": ".tao/store/npm/6c62bfdfc2dec96ac186b3693f7f7aeeae6d8d65a885329540ab8f91877bd711.lock",
-      "lockHash": "e0fafc0ed710f61bc360a7da94f04db0d82e0bbae5d3b430210bc0d15e8ab686"
+      "fingerprint": "fc93a8ae1478b6268b7f6e11b2a8360b6c51a29006c6e440d5adc7de38ff2afe",
+      "lockPath": ".tao/store/npm/fc93a8ae1478b6268b7f6e11b2a8360b6c51a29006c6e440d5adc7de38ff2afe.lock",
+      "lockHash": "06a3675344f8f54ba73c929baa16776b39d7342a5ea11aa9d4537ca27a4fd1a7"
     }
   }
 }

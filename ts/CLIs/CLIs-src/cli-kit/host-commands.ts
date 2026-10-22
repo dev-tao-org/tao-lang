@@ -103,7 +103,7 @@ function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostComman
   if (prefix.text === 'push') {
     return { command: './agent push', variadicArgs: trailing }
   }
-  if (prefix.text === 'performance preview' || prefix.text === 'performance record') {
+  if (isPerformanceOperation(prefix)) {
     return { command: './dev ' + prefix.text, variadicArgs: trailing }
   }
   if (prefix.tokens.length === 1 && developerCommands.has(prefix.tokens[0]!)) {
@@ -117,6 +117,10 @@ function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostComman
     return { command: `git ${prefix.tokens[1]}`, variadicArgs: trailing }
   }
   Errors.ThrowUserInput(`Host operation '${prefix.text}' is allowlisted but has no supported target.`)
+}
+
+function isPerformanceOperation(prefix: Prefix): boolean {
+  return ['performance preview', 'performance modules', 'performance record'].includes(prefix.text)
 }
 
 function isNativeGitPrefix(prefix: Prefix): boolean {
