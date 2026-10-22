@@ -5,10 +5,14 @@ import { Tests } from '@shared/os'
 import { format } from '../fix-src/Format'
 import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './SyntaxFixture'
 
-Tests.test('all current grammar rules format canonically and remain stable across reflow', () => {
+const concreteSyntaxKinds = Object.keys(syntaxKinds)
+  .filter(kind => !kind.startsWith('_'))
+  .sort()
+
+Tests.test('all current named grammar nodes format canonically and remain stable across reflow', () => {
   const tree = createParser().parse(syntaxFixture)
   Tests.expect(tree.rootNode.hasError).toBe(false)
-  Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(Object.keys(syntaxKinds).sort())
+  Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(concreteSyntaxKinds)
   assertFormatted(syntaxFixture, formattedSyntaxFixture)
   const source = 'use First,Second,Third from @long/package\nview Main(A text,B text){render Panel(A,B)}'
   Tests.expect(formatted(source, 28)).toBe(S`

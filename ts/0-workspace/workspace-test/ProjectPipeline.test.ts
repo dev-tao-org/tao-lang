@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { Tests } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import {
@@ -106,23 +107,64 @@ function fakeServices(
 }
 
 function program(source: string, requirement: string): LinkedProgram {
+  const document = projectDocument(source, requirement)
   return {
     entry: '/project/main.tao',
     modules: [{
       path: '/project/main.tao',
-      document: {
-        root: {
-          declarations: [
-            { kind: 'ViewDeclaration', source, render: { kind: 'RenderView' } },
-            { kind: 'RequiresDeclaration', provider: 'npm', identifier: 'dep', version: requirement },
-          ],
-        },
-      },
+      document,
       bindings: [],
     }],
     definitions: [],
     requirement,
   } as unknown as LinkedProgram
+}
+
+function projectDocument(source: string, requirement: string): AST.Document {
+  const sourceRange = { start: 0, end: source.length }
+  return {
+    root: {
+      ...sourceRange,
+      kind: 'File',
+      block: {
+        ...sourceRange,
+        kind: 'Block',
+        statements: [projectView(source), projectRequirement(requirement)],
+      },
+    },
+  }
+}
+
+function projectView(source: string): AST.ViewDeclaration {
+  const sourceRange = { start: 0, end: source.length }
+  return {
+    ...sourceRange,
+    kind: 'ViewDeclaration',
+    name: { kind: 'Name', start: 0, end: 0, value: 'Main' },
+    visibility: undefined,
+    parameters: [],
+    body: {
+      ...sourceRange,
+      kind: 'Block',
+      statements: [{
+        ...sourceRange,
+        kind: 'RenderInjectStatement',
+        injection: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+      }],
+    },
+  }
+}
+
+function projectRequirement(version: string): AST.RequiresDeclaration {
+  return {
+    kind: 'RequiresDeclaration',
+    start: 0,
+    end: 0,
+    provider: 'npm',
+    identifier: 'dep',
+    version,
+    alias: undefined,
+  }
 }
 
 function requirementVersion(program: LinkedProgram): string {

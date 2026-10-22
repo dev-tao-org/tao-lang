@@ -1,23 +1,27 @@
-public view Text(Value text) {
+public
+view Text(Value text) {
   render inject Value ```ts
-    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
+    return <Tao.Text>{Value}</Tao.Text>
   ```
 }
 
-public view Col {
+public
+view Col {
   render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'column' }}>{Children}</TR.ReactNative.View>
+    return <Tao.View style={{ flexDirection: 'column' }}>{Children}</Tao.View>
   ```
 }
 
-public view Row {
+public
+view Row {
   render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'row' }}>{Children}</TR.ReactNative.View>
+    return <Tao.View style={{ flexDirection: 'row' }}>{Children}</Tao.View>
   ```
 }
 
-public view Input(Value text) {
+public
+view Input(Value text) {
   render inject Value ```ts
-    return <TR.ReactNative.TextInput defaultValue={Value} />
+    return <Tao.TextInput defaultValue={Value} />
   ```
 }

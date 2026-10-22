@@ -8,8 +8,8 @@ import Tao from '@tao/runtime-api'
 
 #### Availability
 
-This entrypoint is agreed future behavior and is not implemented yet. Import restrictions will be
-enforced later; documentation presents only the public API.
+The entrypoint is available to sidecars, injections and standard-library implementations. Import
+restrictions will be enforced later; documentation presents only the public API.
 
 #### `Tao`
 
@@ -23,11 +23,25 @@ Compiler-generated code may use internal runtime operations. Authored TypeScript
 API and does not depend on those operations or React Native directly. Native implementation details
 stay behind API-owned contracts rather than a re-exported React Native namespace.
 
-#### Expressions
+#### `Tao.Text`, `Tao.View`, `Tao.TextInput`, `Tao.Pressable`
 
-The planned common expression contract covers constants, references and computed values. Expressions
-may reuse results while their dependencies are unchanged; callers must not depend on how often a
-pure calculation runs. Reading a function value does not itself invoke the function.
+These components provide the supported native presentation capabilities. `Tao.Pressable` groups
+synchronous updates made by its `onPress` callback into one batch.
+
+#### `Tao.useWritable(() => value)`
+
+Retains one writable expression for a mounted component. Its initializer supplies the initial value;
+later writes use `update`. Existing Tao text parameters and explicit text captures are plain strings.
+
+#### `Tao.useComputed(() => value, [inputs])`
+
+Creates a pure computed expression from stable inputs. Expression reads inside the calculation track
+dependencies; callers must not depend on how often the calculation runs.
+
+#### `Tao.useValue(expression)`
+
+Reads an expression and subscribes the mounted component to changed values. Rendering alone does not
+attach an observation; abandoned renders and unmounted components retain no subscription.
 
 #### `expression.jsValue()`
 
@@ -53,9 +67,9 @@ observation.unobserve()
 
 #### Batches
 
-Tao groups synchronous mutations within actions, UI events and data-provider deliveries. Writes
-are visible immediately; observers receive changed values when the batch settles. A batch does not
-remain open across an asynchronous wait.
+`Tao.Pressable` groups synchronous mutations inside its `onPress` callback. Individual writes also
+settle a batch. Writes are visible immediately; observers receive changed values when the batch
+settles. A batch does not remain open across an asynchronous wait.
 
 #### Preview updates
 

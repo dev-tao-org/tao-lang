@@ -18,19 +18,28 @@ Tests.test('test suites become tagged app actions and grouped assertions', () =>
   `
   const tree = createParser().parse(source)
   const document = transform(tree)!
-  Tests.expect(document.root.declarations[0]).toMatchObject({
+  Tests.expect(document.root.block.statements[0]).toMatchObject({
     kind: 'TestsDeclaration',
     label: { value: 'Forms' },
-    tests: [{
-      label: { value: 'Save' },
-      steps: [
-        { kind: 'RunStatement', app: { value: 'Example' } },
-        { kind: 'PressStatement', target: { value: 'save' } },
-        { kind: 'TypeStatement', target: { value: 'name' }, value: { value: 'Hello' } },
-        { kind: 'ExpectStatement', expectations: [{ kind: 'InputExpectation', target: { value: 'name' } }] },
-        { kind: 'ExpectStatement', expectations: [{ kind: 'TextExpectation', value: { value: 'Saved' } }] },
-      ],
-    }],
+    block: {
+      kind: 'Block',
+      statements: [{
+        label: { value: 'Save' },
+        block: {
+          kind: 'Block',
+          statements: [
+            { kind: 'RunStatement', app: { value: 'Example' } },
+            { kind: 'PressStatement', target: { value: 'save' } },
+            { kind: 'TypeStatement', target: { value: 'name' }, value: { value: 'Hello' } },
+            { kind: 'ExpectStatement', expectation: { kind: 'InputExpectation', target: { value: 'name' } } },
+            {
+              kind: 'ExpectStatement',
+              block: { kind: 'Block', statements: [{ kind: 'TextExpectation', value: { value: 'Saved' } }] },
+            },
+          ],
+        },
+      }],
+    },
   })
   Tests.expect(AST.IsKind(document.root, 'File')).toBe(true)
 })

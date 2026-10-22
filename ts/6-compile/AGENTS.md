@@ -1,7 +1,7 @@
 # Compile
 
 - Compile semantic ASTs from `ts/2-ast-gen/` into code that runs inside Expo apps.
-- Almost all generated code should map to a Tao runtime function, such as `TR.IfElse(...)` or `TR.ViewDefinition(...)`. Most compiler and runtime concepts should have corresponding `TR` implementations; keep generated code minimal and put as much functionality as possible in the runtime.
+- Almost all generated code should map to a Tao runtime function, such as `TR.IfElse(...)` or `TR.ViewDeclaration(...)`. Most compiler and runtime concepts should have corresponding `TR` implementations; keep generated code minimal and put as much functionality as possible in the runtime.
 - Generated code owns literals, references, callbacks, module wiring and authored injections. Shared Tao semantics, rendering, state and lifecycle behavior belong in the handwritten runtime under `ts/7-runtime/runtime-src/`.
 - Apply this boundary to examples and stubs as well as implementation. Generated calls express authored operations; shared batching, observation, caching and lifecycle mechanics belong in runtime operations rather than repeated generated wrappers.
 - When planning compiler additions or structural changes, first identify patterns in the current compiler, then frequently consult `.x-tao-old-v1/` for how its code generation was structured. Use `old-repo-porting`; adapt useful patterns rather than copying its architecture.

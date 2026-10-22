@@ -18,28 +18,21 @@ export const Layout = {
     }
   },
   AppDeclaration(lm) {
-    lm.onOwnLineProperty('visibility').block()
-  },
-  ViewDeclaration(lm) {
-    lm.onOwnLineProperty('visibility').block()
-  },
-  LetDefinition(lm) {
     lm.onOwnLineProperty('visibility')
   },
-  ViewRender(lm) {
-    if (lm.parent?.type !== 'RenderStatement') {
+  ViewDeclaration(lm) {
+    lm.onOwnLineProperty('visibility')
+  },
+  LetDeclaration(lm) {
+    lm.onOwnLineProperty('visibility')
+  },
+  Block(lm) {
+    lm.block()
+  },
+  ViewRenderExpression(lm) {
+    if (lm.parent?.type !== 'RenderViewExpressionStatement') {
       lm.onOwnLineProperty('tag')
     }
-    lm.block()
-  },
-  TestsDeclaration(lm) {
-    lm.block()
-  },
-  TestDeclaration(lm) {
-    lm.block()
-  },
-  ExpectStatement(lm) {
-    lm.block()
   },
   ParameterList(lm) {
     lm.list()

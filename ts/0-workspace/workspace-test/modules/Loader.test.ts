@@ -100,8 +100,8 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
 
     Tests.expect(sources.map(source => source.path)).toContain(standardPath)
     Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: standardPath, relation: 'public' }])
-    Tests.expect(sources[1]!.document.root.declarations[0]!.kind).toBe('ViewDeclaration')
-    Tests.expect((sources[1]!.document.root.declarations[0] as AST.ViewDeclaration).name.value).toBe('Actual')
+    Tests.expect(AST.GetDeclarations(sources[1]!.document)[0]!.kind).toBe('ViewDeclaration')
+    Tests.expect((AST.GetDeclarations(sources[1]!.document)[0] as AST.ViewDeclaration).name.value).toBe('Actual')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

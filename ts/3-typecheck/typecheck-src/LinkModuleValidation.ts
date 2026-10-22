@@ -4,13 +4,19 @@ import type { SourceModule } from './Modules'
 
 /** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
 export function assertUniqueLocalBindings(source: SourceModule): void {
-  for (const declaration of AST.GetViewDeclarations(source.document)) {
-    assertUniqueNames(source.path, declaration.name.value, [
-      ...declaration.parameters.map(parameter => parameter.name.value),
-      ...declaration.definitions.map(definition => definition.name.value),
-    ])
-    if (AST.IsKind(declaration.render, 'ViewRender')) {
-      assertUniqueRenderChildren(source.path, declaration.name.value, declaration.render)
+  for (const view of AST.GetViewDeclarations(source.document)) {
+    const statements = AST.GetViewDeclarationStatements(view)
+    if (statements) {
+      const lets = statements.filter(AST.IsLetDeclaration)
+      assertUniqueNames(source.path, view.name.value, [
+        ...view.parameters.map(parameter => parameter.name.value),
+        ...lets.map(definition => definition.name.value),
+      ])
+      for (const statement of statements.filter(AST.IsViewRenderStatement)) {
+        if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
+          assertUniqueRenderChildren(source.path, view.name.value, statement.expression)
+        }
+      }
     }
   }
 }
@@ -18,34 +24,34 @@ export function assertUniqueLocalBindings(source: SourceModule): void {
 /** collectReferencedNames returns module names used by source declarations and app tests. */
 export function collectReferencedNames(document: AST.Document): ReadonlySet<string> {
   const names = new Set<string>()
-  for (const declaration of document.root.declarations) {
+  for (const declaration of AST.GetDeclarations(document)) {
     if (AST.IsAppDeclaration(declaration)) {
-      names.add(declaration.root.value)
+      names.add(AST.GetAppRoot(declaration).value)
     } else if (AST.IsViewDeclaration(declaration)) {
       const localNames = new Set(declaration.parameters.map(parameter => parameter.name.value))
       for (const parameter of declaration.parameters) {
         addReference(parameter.type.value, names, localNames)
       }
-      for (const definition of declaration.definitions) {
-        addScopedLetReferences(definition, names, localNames)
-        localNames.add(definition.name.value)
-      }
-      if (AST.IsKind(declaration.render, 'ViewRender')) {
-        addScopedRenderReferences(declaration.render, names, localNames)
-      } else if (AST.IsKind(declaration.render, 'Injection')) {
-        for (const capture of declaration.render.captures) {
-          if (AST.IsKind(capture.value, 'Name')) {
-            addReference(capture.value.value, names, localNames)
+      const statements = AST.GetViewDeclarationStatements(declaration)
+      if (statements) {
+        for (const statement of statements) {
+          if (AST.IsLetDeclaration(statement)) {
+            addScopedLetReferences(statement, names, localNames)
+            localNames.add(statement.name.value)
+          } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
+            addScopedRenderReferences(statement.expression, names, localNames)
+          } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
+            addInjectionReferences(statement.injection, names, localNames)
+          } else {
+            Errors.ThrowShouldNeverHappen('Unexpected view declaration statement.')
           }
         }
-      } else {
-        // Foreign views carry TypeScript code rather than Tao render references.
       }
-    } else if (AST.IsLetDefinition(declaration)) {
+    } else if (AST.IsLetDeclaration(declaration)) {
       addLetReferences(declaration, names)
     } else if (AST.IsKind(declaration, 'TestsDeclaration')) {
-      for (const test of declaration.tests) {
-        for (const step of test.steps) {
+      for (const test of declaration.block.statements) {
+        for (const step of AST.GetTestSteps(test)) {
           if (AST.IsKind(step, 'RunStatement')) {
             names.add(step.app.value)
           }
@@ -58,13 +64,11 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
   return names
 }
 
-function assertUniqueRenderChildren(source: string, view: string, render: AST.ViewRender): void {
-  assertUniqueNames(
-    source,
-    view,
-    render.children.filter(AST.IsLetDefinition).map(definition => definition.name.value),
-  )
-  for (const child of render.children.filter(AST.IsViewRender)) {
+function assertUniqueRenderChildren(source: string, view: string, render: AST.ViewRenderExpression): void {
+  const statements = AST.GetViewRenderBlockStatements(render)
+  const lets = statements.filter(AST.IsLetDeclaration)
+  assertUniqueNames(source, view, lets.map(definition => definition.name.value))
+  for (const child of statements.filter(AST.IsViewRenderExpression)) {
     assertUniqueRenderChildren(source, view, child)
   }
 }
@@ -79,7 +83,7 @@ function assertUniqueNames(source: string, view: string, names: readonly string[
   }
 }
 
-function addLetReferences(definition: AST.LetDefinition, names: Set<string>): void {
+function addLetReferences(definition: AST.LetDeclaration, names: Set<string>): void {
   if (definition.type) {
     names.add(definition.type.value)
   }
@@ -89,7 +93,7 @@ function addLetReferences(definition: AST.LetDefinition, names: Set<string>): vo
 }
 
 function addScopedLetReferences(
-  definition: AST.LetDefinition,
+  definition: AST.LetDeclaration,
   names: Set<string>,
   localNames: ReadonlySet<string>,
 ): void {
@@ -102,7 +106,7 @@ function addScopedLetReferences(
 }
 
 function addScopedRenderReferences(
-  render: AST.ViewRender,
+  render: AST.ViewRenderExpression,
   names: Set<string>,
   parentNames: ReadonlySet<string>,
 ): void {
@@ -113,12 +117,24 @@ function addScopedRenderReferences(
       addReference(argument.value, names, localNames)
     }
   }
-  for (const child of render.children) {
-    if (AST.IsLetDefinition(child)) {
+  for (const child of AST.GetViewRenderBlockStatements(render)) {
+    if (AST.IsLetDeclaration(child)) {
       addScopedLetReferences(child, names, localNames)
       localNames.add(child.name.value)
     } else {
       addScopedRenderReferences(child, names, localNames)
+    }
+  }
+}
+
+function addInjectionReferences(
+  injection: AST.Injection,
+  names: Set<string>,
+  localNames: ReadonlySet<string>,
+): void {
+  for (const capture of injection.captures) {
+    if (AST.IsKind(capture.value, 'Name')) {
+      addReference(capture.value.value, names, localNames)
     }
   }
 }

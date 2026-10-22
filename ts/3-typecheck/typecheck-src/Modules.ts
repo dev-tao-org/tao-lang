@@ -19,7 +19,7 @@ export type LinkedModule = {
 }
 
 /** LinkedDefinition identifies a module-level value in initialization order. */
-export type LinkedDefinition = { source: string; declaration: AST.LetDefinition }
+export type LinkedDefinition = { source: string; declaration: AST.LetDeclaration }
 
 /** LinkedProgram holds one entry file and the resolved modules used by full compilation. */
 export type LinkedProgram = {

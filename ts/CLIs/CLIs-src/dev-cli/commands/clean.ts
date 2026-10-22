@@ -31,6 +31,7 @@ export default registerCommand({
       IO.print('Preserved project cache while session ownership was uncertain.')
     }
     await FileSystem.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
+    await FileSystem.rm(Repo.resolvePath('ts/2-ast-gen/_gen_AST'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/7-runtime/_gen_runtime'), { recursive: true, force: true })
     await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
     if (args.includes('--full')) {

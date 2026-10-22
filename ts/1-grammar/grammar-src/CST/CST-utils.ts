@@ -16,12 +16,6 @@ export function RequiredField(cst: SyntaxNode, field: string): SyntaxNode {
   return cst.childForFieldName(field) ?? Errors.ThrowShouldNeverHappen(`Missing CST field ${field} on ${cst.type}.`)
 }
 
-/** RequiredChild returns a required named CST child of the requested type. */
-export function RequiredChild(cst: SyntaxNode, type: string): SyntaxNode {
-  return cst.namedChildren.find(child => child.type === type)
-    ?? Errors.ThrowShouldNeverHappen(`Missing CST child ${type} on ${cst.type}.`)
-}
-
 /** TypeScriptBody extracts a TypeScript CST node's fenced source, preserving its interior whitespace. */
 export function TypeScriptBody(cst: Pick<SyntaxNode, 'text'>): string {
   // ex: "```ts\nX\n```" -> "\nX\n"

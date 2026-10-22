@@ -247,11 +247,18 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
 }
 
 const appSource = S`
-  import { App as RuntimeApp, ReactNative, ViewDefinition } from '@runtime'
+  import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@runtime'
+  import Tao from '@tao/runtime-api'
+  import { createElement } from 'react'
+  import type { ViewComponentProps } from '@runtime'
 
-  const Root = ViewDefinition('Root', [], () => <ReactNative.Text>Hello from Tao</ReactNative.Text>)
+  function RootView(props: ViewComponentProps) {
+    const context = beginViewRender(props)
+    return finishViewRender(context, createElement(Tao.Text, null, 'Hello from Tao'))
+  }
+  const Root = ViewDeclaration('Root', [], RootView)
 
   export default function App() {
-    return RuntimeApp(Root, 'runtime-check')
+    return AppDeclaration(Root, 'runtime-check')
   }
 `

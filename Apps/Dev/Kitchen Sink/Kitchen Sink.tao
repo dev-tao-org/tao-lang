@@ -56,10 +56,10 @@ view Panel(Title text) {
   /* Injections explicitly capture their Tao values and contextual children. */
   render inject Caption Title, Children @@children ```ts
     return (
-      <TR.ReactNative.View style={{ padding: 12, borderWidth: 1 }}>
-        <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
+      <Tao.View style={{ padding: 12, borderWidth: 1 }}>
+        <Tao.Text>{Caption}</Tao.Text>
         {Children}
-      </TR.ReactNative.View>
+      </Tao.View>
     )
   ```
 }
@@ -67,18 +67,19 @@ view Panel(Title text) {
 project
 view Heading {
   render inject ```ts
-    return <TR.ReactNative.Text style={{ fontSize: 24 }}>Kitchen Sink</TR.ReactNative.Text>
+    return <Tao.Text style={{ fontSize: 24 }}>Kitchen Sink</Tao.Text>
   ```
 }
 
 public
 view SaveButton {
   render inject ```ts
-    const [saved, setSaved] = TR.React.useState(false)
+    const saved = Tao.useWritable(() => false)
+    const isSaved = Tao.useValue(saved)
     return (
-      <TR.ReactNative.Pressable onPress={() => setSaved(true)}>
-        <TR.ReactNative.Text>{saved ? 'Saved' : 'Save'}</TR.ReactNative.Text>
-      </TR.ReactNative.Pressable>
+      <Tao.Pressable onPress={() => saved.update(true)}>
+        <Tao.Text>{isSaved ? 'Saved' : 'Save'}</Tao.Text>
+      </Tao.Pressable>
     )
   ```
 }

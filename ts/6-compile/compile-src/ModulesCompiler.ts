@@ -1,19 +1,21 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, S } from '@shared'
-import type { LinkedDefinition, LinkedModule, LinkedProgram, ModuleBinding } from '@typecheck/Modules'
-import { compileLazyBinding, compileValueReference, compileViewReference } from './BindingsCompiler'
-import { emitStringLiteral } from './codegen-util'
+import { Platform } from '@shared/os'
+import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
+import { compileDeclaration, type DeclarationContext } from './DeclarationCompiler'
+import { compileForeignViews, type ForeignViewPathResolver, getForeignViewKey } from './ForeignViewsCompiler'
 import {
-  compileForeignViews,
-  type ForeignViewPathResolver,
-  getForeignViewKey,
-} from './ForeignViewsCompiler'
-import { compileLetDefinition, isTextExpression } from './ValuesCompiler'
-import { compileViewDeclaration } from './ViewsCompiler'
+  emitAppDeclaration,
+  emitModuleApplied,
+  emitModuleBinding,
+  emitRuntimeImports,
+  emitScope,
+} from './RuntimeEmitter'
+import { isTextExpression } from './ValuesCompiler'
 
 export type { ForeignViewPathResolver } from './ForeignViewsCompiler'
 
-/** compileProgram emits one app module from its already linked source modules. */
+/** compileProgram emits one atomic app module with stable named components and linked lexical scopes. */
 export function compileProgram(
   program: LinkedProgram,
   revision: string,
@@ -21,114 +23,73 @@ export function compileProgram(
   resolveForeignViewPath?: ForeignViewPathResolver,
 ): string {
   const selected = selectApp(program, appName)
-  const resolveModuleIndex = createModuleIndexResolver(program)
   const foreign = compileForeignViews(program, resolveForeignViewPath)
-  const scopes = program.modules.map((_module, index) => `const ${createScopeName(index)} = TR.Scope();`).join('\n')
-  const aliases = compileAliases(program, resolveModuleIndex)
-  const views = compileViews(program, buildModuleTextBindings(program), foreign.names)
-  const apps = compileAppRegistrations(program)
-  const definitions = compileDefinitions(program, resolveModuleIndex)
-  const rootScope = createScopeName(resolveModuleIndex(selected.source))
+  const contexts = createModuleContexts(program, buildModuleTextBindings(program), foreign.names)
+  const scopes = program.modules.map(module => emitScope(resolveContext(contexts, module.path).scope)).join('\n')
+  const aliases = compileAliases(program, contexts)
+  const views = compileModuleDeclarations(program, contexts, AST.GetViewDeclarations)
+  const apps = compileModuleDeclarations(program, contexts, AST.GetAppDeclarations)
+  const definitions = program.definitions.map(definition =>
+    compileDeclaration(definition.declaration, resolveContext(contexts, definition.source))
+  ).join('\n')
+  const rootScope = resolveContext(contexts, selected.source).scope
   return S`
-    import * as TR from '@runtime';
+    ${emitRuntimeImports()}
     ${foreign.imports}
-    TR.ModuleApplied(${emitStringLiteral(revision)});
+    ${emitModuleApplied(revision)}
     ${scopes}
     ${aliases}
     ${views}
     ${apps}
     ${definitions}
     export default function App() {
-      return TR.App(${compileViewReference(selected.declaration.root, rootScope)}, ${emitStringLiteral(revision)});
+      return ${emitAppDeclaration(selected.declaration, rootScope, revision)};
     }
   `
 }
 
-type ModuleIndexResolver = (path: string) => number
+type ModuleContexts = ReadonlyMap<string, DeclarationContext>
+type CollectDeclarations = (document: AST.Document) => readonly AST.Declaration[]
 
-function createModuleIndexResolver(program: LinkedProgram): ModuleIndexResolver {
-  const indexes = new Map<string, number>()
-  program.modules.forEach((module, index) => indexes.set(module.path, index))
-  return path =>
-    indexes.get(path)
-      ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${path}.`)
-}
-
-function compileDefinitions(program: LinkedProgram, resolveModuleIndex: ModuleIndexResolver): string {
-  return program.definitions.map(definition => compileDefinition(definition, resolveModuleIndex)).join('\n')
-}
-
-function compileDefinition(definition: LinkedDefinition, resolveModuleIndex: ModuleIndexResolver): string {
-  const scope = createScopeName(resolveModuleIndex(definition.source))
-  return compileLetDefinition(definition.declaration, scope)
-}
-
-function compileAliases(program: LinkedProgram, resolveModuleIndex: ModuleIndexResolver): string {
-  return program.modules.flatMap((module, index) => compileModuleAliases(module, index, resolveModuleIndex)).join('\n')
-}
-
-function compileModuleAliases(
-  module: LinkedModule,
-  index: number,
-  resolveModuleIndex: ModuleIndexResolver,
-): string[] {
-  const scope = createScopeName(index)
-  return module.bindings.map(binding => compileAlias(binding, scope, resolveModuleIndex))
-}
-
-function compileAlias(binding: ModuleBinding, scope: string, resolveModuleIndex: ModuleIndexResolver): string {
-  const targetScope = createScopeName(resolveModuleIndex(binding.source))
-  const reference = compileValueReference(binding, targetScope)
-  return compileLazyBinding(binding, scope, reference)
-}
-
-// Define each module app name on its scope so folder bindings resolve.
-function compileAppRegistrations(program: LinkedProgram): string {
-  return program.modules.flatMap(compileModuleAppRegistrations).join('\n')
-}
-
-function compileModuleAppRegistrations(module: LinkedModule, index: number): string[] {
-  const scope = createScopeName(index)
-  return AST.GetAppDeclarations(module.document)
-    .map(app => compileModuleAppRegistration(app, scope))
-}
-
-function compileModuleAppRegistration(app: AST.AppDeclaration, scope: string): string {
-  const root = compileViewReference(app.root, scope)
-  return compileLazyBinding(app, scope, root)
-}
-
-function compileViews(
+function createModuleContexts(
   program: LinkedProgram,
-  inheritedByModule: ReadonlyMap<string, ReadonlySet<string>>,
+  textBindings: ReadonlyMap<string, ReadonlySet<string>>,
   foreignNames: ReadonlyMap<string, string>,
-): string {
-  return program.modules.flatMap((module, index) => compileModuleViews(module, index, inheritedByModule, foreignNames))
-    .join('\n')
+): ModuleContexts {
+  return new Map(program.modules.map((module, index) => [module.path, {
+    scope: `_scope${index}`,
+    // A new import must not rename existing component families by shifting module indexes.
+    moduleIdentity: Platform.hashText(module.path).slice(0, 12),
+    textBindings: textBindings.get(module.path) ?? new Set(),
+    resolveForeignComponent: (view: AST.ViewDeclaration) =>
+      foreignNames.get(getForeignViewKey(module.path, view.start)),
+  }]))
 }
 
-function compileModuleViews(
-  module: LinkedModule,
-  index: number,
-  inheritedByModule: ReadonlyMap<string, ReadonlySet<string>>,
-  foreignNames: ReadonlyMap<string, string>,
-): string[] {
-  const scope = createScopeName(index)
-  const inherited = inheritedByModule.get(module.path) ?? new Set()
-  return AST.GetViewDeclarations(module.document)
-    .map(view => compileModuleView(view, module.path, inherited, scope, foreignNames))
+function resolveContext(contexts: ModuleContexts, source: string): DeclarationContext {
+  return contexts.get(source)
+    ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${source}.`)
 }
 
-function compileModuleView(
-  view: AST.ViewDeclaration,
-  modulePath: string,
-  inherited: ReadonlySet<string>,
-  scope: string,
-  foreignNames: ReadonlyMap<string, string>,
+function compileAliases(program: LinkedProgram, contexts: ModuleContexts): string {
+  return program.modules.flatMap(module => {
+    const scope = resolveContext(contexts, module.path).scope
+    return module.bindings.map(binding => {
+      const targetScope = resolveContext(contexts, binding.source).scope
+      return emitModuleBinding(binding, scope, targetScope)
+    })
+  }).join('\n')
+}
+
+function compileModuleDeclarations(
+  program: LinkedProgram,
+  contexts: ModuleContexts,
+  collectDeclarations: CollectDeclarations,
 ): string {
-  const key = getForeignViewKey(modulePath, view.start)
-  const foreignName = foreignNames.get(key)
-  return compileViewDeclaration(view, inherited, scope, foreignName)
+  return program.modules.flatMap(module => {
+    const context = resolveContext(contexts, module.path)
+    return collectDeclarations(module.document).map(node => compileDeclaration(node, context))
+  }).join('\n')
 }
 
 function buildModuleTextBindings(program: LinkedProgram): ReadonlyMap<string, ReadonlySet<string>> {
@@ -207,8 +168,4 @@ function selectApp(program: LinkedProgram, appName?: string): { source: string; 
   return declaration
     ? { source: binding.source, declaration }
     : Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
-}
-
-function createScopeName(index: number): string {
-  return `_scope${index}`
 }

@@ -7,7 +7,7 @@ import { createTypeScriptFormatter } from '../fix-src/lib/formatter/Embedded'
 Tests.test('native TSX formatting preserves literal values, aligns fences and leaves incomplete bodies alone', async () => {
   const typescript = createTypeScriptFormatter(await FormatterResources.typeScriptFormatterBytes())
   const source = S`
-    view Native(Value text){render inject Value \`\`\`ts const count=1;return <TR.ReactNative.Text value={ count }>{Value}</TR.ReactNative.Text> \`\`\`}
+    view Native(Value text){render inject Value \`\`\`ts const count=1;return <Tao.Text value={ count }>{Value}</Tao.Text> \`\`\`}
   `
   const parser = createParser()
   const formatted = format({ source, tree: parser.parse(source) }, { typescript })
@@ -16,7 +16,7 @@ Tests.test('native TSX formatting preserves literal values, aligns fences and le
     view Native(Value text) {
       render inject Value \`\`\`ts
         const count = 1
-        return <TR.ReactNative.Text value={count}>{Value}</TR.ReactNative.Text>
+        return <Tao.Text value={count}>{Value}</Tao.Text>
       \`\`\`
     }
   `)
@@ -29,7 +29,7 @@ Tests.test('native TSX formatting preserves literal values, aligns fences and le
   const literalSource = 'view Literal { render inject ' + token + ' }'
   const result = format({ source: literalSource, tree: parser.parse(literalSource) }, { typescript })
   Tests.expect(result.text).toContain('`first\n  second`')
-  const brokenToken = '```ts return <TR.ReactNative.Text> ```'
+  const brokenToken = '```ts return <Tao.Text> ```'
   const broken = 'view Editing{render inject ' + brokenToken + '}'
   const partial = format({ source: broken, tree: parser.parse(broken) }, { typescript })
   Tests.expect(partial.status).toBe('partial')

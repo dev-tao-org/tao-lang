@@ -6,17 +6,22 @@ app Interactions {
 
 view Form {
   render Col {
-    #name Input("Original")
-    #save Button
+    #name
+    Input("Original")
+    #save
+    Button
   }
 }
 
 view Button {
   render inject ```ts
-    const [pressed, setPressed] = TR.React.useState(false)
-    return <TR.ReactNative.Pressable onPress={() => setPressed(true)}>
-      <TR.ReactNative.Text>{pressed ? 'Saved' : 'Ready'}</TR.ReactNative.Text>
-    </TR.ReactNative.Pressable>
+    const pressed = Tao.useWritable(() => false)
+    const isPressed = Tao.useValue(pressed)
+    return (
+      <Tao.Pressable onPress={() => pressed.update(true)}>
+        <Tao.Text>{isPressed ? 'Saved' : 'Ready'}</Tao.Text>
+      </Tao.Pressable>
+    )
   ```
 }
 

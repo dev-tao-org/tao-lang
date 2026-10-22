@@ -35,8 +35,8 @@ export type TestResult = {
 /** runTests executes the app journeys declared in one semantic source document. */
 export async function runTests(document: AST.Document, options: TestOptions): Promise<TestResult[]> {
   const results: TestResult[] = []
-  for (const suite of document.root.declarations.filter(AST.IsTestsDeclaration)) {
-    for (const test of suite.tests) {
+  for (const suite of AST.GetDeclarations(document).filter(AST.IsTestsDeclaration)) {
+    for (const test of suite.block.statements) {
       const label = caseLabel(suite, test, options)
       options.onProgress?.(`Test ${label}…`)
       results.push(await runCase(suite, test, options))
@@ -64,7 +64,7 @@ async function runCase(
     assertJourney(test)
     assertActive(options.signal)
     driver = await options.createDriver()
-    for (const step of test.steps) {
+    for (const step of AST.GetTestSteps(test)) {
       assertActive(options.signal)
       current = step
       await runStep(step, driver)
@@ -91,14 +91,15 @@ function assertActive(signal?: AbortSignal): void {
 }
 
 function assertJourney(test: AST.TestDeclaration): void {
-  const first = test.steps[0]
+  const steps = AST.GetTestSteps(test)
+  const first = steps[0]
   if (!first || !AST.IsKind(first, 'RunStatement')) {
     Errors.ThrowUserInput('An app test must start with run <app>.')
   }
-  if (test.steps.slice(1).some(step => AST.IsKind(step, 'RunStatement'))) {
+  if (steps.slice(1).some(step => AST.IsKind(step, 'RunStatement'))) {
     Errors.ThrowUserInput('Use a separate test case for another app launch.')
   }
-  if (!test.steps.some(step => AST.IsKind(step, 'ExpectStatement') && step.expectations.length > 0)) {
+  if (!steps.some(step => AST.IsKind(step, 'ExpectStatement') && hasExpectations(step))) {
     Errors.ThrowUserInput('An app test must contain a visible expectation.')
   }
 }
@@ -109,11 +110,19 @@ function runStep(step: AST.TestStep, driver: TestDriver): Promise<void> {
     PressStatement: value => driver.press(value.target.value),
     TypeStatement: value => driver.type(value.target.value, value.value.value),
     async ExpectStatement(value) {
-      for (const expectation of value.expectations) {
-        await expectValue(expectation, value.target?.value, driver)
+      if (value.expectation) {
+        await expectValue(value.expectation, value.target?.value, driver)
+      } else if (value.block) {
+        for (const expectation of value.block.statements) {
+          await expectValue(expectation, value.target?.value, driver)
+        }
       }
     },
   })
+}
+
+function hasExpectations(step: AST.ExpectStatement): boolean {
+  return step.expectation !== undefined || (step.block?.statements.length ?? 0) > 0
 }
 
 function expectValue(expectation: AST.Expectation, parentTag: string | undefined, driver: TestDriver): Promise<void> {

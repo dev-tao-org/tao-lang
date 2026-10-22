@@ -5,52 +5,87 @@ export default grammar({
   extras($) {
     return [/\s/, $.Comment]
   },
+  supertypes: $ => [$._Declaration, $._Expression, $._ViewRenderStatement],
   rules: {
     SourceFile($) {
-      return repeat(choice(
+      return repeat($._Declaration)
+    },
+    _Declaration($) {
+      return choice(
         $.AppDeclaration,
         $.ViewDeclaration,
         $.TestsDeclaration,
-        $.LetDefinition,
+        $.LetDeclaration,
         $.UseStatement,
         $.UsePackageStatement,
         $.RequiresDeclaration,
-      ))
+      )
+    },
+    _Expression($) {
+      return choice($.QualifiedName, $.TextLiteral)
+    },
+    _ViewRenderStatement($) {
+      return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
+    },
+    Block($) {
+      return seq(
+        '{',
+        repeat(field(
+          'statements',
+          choice(
+            $.RootDeclaration,
+            $.AppDeclaration,
+            $.ViewDeclaration,
+            $.TestsDeclaration,
+            $.LetDeclaration,
+            $.UseStatement,
+            $.UsePackageStatement,
+            $.RequiresDeclaration,
+            $.TestDeclaration,
+            $.RunStatement,
+            $.PressStatement,
+            $.TypeStatement,
+            $.ExpectStatement,
+            $.TextExpectation,
+            $.InputExpectation,
+            $.InputValueExpectation,
+            $._ViewRenderStatement,
+            $.ViewRenderExpression,
+          ),
+        )),
+        '}',
+      )
     },
 
-    // Apps
+    // Apps and views
     AppDeclaration($) {
       return seq(
         optional(field('visibility', $.Visibility)),
         'app',
         field('name', $.Identifier),
-        '{',
-        $.RootDeclaration,
-        '}',
+        field('block', $.Block),
       )
     },
     RootDeclaration($) {
       return seq('root', field('view', $.QualifiedName))
     },
-
-    // Views and rendering
     ViewDeclaration($) {
       return seq(
         optional(field('visibility', $.Visibility)),
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
-        choice(
-          seq('{', repeat($.LetDefinition), $.RenderStatement, '}'),
-          field('body', $.ForeignView),
-        ),
+        field('body', choice($.Block, $.ForeignView)),
       )
     },
     ForeignView($) {
       return seq('from', field('path', $.ImportPath))
     },
-    RenderStatement($) {
-      return seq('render', field('body', choice($.ViewRender, $.Injection)))
+    RenderInjectStatement($) {
+      return seq('render', field('injection', $.Injection))
+    },
+    RenderViewExpressionStatement($) {
+      return seq('render', field('expression', $.ViewRenderExpression))
     },
 
     // View parameters and native injection boundaries
@@ -76,24 +111,24 @@ export default grammar({
     TypeScript() {
       return token(seq('```ts', repeat(choice(/[^`]/, /`[^`]/, /``[^`]/)), '```'))
     },
-    ViewRender($) {
+    ViewRenderExpression($) {
       return seq(
         optional(field('tag', $.RenderTag)),
         field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
-        optional(seq('{', repeat(field('children', choice($.ViewRender, $.LetDefinition))), '}')),
+        optional(field('block', $.Block)),
       )
     },
 
     // Lexical values
-    LetDefinition($) {
+    LetDeclaration($) {
       return seq(
         optional(field('visibility', $.Visibility)),
         'let',
         field('name', $.Identifier),
         optional(seq('is', field('type', $.QualifiedName))),
         '=',
-        field('value', choice($.TextLiteral, $.QualifiedName)),
+        field('value', $._Expression),
       )
     },
 
@@ -146,7 +181,7 @@ export default grammar({
 
     // App tests and interactions
     TestsDeclaration($) {
-      return seq('tests', optional(field('label', $.TextLiteral)), '{', repeat($.TestDeclaration), '}')
+      return seq('tests', optional(field('label', $.TextLiteral)), field('block', $.Block))
     },
     TestDeclaration($) {
       return seq(
@@ -155,9 +190,7 @@ export default grammar({
           field('label', $.TextLiteral),
           seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
         )),
-        '{',
-        repeat(choice($.RunStatement, $.PressStatement, $.TypeStatement, $.ExpectStatement)),
-        '}',
+        field('block', $.Block),
       )
     },
     RunStatement($) {
@@ -175,12 +208,7 @@ export default grammar({
         choice(
           $.TextExpectation,
           $.InputExpectation,
-          seq(
-            optional(field('target', $.RenderTag)),
-            '{',
-            repeat(choice($.TextExpectation, $.InputValueExpectation)),
-            '}',
-          ),
+          seq(optional(field('target', $.RenderTag)), field('block', $.Block)),
         ),
       )
     },
@@ -202,8 +230,8 @@ export default grammar({
       return seq(
         '(',
         optional(seq(
-          choice($.TextLiteral, $.QualifiedName),
-          repeat(seq(',', choice($.TextLiteral, $.QualifiedName))),
+          $._Expression,
+          repeat(seq(',', $._Expression)),
         )),
         ')',
       )

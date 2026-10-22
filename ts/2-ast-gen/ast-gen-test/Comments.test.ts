@@ -19,13 +19,30 @@ Tests.test('comments between syntax nodes do not become declarations, parameters
     }
   `
   const ast = transform(createParser().parse(source))!
-  Tests.expect(ast.root.declarations).toHaveLength(2)
-  Tests.expect(ast.root.declarations[0]).toMatchObject({
+  Tests.expect(ast.root.block.statements).toHaveLength(2)
+  Tests.expect(ast.root.block.statements[0]).toMatchObject({
     kind: 'ViewDeclaration',
     parameters: [{ name: { value: 'Value' }, type: { value: 'text' } }],
-    render: { target: { value: 'UI.Text' }, arguments: [{ value: 'Copy' }] },
+    body: {
+      statements: [
+        { kind: 'LetDeclaration', name: { value: 'Copy' }, value: { value: 'Value' } },
+        {
+          kind: 'RenderViewExpressionStatement',
+          expression: { target: { value: 'UI.Text' }, arguments: [{ value: 'Copy' }] },
+        },
+      ],
+    },
   })
-  Tests.expect(ast.root.declarations[1]).toMatchObject({
-    tests: [{ steps: [{ kind: 'RunStatement' }, { expectations: [{ kind: 'TextExpectation' }] }] }],
+  Tests.expect(ast.root.block.statements[1]).toMatchObject({
+    block: {
+      statements: [{
+        block: {
+          statements: [
+            { kind: 'RunStatement' },
+            { kind: 'ExpectStatement', block: { statements: [{ kind: 'TextExpectation' }] } },
+          ],
+        },
+      }],
+    },
   })
 })

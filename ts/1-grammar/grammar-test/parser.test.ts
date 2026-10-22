@@ -40,13 +40,13 @@ Tests.test(
 
 Tests.test('render injections preserve typed parameters, named captures and opaque TypeScript', () => {
   const source =
-    'view Text(Value text) { render inject Value, Alias Value, Children @@children ```ts return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text> ``` }'
+    'view Text(Value text) { render inject Value, Alias Value, Children @@children ```ts return <Tao.Text>{Value}</Tao.Text> ``` }'
   const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   Tests.expect(tree.rootNode.descendantsOfType('Parameter')[0]?.text).toBe('Value text')
   Tests.expect(tree.rootNode.descendantsOfType('InjectionCapture').map(node => node.text))
     .toEqual(['Value', 'Alias Value', 'Children @@children'])
-  Tests.expect(tree.rootNode.descendantsOfType('TypeScript')[0]?.text).toContain('<TR.ReactNative.Text>')
+  Tests.expect(tree.rootNode.descendantsOfType('TypeScript')[0]?.text).toContain('<Tao.Text>')
 })
 
 Tests.test('an unfinished edit recovers to generic view names, arguments and children', () => {
@@ -54,7 +54,9 @@ Tests.test('an unfinished edit recovers to generic view names, arguments and chi
   Tests.expect(parser.parse('view RootView { render Col { Text("Hello")').rootNode.hasError).toBe(true)
   const repaired = parser.parse('view RootView { render Custom("Title", Value) { Unknown("Hello") Leaf } }')
   Tests.expect(repaired.rootNode.hasError).toBe(false)
-  Tests.expect(repaired.rootNode.descendantsOfType('ViewRender').map(node => node.childForFieldName('view')?.text))
+  Tests.expect(
+    repaired.rootNode.descendantsOfType('ViewRenderExpression').map(node => node.childForFieldName('view')?.text),
+  )
     .toEqual(['Custom', 'Unknown', 'Leaf'])
   Tests.expect(repaired.rootNode.descendantsOfType('ArgumentList')[0]?.namedChildren.map(node => node.type))
     .toEqual(['TextLiteral', 'QualifiedName'])

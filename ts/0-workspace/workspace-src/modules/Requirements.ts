@@ -32,7 +32,10 @@ export async function loadRequirementModules(
       if (declarations.length > 0) {
         metadata.push({
           path,
-          document: { ...document, root: { ...document.root, declarations } },
+          document: {
+            ...document,
+            root: { ...document.root, block: { ...document.root.block, statements: declarations } },
+          },
           imports: [],
           siblings: [],
         })

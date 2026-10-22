@@ -135,7 +135,7 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
     Tests.expect(modules[0]!.imports.map(imported => imported.targets)).toEqual([
       [{ path: sourcePath, relation: 'public' }],
     ])
-    Tests.expect((modules[1]!.document.root.declarations[0] as AST.ViewDeclaration).name.value).toBe('Text')
+    Tests.expect((AST.GetDeclarations(modules[1]!.document)[0] as AST.ViewDeclaration).name.value).toBe('Text')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

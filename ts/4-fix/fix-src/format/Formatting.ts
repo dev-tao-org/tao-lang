@@ -3,21 +3,27 @@ import type { FormattingHandlers } from '../lib/formatter/Formatter'
 /** Formatting defines Tao horizontal spacing and opaque embedded content. */
 export const Formatting = {
   AppDeclaration(fm) {
-    fm.oneSpaceAfter('app').oneSpaceBefore('{')
+    fm.oneSpaceAfter('app')
   },
   RootDeclaration(fm) {
     fm.oneSpaceAfter('root')
   },
   ViewDeclaration(fm) {
-    fm.oneSpaceAfter('view').noSpaceBeforeProperty('parameters').oneSpaceBefore('{')
+    fm.oneSpaceAfter('view').noSpaceBeforeProperty('parameters')
   },
-  ViewRender(fm) {
-    fm.noSpaceBeforeProperty('argumentList').oneSpaceBefore('{')
+  Block(fm) {
+    fm.oneSpaceBefore('{')
   },
-  LetDefinition(fm) {
+  ViewRenderExpression(fm) {
+    fm.noSpaceBeforeProperty('argumentList')
+  },
+  LetDeclaration(fm) {
     fm.oneSpaceAfter('let').oneSpaceAround('=', 'is')
   },
-  RenderStatement(fm) {
+  RenderInjectStatement(fm) {
+    fm.oneSpaceAfter('render')
+  },
+  RenderViewExpressionStatement(fm) {
     fm.oneSpaceAfter('render')
   },
   Parameter(fm) {
@@ -51,10 +57,10 @@ export const Formatting = {
     fm.oneSpaceAround('as')
   },
   TestsDeclaration(fm) {
-    fm.oneSpaceAfter('tests').oneSpaceBefore('{')
+    fm.oneSpaceAfter('tests')
   },
   TestDeclaration(fm) {
-    fm.noSpaceBefore('(').commaSpacedList().oneSpaceBefore('{')
+    fm.noSpaceBefore('(').commaSpacedList()
   },
   RunStatement(fm) {
     fm.oneSpaceAfter('run')
@@ -66,7 +72,7 @@ export const Formatting = {
     fm.oneSpaceAfter('type').oneSpaceAround('into')
   },
   ExpectStatement(fm) {
-    fm.oneSpaceAfter('expect').oneSpaceBefore('{')
+    fm.oneSpaceAfter('expect')
   },
   TextExpectation(fm) {
     fm.oneSpaceAfter('text')

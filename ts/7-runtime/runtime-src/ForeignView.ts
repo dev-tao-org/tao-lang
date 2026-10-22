@@ -1,22 +1,38 @@
+import { Errors } from '@shared'
 import { createElement } from 'react'
-import type { ComponentType } from 'react'
-import { Scope, Value } from './Scope'
+import type { ComponentType, ReactNode } from 'react'
+import { Name, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
-import { ViewDefinition } from './View'
-import type { View } from './View'
+import { beginViewRender, finishViewRender, ViewDeclaration } from './View'
+import type { View, ViewComponentProps } from './View'
 
-/** ForeignViewComponent accepts generated Tao view props without retaining a local implementation. */
+/** ForeignViewComponent is a named React component exposed through Tao's view contract. */
 export type ForeignViewComponent = ComponentType<never>
 
-/** ForeignView adapts a named React component to Tao's positional view contract. */
+/** ForeignView adapts one stable external component to Tao's positional view contract. */
 export function ForeignView(
   name: string,
   parameters: readonly string[],
   component: ForeignViewComponent,
   scope: RuntimeScope = Scope(),
 ): View {
-  return ViewDefinition(name, parameters, (bindings, children) => {
-    const props = Object.fromEntries(parameters.map(parameter => [parameter, Value(bindings, parameter)]))
-    return createElement(component as ComponentType<Record<string, unknown>>, props, ...children)
-  }, scope)
+  const descriptor = ViewDeclaration(name, parameters, ForeignViewBody, scope)
+  return { ...descriptor, foreignComponent: component }
+}
+
+function ForeignViewBody(props: ViewComponentProps): ReactNode {
+  const context = beginViewRender(props)
+  const component = context.view.foreignComponent
+  if (!component) {
+    Errors.ThrowShouldNeverHappen(`Foreign Tao view "${context.view.name}" has no component.`)
+  }
+  const valueProps = Object.fromEntries(
+    context.view.parameters.map(parameter => [parameter, Name(context.scope, parameter)]),
+  )
+  const testIDProps = context.testID === undefined ? {} : { testID: context.testID }
+  const element = createElement(component as ComponentType<Record<string, unknown>>, {
+    ...valueProps,
+    ...testIDProps,
+  }, ...context.children)
+  return finishViewRender(context, element)
 }

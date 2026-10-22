@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
@@ -73,18 +74,37 @@ function fileRequirement(identifier: string): DependencyRequirement {
 }
 
 function parsed(root: string, requirements: DependencyRequirement[]): Pick<SourceModule, 'path' | 'document'>[] {
+  const sourcePath = Path.join(root, 'Main.tao')
+  const declarations = requirements.map(requirementDeclaration)
   return [{
-    path: Path.join(root, 'Main.tao'),
+    path: sourcePath,
     document: {
       root: {
-        declarations: requirements.map(item => ({
-          kind: 'RequiresDeclaration',
-          ...item,
-          alias: { value: item.alias },
-        })),
+        kind: 'File',
+        start: 0,
+        end: 0,
+        block: {
+          kind: 'Block',
+          start: 0,
+          end: 0,
+          statements: declarations,
+        },
       },
     },
-  }] as unknown as Pick<SourceModule, 'path' | 'document'>[]
+  }]
+}
+
+function requirementDeclaration(requirement: DependencyRequirement): AST.RequiresDeclaration {
+  const alias = requirement.alias
+  return {
+    kind: 'RequiresDeclaration',
+    start: 0,
+    end: 0,
+    provider: requirement.provider,
+    identifier: requirement.identifier,
+    version: requirement.version,
+    alias: alias === undefined ? undefined : { kind: 'Name', start: 0, end: 0, value: alias },
+  }
 }
 
 async function createProject(path: string): Promise<void> {

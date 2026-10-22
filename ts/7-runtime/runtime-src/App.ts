@@ -1,16 +1,16 @@
 import { createElement, Suspense, useEffect } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import { previewOptions } from './Preview'
-import { ProvideRuntimeObserver, Render, ViewRenderArgs } from './View'
-import type { AppOptions, RuntimeObserver, View } from './View'
+import { ProvideRuntimeObserver, ViewRenderArguments, ViewRenderExpression } from './View'
+import type { AppOptions, RuntimeObserver } from './View'
 
-/** App renders a zero-argument root and acknowledges its revision after commit. */
-export function App(view: View, revision: string, options: AppOptions = previewOptions()): ReactElement {
+/** AppDeclaration renders a zero-argument root and acknowledges its revision after commit. */
+export function AppDeclaration(view: unknown, revision: string, options: AppOptions = previewOptions()): ReactElement {
   return createElement(AppRoot, { view, revision, options })
 }
 
 type AppRootProps = {
-  view: View
+  view: unknown
   revision: string
   options: AppOptions
 }
@@ -18,7 +18,7 @@ type AppRootProps = {
 function AppRoot({ view, revision, options }: AppRootProps): ReactNode {
   const observer = options.observer
   const startedAt = observer?.now()
-  const subtree = Render(view, ViewRenderArgs(), observer)
+  const subtree = ViewRenderExpression(view, ViewRenderArguments(), observer)
   return ProvideRuntimeObserver(
     observer,
     createElement(

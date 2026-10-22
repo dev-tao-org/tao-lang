@@ -3,6 +3,7 @@ import { Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
+import { writeSemanticAst } from './semantic-ast'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
@@ -29,6 +30,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const current = FileSystem.existsSync(stampPath) && await FileSystem.file(stampPath).text() === stamp
   if (canReuseParser(force, current, outputs)) {
     await writeCSTTypes(outputRoot)
+    await writeSemanticAst(outputRoot)
     return
   }
   await FileSystem.mkdir(outputRoot, { recursive: true })
@@ -38,6 +40,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   }
   await timings.run(generateParser)
   await writeCSTTypes(outputRoot)
+  await writeSemanticAst(outputRoot)
   await timings.run(buildParserNative, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
@@ -67,7 +70,15 @@ function canReuseParser(force: boolean, current: boolean, outputs: readonly stri
 
 async function readInputs() {
   const sources: Record<string, string> = {}
-  for (const filename of ['treesitter-grammar.js', 'tree-sitter.json', 'binding.gyp', 'binding.cc']) {
+  for (
+    const filename of [
+      'treesitter-grammar.js',
+      'semantic-ast-metadata.json',
+      'tree-sitter.json',
+      'binding.gyp',
+      'binding.cc',
+    ]
+  ) {
     sources[filename] = await FileSystem.file(Path.join(grammarRoot, filename)).text()
   }
   return {

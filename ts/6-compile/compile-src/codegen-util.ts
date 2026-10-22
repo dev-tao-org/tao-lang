@@ -1,9 +1,6 @@
 import type * as AST from '@ast-gen/AST'
 import type { ModuleBinding } from '@typecheck/Modules'
 
-/** CallbackNames contains collision-safe generated callback parameter names. */
-export type CallbackNames = { values: string; children: string }
-
 /** NamedValue identifies a named AST declaration, parameter, capture or linked module binding. */
 export type NamedValue = Pick<AST.ValueDeclaration | AST.Parameter | AST.Capture, 'name'> | Pick<ModuleBinding, 'name'>
 
@@ -35,15 +32,4 @@ export function compileIdentifier(node: Pick<AST.ViewDeclaration | AST.Capture, 
 /** listMap emits an array literal compiled from its input values. */
 export function listMap<T>(values: readonly T[], compile: (value: T) => string): string {
   return `[${values.map(compile).join(', ')}]`
-}
-
-/** allocateUnusedName reserves and returns a generated name absent from the occupied set. */
-export function allocateUnusedName(base: string, occupied: Set<string>): string {
-  let candidate = base
-  let suffix = 0
-  while (occupied.has(candidate)) {
-    candidate = `${base}${++suffix}`
-  }
-  occupied.add(candidate)
-  return candidate
 }

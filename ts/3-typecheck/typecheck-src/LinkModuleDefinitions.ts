@@ -32,19 +32,19 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
     }
     visiting.delete(key)
     visited.add(key)
-    if (AST.IsLetDefinition(item.declaration)) {
+    if (AST.IsLetDeclaration(item.declaration)) {
       ordered.push({ source: item.source, declaration: item.declaration })
     }
   }
   for (const item of definitions) {
-    if (AST.IsLetDefinition(item.declaration)) {
+    if (AST.IsLetDeclaration(item.declaration)) {
       visit(item)
     }
   }
   return ordered
 }
 
-type DependencyDefinition = { source: string; declaration: AST.LetDefinition | AST.AppDeclaration }
+type DependencyDefinition = { source: string; declaration: AST.LetDeclaration | AST.AppDeclaration }
 
 function collectModuleKnownNames(module: LinkedModule): Set<string> {
   const declaredNames = AST.GetValueDeclarations(module.document).map(declaration => declaration.name.value)
@@ -56,7 +56,7 @@ function dependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefi
   return modules.flatMap(module =>
     AST.GetValueDeclarations(module.document)
       .filter((node): node is DependencyDefinition['declaration'] =>
-        AST.IsLetDefinition(node) || AST.IsAppDeclaration(node)
+        AST.IsLetDeclaration(node) || AST.IsAppDeclaration(node)
       )
       .map(declaration => ({ source: module.path, declaration }))
   )
@@ -68,7 +68,9 @@ function dependenciesFor(
   definitions: ReadonlyMap<string, DependencyDefinition>,
   knownNames: ReadonlySet<string>,
 ): ModuleBinding[] {
-  const value = AST.IsAppDeclaration(item.declaration) ? item.declaration.root : item.declaration.value
+  const value = AST.IsAppDeclaration(item.declaration)
+    ? AST.GetAppRoot(item.declaration)
+    : item.declaration.value
   if (!AST.IsKind(value, 'Name')) {
     return []
   }

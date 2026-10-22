@@ -1,44 +1,39 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import { compileValueReference } from './BindingsCompiler'
-import { type CallbackNames, compileIdentifier } from './codegen-util'
+import { type ComponentNames, emitInjectionComponent, emitName, type InjectionCapture } from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
 
-/** compileInjection emits authored TypeScript inside a view callback. */
+/** compileInjection emits a named component and statically visible authored custom hook. */
 export function compileInjection(
   node: AST.Injection,
   bindings: ReadonlySet<string>,
-  callbackNames: CallbackNames,
+  names: ComponentNames,
 ): string {
-  return [
-    ...node.captures.map(capture => compileCapture(capture, bindings, callbackNames)),
-    'return (() => {',
-    node.code,
-    '})();',
-  ].join('\n')
+  const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
+  return emitInjectionComponent(node, names, captures)
 }
 
 function compileCapture(
   node: AST.Capture,
   bindings: ReadonlySet<string>,
-  callbackNames: CallbackNames,
-): string {
+  names: ComponentNames,
+): InjectionCapture {
   assertCaptureName(node.name.value)
-  const value = Switch.kind(node.value, {
+  return Switch.kind(node.value, {
     Name(name) {
-      const nativeType = isTextExpression(name, reference => bindings.has(reference.value)) ? ' as string' : ''
-      return `${compileValueReference(name, callbackNames.values)}${nativeType}`
+      const text = isTextExpression(name, reference => bindings.has(reference.value))
+      const value = emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
+      return { node, type: text ? 'text' : 'unknown', value }
     },
     ContextReference: reference =>
       reference.value === 'children'
-        ? callbackNames.children
+        ? { node, type: 'children', value: `${names.render}.children` }
         : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
   })
-  return `const ${compileIdentifier(node)} = ${value};`
 }
 
 function assertCaptureName(name: string): void {
-  if (name === 'TR' || reservedCaptureNames.has(name)) {
+  if (name === 'TR' || name === 'Tao' || reservedCaptureNames.has(name)) {
     Errors.ThrowUserInput(`Injection capture name ${name} conflicts with generated JavaScript.`)
   }
 }

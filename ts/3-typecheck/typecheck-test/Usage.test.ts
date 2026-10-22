@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { S } from '@shared'
@@ -41,7 +42,7 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
       ['unused-declaration', 'Spare'],
     ])
   Tests.expect(warnings.every(warning => warning.severity === 'warning')).toBe(true)
-  Tests.expect(ast.root.declarations).toHaveLength(12)
+  Tests.expect(AST.GetDeclarations(ast)).toHaveLength(12)
 })
 
 Tests.test('qualified namespace use ignores an ordinary local binding with the same head', () => {

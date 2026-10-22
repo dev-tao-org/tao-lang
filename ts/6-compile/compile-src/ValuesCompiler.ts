@@ -1,19 +1,20 @@
 import * as AST from '@ast-gen/AST'
 import { Switch } from '@shared'
-import { compileBinding, compileValueReference } from './BindingsCompiler'
 import { emitLiteral } from './codegen-util'
+import { emitLetDeclaration, emitName } from './RuntimeEmitter'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: string): string {
   return Switch.kind(node, {
-    Name: name => compileValueReference(name, scope),
+    Name: name => emitName(name, scope),
     TextLiteral: emitLiteral,
   })
 }
 
-/** compileLetDefinition emits one ordered immutable scope binding. */
-export function compileLetDefinition(node: AST.LetDefinition, scope: string): string {
-  return compileBinding(node, scope, compileExpression(node.value, scope))
+/** compileLetDeclaration emits one ordered immutable scope binding. */
+export function compileLetDeclaration(node: AST.LetDeclaration, scope: string): string {
+  const value = compileExpression(node.value, scope)
+  return emitLetDeclaration(node, scope, value)
 }
 
 /** isTextParameter identifies a parameter declared with Tao's text type. */
@@ -28,7 +29,7 @@ export function isTextExpression(node: AST.Expression, resolveName: (name: AST.N
 
 /** collectTextBindings identifies implemented text expressions for native capture annotations. */
 export function collectTextBindings(
-  definitions: readonly AST.LetDefinition[],
+  definitions: readonly AST.LetDeclaration[],
   inherited: ReadonlySet<string> = new Set(),
   parameters: readonly AST.Parameter[] = [],
 ): ReadonlySet<string> {

@@ -1,6 +1,7 @@
 use Text, Col from tao@ui
 
 let Greeting is text = "File scope"
+
 let __proto__ = "Prototype name"
 
 app Scopes {
@@ -10,17 +11,22 @@ app Scopes {
 view Root {
   let Caption = Greeting
   render Col {
-    #file Text(Caption)
+    #file
+    Text(Caption)
     Col {
       let Greeting = "Nested scope"
-      #inner Text(Greeting)
-      #native NativeLet
+      #inner
+      Text(Greeting)
+      #native
+      NativeLet
       Col {
         let Greeting = "Deep scope"
-        #deep Text(Greeting)
+        #deep
+        Text(Greeting)
       }
     }
-    #sibling Text(Greeting)
+    #sibling
+    Text(Greeting)
     Echo("Parameter scope")
     Text(__proto__)
   }
@@ -34,18 +40,28 @@ view Echo(Greeting text) {
 view NativeLet {
   let Caption = Greeting
   render inject Caption ```ts
-    return <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
+    return <Tao.Text>{Caption}</Tao.Text>
   ```
 }
 
 tests "Lexical scopes" {
   test "Nearest value and isolated child blocks" {
     run Scopes
-    expect #file { text "File scope" }
-    expect #inner { text "Nested scope" }
-    expect #native { text "File scope" }
-    expect #deep { text "Deep scope" }
-    expect #sibling { text "File scope" }
+    expect #file {
+      text "File scope"
+    }
+    expect #inner {
+      text "Nested scope"
+    }
+    expect #native {
+      text "File scope"
+    }
+    expect #deep {
+      text "Deep scope"
+    }
+    expect #sibling {
+      text "File scope"
+    }
     expect text "Parameter scope"
     expect text "Prototype name"
   }

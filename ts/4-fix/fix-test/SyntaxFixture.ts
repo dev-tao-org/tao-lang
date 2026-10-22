@@ -16,7 +16,7 @@ export const syntaxFixture = S`
   let Hidden="Private"
   render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message)}
   }
-  package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text> \`\`\`}
+  package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`}
   project let Shared=Caption
   public view FormattedDate(Value text) from ./FormattedDate.tsx
   tests "Source"{test(Label "Case"){run Demo press #child type "Set" into #child expect text "Ready" expect #child input value "Set" expect #child{text "Ready" input value "Set"} expect{text "Ready"}} test "Short"{} test(){} }
@@ -53,7 +53,7 @@ export const formattedSyntaxFixture = S`
 
   package
   view Native(Value text) {
-    render inject Value, Kids @@children \`\`\`ts return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text> \`\`\`
+    render inject Value, Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`
   }
 
   project
@@ -85,18 +85,23 @@ export const formattedSyntaxFixture = S`
 /** syntaxKinds makes grammar additions require an explicit fixture coverage decision. */
 export const syntaxKinds = {
   SourceFile: true,
+  _Declaration: true,
+  _Expression: true,
+  _ViewRenderStatement: true,
+  Block: true,
   AppDeclaration: true,
   RootDeclaration: true,
   ViewDeclaration: true,
-  RenderStatement: true,
+  RenderInjectStatement: true,
+  RenderViewExpressionStatement: true,
   ParameterList: true,
   Parameter: true,
   Injection: true,
   InjectionCapture: true,
   ContextReference: true,
   TypeScript: true,
-  ViewRender: true,
-  LetDefinition: true,
+  ViewRenderExpression: true,
+  LetDeclaration: true,
   UseStatement: true,
   NamedImport: true,
   All: true,
