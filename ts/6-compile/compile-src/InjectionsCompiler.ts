@@ -1,16 +1,22 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import { type ComponentNames, emitInjectionComponent, emitName, type InjectionCapture } from './RuntimeEmitter'
+import {
+  type ComponentNames,
+  emitInjectionCustomHook,
+  emitName,
+  type InjectionCapture,
+  type InjectionCompilation,
+} from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
 
-/** compileInjection emits a named component and statically visible authored custom hook. */
+/** compileInjection emits an authored hook declaration and its owning-view invocation. */
 export function compileInjection(
   node: AST.Injection,
   bindings: ReadonlySet<string>,
   names: ComponentNames,
-): string {
+): InjectionCompilation {
   const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
-  return emitInjectionComponent(node, names, captures)
+  return emitInjectionCustomHook(node, names, captures)
 }
 
 function compileCapture(

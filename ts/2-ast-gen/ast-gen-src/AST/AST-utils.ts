@@ -33,10 +33,6 @@ export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[]
   return GetDeclarations(document).filter(IsAppDeclaration)
 }
 
-function getBlockDeclarations(block: AST.DeclarationBlock): readonly AST.Declaration[] {
-  return block.statements
-}
-
 /** GetDeclarations returns a document's declarations without copying or filtering them. */
 export function GetDeclarations(document: AST.Document): readonly AST.Declaration[] {
   return getBlockDeclarations(document.root.block)
@@ -152,4 +148,8 @@ export function IsViewRenderStatement(node: AST.Node): node is AST.ViewRenderSta
 
 function isImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
   return IsUseStatement(node) || IsUsePackageStatement(node)
+}
+
+function getBlockDeclarations(block: AST.DeclarationBlock): readonly AST.Declaration[] {
+  return block.statements
 }

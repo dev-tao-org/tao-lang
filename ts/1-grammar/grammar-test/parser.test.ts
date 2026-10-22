@@ -71,6 +71,23 @@ Tests.test('text literals reject raw JSON control characters but retain escaped 
   Tests.expect(escapedControl.rootNode.hasError).toBe(false)
 })
 
+Tests.test('contextual blocks reject missing renders and misplaced statements in syntax diagnostics', () => {
+  const parser = createParser()
+  const invalidSources = [
+    'app Demo {}',
+    'view Main {}',
+    'view Main { render Text render Other }',
+    'view Main { render Text let Late = "value" }',
+    'view Main { render Text { render inject ```ts return null ``` } }',
+    'app Demo { root Main root Other }',
+    'tests { test { expect { #save input value "Ready" } } }',
+  ]
+
+  for (const source of invalidSources) {
+    Tests.expect({ source, hasError: parser.parse(source).rootNode.hasError }).toEqual({ source, hasError: true })
+  }
+})
+
 Tests.test('module imports, visibility prefixes and qualified references parse', () => {
   const source = S`
     use Name, Other as Alias from ./views/common

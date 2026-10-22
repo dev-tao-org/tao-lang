@@ -5,7 +5,6 @@ import { compileInjection } from './InjectionsCompiler'
 import {
   type ComponentNames,
   emitForeignView,
-  emitRenderInjectStatement,
   emitViewComponent,
   emitViewDeclaration,
   emitViewRenderBlock,
@@ -72,10 +71,10 @@ function compileViewRenderStatement(
       result: compileViewRenderExpression(statement.expression, names.scope),
       components: '',
     }),
-    RenderInjectStatement: statement => ({
-      result: emitRenderInjectStatement(names),
-      components: compileInjection(statement.injection, bindings, names),
-    }),
+    RenderInjectStatement(statement) {
+      const injection = compileInjection(statement.injection, bindings, names)
+      return { result: injection.invocation, components: injection.hookDeclaration }
+    },
   })
 }
 
@@ -114,7 +113,6 @@ function createComponentNames(
   const identity = `${context.moduleIdentity}_${node.name.value}`
   return {
     view: `TaoView${identity}`,
-    injection: `TaoInjection${identity}`,
     useInjection: `useTaoInjection${identity}`,
     props: '_Props',
     render: '_Render',

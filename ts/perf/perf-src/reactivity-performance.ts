@@ -1,18 +1,20 @@
 import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/ReactiveEngine'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
+import { measureReactiveHeapRetention } from './reactivity-heap'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */
 export async function reactivityPerformance() {
   const samples = collectSamples()
   const summary = summarize(samples)
+  const heapRetention = measureReactiveHeapRetention(candidates)
   const path = Artifacts.resolvePath('logs/performance', `reactivity-${Platform.randomUUID()}.json`)
   await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'), { recursive: true })
   await Artifacts.write(
     path,
     JSON.stringify(
       {
-        version: 1,
+        version: 2,
         commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
         modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
         system: Platform.systemInfo(),
@@ -20,18 +22,22 @@ export async function reactivityPerformance() {
           samples: 'Two unrecorded warmups, then seven alternating samples of 1000 operations per case.',
           computation: 'Observed eager retains the intermediate expression through an explicit observation.',
           deferred: 'Delivery-only queued scheduling; computations still use native synchronous settlement.',
-          allocation: 'Counts explicit Tao expressions and observations, not provider-internal allocations or GC.',
+          allocation:
+            'Timed cases count explicit Tao expressions and observations. Separate heap samples report live JavaScriptCore heap and cell deltas; cumulative allocation counts are unavailable.',
+          heapRetention:
+            'Five alternating repetitions per candidate retain 1000 independent three-expression graphs. Snapshots follow forced collections; disposal deltas include report and measurement overhead.',
           boundary: 'Synthetic runtime operations, not Metro, React rendering, preview latency or physical paint.',
           deferredComputation: 'Not supplied: the provider public API does not expose a deferred evaluation scheduler.',
         },
         summary,
         samples,
+        heapRetention,
       },
       null,
       2,
     ),
   )
-  return { path, summary }
+  return { path, summary, heapRetention }
 }
 
 type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'create-dispose'

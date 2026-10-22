@@ -27,6 +27,7 @@ Tests.test('compiled Tao custom-hook components refresh through Metro with commi
     await verifyInitialCounters(page)
     await verifyComputedEdit(page, entry, session)
     await verifyInvalidRecovery(page, entry, session)
+    await verifyHookTopologyChange(page, entry, session)
     await verifyRemovedCounter(page, entry, session)
     Tests.expect(pageErrors).toEqual([])
   }, {
@@ -61,7 +62,7 @@ function observePageErrors(page: HeadlessBrowser.Page): string[] {
   return errors
 }
 
-function taoAppSource(factor: number, includePrimary: boolean): string {
+function taoAppSource(factor: number, includePrimary: boolean, includeExtraHook = false): string {
   const primary = includePrimary ? '    #A Counter("A", "1")' : ''
   return S`
     use Col from tao@ui
@@ -76,12 +77,18 @@ function taoAppSource(factor: number, includePrimary: boolean): string {
     }
 
     view Counter(Id text, Initial text) {
-      render inject Id, Initial ${injectionSource(factor)}
+      render inject Id, Initial ${injectionSource(factor, includeExtraHook)}
     }
   `
 }
 
-function injectionSource(factor: number): string {
+function injectionSource(factor: number, includeExtraHook: boolean): string {
+  const extraHooks = includeExtraHook
+    ? 'const topology = Tao.useWritable(() => "topology")\nconst topologyValue = Tao.useValue(topology)'
+    : ''
+  const topologyView = includeExtraHook
+    ? "<Tao.Text testID={'topology-' + Id}>{topologyValue}</Tao.Text>"
+    : ''
   return S`
     \`\`\`ts
       const _Scope = Id
@@ -91,11 +98,13 @@ function injectionSource(factor: number): string {
       const current = Tao.useValue(count)
       const scaled = Tao.useComputed(() => count.jsValue() * ${factor}, [count])
       const scaledValue = Tao.useValue(scaled)
+      ${extraHooks}
       return (
         <Tao.View>
           <Tao.Text testID={'count-' + Id}>{String(current)}</Tao.Text>
           <Tao.Text testID={'scaled-' + Id}>{String(scaledValue)}</Tao.Text>
           <Tao.Text testID={'identity-' + Id}>{_Scope + _Render}</Tao.Text>
+          ${topologyView}
           <Tao.Pressable testID={'increment-' + Id} onPress={() => count.update(count.jsValue() + 1)}>
             <Tao.Text>increment</Tao.Text>
           </Tao.Pressable>
@@ -149,9 +158,25 @@ async function verifyRemovedCounter(
   entry: string,
   workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
 ): Promise<void> {
-  await publishSource(entry, workspace, taoAppSource(4, false))
+  await page.getByTestId('increment-B').click()
+  await expectValue(page, 'count-B', '11')
+  await publishSource(entry, workspace, taoAppSource(4, false, true))
   await expectAbsent(page, 'count-A')
   await expectCounters(page, undefined, 11, undefined, 44)
+  await page.reload()
+  await expectCounters(page, undefined, 10, undefined, 40)
+  await expectValue(page, 'topology-B', 'topology')
+}
+
+async function verifyHookTopologyChange(
+  page: HeadlessBrowser.Page,
+  entry: string,
+  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+): Promise<void> {
+  await publishSource(entry, workspace, taoAppSource(4, true, true))
+  await expectCounters(page, 1, 10, 4, 40)
+  await expectValue(page, 'topology-A', 'topology')
+  await expectValue(page, 'topology-B', 'topology')
 }
 
 async function publishSource(

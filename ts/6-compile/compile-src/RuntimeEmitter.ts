@@ -14,7 +14,6 @@ import {
 /** ComponentNames identifies stable components and collision-safe locals for one authored view. */
 export type ComponentNames = {
   view: string
-  injection: string
   useInjection: string
   props: string
   render: string
@@ -23,6 +22,9 @@ export type ComponentNames = {
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
 export type InjectionCapture = { node: AST.Capture; type: 'text' | 'children' | 'unknown'; value: string }
+
+/** InjectionCompilation pairs authored custom-hook code with its call inside the owning view component. */
+export type InjectionCompilation = { hookDeclaration: string; invocation: string }
 
 /** emitRuntimeImports supplies the private generated boundary and the authored Tao API. */
 export function emitRuntimeImports(): string {
@@ -111,27 +113,22 @@ export function emitViewComponent(
   return emitRenderingComponent(names, names.view, statements, result, needsScope)
 }
 
-/** emitRenderInjectStatement renders the injection as its own named component. */
-export function emitRenderInjectStatement(names: ComponentNames): string {
-  return `TR.RenderInjectStatement(${names.render}, ${names.injection})`
-}
-
-/** emitInjectionComponent keeps authored hooks visible while completing tagging and timing. */
-export function emitInjectionComponent(
+/** emitInjectionCustomHook keeps authored hooks visible inside their owning Tao view component. */
+export function emitInjectionCustomHook(
   node: AST.Injection,
   names: ComponentNames,
   captures: readonly InjectionCapture[],
-): string {
+): InjectionCompilation {
   const parameters = captures.map(emitCaptureParameter).join(', ')
   const argumentsCode = captures.map(capture => capture.value).join(', ')
-  const result = `${names.useInjection}(${argumentsCode})`
-  const component = emitRenderingComponent(names, names.injection, '', result, false)
-  return S`
-    function ${names.useInjection}(${parameters}) {
-      ${node.code}
-    }
-    ${component}
-  `
+  return {
+    hookDeclaration: S`
+      function ${names.useInjection}(${parameters}) {
+        ${node.code}
+      }
+    `,
+    invocation: `${names.useInjection}(${argumentsCode})`,
+  }
 }
 
 function emitCaptureParameter(capture: InjectionCapture): string {

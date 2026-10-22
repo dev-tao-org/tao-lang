@@ -1,6 +1,3 @@
-const negativeZero = Object.freeze({ value: '-0' })
-const nanValue = Object.freeze({ value: 'NaN' })
-
 /** ReactiveValue is Preact's internal equality-preserving representation of Tao values. */
 export type ReactiveValue = unknown
 
@@ -28,3 +25,6 @@ export function decodeReactiveValue<T>(value: ReactiveValue): T {
   }
   return value as T
 }
+
+const negativeZero = Object.freeze({ value: '-0' })
+const nanValue = Object.freeze({ value: 'NaN' })

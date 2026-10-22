@@ -87,14 +87,6 @@ export function ViewRenderExpression(
   return observer ? ProvideRuntimeObserver(observer, body) : body
 }
 
-/** RenderInjectStatement renders a named component so its custom hooks have a React owner. */
-export function RenderInjectStatement(
-  props: ViewComponentProps,
-  component: ComponentType<ViewComponentProps>,
-): ReactElement {
-  return createElement(component, props)
-}
-
 /** beginViewRender starts timing and exposes the already bound component inputs. */
 export function beginViewRender(props: ViewComponentProps): ViewRenderContext {
   const startedAt = props.observer?.now()

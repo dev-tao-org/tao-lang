@@ -8,7 +8,6 @@ export type { AppOptions } from './View'
 export {
   beginViewRender,
   finishViewRender,
-  RenderInjectStatement,
   ViewDeclaration,
   ViewRenderArguments,
   ViewRenderExpression,

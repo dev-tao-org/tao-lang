@@ -10,18 +10,6 @@ export type ModuleRefreshFixture = {
   editSource(factor: number, label: string): string
 }
 
-const metricsDeclaration = S`
-  const metrics = (globalThis as any).__taoModuleRefreshMetrics ??= {
-    primaryRenders: 0,
-    secondaryRenders: 0,
-  }
-`
-
-const valuesModule = S`
-  export const primaryInitial = 1
-  export const secondaryInitial = 10
-`
-
 /** createModuleRefreshFixture emits the same two-view behavior with alternative stable module boundaries. */
 export function createModuleRefreshFixture(layout: ModuleRefreshLayout): ModuleRefreshFixture {
   if (layout === 'single-app') {
@@ -35,6 +23,18 @@ export function createModuleRefreshFixture(layout: ModuleRefreshLayout): ModuleR
   }
   return Errors.ThrowShouldNeverHappen(`Unknown module refresh layout: ${String(layout)}`)
 }
+
+const metricsDeclaration = S`
+  const metrics = (globalThis as any).__taoModuleRefreshMetrics ??= {
+    primaryRenders: 0,
+    secondaryRenders: 0,
+  }
+`
+
+const valuesModule = S`
+  export const primaryInitial = 1
+  export const secondaryInitial = 10
+`
 
 function singleAppFixture(): ModuleRefreshFixture {
   return {

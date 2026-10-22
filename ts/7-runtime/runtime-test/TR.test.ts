@@ -4,13 +4,12 @@ import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { AppDeclaration } from '../runtime-src/App'
 import { ForeignView } from '../runtime-src/ForeignView'
-import { LetDeclaration, Name } from '../runtime-src/Scope'
+import { Name } from '../runtime-src/Scope'
 import type { ViewComponentProps } from '../runtime-src/View'
 import {
   beginViewRender,
   finishViewRender,
   ProvideRuntimeObserver,
-  RenderInjectStatement,
   ViewDeclaration,
   ViewRenderArguments,
   ViewRenderExpression,
@@ -45,23 +44,6 @@ Tests.test('View hooks run only when its named element is rendered', () => {
   Tests.expect(renders).toBe(0)
   Tests.expect(renderToStaticMarkup(element)).toBe('<span>hook owner</span>')
   Tests.expect(renders).toBe(1)
-})
-
-Tests.test('RenderInjectStatement renders a named hook component with parent-local bindings', () => {
-  function Injected(props: ViewComponentProps) {
-    const context = beginViewRender(props)
-    const [value] = useState(Name(context.scope, 'injected') as string)
-    return finishViewRender(context, createElement('span', null, value))
-  }
-  function Parent(props: ViewComponentProps) {
-    const context = beginViewRender(props)
-    LetDeclaration(context.scope, 'injected', 'hook result')
-    return finishViewRender(context, RenderInjectStatement(context, Injected))
-  }
-  const view = ViewDeclaration('Parent', [], Parent)
-
-  Tests.expect(renderToStaticMarkup(ViewRenderExpression(view, ViewRenderArguments())))
-    .toBe('<span>hook result</span>')
 })
 
 Tests.test('ForeignView renders its external component with Tao values as props', () => {

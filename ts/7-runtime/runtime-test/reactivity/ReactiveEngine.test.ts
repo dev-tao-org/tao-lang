@@ -1,3 +1,4 @@
+import { Errors } from '@shared'
 import { Tests } from '@shared/os'
 import { createReactiveEngine } from '../../runtime-src/ReactiveEngine'
 import type { ReactiveEngine } from '../../runtime-src/ReactiveEngine'
@@ -157,6 +158,26 @@ Tests.test('nested batches clean up after errors and reject asynchronous ownersh
   Tests.expect(source.jsValue()).toBe(2)
   Tests.expect(() => engine.batch(() => Promise.resolve())).toThrow('must finish synchronously')
   Tests.expect(source.jsValue()).toBe(2)
+  engine.dispose()
+})
+
+Tests.test('a failing queued observer does not strand other deliveries or subsequent writes', () => {
+  const queue: (() => void)[] = []
+  const engine = createReactiveEngine({ scheduleDelivery: deliver => queue.push(deliver) })
+  const source = engine.createWritable(0)
+  const values: number[] = []
+  source.observe(value => {
+    if (value === 1) {
+      Errors.ThrowUserInput('observer failed')
+    }
+  })
+  source.observe(value => values.push(value))
+  source.update(1)
+  Tests.expect(() => flushQueuedDeliveries(queue)).toThrow('observer failed')
+  Tests.expect(values).toEqual([0, 1])
+  source.update(2)
+  flushQueuedDeliveries(queue)
+  Tests.expect(values).toEqual([0, 1, 2])
   engine.dispose()
 })
 

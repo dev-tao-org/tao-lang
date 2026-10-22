@@ -1,5 +1,15 @@
 import { S } from '@shared'
 
+/** createReactOwnershipApp renders a representative generated Tao runtime fixture. */
+export function createReactOwnershipApp(factor: number, addTopologyHook: boolean): string {
+  const topologyHook = addTopologyHook ? topologyHookSource : ''
+  const topologyView = addTopologyHook ? 'markerView,' : ''
+  return reactOwnershipApp
+    .replaceAll('__FACTOR__', String(factor))
+    .replace('__TOPOLOGY_HOOK__', topologyHook)
+    .replace('__TOPOLOGY_VIEW__', topologyView)
+}
+
 const topologyHookSource = S`
   const marker = Tao.useWritable(() => 'topology-2')
   const markerValue = Tao.useValue(marker)
@@ -119,13 +129,3 @@ const reactOwnershipApp = S`
 
   export default App
 `
-
-/** createReactOwnershipApp renders a representative generated Tao runtime fixture. */
-export function createReactOwnershipApp(factor: number, addTopologyHook: boolean): string {
-  const topologyHook = addTopologyHook ? topologyHookSource : ''
-  const topologyView = addTopologyHook ? 'markerView,' : ''
-  return reactOwnershipApp
-    .replaceAll('__FACTOR__', String(factor))
-    .replace('__TOPOLOGY_HOOK__', topologyHook)
-    .replace('__TOPOLOGY_VIEW__', topologyView)
-}

@@ -25,15 +25,12 @@ Tests.test('generic blocks retain broad node statements', () => {
   Tests.expect(AST.Construct(view, 'ViewDeclaration').body.kind).toBe('Block')
 })
 
-Tests.test('nested render blocks reject keyworded render statements', () => {
-  const tree = createParser().parse('view Main { render Text { render Text } }')
-  const view = tree.rootNode.namedChildren.find(node => node.type === 'ViewDeclaration')!
-  Tests.expect(() => AST.Construct(view, 'ViewDeclaration')).toThrow('Unexpected RenderViewExpressionStatement')
+Tests.test('nested render blocks report keyworded render injections as syntax errors', () => {
+  const tree = createParser().parse('view Main { render Text { render inject ```ts return null ``` } }')
+  Tests.expect(tree.rootNode.hasError).toBe(true)
 })
 
-Tests.test('view declarations require exactly one final render statement', () => {
+Tests.test('view declarations report multiple final renders as syntax errors', () => {
   const tree = createParser().parse('view Main { render Text render Text }')
-  Tests.expect(tree.rootNode.hasError).toBe(false)
-  const view = tree.rootNode.namedChildren.find(node => node.type === 'ViewDeclaration')!
-  Tests.expect(() => AST.Construct(view, 'ViewDeclaration')).toThrow('exactly one final render statement')
+  Tests.expect(tree.rootNode.hasError).toBe(true)
 })

@@ -27,34 +27,36 @@ export default grammar({
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
     },
-    Block($) {
+    _AppBlock($) {
+      return seq('{', field('statements', $.RootDeclaration), '}')
+    },
+    _ViewDeclarationBlock($) {
       return seq(
         '{',
-        repeat(field(
-          'statements',
-          choice(
-            $.RootDeclaration,
-            $.AppDeclaration,
-            $.ViewDeclaration,
-            $.TestsDeclaration,
-            $.LetDeclaration,
-            $.UseStatement,
-            $.UsePackageStatement,
-            $.RequiresDeclaration,
-            $.TestDeclaration,
-            $.RunStatement,
-            $.PressStatement,
-            $.TypeStatement,
-            $.ExpectStatement,
-            $.TextExpectation,
-            $.InputExpectation,
-            $.InputValueExpectation,
-            $._ViewRenderStatement,
-            $.ViewRenderExpression,
-          ),
-        )),
+        repeat(field('statements', $.LetDeclaration)),
+        field('statements', $._ViewRenderStatement),
         '}',
       )
+    },
+    _ViewRenderBlock($) {
+      return seq(
+        '{',
+        repeat(field('statements', choice($.LetDeclaration, $.ViewRenderExpression))),
+        '}',
+      )
+    },
+    _TestsBlock($) {
+      return seq('{', repeat(field('statements', $.TestDeclaration)), '}')
+    },
+    _TestBlock($) {
+      return seq(
+        '{',
+        repeat(field('statements', choice($.RunStatement, $.PressStatement, $.TypeStatement, $.ExpectStatement))),
+        '}',
+      )
+    },
+    _ExpectationBlock($) {
+      return seq('{', repeat(field('statements', choice($.TextExpectation, $.InputValueExpectation))), '}')
     },
 
     // Apps and views
@@ -63,7 +65,7 @@ export default grammar({
         optional(field('visibility', $.Visibility)),
         'app',
         field('name', $.Identifier),
-        field('block', $.Block),
+        field('block', alias($._AppBlock, $.Block)),
       )
     },
     RootDeclaration($) {
@@ -75,7 +77,7 @@ export default grammar({
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
-        field('body', choice($.Block, $.ForeignView)),
+        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
       )
     },
     ForeignView($) {
@@ -116,7 +118,7 @@ export default grammar({
         optional(field('tag', $.RenderTag)),
         field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
-        optional(field('block', $.Block)),
+        optional(field('block', alias($._ViewRenderBlock, $.Block))),
       )
     },
 
@@ -181,7 +183,7 @@ export default grammar({
 
     // App tests and interactions
     TestsDeclaration($) {
-      return seq('tests', optional(field('label', $.TextLiteral)), field('block', $.Block))
+      return seq('tests', optional(field('label', $.TextLiteral)), field('block', alias($._TestsBlock, $.Block)))
     },
     TestDeclaration($) {
       return seq(
@@ -190,7 +192,7 @@ export default grammar({
           field('label', $.TextLiteral),
           seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
         )),
-        field('block', $.Block),
+        field('block', alias($._TestBlock, $.Block)),
       )
     },
     RunStatement($) {
@@ -208,7 +210,7 @@ export default grammar({
         choice(
           $.TextExpectation,
           $.InputExpectation,
-          seq(optional(field('target', $.RenderTag)), field('block', $.Block)),
+          seq(optional(field('target', $.RenderTag)), field('block', alias($._ExpectationBlock, $.Block))),
         ),
       )
     },

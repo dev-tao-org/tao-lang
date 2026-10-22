@@ -12,7 +12,9 @@ export async function writeCSTTypes(directory: string): Promise<void> {
   }[]
   const members = nodes.filter(node => node.named).map(node => {
     const fields = union(Object.keys(node.fields ?? {}))
-    const tokens = union(ownedTokens(grammar.rules[node.type]))
+    const directTokens = ownedTokens(grammar.rules[node.type])
+    const aliasedTokensForNode = aliasedTokens(grammar.rules, node.type)
+    const tokens = union([...directTokens, ...aliasedTokensForNode])
     return `  ${JSON.stringify(node.type)}: { fields: ${fields}; tokens: ${tokens} }`
   })
   await FileSystem.writeIfChanged(
@@ -23,7 +25,29 @@ export async function writeCSTTypes(directory: string): Promise<void> {
   )
 }
 
-type Rule = { type: string; value?: string; content?: Rule; members?: Rule[] }
+type Rule = { type: string; name?: string; value?: string; named?: boolean; content?: Rule; members?: Rule[] }
+
+function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] {
+  return Object.values(rules).flatMap(rule =>
+    findAliases(rule, nodeType).flatMap(alias => {
+      const content = alias.content
+      const source = content?.type === 'SYMBOL' ? rules[content.name!] : content
+      return ownedTokens(source)
+    })
+  )
+}
+
+function findAliases(rule: Rule | undefined, nodeType: string): Rule[] {
+  if (!rule) {
+    return []
+  }
+  const matchingAlias = rule.type === 'ALIAS' && rule.named && rule.value === nodeType ? [rule] : []
+  return [
+    ...matchingAlias,
+    ...findAliases(rule.content, nodeType),
+    ...rule.members?.flatMap(member => findAliases(member, nodeType)) ?? [],
+  ]
+}
 
 function ownedTokens(rule: Rule | undefined): string[] {
   if (!rule || rule.type === 'SYMBOL') {

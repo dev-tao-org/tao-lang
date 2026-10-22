@@ -106,7 +106,7 @@ function buildEngine(state: EngineState): ReactiveEngine {
   return {
     createWritable: initial => createWritable(state, initial),
     createComputed: evaluate => createExpression(state, evaluate),
-    createConstant: value => createConstant(state, value),
+    createConstant: value => createExpression(state, () => value),
     batch: perform => runBatch(state, perform),
     dispose: () => disposeEngine(state),
   }
@@ -120,6 +120,7 @@ function createNode<T>(state: EngineState, evaluate: () => T): Node<T> {
 }
 
 function createExpression<T>(state: EngineState, evaluate: () => T): Expression<T> {
+  assertActive(state)
   return expressionFor(state, createNode(state, evaluate))
 }
 
@@ -247,6 +248,7 @@ function flushDelivery(state: EngineState): void {
   state.deliveryScheduled = false
   state.flushingDelivery = true
   let passes = 0
+  let failure: unknown
   Try(() => {
     while (state.pending.length > 0) {
       passes += 1
@@ -255,13 +257,24 @@ function flushDelivery(state: EngineState): void {
       }
       const current = state.pending
       state.pending = []
-      signalBatch(() => current.forEach(item => item()))
+      signalBatch(() => {
+        for (const deliver of current) {
+          Try(deliver, {
+            catch(error) {
+              failure ??= Errors.fromUnknown(error)
+            },
+          })
+        }
+      })
     }
   }, {
     finally() {
       state.flushingDelivery = false
     },
   })
+  if (failure) {
+    Errors.Throw(failure)
+  }
 }
 
 function failDeliveryCycle(state: EngineState): never {
@@ -293,21 +306,6 @@ function updateSource<T>(state: EngineState, source: Signal<ReactiveValue>, valu
   if (state.deliveryDepth > 0) {
     scheduleDeliveryChainReset(state)
   }
-}
-
-function createConstant<T>(state: EngineState, value: T): InternalExpression<T> {
-  assertActive(state)
-  return {
-    jsValue: () => value,
-    observe: receive => observeConstant(state, receive, value),
-    snapshot: () => value,
-  }
-}
-
-function observeConstant<T>(state: EngineState, receive: (value: T) => void, value: T): Observation {
-  assertActive(state)
-  receive(value)
-  return { unobserve: () => undefined }
 }
 
 function runBatch<T>(state: EngineState, perform: () => T): T {
