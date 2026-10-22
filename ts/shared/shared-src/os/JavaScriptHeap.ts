@@ -1,4 +1,4 @@
-import { performance } from 'node:perf_hooks'
+import * as Time from '../universal/Time'
 import { loadModule } from './Platform'
 
 /** Snapshot records JavaScriptCore heap bytes and surviving allocation cells. */
@@ -15,16 +15,16 @@ export function snapshot(): Snapshot {
 
 /** forceCollection runs Bun's forced collection and returns its elapsed duration. */
 export function forceCollection(): number {
-  const startedAt = performance.now()
+  const startedAt = Time.nowMs()
   Bun.gc(true)
-  return performance.now() - startedAt
+  return Time.nowMs() - startedAt
 }
 
 /** collectAndSweep runs a synchronous full JavaScriptCore collection and heap sweep. */
 export function collectAndSweep(): Sweep {
-  const startedAt = performance.now()
+  const startedAt = Time.nowMs()
   loadJavaScriptCore().gcAndSweep()
-  const durationMs = performance.now() - startedAt
+  const durationMs = Time.nowMs() - startedAt
   return { durationMs, snapshot: snapshot() }
 }
 

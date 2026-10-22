@@ -7,7 +7,8 @@ import { measureReactiveHeapRetention } from './reactivity-heap'
 export async function reactivityPerformance() {
   const samples = collectSamples()
   const summary = summarize(samples)
-  const heapRetention = measureReactiveHeapRetention(candidates)
+  const heapCandidates = candidates.filter(candidate => !candidate.deferred)
+  const heapRetention = measureReactiveHeapRetention(heapCandidates)
   const path = Artifacts.resolvePath('logs/performance', `reactivity-${Platform.randomUUID()}.json`)
   await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'), { recursive: true })
   await Artifacts.write(
@@ -25,7 +26,7 @@ export async function reactivityPerformance() {
           allocation:
             'Timed cases count explicit Tao expressions and observations. Separate heap samples report live JavaScriptCore heap and cell deltas; cumulative allocation counts are unavailable.',
           heapRetention:
-            'Five alternating repetitions per candidate retain 1000 independent three-expression graphs. Snapshots follow forced collections; disposal deltas include report and measurement overhead.',
+            'Five alternating repetitions per synchronous candidate retain 1000 independent three-expression graphs. Deferred queues are excluded. Snapshots follow forced collections; disposal deltas include report and measurement overhead.',
           boundary: 'Synthetic runtime operations, not Metro, React rendering, preview latency or physical paint.',
           deferredComputation: 'Not supplied: the provider public API does not expose a deferred evaluation scheduler.',
         },
