@@ -12,13 +12,16 @@ import { registerCommand } from './_command-runner'
 /** performanceCommand records the available implementation's repeated performance baselines. */
 export default registerCommand({
   name: 'performance',
-  description: 'Measure parser/compiler phases, editor updates or two live Expo previews; save raw samples.',
+  description: 'Measure language phases, reactive policies, editor updates or live Expo previews; save raw samples.',
   arguments: [{
     name: 'target',
-    description: 'parser, formatter, extension, preview or record (current commit).',
+    description: 'parser, formatter, reactivity, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
   action: Timings.createTopLevelTimer(async function(timings, target: string) {
+    if (target === 'reactivity') {
+      return runReactivity()
+    }
     if (target === 'formatter') {
       return runFormatter()
     }
@@ -26,7 +29,7 @@ export default registerCommand({
       return runExtension()
     }
     if (!['parser', 'preview', 'record'].includes(target)) {
-      Errors.ThrowUserInput('Available performance targets: parser, formatter, extension, preview, record')
+      Errors.ThrowUserInput('Available performance targets: parser, formatter, reactivity, extension, preview, record')
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
@@ -49,6 +52,15 @@ export default registerCommand({
     IO.print('Performance report: ' + path)
   }),
 })
+
+async function runReactivity(): Promise<void> {
+  const { reactivityPerformance } = await import('../../../../perf/perf-src/reactivity-performance')
+  const { path, summary } = await reactivityPerformance()
+  for (const result of summary) {
+    IO.print(`${result.candidate}/${result.scenario}: median ${result.medianMs.toFixed(3)} ms per 1000 operations`)
+  }
+  IO.print('Synthetic runtime policy report (not preview latency): ' + path)
+}
 
 async function runFormatter(): Promise<void> {
   await prepareParser()

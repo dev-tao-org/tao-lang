@@ -207,6 +207,7 @@ async function writeModuleMetadata(destination: string, defaultsPath: string): P
   await FileSystem.writeFile(Path.join(destination, 'package.json'), '{"private":true,"type":"module"}\n')
   const config = {
     extends: FileSystem.realpathSync(defaultsPath),
+    compilerOptions: { baseUrl: '.' },
     include: ['**/*.ts', '**/*.tsx', '.tao-*.contract.ts', 'tao-assets.d.ts'],
   }
   await FileSystem.writeFile(Path.join(destination, 'tsconfig.json'), `${JSON.stringify(config, null, 2)}\n`)

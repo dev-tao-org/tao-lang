@@ -11,6 +11,7 @@
       "Allow starting, querying, and stopping local development servers and previews bound to loopback addresses, and allow reading their pages, logs, and network activity in a browser or preview tool.",
       "Allow repository browser-smoke commands inside the active sandbox; any host escape still requires review.",
       "Allow the developer-approved ./agent unsandboxed performance preview operation for isolated headless local preview proof.",
+      "Allow ./agent unsandboxed performance modules for isolated headless module-refresh architecture comparisons; it does not publish or land.",
       "Allow ./agent unsandboxed performance record to capture commit-linked preview timings into local storage or pending notes; it does not push or land.",
       "Allow ./agent unsandboxed push <remote> <branch> with optional --source <branch>. This guarded command permits non-main branch pushes and rejects main, force, deletion and bulk pushes.",
       "Allow read-only ./agent unsandboxed landed. ./agent unsandboxed merge-main integrates origin/main locally; ./agent unsandboxed land publishes archives and lands only with the developer's explicit landing authorization.",

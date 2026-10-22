@@ -14,6 +14,7 @@ export default {
     '6-compile': createPackageWorkspace([]),
     '7-runtime': createPackageWorkspace([
       'runtime-src/TR.ts',
+      'runtime-src/TaoRuntimeAPI.ts',
       'runtime-src/HMRClient.ts',
     ]),
     CLIs: createPackageWorkspace([

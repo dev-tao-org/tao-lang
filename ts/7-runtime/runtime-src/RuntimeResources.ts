@@ -1,6 +1,9 @@
 /** RuntimeSourceResources maps readable app sources to their portable resource paths. */
 export const RuntimeSourceResources = {
   'runtime/TR.ts': 'ts/7-runtime/runtime-src/TR.ts',
+  'runtime/TaoRuntimeAPI.ts': 'ts/7-runtime/runtime-src/TaoRuntimeAPI.ts',
+  'runtime/ReactiveEngine.ts': 'ts/7-runtime/runtime-src/ReactiveEngine.ts',
+  'runtime/ReactiveValues.ts': 'ts/7-runtime/runtime-src/ReactiveValues.ts',
   'runtime/App.ts': 'ts/7-runtime/runtime-src/App.ts',
   'runtime/Appearance.ts': 'ts/7-runtime/runtime-src/Appearance.ts',
   'runtime/Preview.ts': 'ts/7-runtime/runtime-src/Preview.ts',

@@ -1,0 +1,349 @@
+import { batch as signalBatch, computed, effect, signal, untracked } from '@preact/signals-core'
+import type { Signal } from '@preact/signals-core'
+import { Errors, Time, Try } from '@shared'
+import { useMemo, useState, useSyncExternalStore } from 'react'
+import { decodeReactiveValue, encodeReactiveValue } from './ReactiveValues'
+import type { ReactiveValue } from './ReactiveValues'
+
+/** Expression exposes a raw value and an immediate, change-only observation. */
+export type Expression<T> = {
+  jsValue(): T
+  observe(receive: (value: T) => void): Observation
+}
+
+/** WritableExpression is the single authoritative writable Tao value. */
+export type WritableExpression<T> = Expression<T> & {
+  update(value: T): void
+}
+
+type Observation = { unobserve(): void }
+
+/** ReactiveEngineOptions selects an honest provider experiment and delivery scheduler. */
+export type ReactiveEngineOptions = {
+  strategy?: 'native-lazy' | 'uncached-public-read'
+  scheduleDelivery?: (deliver: () => void) => void
+  maxReentrantDeliveries?: number
+}
+
+/** ReactiveEngine creates expressions over one Preact dependency graph. */
+export type ReactiveEngine = {
+  createWritable<T>(initial: T): WritableExpression<T>
+  createComputed<T>(evaluate: () => T): Expression<T>
+  createConstant<T>(value: T): Expression<T>
+  batch<T>(perform: () => T): T
+  dispose(): void
+}
+
+/** createReactiveEngine adapts Preact Signals to Tao expression semantics.
+ *  ex: source.update(2) -> derived.jsValue() returns the newly computed value. */
+export function createReactiveEngine(options: ReactiveEngineOptions = {}): ReactiveEngine {
+  return buildEngine({
+    strategy: options.strategy ?? 'native-lazy',
+    scheduleDelivery: options.scheduleDelivery ?? (deliver => deliver()),
+    maxDeliveries: options.maxReentrantDeliveries ?? 100,
+    allStops: new Set(),
+    pending: [],
+    disposed: false,
+    evaluationDepth: 0,
+    deliveryChainCount: 0,
+    deliveryChainActive: false,
+    cancelDeliveryChainReset: undefined,
+    deliveryDepth: 0,
+    deliveryScheduled: false,
+    flushingDelivery: false,
+  })
+}
+
+/** useWritable retains one source expression as the hook's authoritative state. */
+export function useWritable<T>(initializer: () => T): WritableExpression<T> {
+  const [source] = useState(() => defaultEngine.createWritable(initializer()))
+  return source
+}
+
+/** useComputed memoizes a pure, recreatable candidate from stable inputs. */
+export function useComputed<T>(evaluate: () => T, stableInputs: readonly unknown[]): Expression<T> {
+  return useMemo(() => defaultEngine.createComputed(evaluate), stableInputs)
+}
+
+/** useValue subscribes to a cached provider snapshot through React's commit-owned bridge. */
+export function useValue<T>(expression: Expression<T>): T {
+  const subscribe = useMemo(() => (notify: () => void) => {
+    const observation = expression.observe(() => notify())
+    return () => observation.unobserve()
+  }, [expression])
+  const snapshot = useMemo(() => {
+    const cached = expression as InternalExpression<T>
+    return cached.snapshot ?? (() => expression.jsValue())
+  }, [expression])
+  return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
+/** batch groups shared hook-backed writes under the default engine's native settlement boundary. */
+export function batch<T>(perform: () => T): T {
+  return defaultEngine.batch(perform)
+}
+
+const defaultEngine = createReactiveEngine()
+type Node<T> = { value: Signal<ReactiveValue>; evaluate(): T }
+type InternalExpression<T> = Expression<T> & { snapshot?: () => T }
+type EngineState = {
+  strategy: NonNullable<ReactiveEngineOptions['strategy']>
+  scheduleDelivery: (deliver: () => void) => void
+  maxDeliveries: number
+  allStops: Set<() => void>
+  pending: (() => void)[]
+  disposed: boolean
+  evaluationDepth: number
+  deliveryChainCount: number
+  deliveryChainActive: boolean
+  cancelDeliveryChainReset: (() => void) | undefined
+  deliveryDepth: number
+  deliveryScheduled: boolean
+  flushingDelivery: boolean
+}
+
+function buildEngine(state: EngineState): ReactiveEngine {
+  return {
+    createWritable: initial => createWritable(state, initial),
+    createComputed: evaluate => createExpression(state, evaluate),
+    createConstant: value => createConstant(state, value),
+    batch: perform => runBatch(state, perform),
+    dispose: () => disposeEngine(state),
+  }
+}
+
+function createNode<T>(state: EngineState, evaluate: () => T): Node<T> {
+  return {
+    value: computed(() => evaluateNode(state, evaluate)),
+    evaluate,
+  }
+}
+
+function createExpression<T>(state: EngineState, evaluate: () => T): Expression<T> {
+  return expressionFor(state, createNode(state, evaluate))
+}
+
+function expressionFor<T>(state: EngineState, node: Node<T>): InternalExpression<T> {
+  return {
+    jsValue: () => readNode(state, node),
+    observe: receive => observeNode(state, node, receive),
+    snapshot: () => decodeReactiveValue<T>(node.value.value),
+  }
+}
+
+function readNode<T>(state: EngineState, node: Node<T>): T {
+  assertActive(state)
+  return state.strategy === 'uncached-public-read' && state.evaluationDepth === 0
+    ? node.evaluate()
+    : decodeReactiveValue<T>(node.value.value)
+}
+
+function evaluateNode<T>(state: EngineState, evaluate: () => T): ReactiveValue {
+  state.evaluationDepth += 1
+  return Try(() => encodeReactiveValue(evaluate()), {
+    finally() {
+      state.evaluationDepth -= 1
+    },
+  })
+}
+
+function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) => void): Observation {
+  assertActive(state)
+  let active = true
+  let deliveryPending = false
+  let lastDelivered: T = decodeReactiveValue<T>(node.value.value)
+  let pendingValue = lastDelivered
+  const stopEffect = effect(() =>
+    watchNode(state, node, value => {
+      if (!active) {
+        return
+      }
+      pendingValue = value
+      if (Object.is(lastDelivered, pendingValue)) {
+        return
+      }
+      if (deliveryPending) {
+        return
+      }
+      deliveryPending = true
+      queueDelivery(state, () => {
+        deliveryPending = false
+        if (active && !Object.is(lastDelivered, pendingValue)) {
+          lastDelivered = pendingValue
+          deliverValue(state, receive, lastDelivered)
+        }
+      })
+    })
+  )
+  const stop = (): void => {
+    if (!active) {
+      return
+    }
+    active = false
+    stopEffect()
+    state.allStops.delete(stop)
+  }
+  state.allStops.add(stop)
+  Try<void>(() => deliverValue(state, receive, lastDelivered), {
+    catch(thrown) {
+      stop()
+      return Errors.Throw(thrown)
+    },
+  })
+  return { unobserve: stop }
+}
+
+function watchNode<T>(state: EngineState, node: Node<T>, changed: (value: T) => void): void {
+  assertActive(state)
+  changed(decodeReactiveValue<T>(node.value.value))
+}
+
+function deliverValue<T>(state: EngineState, receive: (value: T) => void, value: T): void {
+  if (!state.deliveryChainActive) {
+    state.deliveryChainCount = 0
+  }
+  state.deliveryChainActive = false
+  state.deliveryChainCount += 1
+  if (state.deliveryChainCount > state.maxDeliveries) {
+    failDeliveryCycle(state)
+  }
+  state.deliveryDepth += 1
+  Try(() => untracked(() => receive(value)), {
+    finally() {
+      state.deliveryDepth -= 1
+    },
+  })
+  if (!state.deliveryChainActive) {
+    resetDeliveryChain(state)
+  }
+}
+
+function scheduleDeliveryChainReset(state: EngineState): void {
+  state.cancelDeliveryChainReset?.()
+  state.cancelDeliveryChainReset = Time.scheduleMicrotask(() => resetDeliveryChain(state))
+}
+
+function resetDeliveryChain(state: EngineState): void {
+  state.cancelDeliveryChainReset?.()
+  state.cancelDeliveryChainReset = undefined
+  state.deliveryChainCount = 0
+  state.deliveryChainActive = false
+}
+
+function queueDelivery(state: EngineState, deliver: () => void): void {
+  state.pending.push(deliver)
+  if (state.deliveryScheduled || state.flushingDelivery) {
+    return
+  }
+  state.deliveryScheduled = true
+  state.scheduleDelivery(() => {
+    if (!state.disposed) {
+      flushDelivery(state)
+    }
+  })
+}
+
+function flushDelivery(state: EngineState): void {
+  state.deliveryScheduled = false
+  state.flushingDelivery = true
+  let passes = 0
+  Try(() => {
+    while (state.pending.length > 0) {
+      passes += 1
+      if (passes > state.maxDeliveries) {
+        failDeliveryCycle(state)
+      }
+      const current = state.pending
+      state.pending = []
+      signalBatch(() => current.forEach(item => item()))
+    }
+  }, {
+    finally() {
+      state.flushingDelivery = false
+    },
+  })
+}
+
+function failDeliveryCycle(state: EngineState): never {
+  state.pending = []
+  disposeObservers(state)
+  return Errors.ThrowUserInput('Reactive observers exceeded the reentrant delivery limit; break the update cycle.')
+}
+
+function createWritable<T>(state: EngineState, initial: T): WritableExpression<T> {
+  assertActive(state)
+  const source = signal(encodeReactiveValue(initial))
+  const node: Node<T> = createNode(state, () => decodeReactiveValue<T>(source.value))
+  return {
+    ...expressionFor(state, node),
+    update: value => updateSource(state, source, value),
+  }
+}
+
+function updateSource<T>(state: EngineState, source: Signal<ReactiveValue>, value: T): void {
+  assertActive(state)
+  if (state.deliveryDepth > 0) {
+    state.deliveryChainActive = true
+  } else {
+    resetDeliveryChain(state)
+  }
+  signalBatch(() => {
+    source.value = encodeReactiveValue(value)
+  })
+  if (state.deliveryDepth > 0) {
+    scheduleDeliveryChainReset(state)
+  }
+}
+
+function createConstant<T>(state: EngineState, value: T): InternalExpression<T> {
+  assertActive(state)
+  return {
+    jsValue: () => value,
+    observe: receive => observeConstant(state, receive, value),
+    snapshot: () => value,
+  }
+}
+
+function observeConstant<T>(state: EngineState, receive: (value: T) => void, value: T): Observation {
+  assertActive(state)
+  receive(value)
+  return { unobserve: () => undefined }
+}
+
+function runBatch<T>(state: EngineState, perform: () => T): T {
+  assertActive(state)
+  let result!: T
+  signalBatch(() => {
+    result = perform()
+  })
+  if (isThenable(result)) {
+    Errors.ThrowUserInput('Reactive batches must finish synchronously; do not return a Promise.')
+  }
+  return result
+}
+
+function disposeEngine(state: EngineState): void {
+  if (state.disposed) {
+    return
+  }
+  state.disposed = true
+  state.cancelDeliveryChainReset?.()
+  state.cancelDeliveryChainReset = undefined
+  disposeObservers(state)
+  state.pending = []
+}
+
+function disposeObservers(state: EngineState): void {
+  state.allStops.forEach(stop => stop())
+  state.allStops.clear()
+}
+
+function assertActive(state: EngineState): void {
+  if (state.disposed) {
+    Errors.ThrowShouldNeverHappen('The reactive engine has been disposed.')
+  }
+}
+
+function isThenable(value: unknown): boolean {
+  return (typeof value === 'object' && value !== null || typeof value === 'function') && 'then' in value
+}

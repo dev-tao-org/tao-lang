@@ -86,6 +86,19 @@ export type RuntimeCreateOptions = {
 export type { ExpoOptions, ExpoSession } from './expo/Expo'
 export type { RuntimeInstaller } from './expo/Toolchain'
 
+/** runtimeTypeScriptPaths resolves authored API aliases to the immutable packaged runtime sources. */
+export function runtimeTypeScriptPaths(): Record<string, string[]> {
+  const resourceDirectory = Path.resolve(FileSystem.realpathSync(defaultResourcesDirectory()))
+  const apiPath = Path.join(resourceDirectory, 'runtime/TaoRuntimeAPI.ts')
+  const sharedPath = Path.join(resourceDirectory, 'shared/shared.ts')
+  for (const path of [apiPath, sharedPath]) {
+    if (!FileSystem.existsSync(path)) {
+      Errors.ThrowUserInput(`Compiled runtime resource is missing: ${path}`)
+    }
+  }
+  return { '@tao/runtime-api': [apiPath], '@shared': [sharedPath] }
+}
+
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
 export function runtimeDependencies(): Promise<Record<string, string>> {
   return pinnedDependencies ??= readPinnedDependencies()

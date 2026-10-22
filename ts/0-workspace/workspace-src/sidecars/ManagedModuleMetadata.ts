@@ -1,3 +1,4 @@
+import { runtimeTypeScriptPaths } from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
@@ -46,6 +47,7 @@ export function publishModuleResolution(
 
 /** ensureTypeScriptDefaults creates the project-shared immutable compiler configuration. */
 export async function ensureTypeScriptDefaults(projectRoot: string): Promise<void> {
+  const defaults = createTypeScriptDefaults()
   const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`
   rejectSymlink(path)
@@ -61,8 +63,8 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
   if (owned === undefined) {
     await Files.writeReadOnly(marker, 'managed-by-tao\n')
   }
-  if (current !== typeScriptDefaults) {
-    await Files.writeReadOnly(path, typeScriptDefaults)
+  if (current !== defaults) {
+    await Files.writeReadOnly(path, defaults)
   }
 }
 
@@ -75,23 +77,24 @@ export async function validateTypeScriptDefaults(projectRoot: string): Promise<v
 
 /** typeScriptDefaultsHash fingerprints the compiler settings shared by every Tao module. */
 export function typeScriptDefaultsHash(): string {
-  return Platform.hashText(typeScriptDefaults)
+  return Platform.hashText(createTypeScriptDefaults())
 }
 
 /** typescriptDefaultsDrift reports missing or changed shared compiler defaults. */
 export async function typescriptDefaultsDrift(
   projectRoot: string,
 ): Promise<{ path: string; owner: string; repair: string }[]> {
+  const defaults = createTypeScriptDefaults()
   const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`
   rejectSymlink(path)
   rejectSymlink(marker)
   const current = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
   const ownership = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  return current === typeScriptDefaults && ownership === 'managed-by-tao\n'
+  return current === defaults && ownership === 'managed-by-tao\n'
     ? []
     : [{
-      path: current === typeScriptDefaults ? marker : path,
+      path: current === defaults ? marker : path,
       owner: 'project runtime policy',
       repair: 'tao setup --repair',
     }]
@@ -105,7 +108,17 @@ function resolveTypeScriptDefaultsPath(projectRoot: string): string {
 function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
   const relative = Path.relative(moduleDirectory, defaultsPath).replaceAll('\\', '/')
   const extendsPath = relative.startsWith('.') ? relative : `./${relative}`
-  return `${JSON.stringify({ extends: extendsPath, include: ['**/*.ts', '**/*.tsx'] }, null, 2)}\n`
+  return `${
+    JSON.stringify(
+      {
+        extends: extendsPath,
+        compilerOptions: { baseUrl: '.' },
+        include: ['**/*.ts', '**/*.tsx'],
+      },
+      null,
+      2,
+    )
+  }\n`
 }
 
 async function moduleDrift(
@@ -288,23 +301,33 @@ function rejectSymlink(path: string): void {
   }
 }
 
-const typeScriptDefaults = `${
-  JSON.stringify(
-    {
-      compilerOptions: {
-        moduleResolution: 'Bundler',
-        module: 'ESNext',
-        target: 'ES2022',
-        strict: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        skipLibCheck: true,
-        resolveJsonModule: true,
-        allowImportingTsExtensions: true,
-        lib: ['ES2022', 'DOM'],
+function createTypeScriptDefaults(): string {
+  return `${
+    JSON.stringify(
+      {
+        compilerOptions: {
+          moduleResolution: 'Bundler',
+          module: 'ESNext',
+          target: 'ES2022',
+          strict: true,
+          noEmit: true,
+          jsx: 'react-jsx',
+          skipLibCheck: true,
+          resolveJsonModule: true,
+          allowImportingTsExtensions: true,
+          lib: ['ES2022', 'DOM'],
+          paths: {
+            ...runtimeTypeScriptPaths(),
+            react: ['node_modules/@types/react'],
+            'react/*': ['node_modules/@types/react/*'],
+            'react-native': ['node_modules/react-native'],
+            'react-native/*': ['node_modules/react-native/*'],
+            '@preact/signals-core': ['node_modules/@preact/signals-core'],
+          },
+        },
       },
-    },
-    null,
-    2,
-  )
-}\n`
+      null,
+      2,
+    )
+  }\n`
+}

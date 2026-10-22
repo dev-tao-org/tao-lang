@@ -107,6 +107,8 @@
       "./agent unsandboxed verify",
       "./agent unsandboxed verify *",
       "./agent unsandboxed performance preview",
+      "./agent unsandboxed performance modules",
+      "./agent unsandboxed performance modules *",
       "./agent unsandboxed performance record",
       "./agent unsandboxed performance record *",
       "./agent unsandboxed performance preview *",

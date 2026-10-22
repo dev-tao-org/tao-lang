@@ -32,3 +32,16 @@ export function schedule(durationMs: number, action: () => void): () => void {
   const timer = setTimeout(action, durationMs)
   return () => clearTimeout(timer)
 }
+
+/** scheduleMicrotask runs after the current synchronous stack unless canceled first. */
+export function scheduleMicrotask(action: () => void): () => void {
+  let active = true
+  queueMicrotask(() => {
+    if (active) {
+      action()
+    }
+  })
+  return () => {
+    active = false
+  }
+}

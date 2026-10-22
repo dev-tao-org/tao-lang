@@ -1,9 +1,10 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Tests } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
+import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
 
 Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks, and preserve prior revisions', async () =>
   await withFixture(async fixture => {
@@ -209,6 +210,42 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
       prepareSidecarPipeline({ ...fixture, executor }),
       /does not satisfy its declared props contract/i,
     )
+  }))
+
+Tests.test('managed snapshots type-check authored views through the packaged Tao runtime API', async () =>
+  await withFixture(async fixture => {
+    const defaultsPath = Path.join(
+      fixture.projectDirectory,
+      '.tao/cache/sidecars/typescript-defaults.json',
+    )
+    await FileSystem.rm(defaultsPath, { force: true })
+    await ensureTypeScriptDefaults(fixture.projectDirectory)
+    await FileSystem.writeFile(
+      Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
+      [
+        "import Tao from '@tao/runtime-api'",
+        "import type { TextInputProps } from '@tao/runtime-api'",
+        'export function FormattedDate(props: { Value: string }) {',
+        '  const inputProps: TextInputProps = { placeholder: props.Value }',
+        '  void inputProps',
+        '  return Tao.Text({ children: props.Value })',
+        '}',
+      ].join('\n'),
+    )
+
+    const prepared = await prepareSidecarPipeline({
+      ...fixture,
+      nodeModulesDirectory: Repo.resolvePath('ts/7-runtime/node_modules'),
+      executor: executeTypeScript,
+    })
+    const sidecar = prepared.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const snapshotDirectory = Path.dirname(sidecar)
+    const snapshotConfig = JSON.parse(await FileSystem.readFile(Path.join(snapshotDirectory, 'tsconfig.json'), 'utf8'))
+    const defaults = JSON.parse(await FileSystem.readFile(defaultsPath, 'utf8'))
+    Tests.expect(await FileSystem.readFile(sidecar, 'utf8')).toContain("from '@tao/runtime-api'")
+    Tests.expect(snapshotConfig.compilerOptions.baseUrl).toBe('.')
+    Tests.expect(defaults.compilerOptions.paths['@tao/runtime-api'][0]).toContain('/runtime/TaoRuntimeAPI.ts')
+    Tests.expect(defaults.compilerOptions.paths['@shared'][0]).toContain('/shared/shared.ts')
   }))
 
 type Fixture = {
