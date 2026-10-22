@@ -58,7 +58,7 @@ export async function startReview(
     notes: [],
   }
   await git(root, ['worktree', 'add', '-b', branch, reviewedRoot, baseCommit])
-  await writeJson(await ownerPath(reviewedRoot), { id: session.id, root })
+  await writeJson(await resolveReviewOwnerPath(reviewedRoot), { id: session.id, root })
   await writeJson(statePath, session)
   return session
 }
@@ -113,7 +113,7 @@ export async function requireIdleSession(session: ReviewSession): Promise<void> 
 export async function assertOwnedSession(session: ReviewSession): Promise<void> {
   const source = (await git(session.root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
   const reviewed = (await git(session.reviewedRoot, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
-  const owner = await readJson<{ id: string; root: string }>(await ownerPath(session.reviewedRoot))
+  const owner = await readJson<{ id: string; root: string }>(await resolveReviewOwnerPath(session.reviewedRoot))
   if (
     source !== session.sourceBranch || reviewed !== session.reviewedBranch || owner.id !== session.id
     || owner.root !== session.root
@@ -185,7 +185,7 @@ export async function assertReviewedSnapshot(session: ReviewSession, journal: Re
   }
 }
 
-async function ownerPath(root: string): Promise<string> {
+async function resolveReviewOwnerPath(root: string): Promise<string> {
   return (await git(root, ['rev-parse', '--path-format=absolute', '--git-path', 'incremental-review-owner.json']))
     .trim()
 }

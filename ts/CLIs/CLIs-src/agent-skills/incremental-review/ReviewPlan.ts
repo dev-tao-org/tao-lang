@@ -8,8 +8,8 @@ import {
   expandFiles,
   git,
   head,
-  pathEntries,
   privateIndex,
+  readGitPathEntries,
   readJson,
   snapshot,
   tree,
@@ -88,10 +88,16 @@ export async function validateSelection(session: ReviewSession, selection: Revie
   }
   const disk = await snapshot(session.root, session.directory, selection.sourceHead, files)
   const index = await tree(session.root)
-  if (await pathEntries(session.root, disk, files) !== await pathEntries(session.root, selection.diskTree, files)) {
+  if (
+    await readGitPathEntries(session.root, disk, files)
+      !== await readGitPathEntries(session.root, selection.diskTree, files)
+  ) {
     Errors.ThrowUserInput(`Saved disk content changed after planning: ${files.join(', ')}`)
   }
-  if (await pathEntries(session.root, index, files) !== await pathEntries(session.root, selection.indexTree, files)) {
+  if (
+    await readGitPathEntries(session.root, index, files)
+      !== await readGitPathEntries(session.root, selection.indexTree, files)
+  ) {
     Errors.ThrowUserInput(`Staged content changed after planning: ${files.join(', ')}`)
   }
   await assertOnlySelected(session.root, selection.sourceHead, selection.sourceTree, files)
@@ -104,7 +110,7 @@ export async function validateSelection(session: ReviewSession, selection: Revie
 /** replaceEntries transfers literal object/mode entries, including deletions, between private indices. */
 export async function replaceEntries(root: string, index: string, revision: string, files: string[]): Promise<void> {
   const removals = files.map(path => `0 ${'0'.repeat(40)}\t${path}\0`).join('')
-  const entries = await pathEntries(root, revision, files)
+  const entries = await readGitPathEntries(root, revision, files)
   await git(root, ['update-index', '-z', '--index-info'], { index, input: removals + entries })
 }
 

@@ -5,7 +5,7 @@ import {
   acceptSelection,
   recoverAcceptance,
 } from '../incremental-review/ReviewAccept'
-import { git, head, indexPath, readJson } from '../incremental-review/ReviewGit'
+import { git, head, readJson, resolveGitIndexPath } from '../incremental-review/ReviewGit'
 import { planSelection } from '../incremental-review/ReviewPlan'
 import { reviewStatus, startReview } from '../incremental-review/ReviewSession'
 import { put, read, withFixture } from './ReviewFixture'
@@ -96,7 +96,7 @@ Tests.test('an interruption after the source commit recovers exact frozen commit
     Tests.expect(await head(root)).not.toBe(selection.sourceHead)
     Tests.expect(await head(session.reviewedRoot)).toBe(selection.reviewedHead)
     await FileSystem.writeFile(
-      `${await indexPath(root)}.lock`,
+      `${await resolveGitIndexPath(root)}.lock`,
       JSON.stringify({ session: session.id, proposal: selection.proposal }),
     )
     await runReview(['recover', '--repo', root])

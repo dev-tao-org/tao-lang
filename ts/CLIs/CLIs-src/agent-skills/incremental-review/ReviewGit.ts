@@ -60,8 +60,8 @@ export async function snapshot(root: string, directory: string, base: string, fi
   return await tree(root, index)
 }
 
-/** indexPath locates this checkout's real Git index. */
-export async function indexPath(root: string): Promise<string> {
+/** resolveGitIndexPath locates this checkout's real Git index. */
+export async function resolveGitIndexPath(root: string): Promise<string> {
   return (await git(root, ['rev-parse', '--path-format=absolute', '--git-path', 'index'])).trim()
 }
 
@@ -93,8 +93,8 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: str
   return files
 }
 
-/** pathEntries returns exact mode/object entries, including absence, for selected paths. */
-export async function pathEntries(root: string, revision: string, files: string[]): Promise<string> {
+/** readGitPathEntries returns exact mode/object entries, including absence, for selected paths. */
+export async function readGitPathEntries(root: string, revision: string, files: string[]): Promise<string> {
   return await git(root, ['ls-tree', '-z', revision, '--', ...files])
 }
 

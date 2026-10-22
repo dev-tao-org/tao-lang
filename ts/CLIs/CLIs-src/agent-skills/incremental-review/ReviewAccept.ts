@@ -1,6 +1,16 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { git, head, indexHash, indexPath, pathEntries, readJson, snapshot, tree, writeJson } from './ReviewGit'
+import {
+  git,
+  head,
+  indexHash,
+  readGitPathEntries,
+  readJson,
+  resolveGitIndexPath,
+  snapshot,
+  tree,
+  writeJson,
+} from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
 import { assertOwnedSession, assertReviewedSnapshot, saveSession } from './ReviewSession'
 import type { ReviewHooks, ReviewJournal, ReviewSelection, ReviewSession } from './ReviewTypes'
@@ -14,13 +24,13 @@ export async function acceptSelection(
   await requireFinishedJournal(session)
   await validateSelection(session, selection)
   const journal = await prepareJournal(session, selection)
-  await writeJson(journalPath(session), journal)
+  await writeJson(resolveJournalPath(session), journal)
   await finishJournal(session, journal, hooks)
 }
 
 /** recoverAcceptance completes a frozen journal idempotently without reverting source edits. */
 export async function recoverAcceptance(session: ReviewSession): Promise<void> {
-  const journal = await readJson<ReviewJournal>(journalPath(session))
+  const journal = await readJson<ReviewJournal>(resolveJournalPath(session))
   if (journal.phase === 'complete') {
     return
   }
@@ -31,13 +41,13 @@ export async function recoverAcceptance(session: ReviewSession): Promise<void> {
 }
 
 async function prepareJournal(session: ReviewSession, selection: ReviewSelection): Promise<ReviewJournal> {
-  const index = await indexPath(session.root)
+  const index = await resolveGitIndexPath(session.root)
   const originalIndexHash = await indexHash(index)
   const reconciledIndex = Path.join(session.directory, `${Platform.randomUUID()}.reconciled.index`)
   await FileSystem.cp(index, reconciledIndex)
   if (
-    await pathEntries(session.root, selection.indexTree, selection.files)
-      !== await pathEntries(session.root, selection.reconciledIndexTree, selection.files)
+    await readGitPathEntries(session.root, selection.indexTree, selection.files)
+      !== await readGitPathEntries(session.root, selection.reconciledIndexTree, selection.files)
   ) {
     await replaceEntries(session.root, reconciledIndex, selection.reconciledIndexTree, selection.files)
   }
@@ -77,8 +87,8 @@ function reviewedMessage(selection: ReviewSelection, sourceCommit: string): stri
 }
 
 async function requireFinishedJournal(session: ReviewSession): Promise<void> {
-  if (await FileSystem.exists(journalPath(session))) {
-    const journal = await readJson<ReviewJournal>(journalPath(session))
+  if (await FileSystem.exists(resolveJournalPath(session))) {
+    const journal = await readJson<ReviewJournal>(resolveJournalPath(session))
     if (journal.phase !== 'complete') {
       Errors.ThrowUserInput('An interrupted acceptance is pending. Run recover before accepting another selection.')
     }
@@ -101,7 +111,7 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal, hoo
   await assertOwnedSession(session)
   await assertReviewedSnapshot(session, journal)
   await requireExpectedRefs(session, journal)
-  const sourceIndex = await indexPath(session.root)
+  const sourceIndex = await resolveGitIndexPath(session.root)
   const lock = `${sourceIndex}.lock`
   await acquireIndexLock(lock, session, journal)
   await Try(async () => {
@@ -126,7 +136,7 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal, hoo
     if (journal.selection.kind === 'reopen') {
       delete session.accepted[path]
     } else {
-      session.accepted[path] = await pathEntries(session.root, journal.selection.diskTree, [path])
+      session.accepted[path] = await readGitPathEntries(session.root, journal.selection.diskTree, [path])
     }
   }
   if (journal.selection.kind !== 'partial') {
@@ -155,8 +165,8 @@ async function requirePreparedDisk(session: ReviewSession, journal: ReviewJourna
   const selection = journal.selection
   const disk = await snapshot(session.root, session.directory, selection.sourceHead, selection.files)
   if (
-    await pathEntries(session.root, disk, selection.files)
-      !== await pathEntries(session.root, selection.diskTree, selection.files)
+    await readGitPathEntries(session.root, disk, selection.files)
+      !== await readGitPathEntries(session.root, selection.diskTree, selection.files)
   ) {
     Errors.ThrowUserInput(
       'Saved selected content changed before the source commit. Recovery will not accept unseen changes.',
@@ -223,9 +233,9 @@ async function recordPhase(
     await FileSystem.mkdir(Path.join(session.directory, 'receipts'), { recursive: true })
     await writeJson(Path.join(session.directory, 'receipts', `${journal.selection.proposal}.json`), journal)
   }
-  await writeJson(journalPath(session), journal)
+  await writeJson(resolveJournalPath(session), journal)
 }
 
-function journalPath(session: ReviewSession): string {
+function resolveJournalPath(session: ReviewSession): string {
   return Path.join(session.directory, 'journal.json')
 }
