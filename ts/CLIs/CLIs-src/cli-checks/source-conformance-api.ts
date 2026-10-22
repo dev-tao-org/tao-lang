@@ -2,7 +2,7 @@ import * as TypeScript from 'typescript'
 
 export {
   type ApiGroup,
-  bindingNames,
+  collectBindingNames,
   docs,
   hasDescription,
   hasValidDocLayout,
@@ -48,12 +48,12 @@ function isApiMember(node: TypeScript.Node): boolean {
   return TypeScript.isTypeElement(node) || TypeScript.isClassElement(node) || TypeScript.isParameter(node)
 }
 
-/** bindingNames returns identifiers contained in a binding pattern. */
-function bindingNames(name: TypeScript.BindingName): TypeScript.Identifier[] {
+/** collectBindingNames returns identifiers contained in a binding pattern. */
+function collectBindingNames(name: TypeScript.BindingName): TypeScript.Identifier[] {
   if (TypeScript.isIdentifier(name)) {
     return [name]
   }
-  return name.elements.flatMap(element => TypeScript.isBindingElement(element) ? bindingNames(element.name) : [])
+  return name.elements.flatMap(element => TypeScript.isBindingElement(element) ? collectBindingNames(element.name) : [])
 }
 
 /** isAmbientNamespace detects ambient namespace declarations and descendants. */

@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
-import { nearestProjectRoot } from '../modules/Paths'
+import { findNearestProjectRoot } from '../modules/Paths'
 
 /** withManagedModuleLock serializes publication and cleanup for one live module directory. */
 export async function withManagedModuleLock<Value>(
@@ -8,7 +8,7 @@ export async function withManagedModuleLock<Value>(
   action: () => Promise<Value>,
 ): Promise<Value> {
   const canonicalDirectory = FileSystem.realpathSync(moduleDirectory)
-  const ownerRoot = nearestProjectRoot(canonicalDirectory)
+  const ownerRoot = findNearestProjectRoot(canonicalDirectory)
   if (!ownerRoot) {
     Errors.ThrowUserInput(
       `Cannot lock managed module metadata outside a Tao project: ${canonicalDirectory}. Place the module in a project with a .tao directory.`,

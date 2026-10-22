@@ -20,7 +20,7 @@ export async function transformerSamples(): Promise<(TimingSample & { scenario: 
   return samples
 }
 
-const sampleCompilation = Timings.topLevelTimer(
+const sampleCompilation = Timings.createTopLevelTimer(
   async function(
     timings,
     source: string,
@@ -29,7 +29,7 @@ const sampleCompilation = Timings.topLevelTimer(
     samples: (TimingSample & { scenario: string })[],
   ) {
     const document = await timings.run(parseTransformAndCompile, source, parser)
-    const app = document?.root.declarations.find(AST.IsAppDeclaration)
+    const app = document && AST.FindAppDeclaration(document, 'HelloWorld')
     if (app?.name.value !== 'HelloWorld') {
       Errors.ThrowShouldNeverHappen('Hello World compiler sample did not produce the expected app.')
     }

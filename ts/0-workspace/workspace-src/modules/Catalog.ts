@@ -1,17 +1,17 @@
 import { Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
-import { excludedName, excludedPath, realPathInsideProject, within } from './Paths'
+import { isExcludedName, isExcludedPath, resolveRealPathInsideProject, within } from './Paths'
 
-/** directSourceFiles lists importable Tao files without descending into child directories. */
-export async function directSourceFiles(directory: string, boundary: string): Promise<string[]> {
-  if (!await safeDirectory(directory, boundary)) {
+/** listDirectSourceFiles returns importable Tao files without descending into child directories. */
+export async function listDirectSourceFiles(directory: string, boundary: string): Promise<string[]> {
+  if (!await isSafeDirectory(directory, boundary)) {
     return []
   }
   const files: string[] = []
-  for (const entry of await directoryEntries(directory)) {
+  for (const entry of await readDirectoryEntries(directory)) {
     const path = Path.join(directory, entry.name)
     if (
-      isSourceEntry(entry.name, entry.isFile()) && await importableFile(path, boundary)
+      isSourceEntry(entry.name, entry.isFile()) && await isImportableFile(path, boundary)
     ) {
       files.push(path)
     }
@@ -19,27 +19,27 @@ export async function directSourceFiles(directory: string, boundary: string): Pr
   return files.sort()
 }
 
-/** recursiveSourceFiles walks one named package while respecting nested project roots. */
-export async function recursiveSourceFiles(
+/** listRecursiveSourceFiles walks one named package while respecting nested project roots. */
+export async function listRecursiveSourceFiles(
   directory: string,
   packageRoot: string,
   projectRoot: string,
 ): Promise<string[]> {
-  if (!await safeDirectory(directory, projectRoot) || !within(packageRoot, directory)) {
+  if (!await isSafeDirectory(directory, projectRoot) || !within(packageRoot, directory)) {
     return []
   }
   const files: string[] = []
-  for (const entry of await directoryEntries(directory)) {
-    if (excludedName(entry.name) || entry.name === 'node_modules') {
+  for (const entry of await readDirectoryEntries(directory)) {
+    if (isExcludedName(entry.name) || entry.name === 'node_modules') {
       continue
     }
     const path = Path.join(directory, entry.name)
     if (
-      isSourceEntry(entry.name, entry.isFile()) && await importableFile(path, projectRoot)
+      isSourceEntry(entry.name, entry.isFile()) && await isImportableFile(path, projectRoot)
     ) {
       files.push(path)
     } else if (await canDescendPackage(entry.name, entry.isDirectory(), path)) {
-      files.push(...await recursiveSourceFiles(path, packageRoot, projectRoot))
+      files.push(...await listRecursiveSourceFiles(path, packageRoot, projectRoot))
     } else {
       // Other file types, nested packages and project boundaries are outside this package's sources.
     }
@@ -47,17 +47,17 @@ export async function recursiveSourceFiles(
   return files.sort()
 }
 
-/** namedPackageDirectories discovers local packages with an exact authored directory name. */
-export async function namedPackageDirectories(projectRoot: string, name: string): Promise<string[]> {
+/** findNamedPackageDirectories discovers local packages with an exact authored directory name. */
+export async function findNamedPackageDirectories(projectRoot: string, name: string): Promise<string[]> {
   const found: string[] = []
   const visit = async (directory: string): Promise<void> => {
-    for (const entry of await directoryEntries(directory)) {
+    for (const entry of await readDirectoryEntries(directory)) {
       if (!isSearchDirectory(entry.name, entry.isDirectory())) {
         continue
       }
       const path = Path.join(directory, entry.name)
       if (entry.name === name) {
-        if (await safeDirectory(path, projectRoot)) {
+        if (await isSafeDirectory(path, projectRoot)) {
           found.push(path)
         }
       } else if (!await FileSystem.exists(Path.join(path, '.tao'))) {
@@ -67,21 +67,21 @@ export async function namedPackageDirectories(projectRoot: string, name: string)
       }
     }
   }
-  if (await safeDirectory(projectRoot, projectRoot)) {
+  if (await isSafeDirectory(projectRoot, projectRoot)) {
     await visit(projectRoot)
   }
   return found.sort()
 }
 
-/** importableFile confirms an existing Tao file stays within its real project boundary. */
-export async function importableFile(path: string, boundary: string): Promise<boolean> {
-  return path.endsWith('.tao') && !excludedPath(path, boundary) && await FileSystem.exists(path)
+/** isImportableFile confirms an existing Tao file stays within its real project boundary. */
+export async function isImportableFile(path: string, boundary: string): Promise<boolean> {
+  return path.endsWith('.tao') && !isExcludedPath(path, boundary) && await FileSystem.exists(path)
     && Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
-    && realPathInsideProject(path, boundary) !== undefined
+    && resolveRealPathInsideProject(path, boundary) !== undefined
 }
 
 function isSourceEntry(name: string, isFile: boolean): boolean {
-  return isFile && name.endsWith('.tao') && !excludedName(name)
+  return isFile && name.endsWith('.tao') && !isExcludedName(name)
 }
 
 async function canDescendPackage(name: string, isDirectory: boolean, path: string): Promise<boolean> {
@@ -89,17 +89,17 @@ async function canDescendPackage(name: string, isDirectory: boolean, path: strin
 }
 
 function isSearchDirectory(name: string, isDirectory: boolean): boolean {
-  return isDirectory && !excludedName(name) && name !== 'node_modules'
+  return isDirectory && !isExcludedName(name) && name !== 'node_modules'
 }
 
-// safeDirectory confirms a directory stays within its real project boundary.
-async function safeDirectory(path: string, boundary: string): Promise<boolean> {
-  return !excludedPath(path, boundary) && await FileSystem.exists(path)
+// isSafeDirectory confirms a directory stays within its real project boundary.
+async function isSafeDirectory(path: string, boundary: string): Promise<boolean> {
+  return !isExcludedPath(path, boundary) && await FileSystem.exists(path)
     && Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())
-    && realPathInsideProject(path, boundary) !== undefined
+    && resolveRealPathInsideProject(path, boundary) !== undefined
 }
 
-async function directoryEntries(
+async function readDirectoryEntries(
   path: string,
 ): Promise<Array<{ name: string; isFile(): boolean; isDirectory(): boolean }>> {
   const fallback: Array<{ name: string; isFile(): boolean; isDirectory(): boolean }> = []

@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import { projectDependencyOptions } from '@workspace/dependencies/Options'
+import { createProjectDependencyOptions } from '@workspace/dependencies/Options'
 import { prepareDependencies } from '@workspace/dependencies/Store'
 import { initializeProject } from '@workspace/projects/Projects'
 import { findTaoTestFiles } from '../dev-cli/testing/TaoTests'
@@ -24,7 +24,7 @@ Tests.test('tao test resolves default folders and relative files from the caller
       Path.join(directory, 'Journey.tao'),
       'tests { test { run Missing expect text "Never" } }',
     )
-    const dependencies = await projectDependencyOptions(directory)
+    const dependencies = await createProjectDependencyOptions(directory)
     await prepareDependencies(directory, await dependencies.readRequirements(directory), dependencies)
     for (const args of [[], ['Journey.tao']]) {
       const child = Platform.spawn(Repo.resolvePath('tao'), {

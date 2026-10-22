@@ -35,13 +35,73 @@ export function IsValueDeclaration(node: AST.Node): node is AST.ValueDeclaration
   return IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDefinition'])
 }
 
-/** ValueDeclarations lists the named values declared by a source file. */
-export function ValueDeclarations(file: AST.File): AST.ValueDeclaration[] {
-  return file.declarations.filter(IsValueDeclaration)
+/** GetAppDeclarations lists app declarations in a source document. */
+export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
+  return GetDeclarations(document).filter(IsAppDeclaration)
 }
 
-/** DeclarationVisibility resolves explicit visibility and the app/folder or value/file defaults. */
-export function DeclarationVisibility(node: AST.ValueDeclaration): AST.Visibility {
+/** GetDeclarations returns a document's declarations without copying or filtering them. */
+export function GetDeclarations(document: AST.Document): readonly AST.Declaration[] {
+  return document.root.declarations
+}
+
+/** HasAppDeclarations reports whether a source document declares an app. */
+export function HasAppDeclarations(document: AST.Document): boolean {
+  return GetDeclarations(document).some(IsAppDeclaration)
+}
+
+/** FindAppDeclaration finds one named app declaration in a source document. */
+export function FindAppDeclaration(document: AST.Document, name: string): AST.AppDeclaration | undefined {
+  return GetDeclarations(document).find(
+    (declaration): declaration is AST.AppDeclaration =>
+      IsAppDeclaration(declaration) && declaration.name.value === name,
+  )
+}
+
+/** GetImportStatements lists declaration and package imports in a source document. */
+export function GetImportStatements(document: AST.Document): (AST.UseStatement | AST.UsePackageStatement)[] {
+  return GetDeclarations(document).filter(isImportStatement)
+}
+
+/** HasImportStatements reports whether a source document declares an import. */
+export function HasImportStatements(document: AST.Document): boolean {
+  return GetDeclarations(document).some(isImportStatement)
+}
+
+/** GetValueDeclarations lists named values declared by a source document. */
+export function GetValueDeclarations(document: AST.Document): AST.ValueDeclaration[] {
+  return GetDeclarations(document).filter(IsValueDeclaration)
+}
+
+/** GetViewDeclarations lists view declarations in a source document. */
+export function GetViewDeclarations(document: AST.Document): AST.ViewDeclaration[] {
+  return GetDeclarations(document).filter(IsViewDeclaration)
+}
+
+/** HasViewDeclarations reports whether a source document declares a view. */
+export function HasViewDeclarations(document: AST.Document): boolean {
+  return GetDeclarations(document).some(IsViewDeclaration)
+}
+
+/** HasForeignViews reports whether a source document declares a foreign view. */
+export function HasForeignViews(document: AST.Document): boolean {
+  return GetDeclarations(document).some(declaration =>
+    IsViewDeclaration(declaration) && GetForeignViewPath(declaration) !== undefined
+  )
+}
+
+/** GetForeignViewPath returns a view's authored module path when its body is foreign. */
+export function GetForeignViewPath(view: AST.ViewDeclaration): AST.ImportPath | undefined {
+  return IsKind(view.render, 'ForeignView') ? view.render.path : undefined
+}
+
+/** GetViewName returns a view's authored declaration name. */
+export function GetViewName(view: AST.ViewDeclaration): string {
+  return view.name.value
+}
+
+/** GetDeclarationVisibility resolves explicit visibility and the app/folder or value/file defaults. */
+export function GetDeclarationVisibility(node: AST.ValueDeclaration): AST.Visibility {
   return node.visibility ?? (IsAppDeclaration(node) ? 'folder' : 'file')
 }
 
@@ -53,11 +113,6 @@ export function IsUseStatement(node: AST.Node): node is AST.UseStatement {
 /** IsUsePackageStatement narrows a semantic node to a package import. */
 export function IsUsePackageStatement(node: AST.Node): node is AST.UsePackageStatement {
   return IsKind(node, 'UsePackageStatement')
-}
-
-/** IsImportStatement narrows a semantic node to a declaration or package import. */
-export function IsImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
-  return IsUseStatement(node) || IsUsePackageStatement(node)
 }
 
 /** IsViewRender narrows a semantic node to a view invocation. */
@@ -76,4 +131,8 @@ export function IsKind<Kind extends AST.Node['kind']>(
   kind: Kind | readonly Kind[],
 ): node is AST.OfKind<Kind> {
   return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
+}
+
+function isImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
+  return IsUseStatement(node) || IsUsePackageStatement(node)
 }

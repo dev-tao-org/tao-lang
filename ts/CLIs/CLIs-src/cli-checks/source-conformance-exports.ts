@@ -1,7 +1,7 @@
 import * as TypeScript from 'typescript'
 import {
   ApiGroup,
-  bindingNames,
+  collectBindingNames,
   docs,
   hasDescription,
   isApiDeclaration,
@@ -59,7 +59,7 @@ export class ExportedApiChecker {
     anonymous: ApiGroup[],
   ): void {
     for (const declaration of statement.declarationList.declarations) {
-      for (const name of bindingNames(declaration.name)) {
+      for (const name of collectBindingNames(declaration.name)) {
         this.addApiGroup(
           name.text,
           [name, declaration, statement],

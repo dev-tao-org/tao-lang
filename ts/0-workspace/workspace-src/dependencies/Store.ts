@@ -2,13 +2,13 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import {
-  dependencyLockPath,
   materializeLocations,
   materializeSources,
   readDependencyLock,
+  resolveDependencyLockPath,
   writeDependencyLock,
 } from './LockFile'
-import { defaultSourceAlias, resolveSource, sourceIdentity } from './Sources'
+import { createSourceIdentity, deriveDefaultSourceAlias, resolveSource } from './Sources'
 import type { DependencyLock, DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
 /** resolveLockedAlias maps an import alias to its producing source root. */
@@ -21,11 +21,13 @@ export function resolveLockedAlias(
   const owner = Path.resolve(importerRoot) === Path.resolve(projectRoot)
     ? undefined
     : Object.values(lock.sources).find(source => Path.resolve(source.location) === Path.resolve(importerRoot))
-  if (owner && !owner.requirements.some(item => (item.alias ?? defaultSourceAlias(item)) === alias)) {
+  if (owner && !owner.requirements.some(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)) {
     return undefined
   }
-  const requirement = owner?.requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
-  const identity = requirement ? sourceIdentity(requirement, owner!.location, projectRoot) : rootIdentity(lock, alias)
+  const requirement = owner?.requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
+  const identity = requirement
+    ? createSourceIdentity(requirement, owner!.location, projectRoot)
+    : resolveRootIdentity(lock, alias)
   return identity ? lock.sources[identity] : undefined
 }
 
@@ -36,7 +38,7 @@ export async function prepareDependencies(
   options: DependencyStoreOptions,
   update: string[] | undefined = [],
 ): Promise<DependencyLock> {
-  const path = dependencyLockPath(projectRoot)
+  const path = resolveDependencyLockPath(projectRoot)
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   const lockPath = Path.join(projectRoot, '.tao', 'locks', 'dependencies.lock')
   await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
@@ -50,13 +52,13 @@ export async function prepareDependencies(
       projectRoot,
       requirements,
       materializeSources(previous?.sources ?? {}, projectRoot, options.bundledProjects),
-      previousPins(previous, projectRoot, options.bundledProjects),
+      collectPreviousPins(previous, projectRoot, options.bundledProjects),
       update,
       options,
     )
     const result: DependencyLock = {
       version: 1,
-      roots: rootsFor(requirements, projectRoot),
+      roots: createRootPins(requirements, projectRoot),
       sources,
       ...(previous?.npmGraphs ? { npmGraphs: previous.npmGraphs } : {}),
     }
@@ -73,12 +75,12 @@ export async function prepareSourceDependency(
   options: DependencyStoreOptions,
 ): Promise<{ root: string }> {
   const requirements = await options.readRequirements(owner)
-  const requirement = requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
+  const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
     ?? Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
-  const path = dependencyLockPath(projectRoot)
+  const path = resolveDependencyLockPath(projectRoot)
   const previous = materializeLocations(await readDependencyLock(path), projectRoot, options.bundledProjects)
     ?? { version: 1 as const, roots: {}, sources: {} }
-  const identity = sourceIdentity(requirement, owner, projectRoot)
+  const identity = createSourceIdentity(requirement, owner, projectRoot)
   const source = await resolveSource(
     requirement,
     identity,
@@ -103,7 +105,7 @@ export async function prepareSourceDependency(
   return { root: source.location }
 }
 
-function rootIdentity(lock: DependencyLock, alias: string): string | undefined {
+function resolveRootIdentity(lock: DependencyLock, alias: string): string | undefined {
   const pin = lock.roots[alias]
   if (!pin) {
     return undefined
@@ -127,7 +129,7 @@ async function resolveGraph(
   const resolvedPins = new Map<string, string>()
   while (pending.length > 0) {
     const { requirement, parent } = pending.shift()!
-    const identity = sourceIdentity(requirement, parent, projectRoot)
+    const identity = createSourceIdentity(requirement, parent, projectRoot)
     const requestedVersionPin = previousPins.get(`${identity}@${requirement.version}`)
     const sourcePin = previousSources[identity]
     const prior = requestedVersionPin && sourcePin?.commit
@@ -139,7 +141,7 @@ async function resolveGraph(
       projectRoot,
       parent,
       prior,
-      update?.includes(requirement.alias ?? defaultSourceAlias(requirement)) === true
+      update?.includes(requirement.alias ?? deriveDefaultSourceAlias(requirement)) === true
         || update?.includes(identity) === true,
       options,
     )
@@ -157,7 +159,7 @@ async function resolveGraph(
   return sources
 }
 
-function previousPins(
+function collectPreviousPins(
   previous: DependencyLock | undefined,
   projectRoot: string,
   bundledProjects?: Readonly<Record<string, string>>,
@@ -179,7 +181,7 @@ function previousPins(
   }
   for (const source of Object.values(sources)) {
     for (const requirement of source.requirements) {
-      const identity = sourceIdentity(requirement, source.location, projectRoot)
+      const identity = createSourceIdentity(requirement, source.location, projectRoot)
       const commit = sources[identity]?.commit
       if (commit) {
         pins.set(`${identity}@${requirement.version}`, commit)
@@ -200,11 +202,11 @@ function rejectCommitConflict(identity: string, commit: string | undefined, reso
   resolvedPins.set(identity, commit)
 }
 
-function rootsFor(requirements: DependencyRequirement[], projectRoot: string): Record<string, string> {
+function createRootPins(requirements: DependencyRequirement[], projectRoot: string): Record<string, string> {
   return Object.fromEntries(
     requirements.map(requirement => [
-      requirement.alias ?? defaultSourceAlias(requirement),
-      `${sourceIdentity(requirement, projectRoot, projectRoot)}@${requirement.version}`,
+      requirement.alias ?? deriveDefaultSourceAlias(requirement),
+      `${createSourceIdentity(requirement, projectRoot, projectRoot)}@${requirement.version}`,
     ]).sort(),
   )
 }

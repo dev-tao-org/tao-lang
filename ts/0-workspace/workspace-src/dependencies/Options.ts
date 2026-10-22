@@ -3,11 +3,11 @@ import { Path } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { gitSourceAdapter } from './Git'
 import { readProjectRequirements } from './Requirements'
-import { defaultSourceAlias } from './Sources'
+import { deriveDefaultSourceAlias } from './Sources'
 import type { DependencyRequirement, DependencyStoreOptions } from './Types'
 
-/** projectDependencyOptions assembles the normal Tao source dependency services. */
-export async function projectDependencyOptions(projectRoot: string): Promise<DependencyStoreOptions> {
+/** createProjectDependencyOptions assembles Tao source dependency services. */
+export async function createProjectDependencyOptions(projectRoot: string): Promise<DependencyStoreOptions> {
   const standardProject = await Stdlib.projectDirectory()
   return {
     storeRoot: Path.join(projectRoot, '.tao', 'cache', 'dependencies'),
@@ -25,7 +25,7 @@ async function requirementsWithStandardProject(
   if (Path.resolve(root) === Path.resolve(standardProject)) {
     return requirements
   }
-  const standardAlias = requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === 'tao')
+  const standardAlias = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === 'tao')
   if (standardAlias) {
     if (standardAlias.provider !== 'bundled' || standardAlias.identifier !== 'tao') {
       Errors.ThrowUserInput('Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.')

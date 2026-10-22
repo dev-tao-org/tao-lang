@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { isDiscoverableProjectDirectory, nearestProjectRoot } from '../../workspace-src/modules/Paths'
+import { findNearestProjectRoot, isDiscoverableProjectDirectory } from '../../workspace-src/modules/Paths'
 import { discoverProject, ensureProjectMetadata, initializeProject } from '../../workspace-src/projects/Projects'
 
 Tests.test('project metadata initializes at a boundary and discovery walks upward', async () => {
@@ -29,8 +29,8 @@ Tests.test('project discovery excludes a legacy home cache but accepts durable h
 
     Tests.expect(isDiscoverableProjectDirectory(home, homeAlias)).toBe(false)
     Tests.expect(await discoverProject(Path.join(home, 'child'), home)).toBeUndefined()
-    Tests.expect(nearestProjectRoot(Path.join(home, 'child'), home)).toBeUndefined()
-    Tests.expect(nearestProjectRoot(Path.join(homeAlias, 'child'), homeAlias)).toBeUndefined()
+    Tests.expect(findNearestProjectRoot(Path.join(home, 'child'), home)).toBeUndefined()
+    Tests.expect(findNearestProjectRoot(Path.join(homeAlias, 'child'), homeAlias)).toBeUndefined()
 
     await FileSystem.mkdir(Path.join(legacyTao, 'store'), { recursive: true })
     await FileSystem.writeFile(Path.join(legacyTao, 'store', 'project.json'), '{}')

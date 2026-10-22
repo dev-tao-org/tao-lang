@@ -11,7 +11,7 @@ export type FixInput = { source: string; tree: Tree; ast: AST.Document }
 export type FixResult = { text: string; edits: readonly SourceEdit[] }
 
 /** fix organizes a complete document before formatting, without requiring name resolution. */
-export const fix = Timings.topLevelTimer(function(timings, input: FixInput): FixResult {
+export const fix = Timings.createTopLevelTimer(function(timings, input: FixInput): FixResult {
   return timings.run(fixSource, input)
 })
 

@@ -1,13 +1,13 @@
 import * as AST from '@ast-gen/AST'
 import { Switch } from '@shared'
 import { compileBinding, compileValueReference } from './BindingsCompiler'
-import { literal } from './codegen-util'
+import { emitLiteral } from './codegen-util'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: string): string {
   return Switch.kind(node, {
     Name: name => compileValueReference(name, scope),
-    TextLiteral: literal,
+    TextLiteral: emitLiteral,
   })
 }
 
@@ -26,8 +26,8 @@ export function isTextExpression(node: AST.Expression, resolveName: (name: AST.N
   return AST.IsKind(node, 'TextLiteral') || resolveName(node)
 }
 
-/** textBindings identifies the implemented text expressions for native capture annotations. */
-export function textBindings(
+/** collectTextBindings identifies implemented text expressions for native capture annotations. */
+export function collectTextBindings(
   definitions: readonly AST.LetDefinition[],
   inherited: ReadonlySet<string> = new Set(),
   parameters: readonly AST.Parameter[] = [],

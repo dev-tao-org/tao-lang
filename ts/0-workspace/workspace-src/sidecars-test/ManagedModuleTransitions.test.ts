@@ -24,9 +24,9 @@ Tests.test('cleans a mixed-case npm package link recorded by the current owner p
   await withDirectory('managed-mixed-case-cleanup', async root => {
     const moduleDirectory = Path.join(root, 'Modules')
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
-    const input = moduleInput(root, moduleDirectory, '1.3.5')
+    const input = createModuleInput(root, moduleDirectory, '1.3.5')
     input.modules[0]!.requirements = [{ name: 'JSONStream', version: '1.3.5', origin: 'Modules/Json.tao' }]
-    await prepareManagedModules(input, executorFor({ react: '19.1.0', JSONStream: '1.3.5' }))
+    await prepareManagedModules(input, createExecutor({ react: '19.1.0', JSONStream: '1.3.5' }))
     const link = Path.join(moduleDirectory, 'node_modules', 'JSONStream')
     Tests.expect(FileSystem.lstatSync(link).isSymbolicLink()).toBe(true)
     await cleanManagedModuleMetadata(root)
@@ -47,7 +47,7 @@ Tests.test('rejects an unowned module path without creating a Tao project marker
         target: 'browser',
         runtimePins: {},
         bunVersion: '1.2.0',
-      }, executorFor({})),
+      }, createExecutor({})),
       /outside a Tao project/,
     )
     Tests.expect(await FileSystem.exists(Path.join(unowned, '.tao'))).toBe(false)
@@ -81,7 +81,7 @@ async function assertHostCacheRebuild(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Module')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
   const input = {
-    ...moduleInput(root, moduleDirectory, '4.1.0'),
+    ...createModuleInput(root, moduleDirectory, '4.1.0'),
     hostIdentity: { os: 'host-a', architecture: 'arm64' },
   }
   let rebuilt = false
@@ -125,21 +125,21 @@ async function writeInstalledPackages(root: string): Promise<void> {
 async function assertProfileTransition(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
-  const initial = moduleInput(root, moduleDirectory, '4.1.0')
-  const first = await prepareManagedModules(initial, executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }))
+  const initial = createModuleInput(root, moduleDirectory, '4.1.0')
+  const first = await prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
   const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
   await damageCurrentOwnershipMarker(marker)
   await Tests.rejects(
-    prepareManagedModules(initial, executorFor({ react: '19.1.0', 'date-fns': '4.1.0' })),
+    prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })),
     /needs repair/,
   )
-  await repairManagedModuleFiles(initial, executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }))
+  await repairManagedModuleFiles(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
   Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).generatedHashes).toBeDefined()
 
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   const priorLink = FileSystem.realpathSync(link)
-  const updated = moduleInput(root, moduleDirectory, '4.2.0')
-  const second = await prepareManagedModules(updated, executorFor({ react: '19.1.0', 'date-fns': '4.2.0' }))
+  const updated = createModuleInput(root, moduleDirectory, '4.2.0')
+  const second = await prepareManagedModules(updated, createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }))
   Tests.expect(second.packageDirectory).not.toBe(first.packageDirectory)
   Tests.expect(await FileSystem.exists(first.packageDirectory)).toBe(true)
   Tests.expect(FileSystem.realpathSync(link)).not.toBe(priorLink)
@@ -150,13 +150,13 @@ async function assertProfileTransition(root: string): Promise<void> {
   const manifest = Path.join(moduleDirectory, 'package.json')
   await FileSystem.chmod(manifest, 0o644)
   await FileSystem.writeFile(manifest, '{"authored":true}\n')
-  const next = moduleInput(root, moduleDirectory, '4.3.0')
+  const next = createModuleInput(root, moduleDirectory, '4.3.0')
   await Tests.rejects(
-    prepareManagedModules(next, executorFor({ react: '19.1.0', 'date-fns': '4.3.0' })),
+    prepareManagedModules(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' })),
     /metadata drifted/,
   )
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
-  await repairManagedModuleFiles(next, executorFor({ react: '19.1.0', 'date-fns': '4.3.0' }))
+  await repairManagedModuleFiles(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }))
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toContain('4.3.0')
 }
 
@@ -164,19 +164,19 @@ async function assertDanglingLinkRepair(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
   const first = await prepareManagedModules(
-    moduleInput(root, moduleDirectory, '4.1.0'),
-    executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+    createModuleInput(root, moduleDirectory, '4.1.0'),
+    createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
   )
   const second = await prepareManagedModules(
-    moduleInput(root, moduleDirectory, '4.2.0'),
-    executorFor({ react: '19.1.0', 'date-fns': '4.2.0' }),
+    createModuleInput(root, moduleDirectory, '4.2.0'),
+    createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }),
   )
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   await FileSystem.rm(second.packageDirectory, { recursive: true, force: true })
   Tests.expect(Try.WithDefault(false, () => FileSystem.lstatSync(link).isSymbolicLink())).toBe(true)
   const third = await prepareManagedModules(
-    moduleInput(root, moduleDirectory, '4.3.0'),
-    executorFor({ react: '19.1.0', 'date-fns': '4.3.0' }),
+    createModuleInput(root, moduleDirectory, '4.3.0'),
+    createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }),
   )
   Tests.expect(first.packageDirectory).not.toBe(third.packageDirectory)
   Tests.expect(FileSystem.realpathSync(link)).toBe(
@@ -198,16 +198,16 @@ async function assertConsumerConflict(root: string): Promise<void> {
   await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
   await FileSystem.mkdir(sharedModule, { recursive: true })
   const firstInput = {
-    ...moduleInput(firstRoot, sharedModule, '4.1.0'),
+    ...createModuleInput(firstRoot, sharedModule, '4.1.0'),
     modules: [{ directory: sharedModule, requirements: [] }],
   }
-  await prepareManagedModules(firstInput, executorFor({ react: '19.1.0' }))
+  await prepareManagedModules(firstInput, createExecutor({ react: '19.1.0' }))
   const manifest = await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')
   const reactLink = Path.join(sharedModule, 'node_modules', 'react')
   const linkTarget = FileSystem.realpathSync(reactLink)
   const secondInput = { ...firstInput, directory: secondRoot, runtimePins: { react: '18.3.1' } }
   await Tests.rejects(
-    prepareManagedModules(secondInput, executorFor({ react: '18.3.1' })),
+    prepareManagedModules(secondInput, createExecutor({ react: '18.3.1' })),
     /already owned by consumer profile.*one app dependency graph/,
   )
   Tests.expect(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')).toBe(manifest)
@@ -261,7 +261,7 @@ async function assertConcurrentConsumerRace(root: string): Promise<void> {
   )
 }
 
-function moduleInput(root: string, directory: string, version: string): ManagedModulesInput {
+function createModuleInput(root: string, directory: string, version: string): ManagedModulesInput {
   return {
     directory: root,
     modules: [{ directory, requirements: [{ name: 'date-fns', version, origin: 'Modules/Date.tao' }] }],
@@ -271,7 +271,7 @@ function moduleInput(root: string, directory: string, version: string): ManagedM
   }
 }
 
-function executorFor(dependencies: Record<string, string>): BunExecutor {
+function createExecutor(dependencies: Record<string, string>): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
       return { status: 0, stdout: '1.2.0\n', stderr: '' }

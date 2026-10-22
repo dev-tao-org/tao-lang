@@ -70,8 +70,8 @@ export class Timings {
     return { name, role: 'leaf', [action]: (_timings, ...arguments_) => callback(...arguments_) }
   }
 
-  /** topLevelTimer creates a callable fresh-collector boundary that run can enter with an existing collector. */
-  static topLevelTimer<Arguments extends unknown[], Value>(
+  /** createTopLevelTimer creates a callable fresh-collector boundary that run can enter with an existing collector. */
+  static createTopLevelTimer<Arguments extends unknown[], Value>(
     action: (timings: Timings, ...arguments_: Arguments) => Value,
     options?: { clock: string; now: () => number },
   ): Entry<Arguments, Value> {

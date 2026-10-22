@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import { moduleSpecifiers } from '../sidecar-pipeline/Imports'
+import { collectModuleSpecifiers } from '../sidecar-pipeline/Imports'
 
 Tests.test('sidecar import closure includes TypeScript module forms and ignores non-code text', () => {
   const source = S`
@@ -15,7 +15,7 @@ Tests.test('sidecar import closure includes TypeScript module forms and ignores 
     const template = \`import('./template-false-positive')\`
     // import real from './comment-false-positive'
   `
-  Tests.expect(moduleSpecifiers(source)).toEqual([
+  Tests.expect(collectModuleSpecifiers(source)).toEqual([
     './helper',
     './re-export',
     './lazy',

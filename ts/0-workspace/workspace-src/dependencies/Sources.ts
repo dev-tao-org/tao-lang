@@ -2,15 +2,15 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
-/** defaultSourceAlias chooses an import alias from the source identifier. */
-export function defaultSourceAlias(requirement: DependencyRequirement): string {
+/** deriveDefaultSourceAlias chooses an import alias from the source identifier. */
+export function deriveDefaultSourceAlias(requirement: DependencyRequirement): string {
   return requirement.provider === 'github'
     ? githubIdentifierPath(requirement.identifier).split('/').at(-1)!
     : Path.basename(requirement.identifier.replaceAll('\\', '/'))
 }
 
-/** sourceIdentity identifies a producer independently from its consumer alias. */
-export function sourceIdentity(requirement: DependencyRequirement, parent: string, projectRoot: string): string {
+/** createSourceIdentity identifies a producer independently from its consumer alias. */
+export function createSourceIdentity(requirement: DependencyRequirement, parent: string, projectRoot: string): string {
   if (requirement.provider === 'file') {
     const absolute = canonicalFileSource(parent, requirement.identifier)
     const relative = Path.relative(projectRoot, absolute).replaceAll('\\', '/')
@@ -141,7 +141,7 @@ async function resolveGitHubSource(
     identifier: requirement.identifier,
     version: requirement.version,
     commit,
-    subdirectory: normalizedSubdirectory(requirement.subdirectory ?? coordinates.subdirectory),
+    subdirectory: normalizeSubdirectory(requirement.subdirectory ?? coordinates.subdirectory),
     location,
     requirements: [],
   }
@@ -174,7 +174,7 @@ async function githubProjectLocation(
     Errors.Throw('Expected GitHub dependency.')
   }
   const requested = requirement.subdirectory ?? sourceSubdirectory
-  const subdirectory = normalizedSubdirectory(requested)
+  const subdirectory = normalizeSubdirectory(requested)
   if (requested && !subdirectory) {
     preparationNeeded(`GitHub source ${identity} has an invalid project subdirectory.`)
   }
@@ -188,7 +188,7 @@ async function githubProjectLocation(
   return location
 }
 
-function normalizedSubdirectory(value: string | undefined): string | undefined {
+function normalizeSubdirectory(value: string | undefined): string | undefined {
   if (!value) {
     return undefined
   }

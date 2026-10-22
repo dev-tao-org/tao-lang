@@ -6,7 +6,7 @@ import { transform } from '../ast-gen-src/Transform'
 
 Tests.test(
   'an app becomes semantic declarations and names with source origins',
-  Timings.topLevelTimer(async timings => {
+  Timings.createTopLevelTimer(async timings => {
     const source = await readAppDeclaration()
 
     const tree = createParser().parse(source)

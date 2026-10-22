@@ -1,12 +1,12 @@
 import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
-import { dependencyLockPath, materializeLocations, readDependencyLock } from './dependencies/LockFile'
-import { sourceRequirements, validateSourceRequirements } from './dependencies/Requirements'
-import { defaultSourceAlias, sourceIdentity } from './dependencies/Sources'
+import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
+import { collectSourceRequirements, validateSourceRequirements } from './dependencies/Requirements'
+import { createSourceIdentity, deriveDefaultSourceAlias } from './dependencies/Sources'
 import { resolveLockedAlias } from './dependencies/Store'
 import type { DependencyLock, DependencyRequirement, DependencyStoreOptions } from './dependencies/Types'
-import { nearestProjectRoot } from './modules/Paths'
+import { findNearestProjectRoot } from './modules/Paths'
 import { requireSetup } from './SetupRequired'
 
 /** ProjectDependencies resolves reachable locked aliases and observes declarations through the parsed graph. */
@@ -20,7 +20,7 @@ export class ProjectDependencies {
   /** refresh reads initial durable state; ordinary edits observe parsed inputs instead of rescanning requirements. */
   async refresh(): Promise<void> {
     this.current = materializeLocations(
-      await readDependencyLock(dependencyLockPath(this.root)),
+      await readDependencyLock(resolveDependencyLockPath(this.root)),
       this.root,
       this.options.bundledProjects,
     ) ?? { version: 1, roots: {}, sources: {} }
@@ -30,7 +30,7 @@ export class ProjectDependencies {
   /** observeProjectSources detects complete dependency changes in normal resolution without linking root declarations.
    *  Invalid syntax never reaches this method; a new session after setup replaces established requirements. */
   observeProjectSources(owner: string, sources: readonly Pick<SourceModule, 'path' | 'document'>[]): void {
-    const actual = sources.flatMap(source => sourceRequirements(source.document.root.declarations, source.path))
+    const actual = sources.flatMap(source => collectSourceRequirements(source.document, source.path))
     validateSourceRequirements(actual)
     const expected = this.requirements.get(owner)
     if (!expected) {
@@ -41,7 +41,7 @@ export class ProjectDependencies {
       }
       return
     }
-    if (signature(actual) !== signature(expected)) {
+    if (createDependencySignature(actual) !== createDependencySignature(expected)) {
       if (
         Object.values(this.current.sources).some(source => source.location === owner && source.provider === 'github')
       ) {
@@ -53,14 +53,16 @@ export class ProjectDependencies {
 
   /** resolveProject validates only a requested alias without resolving versions or claiming source edit ownership. */
   async resolveProject(importer: string, alias: string): Promise<{ root: string }> {
-    const owner = nearestProjectRoot(Path.dirname(importer)) ?? this.root
+    const owner = findNearestProjectRoot(Path.dirname(importer)) ?? this.root
     const requirements = this.requirements.get(owner) ?? await this.options.readRequirements(owner)
     this.requirements.set(owner, requirements)
-    const requirement = requirements.find(item => (item.alias ?? defaultSourceAlias(item)) === alias)
+    const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
       ?? Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
       ?? requireSetup(`Dependency ${alias} needs setup.`)
-    if (source.identity !== sourceIdentity(requirement, owner, this.root) || source.version !== requirement.version) {
+    if (
+      source.identity !== createSourceIdentity(requirement, owner, this.root) || source.version !== requirement.version
+    ) {
       requireSetup(`Dependency ${alias} needs setup.`)
     }
     if (!await FileSystem.exists(source.location)) {
@@ -82,7 +84,7 @@ export class ProjectDependencies {
   }
 }
 
-function signature(requirements: DependencyRequirement[]): string {
+function createDependencySignature(requirements: DependencyRequirement[]): string {
   return JSON.stringify(
     requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
       .map(item => JSON.stringify(item)).sort(),

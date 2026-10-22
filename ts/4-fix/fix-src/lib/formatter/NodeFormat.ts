@@ -1,6 +1,6 @@
 import * as CST from '@cst'
 import type { Field, NodeType, SyntaxNode, Token } from '@cst'
-import { type LayoutPlan, nodeKey, spaceAt } from '../layout/Plan'
+import { createNodeKey, type LayoutPlan, spaceAt } from '../layout/Plan'
 
 /** NodeContext supplies source-anchored selections shared by both handler tables. */
 export class NodeContext<Kind extends NodeType> {
@@ -28,7 +28,7 @@ export class NodeContext<Kind extends NodeType> {
   }
 
   protected range(node: SyntaxNode): { first: number; last: number } {
-    return this.plan.bounds.get(nodeKey(node))!
+    return this.plan.bounds.get(createNodeKey(node))!
   }
 }
 

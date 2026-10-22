@@ -4,7 +4,7 @@ import type { SourceModule } from './Modules'
 
 /** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
 export function assertUniqueLocalBindings(source: SourceModule): void {
-  for (const declaration of source.document.root.declarations.filter(AST.IsViewDeclaration)) {
+  for (const declaration of AST.GetViewDeclarations(source.document)) {
     assertUniqueNames(source.path, declaration.name.value, [
       ...declaration.parameters.map(parameter => parameter.name.value),
       ...declaration.definitions.map(definition => definition.name.value),
@@ -15,8 +15,8 @@ export function assertUniqueLocalBindings(source: SourceModule): void {
   }
 }
 
-/** referencedNames collects module names used by source declarations and app tests. */
-export function referencedNames(document: AST.Document): ReadonlySet<string> {
+/** collectReferencedNames returns module names used by source declarations and app tests. */
+export function collectReferencedNames(document: AST.Document): ReadonlySet<string> {
   const names = new Set<string>()
   for (const declaration of document.root.declarations) {
     if (AST.IsAppDeclaration(declaration)) {

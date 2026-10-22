@@ -1,20 +1,23 @@
-import type * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
 import { valid } from 'semver'
 import type { ManagedModuleRequirement } from './sidecars/ManagedModules'
 
-/** moduleRequirements reads exact npm declarations from an already parsed reachable source. */
-export function moduleRequirements(declarations: readonly AST.Declaration[], path: string): ManagedModuleRequirement[] {
-  return declarations.filter(isNpmRequirement).map(declaration => moduleRequirement(declaration, path))
+/** collectModuleRequirements reads exact npm declarations from a parsed reachable source. */
+export function collectModuleRequirements(document: AST.Document, path: string): ManagedModuleRequirement[] {
+  return AST.GetDeclarations(document)
+    .filter(isNpmRequirement)
+    .map(declaration => createModuleRequirement(declaration, path))
 }
 
-function isNpmRequirement(
+/** isNpmRequirement narrows a declaration to a module-owned npm requirement. */
+export function isNpmRequirement(
   declaration: AST.Declaration,
 ): declaration is Extract<AST.Declaration, { kind: 'RequiresDeclaration' }> {
   return declaration.kind === 'RequiresDeclaration' && declaration.provider === 'npm'
 }
 
-function moduleRequirement(
+function createModuleRequirement(
   declaration: Extract<AST.Declaration, { kind: 'RequiresDeclaration' }>,
   path: string,
 ): ManagedModuleRequirement {

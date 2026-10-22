@@ -38,7 +38,7 @@ export async function installFixturePackage(
     Path.join(directory, 'package.json'),
     JSON.stringify({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }, null, 2),
   )
-  const installed = await bunExecutor(root, registry)('bun', ['install', '--no-progress'], directory)
+  const installed = await createBunExecutor(root, registry)('bun', ['install', '--no-progress'], directory)
   if (installed.status !== 0) {
     Errors.ThrowHostEnvironment(
       `Could not install the local fixture npm package. ${installed.stderr || installed.stdout}`,
@@ -62,7 +62,7 @@ export function managedGraphExecutor(options: {
   }
 }
 
-function bunExecutor(root: string, registry: string): BunExecutor {
+function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
       return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
@@ -123,13 +123,13 @@ async function materializeLockGraph(
     const identity = lockIdentity(value)
     const source = sources.get(identity)
     if (source) {
-      await createPackageWrapper(source, wrapperPath(wrappers, key))
+      await createPackageWrapper(source, resolveWrapperPath(wrappers, key))
     }
   }
   for (const [key, value] of Object.entries(lock.packages)) {
     const source = sources.get(lockIdentity(value))
     if (source) {
-      await linkDependencies(lock, key, source, wrapperPath(wrappers, key), wrappers)
+      await linkDependencies(lock, key, source, resolveWrapperPath(wrappers, key), wrappers)
     }
   }
   for (const name of Object.keys(lock.packages)) {
@@ -143,7 +143,11 @@ async function materializeLockGraph(
     }
     const scope = name.startsWith('@') ? Path.join(nodeModules, name.split('/')[0]!) : nodeModules
     await FileSystem.mkdir(scope, { recursive: true })
-    await FileSystem.symlink(wrapperPath(wrappers, name), Path.join(scope, packageName.split('/').at(-1)!), 'dir')
+    await FileSystem.symlink(
+      resolveWrapperPath(wrappers, name),
+      Path.join(scope, packageName.split('/').at(-1)!),
+      'dir',
+    )
   }
 }
 
@@ -219,17 +223,17 @@ async function linkDependencies(
   const target = Path.join(wrapper, 'node_modules')
   for (const [name, range] of Object.entries(dependencies ?? {})) {
     const dependency = npmDependency(name, range)
-    const child = packageKey(lock, dependency.name, dependency.range, key)
+    const child = createPackageKey(lock, dependency.name, dependency.range, key)
     if (!child) {
       continue
     }
     const scope = name.startsWith('@') ? Path.join(target, name.split('/')[0]!) : target
     await FileSystem.mkdir(scope, { recursive: true })
-    await FileSystem.symlink(wrapperPath(wrappers, child), Path.join(scope, name.split('/').at(-1)!), 'dir')
+    await FileSystem.symlink(resolveWrapperPath(wrappers, child), Path.join(scope, name.split('/').at(-1)!), 'dir')
   }
 }
 
-function packageKey(lock: LockFile, name: string, version: string, parent?: string): string {
+function createPackageKey(lock: LockFile, name: string, version: string, parent?: string): string {
   const matching = Object.entries(lock.packages).filter(([, value]) => {
     const identity = lockIdentity(value)
     const split = identity.lastIndexOf('@')
@@ -256,7 +260,7 @@ function lockIdentity(value: unknown): string {
   return Array.isArray(value) && typeof value[0] === 'string' ? value[0].split('(')[0]! : ''
 }
 
-function wrapperPath(wrappers: string, key: string): string {
+function resolveWrapperPath(wrappers: string, key: string): string {
   return Path.join(wrappers, key.replaceAll('/', '+'))
 }
 

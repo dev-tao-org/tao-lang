@@ -28,8 +28,8 @@ export type LinkedProgram = {
   definitions: readonly LinkedDefinition[]
 }
 
-/** namespaceFromPath derives the default namespace of a package import. */
-export function namespaceFromPath(path: string): string | undefined {
+/** deriveNamespaceFromPath returns the default namespace of a package import. */
+export function deriveNamespaceFromPath(path: string): string | undefined {
   // ex: ../@Foo.tao/ -> [@Foo.tao]
   const parts = path.split('/').filter(isNamedImportPathSegment)
   // ex: [@Foo.tao] -> @Foo

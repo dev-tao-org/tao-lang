@@ -5,7 +5,8 @@ import { Errors, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
-import { namedPackageDirectories, recursiveSourceFiles } from './modules/Catalog'
+import { isNpmRequirement } from './ModuleRequirements'
+import { findNamedPackageDirectories, listRecursiveSourceFiles } from './modules/Catalog'
 import { isNpmPackageName } from './NpmPackageName'
 import { acquireSession } from './projects/Sessions'
 
@@ -63,13 +64,13 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
     if (!document) {
       continue
     }
-    for (const declaration of document.root.declarations) {
-      if (declaration.kind === 'RequiresDeclaration' && declaration.provider === 'npm') {
+    for (const declaration of AST.GetDeclarations(document)) {
+      if (isNpmRequirement(declaration)) {
         work.push(`npm:${declaration.identifier}${declaration.version ? `@${declaration.version}` : ''}`)
       }
-      if (AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')) {
-        work.push(`sidecar:${path}`)
-      }
+    }
+    if (AST.HasForeignViews(document)) {
+      work.push(`sidecar:${path}`)
     }
   }
   return [...new Set(work)].sort()
@@ -101,7 +102,7 @@ type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
   const child = Platform.spawn(['bun', 'info', packageName, 'version', '--json'], {
     cwd,
-    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.cacheDirectory('bun') },
+    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -129,7 +130,7 @@ async function resolveModule(projectRoot: string, moduleName: string): Promise<s
   if (!/^@[A-Za-z0-9][A-Za-z0-9._-]*$/.test(moduleName)) {
     Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
-  const matches = await namedPackageDirectories(projectRoot, moduleName)
+  const matches = await findNamedPackageDirectories(projectRoot, moduleName)
   if (matches.length === 0) {
     Errors.ThrowUserInput(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
   }
@@ -165,11 +166,11 @@ async function writeRequirement(
   packageName: string,
   version: string,
 ): Promise<string> {
-  const files = await recursiveSourceFiles(moduleRoot, moduleRoot, projectRoot)
+  const files = await listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot)
   const occurrences = (await Promise.all(files.map(async path => ({
     path,
     source: await FileSystem.readFile(path, 'utf8'),
-  })))).flatMap(file => npmRequirementSpans(file.path, file.source, packageName))
+  })))).flatMap(file => collectNpmRequirementSpans(file.path, file.source, packageName))
   if (occurrences.length > 0) {
     await replaceRequirements(occurrences, packageName, version)
     return occurrences[0]!.path
@@ -183,7 +184,7 @@ async function writeRequirement(
   return sourcePath
 }
 
-function npmRequirementSpans(
+function collectNpmRequirementSpans(
   path: string,
   source: string,
   packageName: string,
@@ -192,11 +193,8 @@ function npmRequirementSpans(
   if (!document) {
     Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
   }
-  return document.root.declarations.flatMap(declaration => {
-    if (
-      declaration.kind !== 'RequiresDeclaration' || declaration.provider !== 'npm'
-      || declaration.identifier !== packageName
-    ) {
+  return AST.GetDeclarations(document).flatMap(declaration => {
+    if (!isNpmRequirement(declaration) || declaration.identifier !== packageName) {
       return []
     }
     return [{
@@ -247,8 +245,7 @@ async function sourceIsInsideProject(path: string, projectRoot: string): Promise
 
 async function containsApp(path: string): Promise<boolean> {
   const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')))
-  return document?.root.declarations.some((declaration: AST.Declaration) => declaration.kind === 'AppDeclaration')
-    ?? false
+  return document ? AST.HasAppDeclarations(document) : false
 }
 
 const parser = createParser()

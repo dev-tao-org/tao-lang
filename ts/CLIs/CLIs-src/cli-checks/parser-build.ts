@@ -6,9 +6,11 @@ import { nodeGypOptions } from './NodeGyp'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
-export const prepareParser = Timings.topLevelTimer(async function(timings, force: boolean = false): Promise<void> {
-  await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
-})
+export const prepareParser = Timings.createTopLevelTimer(
+  async function(timings, force: boolean = false): Promise<void> {
+    await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
+  },
+)
 
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
 const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
@@ -78,11 +80,11 @@ async function readInputs() {
       version: string
       executable: string
     },
-    environment: await environmentInputs(),
+    environment: await collectEnvironmentInputs(),
   }
 }
 
-async function environmentInputs(): Promise<string> {
+async function collectEnvironmentInputs(): Promise<string> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
   const sources = await Promise.all(paths.map(path => FileSystem.file(Repo.resolvePath(path)).text()))
   return Platform.hashText(sources.join('\n'))

@@ -101,7 +101,7 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
         import { writeFile } from 'node:fs/promises';
         Tests.test('isolated roots', () => writeFile(${
         JSON.stringify(result)
-      }, JSON.stringify([Storage.cacheDirectory(), Storage.supportDirectory()])));
+      }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()])));
       `,
     )
     const env = { ...process.env }

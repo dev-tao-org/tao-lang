@@ -10,11 +10,11 @@ export async function withProjectSessions<Value>(
   sessionId?: string,
   acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<Value> {
-  const roots = await owningProjectRoots(paths)
+  const roots = await findOwningProjectRoots(paths)
   return await acquireProjectSessions(roots, sessionId, acquireLease, action)
 }
 
-async function owningProjectRoots(paths: readonly string[]): Promise<string[]> {
+async function findOwningProjectRoots(paths: readonly string[]): Promise<string[]> {
   const roots = new Set<string>()
   for (const path of paths) {
     const project = await discoverProject(path)

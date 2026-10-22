@@ -70,7 +70,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
         },
       },
     },
-    compile: Timings.topLevelTimer(() => code),
+    compile: Timings.createTopLevelTimer(() => code),
   })
   await Try(async () => {
     Tests.expect((await workspace.update('app')).status).toBe('invalid')

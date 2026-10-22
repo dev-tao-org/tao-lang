@@ -11,8 +11,8 @@ export type FormattingHandlers = { [Kind in NodeType]?: (fm: NodeFormat<Kind>) =
 /** LayoutHandlers checks each node's vertical layout handler against its generated CST rule. */
 export type LayoutHandlers = { [Kind in NodeType]?: (lm: NodeLayout<Kind>) => void }
 
-/** formattingPlan collects both rule tables during one traversal of complete declarations. */
-export function formattingPlan(
+/** createFormattingPlan collects both rule tables during one traversal of complete declarations. */
+export function createFormattingPlan(
   source: string,
   tree: Tree,
   formatting: FormattingHandlers,

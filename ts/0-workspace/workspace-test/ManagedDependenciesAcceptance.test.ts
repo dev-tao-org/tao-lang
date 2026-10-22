@@ -2,13 +2,17 @@ import { Errors, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Http, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
-import { inspectProjectPreparation, managedModulesInput, prepareProject } from '../workspace-src/ProjectPreparation'
+import {
+  buildManagedModulesInput,
+  inspectProjectPreparation,
+  prepareProject,
+} from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 import { prepareSidecarPipeline } from '../workspace-src/SidecarPipeline'
 import type { BunExecutor } from '../workspace-src/sidecars/ManagedModules'
-import { generatedModuleFiles, readManagedModules } from '../workspace-src/sidecars/ManagedModules'
+import { inspectGeneratedModuleFiles, readManagedModules } from '../workspace-src/sidecars/ManagedModules'
 import { openAutomaticWorkspace } from './managed-fixtures/AutomaticWorkflow'
 
 const runtimePins = { react: '0.0.0-tao-fixture' }
@@ -29,7 +33,7 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
       const workspace = await openAutomaticWorkspace(
         entry,
         published,
-        bunExecutor(root, registry),
+        createBunExecutor(root, registry),
         runtimePins,
         pipelineServices(),
       )
@@ -105,13 +109,13 @@ function startLocalRegistry(packages: Map<string, PackageArtifact>, requests: st
       const name = path.slice(1)
       const artifact = packages.get(name)
       return artifact
-        ? Http.jsonResponse(metadata(name, artifact, request.url))
+        ? Http.jsonResponse(createFixtureMetadata(name, artifact, request.url))
         : Http.response('not found', { status: 404 })
     },
   })
 }
 
-function metadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
+function createFixtureMetadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
   const version = name === 'react' ? runtimePins.react : name === 'string-width' ? '4.1.0' : '1.0.0'
   const origin = Http.url(requestUrl).origin
   return {
@@ -142,7 +146,7 @@ async function expectInstallRetry(entry: string, root: string): Promise<void> {
   Tests.expect(await FileSystem.readdir(Path.join(root, 'app/.tao/store/npm'))).toEqual([])
 }
 
-function bunExecutor(root: string, registry: string): BunExecutor {
+function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
       return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
@@ -210,9 +214,9 @@ function verifyRegistryRequests(requests: string[], registry: string): void {
 
 function pipelineServices(): ProjectPipelineServices {
   return {
-    managedInput: async (root, program) => managedModulesInput(root, program.modules, runtimePins),
+    buildManagedInput: async (root, program) => buildManagedModulesInput(root, program.modules, runtimePins),
     readManaged: readManagedModules,
-    generatedFiles: generatedModuleFiles,
+    inspectGeneratedFiles: inspectGeneratedModuleFiles,
     prepareSidecars: prepareSidecarPipeline,
   }
 }
@@ -250,7 +254,7 @@ async function verifyFrozenReprepare(app: string, entry: string, root: string, r
       return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
     }
     invocations.push([...args])
-    return bunExecutor(root, registry)(command, args, cwd)
+    return createBunExecutor(root, registry)(command, args, cwd)
   }
   await prepareProject(entry, { executor, runtimePins, repair: true })
   Tests.expect(invocations.some(args => args.includes('--frozen-lockfile'))).toBe(true)

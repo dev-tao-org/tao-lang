@@ -5,8 +5,8 @@ import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
 import type { ManagedModuleRequirement, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
 
-/** generatedModuleFiles reports drift in generated module manifests, configs, and resolution links. */
-export async function generatedModuleFiles(
+/** inspectGeneratedModuleFiles reports drift in generated module manifests, configs, and resolution links. */
+export async function inspectGeneratedModuleFiles(
   input: ManagedModulesInput,
   managed: PreparedManagedModules,
 ): Promise<{ path: string; owner: string; repair: string }[]> {
@@ -36,7 +36,7 @@ export function publishModuleResolution(
       directory,
       profile,
       localRequirements,
-      typescriptDefaultsPath(projectRoot),
+      resolveTypeScriptDefaultsPath(projectRoot),
       projectRoot,
       repair,
     )
@@ -46,7 +46,7 @@ export function publishModuleResolution(
 
 /** ensureTypeScriptDefaults creates the project-shared immutable compiler configuration. */
 export async function ensureTypeScriptDefaults(projectRoot: string): Promise<void> {
-  const path = typescriptDefaultsPath(projectRoot)
+  const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`
   rejectSymlink(path)
   rejectSymlink(marker)
@@ -82,7 +82,7 @@ export function typeScriptDefaultsHash(): string {
 export async function typescriptDefaultsDrift(
   projectRoot: string,
 ): Promise<{ path: string; owner: string; repair: string }[]> {
-  const path = typescriptDefaultsPath(projectRoot)
+  const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`
   rejectSymlink(path)
   rejectSymlink(marker)
@@ -97,12 +97,12 @@ export async function typescriptDefaultsDrift(
     }]
 }
 
-// typescriptDefaultsPath returns the shared generated compiler configuration path.
-function typescriptDefaultsPath(projectRoot: string): string {
+// resolveTypeScriptDefaultsPath returns the shared generated compiler configuration path.
+function resolveTypeScriptDefaultsPath(projectRoot: string): string {
   return Path.join(projectRoot, '.tao', 'cache', 'sidecars', 'typescript-defaults.json')
 }
 
-function moduleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
+function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
   const relative = Path.relative(moduleDirectory, defaultsPath).replaceAll('\\', '/')
   const extendsPath = relative.startsWith('.') ? relative : `./${relative}`
   return `${JSON.stringify({ extends: extendsPath, include: ['**/*.ts', '**/*.tsx'] }, null, 2)}\n`
@@ -119,11 +119,11 @@ async function moduleDrift(
   const files = [
     [
       Path.join(directory, 'package.json'),
-      moduleManifest(merged),
+      createModuleManifest(merged),
     ],
     [
       Path.join(directory, 'tsconfig.json'),
-      moduleTypeScriptConfig(directory, typescriptDefaultsPath(projectRoot)),
+      createModuleTypeScriptConfig(directory, resolveTypeScriptDefaultsPath(projectRoot)),
     ],
   ] as const
   const drift = [] as { path: string; owner: string; repair: string }[]
@@ -170,13 +170,13 @@ async function repairModuleFiles(
 ): Promise<ManagedModuleOwner | undefined> {
   const dependencies = Object.fromEntries(requirements.map(({ name, version }) => [name, version]))
   const files = [
-    [Path.join(directory, 'package.json'), moduleManifest(dependencies)],
-    [Path.join(directory, 'tsconfig.json'), moduleTypeScriptConfig(directory, defaultsPath)],
+    [Path.join(directory, 'package.json'), createModuleManifest(dependencies)],
+    [Path.join(directory, 'tsconfig.json'), createModuleTypeScriptConfig(directory, defaultsPath)],
   ] as const
   const marker = Path.join(directory, '.tao-managed-module.json')
   rejectSymlink(marker)
   const owner = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  const expectedOwner = moduleOwnerMarker(files, requirements, profile)
+  const expectedOwner = createModuleOwnerMarker(files, requirements, profile)
   const previousOwner = await validateModuleOwnership(
     owner,
     marker,
@@ -205,7 +205,7 @@ async function repairModuleFiles(
   return previousOwner
 }
 
-function moduleManifest(dependencies: Record<string, string>): string {
+function createModuleManifest(dependencies: Record<string, string>): string {
   return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`
 }
 
@@ -217,7 +217,7 @@ function cannotReplaceModuleFile(
   return previousOwner === undefined || (!repair && previousOwner.profile === profile)
 }
 
-function moduleOwnerMarker(
+function createModuleOwnerMarker(
   files: readonly (readonly [string, string])[],
   requirements: ManagedModuleRequirement[],
   profile: string,
@@ -229,7 +229,7 @@ function moduleOwnerMarker(
         generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
         packages: requirements.map(({ name }) => name),
         profile,
-        ignoreBlock: moduleIgnoreBlock(),
+        ignoreBlock: createModuleIgnoreBlock(),
       },
       null,
       2,
@@ -242,14 +242,14 @@ async function moduleIgnoreDrift(directory: string): Promise<boolean> {
     undefined,
     () => FileSystem.readFile(Path.join(directory, '.gitignore'), 'utf8'),
   )
-  return content === undefined || !content.includes(moduleIgnoreBlock())
+  return content === undefined || !content.includes(createModuleIgnoreBlock())
 }
 
 async function ensureModuleIgnore(directory: string, owned: boolean): Promise<void> {
   const path = Path.join(directory, '.gitignore')
   rejectSymlink(path)
   const current = await Try.WithDefault('', () => FileSystem.readFile(path, 'utf8'))
-  const block = moduleIgnoreBlock()
+  const block = createModuleIgnoreBlock()
   if (current.includes(block)) {
     return
   }
@@ -278,7 +278,7 @@ async function writeModuleIgnore(path: string, contents: string): Promise<void> 
   }
 }
 
-function moduleIgnoreBlock(): string {
+function createModuleIgnoreBlock(): string {
   return '# tao-managed-sidecars:begin\n/package.json\n/tsconfig.json\n/node_modules/\n/.tao-managed-module.json\n/.tao-*.contract.ts\n/.tao-*.contract.ts.tao-managed\n# tao-managed-sidecars:end\n'
 }
 

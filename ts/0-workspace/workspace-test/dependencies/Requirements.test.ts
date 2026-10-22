@@ -31,7 +31,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
       createParser().parse(await FileSystem.readFile(Path.join(root, 'nested', 'Module.tao'), 'utf8')),
     )!
     await Tests.rejects(
-      async () => validateRequirementPlacement(nested.root.declarations, Path.join(root, 'nested', 'Module.tao'), root),
+      async () => validateRequirementPlacement(nested, Path.join(root, 'nested', 'Module.tao'), root),
       /project-root Tao files/,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })

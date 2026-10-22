@@ -1,9 +1,9 @@
-import type * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
-import { defaultSourceAlias } from './Sources'
+import { deriveDefaultSourceAlias } from './Sources'
 import type { DependencyRequirement } from './Types'
 
 /** readProjectRequirements extracts cached direct project source requirements. */
@@ -21,28 +21,30 @@ export async function readProjectRequirements(projectRoot: string): Promise<Depe
 
 /** validateRequirementPlacement rejects project dependency declarations inside source modules. */
 export function validateRequirementPlacement(
-  declarations: readonly AST.Declaration[],
+  document: AST.Document,
   sourcePath: string,
   projectRoot: string,
 ): void {
   if (Path.dirname(Path.resolve(sourcePath)) === Path.resolve(projectRoot)) {
     return
   }
-  if (declarations.some(isSourceRequirement)) {
+  if (AST.GetDeclarations(document).some(isSourceRequirement)) {
     Errors.ThrowUserInput(`Source requirement declarations belong in project-root Tao files: ${sourcePath}.`)
   }
 }
 
-/** sourceRequirements reads complete declarations already parsed by module resolution. */
-export function sourceRequirements(declarations: readonly AST.Declaration[], path: string): DependencyRequirement[] {
-  return declarations.filter(isSourceRequirement).map(declaration => requirementFromDeclaration(declaration, path))
+/** collectSourceRequirements reads complete declarations already parsed by module resolution. */
+export function collectSourceRequirements(document: AST.Document, path: string): DependencyRequirement[] {
+  return AST.GetDeclarations(document)
+    .filter(isSourceRequirement)
+    .map(declaration => requirementFromDeclaration(declaration, path))
 }
 
 /** validateSourceRequirements rejects duplicate aliases and overrides of the bundled Tao project. */
 export function validateSourceRequirements(requirements: DependencyRequirement[]): void {
   const aliases = new Set<string>()
   for (const requirement of requirements) {
-    const alias = requirement.alias ?? defaultSourceAlias(requirement)
+    const alias = requirement.alias ?? deriveDefaultSourceAlias(requirement)
     if (alias === 'tao' && (requirement.provider !== 'bundled' || requirement.identifier !== 'tao')) {
       Errors.ThrowUserInput('Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.')
     }
@@ -62,7 +64,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   if (!document) {
     Errors.ThrowUserInput(`Cannot read requirements from invalid Tao source: ${path}.`)
   }
-  const requirements = document.root.declarations
+  const requirements = AST.GetDeclarations(document)
     .filter(isSourceRequirement)
     .map(declaration => requirementFromDeclaration(declaration, path))
   parsedFiles.set(path, { source, requirements })
@@ -86,7 +88,7 @@ function requirementFromDeclaration(
   if (provider === 'github' && !declaration.version) {
     Errors.ThrowUserInput(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)
   }
-  const version = provider === 'github' ? declaration.version! : declaration.version ?? defaultVersion(provider)
+  const version = provider === 'github' ? declaration.version! : declaration.version ?? getDefaultVersion(provider)
   return {
     provider,
     identifier: declaration.identifier,
@@ -95,7 +97,7 @@ function requirementFromDeclaration(
   }
 }
 
-function defaultVersion(provider: Exclude<DependencyRequirement['provider'], 'github'>): string {
+function getDefaultVersion(provider: Exclude<DependencyRequirement['provider'], 'github'>): string {
   return provider === 'file' ? 'live' : 'bundled'
 }
 

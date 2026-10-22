@@ -4,10 +4,10 @@ import { createParser } from '@grammar/parser'
 import { Errors, Timings, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
-import { directSourceFiles } from './Catalog'
-import { nearestProjectRoot, realPathInsideProject, within } from './Paths'
+import { listDirectSourceFiles } from './Catalog'
+import { findNearestProjectRoot, resolveRealPathInsideProject, within } from './Paths'
 import { loadRequirementModules } from './Requirements'
-import { bareTargets, importTargets } from './Resolver'
+import { importTargets, resolveBareTargets } from './Resolver'
 
 /** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
@@ -18,7 +18,7 @@ export type ModuleLoadOptions = {
 }
 
 /** loadModules discovers and parses the source graph reachable from one parsed entry. */
-export const loadModules = Timings.topLevelTimer(function(
+export const loadModules = Timings.createTopLevelTimer(function(
   timings,
   entry: { path: string; document: AST.Document },
   options: ModuleLoadOptions,
@@ -57,7 +57,7 @@ const loadGraph = Timings.measure(
     const entryPath = Try.WithDefault(absoluteEntryPath, () => FileSystem.realpathSync(absoluteEntryPath))
     const entryDirectory = Path.dirname(entryPath)
     const configuredDirectory = options.directory && Path.resolve(options.directory)
-    const projectRoot = nearestProjectRoot(entryDirectory)
+    const projectRoot = findNearestProjectRoot(entryDirectory)
       ?? (configuredDirectory && within(configuredDirectory, entryPath) ? configuredDirectory : entryDirectory)
     const state: LoadState = {
       ...request,
@@ -116,9 +116,9 @@ const discover = Timings.measure(
     await observeProject(state, projectRoot, timings)
     const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
       ? within(projectRoot, source.path) ? source.path : undefined
-      : realPathInsideProject(source.path, projectRoot)
+      : resolveRealPathInsideProject(source.path, projectRoot)
     if (physical) {
-      found.siblings = await directSourceFiles(Path.dirname(physical), projectRoot)
+      found.siblings = await listDirectSourceFiles(Path.dirname(physical), projectRoot)
       for (const path of found.siblings.filter(path => path !== source.path)) {
         found.set(path, undefined)
         if (state.projectRoots.has(source.path)) {
@@ -126,11 +126,11 @@ const discover = Timings.measure(
         }
       }
     }
-    for (const statement of source.document.root.declarations.filter(AST.IsImportStatement)) {
+    for (const statement of AST.GetImportStatements(source.document)) {
       const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
       const context = { ...state, projectRoot }
       const targets = specifier === undefined
-        ? await bareTargets(source.path, physical, context)
+        ? await resolveBareTargets(source.path, physical, context)
         : await importTargets(specifier, source.path, physical, context)
       found.imports.push({
         statement,
@@ -154,7 +154,7 @@ async function observeProject(state: LoadState, root: string, timings: Timings):
     return
   }
   state.observedRoots.add(root)
-  const sources = await Promise.all((await directSourceFiles(root, root)).map(async path => ({
+  const sources = await Promise.all((await listDirectSourceFiles(root, root)).map(async path => ({
     path,
     document: await readDocument(path, state.parser, state.documents, timings),
   })))

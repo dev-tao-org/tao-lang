@@ -4,7 +4,7 @@ import { createParser } from '../grammar-src/parser'
 
 Tests.test(
   'parser entry points join an existing collector and return only the parsing session and CST',
-  Timings.topLevelTimer(timings => {
+  Timings.createTopLevelTimer(timings => {
     const parser = timings.run(createParser)
     Tests.expect(Object.keys(parser)).toEqual(['parse'])
     const tree = timings.run(parser.parse, 'view Root { render Text("Hello") }')
@@ -19,7 +19,7 @@ Tests.test(
 
 Tests.test(
   'HelloWorld produces a positioned CST with named app, root, view and text nodes',
-  Timings.topLevelTimer(async timings => {
+  Timings.createTopLevelTimer(async timings => {
     const source = await Tests.readApp('Hello World')
 
     const parser = createParser()

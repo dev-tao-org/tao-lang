@@ -43,7 +43,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
   if (!await FileSystem.exists(ignore)) {
     await FileSystem.writeFile(ignore, 'cache/\nlocks/\n')
   }
-  return projectLayout(root)
+  return deriveProjectLayout(root)
 }
 
 /** discoverProject resolves an initialized Tao project from a file or directory path. */
@@ -57,7 +57,7 @@ export async function discoverProject(
   }
   while (true) {
     if (isDiscoverableProjectDirectory(current, homeDirectory)) {
-      return projectLayout(current)
+      return deriveProjectLayout(current)
     }
     if (await FileSystem.exists(Path.join(current, '.git'))) {
       return undefined
@@ -70,8 +70,8 @@ export async function discoverProject(
   }
 }
 
-/** projectLayout derives the stable metadata paths for a project. */
-export function projectLayout(root: string): ProjectLayout {
+/** deriveProjectLayout returns stable metadata paths for a project. */
+export function deriveProjectLayout(root: string): ProjectLayout {
   const taoDirectory = Path.join(root, '.tao')
   return {
     root,
@@ -100,7 +100,7 @@ async function rejectNestedProject(root: string): Promise<void> {
 function canonicalProjectTarget(path: string): string {
   let current = Path.resolve(path)
   const missing: string[] = []
-  while (!pathEntryExists(current)) {
+  while (!hasPathEntry(current)) {
     const parent = Path.dirname(current)
     if (parent === current) {
       break
@@ -117,7 +117,7 @@ function isProjectAncestor(path: string): boolean {
   return isDiscoverableProjectDirectory(path)
 }
 
-function pathEntryExists(path: string): boolean {
+function hasPathEntry(path: string): boolean {
   return Try.WithDefault(false, () => FileSystem.lstatSync(path) !== undefined)
 }
 

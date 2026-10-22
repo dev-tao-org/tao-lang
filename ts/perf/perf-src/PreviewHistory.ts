@@ -2,8 +2,8 @@ import { Errors, Time, Try } from '@shared'
 import { BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import {
   existingHistory,
-  historyDirectories,
   type HistoryRecord,
+  resolveHistoryDirectories,
   validatePreviewReport,
   writeHistory,
 } from './PreviewHistoryStore'
@@ -29,7 +29,7 @@ export async function recordPreviewPerformance(
   const context = await captureContext(git)
   const pending = Path.join(root, '.artifacts/notes/preview-history')
   return await BuildLock.withBuildLock(Path.join(pending, `${context.sourceCommit}.lock`), async () => {
-    const directories = await historyDirectories(root, context.sourceCommit, git)
+    const directories = await resolveHistoryDirectories(root, context.sourceCommit, git)
     const existing = await existingHistory(directories, context)
     if (existing) {
       return { directory: existing, reused: true }

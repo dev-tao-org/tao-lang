@@ -16,8 +16,8 @@ export type HistoryRecord = {
   error?: string
 }
 
-/** historyDirectories chooses initialized submodule storage or the persistent pending-record directory. */
-export async function historyDirectories(
+/** resolveHistoryDirectories chooses initialized submodule storage or the persistent pending-record directory. */
+export async function resolveHistoryDirectories(
   root: string,
   commit: string,
   git: (args: readonly string[]) => Promise<string>,

@@ -41,7 +41,7 @@ export class PreviewReceipts<Value> {
 
   pruneBefore(minimumRevision: number): void {
     for (const revision of this.revisions.keys()) {
-      if (revisionNumber(revision) < minimumRevision) {
+      if (parseRevisionNumber(revision) < minimumRevision) {
         this.revisions.delete(revision)
       }
     }
@@ -106,6 +106,6 @@ function recordFirstMilestone<Value>(frame: FrameReceipts<Value>, milestone: Rec
   return true
 }
 
-function revisionNumber(revision: string): number {
+function parseRevisionNumber(revision: string): number {
   return Number(revision.replace(/^r/, '')) || 0
 }

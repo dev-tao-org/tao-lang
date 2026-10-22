@@ -74,7 +74,7 @@ async function coldSamples(): Promise<Sample[]> {
   return samples
 }
 
-const sampleColdParser = Timings.topLevelTimer(async function(timings, samples: Sample[]) {
+const sampleColdParser = Timings.createTopLevelTimer(async function(timings, samples: Sample[]) {
   const output = await timings.run(runParserProcess)
   const child: TimingSample[] = JSON.parse(output)
   samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
@@ -100,7 +100,7 @@ async function warmSamples(): Promise<Sample[]> {
   return samples
 }
 
-const sampleWarmParser = Timings.topLevelTimer(
+const sampleWarmParser = Timings.createTopLevelTimer(
   function(
     timings,
     parser: ReturnType<typeof import('../../1-grammar/grammar-src/parser').createParser>,

@@ -57,7 +57,7 @@ events.addEventListener('expected', event => {
   const revision = (JSON.parse((event as MessageEvent<string>).data) as { revision: string }).revision
   expected.clear()
   expected.add(revision)
-  latestExpected = Math.max(latestExpected, revisionNumber(revision))
+  latestExpected = Math.max(latestExpected, parseRevisionNumber(revision))
   pruneReceiptHistory()
   for (const pending of pendingSignals.splice(0)) {
     receiveSignal(pending)
@@ -185,7 +185,7 @@ function hasSignalTiming(signal: Partial<PreviewSignal>): boolean {
 
 function isCurrentSignal(signal: PreviewSignal): boolean {
   return signal.sessionId === sessionId
-    && revisionNumber(signal.revision) >= latestExpected
+    && parseRevisionNumber(signal.revision) >= latestExpected
     && (signal.type === 'tao.preview-applied' || signal.type === 'tao.update-done')
 }
 
@@ -219,7 +219,7 @@ function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<Signal
   })
 }
 
-function revisionNumber(revision: string): number {
+function parseRevisionNumber(revision: string): number {
   return Number(revision.replace(/^r/, '')) || 0
 }
 

@@ -2,10 +2,10 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import {
-  allRequirements,
   auditInstalledGraph,
+  collectAllRequirements,
   defaultSingletonPackages,
-  nativePackageNames,
+  listNativePackageNames,
   validateGraph,
 } from './ManagedModuleGraph'
 import {
@@ -26,12 +26,12 @@ import {
   validateReusableProfile,
 } from './ManagedNpmHost'
 import {
-  managedDurableLockHashPath,
-  managedDurableLockPath,
-  managedGraphFingerprint,
-  managedProfileFingerprint,
-  managedProfilePath,
+  calculateManagedGraphFingerprint,
+  calculateManagedProfileFingerprint,
   normalizeManagedRequirements,
+  resolveManagedDurableLockHashPath,
+  resolveManagedDurableLockPath,
+  resolveManagedProfilePath,
 } from './ManagedNpmIdentity'
 import {
   loadDurableLock,
@@ -40,8 +40,8 @@ import {
 } from './ManagedNpmLock'
 import {
   claimManagedProfile,
+  createManagedProfileManifest,
   ensureOwnedFile,
-  managedProfileManifest,
   readOwnedMetadata,
   validateManagedManifest,
   validateManagedProfilePath,
@@ -56,10 +56,10 @@ export async function prepareManagedModules(
   repair = false,
 ): Promise<PreparedManagedModules> {
   const normalized = normalizeManagedRequirements(input)
-  allRequirements(normalized, input.runtimePins)
-  const graphFingerprint = managedGraphFingerprint(input, normalized)
-  const fingerprint = managedProfileFingerprint(input, graphFingerprint)
-  const profile = managedProfilePath(input, fingerprint)
+  collectAllRequirements(normalized, input.runtimePins)
+  const graphFingerprint = calculateManagedGraphFingerprint(input, normalized)
+  const fingerprint = calculateManagedProfileFingerprint(input, graphFingerprint)
+  const profile = resolveManagedProfilePath(input, fingerprint)
   await prepareProfile(input, normalized, fingerprint, graphFingerprint, profile, executor, repair)
   for (const module of input.modules) {
     await publishModuleResolution(
@@ -77,16 +77,16 @@ export async function prepareManagedModules(
 /** readManagedModules validates declarations and durable cache references without auditing packages again. */
 export async function readManagedModules(input: ManagedModulesInput): Promise<PreparedManagedModules> {
   const normalized = normalizeManagedRequirements(input)
-  allRequirements(normalized, input.runtimePins)
-  const graphFingerprint = managedGraphFingerprint(input, normalized)
-  const fingerprint = managedProfileFingerprint(input, graphFingerprint)
-  const profile = managedProfilePath(input, fingerprint)
+  collectAllRequirements(normalized, input.runtimePins)
+  const graphFingerprint = calculateManagedGraphFingerprint(input, normalized)
+  const fingerprint = calculateManagedProfileFingerprint(input, graphFingerprint)
+  const profile = resolveManagedProfilePath(input, fingerprint)
   const metadata = await readManagedProfileMetadata(profile, normalized)
   await validateProfileMetadata(metadata, input, fingerprint, normalized, graphFingerprint)
   validateInstalledHost(metadata, input)
   const lockfile = Path.join(profile, 'bun.lock')
-  const durableLock = managedDurableLockPath(input, graphFingerprint)
-  const durableHash = managedDurableLockHashPath(input, graphFingerprint)
+  const durableLock = resolveManagedDurableLockPath(input, graphFingerprint)
+  const durableHash = resolveManagedDurableLockHashPath(input, graphFingerprint)
   const lock = await readManagedProfileLock(lockfile, durableLock, durableHash, graphFingerprint)
   if (metadata.lockHash !== Platform.hashText(lock)) {
     Errors.ThrowUserInput(`Managed npm lock changed. Repair with: tao setup --repair.`)
@@ -94,7 +94,7 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
   await validateManagedManifest(profile, normalized, input.runtimePins)
   await validateTypeScriptDefaults(input.directory)
   if (
-    Object.keys(allRequirements(normalized, input.runtimePins)).length > 0
+    Object.keys(collectAllRequirements(normalized, input.runtimePins)).length > 0
     && !await FileSystem.exists(Path.join(profile, 'node_modules'))
   ) {
     requireSetup(`Managed npm cache is missing. Setup recreates it from its durable lock.`)
@@ -117,8 +117,8 @@ async function prepareProfile(
   executor: BunExecutor,
   repair: boolean,
 ): Promise<void> {
-  const durableLock = managedDurableLockPath(input, graphFingerprint)
-  const durableHash = managedDurableLockHashPath(input, graphFingerprint)
+  const durableLock = resolveManagedDurableLockPath(input, graphFingerprint)
+  const durableHash = resolveManagedDurableLockHashPath(input, graphFingerprint)
   validateManagedProfilePath(input.directory, profile)
   await FileSystem.mkdir(profile, { recursive: true })
   await FileSystem.mkdir(Path.dirname(durableLock), { recursive: true })
@@ -128,7 +128,7 @@ async function prepareProfile(
     fingerprint,
     repair,
     storedLock,
-    managedProfileManifest(normalized, input.runtimePins),
+    createManagedProfileManifest(normalized, input.runtimePins),
   )
   const metadata = await readOwnedMetadata(profile, fingerprint, repair, storedLock)
   validateExistingState(metadata !== undefined, storedLock, fingerprint)
@@ -194,7 +194,11 @@ async function ensureProfileManifest(
   runtimePins: Record<string, string>,
   repair: boolean,
 ): Promise<void> {
-  await ensureOwnedFile(Path.join(profile, 'package.json'), managedProfileManifest(requirements, runtimePins), repair)
+  await ensureOwnedFile(
+    Path.join(profile, 'package.json'),
+    createManagedProfileManifest(requirements, runtimePins),
+    repair,
+  )
 }
 
 async function installFrozenGraph(
@@ -236,11 +240,11 @@ async function persistProfile(
   const lock = await FileSystem.readFile(lockfile, 'utf8')
   if (storedLock === undefined) {
     await writeReadOnly(durableLock, lock)
-    await writeReadOnly(managedDurableLockHashPath(input, graphFingerprint), `${Platform.hashText(lock)}\n`)
+    await writeReadOnly(resolveManagedDurableLockHashPath(input, graphFingerprint), `${Platform.hashText(lock)}\n`)
   }
-  const nativePackages = await nativePackageNames(profile)
+  const nativePackages = await listNativePackageNames(profile)
   await ensureTypeScriptDefaults(input.directory)
-  const metadata = profileMetadata(input, requirements, fingerprint, graphFingerprint, lock, nativePackages)
+  const metadata = createProfileMetadata(input, requirements, fingerprint, graphFingerprint, lock, nativePackages)
   await ensureOwnedFile(
     Path.join(profile, '.tao-managed.json'),
     `${JSON.stringify(metadata, null, 2)}\n`,
@@ -250,7 +254,7 @@ async function persistProfile(
   await FileSystem.chmod(lockfile, 0o444)
 }
 
-function profileMetadata(
+function createProfileMetadata(
   input: ManagedModulesInput,
   requirements: readonly NormalizedManagedRequirement[],
   fingerprint: string,
@@ -264,7 +268,7 @@ function profileMetadata(
     target: input.target,
     bunVersion: input.bunVersion,
     runtimePins: input.runtimePins,
-    requirements: allRequirements(requirements),
+    requirements: collectAllRequirements(requirements),
     singletonPackages: input.singletonPackages ?? defaultSingletonPackages,
     policyRegistryVersion: 1,
     typeScriptDefaultsHash: typeScriptDefaultsHash(),

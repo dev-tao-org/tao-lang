@@ -1,6 +1,6 @@
 import type * as AST from '@ast-gen/AST'
 import type { ModuleBinding } from '@typecheck/Modules'
-import { compileName, compileReferenceName, literal, type NamedValue } from './codegen-util'
+import { compileName, compileReferenceName, emitLiteral, type NamedValue } from './codegen-util'
 
 /** compileBinding registers a computed value under its declared scope name. */
 export function compileBinding(node: NamedValue, scope: string, value: string): string {
@@ -19,5 +19,5 @@ export function compileValueReference(node: AST.Name | ModuleBinding, scope: str
 
 /** compileViewReference reads a view by its authored name from the current scope. */
 export function compileViewReference(node: AST.Name, scope: string): string {
-  return `TR.ViewReference(${scope}, ${literal(node)})`
+  return `TR.ViewReference(${scope}, ${emitLiteral(node)})`
 }

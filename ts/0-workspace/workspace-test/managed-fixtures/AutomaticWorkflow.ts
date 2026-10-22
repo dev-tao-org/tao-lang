@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Path, Tests } from '@shared/os'
-import { projectDependencyOptions } from '../../workspace-src/dependencies/Options'
+import { createProjectDependencyOptions } from '../../workspace-src/dependencies/Options'
 import type { ProjectPipelineServices } from '../../workspace-src/ProjectPipeline'
 import { inspectProjectPreparation, prepareProject } from '../../workspace-src/ProjectPreparation'
 import type { BunExecutor } from '../../workspace-src/sidecars/ManagedModules'
@@ -14,7 +14,7 @@ export async function openAutomaticWorkspace(
   runtimePins: Record<string, string>,
   pipelineServices: ProjectPipelineServices,
 ) {
-  const dependencyOptions = await projectDependencyOptions(Path.dirname(entry))
+  const dependencyOptions = await createProjectDependencyOptions(Path.dirname(entry))
   let prompts = 0
   const workspace = await execute({
     kind: 'compile',

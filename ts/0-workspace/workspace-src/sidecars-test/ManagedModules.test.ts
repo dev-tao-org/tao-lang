@@ -3,7 +3,7 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import {
   cleanManagedModuleMetadata,
-  generatedModuleFiles,
+  inspectGeneratedModuleFiles,
   prepareManagedModules,
   readManagedModules,
   repairManagedModuleFiles,
@@ -86,13 +86,13 @@ async function createManagedFixture(): Promise<ManagedFixture> {
     directory,
     moduleDirectory,
     externalModule,
-    input: managedInput(directory, moduleDirectory, externalModule),
+    input: buildManagedInput(directory, moduleDirectory, externalModule),
     executor: fixtureExecutor(state),
     frozen: () => state.frozen,
   }
 }
 
-function managedInput(directory: string, moduleDirectory: string, externalModule: string): ManagedModulesInput {
+function buildManagedInput(directory: string, moduleDirectory: string, externalModule: string): ManagedModulesInput {
   return {
     directory,
     modules: [
@@ -148,11 +148,11 @@ async function assertDriftAndRepair(fixture: ManagedFixture): Promise<void> {
   const tsconfig = Path.join(fixture.moduleDirectory, 'tsconfig.json')
   await FileSystem.chmod(tsconfig, 0o644)
   await FileSystem.writeFile(tsconfig, '{}')
-  Tests.expect(await generatedModuleFiles(fixture.input)).toHaveLength(1)
+  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toHaveLength(1)
   await FileSystem.writeFile(gitignore, authoredIgnore.replace('/node_modules/', '/changed/'))
-  Tests.expect(await generatedModuleFiles(fixture.input)).toHaveLength(2)
+  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toHaveLength(2)
   await repairManagedModuleFiles(fixture.input, fixture.executor)
-  Tests.expect(await generatedModuleFiles(fixture.input)).toEqual([])
+  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toEqual([])
 }
 
 async function assertFrozenReuseAndClean(fixture: ManagedFixture, fingerprint: string): Promise<void> {

@@ -201,5 +201,5 @@ function defaultResourcesDirectory(): string {
 }
 
 function defaultToolchainCacheDirectory(): string {
-  return Storage.cacheDirectory('toolchains')
+  return Storage.resolveCacheDirectory('toolchains')
 }

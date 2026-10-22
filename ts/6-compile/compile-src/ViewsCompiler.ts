@@ -1,9 +1,9 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, S, Switch } from '@shared'
 import { compileBinding, compileViewReference } from './BindingsCompiler'
-import { type CallbackNames, compileName, listMap, literal, unusedName } from './codegen-util'
+import { allocateUnusedName, type CallbackNames, compileName, emitLiteral, listMap } from './codegen-util'
 import { compileInjection } from './InjectionsCompiler'
-import { compileExpression, compileLetDefinition, isTextParameter, textBindings } from './ValuesCompiler'
+import { collectTextBindings, compileExpression, compileLetDefinition, isTextParameter } from './ValuesCompiler'
 
 /** compileViewDeclaration registers a view in its owning module scope. */
 export function compileViewDeclaration(
@@ -28,7 +28,7 @@ export function compileViewDeclaration(
     .join('\n')
   const render = compileNode(
     node.render,
-    textBindings(node.definitions, inherited, node.parameters),
+    collectTextBindings(node.definitions, inherited, node.parameters),
     callbackNames,
   )
   const definition = S`
@@ -61,7 +61,7 @@ function compileViewRender(
       node.arguments,
       argument => compileExpression(argument, callbackNames.values),
     )
-  }, ${compileChildren(node.children, callbackNames, scope)}${node.tag ? ', ' + literal(node.tag) : ''}))`
+  }, ${compileChildren(node.children, callbackNames, scope)}${node.tag ? ', ' + emitLiteral(node.tag) : ''}))`
 }
 
 function compileChildren(
@@ -88,7 +88,7 @@ function callbackNamesFor(node: AST.ViewDeclaration): CallbackNames {
     occupied.add(capture.name.value)
   }
   return {
-    values: unusedName('_taoValues', occupied),
-    children: unusedName('_taoChildren', occupied),
+    values: allocateUnusedName('_taoValues', occupied),
+    children: allocateUnusedName('_taoChildren', occupied),
   }
 }

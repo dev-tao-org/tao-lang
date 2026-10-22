@@ -19,7 +19,7 @@ const embeddedFiles = {
 
 async function resolveDefaultProjectDirectory(): Promise<string> {
   const candidate = Path.dirname(Path.fileURLToPath(import.meta.url))
-  return await locateProject(candidate, Storage.cacheDirectory('stdlib'), embeddedFiles)
+  return await locateProject(candidate, Storage.resolveCacheDirectory('stdlib'), embeddedFiles)
 }
 
 async function locateProject(
@@ -27,11 +27,11 @@ async function locateProject(
   cacheRoot: string,
   resources: Readonly<Record<string, string>>,
 ): Promise<string> {
-  const live = liveProjectRoot(candidate)
+  const live = findLiveProjectRoot(candidate)
   return live ?? await Storage.withCacheMutation(() => materializeProject(cacheRoot, resources))
 }
 
-function liveProjectRoot(candidate: string | undefined): string | undefined {
+function findLiveProjectRoot(candidate: string | undefined): string | undefined {
   if (!candidate || !FileSystem.existsSync(Path.join(candidate, '.tao', 'store', 'project.json'))) {
     return undefined
   }

@@ -5,10 +5,10 @@ import Parser from 'tree-sitter'
 /** createParser creates a session parsing complete source snapshots without reusing prior CSTs.
  *  Creation and each parse start fresh timing boundaries; timings.run can reuse an existing collector.
  *  Returned CSTs remain caller-owned and are reclaimed by the native binding's garbage collector. */
-export const createParser = Timings.topLevelTimer(function(timings) {
+export const createParser = Timings.createTopLevelTimer(function(timings) {
   const parser = timings.run(initializeParser)
   return {
-    parse: Timings.topLevelTimer((context, source: string) => context.run(parseSource, parser, source)),
+    parse: Timings.createTopLevelTimer((context, source: string) => context.run(parseSource, parser, source)),
   }
 })
 

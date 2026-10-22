@@ -58,7 +58,7 @@ const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
     const child = Platform.spawn(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
       cwd: cacheDirectory,
-      env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.cacheDirectory('bun') },
+      env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
       stdout: 'pipe',
       stderr: 'pipe',
     })

@@ -62,8 +62,8 @@ export function isCompleteNode(node: SyntaxNode): boolean {
   return !node.hasError && !node.isMissing && node.type !== 'ERROR'
 }
 
-/** nodeKey identifies the range and kind of a CST node within its owning snapshot. */
-export function nodeKey(node: SyntaxNode): string {
+/** createNodeKey identifies the range and kind of a CST node within its owning snapshot. */
+export function createNodeKey(node: SyntaxNode): string {
   return `${node.type}:${node.startIndex}:${node.endIndex}`
 }
 
@@ -106,7 +106,7 @@ function collect(plan: LayoutPlan, node: SyntaxNode, owner: number, owners: numb
     plan.tokens.push(node)
     owners.push(owner)
   }
-  plan.bounds.set(nodeKey(node), { first, last: plan.tokens.length - 1 })
+  plan.bounds.set(createNodeKey(node), { first, last: plan.tokens.length - 1 })
 }
 
 function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly boolean[], whole: boolean): void {

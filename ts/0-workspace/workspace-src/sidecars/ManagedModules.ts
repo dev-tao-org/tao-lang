@@ -1,6 +1,6 @@
 import { cleanManagedModuleMetadata } from './ManagedModuleCleanup'
 import {
-  generatedModuleFiles as inspectGeneratedFiles,
+  inspectGeneratedModuleFiles as inspectGeneratedFiles,
   typescriptDefaultsDrift,
 } from './ManagedModuleMetadata'
 import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
@@ -23,8 +23,8 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
   return await readProfile(input)
 }
 
-/** generatedModuleFiles reports generated module metadata drift with its declaration owner and repair command. */
-export async function generatedModuleFiles(
+/** inspectGeneratedModuleFiles reports generated module metadata drift with its declaration owner and repair command. */
+export async function inspectGeneratedModuleFiles(
   input: ManagedModulesInput,
 ): Promise<{ path: string; owner: string; repair: string }[]> {
   const defaultsDrift = await typescriptDefaultsDrift(input.directory)

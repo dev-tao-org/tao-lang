@@ -35,7 +35,7 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
   const document = transform(createParser().parse(source))!
   const code = compile(document, {
     revision: 'foreign-view',
-    foreignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
+    resolveForeignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
   })
 
   Tests.expect(code).toContain('import { FormattedDate as _taoForeignView0 } from "<memory>:./FormattedDate.tsx";')
@@ -226,8 +226,7 @@ async function linkedUIProgram(
   const modulesDocument = FileSystem.existsSync(modulesPath)
     ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')))
     : undefined
-  const imports: SourceModule['imports'][number][] = document.root.declarations
-    .filter(AST.IsImportStatement)
+  const imports: SourceModule['imports'][number][] = AST.GetImportStatements(document)
     .map(statement => {
       const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
       const isUI = from === 'tao@ui'

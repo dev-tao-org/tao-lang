@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Path, Storage } from '@shared/os'
-import { projectDependencyOptions } from './dependencies/Options'
+import { createProjectDependencyOptions } from './dependencies/Options'
 import { ProjectDependencies } from './ProjectDependencies'
 import { createProjectPipeline, type ProjectPipelineServices } from './ProjectPipeline'
 import { discoverProject } from './projects/Projects'
@@ -29,7 +29,7 @@ export async function openProjectWorkspace(
   )
   const release = () => Try(releaseCache, { finally: () => session.release() })
   return await Try(async () => {
-    const dependencies = new ProjectDependencies(project.root, await projectDependencyOptions(project.root))
+    const dependencies = new ProjectDependencies(project.root, await createProjectDependencyOptions(project.root))
     await dependencies.refresh()
     return managedWorkspace(project.root, session.directory, dependencies, options, release)
   }, {

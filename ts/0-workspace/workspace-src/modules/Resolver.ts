@@ -1,12 +1,23 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
-import { directSourceFiles, importableFile, namedPackageDirectories, recursiveSourceFiles } from './Catalog'
+import {
+  findNamedPackageDirectories,
+  isImportableFile,
+  listDirectSourceFiles,
+  listRecursiveSourceFiles,
+} from './Catalog'
 import type { ModuleLoadOptions } from './Loader'
-import { canonicalProjectRoot, namedPackageRoot, realPathInsideProject, relationFor, within } from './Paths'
+import {
+  findNamedPackageRoot,
+  getImportRelation,
+  resolveCanonicalProjectRoot,
+  resolveRealPathInsideProject,
+  within,
+} from './Paths'
 
-/** bareTargets resolves unqualified use declarations against the direct folder or named package. */
-export async function bareTargets(
+/** resolveBareTargets resolves unqualified use declarations against a folder or named package. */
+export async function resolveBareTargets(
   importer: string,
   physicalImporter: string | undefined,
   context: ModuleResolutionContext,
@@ -14,10 +25,10 @@ export async function bareTargets(
   if (!physicalImporter) {
     return []
   }
-  const packageRoot = namedPackageRoot(importer, context.projectRoot)
+  const packageRoot = findNamedPackageRoot(importer, context.projectRoot)
   const paths = packageRoot
-    ? await recursiveSourceFiles(packageRoot, packageRoot, context.projectRoot)
-    : await directSourceFiles(Path.dirname(physicalImporter), context.projectRoot)
+    ? await listRecursiveSourceFiles(packageRoot, packageRoot, context.projectRoot)
+    : await listDirectSourceFiles(Path.dirname(physicalImporter), context.projectRoot)
   return paths.filter(path => path !== importer).map(path => ({
     path,
     relation: packageRoot ? 'same-package' : 'same-directory',
@@ -44,19 +55,19 @@ export async function importTargets(
 ): Promise<ModuleTarget[]> {
   const importedProject = projectImport(specifier)
   if (importedProject) {
-    return await projectModuleTargets(importedProject, specifier, importer, context)
+    return await resolveProjectModuleTargets(importedProject, specifier, importer, context)
   }
   if (specifier.startsWith('@')) {
     const [name, ...parts] = specifier.split('/')
     if (!/^@[A-Za-z_][\w.-]*$/.test(name!)) {
       Errors.ThrowUserInput(`Invalid module path ${specifier}.`)
     }
-    return await namedTargets(name!, parts, importer, physicalImporter, context)
+    return await resolveNamedTargets(name!, parts, importer, physicalImporter, context)
   }
   return await relativeTargets(specifier, importer, physicalImporter, context)
 }
 
-async function projectModuleTargets(
+async function resolveProjectModuleTargets(
   imported: { alias: string; module: string; parts: string[] },
   specifier: string,
   importer: string,
@@ -66,13 +77,13 @@ async function projectModuleTargets(
   if (!dependency) {
     Errors.ThrowUserInput(`Project dependency ${imported.alias} is not available while resolving ${specifier}.`)
   }
-  const projectRoot = canonicalProjectRoot(dependency.root)
+  const projectRoot = resolveCanonicalProjectRoot(dependency.root)
   if (!projectRoot) {
     Errors.ThrowUserInput(`Project dependency ${imported.alias} has no valid project root.`)
   }
   const packageName = `@${imported.module}`
-  const packageRoots = (await namedPackageDirectories(projectRoot, packageName))
-    .filter(path => realPathInsideProject(path, projectRoot) !== undefined)
+  const packageRoots = (await findNamedPackageDirectories(projectRoot, packageName))
+    .filter(path => resolveRealPathInsideProject(path, projectRoot) !== undefined)
   if (packageRoots.length > 1) {
     Errors.ThrowUserInput(`Package ${packageName} is ambiguous in project ${projectRoot}.`)
   }
@@ -88,8 +99,8 @@ async function projectModuleTargets(
     Errors.ThrowUserInput(`Project module ${specifier} was not found.`)
   }
   const files = imported.parts.length === 0
-    ? await recursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
-    : await directSourceFiles(targetDirectory, projectRoot)
+    ? await listRecursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
+    : await listDirectSourceFiles(targetDirectory, projectRoot)
   return files.map(path => ({ path, relation: 'public', projectRoot }))
 }
 
@@ -103,12 +114,12 @@ async function relativeTargets(
     Errors.ThrowUserInput(`Cannot resolve relative module ${specifier} from ${importer}.`)
   }
   const target = Path.resolve(Path.dirname(importer), specifier)
-  const files = await directImportFiles(target, context.projectRoot)
-  const sourcePackage = namedPackageRoot(importer, context.projectRoot)
+  const files = await listDirectImportFiles(target, context.projectRoot)
+  const sourcePackage = findNamedPackageRoot(importer, context.projectRoot)
   if (
     files.some(path =>
-      namedPackageRoot(path, context.projectRoot) !== sourcePackage
-      && namedPackageRoot(path, context.projectRoot) !== undefined
+      findNamedPackageRoot(path, context.projectRoot) !== sourcePackage
+      && findNamedPackageRoot(path, context.projectRoot) !== undefined
     )
   ) {
     Errors.ThrowUserInput(`Relative module ${specifier} crosses a named package boundary.`)
@@ -117,17 +128,17 @@ async function relativeTargets(
     Errors.ThrowUserInput(`Cannot resolve module ${specifier} from ${importer}.`)
   }
   if (files.length === 0) {
-    if (!realPathInsideProject(target, context.projectRoot)) {
+    if (!resolveRealPathInsideProject(target, context.projectRoot)) {
       Errors.ThrowUserInput(`Module ${specifier} leaves the owning Tao project.`)
     }
     if (!Try.WithDefault(false, () => FileSystem.statSync(target).isDirectory())) {
       Errors.ThrowUserInput(`Module path ${specifier} does not identify a Tao file or directory.`)
     }
   }
-  return files.map(path => ({ path, relation: relationFor(importer, path, context.projectRoot) }))
+  return files.map(path => ({ path, relation: getImportRelation(importer, path, context.projectRoot) }))
 }
 
-async function namedTargets(
+async function resolveNamedTargets(
   name: string,
   parts: string[],
   importer: string,
@@ -137,8 +148,8 @@ async function namedTargets(
   if (!physicalImporter) {
     Errors.ThrowUserInput(`Cannot resolve package ${name} from virtual source ${importer}.`)
   }
-  const packages = (await namedPackageDirectories(context.projectRoot, name))
-    .filter(path => realPathInsideProject(path, context.projectRoot) !== undefined)
+  const packages = (await findNamedPackageDirectories(context.projectRoot, name))
+    .filter(path => resolveRealPathInsideProject(path, context.projectRoot) !== undefined)
   if (packages.length > 1) {
     Errors.ThrowUserInput(`Package ${name} is ambiguous in project ${context.projectRoot}.`)
   }
@@ -154,14 +165,14 @@ async function namedTargets(
     Errors.ThrowUserInput(`Package subpath escapes ${name}.`)
   }
   const files = parts.length === 0
-    ? await recursiveSourceFiles(targetDirectory, packageRoot, context.projectRoot)
-    : await directSourceFiles(targetDirectory, context.projectRoot)
+    ? await listRecursiveSourceFiles(targetDirectory, packageRoot, context.projectRoot)
+    : await listDirectSourceFiles(targetDirectory, context.projectRoot)
   if (parts.length > 0 && !await FileSystem.exists(targetDirectory)) {
     Errors.ThrowUserInput(`Package directory ${name}/${parts.join('/')} was not found.`)
   }
   return files.map(path => ({
     path,
-    relation: namedPackageRoot(importer, context.projectRoot) === packageRoot ? 'same-package' : 'same-project',
+    relation: findNamedPackageRoot(importer, context.projectRoot) === packageRoot ? 'same-package' : 'same-project',
   }))
 }
 
@@ -172,10 +183,10 @@ function projectImport(specifier: string): { alias: string; module: string; part
   return match ? { alias: match[1]!, module: match[2]!, parts } : undefined
 }
 
-async function directImportFiles(target: string, projectRoot: string): Promise<string[]> {
+async function listDirectImportFiles(target: string, projectRoot: string): Promise<string[]> {
   const file = target.endsWith('.tao') ? target : `${target}.tao`
-  if (await importableFile(file, projectRoot)) {
+  if (await isImportableFile(file, projectRoot)) {
     return [file]
   }
-  return target.endsWith('.tao') ? [] : await directSourceFiles(target, projectRoot)
+  return target.endsWith('.tao') ? [] : await listDirectSourceFiles(target, projectRoot)
 }

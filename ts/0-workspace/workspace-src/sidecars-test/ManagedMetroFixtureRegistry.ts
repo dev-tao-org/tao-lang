@@ -16,7 +16,7 @@ export async function createFixtureRegistry(root: string) {
       const name = path.slice(1)
       const artifact = packages.get(name)
       return artifact
-        ? Http.jsonResponse(metadata(name, artifact, request.url))
+        ? Http.jsonResponse(createFixtureMetadata(name, artifact, request.url))
         : Http.response('not found', { status: 404 })
     },
   })
@@ -46,7 +46,7 @@ async function packageArtifacts(root: string): Promise<Map<string, PackageArtifa
   return packages
 }
 
-function metadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
+function createFixtureMetadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
   const origin = Http.url(requestUrl).origin
   return {
     name,

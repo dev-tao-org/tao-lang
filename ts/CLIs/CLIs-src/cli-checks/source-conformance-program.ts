@@ -5,8 +5,8 @@ import * as TypeScript from 'typescript'
 /** conformanceSources lists current implementation and agent-script sources for checking and fixing. */
 export async function conformanceSources(root: string): Promise<string[]> {
   return [
-    ...await FileSystem.sourceFiles(root + '/ts'),
-    ...(await FileSystem.sourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
+    ...await FileSystem.listSourceFiles(root + '/ts'),
+    ...(await FileSystem.listSourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
   ]
 }
 

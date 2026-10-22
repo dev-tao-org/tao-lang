@@ -5,8 +5,8 @@ import type { SourceRange } from '../../Source'
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
 export type StatementSlice = SourceRange & { node: SyntaxNode; commented: boolean }
 
-/** statementSlices attaches comments before source statements are moved or replaced. */
-export function statementSlices(source: string, tree: Tree): StatementSlice[] {
+/** collectStatementSlices attaches comments before source statements are moved or replaced. */
+export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
   const slices: StatementSlice[] = []
   let leading: number | undefined
   for (const node of tree.rootNode.namedChildren) {

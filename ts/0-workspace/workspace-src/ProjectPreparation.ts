@@ -11,19 +11,19 @@ import {
   readDependencyLock,
   recordManagedGraphReference,
 } from './dependencies/LockFile'
-import { projectDependencyOptions } from './dependencies/Options'
+import { createProjectDependencyOptions } from './dependencies/Options'
 import { validateRequirementPlacement } from './dependencies/Requirements'
 import { prepareDependencies, prepareSourceDependency } from './dependencies/Store'
 import type { DependencyStoreOptions } from './dependencies/Types'
-import { moduleRequirements } from './ModuleRequirements'
+import { collectModuleRequirements } from './ModuleRequirements'
 import { loadModules } from './modules/Loader'
-import { namedPackageRoot, nearestProjectRoot } from './modules/Paths'
+import { findNamedPackageRoot, findNearestProjectRoot } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
 import {
   type BunExecutor,
-  generatedModuleFiles,
+  inspectGeneratedModuleFiles,
   type ManagedModulesInput,
   prepareManagedModules,
   readManagedModules,
@@ -61,7 +61,7 @@ export async function inspectProjectPreparation(
 ): Promise<void> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
-  const input = await projectManagedInput(entry, options)
+  const input = await loadProjectManagedInput(entry, options)
   if (
     options.moduleRoot
     && !input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(options.moduleRoot!))
@@ -82,14 +82,14 @@ export async function inspectProjectPreparation(
     return
   }
   await readManagedModules(input)
-  const drift = await generatedModuleFiles(input)
+  const drift = await inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
     Errors.ThrowUserInput(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
   }
 }
 
-/** managedModulesInput derives an app installation from reachable module-owned npm declarations. */
-export async function managedModulesInput(
+/** buildManagedModulesInput derives an app installation from reachable module-owned npm declarations. */
+export async function buildManagedModulesInput(
   root: string,
   sources: readonly Pick<SourceModule, 'path' | 'document'>[],
   runtimePins?: Record<string, string>,
@@ -98,16 +98,15 @@ export async function managedModulesInput(
   const needed = new Set<string>()
   let foreign = false
   for (const source of sources) {
-    const owner = nearestProjectRoot(Path.dirname(source.path)) ?? root
-    validateRequirementPlacement(source.document.root.declarations, source.path, owner)
-    const directory = namedPackageRoot(source.path, owner) ?? owner
+    const owner = findNearestProjectRoot(Path.dirname(source.path)) ?? root
+    validateRequirementPlacement(source.document, source.path, owner)
+    const directory = findNamedPackageRoot(source.path, owner) ?? owner
     const module = modules.get(directory) ?? { directory, requirements: [] }
-    module.requirements.push(...moduleRequirements(source.document.root.declarations, source.path))
-    for (const declaration of source.document.root.declarations) {
-      foreign ||= AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')
-      if (AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')) {
-        needed.add(directory)
-      }
+    module.requirements.push(...collectModuleRequirements(source.document, source.path))
+    const hasForeignViews = AST.HasForeignViews(source.document)
+    foreign ||= hasForeignViews
+    if (hasForeignViews) {
+      needed.add(directory)
     }
     modules.set(directory, module)
   }
@@ -132,7 +131,7 @@ export async function managedModulesInput(
 export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
   const child = Platform.spawn([command, ...args], {
     cwd,
-    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.cacheDirectory('bun') },
+    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -144,8 +143,8 @@ export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
   return { status, stdout, stderr }
 }
 
-// projectManagedInput reads the reachable locked graph without downloading dependencies.
-async function projectManagedInput(
+// loadProjectManagedInput reads the reachable locked graph without downloading dependencies.
+async function loadProjectManagedInput(
   entry: string,
   options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> = {},
 ): Promise<ManagedModulesInput | undefined> {
@@ -153,10 +152,10 @@ async function projectManagedInput(
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   const dependencies = new ProjectDependencies(
     project.root,
-    options.dependencyOptions ?? await projectDependencyOptions(project.root),
+    options.dependencyOptions ?? await createProjectDependencyOptions(project.root),
   )
   await dependencies.refresh()
-  return await managedModulesInput(
+  return await buildManagedModulesInput(
     project.root,
     await loadEntry(entry, project.root, dependencies),
     options.runtimePins,
@@ -164,13 +163,13 @@ async function projectManagedInput(
 }
 
 async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
-  const services = options.dependencyOptions ?? await projectDependencyOptions(root)
+  const services = options.dependencyOptions ?? await createProjectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
   if (options.update?.length) {
     await prepareDependencies(root, await services.readRequirements(root), services, options.update)
   }
   const sources = await prepareEntrySources(entry, root, services)
-  const input = await managedModulesInput(root, sources, options.runtimePins)
+  const input = await buildManagedModulesInput(root, sources, options.runtimePins)
   if (!input) {
     await Runtime.prepareRuntime({
       toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
@@ -201,7 +200,7 @@ async function prepareEntrySources(
   return await Try(() =>
     loadEntry(entry, root, {
       resolveProject(importer, alias) {
-        const owner = nearestProjectRoot(Path.dirname(importer)) ?? root
+        const owner = findNearestProjectRoot(Path.dirname(importer)) ?? root
         const key = `${owner}:${alias}`
         const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services)
         resolutions.set(key, resolved)

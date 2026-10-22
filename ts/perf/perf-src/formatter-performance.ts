@@ -9,7 +9,7 @@ import { unusedWarnings } from '@typecheck/Usage'
 import { summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
-export const formatterPerformance = Timings.topLevelTimer(async function(initialization) {
+export const formatterPerformance = Timings.createTopLevelTimer(async function(initialization) {
   const bytes = await FormatterResources.typeScriptFormatterBytes()
   const typescript = initialization.run(createTypeScriptFormatter, bytes)
   const fixtures = [
@@ -64,7 +64,7 @@ function sampleFixture(fixture: { source: string; scenario: string }, typescript
   return samples
 }
 
-const sampleFormatting = Timings.topLevelTimer(
+const sampleFormatting = Timings.createTopLevelTimer(
   function(
     timings,
     fixture: { source: string; scenario: string },

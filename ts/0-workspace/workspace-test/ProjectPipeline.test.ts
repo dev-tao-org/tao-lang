@@ -62,7 +62,7 @@ function fakeServices(
   let driftCount = 0
   let snapshotCount = 0
   return {
-    async managedInput(_root, graph) {
+    async buildManagedInput(_root, graph) {
       events.push('input')
       return {
         directory: '/project',
@@ -85,7 +85,7 @@ function fakeServices(
         nativePackages,
       } satisfies PreparedManagedModules
     },
-    async generatedFiles() {
+    async inspectGeneratedFiles() {
       events.push('drift')
       driftCount++
       return driftCount === driftOnCall
@@ -97,7 +97,7 @@ function fakeServices(
       snapshotCount++
       return {
         fingerprint: `snapshots-${snapshotCount}`,
-        foreignViewPath: () => '/session/foreign-views/view.tsx',
+        resolveForeignViewPath: () => '/session/foreign-views/view.tsx',
         watchDirectories: ['/project/source'],
         snapshotDirectories: ['/session/foreign-views/snapshots'],
       } satisfies PreparedSidecars

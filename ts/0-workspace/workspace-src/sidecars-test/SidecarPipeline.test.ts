@@ -10,7 +10,7 @@ Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks
     let checks = 0
     const executor = recordingExecutor(() => checks++)
     const first = await prepareSidecarPipeline({ ...fixture, executor })
-    const originalSnapshot = first.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const originalSnapshot = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     Tests.expect(await FileSystem.readFile(originalSnapshot, 'utf8')).toContain("from './format'")
     Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(originalSnapshot), 'format.ts'), 'utf8'))
       .toContain('formatDate')
@@ -21,12 +21,12 @@ Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks
     Tests.expect(checks).toBe(1)
 
     const cached = await prepareSidecarPipeline({ ...fixture, executor })
-    Tests.expect(cached.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(originalSnapshot)
+    Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(originalSnapshot)
     Tests.expect(checks).toBe(1)
 
     await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "new"\n')
     const changed = await prepareSidecarPipeline({ ...fixture, executor })
-    const nextSnapshot = changed.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const nextSnapshot = changed.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     Tests.expect(nextSnapshot).not.toBe(originalSnapshot)
     Tests.expect(await FileSystem.readFile(originalSnapshot, 'utf8')).toContain("from './format'")
     Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(nextSnapshot), 'format.ts'), 'utf8'))
@@ -38,17 +38,17 @@ Tests.test('rebuilds a corrupted snapshot without replacing the previously publi
   await withFixture(async fixture => {
     const executor = recordingExecutor(() => {})
     const first = await prepareSidecarPipeline({ ...fixture, executor })
-    const original = first.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const original = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     const root = Path.dirname(Path.dirname(Path.dirname(original)))
     await FileSystem.writeFile(Path.join(root, '.tao-sidecar-snapshot.json'), '{broken')
 
     const repaired = await prepareSidecarPipeline({ ...fixture, executor })
-    const replacement = repaired.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const replacement = repaired.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     Tests.expect(replacement).not.toBe(original)
     Tests.expect(await FileSystem.readFile(original, 'utf8')).toContain("from './format'")
     Tests.expect(await FileSystem.readFile(replacement, 'utf8')).toContain("from './format'")
     const cached = await prepareSidecarPipeline({ ...fixture, executor })
-    Tests.expect(cached.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(replacement)
+    Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(replacement)
   }))
 
 Tests.test('collects foreign views through a symlinked project root', async () =>
@@ -62,7 +62,7 @@ Tests.test('collects foreign views through a symlinked project root', async () =
       program: programFor(aliasEntry, fixture.program.modules[0]!.document),
       executor: recordingExecutor(() => {}),
     })
-    const snapshot = prepared.foreignViewPath(aliasEntry, './FormattedDate.tsx')
+    const snapshot = prepared.resolveForeignViewPath(aliasEntry, './FormattedDate.tsx')
     Tests.expect(await FileSystem.readFile(snapshot, 'utf8')).toContain('FormattedDate')
     Tests.expect(prepared.snapshotDirectories.some(path => path.includes('foreign-views'))).toBe(true)
   }))
@@ -71,9 +71,9 @@ Tests.test('blocks a new snapshot when the active session reaches its snapshot b
   await withFixture(async fixture => {
     const options = { ...fixture, executor: recordingExecutor(() => {}), snapshotLimit: 1 }
     const first = await prepareSidecarPipeline(options)
-    const snapshot = first.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')
+    const snapshot = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     const cached = await prepareSidecarPipeline(options)
-    Tests.expect(cached.foreignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(snapshot)
+    Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(snapshot)
     await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "next"\n')
 
     await Tests.rejects(prepareSidecarPipeline(options), /Restart preview to reclaim sidecar snapshots/)
@@ -151,7 +151,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     )!
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
     const prepared = await prepareSidecarPipeline({ ...fixture, executor: executeTypeScript })
-    const snapshotSidecar = prepared.foreignViewPath(taoPath, './FormattedDate.tsx')
+    const snapshotSidecar = prepared.resolveForeignViewPath(taoPath, './FormattedDate.tsx')
     Tests.expect(await FileSystem.readFile(snapshotSidecar, 'utf8')).toContain("from './format'")
     Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(snapshotSidecar), 'format.ts'), 'utf8'))
       .toContain('formatDate')
@@ -189,7 +189,7 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
   await withFixture(async fixture => {
     const executor = executeTypeScript
     const valid = await prepareSidecarPipeline({ ...fixture, executor })
-    Tests.expect(valid.foreignViewPath(fixture.taoPath, './FormattedDate.tsx'))
+    Tests.expect(valid.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx'))
       .toContain('foreign-views')
 
     await FileSystem.writeFile(

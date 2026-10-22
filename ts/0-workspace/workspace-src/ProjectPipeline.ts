@@ -3,14 +3,14 @@ import * as Runtime from '@runtime/Runtime'
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
-import { executeManagedTool, managedModulesInput } from './ProjectPreparation'
+import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
 import { requireSetup } from './SetupRequired'
 import { type PreparedSidecars, prepareSidecarPipeline } from './SidecarPipeline'
-import { generatedModuleFiles, type ManagedModulesInput, readManagedModules } from './sidecars/ManagedModules'
+import { inspectGeneratedModuleFiles, type ManagedModulesInput, readManagedModules } from './sidecars/ManagedModules'
 
 /** ProjectPipelineResult exposes validated foreign-view routing and dynamic source watches. */
 export type ProjectPipelineResult = {
-  foreignViewPath?: PreparedSidecars['foreignViewPath']
+  resolveForeignViewPath?: PreparedSidecars['resolveForeignViewPath']
   watchDirectories: readonly string[]
   snapshotDirectories: readonly string[]
 }
@@ -31,9 +31,9 @@ export type ProjectPipeline = {
 
 /** ProjectPipelineServices isolates prepared graph reads for focused lifecycle tests. */
 export type ProjectPipelineServices = {
-  managedInput(root: string, program: LinkedProgram): Promise<ManagedModulesInput | undefined>
+  buildManagedInput(root: string, program: LinkedProgram): Promise<ManagedModulesInput | undefined>
   readManaged(input: ManagedModulesInput): ReturnType<typeof readManagedModules>
-  generatedFiles(input: ManagedModulesInput): ReturnType<typeof generatedModuleFiles>
+  inspectGeneratedFiles(input: ManagedModulesInput): ReturnType<typeof inspectGeneratedModuleFiles>
   prepareSidecars(options: Parameters<typeof prepareSidecarPipeline>[0]): ReturnType<typeof prepareSidecarPipeline>
 }
 
@@ -46,9 +46,9 @@ export function createProjectPipeline(
   sessionDirectory: string,
   runtimeOptions: ProjectRuntimeOptions,
   services: ProjectPipelineServices = {
-    managedInput: async (projectRoot, program) => managedModulesInput(projectRoot, program.modules),
+    buildManagedInput: async (projectRoot, program) => buildManagedModulesInput(projectRoot, program.modules),
     readManaged: readManagedModules,
-    generatedFiles: generatedModuleFiles,
+    inspectGeneratedFiles: inspectGeneratedModuleFiles,
     prepareSidecars: prepareSidecarPipeline,
   },
 ): ProjectPipeline {
@@ -73,11 +73,11 @@ class PipelineSession implements ProjectPipeline {
   }
 
   async beforeCompile(program: LinkedProgram): Promise<ProjectPipelineResult> {
-    const declarations = declarationKey(program)
+    const declarations = createDeclarationKey(program)
     const input = declarations === this.declarations
       ? this.input
-      : await this.services.managedInput(this.root, program)
-    const key = input ? managedGraphKey(input) : emptyManagedGraphKey()
+      : await this.services.buildManagedInput(this.root, program)
+    const key = input ? createManagedGraphKey(input) : createEmptyManagedGraphKey()
     this.rejectChangedGraph(key)
     if (!input) {
       if (!this.runtimeOptions.dependencyDirectory) {
@@ -103,7 +103,7 @@ class PipelineSession implements ProjectPipeline {
     this.graphKey = key
     this.declarations = declarations
     this.input = input
-    return result(sidecars)
+    return createPipelineResult(sidecars)
   }
 
   private rejectChangedGraph(key: string): void {
@@ -140,33 +140,38 @@ class PipelineSession implements ProjectPipeline {
     input: ManagedModulesInput,
     managed: Awaited<ReturnType<typeof readManagedModules>>,
   ): void {
-    runtimeDependencyOptions(this.runtimeOptions, input, managed, this.baseWatchFolders, this.sessionDirectory)
+    configureRuntimeDependencies(this.runtimeOptions, input, managed, this.baseWatchFolders, this.sessionDirectory)
   }
 }
 
-// declarationKey includes reachable files, npm declarations and foreign-view presence.
+// createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
 // Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
-function declarationKey(program: LinkedProgram): string {
-  return JSON.stringify(program.modules.map(module => ({
-    path: module.path,
-    declarations: module.document.root.declarations.flatMap(declaration => {
-      if (AST.IsKind(declaration, 'RequiresDeclaration')) {
-        return [[
-          'requires',
-          declaration.provider,
-          declaration.identifier,
-          declaration.version,
-          declaration.alias?.value,
-        ]]
-      }
-      return AST.IsViewDeclaration(declaration) && AST.IsKind(declaration.render, 'ForeignView')
-        ? [['foreign']]
-        : []
-    }),
-  })))
+function createDeclarationKey(program: LinkedProgram): string {
+  return JSON.stringify(program.modules.map(describeModuleDeclarationFingerprint))
 }
 
-function managedGraphKey(input: ManagedModulesInput): string {
+function describeModuleDeclarationFingerprint(module: LinkedProgram['modules'][number]) {
+  return {
+    path: module.path,
+    declarations: AST.GetDeclarations(module.document).flatMap(serializeDeclarationFingerprint),
+  }
+}
+
+function serializeDeclarationFingerprint(declaration: AST.Declaration): unknown[][] {
+  if (AST.IsKind(declaration, 'RequiresDeclaration')) {
+    return [[
+      'requires',
+      declaration.provider,
+      declaration.identifier,
+      declaration.version,
+      declaration.alias?.value,
+    ]]
+  }
+  const authoredPath = AST.IsViewDeclaration(declaration) ? AST.GetForeignViewPath(declaration) : undefined
+  return authoredPath ? [['foreign']] : []
+}
+
+function createManagedGraphKey(input: ManagedModulesInput): string {
   return JSON.stringify({
     modules: input.modules.map(module => ({
       directory: module.directory,
@@ -180,27 +185,27 @@ function managedGraphKey(input: ManagedModulesInput): string {
   })
 }
 
-function emptyManagedGraphKey(): string {
+function createEmptyManagedGraphKey(): string {
   return JSON.stringify({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
 }
 
-function result(sidecars: PreparedSidecars): ProjectPipelineResult {
+function createPipelineResult(sidecars: PreparedSidecars): ProjectPipelineResult {
   return {
-    foreignViewPath: sidecars.foreignViewPath,
+    resolveForeignViewPath: sidecars.resolveForeignViewPath,
     watchDirectories: sidecars.watchDirectories,
     snapshotDirectories: sidecars.snapshotDirectories,
   }
 }
 
 async function validateGeneratedFiles(services: ProjectPipelineServices, input: ManagedModulesInput): Promise<void> {
-  const drift = await services.generatedFiles(input)
+  const drift = await services.inspectGeneratedFiles(input)
   if (drift.length > 0) {
     const first = drift[0]!
     Errors.ThrowUserInput(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)
   }
 }
 
-function runtimeDependencyOptions(
+function configureRuntimeDependencies(
   options: ProjectRuntimeOptions,
   input: ManagedModulesInput,
   managed: Awaited<ReturnType<typeof readManagedModules>>,

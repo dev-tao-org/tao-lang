@@ -2,7 +2,7 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import type { SourceModule } from '@typecheck/Modules'
-import { projectDependencyOptions } from '../workspace-src/dependencies/Options'
+import { createProjectDependencyOptions } from '../workspace-src/dependencies/Options'
 import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
 import { ProjectDependencies } from '../workspace-src/ProjectDependencies'
@@ -11,7 +11,7 @@ Tests.test('the standard project is implicit, locked, and observed like other bu
   const root = Artifacts.resolvePath('tmp', `implicit-standard-project-${Platform.randomUUID()}`)
   await Try(async () => {
     await createProject(root)
-    const options = await projectDependencyOptions(root)
+    const options = await createProjectDependencyOptions(root)
     const requirements = await options.readRequirements(root)
     Tests.expect(requirements).toEqual([{ provider: 'bundled', identifier: 'tao', version: 'bundled' }])
     const lock = await prepareDependencies(root, requirements, options)

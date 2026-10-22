@@ -40,7 +40,7 @@ Tests.test('a rapid workspace burst reads once and compiles only current plus la
         activeStarted.resolve()
         await activeGate.promise
       }
-      return result(isCurrent() ? 'published' : 'superseded')
+      return createUpdateResult(isCurrent() ? 'published' : 'superseded')
     },
   )
   await fixture.manager.openFile('/workspace/App.tao')
@@ -89,7 +89,7 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
       source: 'source',
       observedAtMs,
     }),
-    compile: async () => result('published'),
+    compile: async () => createUpdateResult('published'),
   })
   const first = manager.openFile('App.tao')
   await watcherStarted.promise
@@ -194,7 +194,7 @@ function dynamicWatchFixture() {
       scheduled = callback
       return () => scheduled = undefined
     },
-    compile: async (_request, isCurrent) => result(isCurrent() ? 'published' : 'superseded'),
+    compile: async (_request, isCurrent) => createUpdateResult(isCurrent() ? 'published' : 'superseded'),
   })
   return {
     manager,
@@ -227,7 +227,7 @@ type ManagerFixtureState = {
 function createManagerFixture(
   read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
-    result(isCurrent() ? 'published' : 'superseded'),
+    createUpdateResult(isCurrent() ? 'published' : 'superseded'),
   options: Partial<FileManagerOptions> = {},
 ) {
   const state: ManagerFixtureState = {
@@ -319,7 +319,7 @@ function snapshot(source: string): ReadSnapshot {
   return { source, observedAtMs: Time.timestampMs() }
 }
 
-function result(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {
+function createUpdateResult(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {
   return {
     status,
     revision: 'fixture',

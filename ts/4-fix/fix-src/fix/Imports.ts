@@ -1,21 +1,21 @@
 import * as AST from '@ast-gen/AST'
 import * as CST from '@cst'
 import type { Tree } from '@cst'
-import { type StatementSlice, statementSlices } from '../lib/fixer/StatementSlices'
+import { collectStatementSlices, type StatementSlice } from '../lib/fixer/StatementSlices'
 import type { SourceEdit } from '../Source'
 
 /** organizeImports collects imports while keeping aliases, comments and unresolved names intact. */
 export function organizeImports(source: string, tree: Tree, ast: AST.Document): SourceEdit[] {
-  const imports = ast.root.declarations.filter(AST.IsImportStatement)
+  const imports = AST.GetImportStatements(ast)
   if (imports.length === 0) {
     return []
   }
   const byStart = new Map(imports.map(statement => [statement.start, statement]))
-  const slices = statementSlices(source, tree)
+  const slices = collectStatementSlices(source, tree)
   const imported = slices.filter(slice => byStart.has(slice.node.startIndex))
   const remaining = slices.filter(slice => !byStart.has(slice.node.startIndex))
   const newline = source.includes('\r\n') ? '\r\n' : '\n'
-  const importText = importGroups(source, imported, byStart, newline).join(newline)
+  const importText = groupImports(source, imported, byStart, newline).join(newline)
   const body = remaining.map(slice => source.slice(slice.start, slice.end)).join(newline.repeat(2))
   const text = importText + (body ? newline.repeat(2) + body : '')
   const start = slices[0]!.start
@@ -26,7 +26,7 @@ export function organizeImports(source: string, tree: Tree, ast: AST.Document): 
 type Import = AST.UseStatement | AST.UsePackageStatement
 type Group = { source: string; form: string; names: Set<string>; text?: string }
 
-function importGroups(
+function groupImports(
   source: string,
   slices: readonly StatementSlice[],
   imports: ReadonlyMap<number, Import>,
@@ -98,16 +98,16 @@ function addImport(groups: Map<string, Group>, statement: Import, seenImports: S
 }
 
 function isDuplicateImport(statement: Import, seenImports: ReadonlySet<string>): boolean {
-  return importIdentities(statement).every(identity => seenImports.has(identity))
+  return collectImportIdentities(statement).every(identity => seenImports.has(identity))
 }
 
 function recordImports(statement: Import, seenImports: Set<string>): void {
-  for (const identity of importIdentities(statement)) {
+  for (const identity of collectImportIdentities(statement)) {
     seenImports.add(identity)
   }
 }
 
-function importIdentities(statement: Import): string[] {
+function collectImportIdentities(statement: Import): string[] {
   const source = statement.from?.value ?? ''
   if (AST.IsUsePackageStatement(statement)) {
     return [`package:${source}:${statement.alias?.value ?? ''}`]

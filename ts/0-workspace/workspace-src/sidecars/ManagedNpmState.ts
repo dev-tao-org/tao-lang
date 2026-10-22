@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
-import { allRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
+import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 
@@ -88,8 +88,8 @@ export async function claimManagedProfile(
   }
 }
 
-/** managedProfileManifest serializes exact top-level dependencies for the prepared graph. */
-export function managedProfileManifest(
+/** createManagedProfileManifest serializes exact top-level dependencies for the prepared graph. */
+export function createManagedProfileManifest(
   requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): string {
@@ -99,7 +99,7 @@ export function managedProfileManifest(
         name: 'tao-managed-app',
         private: true,
         type: 'module',
-        dependencies: allRequirements(requirements, runtimePins),
+        dependencies: collectAllRequirements(requirements, runtimePins),
       },
       null,
       2,
@@ -113,7 +113,7 @@ export async function validateManagedManifest(
   requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
 ): Promise<void> {
-  const expected = managedProfileManifest(requirements, runtimePins)
+  const expected = createManagedProfileManifest(requirements, runtimePins)
   const path = Path.join(profile, 'package.json')
   if (!await FileSystem.exists(path) || await FileSystem.readFile(path, 'utf8') !== expected) {
     Errors.ThrowUserInput('Managed npm manifest drifted. Repair with: tao setup --repair.')
@@ -194,7 +194,7 @@ async function profileContentsMatch(profile: string, durableLock: string, expect
 }
 
 function profileRequirementsMatch(value: unknown, requirements: readonly NormalizedManagedRequirement[]): boolean {
-  const expected = allRequirements(requirements)
+  const expected = collectAllRequirements(requirements)
   return isStringRecord(value) && sameStringRecord(value, expected)
 }
 

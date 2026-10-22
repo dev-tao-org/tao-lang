@@ -40,19 +40,19 @@ export function resolveStorage(
   }
 }
 
-/** cacheDirectory resolves a path beneath Tao's cache root without creating it. */
-export function cacheDirectory(...segments: string[]): string {
-  return resolveBelow(storageRoots().cache, segments)
+/** resolveCacheDirectory resolves a path beneath Tao's cache root without creating it. */
+export function resolveCacheDirectory(...segments: string[]): string {
+  return resolveBelow(resolveStorageRoots().cache, segments)
 }
 
-/** supportDirectory resolves a path beneath Tao's durable support root without creating it. */
-export function supportDirectory(...segments: string[]): string {
-  return resolveBelow(storageRoots().support, segments)
+/** resolveSupportDirectory resolves a path beneath Tao's durable support root without creating it. */
+export function resolveSupportDirectory(...segments: string[]): string {
+  return resolveBelow(resolveStorageRoots().support, segments)
 }
 
 /** withCacheMutation serializes shared-cache writers and cleanup across threads and processes. */
 export async function withCacheMutation<Value>(operation: () => Promise<Value>): Promise<Value> {
-  const path = supportDirectory('locks', 'cache-mutation.lock')
+  const path = resolveSupportDirectory('locks', 'cache-mutation.lock')
   await mkdir(dirname(path), { recursive: true })
   const releaseLocal = await acquireLocalMutation()
   return await Try(async () => {
@@ -63,11 +63,11 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
 
 /** acquireCacheLease holds a removable lease probe; its lifecycle is serialized by the stable cache-mutation lock. */
 export async function acquireCacheLease(identity: string): Promise<() => void | Promise<void>> {
-  const path = supportDirectory('leases', `${Platform.hashText(identity)}.lock`)
+  const path = resolveSupportDirectory('leases', `${Platform.hashText(identity)}.lock`)
   await mkdir(dirname(path), { recursive: true })
   let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
-    await hasBusyLease(supportDirectory('leases'))
+    await hasBusyLease(resolveSupportDirectory('leases'))
     const lock = await SessionLock.acquire(path)
     if (!lock) {
       Errors.ThrowHostEnvironment(`Cache lease is already held for identity: ${identity}`)
@@ -85,16 +85,16 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
     if (activeLeases.size > 0) {
       report?.(
         `Active cache consumer leases remain under ${
-          supportDirectory('leases')
+          resolveSupportDirectory('leases')
         }. Close their workspaces before retrying.`,
       )
       return false
     }
-    const leases = supportDirectory('leases')
+    const leases = resolveSupportDirectory('leases')
     if (await hasBusyLease(leases, report)) {
       return false
     }
-    const root = await existingDirectory(cacheDirectory())
+    const root = await existingDirectory(resolveCacheDirectory())
     if (!root) {
       return true
     }
@@ -103,7 +103,7 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
   })
 }
 
-function storageRoots(): StorageRoots {
+function resolveStorageRoots(): StorageRoots {
   const system = Platform.systemInfo().os
   const current = system === 'Darwin'
     ? 'macos'

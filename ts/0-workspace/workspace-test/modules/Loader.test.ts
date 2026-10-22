@@ -7,7 +7,7 @@ import { loadModules } from '../../workspace-src/modules/Loader'
 
 Tests.test(
   'loads direct directory imports from a virtual entry and records discovery timings',
-  Timings.topLevelTimer(async timings => {
+  Timings.createTopLevelTimer(async timings => {
     const root = await createProject()
     await Try(async () => {
       const directory = Path.join(root, 'views')

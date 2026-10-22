@@ -8,7 +8,7 @@ import { createTypeScriptFormatter, type EmbeddedFormatter } from '../fix-src/li
 
 Tests.test('authored apps and standard views preserve semantic structure and format idempotently', async () => {
   const typescript = createTypeScriptFormatter(await FormatterResources.typeScriptFormatterBytes())
-  const paths = [...await taoFiles('Apps'), ...await taoFiles('ts/stdlib/stdlib-src')]
+  const paths = [...await listTaoFiles('Apps'), ...await listTaoFiles('ts/stdlib/stdlib-src')]
   Tests.expect(paths.length).toBeGreaterThan(5)
   for (const path of paths) {
     const source = await FileSystem.readFile(path, 'utf8')
@@ -18,7 +18,9 @@ Tests.test('authored apps and standard views preserve semantic structure and for
     const formatted = format({ source, tree }, { typescript })
     Tests.expect(formatted.status).toBe('formatted')
     const resultTree = parser.parse(formatted.text)
-    Tests.expect(semanticStructure(transform(resultTree), typescript)).toBe(semanticStructure(ast, typescript))
+    Tests.expect(describeSemanticStructure(transform(resultTree), typescript)).toBe(
+      describeSemanticStructure(ast, typescript),
+    )
     Tests.expect(format({ source: formatted.text, tree: resultTree }, { typescript }).edits).toEqual([])
     const fixed = fix({ source, tree, ast })
     const fixedTree = parser.parse(fixed.text)
@@ -27,19 +29,19 @@ Tests.test('authored apps and standard views preserve semantic structure and for
   }
 })
 
-async function taoFiles(relative: string): Promise<string[]> {
+async function listTaoFiles(relative: string): Promise<string[]> {
   const root = Repo.resolvePath(relative)
   const entries = await FileSystem.readdir(root, { withFileTypes: true })
   const paths = await Promise.all(
     entries.filter(entry => !entry.name.startsWith('.')).map(async entry => {
       const path = Path.join(relative, entry.name)
-      return entry.isDirectory() ? taoFiles(path) : path.endsWith('.tao') ? [Repo.resolvePath(path)] : []
+      return entry.isDirectory() ? listTaoFiles(path) : path.endsWith('.tao') ? [Repo.resolvePath(path)] : []
     }),
   )
   return paths.flat()
 }
 
-function semanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
+function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
   return JSON.stringify(value, (key, item) => {
     if (key === 'start' || key === 'end') {
       return undefined

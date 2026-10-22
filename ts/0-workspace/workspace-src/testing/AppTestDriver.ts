@@ -82,7 +82,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
     },
   }
   await Runtime.prepareRuntime(runtimeOptions)
-  const compile: typeof compileApp = Timings.topLevelTimer((timings, input, options) =>
+  const compile: typeof compileApp = Timings.createTopLevelTimer((timings, input, options) =>
     timings.run(compileApp, input, { ...options, app })
   )
   if (await discoverProject(path)) {

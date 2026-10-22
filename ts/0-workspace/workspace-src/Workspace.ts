@@ -39,7 +39,7 @@ export type WorkspaceOptions = {
   beforeLoad?: () => Promise<void>
   watchDirectories?: readonly string[]
   beforeCompile?: (program: LinkedProgram) => Promise<
-    & Pick<ProjectPipelineResult, 'foreignViewPath'>
+    & Pick<ProjectPipelineResult, 'resolveForeignViewPath'>
     & Partial<Pick<ProjectPipelineResult, 'watchDirectories' | 'snapshotDirectories'>>
   >
 }
@@ -114,7 +114,7 @@ const Publish = Timings.measure('workspace.publish', async function(
 
 class WorkspaceSession {
   readonly directory: string | undefined
-  private readonly output: ReturnType<typeof outputPaths>
+  private readonly output: ReturnType<typeof createOutputPaths>
   private readonly parser = createParser()
   private lastGood: string | undefined
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
@@ -127,7 +127,7 @@ class WorkspaceSession {
   constructor(private readonly options: WorkspaceOptions) {
     const directory = options.directory ?? options.project?.directory
     this.directory = directory ? Path.resolve(directory) : undefined
-    this.output = outputPaths(options)
+    this.output = createOutputPaths(options)
     this.files = new FileManager({
       directory: this.directory,
       outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
@@ -189,7 +189,7 @@ class WorkspaceSession {
     const revision = `r${request.id}`
     const timings = request.timings
     timings.record('workspace.queue', request.queuedAtMs)
-    const stages = skippedStages()
+    const stages = createSkippedStages()
     const code = await this.build(request)
     if (code === undefined) {
       return { status: 'invalid', revision, timings: timings.samples, stages }
@@ -286,11 +286,13 @@ class WorkspaceSession {
   }
 }
 
-function skippedStages(): PipelineStages {
+function createSkippedStages(): PipelineStages {
   return { typecheck: typecheck(), fix: { stage: 'fix', status: 'skipped' }, check: check() }
 }
 
-function outputPaths(options: WorkspaceOptions): { buildDirectory: string; runtimeDirectory: string } | undefined {
+function createOutputPaths(
+  options: WorkspaceOptions,
+): { buildDirectory: string; runtimeDirectory: string } | undefined {
   if (options.outputDirectory) {
     const directory = Path.resolve(options.outputDirectory)
     return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'runtime') }

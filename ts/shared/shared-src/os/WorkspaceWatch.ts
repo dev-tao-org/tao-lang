@@ -26,8 +26,8 @@ export async function watchWorkspace(
   additionalDirectories: readonly string[] = [],
 ): Promise<WorkspaceWatcher> {
   const root = Path.resolve(directory)
-  const excluded = uniquePaths(ignoredDirectories)
-  const roots = [root, ...uniquePaths(additionalDirectories).filter(path => path !== root)]
+  const excluded = collectUniquePaths(ignoredDirectories)
+  const roots = [root, ...collectUniquePaths(additionalDirectories).filter(path => path !== root)]
   const watcher = await createWatcher(roots, excluded)
   let ready = false
   let disposed = false
@@ -80,11 +80,11 @@ function dynamicWatcher(
         if (isDisposed()) {
           return
         }
-        const nextRoots = [root, ...uniquePaths(additional).filter(path => path !== root)]
+        const nextRoots = [root, ...collectUniquePaths(additional).filter(path => path !== root)]
         const removed = roots.filter(path => path !== root && !nextRoots.includes(path))
         const added = nextRoots.filter(path => !roots.includes(path))
         roots.splice(0, roots.length, ...nextRoots)
-        excluded.splice(0, excluded.length, ...uniquePaths(ignored))
+        excluded.splice(0, excluded.length, ...collectUniquePaths(ignored))
         if (removed.length > 0) {
           await watcher.unwatch(removed)
         }
@@ -135,7 +135,7 @@ function withinDirectory(root: string, path: string): boolean {
   return Path.isWithin(root, path)
 }
 
-function uniquePaths(paths: readonly string[]): string[] {
+function collectUniquePaths(paths: readonly string[]): string[] {
   return [...new Set(paths.map(path => Path.resolve(path)))].sort()
 }
 

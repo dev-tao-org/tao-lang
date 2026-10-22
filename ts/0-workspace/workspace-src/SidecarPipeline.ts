@@ -2,8 +2,13 @@ import * as AST from '@ast-gen/AST'
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
-import { namedPackageRoot, nearestProjectRoot, realPathInsideProject, within } from './modules/Paths'
-import { fileExtension, moduleSpecifiers } from './sidecar-pipeline/Imports'
+import {
+  findNamedPackageRoot,
+  findNearestProjectRoot,
+  resolveRealPathInsideProject,
+  within,
+} from './modules/Paths'
+import { collectModuleSpecifiers, getFileExtension } from './sidecar-pipeline/Imports'
 import {
   buildSnapshot,
   cachedSnapshotMatches,
@@ -30,7 +35,7 @@ export type SidecarPipelineOptions = {
 /** PreparedSidecars exposes only validated snapshots to generated app compilation. */
 export type PreparedSidecars = {
   fingerprint: string
-  foreignViewPath(modulePath: string, authoredPath: string): string
+  resolveForeignViewPath(modulePath: string, authoredPath: string): string
   watchDirectories: readonly string[]
   snapshotDirectories: readonly string[]
 }
@@ -70,8 +75,10 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
   const pathMap = snapshotForeignViewPaths(groups, snapshotDirectories)
   return {
     fingerprint,
-    foreignViewPath(modulePath, authoredPath) {
-      const key = foreignViewKey(Path.resolve(modulePath), Path.resolve(Path.dirname(modulePath), authoredPath))
+    resolveForeignViewPath(modulePath, authoredPath) {
+      const absoluteModulePath = Path.resolve(modulePath)
+      const resolvedAuthoredPath = resolveAuthoredForeignPath(absoluteModulePath, authoredPath)
+      const key = createForeignViewKey(absoluteModulePath, resolvedAuthoredPath)
       return pathMap.get(key) ?? Errors.ThrowUserInput(`Foreign view path was not validated: ${authoredPath}`)
     },
     watchDirectories: [...new Set(groups.flatMap(group => [...group.files.keys()].map(Path.dirname)))].sort(),
@@ -87,11 +94,10 @@ function snapshotForeignViewPaths(
   groups.forEach((group, index) => {
     const directory = directories[index]!
     for (const view of group.views) {
-      const render = AST.IsKind(view.declaration.render, 'ForeignView')
-        ? view.declaration.render
-        : Errors.Throw(`Expected a foreign view render for ${view.declaration.name.value}.`)
+      const authoredPath = AST.GetForeignViewPath(view.declaration)
+        ?? Errors.Throw(`Expected a foreign view render for ${AST.GetViewName(view.declaration)}.`)
       pathMap.set(
-        foreignViewKey(view.module.path, authoredForeignPath(view.module.path, render)),
+        createForeignViewKey(view.module.path, resolveAuthoredForeignPath(view.module.path, authoredPath.value)),
         Path.join(directory, view.relativeSidecarPath),
       )
     }
@@ -127,23 +133,24 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Si
   const entryPath = options.program.entry
   const projectDirectory = options.projectDirectory
     ? Path.resolve(options.projectDirectory)
-    : nearestProjectRoot(Path.dirname(entryPath)) ?? Path.dirname(entryPath)
+    : findNearestProjectRoot(Path.dirname(entryPath)) ?? Path.dirname(entryPath)
   const canonicalConsumerDirectory = FileSystem.realpathSync(projectDirectory)
   const groups = new Map<string, SidecarGroup>()
   for (const module of options.program.modules) {
-    for (const declaration of module.document.root.declarations.filter(AST.IsViewDeclaration)) {
-      if (!AST.IsKind(declaration.render, 'ForeignView')) {
+    for (const declaration of AST.GetViewDeclarations(module.document)) {
+      const authoredPath = AST.GetForeignViewPath(declaration)
+      if (authoredPath === undefined) {
         continue
       }
       const modulePath = FileSystem.realpathSync(Path.resolve(module.path))
       const projectRoot = FileSystem.realpathSync(
-        nearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
+        findNearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
       )
-      const realModulePath = realPathInsideProject(modulePath, projectRoot)
+      const realModulePath = resolveRealPathInsideProject(modulePath, projectRoot)
         ?? Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
-      const moduleRoot = namedPackageRoot(realModulePath, projectRoot) ?? projectRoot
-      const authoredPath = authoredForeignPath(modulePath, declaration.render)
-      const sidecarPath = await safeModuleFile(authoredPath, moduleRoot, projectRoot)
+      const moduleRoot = findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
+      const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
+      const sidecarPath = await resolveSafeModuleFile(resolvedAuthoredPath, moduleRoot, projectRoot)
       const relativeSidecarPath = Path.relative(moduleRoot, sidecarPath)
       let group = groups.get(moduleRoot)
       if (!group) {
@@ -157,8 +164,8 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Si
   return [...groups.values()].sort((left, right) => left.moduleRoot.localeCompare(right.moduleRoot))
 }
 
-function authoredForeignPath(modulePath: string, render: AST.ForeignView): string {
-  return Path.resolve(Path.dirname(modulePath), render.path.value)
+function resolveAuthoredForeignPath(modulePath: string, authoredPath: string): string {
+  return Path.resolve(Path.dirname(modulePath), authoredPath)
 }
 
 async function collectFileClosure(
@@ -173,26 +180,26 @@ async function collectFileClosure(
     if (group.files.has(path)) {
       continue
     }
-    const safePath = await safeModuleFile(path, moduleRoot, projectDirectory)
+    const safePath = await resolveSafeModuleFile(path, moduleRoot, projectDirectory)
     const contents = await FileSystem.readFile(safePath)
     group.files.set(path, contents)
     if (!isTypeScriptSource(path)) {
       continue
     }
     const source = new TextDecoder().decode(contents)
-    for (const specifier of moduleSpecifiers(source)) {
+    for (const specifier of collectModuleSpecifiers(source)) {
       if (!specifier.startsWith('.')) {
         continue
       }
       const target = await resolveRelativeImport(Path.resolve(Path.dirname(path), specifier))
-      pending.push(await safeModuleFile(target, moduleRoot, projectDirectory))
+      pending.push(await resolveSafeModuleFile(target, moduleRoot, projectDirectory))
     }
   }
 }
 
 async function resolveRelativeImport(path: string): Promise<string> {
   const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...sidecarAssetExtensions]
-  const candidates = fileExtension(path) ? [path] : [
+  const candidates = getFileExtension(path) ? [path] : [
     ...suffixes.map(suffix => `${path}${suffix}`),
     ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
   ]
@@ -204,7 +211,7 @@ async function resolveRelativeImport(path: string): Promise<string> {
   Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
-async function safeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
+async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
   const absolute = Path.resolve(path)
   if (!within(moduleRoot, absolute) || hasDependencyPath(absolute)) {
     Errors.ThrowUserInput(`Foreign view sidecar import crosses its module boundary: ${absolute}`)
@@ -212,12 +219,12 @@ async function safeModuleFile(path: string, moduleRoot: string, projectDirectory
   if (!await FileSystem.exists(absolute) || !FileSystem.statSync(absolute).isFile()) {
     Errors.ThrowUserInput(`Foreign view sidecar file is unavailable: ${absolute}`)
   }
-  const realPath = realPathInsideProject(absolute, projectDirectory)
+  const realPath = resolveRealPathInsideProject(absolute, projectDirectory)
   if (!realPath || !within(moduleRoot, realPath)) {
     Errors.ThrowUserInput(`Foreign view sidecar escapes its module boundary: ${absolute}`)
   }
   const expectedPackage = moduleRoot === projectDirectory ? undefined : moduleRoot
-  if (namedPackageRoot(realPath, projectDirectory) !== expectedPackage) {
+  if (findNamedPackageRoot(realPath, projectDirectory) !== expectedPackage) {
     Errors.ThrowUserInput(`Foreign view sidecar crosses a nested module boundary: ${absolute}`)
   }
   await rejectNestedProjectPath(absolute, moduleRoot, projectDirectory)
@@ -255,7 +262,7 @@ function fingerprintFor(
     group.views.map(view => ({
       root: group.moduleRoot,
       path: view.relativeSidecarPath,
-      name: view.declaration.name.value,
+      name: AST.GetViewName(view.declaration),
       parameters: view.declaration.parameters.map(parameter => [parameter.name.value, parameter.type.value]),
     }))
   )
@@ -274,7 +281,7 @@ function fingerprintFor(
 }
 
 function isTypeScriptSource(path: string): boolean {
-  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx'].includes(fileExtension(path))
+  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx'].includes(getFileExtension(path))
 }
 
-const foreignViewKey = (modulePath: string, authoredPath: string) => `${modulePath}\u0000${authoredPath}`
+const createForeignViewKey = (modulePath: string, authoredPath: string) => `${modulePath}\u0000${authoredPath}`

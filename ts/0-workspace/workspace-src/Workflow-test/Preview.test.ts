@@ -1,7 +1,7 @@
 import { Errors, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWatchFixture } from '../../workspace-test/WatchFixture'
-import { managedModulesInput } from '../ProjectPreparation'
+import { buildManagedModulesInput } from '../ProjectPreparation'
 import { initializeProject } from '../projects/Projects'
 import { execute, type WorkflowWorkspace } from '../Workflow'
 
@@ -53,13 +53,13 @@ async function openPreview(entry: string, events: string[], published: string[])
           published.push(app.code)
         },
         pipelineServices: {
-          async managedInput(directory, program) {
+          async buildManagedInput(directory, program) {
             events.push('input')
-            return await managedModulesInput(directory, program.modules, {})
+            return await buildManagedModulesInput(directory, program.modules, {})
           },
           readManaged: async () =>
             Errors.ThrowShouldNeverHappen('No managed profile should be inspected on this session.'),
-          generatedFiles: async () => Errors.ThrowShouldNeverHappen('No generated setup scan should run.'),
+          inspectGeneratedFiles: async () => Errors.ThrowShouldNeverHappen('No generated setup scan should run.'),
           prepareSidecars: async () => Errors.ThrowShouldNeverHappen('No sidecar should be installed.'),
         },
       },

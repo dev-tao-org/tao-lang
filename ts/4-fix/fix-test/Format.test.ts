@@ -74,7 +74,7 @@ function namedKinds(node: SyntaxNode, kinds = new Set<string>()): Set<string> {
   return kinds
 }
 
-const assertFormatted = Timings.topLevelTimer(function(timings, source: string, expected: string): void {
+const assertFormatted = Timings.createTopLevelTimer(function(timings, source: string, expected: string): void {
   const parser = createParser()
   const tree = parser.parse(source)
   const result = timings.run(format, { source, tree })

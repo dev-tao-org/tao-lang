@@ -97,7 +97,7 @@ function createRequestHandler(
     if (request.method === 'GET' && url.pathname === '/') {
       return pageResponse(options, url.origin)
     }
-    const favicon = faviconFile(url.pathname)
+    const favicon = resolveFaviconFile(url.pathname)
     if (request.method === 'GET' && favicon) {
       return Http.response(await FileSystem.readFile(favicon, 'utf8'), {
         headers: { 'content-type': 'image/svg+xml' },
@@ -122,7 +122,7 @@ function createRequestHandler(
   }
 }
 
-function faviconFile(pathname: string): string | undefined {
+function resolveFaviconFile(pathname: string): string | undefined {
   if (pathname === '/favicon-white.svg' || pathname === '/favicon.svg') {
     return Repo.resolvePath('Assets/Icons/tao-favicon-white.svg')
   }

@@ -2,8 +2,8 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { DependencyLock, DependencyRequirement, LockedSource, ManagedGraphReference } from './Types'
 
-/** dependencyLockPath identifies the project's durable source dependency graph. */
-export function dependencyLockPath(projectRoot: string): string {
+/** resolveDependencyLockPath locates the project's durable source dependency graph. */
+export function resolveDependencyLockPath(projectRoot: string): string {
   return Path.join(projectRoot, '.tao', 'store', 'dependencies.lock.json')
 }
 
@@ -62,7 +62,7 @@ export function materializeSources(
 
 /** readFileSourceRoots returns the materialized file-backed dependency roots. */
 export async function readFileSourceRoots(projectRoot: string): Promise<string[]> {
-  const lock = await readDependencyLock(dependencyLockPath(projectRoot))
+  const lock = await readDependencyLock(resolveDependencyLockPath(projectRoot))
   if (!lock) {
     return []
   }
@@ -90,7 +90,7 @@ export async function pruneUnreferencedManagedLocks(projectRoot: string): Promis
   if (profiles === undefined) {
     return
   }
-  const lock = await readDependencyLock(dependencyLockPath(projectRoot))
+  const lock = await readDependencyLock(resolveDependencyLockPath(projectRoot))
   const currentLock = lock ? await pruneMissingGraphReferences(lock, projectRoot) : undefined
   const referencedPaths = new Set(Object.values(currentLock?.npmGraphs ?? {}).map(reference => reference.lockPath))
   for (const filename of await FileSystem.readdir(npmDirectory)) {
@@ -127,10 +127,10 @@ export async function recordManagedGraphReference(
   lockHash: string,
 ): Promise<DependencyLock> {
   validateGraphReference(graphKey, fingerprint, lockHash)
-  const lockPath = dependencyLockPath(projectRoot)
+  const lockPath = resolveDependencyLockPath(projectRoot)
   const lock = await readDependencyLock(lockPath)
     ?? { version: 1, roots: {}, sources: {} }
-  const relativeLockPath = projectRelativePath(projectRoot, durableLockPath)
+  const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
   const reference: ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
   const updated: DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
   await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
@@ -184,7 +184,7 @@ async function pruneMissingGraphReferences(lock: DependencyLock, projectRoot: st
     return lock
   }
   const updated = { ...lock, npmGraphs }
-  await writeDependencyLock(dependencyLockPath(projectRoot), updated, projectRoot)
+  await writeDependencyLock(resolveDependencyLockPath(projectRoot), updated, projectRoot)
   return updated
 }
 
@@ -229,7 +229,7 @@ function validateGraphReference(key: string, fingerprint: string, hash: string):
   }
 }
 
-function projectRelativePath(projectRoot: string, filePath: string): string {
+function relativizeProjectPath(projectRoot: string, filePath: string): string {
   const absolute = Path.resolve(filePath)
   if (absolute === Path.resolve(projectRoot) || !Path.isWithin(projectRoot, absolute)) {
     Errors.ThrowUserInput('Managed dependency lock path must be inside the project.')

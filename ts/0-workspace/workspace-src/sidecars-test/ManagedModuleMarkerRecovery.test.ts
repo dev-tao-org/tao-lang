@@ -11,8 +11,8 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
   await withDirectory(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
-    const input = moduleInput(root, moduleDirectory)
-    const executor = executorFor({ react: '19.1.0', 'date-fns': '4.1.0' })
+    const input = createModuleInput(root, moduleDirectory)
+    const executor = createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })
     await prepareManagedModules(input, executor)
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     await makeCorrupt(marker)
@@ -35,8 +35,8 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
     const moduleDirectory = Path.join(root, 'Modules')
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
     await prepareManagedModules(
-      moduleInput(root, moduleDirectory),
-      executorFor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+      createModuleInput(root, moduleDirectory),
+      createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
     )
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     const manifest = Path.join(moduleDirectory, 'package.json')
@@ -51,7 +51,7 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
     Tests.expect(await FileSystem.readFile(marker, 'utf8')).toBe('{')
   }))
 
-function moduleInput(root: string, directory: string): ManagedModulesInput {
+function createModuleInput(root: string, directory: string): ManagedModulesInput {
   return {
     directory: root,
     modules: [{ directory, requirements: [{ name: 'date-fns', version: '4.1.0', origin: 'Modules/Date.tao' }] }],
@@ -61,7 +61,7 @@ function moduleInput(root: string, directory: string): ManagedModulesInput {
   }
 }
 
-function executorFor(dependencies: Record<string, string>): BunExecutor {
+function createExecutor(dependencies: Record<string, string>): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
       return { status: 0, stdout: '1.2.0\n', stderr: '' }

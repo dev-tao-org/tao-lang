@@ -1,13 +1,13 @@
 import { Errors, Time, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
-import { projectLayout } from './Projects'
+import { deriveProjectLayout } from './Projects'
 
 /** acquireProjectLifecycle serializes session startup with project cleanup. */
 export async function acquireProjectLifecycle(
   root: string,
   waitMs = 0,
 ): Promise<Awaited<ReturnType<typeof SessionLock.acquire>>> {
-  const layout = projectLayout(Path.resolve(root))
+  const layout = deriveProjectLayout(Path.resolve(root))
   requireRealDirectory(layout.taoDirectory, 'Tao project metadata')
   const locksRoot = Path.join(layout.taoDirectory, 'locks')
   ensureDirectoryParent(layout.taoDirectory, locksRoot)

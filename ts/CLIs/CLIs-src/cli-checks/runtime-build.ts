@@ -4,7 +4,7 @@ import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/
 import { runtimeLock, type RuntimeManifest } from './runtime-lock'
 
 /** prepareRuntime builds versioned, relocatable Expo runtime resources from declared source inputs. */
-export const prepareRuntime = Timings.topLevelTimer(async function(timings): Promise<string> {
+export const prepareRuntime = Timings.createTopLevelTimer(async function(timings): Promise<string> {
   return await BuildLock.withBuildLock(Artifacts.resolvePath('locks/runtime-build.lock'), async () => {
     const inputs = await readInputs()
     const identity = Platform.hashText(JSON.stringify(inputs))

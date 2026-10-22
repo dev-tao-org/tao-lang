@@ -5,7 +5,7 @@ import { Timings, Try } from '@shared'
 export type EmbeddedFormatter = (source: string, options: EmbeddedOptions) => string | undefined
 
 /** createTypeScriptFormatter initializes one reusable TSX formatter from externally loaded WASM. */
-export const createTypeScriptFormatter = Timings.topLevelTimer(function(timings, bytes: Uint8Array) {
+export const createTypeScriptFormatter = Timings.createTopLevelTimer(function(timings, bytes: Uint8Array) {
   return timings.run(initialize, bytes)
 })
 

@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Switch, Timings } from '@shared'
-import { namespaceFromPath } from './Modules'
+import { deriveNamespaceFromPath } from './Modules'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
@@ -12,7 +12,7 @@ export type UsageWarning = {
 }
 
 /** unusedWarnings checks lexical references in a complete AST without loading other modules. */
-export const unusedWarnings = Timings.topLevelTimer(function(timings, document: AST.Document): UsageWarning[] {
+export const unusedWarnings = Timings.createTopLevelTimer(function(timings, document: AST.Document): UsageWarning[] {
   return timings.run(analyzeUsage, document)
 })
 
@@ -33,7 +33,7 @@ const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Do
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
-    const reportUnused = AST.DeclarationVisibility(node) === 'file'
+    const reportUnused = AST.GetDeclarationVisibility(node) === 'file'
     declare(scope, node.name, 'local', reportUnused)
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
@@ -41,7 +41,7 @@ function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
     }
   } else if (AST.IsUsePackageStatement(node)) {
     // ex: use package @Foo as Bar -> Bar
-    const value = node.alias?.value ?? namespaceFromPath(node.from.value)
+    const value = node.alias?.value ?? deriveNamespaceFromPath(node.from.value)
     if (value) {
       const namespaceName: AST.Name = node.alias ?? { ...node.from, kind: 'Name', value }
       declare(scope, namespaceName, 'namespace')
@@ -73,7 +73,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 
 function visitView(node: AST.ViewDeclaration, parent: Scope): void {
   const scope = childScope(parent)
-  const reportUnusedParameters = !AST.IsKind(node.render, 'ForeignView')
+  const reportUnusedParameters = AST.GetForeignViewPath(node) === undefined
   for (const parameter of node.parameters) {
     reference(parent, parameter.type)
     declare(scope, parameter.name, 'local', reportUnusedParameters)

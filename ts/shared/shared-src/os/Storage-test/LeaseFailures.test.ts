@@ -15,7 +15,7 @@ Tests.test('failed cache-mutation acquisition releases lease ownership and retai
       failMutation = true;
       const failure = await Try(release, { catch: error => error.message });
       failMutation = false;
-      const leaseDirectory = storage.supportDirectory('leases');
+      const leaseDirectory = storage.resolveSupportDirectory('leases');
       const files = await fs.readdir(leaseDirectory);
       const probe = await acquire(${JSON.stringify(root)} + '/support/leases/' + files[0]);
       const released = probe !== undefined;
@@ -40,16 +40,16 @@ Tests.test('blocked lease probes protect the cache without preventing acquisitio
         let blocked = true;
         ${blockedProbeAdapters(stage!, failure!)}
         const storage = await import(${JSON.stringify(storageUrl)});
-        await fs.mkdir(storage.supportDirectory('leases'), { recursive: true });
-        await fs.writeFile(storage.supportDirectory('leases', 'blocked.lock'), '');
-        await fs.mkdir(storage.cacheDirectory(), { recursive: true });
-        await fs.writeFile(storage.cacheDirectory('keep'), 'cached data');
+        await fs.mkdir(storage.resolveSupportDirectory('leases'), { recursive: true });
+        await fs.writeFile(storage.resolveSupportDirectory('leases', 'blocked.lock'), '');
+        await fs.mkdir(storage.resolveCacheDirectory(), { recursive: true });
+        await fs.writeFile(storage.resolveCacheDirectory('keep'), 'cached data');
         const release = await storage.acquireCacheLease('unrelated');
         await release();
         const reasons = [];
         const protectedCache = !(await storage.cleanSharedCache(reason => reasons.push(reason)));
         const named = reasons.some(reason => reason.includes('leases') && reason.includes(${JSON.stringify(failure)}));
-        const retained = await fs.readFile(storage.cacheDirectory('keep'), 'utf8');
+        const retained = await fs.readFile(storage.resolveCacheDirectory('keep'), 'utf8');
         blocked = false;
         const reclaimed = await storage.cleanSharedCache();
         process.stdout.write(JSON.stringify({ protectedCache, retained, reclaimed, named }));

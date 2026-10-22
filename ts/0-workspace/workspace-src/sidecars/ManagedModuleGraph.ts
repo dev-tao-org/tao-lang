@@ -8,8 +8,8 @@ import type { ManagedModulesInput, NormalizedManagedRequirement } from './Manage
 /** defaultSingletonPackages lists app frameworks that require one canonical installed path. */
 export const defaultSingletonPackages = ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
 
-/** allRequirements combines Tao declarations and centrally pinned app runtime packages. */
-export function allRequirements(
+/** collectAllRequirements combines Tao declarations and centrally pinned app runtime packages. */
+export function collectAllRequirements(
   requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string> = {},
 ): Record<string, string> {
@@ -85,7 +85,7 @@ export function graphContentsMatch(
   if (!workspaces || !packages) {
     return false
   }
-  const expectedRequirements = allRequirements(requirements, runtimePins)
+  const expectedRequirements = collectAllRequirements(requirements, runtimePins)
   const actualNames = Object.keys(dependencies).sort()
   const expectedNames = Object.keys(expectedRequirements).sort()
   return actualNames.length === expectedNames.length
@@ -102,7 +102,7 @@ export async function auditInstalledGraph(
   input: ManagedModulesInput,
   requirements: readonly NormalizedManagedRequirement[],
 ): Promise<void> {
-  const packages = await installedPackages(profile, allRequirements(requirements, input.runtimePins))
+  const packages = await installedPackages(profile, collectAllRequirements(requirements, input.runtimePins))
   const singletons = new Set([
     ...defaultSingletonPackages,
     ...input.singletonPackages ?? [],
@@ -114,8 +114,8 @@ export async function auditInstalledGraph(
   }
 }
 
-/** nativePackageNames lists graph packages with React Native codegen or native build files. */
-export async function nativePackageNames(profile: string): Promise<string[]> {
+/** listNativePackageNames lists graph packages with React Native codegen or native build files. */
+export async function listNativePackageNames(profile: string): Promise<string[]> {
   const manifest = await readJson(Path.join(profile, 'package.json'))
   return [
     ...new Set(

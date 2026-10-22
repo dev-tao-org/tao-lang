@@ -10,7 +10,7 @@ import { prepareParser } from '../../cli-checks/parser-build'
 import { embeddedFormatting } from './EmbeddedFormatting'
 
 /** updateTaoSource applies requested source tools once before the file watcher observes a save. */
-export const updateTaoSource = Timings.topLevelTimer(async function(
+export const updateTaoSource = Timings.createTopLevelTimer(async function(
   timings,
   path: string,
   mode: 'format' | 'fix',

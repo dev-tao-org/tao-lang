@@ -5,11 +5,11 @@ export type TimingResult = ReturnType<typeof entry>
 
 const operation = Timings.measured('typed', (value: string) => value.length)
 const orchestration = Timings.measure('typed-parent', (timings, value: string) => timings.run(operation, value))
-const entry = Timings.topLevelTimer((timings, value: string) => timings.run(orchestration, value))
+const entry = Timings.createTopLevelTimer((timings, value: string) => timings.run(orchestration, value))
 // @ts-expect-error The collector constructor is private.
 const constructor: new() => Timings = Timings
 void constructor
-Timings.topLevelTimer(collector => {
+Timings.createTopLevelTimer(collector => {
   const result: number = collector.run(operation, 'Tao')
   const nested: number = collector.run(entry, 'Tao')
   const direct: number = entry('Tao')
@@ -24,4 +24,4 @@ Timings.topLevelTimer(collector => {
   collector.run(orchestration, collector, 'Tao')
 })
 // @ts-expect-error Injected clocks require an explicit identity.
-Timings.topLevelTimer(() => {}, { now: () => 0 })
+Timings.createTopLevelTimer(() => {}, { now: () => 0 })

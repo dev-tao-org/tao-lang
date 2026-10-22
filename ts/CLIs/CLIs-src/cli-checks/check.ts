@@ -75,7 +75,7 @@ export async function workspaceTypes(): Promise<void> {
     'stdlib',
   ]
   const discoveredProjects = await Promise.all(packages.map(async project => {
-    const sourceFiles = await FileSystem.sourceFiles(Repo.resolvePath('ts', project))
+    const sourceFiles = await FileSystem.listSourceFiles(Repo.resolvePath('ts', project))
     return sourceFiles.length > 0 ? project : undefined
   }))
   const projects = discoveredProjects.filter((project): project is string => project !== undefined)

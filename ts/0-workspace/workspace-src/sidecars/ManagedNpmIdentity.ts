@@ -1,5 +1,5 @@
 import { Path, Platform } from '@shared/os'
-import { allRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
+import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { installHostIdentity } from './ManagedNpmHost'
@@ -20,12 +20,12 @@ export function normalizeManagedRequirements(input: ManagedModulesInput): Normal
   })
 }
 
-/** managedGraphFingerprint hashes the canonical graph and policy inputs. */
-export function managedGraphFingerprint(
+/** calculateManagedGraphFingerprint hashes the canonical graph and policy inputs. */
+export function calculateManagedGraphFingerprint(
   input: ManagedModulesInput,
   normalized: readonly NormalizedManagedRequirement[],
 ): string {
-  const requirements = allRequirements(normalized, input.runtimePins)
+  const requirements = collectAllRequirements(normalized, input.runtimePins)
   return Platform.hashText(JSON.stringify({
     requirements: Object.fromEntries(Object.keys(requirements).sort().map(key => [key, requirements[key]])),
     target: input.target,
@@ -35,8 +35,8 @@ export function managedGraphFingerprint(
   }))
 }
 
-/** managedProfileFingerprint identifies one graph install for its Bun, host, and compiler settings. */
-export function managedProfileFingerprint(input: ManagedModulesInput, graphFingerprint: string): string {
+/** calculateManagedProfileFingerprint identifies one graph install for its Bun, host, and compiler settings. */
+export function calculateManagedProfileFingerprint(input: ManagedModulesInput, graphFingerprint: string): string {
   return Platform.hashText(JSON.stringify({
     graphFingerprint,
     bunVersion: input.bunVersion,
@@ -45,18 +45,18 @@ export function managedProfileFingerprint(input: ManagedModulesInput, graphFinge
   }))
 }
 
-/** managedProfilePath resolves the host-specific generated profile directory. */
-export function managedProfilePath(input: ManagedModulesInput, fingerprint: string): string {
+/** resolveManagedProfilePath resolves the host-specific generated profile directory. */
+export function resolveManagedProfilePath(input: ManagedModulesInput, fingerprint: string): string {
   return Path.join(input.directory, '.tao', 'cache', 'managed-modules', fingerprint)
 }
 
-/** managedDurableLockPath resolves the canonical lock location for a graph identity. */
-export function managedDurableLockPath(input: ManagedModulesInput, graphFingerprint: string): string {
+/** resolveManagedDurableLockPath locates the canonical lock for a graph identity. */
+export function resolveManagedDurableLockPath(input: ManagedModulesInput, graphFingerprint: string): string {
   return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.lock`)
 }
 
-/** managedDurableLockHashPath resolves the integrity record for a graph's durable lock. */
-export function managedDurableLockHashPath(input: ManagedModulesInput, graphFingerprint: string): string {
+/** resolveManagedDurableLockHashPath locates the integrity record for a graph's durable lock. */
+export function resolveManagedDurableLockHashPath(input: ManagedModulesInput, graphFingerprint: string): string {
   return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.sha256`)
 }
 

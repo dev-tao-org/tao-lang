@@ -12,9 +12,9 @@ export class PipelineWatchDirectories {
   constructor(private readonly options: Pick<FileManagerOptions, 'outputDirectory' | 'watchDirectories'>) {}
 
   update(root: string | undefined, authored: readonly string[], snapshots: readonly string[]): boolean {
-    const nextAuthored = uniquePaths(authored).filter(path => !root || !Path.isWithin(root, path))
-    const nextSnapshots = uniquePaths(snapshots)
-    if (samePaths(this.authored, nextAuthored) && samePaths(this.snapshots, nextSnapshots)) {
+    const nextAuthored = collectUniquePaths(authored).filter(path => !root || !Path.isWithin(root, path))
+    const nextSnapshots = collectUniquePaths(snapshots)
+    if (haveSamePaths(this.authored, nextAuthored) && haveSamePaths(this.snapshots, nextSnapshots)) {
       return false
     }
     this.authored = nextAuthored
@@ -23,11 +23,14 @@ export class PipelineWatchDirectories {
   }
 
   additional(): string[] {
-    return uniquePaths([...this.options.watchDirectories ?? [], ...this.authored])
+    return collectUniquePaths([...this.options.watchDirectories ?? [], ...this.authored])
   }
 
   ignored(): string[] {
-    return uniquePaths([...this.options.outputDirectory ? [this.options.outputDirectory] : [], ...this.snapshots])
+    return collectUniquePaths([
+      ...this.options.outputDirectory ? [this.options.outputDirectory] : [],
+      ...this.snapshots,
+    ])
   }
 
   ignores(path: string): boolean {
@@ -57,7 +60,7 @@ export async function loadFileManagerInput(
     return snapshot
   }
   if (!isCurrent()) {
-    return supersededResult(request.id)
+    return createSupersededResult(request.id)
   }
   const document = documents.get(request.input.path) ?? new Document(request.input.path)
   documents.set(request.input.path, document)
@@ -142,37 +145,37 @@ export type CompletedInput = {
 /** Refresh creates a waitable compile completion. */
 export type Refresh = { promise: Promise<UpdateResult>; settle(result: UpdateResult): void }
 
-/** newRefresh creates a waitable compile completion. */
-export function newRefresh(): Refresh {
+/** createRefresh creates a waitable compile completion. */
+export function createRefresh(): Refresh {
   let settle!: (result: UpdateResult) => void
   return { promise: new Promise(resolve => settle = resolve), settle }
 }
 
-/** inputPath returns the selected file identity for a queued request. */
-export function inputPath(input: FileManagerInput): string | undefined {
+/** resolveInputPath returns the selected file identity for a queued request. */
+export function resolveInputPath(input: FileManagerInput): string | undefined {
   return input.path
 }
 
-/** supersededInput creates callback data for invalidated work. */
-export function supersededInput(request: QueuedInput): CompletedInput {
+/** createSupersededInput creates callback data for invalidated work. */
+export function createSupersededInput(request: QueuedInput): CompletedInput {
   const source = request.input.kind === 'source' ? request.input.source : ''
   const version = request.input.kind === 'source' ? request.input.version : undefined
   return {
-    result: supersededResult(request.id),
-    path: inputPath(request.input),
+    result: createSupersededResult(request.id),
+    path: resolveInputPath(request.input),
     source,
     version,
   }
 }
 
-/** failedInput creates callback data for errors raised while processing a request. */
-export function failedInput(request: QueuedInput, error: unknown): CompletedInput {
+/** createFailedInput creates callback data for errors raised while processing a request. */
+export function createFailedInput(request: QueuedInput, error: unknown): CompletedInput {
   const source = request.input.kind === 'source' ? request.input.source : ''
   const version = request.input.kind === 'source' ? request.input.version : undefined
   const samples = request.input.kind === 'source' ? request.input.timings.samples : []
   return {
-    result: failedResult(request.id, error, samples),
-    path: inputPath(request.input),
+    result: createFailedResult(request.id, error, samples),
+    path: resolveInputPath(request.input),
     source,
     version,
   }
@@ -183,21 +186,21 @@ export function isRelevantChange(change: WorkspaceWatch.WorkspaceChange): boolea
   return change.kind === 'addDir' || change.kind === 'unlinkDir' || /\.(?:tao|tsx?|jsx?|json)$/.test(change.path)
 }
 
-/** failedResult creates a failed source-read or compiler result. */
-export function failedResult(id: number, error: unknown, timings: Timings['samples']): UpdateResult {
+/** createFailedResult creates a failed source-read or compiler result. */
+export function createFailedResult(id: number, error: unknown, timings: Timings['samples']): UpdateResult {
   return {
     status: 'failed',
     revision: `r${id}`,
     error: String(error),
     setupRequired: isSetupRequired(error),
     timings,
-    stages: skippedStages(),
+    stages: createSkippedStages(),
   }
 }
 
-/** supersededResult creates a result for work invalidated before publication. */
-export function supersededResult(id: number): UpdateResult {
-  return { status: 'superseded', revision: `r${id}`, timings: [], stages: skippedStages() }
+/** createSupersededResult creates a result for work invalidated before publication. */
+export function createSupersededResult(id: number): UpdateResult {
+  return { status: 'superseded', revision: `r${id}`, timings: [], stages: createSkippedStages() }
 }
 
 /** notifyCompletion isolates observer failures from compilation and reports them to the source error handler. */
@@ -216,7 +219,7 @@ export function notifyCompletion(
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
-const readSource = Timings.topLevelTimer(async function(
+const readSource = Timings.createTopLevelTimer(async function(
   timings,
   path: string,
   observedAtMs: number,
@@ -247,15 +250,15 @@ function defaultRead(path: string, observedAtMs: number): Promise<ReadResult> {
   }))
 }
 
-function uniquePaths(paths: readonly string[]): string[] {
+function collectUniquePaths(paths: readonly string[]): string[] {
   return [...new Set(paths.map(path => Path.resolve(path)))].sort()
 }
 
-function samePaths(left: readonly string[], right: readonly string[]): boolean {
+function haveSamePaths(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((path, index) => path === right[index])
 }
 
-function skippedStages(): Extract<UpdateResult, { status: 'failed' }>['stages'] {
+function createSkippedStages(): Extract<UpdateResult, { status: 'failed' }>['stages'] {
   return {
     typecheck: { stage: 'typecheck', status: 'skipped' },
     fix: { stage: 'fix', status: 'skipped' },

@@ -2,7 +2,7 @@ import type { Tree } from '@cst'
 import { Timings } from '@shared'
 import { Formatting } from './format/Formatting'
 import { Layout } from './format/Layout'
-import { formattingPlan } from './lib/formatter/Formatter'
+import { createFormattingPlan } from './lib/formatter/Formatter'
 import { layout, type LayoutOptions } from './lib/layout/Layout'
 import { applyEdits, type SourceEdit, type SourceRange } from './Source'
 
@@ -20,7 +20,7 @@ export type FormatResult = {
 }
 
 /** format proposes whitespace edits for one parsed Tao source without file access or mutation. */
-export const format = Timings.topLevelTimer(function(
+export const format = Timings.createTopLevelTimer(function(
   timings,
   input: FormatInput,
   options: LayoutOptions = {},
@@ -36,7 +36,7 @@ const formatSource = Timings.measure('formatter.format', function(
   if (input.tree.rootNode.type !== 'SourceFile') {
     return { status: 'invalid', text: input.source, edits: [], skipped: [{ start: 0, end: input.source.length }] }
   }
-  const plan = formattingPlan(input.source, input.tree, Formatting, Layout, timings)
+  const plan = createFormattingPlan(input.source, input.tree, Formatting, Layout, timings)
   const edits = layout(plan, options, timings)
   const status = plan.skipped.length === 0
     ? 'formatted'

@@ -2,7 +2,7 @@ import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings } from '@shared'
 import { Artifacts, FileSystem, Path, Repo, Tests } from '@shared/os'
-import { projectDependencyOptions } from '@workspace/dependencies/Options'
+import { createProjectDependencyOptions } from '@workspace/dependencies/Options'
 import { prepareDependencies } from '@workspace/dependencies/Store'
 import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
 import { prepareParser } from '../../cli-checks/parser-build'
@@ -18,7 +18,7 @@ export default registerCommand({
     description: 'parser, formatter, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
-  action: Timings.topLevelTimer(async function(timings, target: string) {
+  action: Timings.createTopLevelTimer(async function(timings, target: string) {
     if (target === 'formatter') {
       return runFormatter()
     }
@@ -80,7 +80,7 @@ async function runPreview(initialSource?: string) {
   const { createProject } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
   const project = await createProject()
-  const dependencies = await projectDependencyOptions(project.directory)
+  const dependencies = await createProjectDependencyOptions(project.directory)
   await prepareDependencies(project.directory, await dependencies.readRequirements(project.directory), dependencies)
   const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
   await Runtime.prepareRuntime({

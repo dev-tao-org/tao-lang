@@ -5,7 +5,7 @@ import { parserFixtures } from './parser-fixtures'
 
 const loadParserModule = Timings.measured('parser.module-load', () => import('../../1-grammar/grammar-src/parser'))
 
-const main = Timings.topLevelTimer(async function(timings) {
+const main = Timings.createTopLevelTimer(async function(timings) {
   const { createParser } = await timings.run(loadParserModule)
   const parser = timings.run(createParser)
   const source = (await parserFixtures())[0]!.source

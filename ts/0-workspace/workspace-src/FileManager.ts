@@ -5,22 +5,22 @@ import {
   type CompiledEvent,
   type CompileRequest,
   type CompletedInput,
-  failedInput,
-  failedResult,
+  createFailedInput,
+  createFailedResult,
+  createRefresh,
+  createSupersededInput,
+  createSupersededResult,
   type FileManagerInput,
   type FileManagerOptions,
-  inputPath,
   isRelevantChange,
   loadFileManagerInput,
-  newRefresh,
   notifyCompletion,
   type Pending,
   PipelineWatchDirectories,
   type Refresh,
-  supersededInput,
-  supersededResult,
+  resolveInputPath,
 } from './FileManagerCompilation'
-import { nearestProjectRoot } from './modules/Paths'
+import { findNearestProjectRoot } from './modules/Paths'
 import type { UpdateResult } from './Workspace'
 
 export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileManagerCompilation'
@@ -70,11 +70,11 @@ export class FileManager {
     const observation = this.observationGeneration
     this.refreshTimer?.()
     this.refreshTimer = undefined
-    this.resolveRefresh(supersededResult(this.sequence))
+    this.resolveRefresh(createSupersededResult(this.sequence))
     this.entryPath = entry
     await this.ensureWatcher()
     if (generation !== this.entryGeneration) {
-      return supersededResult(this.sequence)
+      return createSupersededResult(this.sequence)
     }
     const refresh = this.observationGeneration === observation
       ? this.startRefresh(entry, Time.timestampMs(), generation, observation)
@@ -120,7 +120,7 @@ export class FileManager {
     this.observationGeneration++
     this.refreshTimer?.()
     this.refreshTimer = undefined
-    this.resolveRefresh(supersededResult(this.sequence))
+    this.resolveRefresh(createSupersededResult(this.sequence))
     this.resolveSuperseded(this.current)
     this.resolveSuperseded(this.queued)
     this.queued = undefined
@@ -142,7 +142,7 @@ export class FileManager {
   }
 
   private startRefresh(path: string, observedAtMs: number, generation: number, observation: number): Refresh {
-    const refresh = newRefresh()
+    const refresh = createRefresh()
     this.refresh = refresh
     void this.enqueue({ kind: 'disk', path, startedAtMs: observedAtMs }, generation, observation).then(refresh.settle)
     return refresh
@@ -153,8 +153,8 @@ export class FileManager {
       return
     }
     this.observationGeneration++
-    this.resolveRefresh(supersededResult(this.sequence))
-    const refresh = newRefresh()
+    this.resolveRefresh(createSupersededResult(this.sequence))
+    const refresh = createRefresh()
     this.refresh = refresh
     this.refreshTimer?.()
     const path = this.entryPath!
@@ -224,7 +224,7 @@ export class FileManager {
     while (this.current) {
       const request = this.current
       const completed = await Try(() => this.processRequest(request), {
-        catch: error => failedInput(request, error),
+        catch: error => createFailedInput(request, error),
       })
       request.resolve(completed.result)
       if (!this.disposed) {
@@ -237,17 +237,17 @@ export class FileManager {
 
   private async processRequest(request: Pending): Promise<CompletedInput> {
     if (!this.isCurrent(request)) {
-      return supersededInput(request)
+      return createSupersededInput(request)
     }
     const loaded = await loadFileManagerInput(request, this.documents, this.options.read, () => this.isCurrent(request))
     if ('status' in loaded) {
       if (loaded.status === 'failed' && request.input.kind === 'disk' && this.isCurrent(request)) {
         this.options.onSourceError?.(loaded.error)
       }
-      return { result: loaded, path: inputPath(request.input), source: '', version: undefined }
+      return { result: loaded, path: resolveInputPath(request.input), source: '', version: undefined }
     }
     if (!this.isCurrent(request)) {
-      return supersededInput(request)
+      return createSupersededInput(request)
     }
     const compileRequest: CompileRequest = {
       id: request.id,
@@ -259,12 +259,12 @@ export class FileManager {
       version: loaded.version,
     }
     const result = await Try(() => this.options.compile(compileRequest, () => this.isCurrent(request)), {
-      catch: error => failedResult(request.id, error, loaded.timings.samples),
+      catch: error => createFailedResult(request.id, error, loaded.timings.samples),
     })
     return { result, path: loaded.path, source: loaded.source, version: loaded.version }
   }
 
-  private readonly snapshotInput = Timings.topLevelTimer(
+  private readonly snapshotInput = Timings.createTopLevelTimer(
     (timings, source: string | Document, startedAtMs: number): FileManagerInput => {
       const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
       const document = source instanceof Document ? source : this.documents.get(path) ?? new Document(path)
@@ -277,7 +277,7 @@ export class FileManager {
   )
 
   private selectWorkspaceRoot(entry: string): void {
-    this.workspaceRoot ??= nearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
+    this.workspaceRoot ??= findNearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
     if (!Path.isWithin(this.workspaceRoot, entry)) {
       Errors.ThrowUserInput(`Entry file must be inside the workspace root: ${entry}`)
     }
@@ -323,7 +323,7 @@ export class FileManager {
 
   private resolveSuperseded(request: Pending | undefined): void {
     if (request) {
-      request.resolve(supersededResult(request.id))
+      request.resolve(createSupersededResult(request.id))
     }
   }
 

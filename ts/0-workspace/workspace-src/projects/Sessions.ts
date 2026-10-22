@@ -7,18 +7,18 @@ import {
   isRegularFile,
   pathExists,
 } from './Lifecycle'
-import { projectLayout } from './Projects'
+import { deriveProjectLayout } from './Projects'
 
 /** acquireSession opens a named or internal CLI/Studio project session. */
 export async function acquireSession(
   projectRoot: string,
   options: SessionOptions = {},
 ): Promise<ProjectSession> {
-  const id = options.id ?? internalId(options.kind ?? 'cli')
+  const id = options.id ?? createInternalSessionId(options.kind ?? 'cli')
   if (options.id) {
     validateSessionId(id)
   }
-  const layout = projectLayout(Path.resolve(projectRoot))
+  const layout = deriveProjectLayout(Path.resolve(projectRoot))
   const lifecycle = await acquireProjectLifecycle(layout.root, 2_000)
   if (!lifecycle) {
     Errors.ThrowUserInput('Project maintenance is active. Retry session startup when it finishes.')
@@ -62,7 +62,7 @@ function isUserSessionId(id: string): boolean {
   return /^[a-z0-9][a-z0-9_-]*$/.test(id)
 }
 
-function internalId(kind: 'cli' | 'studio'): string {
+function createInternalSessionId(kind: 'cli' | 'studio'): string {
   return kind === 'cli' ? '.cli' : '.studio'
 }
 
@@ -82,7 +82,7 @@ async function ensureSessionState(directory: string): Promise<void> {
 
 const sessionMarker = '{"format":1}\n'
 
-async function acquireSessionLock(layout: ReturnType<typeof projectLayout>, id: string) {
+async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
   await ensureProjectDirectory(layout.cacheDirectory)
   await ensureProjectDirectory(layout.sessionsDirectory)
   await ensureProjectDirectory(layout.sessionLocksDirectory)
@@ -94,7 +94,7 @@ async function acquireSessionLock(layout: ReturnType<typeof projectLayout>, id: 
     ?? Errors.ThrowUserInput(`Project session is already active: ${id}`)
 }
 
-async function prepareSession(id: string, layout: ReturnType<typeof projectLayout>, lock: SessionHandle) {
+async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
   const directory = Path.join(layout.sessionsDirectory, id)
   await ensureProjectDirectory(directory)
   await ensureSessionState(directory)

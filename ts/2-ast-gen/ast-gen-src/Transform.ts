@@ -4,7 +4,7 @@ import * as AST from './AST'
 
 /** transform constructs an AST only for a syntactically valid source snapshot.
  *  Returned semantic nodes and numeric origins do not retain the caller-owned CST. */
-export const transform = Timings.topLevelTimer(function(
+export const transform = Timings.createTopLevelTimer(function(
   timings,
   tree: CST.Tree,
 ): AST.Document | undefined {

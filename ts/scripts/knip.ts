@@ -3,43 +3,43 @@ import { FileSystem, Path, Repo } from '../shared/shared-src/os'
 /** knipConfiguration checks package workspaces while recognizing imported command registrations. */
 export default {
   workspaces: {
-    '0-workspace': packageWorkspace([
+    '0-workspace': createPackageWorkspace([
       'workspace-src/Workspace.ts',
     ]),
-    '1-grammar': packageWorkspace([]),
-    '2-ast-gen': packageWorkspace([]),
-    '3-typecheck': packageWorkspace([]),
-    '4-fix': packageWorkspace([]),
-    '5-check': { ...packageWorkspace([]), entry: [] },
-    '6-compile': packageWorkspace([]),
-    '7-runtime': packageWorkspace([
+    '1-grammar': createPackageWorkspace([]),
+    '2-ast-gen': createPackageWorkspace([]),
+    '3-typecheck': createPackageWorkspace([]),
+    '4-fix': createPackageWorkspace([]),
+    '5-check': { ...createPackageWorkspace([]), entry: [] },
+    '6-compile': createPackageWorkspace([]),
+    '7-runtime': createPackageWorkspace([
       'runtime-src/TR.ts',
       'runtime-src/HMRClient.ts',
     ]),
-    CLIs: packageWorkspace([
-      ...cliEntries(),
-      ...cliEntries().flatMap(commandEntries),
+    CLIs: createPackageWorkspace([
+      ...listCLIEntries(),
+      ...listCLIEntries().flatMap(listCommandEntries),
       'CLIs-src/dev-cli/commands/_setup.ts',
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
       'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
-      ...await skillEntries(),
+      ...await listSkillEntries(),
     ]),
-    perf: packageWorkspace([
+    perf: createPackageWorkspace([
       'perf-src/parser-sample.ts',
       'perf-src/parser-performance.ts',
       'perf-src/preview-performance.ts',
       'perf-src/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
     ]),
-    shared: packageWorkspace([]),
-    stdlib: packageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
-    'ide-extensions/tao-ide-extension': nestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
-    'ide-extensions/dev-tao-org': nestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
+    shared: createPackageWorkspace([]),
+    stdlib: createPackageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
+    'ide-extensions/tao-ide-extension': createNestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
+    'ide-extensions/dev-tao-org': createNestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 }
 
-function packageWorkspace(entry: string[]) {
+function createPackageWorkspace(entry: string[]) {
   return {
     entry: [...entry.map(pattern => `${pattern}!`), '**/*.test.ts'],
     project: ['**/*.{ts,tsx}!', '!**/*-test/**!', '!**/*.test.ts!'],
@@ -62,8 +62,8 @@ function packageWorkspace(entry: string[]) {
   }
 }
 
-function nestedPackageWorkspace(entry: string[]) {
-  const configuration = packageWorkspace(entry)
+function createNestedPackageWorkspace(entry: string[]) {
+  const configuration = createPackageWorkspace(entry)
   return {
     ...configuration,
     paths: Object.fromEntries(
@@ -72,7 +72,7 @@ function nestedPackageWorkspace(entry: string[]) {
   }
 }
 
-function cliEntries(): string[] {
+function listCLIEntries(): string[] {
   return [
     'CLIs-src/agent-cli/agent-cli.ts',
     'CLIs-src/dev-cli/dev-cli.ts',
@@ -80,13 +80,13 @@ function cliEntries(): string[] {
   ]
 }
 
-function commandEntries(registry: string): string[] {
+function listCommandEntries(registry: string): string[] {
   const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
   return [...source.matchAll(/^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm)]
     .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
 }
 
-async function skillEntries(): Promise<string[]> {
+async function listSkillEntries(): Promise<string[]> {
   const root = Repo.resolvePath('ts/CLIs/CLIs-src/agent-skills')
   const entries: string[] = []
   for (const folder of await FileSystem.readdir(root, { withFileTypes: true })) {

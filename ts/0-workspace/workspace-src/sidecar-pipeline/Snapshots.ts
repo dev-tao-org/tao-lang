@@ -227,7 +227,7 @@ async function validateModuleViews(
   destination: string,
 ): Promise<void> {
   for (const view of group.views) {
-    const name = view.declaration.name.value
+    const name = AST.GetViewName(view.declaration)
     if (view.declaration.parameters.some(parameter => parameter.type.value !== 'text')) {
       Errors.ThrowUserInput(`Foreign view ${name} parameters must all use text.`)
     }
