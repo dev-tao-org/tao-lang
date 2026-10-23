@@ -68,7 +68,7 @@ function createModuleContexts(
 
 function resolveContext(contexts: ModuleContexts, source: string): DeclarationContext {
   return contexts.get(source)
-    ?? Errors.ThrowUserInput(`Linked module is missing from the program: ${source}.`)
+    ?? Errors.ThrowShouldNeverHappen(`Linked module is missing from the program: ${source}.`)
 }
 
 function compileAliases(program: LinkedProgram, contexts: ModuleContexts): string {
@@ -149,7 +149,7 @@ function createDeclarationKey(source: string, name: string): string {
 
 function selectApp(program: LinkedProgram, appName?: string): { source: string; declaration: AST.AppDeclaration } {
   const entry = program.modules.find(module => module.path === program.entry)
-    ?? Errors.ThrowUserInput(`Linked entry module is missing from the program: ${program.entry}.`)
+    ?? Errors.ThrowShouldNeverHappen(`Linked entry module is missing from the program: ${program.entry}.`)
   if (appName === undefined) {
     const apps = AST.GetAppDeclarations(entry.document)
     if (apps.length !== 1) {
