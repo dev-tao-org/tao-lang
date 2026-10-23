@@ -9,6 +9,7 @@ import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { typecheck } from '@typecheck/Typecheck'
+import { prepareBuildTypeScript } from './BuildTypeScript'
 import type { Document } from './Document'
 import { type CompileRequest, FileManager, type FileManagerOptions } from './FileManager'
 import { loadModules, type ModuleLoadOptions } from './modules/Loader'
@@ -277,11 +278,15 @@ class WorkspaceSession {
   private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
     const output = this.output
       ?? Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
-    this.application ??= await Runtime.create({
-      ...this.options.runtimeOptions,
-      directory: output.runtimeDirectory,
-      onProgress: this.options.onProgress,
-    })
+    if (!this.application) {
+      const application = await Runtime.create({
+        ...this.options.runtimeOptions,
+        directory: output.runtimeDirectory,
+        onProgress: this.options.onProgress,
+      })
+      await prepareBuildTypeScript(output.buildDirectory, application)
+      this.application = application
+    }
     return this.application
   }
 }
