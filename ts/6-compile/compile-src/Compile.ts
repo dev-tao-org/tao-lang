@@ -9,12 +9,12 @@ export type CompileOptions = {
   revision: string
   app?: string
   program?: LinkedProgram
-  foreignViewPath?: ForeignViewPathResolver
+  resolveForeignViewPath?: ForeignViewPathResolver
 }
 
 /** compile emits a single Expo app module through typed Tao runtime APIs.
  *  Full compilation consumes one immutable AST; no previous result is reused. */
-export const compile = Timings.topLevelTimer(function(
+export const compile = Timings.createTopLevelTimer(function(
   timings,
   document: AST.Document,
   options: CompileOptions,
@@ -27,11 +27,11 @@ const generate = Timings.measured('compiler.generate', function(
   options: CompileOptions,
 ): string {
   const program = options.program ?? linkSingleFile(document)
-  return compileProgram(program, options.revision, options.app, options.foreignViewPath)
+  return compileProgram(program, options.revision, options.app, options.resolveForeignViewPath)
 })
 
 function linkSingleFile(document: AST.Document): LinkedProgram {
-  const hasImports = document.root.declarations.some(AST.IsImportStatement)
+  const hasImports = AST.HasImportStatements(document)
   if (hasImports) {
     Errors.ThrowUserInput('Compile a Tao file with use statements through its linked program.')
   }
