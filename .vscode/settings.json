@@ -65,7 +65,7 @@
     ".x-tao-old-v1/**": true,
     ".x-tao-old-v1/**/node_modules": true,
     "old-packages/**/node_modules": true,
-    "**/.tao/cache/**": true,
+    // "**/.tao/cache/**": true,
     ".x-tao-old-v1/Apps/Tao Studio/tsconfig.json": true,
     ".x-tao-old-v1/Apps/Tao Studio/node_modules": true,
     ".x-tao-old-v1/Apps/Syntax2/tsconfig.json": true,
