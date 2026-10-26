@@ -8,4 +8,4 @@ From the repository root, Cmd+Shift+B or `just install-ide-extension` builds Tao
 
 Run `./agent setup` before building. The first WASM build lets the pinned Tree-sitter CLI download its WASI SDK into its cache; later builds reuse it. The extension needs no network access at runtime. `./agent performance extension` records incremental parser/query timings on Kitchen Sink, excluding editor rendering.
 
-Tao trees are retained per document. Embedded TSX blocks are fully parsed and queried on each update in this first slice. Diagnostics cover syntax; typechecking, completion and formatting remain future language-service work.
+Tao trees are retained per document. Embedded TSX blocks are fully parsed and queried on each update in this first slice. Diagnostics cover syntax; typechecking and completion remain future language-service work.

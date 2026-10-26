@@ -1,3 +1,6 @@
+/** previewExpectationCapacity bounds outstanding and retained preview expectations. */
+export const previewExpectationCapacity = 64
+
 /** PreviewExpectation identifies ordered generated output expected by a preview. */
 export type PreviewExpectation = { revision: string; sequence: number }
 
@@ -22,7 +25,7 @@ export type PreviewOutcomeSnapshot = {
 /** PreviewOutcomeTracker bounds outstanding work independently for one preview frame. */
 export class PreviewOutcomeTracker {
   private bootId?: string
-  private readonly pending = new Map<number, PreviewExpectation & { startedAt: number }>()
+  private readonly pending = new Map<number, PendingExpectation>()
   private readonly diagnostics: string[] = []
   private latestApplied = -1
   private automaticRecoveryUsed = false
@@ -43,11 +46,11 @@ export class PreviewOutcomeTracker {
   }
 
   expect(expectation: PreviewExpectation, now: number): void {
-    if (this.expired || expectation.sequence <= this.latestApplied || this.pending.has(expectation.sequence)) {
+    if (shouldIgnoreExpectation(this.expired, expectation, this.latestApplied, this.pending)) {
       return
     }
     this.pending.set(expectation.sequence, { ...expectation, startedAt: now })
-    if (this.pending.size > 64) {
+    if (this.pending.size > previewExpectationCapacity) {
       this.recordError('Preview update backlog exceeded its limit. Reload to synchronize.')
       this.expired = true
       this.pending.clear()
@@ -77,7 +80,7 @@ export class PreviewOutcomeTracker {
       // No-op and superseded publications need no React commit.
     }
     for (const sequence of this.pending.keys()) {
-      if (sequence === outcome.sequence || (outcome.kind === 'applied' && sequence < outcome.sequence)) {
+      if (shouldRemovePendingOutcome(sequence, outcome)) {
         this.pending.delete(sequence)
       }
     }
@@ -85,7 +88,7 @@ export class PreviewOutcomeTracker {
 
   checkDeadline(now: number): 'reload' | 'failed' | undefined {
     const oldest = this.pending.values().next().value
-    if (!oldest || now - oldest.startedAt < this.timeoutMs || this.expired) {
+    if (shouldSkipDeadline(oldest, now, this.timeoutMs, this.expired)) {
       return undefined
     }
     this.expired = true
@@ -129,6 +132,30 @@ export class PreviewOutcomeTracker {
       this.diagnostics.splice(0, Math.max(0, this.diagnostics.length - 16))
     }
   }
+}
+
+type PendingExpectation = PreviewExpectation & { startedAt: number }
+
+function shouldIgnoreExpectation(
+  expired: boolean,
+  expectation: PreviewExpectation,
+  latestApplied: number,
+  pending: ReadonlyMap<number, PreviewExpectation>,
+): boolean {
+  return expired || expectation.sequence <= latestApplied || pending.has(expectation.sequence)
+}
+
+function shouldRemovePendingOutcome(sequence: number, outcome: PreviewOutcome): boolean {
+  return sequence === outcome.sequence || (outcome.kind === 'applied' && sequence < outcome.sequence)
+}
+
+function shouldSkipDeadline(
+  oldest: PendingExpectation | undefined,
+  now: number,
+  timeoutMs: number,
+  expired: boolean,
+): boolean {
+  return !oldest || now - oldest.startedAt < timeoutMs || expired
 }
 
 function isFailure(outcome: PreviewOutcome): boolean {

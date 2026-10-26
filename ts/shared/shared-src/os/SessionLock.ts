@@ -13,8 +13,8 @@ export async function acquire(path: string): Promise<SessionLock | undefined> {
   const pointerPath = Path.join(root, 'current.json')
   const pointer = await readLockPointer(root, pointerPath)
   const addonPath = Path.join(root, pointer.directory, 'build/Release/tao_os_locks.node')
-  const bindingPath = await loadLockBinding(addonPath)
-  const lock = bindingPath.acquire(path)
+  const lockBinding = await loadLockBinding(addonPath)
+  const lock = lockBinding.acquire(path)
   if (!lock) {
     return undefined
   }
@@ -44,17 +44,14 @@ async function readLockPointer(root: string, path: string): Promise<{ identity: 
   return await Try(async () => {
     const contents = await FileSystem.readFile(path, 'utf8')
     const value: unknown = Try(() => JSON.parse(contents), { catch: () => throwInvalidPointer(path) })
-    if (typeof value !== 'object' || value === null || !('identity' in value) || !('directory' in value)) {
+    if (!isLockPointerRecord(value)) {
       throwInvalidPointer(path)
     }
-    const pointer = value as { identity: unknown; directory: unknown }
+    const pointer = value
+    if (!hasSafePointerVersion(pointer)) {
+      throwInvalidPointer(path)
+    }
     const directory = pointer.directory
-    if (
-      typeof pointer.identity !== 'string' || typeof directory !== 'string'
-      || !isSafeVersionName(pointer.identity, directory)
-    ) {
-      throwInvalidPointer(path)
-    }
     const versionRoot = Path.resolve(root, directory)
     if (!Path.isWithin(root, versionRoot) || Path.dirname(versionRoot) !== Path.resolve(root)) {
       throwInvalidPointer(path)
@@ -70,6 +67,18 @@ async function readLockPointer(root: string, path: string): Promise<{ identity: 
       )
     },
   })
+}
+
+function isLockPointerRecord(value: unknown): value is { identity: unknown; directory: unknown } {
+  return typeof value === 'object' && value !== null && 'identity' in value && 'directory' in value
+}
+
+function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown }): pointer is {
+  identity: string
+  directory: string
+} {
+  return typeof pointer.identity === 'string' && typeof pointer.directory === 'string'
+    && isSafeVersionName(pointer.identity, pointer.directory)
 }
 
 function throwInvalidPointer(path: string): never {

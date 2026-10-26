@@ -21,8 +21,6 @@ export async function runTestPlan(
   await Try(() => executeTestPlan(options, controller.signal, workerEnvironment), { finally: stop })
 }
 
-type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: number }
-
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
 export async function runTaoTestFiles(
   paths: readonly string[],
@@ -66,6 +64,8 @@ export async function runTaoTestFiles(
     },
   )
 }
+
+type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: number }
 
 async function executeTestPlan(
   options: Parameters<typeof runTestPlan>[0],

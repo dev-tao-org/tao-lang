@@ -4,8 +4,6 @@ import { requireSetup } from '../SetupRequired'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
-const installPolicyVersion = 1
-
 /** installHostIdentity returns the host and policy identity stored with generated node_modules. */
 export function installHostIdentity(input: ManagedModulesInput): Record<string, string | number> {
   const host = input.hostIdentity ?? Platform.systemInfo()
@@ -77,3 +75,5 @@ async function removeOwnedInstallTree(profile: string): Promise<void> {
 function hostMatches(metadata: Record<string, unknown>, input: ManagedModulesInput): boolean {
   return JSON.stringify(metadata.installHost) === JSON.stringify(installHostIdentity(input))
 }
+
+const installPolicyVersion = 1

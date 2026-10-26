@@ -1,4 +1,5 @@
 import { FileSystem, Path, Repo } from '@shared/os'
+import * as GrammarTraversal from './grammar-traversal'
 
 /** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata. */
 export async function writeSemanticAst(directory: string): Promise<void> {
@@ -27,7 +28,7 @@ type NodeMetadata = {
 }
 
 type GrammarMetadata = { rules: Record<string, GrammarRule> }
-type GrammarRule = { type: string; value?: string; content?: GrammarRule; members?: GrammarRule[] }
+type GrammarRule = GrammarTraversal.GrammarRule
 type SemanticMetadata = {
   semanticNames: Record<string, string>
   semanticFieldNames: Record<string, Record<string, string>>
@@ -278,17 +279,7 @@ function subtypeNames(nodes: NodeMetadata[], name: string): string[] {
 }
 
 function tokenUnion(rule: GrammarRule | undefined): string {
-  return unique(ownedTokens(rule)).map(token => JSON.stringify(token)).join(' | ') || 'never'
-}
-
-function ownedTokens(rule: GrammarRule | undefined): string[] {
-  if (!rule || rule.type === 'SYMBOL') {
-    return []
-  }
-  if (rule.type === 'STRING') {
-    return [rule.value!]
-  }
-  return [...ownedTokens(rule.content), ...rule.members?.flatMap(ownedTokens) ?? []]
+  return unique(GrammarTraversal.collectOwnedTokens(rule)).map(token => JSON.stringify(token)).join(' | ') || 'never'
 }
 
 function unique(values: readonly string[]): string[] {

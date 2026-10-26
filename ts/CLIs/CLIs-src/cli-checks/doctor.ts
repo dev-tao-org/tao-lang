@@ -10,6 +10,13 @@ export async function doctorReport(fingerprintOnly = false): Promise<DoctorRepor
   return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
 }
 
+/** assertDoctorReady raises the diagnosis after its report has been printed. */
+export function assertDoctorReady(status: Check['status']): void {
+  if (status === 'fail') {
+    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
+  }
+}
+
 type DoctorReport = {
   version: 1
   repositoryRoot: string
@@ -26,13 +33,6 @@ function resolveReportStatus(checks: readonly Check[]): Check['status'] {
     return 'warn'
   }
   return 'pass'
-}
-
-/** assertDoctorReady raises the diagnosis after its report has been printed. */
-export function assertDoctorReady(status: Check['status']): void {
-  if (status === 'fail') {
-    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
-  }
 }
 
 function safeToken(value: string | undefined): string | undefined {

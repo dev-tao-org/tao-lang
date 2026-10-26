@@ -3,6 +3,19 @@ import { Text } from '@shared/os'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { assertUniqueSecretStoreKeys } from './secret-store-jsonc'
 
+/** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
+export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): Promise<string> {
+  const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join('\n')), {
+    catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
+  })).trim()
+  if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
+    Errors.ThrowUserInput(
+      'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
+    )
+  }
+  return secretKey
+}
+
 /** Cipher defines the age operations used by the Tao-owned secrets workflow. */
 export type Cipher = {
   encrypt: (plaintext: string, recipients: readonly string[]) => Promise<string>
@@ -115,29 +128,6 @@ export function withSecret(
   }
 }
 
-function resolveSecretNote(note: string | undefined, existingNote: string | undefined): { note?: string } {
-  if (note !== undefined) {
-    return { note }
-  }
-  if (existingNote !== undefined) {
-    return { note: existingNote }
-  }
-  return {}
-}
-
-/** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
-export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): Promise<string> {
-  const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join('\n')), {
-    catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
-  })).trim()
-  if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
-    Errors.ThrowUserInput(
-      'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
-    )
-  }
-  return secretKey
-}
-
 /** decryptSecretValues rejects machine-encrypted legacy entries before unwrapping or decrypting any value. */
 export async function decryptSecretValues(
   store: SecretStore,
@@ -195,6 +185,16 @@ function isStoreKeyArmor(armor: string): boolean {
   const body = armor.split('\n').filter(line => !line.startsWith('-----')).join('')
   const header = Text.decodeBase64Ascii(body).split('\n--- ')[0] ?? ''
   return header.split('\n').some(line => line.startsWith('-> X25519 '))
+}
+
+function resolveSecretNote(note: string | undefined, existingNote: string | undefined): { note?: string } {
+  if (note !== undefined) {
+    return { note }
+  }
+  if (existingNote !== undefined) {
+    return { note: existingNote }
+  }
+  return {}
 }
 
 type SecretEntry = {

@@ -143,6 +143,17 @@ export async function workspaceTests(
   await runTestPlan({ ...selection, slowSeconds })
 }
 
+/** workspaceFormat formats or checks the new workspace and shared repository files. */
+export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
+  await assertNewWorkspaceTree()
+  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
+    cwd: Repo.getWorkspaceRoot(),
+  })
+  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
+    cwd: Repo.getWorkspaceRoot(),
+  })
+}
+
 function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   if (args.length === 0) {
     return true
@@ -154,17 +165,6 @@ function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
       return true
     }
     return isWithinDirectory(workspace, Path.resolve(root, argument))
-  })
-}
-
-/** workspaceFormat formats or checks the new workspace and shared repository files. */
-export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
-  await assertNewWorkspaceTree()
-  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
-    cwd: Repo.getWorkspaceRoot(),
-  })
-  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
-    cwd: Repo.getWorkspaceRoot(),
   })
 }
 

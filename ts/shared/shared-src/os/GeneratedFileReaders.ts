@@ -2,6 +2,8 @@ import { Errors } from '../universal/universal'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
 import { sep } from './NodeBuiltins'
 
+const generatedDescriptorBase = 1_000_000
+
 /** installGeneratedReaders routes reads and descriptors without native or synthetic generated watchers. */
 export function installGeneratedReaders(options: GeneratedReaderOptions): () => void {
   const descriptors = new Map<number, { owner: GeneratedSnapshot; descriptor: number }>()
@@ -40,7 +42,7 @@ function restoreFunctions(target: FileOperations, original: FileOperations): voi
 
 function installPathReaders(options: GeneratedReaderOptions, descriptors: DescriptorOwners): void {
   for (const [name, original] of Object.entries(options.original)) {
-    if (typeof original !== 'function' || !/^[a-z]/.test(name) || name === 'open' || name === 'openSync') {
+    if (!isPathReader(name, original)) {
       continue
     }
     const base = name.endsWith('Sync') ? name.slice(0, -4) : name
@@ -96,7 +98,7 @@ function installPromiseReaders(options: GeneratedReaderOptions): void {
 }
 
 function installDescriptors(options: GeneratedReaderOptions, descriptors: DescriptorOwners): void {
-  let nextDescriptor = 1_000_000
+  let nextDescriptor = generatedDescriptorBase
   const retainDescriptor = (owner: GeneratedSnapshot, descriptor: number) => {
     const exposed = nextDescriptor++
     descriptors.set(exposed, { owner, descriptor })
@@ -140,6 +142,13 @@ function installDescriptors(options: GeneratedReaderOptions, descriptors: Descri
       return invoke(descriptor.owner, name, descriptor.descriptor, ...arguments_)
     }
   }
+}
+
+function isPathReader(
+  name: string,
+  operation: FileOperations[string],
+): operation is NonNullable<FileOperations[string]> {
+  return typeof operation === 'function' && /^[a-z]/.test(name) && name !== 'open' && name !== 'openSync'
 }
 
 function installStreams(options: GeneratedReaderOptions): void {

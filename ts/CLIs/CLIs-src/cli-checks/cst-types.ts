@@ -1,4 +1,5 @@
 import { FileSystem, Path } from '@shared/os'
+import * as GrammarTraversal from './grammar-traversal'
 
 /** writeCSTTypes derives field names and directly owned tokens from the generated grammar. */
 export async function writeCSTTypes(directory: string): Promise<void> {
@@ -12,7 +13,7 @@ export async function writeCSTTypes(directory: string): Promise<void> {
   }[]
   const members = nodes.filter(node => node.named).map(node => {
     const fields = union(Object.keys(node.fields ?? {}))
-    const directTokens = ownedTokens(grammar.rules[node.type])
+    const directTokens = GrammarTraversal.collectOwnedTokens(grammar.rules[node.type])
     const aliasedTokensForNode = aliasedTokens(grammar.rules, node.type)
     const tokens = union([...directTokens, ...aliasedTokensForNode])
     return `  ${JSON.stringify(node.type)}: { fields: ${fields}; tokens: ${tokens} }`
@@ -25,14 +26,14 @@ export async function writeCSTTypes(directory: string): Promise<void> {
   )
 }
 
-type Rule = { type: string; name?: string; value?: string; named?: boolean; content?: Rule; members?: Rule[] }
+type Rule = GrammarTraversal.GrammarRule & { name?: string; named?: boolean; content?: Rule; members?: Rule[] }
 
 function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] {
   return Object.values(rules).flatMap(rule =>
     findAliases(rule, nodeType).flatMap(alias => {
       const content = alias.content
       const source = content?.type === 'SYMBOL' ? rules[content.name!] : content
-      return ownedTokens(source)
+      return GrammarTraversal.collectOwnedTokens(source)
     })
   )
 }
@@ -47,16 +48,6 @@ function findAliases(rule: Rule | undefined, nodeType: string): Rule[] {
     ...findAliases(rule.content, nodeType),
     ...rule.members?.flatMap(member => findAliases(member, nodeType)) ?? [],
   ]
-}
-
-function ownedTokens(rule: Rule | undefined): string[] {
-  if (!rule || rule.type === 'SYMBOL') {
-    return []
-  }
-  if (rule.type === 'STRING') {
-    return [rule.value!]
-  }
-  return [...ownedTokens(rule.content), ...rule.members?.flatMap(ownedTokens) ?? []]
 }
 
 function union(values: readonly string[]): string {

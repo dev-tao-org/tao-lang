@@ -15,8 +15,6 @@ export type WritableExpression<T> = Expression<T> & {
   update(value: T): void
 }
 
-type Observation = { unobserve(): void }
-
 /** ReactiveEngineOptions selects an honest provider experiment and delivery scheduler. */
 export type ReactiveEngineOptions = {
   strategy?: 'native-lazy' | 'uncached-public-read'
@@ -81,6 +79,8 @@ export function useValue<T>(expression: Expression<T>): T {
 export function batch<T>(perform: () => T): T {
   return defaultEngine.batch(perform)
 }
+
+type Observation = { unobserve(): void }
 
 const defaultEngine = createReactiveEngine()
 type Node<T> = { value: Preact.Signal<ReactiveValue>; evaluate(): T }

@@ -22,7 +22,7 @@ export class PreviewRecovery {
   expect(expectation: PreviewOutcomeTrackerModule2.PreviewExpectation): void {
     this.latest = expectation
     this.expectations.set(expectation.revision, expectation)
-    if (this.expectations.size > 64) {
+    if (this.expectations.size > PreviewOutcomeTrackerModule2.previewExpectationCapacity) {
       this.expectations.delete(this.expectations.keys().next().value!)
     }
     this.tracker.expect(expectation, Time.nowMs())
