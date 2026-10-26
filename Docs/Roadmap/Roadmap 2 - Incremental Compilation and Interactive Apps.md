@@ -33,6 +33,7 @@ Success: developers can explore and test an interactive view in named scenarios 
 
 ## Goal Misc
 
+- [ ] Complete the [bounded reactive-engine strategy spike](Compiler%20and%20Reactive%20Runtime%20Plan.md#11-bounded-reactive-engine-strategy-spike): compare existing experiments, choose one production approach and remove losing options; coordinate timing with human review before implementation.
 - [ ] Complete interactive Cursor/VS Code extension acceptance.
 - [ ] Verify Hello World on headless iOS Simulator and Android Emulator.
 - [ ] Select native platforms locally and record cold/warm platform timings.
