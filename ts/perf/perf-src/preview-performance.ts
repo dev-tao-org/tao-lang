@@ -36,7 +36,7 @@ type Resources = {
   reloads: ReloadTiming[]
   expo?: Runtime.ExpoSession
   startupMs?: number
-  frameSizes?: { id: string; width: number; height: number }[]
+  frameSizes?: PreviewFrameSize[]
   harness?: PreviewHarness
   browser?: HeadlessBrowser.Browser
 }
@@ -47,8 +47,11 @@ type PreviewResult = {
   clickTimestampMs: number
   timings: unknown[]
   stages?: unknown
-  frames: Record<string, { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }>
+  frames: Record<string, PreviewFrameTimings>
 }
+
+type PreviewFrameSize = { id: string; width: number; height: number }
+type PreviewFrameTimings = { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
@@ -209,7 +212,13 @@ async function waitForReloadReports(owned: Resources): Promise<void> {
 }
 
 function classifySample(index: number): 'first-edit' | 'first-cycle' | 'warm' {
-  return index === 0 ? 'first-edit' : index < 4 ? 'first-cycle' : 'warm'
+  if (index === 0) {
+    return 'first-edit'
+  }
+  if (index < 4) {
+    return 'first-cycle'
+  }
+  return 'warm'
 }
 
 function describeResult(result: PreviewResult, index: number, frameCount: number) {

@@ -9,7 +9,7 @@ export type HistoryRecord = {
   capturedAt: string
   status: 'passed' | 'failed' | 'unavailable'
   command: string
-  fixture: { path: string; sha256: string }
+  fixture: FixtureIdentity
   scenarios: string[]
   sourceIsolation: string
   reportSha256?: string
@@ -38,7 +38,7 @@ export async function resolveHistoryDirectories(
 /** existingHistory reuses a complete valid record and refuses corrupt, partial or failed records. */
 export async function existingHistory(
   directories: readonly string[],
-  context: { sourceCommit: string; sourceTree: string; fixtureSha256: string },
+  context: PreviewHistoryIdentity,
 ): Promise<string | undefined> {
   for (const directory of directories) {
     if (!await FileSystem.exists(directory)) {
@@ -85,9 +85,12 @@ export function validatePreviewReport(report: string, sourceCommit: string): voi
   }
 }
 
+type FixtureIdentity = { path: string; sha256: string }
+type PreviewHistoryIdentity = { sourceCommit: string; sourceTree: string; fixtureSha256: string }
+
 function matchesRecord(
   record: HistoryRecord,
-  context: { sourceCommit: string; sourceTree: string; fixtureSha256: string },
+  context: PreviewHistoryIdentity,
 ): boolean {
   const sourceMatches = record.sourceCommit === context.sourceCommit && record.sourceTree === context.sourceTree
   const fixtureMatches = record.fixture?.sha256 === context.fixtureSha256

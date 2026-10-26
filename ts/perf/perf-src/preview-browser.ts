@@ -182,13 +182,25 @@ function refreshRunButton(): void {
   const runButton = Browser.querySelector<HTMLButtonElement>('#run')!
   const complete = scenarioIndex >= scenarios.length
   runButton.disabled = complete || result.status === 'running'
-  runButton.textContent = complete
-    ? 'Complete'
-    : result.status === 'running'
-    ? `Running ${scenarios[scenarioIndex]}…`
-    : scenarioIndex === 0
-    ? 'Run edit scenarios'
-    : `Run ${scenarios[scenarioIndex]}`
+  runButton.textContent = resolveRunButtonLabel(complete, result.status, scenarioIndex, scenarios)
+}
+
+function resolveRunButtonLabel(
+  complete: boolean,
+  status: string,
+  scenarioIndex: number,
+  scenarios: readonly string[],
+): string {
+  if (complete) {
+    return 'Complete'
+  }
+  if (status === 'running') {
+    return `Running ${scenarios[scenarioIndex]}…`
+  }
+  if (scenarioIndex === 0) {
+    return 'Run edit scenarios'
+  }
+  return `Run ${scenarios[scenarioIndex]}`
 }
 
 function failScenario(reason: unknown): void {

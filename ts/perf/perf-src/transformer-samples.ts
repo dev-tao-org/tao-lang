@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Timings, type TimingSample } from '@shared'
+
 import { Repo, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
@@ -10,15 +11,17 @@ import { compile } from '../../6-compile/compile-src/Compile'
 
 /** transformerSamples measures minimal benchmark parsing, transformation and code generation.
  *  Record 100 warm samples after 20 warmups; no publication or preview is measured here. */
-export async function transformerSamples(): Promise<(TimingSample & { scenario: string })[]> {
+export async function transformerSamples(): Promise<TransformerSample[]> {
   const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const parser = createParser()
-  const samples: (TimingSample & { scenario: string })[] = []
+  const samples: TransformerSample[] = []
   for (let index = 0; index < 120; index++) {
     await sampleCompilation(source, parser, index, samples)
   }
   return samples
 }
+
+type TransformerSample = TimingSample & { scenario: string }
 
 const sampleCompilation = Timings.createTopLevelTimer(
   async function(
@@ -26,7 +29,7 @@ const sampleCompilation = Timings.createTopLevelTimer(
     source: string,
     parser: ReturnType<typeof createParser>,
     index: number,
-    samples: (TimingSample & { scenario: string })[],
+    samples: TransformerSample[],
   ) {
     const document = await timings.run(parseTransformAndCompile, source, parser)
     const app = document && AST.FindAppDeclaration(document, 'Performance')

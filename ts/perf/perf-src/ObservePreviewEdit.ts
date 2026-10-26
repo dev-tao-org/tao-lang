@@ -46,10 +46,12 @@ export function observePreviewEdit(
   }
 }
 
+type ExpectedPreviewEdit = { path: string; source: string; previousVersion: number }
+
 function matchesFreshCompletion(
   files: PreviewEditFiles,
   event: CompiledEvent,
-  expected: { path: string; source: string; previousVersion: number },
+  expected: ExpectedPreviewEdit,
 ): boolean {
   const document = files.getDocument(expected.path)
   return event.path === expected.path && event.source === expected.source
