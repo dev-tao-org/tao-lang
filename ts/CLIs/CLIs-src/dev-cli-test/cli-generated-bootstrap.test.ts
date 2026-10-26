@@ -6,9 +6,10 @@ Tests.test('CLI launchers prepare missing semantic AST before loading commands',
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-generated-bootstrap-'))
   await Try(async () => {
     await createLauncherFixture(root)
-    await assertMissingAstBootstrapsLaunchers(root)
+    await assertMissingAstPreparesWithoutSetup(root)
     await assertExplicitSetupBypassesPreflight(root)
-    await assertSetupFailureStopsLauncher(root)
+    await assertMissingDependenciesRequireSetup(root)
+    await assertPreparationFailureStopsLauncher(root)
     await assertExistingAstSkipsSetup(root)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -28,30 +29,43 @@ async function createLauncherFixture(root: string): Promise<void> {
   await writeFixtureCommand(bin, 'bun', fakeBunScript())
 }
 
-async function assertMissingAstBootstrapsLaunchers(root: string): Promise<void> {
+async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void> {
+  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'), { recursive: true })
   for (const [launcher, command] of [['agent', 'agent'], ['dev', 'dev'], ['tao', 'tao']] as const) {
     await removeGeneratedAst(root)
     await writeCalls(root, '')
-    const status = await runLauncher(root, launcher, ['--help'])
-    Tests.expect(status).toBe(0)
-    Tests.expect(await readCalls(root)).toBe(`setup\n${command}\n`)
+    const result = await runLauncher(root, launcher, ['--help'])
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe(`prepare\n${command}:run ${resolveCLIEntry(command)} --help\n`)
   }
 }
 
 async function assertExplicitSetupBypassesPreflight(root: string): Promise<void> {
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const status = await runLauncher(root, 'agent', ['setup'])
-  Tests.expect(status).toBe(0)
+  const result = await runLauncher(root, 'agent', ['setup'])
+  Tests.expect(result.status).toBe(0)
   Tests.expect(await readCalls(root)).toBe('setup\n')
 }
 
-async function assertSetupFailureStopsLauncher(root: string): Promise<void> {
+async function assertMissingDependenciesRequireSetup(root: string): Promise<void> {
+  await FileSystem.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const status = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
-  Tests.expect(status).toBe(23)
-  Tests.expect(await readCalls(root)).toBe('setup\n')
+  const result = await runLauncher(root, 'dev', ['--help'])
+  Tests.expect(result.status).toBe(1)
+  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(await readCalls(root)).toBe('')
+}
+
+async function assertPreparationFailureStopsLauncher(root: string): Promise<void> {
+  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'), { recursive: true })
+  await removeGeneratedAst(root)
+  await writeCalls(root, '')
+  const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
+  Tests.expect(result.status).toBe(23)
+  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 
 async function assertExistingAstSkipsSetup(root: string): Promise<void> {
@@ -59,11 +73,20 @@ async function assertExistingAstSkipsSetup(root: string): Promise<void> {
   await FileSystem.writeFile(ast, '', 'utf8')
   await writeCalls(root, '')
   for (const [launcher, command] of [['agent', 'agent'], ['dev', 'dev'], ['tao', 'tao']] as const) {
-    const status = await runLauncher(root, launcher, ['--help'])
-    Tests.expect(status).toBe(0)
-    Tests.expect(await readCalls(root)).toBe(`${command}\n`)
+    const result = await runLauncher(root, launcher, ['--help'])
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe(`${command}:run ${resolveCLIEntry(command)} --help\n`)
     await writeCalls(root, '')
   }
+}
+
+function resolveCLIEntry(command: 'agent' | 'dev' | 'tao'): string {
+  const entries = {
+    agent: './CLIs/CLIs-src/agent-cli/agent-cli.ts',
+    dev: './CLIs/CLIs-src/dev-cli/dev-cli.ts',
+    tao: './CLIs/CLIs-src/tao-cli/tao-cli.ts',
+  }
+  return entries[command]
 }
 
 async function writeFixtureCommand(bin: string, name: string, source: string): Promise<void> {
@@ -82,9 +105,25 @@ function fakeBunScript(): string {
         mkdir -p "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST"
         : > "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST/AST-generated.ts"
         ;;
-      *agent-cli.ts*) printf 'agent\\n' >> "$BOOTSTRAP_LOG" ;;
-      *dev-cli.ts*) printf 'dev\\n' >> "$BOOTSTRAP_LOG" ;;
-      *tao-cli.ts*) printf 'tao\\n' >> "$BOOTSTRAP_LOG" ;;
+      *prepare-cli-generated.ts*)
+        test "$PWD" = "$TAO_CLI_ROOT/ts" || exit 96
+        printf 'prepare\\n' >> "$BOOTSTRAP_LOG"
+        if [ -n "$BOOTSTRAP_FAILURE_STATUS" ]; then exit "$BOOTSTRAP_FAILURE_STATUS"; fi
+        mkdir -p "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST"
+        : > "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST/AST-generated.ts"
+        ;;
+      *agent-cli.ts*)
+        test -f "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST/AST-generated.ts" || exit 97
+        printf 'agent:%s\\n' "$*" >> "$BOOTSTRAP_LOG"
+        ;;
+      *dev-cli.ts*)
+        test -f "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST/AST-generated.ts" || exit 97
+        printf 'dev:%s\\n' "$*" >> "$BOOTSTRAP_LOG"
+        ;;
+      *tao-cli.ts*)
+        test -f "$TAO_CLI_ROOT/ts/2-ast-gen/_gen_AST/AST-generated.ts" || exit 97
+        printf 'tao:%s\\n' "$*" >> "$BOOTSTRAP_LOG"
+        ;;
       *) exit 99 ;;
     esac
   `
@@ -95,7 +134,7 @@ async function runLauncher(
   launcher: string,
   arguments_: readonly string[],
   extraEnvironment: Record<string, string> = {},
-): Promise<number> {
+): Promise<{ status: number; stdout: string; stderr: string }> {
   const child = Platform.spawn(Path.join(root, launcher), {
     variadicArgs: arguments_,
     cwd: root,
@@ -111,8 +150,12 @@ async function runLauncher(
     stdout: 'pipe',
     stderr: 'pipe',
   })
-  await Promise.all([Platform.readText(child.stdout), Platform.readText(child.stderr)])
-  return await child.exited
+  const [stdout, stderr, status] = await Promise.all([
+    Platform.readText(child.stdout),
+    Platform.readText(child.stderr),
+    child.exited,
+  ])
+  return { status, stdout, stderr }
 }
 
 async function removeGeneratedAst(root: string): Promise<void> {
