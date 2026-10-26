@@ -134,7 +134,13 @@ function compareGroups(left: Group, right: Group): number {
 }
 
 function sourceRank(source: string): number {
-  return source === '' ? 0 : isExternalProjectAlias(source) ? 1 : 2
+  if (source === '') {
+    return 0
+  }
+  if (isExternalProjectAlias(source)) {
+    return 1
+  }
+  return 2
 }
 
 function isExternalProjectAlias(source: string): boolean {
@@ -142,5 +148,11 @@ function isExternalProjectAlias(source: string): boolean {
 }
 
 function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0
+  if (left < right) {
+    return -1
+  }
+  if (left > right) {
+    return 1
+  }
+  return 0
 }

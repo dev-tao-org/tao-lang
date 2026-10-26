@@ -145,9 +145,7 @@ function compileBindingTypes(
   context: DeclarationContext,
 ): string {
   const members = AST.GetDeclarations(module.document).filter(AST.IsValueDeclaration).map(node => {
-    const type = AST.IsLetDeclaration(node)
-      ? context.textBindings.has(node.name.value) ? 'string' : 'unknown'
-      : 'TR.View'
+    const type = resolveBindingType(node, context)
     return `readonly ${emitStringLiteral(node.name.value)}: ${type};`
   })
   const aliases: string[] = []
@@ -170,6 +168,16 @@ function compileBindingTypes(
   return `${imports.join('\n')}\n\nexport type Scope = {\n  ${
     [...members, ...aliases].join('\n  ')
   }\n};\n\nexport type Imports = {\n  ${projections.join('\n  ')}\n};`
+}
+
+function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationContext): string {
+  if (!AST.IsLetDeclaration(node)) {
+    return 'TR.View'
+  }
+  if (context.textBindings.has(node.name.value)) {
+    return 'string'
+  }
+  return 'unknown'
 }
 
 function compileBootstrap(
