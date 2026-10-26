@@ -3,7 +3,7 @@ import { publishPreviewArchive } from '../landing/Archive'
 import { integrateMain } from '../landing/Integration'
 import { land } from '../landing/Land'
 import { pendingPreviewRecords } from '../landing/PreviewRecords'
-import { inspectLanding, proveLanded, publishAndMerge } from '../landing/PullRequest'
+import { inspectLanding, publishAndMerge } from '../landing/PullRequest'
 import { recordingLanding } from './RecordingLanding'
 
 Tests.test('landing orders verification, archive publication, remote confirmation, source push, checks and pinned merge', async () => {
@@ -37,6 +37,20 @@ Tests.test('dirty authored and ignored-storage work stop before any fetch or pub
     await Tests.rejects(land(f.io))
     Tests.expect(f.calls.some(call => /^(storage )?git (fetch|push|add|commit) /.test(call))).toBe(false)
   }
+})
+
+Tests.test('archived fixture provenance uses its measured commit path and still rejects a changed checksum', async () => {
+  const f = recordingLanding()
+  const path = `${f.pending}/record.json`
+  const record = JSON.parse(f.files.get(path)!)
+  record.fixture.path = 'Apps/Tests/Hello World.tao'
+  f.files.set(path, JSON.stringify(record))
+  const records = await pendingPreviewRecords(f.io)
+  Tests.expect(records.map(record => record.source)).toEqual([f.source])
+  Tests.expect(f.calls).toContain(`git show ${f.source}:Apps/Tests/Hello World.tao`)
+  record.fixture.sha256 = 'corrupted'
+  f.files.set(path, JSON.stringify(record))
+  await Tests.rejects(pendingPreviewRecords(f.io), /inconsistent or incomplete/)
 })
 
 Tests.test('merge-main preserves merge failures and never publishes', async () => {
@@ -107,10 +121,9 @@ Tests.test('a changed PR head and failed required checks cannot issue a merge', 
 Tests.test('landed requires merged PR ancestry and propagates authentication failures', async () => {
   const f = recordingLanding()
   Tests.expect(await inspectLanding(f.io, f.branch)).toBeUndefined()
-  await Tests.rejects(proveLanded(f.io, f.branch))
   f.state.merged = true
   f.state.fail = 'gh api'
-  await Tests.rejects(proveLanded(f.io, f.branch))
+  await Tests.rejects(inspectLanding(f.io, f.branch))
   Tests.expect(f.calls.every(call => call.startsWith('gh '))).toBe(true)
 })
 

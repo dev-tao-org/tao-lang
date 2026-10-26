@@ -1,21 +1,11 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import {
-  type Cipher,
-  decryptSecretValues,
-  formatSecretStore,
-  isStoreKeyArmor,
-  parseSecretStore,
-  renderSecretEnvFile,
-  requireSecretName,
-  type SecretStore,
-  withSecret,
-} from '../cli-kit/secret-store'
+import * as SecretStoreModule2 from '../cli-kit/secret-store'
 
 const { expect: Expect, test: TestCase } = Tests
 
 TestCase('secret store format > parses JSONC while retaining encrypted entries and metadata', () => {
-  const store = parseSecretStore(S`
+  const store = SecretStoreModule2.parseSecretStore(S`
       // Commented store file.
       {
         "recipients": ["age1machine"],
@@ -25,7 +15,7 @@ TestCase('secret store format > parses JSONC while retaining encrypted entries a
   `)
 
   Expect(store.recipients).toEqual(['age1machine'])
-  Expect(parseSecretStore(formatSecretStore(store))).toEqual(store)
+  Expect(SecretStoreModule2.parseSecretStore(SecretStoreModule2.formatSecretStore(store))).toEqual(store)
   Expect(store.secrets.TOKEN).toEqual({
     addedAt: '2026-01-01T00:00:00.000Z',
     note: 'build',
@@ -34,21 +24,29 @@ TestCase('secret store format > parses JSONC while retaining encrypted entries a
 })
 
 TestCase('secret store format > rejects a malformed value instead of dropping it during serialization', () => {
-  Expect(() => parseSecretStore('{"secrets":{"TOKEN":{"value":"clear"}}}')).toThrow()
-  Expect(() => parseSecretStore('{"secrets":{"TOKEN":{"value":[]},"TOKEN":{"value":[]}}}')).toThrow('duplicate')
-  Expect(() => parseSecretStore('{"secrets":{"__proto__":{"value":[]}}}')).toThrow('reserved')
-  Expect(() => parseSecretStore('{"secrets":{"BAD\\nINJECT":{"value":[]}}}')).toThrow('usable secret name')
-  Expect(() => renderSecretEnvFile(new Map([['BAD\nINJECT', 'value']]), new Date(0))).toThrow('usable secret name')
+  Expect(() => SecretStoreModule2.parseSecretStore('{"secrets":{"TOKEN":{"value":"clear"}}}')).toThrow()
+  Expect(() => SecretStoreModule2.parseSecretStore('{"secrets":{"TOKEN":{"value":[]},"TOKEN":{"value":[]}}}')).toThrow(
+    'duplicate',
+  )
+  Expect(() => SecretStoreModule2.parseSecretStore('{"secrets":{"__proto__":{"value":[]}}}')).toThrow('reserved')
+  Expect(() => SecretStoreModule2.parseSecretStore('{"secrets":{"BAD\\nINJECT":{"value":[]}}}')).toThrow(
+    'usable secret name',
+  )
+  Expect(() => SecretStoreModule2.renderSecretEnvFile(new Map([['BAD\nINJECT', 'value']]), new Date(0))).toThrow(
+    'usable secret name',
+  )
 })
 
 TestCase('secret store format > keeps addedAt, advances updatedAt and retains notes when replacing a value', () => {
-  const original = parseSecretStore(S`
+  const original = SecretStoreModule2.parseSecretStore(S`
       {
         "recipients": [],
         "secrets": { "TOKEN": { "addedAt": "2026-01-01T00:00:00.000Z", "note": "build", "value": ["old"] } }
       }
   `)
-  const updated = withSecret(original, 'TOKEN', 'new armor\n', { now: new Date('2026-02-01T00:00:00.000Z') })
+  const updated = SecretStoreModule2.withSecret(original, 'TOKEN', 'new armor\n', {
+    now: new Date('2026-02-01T00:00:00.000Z'),
+  })
 
   Expect(updated.secrets.TOKEN).toEqual({
     addedAt: '2026-01-01T00:00:00.000Z',
@@ -59,9 +57,14 @@ TestCase('secret store format > keeps addedAt, advances updatedAt and retains no
 })
 
 TestCase('secret store format > formats entries in sorted order and renders sorted quoted environment values', () => {
-  const store = parseSecretStore('{"recipients":[],"secrets":{"ZED":{"value":["z"]},"ABLE":{"value":["a"]}}}')
-  const formatted = formatSecretStore(store, '')
-  const env = renderSecretEnvFile(new Map([['ZED', 'z\nvalue'], ['ABLE', 'a']]), new Date('2026-02-01T00:00:00.000Z'))
+  const store = SecretStoreModule2.parseSecretStore(
+    '{"recipients":[],"secrets":{"ZED":{"value":["z"]},"ABLE":{"value":["a"]}}}',
+  )
+  const formatted = SecretStoreModule2.formatSecretStore(store, '')
+  const env = SecretStoreModule2.renderSecretEnvFile(
+    new Map([['ZED', 'z\nvalue'], ['ABLE', 'a']]),
+    new Date('2026-02-01T00:00:00.000Z'),
+  )
 
   Expect(formatted.indexOf('"ABLE"')).toBeLessThan(formatted.indexOf('"ZED"'))
   Expect(env).toBe(
@@ -69,25 +72,20 @@ TestCase('secret store format > formats entries in sorted order and renders sort
   )
 })
 
-TestCase('secret store format > validates environment variable names and recognizes store-key armor headers', () => {
-  Expect(requireSecretName('ANTHROPIC_API_KEY')).toBe('ANTHROPIC_API_KEY')
-  Expect(() => requireSecretName('bad-name')).toThrow()
-  const payload = 'YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=' // age-encryption.org/v1\n-> X25519 age1\n\n
-  Expect(isStoreKeyArmor(`-----BEGIN AGE ENCRYPTED FILE-----\n${payload}\n-----END AGE ENCRYPTED FILE-----`)).toBe(
-    true,
-  )
-  Expect(isStoreKeyArmor('not an age armor')).toBe(false)
+TestCase('secret store format > validates environment variable names', () => {
+  Expect(SecretStoreModule2.requireSecretName('ANTHROPIC_API_KEY')).toBe('ANTHROPIC_API_KEY')
+  Expect(() => SecretStoreModule2.requireSecretName('bad-name')).toThrow()
 })
 
 TestCase('secret store format > unwraps the store key once and decrypts values with the software key', async () => {
-  const store: SecretStore = {
+  const store: SecretStoreModule2.SecretStore = {
     recipients: ['age1machine'],
     storeKey: { recipient: 'age1store', wrappedFor: ['age1machine'], wrappedKey: ['wrapped-key'] },
     secrets: { TOKEN: { addedAt: '', value: [storeKeyArmor] } },
   }
   const { cipher, calls } = recordingCipher()
 
-  const opened = await decryptSecretValues(store, cipher)
+  const opened = await SecretStoreModule2.decryptSecretValues(store, cipher)
 
   Expect(opened.values.get('TOKEN')).toBe('clear-token')
   Expect(calls.machineDecrypt).toBe(1)
@@ -96,14 +94,14 @@ TestCase('secret store format > unwraps the store key once and decrypts values w
 })
 
 TestCase('secret store format > rejects device-encrypted values before using the machine identity', async () => {
-  const store: SecretStore = {
+  const store: SecretStoreModule2.SecretStore = {
     recipients: ['age1machine'],
     storeKey: { recipient: 'age1store', wrappedFor: ['age1machine'], wrappedKey: ['wrapped-key'] },
     secrets: { TOKEN: { addedAt: '', value: ['-----BEGIN AGE ENCRYPTED FILE-----\nnot-keyed'] } },
   }
   const { cipher, calls } = recordingCipher()
 
-  await Expect(decryptSecretValues(store, cipher)).rejects.toThrow()
+  await Expect(SecretStoreModule2.decryptSecretValues(store, cipher)).rejects.toThrow()
   Expect(calls.machineDecrypt).toBe(0)
   Expect(calls.valueDecrypt).toBe(0)
 })
@@ -111,11 +109,11 @@ TestCase('secret store format > rejects device-encrypted values before using the
 const storeKeyArmor =
   '-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=\n-----END AGE ENCRYPTED FILE-----'
 function recordingCipher(): {
-  cipher: Cipher
+  cipher: SecretStoreModule2.Cipher
   calls: { machineDecrypt: number; recipientCheck: number; valueDecrypt: number }
 } {
   const calls = { machineDecrypt: 0, recipientCheck: 0, valueDecrypt: 0 }
-  const cipher: Cipher = {
+  const cipher: SecretStoreModule2.Cipher = {
     encrypt: async () => 'wrapped',
     async decrypt() {
       calls.machineDecrypt += 1

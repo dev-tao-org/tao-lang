@@ -93,17 +93,23 @@ Tests.test('duplicate local declarations, repeated imports and import collisions
 Tests.test('duplicate view bindings fail in their own scope while child scopes may shadow', () => {
   const duplicate: AST.ViewDeclaration = {
     ...view('Main', 'file'),
-    definitions: [letDefinition('Title', 'one'), letDefinition('Title', 'two')],
+    body: viewBlock([
+      letDefinition('Title', 'one'),
+      letDefinition('Title', 'two'),
+      renderViewExpression(viewRender('Text')),
+    ]),
   }
   Tests.expect(() => linkModules('app/main.tao', [source('app/main.tao', [duplicate])]))
     .toThrow('View Main in app/main.tao declares Title more than once in one scope')
 
   const root: AST.ViewDeclaration = {
     ...view('Main', 'file'),
-    definitions: [letDefinition('Title', 'outer')],
-    render: viewRender('Col', [
-      letDefinition('Title', 'inner'),
-      viewRender('Row', [letDefinition('Title', 'nested')]),
+    body: viewBlock([
+      letDefinition('Title', 'outer'),
+      renderViewExpression(viewRender('Col', [
+        letDefinition('Title', 'inner'),
+        viewRender('Row', [letDefinition('Title', 'nested')]),
+      ])),
     ]),
   }
   Tests.expect(() => linkModules('app/main.tao', [source('app/main.tao', [root])])).not.toThrow()
@@ -116,13 +122,17 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
   const entry = source('app/main.tao', [unreferenced], [left.path, right.path])
 
   Tests.expect(linkModules(entry.path, [entry, left, right]).modules[0]?.bindings).toEqual([])
-  const referenced = source('app/main.tao', [{ ...unreferenced, render: viewRender('Item') }], [left.path, right.path])
+  const referenced = source(
+    'app/main.tao',
+    [{ ...unreferenced, body: viewBlock([renderViewExpression(viewRender('Item'))]) }],
+    [left.path, right.path],
+  )
   Tests.expect(() => linkModules(referenced.path, [referenced, left, right])).toThrow('ambiguous sibling name Item')
 
   const parameterView: AST.ViewDeclaration = {
     ...unreferenced,
     parameters: [{ kind: 'Parameter', start: 0, end: 0, name: identifier('Item'), type: identifier('text') }],
-    render: renderWithNameArgument('Text', 'Item'),
+    body: viewBlock([renderViewExpression(renderWithNameArgument('Text', 'Item'))]),
   }
   const parameterSource = source('app/main.tao', [parameterView], [left.path, right.path])
   Tests.expect(() => linkModules(parameterSource.path, [parameterSource, left, right])).not.toThrow()
@@ -137,7 +147,10 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
 
   const localLetView: AST.ViewDeclaration = {
     ...unreferenced,
-    render: viewRender('Col', [letDefinition('Item', 'local'), renderWithNameArgument('Text', 'Item')]),
+    body: viewBlock([renderViewExpression(viewRender('Col', [
+      letDefinition('Item', 'local'),
+      renderWithNameArgument('Text', 'Item'),
+    ]))]),
   }
   const localLetSource = source('app/main.tao', [localLetView], [left.path, right.path])
   Tests.expect(() => linkModules(localLetSource.path, [localLetSource, left, right])).not.toThrow()
@@ -179,15 +192,15 @@ function source(
 ): SourceModule {
   return {
     path,
-    document: { root: { kind: 'File', start: 0, end: 0, declarations } },
+    document: { root: { kind: 'File', start: 0, end: 0, block: block(declarations) } },
     imports: [],
     siblings,
   }
 }
 
-function letDefinition(name: string, value: string, visibility?: AST.Visibility): AST.LetDefinition {
+function letDefinition(name: string, value: string, visibility?: AST.Visibility): AST.LetDeclaration {
   return {
-    kind: 'LetDefinition',
+    kind: 'LetDeclaration',
     start: 0,
     end: 0,
     name: identifier(name),
@@ -197,9 +210,9 @@ function letDefinition(name: string, value: string, visibility?: AST.Visibility)
   }
 }
 
-function letReference(name: string, value: string, visibility?: AST.Visibility): AST.LetDefinition {
+function letReference(name: string, value: string, visibility?: AST.Visibility): AST.LetDeclaration {
   return {
-    kind: 'LetDefinition',
+    kind: 'LetDeclaration',
     start: 0,
     end: 0,
     name: identifier(name),
@@ -217,25 +230,44 @@ function view(name: string, visibility: AST.Visibility): AST.ViewDeclaration {
     name: identifier(name),
     visibility,
     parameters: [],
-    definitions: [],
-    render: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+    body: viewBlock([{
+      kind: 'RenderInjectStatement',
+      start: 0,
+      end: 0,
+      injection: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+    }]),
   }
 }
 
-function viewRender(target: string, children: AST.ViewRender['children'] = []): AST.ViewRender {
+function viewRender(
+  target: string,
+  children: readonly AST.ViewRenderBlockStatement[] = [],
+): AST.ViewRenderExpression {
   return {
-    kind: 'ViewRender',
+    kind: 'ViewRenderExpression',
     start: 0,
     end: 0,
     tag: undefined,
     target: identifier(target),
     arguments: [],
-    children,
+    block: children.length > 0 ? block(children) : undefined,
   }
 }
 
-function renderWithNameArgument(target: string, name: string): AST.ViewRender {
+function renderWithNameArgument(target: string, name: string): AST.ViewRenderExpression {
   return { ...viewRender(target), arguments: [identifier(name)] }
+}
+
+function renderViewExpression(expression: AST.ViewRenderExpression): AST.RenderViewExpressionStatement {
+  return { kind: 'RenderViewExpressionStatement', start: 0, end: 0, expression }
+}
+
+function viewBlock(statements: readonly AST.ViewDeclarationStatement[]): AST.ViewDeclarationBlock {
+  return block(statements)
+}
+
+function block<Statement extends AST.Node>(statements: readonly Statement[]): AST.Block<Statement> {
+  return { kind: 'Block', start: 0, end: 0, statements }
 }
 
 function useNamed(target: string, alias?: string): AST.UseStatement {

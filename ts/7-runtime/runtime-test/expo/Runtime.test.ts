@@ -2,6 +2,7 @@ import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
+import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
 import * as Runtime from '../../runtime-src/Runtime'
 import { RuntimeSourceResources } from '../../runtime-src/RuntimeResources'
 
@@ -17,6 +18,94 @@ Tests.test('runtime source migration rejects linked parents before deleting file
   await Try(() => verifyLinkedSourceParents(root), {
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
+})
+
+Tests.test('runtime preparation installs a cold pinned cache and reuses it', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-preparation-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    await writeResources(resources, { expo: '57.0.30' }, 'prepare')
+    Tests.expect(await Runtime.preparedRuntime({ resourcesDirectory: resources, toolchainCacheDirectory: cache }))
+      .toBeUndefined()
+    let installs = 0
+    const options = {
+      resourcesDirectory: resources,
+      toolchainCacheDirectory: cache,
+      install: {
+        async install(directory: string) {
+          installs++
+          await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+        },
+      },
+    }
+    await Runtime.prepareRuntime(options)
+    await Runtime.prepareRuntime(options)
+    Tests.expect(installs).toBe(1)
+    Tests.expect(await Runtime.preparedRuntime(options)).toBeDefined()
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('runtime toolchain cache identity includes runtime version and reuses matching inputs', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-toolchain-identity-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    await writeResources(resources, { expo: '57.0.30' }, 'identity')
+    let installs = 0
+    const installer = {
+      async install(directory: string) {
+        installs++
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+      },
+    }
+    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
+    await prepareToolchain(cache, resources, installer, undefined, inputs)
+    await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(installs).toBe(1)
+    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeDefined()
+    const changedInputs = { ...inputs, runtimeVersion: '1.5.0' }
+    Tests.expect(await findPreparedToolchain(cache, resources, changedInputs)).toBeUndefined()
+    await prepareToolchain(cache, resources, installer, undefined, changedInputs)
+    Tests.expect(installs).toBe(2)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('runtime toolchain copies dependency patches and invalidates the cache when patch bytes change', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-toolchain-patches-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    const patchPath = 'patches/fixture.patch'
+    await writeResources(resources, { expo: '57.0.30' }, 'patches')
+    await FileSystem.writeFile(
+      Path.join(resources, 'package.json'),
+      JSON.stringify({
+        dependencies: { expo: '57.0.30' },
+        patchedDependencies: { 'expo@57.0.30': patchPath },
+      }),
+    )
+    await FileSystem.mkdir(Path.dirname(Path.join(resources, patchPath)), { recursive: true })
+    await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes A')
+    let installs = 0
+    const installer = {
+      async install(directory: string) {
+        installs++
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+      },
+    }
+    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
+    const first = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(first), patchPath), 'utf8')).toBe('patch bytes A')
+    Tests.expect(installs).toBe(1)
+
+    await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes B')
+    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeUndefined()
+    const second = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(second), patchPath), 'utf8')).toBe('patch bytes B')
+    Tests.expect(second).not.toBe(first)
+    Tests.expect(installs).toBe(2)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
 async function verifyLinkedSourceParents(root: string): Promise<void> {
@@ -128,10 +217,6 @@ async function verifyCreatedApplications(
     .toBe(FileSystem.realpathSync(resourcesA))
   Tests.expect(FileSystem.realpathSync(Path.join(changed.directory, 'src/_gen_runtime')))
     .toBe(FileSystem.realpathSync(resourcesB))
-  Tests.expect(await FileSystem.readFile(Path.join(first.directory, 'src/_gen_runtime/runtime/TR.ts'), 'utf8'))
-    .toContain("export * as ReactNative from 'react-native'")
-  Tests.expect(await FileSystem.readFile(Path.join(first.directory, 'src/_gen_runtime/runtime/TR.ts'), 'utf8'))
-    .toContain("export { App } from './App'")
   Tests.expect(await FileSystem.exists(Path.join(first.directory, 'src/_gen_runtime/runtime/Native.ts'))).toBe(false)
   Tests.expect(await FileSystem.exists(Path.join(first.directory, 'src/_gen_runtime/runtime/App.ts'))).toBe(true)
   Tests.expect(await FileSystem.readFile(first.appPath, 'utf8')).toBe(appSource)
@@ -199,11 +284,18 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
 }
 
 const appSource = S`
-  import { App as RuntimeApp, ReactNative, ViewDefinition } from '@runtime'
+  import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@runtime'
+  import Tao from '@tao/runtime-api'
+  import { createElement } from 'react'
+  import type { ViewComponentProps } from '@runtime'
 
-  const Root = ViewDefinition('Root', [], () => <ReactNative.Text>Hello from Tao</ReactNative.Text>)
+  function RootView(props: ViewComponentProps) {
+    const context = beginViewRender(props)
+    return finishViewRender(context, createElement(Tao.Text, null, 'Hello from Tao'))
+  }
+  const Root = ViewDeclaration('Root', [], RootView)
 
   export default function App() {
-    return RuntimeApp(Root, 'runtime-check')
+    return AppDeclaration(Root, 'runtime-check')
   }
 `

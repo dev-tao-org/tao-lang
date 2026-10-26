@@ -1,16 +1,19 @@
 import { Tests } from '@shared/os'
-import { installExtension } from '../ide/ExtensionInstall'
+import { installExtensions } from '../ide/ExtensionInstall'
 
-Tests.test('extension installation forwards one VSIX to both editors without splitting its path', async () => {
+Tests.test('extension installation forwards both VSIX files to both editors without splitting paths', async () => {
   const calls: unknown[] = []
-  await installExtension('/owned/artifacts/Tao Extension.vsix', async (command, options) => {
+  const packages = ['/owned/artifacts/Tao Extension.vsix', '/owned/artifacts/Dev Tao Org.vsix']
+  await installExtensions(packages, async (command, options) => {
     calls.push({ command, options })
   }, async command => command.startsWith('cursor ') ? 'devtao.tao\ntao.tao-language' : 'devtao.tao')
   Tests.expect(calls).toEqual([
     { command: 'cursor --uninstall-extension tao.tao-language', options: undefined },
-    ...['cursor', 'code'].map(editor => ({
-      command: `${editor} --install-extension`,
-      options: { variadicArgs: ['/owned/artifacts/Tao Extension.vsix', '--force'] },
-    })),
+    ...['cursor', 'code'].flatMap(editor =>
+      packages.map(vsix => ({
+        command: `${editor} --install-extension`,
+        options: { variadicArgs: [vsix, '--force'] },
+      }))
+    ),
   ])
 })

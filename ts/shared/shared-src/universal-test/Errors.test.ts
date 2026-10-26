@@ -30,7 +30,7 @@ Tests.describe('Errors throwing helpers', () => {
     for (
       const [action, category, message] of [
         [() => Errors.ThrowUserInput('input', details), 'UserInputError', 'input'],
-        [() => Errors.ThrowUnexpected('bug', { cause, details }), 'UnexpectedBehaviorError', 'bug'],
+        [() => Errors.ThrowShouldNeverHappen('bug', { cause, details }), 'UnexpectedBehaviorError', 'bug'],
         [() => Errors.ThrowHostEnvironment('host', { cause, details }), 'HostEnvironmentError', 'host'],
       ] as const
     ) {

@@ -5,7 +5,12 @@ Tests.test('semantic kind guards narrow one or several discriminants', () => {
   const node: AST.Node = { kind: 'TextLiteral', start: 0, end: 7, value: 'hello' }
   Tests.expect(AST.IsKind(node, ['Name', 'TextLiteral'])).toBe(true)
   Tests.expect(literalValue(node)).toBe('hello')
-  Tests.expect(literalValue({ kind: 'File', start: 0, end: 0, declarations: [] })).toBeUndefined()
+  Tests.expect(literalValue({
+    kind: 'File',
+    start: 0,
+    end: 0,
+    block: { kind: 'Block', start: 0, end: 0, statements: [] },
+  })).toBeUndefined()
   Tests.expect(AST.IsKind(node, 'Name')).toBe(false)
   Tests.expect(AST.IsKind(node, 'TextLiteral')).toBe(true)
 })

@@ -1,3 +1,4 @@
+import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { S } from '@shared'
@@ -41,7 +42,7 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
       ['unused-declaration', 'Spare'],
     ])
   Tests.expect(warnings.every(warning => warning.severity === 'warning')).toBe(true)
-  Tests.expect(ast.root.declarations).toHaveLength(12)
+  Tests.expect(AST.GetDeclarations(ast)).toHaveLength(12)
 })
 
 Tests.test('qualified namespace use ignores an ordinary local binding with the same head', () => {
@@ -64,4 +65,18 @@ Tests.test('foreign view parameters are consumed by the external view contract',
   `
   const ast = transform(createParser().parse(source))!
   Tests.expect(unusedWarnings(ast)).toEqual([])
+})
+
+Tests.test('nested view bindings and parameters follow their lexical owner', () => {
+  const source = S`
+    app Demo { root Main }
+    view Main {
+      render Col { Greeting }
+      view Greeting(Name text) { render Text(Name) }
+      view UnusedHelper { render Text("unused") }
+    }
+  `
+  const ast = transform(createParser().parse(source))!
+  Tests.expect(unusedWarnings(ast).map(warning => source.slice(warning.start, warning.end))).toEqual(['UnusedHelper'])
+  Tests.expect(AST.GetDeclarations(ast)).toHaveLength(2)
 })

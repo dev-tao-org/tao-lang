@@ -1,68 +1,90 @@
 import { Tests } from '@shared/os'
-import { createElement } from 'react'
+import { createElement, useState } from 'react'
+import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { App } from '../runtime-src/App'
-import { Render, ViewDefinition, ViewRenderArgs } from '../runtime-src/View'
+import { AppDeclaration } from '../runtime-src/App'
+import { ForeignView } from '../runtime-src/ForeignView'
+import { Name } from '../runtime-src/Scope'
+import type { ViewComponentProps } from '../runtime-src/View'
+import * as View from '../runtime-src/View'
 
-Tests.test('Render binds positional view values and supplies children', () => {
-  const Message = ViewDefinition(
-    'Message',
-    ['Value'],
-    ({ Value }, Children) => createElement('section', null, Value as string, ...Children),
-  )
-  const page = ViewDefinition('Page', [], (_bindings, Children) => createElement('main', null, ...Children))
+const neverReady = new Promise<never>(() => {})
+
+Tests.test('ViewRenderExpression renders named components with bound values and children', () => {
+  const Message = View.ViewDeclaration('Message', ['Value'], MessageView)
+  const Page = View.ViewDeclaration('Page', [], PageView)
   const html = renderToStaticMarkup(
-    Render(
-      page,
-      ViewRenderArgs([], [Render(Message, ViewRenderArgs(['hello']))]),
+    View.ViewRenderExpression(
+      Page,
+      View.ViewRenderArguments([], [View.ViewRenderExpression(Message, View.ViewRenderArguments(['hello']))]),
     ),
   )
 
-  Tests.expect(html).toContain('<main><section>hello</section></main>')
+  Tests.expect(html).toBe('<main><section>hello</section></main>')
 })
 
-Tests.test('Render binds the legal __proto__ parameter as an ordinary value', () => {
-  const ProtoValue = ViewDefinition(
-    'ProtoValue',
-    ['__proto__'],
-    bindings => createElement('span', null, bindings['__proto__'] as string),
-  )
+Tests.test('View hooks run only when its named element is rendered', () => {
+  let renders = 0
+  function HookView(props: ViewComponentProps) {
+    renders++
+    const context = View.beginViewRender(props)
+    const result = createElement('span', null, 'hook owner')
+    return View.finishViewRender(context, result)
+  }
+  const view = View.ViewDeclaration('HookView', [], HookView)
+  const element = View.ViewRenderExpression(view, View.ViewRenderArguments())
 
-  const html = renderToStaticMarkup(Render(ProtoValue, ViewRenderArgs(['ordinary value'])))
+  Tests.expect(renders).toBe(0)
+  Tests.expect(renderToStaticMarkup(element)).toBe('<span>hook owner</span>')
+  Tests.expect(renders).toBe(1)
+})
+
+Tests.test('ForeignView renders its external component with Tao values as props', () => {
+  function DateLabel({ Value }: { Value: string }) {
+    const [label] = useState(Value)
+    return createElement('span', null, label)
+  }
+  const FormattedDate = ForeignView('FormattedDate', ['Value'], DateLabel)
+  const html = renderToStaticMarkup(View.ViewRenderExpression(FormattedDate, View.ViewRenderArguments(['Today'])))
+
+  Tests.expect(html).toBe('<span>Today</span>')
+})
+
+Tests.test('ViewRenderExpression binds __proto__ as an ordinary value and checks missing arguments', () => {
+  const ProtoValue = View.ViewDeclaration('__proto__', ['__proto__'], ProtoValueView)
+  const html = renderToStaticMarkup(View.ViewRenderExpression(ProtoValue, View.ViewRenderArguments(['ordinary value'])))
+  const Message = View.ViewDeclaration('Message', ['Value'], MessageView)
 
   Tests.expect(html).toBe('<span>ordinary value</span>')
+  Tests.expect(() => renderToStaticMarkup(View.ViewRenderExpression(Message, View.ViewRenderArguments())))
+    .toThrow('Message is missing required argument "Value"')
+  Tests.expect(() => renderToStaticMarkup(View.ViewRenderExpression(null, View.ViewRenderArguments())))
+    .toThrow('Cannot render an unknown Tao view.')
 })
 
-Tests.test('Render reports missing positional view arguments', () => {
-  const Message = ViewDefinition('Message', ['Value'], ({ Value }) => createElement('span', null, Value as string))
-
-  Tests.expect(() => renderToStaticMarkup(Render(Message, ViewRenderArgs()))).toThrow(
-    'Message is missing required argument "Value"',
-  )
-  Tests.expect(() => renderToStaticMarkup(Render(null as never, ViewRenderArgs()))).toThrow(
-    'Cannot render an unknown Tao view.',
-  )
-})
-
-Tests.test('Render shares its timing observer with nested Render calls', () => {
+Tests.test('View timing follows named nested components under the provided observer', () => {
   let now = 0
   const phases: string[] = []
-  const Child = ViewDefinition('Child', [], () => createElement('span', null, 'child'))
-  const Root = ViewDefinition('Root', [], () => Render(Child, ViewRenderArgs()))
   const observer = {
     now: () => ++now,
     onTiming(timing: { phase: string }) {
       phases.push(timing.phase)
     },
   }
-  renderToStaticMarkup(Render(Root, ViewRenderArgs(), observer))
+  const Child = View.ViewDeclaration('Child', [], TextChild)
+  function RootView(props: ViewComponentProps) {
+    const context = View.beginViewRender(props)
+    return View.finishViewRender(context, View.ViewRenderExpression(Child, View.ViewRenderArguments()))
+  }
+  const Root = View.ViewDeclaration('Root', [], RootView)
+  const tree = View.ProvideRuntimeObserver(observer, View.ViewRenderExpression(Root, View.ViewRenderArguments()))
+  renderToStaticMarkup(tree)
 
   Tests.expect(phases.filter(phase => phase === 'bind')).toHaveLength(2)
   Tests.expect(phases.filter(phase => phase === 'render')).toHaveLength(2)
 })
 
-Tests.test('App applies its observer to fallback views and clears inherited observers in nested apps', () => {
-  const neverReady = new Promise<never>(() => {})
+Tests.test('AppDeclaration times fallback views and resets inherited observers in nested apps', () => {
   const phases: string[] = []
   const observer = {
     now: () => 0,
@@ -70,21 +92,58 @@ Tests.test('App applies its observer to fallback views and clears inherited obse
       phases.push(timing.phase)
     },
   }
-  const Loading = ViewDefinition('Loading', [], () => createElement('span', null, 'loading'))
-  const Suspended = ViewDefinition('Suspended', [], () => {
-    throw neverReady
-  })
-  const fallback = Render(Loading, ViewRenderArgs())
-  const markup = renderToStaticMarkup(App(Suspended, 'outer', { observer, fallback }))
+  const Loading = View.ViewDeclaration('Loading', [], LoadingView)
+  const Suspended = View.ViewDeclaration('Suspended', [], SuspendedView)
+  const fallback = View.ViewRenderExpression(Loading, View.ViewRenderArguments())
+  const markup = renderToStaticMarkup(AppDeclaration(Suspended, 'outer', { observer, fallback }))
 
   Tests.expect(markup).toContain('loading')
   Tests.expect(phases.filter(phase => phase === 'bind')).toHaveLength(2)
   Tests.expect(phases.filter(phase => phase === 'render')).toHaveLength(1)
-
   phases.length = 0
-  const Nested = ViewDefinition('Nested', [], () => App(Suspended, 'nested', { fallback }))
-  const nestedMarkup = renderToStaticMarkup(App(Nested, 'outer', { observer }))
+  const Nested = View.ViewDeclaration('Nested', [], NestedAppView)
+  const nestedMarkup = renderToStaticMarkup(AppDeclaration(Nested, 'outer', { observer }))
 
   Tests.expect(nestedMarkup).toContain('loading')
   Tests.expect(phases).toEqual(['bind', 'render'])
 })
+
+function MessageView(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  const result = createElement('section', null, Name(context.scope, 'Value') as string, ...context.children)
+  return View.finishViewRender(context, result)
+}
+
+function PageView(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  return View.finishViewRender(context, createElement('main', null, ...context.children))
+}
+
+function ProtoValueView(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  return View.finishViewRender(context, createElement('span', null, Name(context.scope, '__proto__') as string))
+}
+
+function TextChild(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  return View.finishViewRender(context, createElement('span', null, 'child'))
+}
+
+function LoadingView(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  return View.finishViewRender(context, createElement('span', null, 'loading'))
+}
+
+function SuspendedView(_props: ViewComponentProps): ReactNode {
+  throw neverReady
+}
+
+function NestedAppView(props: ViewComponentProps) {
+  const context = View.beginViewRender(props)
+  const suspended = View.ViewDeclaration('Suspended', [], SuspendedView)
+  const fallback = View.ViewDeclaration('Loading', [], LoadingView)
+  return View.finishViewRender(
+    context,
+    AppDeclaration(suspended, 'nested', { fallback: View.ViewRenderExpression(fallback, View.ViewRenderArguments()) }),
+  )
+}

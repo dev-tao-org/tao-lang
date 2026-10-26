@@ -101,7 +101,7 @@ function createFixture(root: string) {
     if (operation === `rev-parse ${commit}^{tree}`) {
       return tree
     }
-    if (operation === `show ${commit}:Apps/Tests/Hello World.tao`) {
+    if (operation === `show ${commit}:ts/perf/perf-fixtures/Performance/Performance.tao`) {
       Tests.expect(exact).toBe(true)
       return source
     }
@@ -114,6 +114,6 @@ function createFixture(root: string) {
     if (args.at(-1) === '--show-superproject-working-tree') {
       return root
     }
-    return Errors.ThrowUnexpected('Unexpected Git operation: ' + operation)
+    return Errors.ThrowShouldNeverHappen('Unexpected Git operation: ' + operation)
   }
 }

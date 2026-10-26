@@ -1,12 +1,7 @@
-import { Time, Timings, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Tests, WorkspaceWatch } from '@shared/os'
-import { FileManager, type SourceSnapshot } from '../workspace-src/FileManager'
-import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
-
-const hostUnavailable = Platform.systemInfo().os === 'Darwin' && !await Try.WithDefault(false, async () => {
-  await Platform.requireHostProcessAccess('Workspace watch tests require macOS host access.')
-  return true
-})
+import { Time, Try } from '@shared'
+import { Tests, WorkspaceWatch } from '@shared/os'
+import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
+import type { UpdateResult } from '../workspace-src/Workspace'
 
 Tests.test('opening waits for the latest selected-entry read after an observed change', async () => {
   const fixture = createManagerFixture(async (_path, _observedAtMs, index) => {
@@ -45,7 +40,7 @@ Tests.test('a rapid workspace burst reads once and compiles only current plus la
         activeStarted.resolve()
         await activeGate.promise
       }
-      return result(isCurrent() ? 'published' : 'superseded')
+      return createUpdateResult(isCurrent() ? 'published' : 'superseded')
     },
   )
   await fixture.manager.openFile('/workspace/App.tao')
@@ -93,9 +88,8 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
     read: async (_path, observedAtMs) => ({
       source: 'source',
       observedAtMs,
-      timings: new Timings('workspace:test'),
     }),
-    compile: async () => result('published'),
+    compile: async () => createUpdateResult('published'),
   })
   const first = manager.openFile('App.tao')
   await watcherStarted.promise
@@ -108,60 +102,115 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
   await manager.dispose()
 })
 
-Tests.test.skipIf(hostUnavailable)(
-  'workspace changes compile the selected entry and ignore output and post-disposal changes',
-  async () => {
-    await verifyHostWorkspaceWatching()
-  },
-  10_000,
-)
-
-async function verifyHostWorkspaceWatching(): Promise<void> {
-  const directory = Artifacts.resolvePath('tmp', `workspace-watch-${Platform.randomUUID()}`)
-  const output = Path.join(directory, 'generated-output')
-  const path = Path.join(directory, 'App.tao')
-  const nested = Path.join(directory, 'nested', 'Feature.tao')
-  const source = await Tests.readApp('Hello World')
-  const workspace = createWorkspace({ directory, outputDirectory: output, async publish() {} })
-  await Try(async () => {
-    await FileSystem.mkdir(directory, { recursive: true })
-    await FileSystem.writeFile(path, source)
-    Tests.expect((await workspace.openFile(path)).status).toBe('published')
-    let events = 0
-    const stop = workspace.files.onCompiled(event => {
-      if (event.result.status === 'published') {
-        events++
-      }
-    })
-    await FileSystem.mkdir(Path.dirname(nested), { recursive: true })
-    await FileSystem.writeFile(nested, source)
-    await waitForCompileCount(() => events, 1)
-    const created = events
-    const pending = `${path}.pending`
-    await FileSystem.writeFile(pending, source)
-    await FileSystem.rename(pending, path)
-    await waitForCompileCount(() => events, created + 1)
-    const replaced = events
-    await FileSystem.rm(nested)
-    await waitForCompileCount(() => events, replaced + 1)
-    await Time.sleep(50)
-    const settled = events
-    await FileSystem.mkdir(output, { recursive: true })
-    await FileSystem.writeFile(Path.join(output, 'Generated.tao'), source)
-    await Time.sleep(50)
-    Tests.expect(events).toBe(settled)
-    await workspace.dispose()
-    await FileSystem.writeFile(path, source)
-    await Time.sleep(50)
-    Tests.expect(events).toBe(settled)
-    stop()
-  }, {
-    async finally() {
-      await workspace.dispose()
-      await FileSystem.rm(directory, { recursive: true, force: true })
+Tests.test('source notifications refresh the selected entry and ignore output, unrelated and disposed changes', async () => {
+  const paths: string[] = []
+  const fixture = createManagerFixture(
+    async path => {
+      paths.push(path)
+      return snapshot(`source-${paths.length}`)
     },
+    undefined,
+    { directory: '/workspace', outputDirectory: '/workspace/generated' },
+  )
+  await fixture.manager.openFile('/workspace/App.tao')
+  const kinds = ['add', 'change', 'unlink', 'addDir', 'unlinkDir'] as const
+  for (const [index, kind] of kinds.entries()) {
+    fixture.notify(kind, '/workspace/nested/Dependency.tao')
+    fixture.flush()
+    await fixture.waitForCompiled(`source-${index + 2}`)
+  }
+  Tests.expect(paths).toEqual(Array.from({ length: 6 }, () => '/workspace/App.tao'))
+  fixture.notify('change', '/workspace/generated/Generated.tao')
+  fixture.notify('addDir', '/workspace/generated/nested')
+  fixture.notify('change', '/workspace/image.png')
+  fixture.flush()
+  Tests.expect(fixture.readCount).toBe(6)
+  await fixture.dispose()
+  fixture.notify('change', '/workspace/App.tao')
+  fixture.flush()
+  Tests.expect(fixture.readCount).toBe(6)
+  Tests.expect(fixture.closed).toBe(1)
+})
+
+Tests.test('pipeline watches update dynamically and exclude immutable snapshot trees', async () => {
+  const fixture = dynamicWatchFixture()
+  const compiled = new Promise<UpdateResult>(resolve =>
+    fixture.manager.onCompiled(event => event.source === 'read-2' && resolve(event.result))
+  )
+  await fixture.manager.openFile('/workspace/App.tao')
+  await fixture.manager.updatePipelineDirectories(
+    ['/workspace/source', '/dependencies/producer/src'],
+    ['/workspace/.tao/cache/snapshots'],
+  )
+  await fixture.manager.updatePipelineDirectories(
+    ['/workspace/source', '/dependencies/producer/src'],
+    ['/workspace/.tao/cache/snapshots'],
+  )
+  Tests.expect(fixture.watchCalls()).toBe(1)
+  Tests.expect(fixture.updates()).toEqual([{
+    directories: ['/dependencies/producer/src', '/workspace/static'],
+    ignored: ['/workspace/.tao/cache/snapshots', '/workspace/output'],
+  }])
+  fixture.change({
+    path: '/workspace/.tao/cache/snapshots/foreign.tsx',
+    kind: 'change',
+    observedAtMs: Time.timestampMs(),
   })
+  Tests.expect(fixture.scheduled()).toBeUndefined()
+  fixture.change({ path: '/dependencies/producer/src/View.tao', kind: 'change', observedAtMs: Time.timestampMs() })
+  fixture.flush()
+  Tests.expect(await compiled).toMatchObject({ status: 'published' })
+  await fixture.manager.updatePipelineDirectories([], [])
+  Tests.expect(fixture.updates()).toHaveLength(2)
+  Tests.expect(fixture.updates()[1]!.directories).toEqual(['/workspace/static'])
+  await fixture.manager.dispose()
+})
+
+function dynamicWatchFixture() {
+  let changed: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
+  let scheduled: (() => void) | undefined
+  let watches = 0
+  const updates: Array<{ directories: readonly string[]; ignored: readonly string[] }> = []
+  let reads = 0
+  const manager = new FileManager({
+    directory: '/workspace',
+    outputDirectory: '/workspace/output',
+    watchDirectories: ['/workspace/static'],
+    async watch(_root, onChange) {
+      watches++
+      changed = onChange
+      return {
+        async updateDirectories(directories, ignored) {
+          updates.push({ directories, ignored })
+        },
+        async dispose() {},
+      }
+    },
+    read: async (_path, observedAtMs) => ({
+      source: `read-${++reads}`,
+      observedAtMs,
+    }),
+    schedule(_delay, callback) {
+      scheduled = callback
+      return () => scheduled = undefined
+    },
+    compile: async (_request, isCurrent) => createUpdateResult(isCurrent() ? 'published' : 'superseded'),
+  })
+  return {
+    manager,
+    watchCalls: () => watches,
+    updates: () => updates,
+    scheduled: () => scheduled,
+    change: (change: WorkspaceWatch.WorkspaceChange) => changed?.(change),
+    flush() {
+      const callback = scheduled
+      scheduled = undefined
+      callback?.()
+    },
+  }
 }
+
+type ReadSnapshot = Exclude<Awaited<ReturnType<NonNullable<FileManagerOptions['read']>>>, UpdateResult>
 
 type ManagerFixtureState = {
   onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
@@ -176,9 +225,10 @@ type ManagerFixtureState = {
 }
 
 function createManagerFixture(
-  read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
-    result(isCurrent() ? 'published' : 'superseded'),
+    createUpdateResult(isCurrent() ? 'published' : 'superseded'),
+  options: Partial<FileManagerOptions> = {},
 ) {
   const state: ManagerFixtureState = {
     onChange: undefined,
@@ -191,7 +241,7 @@ function createManagerFixture(
     completed: new Map(),
     waiters: new Map(),
   }
-  const manager = createFixtureManager(read, compileSource, state)
+  const manager = createFixtureManager(read, compileSource, state, options)
   manager.onCompiled(event => {
     state.completed.set(event.source, event.result)
     state.waiters.get(event.source)?.(event.result)
@@ -227,11 +277,13 @@ function createManagerFixture(
 }
 
 function createFixtureManager(
-  read: (path: string, observedAtMs: number, index: number) => Promise<SourceSnapshot>,
+  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
   compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult>,
   state: ManagerFixtureState,
+  options: Partial<FileManagerOptions>,
 ): FileManager {
   const manager = new FileManager({
+    ...options,
     async read(path, observedAtMs) {
       state.activeReads++
       state.maxConcurrentReads = Math.max(state.maxConcurrentReads, state.activeReads)
@@ -263,11 +315,11 @@ function createFixtureManager(
   return manager
 }
 
-function snapshot(source: string): SourceSnapshot {
-  return { source, observedAtMs: Time.timestampMs(), timings: new Timings('workspace:test') }
+function snapshot(source: string): ReadSnapshot {
+  return { source, observedAtMs: Time.timestampMs() }
 }
 
-function result(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {
+function createUpdateResult(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {
   return {
     status,
     revision: 'fixture',
@@ -278,14 +330,6 @@ function result(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult
       check: { stage: 'check', status: 'skipped' },
     },
   }
-}
-
-async function waitForCompileCount(getCount: () => number, expected: number): Promise<void> {
-  const deadline = Time.nowMs() + 2000
-  while (getCount() < expected && Time.nowMs() < deadline) {
-    await Time.sleep(5)
-  }
-  Tests.expect(getCount()).toBeGreaterThanOrEqual(expected)
 }
 
 function deferredVoid() {
