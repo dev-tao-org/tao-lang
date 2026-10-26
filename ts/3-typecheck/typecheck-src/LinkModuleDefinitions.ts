@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
-import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, type ModuleBinding } from './Modules'
+import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, ModuleBinding } from './Modules'
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
 export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefinition[] {
@@ -75,7 +75,7 @@ function dependenciesFor(
     return []
   }
   if (definitions.has(createModuleMemberKey(module.path, value.value))) {
-    return [{ name: value.value, source: module.path, target: value.value }]
+    return [ModuleBinding(value.value, module.path, value.value)]
   }
   const imports = module.bindings.filter(binding => binding.name === value.value)
   if (imports.length > 0) {

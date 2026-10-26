@@ -43,6 +43,7 @@ type AdmissionState = {
   idleWaiters: (() => void)[]
 }
 type AdmissionContext = { kind: 'read' | 'publication'; active: boolean }
+const AdmissionContext = (kind: AdmissionContext['kind'], active: boolean): AdmissionContext => ({ kind, active })
 
 async function readOperation<Value>(state: AdmissionState, operation: () => Promise<Value>): Promise<Value> {
   assertHealthy(state)
@@ -58,7 +59,7 @@ async function readOperation<Value>(state: AdmissionState, operation: () => Prom
 
 function runLease<Value>(state: AdmissionState, operation: () => Promise<Value>): Promise<Value> {
   state.active++
-  const context: AdmissionContext = { kind: 'read', active: true }
+  const context = AdmissionContext('read', true)
   return state.context.run(context, () =>
     Try(operation, {
       finally() {
@@ -85,7 +86,7 @@ async function publishOperation<Value>(state: AdmissionState, operation: () => P
   state.closed = true
   return await Try(async () => {
     await waitForIdle(state)
-    const context: AdmissionContext = { kind: 'publication', active: true }
+    const context = AdmissionContext('publication', true)
     const result = await state.context.run(context, () =>
       Try(operation, {
         finally() {

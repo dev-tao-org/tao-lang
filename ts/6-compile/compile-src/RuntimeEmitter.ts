@@ -16,6 +16,13 @@ export type ComponentNames = {
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
 export type InjectionCapture = { node: AST.Capture; type: 'text' | 'children' | 'unknown'; value: string }
 
+/** InjectionCapture creates the typed fields for one compiled hook capture. */
+export const InjectionCapture = (
+  node: AST.Capture,
+  type: InjectionCapture['type'],
+  value: string,
+): InjectionCapture => ({ node, type, value })
+
 /** InjectionCompilation pairs authored custom-hook code with its call inside the owning view component. */
 export type InjectionCompilation = { hookDeclaration: string; invocation: string }
 

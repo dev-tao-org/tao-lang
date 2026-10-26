@@ -27,11 +27,11 @@ function compileCapture(
     Name(name) {
       const text = isTextExpression(name, reference => bindings.has(reference.value))
       const value = RuntimeEmitter.emitName(name, scope) + (text ? ' as string' : '')
-      return { node, type: text ? 'text' : 'unknown', value }
+      return RuntimeEmitter.InjectionCapture(node, text ? 'text' : 'unknown', value)
     },
     ContextReference: reference =>
       reference.value === 'children'
-        ? { node, type: 'children', value: `${names.render}.children` }
+        ? RuntimeEmitter.InjectionCapture(node, 'children', `${names.render}.children`)
         : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
   })
 }

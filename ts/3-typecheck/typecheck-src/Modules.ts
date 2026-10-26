@@ -17,6 +17,9 @@ export type SourceModule = {
 /** ModuleBinding connects a local name to its declaration's owning source scope. */
 export type ModuleBinding = { name: string; source: string; target: string }
 
+/** ModuleBinding creates a linked name and its owning source declaration reference. */
+export const ModuleBinding = (name: string, source: string, target: string): ModuleBinding => ({ name, source, target })
+
 /** LinkedModule retains declaration ownership and explicit or implicit imported names. */
 export type LinkedModule = {
   path: string

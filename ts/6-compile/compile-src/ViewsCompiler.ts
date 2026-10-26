@@ -34,6 +34,7 @@ export function compileViewDeclaration(
 }
 
 type RenderCompilation = { result: string; components: string }
+const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
   if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
@@ -133,13 +134,14 @@ function compileViewRenderStatement(
   scope: CodegenUtil.ScopeCode,
 ): RenderCompilation {
   return Switch.kind(node, {
-    RenderViewExpressionStatement: statement => ({
-      result: compileViewRenderExpression(statement.expression, scope),
-      components: '',
-    }),
+    RenderViewExpressionStatement: statement =>
+      RenderCompilation(
+        compileViewRenderExpression(statement.expression, scope),
+        '',
+      ),
     RenderInjectStatement(statement) {
       const injection = compileInjection(statement.injection, bindings, names, scope)
-      return { result: injection.invocation, components: injection.hookDeclaration }
+      return RenderCompilation(injection.invocation, injection.hookDeclaration)
     },
   })
 }

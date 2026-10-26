@@ -2,7 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
 import { orderDefinitions } from './LinkModuleDefinitions'
 import { assertUniqueLocalBindings, collectReferencedNames } from './LinkModuleValidation'
-import { deriveNamespaceFromPath, type LinkedProgram, type ModuleBinding, type SourceModule } from './Modules'
+import { deriveNamespaceFromPath, type LinkedProgram, ModuleBinding, type SourceModule } from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
 export function linkModules(entry: string, sources: readonly SourceModule[]): LinkedProgram {
@@ -65,7 +65,7 @@ function addImplicitSiblingBindings(
         continue
       }
       const name = declaration.name.value
-      const candidate = { name, source: sibling.path, target: name }
+      const candidate = ModuleBinding(name, sibling.path, name)
       candidates.set(name, [...candidates.get(name) ?? [], candidate])
     }
   }
@@ -199,11 +199,7 @@ function addNamedBinding(
   const localName = imported.alias?.value ?? targetName
   addBinding(
     importer,
-    {
-      name: localName,
-      source: matchedTarget.path,
-      target: targetName,
-    },
+    ModuleBinding(localName, matchedTarget.path, targetName),
     bindings,
     ownNames,
     seenImports,
@@ -225,11 +221,7 @@ function addWildcardBindings(
     }
     addBinding(
       importer,
-      {
-        name: declaration.name.value,
-        source: targetPath,
-        target: declaration.name.value,
-      },
+      ModuleBinding(declaration.name.value, targetPath, declaration.name.value),
       bindings,
       ownNames,
       seenImports,
@@ -252,11 +244,7 @@ function addPackageBindings(
     if (isVisible(declaration, relation)) {
       addBinding(
         importer,
-        {
-          name: `${namespace}.${declaration.name.value}`,
-          source: targetPath,
-          target: declaration.name.value,
-        },
+        ModuleBinding(`${namespace}.${declaration.name.value}`, targetPath, declaration.name.value),
         bindings,
         ownNames,
         seenImports,
