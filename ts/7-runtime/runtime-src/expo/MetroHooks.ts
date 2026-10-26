@@ -101,8 +101,9 @@ function wrapHttpRequests(prototype: MetroPrototype, options: MetroHookOptions):
 
 function consumesSource(url: string): boolean {
   const path = url.split('?')[0]
+  const decodedPath = path.split('/').map(segment => decodeURIComponent(segment)).join('/')
   return /\.(bundle|map|assets)$/.test(path) || path === '/symbolicate'
-    || path.startsWith('/[metro-project]/') || path.startsWith('/[metro-watchFolders]/')
+    || decodedPath.startsWith('/[metro-project]/') || decodedPath.startsWith('/[metro-watchFolders]/')
 }
 
 function wrapRegistration(prototype: MetroPrototype, options: MetroHookOptions): void {

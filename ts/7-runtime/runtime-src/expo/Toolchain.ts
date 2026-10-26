@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { readRuntimePatches } from './RuntimePatches'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
 export async function prepareToolchain(
@@ -98,7 +99,7 @@ async function toolchainIdentity(
   const runtimeVersion = identityInputs?.runtimeVersion ?? Platform.runtimeVersion()
   const os = identityInputs?.os ?? platform.os
   const architecture = identityInputs?.architecture ?? platform.architecture
-  const patches = await readToolchainPatches(resourcesDirectory)
+  const { patches } = await readRuntimePatches(resourcesDirectory)
   return Platform.hashText(
     `${manifest}\0${lockfile}\0${
       JSON.stringify(patches)
@@ -106,22 +107,9 @@ async function toolchainIdentity(
   )
 }
 
-async function readToolchainPatches(directory: string): Promise<Record<string, string>> {
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8')) as {
-    patchedDependencies?: Record<string, string>
-  }
-  const patches: Record<string, string> = {}
-  for (const path of Object.values(manifest.patchedDependencies ?? {}).sort()) {
-    if (!path.startsWith('patches/') || path.includes('\\') || path.split('/').includes('..')) {
-      Errors.ThrowUserInput(`Unsupported runtime dependency patch path: ${path}`)
-    }
-    patches[path] = await FileSystem.readFile(Path.join(directory, path), 'utf8')
-  }
-  return patches
-}
-
 async function copyToolchainPatches(source: string, target: string): Promise<void> {
-  for (const [path, content] of Object.entries(await readToolchainPatches(source))) {
+  const { patches } = await readRuntimePatches(source)
+  for (const [path, content] of Object.entries(patches)) {
     const destination = Path.join(target, path)
     await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
     await FileSystem.writeIfChanged(destination, content)

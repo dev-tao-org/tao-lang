@@ -65,6 +65,11 @@ description: >-
 - Answer questions directly. Investigate whether a requested correction applies elsewhere in the
   review diff and affected contracts. Apply clear equivalents and necessary supporting changes;
   explain expanded scope briefly and ask before semantic changes or unrelated cleanup.
+- Use [review-learning](../review-learning/SKILL.md) for meaningful correction capture and the
+  required learning pass when a review group closes with substantive corrections unprocessed.
+  Check each human acceptance for an associated lesson, but approval alone is not a general rule.
+  Propagated edits remain pending until the developer reviews them, and this workflow does not
+  authorize an unrelated review.
 - Track implementation subagents alongside review progress. When one is ready for integration,
   end each message with `subagent <name> ready to be merged` until it is merged or the developer
   acknowledges postponing it. This readiness footer is the exception to ending at the file list.

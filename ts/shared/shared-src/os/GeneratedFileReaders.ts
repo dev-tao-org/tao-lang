@@ -144,22 +144,36 @@ function installDescriptors(options: GeneratedReaderOptions, descriptors: Descri
 
 function installStreams(options: GeneratedReaderOptions): void {
   options.fs.createReadStream = (path, configuration) => {
-    if (!options.owns(path)) {
-      return options.original.createReadStream(path, configuration)
-    }
-    if (configuration && typeof configuration === 'object' && 'fd' in configuration) {
-      unsupported('stream descriptor')
-    }
-    return invoke(options.current(), 'createReadStream', options.normalize(path), configuration)
+    const configured = readStreamConfiguration(options, path, configuration)
+    return options.original.createReadStream(path, configured)
   }
   for (const name of ['ReadStream', 'FileReadStream']) {
-    options.fs[name] = function(path, configuration) {
-      if (options.owns(path)) {
-        return options.fs.createReadStream(path, configuration)
+    const original = options.original[name]
+    const constructor = function(this: unknown, path: unknown, configuration: unknown) {
+      if (options.owns(path) && this instanceof original) {
+        // graceful-fs supplies its own open method; generated streams must open through the captured snapshot.
+        Object.defineProperty(this, 'open', { value: original.prototype.open, configurable: true, writable: true })
       }
-      return Reflect.construct(options.original[name], [path, configuration])
+      const configured = readStreamConfiguration(options, path, configuration)
+      return original.call(this, path, configured)
     }
+    options.fs[name] = Object.assign(constructor, { prototype: original.prototype })
   }
+}
+
+function readStreamConfiguration(options: GeneratedReaderOptions, path: unknown, configuration: unknown): unknown {
+  if (!options.owns(path)) {
+    return configuration
+  }
+  if (hasStreamDescriptor(configuration)) {
+    unsupported('stream descriptor')
+  }
+  const encoding = typeof configuration === 'string' ? { encoding: configuration } : configuration
+  return { ...encoding as object, fs: options.current() }
+}
+
+function hasStreamDescriptor(configuration: unknown): boolean {
+  return typeof configuration === 'object' && configuration !== null && 'fd' in configuration
 }
 
 function assertReadOnly(flags: unknown): void {

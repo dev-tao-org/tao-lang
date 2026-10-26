@@ -125,6 +125,8 @@ function startDevActions(state: DevSession): void {
       requestDevExit(state)
     } else if (key === 'w') {
       openDevBrowser(state)
+    } else {
+      // Unassigned keys leave the running preview unchanged.
     }
   })
   state.stopKeys = () => {

@@ -3,7 +3,7 @@ import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import type { ManagedModulesInput, ManagedRuntimePolicy, NormalizedManagedRequirement } from './ManagedModuleTypes'
-import { managedResolutionPolicy } from './ManagedNpmPolicy'
+import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
@@ -102,7 +102,7 @@ export function createManagedProfileManifest(
         private: true,
         type: 'module',
         dependencies: collectAllRequirements(requirements, runtimePins),
-        ...managedResolutionPolicy(runtimePolicy),
+        ...describeManagedResolutionPolicy(runtimePolicy),
       },
       null,
       2,

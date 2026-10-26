@@ -7,6 +7,7 @@ describe Tao for app authors; the [roadmaps](../Roadmap/) track planned work.
 - [Testing](Testing.md): select suites, parallelism, slow-test warnings and terminal/log output.
 - [Source Tools](Source%20Tools.md): formatter/fixer implementation boundaries and editor integration.
 - [Reference Verification](Reference%20Verification.md): run the smaller legacy language/Studio reference lane and find deferred maintenance checks.
+- [Review Learning](Review%20Learning.md): capture human corrections as scoped lessons and propagate equivalent fixes within review approval boundaries.
 - [Performance](Performance/README.md): choose a benchmark, find historical measurements and distinguish diagnostic runs from commit history.
 
 Keep temporary investigations and task progress in `.artifacts/notes/`, `.artifacts/checkpoint/`

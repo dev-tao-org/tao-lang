@@ -11,7 +11,7 @@ export class PreviewPublication {
   private readonly stop: (() => unknown)[]
 
   constructor(
-    workspace: ReturnType<typeof createWorkspace>,
+    private readonly workspace: PublicationWorkspace,
     private readonly send: (name: string, data: object) => void,
     onExpected: (revision: string, startedAtMs: number) => void,
     onPublished: (publication: Publication) => void,
@@ -90,6 +90,11 @@ export class PreviewPublication {
     if (result.status === 'superseded') {
       this.finish({ ...expectation, kind: 'superseded' })
     } else {
+      const served = this.workspace.runtime?.generated?.revision
+      if (served) {
+        this.baseline = this.identify(served)
+        this.send('baseline', this.baseline)
+      }
       const message = result.status === 'failed' ? result.error : 'Tao source could not be compiled.'
       this.finish({ ...expectation, kind: 'build-error', message })
     }
@@ -102,3 +107,7 @@ export class PreviewPublication {
     this.send('outcome', outcome)
   }
 }
+
+type PublicationWorkspace =
+  & Pick<ReturnType<typeof createWorkspace>, 'runtime' | 'lastGoodRevision' | 'onExpected' | 'onPublished'>
+  & { files: Pick<ReturnType<typeof createWorkspace>['files'], 'onCompiled'> }

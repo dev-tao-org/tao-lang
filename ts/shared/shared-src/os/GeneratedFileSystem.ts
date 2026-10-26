@@ -87,7 +87,7 @@ function createSnapshot(root: string, runtime: string, files: Readonly<Record<st
   candidate.mkdirSync(root, { recursive: true })
   const stamp = new Date(Time.now())
   for (const [path, text] of Object.entries(files)) {
-    if (invalidPath(path)) {
+    if (isInvalidPath(path)) {
       Errors.ThrowUserInput(`Unsupported generated source path: ${path}`)
     }
     const target = join(root, path)
@@ -99,7 +99,7 @@ function createSnapshot(root: string, runtime: string, files: Readonly<Record<st
   return candidate
 }
 
-function invalidPath(path: string): boolean {
+function isInvalidPath(path: string): boolean {
   const segments = path.split('/')
   return isAbsolute(path) || path.includes('\\') || path.includes('\0') || segments[0] === '_gen_runtime'
     || segments.some(segment => !segment || segment === '.' || segment === '..')
