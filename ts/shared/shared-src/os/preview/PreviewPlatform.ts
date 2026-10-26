@@ -1,4 +1,4 @@
-import * as Time from '../universal/Time'
+import * as Time from '../../universal/Time'
 import { clearPreviewError, showPreviewError } from './PreviewErrors'
 
 /** initializePreviewClient observes browser failures without changing Metro application. */

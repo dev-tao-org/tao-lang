@@ -1,7 +1,7 @@
-import { RuntimeSourceResources } from '@runtime/RuntimeResources'
 import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import TypeScript from 'typescript'
+import { readRuntimeSources } from '../../CLIs/CLIs-src/cli-checks/runtime-sources'
 import { createProject, createWorkspace } from '../workspace-src/Workspace'
 
 Tests.test('project compilation creates its runtime lazily and publishes only changed build files', async () => {
@@ -207,7 +207,8 @@ async function verifyUnchangedGeneratedFiles(
 
 async function writeResources(directory: string): Promise<void> {
   await FileSystem.mkdir(directory, { recursive: true })
-  const sourceFiles = Object.keys(RuntimeSourceResources)
+  const runtimeSources = await readRuntimeSources()
+  const sourceFiles = Object.keys(runtimeSources)
   await FileSystem.writeFile(
     Path.join(directory, 'runtime.json'),
     JSON.stringify({
@@ -222,7 +223,7 @@ async function writeResources(directory: string): Promise<void> {
     JSON.stringify({ dependencies: { expo: '57.0.30' } }),
   )
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), 'fixture lock')
-  for (const [resource, sourcePath] of Object.entries(RuntimeSourceResources)) {
+  for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const content = await FileSystem.readFile(Repo.resolvePath(sourcePath), 'utf8')
     const target = Path.join(directory, resource)
     await FileSystem.mkdir(Path.dirname(target), { recursive: true })

@@ -1,4 +1,4 @@
-import { DefaultAppearance } from '@runtime/Appearance'
+import { DefaultAppearance } from '@runtime/client/Appearance'
 import { Errors, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type { createWorkspace } from '@workspace/Workspace'

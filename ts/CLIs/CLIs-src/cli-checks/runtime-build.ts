@@ -1,8 +1,8 @@
-import { RuntimeSourceResources } from '@runtime/RuntimeResources'
 import { Errors, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { runtimeLock, type RuntimeManifest } from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
+import { readRuntimeSources } from './runtime-sources'
 
 /** prepareRuntime builds versioned, relocatable Expo runtime resources from declared source inputs. */
 export const prepareRuntime = Timings.createTopLevelTimer(async function(timings): Promise<string> {
@@ -13,7 +13,7 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
     const patchRoot = Repo.resolvePath('ts/patches')
     const patches = Object.keys(inputs.sources).filter(path => Path.dirname(path) === patchRoot)
       .map(path => Path.join('patches', Path.basename(path)))
-    const requiredFiles = [...resourceFiles, ...patches]
+    const requiredFiles = [...resourceFiles, ...Object.keys(inputs.runtimeSources), ...patches]
     if (!requiredFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
       await timings.run(buildResources, directory, identity, inputs)
     }
@@ -22,8 +22,12 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
   })
 })
 
-async function writeRuntimeSources(directory: string, sources: Record<string, string>): Promise<void> {
-  for (const [resource, sourcePath] of Object.entries(RuntimeSourceResources)) {
+async function writeRuntimeSources(
+  directory: string,
+  sources: Record<string, string>,
+  runtimeSources: Record<string, string>,
+): Promise<void> {
+  for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = sources[Repo.resolvePath(sourcePath)]
       ?? Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
     const target = Path.join(directory, resource)
@@ -38,13 +42,13 @@ const resourceFiles = [
   'package.json',
   'bun.lock',
   'metro/MetroPreload.cjs',
-  ...Object.keys(RuntimeSourceResources),
 ]
 const runtimeDevelopmentPackages = new Set(['typescript', '@types/react', '@types/react-dom'])
 
 async function readInputs() {
+  const runtimeSources = await readRuntimeSources()
   const paths = [
-    ...Object.values(RuntimeSourceResources).map(path => Repo.resolvePath(path)),
+    ...Object.values(runtimeSources),
     Repo.resolvePath('ts/7-runtime/runtime-src/RuntimeResources.ts'),
     Repo.resolvePath('ts/7-runtime/package.json'),
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-lock.ts'),
@@ -53,7 +57,7 @@ async function readInputs() {
     ...await metroBuildInputs(),
   ].sort()
   const sources = await Promise.all(paths.map(async path => [path, await FileSystem.readFile(path, 'utf8')] as const))
-  return { sources: Object.fromEntries(sources) }
+  return { sources: Object.fromEntries(sources), runtimeSources }
 }
 
 const buildResources = Timings.measured('runtime.build', async function(
@@ -64,7 +68,7 @@ const buildResources = Timings.measured('runtime.build', async function(
   const stage = `${directory}.${Platform.randomUUID()}.pending`
   await Try(async () => {
     await FileSystem.mkdir(stage, { recursive: true })
-    await writeRuntimeSources(stage, inputs.sources)
+    await writeRuntimeSources(stage, inputs.sources, inputs.runtimeSources)
     await writeMetroResources(stage, inputs.sources)
     const manifest = runtimeManifest(inputs.sources)
     await FileSystem.writeFile(Path.join(stage, 'package.json'), JSON.stringify(manifest, null, 2))
@@ -80,7 +84,7 @@ const buildResources = Timings.measured('runtime.build', async function(
           identity,
           dependencies: manifest.dependencies,
           devDependencies: manifest.devDependencies,
-          sourceFiles: Object.keys(RuntimeSourceResources),
+          sourceFiles: Object.keys(inputs.runtimeSources),
         },
         null,
         2,

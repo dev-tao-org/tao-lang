@@ -2,11 +2,11 @@ import { Tests } from '@shared/os'
 import { createElement, useState } from 'react'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { AppDeclaration } from '../runtime-src/App'
-import { ForeignView } from '../runtime-src/ForeignView'
-import { Name } from '../runtime-src/Scope'
-import type { ViewComponentProps } from '../runtime-src/View'
-import * as View from '../runtime-src/View'
+import { AppDeclaration } from '../runtime-src/client/App'
+import { ForeignView } from '../runtime-src/client/ForeignView'
+import { Name } from '../runtime-src/client/Scope'
+import type { ViewComponentProps } from '../runtime-src/client/View'
+import * as View from '../runtime-src/client/View'
 
 const neverReady = new Promise<never>(() => {})
 

@@ -2,8 +2,8 @@ import { Tests } from '@shared/os'
 import { createElement } from 'react'
 import type { ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { ViewComponentProps } from '../../runtime-src/View'
-import * as View from '../../runtime-src/View'
+import type { ViewComponentProps } from '../../runtime-src/client/View'
+import * as View from '../../runtime-src/client/View'
 
 Tests.test('ViewRenderArguments tags the native root through nested Tao views', () => {
   function NativeRoot({ testID }: { testID?: string }) {

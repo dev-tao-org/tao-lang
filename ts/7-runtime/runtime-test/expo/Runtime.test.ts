@@ -1,10 +1,10 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
+import { readRuntimeSources } from '../../../CLIs/CLIs-src/cli-checks/runtime-sources'
 import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
 import * as Runtime from '../../runtime-src/Runtime'
-import { RuntimeSourceResources } from '../../runtime-src/RuntimeResources'
 
 Tests.test('Runtime.create prepares relocated compiled resources and reuses the pinned toolchain', async () => {
   const root = Artifacts.resolvePath('tmp', `runtime-create-${Platform.randomUUID()}`)
@@ -251,18 +251,19 @@ async function writeLegacyRuntimeDirectory(directory: string, resourcesDirectory
 
 async function writeResources(directory: string, dependencies: Record<string, string>, label: string): Promise<void> {
   await FileSystem.mkdir(directory, { recursive: true })
+  const runtimeSources = await readRuntimeSources()
   await FileSystem.writeFile(
     Path.join(directory, 'runtime.json'),
     JSON.stringify({
       version: 2,
       identity: 'relocated-test',
       dependencies,
-      sourceFiles: Object.keys(RuntimeSourceResources),
+      sourceFiles: Object.keys(runtimeSources),
     }),
   )
   await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ dependencies }))
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `fixture lock ${label}`)
-  for (const [resource, sourcePath] of Object.entries(RuntimeSourceResources)) {
+  for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = await FileSystem.readFile(Repo.resolvePath(sourcePath), 'utf8')
     const target = Path.join(directory, resource)
     await FileSystem.mkdir(Path.dirname(target), { recursive: true })

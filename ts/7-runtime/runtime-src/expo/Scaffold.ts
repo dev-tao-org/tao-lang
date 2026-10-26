@@ -68,7 +68,7 @@ const metroConfiguration = S`
     if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
     if (name === '@tao/runtime-api') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TaoRuntimeAPI.ts'), platform);
     if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
-    if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/PreviewPlatform.ts'), platform);
+    if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'), platform);
     if (name === '@expo/metro/metro-runtime/modules/HMRClient') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/HMRClient.ts'), platform);
     if (name === 'tao:metro-hmr-client') return context.resolveRequest(context, '@expo/metro/metro-runtime/modules/HMRClient', platform);
     return context.resolveRequest(context, name, platform);
@@ -86,7 +86,7 @@ const expoTypeScriptConfig = {
       '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
       '@tao/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
       '@shared': ['src/_gen_runtime/shared/shared.ts'],
-      '@shared/os/preview': ['src/_gen_runtime/shared/os/PreviewPlatform.ts'],
+      '@shared/os/preview': ['src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'],
     },
   },
 }

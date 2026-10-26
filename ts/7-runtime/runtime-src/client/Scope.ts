@@ -30,11 +30,11 @@ export function ScopeAliases<Bindings extends Scope>(
   scope: Scope,
   names: { readonly [Name in keyof Bindings]: string },
 ): Bindings {
-  const aliases = Scope()
+  const aliasesScope = Scope()
   for (const [name, target] of Object.entries(names)) {
-    AliasBinding(aliases, name, () => Name(scope, target))
+    AliasBinding(aliasesScope, name, () => Name(scope, target))
   }
-  return aliases as Bindings
+  return aliasesScope as Bindings
 }
 
 /** Name resolves a value from the nearest lexical scope. */

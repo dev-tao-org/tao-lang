@@ -1,4 +1,4 @@
-import { createReactiveEngine, type ReactiveEngineOptions } from '@runtime/ReactiveEngine'
+import { createReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
 import { JavaScriptHeap } from '@shared/os'
 
 /** ReactiveHeapCandidate identifies the graph policy retained for heap sampling. */

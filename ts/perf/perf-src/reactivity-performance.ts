@@ -1,4 +1,4 @@
-import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/ReactiveEngine'
+import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
 import { measureReactiveHeapRetention } from './reactivity-heap'

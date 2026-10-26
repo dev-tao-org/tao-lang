@@ -13,9 +13,9 @@ export default {
     '5-check': { ...createPackageWorkspace([]), entry: [] },
     '6-compile': createPackageWorkspace([]),
     '7-runtime': createPackageWorkspace([
-      'runtime-src/TR.ts',
-      'runtime-src/TaoRuntimeAPI.ts',
-      'runtime-src/HMRClient.ts',
+      'runtime-src/client/TR.ts',
+      'runtime-src/client/TaoRuntimeAPI.ts',
+      'runtime-src/client/HMRClient.ts',
       'runtime-src/expo/MetroPreload.ts',
     ]),
     CLIs: createPackageWorkspace([
@@ -51,7 +51,7 @@ function createPackageWorkspace(entry: string[]) {
       '@cst': ['../1-grammar/grammar-src/CST.ts'],
       '@shared': ['../shared/shared-src/shared.ts'],
       '@shared/os': ['../shared/shared-src/os.ts'],
-      '@shared/os/preview': ['../shared/shared-src/os/PreviewPlatform.ts'],
+      '@shared/os/preview': ['../shared/shared-src/os/preview/PreviewPlatform.ts'],
       '@grammar/*': ['../1-grammar/grammar-src/*'],
       '@ast-gen/*': ['../2-ast-gen/ast-gen-src/*'],
       '@typecheck/*': ['../3-typecheck/typecheck-src/*'],

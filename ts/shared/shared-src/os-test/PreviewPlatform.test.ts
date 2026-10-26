@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Tests } from '@shared/os'
-import { beginPreviewRevision, isPreview } from '../os/PreviewPlatform'
+import { beginPreviewRevision, isPreview } from '../os/preview/PreviewPlatform'
 
 Tests.test('native window globals without iframe properties are ignored safely', () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
