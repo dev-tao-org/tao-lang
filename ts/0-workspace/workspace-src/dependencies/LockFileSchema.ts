@@ -10,12 +10,11 @@ export function isDependencyLock(value: unknown): value is Types.DependencyLock 
     return false
   }
   const entries = Object.entries(value.sources)
-  return entries.every(([identity, source]) => isLockedSource(source) && source.identity === identity)
+  const sources = value.sources
+  const pins = value.commitPins
+  return entries.every(([identity, source]) => isConsistentlyPinnedSource(identity, source, pins))
     && Object.entries(value.commitPins).every(([key, commit]) => isOwnedCommitPin(key, commit, entries))
-    && Object.values(value.roots).every(pin => {
-      const separator = pin.lastIndexOf('@')
-      return separator > 0 && entries.some(([identity]) => identity === pin.slice(0, separator))
-    })
+    && Object.values(value.roots).every(pin => hasRootCommitPin(pin, sources, pins))
     && (!('npmGraphs' in value) || isGraphRecord(value.npmGraphs))
 }
 
@@ -34,6 +33,26 @@ function isCommitPinRecord(value: unknown): value is Types.DependencyCommitPins 
     const separator = key.lastIndexOf('@')
     return separator > 0 && separator < key.length - 1 && isCommit(commit)
   })
+}
+
+function isConsistentlyPinnedSource(identity: string, source: unknown, pins: Types.DependencyCommitPins): boolean {
+  if (!isLockedSource(source) || source.identity !== identity) {
+    return false
+  }
+  return source.provider !== 'github' || pins[`${source.identity}@${source.version}`] === source.commit
+}
+
+function hasRootCommitPin(
+  pin: string,
+  sources: Record<string, unknown>,
+  pins: Types.DependencyCommitPins,
+): boolean {
+  const separator = pin.lastIndexOf('@')
+  if (separator <= 0 || separator === pin.length - 1) {
+    return false
+  }
+  const source = sources[pin.slice(0, separator)]
+  return isLockedSource(source) && (source.provider !== 'github' || isCommit(pins[pin]))
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {

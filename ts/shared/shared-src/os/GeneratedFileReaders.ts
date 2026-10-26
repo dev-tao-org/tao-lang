@@ -2,8 +2,6 @@ import { Errors } from '../universal/universal'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
 import { sep } from './NodeBuiltins'
 
-const generatedDescriptorBase = 1_000_000
-
 /** installGeneratedReaders routes reads and descriptors without native or synthetic generated watchers. */
 export function installGeneratedReaders(options: GeneratedReaderOptions): () => void {
   const descriptors = new Map<number, { owner: GeneratedSnapshot; descriptor: number }>()
@@ -27,6 +25,7 @@ export function installGeneratedReaders(options: GeneratedReaderOptions): () => 
 
 type DescriptorOwners = Map<number, { owner: GeneratedSnapshot; descriptor: number }>
 
+const generatedDescriptorBase = 1_000_000
 const readers = new Set(['access', 'exists', 'lstat', 'stat', 'readFile', 'readdir', 'readlink', 'realpath', 'opendir'])
 const descriptorOperations = ['read', 'readSync', 'readv', 'readvSync', 'fstat', 'fstatSync', 'close', 'closeSync']
 const streams = new Set(['createReadStream', 'ReadStream', 'FileReadStream'])

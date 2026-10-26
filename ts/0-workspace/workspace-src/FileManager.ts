@@ -88,7 +88,7 @@ export class FileManager {
 
   /** watchPipelineFiles retains attempted sidecar paths so missing imports can recover on creation. */
   async watchPipelineFiles(files: readonly string[]): Promise<void> {
-    if (this.pipelineDirectories.includeFiles(files)) {
+    if (this.pipelineDirectories.includeFiles(this.workspaceRoot, files)) {
       await this.updateWatcherDirectories()
     }
   }

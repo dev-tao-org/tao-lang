@@ -1,5 +1,5 @@
-import { Time } from '@shared'
-import { Tests } from '@shared/os'
+import { Time, Try } from '@shared'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { FileManager } from '../workspace-src/FileManager'
 import * as WatchFixture from './WatchFixture'
 
@@ -201,4 +201,29 @@ Tests.test('reached TypeScript helpers and assets refresh while unrelated assets
   fixture.change({ path: '/workspace/unrelated.png', kind: 'change', observedAtMs: Time.timestampMs() })
   Tests.expect(fixture.scheduled()).toBeUndefined()
   await fixture.manager.dispose()
+})
+
+Tests.test('failed external sidecar inputs register their project before missing nested files exist', async () => {
+  const directory = Artifacts.resolvePath('tmp', `attempted-sidecar-watch-${Platform.randomUUID()}`)
+  const producer = Path.join(directory, 'producer')
+  const missingAsset = Path.join(producer, 'new', 'logo.png')
+  const fixture = WatchFixture.createDynamicWatchFixture()
+  await Try(async () => {
+    await FileSystem.mkdir(Path.join(producer, '.tao'), { recursive: true })
+    await fixture.manager.openFile('/workspace/App.tao')
+    await fixture.manager.watchPipelineFiles([missingAsset])
+    Tests.expect(fixture.updates().at(-1)?.directories).toContain(producer)
+    Tests.expect(await FileSystem.exists(Path.dirname(missingAsset))).toBe(false)
+    const recovered = WatchFixture.waitForCompiledSource(fixture.manager, 'read-2')
+    fixture.change({ path: missingAsset, kind: 'add', observedAtMs: Time.timestampMs() })
+    fixture.flush()
+    Tests.expect(await recovered).toMatchObject({ status: 'published' })
+    await fixture.manager.updatePipelineDirectories([], [], [])
+    Tests.expect(fixture.updates().at(-1)?.directories).not.toContain(producer)
+  }, {
+    async finally() {
+      await fixture.manager.dispose()
+      await FileSystem.rm(directory, { recursive: true, force: true })
+    },
+  })
 })

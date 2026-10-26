@@ -1,6 +1,7 @@
 import { Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
 import { Document } from './Document'
+import { findNearestProjectRoot } from './modules/Paths'
 import { isSetupRequired } from './SetupRequired'
 import type { UpdateResult } from './Workspace'
 
@@ -34,12 +35,16 @@ export class PipelineWatchDirectories {
     return this.files.includes(Path.resolve(path))
   }
 
-  includeFiles(paths: readonly string[]): boolean {
+  includeFiles(root: string | undefined, paths: readonly string[]): boolean {
     const nextFiles = collectUniquePaths([...this.files, ...paths])
-    if (haveSamePaths(this.files, nextFiles)) {
+    const projectRoots = paths.flatMap(resolveAttemptedFileProject)
+    const externalRoots = projectRoots.filter(path => !root || !Path.isWithin(root, path))
+    const nextAuthored = collectUniquePaths([...this.authored, ...externalRoots])
+    if (haveSamePaths(this.files, nextFiles) && haveSamePaths(this.authored, nextAuthored)) {
       return false
     }
     this.files = nextFiles
+    this.authored = nextAuthored
     return true
   }
 
@@ -274,6 +279,12 @@ function defaultRead(path: string, observedAtMs: number): Promise<ReadResult> {
     source,
     observedAtMs,
   }))
+}
+
+function resolveAttemptedFileProject(path: string): string[] {
+  // Missing nested files still belong to an existing project root; never observe arbitrary ancestors.
+  const project = findNearestProjectRoot(Path.dirname(path))
+  return project ? [project] : []
 }
 
 function collectUniquePaths(paths: readonly string[]): string[] {
