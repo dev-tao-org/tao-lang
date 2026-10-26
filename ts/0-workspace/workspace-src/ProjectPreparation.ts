@@ -15,6 +15,7 @@ import { collectModuleRequirements } from './ModuleRequirements'
 import { loadModules } from './modules/Loader'
 import { findNamedPackageRoot, findNearestProjectRoot } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
+import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
 import * as ManagedModules from './sidecars/ManagedModules'
@@ -43,9 +44,15 @@ export async function prepareProject(
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   await ensureProjectMetadata(project.root)
-  const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
-    ?? Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
-  return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
+  const lifecycle = await Lifecycle.acquireProjectLifecycle(project.root)
+  if (!lifecycle) {
+    Errors.ThrowUserInput('Project maintenance is active. Retry dependency preparation when it finishes.')
+  }
+  return await Try(async () => {
+    const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
+      ?? Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
+    return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
+  }, { finally: lifecycle.release })
 }
 
 /** inspectProjectPreparation checks initial workflow readiness without installing or resolving pins. */
@@ -193,12 +200,13 @@ async function prepareEntrySources(
   const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
     ?? Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
   const resolutions = new Map<string, Promise<{ root: string }>>()
+  const resolvedPins = new Map<string, string>()
   return await Try(() =>
     loadEntry(entry, root, {
       resolveProject(importer, alias) {
         const owner = findNearestProjectRoot(Path.dirname(importer)) ?? root
         const key = `${owner}:${alias}`
-        const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services)
+        const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services, resolvedPins)
         resolutions.set(key, resolved)
         return resolved
       },

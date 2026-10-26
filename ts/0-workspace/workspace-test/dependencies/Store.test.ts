@@ -111,6 +111,10 @@ Tests.test('same source at different refs keeps each alias resolvable when commi
       requirements,
       options,
     )
+    Tests.expect(lock.commitPins).toEqual({
+      'github:example/shared@v1': 'a'.repeat(40),
+      'github:example/shared@v2': 'a'.repeat(40),
+    })
     Tests.expect(Store.resolveLockedAlias(lock, root, 'first', root)?.identity).toBe('github:example/shared')
     Tests.expect(Store.resolveLockedAlias(lock, root, 'second', root)?.identity).toBe('github:example/shared')
     const resolutionCount = calls.filter(call => call.startsWith('resolve:')).length
@@ -134,6 +138,16 @@ Tests.test('prepare refuses to replace a malformed durable lock', async () => {
       /restore it from version control or repair it explicitly/,
     )
     Tests.expect(await FileSystem.readFile(lockPath, 'utf8')).toBe('{ broken')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('dependency lock preparation rejects v1 without guessing per-ref commit pins', async () => {
+  const root = Artifacts.resolvePath('tmp', `dependency-v1-lock-${Platform.randomUUID()}`)
+  const path = Path.join(root, '.tao', 'store', 'dependencies.lock.json')
+  await Try(async () => {
+    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    await FileSystem.writeFile(path, JSON.stringify({ version: 1, roots: {}, sources: {} }))
+    await Tests.rejects(LockFile.readDependencyLock(path), /unsupported format version 1/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

@@ -4,14 +4,14 @@ import type { SourceModule } from '@typecheck/Modules'
 import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
 import { collectSourceRequirements, validateSourceRequirements } from './dependencies/Requirements'
 import { createSourceIdentity, deriveDefaultSourceAlias } from './dependencies/Sources'
-import { resolveLockedAlias } from './dependencies/Store'
+import { resolveLockedAlias, resolveLockedRequirement } from './dependencies/Store'
 import type { DependencyLock, DependencyRequirement, DependencyStoreOptions } from './dependencies/Types'
 import { findNearestProjectRoot } from './modules/Paths'
 import { requireSetup } from './SetupRequired'
 
 /** ProjectDependencies resolves reachable locked aliases and observes declarations through the parsed graph. */
 export class ProjectDependencies {
-  private current: DependencyLock = { version: 1, roots: {}, sources: {} }
+  private current: DependencyLock = { version: 2, roots: {}, sources: {}, commitPins: {} }
   private readonly requirements = new Map<string, DependencyRequirement[]>()
   private readonly used = new Set<string>()
 
@@ -23,7 +23,7 @@ export class ProjectDependencies {
       await readDependencyLock(resolveDependencyLockPath(this.root)),
       this.root,
       this.options.bundledProjects,
-    ) ?? { version: 1, roots: {}, sources: {} }
+    ) ?? { version: 2, roots: {}, sources: {}, commitPins: {} }
     this.requirements.set(this.root, await this.options.readRequirements(this.root))
   }
 
@@ -60,8 +60,19 @@ export class ProjectDependencies {
       ?? Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
       ?? requireSetup(`Dependency ${alias} needs setup.`)
+    if (source.identity !== createSourceIdentity(requirement, owner, this.root)) {
+      requireSetup(`Dependency ${alias} needs setup.`)
+    }
+    if (owner === this.root && this.current.roots[alias] !== `${source.identity}@${requirement.version}`) {
+      requireSetup(`Dependency ${alias} needs setup.`)
+    }
+    const lockedRequirement = resolveLockedRequirement(this.current, owner, alias, this.root)
+    if (owner !== this.root && lockedRequirement?.version !== requirement.version) {
+      requireSetup(`Dependency ${alias} needs setup.`)
+    }
     if (
-      source.identity !== createSourceIdentity(requirement, owner, this.root) || source.version !== requirement.version
+      requirement.provider === 'github'
+      && this.current.commitPins[`${source.identity}@${requirement.version}`] !== source.commit
     ) {
       requireSetup(`Dependency ${alias} needs setup.`)
     }

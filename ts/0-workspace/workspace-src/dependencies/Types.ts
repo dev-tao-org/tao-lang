@@ -9,11 +9,15 @@ export type DependencyRequirement = {
 
 /** DependencyLock records immutable Git pins and live local source locations. */
 export type DependencyLock = {
-  version: 1
+  version: 2
   roots: Record<string, string>
   sources: Record<string, LockedSource>
+  commitPins: DependencyCommitPins
   npmGraphs?: Record<string, ManagedGraphReference>
 }
+
+/** DependencyCommitPins maps each Git source ref to its exact immutable commit. */
+export type DependencyCommitPins = Record<string, string>
 
 /** ManagedGraphReference pins one exact npm graph durable lock. */
 export type ManagedGraphReference = { fingerprint: string; lockPath: string; lockHash: string }

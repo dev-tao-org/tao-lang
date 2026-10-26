@@ -12,17 +12,25 @@ export function resolveLockedAlias(
   alias: string,
   projectRoot: string,
 ): LockedSource | undefined {
-  const owner = Path.resolve(importerRoot) === Path.resolve(projectRoot)
-    ? undefined
-    : Object.values(lock.sources).find(source => Path.resolve(source.location) === Path.resolve(importerRoot))
-  if (owner && !owner.requirements.some(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)) {
-    return undefined
-  }
-  const requirement = owner?.requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
+  const requirement = resolveLockedRequirement(lock, importerRoot, alias, projectRoot)
   const identity = requirement
-    ? createSourceIdentity(requirement, owner!.location, projectRoot)
+    ? createSourceIdentity(requirement, importerRoot, projectRoot)
     : resolveRootIdentity(lock, alias)
   return identity ? lock.sources[identity] : undefined
+}
+
+/** resolveLockedRequirement returns the durable requirement owned by one locked source. */
+export function resolveLockedRequirement(
+  lock: DependencyLock,
+  importerRoot: string,
+  alias: string,
+  projectRoot: string,
+): DependencyRequirement | undefined {
+  if (Path.resolve(importerRoot) === Path.resolve(projectRoot)) {
+    return undefined
+  }
+  const owner = Object.values(lock.sources).find(source => Path.resolve(source.location) === Path.resolve(importerRoot))
+  return owner?.requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
 }
 
 /** prepareDependencies resolves requirements and downloads only missing pinned Git sources. */
@@ -46,14 +54,15 @@ export async function prepareDependencies(
       projectRoot,
       requirements,
       LockFile.materializeSources(previous?.sources ?? {}, projectRoot, options.bundledProjects),
-      collectPreviousPins(previous, projectRoot, options.bundledProjects),
+      collectPreviousPins(previous),
       update,
       options,
     )
     const result: DependencyLock = {
-      version: 1,
+      version: 2,
       roots: createRootPins(requirements, projectRoot),
-      sources,
+      sources: sources.sources,
+      commitPins: sources.commitPins,
       ...(previous?.npmGraphs ? { npmGraphs: previous.npmGraphs } : {}),
     }
     await LockFile.writeDependencyLock(path, result, projectRoot)
@@ -67,6 +76,7 @@ export async function prepareSourceDependency(
   owner: string,
   alias: string,
   options: DependencyStoreOptions,
+  resolvedPins: Map<string, string>,
 ): Promise<{ root: string }> {
   const requirements = await options.readRequirements(owner)
   const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
@@ -74,17 +84,18 @@ export async function prepareSourceDependency(
   const path = LockFile.resolveDependencyLockPath(projectRoot)
   const previous =
     LockFile.materializeLocations(await LockFile.readDependencyLock(path), projectRoot, options.bundledProjects)
-      ?? { version: 1 as const, roots: {}, sources: {} }
+      ?? { version: 2 as const, roots: {}, sources: {}, commitPins: {} }
   const identity = createSourceIdentity(requirement, owner, projectRoot)
   const source = await resolveSource(
     requirement,
     identity,
     projectRoot,
     owner,
-    previous.sources[identity],
+    resolveSourceForVersion(previous.sources[identity], previous.commitPins, identity, requirement.version),
     false,
     options,
   )
+  rejectCommitConflict(identity, source.commit, resolvedPins)
   const result = {
     ...previous,
     roots: Path.resolve(owner) === Path.resolve(projectRoot)
@@ -94,9 +105,16 @@ export async function prepareSourceDependency(
       ...previous.sources,
       [identity]: { ...source, requirements: await options.readRequirements(source.location) },
     },
+    commitPins: {
+      ...previous.commitPins,
+      ...(source.commit ? { [`${identity}@${requirement.version}`]: source.commit } : {}),
+    },
   }
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   await LockFile.writeDependencyLock(path, result, projectRoot)
+  if (source.commit) {
+    resolvedPins.set(identity, source.commit)
+  }
   return { root: source.location }
 }
 
@@ -110,6 +128,11 @@ function resolveRootIdentity(lock: DependencyLock, alias: string): string | unde
   return identity && lock.sources[identity] ? identity : undefined
 }
 
+type ResolvedDependencyGraph = {
+  sources: Record<string, LockedSource>
+  commitPins: Record<string, string>
+}
+
 async function resolveGraph(
   projectRoot: string,
   requirements: DependencyRequirement[],
@@ -117,8 +140,9 @@ async function resolveGraph(
   previousPins: Map<string, string>,
   update: string[],
   options: DependencyStoreOptions,
-): Promise<Record<string, LockedSource>> {
+): Promise<ResolvedDependencyGraph> {
   const sources: Record<string, LockedSource> = {}
+  const commitPins: Record<string, string> = {}
   const pending = requirements.map(requirement => ({ requirement, parent: projectRoot }))
   const visited = new Set<string>()
   const resolvedPins = new Map<string, string>()
@@ -129,7 +153,7 @@ async function resolveGraph(
     const sourcePin = previousSources[identity]
     const prior = requestedVersionPin && sourcePin?.commit
       ? { ...sourcePin, version: requirement.version, commit: requestedVersionPin }
-      : sourcePin
+      : undefined
     const pin = await resolveSource(
       requirement,
       identity,
@@ -142,6 +166,9 @@ async function resolveGraph(
     )
     rejectCommitConflict(identity, pin.commit, resolvedPins)
     sources[identity] = { ...pin, identity, requirements: await options.readRequirements(pin.location) }
+    if (pin.commit) {
+      commitPins[`${identity}@${requirement.version}`] = pin.commit
+    }
     const visitKey = `${identity}@${pin.commit ?? pin.version}`
     if (visited.has(visitKey)) {
       continue
@@ -151,39 +178,23 @@ async function resolveGraph(
       pending.push({ requirement: child, parent: pin.location })
     }
   }
-  return sources
+  return { sources, commitPins }
 }
 
 function collectPreviousPins(
   previous: DependencyLock | undefined,
-  projectRoot: string,
-  bundledProjects?: Readonly<Record<string, string>>,
 ): Map<string, string> {
-  const pins = new Map<string, string>()
-  if (!previous) {
-    return pins
-  }
-  const sources = LockFile.materializeSources(previous.sources, projectRoot, bundledProjects)
-  for (const value of Object.values(previous.roots)) {
-    // ex: github:x/foo@v1 -> identity github:x/foo, version v1
-    const split = value.lastIndexOf('@')
-    const identity = split > 0 ? value.slice(0, split) : ''
-    const version = split > 0 ? value.slice(split + 1) : ''
-    const commit = sources[identity]?.commit
-    if (identity && version && commit) {
-      pins.set(`${identity}@${version}`, commit)
-    }
-  }
-  for (const source of Object.values(sources)) {
-    for (const requirement of source.requirements) {
-      const identity = createSourceIdentity(requirement, source.location, projectRoot)
-      const commit = sources[identity]?.commit
-      if (commit) {
-        pins.set(`${identity}@${requirement.version}`, commit)
-      }
-    }
-  }
-  return pins
+  return new Map(Object.entries(previous?.commitPins ?? {}))
+}
+
+function resolveSourceForVersion(
+  source: LockedSource | undefined,
+  commitPins: Record<string, string>,
+  identity: string,
+  version: string,
+): LockedSource | undefined {
+  const commit = commitPins[`${identity}@${version}`]
+  return source && commit ? { ...source, version, commit } : undefined
 }
 
 function rejectCommitConflict(identity: string, commit: string | undefined, resolvedPins: Map<string, string>): void {

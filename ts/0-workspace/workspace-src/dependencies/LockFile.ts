@@ -1,6 +1,7 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import type { DependencyLock, DependencyRequirement, LockedSource, ManagedGraphReference } from './Types'
+import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
+import type { DependencyLock, LockedSource, ManagedGraphReference } from './Types'
 
 /** resolveDependencyLockPath locates the project's durable source dependency graph. */
 export function resolveDependencyLockPath(projectRoot: string): string {
@@ -25,6 +26,11 @@ export async function readDependencyLock(path: string): Promise<DependencyLock |
     },
   )
   if (!isDependencyLock(parsed)) {
+    if (isVersionOne(parsed)) {
+      Errors.ThrowUserInput(
+        `Dependency lock ${path} uses unsupported format version 1; restore an updated version 2 lock without re-resolving pins.`,
+      )
+    }
     Errors.ThrowUserInput(
       `Dependency lock ${path} is invalid; restore it from version control or repair it explicitly.`,
     )
@@ -129,7 +135,7 @@ export async function recordManagedGraphReference(
   validateGraphReference(graphKey, fingerprint, lockHash)
   const lockPath = resolveDependencyLockPath(projectRoot)
   const lock = await readDependencyLock(lockPath)
-    ?? { version: 1, roots: {}, sources: {} }
+    ?? { version: 2, roots: {}, sources: {}, commitPins: {} }
   const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
   const reference: ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
   const updated: DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
@@ -188,10 +194,6 @@ async function pruneMissingGraphReferences(lock: DependencyLock, projectRoot: st
   return updated
 }
 
-function isOwnedSourceKey(key: string): boolean {
-  return key.endsWith('.tao') && !key.includes('\\') && !key.startsWith('/') && !key.split('/').includes('..')
-}
-
 async function retainedProfileIdentities(directory: string): Promise<Set<string> | undefined> {
   if (!await FileSystem.exists(directory)) {
     return new Set()
@@ -235,101 +237,6 @@ function relativizeProjectPath(projectRoot: string, filePath: string): string {
     Errors.ThrowUserInput('Managed dependency lock path must be inside the project.')
   }
   return Path.relative(Path.resolve(projectRoot), absolute).replaceAll('\\', '/')
-}
-
-function isDependencyLock(value: unknown): value is DependencyLock {
-  if (!hasVersionOne(value)) {
-    return false
-  }
-  if (!hasStringRoots(value)) {
-    return false
-  }
-  if (!hasSources(value)) {
-    return false
-  }
-  const entries = Object.entries(value.sources)
-  return entries.every(([identity, source]) => isLockedSource(source) && source.identity === identity)
-    && Object.values(value.roots).every(pin => {
-      const separator = pin.lastIndexOf('@')
-      return separator > 0 && entries.some(([identity]) => identity === pin.slice(0, separator))
-    })
-    && (!('npmGraphs' in value) || isGraphRecord(value.npmGraphs))
-}
-
-type VersionOneLockRecord = Record<string, unknown> & { version: 1 }
-type LockRootsRecord = Record<string, unknown> & { roots: Record<string, string> }
-type LockSourcesRecord = Record<string, unknown> & { sources: Record<string, unknown> }
-
-function hasVersionOne(value: unknown): value is VersionOneLockRecord {
-  return typeof value === 'object' && value !== null && 'version' in value && value.version === 1
-}
-
-function hasStringRoots(
-  value: Record<string, unknown>,
-): value is LockRootsRecord {
-  return 'roots' in value && isStringRecord(value.roots)
-}
-
-function hasSources(
-  value: Record<string, unknown>,
-): value is LockSourcesRecord {
-  return 'sources' in value && typeof value.sources === 'object' && value.sources !== null
-}
-
-function isGraphRecord(value: unknown): boolean {
-  return typeof value === 'object' && value !== null
-    && Object.entries(value).every(([key, reference]) => {
-      return isOwnedSourceKey(key) && isManagedGraphReference(reference)
-    })
-}
-
-function isManagedGraphReference(value: unknown): value is ManagedGraphReference {
-  return typeof value === 'object' && value !== null
-    && 'fingerprint' in value && isSha256(value.fingerprint)
-    && 'lockHash' in value && isSha256(value.lockHash)
-    && 'lockPath' in value && isSafeRelativePath(value.lockPath)
-}
-
-function isSha256(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value)
-}
-
-function isSafeRelativePath(value: unknown): value is string {
-  return typeof value === 'string' && !Path.isAbsolute(value) && !value.includes('\\')
-    && !value.split('/').includes('..')
-}
-
-function isLockedSource(value: unknown): value is LockedSource {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  return 'identity' in value && typeof value.identity === 'string'
-    && 'provider' in value && ['github', 'file', 'bundled'].includes(String(value.provider))
-    && 'identifier' in value && typeof value.identifier === 'string'
-    && 'version' in value && typeof value.version === 'string'
-    && (value.provider === 'bundled' || 'location' in value && typeof value.location === 'string')
-    && 'requirements' in value && Array.isArray(value.requirements) && value.requirements.every(isRequirement)
-    && (value.provider === 'github' ? isCommit((value as Record<string, unknown>).commit) : !('commit' in value))
-    && (!('subdirectory' in value) || typeof value.subdirectory === 'string')
-}
-
-function isCommit(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(value)
-}
-
-function isRequirement(value: unknown): value is DependencyRequirement {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  return 'provider' in value && ['github', 'file', 'bundled'].includes(String(value.provider))
-    && 'identifier' in value && typeof value.identifier === 'string'
-    && 'version' in value && typeof value.version === 'string'
-    && (!('alias' in value) || typeof value.alias === 'string')
-    && (!('subdirectory' in value) || typeof value.subdirectory === 'string')
-}
-
-function isStringRecord(value: unknown): value is Record<string, string> {
-  return typeof value === 'object' && value !== null && Object.values(value).every(item => typeof item === 'string')
 }
 
 function requiredBundledLocation(
