@@ -13,9 +13,9 @@ import type { GeneratedRevision } from './PreviewProtocol'
 export function createMetroAdapter(options: MetroAdapterOptions): MetroAdapter {
   MetroPlatform.assertMetroNotLoaded(options.directory)
   const initial = snapshotRevision(options.initial)
-  const files = GeneratedFileSystem.installGeneratedFileSystem(Path.join(options.directory, 'src'), initial.files)
+  const fileSystem = GeneratedFileSystem.installGeneratedFileSystem(Path.join(options.directory, 'src'), initial.files)
   const admission = createMetroAdmission()
-  const state: AdapterState = { current: initial, errors: [], poisoned: false, files, admission, options }
+  const state: AdapterState = { current: initial, errors: [], poisoned: false, fileSystem, admission, options }
   const owner = createRevisionOwner(options.sessionId, initial, revision => commitRevision(state, revision))
   installMetroHooks({
     directory: options.directory,
@@ -57,7 +57,7 @@ type AdapterState = {
   current: GeneratedRevision
   errors: string[]
   poisoned: boolean
-  files: GeneratedFileSystem.GeneratedFileSystem
+  fileSystem: GeneratedFileSystem.GeneratedFileSystem
   admission: MetroAdmission
   options: MetroAdapterOptions
   metro?: MetroServer
@@ -75,13 +75,13 @@ async function commitRevision(state: AdapterState, revision: GeneratedRevision):
   if (changed.length === 0) {
     return { status: 'noop' }
   }
-  const staged = state.files.stage(revision.files)
+  const staged = state.fileSystem.stage(revision.files)
   return await state.admission.publish(async () => {
     const metro = state.metro ?? Errors.ThrowHostEnvironment('Metro publication is not ready.')
     const graph = await metro.getBundler().getBundler().getDependencyGraph()
     const map = graph.getWatcher()
     assertExternalMap(map)
-    const previous = state.files.replace(staged)
+    const previous = state.fileSystem.replace(staged)
     const previousRevision = state.current
     state.current = revision
     state.errors = []
@@ -95,7 +95,7 @@ async function commitRevision(state: AdapterState, revision: GeneratedRevision):
           state.admission.poison()
           return { status: 'poisoned' as const, message: String(error) }
         }
-        state.files.replace(previous)
+        state.fileSystem.replace(previous)
         state.current = previousRevision
         return { status: 'error' as const, message: String(error) }
       },
@@ -138,7 +138,7 @@ function createChanges(state: AdapterState, root: string, paths: string[]): Exte
   return paths.map(path => {
     const relativePath = Path.relative(root, Path.join(state.options.directory, 'src', path)).replaceAll('\\', '/')
     return Object.hasOwn(state.current.files, path)
-      ? { event: 'touch', root, relativePath, metadata: state.files.metadata(path) }
+      ? { event: 'touch', root, relativePath, metadata: state.fileSystem.metadata(path) }
       : { event: 'delete', root, relativePath }
   })
 }

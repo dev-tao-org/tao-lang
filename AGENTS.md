@@ -95,6 +95,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Object functions with only a returned expression use expression-bodied arrow properties: `Name: name => value`. Other object functions use method syntax; retain methods when arrows would change `this`, `arguments`, `super` or generator behavior.
 - Review:
   - Name functions, methods and callable variables or parameters with verbs or verb phrases, such as `resolveModuleIndex`. Retain noun names only for a clear convention or contract, such as same-named type constructors, React components, property getters or required external API names.
+  - Name variables and fields for the value they hold: use `aliasesScope` for a scope, `declarationKey` for an encoded key and `modulesDirectory` for a directory. Do not use collection names for scopes, handles or encodings; retain concise domain names when their meaning is clear.
   - Nontrivial `if` / `else if` chains must account for unmatched input: use a final `else` explaining intentional no action, or fail explicitly when that state is impossible. Preserve concise guard clauses and exhaustive dispatch instead of adding redundant branches.
   - Put all exports immediately after imports, before private definitions.
   - Follow nearby conventions only when they comply with applicable specific rules. Specific rules always override consistency with existing code; never copy a violating pattern to match its surroundings.

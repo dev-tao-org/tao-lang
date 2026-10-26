@@ -123,8 +123,8 @@ function renderGroups(groups: ReadonlyMap<string, Group>): string[] {
     if (group.text) {
       return group.text
     }
-    const names = group.form === 'all' ? 'all' : [...group.names].sort().join(', ')
-    return `use ${names}${group.source ? ` from ${group.source}` : ''}`
+    const namesCode = group.form === 'all' ? 'all' : [...group.names].sort().join(', ')
+    return `use ${namesCode}${group.source ? ` from ${group.source}` : ''}`
   })
 }
 

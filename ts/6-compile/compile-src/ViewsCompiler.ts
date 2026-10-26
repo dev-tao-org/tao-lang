@@ -69,14 +69,15 @@ function compileTaoView(
   const references = createViewReferences(context.moduleBindings, shadowed)
   const nestedContext = createNestedOwnerContext(context, shadowed)
   const nested = compileNestedViews(node, children, nestedContext, names, bindings)
-  const values = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope)).join(
-    '\n',
-  )
+  const valuesCode = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope))
+    .join(
+      '\n',
+    )
   const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
   const statements = CodegenUtil.joinCodeLines(
     references.initialize(),
     ...nested.map(child => child.initialization),
-    values,
+    valuesCode,
   )
   const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, true)
   const registration = RuntimeEmitter.emitViewDeclaration(
@@ -155,8 +156,8 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
     node.arguments,
     argument => ValuesCompiler.compileExpression(argument, scope),
   )
-  const children = compileViewRenderBlock(node.block, scope)
-  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, children)
+  const childrenCode = compileViewRenderBlock(node.block, scope)
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
 function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: CodegenUtil.ScopeCode): string {

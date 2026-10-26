@@ -118,13 +118,13 @@ function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   }
   const statements = AST.GetViewRenderBlockStatements(node)
   if (statements.length > 0) {
-    const children = childScope(scope)
+    const childrenScope = childScope(scope)
     for (const child of statements) {
       if (AST.IsLetDeclaration(child)) {
-        visitLet(child, children)
-        declare(children, child.name)
+        visitLet(child, childrenScope)
+        declare(childrenScope, child.name)
       } else {
-        visitRender(child, children)
+        visitRender(child, childrenScope)
       }
     }
   }

@@ -103,11 +103,11 @@ function compileMain(
     ? `import * as _Views from ${compileModuleImport(path, resolveViewsPath(path))};`
     : ''
   const bindingTypes = compileBindingTypes(module, paths, context)
-  const aliases = compileAliases(module, paths)
-  const bindings = joinCodeLines(
+  const aliasesCode = compileAliases(module, paths)
+  const bindingsCode = joinCodeLines(
     ...declarations.filter(item => !AST.IsLetDeclaration(item.node)).map(item => item.compiled.initialization),
   )
-  const values = declarations.filter(item => AST.IsLetDeclaration(item.node)).map(item =>
+  const valuesCode = declarations.filter(item => AST.IsLetDeclaration(item.node)).map(item =>
     S`
       export function initialize${(item.node as AST.LetDeclaration).name.value}(_Scope: Scope): void {
         ${item.compiled.initialization}
@@ -121,14 +121,14 @@ function compileMain(
     ${bindingTypes}
 
     export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.Scope>>): void {
-      ${aliases}
+      ${aliasesCode}
     }
 
     export function bindDeclarations(_Scope: Scope): void {
-      ${bindings}
+      ${bindingsCode}
     }
 
-    ${values}
+    ${valuesCode}
   `
 }
 
@@ -184,7 +184,7 @@ function compileBootstrap(
   const scopes = program.modules.map((_module, index) =>
     RuntimeEmitter.emitScope(`_scope${index}`, `Source${index}.Scope`)
   )
-  const modules = program.modules.map((module, index) =>
+  const moduleScopesCode = program.modules.map((module, index) =>
     `${emitStringLiteral(resolvePath(paths, module.path))}: _scope${index}`
   ).join(',\n')
   const aliases = program.modules.map((_module, index) => `Source${index}.bindAliases(_scope${index}, _Modules);`)
@@ -200,7 +200,7 @@ function compileBootstrap(
 
     ${RuntimeEmitter.emitModuleApplied(revision)}
     ${scopes.join('\n')}
-    const _Modules = { ${modules} };
+    const _Modules = { ${moduleScopesCode} };
     ${aliases.join('\n')}
     ${views.join('\n')}
     ${values.join('\n')}

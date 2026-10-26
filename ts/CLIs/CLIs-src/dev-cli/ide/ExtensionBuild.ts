@@ -68,13 +68,13 @@ async function validateRelocatedPackage(): Promise<void> {
 }
 
 async function copyAssets(): Promise<void> {
-  const modules = Path.join(sourceRoot, 'node_modules')
+  const modulesDirectory = Path.join(sourceRoot, 'node_modules')
   await FileSystem.cp(
-    Path.join(modules, 'web-tree-sitter/web-tree-sitter.wasm'),
+    Path.join(modulesDirectory, 'web-tree-sitter/web-tree-sitter.wasm'),
     Path.join(packageRoot, 'runtime/web-tree-sitter.wasm'),
   )
   await FileSystem.cp(
-    Path.join(modules, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
+    Path.join(modulesDirectory, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
     Path.join(packageRoot, 'grammars/tree-sitter-tsx.wasm'),
   )
   await FileSystem.mkdir(Path.join(packageRoot, 'queries'), { recursive: true })
@@ -82,7 +82,7 @@ async function copyAssets(): Promise<void> {
     Repo.resolvePath('ts/1-grammar/grammar-src/queries/highlights.scm'),
     Path.join(packageRoot, 'queries/tao-highlights.scm'),
   )
-  await writeTsxQueries(modules)
+  await writeTsxQueries(modulesDirectory)
   await FileSystem.cp(Repo.resolvePath('LICENSE'), Path.join(packageRoot, 'LICENSE'))
   await FileSystem.cp(Path.join(sourceRoot, 'README.md'), Path.join(packageRoot, 'README.md'))
   await FileSystem.cp(
@@ -93,7 +93,7 @@ async function copyAssets(): Promise<void> {
   const formatterNotice = await copyFormatter()
   const notices = await Promise.all(
     ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
-      `${name}\n\n${await FileSystem.readFile(Path.join(modules, name, 'LICENSE'), 'utf8')}`
+      `${name}\n\n${await FileSystem.readFile(Path.join(modulesDirectory, name, 'LICENSE'), 'utf8')}`
     ),
   )
   await FileSystem.writeFile(
@@ -120,15 +120,15 @@ async function copyLanguageIcons(): Promise<void> {
   await FileSystem.cp(Path.join(icons, 'tao-dark.svg'), Path.join(packageRoot, 'icons/tao-dark.svg'))
 }
 
-async function writeTsxQueries(modules: string): Promise<void> {
-  const typescript = FileSystem.realpathSync(Path.join(modules, 'tree-sitter-typescript'))
-  const javascript = Path.join(Path.dirname(typescript), 'tree-sitter-javascript')
+async function writeTsxQueries(modulesDirectory: string): Promise<void> {
+  const typescriptDirectory = FileSystem.realpathSync(Path.join(modulesDirectory, 'tree-sitter-typescript'))
+  const javascriptDirectory = Path.join(Path.dirname(typescriptDirectory), 'tree-sitter-javascript')
   const paths = [
-    Path.join(javascript, 'queries/highlights.scm'),
-    Path.join(javascript, 'queries/highlights-jsx.scm'),
-    Path.join(typescript, 'queries/highlights.scm'),
+    Path.join(javascriptDirectory, 'queries/highlights.scm'),
+    Path.join(javascriptDirectory, 'queries/highlights-jsx.scm'),
+    Path.join(typescriptDirectory, 'queries/highlights.scm'),
   ]
   const queries = await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
   await FileSystem.writeFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), queries.join('\n'))
-  await FileSystem.cp(Path.join(javascript, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
+  await FileSystem.cp(Path.join(javascriptDirectory, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
 }

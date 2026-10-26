@@ -60,7 +60,7 @@ class PipelineSession implements ProjectPipeline {
   private preparedFingerprint: string | undefined
   private managedProfile: Awaited<ReturnType<typeof readManagedModules>> | undefined
   private readonly baseWatchFolders: readonly string[]
-  private declarations: string | undefined
+  private declarationKey: string | undefined
   private input: ManagedModulesInput | undefined
 
   constructor(
@@ -73,8 +73,8 @@ class PipelineSession implements ProjectPipeline {
   }
 
   async beforeCompile(program: LinkedProgram): Promise<ProjectPipelineResult> {
-    const declarations = createDeclarationKey(program)
-    const input = declarations === this.declarations
+    const declarationKey = createDeclarationKey(program)
+    const input = declarationKey === this.declarationKey
       ? this.input
       : await this.services.buildManagedInput(this.root, program)
     const key = input ? createManagedGraphKey(input) : createEmptyManagedGraphKey()
@@ -90,7 +90,7 @@ class PipelineSession implements ProjectPipeline {
           )
       }
       this.graphKey = key
-      this.declarations = declarations
+      this.declarationKey = declarationKey
       this.input = input
       return { watchDirectories: [], snapshotDirectories: [] }
     }
@@ -101,7 +101,7 @@ class PipelineSession implements ProjectPipeline {
     const sidecars = await this.prepareSidecars(program, managed)
     this.updateRuntimeOptions(input, managed)
     this.graphKey = key
-    this.declarations = declarations
+    this.declarationKey = declarationKey
     this.input = input
     return createPipelineResult(sidecars)
   }

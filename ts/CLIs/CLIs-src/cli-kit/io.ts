@@ -60,8 +60,8 @@ export function renderOutput(renderer: Output.OutputRenderer): void {
 
 type OutputPipe = (text: string | Uint8Array) => void
 let configuration: IOConfiguration = {}
-let plain = createPlainOutput()
-let files = createFileOutput({})
+let plainOutput = createPlainOutput()
+let writeFileOutput = createFileOutput({})
 let tui = false
 let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
@@ -99,8 +99,8 @@ function configureOutput(options: IOConfiguration): void {
   lastMainOutput = ''
   diagnostics = { warn: 0, error: 0 }
   warningDetails = []
-  plain = createPlainOutput()
-  files = createFileOutput(options)
+  plainOutput = createPlainOutput()
+  writeFileOutput = createFileOutput(options)
   output = Output.createOutput(writeOutput)
   output.main.start()
 }
@@ -111,10 +111,10 @@ function writeOutput(event: Output.OutputEvent): void {
   }
   const mode = configuration[event.stream] ?? 'terminal'
   if (configuration.passthrough) {
-    plain.write(event)
+    plainOutput.write(event)
     return
   }
-  files(event)
+  writeFileOutput(event)
   countDiagnostic(event)
   if (configuration.forwardEvents) {
     Terminal.stdout.write(encodeOutputMessage(event))
@@ -125,7 +125,7 @@ function writeOutput(event: Output.OutputEvent): void {
     return
   }
   if (!tui && (mode !== 'log' || event.summary)) {
-    plain.write(event)
+    plainOutput.write(event)
     printCommands()
   }
 }
@@ -168,7 +168,7 @@ async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<voi
   output.main.finish(status)
   await output.finish()
   tui = false
-  plain.finish()
+  plainOutput.finish()
   if (wasTui) {
     const snapshot = output.snapshot()
     for (const state of snapshot.channels) {
@@ -187,7 +187,7 @@ async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<voi
     if (isQuiet() || diagnostics.warn || diagnostics.error) {
       Terminal.stderr.write(
         `${status === 'passed' ? 'Completed' : 'Failed'}: ${notices}. Logs: ${
-          Path.relative(Repo.getWorkspaceRoot(), files.path)
+          Path.relative(Repo.getWorkspaceRoot(), writeFileOutput.path)
         }\n`,
       )
       for (const warning of warningDetails) {
