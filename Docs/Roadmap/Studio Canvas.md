@@ -44,6 +44,16 @@ Historical starting point: `feat/metro-memory-preview`, October 26, 2026. Its lo
 
 ## Open work and exclusions
 
+### Retained preview findings
+
+Historical October 23 measurements on the memory-preview implementation (40 edits per case, serialized runs) measured warm click-to-last-React-receipt median/p95: one preview 29.3/33.7 ms; two previews 31.6/35.5 ms; two previews plus 500 additional compiled but unmounted view definitions 456.3/496.4 ms. These are React receipts, not physical paint, and include Metro/Refresh timer changes as well as memory delivery. They are not current measurements of the later split-output compiler.
+
+Virtualizing a long list reduces mounted work; it cannot fix the observed compilation/module-volume cost because those 500 definitions were already unmounted. Before claiming realistic fast redraw, measure three separate workloads: many rows reusing one view, a dense mounted screen, and many source definitions. Retest after output splitting; no split-output speedup was established here.
+
+The preview implementation also left a development-time race between rebuilding runtime resources and managed setup, which can change profile identity during installation. Exclusive execution passed but did not fix the race. Changed sidecar snapshots require preview-session restart. Native/device/network delivery, advanced debugger mapping and arbitrary async sidecar lifecycles were not established by the browser tests. Recheck these boundaries against merged code before promising them in Studio.
+
+Detailed historical evidence remains in the original workspace's `.artifacts/notes/radical-preview/implementation-result.md`, `implementation-timings.md` and `final-measurements/`. These local artifacts do not travel with a Git branch; preserve them before deleting that worktree. Their old uncommitted-status wording describes the measurement date, not the later committed branch.
+
 Finalize concrete canvas syntax, named-slot anchors, stable render identities, preview isolation boundaries, placeholder heuristics and dependency choices before their slices. The research phase may change the architecture or split large tasks; do not force unknown subsystems into 15-minute estimates.
 
 Animation, loupe/precision targeting, advanced design-token editing, external IDE working-copy integration and conflict merging are later work. Implementing the missing language itself belongs to the external prerequisite workstream. This document does not authorize implementation, new integrations or landing.
