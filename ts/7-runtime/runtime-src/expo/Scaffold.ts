@@ -54,6 +54,11 @@ const metroConfiguration = S`
   const { getDefaultConfig } = require('expo/metro-config');
   const config = getDefaultConfig(__dirname);
   const tao = require('./tao-resolution.json');
+  if (process.env.TAO_METRO_PRELOAD) {
+    config.server.enhanceMiddleware = require(process.env.TAO_METRO_PRELOAD).enhanceMiddleware;
+    config.maxWorkers = 1;
+    config.resolver.useWatchman = false;
+  }
   config.resolver.platforms = ['web', 'native'];
   config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime')), ...tao.watchFolders];
   config.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules')];

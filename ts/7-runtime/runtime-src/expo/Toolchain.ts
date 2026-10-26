@@ -22,6 +22,7 @@ export async function prepareToolchain(
       Path.join(target, 'bun.lock'),
       await FileSystem.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
     )
+    await copyToolchainPatches(resourcesDirectory, target)
     const readyPath = Path.join(target, '.ready')
     const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(readyPath, 'utf8'))
     const hasDependencies = await FileSystem.exists(Path.join(target, 'node_modules'))
@@ -97,7 +98,32 @@ async function toolchainIdentity(
   const runtimeVersion = identityInputs?.runtimeVersion ?? Platform.runtimeVersion()
   const os = identityInputs?.os ?? platform.os
   const architecture = identityInputs?.architecture ?? platform.architecture
+  const patches = await readToolchainPatches(resourcesDirectory)
   return Platform.hashText(
-    `${manifest}\0${lockfile}\0${runtimeVersion}\0${os}\0${architecture}\0${toolchainCachePolicy}`,
+    `${manifest}\0${lockfile}\0${
+      JSON.stringify(patches)
+    }\0${runtimeVersion}\0${os}\0${architecture}\0${toolchainCachePolicy}`,
   )
+}
+
+async function readToolchainPatches(directory: string): Promise<Record<string, string>> {
+  const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8')) as {
+    patchedDependencies?: Record<string, string>
+  }
+  const patches: Record<string, string> = {}
+  for (const path of Object.values(manifest.patchedDependencies ?? {}).sort()) {
+    if (!path.startsWith('patches/') || path.includes('\\') || path.split('/').includes('..')) {
+      Errors.ThrowUserInput(`Unsupported runtime dependency patch path: ${path}`)
+    }
+    patches[path] = await FileSystem.readFile(Path.join(directory, path), 'utf8')
+  }
+  return patches
+}
+
+async function copyToolchainPatches(source: string, target: string): Promise<void> {
+  for (const [path, content] of Object.entries(await readToolchainPatches(source))) {
+    const destination = Path.join(target, path)
+    await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+    await FileSystem.writeIfChanged(destination, content)
+  }
 }

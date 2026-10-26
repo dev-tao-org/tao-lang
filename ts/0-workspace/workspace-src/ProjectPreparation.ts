@@ -123,6 +123,7 @@ export async function buildManagedModulesInput(
     modules: [...modules.values()].filter(module => needed.has(module.directory)),
     target: 'web',
     runtimePins: runtimePins ?? await runtimeDependencies(),
+    runtimePolicy: runtimePins ? undefined : await Runtime.runtimeDependencyPolicy(),
     bunVersion: Platform.runtimeVersion(),
   }
 }

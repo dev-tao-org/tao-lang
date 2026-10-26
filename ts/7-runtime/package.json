@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@preact/signals-core": "1.14.4",
+    "memfs": "4.80.0",
     "expo": "57.0.30",
     "@expo/metro-runtime": "57.0.17",
     "react": "19.2.3",

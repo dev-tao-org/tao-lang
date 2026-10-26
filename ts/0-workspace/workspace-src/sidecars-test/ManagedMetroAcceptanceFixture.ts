@@ -104,8 +104,10 @@ async function recordProfileInstall(
   await FileSystem.mkdir(nodeModules, { recursive: true })
   const lock = await readLock(Path.join(options.runtimeResources, 'bun.lock'))
   const fixtureLock = await readLock(Path.join(Path.dirname(options.fixtureModules), 'bun.lock'))
-  lock.workspaces[''].dependencies =
-    JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8')).dependencies
+  const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))
+  lock.workspaces[''].dependencies = manifest.dependencies
+  lock.patchedDependencies = manifest.patchedDependencies
+  lock.overrides = manifest.overrides
   Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}\n`)
@@ -290,4 +292,6 @@ async function readLock(path: string): Promise<LockFile> {
 type LockFile = {
   workspaces: Record<string, { dependencies: Record<string, string> }>
   packages: Record<string, unknown>
+  patchedDependencies?: Record<string, string>
+  overrides?: Record<string, string>
 }

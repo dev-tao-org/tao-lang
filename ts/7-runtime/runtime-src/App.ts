@@ -1,6 +1,6 @@
-import { createElement, Suspense, useEffect } from 'react'
+import { Component, createElement, Suspense, useEffect } from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import { previewOptions } from './Preview'
+import { previewOptions, reportRenderError } from './Preview'
 import { ProvideRuntimeObserver, ViewRenderArguments, ViewRenderExpression } from './View'
 import type { AppOptions, RuntimeObserver } from './View'
 
@@ -19,14 +19,35 @@ function AppRoot({ view, revision, options }: AppRootProps): ReactNode {
   const observer = options.observer
   const startedAt = observer?.now()
   const subtree = ViewRenderExpression(view, ViewRenderArguments(), observer)
-  return ProvideRuntimeObserver(
-    observer,
-    createElement(
-      Suspense,
-      { fallback: options.fallback ?? null },
-      createElement(CommitAfterRender, { children: subtree, revision, options, observer, startedAt }),
-    ),
+  const content = createElement(
+    Suspense,
+    { fallback: options.fallback ?? null },
+    createElement(CommitAfterRender, { children: subtree, revision, options, observer, startedAt }),
   )
+  const observedContent = options.onApplied ? createElement(PreviewErrorBoundary, { revision }, content) : content
+  return ProvideRuntimeObserver(observer, observedContent)
+}
+
+class PreviewErrorBoundary
+  extends Component<{ revision: string; children?: ReactNode }, { revision: string; failed: boolean }>
+{
+  state = { revision: this.props.revision, failed: false }
+
+  static getDerivedStateFromProps(props: { revision: string }, state: { revision: string; failed: boolean }) {
+    return props.revision === state.revision ? null : { revision: props.revision, failed: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown): void {
+    reportRenderError(this.props.revision, error)
+  }
+
+  render(): ReactNode {
+    return this.state.failed ? null : this.props.children
+  }
 }
 
 type CommitAfterRenderProps = {

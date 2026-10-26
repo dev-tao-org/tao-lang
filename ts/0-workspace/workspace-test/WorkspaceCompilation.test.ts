@@ -58,6 +58,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
   await writeResources(resourcesDirectory)
   let installs = 0
   let code = 'compiled A'
+  let snapshot = 'A'
   const workspace = createWorkspace({
     project,
     runtimeOptions: {
@@ -71,6 +72,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
       },
     },
     compile: Timings.createTopLevelTimer(() => code),
+    beforeCompile: async () => ({ snapshotDirectories: [Path.join(root, snapshot)] }),
   })
   await Try(async () => {
     Tests.expect((await workspace.update('app')).status).toBe('invalid')
@@ -78,12 +80,39 @@ async function verifyProjectCompilation(root: string): Promise<void> {
     const source = await Tests.readApp('Hello World')
     Tests.expect((await workspace.update(source)).status).toBe('published')
     await verifyPublication(workspace, project.buildDirectory, source, () => code = 'compiled B')
+    await verifyLiveSnapshotBoundary(workspace, source, value => snapshot = value)
     Tests.expect(installs).toBe(1)
   }, {
     async finally() {
       await workspace.dispose()
     },
   })
+}
+
+async function verifyLiveSnapshotBoundary(
+  workspace: ReturnType<typeof createWorkspace>,
+  source: string,
+  changeSnapshot: (value: string) => void,
+): Promise<void> {
+  let publications = 0
+  workspace.runtime!.publishGenerated = async revision => {
+    publications++
+    return {
+      sessionId: 'fixture',
+      revision: revision.revision,
+      sequence: revision.sequence,
+      status: 'published',
+      publishedRevision: revision.revision,
+    }
+  }
+  changeSnapshot('B')
+  const changed = await workspace.update(source)
+  Tests.expect(changed.status).toBe('failed')
+  Tests.expect(changed.status === 'failed' && changed.error).toContain('Restart the preview session')
+  Tests.expect(publications).toBe(0)
+  changeSnapshot('A')
+  Tests.expect((await workspace.update(source)).status).toBe('published')
+  Tests.expect(publications).toBe(1)
 }
 
 async function verifyPublication(

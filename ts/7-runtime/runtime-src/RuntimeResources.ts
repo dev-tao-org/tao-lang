@@ -22,4 +22,5 @@ export const RuntimeSourceResources = {
   'shared/universal/Timings.ts': 'ts/shared/shared-src/universal/Timings.ts',
   'shared/universal/TryCatch.ts': 'ts/shared/shared-src/universal/TryCatch.ts',
   'shared/os/PreviewPlatform.ts': 'ts/shared/shared-src/os/PreviewPlatform.ts',
+  'shared/os/PreviewErrors.ts': 'ts/shared/shared-src/os/PreviewErrors.ts',
 } as const

@@ -36,3 +36,38 @@ Tests.test('runtime packaging replaces workspace roots while preserving locked r
   })
   Tests.expect(packaged.overrides).toBeUndefined()
 })
+
+Tests.test('runtime packaging keeps registry resolutions and their patched dependency hashes', () => {
+  const source = JSON.stringify({
+    lockfileVersion: 3,
+    configVersion: 1,
+    workspaces: { '': { name: 'workspace' } },
+    packages: {
+      'metro-fixture': ['metro-fixture@1.0.0', '', { dependencies: { 'metro-helper': '^2.0.0' } }, 'metro-integrity'],
+      'metro-helper': ['metro-helper@2.0.0', '', {}, 'helper-integrity'],
+    },
+    patchedDependencies: {
+      'metro-fixture@1.0.0': 'fixture-patch-hash',
+      'metro-helper@2.0.0': 'helper-patch-hash',
+    },
+  })
+
+  const packaged = JSON.parse(runtimeLock(source, {
+    name: 'tao-expo-toolchain',
+    private: true,
+    dependencies: { 'metro-fixture': '1.0.0' },
+    patchedDependencies: {
+      'metro-fixture@1.0.0': 'patches/metro-fixture.patch',
+      'metro-helper@2.0.0': 'patches/metro-helper.patch',
+    },
+  }))
+
+  Tests.expect(packaged.packages).toEqual({
+    'metro-fixture': ['metro-fixture@1.0.0', '', { dependencies: { 'metro-helper': '^2.0.0' } }, 'metro-integrity'],
+    'metro-helper': ['metro-helper@2.0.0', '', {}, 'helper-integrity'],
+  })
+  Tests.expect(packaged.patchedDependencies).toEqual({
+    'metro-fixture@1.0.0': 'fixture-patch-hash',
+    'metro-helper@2.0.0': 'helper-patch-hash',
+  })
+})

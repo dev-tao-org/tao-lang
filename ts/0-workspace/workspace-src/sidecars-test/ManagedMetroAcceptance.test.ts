@@ -22,11 +22,10 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
     const projects = await createAcceptanceProjects(root)
     registry = await createFixtureRegistry(root)
     const fixture = await installFixturePackage(root, registry.url)
-    const runtimePins = await Runtime.runtimeDependencies()
     const runtimeResources = FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/_gen_runtime'))
     const runtimeModules = Repo.resolvePath('ts/7-runtime/node_modules')
     const executor = managedGraphExecutor({ runtimeModules, runtimeResources, fixtureModules: fixture.nodeModules })
-    await prepareProject(projects.entry, { executor, runtimePins })
+    await prepareProject(projects.entry, { executor })
     const workspace = await openProjectWorkspace(projects.entry, {
       id: `managed-metro-${Platform.randomUUID()}`,
       acquireLease: async () => () => {},

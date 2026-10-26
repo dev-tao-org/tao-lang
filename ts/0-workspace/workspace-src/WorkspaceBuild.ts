@@ -1,5 +1,6 @@
+import type { GeneratedRevision, PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import type { RuntimeApplication } from '@runtime/Runtime'
-import { Timings, Try } from '@shared'
+import { Errors, Timings, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 /** publishBuild stages compilation output, then atomically publishes only changed files.
@@ -7,24 +8,56 @@ import { FileSystem, Path, Platform } from '@shared/os'
 export async function publishBuild(
   buildDirectory: string,
   code: string,
+  revision: string,
   prepareRuntime: () => Promise<RuntimeApplication>,
   isCurrent: () => boolean,
   timings: Timings,
   onProgress?: (message: string) => void,
-): Promise<void> {
-  onProgress?.('Writing generated app build…')
-  const path = await timings.run(writeBuild, buildDirectory, code)
-  onProgress?.('Generated app build write complete.')
+): Promise<PublicationOutcome | undefined> {
   if (!isCurrent()) {
     return
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
   const runtime = await timings.run(prepareApplication, prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
+  if (!isCurrent()) {
+    return
+  }
+  const generated = {
+    revision,
+    sequence: Math.max(runtime.publicationSequence ?? 0, runtime.generated?.sequence ?? 0) + 1,
+    files: { 'App.tsx': code },
+  }
+  runtime.publicationSequence = generated.sequence
+  if (runtime.publishGenerated) {
+    return await timings.run(publishMemory, runtime, generated)
+  }
+  onProgress?.('Writing generated app build…')
+  const path = await timings.run(writeBuild, buildDirectory, code)
   onProgress?.('Publishing changed runtime app files…')
   await timings.run(publishChanged, path, runtime.appPath, isCurrent)
+  if (isCurrent()) {
+    runtime.generated = generated
+  }
   onProgress?.('Runtime app file publication complete.')
 }
+
+const publishMemory = Timings.measured('workspace.runtime.publish-memory', async function(
+  runtime: RuntimeApplication,
+  revision: GeneratedRevision,
+): Promise<PublicationOutcome> {
+  const publish = runtime.publishGenerated
+    ?? Errors.ThrowShouldNeverHappen('The preview publisher disappeared during publication.')
+  const outcome = await publish(revision)
+  const committed = outcome.status === 'published' || outcome.publishedRevision === revision.revision
+  if (committed && revision.sequence > (runtime.generated?.sequence ?? -1)) {
+    runtime.generated = revision
+  }
+  if (outcome.status === 'error' || outcome.status === 'poisoned') {
+    Errors.ThrowUserInput(outcome.message ?? `Preview publication failed: ${outcome.status}`)
+  }
+  return outcome
+})
 
 const prepareApplication = Timings.measured(
   'workspace.runtime.prepare',

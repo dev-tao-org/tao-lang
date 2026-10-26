@@ -12,10 +12,18 @@ export type ManagedModulesInput = {
   modules: { directory: string; requirements: ManagedModuleRequirement[] }[]
   target: string
   runtimePins: Record<string, string>
+  runtimePolicy?: ManagedRuntimePolicy
   bunVersion: string
   singletonPackages?: string[]
   hostIdentity?: { os: string; architecture: string }
   previousGraphReference?: ManagedGraphReference
+}
+
+/** ManagedRuntimePolicy carries the bundled runtime's exact resolution and install patches. */
+export type ManagedRuntimePolicy = {
+  patchedDependencies: Record<string, string>
+  overrides: Record<string, string>
+  patches: Record<string, string>
 }
 
 /** BunExecutor runs a pinned Bun command without exposing host process details to orchestration. */

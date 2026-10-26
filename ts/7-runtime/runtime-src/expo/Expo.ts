@@ -1,7 +1,9 @@
 import { Errors, Try } from '@shared'
 import { Env, Http, Lifecycle, Path, Platform } from '@shared/os'
 import type { RuntimeApplication } from '../Runtime'
+import { type ExpoGeneratedOptions, prepareExpoPublication } from './ExpoPublication'
 import { waitForExpoReady } from './ExpoReadiness'
+import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** createExpoSession starts a managed Expo web server and waits for its first response. */
 export async function createExpoSession(
@@ -9,10 +11,11 @@ export async function createExpoSession(
   options: ExpoOptions = {},
 ): Promise<ExpoSession> {
   const port = unusedPort()
+  const publication = await prepareExpoPublication(application, options.generated)
   const child = Platform.spawn('expo', {
     variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
     cwd: application.directory,
-    env: expoEnvironment(application.directory),
+    env: { ...expoEnvironment(application.directory), ...publication.environment },
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -26,8 +29,11 @@ export async function createExpoSession(
   })
   return {
     url,
+    sessionId: publication.sessionId,
+    publish: revision => publication.publish(url, revision),
     output: () => output,
     async dispose() {
+      publication.dispose()
       await Lifecycle.stopProcess(child)
       await output
     },
@@ -37,12 +43,18 @@ export async function createExpoSession(
 /** ExpoSession describes the live server and its retained process output. */
 export type ExpoSession = {
   url: string
+  sessionId: string
+  publish(revision: GeneratedRevision): Promise<PublicationOutcome>
   output(): Promise<Lifecycle.ProcessOutput>
   dispose(): Promise<void>
 }
 
 /** ExpoOptions streams Expo output while retaining a copy for diagnostics. */
-export type ExpoOptions = { onOutput?: (stream: 'stdout' | 'stderr', text: string) => void; signal?: AbortSignal }
+export type ExpoOptions = {
+  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void
+  signal?: AbortSignal
+  generated?: ExpoGeneratedOptions
+}
 
 function expoEnvironment(directory: string): Record<string, string | undefined> {
   return {

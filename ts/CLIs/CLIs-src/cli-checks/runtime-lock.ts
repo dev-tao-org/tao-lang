@@ -23,6 +23,7 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
         },
       },
       packages,
+      ...(lock.patchedDependencies ? { patchedDependencies: lock.patchedDependencies } : {}),
     },
     null,
     2,
@@ -35,10 +36,12 @@ export type RuntimeManifest = {
   private: true
   dependencies: Record<string, string>
   devDependencies?: Record<string, string>
+  patchedDependencies?: Record<string, string>
 }
 
 type WorkspaceLock = {
   lockfileVersion: number
   configVersion: number
   packages: Record<string, [string, ...unknown[]]>
+  patchedDependencies?: Record<string, unknown>
 }

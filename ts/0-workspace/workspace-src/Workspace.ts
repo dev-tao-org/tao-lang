@@ -2,6 +2,7 @@ import { transform } from '@ast-gen/Transform'
 import { check } from '@check/Check'
 import { compile } from '@compile/Compile'
 import { createParser } from '@grammar/parser'
+import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
@@ -45,12 +46,13 @@ export type WorkspaceOptions = {
   >
 }
 
-/** Publication records the exact revision and measured pipeline when output reaches disk. */
+/** Publication records the exact revision and measured pipeline when output reaches its delivery owner. */
 export type Publication = {
   revision: string
   startedAtMs: number
   publishedAtMs: number
   timings: readonly TimingSample[]
+  outcome?: PublicationOutcome
 }
 
 /** CompiledApp carries the exact source snapshot and compiler timings for a revision. */
@@ -120,6 +122,8 @@ class WorkspaceSession {
   private lastGood: string | undefined
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
+  private publicationOutcome: PublicationOutcome | undefined
+  private snapshotDirectories: readonly string[] = []
   private application: Runtime.RuntimeApplication | undefined
   private readonly publishCallback = this.publish.bind(this)
   private readonly prepareRuntimeCallback = this.prepareRuntime.bind(this)
@@ -201,7 +205,7 @@ class WorkspaceSession {
       listener(revision, request.startedAtMs)
     }
     await timings.run(Publish, this.publishCallback, output, isCurrent)
-    if (!isCurrent()) {
+    if (!isCurrent() || this.publicationOutcome?.status === 'superseded') {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
     this.lastGood = revision
@@ -211,6 +215,7 @@ class WorkspaceSession {
         startedAtMs: request.startedAtMs,
         publishedAtMs: Time.timestampMs(),
         timings: timings.samples,
+        outcome: this.publicationOutcome,
       })
     }
     return { status: 'published', revision, timings: timings.samples, stages }
@@ -240,6 +245,7 @@ class WorkspaceSession {
     )
     const program = request.timings.run(LinkModules, Path.resolve(request.path ?? '<memory>'), sources)
     const prepared = await request.timings.run(PrepareDependencies, this.options.beforeCompile, program)
+    this.acceptSnapshots(prepared?.snapshotDirectories ?? [])
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
     const code = request.timings.run(this.options.compile ?? compile, document, {
@@ -257,7 +263,18 @@ class WorkspaceSession {
       : await this.options.resolveProject?.(importer, alias)
   }
 
+  private acceptSnapshots(directories: readonly string[]): void {
+    const next = [...directories].sort()
+    const unchanged = next.length === this.snapshotDirectories.length
+      && next.every((path, index) => path === this.snapshotDirectories[index])
+    if (this.application?.publishGenerated && !unchanged) {
+      Errors.ThrowUserInput('Sidecar snapshot changed. Restart the preview session to load its new files.')
+    }
+    this.snapshotDirectories = next
+  }
+
   private async publish(timings: Timings, output: CompiledApp, isCurrent: () => boolean): Promise<void> {
+    this.publicationOutcome = undefined
     if (this.options.publish) {
       await this.options.publish(output, isCurrent)
       return
@@ -265,9 +282,10 @@ class WorkspaceSession {
     if (!this.output) {
       return
     }
-    await publishBuild(
+    this.publicationOutcome = await publishBuild(
       this.output.buildDirectory,
       output.code,
+      output.revision,
       this.prepareRuntimeCallback,
       isCurrent,
       timings,

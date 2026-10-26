@@ -16,6 +16,7 @@ export default {
       'runtime-src/TR.ts',
       'runtime-src/TaoRuntimeAPI.ts',
       'runtime-src/HMRClient.ts',
+      'runtime-src/expo/MetroPreload.ts',
     ]),
     CLIs: createPackageWorkspace([
       ...listCLIEntries(),

@@ -7,6 +7,11 @@ export function ModuleApplied(revision: string): void {
   PreviewPlatform.beginPreviewRevision(revision)
 }
 
+/** reportRenderError records a failed render for its actual generated revision. */
+export function reportRenderError(revision: string, error: unknown): void {
+  PreviewPlatform.reportPreviewError('runtime-error', String(error), revision)
+}
+
 /** previewOptions supplies the dev harness's post-commit callback and local duration observer. */
 export function previewOptions(): AppOptions {
   return PreviewPlatform.isPreview() ? options : {}

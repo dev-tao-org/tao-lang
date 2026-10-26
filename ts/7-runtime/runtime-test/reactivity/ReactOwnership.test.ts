@@ -17,7 +17,7 @@ Tests.test(
       await FileSystem.writeFile(application.appPath, createReactOwnershipApp(2, false))
       expo = await Runtime.start(application)
       browser = await HeadlessBrowser.launch('test <file.tao>')
-      await verifyOwnershipJourney(browser, expo.url, application.appPath)
+      await verifyOwnershipJourney(browser, expo)
     }, {
       async catch(error) {
         Errors.ThrowUserInput(`React ownership Metro acceptance failed. ${String(error)}`)
@@ -34,14 +34,13 @@ Tests.test(
 
 async function verifyOwnershipJourney(
   browser: Awaited<ReturnType<typeof HeadlessBrowser.launch>>,
-  expoUrl: string,
-  appPath: string,
+  expo: Runtime.ExpoSession,
 ): Promise<void> {
   const page = await browser.newPage({ viewport: { width: 768, height: 1024 } })
   const pageErrors: string[] = []
   page.setDefaultTimeout(5000)
   page.on('pageerror', error => pageErrors.push(error.message))
-  await page.goto(expoUrl)
+  await page.goto(expo.url)
   await expectValue(page, 'count-A', '1')
   await expectValue(page, 'count-B', '10')
   await expectValue(page, 'scaled-A', '2')
@@ -50,8 +49,8 @@ async function verifyOwnershipJourney(
   await expectValue(page, 'retained-value', '0')
   await expectValue(page, 'suspended-fallback', 'suspended')
   await verifyAbandonedAndUnmountedOwnership(page)
-  await changeFactorAndPreserveState(page, appPath)
-  await changeTopologyAndRemoveOneCounter(page, appPath)
+  await changeFactorAndPreserveState(page, expo)
+  await changeTopologyAndRemoveOneCounter(page, expo)
   Tests.expect(pageErrors).toEqual([])
 }
 
@@ -70,18 +69,18 @@ async function verifyAbandonedAndUnmountedOwnership(page: HeadlessBrowser.Page):
   await expectValue(page, 'object-value', '1')
 }
 
-async function changeFactorAndPreserveState(page: HeadlessBrowser.Page, appPath: string): Promise<void> {
+async function changeFactorAndPreserveState(page: HeadlessBrowser.Page, expo: Runtime.ExpoSession): Promise<void> {
   await page.getByTestId('increment-A').click()
   await expectValue(page, 'count-A', '2')
-  await FileSystem.writeFile(appPath, createReactOwnershipApp(3, false))
+  await publishOwnership(expo, 2, false)
   await expectValue(page, 'count-A', '2')
   await expectValue(page, 'count-B', '10')
   await expectValue(page, 'scaled-A', '6')
   await expectValue(page, 'scaled-B', '30')
 }
 
-async function changeTopologyAndRemoveOneCounter(page: HeadlessBrowser.Page, appPath: string): Promise<void> {
-  await FileSystem.writeFile(appPath, createReactOwnershipApp(3, true))
+async function changeTopologyAndRemoveOneCounter(page: HeadlessBrowser.Page, expo: Runtime.ExpoSession): Promise<void> {
+  await publishOwnership(expo, 3, true)
   await expectValue(page, 'marker-A', 'topology-2')
   await expectCounterScale(page, 'A', 3)
   const beforeIncrement = Number(await valueOf(page, 'count-B'))
@@ -92,6 +91,15 @@ async function changeTopologyAndRemoveOneCounter(page: HeadlessBrowser.Page, app
   await expectMissing(page, 'count-A')
   await expectValue(page, 'count-B', String(beforeIncrement + 1))
   await expectValue(page, 'scaled-B', String((beforeIncrement + 1) * 3))
+}
+
+async function publishOwnership(expo: Runtime.ExpoSession, sequence: number, topology: boolean): Promise<void> {
+  const outcome = await expo.publish({
+    revision: `ownership-${sequence}`,
+    sequence,
+    files: { 'App.tsx': createReactOwnershipApp(3, topology) },
+  })
+  Tests.expect(outcome.status).toBe('published')
 }
 
 async function expectCounterScale(page: HeadlessBrowser.Page, id: string, factor: number): Promise<void> {

@@ -1,6 +1,8 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
+import type { GeneratedRevision, PublicationOutcome } from './expo/PreviewProtocol'
+import { readRuntimeDependencyPolicy, type RuntimeDependencyPolicy } from './expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from './expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
 
@@ -53,7 +55,8 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
     { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages },
   )
   options.onProgress?.('Expo runtime application scaffolded.')
-  return await applicationWithToolchain(directory, dependencyDirectory)
+  const application = await applicationWithToolchain(directory, dependencyDirectory)
+  return { ...application, metroPreloadPath: Path.join(resourcesDirectory, 'metro/MetroPreload.cjs') }
 }
 
 /** start starts the prepared Expo application and waits for its first response. */
@@ -63,13 +66,30 @@ export async function start(
   onProgress?: (message: string) => void,
 ): Promise<ExpoSession> {
   onProgress?.('Starting Expo server and waiting for readiness…')
-  const session = await createExpoSession(application, options)
+  const initial = application.generated ?? {
+    revision: 'initial',
+    sequence: 0,
+    files: { 'App.tsx': await FileSystem.readFile(application.appPath, 'utf8') },
+  }
+  const pending = createExpoSession(application, {
+    ...options,
+    generated: { initial, preloadPath: application.metroPreloadPath },
+  })
+  application.publishGenerated = async revision => (await pending).publish(revision)
+  const session = await pending
   onProgress?.('Expo server is ready.')
   return session
 }
 
 /** RuntimeApplication identifies the generated Expo runtime directory and compiled Tao app entry. */
-export type RuntimeApplication = { directory: string; appPath: string }
+export type RuntimeApplication = {
+  directory: string
+  appPath: string
+  metroPreloadPath?: string
+  generated?: GeneratedRevision
+  publicationSequence?: number
+  publishGenerated?(revision: GeneratedRevision): Promise<PublicationOutcome>
+}
 
 /** RuntimeCreateOptions selects generated resources and an isolated dependency cache. */
 export type RuntimeCreateOptions = {
@@ -102,6 +122,11 @@ export function runtimeTypeScriptPaths(): Record<string, string[]> {
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
 export function runtimeDependencies(): Promise<Record<string, string>> {
   return pinnedDependencies ??= readPinnedDependencies()
+}
+
+/** runtimeDependencyPolicy supplies exact Metro patches for independently installed project dependencies. */
+export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy> {
+  return readRuntimeDependencyPolicy(defaultResourcesDirectory())
 }
 
 let pinnedDependencies: Promise<Record<string, string>> | undefined

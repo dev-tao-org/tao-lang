@@ -1,8 +1,9 @@
 import { Errors } from '@shared'
-import { Files, Path, Platform } from '@shared/os'
+import { Path, Platform } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import { managedLockPolicyMatches, repairManagedLockPolicy } from './ManagedNpmPolicy'
 import { optionalJson, optionalText } from './ManagedNpmState'
 
 /** readManagedProfileMetadata requires prepared metadata for the active install profile. */
@@ -52,15 +53,14 @@ export async function loadDurableLock(
   graphFingerprint: string,
   durableLock: string,
   durableHash: string,
+  repair = false,
 ): Promise<string | undefined> {
   let lock = await optionalText(durableLock)
   let hash = await optionalText(durableHash)
   if (lock === undefined) {
-    lock = await recoverManagedLock(input, requirements, graphFingerprint)
+    lock = await recoverManagedLock(input, requirements, graphFingerprint, repair)
     if (lock !== undefined) {
-      await Files.writeReadOnly(durableLock, lock)
       hash = `${Platform.hashText(lock)}\n`
-      await Files.writeReadOnly(durableHash, hash)
     }
   }
   validateDurableLock(lock, hash, graphFingerprint)
@@ -83,12 +83,13 @@ async function recoverManagedLock(
   input: ManagedModulesInput,
   requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
+  repair: boolean,
 ): Promise<string | undefined> {
   const reference = input.previousGraphReference
   if (!reference) {
     return undefined
   }
-  return await readReferencedLock(input, reference, requirements, graphFingerprint)
+  return await readReferencedLock(input, reference, requirements, graphFingerprint, repair)
 }
 
 async function readReferencedLock(
@@ -96,6 +97,7 @@ async function readReferencedLock(
   reference: NonNullable<ManagedModulesInput['previousGraphReference']>,
   requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
+  repair: boolean,
 ): Promise<string | undefined> {
   const path = Path.resolve(input.directory, ...reference.lockPath.split('/'))
   const lock = await optionalText(path)
@@ -110,6 +112,14 @@ async function readReferencedLock(
       validateGraphContents(lock, requirements, input.runtimePins)
     }
     return undefined
+  }
+  if (!managedLockPolicyMatches(lock, input)) {
+    if (!repair || reference.fingerprint === graphFingerprint) {
+      Errors.ThrowUserInput(
+        'Managed npm runtime patch policy changed. Preserve locked package versions with: tao setup --repair.',
+      )
+    }
+    return repairManagedLockPolicy(lock, input)
   }
   return lock
 }

@@ -5,6 +5,18 @@ import MetroHMRClient from 'tao:metro-hmr-client'
 export default class PreviewHMRClient extends MetroHMRClient {
   constructor(url: string) {
     super(url)
+    PreviewPlatform.initializePreviewClient()
     this.on('update-done', () => PreviewPlatform.reportPreviewEvent('tao.update-done'))
+    this.on('open', () => PreviewPlatform.reportPreviewConnection(true))
+    this.on('close', () => PreviewPlatform.reportPreviewConnection(false))
+    this.on('connection-error', () => PreviewPlatform.reportPreviewConnection(false))
+    this.on('error', error => PreviewPlatform.reportPreviewError('build-error', describeError(error)))
   }
+}
+
+function describeError(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String(error.message)
+  }
+  return String(error)
 }

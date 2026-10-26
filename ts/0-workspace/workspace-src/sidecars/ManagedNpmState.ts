@@ -2,7 +2,8 @@ import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import type { ManagedModulesInput, ManagedRuntimePolicy, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import { managedResolutionPolicy } from './ManagedNpmPolicy'
 
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
@@ -92,6 +93,7 @@ export async function claimManagedProfile(
 export function createManagedProfileManifest(
   requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
+  runtimePolicy?: ManagedRuntimePolicy,
 ): string {
   return `${
     JSON.stringify(
@@ -100,6 +102,7 @@ export function createManagedProfileManifest(
         private: true,
         type: 'module',
         dependencies: collectAllRequirements(requirements, runtimePins),
+        ...managedResolutionPolicy(runtimePolicy),
       },
       null,
       2,
@@ -112,8 +115,9 @@ export async function validateManagedManifest(
   profile: string,
   requirements: readonly NormalizedManagedRequirement[],
   runtimePins: Record<string, string>,
+  runtimePolicy?: ManagedRuntimePolicy,
 ): Promise<void> {
-  const expected = createManagedProfileManifest(requirements, runtimePins)
+  const expected = createManagedProfileManifest(requirements, runtimePins, runtimePolicy)
   const path = Path.join(profile, 'package.json')
   if (!await FileSystem.exists(path) || await FileSystem.readFile(path, 'utf8') !== expected) {
     Errors.ThrowUserInput('Managed npm manifest drifted. Repair with: tao setup --repair.')

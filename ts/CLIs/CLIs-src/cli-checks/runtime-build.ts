@@ -2,6 +2,7 @@ import { RuntimeSourceResources } from '@runtime/RuntimeResources'
 import { Errors, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { runtimeLock, type RuntimeManifest } from './runtime-lock'
+import { metroBuildInputs, writeMetroResources } from './runtime-metro'
 
 /** prepareRuntime builds versioned, relocatable Expo runtime resources from declared source inputs. */
 export const prepareRuntime = Timings.createTopLevelTimer(async function(timings): Promise<string> {
@@ -9,7 +10,11 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
     const inputs = await readInputs()
     const identity = Platform.hashText(JSON.stringify(inputs))
     const directory = Artifacts.resolvePath('cache/runtime-build', identity)
-    if (!resourceFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
+    const patchRoot = Repo.resolvePath('ts/patches')
+    const patches = Object.keys(inputs.sources).filter(path => Path.dirname(path) === patchRoot)
+      .map(path => Path.join('patches', Path.basename(path)))
+    const requiredFiles = [...resourceFiles, ...patches]
+    if (!requiredFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
       await timings.run(buildResources, directory, identity, inputs)
     }
     await publishResources(directory)
@@ -28,7 +33,13 @@ async function writeRuntimeSources(directory: string, sources: Record<string, st
 }
 
 const packageRoot = Repo.resolvePath('ts/7-runtime')
-const resourceFiles = ['runtime.json', 'package.json', 'bun.lock', ...Object.keys(RuntimeSourceResources)]
+const resourceFiles = [
+  'runtime.json',
+  'package.json',
+  'bun.lock',
+  'metro/MetroPreload.cjs',
+  ...Object.keys(RuntimeSourceResources),
+]
 const runtimeDevelopmentPackages = new Set(['typescript', '@types/react', '@types/react-dom'])
 
 async function readInputs() {
@@ -39,6 +50,7 @@ async function readInputs() {
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-lock.ts'),
     Path.fileURLToPath(import.meta.url),
     Repo.resolvePath('ts/bun.lock'),
+    ...await metroBuildInputs(),
   ].sort()
   const sources = await Promise.all(paths.map(async path => [path, await FileSystem.readFile(path, 'utf8')] as const))
   return { sources: Object.fromEntries(sources) }
@@ -53,7 +65,8 @@ const buildResources = Timings.measured('runtime.build', async function(
   await Try(async () => {
     await FileSystem.mkdir(stage, { recursive: true })
     await writeRuntimeSources(stage, inputs.sources)
-    const manifest = runtimeManifest(inputs.sources[Path.join(packageRoot, 'package.json')]!)
+    await writeMetroResources(stage, inputs.sources)
+    const manifest = runtimeManifest(inputs.sources)
     await FileSystem.writeFile(Path.join(stage, 'package.json'), JSON.stringify(manifest, null, 2))
     await FileSystem.writeFile(
       Path.join(stage, 'bun.lock'),
@@ -83,16 +96,20 @@ const buildResources = Timings.measured('runtime.build', async function(
   })
 })
 
-function runtimeManifest(source: string): RuntimeManifest {
-  const parsed = JSON.parse(source) as {
+function runtimeManifest(sources: Record<string, string>): RuntimeManifest {
+  const parsed = JSON.parse(sources[Path.join(packageRoot, 'package.json')]!) as {
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
   }
   const dependencies = parsed.dependencies ?? Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
   const devDependencies = parsed.devDependencies ?? {}
+  const workspace = JSON.parse(sources[Repo.resolvePath('ts/package.json')]!) as {
+    patchedDependencies?: Record<string, string>
+  }
   return {
     name: 'tao-expo-toolchain',
     private: true,
+    patchedDependencies: workspace.patchedDependencies,
     dependencies: Object.fromEntries(
       Object.entries(dependencies).filter(([, version]) => !version.startsWith('workspace:')),
     ),

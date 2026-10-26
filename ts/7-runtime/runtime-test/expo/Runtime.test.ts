@@ -71,6 +71,43 @@ Tests.test('runtime toolchain cache identity includes runtime version and reuses
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('runtime toolchain copies dependency patches and invalidates the cache when patch bytes change', async () => {
+  const root = Artifacts.resolvePath('tmp', `runtime-toolchain-patches-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const resources = Path.join(root, 'resources')
+    const cache = Path.join(root, 'cache')
+    const patchPath = 'patches/fixture.patch'
+    await writeResources(resources, { expo: '57.0.30' }, 'patches')
+    await FileSystem.writeFile(
+      Path.join(resources, 'package.json'),
+      JSON.stringify({
+        dependencies: { expo: '57.0.30' },
+        patchedDependencies: { 'expo@57.0.30': patchPath },
+      }),
+    )
+    await FileSystem.mkdir(Path.dirname(Path.join(resources, patchPath)), { recursive: true })
+    await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes A')
+    let installs = 0
+    const installer = {
+      async install(directory: string) {
+        installs++
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+      },
+    }
+    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
+    const first = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(first), patchPath), 'utf8')).toBe('patch bytes A')
+    Tests.expect(installs).toBe(1)
+
+    await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes B')
+    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeUndefined()
+    const second = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(second), patchPath), 'utf8')).toBe('patch bytes B')
+    Tests.expect(second).not.toBe(first)
+    Tests.expect(installs).toBe(2)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 async function verifyLinkedSourceParents(root: string): Promise<void> {
   const directory = Path.join(root, 'generated')
   const sources = Path.join(directory, 'src/_gen_runtime')

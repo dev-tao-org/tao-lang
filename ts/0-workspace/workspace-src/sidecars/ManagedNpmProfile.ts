@@ -38,6 +38,7 @@ import {
   readManagedProfileLock,
   readManagedProfileMetadata,
 } from './ManagedNpmLock'
+import { ensureManagedPatches, managedLockPolicyMatches, validateManagedPatches } from './ManagedNpmPolicy'
 import {
   claimManagedProfile,
   createManagedProfileManifest,
@@ -91,7 +92,9 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
   if (metadata.lockHash !== Platform.hashText(lock)) {
     Errors.ThrowUserInput(`Managed npm lock changed. Repair with: tao setup --repair.`)
   }
-  await validateManagedManifest(profile, normalized, input.runtimePins)
+  validateLockPolicy(lock, input)
+  await validateManagedManifest(profile, normalized, input.runtimePins, input.runtimePolicy)
+  await validateManagedPatches(profile, input)
   await validateTypeScriptDefaults(input.directory)
   if (
     Object.keys(collectAllRequirements(normalized, input.runtimePins)).length > 0
@@ -122,13 +125,13 @@ async function prepareProfile(
   validateManagedProfilePath(input.directory, profile)
   await FileSystem.mkdir(profile, { recursive: true })
   await FileSystem.mkdir(Path.dirname(durableLock), { recursive: true })
-  const storedLock = await loadDurableLock(input, normalized, graphFingerprint, durableLock, durableHash)
+  const storedLock = await loadDurableLock(input, normalized, graphFingerprint, durableLock, durableHash, repair)
   await claimManagedProfile(
     profile,
     fingerprint,
     repair,
     storedLock,
-    createManagedProfileManifest(normalized, input.runtimePins),
+    createManagedProfileManifest(normalized, input.runtimePins, input.runtimePolicy),
   )
   const metadata = await readOwnedMetadata(profile, fingerprint, repair, storedLock)
   validateExistingState(metadata !== undefined, storedLock, fingerprint)
@@ -146,8 +149,10 @@ async function prepareProfile(
     )
   }
   await validateBunVersion(input, executor)
-  await ensureProfileManifest(profile, normalized, input.runtimePins, repair || storedLock === undefined)
+  await ensureProfileManifest(profile, normalized, input, repair || storedLock === undefined)
+  await ensureManagedPatches(profile, input, repair)
   await installFrozenGraph(profile, storedLock, executor, repair)
+  validateLockPolicy(await FileSystem.readFile(Path.join(profile, 'bun.lock'), 'utf8'), input)
   await validateGraph(profile, normalized, input.runtimePins)
   await auditInstalledGraph(profile, input, normalized)
   await persistProfile(
@@ -191,14 +196,20 @@ function validateExistingState(
 async function ensureProfileManifest(
   profile: string,
   requirements: readonly NormalizedManagedRequirement[],
-  runtimePins: Record<string, string>,
+  input: ManagedModulesInput,
   repair: boolean,
 ): Promise<void> {
   await ensureOwnedFile(
     Path.join(profile, 'package.json'),
-    createManagedProfileManifest(requirements, runtimePins),
+    createManagedProfileManifest(requirements, input.runtimePins, input.runtimePolicy),
     repair,
   )
+}
+
+function validateLockPolicy(lock: string, input: ManagedModulesInput): void {
+  if (!managedLockPolicyMatches(lock, input)) {
+    Errors.ThrowUserInput('Managed npm lock does not match the runtime patch policy. Repair with: tao setup --repair.')
+  }
 }
 
 async function installFrozenGraph(
@@ -238,7 +249,7 @@ async function persistProfile(
 ): Promise<void> {
   const lockfile = Path.join(profile, 'bun.lock')
   const lock = await FileSystem.readFile(lockfile, 'utf8')
-  if (storedLock === undefined) {
+  if (storedLock === undefined || !await FileSystem.exists(durableLock)) {
     await writeReadOnly(durableLock, lock)
     await writeReadOnly(resolveManagedDurableLockHashPath(input, graphFingerprint), `${Platform.hashText(lock)}\n`)
   }
