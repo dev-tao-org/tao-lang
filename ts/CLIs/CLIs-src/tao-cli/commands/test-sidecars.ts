@@ -1,0 +1,59 @@
+import { IO, resolveCallerPath } from '@cli-kit'
+import { Errors } from '@shared'
+import { findNamedPackageDirectories, listRecursiveSourceFiles } from '@workspace/modules/Catalog'
+import { executeManagedTool } from '@workspace/ProjectPreparation'
+import { discoverProject } from '@workspace/projects/Projects'
+import { execute } from '@workspace/Workflow'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { withProjectSessions } from '../ProjectCommand'
+import { workflowUI } from '../WorkflowUI'
+
+/** testSidecarsCommand runs tests with the selected Tao module's prepared npm profile. */
+export default registerCommand({
+  name: 'test-sidecars',
+  description: 'Run local sidecar tests with a prepared Tao module npm profile.',
+  arguments: [{ name: 'module', required: true, description: 'Local module name, such as @widgets.' }],
+  options: [
+    { flags: '--session <id>', description: 'Use a named project session lock.' },
+    { flags: '--yes', description: 'Authorize required dependency setup.' },
+  ],
+  async action(moduleName: string, options: { session?: string; yes?: boolean } = {}) {
+    const caller = resolveCallerPath('.')
+    const project = await discoverProject(caller)
+      ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    const moduleRoot = await resolveModuleRoot(project.root, moduleName)
+    const entry = await findModuleEntry(moduleRoot, project.root)
+    await withProjectSessions([moduleRoot, entry], async () => {
+      IO.print(`Running Bun sidecar tests for ${moduleName}`)
+      await execute({ kind: 'sidecar-tests', entry, moduleRoot, executor: executeManagedTool }, workflowUI(options.yes))
+    }, options.session)
+  },
+})
+
+async function resolveModuleRoot(projectRoot: string, moduleName: string): Promise<string> {
+  if (!/^@[A-Za-z0-9][A-Za-z0-9._-]*$/.test(moduleName)) {
+    Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
+  }
+  const matches = await findNamedPackageDirectories(projectRoot, moduleName)
+  if (matches.length !== 1) {
+    Errors.ThrowUserInput(
+      matches.length === 0
+        ? `No project-owned module ${moduleName} was found in ${projectRoot}.`
+        : `Module ${moduleName} is ambiguous: ${matches.join(', ')}`,
+    )
+  }
+  return matches[0]!
+}
+
+async function findModuleEntry(moduleRoot: string, projectRoot: string): Promise<string> {
+  const files = (await listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot))
+    .sort((left, right) => getPathDepth(left) - getPathDepth(right) || left.localeCompare(right))
+  if (files.length === 0) {
+    Errors.ThrowUserInput(`Module ${moduleRoot} contains no Tao source entry.`)
+  }
+  return files[0]!
+}
+
+function getPathDepth(path: string): number {
+  return path.split(/[\\/]/).length
+}
