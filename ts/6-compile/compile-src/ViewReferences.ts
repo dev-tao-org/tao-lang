@@ -31,7 +31,7 @@ export function createViewReferences(
     initialize: () =>
       [...used.values()].map(binding => {
         const type = `ModuleImports[${emitStringLiteral(binding.name)}]`
-        const mapping = `{ ${emitStringLiteral(binding.target)}: ${emitStringLiteral(binding.name)} }`
+        const mapping = `{ [${emitStringLiteral(binding.target)}]: ${emitStringLiteral(binding.name)} }`
         return `const ${createProjectionName(binding)} = TR.ScopeAliases<${type}>(_Scope, ${mapping});`
       }).join('\n'),
   }
