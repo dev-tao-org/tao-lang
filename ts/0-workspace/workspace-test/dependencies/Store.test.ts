@@ -138,6 +138,19 @@ Tests.test('prepare refuses to replace a malformed durable lock', async () => {
       /restore it from version control or repair it explicitly/,
     )
     Tests.expect(await FileSystem.readFile(lockPath, 'utf8')).toBe('{ broken')
+    await FileSystem.rm(lockPath)
+    const calls: string[] = []
+    const commits = new Map([['example/one:main', 'a'.repeat(40)]])
+    const options = fixtureOptions(root, commits, calls)
+    const pinned = await Store.prepareDependencies(root, [githubRequirement('example/one')], options)
+    pinned.commitPins = {}
+    const damaged = JSON.stringify(pinned)
+    await FileSystem.writeFile(lockPath, damaged)
+    commits.set('example/one:main', 'b'.repeat(40))
+    const priorCalls = calls.length
+    await Tests.rejects(Store.prepareDependencies(root, [githubRequirement('example/one')], options), /invalid/)
+    Tests.expect(calls).toHaveLength(priorCalls)
+    Tests.expect(await FileSystem.readFile(lockPath, 'utf8')).toBe(damaged)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 

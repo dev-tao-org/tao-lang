@@ -40,24 +40,26 @@ Tests.test('project clean protects runtime cache while automatic setup is active
   await Try(async () => {
     await initializeProject(root)
     await FileSystem.writeFile(entry, 'view Root { render Text("ok") }\napp Main { root Root }\n')
-    const preparing = withDependencySession(root, 'setup', () =>
+    const prepare = () =>
       prepareProject(entry, {
         runtimeInstaller: {
           async install() {
             acknowledgeInstallStarted()
             await installGate
-            Errors.Throw(new Error('controlled installer failure'))
+            Errors.ThrowHostEnvironment('controlled installer failure')
           },
         },
-      }))
+      })
+    const preparing = Tests.rejects(prepare(), /controlled installer failure/)
     await installStarted
     const protectedClean = await cleanProject(root)
     Tests.expect(protectedClean.sharedProtected).toBe(true)
     releaseInstall()
-    await Tests.rejects(preparing)
+    await preparing
     const cleaned = await cleanProject(root)
     Tests.expect(cleaned.sharedProtected).toBe(false)
     Tests.expect(cleaned.removed).toContain('runtime-toolchains')
+    await Tests.rejects(withDependencySession(root, 'setup', prepare), /controlled installer failure/)
   }, {
     async finally() {
       releaseInstall()
