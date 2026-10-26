@@ -1,15 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { S } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
-import {
-  compileIdentifier,
-  compileName,
-  compileReferenceName,
-  emitLiteral,
-  emitStringLiteral,
-  listMap,
-  type NamedValue,
-} from './codegen-util'
+import * as CodegenUtil from './codegen-util'
 
 /** ComponentNames identifies stable components and collision-safe locals for one authored view. */
 export type ComponentNames = {
@@ -33,7 +25,7 @@ export function emitRuntimeImports(): string {
 
 /** emitModuleApplied registers the generated revision with preview instrumentation. */
 export function emitModuleApplied(revision: string): string {
-  return `TR.ModuleApplied(${emitStringLiteral(revision)});`
+  return `TR.ModuleApplied(${CodegenUtil.emitStringLiteral(revision)});`
 }
 
 /** emitScope creates one module's lexical binding record. */
@@ -58,32 +50,32 @@ export function emitAppBinding(node: AST.AppDeclaration, scope: string): string 
 
 /** emitAppDeclaration renders the selected app through its owning lexical scope. */
 export function emitAppDeclaration(node: AST.AppDeclaration, scope: string, revision: string): string {
-  return `TR.AppDeclaration(${emitName(AST.GetAppRoot(node), scope)}, ${emitStringLiteral(revision)})`
+  return `TR.AppDeclaration(${emitName(AST.GetAppRoot(node), scope)}, ${CodegenUtil.emitStringLiteral(revision)})`
 }
 
 /** emitViewDeclaration registers a named component with its authored parameter contract. */
 export function emitViewDeclaration(node: AST.ViewDeclaration, scope: string, component: string): string {
-  const parameters = listMap(node.parameters, compileName)
+  const parameters = CodegenUtil.listMap(node.parameters, CodegenUtil.compileName)
   return emitNamedDeclaration(
     node,
     scope,
-    `TR.ViewDeclaration(${compileName(node)}, ${parameters}, ${component}, ${scope})`,
+    `TR.ViewDeclaration(${CodegenUtil.compileName(node)}, ${parameters}, ${component}, ${scope})`,
   )
 }
 
 /** emitForeignView registers a resolved sidecar through the stable foreign component adapter. */
 export function emitForeignView(node: AST.ViewDeclaration, scope: string, component: string): string {
-  const parameters = listMap(node.parameters, compileName)
+  const parameters = CodegenUtil.listMap(node.parameters, CodegenUtil.compileName)
   return emitNamedDeclaration(
     node,
     scope,
-    `TR.ForeignView(${compileName(node)}, ${parameters}, ${component}, ${scope})`,
+    `TR.ForeignView(${CodegenUtil.compileName(node)}, ${parameters}, ${component}, ${scope})`,
   )
 }
 
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
 export function emitName(node: AST.Name | ModuleBinding, scope: string): string {
-  return `TR.Name(${scope}, ${compileReferenceName(node)})`
+  return `TR.Name(${scope}, ${CodegenUtil.compileReferenceName(node)})`
 }
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
@@ -93,7 +85,7 @@ export function emitViewRenderExpression(
   argumentsCode: string,
   children: string,
 ): string {
-  const tag = node.tag ? `, ${emitLiteral(node.tag)}` : ''
+  const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
   const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
   return `TR.ViewRenderExpression(${emitName(node.target, scope)}, ${argumentsValue})`
 }
@@ -137,7 +129,7 @@ function emitCaptureParameter(capture: InjectionCapture): string {
     : capture.type === 'text'
     ? 'string'
     : 'unknown'
-  return `${compileIdentifier(capture.node)}: ${type}`
+  return `${CodegenUtil.compileIdentifier(capture.node)}: ${type}`
 }
 
 function emitRenderingComponent(
@@ -158,10 +150,10 @@ function emitRenderingComponent(
   `
 }
 
-function emitNamedDeclaration(node: NamedValue, scope: string, value: string): string {
-  return `TR.LetDeclaration(${scope}, ${compileName(node)}, ${value});`
+function emitNamedDeclaration(node: CodegenUtil.NamedValue, scope: string, value: string): string {
+  return `TR.LetDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${value});`
 }
 
-function emitAliasBinding(node: NamedValue, scope: string, reference: string): string {
-  return `TR.AliasBinding(${scope}, ${compileName(node)}, () => ${reference});`
+function emitAliasBinding(node: CodegenUtil.NamedValue, scope: string, reference: string): string {
+  return `TR.AliasBinding(${scope}, ${CodegenUtil.compileName(node)}, () => ${reference});`
 }

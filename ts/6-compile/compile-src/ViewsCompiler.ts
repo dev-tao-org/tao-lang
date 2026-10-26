@@ -2,14 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
 import { listMap } from './codegen-util'
 import { compileInjection } from './InjectionsCompiler'
-import {
-  type ComponentNames,
-  emitForeignView,
-  emitViewComponent,
-  emitViewDeclaration,
-  emitViewRenderBlock,
-  emitViewRenderExpression,
-} from './RuntimeEmitter'
+import * as RuntimeEmitter from './RuntimeEmitter'
 import { collectTextBindings, compileExpression, compileLetDeclaration, isTextParameter } from './ValuesCompiler'
 
 /** ViewCompilationContext provides module-owned names and resolved foreign implementations. */
@@ -36,7 +29,7 @@ function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationC
   }
   const component = context.foreignComponent
     ?? Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
-  return emitForeignView(node, context.scope, component)
+  return RuntimeEmitter.emitForeignView(node, context.scope, component)
 }
 
 function compileTaoView(
@@ -52,8 +45,8 @@ function compileTaoView(
   const statements = definitions.map(definition => compileLetDeclaration(definition, names.scope)).join('\n')
   const compiled = compileViewRenderStatement(render, bindings, names)
   const needsScope = definitions.length > 0 || render.kind === 'RenderViewExpressionStatement'
-  const component = emitViewComponent(names, statements, compiled.result, needsScope)
-  const registration = emitViewDeclaration(node, context.scope, names.view)
+  const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, needsScope)
+  const registration = RuntimeEmitter.emitViewDeclaration(node, context.scope, names.view)
   return [compiled.components, component, registration].filter(Boolean).join('\n')
 }
 
@@ -64,7 +57,7 @@ function isRenderStatement(node: AST.ViewDeclarationStatement): node is AST.View
 function compileViewRenderStatement(
   node: AST.ViewRenderStatement,
   bindings: ReadonlySet<string>,
-  names: ComponentNames,
+  names: RuntimeEmitter.ComponentNames,
 ): RenderCompilation {
   return Switch.kind(node, {
     RenderViewExpressionStatement: statement => ({
@@ -81,7 +74,7 @@ function compileViewRenderStatement(
 function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: string): string {
   const argumentsCode = listMap(node.arguments, argument => compileExpression(argument, scope))
   const children = compileViewRenderBlock(node.block, scope)
-  return emitViewRenderExpression(node, scope, argumentsCode, children)
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, children)
 }
 
 function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: string): string {
@@ -92,7 +85,7 @@ function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: s
     return listMap(block.statements, child => compileViewRenderExpression(child, scope))
   }
   const statements = block.statements.map(statement => compileBlockStatement(statement, scope)).join('\n')
-  return emitViewRenderBlock(scope, statements)
+  return RuntimeEmitter.emitViewRenderBlock(scope, statements)
 }
 
 function isViewRenderExpression(node: AST.ViewRenderBlockStatement): node is AST.ViewRenderExpression {
@@ -109,7 +102,7 @@ function compileBlockStatement(node: AST.ViewRenderBlockStatement, scope: string
 function createComponentNames(
   node: AST.ViewDeclaration,
   context: ViewCompilationContext,
-): ComponentNames {
+): RuntimeEmitter.ComponentNames {
   const identity = `${context.moduleIdentity}_${node.name.value}`
   return {
     view: `TaoView${identity}`,
