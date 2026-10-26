@@ -65,6 +65,7 @@ description: >-
 - Answer questions directly. Investigate whether a requested correction applies elsewhere in the
   review diff and affected contracts. Apply clear equivalents and necessary supporting changes;
   explain expanded scope briefly and ask before semantic changes or unrelated cleanup.
+- “Clarify X” means named functions, with comments when those explain better.
 - Use [review-learning](../review-learning/SKILL.md) for meaningful correction capture and the
   required learning pass when a review group closes with substantive corrections unprocessed.
   Check each human acceptance for an associated lesson, but approval alone is not a general rule.
@@ -88,7 +89,7 @@ description: >-
 
 ## Presentation formats
 
-Propose feature sets and groups with counts, brief overviews and minimal Tao examples; get agreement first.
+Propose feature sets, group counts and Tao examples; get agreement first.
 
 List remaining titles, then only the current chunk's files:
 

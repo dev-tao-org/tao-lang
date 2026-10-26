@@ -1,7 +1,8 @@
 import { transform } from '@ast-gen/Transform'
 import { IO } from '@cli-kit'
 import { fix } from '@fix/Fix'
-import { format } from '@fix/Format'
+import { format, type FormatInput, type FormatResult } from '@fix/Format'
+import type { EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import { createParser } from '@grammar/parser'
 import { Errors, Timings } from '@shared'
 import { FileSystem } from '@shared/os'
@@ -13,35 +14,56 @@ import { embeddedFormatting } from './EmbeddedFormatting'
 export const updateTaoSource = Timings.createTopLevelTimer(async function(
   timings,
   path: string,
-  mode: 'format' | 'fix',
+  mode: SourceUpdateMode,
   print: (message: string) => void = IO.print,
   warn: (message: string) => void = IO.warn,
 ): Promise<void> {
   await timings.run(prepareParser)
   const parser = timings.run(createParser)
-  let source = await FileSystem.readFile(path, 'utf8')
-  let tree = timings.run(parser.parse, source)
-  if (mode === 'fix') {
-    const ast = timings.run(transform, tree)
-    if (!ast) {
-      Errors.ThrowUserInput(`Fixing requires a complete Tao document: ${path}`)
-    }
-    const result = timings.run(fix, { source, tree, ast })
-    if (result.text !== source) {
-      source = result.text
-      tree = timings.run(parser.parse, source)
-    }
-  }
-  const typescript = source.includes('```ts') ? await timings.run(embeddedFormatting) : undefined
-  const result = timings.run(format, { source, tree }, { typescript })
+  const input = await readSourceSnapshot(path, parser, timings)
+  const prepared = mode === 'fix' ? applySourceFixes(path, input, parser, timings) : input
+  const typescript = await resolveEmbeddedFormatter(prepared.source, timings)
+  const result = timings.run(format, prepared, { typescript })
   await FileSystem.writeIfChanged(path, result.text)
   if (mode === 'fix') {
     printUsageWarnings(path, timings.run(parser.parse, result.text), timings, warn)
   }
-  print(
-    `${mode === 'fix' ? 'Fixed' : 'Formatted'} ${path}${result.skipped.length ? ' (incomplete syntax skipped)' : ''}`,
-  )
+  const message = describeSourceUpdate(path, mode, result)
+  print(message)
 })
+
+type SourceUpdateMode = 'format' | 'fix'
+type SourceParser = ReturnType<typeof createParser>
+
+async function readSourceSnapshot(path: string, parser: SourceParser, timings: Timings): Promise<FormatInput> {
+  const source = await FileSystem.readFile(path, 'utf8')
+  const tree = timings.run(parser.parse, source)
+  return { source, tree }
+}
+
+function applySourceFixes(path: string, input: FormatInput, parser: SourceParser, timings: Timings): FormatInput {
+  const ast = timings.run(transform, input.tree)
+  if (!ast) {
+    Errors.ThrowUserInput(`Fixing requires a complete Tao document: ${path}`)
+  }
+  const result = timings.run(fix, { source: input.source, tree: input.tree, ast })
+  if (result.text === input.source) {
+    return input
+  }
+  // Import fixes change source offsets; format against a fresh tree for the corrected source.
+  const tree = timings.run(parser.parse, result.text)
+  return { source: result.text, tree }
+}
+
+async function resolveEmbeddedFormatter(source: string, timings: Timings): Promise<EmbeddedFormatter | undefined> {
+  return source.includes('```ts') ? await timings.run(embeddedFormatting) : undefined
+}
+
+function describeSourceUpdate(path: string, mode: SourceUpdateMode, result: FormatResult): string {
+  const actionLabel = mode === 'fix' ? 'Fixed' : 'Formatted'
+  const skippedNotice = result.skipped.length ? ' (incomplete syntax skipped)' : ''
+  return `${actionLabel} ${path}${skippedNotice}`
+}
 
 function printUsageWarnings(
   path: string,
