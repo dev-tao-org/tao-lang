@@ -3,7 +3,7 @@ import { createParser } from '@grammar/parser'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
-import { executeTypeScript, programFor, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
+import { createProgramFor, executeTypeScript, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
 
 Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks, and preserve prior revisions', async () =>
   await withFixture(async fixture => {
@@ -59,7 +59,7 @@ Tests.test('collects foreign views through a symlinked project root', async () =
     const prepared = await prepareSidecarPipeline({
       ...fixture,
       projectDirectory: alias,
-      program: programFor(aliasEntry, fixture.program.modules[0]!.document),
+      program: createProgramFor(aliasEntry, fixture.program.modules[0]!.document),
       executor: recordingExecutor(() => {}),
     })
     const snapshot = prepared.resolveForeignViewPath(aliasEntry, './FormattedDate.tsx')

@@ -15,6 +15,7 @@ type FixtureState = {
   shell: string
   zshrc: string
 }
+type MockCommandResult = { command: string; exitCode: number; stderr: string; stdout: string }
 
 async function createFixtureRoot(): Promise<{ home: string; root: string }> {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-direnv-setup-'))
@@ -93,20 +94,24 @@ async function mockCommand(
   paths: FixturePaths,
   command: string,
   spec: { args?: readonly string[] },
-): Promise<{ command: string; exitCode: number; stderr: string; stdout: string }> {
-  const stdout = command === 'git'
-    ? spec.args?.[0] === 'rev-parse'
-      ? `${paths.common}\n`
-      : spec.args?.[0] === 'worktree'
-      ? `worktree ${root}\0HEAD ${identity}\0\0`
-      : `${identity}\n`
-    : ''
+): Promise<MockCommandResult> {
+  const stdout = command === 'git' ? resolveGitOutput(spec.args, paths.common, root, identity) : ''
   if (command === 'nix-store') {
     const addRoot = spec.args?.[3] ?? ''
     await FileSystem.mkdir(Path.join(addRoot, 'bin'), { recursive: true })
     await FileSystem.writeFile(Path.join(addRoot, 'bin/direnv'), 'direnv', 'utf8')
   }
   return { command, exitCode: 0, stdout, stderr: '' }
+}
+
+function resolveGitOutput(args: readonly string[] | undefined, common: string, root: string, identity: string): string {
+  if (args?.[0] === 'rev-parse') {
+    return `${common}\n`
+  }
+  if (args?.[0] === 'worktree') {
+    return `worktree ${root}\0HEAD ${identity}\0\0`
+  }
+  return `${identity}\n`
 }
 
 async function createFixture(): Promise<FixtureState> {

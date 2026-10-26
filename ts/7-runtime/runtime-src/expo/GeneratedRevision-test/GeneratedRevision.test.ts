@@ -6,16 +6,16 @@ Tests.test('complete revision owner coalesces B while A is active and C retains 
   let release!: () => void
   const blocked = new Promise<void>(resolve => release = resolve)
   const published: string[] = []
-  const owner = createRevisionOwner('session', revision('r0', 0), async value => {
+  const owner = createRevisionOwner('session', createRevision('r0', 0), async value => {
     published.push(value.revision)
     if (value.revision === 'rA') {
       await blocked
     }
     return { status: 'published' }
   })
-  const first = owner.publish(revision('rA', 1))
-  const second = owner.publish(revision('rB', 2))
-  const third = owner.publish(revision('rC', 3))
+  const first = owner.publish(createRevision('rA', 1))
+  const second = owner.publish(createRevision('rB', 2))
+  const third = owner.publish(createRevision('rC', 3))
   Tests.expect(await second).toMatchObject({ revision: 'rB', status: 'superseded' })
   Tests.expect(published).toEqual(['rA'])
   release()
@@ -34,17 +34,30 @@ Tests.test('snapshot copies authored bytes and rejects traversal and runtime nam
 })
 
 Tests.test('no-op revisions retain served identity and an ordinary committed error can be corrected', async () => {
-  const owner = createRevisionOwner('session', revision('rA', 0), async value => ({
-    status: value.revision === 'rB' ? 'noop' : value.revision === 'rC' ? 'error' : 'published',
+  const owner = createRevisionOwner('session', createRevision('rA', 0), async value => ({
+    status: publicationStatus(value.revision),
     committed: value.revision === 'rC',
   }))
-  Tests.expect(await owner.publish(revision('rB', 1))).toMatchObject({ status: 'noop', publishedRevision: 'rA' })
+  Tests.expect(await owner.publish(createRevision('rB', 1))).toMatchObject({ status: 'noop', publishedRevision: 'rA' })
   Tests.expect(owner.current().revision).toBe('rA')
-  Tests.expect(await owner.publish(revision('rC', 2))).toMatchObject({ status: 'error', publishedRevision: 'rC' })
-  Tests.expect(await owner.publish(revision('rD', 3))).toMatchObject({ status: 'published', publishedRevision: 'rD' })
+  Tests.expect(await owner.publish(createRevision('rC', 2))).toMatchObject({ status: 'error', publishedRevision: 'rC' })
+  Tests.expect(await owner.publish(createRevision('rD', 3))).toMatchObject({
+    status: 'published',
+    publishedRevision: 'rD',
+  })
 })
 
-function revision(name: string, sequence: number): GeneratedRevision {
+function publicationStatus(revision: string): 'noop' | 'error' | 'published' {
+  if (revision === 'rB') {
+    return 'noop'
+  }
+  if (revision === 'rC') {
+    return 'error'
+  }
+  return 'published'
+}
+
+function createRevision(name: string, sequence: number): GeneratedRevision {
   return { revision: name, sequence, files: { 'App.tsx': name } }
 }
 
@@ -52,18 +65,18 @@ Tests.test('out-of-order requests cannot replace newer pending work or replay a 
   let release!: () => void
   const blocked = new Promise<void>(resolve => release = resolve)
   const published: string[] = []
-  const owner = createRevisionOwner('session', revision('r0', 0), async value => {
+  const owner = createRevisionOwner('session', createRevision('r0', 0), async value => {
     published.push(value.revision)
     if (value.sequence === 3) {
       await blocked
     }
     return { status: 'published' }
   })
-  const active = owner.publish(revision('r3', 3))
-  const pending = owner.publish(revision('r5', 5))
-  Tests.expect(await owner.publish(revision('r4', 4))).toMatchObject({ revision: 'r4', status: 'superseded' })
-  Tests.expect(await owner.publish(revision('r3', 3))).toMatchObject({ revision: 'r3', status: 'superseded' })
-  Tests.expect(await owner.publish(revision('r1', 1))).toMatchObject({ revision: 'r1', status: 'superseded' })
+  const active = owner.publish(createRevision('r3', 3))
+  const pending = owner.publish(createRevision('r5', 5))
+  Tests.expect(await owner.publish(createRevision('r4', 4))).toMatchObject({ revision: 'r4', status: 'superseded' })
+  Tests.expect(await owner.publish(createRevision('r3', 3))).toMatchObject({ revision: 'r3', status: 'superseded' })
+  Tests.expect(await owner.publish(createRevision('r1', 1))).toMatchObject({ revision: 'r1', status: 'superseded' })
   release()
   await Promise.all([active, pending])
   Tests.expect(published).toEqual(['r3', 'r5'])

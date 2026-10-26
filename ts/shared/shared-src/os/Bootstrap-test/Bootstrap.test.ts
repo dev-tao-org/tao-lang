@@ -1,13 +1,11 @@
 import { Try } from '@shared'
-import { Artifacts, Tests } from '@shared/os'
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import * as Platform from '../Platform'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+
+const { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = FileSystem
+const { delimiter, join } = Path
 
 Tests.test('bootstrap imports independently and forwards setup output and flags', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-bootstrap-'))
+  const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-bootstrap-'))
   await Try(async () => {
     const result = await runBootstrap(root, 0)
     Tests.expect(result.status).toBe(0)
@@ -47,15 +45,16 @@ async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: 'install' | 'run' = 'install',
-): Promise<{ status: number; stdout: string; stderr: string }> {
+): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
   await mkdir(ts, { recursive: true })
   await mkdir(bin, { recursive: true })
   await copyFile(new URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
+  await copyFile(new URL('../NodeBuiltins.ts', import.meta.url), join(ts, 'NodeBuiltins.ts'))
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
-    + `const bootstrap=await import(${JSON.stringify(pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
+    + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const child = Platform.spawn(process.execPath, {
     variadicArgs: ['-e', script],
@@ -83,3 +82,5 @@ async function writeStub(bin: string, failureStatus: number, failureStage: 'inst
   await writeFile(path, script)
   await chmod(path, 0o755)
 }
+
+type BootstrapResult = { status: number; stdout: string; stderr: string }

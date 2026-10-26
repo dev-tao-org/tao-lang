@@ -14,6 +14,8 @@ Tests.test('CLI launchers prepare missing semantic AST before loading commands',
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+type LauncherResult = { status: number; stdout: string; stderr: string }
+
 async function createLauncherFixture(root: string): Promise<void> {
   const bin = Path.join(root, 'bin')
   await FileSystem.mkdir(Path.join(root, '.config'), { recursive: true })
@@ -134,7 +136,7 @@ async function runLauncher(
   launcher: string,
   arguments_: readonly string[],
   extraEnvironment: Record<string, string> = {},
-): Promise<{ status: number; stdout: string; stderr: string }> {
+): Promise<LauncherResult> {
   const child = Platform.spawn(Path.join(root, launcher), {
     variadicArgs: arguments_,
     cwd: root,

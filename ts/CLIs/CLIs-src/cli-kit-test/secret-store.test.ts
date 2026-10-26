@@ -4,6 +4,9 @@ import * as SecretStoreModule2 from '../cli-kit/secret-store'
 
 const { expect: Expect, test: TestCase } = Tests
 
+type CipherCalls = { machineDecrypt: number; recipientCheck: number; valueDecrypt: number }
+type RecordingCipher = { cipher: SecretStoreModule2.Cipher; calls: CipherCalls }
+
 TestCase('secret store format > parses JSONC while retaining encrypted entries and metadata', () => {
   const store = SecretStoreModule2.parseSecretStore(S`
       // Commented store file.
@@ -108,10 +111,7 @@ TestCase('secret store format > rejects device-encrypted values before using the
 
 const storeKeyArmor =
   '-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=\n-----END AGE ENCRYPTED FILE-----'
-function recordingCipher(): {
-  cipher: SecretStoreModule2.Cipher
-  calls: { machineDecrypt: number; recipientCheck: number; valueDecrypt: number }
-} {
+function recordingCipher(): RecordingCipher {
   const calls = { machineDecrypt: 0, recipientCheck: 0, valueDecrypt: 0 }
   const cipher: SecretStoreModule2.Cipher = {
     encrypt: async () => 'wrapped',

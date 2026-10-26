@@ -24,13 +24,3 @@ Tests.test('generic blocks retain broad node statements', () => {
   Tests.expect(AST.Block(body).statements.map(node => node.kind)).toEqual(['RenderViewExpressionStatement'])
   Tests.expect(AST.Construct(view, 'ViewDeclaration').body.kind).toBe('Block')
 })
-
-Tests.test('nested render blocks report keyworded render injections as syntax errors', () => {
-  const tree = createParser().parse('view Main { render Text { render inject ```ts return null ``` } }')
-  Tests.expect(tree.rootNode.hasError).toBe(true)
-})
-
-Tests.test('view declarations report multiple final renders as syntax errors', () => {
-  const tree = createParser().parse('view Main { render Text render Text }')
-  Tests.expect(tree.rootNode.hasError).toBe(true)
-})

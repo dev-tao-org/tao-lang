@@ -1,10 +1,9 @@
 import { S, Try } from '@shared'
-import { Artifacts, Tests } from '@shared/os'
-import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import * as Platform from '../Platform'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { resolveStorage } from '../Storage'
+
+const { join } = Path
+const { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } = FileSystem
 
 Tests.test('resolveStorage uses native Tao cache and support locations per platform', () => {
   Tests.expect(resolveStorage('macos', '/Users/ro', {})).toEqual({
@@ -22,7 +21,7 @@ Tests.test('resolveStorage uses native Tao cache and support locations per platf
 })
 
 Tests.test('cleanSharedCache waits for local leases and removes only cache contents afterward', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-storage-'))
+  const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-storage-'))
   const cache = join(root, 'cache')
   const support = join(root, 'support')
   const outside = join(root, 'outside')

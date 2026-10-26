@@ -1,17 +1,16 @@
 import { Tests } from '@shared/os'
-import { createElement } from 'react'
-import type { ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import React from '../../runtime-src/client/Bridge-React'
 import type { ViewComponentProps } from '../../runtime-src/client/View'
 import * as View from '../../runtime-src/client/View'
 
 Tests.test('ViewRenderArguments tags the native root through nested Tao views', () => {
   function NativeRoot({ testID }: { testID?: string }) {
-    return createElement('span', { 'data-testid': testID }, 'leaf')
+    return React.createElement('span', { 'data-testid': testID }, 'leaf')
   }
   function Native(props: ViewComponentProps) {
     const context = View.beginViewRender(props)
-    return View.finishViewRender(context, createElement(NativeRoot))
+    return View.finishViewRender(context, React.createElement(NativeRoot))
   }
   function Wrapper(props: ViewComponentProps) {
     const context = View.beginViewRender(props)
@@ -36,7 +35,7 @@ Tests.test('ViewRenderArguments preserves tagged child identity when siblings re
   const reordered = View.ViewRenderArguments([], [second])
   const untagged = View.ViewRenderArguments([], [View.ViewRenderExpression(view, View.ViewRenderArguments())])
 
-  Tests.expect(original.children.map(child => (child as ReactElement).key)).toEqual(['item-A', 'item-B'])
-  Tests.expect(reordered.children.map(child => (child as ReactElement).key)).toEqual(['item-B'])
-  Tests.expect(untagged.children.map(child => (child as ReactElement).key)).toEqual(['0'])
+  Tests.expect(original.children.map(child => (child as React.ReactElement).key)).toEqual(['item-A', 'item-B'])
+  Tests.expect(reordered.children.map(child => (child as React.ReactElement).key)).toEqual(['item-B'])
+  Tests.expect(untagged.children.map(child => (child as React.ReactElement).key)).toEqual(['0'])
 })

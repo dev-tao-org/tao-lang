@@ -35,7 +35,13 @@ async function listTaoFiles(relative: string): Promise<string[]> {
   const paths = await Promise.all(
     entries.filter(entry => !entry.name.startsWith('.')).map(async entry => {
       const path = Path.join(relative, entry.name)
-      return entry.isDirectory() ? listTaoFiles(path) : path.endsWith('.tao') ? [Repo.resolvePath(path)] : []
+      if (entry.isDirectory()) {
+        return listTaoFiles(path)
+      }
+      if (path.endsWith('.tao')) {
+        return [Repo.resolvePath(path)]
+      }
+      return []
     }),
   )
   return paths.flat()

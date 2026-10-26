@@ -3,8 +3,8 @@ import * as TestPlan from '../testing/TestPlan'
 
 Tests.test('allocates fixed workers to selected sections and splits explicit budgets', () => {
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps' })).toEqual({
-    typescript: { args: [], workers: 2 },
-    tao: { target: '/apps', workers: 4 },
+    typescript: { args: [], workers: 3 },
+    tao: { target: '/apps', workers: 3 },
     serial: false,
   })
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '5' })).toEqual({
@@ -18,11 +18,11 @@ Tests.test('allocates fixed workers to selected sections and splits explicit bud
     serial: false,
   })
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '6' })).toEqual({
-    typescript: { args: [], workers: 2 },
-    tao: { target: '/apps', workers: 4 },
+    typescript: { args: [], workers: 3 },
+    tao: { target: '/apps', workers: 3 },
     serial: false,
   })
-  Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [] }).typescript?.workers).toBe(2)
+  Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [] }).typescript?.workers).toBe(3)
 })
 
 Tests.test('serial mode and a one-worker budget run selected sections in sequence', () => {

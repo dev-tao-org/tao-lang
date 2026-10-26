@@ -6,6 +6,12 @@ import type { GeneratedRevision } from '../PreviewProtocol'
 import { delayPreload } from './DelayPreload'
 import { verifyMetroBurst } from './MetroStress'
 
+type MetroRevisionNotice = { revision: string }
+
+type MetroSocketMessage = { type: string; tao?: MetroRevisionNotice; body?: unknown }
+
+type MetroReadStatus = { held: boolean; before: string; after: string }
+
 Tests.test(
   'Metro freezes delayed initial reads through HMR attachment and repairs coupled generated-file failures',
   async () => {
@@ -36,9 +42,9 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
   const bundleUrl = `${session.url}/Application.bundle?platform=web&dev=true&minify=false&lazy=false`
   await Http.request(`${session.url}/__tao_test/arm`)
   const initial = Http.request(bundleUrl).then(response => response.text())
-  await waitFor(async () => (await status(session.url)).held === true)
+  await waitFor(async () => (await readStatus(session.url)).held === true)
   const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
-  const messages: { type: string; tao?: { revision: string }; body?: unknown }[] = []
+  const messages: MetroSocketMessage[] = []
   socket.addEventListener('message', event => messages.push(JSON.parse(String(event.data))))
   await waitFor(async () => socket.readyState === 1)
   socket.send(JSON.stringify({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
@@ -59,7 +65,7 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
   Tests.expect(publication).toMatchObject({ status: 'published', publishedRevision: 'B' })
   await waitFor(async () => messages.some(message => message.type === 'bundle-registered'))
   await waitFor(async () => messages.some(message => message.type === 'update' && message.tao?.revision === 'B'))
-  const delayed = await status(session.url)
+  const delayed = await readStatus(session.url)
   Tests.expect(delayed.before).toBe("export const helper = 'HELPER_A';")
   Tests.expect(delayed.after).toBe(delayed.before)
   await verifyMultipleGroups(session, bundleUrl, messages)
@@ -71,7 +77,7 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
 
 async function verifyGeneratedFailures(
   session: ExpoSession,
-  messages: { type: string; tao?: { revision: string } }[],
+  messages: MetroSocketMessage[],
 ): Promise<void> {
   const added = createRevision('C', 4, true)
   await Http.request(`${session.url}/__tao_test/fail`)
@@ -93,7 +99,7 @@ async function verifyGeneratedFailures(
 async function verifyMultipleGroups(
   session: ExpoSession,
   originalBundleUrl: string,
-  primary: { type: string; tao?: { revision: string }; body?: unknown }[],
+  primary: MetroSocketMessage[],
 ): Promise<void> {
   const bundleUrl = originalBundleUrl.replace('dev=true', 'dev=false')
   Tests.expect((await Http.request(bundleUrl)).ok).toBe(true)
@@ -109,14 +115,24 @@ async function verifyMultipleGroups(
     firstDone = true
     return result
   })
-  await waitFor(async () => (await status(session.url)).held)
+  await waitFor(async () => (await readStatus(session.url)).held)
+  let sourceCompleted = false
+  const source = Http.request(`${session.url}/%5Bmetro-project%5D/src/App.tsx`).then(response => {
+    sourceCompleted = true
+    return response
+  })
   const pending = session.publish(createRevision('B_PENDING', 3))
   await Time.sleep(25)
   const completedTooSoon = firstDone
+  const sourceCompletedTooSoon = sourceCompleted
   await Http.request(`${session.url}/__tao_test/release`)
   Tests.expect(await first).toMatchObject({ status: 'published' })
   Tests.expect(await pending).toMatchObject({ status: 'published' })
   Tests.expect(completedTooSoon).toBe(false)
+  Tests.expect(sourceCompletedTooSoon).toBe(false)
+  const sourceResponse = await source
+  Tests.expect(sourceResponse.headers.get('x-tao-revision')).toBe('B_GROUPS')
+  Tests.expect(await sourceResponse.text()).toContain('APP_B_GROUPS')
   for (const messages of [primary, secondary]) {
     for (const revision of ['B_GROUPS', 'B_PENDING']) {
       const update = messages.find(message => message.type === 'update' && message.tao?.revision === revision)
@@ -139,11 +155,11 @@ function createRevision(revision: string, sequence: number, extra = false): Gene
     sequence,
     files: {
       'App.tsx': S`
-        import { createElement } from 'react';
-        import { Text } from 'react-native';
+        import React from '@runtime/client/Bridge-React';
+        import ReactNative from '@runtime/client/Bridge-ReactNative';
         import { helper } from './helper';
         ${extra ? "import { extra } from './extra';" : ''}
-        export default function App() { return createElement(Text, null, 'APP_${revision}' + helper ${
+        export default function App() { return React.createElement(ReactNative.Text, null, 'APP_${revision}' + helper ${
         extra ? '+ extra' : ''
       }); }
       `,
@@ -153,12 +169,8 @@ function createRevision(revision: string, sequence: number, extra = false): Gene
   }
 }
 
-async function status(url: string): Promise<{ held: boolean; before: string; after: string }> {
-  return await (await Http.request(`${url}/__tao_test/status`)).json() as {
-    held: boolean
-    before: string
-    after: string
-  }
+async function readStatus(url: string): Promise<MetroReadStatus> {
+  return await (await Http.request(`${url}/__tao_test/status`)).json() as MetroReadStatus
 }
 
 async function waitFor(predicate: () => Promise<boolean>): Promise<void> {
