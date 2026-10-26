@@ -44,6 +44,8 @@ description: >-
   Explain partial-file scope in at most two sentences. End immediately after the file list.
 - Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
   Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
+- Number each chunk locally from 1: `1. F43 New: <file link>`. Plain numbers reference current list
+  positions; `F43` references the stable file ID. Restart local numbering for each chunk.
 - Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
 - After handling approvals or corrections, reprint clickable links for every remaining current-chunk
   file with its stable ID; if complete, present the next agreed chunk. Pause only at the developer's
@@ -86,19 +88,7 @@ description: >-
 
 ## Presentation formats
 
-Get agreement on feature sets and groups first:
-
-```text
-- Feature set: **Projects, sessions and storage**
-  - X folders, Y files, Z diffs
-  - Owns project identity, editing sessions and generated state.
-  - `project { ... }`
-  - Project initialization and discovery
-    - X folders, Y files, Z diffs
-    - Finds project roots; includes their specification.
-  - ...
-...
-```
+Propose feature sets and groups with counts, brief overviews and minimal Tao examples; get agreement first.
 
 List remaining titles, then only the current chunk's files:
 
@@ -117,8 +107,8 @@ Remaining groups:
 <Particular complexity or dependencies to keep in mind, only if needed.>
 
 - <Current review group or conceptual chunk> - X folders, Y files, Z diffs
-  1. <Clickable file path:starting line> - X diffs
-  2. <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
+  1. F<number> New: <Clickable file path:starting line> - X diffs
+  2. F<number>: <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
 ```
 
 Omit unused headings. End at the file list, except an outstanding subagent-readiness footer.
@@ -128,8 +118,9 @@ Omit unused headings. End at the file list, except an outstanding subagent-readi
 - Automatically accept authored TypeScript `.test.ts` / `.test.tsx` files; no per-file developer
   approval is needed. Keep test runners and reusable utilities outside test files, shared where
   appropriate and subject to developer approval. See [test scope](references/operations.md#automatic-test-acceptance).
-- `F<number>` references a stable file ID; it alone is not approval. `<number>y` approves that
-  numbered file's saved contents in the current group. Preserve its numbering.
+- `F<number>` references a stable file ID; a plain number references the current list position.
+  Neither alone is approval. `A 1 2` approves those positions; `A F43` approves that stable file.
+  `<number>y` approves the current position's saved contents. Preserve stable IDs.
 - "Mark file X reviewed" approves its saved disk contents, including pending edits. "Approve
   changes X" approves only those changes. Resolve semantic requests such as "approve the new error
   messages" to the narrowest sound content using the conversation and current diff.
