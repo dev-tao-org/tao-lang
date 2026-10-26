@@ -35,6 +35,7 @@ export type PreparedSidecars = {
 export async function prepareSidecarPipeline(options: SidecarPipelineOptions): Promise<PreparedSidecars> {
   const nodeModulesDirectory = FileSystem.realpathSync(options.nodeModulesDirectory)
   const { groups, watchFiles } = await collectSidecarInputs(options)
+  await options.onWatchFiles?.(watchFiles)
   const defaultsPath = options.typescriptDefaultsPath
     ?? Path.join(
       options.projectDirectory ?? Path.dirname(options.program.entry),
