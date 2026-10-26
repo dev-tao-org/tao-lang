@@ -80,11 +80,7 @@ export async function buildSnapshot(
 ): Promise<string> {
   await FileSystem.mkdir(Path.dirname(snapshotRoot), { recursive: true })
   const recoveryRoot = `${snapshotRoot}.recovered`
-  const publishedRoot = !isPathPresent(snapshotRoot)
-    ? snapshotRoot
-    : isPathPresent(recoveryRoot)
-    ? `${recoveryRoot}.${Platform.randomUUID()}`
-    : recoveryRoot
+  const publishedRoot = resolvePublishedSnapshotRoot(snapshotRoot, recoveryRoot)
   await enforceSnapshotLimit(Path.dirname(snapshotRoot), snapshotLimit)
   const stagingRoot = `${publishedRoot}.${Platform.randomUUID()}.pending`
   await Try(
@@ -143,15 +139,7 @@ function isSymbolicLink(path: string): boolean {
   return Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
 }
 
-async function stageSnapshot(input: {
-  options: SnapshotOptions
-  groups: readonly SidecarGroup[]
-  snapshotRoot: string
-  stagingRoot: string
-  fingerprint: string
-  nodeModulesDirectory: string
-  defaultsPath: string
-}): Promise<void> {
+async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
   await FileSystem.mkdir(input.stagingRoot, { recursive: true })
   for (const group of input.groups) {
     await stageModule(input.options, group, input.stagingRoot, input.nodeModulesDirectory, input.defaultsPath)
@@ -165,12 +153,32 @@ async function stageSnapshot(input: {
   await FileSystem.rename(input.stagingRoot, input.snapshotRoot)
 }
 
+function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {
+  if (!isPathPresent(snapshotRoot)) {
+    return snapshotRoot
+  }
+  if (isPathPresent(recoveryRoot)) {
+    return `${recoveryRoot}.${Platform.randomUUID()}`
+  }
+  return recoveryRoot
+}
+
 const defaultSnapshotLimit = 128
 
 type ForeignViewInput = {
   module: LinkedProgram['modules'][number]
   declaration: AST.ViewDeclaration
   relativeSidecarPath: string
+}
+
+type SnapshotStageInput = {
+  options: SnapshotOptions
+  groups: readonly SidecarGroup[]
+  snapshotRoot: string
+  stagingRoot: string
+  fingerprint: string
+  nodeModulesDirectory: string
+  defaultsPath: string
 }
 
 const assetDeclarations = S`

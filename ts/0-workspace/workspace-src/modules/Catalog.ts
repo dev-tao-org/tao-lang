@@ -99,9 +99,11 @@ async function isSafeDirectory(path: string, boundary: string): Promise<boolean>
     && resolveRealPathInsideProject(path, boundary) !== undefined
 }
 
+type SourceDirectoryEntry = { name: string; isFile(): boolean; isDirectory(): boolean }
+
 async function readDirectoryEntries(
   path: string,
-): Promise<Array<{ name: string; isFile(): boolean; isDirectory(): boolean }>> {
-  const fallback: Array<{ name: string; isFile(): boolean; isDirectory(): boolean }> = []
+): Promise<SourceDirectoryEntry[]> {
+  const fallback: SourceDirectoryEntry[] = []
   return await Try.WithDefault(fallback, () => FileSystem.readdir(path, { withFileTypes: true }))
 }

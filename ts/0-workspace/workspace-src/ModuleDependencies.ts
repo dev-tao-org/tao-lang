@@ -10,13 +10,21 @@ import { findNamedPackageDirectories, listRecursiveSourceFiles } from './modules
 import { isNpmPackageName } from './NpmPackageName'
 import { acquireSession } from './projects/Sessions'
 
+/** AddModuleNpmDependencyResult identifies the exact package pin written to a Tao module. */
+export type AddModuleNpmDependencyResult = {
+  moduleRoot: string
+  sourcePath: string
+  packageName: string
+  version: string
+}
+
 /** addModuleNpmDependency writes an exact npm pin into one project-owned named module. */
 export async function addModuleNpmDependency(
   projectRoot: string,
   moduleName: string,
   packageSpec: string,
   executor: NpmVersionExecutor = resolveNpmVersion,
-): Promise<{ moduleRoot: string; sourcePath: string; packageName: string; version: string }> {
+): Promise<AddModuleNpmDependencyResult> {
   const moduleRoot = await resolveModule(projectRoot, moduleName)
   const { packageName, version: requested } = parsePackageSpec(packageSpec)
   const version = requested ?? await executor(packageName, projectRoot)
@@ -97,6 +105,7 @@ export async function withDependencySession<T>(
 }
 
 type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
+type NpmRequirementOccurrence = { path: string; source: string; start: number; end: number; alias?: string }
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
@@ -115,15 +124,25 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
     Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${stderr.trim()}`)
   }
   const value = Try.WithDefault(undefined, () => JSON.parse(stdout.trim()) as unknown)
-  const version = typeof value === 'string'
-    ? value
-    : typeof value === 'object' && value !== null && 'version' in value && typeof value.version === 'string'
-    ? value.version
-    : undefined
+  const version = resolveNpmVersionValue(value)
   if (!version) {
     Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)
   }
   return version
+}
+
+function resolveNpmVersionValue(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (isNpmVersionRecord(value)) {
+    return value.version
+  }
+  return undefined
+}
+
+function isNpmVersionRecord(value: unknown): value is { version: string } {
+  return typeof value === 'object' && value !== null && 'version' in value && typeof value.version === 'string'
 }
 
 async function resolveModule(projectRoot: string, moduleName: string): Promise<string> {
@@ -188,7 +207,7 @@ function collectNpmRequirementSpans(
   path: string,
   source: string,
   packageName: string,
-): Array<{ path: string; source: string; start: number; end: number; alias?: string }> {
+): NpmRequirementOccurrence[] {
   const document = transform(parser.parse(source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
@@ -208,7 +227,7 @@ function collectNpmRequirementSpans(
 }
 
 async function replaceRequirements(
-  occurrences: Array<{ path: string; source: string; start: number; end: number; alias?: string }>,
+  occurrences: NpmRequirementOccurrence[],
   packageName: string,
   version: string,
 ): Promise<void> {

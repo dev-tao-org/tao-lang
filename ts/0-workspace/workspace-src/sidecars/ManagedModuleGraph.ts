@@ -132,6 +132,8 @@ type InstalledPackage = {
   native: boolean
 }
 
+type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string> }
+
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {
     Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
@@ -181,7 +183,7 @@ async function installedPackages(profile: string, roots: Record<string, string>)
 }
 
 async function loadPackage(
-  graph: { packages: InstalledPackage[]; visited: Set<string> },
+  graph: InstalledPackageGraph,
   name: string,
   from: string,
   range: string | undefined,
@@ -259,7 +261,7 @@ async function installedPackage(directory: string, metadata: Record<string, unkn
 }
 
 async function loadPackageDependencies(
-  graph: { packages: InstalledPackage[]; visited: Set<string> },
+  graph: InstalledPackageGraph,
   directory: string,
   metadata: Record<string, unknown>,
 ): Promise<void> {
@@ -285,11 +287,13 @@ function validateRange(name: string, actual: string, range: string | undefined, 
   }
 }
 
+type ParsedNpmAlias = { name: string; range?: string }
+
 function parseNpmAlias(
   range: string | undefined,
   name: string,
   from: string,
-): { name: string; range?: string } | undefined {
+): ParsedNpmAlias | undefined {
   if (!range?.startsWith('npm:')) {
     return undefined
   }

@@ -2,12 +2,14 @@ import { nullCharacter } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import * as ManagedModuleTypes from './ManagedModuleTypes'
 import { installHostIdentity } from './ManagedNpmHost'
-import { calculateManagedPatchIdentity, describeManagedResolutionPolicy } from './ManagedNpmPolicy'
+import * as ManagedNpmPolicy from './ManagedNpmPolicy'
 
 /** normalizeManagedRequirements sorts declaration inputs with locale-independent code-point order. */
-export function normalizeManagedRequirements(input: ManagedModulesInput): NormalizedManagedRequirement[] {
+export function normalizeManagedRequirements(
+  input: ManagedModuleTypes.ManagedModulesInput,
+): ManagedModuleTypes.NormalizedManagedRequirement[] {
   return input.modules.flatMap(module =>
     module.requirements.map(requirement => ({
       directory: module.directory,
@@ -16,16 +18,16 @@ export function normalizeManagedRequirements(input: ManagedModulesInput): Normal
       origin: requirement.origin,
     }))
   ).sort((left, right) => {
-    const leftKey = requirementOrderKey(left)
-    const rightKey = requirementOrderKey(right)
-    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0
+    const leftKey = createRequirementOrderKey(left)
+    const rightKey = createRequirementOrderKey(right)
+    return ManagedNpmPolicy.compareCodePointStrings(leftKey, rightKey)
   })
 }
 
 /** calculateManagedGraphFingerprint hashes the canonical graph and policy inputs. */
 export function calculateManagedGraphFingerprint(
-  input: ManagedModulesInput,
-  normalized: readonly NormalizedManagedRequirement[],
+  input: ManagedModuleTypes.ManagedModulesInput,
+  normalized: readonly ManagedModuleTypes.NormalizedManagedRequirement[],
 ): string {
   const requirements = collectAllRequirements(normalized, input.runtimePins)
   return Platform.hashText(JSON.stringify({
@@ -34,37 +36,46 @@ export function calculateManagedGraphFingerprint(
     runtimePins: Object.fromEntries(Object.keys(input.runtimePins).sort().map(key => [key, input.runtimePins[key]])),
     singletonPackages: [...input.singletonPackages ?? defaultSingletonPackages].sort(),
     policyRegistryVersion: 1,
-    runtimePolicy: describeManagedResolutionPolicy(input.runtimePolicy),
+    runtimePolicy: ManagedNpmPolicy.describeManagedResolutionPolicy(input.runtimePolicy),
   }))
 }
 
 /** calculateManagedProfileFingerprint identifies one graph install for its Bun, host, and compiler settings. */
-export function calculateManagedProfileFingerprint(input: ManagedModulesInput, graphFingerprint: string): string {
+export function calculateManagedProfileFingerprint(
+  input: ManagedModuleTypes.ManagedModulesInput,
+  graphFingerprint: string,
+): string {
   return Platform.hashText(JSON.stringify({
     graphFingerprint,
     bunVersion: input.bunVersion,
     installHost: installHostIdentity(input),
     typeScriptDefaultsHash: typeScriptDefaultsHash(),
-    runtimePatches: calculateManagedPatchIdentity(input.runtimePolicy),
+    runtimePatches: ManagedNpmPolicy.calculateManagedPatchIdentity(input.runtimePolicy),
   }))
 }
 
 /** resolveManagedProfilePath resolves the host-specific generated profile directory. */
-export function resolveManagedProfilePath(input: ManagedModulesInput, fingerprint: string): string {
+export function resolveManagedProfilePath(input: ManagedModuleTypes.ManagedModulesInput, fingerprint: string): string {
   return Path.join(input.directory, '.tao', 'cache', 'managed-modules', fingerprint)
 }
 
 /** resolveManagedDurableLockPath locates the canonical lock for a graph identity. */
-export function resolveManagedDurableLockPath(input: ManagedModulesInput, graphFingerprint: string): string {
+export function resolveManagedDurableLockPath(
+  input: ManagedModuleTypes.ManagedModulesInput,
+  graphFingerprint: string,
+): string {
   return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.lock`)
 }
 
 /** resolveManagedDurableLockHashPath locates the integrity record for a graph's durable lock. */
-export function resolveManagedDurableLockHashPath(input: ManagedModulesInput, graphFingerprint: string): string {
+export function resolveManagedDurableLockHashPath(
+  input: ManagedModuleTypes.ManagedModulesInput,
+  graphFingerprint: string,
+): string {
   return Path.join(input.directory, '.tao', 'store', 'npm', `${graphFingerprint}.sha256`)
 }
 
-function requirementOrderKey(requirement: NormalizedManagedRequirement): string {
+function createRequirementOrderKey(requirement: ManagedModuleTypes.NormalizedManagedRequirement): string {
   const declaration = [requirement.directory, requirement.name, requirement.version].join(nullCharacter)
   return `${declaration}\n${requirement.origin}`
 }

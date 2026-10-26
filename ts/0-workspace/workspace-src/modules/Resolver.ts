@@ -42,7 +42,7 @@ export async function importTargets(
   physicalImporter: string | undefined,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
-  const importedProject = projectImport(specifier)
+  const importedProject = parseProjectImport(specifier)
   if (importedProject) {
     return await resolveProjectModuleTargets(importedProject, specifier, importer, context)
   }
@@ -56,8 +56,10 @@ export async function importTargets(
   return await relativeTargets(specifier, importer, physicalImporter, context)
 }
 
+type ProjectImport = { alias: string; module: string; parts: string[] }
+
 async function resolveProjectModuleTargets(
-  imported: { alias: string; module: string; parts: string[] },
+  imported: ProjectImport,
   specifier: string,
   importer: string,
   context: ModuleResolutionContext,
@@ -167,7 +169,7 @@ async function resolveNamedTargets(
   }))
 }
 
-function projectImport(specifier: string): { alias: string; module: string; parts: string[] } | undefined {
+function parseProjectImport(specifier: string): ProjectImport | undefined {
   // ex: x@ui/forms -> { alias: x, module: ui, parts: [forms] }
   const [segment, ...parts] = specifier.split('/')
   const match = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/.exec(segment!)

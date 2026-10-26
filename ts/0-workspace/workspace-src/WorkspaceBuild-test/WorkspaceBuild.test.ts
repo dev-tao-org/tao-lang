@@ -297,12 +297,14 @@ function publishedOutcome(
   }
 }
 
-function createDeferredPublication(): {
+type DeferredPublication = {
   promise: Promise<PublicationOutcome>
   start(): void
   complete(outcome: PublicationOutcome): void
   wait(): Promise<void>
-} {
+}
+
+function createDeferredPublication(): DeferredPublication {
   let resolvePublication: (outcome: PublicationOutcome) => void = () => {}
   let started = false
   const promise = new Promise<PublicationOutcome>(resolve => {

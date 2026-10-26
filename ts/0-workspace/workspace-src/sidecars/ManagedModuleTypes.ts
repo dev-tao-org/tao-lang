@@ -6,6 +6,12 @@ export type ManagedModuleRequirement = { name: string; version: string; origin: 
 /** NormalizedManagedRequirement retains declaration ownership while ordering requirements across modules. */
 export type NormalizedManagedRequirement = ManagedModuleRequirement & { directory: string }
 
+/** SidecarCommandResult preserves a command's exit status and captured output. */
+export type SidecarCommandResult = { status: number; stdout: string; stderr: string }
+
+/** GeneratedModuleFileDrift identifies owned generated metadata that needs repair. */
+export type GeneratedModuleFileDrift = { path: string; owner: string; repair: string }
+
 /** ManagedModulesInput describes the reachable Tao modules and app runtime policy. */
 export type ManagedModulesInput = {
   directory: string
@@ -31,7 +37,7 @@ export type BunExecutor = (
   command: string,
   args: readonly string[],
   cwd: string,
-) => Promise<{ status: number; stdout: string; stderr: string }>
+) => Promise<SidecarCommandResult>
 
 /** PreparedManagedModules identifies the validated app graph and its declaration fingerprint. */
 export type PreparedManagedModules = {

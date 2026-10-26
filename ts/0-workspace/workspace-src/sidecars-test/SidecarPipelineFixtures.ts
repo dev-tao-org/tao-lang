@@ -3,6 +3,7 @@ import { createParser } from '@grammar/parser'
 import { Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
+import type { SidecarCommandResult } from '../sidecars/ManagedModuleTypes'
 
 /** Fixture owns the isolated source module and prepared sidecar contract paths. */
 export type Fixture = {
@@ -11,7 +12,7 @@ export type Fixture = {
   nodeModulesDirectory: string
   dependencyFingerprint: string
   target: string
-  program: ReturnType<typeof programFor>
+  program: ReturnType<typeof createProgramFor>
   directory: string
   moduleRoot: string
   taoPath: string
@@ -38,7 +39,7 @@ export async function executeTypeScript(
   command: string,
   args: readonly string[],
   cwd: string,
-): Promise<{ status: number; stdout: string; stderr: string }> {
+): Promise<SidecarCommandResult> {
   const child = Platform.spawn([command, ...args], {
     cwd,
     env: Env.snapshot(),
@@ -53,8 +54,8 @@ export async function executeTypeScript(
   return { status, stdout, stderr }
 }
 
-/** programFor links one parsed source module for a sidecar contract fixture. */
-export function programFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
+/** createProgramFor links one parsed source module for a sidecar contract fixture. */
+export function createProgramFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
   return {
     entry: path,
     modules: [{ path, document, bindings: [] }],
@@ -103,7 +104,7 @@ async function createFixture(): Promise<Fixture> {
     nodeModulesDirectory,
     dependencyFingerprint: 'managed-graph-v1',
     target: 'web',
-    program: programFor(taoPath, document),
+    program: createProgramFor(taoPath, document),
     directory,
     moduleRoot,
     taoPath,

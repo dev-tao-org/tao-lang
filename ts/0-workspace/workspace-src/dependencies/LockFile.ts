@@ -256,19 +256,23 @@ function isDependencyLock(value: unknown): value is DependencyLock {
     && (!('npmGraphs' in value) || isGraphRecord(value.npmGraphs))
 }
 
-function hasVersionOne(value: unknown): value is Record<string, unknown> & { version: 1 } {
+type VersionOneLockRecord = Record<string, unknown> & { version: 1 }
+type LockRootsRecord = Record<string, unknown> & { roots: Record<string, string> }
+type LockSourcesRecord = Record<string, unknown> & { sources: Record<string, unknown> }
+
+function hasVersionOne(value: unknown): value is VersionOneLockRecord {
   return typeof value === 'object' && value !== null && 'version' in value && value.version === 1
 }
 
 function hasStringRoots(
   value: Record<string, unknown>,
-): value is Record<string, unknown> & { roots: Record<string, string> } {
+): value is LockRootsRecord {
   return 'roots' in value && isStringRecord(value.roots)
 }
 
 function hasSources(
   value: Record<string, unknown>,
-): value is Record<string, unknown> & { sources: Record<string, unknown> } {
+): value is LockSourcesRecord {
   return 'sources' in value && typeof value.sources === 'object' && value.sources !== null
 }
 

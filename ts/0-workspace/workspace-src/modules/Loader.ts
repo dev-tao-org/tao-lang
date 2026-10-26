@@ -119,9 +119,7 @@ const discover = Timings.measure(
     const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [], projectRoots: new Map() })
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     await observeProject(state, projectRoot, timings)
-    const physical = source.path === state.entryPath && !await FileSystem.exists(source.path)
-      ? within(projectRoot, source.path) ? source.path : undefined
-      : resolveRealPathInsideProject(source.path, projectRoot)
+    const physical = await resolvePhysicalSourcePath(source.path, state.entryPath, projectRoot)
     if (physical) {
       found.siblings = await listDirectSourceFiles(Path.dirname(physical), projectRoot)
       for (const path of found.siblings.filter(path => path !== source.path)) {
@@ -153,6 +151,20 @@ const discover = Timings.measure(
     return found
   },
 )
+
+async function resolvePhysicalSourcePath(
+  sourcePath: string,
+  entryPath: string,
+  projectRoot: string,
+): Promise<string | undefined> {
+  if (sourcePath === entryPath && !await FileSystem.exists(sourcePath)) {
+    if (within(projectRoot, sourcePath)) {
+      return sourcePath
+    }
+    return undefined
+  }
+  return resolveRealPathInsideProject(sourcePath, projectRoot)
+}
 
 function createModuleResolutionContext(state: LoadState, projectRoot: string): ModuleResolutionContext {
   return { options: state.options, projectRoot }

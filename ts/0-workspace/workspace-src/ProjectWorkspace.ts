@@ -10,9 +10,7 @@ import { createWorkspace, type WorkspaceOptions } from './Workspace'
 /** openProjectWorkspace acquires a project session before opening its independent generated workspace. */
 export async function openProjectWorkspace(
   entry: string,
-  options: ProjectWorkspaceOptions & SessionOptions & {
-    acquireLease?: typeof Storage.acquireCacheLease
-  } = {},
+  options: OpenProjectWorkspaceOptions = {},
 ) {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
@@ -41,6 +39,10 @@ export async function openProjectWorkspace(
 
 type ProjectWorkspaceOptions = Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
   pipelineServices?: ProjectPipelineServices
+}
+
+type OpenProjectWorkspaceOptions = ProjectWorkspaceOptions & SessionOptions & {
+  acquireLease?: typeof Storage.acquireCacheLease
 }
 
 function managedWorkspace(

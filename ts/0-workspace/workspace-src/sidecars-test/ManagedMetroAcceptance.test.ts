@@ -53,7 +53,7 @@ async function prepareManagedMetroFixture(root: string, registryUrl: string) {
   const fixture = await Fixture.installFixturePackage(root, registryUrl)
   return {
     projects,
-    executor: Fixture.managedGraphExecutor({
+    executor: Fixture.createManagedGraphExecutor({
       runtimeModules: Repo.resolvePath('ts/7-runtime/node_modules'),
       runtimeResources: FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/_gen_runtime')),
       fixtureModules: fixture.nodeModules,

@@ -5,13 +5,23 @@ import TypeScript from 'typescript'
 import { initializeProject } from '../projects/Projects'
 import type { BunExecutor } from '../sidecars/ManagedModules'
 
+/** AcceptanceProjects identifies the app and UI projects used by Metro acceptance cases. */
+export type AcceptanceProjects = { app: string; ui: string; entry: string }
+
+/** ManagedGraphFixturePaths identifies source trees used to create a recorded package graph. */
+export type ManagedGraphFixturePaths = {
+  runtimeModules: string
+  runtimeResources: string
+  fixtureModules: string
+}
+
 /** acceptanceRoot creates a temporary repository-local acceptance-test directory. */
 export function acceptanceRoot(): string {
   return Repo.resolvePath('.artifacts/tmp', `managed-metro-${Platform.randomUUID()}`)
 }
 
 /** createAcceptanceProjects writes the test app and external UI project fixtures. */
-export async function createAcceptanceProjects(root: string): Promise<{ app: string; ui: string; entry: string }> {
+export async function createAcceptanceProjects(root: string): Promise<AcceptanceProjects> {
   const app = Path.join(root, 'app')
   const ui = Path.join(root, 'ui')
   const fixtures = Repo.resolvePath('ts/0-workspace/workspace-test/managed-fixtures')
@@ -47,12 +57,8 @@ export async function installFixturePackage(
   return { nodeModules: Path.join(directory, 'node_modules'), lock: Path.join(directory, 'bun.lock') }
 }
 
-/** managedGraphExecutor records the runtime graph without contacting a remote registry. */
-export function managedGraphExecutor(options: {
-  runtimeModules: string
-  runtimeResources: string
-  fixtureModules: string
-}): BunExecutor {
+/** createManagedGraphExecutor records the runtime graph without contacting a remote registry. */
+export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): BunExecutor {
   return async (_command, args, directory) => {
     if (args[0] === '--version') {
       return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
@@ -98,7 +104,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
 
 async function recordProfileInstall(
   directory: string,
-  options: { runtimeModules: string; runtimeResources: string; fixtureModules: string },
+  options: ManagedGraphFixturePaths,
 ): Promise<void> {
   const nodeModules = Path.join(directory, 'node_modules')
   await FileSystem.mkdir(nodeModules, { recursive: true })
@@ -115,10 +121,10 @@ async function recordProfileInstall(
 
 async function materializeLockGraph(
   lock: LockFile,
-  options: { runtimeModules: string; runtimeResources: string; fixtureModules: string },
+  options: ManagedGraphFixturePaths,
   nodeModules: string,
 ): Promise<void> {
-  const sources = await packageSources(options)
+  const sources = await readPackageSources(options)
   const wrappers = Path.join(Path.dirname(nodeModules), '.acceptance-packages')
   await FileSystem.mkdir(wrappers, { recursive: true })
   for (const [key, value] of Object.entries(lock.packages)) {
@@ -153,11 +159,7 @@ async function materializeLockGraph(
   }
 }
 
-async function packageSources(options: {
-  runtimeModules: string
-  runtimeResources: string
-  fixtureModules: string
-}): Promise<Map<string, string>> {
+async function readPackageSources(options: ManagedGraphFixturePaths): Promise<Map<string, string>> {
   const result = new Map<string, string>()
   await scanSources(options.runtimeModules, result)
   await scanSources(Repo.resolvePath('ts/node_modules/.bun'), result, true)

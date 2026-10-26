@@ -1,12 +1,13 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
+import type { SidecarCommandResult } from './ManagedModuleTypes'
 
 /** ContractExecutor runs the pinned TypeScript compiler in the module context. */
 export type ContractExecutor = (
   command: string,
   args: readonly string[],
   cwd: string,
-) => Promise<{ status: number; stdout: string; stderr: string }>
+) => Promise<SidecarCommandResult>
 
 /** ForeignViewContract describes the public props expected from an exact named TypeScript export. */
 export type ForeignViewContract = {

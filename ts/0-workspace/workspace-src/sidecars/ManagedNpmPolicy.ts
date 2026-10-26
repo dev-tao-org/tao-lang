@@ -4,6 +4,17 @@ import TypeScript from 'typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleTypes'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
 
+/** compareCodePointStrings sorts domain keys without locale-dependent ordering. */
+export function compareCodePointStrings(left: string, right: string): number {
+  if (left < right) {
+    return -1
+  }
+  if (left > right) {
+    return 1
+  }
+  return 0
+}
+
 /** describeManagedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
 export function describeManagedResolutionPolicy(
   policy: ManagedRuntimePolicy | undefined,
@@ -103,7 +114,7 @@ function isManagedPatchPath(path: string): boolean {
 }
 
 function sortRecord(record: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0))
+  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => compareCodePointStrings(left, right)))
 }
 
 function recordsMatch(value: unknown, expected: Record<string, string>): boolean {

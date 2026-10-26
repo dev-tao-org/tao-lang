@@ -2,7 +2,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { FileSystem, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
-import { programFor, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
+import { createProgramFor, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
 
 Tests.test('collects foreign views nested inside an owning view', async () =>
   await withFixture(async fixture => {
@@ -13,7 +13,7 @@ Tests.test('collects foreign views nested inside an owning view', async () =>
     )!
     const prepared = await prepareSidecarPipeline({
       ...fixture,
-      program: programFor(fixture.taoPath, document),
+      program: createProgramFor(fixture.taoPath, document),
       executor: recordingExecutor(() => {}),
     })
     const snapshot = prepared.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')

@@ -19,6 +19,22 @@ import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
 import * as ManagedModules from './sidecars/ManagedModules'
 
+/** PreparationOptions supplies explicit updates and local dependency-fixture adapters. */
+export type PreparationOptions = {
+  update?: string[]
+  repair?: boolean
+  executor?: ManagedModules.BunExecutor
+  runtimePins?: Record<string, string>
+  runtimeInstaller?: Runtime.RuntimeInstaller
+  dependencyOptions?: DependencyStoreOptions
+}
+
+/** ProjectPreparationInspectionOptions selects scoped setup-readiness checks. */
+export type ProjectPreparationInspectionOptions = Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> & {
+  moduleRoot?: string
+  runtime?: boolean
+}
+
 /** prepareProject resolves the requested source graph before installing only its reachable npm modules. */
 export async function prepareProject(
   entry: string,
@@ -32,21 +48,10 @@ export async function prepareProject(
   return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
 }
 
-/** PreparationOptions supplies explicit updates and local dependency-fixture adapters. */
-export type PreparationOptions = {
-  update?: string[]
-  repair?: boolean
-  executor?: ManagedModules.BunExecutor
-  runtimePins?: Record<string, string>
-  runtimeInstaller?: Runtime.RuntimeInstaller
-  dependencyOptions?: DependencyStoreOptions
-}
-
 /** inspectProjectPreparation checks initial workflow readiness without installing or resolving pins. */
 export async function inspectProjectPreparation(
   entry: string,
-  options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> & { moduleRoot?: string; runtime?: boolean } =
-    {},
+  options: ProjectPreparationInspectionOptions = {},
 ): Promise<void> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)

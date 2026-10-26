@@ -94,6 +94,9 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
+type ProjectResolution = { root: string } | undefined
+type WorkspaceOutputPaths = { buildDirectory: string; runtimeDirectory: string }
+
 const LinkModules = Timings.measured('modules.link', linkModules)
 const PrepareDependencies = Timings.measured('dependencies.prepared', async function(
   prepare: WorkspaceOptions['beforeCompile'],
@@ -254,7 +257,7 @@ class WorkspaceSession {
     return files
   }
 
-  private async resolveProject(importer: string, alias: string): Promise<{ root: string } | undefined> {
+  private async resolveProject(importer: string, alias: string): Promise<ProjectResolution> {
     return alias === 'tao'
       ? { root: await Stdlib.projectDirectory() }
       : await this.options.resolveProject?.(importer, alias)
@@ -321,7 +324,7 @@ function createSkippedStages(): PipelineStages {
 
 function createOutputPaths(
   options: WorkspaceOptions,
-): { buildDirectory: string; runtimeDirectory: string } | undefined {
+): WorkspaceOutputPaths | undefined {
   if (options.outputDirectory) {
     const directory = Path.resolve(options.outputDirectory)
     return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'runtime') }

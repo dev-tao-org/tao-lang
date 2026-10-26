@@ -4,13 +4,13 @@ import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from './ManagedModuleOwnership'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
-import type { ManagedModuleRequirement, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
+import type * as ManagedTypes from './ManagedModuleTypes'
 
 /** inspectGeneratedModuleFiles reports drift in generated module manifests, configs, and resolution links. */
 export async function inspectGeneratedModuleFiles(
-  input: ManagedModulesInput,
-  managed: PreparedManagedModules,
-): Promise<{ path: string; owner: string; repair: string }[]> {
+  input: ManagedTypes.ManagedModulesInput,
+  managed: ManagedTypes.PreparedManagedModules,
+): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
   const drift = await typescriptDefaultsDrift(input.directory)
   if (drift.length > 0) {
     return drift
@@ -25,7 +25,7 @@ export async function inspectGeneratedModuleFiles(
 export function publishModuleResolution(
   directory: string,
   profile: string,
-  requirements: ManagedModuleRequirement[],
+  requirements: ManagedTypes.ManagedModuleRequirement[],
   runtimePins: Record<string, string>,
   projectRoot: string,
   repair = false,
@@ -83,7 +83,7 @@ export function typeScriptDefaultsHash(): string {
 /** typescriptDefaultsDrift reports missing or changed shared compiler defaults. */
 export async function typescriptDefaultsDrift(
   projectRoot: string,
-): Promise<{ path: string; owner: string; repair: string }[]> {
+): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
   const defaults = createTypeScriptDefaults()
   const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`
@@ -91,13 +91,24 @@ export async function typescriptDefaultsDrift(
   rejectSymlink(marker)
   const current = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
   const ownership = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  return current === defaults && ownership === 'managed-by-tao\n'
-    ? []
-    : [{
-      path: current === defaults ? marker : path,
-      owner: 'project runtime policy',
-      repair: 'tao setup --repair',
-    }]
+  return createTypeScriptDefaultsDrift(current, ownership, defaults, path, marker)
+}
+
+function createTypeScriptDefaultsDrift(
+  current: string | undefined,
+  ownership: string | undefined,
+  defaults: string,
+  path: string,
+  marker: string,
+): ManagedTypes.GeneratedModuleFileDrift[] {
+  if (current === defaults && ownership === 'managed-by-tao\n') {
+    return []
+  }
+  let driftPath = path
+  if (current === defaults) {
+    driftPath = marker
+  }
+  return [{ path: driftPath, owner: 'project runtime policy', repair: 'tao setup --repair' }]
 }
 
 // resolveTypeScriptDefaultsPath returns the shared generated compiler configuration path.
@@ -123,11 +134,11 @@ function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: str
 
 async function moduleDrift(
   directory: string,
-  requirements: ManagedModuleRequirement[],
+  requirements: ManagedTypes.ManagedModuleRequirement[],
   runtimePins: Record<string, string>,
   projectRoot: string,
-  managed: PreparedManagedModules,
-): Promise<{ path: string; owner: string; repair: string }[]> {
+  managed: ManagedTypes.PreparedManagedModules,
+): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
   const merged = { ...runtimePins, ...Object.fromEntries(requirements.map(({ name, version }) => [name, version])) }
   const files = [
     [
@@ -139,7 +150,7 @@ async function moduleDrift(
       createModuleTypeScriptConfig(directory, resolveTypeScriptDefaultsPath(projectRoot)),
     ],
   ] as const
-  const drift = [] as { path: string; owner: string; repair: string }[]
+  const drift: ManagedTypes.GeneratedModuleFileDrift[] = []
   for (const [path, expected] of files) {
     if (!await FileSystem.exists(path) || await FileSystem.readFile(path, 'utf8') !== expected) {
       drift.push({ path, owner: requirements[0]?.origin ?? 'runtime policy', repair: 'tao setup --repair' })
@@ -176,7 +187,7 @@ async function moduleLinkMatches(path: string, expected: string): Promise<boolea
 async function repairModuleFiles(
   directory: string,
   profile: string,
-  requirements: ManagedModuleRequirement[],
+  requirements: ManagedTypes.ManagedModuleRequirement[],
   defaultsPath: string,
   projectRoot: string,
   repair: boolean,
@@ -232,7 +243,7 @@ function cannotReplaceModuleFile(
 
 function createModuleOwnerMarker(
   files: readonly (readonly [string, string])[],
-  requirements: ManagedModuleRequirement[],
+  requirements: ManagedTypes.ManagedModuleRequirement[],
   profile: string,
 ): string {
   return `${

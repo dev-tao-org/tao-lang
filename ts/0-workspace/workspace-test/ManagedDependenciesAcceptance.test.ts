@@ -54,7 +54,9 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
   })
 })
 
-async function createFixtureProjects(root: string): Promise<{ app: string; ui: string; entry: string }> {
+type FixtureProjects = { app: string; ui: string; entry: string }
+
+async function createFixtureProjects(root: string): Promise<FixtureProjects> {
   const app = Path.join(root, 'app')
   const ui = Path.join(root, 'ui')
   const fixtures = Repo.resolvePath('ts/0-workspace/workspace-test/managed-fixtures')
@@ -112,7 +114,7 @@ function startLocalRegistry(packages: Map<string, PackageArtifact>, requests: st
 }
 
 function createFixtureMetadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
-  const version = name === 'react' ? runtimePins.react : name === 'string-width' ? '4.1.0' : '1.0.0'
+  const version = resolveFixtureVersion(name)
   const origin = Http.url(requestUrl).origin
   return {
     name,
@@ -126,6 +128,16 @@ function createFixtureMetadata(name: string, artifact: PackageArtifact, requestU
     },
     'dist-tags': { latest: version },
   }
+}
+
+function resolveFixtureVersion(name: string): string {
+  if (name === 'react') {
+    return runtimePins.react
+  }
+  if (name === 'string-width') {
+    return '4.1.0'
+  }
+  return '1.0.0'
 }
 
 async function expectInstallRetry(entry: string, root: string): Promise<void> {
@@ -225,7 +237,7 @@ async function verifyCompiledSidecar(
   published: string[],
 ): Promise<void> {
   const initial = await workspace.files.openFile(entry)
-  const result = initial.status === 'published' ? 'published' : 'error' in initial ? initial.error : initial.status
+  const result = resolveOpenFileOutcome(initial)
   Tests.expect(result).toBe('published')
   Tests.expect(published).toHaveLength(2)
   Tests.expect(published[0]).toContain('foreign-views')
@@ -235,6 +247,20 @@ async function verifyCompiledSidecar(
   const modulePath = JSON.parse(importPath![1]!) as string
   const module = Platform.loadModule<{ Widget(props: { Value: string }): unknown }>(modulePath)
   Tests.expect(module.Widget({ Value: 'acceptance' })).toBe('label:acceptance')
+}
+
+type WorkspaceOpenFileResult = Awaited<
+  ReturnType<Awaited<ReturnType<typeof openProjectWorkspace>>['files']['openFile']>
+>
+
+function resolveOpenFileOutcome(result: WorkspaceOpenFileResult): string {
+  if (result.status === 'published') {
+    return 'published'
+  }
+  if ('error' in result) {
+    return result.error
+  }
+  return result.status
 }
 
 async function verifyFrozenReprepare(app: string, entry: string, root: string, registry: string): Promise<void> {
