@@ -35,7 +35,7 @@ Tests.test('snapshot copies authored bytes and rejects traversal and runtime nam
 
 Tests.test('no-op revisions retain served identity and an ordinary committed error can be corrected', async () => {
   const owner = createRevisionOwner('session', createRevision('rA', 0), async value => ({
-    status: value.revision === 'rB' ? 'noop' : value.revision === 'rC' ? 'error' : 'published',
+    status: publicationStatus(value.revision),
     committed: value.revision === 'rC',
   }))
   Tests.expect(await owner.publish(createRevision('rB', 1))).toMatchObject({ status: 'noop', publishedRevision: 'rA' })
@@ -46,6 +46,16 @@ Tests.test('no-op revisions retain served identity and an ordinary committed err
     publishedRevision: 'rD',
   })
 })
+
+function publicationStatus(revision: string): 'noop' | 'error' | 'published' {
+  if (revision === 'rB') {
+    return 'noop'
+  }
+  if (revision === 'rC') {
+    return 'error'
+  }
+  return 'published'
+}
 
 function createRevision(name: string, sequence: number): GeneratedRevision {
   return { revision: name, sequence, files: { 'App.tsx': name } }

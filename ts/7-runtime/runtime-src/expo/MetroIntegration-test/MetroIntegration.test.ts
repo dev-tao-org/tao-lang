@@ -6,6 +6,12 @@ import type { GeneratedRevision } from '../PreviewProtocol'
 import { delayPreload } from './DelayPreload'
 import { verifyMetroBurst } from './MetroStress'
 
+type MetroRevisionNotice = { revision: string }
+
+type MetroSocketMessage = { type: string; tao?: MetroRevisionNotice; body?: unknown }
+
+type MetroReadStatus = { held: boolean; before: string; after: string }
+
 Tests.test(
   'Metro freezes delayed initial reads through HMR attachment and repairs coupled generated-file failures',
   async () => {
@@ -38,7 +44,7 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
   const initial = Http.request(bundleUrl).then(response => response.text())
   await waitFor(async () => (await readStatus(session.url)).held === true)
   const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
-  const messages: { type: string; tao?: { revision: string }; body?: unknown }[] = []
+  const messages: MetroSocketMessage[] = []
   socket.addEventListener('message', event => messages.push(JSON.parse(String(event.data))))
   await waitFor(async () => socket.readyState === 1)
   socket.send(JSON.stringify({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
@@ -71,7 +77,7 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
 
 async function verifyGeneratedFailures(
   session: ExpoSession,
-  messages: { type: string; tao?: { revision: string } }[],
+  messages: MetroSocketMessage[],
 ): Promise<void> {
   const added = createRevision('C', 4, true)
   await Http.request(`${session.url}/__tao_test/fail`)
@@ -93,7 +99,7 @@ async function verifyGeneratedFailures(
 async function verifyMultipleGroups(
   session: ExpoSession,
   originalBundleUrl: string,
-  primary: { type: string; tao?: { revision: string }; body?: unknown }[],
+  primary: MetroSocketMessage[],
 ): Promise<void> {
   const bundleUrl = originalBundleUrl.replace('dev=true', 'dev=false')
   Tests.expect((await Http.request(bundleUrl)).ok).toBe(true)
@@ -163,12 +169,8 @@ function createRevision(revision: string, sequence: number, extra = false): Gene
   }
 }
 
-async function readStatus(url: string): Promise<{ held: boolean; before: string; after: string }> {
-  return await (await Http.request(`${url}/__tao_test/status`)).json() as {
-    held: boolean
-    before: string
-    after: string
-  }
+async function readStatus(url: string): Promise<MetroReadStatus> {
+  return await (await Http.request(`${url}/__tao_test/status`)).json() as MetroReadStatus
 }
 
 async function waitFor(predicate: () => Promise<boolean>): Promise<void> {

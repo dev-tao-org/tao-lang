@@ -2,6 +2,7 @@ import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/form
 import * as vscode from 'vscode'
 import { createWasmDocumentSession, type DocumentSession } from './core'
 import { formattingProvider } from './Formatting'
+import { type Diagnostic, type Token } from './QueryResults'
 import { semanticTokenRanges } from './SemanticTokens'
 
 /** activate registers Tao parsing, diagnostics and semantic highlighting in VS Code. */
@@ -32,8 +33,8 @@ const semanticTokenTypes = [
 
 interface DocumentState {
   version: number
-  tokens: Array<{ start: number; end: number; kind: string }>
-  diagnostics: Array<{ start: number; end: number; message: string }>
+  tokens: Token[]
+  diagnostics: Diagnostic[]
   session?: DocumentSession
 }
 

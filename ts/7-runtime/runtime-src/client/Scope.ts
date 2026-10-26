@@ -1,6 +1,9 @@
 import { Errors } from '@shared'
 import type React from './Bridge-React'
 
+/** ScopeAliasNames maps each generated binding name to its authored target name. */
+export type ScopeAliasNames<Bindings extends Scope> = { readonly [Name in keyof Bindings]: string }
+
 /** Scope is one readonly lexical record whose prototype links to its parent scope. */
 export type Scope = Readonly<Record<string, unknown>>
 
@@ -28,7 +31,7 @@ export function AliasBinding(scope: Scope, name: string, resolve: () => unknown)
 /** ScopeAliases projects selected lexical names lazily through their original generated definition types. */
 export function ScopeAliases<Bindings extends Scope>(
   scope: Scope,
-  names: { readonly [Name in keyof Bindings]: string },
+  names: ScopeAliasNames<Bindings>,
 ): Bindings {
   const aliasesScope = Scope()
   for (const [name, target] of Object.entries(names)) {

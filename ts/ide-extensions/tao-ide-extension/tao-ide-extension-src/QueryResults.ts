@@ -122,5 +122,11 @@ function tokenKind(capture: string): string | undefined {
 }
 
 function priority(kind: string): number {
-  return kind === 'variable' ? 2 : kind === 'property' ? 1 : 0
+  if (kind === 'variable') {
+    return 2
+  }
+  if (kind === 'property') {
+    return 1
+  }
+  return 0
 }

@@ -16,9 +16,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 interface GitRepository {
   rootUri: vscode.Uri
-  state: { HEAD?: { name?: string } }
+  state: GitRepositoryState
   getBranches(query: { remote: boolean }): Promise<{ name?: string }[]>
 }
+
+type GitRepositoryHead = { name?: string }
+
+type GitRepositoryState = { HEAD?: GitRepositoryHead }
 
 interface GitExtension {
   getAPI(version: 1): { getRepository(uri: vscode.Uri): GitRepository | null }

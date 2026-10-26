@@ -1,5 +1,17 @@
 import { Errors } from '@shared'
 
+/** DiffArgumentSide pairs a Git revision with the URI on that side of a comparison. */
+export type DiffArgumentSide<Uri> = { sha: string; uri: Uri }
+
+/** DiffArguments identifies the compared repository revisions and file. */
+export type DiffArguments<Uri> = {
+  repoPath: string
+  lhs: DiffArgumentSide<Uri>
+  rhs: DiffArgumentSide<Uri>
+  fromComparison: true
+  range: null
+}
+
 /** DiffBaseStorage persists an explicit review base for each worktree and working branch. */
 export interface DiffBaseStorage {
   get(key: string): string | undefined
@@ -41,6 +53,6 @@ export async function chooseDiffBase(
 }
 
 /** diffArguments places the comparison branch left of the current working file, preserving addition semantics. */
-export function diffArguments<Uri>(repoPath: string, base: string, uri: Uri) {
+export function diffArguments<Uri>(repoPath: string, base: string, uri: Uri): DiffArguments<Uri> {
   return { repoPath, lhs: { sha: base, uri }, rhs: { sha: '', uri }, fromComparison: true, range: null }
 }
