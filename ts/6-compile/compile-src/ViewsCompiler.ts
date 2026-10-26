@@ -61,7 +61,11 @@ function compileTaoView(
   const children = block.statements.filter(AST.IsViewDeclaration)
   const render = block.statements.find(isRenderStatement)
     ?? Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
-  const bindings = collectTextBindings(definitions, context.textBindings, node.parameters)
+  const inheritedText = new Set(context.textBindings)
+  for (const child of children) {
+    inheritedText.delete(child.name.value)
+  }
+  const bindings = collectTextBindings(definitions, inheritedText, node.parameters)
   const names = createComponentNames(node, context, definitions, children, bindings)
   const shadowed = new Set([
     ...context.shadowedNames ?? [],

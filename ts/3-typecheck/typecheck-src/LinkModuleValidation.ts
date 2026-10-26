@@ -48,6 +48,8 @@ function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void 
       assertUniqueRenderChildren(source, view.name.value, statement.expression)
     } else if (AST.IsViewDeclaration(statement)) {
       assertUniqueViewScope(source, statement)
+    } else {
+      // Lets were checked above; injection renders introduce no nested declaration scopes.
     }
   }
 }

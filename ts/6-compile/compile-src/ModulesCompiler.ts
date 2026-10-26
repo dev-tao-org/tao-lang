@@ -155,19 +155,14 @@ function compileBindingTypes(
       const path = compileModuleImport(resolvePath(paths, module.path), resolvePath(paths, binding.source))
       imports.push(`import type { Scope as ${importedScope} } from ${path};`)
     }
-    aliases.push(
-      `{ readonly [Name in keyof Pick<${importedScope}, ${emitStringLiteral(binding.target)}> as ${
-        emitStringLiteral(binding.name)
-      }]: ${importedScope}[Name] }`,
-    )
+    aliases.push(`readonly ${emitStringLiteral(binding.name)}: ${importedScope}[${emitStringLiteral(binding.target)}];`)
     projections.push(
       `readonly ${emitStringLiteral(binding.name)}: Pick<${importedScope}, ${emitStringLiteral(binding.target)}>;`,
     )
   }
-  const inherited = aliases.length ? ` &\n  ${aliases.join(' &\n  ')}` : ''
   return `${imports.join('\n')}\n\nexport type Scope = {\n  ${
-    members.join('\n  ')
-  }\n}${inherited};\n\nexport type Imports = {\n  ${projections.join('\n  ')}\n};`
+    [...members, ...aliases].join('\n  ')
+  }\n};\n\nexport type Imports = {\n  ${projections.join('\n  ')}\n};`
 }
 
 function compileBootstrap(
