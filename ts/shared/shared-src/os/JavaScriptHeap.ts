@@ -1,4 +1,5 @@
 import * as Time from '../universal/Time'
+import type { JavaScriptCore } from './NodeBuiltins'
 import { loadModule } from './Platform'
 
 /** Snapshot records JavaScriptCore heap bytes and surviving allocation cells. */
@@ -28,9 +29,9 @@ export function collectAndSweep(): Sweep {
   return { durationMs, snapshot: snapshot() }
 }
 
-let javaScriptCore: typeof import('bun:jsc') | undefined
+let javaScriptCore: JavaScriptCore | undefined
 
-function loadJavaScriptCore(): typeof import('bun:jsc') {
-  javaScriptCore ??= loadModule<typeof import('bun:jsc')>('bun:jsc')
+function loadJavaScriptCore(): JavaScriptCore {
+  javaScriptCore ??= loadModule<JavaScriptCore>('bun:jsc')
   return javaScriptCore
 }

@@ -1,6 +1,5 @@
-import { chmod, lstat, mkdir, open, opendir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, join, resolve } from 'node:path'
 import { Errors, Try } from '../universal/universal'
+import * as Native from './NodeBuiltins'
 
 /** withWritableFile serializes writes per canonical path and restores the original permission mode. */
 export async function withWritableFile<Value>(
@@ -13,13 +12,13 @@ export async function withWritableFile<Value>(
 
 /** writeReadOnly replaces generated regular-file contents and protects the resulting metadata from edits. */
 export async function writeReadOnly(path: string, contents: string): Promise<void> {
-  const absolute = resolve(path)
-  const parent = dirname(absolute)
-  await mkdir(parent, { recursive: true })
-  const canonicalParent = await realpath(parent)
-  const canonical = join(canonicalParent, basename(absolute))
+  const absolute = Native.resolve(path)
+  const parent = Native.dirname(absolute)
+  await Native.mkdir(parent, { recursive: true })
+  const canonicalParent = await Native.realpath(parent)
+  const canonical = Native.join(canonicalParent, Native.basename(absolute))
   await serialized(canonical, async () => {
-    const existing = await Try(() => lstat(canonical), {
+    const existing = await Try(() => Native.lstat(canonical), {
       catch(error) {
         if (!isMissing(error)) {
           Errors.Throw(error)
@@ -32,38 +31,41 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
     }
     if (!existing) {
       await createReadOnlyFile(canonical, contents)
-    } else if (await readFile(canonical, 'utf8') !== contents) {
+    } else if (await Native.readFile(canonical, 'utf8') !== contents) {
       await withOriginalPermissions(canonical, file => file.write(contents))
     } else {
       // Matching contents need no write; the permission check below still runs.
     }
-    await chmod(canonical, 0o444)
+    await Native.chmod(canonical, 0o444)
   })
 }
 
 /** WritableFile writes content to the already opened file. */
 export type WritableFile = { write(contents: string | Uint8Array): Promise<void> }
 
+/** WalkOptions selects the Tao project-boundary behavior while traversing files. */
+export type WalkOptions = { taoBoundary?: string | false }
+
 /** walk traverses regular files below a directory without following symlinks. */
-export async function walk(root: string, options: { taoBoundary?: string | false } = {}): Promise<string[]> {
-  const canonical = await realpath(root)
+export async function walk(root: string, options: WalkOptions = {}): Promise<string[]> {
+  const canonical = await Native.realpath(root)
   return await walkDirectory(canonical, canonical, options.taoBoundary === false ? '' : options.taoBoundary ?? '.tao')
 }
 
 /** findProjectMarker finds the first nested .tao boundary without entering excluded trees or links. */
 export async function findProjectMarker(root: string): Promise<string | undefined> {
-  const canonical = await realpath(root)
+  const canonical = await Native.realpath(root)
   return await findMarker(canonical)
 }
 
 /** findProjects discovers project roots from empty .tao markers without entering project caches. */
 export async function findProjects(root: string): Promise<string[]> {
-  const canonical = await realpath(root)
+  const canonical = await Native.realpath(root)
   return [...await findProjectRoots(canonical)].sort()
 }
 
 /** skipDirectory identifies Tao's standard excluded directory names and optional workspace boundary. */
-export function skipDirectory(name: string, taoBoundary: string | false = '.tao'): boolean {
+export function skipDirectory(name: string, taoBoundary: WalkOptions['taoBoundary'] = '.tao'): boolean {
   return excluded.has(name) || taoBoundary !== false && name === taoBoundary
 }
 
@@ -71,16 +73,16 @@ const excluded = new Set(['node_modules', '.git', '.hg', '.svn', '.jj', 'Pods', 
 const queues = new Map<string, Promise<void>>()
 
 async function createReadOnlyFile(path: string, contents: string): Promise<void> {
-  await Try(() => writeFile(path, contents, { flag: 'wx', mode: 0o444 }), {
+  await Try(() => Native.writeFile(path, contents, { flag: 'wx', mode: 0o444 }), {
     async catch(error) {
       if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'EEXIST') {
         Errors.Throw(error)
       }
-      const info = await lstat(path)
+      const info = await Native.lstat(path)
       if (!info.isFile()) {
         Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
       }
-      if (await readFile(path, 'utf8') !== contents) {
+      if (await Native.readFile(path, 'utf8') !== contents) {
         Errors.ThrowUserInput(
           `Generated metadata was created concurrently with different contents: ${path}. Retry the command.`,
         )
@@ -112,12 +114,12 @@ async function withOriginalPermissions<Value>(
 ): Promise<Value> {
   let mode: number | undefined
   return await Try(async () => {
-    const original = await stat(canonical)
+    const original = await Native.stat(canonical)
     mode = original.mode
-    await chmod(canonical, original.mode | 0o200)
+    await Native.chmod(canonical, original.mode | 0o200)
     return await operation({
       async write(contents) {
-        const handle = await open(canonical, 'r+')
+        const handle = await Native.open(canonical, 'r+')
         await Try(async () => {
           await handle.truncate(0)
           await handle.writeFile(contents)
@@ -129,7 +131,7 @@ async function withOriginalPermissions<Value>(
   }, {
     async finally() {
       if (mode !== undefined) {
-        await chmod(canonical, mode)
+        await Native.chmod(canonical, mode)
       }
     },
   })
@@ -137,12 +139,12 @@ async function withOriginalPermissions<Value>(
 
 async function walkDirectory(root: string, directory: string, boundary: string): Promise<string[]> {
   const result: string[] = []
-  const entries = await opendir(directory)
+  const entries = await Native.opendir(directory)
   for await (const entry of entries) {
     if (entry.isSymbolicLink()) {
       continue
     }
-    const path = join(directory, entry.name)
+    const path = Native.join(directory, entry.name)
     if (entry.isDirectory()) {
       if (skipDirectoryAtRoot(entry.name, path, root, boundary)) {
         continue
@@ -158,12 +160,12 @@ async function walkDirectory(root: string, directory: string, boundary: string):
 }
 
 async function findMarker(directory: string): Promise<string | undefined> {
-  const entries = await opendir(directory)
+  const entries = await Native.opendir(directory)
   for await (const entry of entries) {
     if (entry.isSymbolicLink() || !entry.isDirectory()) {
       continue
     }
-    const path = join(directory, entry.name)
+    const path = Native.join(directory, entry.name)
     if (entry.name === '.tao') {
       return path
     }
@@ -180,7 +182,7 @@ async function findMarker(directory: string): Promise<string | undefined> {
 async function findProjectRoots(directory: string): Promise<Set<string>> {
   const projects = new Set<string>()
   const children: string[] = []
-  const entries = await opendir(directory)
+  const entries = await Native.opendir(directory)
   let markerFound = false
   for await (const entry of entries) {
     if (entry.isSymbolicLink() || !entry.isDirectory()) {
@@ -192,7 +194,7 @@ async function findProjectRoots(directory: string): Promise<Set<string>> {
       break
     }
     if (!skipDirectory(entry.name)) {
-      children.push(join(directory, entry.name))
+      children.push(Native.join(directory, entry.name))
     }
   }
   if (markerFound) {
@@ -211,8 +213,8 @@ function skipDirectoryAtRoot(name: string, path: string, root: string, boundary:
 }
 
 async function canonicalFile(path: string): Promise<string> {
-  const absolute = resolve(path)
-  return await Try(async () => await realpath(absolute), {
+  const absolute = Native.resolve(path)
+  return await Try(async () => await Native.realpath(absolute), {
     catch(error) {
       if (!isMissing(error)) {
         Errors.Throw(error)
@@ -223,8 +225,8 @@ async function canonicalFile(path: string): Promise<string> {
 }
 
 async function missingFilePath(absolute: string): Promise<string> {
-  const parent = dirname(absolute)
-  return join(await realpath(parent), absolute.slice(parent.length + 1))
+  const parent = Native.dirname(absolute)
+  return Native.join(await Native.realpath(parent), absolute.slice(parent.length + 1))
 }
 
 function isMissing(error: unknown): boolean {

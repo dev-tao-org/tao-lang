@@ -1,12 +1,14 @@
-import { execFileSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
-import { createRequire, isBuiltin } from 'node:module'
-import { arch, homedir, release, type } from 'node:os'
 import { Errors, Try } from '../universal/universal'
+import * as Node from './NodeBuiltins'
 
 /** homeDirectory returns the current user's platform home directory. */
 export function homeDirectory(): string {
-  return homedir()
+  return Node.homedir()
+}
+
+/** temporaryDirectory returns the host's temporary-file directory. */
+export function temporaryDirectory(): string {
+  return Node.tmpdir()
 }
 
 /** runtimeVersion returns the active Bun runtime version. */
@@ -16,22 +18,22 @@ export function runtimeVersion(): string {
 
 /** loadModule loads a known runtime module, including native Node-API addons. */
 export function loadModule<Value>(path: string): Value {
-  return createRequire(import.meta.url)(path) as Value
+  return Node.createRequire(import.meta.url)(path) as Value
 }
 
 /** hashText hashes exact build inputs and generated output for cache validation. */
 export function hashText(source: string): string {
-  return createHash('sha256').update(source).digest('hex')
+  return Node.createHash('sha256').update(source).digest('hex')
 }
 
 /** hashBytes hashes a byte sequence with the requested digest algorithm. */
 export function hashBytes(bytes: Uint8Array, algorithm: string): string {
-  return createHash(algorithm).update(bytes).digest('base64')
+  return Node.createHash(algorithm).update(bytes).digest('base64')
 }
 
 /** isPlatformImport identifies runtime builtins that belong behind the OS boundary. */
 export function isPlatformImport(specifier: string): boolean {
-  return specifier === 'bun' || specifier.startsWith('bun:') || isBuiltin(specifier)
+  return specifier === 'bun' || specifier.startsWith('bun:') || Node.isBuiltin(specifier)
 }
 
 /** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
@@ -97,7 +99,7 @@ export function isMain(meta: ImportMeta): boolean {
 
 /** systemInfo reads non-identifying operating-system and architecture information. */
 export function systemInfo(): { architecture: string; kernel: string; os: string } {
-  return { architecture: arch(), kernel: release(), os: type() }
+  return { architecture: Node.arch(), kernel: Node.release(), os: Node.osType() }
 }
 
 /** capture reads command output and throws when the command fails; trim:false preserves exact text. */
@@ -141,7 +143,7 @@ export async function requireHostProcessAccess(
 /** captureSync reads a synchronous tool probe without requiring the Bun runtime. */
 export function captureSync(command: string, options: { variadicArgs?: readonly string[]; cwd?: string } = {}): string {
   const [executable, ...args] = command.trim().split(/ +/)
-  return execFileSync(executable, [...args, ...options.variadicArgs ?? []], {
+  return Node.execFileSync(executable, [...args, ...options.variadicArgs ?? []], {
     cwd: options.cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

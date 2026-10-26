@@ -1,8 +1,5 @@
-import { emitKeypressEvents } from 'node:readline'
-import { createInterface, type ReadLineOptions } from 'node:readline/promises'
-import type { Readable } from 'node:stream'
-import { StringDecoder } from 'node:string_decoder'
 import { Errors, Try } from '../universal/universal'
+import { createInterface, emitKeypressEvents, type Readable, type ReadLineOptions, StringDecoder } from './NodeBuiltins'
 
 /** stdout exposes the developer output stream. */
 export const stdout = process.stdout

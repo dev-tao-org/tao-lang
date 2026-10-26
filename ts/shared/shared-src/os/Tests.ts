@@ -1,11 +1,12 @@
-import { createRequire } from 'node:module'
 import * as Artifacts from './Artifacts'
 import * as Env from './Env'
 import * as FileSystem from './FileSystem'
+import { createRequire } from './NodeBuiltins'
+import type { BunTestModule } from './NodeBuiltins'
 import * as Platform from './Platform'
 import * as Repo from './Repo'
 
-export { rejects, throws } from 'node:assert/strict'
+export { rejects, throws } from './NodeBuiltins'
 
 /** readFixture reads an authored fixture at an explicit repository-relative path. */
 export function readFixture(path: string): Promise<string> {
@@ -22,7 +23,7 @@ export const expect = testApi('expect')
 export const test = testApi('test')
 
 const load = createRequire(import.meta.url)
-type TestsModule = typeof import('bun:test')
+type TestsModule = BunTestModule
 
 function testApi<Name extends 'describe' | 'expect' | 'test'>(name: Name): TestsModule[Name] {
   return new Proxy<(...args: unknown[]) => unknown>(function(...args: unknown[]) {

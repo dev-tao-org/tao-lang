@@ -1,5 +1,5 @@
-import { stat } from 'node:fs/promises'
 import { Time, Try } from '../universal/universal'
+import { stat } from './NodeBuiltins'
 
 /** watchStamp identifies a filesystem observation without reading source contents. */
 export function watchStamp(stats: { mtimeMs: number; ctimeMs: number; size: number; ino: number }): string {

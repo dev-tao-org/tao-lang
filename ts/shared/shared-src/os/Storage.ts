@@ -1,7 +1,6 @@
-import { lstat, mkdir, readdir, realpath, rm } from 'node:fs/promises'
-import { dirname, join, posix, resolve, win32 } from 'node:path'
 import { Errors, Switch, Time, Try } from '../universal/universal'
 import * as Env from './Env'
+import { dirname, join, lstat, mkdir, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
@@ -105,17 +104,24 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
 
 function resolveStorageRoots(): StorageRoots {
   const system = Platform.systemInfo().os
-  const current = system === 'Darwin'
-    ? 'macos'
-    : system === 'Windows_NT'
-    ? 'windows'
-    : system === 'Linux'
-    ? 'linux'
-    : undefined
+  const current = storagePlatform(system)
   if (!current) {
     Errors.ThrowHostEnvironment(`Tao storage locations are not defined for this operating system: ${system}`)
   }
   return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
+}
+
+function storagePlatform(system: string): StoragePlatform | undefined {
+  if (system === 'Darwin') {
+    return 'macos'
+  }
+  if (system === 'Windows_NT') {
+    return 'windows'
+  }
+  if (system === 'Linux') {
+    return 'linux'
+  }
+  return undefined
 }
 
 function resolveOverride(
@@ -211,7 +217,7 @@ function isUnavailableProbe(error: unknown): boolean {
 
 async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
   const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
-    catch: error => isMissing(error) ? [] : blockedProbe(error, directory, report) ? undefined : Errors.Throw(error),
+    catch: error => handleLeaseDirectoryFailure(error, directory, report),
   })
   if (!entries) {
     return true
@@ -240,6 +246,20 @@ async function hasBusyLease(directory: string, report?: (reason: string) => void
     }
   }
   return busy
+}
+
+function handleLeaseDirectoryFailure(
+  error: unknown,
+  directory: string,
+  report?: (reason: string) => void,
+): never[] | undefined {
+  if (isMissing(error)) {
+    return []
+  }
+  if (blockedProbe(error, directory, report)) {
+    return undefined
+  }
+  return Errors.Throw(error)
 }
 
 async function existingDirectory(path: string): Promise<string | undefined> {

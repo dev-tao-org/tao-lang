@@ -1,8 +1,5 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { Errors } from '../universal/universal'
+import { AsyncLocalStorage, createRequire, dirname, type IncomingRequest, join, readFileSync } from './NodeBuiltins'
 
 /** createOperationContext retains one admitted Metro operation through asynchronous work. */
 export function createOperationContext<Value>(): OperationContext<Value> {
@@ -57,7 +54,13 @@ export function currentDirectory(): string {
 
 /** messageByteLength measures the immutable serialized websocket payload before queue admission. */
 export function messageByteLength(message: unknown): number {
-  return typeof message === 'string' ? Buffer.byteLength(message) : Buffer.isBuffer(message) ? message.byteLength : 0
+  if (typeof message === 'string') {
+    return Buffer.byteLength(message)
+  }
+  if (Buffer.isBuffer(message)) {
+    return message.byteLength
+  }
+  return 0
 }
 
 /** openWebSocket opens the runtime websocket used by the real Metro protocol acceptance fixture. */
@@ -66,13 +69,13 @@ export function openWebSocket(url: string): WebSocket {
 }
 
 /** synchronizeBuiltinExports updates captured ESM filesystem exports after installing a router. */
-export { syncBuiltinESMExports as synchronizeBuiltinExports } from 'node:module'
+export { syncBuiltinESMExports as synchronizeBuiltinExports } from './NodeBuiltins'
 
 /** IncomingRequest describes the publication endpoint's bounded request stream. */
-export type IncomingRequest = import('node:http').IncomingMessage
+export type { IncomingRequest } from './NodeBuiltins'
 
 /** OutgoingResponse describes Metro's existing HTTP response. */
-export type OutgoingResponse = import('node:http').ServerResponse
+export type { OutgoingResponse } from './NodeBuiltins'
 
 /** readRequestText rejects an oversized publication before allocating its full body. */
 export async function readRequestText(request: IncomingRequest, limit: number): Promise<string> {

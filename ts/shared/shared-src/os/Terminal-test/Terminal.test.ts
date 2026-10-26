@@ -1,9 +1,8 @@
-import { Http, Terminal, Tests } from '@shared/os'
-import { PassThrough } from 'node:stream'
+import { Http, Streams, Terminal, Tests } from '@shared/os'
 
 Tests.test('single-key actions restore terminal input and stop receiving keys after disposal', () => {
   for (const initiallyRaw of [false, true]) {
-    const input = Object.assign(new PassThrough(), {
+    const input = Object.assign(Streams.createPassThrough(), {
       isTTY: true,
       isRaw: initiallyRaw,
       setRawMode(raw: boolean) {

@@ -1,14 +1,11 @@
 import { Try } from '@shared'
-import { Tests } from '@shared/os'
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import * as Artifacts from '../Artifacts'
-import * as Platform from '../Platform'
+import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+const { join } = Path
+const { mkdir, mkdtemp, readFile, rm, stat } = FileSystem
 import { acquire } from '../SessionLock'
 
 Tests.test('session locks exclude another handle and retain their lock file after release', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-session-lock-'))
+  const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-session-lock-'))
   const path = join(root, 'session.lock')
   await Try(async () => {
     const first = await acquire(path)
@@ -23,7 +20,7 @@ Tests.test('session locks exclude another handle and retain their lock file afte
 })
 
 Tests.test('session locks support Unicode paths and report open failures separately from contention', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-session-lock-unicode-'))
+  const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-session-lock-unicode-'))
   const directory = join(root, 'Tao 雪 ☃')
   const path = join(directory, 'session.lock')
   await Try(async () => {
@@ -44,7 +41,7 @@ Tests.test('session locks support Unicode paths and report open failures separat
 })
 
 Tests.test('session locks are released by the kernel when their owning process exits', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-session-lock-child-'))
+  const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-session-lock-child-'))
   const path = join(root, 'session.lock')
   const output = Artifacts.resolvePath('cache/native-locks')
   const pointer = JSON.parse(await readFile(join(output, 'current.json'), 'utf8')) as {

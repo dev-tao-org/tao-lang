@@ -1,13 +1,14 @@
 import { Try } from '@shared'
-import { Tests } from '@shared/os'
-import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { findProjectMarker, findProjects, walk, withWritableFile, writeReadOnly } from '../Files'
 
+const { join, relative } = Path
+const { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } = FileSystem
+const { temporaryDirectory } = Platform
+
 Tests.test('walk skips dependency and VCS trees and does not follow directory symlinks', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-files-'))
-  const outside = await mkdtemp(join(tmpdir(), 'tao-files-outside-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-files-'))
+  const outside = await mkdtemp(join(temporaryDirectory(), 'tao-files-outside-'))
   await Try(async () => {
     await mkdir(join(root, 'node_modules'), { recursive: true })
     await mkdir(join(root, '.git'), { recursive: true })
@@ -34,7 +35,7 @@ Tests.test('walk skips dependency and VCS trees and does not follow directory sy
 })
 
 Tests.test('findProjectMarker sees empty nested boundaries and ignores excluded trees', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-marker-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-marker-'))
   await Try(async () => {
     await mkdir(join(root, 'node_modules', '.tao'), { recursive: true })
     await mkdir(join(root, 'src', '.tao'), { recursive: true })
@@ -48,7 +49,7 @@ Tests.test('findProjectMarker sees empty nested boundaries and ignores excluded 
 })
 
 Tests.test('findProjects stops at empty project markers instead of traversing their caches', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-project-roots-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-project-roots-'))
   const canonical = await realpath(root)
   await Try(async () => {
     await mkdir(join(root, 'App', '.tao', 'cache', 'nested', '.tao'), { recursive: true })
@@ -67,7 +68,7 @@ Tests.test('findProjects stops at empty project markers instead of traversing th
 })
 
 Tests.test('withWritableFile restores permissions after successful and failed writes', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-write-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-write-'))
   const path = join(root, 'readonly')
   await Try(async () => {
     await writeFile(path, 'before', { mode: 0o400 })
@@ -94,7 +95,7 @@ Tests.test('withWritableFile restores permissions after successful and failed wr
 })
 
 Tests.test('withWritableFile serializes concurrent callbacks for one canonical path', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-write-queue-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-write-queue-'))
   const path = join(root, 'shared')
   let finishFirst!: () => void
   let firstIsReady!: () => void
@@ -134,7 +135,7 @@ Tests.test('withWritableFile serializes concurrent callbacks for one canonical p
 })
 
 Tests.test('generated metadata is read-only and refuses dangling symlink destinations', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'tao-generated-'))
+  const root = await mkdtemp(join(temporaryDirectory(), 'tao-generated-'))
   await Try(async () => {
     const path = join(root, 'metadata')
     await writeReadOnly(path, 'initial')

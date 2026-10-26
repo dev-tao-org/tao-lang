@@ -1,13 +1,11 @@
-import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
 import { Errors, Time, Try } from '../universal/universal'
 import * as FileSystem from './FileSystem'
+import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFile, writeFileSync } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Repo from './Repo'
 
-export { appendFileSync, mkdirSync } from 'node:fs'
-export { mkdtemp, rename as move } from 'node:fs/promises'
 export { file, mkdir, realpathSync, rm, write } from './FileSystem'
+export { appendFileSync, mkdirSync, mkdtemp, move } from './NodeBuiltins'
 
 /** writePrivate creates a new owner-only artifact without a window of public readability. */
 export function writePrivate(path: string, data: string): Promise<void> {

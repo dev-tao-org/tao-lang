@@ -1,6 +1,6 @@
-import { sep } from 'node:path'
 import { Errors } from '../universal/universal'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
+import { sep } from './NodeBuiltins'
 
 /** installGeneratedReaders routes reads and descriptors without native or synthetic generated watchers. */
 export function installGeneratedReaders(options: GeneratedReaderOptions): () => void {

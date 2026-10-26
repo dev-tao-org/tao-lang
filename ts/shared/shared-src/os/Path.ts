@@ -1,7 +1,19 @@
-import * as NativePath from 'node:path'
+import { nativePath as NativePath } from './NodeBuiltins'
 
-export { basename, delimiter, dirname, extname, isAbsolute, join, posix, relative, resolve } from 'node:path'
-export { fileURLToPath } from 'node:url'
+export {
+  basename,
+  delimiter,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  posix,
+  relative,
+  resolve,
+  sep,
+  win32,
+} from './NodeBuiltins'
+export { fileURLToPath, pathToFileURL } from './NodeBuiltins'
 
 /** isWithin checks lexical containment after resolving paths with the selected platform rules. */
 export function isWithin(root: string, path: string, platform = NativePath): boolean {

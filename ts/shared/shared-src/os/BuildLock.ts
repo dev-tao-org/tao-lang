@@ -1,6 +1,5 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import { Errors, Time, Try } from '../universal/universal'
+import { dirname, mkdirSync, readFileSync, rmSync, writeFileSync } from './NodeBuiltins'
 
 /** withBuildLock serializes preparation of shared generated output across processes.
  *  Unreleased locks retain their owner identity for explicit recovery after a bounded wait. */

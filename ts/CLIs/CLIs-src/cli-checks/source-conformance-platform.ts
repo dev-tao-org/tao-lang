@@ -3,15 +3,44 @@ import * as TypeScript from 'typescript'
 
 /** platformAccessIssue reports runtime-specific references outside the OS abstraction. */
 export function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {
+  if (isBuiltinReference(node)) {
+    if (isOwnedBuiltinReference(node, filename)) {
+      return
+    }
+    return 'runtime builtin imports belong in @shared/os'
+  }
   if (filename.replaceAll('\\', '/').startsWith('ts/shared/shared-src/os/')) {
     return
-  }
-  if (isBuiltinReference(node)) {
-    return 'runtime builtin imports belong in @shared/os'
   }
   if (isPlatformGlobal(node) && !isUniversalTimeAccess(node, filename)) {
     return 'platform globals belong in @shared/os; use its named APIs'
   }
+}
+
+function isOwnedBuiltinReference(node: TypeScript.Node, filename: string): boolean {
+  const normalizedFilename = filename.replaceAll('\\', '/')
+  if (normalizedFilename === 'ts/shared/shared-src/os/NodeBuiltins.ts') {
+    return true
+  }
+  if (isExplicitBuiltinMockFixture(node, normalizedFilename)) {
+    return true
+  }
+  return false
+}
+
+function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string): boolean {
+  const specifier = builtinSpecifier(node)
+  if (
+    specifier === undefined || explicitBuiltinMockFixtures.get(filename)?.has(specifier) !== true
+    || !TypeScript.isCallExpression(node.parent) || !isDynamicImport(node.parent)
+  ) {
+    return false
+  }
+  return true
+}
+
+function isDynamicImport(node: TypeScript.CallExpression): boolean {
+  return node.expression.kind === TypeScript.SyntaxKind.ImportKeyword
 }
 
 const platformGlobals = new Set([
@@ -36,6 +65,12 @@ const platformGlobals = new Set([
   'clearInterval',
 ])
 
+const explicitBuiltinMockFixtures = new Map<string, ReadonlySet<string>>([
+  ['ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts', new Set(['node:fs/promises'])],
+  ['ts/shared/shared-src/os/Storage-test/LeaseFailures.test.ts', new Set(['node:fs/promises'])],
+  ['ts/shared/shared-src/os/SessionLock-test/PointerDiagnostics.test.ts', new Set(['node:fs/promises'])],
+])
+
 function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean {
   if (filename.replaceAll('\\', '/') !== 'ts/shared/shared-src/universal/Time.ts') {
     return false
@@ -45,17 +80,23 @@ function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean
 }
 
 function isBuiltinReference(node: TypeScript.Node): boolean {
-  const specifier = TypeScript.isStringLiteralLike(node)
-    ? node.text
-    : TypeScript.isTemplateExpression(node)
-    ? node.head.text
-    : undefined
+  const specifier = builtinSpecifier(node)
   if (specifier === undefined || !isPlatformSpecifier(specifier)) {
     return false
   }
   const parent = node.parent
   return TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent)
     || TypeScript.isExternalModuleReference(parent) || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
+}
+
+function builtinSpecifier(node: TypeScript.Node): string | undefined {
+  if (TypeScript.isStringLiteralLike(node)) {
+    return node.text
+  }
+  if (TypeScript.isTemplateExpression(node)) {
+    return node.head.text
+  }
+  return undefined
 }
 
 function isPlatformSpecifier(specifier: string): boolean {

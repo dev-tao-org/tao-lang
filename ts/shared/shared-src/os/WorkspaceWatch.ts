@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import { Path } from '@shared/os'
-import type { Stats } from 'node:fs'
+import type { Stats } from './NodeBuiltins'
 import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
 
 /** WorkspaceChange identifies one authored file or directory notification. */

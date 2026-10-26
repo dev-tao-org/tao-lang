@@ -1,6 +1,4 @@
-import { spawn } from 'node:child_process'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { appendFileSync, mkdirSync, resolve, spawn, writeFileSync } from './NodeBuiltins'
 
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
 export async function installWorkspace(completionScript: string): Promise<void> {

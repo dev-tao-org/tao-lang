@@ -1,7 +1,13 @@
 import { Try } from '../universal/TryCatch'
+import * as Node from './NodeBuiltins'
 
 /** ByteStream represents runtime output delivered as byte chunks. */
 export type ByteStream = ReadableStream<Uint8Array>
+
+/** createPassThrough creates a Node stream fixture through the owned stream boundary. */
+export function createPassThrough(): Node.nodeStream.PassThrough {
+  return new Node.nodeStream.PassThrough()
+}
 
 /** createDecoder preserves UTF-8 characters split across streamed process chunks. */
 export function createDecoder(): (chunk: string | Uint8Array) => string {

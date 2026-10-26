@@ -1,7 +1,6 @@
-import { Buffer } from 'node:buffer'
-import { inspect as inspectValue, stripVTControlCharacters } from 'node:util'
+import { Buffer, inspectValue, stripVTControlCharacters } from './NodeBuiltins'
 
-export { format } from 'node:util'
+export { format } from './NodeBuiltins'
 
 /** stripAnsi removes terminal control sequences before rendering captured text inside a pane. */
 export function stripAnsi(text: string): string {
