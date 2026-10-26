@@ -134,7 +134,7 @@ async function runPreview(initialSource?: string) {
   for (const [index, timing] of result.reloads.entries()) {
     IO.print(
       `${result.results[index].scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
-        + ` | both previews applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
+        + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
     )
     IO.print('  ' + formatTimings(timing.pipeline))
   }

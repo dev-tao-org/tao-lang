@@ -3,6 +3,15 @@ import { Errors, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
+import {
+  assertMeasurementScenario,
+  createMeasurementScenarios,
+  createMeasurementSource,
+  describeMeasurement,
+  measurementFrameIds,
+  type PreviewMeasurement,
+  readPreviewMeasurement,
+} from './PreviewMeasurement'
 import type { ReloadTiming } from './ReloadTimings'
 
 /** previewPerformance measures source edits through two isolated headless Expo web previews.
@@ -11,7 +20,8 @@ export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
     await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
-  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID() }
+  const measurement = readPreviewMeasurement(options.measurement)
+  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
       await disposePreview(options, resources)
@@ -20,10 +30,16 @@ export async function previewPerformance(options: PreviewOptions) {
 }
 
 /** PreviewOptions supplies a compile session, generated app, and canonical starting Tao source. */
-export type PreviewOptions = { workspace: ReturnType<typeof createWorkspace>; project: Project; initialSource: string }
+export type PreviewOptions = {
+  workspace: ReturnType<typeof createWorkspace>
+  project: Project
+  initialSource: string
+  measurement?: Partial<PreviewMeasurement>
+}
 
 type Resources = {
   sessionId: string
+  measurement: PreviewMeasurement
   errors: string[]
   reloads: ReloadTiming[]
   expo?: Runtime.ExpoSession
@@ -42,20 +58,22 @@ type PreviewResult = {
   frames: Record<string, { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }>
 }
 
-const scenarios = ['text', 'add-text', 'row', 'reset'] as const
-
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
+  const source = createMeasurementSource(options.initialSource, owned.measurement)
+  const scenarios = createMeasurementScenarios(owned.measurement)
   const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
   await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
-  await FileSystem.writeFile(sourcePath, options.initialSource, 'utf8')
+  await FileSystem.writeFile(sourcePath, source, 'utf8')
   requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await Runtime.start(options.workspace.runtime!)
   owned.harness = await createPreviewHarness({
     workspace: options.workspace,
     previewUrl: owned.expo.url,
     sessionId: owned.sessionId,
-    canonicalSource: options.initialSource,
+    canonicalSource: source,
+    scenarios,
+    frameCount: owned.measurement.frameCount,
     onReload(timing) {
       owned.reloads.push(timing)
     },
@@ -69,7 +87,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     }
   })
   await page.goto(owned.harness.url)
-  await waitForFrameText(page, 'Hello World')
+  await waitForFrameText(page, 'Hello World', owned.measurement)
   owned.startupMs = Time.nowMs() - started
   owned.frameSizes = await page.locator('iframe').evaluateAll(frames =>
     frames.map(frame => ({
@@ -78,13 +96,17 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
       height: frame.clientHeight,
     }))
   )
-  const results = await runScenarios(page)
+  const results = await runScenarios(page, scenarios.map(scenario => scenario.name), owned.measurement)
   await waitForReloadReports(owned)
   const path = await writeReport(options.project, owned, results)
   return { path, sessionId: owned.sessionId, results, reloads: owned.reloads, startupMs: owned.startupMs }
 }
 
-async function runScenarios(page: HeadlessBrowser.Page): Promise<PreviewResult[]> {
+async function runScenarios(
+  page: HeadlessBrowser.Page,
+  scenarios: readonly string[],
+  measurement: PreviewMeasurement,
+): Promise<PreviewResult[]> {
   for (const [index, scenario] of scenarios.entries()) {
     await page.locator('#run').click({ timeout: 5000 })
     await page.waitForFunction(
@@ -99,7 +121,7 @@ async function runScenarios(page: HeadlessBrowser.Page): Promise<PreviewResult[]
     if (state.status === 'failed') {
       Errors.ThrowShouldNeverHappen(state.error ?? 'Preview update failed.')
     }
-    await assertScenario(page, scenario)
+    await assertMeasurementScenario(page, scenario, measurement)
   }
   return await page.evaluate(() => window.__taoPreviewState.results) as PreviewResult[]
 }
@@ -125,39 +147,12 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   }
 }
 
-async function assertScenario(page: HeadlessBrowser.Page, scenario: typeof scenarios[number]): Promise<void> {
-  for (const frameId of ['left', 'right']) {
-    const frame = page.frameLocator(`#${frameId}`)
-    if (scenario === 'reset') {
-      await frame.getByText('Hello World', { exact: true }).waitFor()
-      if (await frame.getByText('Hello Tao', { exact: true }).count() > 0) {
-        Errors.ThrowShouldNeverHappen(`${frameId} frame still showed edited text after reset.`)
-      }
-      if (await frame.getByText('Second view', { exact: true }).count() > 0) {
-        Errors.ThrowShouldNeverHappen(`${frameId} frame still showed the added view after reset.`)
-      }
-      continue
-    }
-    await frame.getByText('Hello Tao', { exact: true }).waitFor()
-    if (scenario !== 'text') {
-      await frame.getByText('Second view', { exact: true }).waitFor()
-    }
-    if (scenario === 'row' && !await hasRowLayout(frame)) {
-      Errors.ThrowShouldNeverHappen(`${frameId} frame did not place both Text children in a Row layout.`)
-    }
-  }
-}
-
-async function hasRowLayout(frame: HeadlessBrowser.FrameLocator): Promise<boolean> {
-  return await frame.getByText('Hello Tao', { exact: true }).evaluate(first => {
-    const parent = first.parentElement
-    const second = parent && [...parent.children].find(node => node.textContent === 'Second view')
-    return !!second && getComputedStyle(parent!).flexDirection === 'row'
-  })
-}
-
-async function waitForFrameText(page: HeadlessBrowser.Page, text: string): Promise<void> {
-  for (const frameId of ['left', 'right']) {
+async function waitForFrameText(
+  page: HeadlessBrowser.Page,
+  text: string,
+  measurement: PreviewMeasurement,
+): Promise<void> {
+  for (const frameId of measurementFrameIds(measurement.frameCount)) {
     await page.frameLocator(`#${frameId}`).getByText(text, { exact: true }).waitFor({ timeout: 60_000 })
   }
 }
@@ -180,14 +175,18 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
         generatedProject: project.directory,
         startupMs: owned.startupMs,
         frameSizes: owned.frameSizes,
+        measurement: describeMeasurement(owned.measurement),
+        primaryMetric: 'parentClickToLastAppliedMs',
         reloads: owned.reloads,
         definitions: {
           compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
           updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
           applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
           total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
+          observedSource:
+            'Reload source-observed timings may restart after duplicate watch observations; secondary only.',
         },
-        results,
+        results: results.map((result, index) => describeResult(result, index, owned.measurement.frameCount)),
       },
       null,
       2,
@@ -204,10 +203,23 @@ function requirePublished(result: UpdateResult): void {
 
 async function waitForReloadReports(owned: Resources): Promise<void> {
   const deadline = Time.nowMs() + 5000
-  while (owned.reloads.length < scenarios.length) {
+  while (owned.reloads.length < owned.measurement.editCount) {
     if (Time.nowMs() >= deadline) {
       Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
     }
     await Time.sleep(10)
   }
+}
+
+function classifySample(index: number): 'first-edit' | 'first-cycle' | 'warm' {
+  return index === 0 ? 'first-edit' : index < 4 ? 'first-cycle' : 'warm'
+}
+
+function describeResult(result: PreviewResult, index: number, frameCount: number) {
+  const frames = Object.values(result.frames)
+  if (frames.length !== frameCount) {
+    Errors.ThrowShouldNeverHappen(`Measurement ${result.revision} did not collect its complete React receipt quorum.`)
+  }
+  const parentClickToLastAppliedMs = Math.max(...frames.map(frame => frame.clickToAppliedMs))
+  return { ...result, sample: classifySample(index), parentClickToLastAppliedMs }
 }

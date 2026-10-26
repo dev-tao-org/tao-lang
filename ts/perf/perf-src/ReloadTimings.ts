@@ -24,7 +24,11 @@ export class ReloadTimings {
   private publication: Publication | undefined
   private readonly receipts = new PreviewReceipts<Signal>()
 
-  constructor(private readonly sessionId: string, private readonly report?: (timing: ReloadTiming) => void) {}
+  constructor(
+    private readonly sessionId: string,
+    private readonly report?: (timing: ReloadTiming) => void,
+    private readonly frameIds: readonly string[] = ['left', 'right'],
+  ) {}
 
   begin(revision: string, startedAtMs: number): void {
     this.revision = revision
@@ -45,7 +49,7 @@ export class ReloadTimings {
     if (this.reported || !isSignal(value)) {
       return
     }
-    if (value.sessionId !== this.sessionId || value.revision !== this.revision) {
+    if (!this.matchesExpectedFrame(value)) {
       return
     }
     const milestone = value.type === 'tao.update-done' ? 'hmr' : 'applied'
@@ -53,10 +57,18 @@ export class ReloadTimings {
     this.reportIfComplete()
   }
 
+  private matchesExpectedFrame(signal: Signal): boolean {
+    return signal.sessionId === this.sessionId && signal.revision === this.revision
+      && this.frameIds.includes(signal.frameId)
+  }
+
   private reportIfComplete(): void {
     const complete = this.receipts.complete(this.revision)
     const publication = this.publication
-    if (complete.size !== 2 || !publication || this.reported) {
+    if (!publication || this.reported) {
+      return
+    }
+    if (complete.size !== this.frameIds.length) {
       return
     }
     this.reported = true

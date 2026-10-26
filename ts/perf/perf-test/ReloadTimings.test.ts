@@ -49,6 +49,23 @@ Tests.test('reload receipts replace stale milestones when a preview reboots', ()
   Tests.expect(reported[0]?.frames.left?.saveToHmrMs).toBe(90)
 })
 
+Tests.test('single preview reporting requires its configured frame and ignores unrelated peers', () => {
+  const reported: ReloadTiming[] = []
+  const reload = new ReloadTimings('session', timing => reported.push(timing), ['left'])
+  reload.begin('r2', 1000)
+  reload.published({ revision: 'r2', startedAtMs: 1000, publishedAtMs: 1010, timings: [] })
+  reload.receive(signal('right', 'tao.update-done', 1050))
+  reload.receive(signal('right', 'tao.preview-applied', 1060))
+  Tests.expect(reported).toEqual([])
+  reload.receive(signal('left', 'tao.update-done', 1070))
+  Tests.expect(reported).toEqual([])
+  reload.receive(signal('left', 'tao.preview-applied', 1080))
+  Tests.expect(reported).toHaveLength(1)
+  Tests.expect(reported[0]!.frames).toEqual({
+    left: { publishToHmrMs: 60, hmrToAppliedMs: 10, saveToHmrMs: 70, saveToAppliedMs: 80 },
+  })
+})
+
 function signal(frameId: string, type: string, timestampMs: number, revision = 'r2', bootId = frameId) {
   return { sessionId: 'session', frameId, bootId, type, timestampMs, revision }
 }

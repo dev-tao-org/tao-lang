@@ -1,16 +1,9 @@
 import { Time } from '@shared'
 import * as Browser from '@shared/os/browser'
+import { PreviewRecovery } from '../../shared/shared-src/os/PreviewRecovery'
+import type { PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
 import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
-
-type PreviewSignal = {
-  type: 'tao.preview-applied' | 'tao.update-done'
-  sessionId: string
-  frameId: string
-  bootId: string
-  revision: string
-  timestampMs: number
-  timings: unknown[]
-}
+import { isPreviewSignal, type PreviewSignal } from './PreviewSignal'
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 
@@ -21,6 +14,7 @@ type PreviewResult = {
   clickTimestampMs: number
   timings: unknown[]
   stages?: unknown
+  outcome?: PreviewOutcome
   frames: Record<string, {
     clickToHmrMs: number
     hmrToAppliedMs: number
@@ -34,17 +28,21 @@ type PreviewResult = {
 
 const sessionId = Browser.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
 const previewOrigin = new URL(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
-const frames = new Map<string, HTMLIFrameElement>([
-  ['left', Browser.querySelector<HTMLIFrameElement>('#left')!],
-  ['right', Browser.querySelector<HTMLIFrameElement>('#right')!],
-])
+const frames = new Map(['left', 'right'].flatMap(id => {
+  const frame = Browser.querySelector<HTMLIFrameElement>(`#${id}`)
+  return frame ? [[id, frame] as const] : []
+}))
 const receipts = new PreviewReceipts<SignalReceipt>()
+const previewTimeoutMs = Number(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content)
+const recoveries = new Map(
+  [...frames].map(([frameId, frame]) => [frameId, new PreviewRecovery(frame, sessionId, frameId, previewTimeoutMs)]),
+)
 const expected = new Set<string>()
+const terminalOutcomes = new Map<string, PreviewOutcome>()
 const pendingSignals: MessageEvent[] = []
 const scenarios = JSON.parse(
   Browser.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 ) as string[]
-let latestExpected = 0
 let scenarioIndex = 0
 const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
   status: 'ready',
@@ -54,11 +52,34 @@ Browser.setPageState(result)
 const events = Browser.eventStream('/events')
 
 events.addEventListener('expected', event => {
-  const revision = (JSON.parse((event as MessageEvent<string>).data) as { revision: string }).revision
+  const expectation = JSON.parse((event as MessageEvent<string>).data) as { revision: string; sequence: number }
+  const revision = expectation.revision
+  for (const recovery of recoveries.values()) {
+    recovery.expect(expectation)
+  }
   expected.clear()
   expected.add(revision)
-  latestExpected = Math.max(latestExpected, parseRevisionNumber(revision))
-  pruneReceiptHistory()
+  for (const pending of pendingSignals.splice(0)) {
+    receiveSignal(pending)
+  }
+})
+
+events.addEventListener('outcome', event => {
+  const outcome = JSON.parse((event as MessageEvent<string>).data) as PreviewOutcome
+  terminalOutcomes.set(outcome.revision, outcome)
+  if (terminalOutcomes.size > 64) {
+    terminalOutcomes.delete(terminalOutcomes.keys().next().value!)
+  }
+  for (const recovery of recoveries.values()) {
+    recovery.terminal(outcome)
+  }
+})
+
+events.addEventListener('baseline', event => {
+  const baseline = JSON.parse((event as MessageEvent<string>).data) as { revision: string; sequence: number }
+  for (const recovery of recoveries.values()) {
+    recovery.setBaseline(baseline)
+  }
   for (const pending of pendingSignals.splice(0)) {
     receiveSignal(pending)
   }
@@ -78,12 +99,18 @@ Browser.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () =
 })
 
 function receiveSignal(event: MessageEvent): void {
-  if (event.origin !== previewOrigin || !isSignal(event.data)) {
+  if (event.origin !== previewOrigin || !isFrameMessage(event)) {
+    return
+  }
+  if (recoveries.get(event.data.frameId)?.receiveControlSignal(event.data)) {
+    return
+  }
+  if (!isPreviewSignal(event.data)) {
     return
   }
   const signal = event.data
-  if (!isCurrentSignal(signal)) {
-    return
+  if (signal.type === 'tao.preview-applied') {
+    recoveries.get(signal.frameId)?.receive(signal, signal.revision, 'applied')
   }
   if (!expected.has(signal.revision)) {
     if (pendingSignals.length < 32) {
@@ -99,6 +126,16 @@ function receiveSignal(event: MessageEvent): void {
   if (receipts.record(milestone, signal, { signal, receivedAt: Time.nowMs() })) {
     relaySignal(signal)
   }
+}
+
+function isFrameMessage(event: MessageEvent): boolean {
+  const identity = event.data as Partial<PreviewSignal> | undefined
+  if (!identity || identity.sessionId !== sessionId || typeof identity.frameId !== 'string') {
+    return false
+  }
+  const frame = frames.get(identity.frameId)
+  return !!frame && event.source === Browser.frameWindow(frame)
+    && typeof identity.bootId === 'string' && !!recoveries.get(identity.frameId)?.matchesInstance(identity.bootId)
 }
 
 function relaySignal(signal: PreviewSignal): void {
@@ -131,6 +168,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
     clickTimestampMs,
     timings: update.timings,
     stages: update.stages,
+    outcome: terminalOutcomes.get(update.revision),
     frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [id, frameTimings(receipt, clickTime)])),
   })
   scenarioIndex++
@@ -160,35 +198,6 @@ function failScenario(reason: unknown): void {
   setStatus('failed')
 }
 
-function isSignal(value: unknown): value is PreviewSignal {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  const signal = value as Partial<PreviewSignal>
-  return hasSignalType(signal) && hasSignalIdentity(signal) && hasSignalTiming(signal)
-}
-
-function hasSignalType(signal: Partial<PreviewSignal>): boolean {
-  return signal.type === 'tao.preview-applied' || signal.type === 'tao.update-done'
-}
-
-function hasSignalIdentity(signal: Partial<PreviewSignal>): boolean {
-  return typeof signal.sessionId === 'string'
-    && typeof signal.frameId === 'string'
-    && typeof signal.bootId === 'string'
-    && typeof signal.revision === 'string'
-}
-
-function hasSignalTiming(signal: Partial<PreviewSignal>): boolean {
-  return typeof signal.timestampMs === 'number' && Array.isArray(signal.timings)
-}
-
-function isCurrentSignal(signal: PreviewSignal): boolean {
-  return signal.sessionId === sessionId
-    && parseRevisionNumber(signal.revision) >= latestExpected
-    && (signal.type === 'tao.preview-applied' || signal.type === 'tao.update-done')
-}
-
 function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
   return {
     bootId: receipt.applied.signal.bootId,
@@ -206,8 +215,13 @@ function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<Signal
   return new Promise((resolve, reject) => {
     const deadline = Time.nowMs() + 90_000
     const poll = () => {
+      const terminal = terminalOutcomes.get(revision)
       const collected = receipts.complete(revision)
-      if (collected.size === frames.size) {
+      if (terminal?.kind === 'noop' || terminal?.kind === 'superseded') {
+        resolve(new Map())
+      } else if (terminal) {
+        reject(terminal.message ?? `Preview ${terminal.kind}.`)
+      } else if (collected.size === frames.size) {
         resolve(collected)
       } else if (Time.nowMs() >= deadline) {
         reject(`Timed out waiting for both preview receipts for ${revision}.`)
@@ -217,14 +231,6 @@ function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<Signal
     }
     poll()
   })
-}
-
-function parseRevisionNumber(revision: string): number {
-  return Number(revision.replace(/^r/, '')) || 0
-}
-
-function pruneReceiptHistory(): void {
-  receipts.pruneBefore(latestExpected)
 }
 
 function setStatus(status: string): void {

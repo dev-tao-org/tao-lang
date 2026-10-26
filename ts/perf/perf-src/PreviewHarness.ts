@@ -1,7 +1,9 @@
 import { DefaultAppearance } from '@runtime/Appearance'
-import { Errors, S, Time, Try } from '@shared'
+import { Errors, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
-import type { createWorkspace, UpdateResult } from '@workspace/Workspace'
+import type { createWorkspace } from '@workspace/Workspace'
+import { observePreviewEdit } from './ObservePreviewEdit'
+import { PreviewPublication } from './PreviewPublication'
 import { applyScenario, helloWorldScenarios, type PreviewScenario } from './PreviewScenarios'
 import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
 
@@ -23,6 +25,8 @@ export type HarnessOptions = {
   canonicalSource: string
   /** scenarios is the ordered button cycle. The Hello World cycle is the default. */
   scenarios?: readonly PreviewScenario[]
+  previewTimeoutMs?: number
+  frameCount?: 1 | 2
   onReload?(timing: ReloadTiming): void
 }
 
@@ -30,7 +34,7 @@ export type HarnessOptions = {
 export type PreviewHarness = { url: string; dispose(): void }
 
 type Workspace = ReturnType<typeof createWorkspace>
-type EditState = { closed: boolean; pending: Set<() => void> }
+type EditState = { closed: boolean; active: boolean; pending: Set<() => void> }
 type ResolvedHarnessOptions = HarnessOptions & {
   canonicalSource: string
   scenarios: readonly PreviewScenario[]
@@ -51,29 +55,27 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
 
 async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: string): Promise<PreviewHarness> {
   const streams = new Set<Http.StreamController>()
-  const expected = new Set<string>()
   const encoder = new TextEncoder()
-  const edits: EditState = { closed: false, pending: new Set() }
-  const reload = new ReloadTimings(options.sessionId, options.onReload)
-  const stopListening = options.workspace.onExpected((revision, startedAtMs) => {
-    reload.begin(revision, startedAtMs)
-    expected.clear()
-    expected.add(revision)
-    sendEvent(streams, encoder, 'expected', { revision })
-  })
-  const stopPublished = options.workspace.onPublished(publication => reload.published(publication))
+  const edits: EditState = { closed: false, active: false, pending: new Set() }
+  const frameIds = options.frameCount === 1 ? ['left'] : ['left', 'right']
+  const reload = new ReloadTimings(options.sessionId, options.onReload, frameIds)
+  const publication = new PreviewPublication(
+    options.workspace,
+    (name, data) => sendEvent(streams, encoder, name, data),
+    (revision, startedAtMs) => reload.begin(revision, startedAtMs),
+    event => reload.published(event),
+  )
   const server = Http.serve({
     idleTimeout: 0,
     hostname: '127.0.0.1',
     port: 0,
-    fetch: createRequestHandler(options, sessionDir, streams, expected, encoder, reload, edits),
+    fetch: createRequestHandler(options, sessionDir, streams, publication, encoder, reload, edits),
   })
   return {
     url: server.url.toString(),
     dispose() {
       edits.closed = true
-      stopListening()
-      stopPublished()
+      publication.dispose()
       for (const abort of edits.pending) {
         abort()
       }
@@ -87,7 +89,7 @@ function createRequestHandler(
   options: ResolvedHarnessOptions,
   sessionDir: string,
   streams: Set<Http.StreamController>,
-  expected: Set<string>,
+  publication: PreviewPublication,
   encoder: TextEncoder,
   reload: ReloadTimings,
   edits: EditState,
@@ -109,7 +111,7 @@ function createRequestHandler(
       })
     }
     if (request.method === 'GET' && url.pathname === '/events') {
-      return eventsResponse(streams, expected, encoder)
+      return eventsResponse(streams, publication, encoder)
     }
     if (request.method === 'POST' && url.pathname === '/edit') {
       return editResponse(request, options, edits)
@@ -136,12 +138,34 @@ function pageResponse(options: ResolvedHarnessOptions, origin: string): Http.Htt
   const left = frameUrl(options.previewUrl, options.sessionId, origin, 'left')
   const right = frameUrl(options.previewUrl, options.sessionId, origin, 'right')
   const names = options.scenarios.map(scenario => scenario.name)
-  return Http.response(pageHtml(options.sessionId, options.previewUrl, left, right, names), {
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  })
+  return Http.response(
+    pageHtml(options.sessionId, options.previewUrl, left, right, names, options.previewTimeoutMs, options.frameCount),
+    {
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    },
+  )
 }
 
 async function editResponse(
+  request: Http.HttpRequest,
+  options: ResolvedHarnessOptions,
+  edits: EditState,
+): Promise<Http.HttpResponse> {
+  if (edits.closed) {
+    return Http.response('Preview harness is closed', { status: 503 })
+  }
+  if (edits.active) {
+    return Http.response('A preview edit is already pending', { status: 409 })
+  }
+  edits.active = true
+  return await Try(() => writeEditResponse(request, options, edits), {
+    finally() {
+      edits.active = false
+    },
+  })
+}
+
+async function writeEditResponse(
   request: Http.HttpRequest,
   options: ResolvedHarnessOptions,
   edits: EditState,
@@ -153,7 +177,7 @@ async function editResponse(
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
   }
-  const observation = observeEdit(options.workspace, path, source, edits.pending)
+  const observation = observePreviewEdit(options.workspace.files, path, source, edits.pending)
   return await Try(async () => {
     const [, result] = await Promise.all([FileSystem.writeFile(path, source, 'utf8'), observation.result])
     return Http.jsonResponse(result)
@@ -162,41 +186,9 @@ async function editResponse(
   })
 }
 
-function observeEdit(workspace: Workspace, path: string, source: string, pendingEdits: Set<() => void>) {
-  let resolve!: (result: UpdateResult) => void
-  let reject!: (error: unknown) => void
-  const result = new Promise<UpdateResult>((complete, fail) => {
-    resolve = complete
-    reject = fail
-  })
-  const stop = workspace.files.onCompiled(event => {
-    if (event.path === path && event.source === source) {
-      resolve(event.result)
-    }
-  })
-  const cancel = Time.schedule(5000, () => reject(editFailure('Saved source was not observed: ' + path)))
-  pendingEdits.add(abort)
-  return { result, dispose }
-
-  function dispose(): void {
-    stop()
-    cancel()
-    pendingEdits.delete(abort)
-  }
-
-  function abort(): void {
-    reject(editFailure('Preview harness closed before source compilation finished.'))
-    dispose()
-  }
-}
-
-function editFailure(message: string): Errors.TaoError {
-  return Try(() => Errors.ThrowHostEnvironment(message), { catch: error => Errors.fromUnknown(error) })
-}
-
 function eventsResponse(
   streams: Set<Http.StreamController>,
-  expected: Set<string>,
+  publication: PreviewPublication,
   encoder: TextEncoder,
 ): Http.HttpResponse {
   let streamController: Http.StreamController | undefined
@@ -205,9 +197,7 @@ function eventsResponse(
       streamController = controller
       streams.add(controller)
       controller.enqueue(encoder.encode('retry: 1000\n\n'))
-      for (const revision of expected) {
-        controller.enqueue(encodeEvent(encoder, 'expected', { revision }))
-      }
+      publication.replay((name, data) => controller.enqueue(encodeEvent(encoder, name, data)))
     },
     cancel() {
       if (streamController) {
@@ -261,17 +251,19 @@ function pageHtml(
   left: string,
   right: string,
   scenarios: readonly string[],
+  previewTimeoutMs = 10_000,
+  frameCount = 2,
 ): string {
   const safe = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
+  const rightFrame = frameCount === 2 ? `<iframe id="right" title="Wide preview" src="${safe(right)}"></iframe>` : ''
+  const columns = frameCount === 2 ? '380px minmax(600px,1fr)' : 'minmax(380px,1fr)'
   return S`
-    <!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
+    <!doctype html><html><head><meta charset="utf-8"><meta name="tao-preview-timeout-ms" content="${previewTimeoutMs}"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
     safe(sessionId)
   }"><meta name="tao-preview-url" content="${safe(previewUrl)}"><meta name="tao-scenarios" content="${
     safe(JSON.stringify(scenarios))
-  }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:380px minmax(600px,1fr);gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:${DefaultAppearance.background};outline:1px solid ${DefaultAppearance.border};outline-offset:-1px}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
+  }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:${columns};gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:${DefaultAppearance.background};outline:1px solid ${DefaultAppearance.border};outline-offset:-1px}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
     safe(left)
-  }"></iframe><iframe id="right" title="Wide preview" src="${
-    safe(right)
-  }"></iframe></main><script type="module" src="/preview-browser.js"></script></body></html>
+  }"></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
   `
 }
