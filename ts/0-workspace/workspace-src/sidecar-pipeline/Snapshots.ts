@@ -1,9 +1,10 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, S, Try } from '@shared'
+import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
+import * as SnapshotIntegrity from './SnapshotIntegrity'
 
 /** SidecarGroup contains all validated source files and views owned by one module root. */
 export type SidecarGroup = {
@@ -39,33 +40,22 @@ export function snapshotModuleDirectory(snapshotRoot: string, moduleRoot: string
   return Path.join(snapshotRoot, 'modules', Platform.hashText(moduleRoot).slice(0, 16))
 }
 
-/** cachedSnapshotMatches confirms a content snapshot and its managed package link are intact. */
+/** cachedSnapshotMatches confirms the exact immutable snapshot inventory against captured inputs. */
 export async function cachedSnapshotMatches(
   snapshotRoot: string,
   fingerprint: string,
   nodeModulesDirectory: string,
-  moduleDirectories: readonly string[],
+  groups: readonly SidecarGroup[],
+  defaultsPath: string,
 ): Promise<boolean> {
-  const markerPath = Path.join(snapshotRoot, '.tao-sidecar-snapshot.json')
-  if (isSymbolicLink(snapshotRoot) || isSymbolicLink(markerPath) || !await FileSystem.exists(markerPath)) {
-    return false
-  }
-  const marker = Try.WithDefault(undefined, () =>
-    JSON.parse(
-      FileSystem.readFileSync(markerPath, 'utf8'),
-    ) as { fingerprint?: string; nodeModulesDirectory?: string })
-  if (marker?.fingerprint !== fingerprint || marker.nodeModulesDirectory !== nodeModulesDirectory) {
-    return false
-  }
-  return moduleDirectories.every(directory =>
-    Try.WithDefault(false, () => {
-      const nodeModules = Path.join(directory, 'node_modules')
-      return FileSystem.lstatSync(directory).isDirectory()
-        && !isSymbolicLink(directory)
-        && FileSystem.lstatSync(nodeModules).isSymbolicLink()
-        && FileSystem.realpathSync(nodeModules) === nodeModulesDirectory
-    })
-  )
+  return await SnapshotIntegrity.cachedSnapshotMatches({
+    snapshotRoot,
+    fingerprint,
+    nodeModulesDirectory,
+    groups,
+    defaultsPath,
+    moduleDirectories: groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot)),
+  })
 }
 
 /** buildSnapshot validates inputs in staging before publishing an immutable snapshot. */
@@ -135,10 +125,6 @@ function isPathPresent(path: string): boolean {
   })
 }
 
-function isSymbolicLink(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
-}
-
 async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
   await FileSystem.mkdir(input.stagingRoot, { recursive: true })
   for (const group of input.groups) {
@@ -181,21 +167,6 @@ type SnapshotStageInput = {
   defaultsPath: string
 }
 
-const assetDeclarations = S`
-  declare module '*.png' { const asset: number; export default asset }
-  declare module '*.jpg' { const asset: number; export default asset }
-  declare module '*.jpeg' { const asset: number; export default asset }
-  declare module '*.gif' { const asset: number; export default asset }
-  declare module '*.webp' { const asset: number; export default asset }
-  declare module '*.svg' { const asset: number; export default asset }
-  declare module '*.mp4' { const asset: number; export default asset }
-  declare module '*.mp3' { const asset: number; export default asset }
-  declare module '*.ttf' { const asset: number; export default asset }
-  declare module '*.woff' { const asset: number; export default asset }
-  declare module '*.woff2' { const asset: number; export default asset }
-  declare module '*.pdf' { const asset: number; export default asset }
-`
-
 async function stageModule(
   options: SnapshotOptions,
   group: SidecarGroup,
@@ -213,13 +184,11 @@ async function stageModule(
 
 async function writeModuleMetadata(destination: string, defaultsPath: string): Promise<void> {
   await FileSystem.writeFile(Path.join(destination, 'package.json'), '{"private":true,"type":"module"}\n')
-  const config = {
-    extends: FileSystem.realpathSync(defaultsPath),
-    compilerOptions: { baseUrl: '.' },
-    include: ['**/*.ts', '**/*.tsx', '.tao-*.contract.ts', 'tao-assets.d.ts'],
-  }
-  await FileSystem.writeFile(Path.join(destination, 'tsconfig.json'), `${JSON.stringify(config, null, 2)}\n`)
-  await FileSystem.writeFile(Path.join(destination, 'tao-assets.d.ts'), assetDeclarations)
+  await FileSystem.writeFile(
+    Path.join(destination, 'tsconfig.json'),
+    SnapshotIntegrity.createTypeScriptConfigContent(defaultsPath),
+  )
+  await FileSystem.writeFile(Path.join(destination, 'tao-assets.d.ts'), SnapshotIntegrity.assetDeclarations)
 }
 
 async function copyModuleFiles(group: SidecarGroup, destination: string): Promise<void> {

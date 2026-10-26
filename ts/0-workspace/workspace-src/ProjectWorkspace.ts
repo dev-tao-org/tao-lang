@@ -75,9 +75,9 @@ function createManagedWorkspaceOptions(
     observeProjectSources: (root, sources) => dependencies.observeProjectSources(root, sources),
     includeModuleRequirements: true,
     watchDirectories: [...dependencies.sourceDirectories(), ...options.watchDirectories ?? []],
-    async beforeCompile(program) {
-      const managed = await pipeline.beforeCompile(program)
-      const custom = await options.beforeCompile?.(program)
+    async beforeCompile(program, watchAttemptedFiles) {
+      const managed = await pipeline.beforeCompile(program, watchAttemptedFiles)
+      const custom = await options.beforeCompile?.(program, watchAttemptedFiles)
       return mergeProjectPreparation(dependencies, managed, custom)
     },
     runtimeOptions,

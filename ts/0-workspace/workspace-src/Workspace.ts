@@ -12,39 +12,14 @@ import type { LinkedProgram } from '@typecheck/Modules'
 import { typecheck } from '@typecheck/Typecheck'
 import { prepareBuildTypeScript } from './BuildTypeScript'
 import type { Document } from './Document'
-import { type CompileRequest, FileManager, type FileManagerOptions } from './FileManager'
-import { loadModules, type ModuleLoadOptions } from './modules/Loader'
-import type { Project } from './Project'
-import type { ProjectPipelineResult } from './ProjectPipeline'
+import { type CompileRequest, FileManager } from './FileManager'
+import { loadModules } from './modules/Loader'
 import { publishBuild } from './WorkspaceBuild'
+import type { WorkspaceOptions } from './WorkspaceOptions'
 
 export { Document } from './Document'
 export * from './Project'
-
-/** WorkspaceOptions configures output publication for a single compile session. */
-export type WorkspaceOptions = {
-  directory?: string
-  outputDirectory?: string
-  project?: Project
-  runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
-  compile?: typeof compile
-  onProgress?: (message: string) => void
-  publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
-  onExpected?: (revision: string, startedAtMs: number) => void
-  onSourceUpdate?: (result: UpdateResult) => void
-  onSourceError?: (error: unknown) => void
-  watch?: FileManagerOptions['watch']
-  schedule?: FileManagerOptions['schedule']
-  resolveProject?: ModuleLoadOptions['resolveProject']
-  observeProjectSources?: ModuleLoadOptions['observeProjectSources']
-  includeModuleRequirements?: boolean
-  beforeLoad?: () => Promise<void>
-  watchDirectories?: readonly string[]
-  beforeCompile?: (program: LinkedProgram) => Promise<
-    & Pick<ProjectPipelineResult, 'resolveForeignViewPath'>
-    & Partial<Pick<ProjectPipelineResult, 'watchDirectories' | 'snapshotDirectories'>>
-  >
-}
+export type { WorkspaceOptions } from './WorkspaceOptions'
 
 /** Publication records the exact revision and measured pipeline when output reaches its delivery owner. */
 export type Publication = {
@@ -101,8 +76,9 @@ const LinkModules = Timings.measured('modules.link', linkModules)
 const PrepareDependencies = Timings.measured('dependencies.prepared', async function(
   prepare: WorkspaceOptions['beforeCompile'],
   program: LinkedProgram,
+  watchAttemptedFiles: (files: readonly string[]) => Promise<void>,
 ) {
-  return await prepare?.(program)
+  return await prepare?.(program, watchAttemptedFiles)
 })
 
 const LoadSources = Timings.measured(
@@ -247,9 +223,18 @@ class WorkspaceSession {
       this.parser,
     )
     const program = request.timings.run(LinkModules, Path.resolve(request.path ?? '<memory>'), sources)
-    const prepared = await request.timings.run(PrepareDependencies, this.options.beforeCompile, program)
+    const prepared = await request.timings.run(
+      PrepareDependencies,
+      this.options.beforeCompile,
+      program,
+      files => this.files.watchPipelineFiles(files),
+    )
     this.acceptSnapshots(prepared?.snapshotDirectories ?? [])
-    await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
+    await this.files.updatePipelineDirectories(
+      prepared?.watchDirectories ?? [],
+      prepared?.watchFiles ?? [],
+      prepared?.snapshotDirectories ?? [],
+    )
     progress?.('Source modules resolved; generating app code…')
     const compileOptions = createCompilationOptions(`r${request.id}`, program, prepared)
     const files = request.timings.run(this.options.compile ?? compile, document, compileOptions)

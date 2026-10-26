@@ -12,6 +12,7 @@ import { inspectGeneratedModuleFiles, type ManagedModulesInput, readManagedModul
 export type ProjectPipelineResult = {
   resolveForeignViewPath?: PreparedSidecars['resolveForeignViewPath']
   watchDirectories: readonly string[]
+  watchFiles: readonly string[]
   snapshotDirectories: readonly string[]
 }
 
@@ -26,7 +27,10 @@ export type ProjectRuntimeOptions = {
 
 /** ProjectPipeline validates one prepared dependency graph for the life of a preview session. */
 export type ProjectPipeline = {
-  beforeCompile(program: LinkedProgram): Promise<ProjectPipelineResult>
+  beforeCompile(
+    program: LinkedProgram,
+    watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
+  ): Promise<ProjectPipelineResult>
 }
 
 /** ProjectPipelineServices isolates prepared graph reads for focused lifecycle tests. */
@@ -72,7 +76,10 @@ class PipelineSession implements ProjectPipeline {
     this.baseWatchFolders = runtimeOptions.watchFolders ?? []
   }
 
-  async beforeCompile(program: LinkedProgram): Promise<ProjectPipelineResult> {
+  async beforeCompile(
+    program: LinkedProgram,
+    watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
+  ): Promise<ProjectPipelineResult> {
     const declarationKey = createDeclarationKey(program)
     const input = declarationKey === this.declarationKey
       ? this.input
@@ -92,13 +99,13 @@ class PipelineSession implements ProjectPipeline {
       this.graphKey = key
       this.declarationKey = declarationKey
       this.input = input
-      return { watchDirectories: [], snapshotDirectories: [] }
+      return { watchDirectories: [], watchFiles: [], snapshotDirectories: [] }
     }
     const managed = await this.readManagedProfile(input, key)
     if (this.graphKey === undefined) {
       await validateGeneratedFiles(this.services, input)
     }
-    const sidecars = await this.prepareSidecars(program, managed)
+    const sidecars = await this.prepareSidecars(program, managed, watchAttemptedFiles)
     this.updateRuntimeOptions(input, managed)
     this.graphKey = key
     this.declarationKey = declarationKey
@@ -124,7 +131,11 @@ class PipelineSession implements ProjectPipeline {
     return this.managedProfile
   }
 
-  private async prepareSidecars(program: LinkedProgram, managed: Awaited<ReturnType<typeof readManagedModules>>) {
+  private async prepareSidecars(
+    program: LinkedProgram,
+    managed: Awaited<ReturnType<typeof readManagedModules>>,
+    watchAttemptedFiles: ((files: readonly string[]) => Promise<void>) | undefined,
+  ) {
     return await this.services.prepareSidecars({
       program,
       sessionBuildDirectory: this.sessionDirectory,
@@ -133,6 +144,7 @@ class PipelineSession implements ProjectPipeline {
       target: 'web',
       executor: executeManagedTool,
       projectDirectory: this.root,
+      onWatchFiles: watchAttemptedFiles,
     })
   }
 
@@ -196,6 +208,7 @@ function createPipelineResult(sidecars: PreparedSidecars): ProjectPipelineResult
   return {
     resolveForeignViewPath: sidecars.resolveForeignViewPath,
     watchDirectories: sidecars.watchDirectories,
+    watchFiles: sidecars.watchFiles,
     snapshotDirectories: sidecars.snapshotDirectories,
   }
 }

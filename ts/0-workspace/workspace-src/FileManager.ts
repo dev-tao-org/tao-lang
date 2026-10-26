@@ -77,12 +77,20 @@ export class FileManager {
   /** updatePipelineDirectories refreshes source and snapshot watch roots after dependency preparation. */
   async updatePipelineDirectories(
     watchDirectories: readonly string[],
+    watchFiles: readonly string[],
     snapshotDirectories: readonly string[],
   ): Promise<void> {
-    if (!this.pipelineDirectories.update(this.workspaceRoot, watchDirectories, snapshotDirectories)) {
+    if (!this.pipelineDirectories.update(this.workspaceRoot, watchDirectories, watchFiles, snapshotDirectories)) {
       return
     }
     await this.updateWatcherDirectories()
+  }
+
+  /** watchPipelineFiles retains attempted sidecar paths so missing imports can recover on creation. */
+  async watchPipelineFiles(files: readonly string[]): Promise<void> {
+    if (this.pipelineDirectories.includeFiles(files)) {
+      await this.updateWatcherDirectories()
+    }
   }
 
   /** update queues an immutable in-memory source version without writing it to disk. */
@@ -290,7 +298,8 @@ export class FileManager {
   }
 
   private shouldRefresh(change: WorkspaceWatch.WorkspaceChange): boolean {
-    return !this.disposed && this.entryPath !== undefined && FileManagerCompilation.isRelevantChange(change)
+    return !this.disposed && this.entryPath !== undefined
+      && FileManagerCompilation.isRelevantChange(change, path => this.pipelineDirectories.watchesFile(path))
       && !this.isOutputChange(change.path)
   }
 

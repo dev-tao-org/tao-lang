@@ -2,6 +2,9 @@ import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModuleTypes'
 
+/** foreignViewContractOwnership marks contract files managed by Tao. */
+export const foreignViewContractOwnership = 'managed-by-tao\n'
+
 /** ContractExecutor runs the pinned TypeScript compiler in the module context. */
 export type ContractExecutor = (
   command: string,
@@ -16,6 +19,24 @@ export type ForeignViewContract = {
   parameters: Record<string, string>
   exportFile: string
   compiler: string
+}
+
+/** ForeignViewContractSourceInput carries the named export and props used to create its compiler contract. */
+export type ForeignViewContractSourceInput = {
+  name: string
+  parameters: Record<string, string>
+  exportRelativePath: string
+}
+
+/** createForeignViewContractSource emits the module-local React component contract. */
+export function createForeignViewContractSource(input: ForeignViewContractSourceInput): string {
+  const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(/\.(?:tsx?|mts|cts)$/, '')
+  const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
+  return `import type * as React from 'react'\nimport { ${input.name} as TaoForeignView } from ${
+    JSON.stringify(
+      importPath.startsWith('.') ? importPath : `./${importPath}`,
+    )
+  }\n\nexport type TaoForeignViewProps = {\n${parameters}\n}\n\nconst taoForeignViewContract: React.ComponentType<TaoForeignViewProps> = TaoForeignView\nvoid taoForeignViewContract\n`
 }
 
 /** checkForeignViewContract writes and type-checks a module-local React component contract. */
@@ -36,13 +57,11 @@ export async function checkForeignViewContract(
     }
   }
   const file = Path.join(contract.directory, `.tao-${contract.name}.contract.ts`)
-  const importPath = exportRelativePath.replaceAll('\\', '/').replace(/\.(?:tsx?|mts|cts)$/, '')
-  const parameters = Object.entries(contract.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
-  const source = `import type * as React from 'react'\nimport { ${contract.name} as TaoForeignView } from ${
-    JSON.stringify(
-      importPath.startsWith('.') ? importPath : `./${importPath}`,
-    )
-  }\n\nexport type TaoForeignViewProps = {\n${parameters}\n}\n\nconst taoForeignViewContract: React.ComponentType<TaoForeignViewProps> = TaoForeignView\nvoid taoForeignViewContract\n`
+  const source = createForeignViewContractSource({
+    name: contract.name,
+    parameters: contract.parameters,
+    exportRelativePath,
+  })
   await writeOwnedContract(file, source)
   const result = await executor(contract.compiler, [
     '--noEmit',
@@ -62,11 +81,11 @@ export async function checkForeignViewContract(
 async function writeOwnedContract(path: string, contents: string): Promise<void> {
   const marker = `${path}.tao-managed`
   const ownership = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  if (await FileSystem.exists(path) && ownership !== 'managed-by-tao\n') {
+  if (await FileSystem.exists(path) && ownership !== foreignViewContractOwnership) {
     Errors.ThrowUserInput(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {
-    await Files.writeReadOnly(marker, 'managed-by-tao\n')
+    await Files.writeReadOnly(marker, foreignViewContractOwnership)
   }
   await Files.writeReadOnly(path, contents)
 }

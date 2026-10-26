@@ -7,18 +7,39 @@ import type { UpdateResult } from './Workspace'
 /** PipelineWatchDirectories tracks the replaceable authored and generated roots of a preview pipeline. */
 export class PipelineWatchDirectories {
   private authored: string[] = []
+  private files: string[] = []
   private snapshots: string[] = []
 
   constructor(private readonly options: Pick<FileManagerOptions, 'outputDirectory' | 'watchDirectories'>) {}
 
-  update(root: string | undefined, authored: readonly string[], snapshots: readonly string[]): boolean {
+  update(
+    root: string | undefined,
+    authored: readonly string[],
+    files: readonly string[],
+    snapshots: readonly string[],
+  ): boolean {
     const nextAuthored = collectUniquePaths(authored).filter(path => !root || !Path.isWithin(root, path))
+    const nextFiles = collectUniquePaths(files)
     const nextSnapshots = collectUniquePaths(snapshots)
-    if (haveSamePaths(this.authored, nextAuthored) && haveSamePaths(this.snapshots, nextSnapshots)) {
+    if (haveSameWatchDirectories(this.authored, this.files, this.snapshots, nextAuthored, nextFiles, nextSnapshots)) {
       return false
     }
     this.authored = nextAuthored
+    this.files = nextFiles
     this.snapshots = nextSnapshots
+    return true
+  }
+
+  watchesFile(path: string): boolean {
+    return this.files.includes(Path.resolve(path))
+  }
+
+  includeFiles(paths: readonly string[]): boolean {
+    const nextFiles = collectUniquePaths([...this.files, ...paths])
+    if (haveSamePaths(this.files, nextFiles)) {
+      return false
+    }
+    this.files = nextFiles
     return true
   }
 
@@ -182,8 +203,13 @@ export function createFailedInput(request: QueuedInput, error: unknown): Complet
 }
 
 /** isRelevantChange identifies watcher events that invalidate Tao compilation. */
-export function isRelevantChange(change: WorkspaceWatch.WorkspaceChange): boolean {
-  return change.kind === 'addDir' || change.kind === 'unlinkDir' || /\.(?:tao|tsx?|jsx?|json)$/.test(change.path)
+export function isRelevantChange(
+  change: WorkspaceWatch.WorkspaceChange,
+  watchesFile: (path: string) => boolean,
+): boolean {
+  return change.kind === 'addDir' || change.kind === 'unlinkDir'
+    || /\.(?:tao|tsx?|mts|cts|jsx?|json)$/.test(change.path)
+    || watchesFile(change.path)
 }
 
 /** createFailedResult creates a failed source-read or compiler result. */
@@ -256,6 +282,19 @@ function collectUniquePaths(paths: readonly string[]): string[] {
 
 function haveSamePaths(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((path, index) => path === right[index])
+}
+
+function haveSameWatchDirectories(
+  authored: readonly string[],
+  files: readonly string[],
+  snapshots: readonly string[],
+  nextAuthored: readonly string[],
+  nextFiles: readonly string[],
+  nextSnapshots: readonly string[],
+): boolean {
+  return haveSamePaths(authored, nextAuthored)
+    && haveSamePaths(files, nextFiles)
+    && haveSamePaths(snapshots, nextSnapshots)
 }
 
 function createSkippedStages(): Extract<UpdateResult, { status: 'failed' }>['stages'] {

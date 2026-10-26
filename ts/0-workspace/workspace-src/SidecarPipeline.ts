@@ -19,6 +19,7 @@ export type SidecarPipelineOptions = {
   projectDirectory?: string
   typescriptDefaultsPath?: string
   snapshotLimit?: number
+  onWatchFiles?: (files: readonly string[]) => Promise<void>
 }
 
 /** PreparedSidecars exposes only validated snapshots to generated app compilation. */
@@ -26,13 +27,14 @@ export type PreparedSidecars = {
   fingerprint: string
   resolveForeignViewPath(modulePath: string, authoredPath: string): string
   watchDirectories: readonly string[]
+  watchFiles: readonly string[]
   snapshotDirectories: readonly string[]
 }
 
 /** prepareSidecarPipeline snapshots foreign view inputs and validates their named exports. */
 export async function prepareSidecarPipeline(options: SidecarPipelineOptions): Promise<PreparedSidecars> {
   const nodeModulesDirectory = FileSystem.realpathSync(options.nodeModulesDirectory)
-  const groups = await collectSidecarInputs(options)
+  const { groups, watchFiles } = await collectSidecarInputs(options)
   const defaultsPath = options.typescriptDefaultsPath
     ?? Path.join(
       options.projectDirectory ?? Path.dirname(options.program.entry),
@@ -46,6 +48,7 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
     groups,
     fingerprint,
     nodeModulesDirectory,
+    defaultsPath,
   )
   let snapshotRoot = cachedRoot ?? requestedSnapshotRoot
   let snapshotDirectories = groups.map(group => Snapshots.snapshotModuleDirectory(snapshotRoot, group.moduleRoot))
@@ -71,6 +74,7 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
       return pathMap.get(key) ?? Errors.ThrowUserInput(`Foreign view path was not validated: ${authoredPath}`)
     },
     watchDirectories: [...new Set(groups.flatMap(group => [...group.files.keys()].map(Path.dirname)))].sort(),
+    watchFiles,
     snapshotDirectories: [snapshotRoot, ...snapshotDirectories],
   }
 }
@@ -99,9 +103,9 @@ async function findCachedSnapshot(
   groups: readonly Snapshots.SidecarGroup[],
   fingerprint: string,
   nodeModulesDirectory: string,
+  defaultsPath: string,
 ): Promise<string | undefined> {
-  const requestedDirectories = groups.map(group => Snapshots.snapshotModuleDirectory(requestedRoot, group.moduleRoot))
-  if (await Snapshots.cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, requestedDirectories)) {
+  if (await Snapshots.cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
     return requestedRoot
   }
   const parent = Path.dirname(requestedRoot)
@@ -110,47 +114,95 @@ async function findCachedSnapshot(
   const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
     .map(name => Path.join(parent, name))
   for (const candidate of candidates) {
-    const directories = groups.map(group => Snapshots.snapshotModuleDirectory(candidate, group.moduleRoot))
-    if (await Snapshots.cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, directories)) {
+    if (await Snapshots.cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
       return candidate
     }
   }
   return undefined
 }
 
-async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Snapshots.SidecarGroup[]> {
+async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<CollectedSidecarInputs> {
   const entryPath = options.program.entry
   const projectDirectory = options.projectDirectory
     ? Path.resolve(options.projectDirectory)
     : Paths.findNearestProjectRoot(Path.dirname(entryPath)) ?? Path.dirname(entryPath)
   const canonicalConsumerDirectory = FileSystem.realpathSync(projectDirectory)
   const groups = new Map<string, Snapshots.SidecarGroup>()
+  const watchFiles = new Set<string>()
+  return await Try(
+    async () => {
+      await collectProgramSidecarViews(options, canonicalConsumerDirectory, groups, watchFiles)
+      return {
+        groups: [...groups.values()].sort((left, right) => left.moduleRoot.localeCompare(right.moduleRoot)),
+        watchFiles: [...watchFiles].sort(),
+      }
+    },
+    {
+      async catch(error) {
+        await options.onWatchFiles?.([...watchFiles].sort())
+        Errors.Throw(error)
+      },
+    },
+  )
+}
+
+async function collectProgramSidecarViews(
+  options: SidecarPipelineOptions,
+  canonicalConsumerDirectory: string,
+  groups: Map<string, Snapshots.SidecarGroup>,
+  watchFiles: Set<string>,
+): Promise<void> {
   for (const module of options.program.modules) {
     for (const declaration of AST.GetAllViewDeclarations(module.document)) {
-      const authoredPath = AST.GetForeignViewPath(declaration)
-      if (authoredPath === undefined) {
-        continue
-      }
-      const modulePath = FileSystem.realpathSync(Path.resolve(module.path))
-      const projectRoot = FileSystem.realpathSync(
-        Paths.findNearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
-      )
-      const realModulePath = Paths.resolveRealPathInsideProject(modulePath, projectRoot)
-        ?? Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
-      const moduleRoot = Paths.findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
-      const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
-      const sidecarPath = await resolveSafeModuleFile(resolvedAuthoredPath, moduleRoot, projectRoot)
-      const relativeSidecarPath = Path.relative(moduleRoot, sidecarPath)
-      let group = groups.get(moduleRoot)
-      if (!group) {
-        group = { moduleRoot, files: new Map(), views: [] }
-        groups.set(moduleRoot, group)
-      }
-      group.views.push({ module, declaration, relativeSidecarPath })
-      await collectFileClosure(sidecarPath, group, moduleRoot, projectRoot)
+      await collectSidecarView(module, declaration, canonicalConsumerDirectory, groups, watchFiles)
     }
   }
-  return [...groups.values()].sort((left, right) => left.moduleRoot.localeCompare(right.moduleRoot))
+}
+
+async function collectSidecarView(
+  module: LinkedProgram['modules'][number],
+  declaration: AST.ViewDeclaration,
+  canonicalConsumerDirectory: string,
+  groups: Map<string, Snapshots.SidecarGroup>,
+  watchFiles: Set<string>,
+): Promise<void> {
+  const authoredPath = AST.GetForeignViewPath(declaration)
+  if (authoredPath === undefined) {
+    return
+  }
+  const modulePath = FileSystem.realpathSync(Path.resolve(module.path))
+  const projectRoot = FileSystem.realpathSync(
+    Paths.findNearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
+  )
+  const realModulePath = Paths.resolveRealPathInsideProject(modulePath, projectRoot)
+    ?? Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
+  const moduleRoot = Paths.findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
+  const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
+  watchAttemptedPath(resolvedAuthoredPath, moduleRoot, watchFiles)
+  const sidecarPath = await resolveSafeModuleFile(resolvedAuthoredPath, moduleRoot, projectRoot)
+  watchFiles.add(sidecarPath)
+  const relativeSidecarPath = Path.relative(moduleRoot, sidecarPath)
+  const group = findOrCreateSidecarGroup(groups, moduleRoot)
+  group.views.push({ module, declaration, relativeSidecarPath })
+  await collectFileClosure(sidecarPath, group, moduleRoot, projectRoot, watchFiles)
+}
+
+function watchAttemptedPath(path: string, moduleRoot: string, watchFiles: Set<string>): void {
+  if (Paths.within(moduleRoot, path) && !hasDependencyPath(path)) {
+    watchFiles.add(path)
+  }
+}
+
+function findOrCreateSidecarGroup(
+  groups: Map<string, Snapshots.SidecarGroup>,
+  moduleRoot: string,
+): Snapshots.SidecarGroup {
+  let group = groups.get(moduleRoot)
+  if (!group) {
+    group = { moduleRoot, files: new Map(), views: [] }
+    groups.set(moduleRoot, group)
+  }
+  return group
 }
 
 function resolveAuthoredForeignPath(modulePath: string, authoredPath: string): string {
@@ -162,6 +214,7 @@ async function collectFileClosure(
   group: Snapshots.SidecarGroup,
   moduleRoot: string,
   projectDirectory: string,
+  watchFiles: Set<string>,
 ): Promise<void> {
   const pending = [entry]
   while (pending.length > 0) {
@@ -170,6 +223,7 @@ async function collectFileClosure(
       continue
     }
     const safePath = await resolveSafeModuleFile(path, moduleRoot, projectDirectory)
+    watchFiles.add(safePath)
     const contents = await FileSystem.readFile(safePath)
     group.files.set(path, contents)
     if (!isTypeScriptSource(path)) {
@@ -180,25 +234,28 @@ async function collectFileClosure(
       if (!specifier.startsWith('.')) {
         continue
       }
-      const target = await resolveRelativeImport(Path.resolve(Path.dirname(path), specifier))
+      const target = await resolveRelativeImport(Path.resolve(Path.dirname(path), specifier), moduleRoot, watchFiles)
       pending.push(await resolveSafeModuleFile(target, moduleRoot, projectDirectory))
     }
   }
 }
 
-async function resolveRelativeImport(path: string): Promise<string> {
+async function resolveRelativeImport(path: string, moduleRoot: string, watchFiles: Set<string>): Promise<string> {
   const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...Snapshots.sidecarAssetExtensions]
   const candidates = getFileExtension(path) ? [path] : [
     ...suffixes.map(suffix => `${path}${suffix}`),
     ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
   ]
   for (const candidate of candidates) {
+    watchAttemptedPath(candidate, moduleRoot, watchFiles)
     if (await FileSystem.exists(candidate) && FileSystem.lstatSync(candidate).isFile()) {
       return candidate
     }
   }
   Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
 }
+
+type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
 
 async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
   const absolute = Path.resolve(path)
