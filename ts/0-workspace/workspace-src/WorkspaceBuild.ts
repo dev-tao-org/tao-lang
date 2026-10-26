@@ -31,7 +31,6 @@ export async function publishBuild(
     sequence: Math.max(runtime.publicationSequence ?? 0, runtime.generated?.sequence ?? 0) + 1,
     files: { ...files },
   }
-  const previousMirror = getPreviousMirror(runtime, buildDirectory)
   runtime.publicationSequence = generated.sequence
   if (runtime.publishGenerated) {
     return await timings.run(publishMemoryBuild, buildDirectory, runtime, generated, timings)
@@ -42,7 +41,6 @@ export async function publishBuild(
     buildDirectory,
     runtime,
     generated.files,
-    previousMirror,
     isCurrent,
   )
   if (!snapshot || !isCurrent()) {
@@ -52,13 +50,13 @@ export async function publishBuild(
   await timings.run(publishChanged, snapshot, runtime, generated.files, runtime.generated?.files, isCurrent)
   if (isCurrent()) {
     await timings.run(publishSnapshot, buildDirectory, snapshot)
-    mirrors.set(runtime, { directory: Path.resolve(buildDirectory), files: generated.files })
+    mirrors.set(runtime, Path.resolve(buildDirectory))
     runtime.generated = generated
   }
   onProgress?.('Runtime app file publication complete.')
 }
 
-const mirrors = new WeakMap<RuntimeApplication, { directory: string; files: Readonly<Record<string, string>> }>()
+const mirrors = new WeakMap<RuntimeApplication, string>()
 
 const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', async function(
   buildDirectory: string,
@@ -74,19 +72,17 @@ const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', 
     runtime.generated = generated
   }
   const isAcceptedRevisionCurrent = () => runtime.generated === generated
-  if (isAcceptedRevisionCurrent() && FileSystem.existsSync(buildDirectory)) {
-    const previousMirror = getPreviousMirror(runtime, buildDirectory)
+  if (isAcceptedRevisionCurrent() && shouldMaintainMirror(runtime, buildDirectory)) {
     const snapshot = await timings.run(
       writeBuild,
       buildDirectory,
       runtime,
       generated.files,
-      previousMirror,
       isAcceptedRevisionCurrent,
     )
     if (snapshot && isAcceptedRevisionCurrent()) {
       await timings.run(publishSnapshot, buildDirectory, snapshot)
-      mirrors.set(runtime, { directory: Path.resolve(buildDirectory), files: generated.files })
+      mirrors.set(runtime, Path.resolve(buildDirectory))
     }
   }
   if (outcome.status === 'error' || outcome.status === 'poisoned') {
@@ -100,12 +96,11 @@ const prepareApplication = Timings.measured(
   (prepare: () => Promise<RuntimeApplication>) => prepare(),
 )
 
-function getPreviousMirror(
+function shouldMaintainMirror(
   runtime: RuntimeApplication,
   directory: string,
-): Readonly<Record<string, string>> | undefined {
-  const mirror = mirrors.get(runtime)
-  return mirror?.directory === Path.resolve(directory) ? mirror.files : undefined
+): boolean {
+  return mirrors.get(runtime) === Path.resolve(directory) || FileSystem.existsSync(directory)
 }
 
 const writeBuild = Timings.measured(
@@ -114,16 +109,14 @@ const writeBuild = Timings.measured(
     directory: string,
     runtime: RuntimeApplication,
     files: Readonly<Record<string, string>>,
-    previousFiles: Readonly<Record<string, string>> | undefined,
     isCurrent: () => boolean,
   ): Promise<string | undefined> {
     const revisions = `${directory}.revisions`
     const revisionDirectory = Path.join(revisions, Platform.randomUUID())
     await FileSystem.mkdir(revisionDirectory, { recursive: true })
-    const currentDirectory = await Try.WithDefault(directory, () => FileSystem.realpathSync(directory))
     await Try(async () => {
       await copyBuildConfiguration(revisionDirectory, runtime)
-      await writeSnapshotFiles(currentDirectory, revisionDirectory, files, previousFiles)
+      await writeSnapshotFiles(revisionDirectory, files)
       if (isCurrent()) {
         return revisionDirectory
       }
@@ -150,21 +143,12 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: RuntimeApp
 }
 
 async function writeSnapshotFiles(
-  currentDirectory: string,
   nextDirectory: string,
   files: Readonly<Record<string, string>>,
-  previousFiles: Readonly<Record<string, string>> | undefined,
 ): Promise<void> {
   for (const [file, content] of Object.entries(files)) {
     const path = resolveGeneratedPath(nextDirectory, file)
     await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-    if (previousFiles?.[file] === content) {
-      const source = resolveGeneratedPath(currentDirectory, file)
-      if (await FileSystem.exists(source)) {
-        await FileSystem.cp(source, path)
-        continue
-      }
-    }
     await FileSystem.writeFile(path, content)
   }
 }
