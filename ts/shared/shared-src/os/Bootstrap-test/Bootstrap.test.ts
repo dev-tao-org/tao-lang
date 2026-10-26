@@ -45,7 +45,7 @@ async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: 'install' | 'run' = 'install',
-): Promise<{ status: number; stdout: string; stderr: string }> {
+): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
   await mkdir(ts, { recursive: true })
@@ -82,3 +82,5 @@ async function writeStub(bin: string, failureStatus: number, failureStage: 'inst
   await writeFile(path, script)
   await chmod(path, 0o755)
 }
+
+type BootstrapResult = { status: number; stdout: string; stderr: string }

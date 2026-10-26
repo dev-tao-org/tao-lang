@@ -78,7 +78,11 @@ function throwInvalidPointer(path: string): never {
   )
 }
 
-async function loadLockBinding(path: string): Promise<{ acquire(path: string): { release(): void } | undefined }> {
+type NativeLock = { release(): void }
+
+type LockBinding = { acquire(path: string): NativeLock | undefined }
+
+async function loadLockBinding(path: string): Promise<LockBinding> {
   return await Try(() => Platform.loadModule(path), {
     catch(error) {
       if (!isMissingAddon(error)) {

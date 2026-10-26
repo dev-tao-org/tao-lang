@@ -45,7 +45,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
 
 /** askConfirm prompts for a yes/no response and closes its reader when the caller cancels. */
 export async function askConfirm(
-  options: { defaultValue?: boolean; message: string; signal?: AbortSignal },
+  options: ConfirmationOptions,
   terminal: ConfirmationTerminal = confirmationTerminal,
 ): Promise<boolean> {
   if (options.signal?.aborted) {
@@ -117,6 +117,8 @@ export async function askSecret(prompt: string): Promise<string> {
     },
   })
 }
+
+type ConfirmationOptions = { defaultValue?: boolean; message: string; signal?: AbortSignal }
 
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
 type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }

@@ -71,13 +71,7 @@ export class PreviewRecovery {
   }
 
   receiveControlSignal(
-    signal: PreviewOutcomeTrackerModule2.PreviewIdentity & {
-      type: string
-      revision?: string
-      connected?: boolean
-      kind?: string
-      message?: string
-    },
+    signal: PreviewControlSignal,
   ): boolean {
     if (signal.type === 'tao.preview-connection') {
       this.reportConnection(signal.connected === true)
@@ -160,6 +154,14 @@ export class PreviewRecovery {
     this.panel.style.top = `${bounds.top + 8}px`
     this.panel.style.width = `${Math.max(100, bounds.width - 48)}px`
   }
+}
+
+type PreviewControlSignal = PreviewOutcomeTrackerModule2.PreviewIdentity & {
+  type: string
+  revision?: string
+  connected?: boolean
+  kind?: string
+  message?: string
 }
 
 function createRecoveryPanel(reload: () => void): HTMLElement {

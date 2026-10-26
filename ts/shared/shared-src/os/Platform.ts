@@ -41,9 +41,7 @@ export function spawn<
   const In extends Bun.SpawnOptions.Writable = 'ignore',
   const Out extends Bun.SpawnOptions.Readable = 'pipe',
   const Err extends Bun.SpawnOptions.Readable = 'inherit',
->(command: string | readonly string[], options: Bun.SpawnOptions.SpawnOptions<In, Out, Err> & {
-  variadicArgs?: readonly string[]
-} = {}): Bun.Subprocess<In, Out, Err> {
+>(command: string | readonly string[], options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
   const { variadicArgs = [], ...spawnOptions } = options
   if (preserveTerminalColors(spawnOptions)) {
     spawnOptions.env = { ...(spawnOptions.env ?? process.env), FORCE_COLOR: '1' }
@@ -98,14 +96,14 @@ export function isMain(meta: ImportMeta): boolean {
 }
 
 /** systemInfo reads non-identifying operating-system and architecture information. */
-export function systemInfo(): { architecture: string; kernel: string; os: string } {
+export function systemInfo(): SystemInformation {
   return { architecture: Node.arch(), kernel: Node.release(), os: Node.osType() }
 }
 
 /** capture reads command output and throws when the command fails; trim:false preserves exact text. */
 export async function capture(
   command: string,
-  options: { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean } = {},
+  options: CaptureOptions = {},
 ): Promise<string> {
   const args = [...command.trim().split(/ +/), ...options.variadicArgs ?? []]
   const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
@@ -149,6 +147,16 @@ export function captureSync(command: string, options: { variadicArgs?: readonly 
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 }
+
+type SpawnOptions<
+  In extends Bun.SpawnOptions.Writable,
+  Out extends Bun.SpawnOptions.Readable,
+  Err extends Bun.SpawnOptions.Readable,
+> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
+
+type SystemInformation = { architecture: string; kernel: string; os: string }
+
+type CaptureOptions = { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean }
 
 function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
   const environment = options.env ?? process.env
