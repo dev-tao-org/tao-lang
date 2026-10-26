@@ -14,6 +14,11 @@ This skill owns the one route a `feat/<name>` branch takes onto `main`, and the 
 
 ## New implementation
 
+Before entering the landing route, complete `git-workflow`'s
+[branch evidence preservation](../git-workflow/references/branch-evidence.md), including research
+and review evidence as well as timing records. The landing command's timing publication is not a
+substitute for this inventory and durable handoff.
+
 Root commands outside `.x-tao-old-v1/` expose three routes, with the same names in `./dev` and
 `./agent unsandboxed`:
 

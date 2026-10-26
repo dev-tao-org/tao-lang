@@ -76,6 +76,12 @@ Do not replace an existing per-commit record with a faster rerun. Diagnostic rer
 
 ## Before landing
 
+Before any branch completion, merge handoff or retirement, first satisfy
+[`git-workflow`'s evidence preservation](../../git-workflow/references/branch-evidence.md).
+Timing records must be committed, remotely confirmed and referenced by the handoff at that
+boundary; do not wait for landing when a branch is handed off earlier. The steps below retain
+the additional performance requirements for landing.
+
 1. Complete the branch-start-to-final comparison above and report significant changes. Ensure
    the source commits being landed have records; surface missing or failed measurements
    and investigate regressions rather than silently skipping them. An unavailable host remains
@@ -83,15 +89,17 @@ Do not replace an existing per-commit record with a faster rerun. Diagnostic rer
 2. Initialize/sync the actual `.storage` Git submodule if needed; never write archive data into
    its uninitialized directory. Commit only this task's new performance records in the submodule.
 3. Push that archive commit and confirm it exists remotely before pinning its Gitlink in Tao.
-   The new implementation's authorized `land` workflow owns archive initialization, publication
-   and pinning. Recording alone does not publish. Do not bypass the host allowlist or invoke the
-   old implementation's tools as a substitute.
+   The new implementation's authorized `land` workflow performs archive initialization,
+   publication and pinning during landing. Earlier handoffs must complete preservation through
+   a supported authorized route before becoming merge-ready; report a missing route as pending.
+   Recording alone does not publish. Do not bypass the host allowlist or invoke the old
+   implementation's tools as a substitute.
 4. Commit the updated `.storage` pointer as a separate Tao follow-up. Include the measured source
    SHAs, archive commit and record paths in the reviewed squash/merge message so the final main
    commit can be traced back to its measurements.
 5. Only then use the authorized landing route. Permission to record or publish timing data is
    not permission to land; never rewrite pushed archive history.
 
-Local implementation commits may accumulate while landing is paused. Commit and push their
-archive records, then update the pointer before landing; do not discard the pending records during
-normal or partial artifact cleanup.
+Local implementation commits may accumulate while work is ongoing. Commit and push their archive
+records, then update the pointer before the first branch-completion or merge-handoff boundary,
+even while landing is paused. Do not discard pending records during normal or partial cleanup.
