@@ -10,8 +10,15 @@ export type ChannelState = {
   finishedAtMs?: number
 }
 
-/** OutputSnapshot describes root progress and worker panes without exposing the renderer. */
-export type OutputSnapshot = { main: ChannelState; channels: readonly ChannelState[] }
+/** OutputCommand describes a persistent command with its shortcut in the label. */
+export type OutputCommand = { key: string; label: string }
+
+/** OutputSnapshot describes root progress, worker panes and persistent commands without exposing the renderer. */
+export type OutputSnapshot = {
+  main: ChannelState
+  channels: readonly ChannelState[]
+  commands: readonly OutputCommand[]
+}
 
 /** OutputRenderer updates a terminal view and releases its resources when the command ends. */
 export type OutputRenderer = { update(snapshot: OutputSnapshot): void; dispose(): Promise<void> }
@@ -45,7 +52,9 @@ export type OutputChannel = {
 export function createOutput(write: (event: OutputEvent) => void) {
   const states: ChannelState[] = []
   let renderer: OutputRenderer | undefined
-  const update = () => renderer?.update({ main: states[0]!, channels: states.slice(1) })
+  let commands: readonly OutputCommand[] = []
+  const snapshot = (): OutputSnapshot => ({ main: states[0]!, channels: states.slice(1), commands })
+  const update = () => renderer?.update(snapshot())
   const channel = (title: string): OutputChannel => {
     const state: ChannelState = { title, status: 'idle', lines: [] }
     states.push(state)
@@ -55,7 +64,11 @@ export function createOutput(write: (event: OutputEvent) => void) {
   return {
     main,
     channel,
-    snapshot: (): OutputSnapshot => ({ main: states[0]!, channels: states.slice(1) }),
+    snapshot,
+    setCommands(next: readonly OutputCommand[]): void {
+      commands = [...next]
+      update()
+    },
     render(view: OutputRenderer): void {
       renderer = view
       update()
@@ -65,6 +78,15 @@ export function createOutput(write: (event: OutputEvent) => void) {
       renderer = undefined
     },
   }
+}
+
+/** formatCommands formats persistent shortcuts, optionally emphasizing their key. */
+export function formatCommands(commands: readonly OutputCommand[], emphasize = false): string {
+  const labels = commands.map(command => {
+    const key = command.key
+    return emphasize ? command.label.replace(key, `\u001b[1;4;36m${key}\u001b[0m`) : command.label
+  })
+  return 'Commands: ' + labels.join(' | ')
 }
 
 /** formatChannelCompletion renders a channel verdict with its completed duration in seconds. */

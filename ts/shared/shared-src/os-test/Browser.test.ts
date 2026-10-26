@@ -1,7 +1,7 @@
 import { Errors } from '@shared'
 import { Browser, Tests } from '@shared/os'
 
-Tests.test('browser opening checks macOS host access before launching and preserves background opening', async () => {
+Tests.test('web opening selects Chrome after macOS host access and preserves background opening', async () => {
   const calls: unknown[] = []
   let denied = true
   const host = {
@@ -23,9 +23,13 @@ Tests.test('browser opening checks macOS host access before launching and preser
   calls.length = 0
   denied = false
   await Browser.openUrl(url, host)
-  Tests.expect(calls).toEqual(['host-access', ['open', '-g', url]])
+  Tests.expect(calls).toEqual(['host-access', ['open', '-g', '-a', 'Google Chrome', url]])
   calls.length = 0
   host.os = 'Linux'
   await Browser.openUrl(url, host)
-  Tests.expect(calls).toEqual([['xdg-open', url]])
+  Tests.expect(calls).toEqual([['google-chrome', url]])
+  calls.length = 0
+  host.os = 'Windows_NT'
+  await Browser.openUrl(url, host)
+  Tests.expect(calls).toEqual([['cmd', '/c', 'start', '', 'chrome', url]])
 })

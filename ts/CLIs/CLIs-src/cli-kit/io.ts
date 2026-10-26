@@ -4,7 +4,9 @@ import { createFileOutput } from './output/Files'
 import {
   createOutput,
   formatChannelCompletion,
+  formatCommands,
   type OutputChannel,
+  type OutputCommand,
   type OutputEvent,
   type OutputRenderer,
 } from './output/Output'
@@ -21,6 +23,12 @@ export const IO = {
   summary: (...values: unknown[]) => output.main.summary(...values),
   channel: (options: { title: string }) => output.channel(options.title),
   prompt: withPrompt,
+  setCommands(commands: readonly OutputCommand[]) {
+    output.setCommands(commands)
+    if (!tui) {
+      printCommands()
+    }
+  },
   setPromptRenderer(factory: () => Promise<OutputRenderer>) {
     promptRenderer = factory
   },
@@ -126,6 +134,14 @@ function writeOutput(event: OutputEvent): void {
   }
   if (!tui && (mode !== 'log' || event.summary)) {
     plain.write(event)
+    printCommands()
+  }
+}
+
+function printCommands(): void {
+  const commands = output.snapshot().commands
+  if (commands.length && configuration.stderr !== 'log') {
+    Terminal.stderr.write(formatCommands(commands, Terminal.stderr.isTTY === true) + '\n')
   }
 }
 

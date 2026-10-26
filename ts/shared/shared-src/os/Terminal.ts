@@ -1,4 +1,6 @@
+import { emitKeypressEvents } from 'node:readline'
 import { createInterface, type ReadLineOptions } from 'node:readline/promises'
+import type { Readable } from 'node:stream'
 import { StringDecoder } from 'node:string_decoder'
 import { Errors, Try } from '../universal/universal'
 
@@ -16,6 +18,32 @@ export function isInteractive(): boolean {
 /** writeLine writes human-readable text plus a newline to stdout. */
 export function writeLine(message = ''): void {
   stdout.write(`${message}\n`)
+}
+
+/** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
+export function listenForKeys(receive: (key: string) => void, input: KeyInput = process.stdin): () => void {
+  if (!input.isTTY) {
+    return () => {}
+  }
+  const wasRaw = input.isRaw === true
+  const wasPaused = input.isPaused()
+  let listening = true
+  const readKey = (_text: string | undefined, key: { sequence: string }) => receive(key.sequence)
+  emitKeypressEvents(input)
+  input.on('keypress', readKey)
+  input.setRawMode(true)
+  input.resume()
+  return () => {
+    if (!listening) {
+      return
+    }
+    listening = false
+    input.off('keypress', readKey)
+    input.setRawMode(wasRaw)
+    if (wasPaused) {
+      input.pause()
+    }
+  }
 }
 
 /** askConfirm prompts for a yes/no response and closes its reader when the caller cancels. */
@@ -94,6 +122,7 @@ export async function askSecret(prompt: string): Promise<string> {
 }
 
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
+type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
 

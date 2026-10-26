@@ -6,14 +6,14 @@ export async function build(entrypoints: string[], outdir: string): Promise<Bun.
   return await Bun.build({ entrypoints, outdir, target: 'browser', format: 'esm', sourcemap: 'none' })
 }
 
-/** openUrl opens a URL in the user's default browser. */
+/** openUrl opens a web URL in Google Chrome without activating it on macOS. */
 export async function openUrl(url: string, host: BrowserHost = nativeBrowser()): Promise<void> {
   if (host.os === 'Darwin') {
     await host.requireAccess('Run just dev in a normal terminal or a host-enabled harness; the browser was not opened.')
   }
   const status = await host.start(browserCommand(url, host.os))
   if (status !== 0) {
-    Errors.ThrowHostEnvironment(`Could not open the preview URL in the default browser: ${url}`)
+    Errors.ThrowHostEnvironment(`Could not open the preview URL in Google Chrome: ${url}`)
   }
 }
 
@@ -36,13 +36,13 @@ function nativeBrowser(): BrowserHost {
 
 function browserCommand(url: string, os: string): string[] {
   if (os === 'Darwin') {
-    return ['open', '-g', url]
+    return ['open', '-g', '-a', 'Google Chrome', url]
   }
   if (os === 'Linux') {
-    return ['xdg-open', url]
+    return ['google-chrome', url]
   }
   if (os === 'Windows_NT') {
-    return ['cmd', '/c', 'start', '', url]
+    return ['cmd', '/c', 'start', '', 'chrome', url]
   }
   return Errors.ThrowHostEnvironment(`Opening a browser is unsupported on ${os}.`)
 }

@@ -1,7 +1,7 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Browser, FileSystem, Http, Lifecycle, Platform, Repo } from '@shared/os'
+import { Browser, FileSystem, Http, Lifecycle, Platform, Repo, Terminal } from '@shared/os'
 import { execute, type WorkflowUI, type WorkflowWorkspace } from '@workspace/Workflow'
 import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
@@ -25,23 +25,21 @@ async function runDevSession(yes?: boolean): Promise<void> {
   await prepareRuntime()
   const entry = Repo.resolvePath('Apps/Dev/Preview/Preview.tao')
   const state: DevSession = { stopped: false, controller: Http.createAbortController() }
-  const stop = Lifecycle.onTermination(() => {
-    state.stopped = true
-    state.controller.abort()
-  })
+  const stop = Lifecycle.onTermination(() => requestDevExit(state))
   const ui = workflowUI(yes, state.controller.signal)
   const options = devWorkspaceOptions(state, entry, ui)
   await Try(async () => {
     state.workspace = await execute({ kind: 'preview', entry, options }, ui)
     await startDevRuntime(state)
-    IO.print('Edit Apps/Dev/Preview/Preview.tao to refresh both previews. Press Ctrl-C to stop.')
+    IO.print('Edit Apps/Dev/Preview/Preview.tao to refresh both previews.')
+    startDevActions(state)
     if (!state.stopped) {
-      await Lifecycle.waitForTermination()
+      await Lifecycle.waitForTermination(state.controller.signal)
     }
   }, {
     async finally() {
-      state.stopped = true
-      state.controller.abort()
+      requestDevExit(state)
+      IO.progress('Shutting down…')
       await state.recovery
       await stopDevSession(state)
       stop()
@@ -70,6 +68,7 @@ async function restartDevSession(
   ui: WorkflowUI,
   reason: string,
 ): Promise<void> {
+  state.stopKeys?.()
   await Try(async () => {
     state.workspace = await execute({
       kind: 'preview',
@@ -82,6 +81,7 @@ async function restartDevSession(
     catch: error => IO.warn(`Preview restart did not complete: ${String(error)}`),
     finally() {
       state.recovery = undefined
+      startDevActions(state)
     },
   })
 }
@@ -89,6 +89,7 @@ async function restartDevSession(
 type DevSession = {
   stopped: boolean
   controller: ReturnType<typeof Http.createAbortController>
+  stopKeys?: () => void
   workspace?: WorkflowWorkspace
   expo?: Runtime.ExpoSession
   preview?: PreviewHarness
@@ -112,12 +113,44 @@ async function startDevRuntime(state: DevSession): Promise<void> {
     onReload: reportReload,
   })
   IO.print('Tao preview is running at ' + state.preview.url)
-  if (!state.stopped) {
-    await Browser.openUrl(state.preview.url)
+}
+
+function startDevActions(state: DevSession): void {
+  if (state.stopped || !Terminal.isInteractive()) {
+    return
+  }
+  state.stopKeys?.()
+  const stopKeys = Terminal.listenForKeys(key => {
+    if (key === 'q' || key === '\u0003') {
+      requestDevExit(state)
+    } else if (key === 'w') {
+      openDevBrowser(state)
+    }
+  })
+  state.stopKeys = () => {
+    stopKeys()
+    IO.setCommands([])
+  }
+  IO.setCommands([{ key: 'w', label: 'open web' }, { key: 'q', label: 'quit' }])
+}
+
+function openDevBrowser(state: DevSession): void {
+  const url = state.preview?.url
+  if (url && !state.stopped) {
+    void Try(() => Browser.openUrl(url), {
+      catch: error => IO.warn(`Could not open preview browser: ${String(error)}`),
+    })
   }
 }
 
+function requestDevExit(state: DevSession): void {
+  state.stopped = true
+  state.controller.abort()
+  state.stopKeys?.()
+}
+
 async function stopDevSession(state: DevSession): Promise<void> {
+  state.stopKeys?.()
   if (state.workspace) {
     await cleanup({ preview: state.preview, expo: state.expo, workspace: state.workspace, reportFailure: false })
     state.workspace = undefined

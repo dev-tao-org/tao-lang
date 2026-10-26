@@ -1,15 +1,20 @@
 import { Time, Try } from '../universal/universal'
 
-/** waitForTermination resolves once the process receives an interactive shutdown signal. */
-export function waitForTermination(): Promise<void> {
+/** waitForTermination resolves on a shutdown signal or explicit cancellation and removes its listeners. */
+export function waitForTermination(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.resolve()
+  }
   return new Promise(resolve => {
     const finish = () => {
       process.off('SIGINT', finish)
       process.off('SIGTERM', finish)
+      signal?.removeEventListener('abort', finish)
       resolve()
     }
     process.once('SIGINT', finish)
     process.once('SIGTERM', finish)
+    signal?.addEventListener('abort', finish, { once: true })
   })
 }
 
