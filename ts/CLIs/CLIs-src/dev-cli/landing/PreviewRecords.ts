@@ -79,6 +79,6 @@ type RecordMetadata = {
 function validMetadata(record: RecordMetadata, source: string, tree: string, report: string, fixture: string): boolean {
   return record.version === 1 && record.status === 'passed' && record.sourceCommit === source
     && record.sourceTree === tree && record.reportSha256 === Platform.hashText(report)
-    && record.fixture?.path === 'Apps/Tests/Hello World.tao'
+    && typeof record.fixture?.path === 'string' && record.fixture.path.endsWith('.tao')
     && record.fixture?.sha256 === Platform.hashText(fixture)
 }

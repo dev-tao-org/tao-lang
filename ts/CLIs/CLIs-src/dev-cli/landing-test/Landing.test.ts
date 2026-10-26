@@ -39,6 +39,20 @@ Tests.test('dirty authored and ignored-storage work stop before any fetch or pub
   }
 })
 
+Tests.test('archived fixture provenance uses its measured commit path and still rejects a changed checksum', async () => {
+  const f = recordingLanding()
+  const path = `${f.pending}/record.json`
+  const record = JSON.parse(f.files.get(path)!)
+  record.fixture.path = 'Apps/Tests/Hello World.tao'
+  f.files.set(path, JSON.stringify(record))
+  const records = await pendingPreviewRecords(f.io)
+  Tests.expect(records.map(record => record.source)).toEqual([f.source])
+  Tests.expect(f.calls).toContain(`git show ${f.source}:Apps/Tests/Hello World.tao`)
+  record.fixture.sha256 = 'corrupted'
+  f.files.set(path, JSON.stringify(record))
+  await Tests.rejects(pendingPreviewRecords(f.io), /inconsistent or incomplete/)
+})
+
 Tests.test('merge-main preserves merge failures and never publishes', async () => {
   const f = recordingLanding()
   f.state.fail = 'git merge --no-edit'
