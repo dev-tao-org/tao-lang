@@ -23,7 +23,10 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
   const outputDirectory = Path.join(root, 'output')
   const resourcesDirectory = Path.join(root, 'resources')
   await FileSystem.mkdir(directory, { recursive: true })
-  await FileSystem.writeFile(Path.join(directory, 'Hello World.tao'), await Tests.readApp('Hello World'))
+  await FileSystem.writeFile(
+    Path.join(directory, 'Hello World.tao'),
+    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+  )
   await writeResources(resourcesDirectory)
   const workspace = createWorkspace({
     directory,
@@ -82,7 +85,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
   await Try(async () => {
     Tests.expect((await workspace.update('app')).status).toBe('invalid')
     Tests.expect(installs).toBe(0)
-    const source = await Tests.readApp('Hello World')
+    const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
     Tests.expect((await workspace.update(source)).status).toBe('published')
     await verifyPublication(workspace, project.buildDirectory, source, () =>
       files = {

@@ -9,7 +9,7 @@ import {
 
 Tests.test('repeated measurement edits change source each time and reset each complete cycle', async () => {
   const settings = readPreviewMeasurement({ editCount: 32, frameCount: 1, extraViews: 0 })
-  const canonical = await Tests.readApp('Hello World')
+  const canonical = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const scenarios = createMeasurementScenarios(settings)
   Tests.expect(scenarios).toHaveLength(32)
   let current = canonical
@@ -34,7 +34,8 @@ Tests.test('the default sized measurement retains four established edit names an
     'row',
     'reset',
   ])
-  const source = createMeasurementFiles(await Tests.readApp('Hello World'), settings).entry
+  const source =
+    createMeasurementFiles(await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'), settings).entry
   Tests.expect(source).toContain('view Load0 {')
   Tests.expect(source).toContain('view Load499 {')
   Tests.expect(source).not.toContain('view Load500 {')
@@ -43,7 +44,10 @@ Tests.test('the default sized measurement retains four established edit names an
 
 Tests.test('multi-input measurements distribute unique generated views across imported sibling files', async () => {
   const settings = readPreviewMeasurement({ editCount: 4, frameCount: 2, extraViews: 7, extraFileCount: 3 })
-  const fixture = createMeasurementFiles(await Tests.readApp('Hello World'), settings)
+  const fixture = createMeasurementFiles(
+    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    settings,
+  )
   Tests.expect(fixture.extraFiles.map(file => file.name)).toEqual(['LoadViews0', 'LoadViews1', 'LoadViews2'])
   Tests.expect(fixture.entry).toContain('use package ./LoadViews0')
   Tests.expect(fixture.entry).toContain('use package ./LoadViews2')
@@ -61,7 +65,10 @@ Tests.test('multi-input measurements distribute unique generated views across im
 
 Tests.test('multi-input measurements retain the single-file large-source setting when no extra modules are selected', async () => {
   const settings = readPreviewMeasurement({ editCount: 4, frameCount: 1, extraViews: 3, extraFileCount: 0 })
-  const fixture = createMeasurementFiles(await Tests.readApp('Hello World'), settings)
+  const fixture = createMeasurementFiles(
+    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    settings,
+  )
   Tests.expect(fixture.extraFiles).toEqual([])
   Tests.expect(fixture.entry).toContain('view Load0 {')
   Tests.expect(fixture.entry).toContain('view Load2 {')

@@ -51,7 +51,7 @@ type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
 
 async function createRecoveryWorkspace(root: string) {
   const project = await createProject({ directory: Path.join(root, 'project') })
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let mode: RecoveryMode = 'Ready'
   const workspace = createWorkspace({
     project,

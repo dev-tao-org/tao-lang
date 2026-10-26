@@ -10,9 +10,9 @@ At the recorded revision, run `./agent setup --frozen-lockfile`, then `./agent p
 Raw samples and summaries are saved under `.artifacts/logs/performance/`.
 Today's commands and automation boundaries are described in the [performance guide](README.md).
 
-The canonical fixture is [Apps/Tests/Hello World.tao](../../../Apps/Tests/Hello%20World.tao);
+The canonical fixture is now [Performance.tao](../../../ts/perf/perf-fixtures/Performance/Performance.tao);
 its current contents have evolved since this measurement.
-`Tests.readApp('Hello World')` loads it for both correctness and performance consumers.
+`Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')` loads it for both correctness and performance consumers. This historical baseline used its former `Apps/Tests/Hello World.tao` path and `HelloWorld` app name.
 Measure the initial source, replace its text, add another Text view, then change Col to Row.
 Every parse processes the complete snapshot; there is no incremental tree reuse.
 

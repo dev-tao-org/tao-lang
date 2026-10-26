@@ -8,10 +8,10 @@ import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../../2-ast-gen/ast-gen-src/Transform'
 import { compile } from '../../6-compile/compile-src/Compile'
 
-/** transformerSamples measures full Hello World parsing, transformation and code generation.
+/** transformerSamples measures minimal benchmark parsing, transformation and code generation.
  *  Record 100 warm samples after 20 warmups; no publication or preview is measured here. */
 export async function transformerSamples(): Promise<(TimingSample & { scenario: string })[]> {
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const parser = createParser()
   const samples: (TimingSample & { scenario: string })[] = []
   for (let index = 0; index < 120; index++) {
@@ -29,12 +29,12 @@ const sampleCompilation = Timings.createTopLevelTimer(
     samples: (TimingSample & { scenario: string })[],
   ) {
     const document = await timings.run(parseTransformAndCompile, source, parser)
-    const app = document && AST.FindAppDeclaration(document, 'HelloWorld')
-    if (app?.name.value !== 'HelloWorld') {
-      Errors.ThrowShouldNeverHappen('Hello World compiler sample did not produce the expected app.')
+    const app = document && AST.FindAppDeclaration(document, 'Performance')
+    if (app?.name.value !== 'Performance') {
+      Errors.ThrowShouldNeverHappen('Preview performance compiler sample did not produce the expected app.')
     }
     if (index >= 20) {
-      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'hello-world-compile' })))
+      samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'preview-fixture-compile' })))
     }
   },
 )
@@ -47,7 +47,7 @@ const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async
   const tree = timings.run(parser.parse, source)
   const document = timings.run(transform, tree)
   if (document) {
-    const path = Repo.resolvePath('Apps/Tests/Hello World.tao')
+    const path = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
     const sources = await timings.run(
       loadModules,
       { path, document },

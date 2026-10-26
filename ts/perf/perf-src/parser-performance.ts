@@ -30,7 +30,7 @@ export async function parserPerformance(build: readonly TimingSample[]) {
           cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
           warm: '20 unrecorded warmups per fixture, then 100 full parses per fixture in one process.',
           rebuild: 'One forced grammar generation/native rebuild; tool and Node header caches retained.',
-          transformer: 'Full Hello World: 20 warmups, then 100 parse-to-code samples, including authored injections.',
+          transformer: 'Minimal benchmark: 20 warmups, then 100 parse-to-code samples, including authored injections.',
         },
         summary,
         samples,

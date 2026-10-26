@@ -3,7 +3,7 @@
 ```sh
 just dev
 just performance
-./tao compile "Apps/Tests/Hello World.tao"
+./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
 ```
 
 `just dev` opens the existing `Apps/Dev/Preview` workspace and serves its app in two differently sized iframes. It opens the control page in the default browser and keeps running until Ctrl-C. Authored files stay in place; generated build output and the readable Expo runtime live under `.artifacts/dev/preview/`.

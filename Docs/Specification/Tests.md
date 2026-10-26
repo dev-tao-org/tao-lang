@@ -5,7 +5,7 @@ A `tests { ... }` block groups independent app journeys that exercise controls a
 ```tao
 tests "App interactions" {
   test(Label "Edit and save") {
-    run Interactions
+    run UIInteractions
     expect text "Ready"
     expect #name input value "Original"
     type "Hello World" into #name
@@ -16,10 +16,10 @@ tests "App interactions" {
 }
 ```
 
-#### `run Interactions`
+#### `run UIInteractions`
 
 Each case launches an app declared in the same source or imported into it, in a fresh isolated
-headless web session. [Interactions.tao](../../Apps/Tests/Interactions.tao) is a runnable example.
+headless web session. [Forms.test.tao](../../Apps/Tests/UI%20Interactions/Forms.test.tao) is a runnable example.
 The current runner requires `run <app>`; direct rendering, state overrides, devices and datasource
 arguments below are agreed future behavior, not yet executable.
 

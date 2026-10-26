@@ -1,6 +1,6 @@
 import { Errors, S } from '@shared'
 import { Env, type HeadlessBrowser } from '@shared/os'
-import { helloWorldScenarios, type PreviewScenario } from './PreviewScenarios'
+import { performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 
 /** PreviewMeasurement selects edit volume, preview frames and generated Tao source shape. */
 export type PreviewMeasurement = { editCount: number; frameCount: 1 | 2; extraViews: number; extraFileCount: number }
@@ -32,7 +32,7 @@ export function readPreviewMeasurement(options: Partial<PreviewMeasurement> = {}
 /** createMeasurementScenarios repeats real source edits with unique text in each measured cycle. */
 export function createMeasurementScenarios(settings: PreviewMeasurement): readonly PreviewScenario[] {
   if (settings.editCount === 4) {
-    return helloWorldScenarios
+    return performanceScenarios
   }
   return Array.from({ length: settings.editCount / 4 }, (_, index) => createCycle(index + 1)).flat()
 }

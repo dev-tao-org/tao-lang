@@ -128,7 +128,7 @@ async function runPreview(initialSource?: string) {
       id: 'performance',
       runtimeOptions,
     }),
-    initialSource: initialSource ?? await Tests.readApp('Hello World'),
+    initialSource: initialSource ?? await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
   for (const [index, timing] of result.reloads.entries()) {

@@ -11,11 +11,11 @@ import type { LinkedProgram, SourceModule } from '@typecheck/Modules'
 import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles, transpileGeneratedFiles } from './GeneratedExecution'
 
-Tests.test('Hello World generates generic runtime calls and authored native injections', async () => {
-  const source = await Tests.readApp('Hello World')
+Tests.test('Preview performance fixture generates generic runtime calls and authored native injections', async () => {
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const tree = createParser().parse(source)
   const document = transform(tree)!
-  const entryPath = Repo.resolvePath('Apps/Tests/Hello World.tao')
+  const entryPath = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
   const program = await linkedUIProgram(entryPath, document)
   const code = generatedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')
@@ -24,7 +24,7 @@ Tests.test('Hello World generates generic runtime calls and authored native inje
   Tests.expect(code.includes('TR.finishViewRender(_Render, useTaoInjection')).toBe(true)
   Tests.expect(code).not.toContain('function TaoInjection')
   Tests.expect(code).not.toContain('TR.RenderInjectStatement')
-  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["RootView"], "test-1")')
+  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["Preview"], "test-1")')
   Tests.expect(code).toContain("Children: TR.ViewComponentProps['children']")
 })
 

@@ -63,7 +63,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
   const fixture = createMeasurementFiles(options.initialSource, owned.measurement)
   const source = fixture.entry
   const scenarios = createMeasurementScenarios(owned.measurement)
-  const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
+  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
   await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
   for (const file of fixture.extraFiles) {
     await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')

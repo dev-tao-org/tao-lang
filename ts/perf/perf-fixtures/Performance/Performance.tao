@@ -1,10 +1,10 @@
 use Text, Col, Row from tao@ui
 
-app HelloWorld {
-  root RootView
+app Performance {
+  root Preview
 }
 
-view RootView {
+view Preview {
   render Col {
     Text("Hello World")
   }

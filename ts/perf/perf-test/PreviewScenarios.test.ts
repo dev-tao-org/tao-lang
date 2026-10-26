@@ -1,5 +1,5 @@
 import { FileSystem, Repo, Tests } from '@shared/os'
-import { applyScenario, helloWorldScenarios, previewScenarios } from '../perf-src/PreviewScenarios'
+import { applyScenario, performanceScenarios, previewScenarios } from '../perf-src/PreviewScenarios'
 
 Tests.test('preview button cycle fits the isolated Preview app', async () => {
   const canonical = await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Preview/Preview.tao'), 'utf8')
@@ -16,14 +16,14 @@ Tests.test('preview button cycle fits the isolated Preview app', async () => {
   Tests.expect(reset).toBe(canonical)
 })
 
-Tests.test('hello world preview cycle keeps the performance edits', async () => {
-  const canonical = await Tests.readApp('Hello World')
-  const text = applyScenario(helloWorldScenarios, 'text', canonical, canonical)
-  const added = applyScenario(helloWorldScenarios, 'add-text', text, canonical)
-  const row = applyScenario(helloWorldScenarios, 'row', added, canonical)
+Tests.test('minimal benchmark preview cycle keeps the performance edits', async () => {
+  const canonical = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const text = applyScenario(performanceScenarios, 'text', canonical, canonical)
+  const added = applyScenario(performanceScenarios, 'add-text', text, canonical)
+  const row = applyScenario(performanceScenarios, 'row', added, canonical)
   Tests.expect(text).toContain('Text("Hello Tao")')
   Tests.expect(added).toContain('Text("Second view")')
   Tests.expect(row).toContain('render Row {')
-  Tests.expect(helloWorldScenarios.map(scenario => scenario.name)).toEqual(['text', 'add-text', 'row', 'reset'])
-  Tests.expect(applyScenario(helloWorldScenarios, 'reset', row, canonical)).toBe(canonical)
+  Tests.expect(performanceScenarios.map(scenario => scenario.name)).toEqual(['text', 'add-text', 'row', 'reset'])
+  Tests.expect(applyScenario(performanceScenarios, 'reset', row, canonical)).toBe(canonical)
 })

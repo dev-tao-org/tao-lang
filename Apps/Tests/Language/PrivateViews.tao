@@ -2,11 +2,7 @@ use Col, Text from tao@ui
 
 let Banner is text = "Original"
 
-app NestedViews {
-  root Main
-}
-
-view Main {
+folder view PrivateViewExamples {
   render Col {
     Text(Banner)
     Owner("Left")
@@ -34,17 +30,5 @@ view Owner(Label text) {
         </Tao.Pressable>
       )
     ```
-  }
-}
-
-tests "Nested view scope" {
-  test "captures are isolated across owner instances" {
-    run NestedViews
-    expect text "Original"
-    expect text "Left: 0"
-    expect text "Right: 0"
-    press #Left
-    expect text "Left: 1"
-    expect text "Right: 0"
   }
 }
