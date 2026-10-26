@@ -4,6 +4,7 @@ import { Formatting } from './format/Formatting'
 import { Layout } from './format/Layout'
 import { createFormattingPlan } from './lib/formatter/Formatter'
 import { layout, type LayoutOptions } from './lib/layout/Layout'
+import type { LayoutPlan } from './lib/layout/Plan'
 import { applyEdits, type SourceEdit, type SourceRange } from './Source'
 
 export type { SourceEdit } from './Source'
@@ -38,10 +39,20 @@ const formatSource = Timings.measure('formatter.format', function(
   }
   const plan = createFormattingPlan(input.source, input.tree, Formatting, Layout, timings)
   const edits = layout(plan, options, timings)
-  const status = plan.skipped.length === 0
-    ? 'formatted'
-    : input.tree.rootNode.hasError && edits.length === 0
-    ? 'invalid'
-    : 'partial'
+  const status = resolveFormatStatus(input, plan, edits)
   return { status, text: applyEdits(input.source, edits), edits, skipped: plan.skipped }
 })
+
+function resolveFormatStatus(
+  input: FormatInput,
+  plan: LayoutPlan,
+  edits: readonly SourceEdit[],
+): FormatResult['status'] {
+  if (plan.skipped.length === 0) {
+    return 'formatted'
+  }
+  if (input.tree.rootNode.hasError && edits.length === 0) {
+    return 'invalid'
+  }
+  return 'partial'
+}
