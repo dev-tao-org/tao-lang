@@ -20,14 +20,14 @@ type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report:
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
 const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Document): UsageWarning[] {
-  const scope = childScope()
+  const scope = createChildScope()
   for (const declaration of AST.GetDeclarations(document)) {
     declareModuleBinding(declaration, scope)
   }
   for (const declaration of AST.GetDeclarations(document)) {
     visitDeclaration(declaration, scope)
   }
-  return scope.all.filter(binding => binding.report && !binding.used).map(warningFor)
+  return scope.all.filter(binding => binding.report && !binding.used).map(createUsageWarning)
     .sort((left, right) => left.start - right.start)
 })
 
@@ -72,7 +72,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 }
 
 function visitView(node: AST.ViewDeclaration, parent: Scope): void {
-  const scope = childScope(parent)
+  const scope = createChildScope(parent)
   const reportUnusedParameters = AST.GetForeignViewPath(node) === undefined
   for (const parameter of node.parameters) {
     reference(parent, parameter.type)
@@ -118,7 +118,7 @@ function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   }
   const statements = AST.GetViewRenderBlockStatements(node)
   if (statements.length > 0) {
-    const childrenScope = childScope(scope)
+    const childrenScope = createChildScope(scope)
     for (const child of statements) {
       if (AST.IsLetDeclaration(child)) {
         visitLet(child, childrenScope)
@@ -138,7 +138,7 @@ function visitInjection(node: AST.Injection, scope: Scope): void {
   }
 }
 
-function childScope(parent?: Scope): Scope {
+function createChildScope(parent?: Scope): Scope {
   return { parent, bindings: new Map(), all: parent?.all ?? [] }
 }
 
@@ -165,7 +165,7 @@ function reference(scope: Scope, name: AST.Name): void {
   }
 }
 
-function warningFor(binding: Binding): UsageWarning {
+function createUsageWarning(binding: Binding): UsageWarning {
   const code = binding.kind === 'local' ? 'unused-declaration' : 'unused-import'
   const label = binding.kind === 'local' ? 'Declaration' : 'Imported name'
   const message = `${label} '${binding.name.value}' is not used in this file.`

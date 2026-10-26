@@ -104,7 +104,7 @@ function addExplicitBindings(
   const seenStatements = new Set<string>()
   for (const resolved of source.imports) {
     const statement = resolved.statement
-    const statementKey = importStatementKey(statement)
+    const statementKey = createImportStatementKey(statement)
     if (seenStatements.has(statementKey)) {
       Errors.ThrowUserInput(`Module ${source.path} repeats an import statement.`)
     }
@@ -125,7 +125,7 @@ function addExplicitBindings(
         Errors.ThrowUserInput(`Imported module is unavailable: ${target.path}`)
       }
       if (AST.IsUsePackageStatement(statement)) {
-        const namespace = packageNamespace(statement)
+        const namespace = resolvePackageNamespace(statement)
         addPackageBindings(
           source,
           targetModule,
@@ -145,7 +145,7 @@ function addExplicitBindings(
   }
 }
 
-function packageNamespace(statement: AST.UsePackageStatement): string {
+function resolvePackageNamespace(statement: AST.UsePackageStatement): string {
   const namespace = statement.alias?.value ?? deriveNamespaceFromPath(statement.from.value)
   if (!namespace) {
     Errors.ThrowUserInput(`Cannot derive a namespace from package path ${statement.from.value}.`)
@@ -153,17 +153,17 @@ function packageNamespace(statement: AST.UsePackageStatement): string {
   return namespace
 }
 
-function importStatementKey(statement: AST.UseStatement | AST.UsePackageStatement): string {
+function createImportStatementKey(statement: AST.UseStatement | AST.UsePackageStatement): string {
   if (AST.IsUsePackageStatement(statement)) {
     // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
     return `package:${statement.from.value}:${statement.alias?.value ?? ''}`
   }
-  const names = statement.imports.map(namedImportKey).join(',')
+  const names = statement.imports.map(createNamedImportKey).join(',')
   // ex: use Foo as Bar from X -> use:Foo:Bar:X
   return `use:${statement.all ? 'all' : names}:${statement.from?.value ?? ''}`
 }
 
-function namedImportKey(imported: AST.NamedImport): string {
+function createNamedImportKey(imported: AST.NamedImport): string {
   // ex: Foo as Bar -> Foo:Bar
   return `${imported.target.value}:${imported.alias?.value ?? ''}`
 }

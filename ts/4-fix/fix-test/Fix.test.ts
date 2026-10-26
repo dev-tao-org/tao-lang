@@ -15,7 +15,7 @@ Tests.test('import organization collects, sorts, merges and deduplicates without
     use Widget from widgets@ui
     use all from ./Other
   `
-  const result = fixed(source)
+  const result = fixSource(source)
   Tests.expect(result).toBe(S`
     use Col, Text, Text as Caption from tao@ui
     use package tao@ui as UI
@@ -26,7 +26,7 @@ Tests.test('import organization collects, sorts, merges and deduplicates without
       render Text("Hello")
     }
   `)
-  Tests.expect(fixed(result)).toBe(result)
+  Tests.expect(fixSource(result)).toBe(result)
 })
 
 Tests.test('organizing imports keeps comments and their groups attached, including trailing comments', () => {
@@ -37,14 +37,14 @@ Tests.test('organizing imports keeps comments and their groups attached, includi
     use Col from tao@ui
     view Main { render Text("Hello") }
   `
-  const result = fixed(source)
+  const result = fixSource(source)
   Tests.expect(result).toContain('// Native views\nuse Text from tao@ui // Used by Main\n')
   Tests.expect(result).toContain('use Col from tao@ui')
-  Tests.expect(fixed(result)).toBe(result)
+  Tests.expect(fixSource(result)).toBe(result)
 })
 
 Tests.test('organizing imports removes duplicates across comment groups and keeps the comments', () => {
-  const result = fixed(S`
+  const result = fixSource(S`
     use Text from tao@ui
     // Text is used by the primary view.
     use Text from tao@ui
@@ -55,8 +55,32 @@ Tests.test('organizing imports removes duplicates across comment groups and keep
   Tests.expect(result).toContain('// Text is used by the primary view.')
 })
 
+Tests.test('organizing imports removes partial duplicates across comment groups', () => {
+  const result = fixSource(S`
+    use Text from tao@ui
+    // Keep this group comment.
+    use Text, Col, Missing as Unresolved from tao@ui
+    // Keep this later comment too.
+    use Col, Missing as Unresolved, Row as Alias from tao@ui
+    use Badge, Badge,
+      // Keep this member comment.
+      Badge as Caption, Badge as Caption from tao@ui
+    view Main { render Text("Hello") }
+  `)
+  Tests.expect(result.match(/^use .*\bText\b.*$/gm)).toHaveLength(1)
+  Tests.expect(result.match(/^use .*\bCol\b.*$/gm)).toHaveLength(1)
+  Tests.expect(result.match(/Missing as Unresolved/g)).toHaveLength(1)
+  Tests.expect(result).toContain('Row as Alias')
+  Tests.expect(result).toContain('use Badge, Badge as Caption from tao@ui')
+  Tests.expect(result.match(/Badge as Caption/g)).toHaveLength(1)
+  Tests.expect(result).toContain('// Keep this group comment.')
+  Tests.expect(result).toContain('// Keep this later comment too.')
+  Tests.expect(result).toContain('// Keep this member comment.')
+  Tests.expect(fixSource(result)).toBe(result)
+})
+
 Tests.test('organizing duplicate multiline imports retains their interior comments once', () => {
-  const result = fixed(S`
+  const result = fixSource(S`
     use Text from tao@ui
     use Text,
       // Keep this line comment.
@@ -67,10 +91,10 @@ Tests.test('organizing duplicate multiline imports retains their interior commen
   Tests.expect(result.match(/use Text from tao@ui/g)).toHaveLength(1)
   Tests.expect(result.match(/\/\/ Keep this line comment\./g)).toHaveLength(1)
   Tests.expect(result.match(/\/\* Keep this block comment\. \*\//g)).toHaveLength(1)
-  Tests.expect(fixed(result)).toBe(result)
+  Tests.expect(fixSource(result)).toBe(result)
 })
 
-function fixed(source: string): string {
+function fixSource(source: string): string {
   const parser = createParser()
   const tree = parser.parse(source)
   const ast = transform(tree)!

@@ -61,7 +61,7 @@ function constructGeneratedNode(cst: CST.SyntaxNode, kind: Generated.Node['kind'
       constructField(cst, kind, name, field),
     ]),
   )
-  return { ...fields, ...range(cst), kind } as Generated.Node
+  return { ...fields, ...getSourceRange(cst), kind } as Generated.Node
 }
 
 function constructField(cst: CST.SyntaxNode, kind: Generated.Node['kind'], name: string, field: ChildField): unknown {
@@ -69,7 +69,7 @@ function constructField(cst: CST.SyntaxNode, kind: Generated.Node['kind'], name:
     return cst.childForFieldName(name) !== null
   }
   const children = cst.childrenForFieldName(name)
-  const constructChild = (child: CST.SyntaxNode) => scalarField(kind, name) ? child.text : constructNode(child)
+  const constructChild = (child: CST.SyntaxNode) => isScalarField(kind, name) ? child.text : constructNode(child)
   if (field.multiple) {
     return children.map(constructChild)
   }
@@ -77,7 +77,7 @@ function constructField(cst: CST.SyntaxNode, kind: Generated.Node['kind'], name:
   return child ? constructChild(child) : undefined
 }
 
-function scalarField(kind: Generated.Node['kind'], name: string): boolean {
+function isScalarField(kind: Generated.Node['kind'], name: string): boolean {
   return name === 'visibility' || kind === 'RequiresDeclaration' && ['provider', 'identifier', 'version'].includes(name)
 }
 
@@ -92,7 +92,7 @@ function constructAppDeclaration(cst: CST.SyntaxNode): Generated.AppDeclaration 
   const blockNode = CST.RequiredField(cst, 'block')
   const statements = constructBlock(blockNode, 'AppDeclarationBlock').statements
   requireCount(statements, 1, 'An app block must contain exactly one root declaration.')
-  const block = { ...range(blockNode), kind: 'Block', statements } as Generated.AppDeclarationBlock
+  const block = { ...getSourceRange(blockNode), kind: 'Block', statements } as Generated.AppDeclarationBlock
   return makeNode(cst, 'AppDeclaration', {
     block,
     name: constructFieldNode(cst, 'name', 'Name'),
@@ -103,7 +103,7 @@ function constructAppDeclaration(cst: CST.SyntaxNode): Generated.AppDeclaration 
 function constructViewDeclaration(cst: CST.SyntaxNode): Generated.ViewDeclaration {
   const body = CST.RequiredField(cst, 'body')
   const parametersNode = cst.childForFieldName('parameters')
-  const parameters = constructChildren(parametersNode?.namedChildren ?? [], 'Parameter')
+  const parameters = constructChildren(parametersNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
   const implementation = body.type === 'Block' ? constructViewDeclarationBlock(body) : Construct(body, 'ForeignView')
   return makeNode(cst, 'ViewDeclaration', {
     body: implementation,
@@ -122,7 +122,7 @@ function constructViewDeclarationBlock(cst: CST.SyntaxNode): Generated.ViewDecla
   if (renders.length !== 1) {
     Errors.ThrowUserInput('A view block must contain one render statement before its private views.')
   }
-  return { ...range(cst), kind: 'Block', statements } as Generated.ViewDeclarationBlock
+  return { ...getSourceRange(cst), kind: 'Block', statements } as Generated.ViewDeclarationBlock
 }
 
 function constructViewRenderExpression(cst: CST.SyntaxNode): Generated.ViewRenderExpression {
@@ -139,14 +139,14 @@ function constructViewRenderExpression(cst: CST.SyntaxNode): Generated.ViewRende
 
 function constructViewRenderBlock(cst: CST.SyntaxNode): Generated.ViewRenderBlock {
   const statements = constructBlock(cst, 'ViewRenderBlock').statements
-  return { ...range(cst), kind: 'Block', statements } as Generated.ViewRenderBlock
+  return { ...getSourceRange(cst), kind: 'Block', statements } as Generated.ViewRenderBlock
 }
 
 function constructTestsDeclaration(cst: CST.SyntaxNode): Generated.TestsDeclaration {
   const blockNode = CST.RequiredField(cst, 'block')
   const statements = constructBlock(blockNode, 'TestsBlock').statements
   return makeNode(cst, 'TestsDeclaration', {
-    block: { ...range(blockNode), kind: 'Block', statements } as Generated.TestsBlock,
+    block: { ...getSourceRange(blockNode), kind: 'Block', statements } as Generated.TestsBlock,
     label: constructOptionalField(cst, 'label', 'TextLiteral'),
   })
 }
@@ -156,7 +156,7 @@ function constructTestDeclaration(cst: CST.SyntaxNode): Generated.TestDeclaratio
   const statements = constructBlock(blockNode, 'TestBlock')
     .statements
   return makeNode(cst, 'TestDeclaration', {
-    block: { ...range(blockNode), kind: 'Block', statements } as Generated.TestBlock,
+    block: { ...getSourceRange(blockNode), kind: 'Block', statements } as Generated.TestBlock,
     label: constructOptionalField(cst, 'label', 'TextLiteral'),
   })
 }
@@ -176,7 +176,7 @@ function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatemen
 
 function constructExpectationBlock(cst: CST.SyntaxNode): Generated.ExpectationBlock {
   const statements = constructBlock(cst, 'ExpectationBlock').statements
-  return { ...range(cst), kind: 'Block', statements } as Generated.ExpectationBlock
+  return { ...getSourceRange(cst), kind: 'Block', statements } as Generated.ExpectationBlock
 }
 
 function constructInputValueExpectation(cst: CST.SyntaxNode): Generated.InputExpectation {
@@ -219,16 +219,16 @@ function validateBlockStatements(
   const allowed: readonly string[] = Generated.CstBlockStatementKinds[name]
   const invalid = statements.find(statement => !allowed.includes(statement.kind))
   if (invalid) {
-    Errors.ThrowUserInput(`Unexpected ${invalid.kind} statement in a ${blockName(name)} block.`)
+    Errors.ThrowUserInput(`Unexpected ${invalid.kind} statement in a ${getBlockName(name)} block.`)
   }
 }
 
-function blockName(name: keyof typeof Generated.CstBlockStatementKinds): string {
+function getBlockName(name: keyof typeof Generated.CstBlockStatementKinds): string {
   return name.replace(/Block$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
 }
 
 function makeBlock(cst: CST.SyntaxNode, statements: readonly Generated.Node[]): Generated.Block {
-  return { ...range(cst), kind: 'Block', statements }
+  return { ...getSourceRange(cst), kind: 'Block', statements }
 }
 
 function requireCount(statements: readonly Generated.Node[], count: number, message: string): void {
@@ -294,7 +294,7 @@ function constructOptionalVisibility(cst: CST.SyntaxNode): Generated.Visibility 
   return cst.childForFieldName('visibility')?.text as Generated.Visibility | undefined
 }
 
-function range(cst: CST.SyntaxNode): { start: number; end: number } {
+function getSourceRange(cst: CST.SyntaxNode): { start: number; end: number } {
   return { start: cst.startIndex, end: cst.endIndex }
 }
 
@@ -303,5 +303,5 @@ function makeNode<Kind extends Generated.Node['kind']>(
   kind: Kind,
   fields: Omit<Generated.OfKind<Kind>, 'kind' | 'start' | 'end'>,
 ): Generated.OfKind<Kind> {
-  return { ...fields, kind, ...range(cst) } as Generated.OfKind<Kind>
+  return { ...fields, kind, ...getSourceRange(cst) } as Generated.OfKind<Kind>
 }

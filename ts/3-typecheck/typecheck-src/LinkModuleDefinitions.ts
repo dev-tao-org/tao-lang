@@ -4,7 +4,7 @@ import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, Module
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
 export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefinition[] {
-  const definitions = dependencyDefinitions(modules)
+  const definitions = collectDependencyDefinitions(modules)
   const definitionByKey = new Map(
     definitions.map(item => [createModuleMemberKey(item.source, item.declaration.name.value), item]),
   )
@@ -24,7 +24,7 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
     visiting.add(key)
     const module = moduleByPath.get(item.source)!
     const names = knownNames.get(item.source)!
-    for (const dependency of dependenciesFor(item, module, definitionByKey, names)) {
+    for (const dependency of collectDefinitionDependencies(item, module, definitionByKey, names)) {
       const target = definitionByKey.get(createModuleMemberKey(dependency.source, dependency.target))
       if (target) {
         visit(target)
@@ -52,7 +52,7 @@ function collectModuleKnownNames(module: LinkedModule): Set<string> {
   return new Set([...declaredNames, ...importedNames])
 }
 
-function dependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefinition[] {
+function collectDependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefinition[] {
   return modules.flatMap(module =>
     AST.GetValueDeclarations(module.document)
       .filter((node): node is DependencyDefinition['declaration'] =>
@@ -62,7 +62,7 @@ function dependencyDefinitions(modules: readonly LinkedModule[]): DependencyDefi
   )
 }
 
-function dependenciesFor(
+function collectDefinitionDependencies(
   item: DependencyDefinition,
   module: LinkedModule,
   definitions: ReadonlyMap<string, DependencyDefinition>,

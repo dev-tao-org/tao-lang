@@ -45,7 +45,7 @@ async function materializeProject(cacheRoot: string, resources: Readonly<Record<
   const fingerprint = Platform.hashText(JSON.stringify(entries))
   const root = Path.resolve(cacheRoot, `project-${fingerprint}`)
   const marker = Path.join(root, '.ready')
-  if (await readyProject(root, marker, fingerprint, cacheRoot, entries)) {
+  if (await isReadyProject(root, marker, fingerprint, cacheRoot, entries)) {
     return root
   }
   const staging = `${root}.${Platform.randomUUID()}.pending`
@@ -69,7 +69,7 @@ function validateResources(entries: [string, string][]): void {
   }
 }
 
-async function readyProject(
+async function isReadyProject(
   root: string,
   marker: string,
   fingerprint: string,

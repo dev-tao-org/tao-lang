@@ -25,7 +25,7 @@ This index names Tao language and authoring concepts: unmarked entries describe 
 - **Test**: An executable sequence that runs an app, performs interactions and checks expectations.
   - **Expectation**: An assertion about rendered text or input values.
 
-Sources: [grammar](../../ts/1-grammar/grammar-src/treesitter-grammar.js), [view runtime](../../ts/7-runtime/runtime-src/View.ts), [sidecars](Sidecars.md), [tests](Tests.md).
+Sources: [grammar](../../ts/1-grammar/grammar-src/treesitter-grammar.js), [view runtime](../../ts/7-runtime/runtime-src/client/View.ts), [sidecars](Sidecars.md), [tests](Tests.md).
 
 #### Projects and dependencies
 
@@ -51,7 +51,7 @@ Source: [projects and dependencies](Projects%20and%20Dependencies.md).
   - **Observation**: A subscription delivering the initial value and changed values until released.
 - **Batch**: A synchronous boundary grouping writes before observers receive changed values.
 
-Sources: [runtime API](Runtime%20TypeScript%20API.md), [reactive expressions](../../ts/7-runtime/runtime-src/ReactiveEngine.ts).
+Sources: [runtime API](Runtime%20TypeScript%20API.md), [reactive expressions](../../ts/7-runtime/runtime-src/client/ReactiveEngine.ts).
 
 ## WIP
 

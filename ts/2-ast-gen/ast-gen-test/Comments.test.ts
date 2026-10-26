@@ -46,3 +46,12 @@ Tests.test('comments between syntax nodes do not become declarations, parameters
     },
   })
 })
+
+Tests.test('comments inside a parameter list are not constructed as parameters', () => {
+  const source = 'view Main(/* parameter list note */ Value text) { render Text(Value) }'
+  const ast = transform(createParser().parse(source))!
+  Tests.expect(ast.root.block.statements[0]).toMatchObject({
+    kind: 'ViewDeclaration',
+    parameters: [{ name: { value: 'Value' }, type: { value: 'text' } }],
+  })
+})

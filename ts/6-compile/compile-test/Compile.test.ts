@@ -17,7 +17,7 @@ Tests.test('Preview performance fixture generates generic runtime calls and auth
   const document = transform(tree)!
   const entryPath = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
   const program = await linkedUIProgram(entryPath, document)
-  const code = generatedText(compile(document, { revision: 'test-1', program }))
+  const code = combineGeneratedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')
   Tests.expect(code).toContain('_Imported_Col["Col"]')
   Tests.expect(code).toContain('<Tao.Text>{Value}</Tao.Text>')
@@ -34,7 +34,7 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const document = transform(createParser().parse(source))!
-  const code = generatedText(compile(document, {
+  const code = combineGeneratedText(compile(document, {
     revision: 'foreign-view',
     resolveForeignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
   }))
@@ -70,7 +70,7 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
     { path: helloPath, document: hello, imports: [], siblings: [interactionsPath] },
     { path: interactionsPath, document: interactions, imports: [], siblings: [helloPath] },
   ])
-  const code = generatedText(compile(hello, { revision: 'folder-apps', program }))
+  const code = combineGeneratedText(compile(hello, { revision: 'folder-apps', program }))
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "HelloWorld", () => _Scope["RootView"]);')
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Interactions", () => _Scope["Form"]);')
   Tests.expect(code).toContain(
@@ -128,7 +128,7 @@ Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nest
   Tests.expect(document).toBeDefined()
   const entryPath = Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao')
   const program = await linkedUIProgram(entryPath, document!)
-  const code = generatedText(compile(document!, { revision: 'kitchen-sink', program }))
+  const code = combineGeneratedText(compile(document!, { revision: 'kitchen-sink', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Pair", ["First", "Second"]')
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["FirstCaption"]], [])')
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["Title"]], [])')
@@ -139,7 +139,7 @@ Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nest
 Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles', () => {
   const { entry, program } = cyclicModuleFixture()
   const files = compile(entry, { revision: 'modules', program })
-  const code = generatedText(files)
+  const code = combineGeneratedText(files)
 
   Tests.expect(code).toContain('const _scope0 = TR.Scope() as Source0.Scope;')
   Tests.expect(code).toContain('const _scope1 = TR.Scope() as Source1.Scope;')
@@ -156,7 +156,7 @@ Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles',
   )
   Tests.expect(code).not.toContain('const _views')
 
-  const importedApp = generatedText(compile(entry, { revision: 'selected-app', app: 'UI.Extra', program }))
+  const importedApp = combineGeneratedText(compile(entry, { revision: 'selected-app', app: 'UI.Extra', program }))
   Tests.expect(importedApp).toContain('TR.AppDeclaration(_scope1["Root"], "selected-app")')
 })
 
@@ -259,7 +259,7 @@ function compileSource(source: string): Readonly<Record<string, string>> {
   return compile(transform(tree)!, { revision: 'hygiene' })
 }
 
-function generatedText(files: Readonly<Record<string, string>>): string {
+function combineGeneratedText(files: Readonly<Record<string, string>>): string {
   return Object.values(files).join('\n')
 }
 
