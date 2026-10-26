@@ -16,7 +16,7 @@ export default registerCommand({
     { flags: '--yes', description: 'Confirm registry lookup and dependency preparation.' },
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
-  async action(moduleName: string, options: { npm?: string; yes?: boolean; session?: string } = {}) {
+  async action(moduleName: string, options: AddCommandOptions = {}) {
     if (!options.npm) {
       Errors.ThrowUserInput('tao add requires --npm <package>.')
     }
@@ -40,3 +40,5 @@ export default registerCommand({
     })
   },
 })
+
+type AddCommandOptions = { npm?: string; yes?: boolean; session?: string }

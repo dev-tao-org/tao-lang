@@ -16,7 +16,7 @@ export default registerCommand({
     { flags: '--repair', description: 'Repair generated dependency files before preparation.' },
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
-  async action(entry: string | undefined, options: { yes?: boolean; repair?: boolean; session?: string } = {}) {
+  async action(entry: string | undefined, options: SetupCommandOptions = {}) {
     const target = resolveCallerPath(entry ?? '.')
     const project = await discoverProject(target)
       ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
@@ -30,3 +30,5 @@ export default registerCommand({
     })
   },
 })
+
+type SetupCommandOptions = { yes?: boolean; repair?: boolean; session?: string }

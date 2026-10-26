@@ -18,7 +18,7 @@ export default registerCommand({
     { flags: '--yes', description: 'Confirm dependency downloads.' },
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
-  async action(alias: string | undefined, options: { entry?: string; yes?: boolean; session?: string } = {}) {
+  async action(alias: string | undefined, options: UpdateCommandOptions = {}) {
     const target = resolveCallerPath(options.entry ?? '.')
     const project = await discoverProject(target)
       ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
@@ -40,6 +40,8 @@ export default registerCommand({
     })
   },
 })
+
+type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
 
 function defaultAlias(requirement: { provider: string; identifier: string }): string {
   return requirement.provider === 'github'

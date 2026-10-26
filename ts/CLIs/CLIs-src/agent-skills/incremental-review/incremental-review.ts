@@ -127,9 +127,7 @@ async function runSelectionCommand(
   if (source && !reviewed) {
     Errors.ThrowUserInput('--source-patch requires --reviewed-patch against the reviewed baseline.')
   }
-  const selection = selectionFile
-    ? await readJson<ReviewSelection>(Path.resolve(selectionFile))
-    : await planSelection(session, options.get('files') ?? [], reviewed ? { source, reviewed } : undefined)
+  const selection = await resolveSelection(selectionFile, session, options, source, reviewed)
   if (command === 'plan') {
     const out = Path.resolve(required(options, 'out'))
     if (await FileSystem.exists(out)) {
@@ -144,6 +142,23 @@ async function runSelectionCommand(
   }
   await acceptSelection(session, selection, hooks)
   return { accepted: selection.files, kind: selection.kind }
+}
+
+async function resolveSelection(
+  selectionFile: string | undefined,
+  session: ReviewSession,
+  options: Options,
+  source: string | undefined,
+  reviewed: string | undefined,
+): Promise<ReviewSelection> {
+  if (selectionFile) {
+    return await readJson<ReviewSelection>(Path.resolve(selectionFile))
+  }
+  const files = options.get('files') ?? []
+  if (reviewed) {
+    return await planSelection(session, files, { source, reviewed })
+  }
+  return await planSelection(session, files, undefined)
 }
 
 function parseOptions(args: string[]): Options {

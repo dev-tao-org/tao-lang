@@ -124,9 +124,11 @@ function isReturnedObjectMethod(node: TypeScript.Node): boolean {
 }
 
 function getCallName(expression: TypeScript.LeftHandSideExpression): string | undefined {
-  return TypeScript.isIdentifier(expression)
-    ? expression.text
-    : TypeScript.isPropertyAccessExpression(expression)
-    ? expression.name.text
-    : undefined
+  if (TypeScript.isIdentifier(expression)) {
+    return expression.text
+  }
+  if (TypeScript.isPropertyAccessExpression(expression)) {
+    return expression.name.text
+  }
+  return undefined
 }
