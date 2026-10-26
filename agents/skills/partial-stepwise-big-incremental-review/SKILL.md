@@ -39,7 +39,9 @@ description: >-
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
   units across interruptions; never recalculate progress from the growing current diff.
-- Use the format below, absolute file links and useful starting lines; use ranges only when supported.
+- Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
+  additions/deletions against the approved-content tree, including saved untracked files. Show
+  `binary` for binary changes. Add a line anchor only when a particular location is useful.
   Present only the current file chunk; list later chunk titles until completion or a requested switch.
   Explain partial-file scope in at most two sentences. End immediately after the file list.
 - Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
@@ -91,25 +93,14 @@ description: >-
 
 Propose feature sets, group counts and Tao examples; get agreement first.
 
-List remaining titles, then only the current chunk's files:
+List remaining group titles, then only the current chunk's files:
 
 ```text
-### <Feature set, when applicable>
-
 **X% done** — <completed>/<frozen total> original review units.
-
-Remaining groups:
-- **Next: <Review group>**
-- <Later group>
-- ...
-
-**<One-line summary of what we are reviewing.>**
-
-<Particular complexity or dependencies to keep in mind, only if needed.>
-
-- <Current review group or conceptual chunk> - X folders, Y files, Z diffs
-  1. F<number> New: <Clickable file path:starting line> - X diffs
-  2. F<number>: <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
+Remaining groups: <titles only>
+**<Current group and brief summary>** — X folders, Y files, Z hunks
+1. F43 New: <Absolute file link> (+24 −0)
+2. F50: <Absolute file link> (+8 −3)
 ```
 
 Omit unused headings. End at the file list, except an outstanding subagent-readiness footer.
