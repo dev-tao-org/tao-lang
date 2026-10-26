@@ -18,9 +18,9 @@ Tests.test(
 )
 
 Tests.test(
-  'HelloWorld produces a positioned CST with named app, root, view and text nodes',
+  'Performance produces a positioned CST with named app, root, view and text nodes',
   Timings.createTopLevelTimer(async timings => {
-    const source = await Tests.readApp('Hello World')
+    const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
 
     const parser = createParser()
     const tree = timings.run(parser.parse, source)
@@ -30,7 +30,7 @@ Tests.test(
     Tests.expect(tree.rootNode.descendantsOfType('ViewDeclaration').length).toBe(1)
     Tests.expect(tree.rootNode.descendantsOfType('UseStatement').length).toBe(1)
     const app = tree.rootNode.descendantsOfType('AppDeclaration')[0]!
-    Tests.expect(app.childForFieldName('name')?.text).toBe('HelloWorld')
+    Tests.expect(app.childForFieldName('name')?.text).toBe('Performance')
     const text = tree.rootNode.descendantsOfType('TextLiteral')[0]
     Tests.expect(text.text).toBe('"Hello World"')
     Tests.expect(text.startPosition).toEqual({ row: 8, column: 9 })
@@ -77,6 +77,7 @@ Tests.test('contextual blocks reject missing renders and misplaced statements in
     'app Demo {}',
     'view Main {}',
     'view Main { render Text render Other }',
+    'view Main { view Private { render Text } render Text }',
     'view Main { render Text let Late = "value" }',
     'view Main { render Text { render inject ```ts return null ``` } }',
     'app Demo { root Main root Other }',

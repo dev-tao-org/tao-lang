@@ -10,5 +10,6 @@ if [ "${1:-}" = setup ]; then
   shift
   exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" "$@"
 fi
+. "$repository/.config/ensure-cli-generated.sh"
 # Replace the wrapper so signals and exit status belong to the command process.
 exec bun run "./CLIs/CLIs-src/dev-cli/dev-cli.ts" "$@"

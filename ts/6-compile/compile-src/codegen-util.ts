@@ -1,8 +1,30 @@
 import type * as AST from '@ast-gen/AST'
+import { S } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 
 /** NamedValue identifies a named AST declaration, parameter, capture or linked module binding. */
 export type NamedValue = Pick<AST.ValueDeclaration | AST.Parameter | AST.Capture, 'name'> | Pick<ModuleBinding, 'name'>
+
+/** ScopeCode retains a lexical expression and optional resolved generated reference anchors. */
+export type ScopeCode = string | {
+  value: string
+  resolveReference(name: string): string | undefined
+}
+
+/** joinCodeLines joins nonempty emitted parts with one newline. */
+export function joinCodeLines(...parts: readonly (string | undefined)[]): string {
+  return joinCodeParts(parts, '\n')
+}
+
+/** joinCodeBlocks joins nonempty emitted blocks with a blank line. */
+export function joinCodeBlocks(...parts: readonly (string | undefined)[]): string {
+  return joinCodeParts(parts, '\n\n')
+}
+
+/** getScopeValue returns the lexical record expression behind a generated scope. */
+export function getScopeValue(scope: ScopeCode): string {
+  return typeof scope === 'string' ? scope : scope.value
+}
 
 /** emitStringLiteral escapes an external string for a generated JavaScript literal. */
 export function emitStringLiteral(value: string): string {
@@ -31,5 +53,15 @@ export function compileIdentifier(node: Pick<AST.ViewDeclaration | AST.Capture, 
 
 /** listMap emits an array literal compiled from its input values. */
 export function listMap<T>(values: readonly T[], compile: (value: T) => string): string {
-  return `[${values.map(compile).join(', ')}]`
+  const items = values.map(compile)
+  const inline = `[${items.join(', ')}]`
+  return inline.length <= 100 && !inline.includes('\n') ? inline : S`
+    [
+      ${items.join(',\n')}
+    ]
+  `
+}
+
+function joinCodeParts(parts: readonly (string | undefined)[], separator: string): string {
+  return parts.filter(Boolean).join(separator)
 }

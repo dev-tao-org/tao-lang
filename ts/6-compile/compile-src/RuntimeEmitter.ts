@@ -10,6 +10,7 @@ export type ComponentNames = {
   props: string
   render: string
   scope: string
+  scopeType: string
 }
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
@@ -29,8 +30,8 @@ export function emitModuleApplied(revision: string): string {
 }
 
 /** emitScope creates one module's lexical binding record. */
-export function emitScope(scope: string): string {
-  return `const ${scope} = TR.Scope();`
+export function emitScope(scope: string, scopeType: string): string {
+  return `const ${scope} = TR.Scope() as ${scopeType};`
 }
 
 /** emitLetDeclaration defines a compiled value under its authored name. */
@@ -74,25 +75,37 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
 }
 
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
-export function emitName(node: AST.Name | ModuleBinding, scope: string): string {
-  return `TR.Name(${scope}, ${CodegenUtil.compileReferenceName(node)})`
+export function emitName(node: AST.Name | ModuleBinding, scope: CodegenUtil.ScopeCode): string {
+  const name = 'target' in node ? node.target : node.value
+  const reference = typeof scope === 'string' ? undefined : scope.resolveReference(name)
+  return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
   node: AST.ViewRenderExpression,
-  scope: string,
+  scope: CodegenUtil.ScopeCode,
   argumentsCode: string,
   children: string,
 ): string {
   const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
   const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
-  return `TR.ViewRenderExpression(${emitName(node.target, scope)}, ${argumentsValue})`
+  return S`
+    TR.ViewRenderExpression(
+      ${emitName(node.target, scope)},
+      ${argumentsValue}
+    )
+  `
 }
 
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */
-export function emitViewRenderBlock(scope: string, statements: string): string {
-  return `TR.ViewRenderBlock(${scope}, (${scope}, _Children) => {\n${statements}\n})`
+export function emitViewRenderBlock(scope: CodegenUtil.ScopeCode, statements: string): string {
+  const value = CodegenUtil.getScopeValue(scope)
+  return S`
+    TR.ViewRenderBlock(${value}, (${value}, _Children) => {
+      ${statements}
+    })
+  `
 }
 
 /** emitViewComponent gives a Tao view a recognizable React component and render lifetime. */
@@ -124,12 +137,18 @@ export function emitInjectionCustomHook(
 }
 
 function emitCaptureParameter(capture: InjectionCapture): string {
-  const type = capture.type === 'children'
-    ? "TR.ViewComponentProps['children']"
-    : capture.type === 'text'
-    ? 'string'
-    : 'unknown'
+  const type = getCaptureParameterType(capture)
   return `${CodegenUtil.compileIdentifier(capture.node)}: ${type}`
+}
+
+function getCaptureParameterType(capture: InjectionCapture): string {
+  if (capture.type === 'children') {
+    return "TR.ViewComponentProps['children']"
+  }
+  if (capture.type === 'text') {
+    return 'string'
+  }
+  return 'unknown'
 }
 
 function emitRenderingComponent(
@@ -139,9 +158,9 @@ function emitRenderingComponent(
   result: string,
   needsScope: boolean,
 ): string {
-  const scope = needsScope ? `const ${names.scope} = ${names.render}.scope;` : ''
+  const scope = needsScope ? `const ${names.scope} = ${names.render}.scope as ${names.scopeType};` : ''
   return S`
-    function ${component}(${names.props}: TR.ViewComponentProps) {
+    export function ${component}(${names.props}: TR.ViewComponentProps) {
       const ${names.render} = TR.beginViewRender(${names.props});
       ${scope}
       ${statements}

@@ -3,7 +3,7 @@ import { Errors, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
-import * as PreviewMeasurementModule2 from './PreviewMeasurement'
+import * as PreviewMeasurement from './PreviewMeasurement'
 import type { ReloadTiming } from './ReloadTimings'
 
 /** previewPerformance measures source edits through two isolated headless Expo web previews.
@@ -12,7 +12,7 @@ export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
     await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
-  const measurement = PreviewMeasurementModule2.readPreviewMeasurement(options.measurement)
+  const measurement = PreviewMeasurement.readPreviewMeasurement(options.measurement)
   const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
@@ -26,12 +26,12 @@ export type PreviewOptions = {
   workspace: ReturnType<typeof createWorkspace>
   project: Project
   initialSource: string
-  measurement?: Partial<PreviewMeasurementModule2.PreviewMeasurement>
+  measurement?: Partial<PreviewMeasurement.PreviewMeasurement>
 }
 
 type Resources = {
   sessionId: string
-  measurement: PreviewMeasurementModule2.PreviewMeasurement
+  measurement: PreviewMeasurement.PreviewMeasurement
   errors: string[]
   reloads: ReloadTiming[]
   expo?: Runtime.ExpoSession
@@ -52,10 +52,14 @@ type PreviewResult = {
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
-  const source = PreviewMeasurementModule2.createMeasurementSource(options.initialSource, owned.measurement)
-  const scenarios = PreviewMeasurementModule2.createMeasurementScenarios(owned.measurement)
-  const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
+  const fixture = PreviewMeasurement.createMeasurementFiles(options.initialSource, owned.measurement)
+  const source = fixture.entry
+  const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
+  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
   await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
+  for (const file of fixture.extraFiles) {
+    await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
+  }
   await FileSystem.writeFile(sourcePath, source, 'utf8')
   requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await Runtime.start(options.workspace.runtime!)
@@ -97,7 +101,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
 async function runScenarios(
   page: HeadlessBrowser.Page,
   scenarios: readonly string[],
-  measurement: PreviewMeasurementModule2.PreviewMeasurement,
+  measurement: PreviewMeasurement.PreviewMeasurement,
 ): Promise<PreviewResult[]> {
   for (const [index, scenario] of scenarios.entries()) {
     await page.locator('#run').click({ timeout: 5000 })
@@ -113,7 +117,7 @@ async function runScenarios(
     if (state.status === 'failed') {
       Errors.ThrowShouldNeverHappen(state.error ?? 'Preview update failed.')
     }
-    await PreviewMeasurementModule2.assertMeasurementScenario(page, scenario, measurement)
+    await PreviewMeasurement.assertMeasurementScenario(page, scenario, measurement)
   }
   return await page.evaluate(() => window.__taoPreviewState.results) as PreviewResult[]
 }
@@ -142,9 +146,9 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
 async function waitForFrameText(
   page: HeadlessBrowser.Page,
   text: string,
-  measurement: PreviewMeasurementModule2.PreviewMeasurement,
+  measurement: PreviewMeasurement.PreviewMeasurement,
 ): Promise<void> {
-  for (const frameId of PreviewMeasurementModule2.measurementFrameIds(measurement.frameCount)) {
+  for (const frameId of PreviewMeasurement.measurementFrameIds(measurement.frameCount)) {
     await page.frameLocator(`#${frameId}`).getByText(text, { exact: true }).waitFor({ timeout: 60_000 })
   }
 }
@@ -167,7 +171,7 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
         generatedProject: project.directory,
         startupMs: owned.startupMs,
         frameSizes: owned.frameSizes,
-        measurement: PreviewMeasurementModule2.describeMeasurement(owned.measurement),
+        measurement: PreviewMeasurement.describeMeasurement(owned.measurement),
         primaryMetric: 'parentClickToLastAppliedMs',
         reloads: owned.reloads,
         definitions: {
@@ -189,7 +193,8 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
 
 function requirePublished(result: UpdateResult): void {
   if (result.status !== 'published') {
-    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.`)
+    const detail = result.status === 'failed' ? ` ${result.error}` : ''
+    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.${detail}`)
   }
 }
 

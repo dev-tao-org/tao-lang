@@ -5,19 +5,7 @@ import type { SourceModule } from './Modules'
 /** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
 export function assertUniqueLocalBindings(source: SourceModule): void {
   for (const view of AST.GetViewDeclarations(source.document)) {
-    const statements = AST.GetViewDeclarationStatements(view)
-    if (statements) {
-      const lets = statements.filter(AST.IsLetDeclaration)
-      assertUniqueNames(source.path, view.name.value, [
-        ...view.parameters.map(parameter => parameter.name.value),
-        ...lets.map(definition => definition.name.value),
-      ])
-      for (const statement of statements.filter(AST.IsViewRenderStatement)) {
-        if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-          assertUniqueRenderChildren(source.path, view.name.value, statement.expression)
-        }
-      }
-    }
+    assertUniqueViewScope(source.path, view)
   }
 }
 
@@ -28,25 +16,7 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
     if (AST.IsAppDeclaration(declaration)) {
       names.add(AST.GetAppRoot(declaration).value)
     } else if (AST.IsViewDeclaration(declaration)) {
-      const localNames = new Set(declaration.parameters.map(parameter => parameter.name.value))
-      for (const parameter of declaration.parameters) {
-        addReference(parameter.type.value, names, localNames)
-      }
-      const statements = AST.GetViewDeclarationStatements(declaration)
-      if (statements) {
-        for (const statement of statements) {
-          if (AST.IsLetDeclaration(statement)) {
-            addScopedLetReferences(statement, names, localNames)
-            localNames.add(statement.name.value)
-          } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-            addScopedRenderReferences(statement.expression, names, localNames)
-          } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
-            addInjectionReferences(statement.injection, names, localNames)
-          } else {
-            Errors.ThrowShouldNeverHappen('Unexpected view declaration statement.')
-          }
-        }
-      }
+      collectViewReferences(declaration, names, new Set())
     } else if (AST.IsLetDeclaration(declaration)) {
       addLetReferences(declaration, names)
     } else if (AST.IsKind(declaration, 'TestsDeclaration')) {
@@ -62,6 +32,50 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
     }
   }
   return names
+}
+
+function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void {
+  const statements = AST.GetViewDeclarationStatements(view) ?? []
+  const lets = statements.filter(AST.IsLetDeclaration)
+  const children = statements.filter(AST.IsViewDeclaration)
+  assertUniqueNames(source, view.name.value, [
+    ...view.parameters.map(parameter => parameter.name.value),
+    ...lets.map(definition => definition.name.value),
+    ...children.map(child => child.name.value),
+  ])
+  for (const statement of statements) {
+    if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
+      assertUniqueRenderChildren(source, view.name.value, statement.expression)
+    } else if (AST.IsViewDeclaration(statement)) {
+      assertUniqueViewScope(source, statement)
+    }
+  }
+}
+
+function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, parentNames: ReadonlySet<string>): void {
+  const statements = AST.GetViewDeclarationStatements(view) ?? []
+  const localNames = new Set(parentNames)
+  for (const parameter of view.parameters) {
+    addReference(parameter.type.value, names, localNames)
+    localNames.add(parameter.name.value)
+  }
+  for (const child of statements.filter(AST.IsViewDeclaration)) {
+    localNames.add(child.name.value)
+  }
+  for (const statement of statements) {
+    if (AST.IsLetDeclaration(statement)) {
+      addScopedLetReferences(statement, names, localNames)
+      localNames.add(statement.name.value)
+    } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
+      addScopedRenderReferences(statement.expression, names, localNames)
+    } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
+      addInjectionReferences(statement.injection, names, localNames)
+    } else if (AST.IsViewDeclaration(statement)) {
+      collectViewReferences(statement, names, localNames)
+    } else {
+      Errors.ThrowShouldNeverHappen('Unexpected view declaration statement.')
+    }
+  }
 }
 
 function assertUniqueRenderChildren(source: string, view: string, render: AST.ViewRenderExpression): void {

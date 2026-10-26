@@ -99,16 +99,20 @@ export function GetViewDeclarations(document: AST.Document): AST.ViewDeclaration
   return GetDeclarations(document).filter(IsViewDeclaration)
 }
 
-/** HasViewDeclarations reports whether a source document declares a view. */
-export function HasViewDeclarations(document: AST.Document): boolean {
-  return GetDeclarations(document).some(IsViewDeclaration)
+/** GetAllViewDeclarations lists top-level and private views in authored preorder. */
+export function GetAllViewDeclarations(document: AST.Document): AST.ViewDeclaration[] {
+  const views: AST.ViewDeclaration[] = []
+  for (const declaration of GetDeclarations(document)) {
+    if (IsViewDeclaration(declaration)) {
+      appendNestedViews(declaration, views)
+    }
+  }
+  return views
 }
 
 /** HasForeignViews reports whether a source document declares a foreign view. */
 export function HasForeignViews(document: AST.Document): boolean {
-  return GetDeclarations(document).some(declaration =>
-    IsViewDeclaration(declaration) && GetForeignViewPath(declaration) !== undefined
-  )
+  return GetAllViewDeclarations(document).some(view => GetForeignViewPath(view) !== undefined)
 }
 
 /** GetForeignViewPath returns a view's authored module path when its body is foreign. */
@@ -148,6 +152,15 @@ export function IsViewRenderStatement(node: AST.Node): node is AST.ViewRenderSta
 
 function isImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
   return IsUseStatement(node) || IsUsePackageStatement(node)
+}
+
+function appendNestedViews(view: AST.ViewDeclaration, views: AST.ViewDeclaration[]): void {
+  views.push(view)
+  for (const statement of GetViewDeclarationStatements(view) ?? []) {
+    if (IsViewDeclaration(statement)) {
+      appendNestedViews(statement, views)
+    }
+  }
 }
 
 function getBlockDeclarations(block: AST.DeclarationBlock): readonly AST.Declaration[] {

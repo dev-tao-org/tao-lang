@@ -6,18 +6,18 @@ import { createWatchFixture } from './WatchFixture'
 Tests.test('dependency changes reload modules and recover invalid source', async () => {
   const directory = Artifacts.resolvePath('tmp', `module-watch-${Platform.randomUUID()}`)
   const dependency = Path.join(directory, '@cards/Card.tao')
-  const publications: string[] = []
+  const publications: Readonly<Record<string, string>>[] = []
   const observation = createWatchFixture()
   const workspace = createWorkspace({
     ...observation.options,
     async publish(app) {
-      publications.push(app.code)
+      publications.push(app.files)
     },
   })
   await Try(async () => {
     await writeFixture(directory, dependency)
     Tests.expect((await workspace.openFile(Path.join(directory, 'feature/App.tao'))).status).toBe('published')
-    Tests.expect(publications.at(-1)).toContain('"First value"')
+    Tests.expect(compiledContents(publications.at(-1))).toContain('"First value"')
     Tests.expect((await changeDependency(workspace, observation, dependency, 'project view Card {')).status).toBe(
       'failed',
     )
@@ -26,7 +26,7 @@ Tests.test('dependency changes reload modules and recover invalid source', async
       'published',
     )
     Tests.expect(publications).toHaveLength(2)
-    Tests.expect(publications.at(-1)).toContain('"Repaired value"')
+    Tests.expect(compiledContents(publications.at(-1))).toContain('"Repaired value"')
   }, {
     async finally() {
       await workspace.dispose()
@@ -37,7 +37,7 @@ Tests.test('dependency changes reload modules and recover invalid source', async
 
 Tests.test('root requirement observation never links unrelated root declarations into a nested entry', async () => {
   const directory = Artifacts.resolvePath('tmp', `root-observation-${Platform.randomUUID()}`)
-  const publications: string[] = []
+  const publications: Readonly<Record<string, string>>[] = []
   const observed: string[] = []
   const workspace = createWorkspace({
     ...createWatchFixture().options,
@@ -46,7 +46,7 @@ Tests.test('root requirement observation never links unrelated root declarations
     },
     includeModuleRequirements: true,
     async publish(app) {
-      publications.push(app.code)
+      publications.push(app.files)
     },
   })
   await Try(async () => {
@@ -56,8 +56,8 @@ Tests.test('root requirement observation never links unrelated root declarations
     const result = await workspace.openFile(Path.join(directory, 'feature/App.tao'))
     Tests.expect(result.status).toBe('published')
     Tests.expect(observed).toContain(rootFile)
-    Tests.expect(publications[0]).not.toContain('Hidden')
-    Tests.expect(publications[0]).not.toContain('Unknown')
+    Tests.expect(compiledContents(publications[0])).not.toContain('Hidden')
+    Tests.expect(compiledContents(publications[0])).not.toContain('Unknown')
   }, {
     async finally() {
       await workspace.dispose()
@@ -79,6 +79,10 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 
 function card(value: string): string {
   return `use Text from tao@ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
+}
+
+function compiledContents(files: Readonly<Record<string, string>> | undefined): string {
+  return Object.values(files ?? {}).join('\n')
 }
 
 async function changeDependency(

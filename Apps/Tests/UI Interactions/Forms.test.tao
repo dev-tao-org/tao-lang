@@ -1,0 +1,22 @@
+use UIInteractions
+
+tests "App interactions" {
+  test "Edits and presses tagged renders" {
+    run UIInteractions
+    expect text "Ready"
+    expect #name input value "Original"
+    type "Hello World" into #name
+    press #save
+    expect {
+      text "Saved"
+    }
+    expect #name {
+      input value "Hello World"
+    }
+  }
+  test(Label "Each case starts fresh") {
+    run UIInteractions
+    expect text "Ready"
+    expect #name input value "Original"
+  }
+}

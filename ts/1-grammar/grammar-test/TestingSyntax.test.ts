@@ -26,3 +26,15 @@ Tests.test('app journeys parse render tags, interactions and grouped expectation
   Tests.expect(tree.rootNode.descendantsOfType('RenderViewExpressionStatement')).toHaveLength(1)
   Tests.expect(tree.rootNode.descendantsOfType('Block')).toHaveLength(8)
 })
+Tests.test('private views follow their owner render and can be referenced within its scope', () => {
+  const source = S`
+    view Main {
+      render Col { Card }
+      view Card { render Text("card") }
+    }
+  `
+  const tree = createParser().parse(source)
+  Tests.expect(tree.rootNode.hasError).toBe(false)
+  Tests.expect(tree.rootNode.descendantsOfType('ViewDeclaration').map(node => node.childForFieldName('name')?.text))
+    .toEqual(['Main', 'Card'])
+})

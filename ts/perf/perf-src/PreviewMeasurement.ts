@@ -1,15 +1,19 @@
 import { Errors, S } from '@shared'
 import { Env, type HeadlessBrowser } from '@shared/os'
-import { helloWorldScenarios, type PreviewScenario } from './PreviewScenarios'
+import { performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 
-/** PreviewMeasurement selects repeated edit volume, active previews and generated source size. */
-export type PreviewMeasurement = { editCount: number; frameCount: 1 | 2; extraViews: number }
+/** PreviewMeasurement selects edit volume, preview frames and generated Tao source shape. */
+export type PreviewMeasurement = { editCount: number; frameCount: 1 | 2; extraViews: number; extraFileCount: number }
+
+/** MeasurementFile is one generated sibling Tao module. */
+export type MeasurementFile = { name: string; source: string }
 
 /** readPreviewMeasurement resolves explicit settings or documented measurement environment values. */
 export function readPreviewMeasurement(options: Partial<PreviewMeasurement> = {}): PreviewMeasurement {
   const editCount = options.editCount ?? readCount('TAO_PREVIEW_EDIT_COUNT', 4)
   const frameCount = options.frameCount ?? readCount('TAO_PREVIEW_FRAME_COUNT', 2)
   const extraViews = options.extraViews ?? readCount('TAO_PREVIEW_EXTRA_VIEWS', 0)
+  const extraFileCount = options.extraFileCount ?? readCount('TAO_PREVIEW_EXTRA_FILE_COUNT', 0)
   if (!isValidEditCount(editCount)) {
     Errors.ThrowUserInput('Preview edit count must be a positive multiple of four.')
   }
@@ -19,31 +23,39 @@ export function readPreviewMeasurement(options: Partial<PreviewMeasurement> = {}
   if (!Number.isInteger(extraViews) || extraViews < 0) {
     Errors.ThrowUserInput('Preview extra view count must be a nonnegative integer.')
   }
-  return { editCount, frameCount, extraViews }
+  if (!Number.isInteger(extraFileCount) || extraFileCount < 0) {
+    Errors.ThrowUserInput('Preview extra file count must be a nonnegative integer.')
+  }
+  return { editCount, frameCount, extraViews, extraFileCount }
 }
 
 /** createMeasurementScenarios repeats real source edits with unique text in each measured cycle. */
 export function createMeasurementScenarios(settings: PreviewMeasurement): readonly PreviewScenario[] {
   if (settings.editCount === 4) {
-    return helloWorldScenarios
+    return performanceScenarios
   }
   return Array.from({ length: settings.editCount / 4 }, (_, index) => createCycle(index + 1)).flat()
 }
 
-/** createMeasurementSource appends compiled but unrendered view declarations to the canonical fixture. */
-export function createMeasurementSource(source: string, settings: PreviewMeasurement): string {
-  const declarations = Array.from(
-    { length: settings.extraViews },
-    (_, index) =>
-      S`
-        view Load${index} {
-          render Col {
-            Text("Load ${index}")
-          }
-        }
-      `,
-  )
-  return declarations.length ? source + '\n' + declarations.join('\n\n') + '\n' : source
+/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
+export function createMeasurementFiles(source: string, settings: PreviewMeasurement): {
+  entry: string
+  extraFiles: readonly MeasurementFile[]
+} {
+  const fileCount = Math.min(settings.extraViews, settings.extraFileCount)
+  if (fileCount === 0) {
+    return { entry: appendViews(source, 0, settings.extraViews), extraFiles: [] }
+  }
+  const imports = Array.from({ length: fileCount }, (_, index) => `use package ./LoadViews${index}`).join('\n')
+  const entry = appendViews(`${imports}\n${source}`, 0, 0)
+  const baseCount = Math.floor(settings.extraViews / fileCount)
+  const remainder = settings.extraViews % fileCount
+  const extraFiles = Array.from({ length: fileCount }, (_, index) => {
+    const start = index * baseCount + Math.min(index, remainder)
+    const count = baseCount + (index < remainder ? 1 : 0)
+    return { name: `LoadViews${index}`, source: createViewModule(start, count) }
+  })
+  return { entry, extraFiles }
 }
 
 /** assertMeasurementScenario proves each configured preview rendered the actual requested edit. */
@@ -86,7 +98,31 @@ export function describeMeasurement(settings: PreviewMeasurement) {
     warmEditCount: Math.max(0, settings.editCount - 4),
     warmDefinition: 'Exclude the first complete four-edit cycle; first edit is recorded separately.',
     largeSource: 'Extra view declarations compile into output but are not mounted in the app.',
+    extraFileDefinition: 'Extra file count partitions extra view declarations across imported sibling Tao modules.',
   }
+}
+
+function appendViews(source: string, start: number, count: number): string {
+  const declarations = Array.from({ length: count }, (_, index) => createViewDeclaration(start + index))
+  return declarations.length ? source + '\n' + declarations.join('\n\n') + '\n' : source
+}
+
+function createViewModule(start: number, count: number): string {
+  const declarations = Array.from({ length: count }, (_, index) => `public ${createViewDeclaration(start + index)}`)
+  return S`
+    use Col, Text from tao@ui
+    ${declarations.join('\n\n')}
+  `
+}
+
+function createViewDeclaration(index: number): string {
+  return S`
+    view Load${index} {
+      render Col {
+        Text("Load ${index}")
+      }
+    }
+  `
 }
 
 function readCount(name: string, fallback: number): number {

@@ -32,6 +32,22 @@ Tests.test('formatting normalizes a complete source fixture without changing lit
   assertFormatted(sourceFixture, expectedFixture)
 })
 
+Tests.test('formatting keeps nested private views after the owner render', () => {
+  assertFormatted(
+    'view Main{render Col{Card}view Card{render Text("card")}}',
+    S`
+      view Main {
+        render Col {
+          Card
+        }
+        view Card {
+          render Text("card")
+        }
+      }
+    `,
+  )
+})
+
 Tests.test('argument and parameter lists wrap at the width and retain authored line breaks', () => {
   const source = 'view Main(First text, Second text) { render Panel("Hello", "World") }'
   const result = formatted(source, 32)

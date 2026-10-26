@@ -25,6 +25,18 @@ export function AliasBinding(scope: Scope, name: string, resolve: () => unknown)
   Object.defineProperty(scope, name, { get: resolve, enumerable: true })
 }
 
+/** ScopeAliases projects selected lexical names lazily through their original generated definition types. */
+export function ScopeAliases<Bindings extends Scope>(
+  scope: Scope,
+  names: { readonly [Name in keyof Bindings]: string },
+): Bindings {
+  const aliases = Scope()
+  for (const [name, target] of Object.entries(names)) {
+    AliasBinding(aliases, name, () => Name(scope, target))
+  }
+  return aliases as Bindings
+}
+
 /** Name resolves a value from the nearest lexical scope. */
 export function Name(scope: Scope, name: string): unknown {
   if (!(name in scope)) {
@@ -34,8 +46,11 @@ export function Name(scope: Scope, name: string): unknown {
 }
 
 /** ViewRenderBlock evaluates a block body with a child scope and collected nodes. */
-export function ViewRenderBlock(parent: Scope, body: (scope: Scope, children: ReactNode[]) => void): ReactNode[] {
+export function ViewRenderBlock<Parent extends Scope>(
+  parent: Parent,
+  body: (scope: Parent, children: ReactNode[]) => void,
+): ReactNode[] {
   const children: ReactNode[] = []
-  body(Scope(parent), children)
+  body(Scope(parent) as Parent, children)
   return children
 }

@@ -143,7 +143,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
 
 Tests.test('loads the real module journey without adopting an unrelated workspace directory', async () => {
   const unrelatedWorkspace = await createProject()
-  const entryPath = Repo.resolvePath('Apps/Tests/Modules/Modules.tao')
+  const entryPath = Repo.resolvePath('Apps/Tests/Modules and Dependencies/Modules and Dependencies.tao')
   const standardRoot = Path.join(unrelatedWorkspace, 'standard-library')
   const standardView = Path.join(standardRoot, '@ui', 'Views.tao')
   await Try(async () => {
@@ -160,7 +160,9 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
     )
 
     Tests.expect(modules.map(module => Path.relative(Path.dirname(entryPath), module.path)).sort()).toEqual([
-      'Modules.tao',
+      'Imports.tao',
+      'Imports.test.tao',
+      'Modules and Dependencies.tao',
       'Nearby.tao',
       'Public/Caption.tao',
       '@cards/Card.tao',

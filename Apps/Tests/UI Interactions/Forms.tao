@@ -1,0 +1,22 @@
+use Col, Input from tao@ui
+
+folder view Form {
+  render Col {
+    #name
+    Input("Original")
+    #save
+    Button
+  }
+}
+
+view Button {
+  render inject ```ts
+    const pressed = Tao.useWritable(() => false)
+    const isPressed = Tao.useValue(pressed)
+    return (
+      <Tao.Pressable onPress={() => pressed.update(true)}>
+        <Tao.Text>{isPressed ? 'Saved' : 'Ready'}</Tao.Text>
+      </Tao.Pressable>
+    )
+  ```
+}

@@ -119,9 +119,8 @@ function constructViewDeclarationBlock(cst: CST.SyntaxNode): Generated.ViewDecla
   const renders = statements.filter(statement =>
     Generated.IsKind(statement, ['RenderInjectStatement', 'RenderViewExpressionStatement'])
   )
-  const hasOneFinalRender = renders.length === 1 && statements.at(-1)?.kind === renders[0]?.kind
-  if (!hasOneFinalRender) {
-    Errors.ThrowUserInput('A view block must contain exactly one final render statement.')
+  if (renders.length !== 1) {
+    Errors.ThrowUserInput('A view block must contain one render statement before its private views.')
   }
   return { ...range(cst), kind: 'Block', statements } as Generated.ViewDeclarationBlock
 }

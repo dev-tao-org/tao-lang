@@ -7,9 +7,9 @@ import * as Repo from './Repo'
 
 export { rejects, throws } from 'node:assert/strict'
 
-/** readApp reads a named Tao fixture from the checkout's Apps/Tests directory. */
-export function readApp(name: string): Promise<string> {
-  return FileSystem.file(Repo.resolvePath('Apps/Tests', name + '.tao')).text()
+/** readFixture reads an authored fixture at an explicit repository-relative path. */
+export function readFixture(path: string): Promise<string> {
+  return FileSystem.file(Repo.resolvePath(path)).text()
 }
 
 /** describe groups tests without loading the test runner in ordinary CLI invocations. */

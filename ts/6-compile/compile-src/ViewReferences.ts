@@ -1,0 +1,51 @@
+import type * as AST from '@ast-gen/AST'
+import type { ModuleBinding } from '@typecheck/Modules'
+import { emitStringLiteral, type ScopeCode } from './codegen-util'
+
+/** ViewReferences collects only used imported bindings and preserves their original TypeScript symbols. */
+export type ViewReferences = {
+  scope: ScopeCode
+  initialize(): string
+}
+
+/** createViewReferences projects imports lazily while local and ancestor bindings keep lexical lookup. */
+export function createViewReferences(
+  bindings: readonly ModuleBinding[],
+  shadowed: ReadonlySet<string>,
+): ViewReferences {
+  const imports = new Map(bindings.map(binding => [binding.name, binding]))
+  const used = new Map<string, ModuleBinding>()
+  const scope = {
+    value: '_Scope',
+    resolveReference(name: string) {
+      const binding = shadowed.has(name) ? undefined : imports.get(name)
+      if (!binding) {
+        return undefined
+      }
+      used.set(name, binding)
+      return `${createProjectionName(binding)}[${emitStringLiteral(binding.target)}]`
+    },
+  }
+  return {
+    scope,
+    initialize: () =>
+      [...used.values()].map(binding => {
+        const type = `ModuleImports[${emitStringLiteral(binding.name)}]`
+        const mapping = `{ ${emitStringLiteral(binding.target)}: ${emitStringLiteral(binding.name)} }`
+        return `const ${createProjectionName(binding)} = TR.ScopeAliases<${type}>(_Scope, ${mapping});`
+      }).join('\n'),
+  }
+}
+
+/** shadowReferences keeps block-local bindings from using an imported definition anchor. */
+export function shadowReferences(scope: ScopeCode, definitions: readonly AST.LetDeclaration[]): ScopeCode {
+  if (typeof scope === 'string') {
+    return scope
+  }
+  const names = new Set(definitions.map(definition => definition.name.value))
+  return { value: scope.value, resolveReference: name => names.has(name) ? undefined : scope.resolveReference(name) }
+}
+
+function createProjectionName(binding: ModuleBinding): string {
+  return `_Imported_${binding.name.replaceAll('.', '$')}`
+}

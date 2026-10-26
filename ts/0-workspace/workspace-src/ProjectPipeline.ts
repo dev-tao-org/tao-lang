@@ -154,6 +154,9 @@ function describeModuleDeclarationFingerprint(module: LinkedProgram['modules'][n
   return {
     path: module.path,
     declarations: AST.GetDeclarations(module.document).flatMap(serializeDeclarationFingerprint),
+    foreignViews: AST.GetAllViewDeclarations(module.document).map(declaration =>
+      AST.GetForeignViewPath(declaration)?.value ?? null
+    ),
   }
 }
 

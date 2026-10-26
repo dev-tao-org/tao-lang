@@ -3,7 +3,7 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, Document } from '../workspace-src/Workspace'
 
 Tests.test('a rapid edit burst compiles only the active and newest queued source', async () => {
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let releaseFirst!: () => void
   let enteredFirst!: () => void
   const firstGate = new Promise<void>(resolve => releaseFirst = resolve)
@@ -17,7 +17,7 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
     },
     compile: Timings.createTopLevelTimer((_timings, _document, options) => {
       compiled.push(options.revision)
-      return 'compiled ' + options.revision
+      return { 'App.tsx': 'compiled ' + options.revision }
     }),
     async publish(app, isCurrent) {
       if (app.revision === 'r1') {
@@ -45,10 +45,10 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
 })
 
 Tests.test('invalid source retains the last published application', async () => {
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let publishCount = 0
   const workspace = createWorkspace({
-    compile: Timings.createTopLevelTimer(() => 'compiled app'),
+    compile: Timings.createTopLevelTimer(() => ({ 'App.tsx': 'compiled app' })),
     async publish() {
       publishCount++
     },
@@ -61,7 +61,7 @@ Tests.test('invalid source retains the last published application', async () => 
 })
 
 Tests.test('a virtual document queues immutable versions without reading its entry from disk', async () => {
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const document = new Document('/virtual/Hello World.tao', source)
   let releaseFirst!: () => void
   let enteredFirst!: () => void
@@ -69,7 +69,7 @@ Tests.test('a virtual document queues immutable versions without reading its ent
   const firstEntered = new Promise<void>(resolve => enteredFirst = resolve)
   const events: { path: string | undefined; source: string; version: number | undefined }[] = []
   const workspace = createWorkspace({
-    compile: Timings.createTopLevelTimer((_timings, _document, options) => options.revision),
+    compile: Timings.createTopLevelTimer((_timings, _document, options) => ({ 'App.tsx': options.revision })),
     async publish(app, isCurrent) {
       if (app.revision === 'r1') {
         enteredFirst()
@@ -105,14 +105,14 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
   const directory = Artifacts.resolvePath('tmp', `workspace-open-race-${Platform.randomUUID()}`)
   const pathA = Path.join(directory, 'A.tao')
   const pathB = Path.join(directory, 'B.tao')
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let releaseA!: () => void
   let enteredA!: () => void
   const gateA = new Promise<void>(resolve => releaseA = resolve)
   const enteredPublishA = new Promise<void>(resolve => enteredA = resolve)
   const published: string[] = []
   const workspace = createWorkspace({
-    compile: Timings.createTopLevelTimer((_timings, _document, options) => options.revision),
+    compile: Timings.createTopLevelTimer((_timings, _document, options) => ({ 'App.tsx': options.revision })),
     async publish(app, isCurrent) {
       if (app.source === source) {
         enteredA()

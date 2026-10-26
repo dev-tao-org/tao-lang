@@ -101,7 +101,7 @@ function createFixture(root: string) {
     if (operation === `rev-parse ${commit}^{tree}`) {
       return tree
     }
-    if (operation === `show ${commit}:Apps/Tests/Hello World.tao`) {
+    if (operation === `show ${commit}:ts/perf/perf-fixtures/Performance/Performance.tao`) {
       Tests.expect(exact).toBe(true)
       return source
     }

@@ -6,8 +6,8 @@ export type PreviewScenario = {
   apply(source: string, canonical: string): string
 }
 
-/** helloWorldScenarios edits the Hello World fixture through the performance preview cycle. */
-export const helloWorldScenarios: readonly PreviewScenario[] = [
+/** performanceScenarios edits the minimal benchmark fixture through the preview cycle. */
+export const performanceScenarios: readonly PreviewScenario[] = [
   { name: 'text', apply: source => source.replace('Hello World', 'Hello Tao') },
   {
     name: 'add-text',

@@ -1,4 +1,5 @@
-import { Artifacts, FileSystem, Http, Platform, Tests } from '@shared/os'
+import { Time } from '@shared'
+import { Artifacts, FileSystem, Http, Path, Platform, Tests } from '@shared/os'
 import type { ExpoSession } from '../Expo'
 import type { GeneratedRevision } from '../PreviewProtocol'
 
@@ -9,16 +10,18 @@ export async function verifyMetroBurst(
 ): Promise<void> {
   const before = await memoryUsage(session.url)
   const extraFiles = createLargerNamespace()
+  const startedAt = Time.nowMs()
   const requests = Array.from({ length: 100 }, (_, index) => {
     const revision = createRevision(`BURST_${index}`, index + 10)
     const app = `${revision.files['App.tsx']}\nexport { large } from './large';\n`
     return session.publish({ ...revision, files: { ...revision.files, ...extraFiles, 'App.tsx': app } })
   })
   const outcomes = await Promise.all(requests)
+  const publicationBurstMs = Time.nowMs() - startedAt
   Tests.expect(outcomes.every(outcome => outcome.status === 'published' || outcome.status === 'superseded')).toBe(true)
   Tests.expect(outcomes.some(outcome => outcome.status === 'superseded')).toBe(true)
   Tests.expect(outcomes[99]).toMatchObject({ status: 'published', publishedRevision: 'BURST_99' })
-  const response = await Http.request(`${session.url}/index.bundle?platform=web&dev=true&minify=false&lazy=false`)
+  const response = await Http.request(`${session.url}/Application.bundle?platform=web&dev=true&minify=false&lazy=false`)
   const bundle = await response.text()
   Tests.expect(bundle).toContain('APP_BURST_99')
   Tests.expect(bundle).toContain('HELPER_BURST_99')
@@ -30,10 +33,12 @@ export async function verifyMetroBurst(
     after,
     generatedFiles: 67,
     requests: 100,
+    publicationBurstMs,
     outcomes,
     boundary: 'RSS observations only; no GC baseline or soak claim.',
   }
   const path = Artifacts.resolvePath('notes/radical-preview', `metro-burst-${Platform.randomUUID()}.json`)
+  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   await FileSystem.writeFile(path, JSON.stringify(report, null, 2))
 }
 

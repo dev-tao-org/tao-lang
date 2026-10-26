@@ -23,16 +23,16 @@ Tests.test(
           kind: 'AppDeclaration',
           start: 0,
           end: 34,
-          name: { kind: 'Name', start: 4, end: 14, value: 'HelloWorld' },
+          name: { kind: 'Name', start: 4, end: 15, value: 'Performance' },
           block: {
             kind: 'Block',
-            start: 15,
+            start: 16,
             end: 34,
             statements: [{
               kind: 'RootDeclaration',
-              start: 19,
+              start: 20,
               end: 32,
-              view: { kind: 'Name', start: 24, end: 32, value: 'RootView' },
+              view: { kind: 'Name', start: 25, end: 32, value: 'Preview' },
             }],
           },
           visibility: undefined,
@@ -60,15 +60,15 @@ Tests.test('an unfinished app produces no AST', async () => {
   Tests.expect(transform(tree)).toBeUndefined()
 })
 
-Tests.test('Hello World transforms imported generic renders', async () => {
-  const source = await Tests.readApp('Hello World')
+Tests.test('Preview performance fixture transforms imported generic renders', async () => {
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const tree = createParser().parse(source)
   const result = transform(tree)
   const view = result?.root.block.statements.find(AST.IsViewDeclaration)
   Tests.expect(view).toMatchObject({
     kind: 'ViewDeclaration',
-    start: source.indexOf('view RootView'),
-    name: { kind: 'Name', value: 'RootView' },
+    start: source.indexOf('view Preview'),
+    name: { kind: 'Name', value: 'Preview' },
     parameters: [],
     body: {
       kind: 'Block',
@@ -95,7 +95,9 @@ Tests.test('Hello World transforms imported generic renders', async () => {
 })
 
 async function readAppDeclaration(): Promise<string> {
-  return (await Tests.readApp('Hello World')).match(/app HelloWorld[\s\S]*?\n}/)![0]
+  return (await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')).match(
+    /app Performance[\s\S]*?\n}/,
+  )![0]
 }
 
 Tests.test('module statements and declaration visibility become semantic nodes', () => {

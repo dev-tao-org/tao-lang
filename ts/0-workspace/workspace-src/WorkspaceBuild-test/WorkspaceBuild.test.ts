@@ -6,49 +6,126 @@ import { publishBuild } from '../WorkspaceBuild'
 
 Tests.test('seeds a disk build once, then hands the next complete revision to the live publisher', async () => {
   const root = Artifacts.resolvePath('tmp', `workspace-build-${Platform.randomUUID()}`)
+  await Try(() => verifyDiskAndMemoryPublication(root), {
+    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
+  })
+})
+
+async function verifyDiskAndMemoryPublication(root: string): Promise<void> {
   const buildDirectory = Path.join(root, 'build')
-  const appPath = Path.join(root, 'runtime', 'App.tsx')
-  const initialCode = 'export default function App() { return "initial" }'
-  const nextCode = 'export default function App() { return "live" }'
+  const appPath = Path.join(root, 'runtime', 'src/App.tsx')
+  const initialFiles = {
+    'App.tsx': 'export default function App() { return "initial" }',
+    'source/Card.ts': 'export const label = "initial"',
+  }
+  const nextFiles = {
+    'App.tsx': 'export default function App() { return "live" }',
+    'source/NewCard.ts': 'export const label = "live"',
+  }
   const runtime: RuntimeApplication = { directory: Path.dirname(appPath), appPath }
   const published: GeneratedRevision[] = []
 
-  await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
-    await FileSystem.writeFile(appPath, initialCode)
-    await publishWithTimings(buildDirectory, initialCode, 'revision-1', async () => runtime, () => true)
-    Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(initialCode)
-    Tests.expect(runtime.generated).toEqual({ revision: 'revision-1', sequence: 1, files: { 'App.tsx': initialCode } })
+  await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+  await FileSystem.writeFile(appPath, initialFiles['App.tsx'])
+  await publishWithTimings(buildDirectory, initialFiles, 'revision-1', async () => runtime, () => true)
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(initialFiles['App.tsx'])
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/Card.ts'), 'utf8')).toBe(
+    initialFiles['source/Card.ts'],
+  )
+  Tests.expect(runtime.generated).toEqual({ revision: 'revision-1', sequence: 1, files: initialFiles })
 
-    const originalBuild = await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')
-    const originalRuntime = await FileSystem.readFile(appPath, 'utf8')
-    const outcome = await publishWithTimings(
+  const originalRuntime = await FileSystem.readFile(appPath, 'utf8')
+  const memoryRuntime: RuntimeApplication = {
+    ...runtime,
+    async publishGenerated(snapshot) {
+      published.push(snapshot)
+      return publishedOutcome(snapshot, 'published')
+    },
+  }
+  await verifyAcceptedMemoryPublication(buildDirectory, nextFiles, published, memoryRuntime, appPath, originalRuntime)
+  await verifyRejectedMemoryPublications(buildDirectory, memoryRuntime, nextFiles)
+}
+
+async function verifyAcceptedMemoryPublication(
+  buildDirectory: string,
+  nextFiles: Record<string, string>,
+  published: GeneratedRevision[],
+  memoryRuntime: RuntimeApplication,
+  appPath: string,
+  originalRuntime: string,
+): Promise<void> {
+  const outcome = await publishWithTimings(
+    buildDirectory,
+    nextFiles,
+    'revision-2',
+    async () => memoryRuntime,
+    () => true,
+  )
+
+  Tests.expect(outcome?.status).toBe('published')
+  Tests.expect(published).toEqual([{ revision: 'revision-2', sequence: 2, files: nextFiles }])
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(nextFiles['App.tsx'])
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/NewCard.ts'), 'utf8')).toBe(
+    nextFiles['source/NewCard.ts'],
+  )
+  Tests.expect(await FileSystem.exists(Path.join(buildDirectory, 'source/Card.ts'))).toBe(false)
+  Tests.expect(await FileSystem.readFile(appPath, 'utf8')).toBe(originalRuntime)
+}
+
+async function verifyRejectedMemoryPublications(
+  buildDirectory: string,
+  memoryRuntime: RuntimeApplication,
+  nextFiles: Record<string, string>,
+): Promise<void> {
+  await Tests.rejects(
+    publishWithTimings(buildDirectory, { 'App.tsx': 'rejected' }, 'revision-error', async () => ({
+      ...memoryRuntime,
+      publishGenerated: async snapshot => publishedOutcome(snapshot, 'error', 'Metro rejected this revision.'),
+    }), () => true),
+    /Metro rejected this revision\./,
+  )
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(nextFiles['App.tsx'])
+  const superseded = await publishWithTimings(
+    buildDirectory,
+    { 'App.tsx': 'superseded' },
+    'revision-superseded',
+    async () => ({
+      ...memoryRuntime,
+      publishGenerated: async snapshot => publishedOutcome(snapshot, 'superseded'),
+    }),
+    () => true,
+  )
+  Tests.expect(superseded?.status).toBe('superseded')
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(nextFiles['App.tsx'])
+  await Tests.rejects(
+    publishWithTimings(
       buildDirectory,
-      nextCode,
-      'revision-2',
+      {
+        'App.tsx': 'committed with error',
+        'source/Committed.ts': 'export {}',
+      },
+      'revision-committed-error',
       async () => ({
-        ...runtime,
-        async publishGenerated(snapshot) {
-          published.push(snapshot)
-          return publishedOutcome(snapshot, 'published')
-        },
+        ...memoryRuntime,
+        publishGenerated: async snapshot => ({
+          ...publishedOutcome(snapshot, 'error'),
+          publishedRevision: snapshot.revision,
+        }),
       }),
       () => true,
-    )
-
-    Tests.expect(outcome?.status).toBe('published')
-    Tests.expect(published).toEqual([{ revision: 'revision-2', sequence: 2, files: { 'App.tsx': nextCode } }])
-    Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(originalBuild)
-    Tests.expect(await FileSystem.readFile(appPath, 'utf8')).toBe(originalRuntime)
-  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
-})
+    ),
+    /Preview publication failed: error/,
+  )
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('committed with error')
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/Committed.ts'), 'utf8')).toBe('export {}')
+}
 
 Tests.test('a build superseded during runtime preparation never reaches the live publisher', async () => {
   const published: GeneratedRevision[] = []
   let current = true
   const outcome = await publishWithTimings(
     '/unused-build',
-    'new app source',
+    { 'App.tsx': 'new app source', 'source/Card.ts': 'export {}' },
     'revision-stale',
     async () => {
       current = false
@@ -68,16 +145,68 @@ Tests.test('a build superseded during runtime preparation never reaches the live
   Tests.expect(published).toEqual([])
 })
 
+Tests.test('a build that becomes stale before the atomic mirror swap preserves the current mirror', async () => {
+  const root = Artifacts.resolvePath('tmp', `workspace-build-stale-mirror-${Platform.randomUUID()}`)
+  const buildDirectory = Path.join(root, 'build')
+  const runtimeDirectory = Path.join(root, 'runtime')
+  const appPath = Path.join(runtimeDirectory, 'src/App.tsx')
+  const runtime: RuntimeApplication = { directory: runtimeDirectory, appPath }
+  await Try(async () => {
+    await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+    await FileSystem.writeFile(appPath, 'initial')
+    await publishWithTimings(buildDirectory, { 'App.tsx': 'initial' }, 'revision-1', async () => runtime, () => true)
+    let checks = 0
+    const outcome = await publishWithTimings(
+      buildDirectory,
+      { 'App.tsx': 'stale' },
+      'revision-stale',
+      async () => runtime,
+      () => ++checks < 8,
+    )
+    Tests.expect(outcome).toBeUndefined()
+    Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('initial')
+    Tests.expect(runtime.generated?.revision).toBe('revision-1')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('mirrors a committed memory revision after its source becomes stale', async () => {
+  const root = Artifacts.resolvePath('tmp', `workspace-build-committed-mirror-${Platform.randomUUID()}`)
+  const buildDirectory = Path.join(root, 'build')
+  const appPath = Path.join(root, 'runtime/src/App.tsx')
+  const runtime: RuntimeApplication = { directory: Path.dirname(appPath), appPath }
+  await Try(async () => {
+    await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+    await FileSystem.writeFile(appPath, 'initial')
+    await publishWithTimings(buildDirectory, { 'App.tsx': 'initial' }, 'revision-1', async () => runtime, () => true)
+    let current = true
+    runtime.publishGenerated = async snapshot => {
+      current = false
+      return publishedOutcome(snapshot, 'published')
+    }
+    const outcome = await publishWithTimings(
+      buildDirectory,
+      { 'App.tsx': 'committed' },
+      'revision-2',
+      async () => runtime,
+      () => current,
+    )
+    Tests.expect(outcome?.status).toBe('published')
+    Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('committed')
+    Tests.expect(runtime.generated?.revision).toBe('revision-2')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 Tests.test('waits for server publication, preserves noop, and recovers after a rejected server outcome', async () => {
   await verifyDeferredPublicationRecovery()
 })
 
 async function verifyDeferredPublicationRecovery(): Promise<void> {
   const published: GeneratedRevision[] = []
+  const oldFiles = { 'App.tsx': 'old' }
   const runtime: RuntimeApplication = {
     directory: '/runtime',
     appPath: '/runtime/App.tsx',
-    generated: { revision: 'revision-0', sequence: 0, files: { 'App.tsx': 'old' } },
+    generated: { revision: 'revision-0', sequence: 0, files: oldFiles },
   }
   const deferred = createDeferredPublication()
   runtime.publishGenerated = async snapshot => {
@@ -86,7 +215,13 @@ async function verifyDeferredPublicationRecovery(): Promise<void> {
     return await deferred.promise
   }
 
-  const pending = publishWithTimings('/unused-build', 'same output', 'revision-1', async () => runtime, () => true)
+  const pending = publishWithTimings(
+    '/unused-build',
+    { 'App.tsx': 'same output' },
+    'revision-1',
+    async () => runtime,
+    () => true,
+  )
   await deferred.wait()
   let completed = false
   void pending.then(() => {
@@ -108,7 +243,13 @@ async function verifyRecoveredPublication(runtime: RuntimeApplication, published
     return publishedOutcome(snapshot, 'error', 'Metro rejected this revision.')
   }
   await Tests.rejects(
-    publishWithTimings('/unused-build', 'repaired output', 'revision-2', async () => runtime, () => true),
+    publishWithTimings(
+      '/unused-build',
+      { 'App.tsx': 'repaired output' },
+      'revision-2',
+      async () => runtime,
+      () => true,
+    ),
     /Metro rejected this revision\./,
   )
   runtime.publishGenerated = async snapshot => {
@@ -117,7 +258,7 @@ async function verifyRecoveredPublication(runtime: RuntimeApplication, published
   }
   const recovered = await publishWithTimings(
     '/unused-build',
-    'repaired output',
+    { 'App.tsx': 'repaired output' },
     'revision-3',
     async () => runtime,
     () => true,
@@ -131,13 +272,13 @@ async function verifyRecoveredPublication(runtime: RuntimeApplication, published
 
 async function publishWithTimings(
   buildDirectory: string,
-  code: string,
+  files: Readonly<Record<string, string>>,
   revision: string,
   prepareRuntime: () => Promise<RuntimeApplication>,
   isCurrent: () => boolean,
 ): Promise<PublicationOutcome | undefined> {
   return await Timings.createTopLevelTimer(timings =>
-    publishBuild(buildDirectory, code, revision, prepareRuntime, isCurrent, timings)
+    publishBuild(buildDirectory, files, revision, prepareRuntime, isCurrent, timings)
   )()
 }
 

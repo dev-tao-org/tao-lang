@@ -1,0 +1,5 @@
+use ModuleExamples from ./Imports
+
+folder app ModulesAndDependencies {
+  root ModuleExamples
+}

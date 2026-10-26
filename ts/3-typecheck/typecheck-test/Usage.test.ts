@@ -66,3 +66,17 @@ Tests.test('foreign view parameters are consumed by the external view contract',
   const ast = transform(createParser().parse(source))!
   Tests.expect(unusedWarnings(ast)).toEqual([])
 })
+
+Tests.test('nested view bindings and parameters follow their lexical owner', () => {
+  const source = S`
+    app Demo { root Main }
+    view Main {
+      render Col { Greeting }
+      view Greeting(Name text) { render Text(Name) }
+      view UnusedHelper { render Text("unused") }
+    }
+  `
+  const ast = transform(createParser().parse(source))!
+  Tests.expect(unusedWarnings(ast).map(warning => source.slice(warning.start, warning.end))).toEqual(['UnusedHelper'])
+  Tests.expect(AST.GetDeclarations(ast)).toHaveLength(2)
+})

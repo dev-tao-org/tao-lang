@@ -4,7 +4,7 @@ import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type { createWorkspace } from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
 import { PreviewPublication } from './PreviewPublication'
-import { applyScenario, helloWorldScenarios, type PreviewScenario } from './PreviewScenarios'
+import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
@@ -12,7 +12,7 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
   const sessionDir = await prepareBrowserClient(options.sessionId)
   return await startHarnessServer({
     ...options,
-    scenarios: options.scenarios ?? helloWorldScenarios,
+    scenarios: options.scenarios ?? performanceScenarios,
   }, sessionDir)
 }
 
@@ -23,7 +23,7 @@ export type HarnessOptions = {
   sessionId: string
   /** canonicalSource is the authored fixture text restored by the reset scenario. */
   canonicalSource: string
-  /** scenarios is the ordered button cycle. The Hello World cycle is the default. */
+  /** scenarios is the ordered button cycle. The minimal performance cycle is the default. */
   scenarios?: readonly PreviewScenario[]
   previewTimeoutMs?: number
   frameCount?: 1 | 2

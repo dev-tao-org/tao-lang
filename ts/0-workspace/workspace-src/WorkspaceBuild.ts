@@ -3,11 +3,11 @@ import type { RuntimeApplication } from '@runtime/Runtime'
 import { Errors, Timings, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
-/** publishBuild stages compilation output, then atomically publishes only changed files.
- *  A superseded request may finish staging but cannot replace the current runtime application. */
+/** publishBuild publishes one complete generated-file revision and maintains its disk inspection mirror.
+ *  Memory publication remains the only Metro path; disk snapshots are switched atomically after acceptance. */
 export async function publishBuild(
   buildDirectory: string,
-  code: string,
+  files: Readonly<Record<string, string>>,
   revision: string,
   prepareRuntime: () => Promise<RuntimeApplication>,
   isCurrent: () => boolean,
@@ -16,6 +16,9 @@ export async function publishBuild(
 ): Promise<PublicationOutcome | undefined> {
   if (!isCurrent()) {
     return
+  }
+  if (files['App.tsx'] === undefined) {
+    Errors.ThrowUserInput('Generated app build must contain App.tsx.')
   }
   onProgress?.('Preparing runtime resources and cached toolchain…')
   const runtime = await timings.run(prepareApplication, prepareRuntime)
@@ -26,32 +29,65 @@ export async function publishBuild(
   const generated = {
     revision,
     sequence: Math.max(runtime.publicationSequence ?? 0, runtime.generated?.sequence ?? 0) + 1,
-    files: { 'App.tsx': code },
+    files: { ...files },
   }
+  const previousMirror = getPreviousMirror(runtime, buildDirectory)
   runtime.publicationSequence = generated.sequence
   if (runtime.publishGenerated) {
-    return await timings.run(publishMemory, runtime, generated)
+    return await timings.run(publishMemoryBuild, buildDirectory, runtime, generated, timings)
   }
   onProgress?.('Writing generated app build…')
-  const path = await timings.run(writeBuild, buildDirectory, code)
+  const snapshot = await timings.run(
+    writeBuild,
+    buildDirectory,
+    runtime,
+    generated.files,
+    previousMirror,
+    isCurrent,
+  )
+  if (!snapshot || !isCurrent()) {
+    return
+  }
   onProgress?.('Publishing changed runtime app files…')
-  await timings.run(publishChanged, path, runtime.appPath, isCurrent)
+  await timings.run(publishChanged, snapshot, runtime, generated.files, runtime.generated?.files, isCurrent)
   if (isCurrent()) {
+    await timings.run(publishSnapshot, buildDirectory, snapshot)
+    mirrors.set(runtime, { directory: Path.resolve(buildDirectory), files: generated.files })
     runtime.generated = generated
   }
   onProgress?.('Runtime app file publication complete.')
 }
 
-const publishMemory = Timings.measured('workspace.runtime.publish-memory', async function(
+const mirrors = new WeakMap<RuntimeApplication, { directory: string; files: Readonly<Record<string, string>> }>()
+
+const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', async function(
+  buildDirectory: string,
   runtime: RuntimeApplication,
-  revision: GeneratedRevision,
+  generated: GeneratedRevision,
+  timings: Timings,
 ): Promise<PublicationOutcome> {
   const publish = runtime.publishGenerated
     ?? Errors.ThrowShouldNeverHappen('The preview publisher disappeared during publication.')
-  const outcome = await publish(revision)
-  const committed = outcome.status === 'published' || outcome.publishedRevision === revision.revision
-  if (committed && revision.sequence > (runtime.generated?.sequence ?? -1)) {
-    runtime.generated = revision
+  const outcome = await publish(generated)
+  const committed = outcome.status === 'published' || outcome.publishedRevision === generated.revision
+  if (committed && generated.sequence > (runtime.generated?.sequence ?? -1)) {
+    runtime.generated = generated
+  }
+  const isAcceptedRevisionCurrent = () => runtime.generated === generated
+  if (isAcceptedRevisionCurrent() && FileSystem.existsSync(buildDirectory)) {
+    const previousMirror = getPreviousMirror(runtime, buildDirectory)
+    const snapshot = await timings.run(
+      writeBuild,
+      buildDirectory,
+      runtime,
+      generated.files,
+      previousMirror,
+      isAcceptedRevisionCurrent,
+    )
+    if (snapshot && isAcceptedRevisionCurrent()) {
+      await timings.run(publishSnapshot, buildDirectory, snapshot)
+      mirrors.set(runtime, { directory: Path.resolve(buildDirectory), files: generated.files })
+    }
   }
   if (outcome.status === 'error' || outcome.status === 'poisoned') {
     Errors.ThrowUserInput(outcome.message ?? `Preview publication failed: ${outcome.status}`)
@@ -64,35 +100,176 @@ const prepareApplication = Timings.measured(
   (prepare: () => Promise<RuntimeApplication>) => prepare(),
 )
 
+function getPreviousMirror(
+  runtime: RuntimeApplication,
+  directory: string,
+): Readonly<Record<string, string>> | undefined {
+  const mirror = mirrors.get(runtime)
+  return mirror?.directory === Path.resolve(directory) ? mirror.files : undefined
+}
+
 const writeBuild = Timings.measured(
   'workspace.build.write',
-  async function(directory: string, code: string): Promise<string> {
-    await FileSystem.mkdir(directory, { recursive: true })
-    const path = Path.join(directory, 'App.tsx')
-    await FileSystem.writeIfChanged(path, code)
-    return path
+  async function(
+    directory: string,
+    runtime: RuntimeApplication,
+    files: Readonly<Record<string, string>>,
+    previousFiles: Readonly<Record<string, string>> | undefined,
+    isCurrent: () => boolean,
+  ): Promise<string | undefined> {
+    const revisions = `${directory}.revisions`
+    const revisionDirectory = Path.join(revisions, Platform.randomUUID())
+    await FileSystem.mkdir(revisionDirectory, { recursive: true })
+    const currentDirectory = await Try.WithDefault(directory, () => FileSystem.realpathSync(directory))
+    await Try(async () => {
+      await copyBuildConfiguration(revisionDirectory, runtime)
+      await writeSnapshotFiles(currentDirectory, revisionDirectory, files, previousFiles)
+      if (isCurrent()) {
+        return revisionDirectory
+      }
+      await FileSystem.rm(revisionDirectory, { recursive: true, force: true })
+    }, {
+      async catch(error) {
+        await FileSystem.rm(revisionDirectory, { recursive: true, force: true })
+        Errors.Throw(error)
+      },
+    })
+    return isCurrent() ? revisionDirectory : undefined
   },
 )
 
+async function copyBuildConfiguration(nextDirectory: string, runtime: RuntimeApplication): Promise<void> {
+  const config = {
+    extends: Path.join(runtime.directory, 'tsconfig.json'),
+    include: ['./**/*.ts', './**/*.tsx'],
+  }
+  await FileSystem.writeIfChanged(Path.join(nextDirectory, 'tsconfig.json'), `${JSON.stringify(config, null, 2)}\n`)
+  const targetLink = Path.join(nextDirectory, 'node_modules')
+  const dependencyTarget = Path.join(runtime.directory, 'node_modules')
+  await FileSystem.symlink(Path.relative(nextDirectory, dependencyTarget), targetLink, 'dir')
+}
+
+async function writeSnapshotFiles(
+  currentDirectory: string,
+  nextDirectory: string,
+  files: Readonly<Record<string, string>>,
+  previousFiles: Readonly<Record<string, string>> | undefined,
+): Promise<void> {
+  for (const [file, content] of Object.entries(files)) {
+    const path = resolveGeneratedPath(nextDirectory, file)
+    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    if (previousFiles?.[file] === content) {
+      const source = resolveGeneratedPath(currentDirectory, file)
+      if (await FileSystem.exists(source)) {
+        await FileSystem.cp(source, path)
+        continue
+      }
+    }
+    await FileSystem.writeFile(path, content)
+  }
+}
+
+function resolveGeneratedPath(directory: string, file: string): string {
+  const root = Path.resolve(directory)
+  const path = Path.resolve(root, file)
+  if (path !== root && !Path.isWithin(root, path)) {
+    Errors.ThrowUserInput(`Generated file path escapes the build directory: ${file}`)
+  }
+  return path
+}
+
+const publishSnapshot = Timings.measured('workspace.build.publish-snapshot', async function(
+  directory: string,
+  revisionDirectory: string,
+): Promise<void> {
+  const parent = Path.dirname(directory)
+  const revisions = `${directory}.revisions`
+  await FileSystem.mkdir(parent, { recursive: true })
+  const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+  const previous = current?.isSymbolicLink()
+    ? await Try.WithDefault(undefined, () => FileSystem.realpathSync(directory))
+    : undefined
+  if (current?.isDirectory() && !current.isSymbolicLink()) {
+    const initial = `${directory}.${Platform.randomUUID()}.initial`
+    await FileSystem.rename(directory, initial)
+    await Try(async () => {
+      await FileSystem.replaceDirectoryLink(Path.relative(parent, revisionDirectory), directory)
+    }, {
+      async catch(error) {
+        await FileSystem.rename(initial, directory)
+        Errors.Throw(error)
+      },
+    })
+    await FileSystem.rm(initial, { recursive: true, force: true })
+  } else {
+    await FileSystem.replaceDirectoryLink(Path.relative(parent, revisionDirectory), directory)
+  }
+  const currentDirectory = await Try.WithDefault(revisionDirectory, () => FileSystem.realpathSync(directory))
+  await removeOldSnapshots(revisions, currentDirectory, previous)
+})
+
+async function removeOldSnapshots(
+  revisions: string,
+  currentDirectory: string,
+  previousDirectory: string | undefined,
+): Promise<void> {
+  for (const entry of await FileSystem.readdir(revisions)) {
+    const path = Path.join(revisions, entry)
+    const target = await Try.WithDefault(path, () => FileSystem.realpathSync(path))
+    if (target !== currentDirectory && target !== previousDirectory) {
+      await FileSystem.rm(path, { recursive: true, force: true })
+    }
+  }
+}
+
 const publishChanged = Timings.measured('workspace.runtime.publish-changed', async function(
-  buildPath: string,
-  target: string,
+  snapshot: string,
+  runtime: RuntimeApplication,
+  files: Readonly<Record<string, string>>,
+  previousFiles: Readonly<Record<string, string>> | undefined,
   isCurrent: () => boolean,
 ): Promise<void> {
-  const [code, previous] = await Promise.all([
-    FileSystem.readFile(buildPath, 'utf8'),
-    Try.WithDefault(undefined, () => FileSystem.readFile(target, 'utf8')),
-  ])
-  if (!isCurrent() || code === previous) {
+  if (!isCurrent()) {
     return
   }
-  const pending = `${target}.${Platform.randomUUID()}.pending`
+  await writeAtomicGeneratedFiles(Path.join(runtime.directory, 'src'), files, isCurrent)
+  for (const file of Object.keys(previousFiles ?? {})) {
+    if (!(file in files)) {
+      await FileSystem.rm(resolveGeneratedPath(Path.join(runtime.directory, 'src'), file), { force: true })
+    }
+  }
+  const mirrored = await FileSystem.readFile(Path.join(snapshot, 'App.tsx'), 'utf8')
+  if (mirrored !== files['App.tsx']) {
+    Errors.ThrowUserInput('Generated app build changed while publishing.')
+  }
+})
+
+async function writeAtomicGeneratedFiles(
+  directory: string,
+  files: Readonly<Record<string, string>>,
+  isCurrent: () => boolean,
+): Promise<void> {
+  for (const [file, content] of Object.entries(files)) {
+    if (!isCurrent()) {
+      return
+    }
+    const path = resolveGeneratedPath(directory, file)
+    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    const previous = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
+    if (previous !== content) {
+      await writeAtomic(path, content, isCurrent)
+    }
+  }
+}
+
+async function writeAtomic(path: string, content: string, isCurrent: () => boolean): Promise<void> {
+  const pending = `${path}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FileSystem.writeFile(pending, code)
+    await FileSystem.writeFile(pending, content)
     if (isCurrent()) {
-      FileSystem.renameSync(pending, target)
+      await FileSystem.rename(pending, path)
     }
   }, {
     finally: () => FileSystem.rm(pending, { force: true }),
   })
-})
+}

@@ -80,6 +80,9 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
   }
   const statements = AST.GetViewDeclarationStatements(node)
   if (statements) {
+    for (const child of statements.filter(AST.IsViewDeclaration)) {
+      declare(scope, child.name)
+    }
     for (const statement of statements) {
       if (AST.IsLetDeclaration(statement)) {
         visitLet(statement, scope)
@@ -88,6 +91,8 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
         visitRender(statement.expression, scope)
       } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
         visitInjection(statement.injection, scope)
+      } else if (AST.IsViewDeclaration(statement)) {
+        visitView(statement, scope)
       } else {
         // The view block grammar and semantic constructor constrain its statements.
       }

@@ -16,7 +16,7 @@ export async function writeExpoApplication(
       {
         name: 'tao-preview',
         private: true,
-        main: 'index.ts',
+        main: 'Application.ts',
         dependencies,
         devDependencies,
         scripts: { web: 'expo start --web --no-dev' },
@@ -25,7 +25,7 @@ export async function writeExpoApplication(
       2,
     ),
   )
-  await FileSystem.writeIfChanged(Path.join(directory, 'index.ts'), expoEntry)
+  await FileSystem.writeIfChanged(Path.join(directory, 'Application.ts'), expoEntry)
   await FileSystem.writeIfChanged(Path.join(directory, 'metro.config.js'), metroConfiguration)
   await FileSystem.writeIfChanged(
     Path.join(directory, 'tao-resolution.json'),

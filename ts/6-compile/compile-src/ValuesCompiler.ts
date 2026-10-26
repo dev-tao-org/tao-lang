@@ -1,10 +1,10 @@
 import * as AST from '@ast-gen/AST'
 import { Switch } from '@shared'
-import { emitLiteral } from './codegen-util'
+import { emitLiteral, getScopeValue, type ScopeCode } from './codegen-util'
 import { emitLetDeclaration, emitName } from './RuntimeEmitter'
 
 /** compileExpression emits a literal or lexical scope lookup. */
-export function compileExpression(node: AST.Expression, scope: string): string {
+export function compileExpression(node: AST.Expression, scope: ScopeCode): string {
   return Switch.kind(node, {
     Name: name => emitName(name, scope),
     TextLiteral: emitLiteral,
@@ -12,9 +12,9 @@ export function compileExpression(node: AST.Expression, scope: string): string {
 }
 
 /** compileLetDeclaration emits one ordered immutable scope binding. */
-export function compileLetDeclaration(node: AST.LetDeclaration, scope: string): string {
+export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode): string {
   const value = compileExpression(node.value, scope)
-  return emitLetDeclaration(node, scope, value)
+  return emitLetDeclaration(node, getScopeValue(scope), value)
 }
 
 /** isTextParameter identifies a parameter declared with Tao's text type. */

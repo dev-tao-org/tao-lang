@@ -59,7 +59,7 @@ export type Publication = {
 export type CompiledApp = {
   revision: string
   source: string
-  code: string
+  files: Readonly<Record<string, string>>
   timings: TimingSample[]
   stages: PipelineStages
 }
@@ -195,11 +195,11 @@ class WorkspaceSession {
     const timings = request.timings
     timings.record('workspace.queue', request.queuedAtMs)
     const stages = createSkippedStages()
-    const code = await this.build(request)
-    if (code === undefined) {
+    const files = await this.build(request)
+    if (files === undefined) {
       return { status: 'invalid', revision, timings: timings.samples, stages }
     }
-    const output = { revision, source: request.source, code, timings: timings.samples, stages }
+    const output = { revision, source: request.source, files, timings: timings.samples, stages }
     this.options.onExpected?.(revision, request.startedAtMs)
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
@@ -221,7 +221,7 @@ class WorkspaceSession {
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
-  private async build(request: CompileRequest): Promise<string | undefined> {
+  private async build(request: CompileRequest): Promise<Readonly<Record<string, string>> | undefined> {
     const progress = this.options.onProgress
     progress?.('Parsing Tao source…')
     const tree = request.timings.run(this.parser.parse, request.source)
@@ -249,9 +249,9 @@ class WorkspaceSession {
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
     const compileOptions = createCompilationOptions(`r${request.id}`, program, prepared)
-    const code = request.timings.run(this.options.compile ?? compile, document, compileOptions)
+    const files = request.timings.run(this.options.compile ?? compile, document, compileOptions)
     progress?.('App code generation complete.')
-    return code
+    return files
   }
 
   private async resolveProject(importer: string, alias: string): Promise<{ root: string } | undefined> {
@@ -281,7 +281,7 @@ class WorkspaceSession {
     }
     this.publicationOutcome = await publishBuild(
       this.output.buildDirectory,
-      output.code,
+      output.files,
       output.revision,
       this.prepareRuntimeCallback,
       isCurrent,

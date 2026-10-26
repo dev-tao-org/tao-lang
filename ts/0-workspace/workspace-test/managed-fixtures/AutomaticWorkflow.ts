@@ -22,7 +22,7 @@ export async function openAutomaticWorkspace(
     options: {
       id: 'managed-acceptance',
       async publish(output) {
-        published.push(output.code)
+        published.push(Object.values(output.files).join('\n'))
       },
       acquireLease: async () => () => {},
       // Explicit openFile calls drive refreshes in this setup acceptance test.

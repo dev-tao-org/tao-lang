@@ -51,14 +51,14 @@ type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
 
 async function createRecoveryWorkspace(root: string) {
   const project = await createProject({ directory: Path.join(root, 'project') })
-  const source = await Tests.readApp('Hello World')
+  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let mode: RecoveryMode = 'Ready'
   const workspace = createWorkspace({
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
-    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) =>
-      createRecoveryApp(options.revision, mode)
-    ),
+    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => ({
+      'App.tsx': createRecoveryApp(options.revision, mode),
+    })),
   })
   return {
     workspace,

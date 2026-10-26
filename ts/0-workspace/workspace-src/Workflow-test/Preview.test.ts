@@ -50,7 +50,7 @@ async function openPreview(entry: string, events: string[], published: string[])
         acquireLease: async () => () => {},
         runtimeOptions: { dependencyDirectory: '/prepared-runtime' },
         async publish(app) {
-          published.push(app.code)
+          published.push(app.files['App.tsx'] ?? '')
         },
         pipelineServices: {
           async buildManagedInput(directory, program) {
