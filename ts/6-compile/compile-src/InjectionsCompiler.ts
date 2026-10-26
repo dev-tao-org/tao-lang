@@ -1,34 +1,28 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import {
-  type ComponentNames,
-  emitInjectionCustomHook,
-  emitName,
-  type InjectionCapture,
-  type InjectionCompilation,
-} from './RuntimeEmitter'
+import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
 
 /** compileInjection emits an authored hook declaration and its owning-view invocation. */
 export function compileInjection(
   node: AST.Injection,
   bindings: ReadonlySet<string>,
-  names: ComponentNames,
-): InjectionCompilation {
+  names: RuntimeEmitter.ComponentNames,
+): RuntimeEmitter.InjectionCompilation {
   const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
-  return emitInjectionCustomHook(node, names, captures)
+  return RuntimeEmitter.emitInjectionCustomHook(node, names, captures)
 }
 
 function compileCapture(
   node: AST.Capture,
   bindings: ReadonlySet<string>,
-  names: ComponentNames,
-): InjectionCapture {
+  names: RuntimeEmitter.ComponentNames,
+): RuntimeEmitter.InjectionCapture {
   assertCaptureName(node.name.value)
   return Switch.kind(node.value, {
     Name(name) {
       const text = isTextExpression(name, reference => bindings.has(reference.value))
-      const value = emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
+      const value = RuntimeEmitter.emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
       return { node, type: text ? 'text' : 'unknown', value }
     },
     ContextReference: reference =>
