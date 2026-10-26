@@ -30,8 +30,8 @@ description: >-
 - At review start, freeze the original change inventory, baseline and source snapshot in the session
   notes. Record its file/hunk totals and review units: one per original diff hunk, plus one per binary
   or zero-hunk change. Keep this denominator fixed throughout the review.
-- Track completed original units from explicit developer approvals, mapping renames, splits and
-  replacements back to their original changes without double counting. Partial approvals earn only
+- Track completed original units from approvals, including automatic test acceptance below. Map
+  renames, splits and replacements to original changes without double counting. Partial approvals earn only
   the corresponding original units. Added fixes, tests and refactors are additional completed work,
   not additional review units; they must not enlarge the denominator or reduce earned progress.
 - Present `X% done` before the remaining-groups list whenever introducing the next group, calculated
@@ -80,8 +80,7 @@ description: >-
 
 ## Presentation formats
 
-Initial proposal example: repeat feature sets and groups, keep counts and descriptions separate,
-and replace placeholders with current counts. Get agreement before beginning a group.
+Initial proposal: repeat feature sets and groups with current counts; get agreement first.
 
 ```text
 - Feature set: **Projects, sessions and storage**
@@ -103,7 +102,7 @@ and replace placeholders with current counts. Get agreement before beginning a g
 ...
 ```
 
-Each turn lists remaining groups or chunks by title, then presents files for only the current one:
+List remaining titles, then only the current chunk's files:
 
 ```text
 ### <Feature set, when applicable>
@@ -129,8 +128,11 @@ an outstanding subagent-readiness footer: no recap, approval question, next step
 
 ## Interpret approval
 
-- Interpret `F<number>`, such as `F2`, as a reference to that numbered file in the current group; it does not by itself approve the file.
-- `<number>y`, such as `1y`, approves that numbered file's saved contents in the current group. Preserve its numbering.
+- Automatically accept authored TypeScript `.test.ts` / `.test.tsx` files; no per-file developer
+  approval is needed. Keep test runners and reusable utilities outside test files, shared where
+  appropriate and subject to developer approval. See [test scope](references/operations.md#automatic-test-acceptance).
+- `F<number>` references a stable file ID; it alone is not approval. `<number>y` approves that
+  numbered file's saved contents in the current group. Preserve its numbering.
 - "Mark file X reviewed" approves its saved disk contents, including pending edits. "Approve
   changes X" approves only those changes. Resolve semantic requests such as "approve the new error
   messages" to the narrowest sound content using the conversation and current diff.
@@ -139,11 +141,10 @@ an outstanding subagent-readiness footer: no recap, approval question, next step
   boundary, and ask one focused question. Use [decision rounds](../decision-rounds/SKILL.md) only
   when an actual design discussion is needed. Never broaden approval because copying a whole file
   or applying a three-way merge would be easier.
-- If a concrete concern warrants independent scrutiny, propose its scope and ask permission before
-  launching a read-only [reviewer](../code-review/SKILL.md). Run it in the background and continue
-  elsewhere. Track its approval request and exact snapshot; return with assessed findings. A clean
-  review completes the original approval only if scope and contents are unchanged; changed content
-  needs renewed assessment. Findings do not authorize accepting additional code.
+- Ask permission before launching a read-only [reviewer](../code-review/SKILL.md) for a concrete
+  concern. Continue elsewhere; track scope and snapshot, then assess findings. A clean unchanged
+  review may complete the original approval; changed content needs renewed assessment. Findings
+  do not authorize additional acceptance.
 - Track specific accepted files requiring a semantic recheck after shared behavior changes, with a
   concrete reason. Unchanged file contents do not prove unchanged correctness. Resolve these flags
   with the developer before claiming the review complete.

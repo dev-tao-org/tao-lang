@@ -77,6 +77,25 @@ selections must remain intact. Do not run full
 verification merely to copy previously committed approved contents. For implementation corrections,
 choose proportionate intermittent checks and retain actionable failures.
 
+## Automatic test acceptance
+
+Authored TypeScript `.test.ts` and `.test.tsx` files are automatically approved under this skill's
+standing developer authorization, including test cases, assertions and local test fixtures.
+Record their exact saved snapshots with the normal whole-file acceptance command and receipts;
+include both paths for renames and deleted test files. Do not request individual approvals or
+rerun tests merely to transfer acceptance. Later changes to these files receive the same treatment.
+
+Test runners, execution infrastructure and reusable utility implementations still require developer
+approval. Keep them in separate non-test files and share equivalent behavior where appropriate;
+being inside a test folder does not make a helper automatically accepted. If a test file contains
+such infrastructure, separate it or accept only its authored tests rather than approving the mixed
+file wholesale. Local fixtures for particular cases need not become shared infrastructure.
+
+Count only previously uncredited original test units toward the frozen denominator. New tests
+and later regression coverage are additional accepted scope, never additional original units.
+Automatic test acceptance does not approve the production behavior being tested, clear production
+semantic rechecks, imply verification success or authorize landing.
+
 ## Accept agreed portions
 
 First resolve the developer's request into explicit content. Show exact short excerpts and file/line
