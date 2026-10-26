@@ -8,27 +8,37 @@ export type StatementSlice = SourceRange & { node: SyntaxNode; commented: boolea
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
 export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
   const slices: StatementSlice[] = []
-  let leading: number | undefined
+  let leadingCommentStart: number | undefined
   for (const node of tree.rootNode.namedChildren) {
     const previous = slices.at(-1)
     if (CST.IsComment(node)) {
-      if (previous && !source.slice(previous.end, node.startIndex).includes('\n')) {
+      // Same-line comments move with the preceding statement; other comments lead the next one.
+      if (isSameLineTrailingComment(source, previous, node)) {
         previous.end = node.endIndex
         previous.commented = true
       } else {
-        leading ??= node.startIndex
+        leadingCommentStart ??= node.startIndex
       }
       continue
     }
+    // This statement consumes pending leading comments and retains comments nested inside it.
     slices.push({
-      start: leading ?? node.startIndex,
+      start: leadingCommentStart ?? node.startIndex,
       end: node.endIndex,
       node,
-      commented: leading !== undefined || containsComment(node),
+      commented: leadingCommentStart !== undefined || containsComment(node),
     })
-    leading = undefined
+    leadingCommentStart = undefined
   }
   return slices
+}
+
+function isSameLineTrailingComment(
+  source: string,
+  previous: StatementSlice | undefined,
+  comment: SyntaxNode,
+): previous is StatementSlice {
+  return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes('\n')
 }
 
 function containsComment(node: SyntaxNode): boolean {
