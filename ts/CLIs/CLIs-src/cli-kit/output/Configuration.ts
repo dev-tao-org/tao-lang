@@ -34,11 +34,13 @@ export async function configureCLIOutput(
   }
 }
 
-function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environment: {
+type OutputEnvironment = {
   ui?: string
   terminalOutput?: string
   tty: boolean
-}) {
+}
+
+function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environment: OutputEnvironment) {
   const ui = environment.tty && (environment.ui ?? (entrypoint === 'dev' ? '1' : '0')) === '1'
   const terminal = environment.terminalOutput === '1'
     || (environment.terminalOutput === undefined && entrypoint !== 'agent')

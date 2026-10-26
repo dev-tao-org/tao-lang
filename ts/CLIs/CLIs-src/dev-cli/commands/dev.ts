@@ -203,12 +203,14 @@ function reportReload(timing: ReloadTiming): void {
   )
 }
 
-async function cleanup(options: {
+type CleanupOptions = {
   preview: PreviewHarness | undefined
   workspace: ReturnType<typeof createWorkspace>
   expo: Runtime.ExpoSession | undefined
   reportFailure: boolean
-}): Promise<void> {
+}
+
+async function cleanup(options: CleanupOptions): Promise<void> {
   options.preview?.dispose()
   await Try(() => options.workspace.dispose(), {
     async finally() {

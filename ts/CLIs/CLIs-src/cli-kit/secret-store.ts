@@ -108,13 +108,21 @@ export function withSecret(
       [name]: {
         addedAt: existing?.addedAt || stamp,
         value: armor.trimEnd().split('\n'),
-        ...(options.note === undefined ? existing?.note === undefined ? {} : { note: existing.note } : {
-          note: options.note,
-        }),
+        ...resolveSecretNote(options.note, existing?.note),
         ...(existing === undefined ? {} : { updatedAt: stamp }),
       },
     },
   }
+}
+
+function resolveSecretNote(note: string | undefined, existingNote: string | undefined): { note?: string } {
+  if (note !== undefined) {
+    return { note }
+  }
+  if (existingNote !== undefined) {
+    return { note: existingNote }
+  }
+  return {}
 }
 
 /** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */

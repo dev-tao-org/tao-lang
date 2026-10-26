@@ -13,15 +13,15 @@ export type { TestExecutionOptions } from './TestPlan'
 
 /** runTestPlan executes selected TypeScript and Tao suites with bounded, independently reported workers. */
 export async function runTestPlan(
-  options:
-    & { typescriptArgs?: readonly string[]; taoTarget?: string; slowSeconds?: number }
-    & TestPlanModule2.TestExecutionOptions,
+  options: TestWorkerOptions,
 ): Promise<void> {
   const controller = Http.createAbortController()
   const stop = Lifecycle.onTermination(() => controller.abort())
   const workerEnvironment = testWorkerEnvironment()
   await Try(() => executeTestPlan(options, controller.signal, workerEnvironment), { finally: stop })
 }
+
+type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: number }
 
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
 export async function runTaoTestFiles(

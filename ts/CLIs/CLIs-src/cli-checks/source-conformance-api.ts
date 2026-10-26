@@ -100,11 +100,11 @@ function isExported(node: TypeScript.Node): boolean {
 }
 
 /** isLocalNamedExport detects named exports that refer to local declarations. */
-function isLocalNamedExport(node: TypeScript.ExportDeclaration): node is TypeScript.ExportDeclaration & {
-  exportClause: TypeScript.NamedExports
-} {
+function isLocalNamedExport(node: TypeScript.ExportDeclaration): node is LocalNamedExport {
   return !node.moduleSpecifier && node.exportClause !== undefined && TypeScript.isNamedExports(node.exportClause)
 }
+
+type LocalNamedExport = TypeScript.ExportDeclaration & { exportClause: TypeScript.NamedExports }
 
 /** normalizeDoc removes JSDoc formatting and normalizes description whitespace. */
 function normalizeDoc(text: string): string {

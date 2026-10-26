@@ -4,12 +4,7 @@ import type { ChannelState } from '../Output'
 import { displayStatus, elapsed, wrappedTail } from './Display'
 
 /** Columns renders channel output in equal-width terminal panes. */
-export function Columns(props: {
-  channels: readonly ChannelState[]
-  now: number
-  rows: number
-  width: number
-}): React.JSX.Element {
+export function Columns(props: ColumnsProps): React.JSX.Element {
   const count = props.channels.length
   if (count === 0) {
     return <Text color="gray">No active channels.</Text>
@@ -31,12 +26,21 @@ export function Columns(props: {
   )
 }
 
-function ChannelPane(props: {
+type ColumnsProps = {
+  channels: readonly ChannelState[]
+  now: number
+  rows: number
+  width: number
+}
+
+type ChannelPaneProps = {
   channel: ChannelState
   now: number
   paneWidth: number
   rows: number
-}): React.JSX.Element {
+}
+
+function ChannelPane(props: ChannelPaneProps): React.JSX.Element {
   const { channel } = props
   const status = displayStatus(channel.status)
   const title = `${status.mark} ${channel.title} ${elapsed(channel, props.now)}`

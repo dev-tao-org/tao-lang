@@ -4,11 +4,14 @@ import { pendingPreviewRecords, type PreviewRecord } from './PreviewRecords'
 import { pinArchive, requireSourceHead } from './SourceIdentity'
 import { requireOwnedStorageChanges } from './StorageStatus'
 
-/** publishPreviewArchive publishes only validated task records, confirms the remote and then pins the gitlink. */
+/** PublishedPreviewArchive retains the storage commit and source records published for a landing head. */
+export type PublishedPreviewArchive = { commit: string; sources: string[]; landingHead: string }
+
+/** publishPreviewArchive publishes validated task records, confirms the remote and pins the gitlink. */
 export async function publishPreviewArchive(
   io: LandingIO,
   verifiedHead: string,
-): Promise<{ commit: string; sources: string[]; landingHead: string }> {
+): Promise<PublishedPreviewArchive> {
   await requireSourceHead(io, verifiedHead)
   if ((await git(io, ['submodule', 'status', '--', '.storage'])).startsWith('-')) {
     await git(io, ['submodule', 'update', '--init', '--', '.storage'])

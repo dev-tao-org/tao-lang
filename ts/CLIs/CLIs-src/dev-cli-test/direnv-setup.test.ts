@@ -95,7 +95,7 @@ async function mockCommand(
   command: string,
   spec: { args?: readonly string[] },
 ): Promise<MockCommandResult> {
-  const stdout = command === 'git' ? gitOutput(spec.args, paths.common, root, identity) : ''
+  const stdout = command === 'git' ? resolveGitOutput(spec.args, paths.common, root, identity) : ''
   if (command === 'nix-store') {
     const addRoot = spec.args?.[3] ?? ''
     await FileSystem.mkdir(Path.join(addRoot, 'bin'), { recursive: true })
@@ -104,7 +104,7 @@ async function mockCommand(
   return { command, exitCode: 0, stdout, stderr: '' }
 }
 
-function gitOutput(args: readonly string[] | undefined, common: string, root: string, identity: string): string {
+function resolveGitOutput(args: readonly string[] | undefined, common: string, root: string, identity: string): string {
   if (args?.[0] === 'rev-parse') {
     return `${common}\n`
   }

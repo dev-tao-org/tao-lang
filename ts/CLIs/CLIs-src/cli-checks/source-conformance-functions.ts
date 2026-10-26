@@ -25,9 +25,13 @@ function objectFunctionStyleIssue(node: TypeScript.Node, source: string): string
     return isBindingSafe(value) ? methodIssue : undefined
   }
   if (TypeScript.isFunctionExpression(value) && !value.name && isBindingSafe(value)) {
-    return isSingleReturnValue(value)
-      ? hasReturnComments(value, source) ? undefined : inlineIssue
-      : methodIssue
+    if (!isSingleReturnValue(value)) {
+      return methodIssue
+    }
+    if (hasReturnComments(value, source)) {
+      return undefined
+    }
+    return inlineIssue
   }
   return undefined
 }

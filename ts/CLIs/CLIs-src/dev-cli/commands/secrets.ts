@@ -207,13 +207,17 @@ async function setupSecrets(): Promise<void> {
     await writeStore({ ...store, recipients: [...store.recipients, recipient] })
     return true
   })
-  IO.print(
-    added
-      ? existed
-        ? "Recorded this machine's existing Secure Enclave identity as a secrets recipient."
-        : 'Created a Secure Enclave identity and recorded this machine as a secrets recipient.'
-      : 'This machine is already a secrets recipient.',
-  )
+  IO.print(buildRecipientIdentityMessage(added, existed))
+}
+
+function buildRecipientIdentityMessage(added: boolean, existed: boolean): string {
+  if (!added) {
+    return 'This machine is already a secrets recipient.'
+  }
+  if (existed) {
+    return "Recorded this machine's existing Secure Enclave identity as a secrets recipient."
+  }
+  return 'Created a Secure Enclave identity and recorded this machine as a secrets recipient.'
 }
 
 async function readStore(): Promise<SecretStoreModule2.SecretStore> {

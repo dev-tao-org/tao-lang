@@ -57,9 +57,13 @@ function mergeActivationSourceLine(existing: string): string {
     sourced = true
     return [trimmed === activationSourceLine ? line : activationSourceLine]
   }).join('\n')
-  return sourced
-    ? normalized
-    : `${normalized}${normalized && !normalized.endsWith('\n') ? '\n' : ''}${activationSourceLine}\n`
+  if (sourced) {
+    return normalized
+  }
+  if (!normalized || normalized.endsWith('\n')) {
+    return `${normalized}${activationSourceLine}\n`
+  }
+  return `${normalized}\n${activationSourceLine}\n`
 }
 
 /** realPathIfPresent resolves a path when it exists and returns an empty string otherwise. */

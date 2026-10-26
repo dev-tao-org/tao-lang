@@ -23,12 +23,15 @@ export type TestSectionFailures = { typescript?: string; tao?: string }
 /** TestRunSignal carries cancellation through scheduling and subprocess execution. */
 export type TestRunSignal = ReturnType<typeof Http.createAbortController>['signal']
 
+/** TestExecutionRequest carries selected suites and test-worker controls. */
+export type TestExecutionRequest = { typescriptArgs?: readonly string[]; taoTarget?: string } & TestExecutionOptions
+
 /** TaoWorkerReport is the shared subprocess result protocol for completed Tao cases. */
 export type TaoWorkerReport = { passed: number; failed: number; error?: string }
 
 /** planTestExecution validates test options and assigns worker budgets deterministically. */
 export function planTestExecution(
-  options: { typescriptArgs?: readonly string[]; taoTarget?: string } & TestExecutionOptions,
+  options: TestExecutionRequest,
 ): TestPlan {
   const serial = options.serial ?? false
   const parallel = options.parallel
@@ -137,11 +140,21 @@ function splitWorkerBudget(
   defaultBudget: boolean,
 ): [number, number] {
   if (sections < 2) {
-    const workers = defaultBudget ? typescriptSelected ? 3 : 4 : budget
+    const workers = resolveSingleSectionWorkerBudget(defaultBudget, typescriptSelected, budget)
     return typescriptSelected ? [workers, 0] : [0, workers]
   }
   const typescript = Math.min(3, Math.max(1, Math.floor(budget / 2)))
   return [typescript, Math.max(1, budget - typescript)]
+}
+
+function resolveSingleSectionWorkerBudget(defaultBudget: boolean, typescriptSelected: boolean, budget: number): number {
+  if (!defaultBudget) {
+    return budget
+  }
+  if (typescriptSelected) {
+    return 3
+  }
+  return 4
 }
 
 function runSection(section: 'typescript' | 'tao', run: () => Promise<void>, signal?: TestRunSignal) {

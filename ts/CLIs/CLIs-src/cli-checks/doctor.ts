@@ -2,22 +2,30 @@ import { Errors, Try } from '@shared'
 import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
 /** doctorReport gathers diagnostics for the active implementation without changing developer state. */
-export async function doctorReport(fingerprintOnly = false): Promise<{
+export async function doctorReport(fingerprintOnly = false): Promise<DoctorReport> {
+  const snapshot = await readSnapshot()
+  const fingerprint = await readFingerprint(snapshot)
+  const checks = fingerprintOnly ? [] : await readChecks(snapshot)
+  const status = resolveReportStatus(checks)
+  return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
+}
+
+type DoctorReport = {
   version: 1
   repositoryRoot: string
   checks: Check[]
   status: Check['status']
   fingerprint: Fingerprint
-}> {
-  const snapshot = await readSnapshot()
-  const fingerprint = await readFingerprint(snapshot)
-  const checks = fingerprintOnly ? [] : await readChecks(snapshot)
-  const status = checks.some(check => check.status === 'fail')
-    ? 'fail'
-    : checks.some(check => check.status === 'warn')
-    ? 'warn'
-    : 'pass'
-  return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
+}
+
+function resolveReportStatus(checks: readonly Check[]): Check['status'] {
+  if (checks.some(check => check.status === 'fail')) {
+    return 'fail'
+  }
+  if (checks.some(check => check.status === 'warn')) {
+    return 'warn'
+  }
+  return 'pass'
 }
 
 /** assertDoctorReady raises the diagnosis after its report has been printed. */

@@ -44,7 +44,9 @@ function hasValidCleanArguments(args: readonly string[]): boolean {
   return args.length <= 1 && args.every(argument => argument === '--full' || argument === '--partial')
 }
 
-async function cleanAppProjects(): Promise<{ projects: number; removed: number; active: string[]; protected: number }> {
+type CleanAppProjectsResult = { projects: number; removed: number; active: string[]; protected: number }
+
+async function cleanAppProjects(): Promise<CleanAppProjectsResult> {
   const roots = await initializedProjects(Repo.resolvePath('Apps'))
   let removed = 0
   let protectedCount = 0
