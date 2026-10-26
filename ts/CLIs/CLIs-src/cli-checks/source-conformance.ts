@@ -3,12 +3,14 @@ import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
+import { nestedConditionalIssue } from './source-conformance-conditional'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
+import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
@@ -81,6 +83,14 @@ class SourceConformanceChecker {
     const functionIssue = objectFunctionStyleIssue(node, this.source)
     if (functionIssue) {
       this.report(node.getStart(this.file), functionIssue)
+    }
+    const conditionalIssue = nestedConditionalIssue(node)
+    if (conditionalIssue) {
+      this.report(node.getStart(this.file), conditionalIssue)
+    }
+    const signatureIssue = complexSignatureTypeIssue(node)
+    if (signatureIssue) {
+      this.report(node.getStart(this.file), signatureIssue)
     }
     const platformIssue = platformAccessIssue(node, this.filename)
     if (platformIssue) {

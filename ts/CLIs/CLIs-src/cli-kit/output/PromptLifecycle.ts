@@ -1,11 +1,7 @@
 import { Errors, Try } from '@shared'
 
 /** createPromptLifecycle suspends a terminal renderer for one prompt and rejects overlapping readers. */
-export function createPromptLifecycle(operations: {
-  suspend: () => Promise<boolean>
-  resume: () => Promise<void>
-  reportResumeFailure: (error: unknown) => void
-}) {
+export function createPromptLifecycle(operations: PromptLifecycleOperations) {
   let promptActive = false
   let suspended = false
   let transition = Promise.resolve()
@@ -45,6 +41,12 @@ export function createPromptLifecycle(operations: {
     transition = transition.then(operation, operation)
     return transition
   }
+}
+
+type PromptLifecycleOperations = {
+  suspend: () => Promise<boolean>
+  resume: () => Promise<void>
+  reportResumeFailure: (error: unknown) => void
 }
 
 type CleanupResult = { failed: false } | { failed: true; error: unknown }

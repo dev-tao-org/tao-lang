@@ -10,6 +10,15 @@ export type PreviewOutcome = PreviewExpectation & {
   message?: string
 }
 
+/** PreviewOutcomeSnapshot summarizes pending work and the latest preview error. */
+export type PreviewOutcomeSnapshot = {
+  pending: number
+  latestApplied: number
+  deadline?: number
+  error?: string
+  diagnostics: readonly string[]
+}
+
 /** PreviewOutcomeTracker bounds outstanding work independently for one preview frame. */
 export class PreviewOutcomeTracker {
   private bootId?: string
@@ -98,13 +107,7 @@ export class PreviewOutcomeTracker {
     this.pending.clear()
   }
 
-  snapshot(): {
-    pending: number
-    latestApplied: number
-    deadline?: number
-    error?: string
-    diagnostics: readonly string[]
-  } {
+  snapshot(): PreviewOutcomeSnapshot {
     const oldest = this.pending.values().next().value
     return {
       pending: this.pending.size,
