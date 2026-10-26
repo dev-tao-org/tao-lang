@@ -217,10 +217,18 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
       'export function OtherView(props: { Value: string }) { return null }\n',
     )
+    const watchedFiles: string[] = []
     await Tests.rejects(
-      prepareSidecarPipeline({ ...fixture, executor }),
+      prepareSidecarPipeline({
+        ...fixture,
+        executor,
+        async onWatchFiles(files) {
+          watchedFiles.push(...files)
+        },
+      }),
       /does not satisfy its declared props contract/i,
     )
+    Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'FormattedDate.tsx'))
 
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
