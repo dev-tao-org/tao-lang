@@ -78,7 +78,7 @@ export class ReloadTimings {
       saveToAppliedMs: Math.max(...[...complete.values()].map(frame => frame.applied.timestampMs)) - this.startedAtMs,
       pipeline: publication.timings,
       frames: Object.fromEntries([...complete].map(([id, frame]) => [id, {
-        publishToHmrMs: frame.hmr.timestampMs - publication.publishedAtMs,
+        publishToHmrMs: frame.hmr.timestampMs - publication.publicationStartedAtMs,
         hmrToAppliedMs: frame.applied.timestampMs - frame.hmr.timestampMs,
         saveToHmrMs: frame.hmr.timestampMs - this.startedAtMs,
         saveToAppliedMs: frame.applied.timestampMs - this.startedAtMs,

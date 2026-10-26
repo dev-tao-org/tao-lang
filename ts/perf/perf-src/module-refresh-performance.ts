@@ -95,13 +95,14 @@ function createRevision(
   factor: number,
   label: string,
 ): NonNullable<Runtime.RuntimeApplication['generated']> {
+  const files = Object.fromEntries(fixture.files.map(file => [
+    file.path.replace(/^src\//, ''),
+    file.path === fixture.editedPath ? fixture.editSource(factor, label) : file.source,
+  ]))
   return {
     revision: `module-refresh-${sequence}`,
     sequence,
-    files: Object.fromEntries(fixture.files.map(file => [
-      file.path.replace(/^src\//, ''),
-      file.path === fixture.editedPath ? fixture.editSource(factor, label) : file.source,
-    ])),
+    files,
   }
 }
 
@@ -149,8 +150,9 @@ async function refreshAndVerify(
   sample: number,
 ): Promise<RefreshSample> {
   const before = await readMetrics(layout.page)
+  const revision = createRevision(layout.fixture, sample + 1, factor, label)
   const publicationStartMs = Time.nowMs()
-  const publication = await layout.expo.publish(createRevision(layout.fixture, sample + 1, factor, label))
+  const publication = await layout.expo.publish(revision)
   if (publication.status !== 'published') {
     Errors.ThrowHostEnvironment(`Module refresh publication failed: ${publication.status}`)
   }

@@ -25,6 +25,7 @@ export type { WorkspaceOptions } from './WorkspaceOptions'
 export type Publication = {
   revision: string
   startedAtMs: number
+  publicationStartedAtMs: number
   publishedAtMs: number
   timings: readonly TimingSample[]
   outcome?: PublicationOutcome
@@ -183,6 +184,7 @@ class WorkspaceSession {
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
+    const publicationStartedAtMs = Time.timestampMs()
     await timings.run(Publish, this.publishCallback, output, isCurrent)
     if (!isCurrent() || this.publicationOutcome?.status === 'superseded') {
       return { status: 'superseded', revision, timings: timings.samples, stages }
@@ -192,6 +194,7 @@ class WorkspaceSession {
       listener({
         revision,
         startedAtMs: request.startedAtMs,
+        publicationStartedAtMs,
         publishedAtMs: Time.timestampMs(),
         timings: timings.samples,
         outcome: this.publicationOutcome,

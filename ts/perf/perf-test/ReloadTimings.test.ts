@@ -13,7 +13,13 @@ Tests.test('reload output waits for both matching previews and measures from the
   Tests.expect(reported).toEqual([])
   reload.receive(signal('left', 'tao.update-done', 1080))
   Tests.expect(reported).toEqual([])
-  reload.published({ revision: 'r2', startedAtMs: 1000, publishedAtMs: 1010, timings: [] })
+  reload.published({
+    revision: 'r2',
+    startedAtMs: 1000,
+    publicationStartedAtMs: 1010,
+    publishedAtMs: 1120,
+    timings: [],
+  })
   Tests.expect(reported).toEqual([{
     revision: 'r2',
     saveToHmrMs: 85,
@@ -36,7 +42,13 @@ Tests.test('reload receipts replace stale milestones when a preview reboots', ()
   reload.receive(signal('left', 'tao.preview-applied', 1100, 'r1', 'boot-b'))
   reload.receive(signal('right', 'tao.update-done', 1080, 'r1', 'boot-right'))
   reload.receive(signal('right', 'tao.preview-applied', 1110, 'r1', 'boot-right'))
-  reload.published({ revision: 'r1', startedAtMs: 1000, publishedAtMs: 1010, timings: [] })
+  reload.published({
+    revision: 'r1',
+    startedAtMs: 1000,
+    publicationStartedAtMs: 1010,
+    publishedAtMs: 1120,
+    timings: [],
+  })
   Tests.expect(reported).toEqual([])
 
   reload.receive(signal('left', 'tao.update-done', 1200, 'r1', 'boot-a'))
@@ -53,7 +65,13 @@ Tests.test('single preview reporting requires its configured frame and ignores u
   const reported: ReloadTiming[] = []
   const reload = new ReloadTimings('session', timing => reported.push(timing), ['left'])
   reload.begin('r2', 1000)
-  reload.published({ revision: 'r2', startedAtMs: 1000, publishedAtMs: 1010, timings: [] })
+  reload.published({
+    revision: 'r2',
+    startedAtMs: 1000,
+    publicationStartedAtMs: 1010,
+    publishedAtMs: 1090,
+    timings: [],
+  })
   reload.receive(signal('right', 'tao.update-done', 1050))
   reload.receive(signal('right', 'tao.preview-applied', 1060))
   Tests.expect(reported).toEqual([])
