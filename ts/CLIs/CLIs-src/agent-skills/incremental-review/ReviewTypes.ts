@@ -12,6 +12,7 @@ export type ReviewSession = {
   accepted: Record<string, string>
   recheck: string[]
   notes: string[]
+  continuation?: { session: string; root: string; reviewedBranch: string; reviewedHead: string }
 }
 
 /** ReviewSelection freezes candidate trees and the exact source snapshot that was shown. */

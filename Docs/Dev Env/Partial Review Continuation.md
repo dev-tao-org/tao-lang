@@ -5,11 +5,11 @@ Continue the human-led review in a separate implementation worktree while preser
 ## Branch setup
 
 - Create `feat/metro-memory-preview-review` from the committed tip of `feat/metro-memory-preview` in a new worktree.
-- Use the partial-stepwise-big-incremental-review skill. In the new worktree, let its `start` operation create `feat/metro-memory-preview-review-incremental-review-approved` from the prior accepted tip; do not pre-create that target branch.
-- Resolve and record the current tip of `feat/projects-sessions-review-fixes-incremental-review-approved` before starting, then pass that immutable SHA as `--base`:
+- Use the partial-stepwise-big-incremental-review skill. In the new worktree, let its `continue` operation create `feat/metro-memory-preview-review-incremental-review-approved` from the prior accepted session; do not pre-create that target branch.
+- The original implementation checkout contains the session for `feat/projects-sessions-review-fixes-incremental-review-approved`:
 
 ```sh
-./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- start --base <prior-approved-SHA> --branch feat/metro-memory-preview-review-incremental-review-approved
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- continue --from /Users/ro/.codex/worktrees/aea4/tao-lang --branch feat/metro-memory-preview-review-incremental-review-approved
 ```
 
 The new accepted tree must initially equal the prior accepted tree. Never merge the implementation into the accepted branch. Compare direct trees, including saved working edits, rather than merge-base diffs.
@@ -22,11 +22,11 @@ Read the old session and its receipts before recording any further approval:
 - Retained copy: `/Users/ro/.codex/worktrees/7076/tao-lang/.artifacts/notes/source-aea4-retained/notes/incremental-review/`.
 - Important records: `progress.json`, `current-group.md`, `grouping-proposal.md`, `completed-name-resolution.md`, `process-feedback.md`, and `active/session.json` plus completed transaction receipts.
 
-These paths are local evidence, not files that travel with a Git branch. Copy the relevant records into the new worktree's retained notes as historical evidence. Verify their agreement with the actual old approved tip; do not treat a stale archive as authoritative. Keep both source worktrees read-only.
+These paths are local evidence, not files that travel with a Git branch. The continuation operation retains historical evidence in the new session; inspect its provenance and verify agreement with the actual old approved tip. Do not treat a stale archive as authoritative. Preserve the original files, branches and index; the tool uses a temporary coordination lock while taking its snapshot.
 
-Preserve original review units, earned credit, pending questions and semantic rechecks in the continuation checkpoint. New preview/planning changes form additional review scope, not an enlarged original denominator. A new script session starts with an empty acceptance registry: explicitly record inherited approvals/rechecks in its notes and checkpoint; do not infer that an empty registry means the old accepted tree is unapproved.
+Preserve original review units, earned credit, pending questions and semantic rechecks in the continuation checkpoint. New preview/planning changes form additional review scope, not an enlarged original denominator. The tool carries forward the acceptance registry, notes and rechecks; the agent still interprets the inherited grouping and progress records.
 
-Do not copy the old active session over the new session: paths, ownership IDs and journal refer to the old worktrees. The existing `start` API has no session-fork operation. Its new baseline is the prior accepted tip, so `reopen` cannot remove inherited acceptance by restoring the original pre-review baseline. If inherited content needs reopening, stop that transfer and resolve a precise original-baseline patch or an explicitly scoped tooling change; never silently mark the changed content approved.
+Do not copy the old active session over the new session: paths, ownership IDs and journal refer to the old worktrees. The continuation operation assigns new ownership while preserving the original pre-review baseline, so `reopen` works for inherited approvals as well as new approvals. It refuses an interrupted source transaction; resolve that in its owning session before continuing.
 
 ## Review boundaries
 

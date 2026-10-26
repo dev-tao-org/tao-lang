@@ -34,16 +34,36 @@ export async function startReview(
     await assertOwnedSession(existing)
     return existing
   }
+  const baseCommit = await head(root, `${base}^{commit}`)
+  const session = await prepareReview(root, base, baseCommit, branch, worktree)
+  await createReview(session, baseCommit)
+  return session
+}
+
+/** prepareReview validates a fresh destination and assigns its independent ownership identity. */
+export async function prepareReview(
+  root: string,
+  base: string,
+  baseCommit: string,
+  branch: string,
+  worktree?: string,
+): Promise<ReviewSession> {
+  const directory = sessionDirectory(root)
+  if (await FileSystem.exists(Path.join(directory, 'session.json'))) {
+    Errors.ThrowUserInput('A review session already exists in the destination checkout.')
+  }
   const sourceBranch = (await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
   if (!sourceBranch.startsWith('feat/') || branch !== `${sourceBranch}-incremental-review-approved`) {
     Errors.ThrowUserInput(`Use the approved-content branch ${sourceBranch}-incremental-review-approved.`)
   }
-  const baseCommit = await head(root, `${base}^{commit}`)
+  if ((await git(root, ['branch', '--list', branch])).trim()) {
+    Errors.ThrowUserInput(`Approved-content branch already exists: ${branch}`)
+  }
   const reviewedRoot = Path.resolve(worktree ?? Path.join(directory, 'reviewed'))
   if (await FileSystem.exists(reviewedRoot)) {
     Errors.ThrowUserInput(`Reviewed worktree destination already exists: ${reviewedRoot}`)
   }
-  const session: ReviewSession = {
+  return {
     version: 1,
     id: Platform.randomUUID(),
     root,
@@ -57,10 +77,13 @@ export async function startReview(
     recheck: [],
     notes: [],
   }
-  await git(root, ['worktree', 'add', '-b', branch, reviewedRoot, baseCommit])
-  await writeJson(await resolveReviewOwnerPath(reviewedRoot), { id: session.id, root })
-  await writeJson(statePath, session)
-  return session
+}
+
+/** createReview creates the owned checkout at an explicitly pinned accepted commit. */
+export async function createReview(session: ReviewSession, acceptedCommit: string): Promise<void> {
+  await git(session.root, ['worktree', 'add', '-b', session.reviewedBranch, session.reviewedRoot, acceptedCommit])
+  await writeJson(await resolveReviewOwnerPath(session.reviewedRoot), { id: session.id, root: session.root })
+  await saveSession(session)
 }
 
 /** loadSession verifies that retained state belongs to this implementation checkout. */

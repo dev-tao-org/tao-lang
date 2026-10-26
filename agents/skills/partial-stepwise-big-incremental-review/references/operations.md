@@ -39,6 +39,23 @@ branch directly with Working Tree, then use the overall Files Changed tree. This
 corrections; comparing with implementation HEAD omits uncommitted edits. Staged versus unstaged
 selection is independent of this comparison. Commit-to-commit views may need refreshing.
 
+## Continue in another implementation worktree
+
+After creating the new implementation branch/worktree, continue from the original implementation
+checkout's idle review session:
+
+```sh
+./agent skill-script agents/skills/partial-stepwise-big-incremental-review/scripts/review.ts -- continue --from /absolute/previous-implementation-checkout --branch feat/new-topic-incremental-review-approved
+```
+
+The operation creates a fresh owned approved-content worktree at the prior approved tip, retaining
+the original baseline, accepted registry, notes and rechecks. Inherited approvals can therefore be
+reopened against the original baseline. It preserves historical review evidence separately from
+the new active session; it does not replay old transaction journals or modify the original branches.
+Read the inherited progress/group records and reconcile them before presenting the next group.
+New implementation changes are not automatically approved. Do not pre-create the approved branch
+or copy the old active session over the new one.
+
 ## Accept whole files
 
 An unambiguous whole-file request takes one call:

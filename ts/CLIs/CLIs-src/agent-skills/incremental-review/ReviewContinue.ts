@@ -1,0 +1,104 @@
+import { Errors } from '@shared'
+import { FileSystem, Path } from '@shared/os'
+import { git, head, writeJson } from './ReviewGit'
+import {
+  assertOwnedSession,
+  createReview,
+  loadSession,
+  prepareReview,
+  requireCleanReviewed,
+  requireIdleSession,
+  withReviewLock,
+} from './ReviewSession'
+import type { ReviewSession } from './ReviewTypes'
+
+/** continueReview forks accepted content and historical evidence into an independently owned review. */
+export async function continueReview(
+  root: string,
+  from: string,
+  branch: string,
+  worktree?: string,
+): Promise<ReviewSession> {
+  const previousRoot = (await git(Path.resolve(from), ['rev-parse', '--show-toplevel'])).trim()
+  if (previousRoot === root) {
+    Errors.ThrowUserInput('Continue requires a different implementation checkout.')
+  }
+  await requireSameRepository(root, previousRoot)
+  return await withReviewLock(previousRoot, async () => {
+    const previous = await loadSession(previousRoot)
+    await requireIdleSession(previous)
+    await assertOwnedSession(previous)
+    await requireCleanReviewed(previous)
+    const reviewedHead = await head(previous.reviewedRoot)
+    const session = await prepareReview(root, previous.base, previous.baseCommit, branch, worktree)
+    session.accepted = { ...previous.accepted }
+    session.recheck = [...previous.recheck]
+    session.notes = [...previous.notes]
+    session.continuation = {
+      session: previous.id,
+      root: previous.root,
+      reviewedBranch: previous.reviewedBranch,
+      reviewedHead,
+    }
+    await requireEmptyHistory(session)
+    await retainHistory(previous, session)
+    await createReview(session, reviewedHead)
+    return session
+  })
+}
+
+async function requireSameRepository(root: string, previousRoot: string): Promise<void> {
+  const args = ['rev-parse', '--path-format=absolute', '--git-common-dir']
+  if ((await git(root, args)).trim() !== (await git(previousRoot, args)).trim()) {
+    Errors.ThrowUserInput('Continue requires implementation checkouts from the same Git repository.')
+  }
+}
+
+async function requireEmptyHistory(session: ReviewSession): Promise<void> {
+  const parent = Path.dirname(session.directory)
+  for (const entry of await FileSystem.readdir(parent)) {
+    if (entry !== 'active') {
+      Errors.ThrowUserInput(`Destination review history already exists: ${Path.join(parent, entry)}`)
+    }
+  }
+  const active = (await FileSystem.readdir(session.directory)).filter(entry => entry !== 'operation.lock')
+  if (active.length) {
+    Errors.ThrowUserInput('Destination review state already exists; preserve it before continuing.')
+  }
+}
+
+async function retainHistory(previous: ReviewSession, session: ReviewSession): Promise<void> {
+  const evidence = Path.join(session.directory, 'evidence/previous')
+  await FileSystem.mkdir(evidence, { recursive: true })
+  await writeJson(Path.join(evidence, 'session.json'), previous)
+  await copyHistoricalFiles(Path.dirname(previous.directory), Path.dirname(session.directory), false)
+  for (const directory of ['receipts', 'plans', 'evidence']) {
+    await copyHistoricalFiles(Path.join(previous.directory, directory), Path.join(evidence, directory))
+  }
+}
+
+async function copyHistoricalFiles(source: string, destination: string, descend = true): Promise<void> {
+  if (!await FileSystem.exists(source)) {
+    return
+  }
+  for (const entry of await FileSystem.readdir(source, { withFileTypes: true })) {
+    const path = Path.join(source, entry.name)
+    const target = Path.join(destination, entry.name)
+    if (isHistoricalText(entry)) {
+      await FileSystem.mkdir(destination, { recursive: true })
+      await FileSystem.writeFile(target, await FileSystem.readFile(path))
+    } else if (descend && isHistoricalDirectory(entry)) {
+      await copyHistoricalFiles(path, target)
+    } else {
+      // Only retained text records are evidence; links, indices and active transaction state stay behind.
+    }
+  }
+}
+
+function isHistoricalText(entry: { name: string; isFile(): boolean }): boolean {
+  return entry.isFile() && /\.(json|md|txt)$/.test(entry.name) && entry.name !== 'journal.json'
+}
+
+function isHistoricalDirectory(entry: { name: string; isDirectory(): boolean }): boolean {
+  return entry.isDirectory() && entry.name !== 'active'
+}

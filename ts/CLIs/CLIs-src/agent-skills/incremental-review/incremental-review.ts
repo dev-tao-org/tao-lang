@@ -2,6 +2,7 @@ import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
+import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
 import {
@@ -26,6 +27,7 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
     return {
       commands: [
         'start --base main --branch feat/<topic>-incremental-review-approved [--worktree PATH]',
+        'continue --from OLD_IMPLEMENTATION --branch feat/<topic>-incremental-review-approved [--worktree PATH]',
         'rename --branch feat/<topic>-incremental-review-approved',
         'status',
         'plan --files PATH... --out JSON [--source-patch PATCH --reviewed-patch PATCH]',
@@ -43,13 +45,20 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
     (await git(Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot()), ['rev-parse', '--show-toplevel']))
       .trim()
   return await withReviewLock(root, async () => {
-    if (command === 'start') {
-      const session = await startReview(
-        root,
-        single(options, 'base') ?? 'main',
-        required(options, 'branch'),
-        single(options, 'worktree'),
-      )
+    if (command === 'start' || command === 'continue') {
+      const session = command === 'continue'
+        ? await continueReview(
+          root,
+          required(options, 'from'),
+          required(options, 'branch'),
+          single(options, 'worktree'),
+        )
+        : await startReview(
+          root,
+          single(options, 'base') ?? 'main',
+          required(options, 'branch'),
+          single(options, 'worktree'),
+        )
       return { session: session.id, reviewedBranch: session.reviewedBranch, reviewedRoot: session.reviewedRoot }
     }
     return await runSessionCommand(command, options, await loadSession(root), hooks)
@@ -86,7 +95,7 @@ async function runSessionCommand(
   if (command === 'note' || command === 'recheck') {
     return await runNoteCommand(command, options, session)
   }
-  Errors.ThrowUserInput('Expected start, status, plan, accept, reopen, recheck, note or recover.')
+  Errors.ThrowUserInput('Expected start, continue, rename, status, plan, accept, reopen, recheck, note or recover.')
 }
 
 async function runNoteCommand(
@@ -149,6 +158,7 @@ function parseOptions(args: string[]): Options {
   const known = [
     'repo',
     'base',
+    'from',
     'branch',
     'worktree',
     'files',
