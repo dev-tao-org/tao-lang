@@ -1,36 +1,89 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import { type CallbackNames, literal } from './codegen-util'
+import * as RuntimeEmitter from './RuntimeEmitter'
+import { isTextExpression } from './ValuesCompiler'
 
-/** compileInjection emits authored TypeScript inside a view callback. */
+/** compileInjection emits an authored hook declaration and its owning-view invocation. */
 export function compileInjection(
   node: AST.Injection,
-  parameters: readonly AST.Parameter[],
-  callbackNames: CallbackNames,
-): string {
-  return [
-    ...node.captures.map(capture => compileCapture(capture, parameters, callbackNames)),
-    'return (() => {',
-    node.code,
-    '})();',
-  ].join('\n')
+  bindings: ReadonlySet<string>,
+  names: RuntimeEmitter.ComponentNames,
+): RuntimeEmitter.InjectionCompilation {
+  const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
+  return RuntimeEmitter.emitInjectionCustomHook(node, names, captures)
 }
 
 function compileCapture(
   node: AST.Capture,
-  parameters: readonly AST.Parameter[],
-  callbackNames: CallbackNames,
-): string {
-  const value = Switch.kind(node.value, {
+  bindings: ReadonlySet<string>,
+  names: RuntimeEmitter.ComponentNames,
+): RuntimeEmitter.InjectionCapture {
+  assertCaptureName(node.name.value)
+  return Switch.kind(node.value, {
     Name(name) {
-      const parameter = parameters.find(parameter => parameter.name.value === name.value)
-      const nativeType = parameter?.type.value === 'text' ? ' as string' : ''
-      return `${callbackNames.values}[${literal(name)}]${nativeType}`
+      const text = isTextExpression(name, reference => bindings.has(reference.value))
+      const value = RuntimeEmitter.emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
+      return { node, type: text ? 'text' : 'unknown', value }
     },
     ContextReference: reference =>
       reference.value === 'children'
-        ? callbackNames.children
+        ? { node, type: 'children', value: `${names.render}.children` }
         : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
   })
-  return `const ${node.name.value} = ${value};`
 }
+
+function assertCaptureName(name: string): void {
+  if (name === 'TR' || name === 'Tao' || reservedCaptureNames.has(name)) {
+    Errors.ThrowUserInput(`Injection capture name ${name} conflicts with generated JavaScript.`)
+  }
+}
+
+const reservedCaptureNames = new Set([
+  'arguments',
+  'await',
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'eval',
+  'export',
+  'extends',
+  'false',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'implements',
+  'import',
+  'in',
+  'instanceof',
+  'interface',
+  'let',
+  'new',
+  'null',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'return',
+  'static',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'yield',
+])
