@@ -127,6 +127,8 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Git workflow
 
+- Before declaring a branch finished or ready for landing/merge handoff, or retiring its worktree/task, complete `git-workflow`'s branch-evidence preservation workflow; do not defer evidence retention to landing or the receiving agent.
+
 - Change Git state only when the developer instructs the agent to perform that action. Editing or reviewing code does not by itself authorize staging, unstaging, committing, switching or moving branches, merging, rebasing, stashing, resetting, or restoring files; preserve the developer's index and worktree selections.
 - Before launching a subagent from a branch with relevant uncommitted changes, warn the developer which changes its baseline would omit and establish the intended snapshot. Never automatically stage, commit, stash or copy those changes to prepare a handoff.
 - Land only when explicitly instructed by the developer. A pause or stop revokes authorization until explicitly renewed.

@@ -19,6 +19,31 @@ Tests.test('repairs runtime policy through a frozen copy while preserving every 
   })
 })
 
+Tests.test('removing runtime policy preserves durable package resolutions through frozen repair', async () => {
+  const directory = Artifacts.resolvePath('tmp', `managed-policy-removal-${Platform.randomUUID()}`)
+  await FileSystem.mkdir(directory, { recursive: true })
+  await Try(async () => {
+    const input = createInput(directory)
+    const invocations: string[][] = []
+    const original = await prepareManagedModules(input, createExecutor(invocations))
+    const lockPath = `.tao/store/npm/${original.graphFingerprint}.lock`
+    const source = await FileSystem.readFile(Path.join(directory, lockPath), 'utf8')
+    const removed = {
+      ...input,
+      runtimePolicy: undefined,
+      previousGraphReference: { fingerprint: original.graphFingerprint, lockPath, lockHash: Platform.hashText(source) },
+    }
+    const repaired = await repairManagedModuleFiles(removed, createExecutor(invocations))
+    const lock = JSON.parse(await FileSystem.readFile(repaired.lockfile, 'utf8'))
+    Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
+    Tests.expect(lock.packages).toEqual({ fixture: ['fixture@1.0.0', '', {}, 'sha512-fixture'] })
+    Tests.expect(lock).not.toHaveProperty('patchedDependencies')
+    Tests.expect(lock).not.toHaveProperty('overrides')
+    Tests.expect(await readManagedModules(removed)).toEqual(repaired)
+    Tests.expect(await FileSystem.readFile(Path.join(directory, lockPath), 'utf8')).toBe(source)
+  }, { finally: () => FileSystem.rm(directory, { recursive: true, force: true }) })
+})
+
 async function assertPolicyRepair(directory: string): Promise<void> {
   const invocations: string[][] = []
   const original = { ...createInput(directory), runtimePolicy: undefined }

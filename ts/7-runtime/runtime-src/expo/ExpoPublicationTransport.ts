@@ -52,14 +52,14 @@ async function publishRevision(
   revision: GeneratedRevision,
 ): Promise<PublicationOutcome> {
   if (state.fault) {
-    return poisonedOutcome(state, revision)
+    return createPoisonedOutcome(state, revision)
   }
   const controller = Http.createAbortController()
   let interrupt!: () => void
   const stopped = new Promise<PublicationOutcome>(resolve => {
     interrupt = () => {
       controller.abort()
-      resolve(poisonedOutcome(state, revision))
+      resolve(createPoisonedOutcome(state, revision))
     }
   })
   state.aborters.add(interrupt)
@@ -95,7 +95,7 @@ async function requestRevision(
     }
     const outcome = await response.json() as PublicationOutcome
     if (state.fault) {
-      return poisonedOutcome(state, revision)
+      return createPoisonedOutcome(state, revision)
     }
     assertOutcome(state, revision, outcome)
     retainServedIdentity(state, revision, outcome)
@@ -106,18 +106,25 @@ async function requestRevision(
   }, {
     catch(error) {
       faultTransport(state, `Metro publication completion is unknown; restart the session. ${String(error)}`)
-      return poisonedOutcome(state, revision)
+      return createPoisonedOutcome(state, revision)
     },
   })
 }
 
 function assertOutcome(state: TransportState, revision: GeneratedRevision, outcome: PublicationOutcome): void {
-  const valid = outcome.sessionId === state.sessionId && outcome.revision === revision.revision
-    && outcome.sequence === revision.sequence && typeof outcome.publishedRevision === 'string'
-    && ['published', 'noop', 'superseded', 'error', 'poisoned'].includes(outcome.status)
-  if (!valid) {
+  if (!isMatchingPublicationOutcome(state, revision, outcome)) {
     Errors.ThrowHostEnvironment('Metro returned an invalid publication identity or terminal outcome.')
   }
+}
+
+function isMatchingPublicationOutcome(
+  state: TransportState,
+  revision: GeneratedRevision,
+  outcome: PublicationOutcome,
+): boolean {
+  return outcome.sessionId === state.sessionId && outcome.revision === revision.revision
+    && outcome.sequence === revision.sequence && typeof outcome.publishedRevision === 'string'
+    && ['published', 'noop', 'superseded', 'error', 'poisoned'].includes(outcome.status)
 }
 
 function retainServedIdentity(state: TransportState, revision: GeneratedRevision, outcome: PublicationOutcome): void {
@@ -127,7 +134,7 @@ function retainServedIdentity(state: TransportState, revision: GeneratedRevision
   }
 }
 
-function poisonedOutcome(state: TransportState, revision: GeneratedRevision): PublicationOutcome {
+function createPoisonedOutcome(state: TransportState, revision: GeneratedRevision): PublicationOutcome {
   return {
     sessionId: state.sessionId,
     revision: revision.revision,

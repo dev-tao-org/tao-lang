@@ -4,8 +4,10 @@ import TypeScript from 'typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleTypes'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
 
-/** managedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
-export function managedResolutionPolicy(policy: ManagedRuntimePolicy | undefined): Record<string, unknown> | undefined {
+/** describeManagedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
+export function describeManagedResolutionPolicy(
+  policy: ManagedRuntimePolicy | undefined,
+): Record<string, unknown> | undefined {
   return policy
     ? {
       patchedDependencies: sortRecord(policy.patchedDependencies),
@@ -14,8 +16,8 @@ export function managedResolutionPolicy(policy: ManagedRuntimePolicy | undefined
     : undefined
 }
 
-/** managedPatchIdentity identifies patch bytes separately from the durable dependency graph. */
-export function managedPatchIdentity(policy: ManagedRuntimePolicy | undefined): string | undefined {
+/** calculateManagedPatchIdentity identifies patch bytes separately from the durable dependency graph. */
+export function calculateManagedPatchIdentity(policy: ManagedRuntimePolicy | undefined): string | undefined {
   return policy ? Platform.hashText(JSON.stringify(sortRecord(policy.patches))) : undefined
 }
 
@@ -51,8 +53,8 @@ export function managedLockPolicyMatches(source: string, input: ManagedModulesIn
   }
   const lock = parsed.config as Record<string, unknown>
   const policy = input.runtimePolicy
-  return sameRecord(lock.patchedDependencies, policy?.patchedDependencies ?? {})
-    && sameRecord(lock.overrides, policy?.overrides ?? {})
+  return recordsMatch(lock.patchedDependencies, policy?.patchedDependencies ?? {})
+    && recordsMatch(lock.overrides, policy?.overrides ?? {})
 }
 
 /** repairManagedLockPolicy updates policy metadata only when every overridden version is already locked. */
@@ -72,7 +74,12 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
       )
     }
   }
-  return `${JSON.stringify({ ...lock, ...managedResolutionPolicy(input.runtimePolicy) }, null, 2)}\n`
+  const policy = {
+    patchedDependencies: undefined,
+    overrides: undefined,
+    ...describeManagedResolutionPolicy(input.runtimePolicy),
+  }
+  return `${JSON.stringify({ ...lock, ...policy }, null, 2)}\n`
 }
 
 function listManagedPatches(policy: ManagedRuntimePolicy | undefined): [string, string][] {
@@ -99,7 +106,7 @@ function sortRecord(record: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(record).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0))
 }
 
-function sameRecord(value: unknown, expected: Record<string, string>): boolean {
+function recordsMatch(value: unknown, expected: Record<string, string>): boolean {
   if (value === undefined) {
     return Object.keys(expected).length === 0
   }

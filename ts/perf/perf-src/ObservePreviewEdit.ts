@@ -30,7 +30,7 @@ export function observePreviewEdit(
       resolve(event.result)
     }
   })
-  const cancel = Time.schedule(timeoutMs, () => reject(editFailure('Saved source was not observed: ' + path)))
+  const cancel = Time.schedule(timeoutMs, () => reject(createEditFailure('Saved source was not observed: ' + path)))
   pendingEdits.add(abort)
   return { result, dispose }
 
@@ -41,7 +41,7 @@ export function observePreviewEdit(
   }
 
   function abort(): void {
-    reject(editFailure('Preview harness closed before source compilation finished.'))
+    reject(createEditFailure('Preview harness closed before source compilation finished.'))
     dispose()
   }
 }
@@ -58,6 +58,6 @@ function matchesFreshCompletion(
     && event.version === document?.version && document.source === expected.source
 }
 
-function editFailure(message: string): Errors.TaoError {
+function createEditFailure(message: string): Errors.TaoError {
   return Try(() => Errors.ThrowHostEnvironment(message), { catch: error => Errors.fromUnknown(error) })
 }

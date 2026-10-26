@@ -25,16 +25,12 @@ export function createRevisionOwner(
 
 /** snapshotRevision validates and copies a complete generated namespace before admission. */
 export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision {
-  if (!revision.revision || !Number.isSafeInteger(revision.sequence) || revision.sequence < 0) {
+  if (!hasValidRevisionIdentity(revision)) {
     Errors.ThrowUserInput('Generated publication requires an identity and a nonnegative integer sequence.')
   }
   const files: Record<string, string> = Object.create(null)
   for (const [path, text] of Object.entries(revision.files)) {
-    const segments = path.split('/')
-    const valid = path.length > 0 && !path.includes('\\') && !path.includes(nullCharacter)
-      && !segments.some(segment => segment === '' || segment === '.' || segment === '..')
-      && segments[0] !== '_gen_runtime' && typeof text === 'string'
-    if (!valid) {
+    if (!isSupportedGeneratedFile(path, text)) {
       Errors.ThrowUserInput(`Unsupported generated source path: ${path}`)
     }
     files[path] = text
@@ -60,6 +56,20 @@ type RevisionState = {
   poisoned: boolean
   pending?: PendingRevision
   publish(revision: GeneratedRevision): Promise<RevisionResult>
+}
+
+function hasValidRevisionIdentity(revision: GeneratedRevision): boolean {
+  return Boolean(revision.revision) && Number.isSafeInteger(revision.sequence) && revision.sequence >= 0
+}
+
+function isSupportedGeneratedFile(path: string, text: string): boolean {
+  const segments = path.split('/')
+  return path.length > 0 && !path.includes('\\') && !path.includes(nullCharacter)
+    && !segments.some(isUnsupportedSegment) && segments[0] !== '_gen_runtime' && typeof text === 'string'
+}
+
+function isUnsupportedSegment(segment: string): boolean {
+  return segment === '' || segment === '.' || segment === '..'
 }
 
 function enqueueRevision(state: RevisionState, revision: GeneratedRevision): Promise<PublicationOutcome> {
@@ -88,13 +98,17 @@ async function runPending(state: RevisionState): Promise<void> {
       : await Try(() => state.publish(request.revision), {
         catch: error => ({ status: 'error' as const, message: String(error) }),
       })
-    if (result.status === 'published' || result.status === 'error' && result.committed) {
+    if (isCommittedRevisionResult(result)) {
       state.current = request.revision
     }
     state.poisoned ||= result.status === 'poisoned'
     request.resolve(createOutcome(state, request.revision, result))
   }
   state.active = false
+}
+
+function isCommittedRevisionResult(result: RevisionResult): boolean {
+  return result.status === 'published' || result.status === 'error' && result.committed === true
 }
 
 function createOutcome(state: RevisionState, revision: GeneratedRevision, result: RevisionResult): PublicationOutcome {

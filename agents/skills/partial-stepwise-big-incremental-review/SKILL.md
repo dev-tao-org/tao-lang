@@ -63,6 +63,11 @@ description: >-
 - Answer questions directly. Investigate whether a requested correction applies elsewhere in the
   review diff and affected contracts. Apply clear equivalents and necessary supporting changes;
   explain expanded scope briefly and ask before semantic changes or unrelated cleanup.
+- Use [review-learning](../review-learning/SKILL.md) for meaningful correction capture and the
+  required learning pass when a review group closes with substantive corrections unprocessed.
+  Check each human acceptance for an associated lesson, but approval alone is not a general rule.
+  Propagated edits remain pending until the developer reviews them, and this workflow does not
+  authorize an unrelated review.
 - Track implementation subagents alongside review progress. When one is ready for integration,
   end each message with `subagent <name> ready to be merged` until it is merged or the developer
   acknowledges postponing it. This readiness footer is the exception to ending at the file list.
@@ -81,7 +86,7 @@ description: >-
 
 ## Presentation formats
 
-Initial proposal: repeat feature sets and groups with current counts; get agreement first.
+Get agreement on feature sets and groups first:
 
 ```text
 - Feature set: **Projects, sessions and storage**
@@ -91,14 +96,6 @@ Initial proposal: repeat feature sets and groups with current counts; get agreem
   - Project initialization and discovery
     - X folders, Y files, Z diffs
     - Finds project roots; includes their specification.
-  - ...
-- Feature set: **Dependencies and source modules**
-  - X folders, Y files, Z diffs
-  - Makes required projects available to imports.
-  - In `project`: `requires github://example/name version 1.2.3`
-  - Source modules and dependency resolution
-    - X folders, Y files, Z diffs
-    - Resolves dependency sources and module names.
   - ...
 ...
 ```
@@ -124,8 +121,7 @@ Remaining groups:
   2. <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
 ```
 
-Omit the feature-set heading when there is no feature set. Nothing follows the file list except
-an outstanding subagent-readiness footer: no recap, approval question, next steps or closing sentence.
+Omit unused headings. End at the file list, except an outstanding subagent-readiness footer.
 
 ## Interpret approval
 

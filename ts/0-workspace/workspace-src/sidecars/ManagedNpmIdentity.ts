@@ -4,7 +4,7 @@ import { collectAllRequirements, defaultSingletonPackages } from './ManagedModul
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { installHostIdentity } from './ManagedNpmHost'
-import { managedPatchIdentity, managedResolutionPolicy } from './ManagedNpmPolicy'
+import { calculateManagedPatchIdentity, describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
 /** normalizeManagedRequirements sorts declaration inputs with locale-independent code-point order. */
 export function normalizeManagedRequirements(input: ManagedModulesInput): NormalizedManagedRequirement[] {
@@ -34,7 +34,7 @@ export function calculateManagedGraphFingerprint(
     runtimePins: Object.fromEntries(Object.keys(input.runtimePins).sort().map(key => [key, input.runtimePins[key]])),
     singletonPackages: [...input.singletonPackages ?? defaultSingletonPackages].sort(),
     policyRegistryVersion: 1,
-    runtimePolicy: managedResolutionPolicy(input.runtimePolicy),
+    runtimePolicy: describeManagedResolutionPolicy(input.runtimePolicy),
   }))
 }
 
@@ -45,7 +45,7 @@ export function calculateManagedProfileFingerprint(input: ManagedModulesInput, g
     bunVersion: input.bunVersion,
     installHost: installHostIdentity(input),
     typeScriptDefaultsHash: typeScriptDefaultsHash(),
-    runtimePatches: managedPatchIdentity(input.runtimePolicy),
+    runtimePatches: calculateManagedPatchIdentity(input.runtimePolicy),
   }))
 }
 

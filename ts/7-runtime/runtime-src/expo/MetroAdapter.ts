@@ -71,7 +71,7 @@ type ExternalChange = {
 type ExternalFileMap = { __expo: boolean; applyExternalBatch(changes: ExternalChange[]): Promise<{ changed: number }> }
 
 async function commitRevision(state: AdapterState, revision: GeneratedRevision): Promise<RevisionResult> {
-  const changed = changedPaths(state.current.files, revision.files)
+  const changed = resolveChangedPaths(state.current.files, revision.files)
   if (changed.length === 0) {
     return { status: 'noop' }
   }
@@ -130,7 +130,10 @@ function assertSupportedConfiguration(metro: MetroServer): void {
   }
 }
 
-function changedPaths(previous: Readonly<Record<string, string>>, next: Readonly<Record<string, string>>): string[] {
+function resolveChangedPaths(
+  previous: Readonly<Record<string, string>>,
+  next: Readonly<Record<string, string>>,
+): string[] {
   return [...new Set([...Object.keys(previous), ...Object.keys(next)])].filter(path => previous[path] !== next[path])
 }
 

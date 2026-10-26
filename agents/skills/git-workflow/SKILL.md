@@ -9,6 +9,10 @@ description: >-
 
 # Git Workflow
 
+Before finishing a branch, preparing a merge handoff, landing, or retiring its worktree/task,
+complete [evidence preservation](references/branch-evidence.md). Include ignored files and
+submodule contents; a clean parent status is not a preservation receipt.
+
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.

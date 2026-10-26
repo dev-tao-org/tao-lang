@@ -8,7 +8,7 @@ export async function verifyMetroBurst(
   session: ExpoSession,
   createRevision: (revision: string, sequence: number) => GeneratedRevision,
 ): Promise<void> {
-  const before = await memoryUsage(session.url)
+  const before = await readMemoryUsage(session.url)
   const extraFiles = createLargerNamespace()
   const startedAt = Time.nowMs()
   const requests = Array.from({ length: 100 }, (_, index) => {
@@ -26,7 +26,7 @@ export async function verifyMetroBurst(
   Tests.expect(bundle).toContain('APP_BURST_99')
   Tests.expect(bundle).toContain('HELPER_BURST_99')
   Tests.expect(bundle).not.toContain('APP_BURST_98')
-  const after = await memoryUsage(session.url)
+  const after = await readMemoryUsage(session.url)
   Tests.expect(bundle).toContain('LARGE_GRAPH_63')
   const report = {
     before,
@@ -53,6 +53,6 @@ function createLargerNamespace(): Record<string, string> {
   return { ...files, 'large.ts': `${imports}\nexport const large = [${values}].join('');\n` }
 }
 
-async function memoryUsage(url: string): Promise<number> {
+async function readMemoryUsage(url: string): Promise<number> {
   return (await (await Http.request(`${url}/__tao_test/status`)).json() as { rss: number }).rss
 }
