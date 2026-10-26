@@ -2,12 +2,13 @@
 name: test-quality
 description: >-
   Assess and improve Tao test quality. Use when writing, reviewing, consolidating, or deleting
-  tests, or assessing parity coverage, vacuous assertions, shared helpers, global state, captured
+  tests, planning test-app coverage, or assessing parity coverage, vacuous assertions, shared helpers, global state, captured
   output, test naming, or claims that behavior journeys do not prove.
 ---
 
 # Test Quality
 
+- Before choosing or adding a repository test app, read [the test-app catalog and structure](../../../Apps/Tests/AGENTS.md). That file owns app categories, feature-file organization and exceptions for creating another app; update its catalog when app ownership changes.
 - Test Tao-owned behavior at the smallest boundary that can credibly prove it: syntax in the parser, source diagnostics in the validator, canonical output in the formatter, and distinct generated or executing behavior in the compiler and runtime. A broader test earns its cost by proving an additional integration or user-visible contract.
 - Root `AGENTS.md` owns test scope and state boundaries. Identify the Tao decision or transformation each test proves; a thin wrapper invoking a tool does not itself justify integration coverage. For a dependency regression affecting Tao, document the affected versions and retirement condition.
 - Use small recording fixtures for external commands and documented or sanitized data for dependency mocks; keep the Tao implementation under test real. Search shared helpers before building another mock framework.
