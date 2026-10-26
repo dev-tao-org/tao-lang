@@ -16,9 +16,7 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
     storeRoot: Path.join(root, 'source-cache'),
     readRequirements: async path => Path.resolve(path) === Path.resolve(root) ? requirements : [],
     git: {
-      async resolveCommit(_repository, version) {
-        return version === 'v1' ? 'a'.repeat(40) : 'b'.repeat(40)
-      },
+      resolveCommit: async (_repository, version) => version === 'v1' ? 'a'.repeat(40) : 'b'.repeat(40),
       async fetchCommit(_repository, _commit, destination) {
         await FileSystem.mkdir(Path.join(destination, '.tao'), { recursive: true })
         await FileSystem.mkdir(Path.join(destination, '@ui'), { recursive: true })

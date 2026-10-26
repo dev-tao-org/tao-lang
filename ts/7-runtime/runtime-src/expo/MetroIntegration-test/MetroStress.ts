@@ -3,6 +3,17 @@ import { Artifacts, FileSystem, Http, Path, Platform, Tests } from '@shared/os'
 import type { ExpoSession } from '../Expo'
 import type { GeneratedRevision } from '../PreviewProtocol'
 
+/** verifyCoupledUpdates checks every HMR group received each complete app/helper revision. */
+export function verifyCoupledUpdates(groups: readonly (readonly MetroUpdate[])[], revisions: readonly string[]): void {
+  for (const messages of groups) {
+    for (const revision of revisions) {
+      const update = messages.find(message => message.type === 'update' && message.tao?.revision === revision)
+      Tests.expect(JSON.stringify(update)).toContain(`APP_${revision}`)
+      Tests.expect(JSON.stringify(update)).toContain(`HELPER_${revision}`)
+    }
+  }
+}
+
 /** verifyMetroBurst exercises a larger complete namespace through one real server without a timing claim. */
 export async function verifyMetroBurst(
   session: ExpoSession,
@@ -41,6 +52,8 @@ export async function verifyMetroBurst(
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   await FileSystem.writeFile(path, JSON.stringify(report, null, 2))
 }
+
+type MetroUpdate = { type: string; tao?: { revision: string } }
 
 function createLargerNamespace(): Record<string, string> {
   const names = Array.from({ length: 64 }, (_, index) => index)

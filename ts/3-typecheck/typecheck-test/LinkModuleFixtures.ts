@@ -80,3 +80,8 @@ export function createBlock<Statement extends AST.Node>(statements: readonly Sta
 export function createIdentifier(value: string): AST.Name {
   return { kind: 'Name', start: 0, end: value.length, value }
 }
+
+/** createParameter builds a named parameter with its explicit Tao type. */
+export function createParameter(name: string, type: string): AST.Parameter {
+  return { kind: 'Parameter', start: 0, end: 0, name: createIdentifier(name), type: createIdentifier(type) }
+}

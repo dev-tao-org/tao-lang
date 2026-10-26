@@ -140,13 +140,7 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
 
   const parameterView: AST.ViewDeclaration = {
     ...unreferenced,
-    parameters: [{
-      kind: 'Parameter',
-      start: 0,
-      end: 0,
-      name: Fixtures.createIdentifier('Item'),
-      type: Fixtures.createIdentifier('text'),
-    }],
+    parameters: [Fixtures.createParameter('Item', 'text')],
     body: Fixtures.createViewBlock([renderViewExpression(renderWithNameArgument('Text', 'Item'))]),
   }
   const parameterSource = Fixtures.createSource('app/main.tao', [parameterView], [left.path, right.path])
@@ -154,13 +148,7 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
 
   const typedParameterView: AST.ViewDeclaration = {
     ...unreferenced,
-    parameters: [{
-      kind: 'Parameter',
-      start: 0,
-      end: 0,
-      name: Fixtures.createIdentifier('value'),
-      type: Fixtures.createIdentifier('Item'),
-    }],
+    parameters: [Fixtures.createParameter('value', 'Item')],
   }
   const typedParameterSource = Fixtures.createSource('app/main.tao', [typedParameterView], [left.path, right.path])
   Tests.expect(() => linkModules(typedParameterSource.path, [typedParameterSource, left, right]))

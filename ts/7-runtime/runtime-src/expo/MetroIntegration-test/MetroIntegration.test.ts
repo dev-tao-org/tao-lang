@@ -4,7 +4,7 @@ import * as Runtime from '../../Runtime'
 import type { ExpoSession } from '../Expo'
 import type { GeneratedRevision } from '../PreviewProtocol'
 import { delayPreload } from './DelayPreload'
-import { verifyMetroBurst } from './MetroStress'
+import { verifyCoupledUpdates, verifyMetroBurst } from './MetroStress'
 
 type MetroRevisionNotice = { revision: string }
 
@@ -153,13 +153,7 @@ async function verifyMultipleGroups(
   const sourceResponse = await source
   Tests.expect(sourceResponse.headers.get('x-tao-revision')).toBe('B_GROUPS')
   Tests.expect(await sourceResponse.text()).toContain('APP_B_GROUPS')
-  for (const messages of [primary, secondary]) {
-    for (const revision of ['B_GROUPS', 'B_PENDING']) {
-      const update = messages.find(message => message.type === 'update' && message.tao?.revision === revision)
-      Tests.expect(JSON.stringify(update)).toContain(`APP_${revision}`)
-      Tests.expect(JSON.stringify(update)).toContain(`HELPER_${revision}`)
-    }
-  }
+  verifyCoupledUpdates([primary, secondary], ['B_GROUPS', 'B_PENDING'])
   socket.close()
 }
 

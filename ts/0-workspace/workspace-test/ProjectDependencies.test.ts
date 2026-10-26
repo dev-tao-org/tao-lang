@@ -78,9 +78,7 @@ Tests.test('same repository aliases at different refs resolve from their individ
   const options: DependencyStoreOptions = {
     readRequirements: async path => Path.resolve(path) === Path.resolve(root) ? requirements : [],
     git: {
-      async resolveCommit() {
-        return 'a'.repeat(40)
-      },
+      resolveCommit: async () => 'a'.repeat(40),
       async fetchCommit(_repository, _commit, destination) {
         await FileSystem.mkdir(Path.join(destination, '.tao'), { recursive: true })
       },
