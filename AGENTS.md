@@ -56,18 +56,18 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - The developer may have provided new code stubs for you to fill out;
   - You create a plan together in dialogue mode (see skill);
     - During discussion or planning, never begin implementation until the developer explicitly agrees to go ahead with the plan and any review points. This includes creating stubs, moving folders and editing implementation files. Agreement on individual design choices, requests describing the proposed result, and unanswered questions do not authorize implementation.
-  - You write tests and implement the plan with TDD;
+  - You write tests and implement the plan with journey-first TDD;
     - Keep `Apps/Dev/Kitchen Sink/Kitchen Sink.tao` runnable and demonstrating every implemented language feature; update it whenever language functionality is added or changed.
-    - Write only enough tests to prove the main functionality; avoid exhaustive testing. Add regression tests when new changes break existing behavior.
-    - The majority of repo test should be in e2e Tao tests.
-    - Keep package tests to basic functionality and regression tests.
+    - For valid observable language/app behavior, first add or extend authored Tao and a failing end-to-end journey, then implement the behavior. Use `test-quality` to choose the primary proof before adding tests at other layers.
+    - Avoid exhaustive package testing. Package tests need a distinct essential basic contract, demonstrated regression or important edge not already credibly asserted end to end; `ts/AGENTS.md` owns eligibility and cost rules. Do not add a test for every helper, method or implementation layer.
+    - Fast overlapping end-to-end journeys are acceptable. Retire redundant package proofs instead of consolidating journeys merely to remove overlap.
     - Prefer larger formatting fixtures exercising multiple rules over a separate test for each formatting detail.
     - Run every new test directly before finishing implementation; also run relevant existing tests when the change may affect broader behavior. If parallel agents cause failures outside your owned work, report and coordinate them without repairing their changes yourself.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
   - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
-  - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete.
+  - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete. Instruction-only changes require `./agent check`, without rerunning application tests; `verification-lanes` owns selection and reuse of unchanged validation evidence.
   - The developer reviews the code and provides feedback;
   - You make changes, and land the code.
 
@@ -134,7 +134,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 - Land only when explicitly instructed by the developer. A pause or stop revokes authorization until explicitly renewed.
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
 - When the developer authorizes creating a worktree, create a new feature branch for it.
-- Commit only when instructed by the developer. Run `./agent verify` before an authorized commit, except when there is a specific reason to preserve a deliberately intermediate implementation state; state that reason and any known failures in the commit and task checkpoint.
+- Commit only when instructed by the developer. Before an authorized commit, complete the verification required for its change type above; reuse passing evidence when its inputs have not changed. For a deliberately intermediate implementation state, state the reason and any known failures in the commit and task checkpoint.
 - Back up committed work to `origin` after meaningful implementation chunks, rather than after every commit; `git-workflow` owns backup pushes and keeping them from triggering CI unless requested.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 - Always compare preview performance from the branch's starting baseline to its final implementation before landing. Use `pipeline-performance` for comparisons and promptly flagging significant changes during development.

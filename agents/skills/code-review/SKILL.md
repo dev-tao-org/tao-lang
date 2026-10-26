@@ -89,6 +89,7 @@ checkpoint and final report. A passing test run does not replace the independent
 
 - Always check **all new code** in the review range for conformance with applicable repository
   instructions and local conventions; distribute this coverage explicitly across reviewers.
+- Use `test-quality` and `ts/AGENTS.md` when reviewing tests: check primary journey assertions before reporting a missing package test, require a distinct coverage gap for added package proofs, and assess expensive effects and aggregate cost. Missing per-helper tests are not findings when required behavior is already proved; fast overlapping E2E journeys are acceptable.
 - Look for DRY opportunities within the changes and nearby relevant code. Check reasonably for
   existing functions that already do similar work, without exhaustively searching the repository.
   Also identify sufficiently aligned operations that should share a new function; explain the

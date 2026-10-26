@@ -1,4 +1,3 @@
-import { Time } from '@shared'
 import { Tests } from '@shared/os'
 import type { HeadlessBrowser } from '@shared/os'
 import { type RecoveryFixture, withRecoveryPreview } from './PreviewRecoveryFixture'
@@ -21,7 +20,7 @@ async function verifyRecoveryJourney({ page, change }: RecoveryFixture): Promise
       .toContain('Deliberate preview render failure')
     await page.frameLocator(`#${id}`).getByRole('button', { name: 'Reload', exact: true }).waitFor()
   }
-  await Time.sleep(1200)
+  await page.clock.fastForward(1200)
   Tests.expect(await readBoots(page)).toEqual(initialBoots)
   await change('Repaired')
   await expectLabels(page, 'Repaired')
@@ -39,6 +38,7 @@ async function verifyManualReloadAndRetiredMessages(page: HeadlessBrowser.Page, 
   await expectLabels(page, 'Repaired')
   const boots = await readBoots(page)
   Tests.expect(boots.left).not.toBe(retiredBoot)
+  await observeRetiredMessage(page)
   await page.frameLocator('#left').locator('body').evaluate((body, oldBoot) => {
     const host = body.ownerDocument.defaultView!
     const query = new URLSearchParams(host.location.search)
@@ -51,9 +51,22 @@ async function verifyManualReloadAndRetiredMessages(page: HeadlessBrowser.Page, 
       kind: 'runtime-error',
     }, query.get('parentOrigin')!)
   }, retiredBoot)
-  await Time.sleep(50)
+  await page.locator('body[data-retired-message-received="true"]').waitFor()
   Tests.expect(await page.locator('aside:visible').count()).toBe(0)
   Tests.expect(await readBoots(page)).toEqual(boots)
+}
+
+async function observeRetiredMessage(page: HeadlessBrowser.Page): Promise<void> {
+  await page.locator('body').evaluate(body => {
+    const receive = (event: MessageEvent) => {
+      if (event.data?.message !== 'Retired instance must be ignored') {
+        return
+      }
+      body.dataset.retiredMessageReceived = 'true'
+      body.ownerDocument.defaultView!.removeEventListener('message', receive)
+    }
+    body.ownerDocument.defaultView!.addEventListener('message', receive)
+  })
 }
 
 async function expectLabels(page: HeadlessBrowser.Page, label: string): Promise<void> {

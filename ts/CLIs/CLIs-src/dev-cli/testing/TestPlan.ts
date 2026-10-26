@@ -137,10 +137,10 @@ function splitWorkerBudget(
   defaultBudget: boolean,
 ): [number, number] {
   if (sections < 2) {
-    const workers = defaultBudget ? typescriptSelected ? 2 : 4 : budget
+    const workers = defaultBudget ? typescriptSelected ? 3 : 4 : budget
     return typescriptSelected ? [workers, 0] : [0, workers]
   }
-  const typescript = Math.min(2, Math.max(1, Math.floor(budget / 2)))
+  const typescript = Math.min(3, Math.max(1, Math.floor(budget / 2)))
   return [typescript, Math.max(1, budget - typescript)]
 }
 

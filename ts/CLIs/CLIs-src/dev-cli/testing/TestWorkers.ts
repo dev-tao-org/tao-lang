@@ -3,10 +3,10 @@ import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { discoverProject } from '@workspace/projects/Projects'
 import { execute } from '@workspace/Workflow'
-import { withTestTimings } from '../../cli-checks/slow-tests'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { findTaoTestFiles } from './TaoTestDiscovery'
 import * as TestPlanModule2 from './TestPlan'
+import { runTypeScriptTests } from './TypeScriptShards'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type { TestExecutionOptions } from './TestPlan'
@@ -93,41 +93,6 @@ async function executeTestPlan(
     Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
   }
   IO.summary(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
-}
-
-async function runTypeScriptTests(
-  plan: TestPlanModule2.TestPlan,
-  channel: OutputChannel | undefined,
-  slowSeconds: number | undefined,
-  signal: TestPlanModule2.TestRunSignal,
-  workerEnvironment: Record<string, string>,
-): Promise<void> {
-  if (!plan.typescript || !channel) {
-    return
-  }
-  channel.start()
-  const { args, workers } = plan.typescript
-  await Try(() =>
-    withTestTimings(
-      reportPath =>
-        runCommand(`bun test --parallel=${workers}`, {
-          variadicArgs: [
-            ...args,
-            ...reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : [],
-          ],
-          cwd: Repo.resolvePath('ts'),
-          output: channel,
-          signal,
-          env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
-        }),
-      slowSeconds,
-      channel,
-    ), {
-    catch(error) {
-      channel.finish('failed')
-      Errors.Throw(error)
-    },
-  })
 }
 
 async function runTaoTests(

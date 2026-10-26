@@ -19,6 +19,7 @@ export async function withRecoveryPreview(
     browser = await HeadlessBrowser.launch('test <file.tao>')
     const page = await browser.newPage()
     page.setDefaultTimeout(5000)
+    await page.clock.install()
     await page.goto(expo.url)
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({

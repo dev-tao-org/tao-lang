@@ -7,7 +7,7 @@ Run the repository-owned TypeScript entry through the generic runner:
 ```
 
 The skill entry imports [the implementation](../../../../ts/CLIs/CLIs-src/agent-skills/incremental-review/incremental-review.ts).
-Implementation and sibling `incremental-review-test/` tests live inside the TypeScript workspace;
+Implementation lives inside the TypeScript workspace;
 normal workspace aliases and checks apply without a runner-specific tsconfig override.
 
 The runner supplies pinned tooling and preserves argument boundaries; it does not grant host
