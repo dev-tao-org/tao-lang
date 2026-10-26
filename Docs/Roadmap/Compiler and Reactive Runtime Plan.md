@@ -430,6 +430,31 @@ approval is inferred from test results or this document.
   research used a temporary supported test runner instead. That workaround did not fix the tooling.
 - Existing branch performance/archive and human-review gaps remain separate from plan approval.
 
+## 11. Bounded reactive-engine strategy spike
+
+- [ ] **Scope and timing:** coordinate the affected runtime/benchmark paths and baseline with the
+      ongoing human review before starting; implementation requires separate authorization and must
+      not advance review approvals. Start from [ReactiveEngine.ts](../../ts/7-runtime/runtime-src/ReactiveEngine.ts),
+      [reactivity-performance.ts](../../ts/perf/perf-src/reactivity-performance.ts) and
+      [reactivity-heap.ts](../../ts/perf/perf-src/reactivity-heap.ts). Production currently uses native-lazy
+      computation and synchronous delivery; alternate policies are test/experiment hooks.
+- **Bounded comparison:** while those hooks remain, evaluate native-lazy, uncached-public-read,
+  observed-eager and deferred-notification approaches; add candidates only for a concrete gap.
+  Make one initial comparison and at most one focused follow-up before the decision checkpoint;
+  further research needs re-scoping. Compare correctness, representative app-update and preview
+  performance, retained memory, implementation simplicity and maintenance cost. Serialize timing
+  runs, retain evidence and limitations, and distinguish reactive updates from source-edit refresh,
+  deferred notifications from deferred computation, and React commits from physical paint.
+- **Decision checkpoint:** document one production computation/delivery approach with evidence and
+  tradeoffs; settle the choice with the developer before cleanup.
+- **Cleanup slice:** remove losing runtime options and unnecessary bookkeeping; update benchmarks,
+  tests and documentation together. Keep useful Tao API and Metro correctness boundaries; retain
+  no configurable strategies solely for hypothetical future experiments.
+- **Acceptance:** one documented production approach; representative behavior and real Metro/React
+  proofs preserve batching, read-your-writes, reentrant-delivery safety, stable React snapshots and
+  subscription ownership/cleanup. Retain focused regression coverage and reproducible performance/
+  memory evidence without unsupported paint claims; removed policies have no stale callers or docs.
+
 ## Critique requested
 
 Give a prioritized assessment, not a preservation argument for existing code. Identify correctness
