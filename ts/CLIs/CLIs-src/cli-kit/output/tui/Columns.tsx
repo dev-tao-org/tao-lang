@@ -1,5 +1,5 @@
+import type React from '@runtime/client/Bridge-React'
 import { Box, Text } from 'ink'
-import type { JSX } from 'react'
 import type { ChannelState } from '../Output'
 import { displayStatus, elapsed, wrappedTail } from './Display'
 
@@ -9,7 +9,7 @@ export function Columns(props: {
   now: number
   rows: number
   width: number
-}): JSX.Element {
+}): React.JSX.Element {
   const count = props.channels.length
   if (count === 0) {
     return <Text color="gray">No active channels.</Text>
@@ -36,7 +36,7 @@ function ChannelPane(props: {
   now: number
   paneWidth: number
   rows: number
-}): JSX.Element {
+}): React.JSX.Element {
   const { channel } = props
   const status = displayStatus(channel.status)
   const title = `${status.mark} ${channel.title} ${elapsed(channel, props.now)}`

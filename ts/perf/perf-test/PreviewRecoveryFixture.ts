@@ -77,9 +77,9 @@ async function createRecoveryWorkspace(root: string) {
 function createRecoveryApp(revision: string, mode: RecoveryMode): string {
   const render = mode === 'Broken'
     ? "Errors.ThrowUserInput('Deliberate preview render failure');"
-    : `return createElement('span', { 'data-testid': 'recovery-label' }, '${mode}');`
+    : `return React.createElement('span', { 'data-testid': 'recovery-label' }, '${mode}');`
   return S`
-    import { createElement } from 'react';
+    import React from '@runtime/client/Bridge-React';
     import { Errors } from '@shared';
     import * as TR from '@runtime';
     TR.ModuleApplied('${revision}');

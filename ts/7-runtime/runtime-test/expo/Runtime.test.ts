@@ -287,12 +287,12 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
 const appSource = S`
   import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@runtime'
   import Tao from '@tao/runtime-api'
-  import { createElement } from 'react'
+  import React from '@runtime/client/Bridge-React'
   import type { ViewComponentProps } from '@runtime'
 
   function RootView(props: ViewComponentProps) {
     const context = beginViewRender(props)
-    return finishViewRender(context, createElement(Tao.Text, null, 'Hello from Tao'))
+    return finishViewRender(context, React.createElement(Tao.Text, null, 'Hello from Tao'))
   }
   const Root = ViewDeclaration('Root', [], RootView)
 

@@ -1,5 +1,5 @@
+import type React from '@runtime/client/Bridge-React'
 import { Box, Text } from 'ink'
-import type { JSX } from 'react'
 import { formatCommands, type OutputSnapshot } from '../Output'
 import { Columns } from './Columns'
 import { displayStatus, elapsed, wrappedTail } from './Display'
@@ -10,7 +10,7 @@ export function OutputView(props: {
   now: number
   width: number
   height: number
-}): JSX.Element {
+}): React.JSX.Element {
   const { snapshot, now, width, height } = props
   const rootLines = wrappedTail(snapshot.main.lines, width, Math.min(3, height - 3))
   const footerRows = snapshot.commands.length ? 1 : 0

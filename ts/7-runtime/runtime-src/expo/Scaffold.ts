@@ -65,6 +65,7 @@ const metroConfiguration = S`
   config.resolver.resolveRequest = (context, name, platform) => {
     const singleton = tao.singletonPackages.find(id => name === id || name.startsWith(id + '/'));
     if (singleton) return context.resolveRequest(context, path.join(__dirname, 'node_modules', name), platform);
+    if (name.startsWith('@runtime/client/')) return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime', name.slice('@runtime/client/'.length)), platform);
     if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
     if (name === '@tao/runtime-api') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TaoRuntimeAPI.ts'), platform);
     if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
@@ -84,6 +85,7 @@ const expoTypeScriptConfig = {
     preserveSymlinks: true,
     paths: {
       '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
+      '@runtime/client/*': ['src/_gen_runtime/runtime/*'],
       '@tao/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
       '@shared': ['src/_gen_runtime/shared/shared.ts'],
       '@shared/os/preview': ['src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'],
@@ -93,12 +95,12 @@ const expoTypeScriptConfig = {
 
 const expoEntry = S`
   import { registerRootComponent } from 'expo';
-  import { createElement } from 'react';
-  import { View } from 'react-native';
+  import React from '@runtime/client/Bridge-React';
+  import ReactNative from '@runtime/client/Bridge-ReactNative';
   import { DefaultAppearance } from './src/_gen_runtime/runtime/Appearance';
   import App from './src/App';
   function TaoApplication() {
-    return createElement(View, { style: { flex: 1, backgroundColor: DefaultAppearance.background } }, createElement(App));
+    return React.createElement(ReactNative.View, { style: { flex: 1, backgroundColor: DefaultAppearance.background } }, React.createElement(App));
   }
   registerRootComponent(TaoApplication);
 `

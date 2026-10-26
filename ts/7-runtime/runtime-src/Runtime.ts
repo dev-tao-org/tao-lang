@@ -114,7 +114,8 @@ export function runtimeTypeScriptPaths(): Record<string, string[]> {
       Errors.ThrowUserInput(`Compiled runtime resource is missing: ${path}`)
     }
   }
-  return { '@tao/runtime-api': [apiPath], '@shared': [sharedPath] }
+  const runtimeClientPath = Path.join(resourceDirectory, 'runtime/*')
+  return { '@runtime/client/*': [runtimeClientPath], '@tao/runtime-api': [apiPath], '@shared': [sharedPath] }
 }
 
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */

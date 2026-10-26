@@ -1,8 +1,7 @@
 import { Tests } from '@shared/os'
-import { createElement, useState } from 'react'
-import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { AppDeclaration } from '../runtime-src/client/App'
+import React from '../runtime-src/client/Bridge-React'
 import { ForeignView } from '../runtime-src/client/ForeignView'
 import { Name } from '../runtime-src/client/Scope'
 import type { ViewComponentProps } from '../runtime-src/client/View'
@@ -28,7 +27,7 @@ Tests.test('View hooks run only when its named element is rendered', () => {
   function HookView(props: ViewComponentProps) {
     renders++
     const context = View.beginViewRender(props)
-    const result = createElement('span', null, 'hook owner')
+    const result = React.createElement('span', null, 'hook owner')
     return View.finishViewRender(context, result)
   }
   const view = View.ViewDeclaration('HookView', [], HookView)
@@ -41,8 +40,8 @@ Tests.test('View hooks run only when its named element is rendered', () => {
 
 Tests.test('ForeignView renders its external component with Tao values as props', () => {
   function DateLabel({ Value }: { Value: string }) {
-    const [label] = useState(Value)
-    return createElement('span', null, label)
+    const [label] = React.useState(Value)
+    return React.createElement('span', null, label)
   }
   const FormattedDate = ForeignView('FormattedDate', ['Value'], DateLabel)
   const html = renderToStaticMarkup(View.ViewRenderExpression(FormattedDate, View.ViewRenderArguments(['Today'])))
@@ -110,31 +109,31 @@ Tests.test('AppDeclaration times fallback views and resets inherited observers i
 
 function MessageView(props: ViewComponentProps) {
   const context = View.beginViewRender(props)
-  const result = createElement('section', null, Name(context.scope, 'Value') as string, ...context.children)
+  const result = React.createElement('section', null, Name(context.scope, 'Value') as string, ...context.children)
   return View.finishViewRender(context, result)
 }
 
 function PageView(props: ViewComponentProps) {
   const context = View.beginViewRender(props)
-  return View.finishViewRender(context, createElement('main', null, ...context.children))
+  return View.finishViewRender(context, React.createElement('main', null, ...context.children))
 }
 
 function ProtoValueView(props: ViewComponentProps) {
   const context = View.beginViewRender(props)
-  return View.finishViewRender(context, createElement('span', null, Name(context.scope, '__proto__') as string))
+  return View.finishViewRender(context, React.createElement('span', null, Name(context.scope, '__proto__') as string))
 }
 
 function TextChild(props: ViewComponentProps) {
   const context = View.beginViewRender(props)
-  return View.finishViewRender(context, createElement('span', null, 'child'))
+  return View.finishViewRender(context, React.createElement('span', null, 'child'))
 }
 
 function LoadingView(props: ViewComponentProps) {
   const context = View.beginViewRender(props)
-  return View.finishViewRender(context, createElement('span', null, 'loading'))
+  return View.finishViewRender(context, React.createElement('span', null, 'loading'))
 }
 
-function SuspendedView(_props: ViewComponentProps): ReactNode {
+function SuspendedView(_props: ViewComponentProps): React.ReactNode {
   throw neverReady
 }
 

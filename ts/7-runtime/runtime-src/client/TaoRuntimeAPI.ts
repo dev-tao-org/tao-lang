@@ -1,7 +1,6 @@
-import { createElement } from 'react'
-import type { ReactElement, ReactNode } from 'react'
-import * as ReactNative from 'react-native'
 import { DefaultAppearance } from './Appearance'
+import React from './Bridge-React'
+import ReactNative from './Bridge-ReactNative'
 import { batch, useComputed, useValue, useWritable } from './ReactiveEngine'
 
 /** Tao exposes the runtime capabilities available to authored TypeScript. */
@@ -21,7 +20,7 @@ export type Style = Readonly<{
 
 /** ViewProps describes a native container without exposing React Native contracts. */
 export type ViewProps = {
-  children?: ReactNode
+  children?: React.ReactNode
   style?: Style
   testID?: string
 }
@@ -32,16 +31,16 @@ export type TextInputProps = ViewProps & { defaultValue?: string; placeholder?: 
 /** PressableProps describes an action-bearing native container. */
 export type PressableProps = ViewProps & { onPress?: () => void }
 
-function Text({ style, ...props }: ViewProps): ReactElement {
-  return createElement(ReactNative.Text, { ...props, style: [textStyle, style] })
+function Text({ style, ...props }: ViewProps): React.ReactElement {
+  return React.createElement(ReactNative.Text, { ...props, style: [textStyle, style] })
 }
 
-function View(props: ViewProps): ReactElement {
-  return createElement(ReactNative.View, props)
+function View(props: ViewProps): React.ReactElement {
+  return React.createElement(ReactNative.View, props)
 }
 
-function TextInput({ style, ...props }: TextInputProps): ReactElement {
-  return createElement(ReactNative.TextInput, {
+function TextInput({ style, ...props }: TextInputProps): React.ReactElement {
+  return React.createElement(ReactNative.TextInput, {
     placeholderTextColor: DefaultAppearance.border,
     keyboardAppearance: 'dark',
     ...props,
@@ -49,9 +48,9 @@ function TextInput({ style, ...props }: TextInputProps): ReactElement {
   })
 }
 
-function Pressable({ onPress, ...props }: PressableProps): ReactElement {
+function Pressable({ onPress, ...props }: PressableProps): React.ReactElement {
   const perform = onPress ? () => batch(onPress) : undefined
-  return createElement(ReactNative.Pressable, { ...props, onPress: perform })
+  return React.createElement(ReactNative.Pressable, { ...props, onPress: perform })
 }
 
 const textStyle = { color: DefaultAppearance.foreground }

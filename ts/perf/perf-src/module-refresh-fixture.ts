@@ -71,7 +71,7 @@ function perViewFixture(): ModuleRefreshFixture {
 
 function singleAppSource(factor: number, label: string): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
 
     ${metricsDeclaration}
@@ -79,9 +79,9 @@ function singleAppSource(factor: number, label: string): string {
     ${secondaryComponent('10')}
 
     function App() {
-      return createElement(Tao.View, null,
-        createElement(PrimaryView),
-        createElement(SecondaryView),
+      return React.createElement(Tao.View, null,
+        React.createElement(PrimaryView),
+        React.createElement(SecondaryView),
       )
     }
 
@@ -92,7 +92,7 @@ function singleAppSource(factor: number, label: string): string {
 
 function sourceFileModule(factor: number, label: string): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
     import { primaryInitial, secondaryInitial } from '../Values'
 
@@ -106,7 +106,7 @@ function sourceFileModule(factor: number, label: string): string {
 
 function primaryViewModule(factor: number, label: string): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
     import { primaryInitial } from '../Values'
 
@@ -117,7 +117,7 @@ function primaryViewModule(factor: number, label: string): string {
 
 function secondaryViewModule(): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
     import { secondaryInitial } from '../Values'
 
@@ -134,13 +134,13 @@ function primaryComponent(factor: number, label: string, initial: string, export
       const current = Tao.useValue(count)
       const scaled = Tao.useComputed(() => count.jsValue() * ${factor}, [count])
       const scaledValue = Tao.useValue(scaled)
-      return createElement(Tao.View, null,
-        createElement(Tao.Text, { testID: 'primary-label' }, '${label}'),
-        createElement(Tao.Text, { testID: 'primary-count' }, String(current)),
-        createElement(Tao.Text, { testID: 'primary-scaled' }, String(scaledValue)),
-        createElement(Tao.Pressable, {
+      return React.createElement(Tao.View, null,
+        React.createElement(Tao.Text, { testID: 'primary-label' }, '${label}'),
+        React.createElement(Tao.Text, { testID: 'primary-count' }, String(current)),
+        React.createElement(Tao.Text, { testID: 'primary-scaled' }, String(scaledValue)),
+        React.createElement(Tao.Pressable, {
           testID: 'increment-primary', onPress: () => count.update(current + 1),
-        }, createElement(Tao.Text, null, 'increment primary')),
+        }, React.createElement(Tao.Text, null, 'increment primary')),
       )
     }
   `
@@ -154,13 +154,13 @@ function secondaryComponent(initial: string, exported = false): string {
       const current = Tao.useValue(count)
       const scaled = Tao.useComputed(() => count.jsValue() * 2, [count])
       const scaledValue = Tao.useValue(scaled)
-      return createElement(Tao.View, null,
-        createElement(Tao.Text, { testID: 'secondary-label' }, 'Secondary stable'),
-        createElement(Tao.Text, { testID: 'secondary-count' }, String(current)),
-        createElement(Tao.Text, { testID: 'secondary-scaled' }, String(scaledValue)),
-        createElement(Tao.Pressable, {
+      return React.createElement(Tao.View, null,
+        React.createElement(Tao.Text, { testID: 'secondary-label' }, 'Secondary stable'),
+        React.createElement(Tao.Text, { testID: 'secondary-count' }, String(current)),
+        React.createElement(Tao.Text, { testID: 'secondary-scaled' }, String(scaledValue)),
+        React.createElement(Tao.Pressable, {
           testID: 'increment-secondary', onPress: () => count.update(current + 1),
-        }, createElement(Tao.Text, null, 'increment secondary')),
+        }, React.createElement(Tao.Text, null, 'increment secondary')),
       )
     }
   `
@@ -168,14 +168,14 @@ function secondaryComponent(initial: string, exported = false): string {
 
 function wiredAppSource(componentDirectory: string): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
     import { PrimaryView, SecondaryView } from '${componentDirectory}'
 
     function App() {
-      return createElement(Tao.View, null,
-        createElement(PrimaryView),
-        createElement(SecondaryView),
+      return React.createElement(Tao.View, null,
+        React.createElement(PrimaryView),
+        React.createElement(SecondaryView),
       )
     }
 
@@ -185,15 +185,15 @@ function wiredAppSource(componentDirectory: string): string {
 
 function perViewAppSource(): string {
   return S`
-    import { createElement } from 'react'
+    import React from '@runtime/client/Bridge-React'
     import Tao from '@tao/runtime-api'
     import { PrimaryView } from './views/Primary'
     import { SecondaryView } from './views/Secondary'
 
     function App() {
-      return createElement(Tao.View, null,
-        createElement(PrimaryView),
-        createElement(SecondaryView),
+      return React.createElement(Tao.View, null,
+        React.createElement(PrimaryView),
+        React.createElement(SecondaryView),
       )
     }
 

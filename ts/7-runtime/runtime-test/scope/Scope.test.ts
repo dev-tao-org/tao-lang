@@ -1,6 +1,6 @@
 import { Tests } from '@shared/os'
-import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import React from '../../runtime-src/client/Bridge-React'
 import { AliasBinding, LetDeclaration, Name, Scope, ViewRenderBlock } from '../../runtime-src/client/Scope'
 import * as View from '../../runtime-src/client/View'
 import type { ViewComponentProps } from '../../runtime-src/client/View'
@@ -57,12 +57,14 @@ Tests.test('ViewRenderBlock gives its body a child scope and ordered output arra
   const children = ViewRenderBlock(parent, (scope, output) => {
     LetDeclaration(scope, 'label', 'inner')
     found = Name(scope, 'label') as string
-    output.push(createElement('span', { key: 'child' }, 'child'))
+    output.push(React.createElement('span', { key: 'child' }, 'child'))
   })
 
   Tests.expect(found).toBe('inner')
   Tests.expect(Name(parent, 'label')).toBe('outer')
-  Tests.expect(renderToStaticMarkup(createElement('div', null, ...children))).toBe('<div><span>child</span></div>')
+  Tests.expect(renderToStaticMarkup(React.createElement('div', null, ...children))).toBe(
+    '<div><span>child</span></div>',
+  )
 })
 
 Tests.test('View parameters shadow captured parent scope during rendering', () => {
@@ -70,7 +72,7 @@ Tests.test('View parameters shadow captured parent scope during rendering', () =
   LetDeclaration(parent, 'message', 'captured')
   function Message(props: ViewComponentProps) {
     const context = View.beginViewRender(props)
-    const result = createElement('span', null, Name(context.scope, 'message') as string)
+    const result = React.createElement('span', null, Name(context.scope, 'message') as string)
     return View.finishViewRender(context, result)
   }
   const descriptor = View.ViewDeclaration(

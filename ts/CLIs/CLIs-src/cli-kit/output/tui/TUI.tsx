@@ -1,7 +1,7 @@
+import type React from '@runtime/client/Bridge-React'
 import { Switch, Time } from '@shared'
 import { Terminal } from '@shared/os'
 import { render, useStdout } from 'ink'
-import type { JSX } from 'react'
 import type { OutputRenderer, OutputSnapshot } from '../Output'
 import { OutputView } from './View'
 
@@ -39,7 +39,7 @@ export function createTUI(): OutputRenderer {
 function TUI(props: {
   now: number
   snapshot: OutputSnapshot
-}): JSX.Element {
+}): React.JSX.Element {
   const { stdout } = useStdout()
   const width = Math.max(1, stdout.columns ?? 80)
   const height = Math.max(4, stdout.rows ?? 24)
