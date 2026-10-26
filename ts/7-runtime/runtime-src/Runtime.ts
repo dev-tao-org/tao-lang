@@ -56,7 +56,7 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
   )
   options.onProgress?.('Expo runtime application scaffolded.')
   const application = await applicationWithToolchain(directory, dependencyDirectory)
-  return { ...application, metroPreloadPath: Path.join(resourcesDirectory, 'metro/MetroPreload.cjs') }
+  return attachMetroPreload(application, resourcesDirectory)
 }
 
 /** start starts the prepared Expo application and waits for its first response. */
@@ -71,10 +71,8 @@ export async function start(
     sequence: 0,
     files: { 'App.tsx': await FileSystem.readFile(application.appPath, 'utf8') },
   }
-  const pending = createExpoSession(application, {
-    ...options,
-    generated: { initial, preloadPath: application.metroPreloadPath },
-  })
+  const expoOptions = createGeneratedExpoOptions(application, initial, options)
+  const pending = createExpoSession(application, expoOptions)
   application.publishGenerated = async revision => (await pending).publish(revision)
   const session = await pending
   onProgress?.('Expo server is ready.')
@@ -130,6 +128,19 @@ export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy> {
 }
 
 let pinnedDependencies: Promise<Record<string, string>> | undefined
+
+function attachMetroPreload(application: RuntimeApplication, resourcesDirectory: string): RuntimeApplication {
+  const metroPreloadPath = Path.join(resourcesDirectory, 'metro/MetroPreload.cjs')
+  return { ...application, metroPreloadPath }
+}
+
+function createGeneratedExpoOptions(
+  application: RuntimeApplication,
+  initial: GeneratedRevision,
+  options: ExpoOptions | undefined,
+): ExpoOptions {
+  return { ...options, generated: { initial, preloadPath: application.metroPreloadPath } }
+}
 
 async function readPinnedDependencies(): Promise<Record<string, string>> {
   const directory = defaultResourcesDirectory()

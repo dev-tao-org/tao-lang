@@ -1,13 +1,7 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
-import {
-  materializeLocations,
-  materializeSources,
-  readDependencyLock,
-  resolveDependencyLockPath,
-  writeDependencyLock,
-} from './LockFile'
+import * as LockFile from './LockFile'
 import { createSourceIdentity, deriveDefaultSourceAlias, resolveSource } from './Sources'
 import type { DependencyLock, DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
@@ -38,7 +32,7 @@ export async function prepareDependencies(
   options: DependencyStoreOptions,
   update: string[] | undefined = [],
 ): Promise<DependencyLock> {
-  const path = resolveDependencyLockPath(projectRoot)
+  const path = LockFile.resolveDependencyLockPath(projectRoot)
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   const lockPath = Path.join(projectRoot, '.tao', 'locks', 'dependencies.lock')
   await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
@@ -47,11 +41,11 @@ export async function prepareDependencies(
     preparationNeeded('Another Tao dependency preparation is running; retry.')
   }
   return await Try(async () => {
-    const previous = await readDependencyLock(path)
+    const previous = await LockFile.readDependencyLock(path)
     const sources = await resolveGraph(
       projectRoot,
       requirements,
-      materializeSources(previous?.sources ?? {}, projectRoot, options.bundledProjects),
+      LockFile.materializeSources(previous?.sources ?? {}, projectRoot, options.bundledProjects),
       collectPreviousPins(previous, projectRoot, options.bundledProjects),
       update,
       options,
@@ -62,7 +56,7 @@ export async function prepareDependencies(
       sources,
       ...(previous?.npmGraphs ? { npmGraphs: previous.npmGraphs } : {}),
     }
-    await writeDependencyLock(path, result, projectRoot)
+    await LockFile.writeDependencyLock(path, result, projectRoot)
     return result
   }, { finally: () => lock.release() })
 }
@@ -77,9 +71,10 @@ export async function prepareSourceDependency(
   const requirements = await options.readRequirements(owner)
   const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
     ?? Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
-  const path = resolveDependencyLockPath(projectRoot)
-  const previous = materializeLocations(await readDependencyLock(path), projectRoot, options.bundledProjects)
-    ?? { version: 1 as const, roots: {}, sources: {} }
+  const path = LockFile.resolveDependencyLockPath(projectRoot)
+  const previous =
+    LockFile.materializeLocations(await LockFile.readDependencyLock(path), projectRoot, options.bundledProjects)
+      ?? { version: 1 as const, roots: {}, sources: {} }
   const identity = createSourceIdentity(requirement, owner, projectRoot)
   const source = await resolveSource(
     requirement,
@@ -101,7 +96,7 @@ export async function prepareSourceDependency(
     },
   }
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-  await writeDependencyLock(path, result, projectRoot)
+  await LockFile.writeDependencyLock(path, result, projectRoot)
   return { root: source.location }
 }
 
@@ -168,7 +163,7 @@ function collectPreviousPins(
   if (!previous) {
     return pins
   }
-  const sources = materializeSources(previous.sources, projectRoot, bundledProjects)
+  const sources = LockFile.materializeSources(previous.sources, projectRoot, bundledProjects)
   for (const value of Object.values(previous.roots)) {
     // ex: github:x/foo@v1 -> identity github:x/foo, version v1
     const split = value.lastIndexOf('@')

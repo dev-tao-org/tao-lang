@@ -1,4 +1,10 @@
 import type * as AST from '@ast-gen/AST'
+import { nullCharacter } from '@shared'
+
+/** createModuleMemberKey identifies a module-owned member by name, authored path or source offset. */
+export function createModuleMemberKey(modulePath: string, member: string | number): string {
+  return `${modulePath}${nullCharacter}${member}`
+}
 
 /** SourceModule owns an immutable source AST and its resolved import candidates. */
 export type SourceModule = {

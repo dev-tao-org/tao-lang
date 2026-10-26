@@ -142,9 +142,7 @@ async function openWorkflowWorkspace(
   request: Extract<WorkflowRequest, { kind: 'compile' | 'preview' }>,
   services: WorkflowServices,
 ): Promise<WorkflowWorkspace> {
-  const options = request.kind === 'preview' && request.restart
-    ? { ...request.options, id: `preview-restart-${Platform.randomUUID()}` }
-    : request.options
+  const options = createWorkflowWorkspaceOptions(request)
   const workspace = await (services.openWorkspace ?? openProjectWorkspace)(request.entry, options)
   return await Try(async () => {
     const initialResult = request.kind === 'preview'
@@ -167,6 +165,12 @@ async function openWorkflowWorkspace(
       return Errors.Throw(error)
     },
   })
+}
+
+function createWorkflowWorkspaceOptions(request: Extract<WorkflowRequest, { kind: 'compile' | 'preview' }>) {
+  return request.kind === 'preview' && request.restart
+    ? { ...request.options, id: `preview-restart-${Platform.randomUUID()}` }
+    : request.options
 }
 
 async function confirmSetup(entry: string, message: string, ui: WorkflowUI): Promise<void> {

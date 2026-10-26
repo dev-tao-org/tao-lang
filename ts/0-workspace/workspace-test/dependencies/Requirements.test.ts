@@ -2,10 +2,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import {
-  readProjectRequirements,
-  validateRequirementPlacement,
-} from '../../workspace-src/dependencies/Requirements'
+import * as Requirements from '../../workspace-src/dependencies/Requirements'
 
 Tests.test('project source scanning extracts only project root dependencies and applies defaults', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-requirements-${Platform.randomUUID()}`)
@@ -21,7 +18,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
       ].join('\n'),
     )
     await FileSystem.writeFile(Path.join(root, 'nested', 'Module.tao'), 'requires github:acme/other version v1')
-    const requirements = await readProjectRequirements(root)
+    const requirements = await Requirements.readProjectRequirements(root)
     Tests.expect(requirements).toEqual([
       { provider: 'github', identifier: 'acme/widgets', version: 'v2' },
       { provider: 'file', identifier: '../local', version: 'live' },
@@ -31,7 +28,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
       createParser().parse(await FileSystem.readFile(Path.join(root, 'nested', 'Module.tao'), 'utf8')),
     )!
     await Tests.rejects(
-      async () => validateRequirementPlacement(nested, Path.join(root, 'nested', 'Module.tao'), root),
+      async () => Requirements.validateRequirementPlacement(nested, Path.join(root, 'nested', 'Module.tao'), root),
       /project-root Tao files/,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -43,7 +40,7 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
     await FileSystem.writeFile(path, 'requires github:acme/widgets')
-    await Tests.rejects(readProjectRequirements(root), /needs a version/)
+    await Tests.rejects(Requirements.readProjectRequirements(root), /needs a version/)
     await FileSystem.writeFile(
       path,
       [
@@ -51,6 +48,6 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
         'requires github:acme/other version v1 as shared',
       ].join('\n'),
     )
-    await Tests.rejects(readProjectRequirements(root), /declared more than once/)
+    await Tests.rejects(Requirements.readProjectRequirements(root), /declared more than once/)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })

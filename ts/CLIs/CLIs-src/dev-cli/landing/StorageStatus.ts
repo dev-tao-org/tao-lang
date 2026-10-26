@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, nullCharacter } from '@shared'
 import { Path } from '@shared/os'
 import { type LandingIO } from './LandingIO'
 import { pendingPreviewRecords } from './PreviewRecords'
@@ -19,7 +19,7 @@ export async function requireOwnedStorageChanges(io: LandingIO): Promise<void> {
     [`${record.directory}/record.json`, record.record],
     [`${record.directory}/report.json`, record.report],
   ]))
-  for (const entry of status.split('\0').filter(Boolean)) {
+  for (const entry of status.split(nullCharacter).filter(Boolean)) {
     const path = entry.slice(3)
     const expected = allowed.get(path)
     if (expected === undefined || /[DRCU!]/.test(entry.slice(0, 2))) {

@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, nullCharacter, Try } from '@shared'
 import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
@@ -99,11 +99,9 @@ async function toolchainIdentity(
   const os = identityInputs?.os ?? platform.os
   const architecture = identityInputs?.architecture ?? platform.architecture
   const patches = await readToolchainPatches(resourcesDirectory)
-  return Platform.hashText(
-    `${manifest}\0${lockfile}\0${
-      JSON.stringify(patches)
-    }\0${runtimeVersion}\0${os}\0${architecture}\0${toolchainCachePolicy}`,
-  )
+  const identity = [manifest, lockfile, JSON.stringify(patches), runtimeVersion, os, architecture, toolchainCachePolicy]
+    .join(nullCharacter)
+  return Platform.hashText(identity)
 }
 
 async function readToolchainPatches(directory: string): Promise<Record<string, string>> {

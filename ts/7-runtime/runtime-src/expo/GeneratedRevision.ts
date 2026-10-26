@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, nullCharacter, Try } from '@shared'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** createRevisionOwner retains one active and only the latest pending complete generated revision.
@@ -31,7 +31,7 @@ export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision
   const files: Record<string, string> = Object.create(null)
   for (const [path, text] of Object.entries(revision.files)) {
     const segments = path.split('/')
-    const valid = path.length > 0 && !path.includes('\\') && !path.includes('\0')
+    const valid = path.length > 0 && !path.includes('\\') && !path.includes(nullCharacter)
       && !segments.some(segment => segment === '' || segment === '.' || segment === '..')
       && segments[0] !== '_gen_runtime' && typeof text === 'string'
     if (!valid) {

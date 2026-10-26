@@ -39,17 +39,15 @@ description: >-
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
   units across interruptions; never recalculate progress from the growing current diff.
-- Present each agreed group using the format below, with clickable absolute file links and useful
-  starting lines. Use a selected line range only when the editor/tool supports it; otherwise use
-  a starting line and describe the relevant range or functionality. Never invent range-link syntax.
-  Order files for understanding and nest them by folder or functional part. Explain partial-file
-  scope in one succinct sentence, at most two. End the presentation immediately after the file list.
-- Number file entries consecutively within each presented review group, including across folder
-  or conceptual subgroups, so the developer can approve files by number. Keep the displayed
-  number-to-path mapping stable until that group is completed or explicitly revised.
-- After approvals or corrections, end with remaining group files or the next agreed group using
-  the format below. Preserve partial-group numbering. Pause only at developer request or for a
-  blocking decision; a completion recap alone is insufficient when review remains.
+- Use the format below, absolute file links and useful starting lines; use ranges only when supported.
+  Present only the current file chunk; list later chunk titles until completion or a requested switch.
+  Explain partial-file scope in at most two sentences. End immediately after the file list.
+- Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
+  Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
+- Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
+- After handling approvals or corrections, reprint clickable links for every remaining current-chunk
+  file with its stable ID; if complete, present the next agreed chunk. Pause only at the developer's
+  request or a blocking decision; a recap alone is insufficient.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.
@@ -105,7 +103,7 @@ and replace placeholders with current counts. Get agreement before beginning a g
 ...
 ```
 
-Each turn presents remaining groups for the current feature set, then only the next group:
+Each turn lists remaining groups or chunks by title, then presents files for only the current one:
 
 ```text
 ### <Feature set, when applicable>
@@ -121,11 +119,9 @@ Remaining groups:
 
 <Particular complexity or dependencies to keep in mind, only if needed.>
 
-- <Review group / folder / conceptual chunk> - X folders, Y files, Z diffs
+- <Current review group or conceptual chunk> - X folders, Y files, Z diffs
   1. <Clickable file path:starting line> - X diffs
   2. <Clickable file path:starting line> - X diffs (<Brief partial-file scope, if applicable.>)
-- <Another chunk, when useful> - X folders, Y files, Z diffs
-  3. <Clickable file path:starting line> - X diffs
 ```
 
 Omit the feature-set heading when there is no feature set. Nothing follows the file list except

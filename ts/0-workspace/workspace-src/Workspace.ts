@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { check } from '@check/Check'
-import { compile } from '@compile/Compile'
+import { compile, type CompileOptions } from '@compile/Compile'
 import { createParser } from '@grammar/parser'
 import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
@@ -248,11 +248,8 @@ class WorkspaceSession {
     this.acceptSnapshots(prepared?.snapshotDirectories ?? [])
     await this.files.updatePipelineDirectories(prepared?.watchDirectories ?? [], prepared?.snapshotDirectories ?? [])
     progress?.('Source modules resolved; generating app code…')
-    const code = request.timings.run(this.options.compile ?? compile, document, {
-      revision: `r${request.id}`,
-      program,
-      ...prepared,
-    })
+    const compileOptions = createCompilationOptions(`r${request.id}`, program, prepared)
+    const code = request.timings.run(this.options.compile ?? compile, document, compileOptions)
     progress?.('App code generation complete.')
     return code
   }
@@ -297,16 +294,25 @@ class WorkspaceSession {
     const output = this.output
       ?? Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
     if (!this.application) {
-      const application = await Runtime.create({
-        ...this.options.runtimeOptions,
-        directory: output.runtimeDirectory,
-        onProgress: this.options.onProgress,
-      })
+      const runtimeOptions = createWorkspaceRuntimeOptions(this.options, output.runtimeDirectory)
+      const application = await Runtime.create(runtimeOptions)
       await prepareBuildTypeScript(output.buildDirectory, application)
       this.application = application
     }
     return this.application
   }
+}
+
+function createCompilationOptions(
+  revision: string,
+  program: LinkedProgram,
+  prepared: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+): CompileOptions {
+  return { revision, program, ...prepared }
+}
+
+function createWorkspaceRuntimeOptions(options: WorkspaceOptions, directory: string): Runtime.RuntimeCreateOptions {
+  return { ...options.runtimeOptions, directory, onProgress: options.onProgress }
 }
 
 function createSkippedStages(): PipelineStages {

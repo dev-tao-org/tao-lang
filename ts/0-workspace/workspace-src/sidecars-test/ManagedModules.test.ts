@@ -1,13 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
-import {
-  cleanManagedModuleMetadata,
-  inspectGeneratedModuleFiles,
-  prepareManagedModules,
-  readManagedModules,
-  repairManagedModuleFiles,
-} from '../sidecars/ManagedModules'
+import * as ManagedModules from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from '../sidecars/ManagedModuleTypes'
 
 Tests.test('prepares a deterministic isolated Bun graph and reads it only for matching declarations', async () =>
@@ -33,23 +27,23 @@ async function assertProfileRepair(fixture: ManagedFixture, fingerprint: string)
   const manifest = Path.join(profile, 'package.json')
   await FileSystem.chmod(manifest, 0o644)
   await FileSystem.writeFile(manifest, '{}')
-  await Tests.rejects(readManagedModules(fixture.input), /manifest drifted/)
+  await Tests.rejects(ManagedModules.readManagedModules(fixture.input), /manifest drifted/)
   const metadataPath = Path.join(profile, '.tao-managed.json')
   const metadata = JSON.parse(await FileSystem.readFile(metadataPath, 'utf8'))
   const currentRequirements = metadata.requirements
   metadata.requirements = [['Modules', 'date-fns', '4.1.0']]
   await FileSystem.chmod(metadataPath, 0o644)
   await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
-  await Tests.rejects(readManagedModules(fixture.input), /dependencies changed/)
+  await Tests.rejects(ManagedModules.readManagedModules(fixture.input), /dependencies changed/)
   metadata.requirements = currentRequirements
   metadata.target = 'tampered'
   await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
-  await Tests.rejects(readManagedModules(fixture.input), /dependencies changed/)
-  const repaired = await repairManagedModuleFiles(fixture.input, fixture.executor)
+  await Tests.rejects(ManagedModules.readManagedModules(fixture.input), /dependencies changed/)
+  const repaired = await ManagedModules.repairManagedModuleFiles(fixture.input, fixture.executor)
   Tests.expect(repaired.fingerprint).toBe(fingerprint)
   Tests.expect(fixture.frozen()).toBe(true)
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toContain('date-fns')
-  Tests.expect(await readManagedModules(fixture.input)).toEqual(repaired)
+  Tests.expect(await ManagedModules.readManagedModules(fixture.input)).toEqual(repaired)
 }
 
 async function assertPackageResolutionStaysInProfile(profile: string): Promise<void> {
@@ -131,8 +125,8 @@ async function writeFixtureLock(root: string): Promise<void> {
 }
 
 async function assertPrepared(fixture: ManagedFixture): Promise<PreparedManagedModules> {
-  const prepared = await prepareManagedModules(fixture.input, fixture.executor)
-  Tests.expect(prepared.fingerprint).toBe((await readManagedModules(fixture.input)).fingerprint)
+  const prepared = await ManagedModules.prepareManagedModules(fixture.input, fixture.executor)
+  Tests.expect(prepared.fingerprint).toBe((await ManagedModules.readManagedModules(fixture.input)).fingerprint)
   Tests.expect(await FileSystem.exists(Path.join(fixture.moduleDirectory, 'node_modules', 'date-fns'))).toBe(true)
   const dependencies = JSON.parse(await FileSystem.readFile(Path.join(fixture.moduleDirectory, 'package.json'), 'utf8'))
     .dependencies
@@ -148,34 +142,34 @@ async function assertDriftAndRepair(fixture: ManagedFixture): Promise<void> {
   const tsconfig = Path.join(fixture.moduleDirectory, 'tsconfig.json')
   await FileSystem.chmod(tsconfig, 0o644)
   await FileSystem.writeFile(tsconfig, '{}')
-  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toHaveLength(1)
+  Tests.expect(await ManagedModules.inspectGeneratedModuleFiles(fixture.input)).toHaveLength(1)
   await FileSystem.writeFile(gitignore, authoredIgnore.replace('/node_modules/', '/changed/'))
-  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toHaveLength(2)
-  await repairManagedModuleFiles(fixture.input, fixture.executor)
-  Tests.expect(await inspectGeneratedModuleFiles(fixture.input)).toEqual([])
+  Tests.expect(await ManagedModules.inspectGeneratedModuleFiles(fixture.input)).toHaveLength(2)
+  await ManagedModules.repairManagedModuleFiles(fixture.input, fixture.executor)
+  Tests.expect(await ManagedModules.inspectGeneratedModuleFiles(fixture.input)).toEqual([])
 }
 
 async function assertFrozenReuseAndClean(fixture: ManagedFixture, fingerprint: string): Promise<void> {
   const profile = Path.join(fixture.directory, '.tao', 'cache', 'managed-modules', fingerprint)
   await FileSystem.rm(Path.join(profile, 'node_modules'), { recursive: true, force: true })
-  await prepareManagedModules(fixture.input, fixture.executor)
+  await ManagedModules.prepareManagedModules(fixture.input, fixture.executor)
   Tests.expect(fixture.frozen()).toBe(true)
-  await Tests.rejects(readManagedModules({ ...fixture.input, modules: [] }), /changed/)
+  await Tests.rejects(ManagedModules.readManagedModules({ ...fixture.input, modules: [] }), /changed/)
   const lock = Path.join(
     fixture.directory,
     '.tao',
     'store',
     'npm',
-    `${(await readManagedModules(fixture.input)).graphFingerprint}.lock`,
+    `${(await ManagedModules.readManagedModules(fixture.input)).graphFingerprint}.lock`,
   )
   Tests.expect(await FileSystem.exists(lock.replace(/\.lock$/, '.sha256'))).toBe(true)
   await FileSystem.chmod(lock, 0o644)
   await FileSystem.writeFile(lock, 'tampered')
-  await Tests.rejects(readManagedModules(fixture.input), /durable lock is changed/)
-  await cleanManagedModuleMetadata(fixture.externalModule)
+  await Tests.rejects(ManagedModules.readManagedModules(fixture.input), /durable lock is changed/)
+  await ManagedModules.cleanManagedModuleMetadata(fixture.externalModule)
   Tests.expect(await FileSystem.exists(Path.join(fixture.externalModule, 'package.json'))).toBe(true)
   await FileSystem.rm(profile, { recursive: true, force: true })
-  await cleanManagedModuleMetadata(fixture.directory, [fixture.externalModule])
+  await ManagedModules.cleanManagedModuleMetadata(fixture.directory, [fixture.externalModule])
   await assertCleanupPreservesUserFiles(fixture)
 }
 
@@ -239,7 +233,7 @@ async function assertPeerFailure(directory: string): Promise<void> {
     runtimePins: { react: '19.1.0' },
     bunVersion: '1.2.0',
   }
-  await Tests.rejects(prepareManagedModules(input, peerExecutor), /peer incompatibility/)
+  await Tests.rejects(ManagedModules.prepareManagedModules(input, peerExecutor), /peer incompatibility/)
 }
 
 const peerExecutor: BunExecutor = async (_command, args, cwd) => {
@@ -269,7 +263,7 @@ Tests.test('rejects non-exact module requirements before starting Bun', async ()
   }
   let invoked = false
   await Tests.rejects(
-    prepareManagedModules(input, async () => {
+    ManagedModules.prepareManagedModules(input, async () => {
       invoked = true
       return { status: 0, stdout: '', stderr: '' }
     }),
@@ -287,7 +281,7 @@ async function assertSingletonFailure(directory: string): Promise<void> {
     bunVersion: '1.2.0',
   }
   await Tests.rejects(
-    prepareManagedModules(input, singletonExecutor),
+    ManagedModules.prepareManagedModules(input, singletonExecutor),
     /incompatible singleton react.*19\.1\.0.*19\.0\.0/,
   )
 }

@@ -1,19 +1,15 @@
 import * as AST from '@ast-gen/AST'
 import { Tests } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
-import {
-  createProjectPipeline,
-  type ProjectPipelineServices,
-  type ProjectRuntimeOptions,
-} from '../workspace-src/ProjectPipeline'
+import * as ProjectPipeline from '../workspace-src/ProjectPipeline'
 import type { PreparedSidecars } from '../workspace-src/SidecarPipeline'
 import type { PreparedManagedModules } from '../workspace-src/sidecars/ManagedModules'
 
 Tests.test('a prepared graph is validated once and reused for later source edits', async () => {
   const events: string[] = []
   const services = fakeServices(events)
-  const runtimeOptions: ProjectRuntimeOptions = { watchFolders: ['/base'] }
-  const pipeline = createProjectPipeline('/project', '/session', runtimeOptions, services)
+  const runtimeOptions: ProjectPipeline.ProjectRuntimeOptions = { watchFolders: ['/base'] }
+  const pipeline = ProjectPipeline.createProjectPipeline('/project', '/session', runtimeOptions, services)
   const first = await pipeline.beforeCompile(program('first source', '1.0.0'))
   const second = await pipeline.beforeCompile(program('second source', '1.0.0'))
 
@@ -26,7 +22,7 @@ Tests.test('a prepared graph is validated once and reused for later source edits
 
 Tests.test('a changed dependency graph requests preview restart and retains the validated graph', async () => {
   const events: string[] = []
-  const pipeline = createProjectPipeline('/project', '/session', {}, fakeServices(events))
+  const pipeline = ProjectPipeline.createProjectPipeline('/project', '/session', {}, fakeServices(events))
   await pipeline.beforeCompile(program('first graph', '1.0.0'))
 
   await Tests.rejects(
@@ -37,7 +33,12 @@ Tests.test('a changed dependency graph requests preview restart and retains the 
 })
 
 Tests.test('a changed graph with native packages calls out the native rebuild', async () => {
-  const pipeline = createProjectPipeline('/project', '/session', {}, fakeServices([], undefined, ['native-addon']))
+  const pipeline = ProjectPipeline.createProjectPipeline(
+    '/project',
+    '/session',
+    {},
+    fakeServices([], undefined, ['native-addon']),
+  )
   await pipeline.beforeCompile(program('first graph', '1.0.0'))
 
   await Tests.rejects(
@@ -48,7 +49,7 @@ Tests.test('a changed graph with native packages calls out the native rebuild', 
 
 Tests.test('ordinary source edits do not inspect generated setup files again', async () => {
   const events: string[] = []
-  const pipeline = createProjectPipeline('/project', '/session', {}, fakeServices(events, 2))
+  const pipeline = ProjectPipeline.createProjectPipeline('/project', '/session', {}, fakeServices(events, 2))
   await pipeline.beforeCompile(program('first source', '1.0.0'))
 
   await pipeline.beforeCompile(program('edited source', '1.0.0'))
@@ -59,7 +60,7 @@ function fakeServices(
   events: string[],
   driftOnCall?: number,
   nativePackages: string[] = [],
-): ProjectPipelineServices {
+): ProjectPipeline.ProjectPipelineServices {
   let driftCount = 0
   let snapshotCount = 0
   return {

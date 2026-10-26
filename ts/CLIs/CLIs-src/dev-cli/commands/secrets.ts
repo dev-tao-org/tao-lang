@@ -2,18 +2,7 @@ import { IO } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
-import {
-  type Cipher,
-  decryptSecretValues,
-  formatSecretStore,
-  parseSecretStore,
-  renderSecretEnvFile,
-  requireSecretName,
-  type SecretStore,
-  type StoreKey,
-  unlockSecretStoreKey,
-  withSecret,
-} from '../../cli-kit/secret-store'
+import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
 
 /** secretsCommand manages the committed encrypted store and its generated local environment file. */
@@ -30,7 +19,7 @@ const envPath = Repo.resolvePath('.env.secrets')
 const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
 
 type SecretsEnvironment = {
-  cipher: Cipher
+  cipher: SecretStoreModule2.Cipher
   promptSecret: (prompt: string) => Promise<string>
   now: () => Date
 }
@@ -71,7 +60,7 @@ function liveEnvironment(): SecretsEnvironment {
 }
 
 async function addSecret(name: string, note: string | undefined, environment: SecretsEnvironment): Promise<void> {
-  requireSecretName(name)
+  SecretStoreModule2.requireSecretName(name)
   const original = await readStore()
   if (original.recipients.length === 0) {
     Errors.ThrowUserInput('The secret store lists no recipients. Run ./dev secrets setup first.')
@@ -80,7 +69,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
     ? await createStoreKey(environment.cipher, original.recipients)
     : original.storeKey
   if (original.storeKey !== undefined) {
-    await unlockSecretStoreKey(environment.cipher, original.storeKey)
+    await SecretStoreModule2.unlockSecretStoreKey(environment.cipher, original.storeKey)
   }
   IO.print(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.`)
   const value = await environment.promptSecret(`Value for ${name}:`)
@@ -95,7 +84,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
         'The recipients, store key, or selected secret changed while adding. Run the command again.',
       )
     }
-    const updated = withSecret({ ...current, storeKey: current.storeKey ?? key }, name, armor, {
+    const updated = SecretStoreModule2.withSecret({ ...current, storeKey: current.storeKey ?? key }, name, armor, {
       now: environment.now(),
       ...(note === undefined ? {} : { note }),
     })
@@ -105,13 +94,20 @@ async function addSecret(name: string, note: string | undefined, environment: Se
   IO.print('Run ./dev secrets to write it into .env.secrets.')
 }
 
-function hasConflictingSecretChange(original: SecretStore, current: SecretStore, name: string): boolean {
+function hasConflictingSecretChange(
+  original: SecretStoreModule2.SecretStore,
+  current: SecretStoreModule2.SecretStore,
+  name: string,
+): boolean {
   return JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
     || JSON.stringify(current.secrets[name]) !== JSON.stringify(original.secrets[name])
     || current.storeKey?.recipient !== original.storeKey?.recipient
 }
 
-async function createStoreKey(cipher: Cipher, recipients: readonly string[]): Promise<StoreKey> {
+async function createStoreKey(
+  cipher: SecretStoreModule2.Cipher,
+  recipients: readonly string[],
+): Promise<SecretStoreModule2.StoreKey> {
   const key = await cipher.generateKey()
   return {
     recipient: key.recipient,
@@ -128,8 +124,8 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
     return
   }
   const storeKey = original.storeKey!
-  const { values, secretKey } = await decryptSecretValues(original, environment.cipher)
-  await writeGeneratedEnv(renderSecretEnvFile(values, environment.now()))
+  const { values, secretKey } = await SecretStoreModule2.decryptSecretValues(original, environment.cipher)
+  await writeGeneratedEnv(SecretStoreModule2.renderSecretEnvFile(values, environment.now()))
   IO.print(`Wrote ${values.size} ${values.size === 1 ? 'secret' : 'secrets'} to .env.secrets.`)
   const ungranted = original.recipients.filter(recipient => !storeKey.wrappedFor.includes(recipient))
   if (ungranted.length > 0) {
@@ -150,7 +146,11 @@ async function writeGeneratedEnv(contents: string): Promise<void> {
   })
 }
 
-async function grantStoreKey(original: SecretStore, secretKey: string, cipher: Cipher): Promise<void> {
+async function grantStoreKey(
+  original: SecretStoreModule2.SecretStore,
+  secretKey: string,
+  cipher: SecretStoreModule2.Cipher,
+): Promise<void> {
   const storeKey = original.storeKey!
   const wrappedKey = armorLines(await cipher.encrypt(secretKey, original.recipients))
   await withStoreMutation(async () => {
@@ -216,20 +216,20 @@ async function setupSecrets(): Promise<void> {
   )
 }
 
-async function readStore(): Promise<SecretStore> {
+async function readStore(): Promise<SecretStoreModule2.SecretStore> {
   if (!FileSystem.existsSync(storePath)) {
     return { recipients: [], secrets: {} }
   }
-  return parseSecretStore(await FileSystem.file(storePath).text())
+  return SecretStoreModule2.parseSecretStore(await FileSystem.file(storePath).text())
 }
 
-async function writeStore(store: SecretStore): Promise<void> {
+async function writeStore(store: SecretStoreModule2.SecretStore): Promise<void> {
   await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
   const directory = Artifacts.resolvePath('cache', 'secrets')
   await Artifacts.mkdir(directory, { recursive: true })
   const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
   await Try(async () => {
-    await Artifacts.write(temporary, formatSecretStore(store))
+    await Artifacts.write(temporary, SecretStoreModule2.formatSecretStore(store))
     await Artifacts.move(temporary, storePath)
   }, {
     finally: () => Artifacts.rm(temporary, { force: true }),

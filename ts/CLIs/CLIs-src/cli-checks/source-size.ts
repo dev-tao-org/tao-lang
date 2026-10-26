@@ -12,7 +12,8 @@ export function sourceSizeDiagnostics(filename: string, source: string): { error
   return {}
 }
 
-function isExcludedSource(filename: string, source: string): boolean {
+/** isExcludedSource identifies generated, external and third-party source files. */
+export function isExcludedSource(filename: string, source: string): boolean {
   const path = filename.replaceAll('\\', '/')
   return isExternalPath(path) || hasExternalProvenance(source)
 }

@@ -14,16 +14,25 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
   return Switch.kind(node, {
     AppDeclaration: app => emitAppBinding(app, context.scope),
     LetDeclaration: declaration => compileLetDeclaration(declaration, context.scope),
-    ViewDeclaration: view =>
-      compileViewDeclaration(view, {
-        ...context,
-        foreignComponent: context.resolveForeignComponent(view),
-      }),
+    ViewDeclaration: view => compileViewDeclaration(view, createViewCompilationContext(view, context)),
     TestsDeclaration: omitRuntimeDeclaration,
     UseStatement: omitRuntimeDeclaration,
     UsePackageStatement: omitRuntimeDeclaration,
     RequiresDeclaration: omitRuntimeDeclaration,
   })
+}
+
+function createViewCompilationContext(
+  view: AST.ViewDeclaration,
+  context: DeclarationContext,
+): ViewCompilationContext {
+  const foreignComponent = context.resolveForeignComponent(view)
+  return {
+    scope: context.scope,
+    moduleIdentity: context.moduleIdentity,
+    textBindings: context.textBindings,
+    foreignComponent,
+  }
 }
 
 function omitRuntimeDeclaration(): string {

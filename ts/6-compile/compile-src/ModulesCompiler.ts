@@ -1,16 +1,10 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, S } from '@shared'
 import { Platform } from '@shared/os'
-import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
+import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { compileDeclaration, type DeclarationContext } from './DeclarationCompiler'
-import { compileForeignViews, type ForeignViewPathResolver, getForeignViewKey } from './ForeignViewsCompiler'
-import {
-  emitAppDeclaration,
-  emitModuleApplied,
-  emitModuleBinding,
-  emitRuntimeImports,
-  emitScope,
-} from './RuntimeEmitter'
+import { compileForeignViews, type ForeignViewPathResolver } from './ForeignViewsCompiler'
+import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
 
 export type { ForeignViewPathResolver } from './ForeignViewsCompiler'
@@ -25,7 +19,8 @@ export function compileProgram(
   const selected = selectApp(program, appName)
   const foreign = compileForeignViews(program, resolveForeignViewPath)
   const contexts = createModuleContexts(program, buildModuleTextBindings(program), foreign.names)
-  const scopes = program.modules.map(module => emitScope(resolveContext(contexts, module.path).scope)).join('\n')
+  const scopes = program.modules.map(module => RuntimeEmitter.emitScope(resolveContext(contexts, module.path).scope))
+    .join('\n')
   const aliases = compileAliases(program, contexts)
   const views = compileModuleDeclarations(program, contexts, AST.GetViewDeclarations)
   const apps = compileModuleDeclarations(program, contexts, AST.GetAppDeclarations)
@@ -34,16 +29,16 @@ export function compileProgram(
   ).join('\n')
   const rootScope = resolveContext(contexts, selected.source).scope
   return S`
-    ${emitRuntimeImports()}
+    ${RuntimeEmitter.emitRuntimeImports()}
     ${foreign.imports}
-    ${emitModuleApplied(revision)}
+    ${RuntimeEmitter.emitModuleApplied(revision)}
     ${scopes}
     ${aliases}
     ${views}
     ${apps}
     ${definitions}
     export default function App() {
-      return ${emitAppDeclaration(selected.declaration, rootScope, revision)};
+      return ${RuntimeEmitter.emitAppDeclaration(selected.declaration, rootScope, revision)};
     }
   `
 }
@@ -62,7 +57,7 @@ function createModuleContexts(
     moduleIdentity: Platform.hashText(module.path).slice(0, 12),
     textBindings: textBindings.get(module.path) ?? new Set(),
     resolveForeignComponent: (view: AST.ViewDeclaration) =>
-      foreignNames.get(getForeignViewKey(module.path, view.start)),
+      foreignNames.get(createModuleMemberKey(module.path, view.start)),
   }]))
 }
 
@@ -76,7 +71,7 @@ function compileAliases(program: LinkedProgram, contexts: ModuleContexts): strin
     const scope = resolveContext(contexts, module.path).scope
     return module.bindings.map(binding => {
       const targetScope = resolveContext(contexts, binding.source).scope
-      return emitModuleBinding(binding, scope, targetScope)
+      return RuntimeEmitter.emitModuleBinding(binding, scope, targetScope)
     })
   }).join('\n')
 }
@@ -102,9 +97,9 @@ function buildModuleTextBindings(program: LinkedProgram): ReadonlyMap<string, Re
       const binding = bindingsByModule.get(definition.source)?.get(name.value)
       const source = binding?.source ?? definition.source
       const target = binding?.target ?? name.value
-      return textByDeclaration.get(createDeclarationKey(source, target)) === true
+      return textByDeclaration.get(createModuleMemberKey(source, target)) === true
     })
-    const key = createDeclarationKey(definition.source, definition.declaration.name.value)
+    const key = createModuleMemberKey(definition.source, definition.declaration.name.value)
     textByDeclaration.set(key, isText)
     if (isText) {
       ownTextNames.get(definition.source)?.add(definition.declaration.name.value)
@@ -134,17 +129,12 @@ function createInheritedTextNames(
 ): Set<string> {
   const inherited = new Set(ownTextNames.get(module.path) ?? [])
   for (const binding of module.bindings) {
-    const key = createDeclarationKey(binding.source, binding.target)
+    const key = createModuleMemberKey(binding.source, binding.target)
     if (textByDeclaration.get(key)) {
       inherited.add(binding.name)
     }
   }
   return inherited
-}
-
-function createDeclarationKey(source: string, name: string): string {
-  // NUL separates source and declaration name, avoiding ordinary concatenation collisions.
-  return `${source}\u0000${name}`
 }
 
 function selectApp(program: LinkedProgram, appName?: string): { source: string; declaration: AST.AppDeclaration } {

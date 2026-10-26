@@ -4,7 +4,7 @@ import promises from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Errors, Time } from '../universal/universal'
+import { Errors, nullCharacter, Time } from '../universal/universal'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 
 /** installGeneratedFileSystem makes memory authoritative below one exclusively generated namespace.
@@ -101,7 +101,7 @@ function createSnapshot(root: string, runtime: string, files: Readonly<Record<st
 
 function invalidPath(path: string): boolean {
   const segments = path.split('/')
-  return isAbsolute(path) || path.includes('\\') || path.includes('\0') || segments[0] === '_gen_runtime'
+  return isAbsolute(path) || path.includes('\\') || path.includes(nullCharacter) || segments[0] === '_gen_runtime'
     || segments.some(segment => !segment || segment === '.' || segment === '..')
 }
 

@@ -2,11 +2,7 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
 import { cleanManagedModuleMetadata } from '../sidecars/ManagedModules'
-import {
-  acquireProjectLifecycle,
-  isRealDirectory,
-  pathExists,
-} from './Lifecycle'
+import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout } from './Projects'
 import { isProjectSessionId } from './Sessions'
 
@@ -16,10 +12,10 @@ export type CleanResult = { removed: string[]; skippedActive: string[]; sharedPr
 /** cleanProject removes inactive session and generated project cache state. */
 export async function cleanProject(root: string): Promise<CleanResult> {
   const layout = deriveProjectLayout(Path.resolve(root))
-  if (!isRealDirectory(layout.taoDirectory)) {
+  if (!Lifecycle.isRealDirectory(layout.taoDirectory)) {
     return createEmptyCleanResult()
   }
-  const lifecycle = await acquireProjectLifecycle(layout.root)
+  const lifecycle = await Lifecycle.acquireProjectLifecycle(layout.root)
   if (!lifecycle) {
     return { ...createEmptyCleanResult(), sharedProtected: true }
   }
@@ -30,7 +26,7 @@ async function cleanProjectUnderLifecycle(layout: ReturnType<typeof deriveProjec
   const removed: string[] = []
   const skippedActive: string[] = []
   const warnings: string[] = []
-  const cacheSafe = !pathExists(layout.cacheDirectory) || isRealDirectory(layout.cacheDirectory)
+  const cacheSafe = !Lifecycle.pathExists(layout.cacheDirectory) || Lifecycle.isRealDirectory(layout.cacheDirectory)
   if (!cacheSafe) {
     return { removed, skippedActive, sharedProtected: true, warnings }
   }
@@ -72,7 +68,10 @@ async function cleanSession(
 ): Promise<boolean> {
   const sessionPath = Path.join(layout.sessionsDirectory, id)
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
-  if (pathExists(sessionPath) && !isRealDirectory(sessionPath) || pathExists(lockPath) && !isRegularFile(lockPath)) {
+  if (
+    Lifecycle.pathExists(sessionPath) && !Lifecycle.isRealDirectory(sessionPath)
+    || Lifecycle.pathExists(lockPath) && !isRegularFile(lockPath)
+  ) {
     return true
   }
   const lock = await SessionLock.acquire(lockPath)
@@ -80,7 +79,7 @@ async function cleanSession(
     return true
   }
   await Try(async () => {
-    if (isRealDirectory(sessionPath)) {
+    if (Lifecycle.isRealDirectory(sessionPath)) {
       await FileSystem.rm(sessionPath, { recursive: true, force: true })
       removed.push(id)
     }
@@ -93,7 +92,7 @@ function createEmptyCleanResult(): CleanResult {
 }
 
 async function cleanProjectCache(cache: string, removed: string[]): Promise<void> {
-  if (!isRealDirectory(cache)) {
+  if (!Lifecycle.isRealDirectory(cache)) {
     return
   }
   for (const name of await listDirectoryNames(cache)) {
@@ -111,22 +110,22 @@ function isRegularFile(path: string): boolean {
 
 async function ensureLockDirectory(path: string): Promise<boolean> {
   const parent = Path.dirname(path)
-  if (pathExists(parent) && !isRealDirectory(parent)) {
+  if (Lifecycle.pathExists(parent) && !Lifecycle.isRealDirectory(parent)) {
     return false
   }
   await FileSystem.mkdir(path, { recursive: true })
-  return isRealDirectory(path)
+  return Lifecycle.isRealDirectory(path)
 }
 
 async function ensureSessionDirectory(path: string): Promise<boolean> {
-  if (!pathExists(path)) {
+  if (!Lifecycle.pathExists(path)) {
     return true
   }
-  return isRealDirectory(path)
+  return Lifecycle.isRealDirectory(path)
 }
 
 async function listDirectoryNames(path: string): Promise<string[]> {
-  if (!isRealDirectory(path)) {
+  if (!Lifecycle.isRealDirectory(path)) {
     return []
   }
   return await Try(() => FileSystem.readdir(path), {

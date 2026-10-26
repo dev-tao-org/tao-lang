@@ -6,26 +6,16 @@ import { execute } from '@workspace/Workflow'
 import { withTestTimings } from '../../cli-checks/slow-tests'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { findTaoTestFiles } from './TaoTestDiscovery'
-import {
-  assertTestRunActive,
-  executeTestSections,
-  planTaoWorkers,
-  planTestExecution,
-  runFilesSequentially,
-  runWorkerBatch,
-  type TaoWorkerPlan,
-  type TaoWorkerReport,
-  type TestExecutionOptions,
-  type TestPlan,
-  type TestRunSignal,
-} from './TestPlan'
+import * as TestPlanModule2 from './TestPlan'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type { TestExecutionOptions } from './TestPlan'
 
 /** runTestPlan executes selected TypeScript and Tao suites with bounded, independently reported workers. */
 export async function runTestPlan(
-  options: { typescriptArgs?: readonly string[]; taoTarget?: string; slowSeconds?: number } & TestExecutionOptions,
+  options:
+    & { typescriptArgs?: readonly string[]; taoTarget?: string; slowSeconds?: number }
+    & TestPlanModule2.TestExecutionOptions,
 ): Promise<void> {
   const controller = Http.createAbortController()
   const stop = Lifecycle.onTermination(() => controller.abort())
@@ -39,7 +29,7 @@ export async function runTaoTestFiles(
   signal?: ReturnType<typeof Http.createAbortController>['signal'],
 ): Promise<{ passed: number; failed: number }> {
   const progress = (message: string) => IO.progress(message)
-  const results = await runFilesSequentially(paths, signal, async file => {
+  const results = await TestPlanModule2.runFilesSequentially(paths, signal, async file => {
     const relativePath = Path.relative(Repo.getWorkspaceRoot(), file)
     IO.progress(`Testing ${relativePath}…`)
     let passed = 0
@@ -79,18 +69,18 @@ export async function runTaoTestFiles(
 
 async function executeTestPlan(
   options: Parameters<typeof runTestPlan>[0],
-  signal: TestRunSignal,
+  signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: Record<string, string>,
 ): Promise<void> {
   const startedAtMs = Time.nowMs()
-  const plan = planTestExecution(options)
+  const plan = TestPlanModule2.planTestExecution(options)
   const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
   const taoChannels: OutputChannel[] = []
   const operations = {
     typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal, workerEnvironment),
     tao: () => runTaoTests(plan, taoChannels, signal, workerEnvironment, options.yes),
   }
-  const outcomes = await executeTestSections(plan, operations, signal)
+  const outcomes = await TestPlanModule2.executeTestSections(plan, operations, signal)
   typeScriptChannel?.finish(outcomes.typescript ? 'failed' : 'passed')
   for (const channel of [...typeScriptChannel ? [typeScriptChannel] : [], ...taoChannels]) {
     channel.summary(channel.completion())
@@ -106,10 +96,10 @@ async function executeTestPlan(
 }
 
 async function runTypeScriptTests(
-  plan: TestPlan,
+  plan: TestPlanModule2.TestPlan,
   channel: OutputChannel | undefined,
   slowSeconds: number | undefined,
-  signal: TestRunSignal,
+  signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: Record<string, string>,
 ): Promise<void> {
   if (!plan.typescript || !channel) {
@@ -141,9 +131,9 @@ async function runTypeScriptTests(
 }
 
 async function runTaoTests(
-  plan: TestPlan,
+  plan: TestPlanModule2.TestPlan,
   channels: OutputChannel[],
-  signal: TestRunSignal,
+  signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: Record<string, string>,
   yes?: boolean,
 ): Promise<void> {
@@ -161,9 +151,9 @@ async function runTaoTests(
 }
 
 async function executeTaoTests(
-  plan: TestPlan,
+  plan: TestPlanModule2.TestPlan,
   channels: OutputChannel[],
-  signal: TestRunSignal,
+  signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: Record<string, string>,
   yes?: boolean,
 ): Promise<void> {
@@ -171,7 +161,7 @@ async function executeTaoTests(
     return
   }
   const files = await findTaoTestFiles(Path.resolve(plan.tao.target))
-  assertTestRunActive(signal)
+  TestPlanModule2.assertTestRunActive(signal)
   if (files.length === 0) {
     Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
   }
@@ -186,8 +176,8 @@ async function executeTaoTests(
   ))
   const reportPaths = channels.map((_, index) => taoWorkerReportPath(index))
   await Artifacts.mkdir(Path.dirname(reportPaths[0] ?? Artifacts.resolvePath('logs', 'test')), { recursive: true })
-  const workers = planTaoWorkers(files, reportPaths)
-  const results = await runWorkerBatch(
+  const workers = TestPlanModule2.planTaoWorkers(files, reportPaths)
+  const results = await TestPlanModule2.runWorkerBatch(
     workers,
     worker => runTaoWorker(worker, channels[worker.index]!, signal, workerEnvironment),
     (worker, error) => ({ passed: 0, failed: 0, error: `Tao worker ${worker.index + 1} failed: ${String(error)}` }),
@@ -205,12 +195,12 @@ async function executeTaoTests(
 }
 
 async function runTaoWorker(
-  worker: TaoWorkerPlan,
+  worker: TestPlanModule2.TaoWorkerPlan,
   channel: OutputChannel,
-  signal: TestRunSignal,
+  signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: Record<string, string>,
-): Promise<TaoWorkerReport> {
-  assertTestRunActive(signal)
+): Promise<TestPlanModule2.TaoWorkerReport> {
+  TestPlanModule2.assertTestRunActive(signal)
   channel.start()
   let commandFailure: string | undefined
   await Try(() =>
@@ -240,7 +230,10 @@ async function runTaoWorker(
   return report
 }
 
-async function readTaoWorkerReport(path: string, commandFailure: string | undefined): Promise<TaoWorkerReport> {
+async function readTaoWorkerReport(
+  path: string,
+  commandFailure: string | undefined,
+): Promise<TestPlanModule2.TaoWorkerReport> {
   return await Try(async () => {
     const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
     if (!isTaoWorkerReport(value)) {
@@ -262,11 +255,11 @@ async function readTaoWorkerReport(path: string, commandFailure: string | undefi
   })
 }
 
-function isTaoWorkerReport(value: unknown): value is TaoWorkerReport {
+function isTaoWorkerReport(value: unknown): value is TestPlanModule2.TaoWorkerReport {
   if (typeof value !== 'object' || value === null) {
     return false
   }
-  const report = value as Partial<TaoWorkerReport>
+  const report = value as Partial<TestPlanModule2.TaoWorkerReport>
   return Number.isSafeInteger(report.passed) && (report.passed ?? -1) >= 0
     && Number.isSafeInteger(report.failed) && (report.failed ?? -1) >= 0
     && (report.error === undefined || typeof report.error === 'string')

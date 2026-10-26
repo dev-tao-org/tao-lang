@@ -1,15 +1,7 @@
 import { Errors } from '@shared'
 import { Path, Repo, Terminal, Text } from '@shared/os'
 import { createFileOutput } from './output/Files'
-import {
-  createOutput,
-  formatChannelCompletion,
-  formatCommands,
-  type OutputChannel,
-  type OutputCommand,
-  type OutputEvent,
-  type OutputRenderer,
-} from './output/Output'
+import * as Output from './output/Output'
 import { createPlainOutput } from './output/Plain'
 import { encodeOutputMessage } from './output/ProcessOutput'
 import { createPromptLifecycle } from './output/PromptLifecycle'
@@ -23,13 +15,13 @@ export const IO = {
   summary: (...values: unknown[]) => output.main.summary(...values),
   channel: (options: { title: string }) => output.channel(options.title),
   prompt: withPrompt,
-  setCommands(commands: readonly OutputCommand[]) {
+  setCommands(commands: readonly Output.OutputCommand[]) {
     output.setCommands(commands)
     if (!tui) {
       printCommands()
     }
   },
-  setPromptRenderer(factory: () => Promise<OutputRenderer>) {
+  setPromptRenderer(factory: () => Promise<Output.OutputRenderer>) {
     promptRenderer = factory
   },
   config: configureOutput,
@@ -48,7 +40,7 @@ export type IOConfiguration = {
 }
 
 /** configuredCommandOutput captures child streams whenever a channel or dashboard owns their display. */
-export function configuredCommandOutput(channel?: OutputChannel) {
+export function configuredCommandOutput(channel?: Output.OutputChannel) {
   const selected = channel ?? output.main
   return {
     captureCommands: !configuration.passthrough,
@@ -61,7 +53,7 @@ export function configuredCommandOutput(channel?: OutputChannel) {
 }
 
 /** renderOutput installs the sole terminal renderer for this process. */
-export function renderOutput(renderer: OutputRenderer): void {
+export function renderOutput(renderer: Output.OutputRenderer): void {
   tui = true
   output.render(renderer)
 }
@@ -74,8 +66,8 @@ let tui = false
 let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
 let warningDetails: string[] = []
-let output = createOutput(writeOutput)
-let promptRenderer: (() => Promise<OutputRenderer>) | undefined
+let output = Output.createOutput(writeOutput)
+let promptRenderer: (() => Promise<Output.OutputRenderer>) | undefined
 const promptLifecycle = createPromptLifecycle({
   async suspend() {
     if (!tui) {
@@ -109,11 +101,11 @@ function configureOutput(options: IOConfiguration): void {
   warningDetails = []
   plain = createPlainOutput()
   files = createFileOutput(options)
-  output = createOutput(writeOutput)
+  output = Output.createOutput(writeOutput)
   output.main.start()
 }
 
-function writeOutput(event: OutputEvent): void {
+function writeOutput(event: Output.OutputEvent): void {
   if (event.main && event.stream === 'stdout') {
     lastMainOutput = event.text
   }
@@ -141,11 +133,11 @@ function writeOutput(event: OutputEvent): void {
 function printCommands(): void {
   const commands = output.snapshot().commands
   if (commands.length && configuration.stderr !== 'log') {
-    Terminal.stderr.write(formatCommands(commands, Terminal.stderr.isTTY === true) + '\n')
+    Terminal.stderr.write(Output.formatCommands(commands, Terminal.stderr.isTTY === true) + '\n')
   }
 }
 
-function countDiagnostic(event: OutputEvent): void {
+function countDiagnostic(event: Output.OutputEvent): void {
   if (event.level === 'info') {
     return
   }
@@ -161,7 +153,7 @@ function countDiagnostic(event: OutputEvent): void {
   }
 }
 
-function formatWarningDetail(event: OutputEvent): string {
+function formatWarningDetail(event: Output.OutputEvent): string {
   const channel = event.main ? '' : `[${event.channel.title}] `
   const message = Text.stripAnsi(event.text).replace(/\s+/g, ' ').trim()
   return `Warning: ${channel}${message}`.slice(0, 240)
@@ -180,7 +172,7 @@ async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<voi
   if (wasTui) {
     const snapshot = output.snapshot()
     for (const state of snapshot.channels) {
-      Terminal.stderr.write(`[${state.title}] ${formatChannelCompletion(state)}\n`)
+      Terminal.stderr.write(`[${state.title}] ${Output.formatChannelCompletion(state)}\n`)
       if (state.status === 'failed') {
         Terminal.stderr.write(state.lines.slice(-12).join('\n') + '\n')
       }

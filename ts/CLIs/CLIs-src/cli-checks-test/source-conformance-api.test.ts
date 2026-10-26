@@ -59,3 +59,39 @@ Tests.test('source conformance > resolves imported member types before recommend
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
 })
+
+Tests.test('source conformance > requires one-line imports and accepts namespace-qualified types', async () => {
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-single-line-import-'))
+  await Try(async () => {
+    await FileSystem.write(
+      Path.join(root, 'ts/tsconfig.base.json'),
+      JSON.stringify({ compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } } }),
+    )
+    await FileSystem.write(
+      Path.join(root, 'ts/model.ts'),
+      '/** Token represents a parsed label. */\nexport interface Token { text: string }\n',
+    )
+    await FileSystem.write(
+      Path.join(root, 'ts/generated/imports.ts'),
+      "import {\n  type Token,\n} from '@model'\ntype GeneratedToken = Token\n",
+    )
+    await FileSystem.write(
+      Path.join(root, 'ts/vendor/imports.ts'),
+      "// @third-party external library source\nimport {\n  type Token,\n} from '@model'\ntype VendorToken = Token\n",
+    )
+    await FileSystem.write(
+      Path.join(root, 'ts/consumer.ts'),
+      "import {\n  type Token,\n} from '@model'\ntype TokenAlias = Token\n",
+    )
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
+      'ts/consumer.ts:1: import declarations must fit on one line; use a namespace import for long lists',
+    )
+    await FileSystem.write(
+      Path.join(root, 'ts/consumer.ts'),
+      "import * as Model from '@model'\ntype TokenAlias = Model.Token\n",
+    )
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+  }, {
+    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
+  })
+})

@@ -1,9 +1,5 @@
 import { FileSystem, Path, Repo } from '@shared/os'
-import {
-  assertNewWorkspacePath,
-  assertNewWorkspaceTree,
-  workspaceTests,
-} from '../../cli-checks/check'
+import * as Check from '../../cli-checks/check'
 import { parseSlowTestSeconds } from '../../cli-checks/slow-tests'
 import { runTaoTests } from '../testing/TaoTests'
 import { planTestExecution, type TestExecutionOptions } from '../testing/TestPlan'
@@ -34,17 +30,17 @@ export default registerCommand({
     planTestExecution(execution)
     if (target?.endsWith('.tao')) {
       const path = Repo.resolvePath(target)
-      assertNewWorkspacePath(path)
+      Check.assertNewWorkspacePath(path)
       await runTaoTests(path, execution)
       return
     }
-    await assertNewWorkspaceTree()
+    await Check.assertNewWorkspaceTree()
     if (target) {
-      assertNewWorkspacePath(Repo.resolvePath(target))
+      Check.assertNewWorkspacePath(Repo.resolvePath(target))
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
-    await workspaceTests(args, slowSeconds, execution)
+    await Check.workspaceTests(args, slowSeconds, execution)
   },
 })
 
@@ -55,7 +51,7 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
   const path = Path.isAbsolute(target) || FileSystem.existsSync(Path.resolve(Repo.resolvePath('ts'), target))
     ? Path.resolve(Repo.resolvePath('ts'), target)
     : Repo.resolvePath(target)
-  assertNewWorkspacePath(path)
+  Check.assertNewWorkspacePath(path)
   const canonical = FileSystem.existsSync(path) ? FileSystem.realpathSync(path) : path
   const root = FileSystem.realpathSync(Repo.getWorkspaceRoot())
   const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
@@ -63,7 +59,7 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
     return workspace
   }
   if (FileSystem.existsSync(path) || Path.isAbsolute(target)) {
-    assertNewWorkspacePath(path, workspace)
+    Check.assertNewWorkspacePath(path, workspace)
     return canonical
   }
   return undefined

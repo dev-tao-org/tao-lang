@@ -2,7 +2,7 @@ import { Errors, Try } from '@shared'
 import { Path, Storage } from '@shared/os'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { ProjectDependencies } from './ProjectDependencies'
-import { createProjectPipeline, type ProjectPipelineServices } from './ProjectPipeline'
+import { createProjectPipeline, type ProjectPipelineResult, type ProjectPipelineServices } from './ProjectPipeline'
 import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
 import { createWorkspace, type WorkspaceOptions } from './Workspace'
@@ -10,9 +10,8 @@ import { createWorkspace, type WorkspaceOptions } from './Workspace'
 /** openProjectWorkspace acquires a project session before opening its independent generated workspace. */
 export async function openProjectWorkspace(
   entry: string,
-  options: Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & SessionOptions & {
+  options: ProjectWorkspaceOptions & SessionOptions & {
     acquireLease?: typeof Storage.acquireCacheLease
-    pipelineServices?: ProjectPipelineServices
   } = {},
 ) {
   const project = await discoverProject(entry)
@@ -40,21 +39,33 @@ export async function openProjectWorkspace(
   })
 }
 
+type ProjectWorkspaceOptions = Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
+  pipelineServices?: ProjectPipelineServices
+}
+
 function managedWorkspace(
   root: string,
   output: string,
   dependencies: ProjectDependencies,
-  options: Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
-    pipelineServices?: ProjectPipelineServices
-  },
+  options: ProjectWorkspaceOptions,
   release: () => void | Promise<void>,
 ) {
-  const runtimeOptions = {
-    toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
-    ...options.runtimeOptions,
-  }
+  const workspaceOptions = createManagedWorkspaceOptions(root, output, dependencies, options)
+  const workspace = createWorkspace(workspaceOptions)
+  const dispose = workspace.dispose.bind(workspace)
+  workspace.dispose = () => Try(dispose, { finally: release })
+  return workspace
+}
+
+function createManagedWorkspaceOptions(
+  root: string,
+  output: string,
+  dependencies: ProjectDependencies,
+  options: ProjectWorkspaceOptions,
+): WorkspaceOptions {
+  const runtimeOptions = createProjectRuntimeOptions(root, options)
   const pipeline = createProjectPipeline(root, output, runtimeOptions, options.pipelineServices)
-  const workspace = createWorkspace({
+  return {
     ...options,
     directory: root,
     outputDirectory: output,
@@ -65,15 +76,27 @@ function managedWorkspace(
     async beforeCompile(program) {
       const managed = await pipeline.beforeCompile(program)
       const custom = await options.beforeCompile?.(program)
-      return {
-        ...managed,
-        watchDirectories: [...dependencies.sourceDirectories(), ...managed.watchDirectories],
-        ...custom,
-      }
+      return mergeProjectPreparation(dependencies, managed, custom)
     },
     runtimeOptions,
-  })
-  const dispose = workspace.dispose.bind(workspace)
-  workspace.dispose = () => Try(dispose, { finally: release })
-  return workspace
+  }
+}
+
+function createProjectRuntimeOptions(root: string, options: ProjectWorkspaceOptions) {
+  return {
+    toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
+    ...options.runtimeOptions,
+  }
+}
+
+function mergeProjectPreparation(
+  dependencies: ProjectDependencies,
+  managed: ProjectPipelineResult,
+  custom: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+) {
+  return {
+    ...managed,
+    watchDirectories: [...dependencies.sourceDirectories(), ...managed.watchDirectories],
+    ...custom,
+  }
 }

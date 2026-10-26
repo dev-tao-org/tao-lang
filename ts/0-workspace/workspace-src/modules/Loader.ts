@@ -7,7 +7,7 @@ import type { SourceModule } from '@typecheck/Modules'
 import { listDirectSourceFiles } from './Catalog'
 import { findNearestProjectRoot, resolveRealPathInsideProject, within } from './Paths'
 import { loadRequirementModules } from './Requirements'
-import { importTargets, resolveBareTargets } from './Resolver'
+import { importTargets, type ModuleResolutionContext, resolveBareTargets } from './Resolver'
 
 /** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
@@ -59,16 +59,7 @@ const loadGraph = Timings.measure(
     const configuredDirectory = options.directory && Path.resolve(options.directory)
     const projectRoot = findNearestProjectRoot(entryDirectory)
       ?? (configuredDirectory && within(configuredDirectory, entryPath) ? configuredDirectory : entryDirectory)
-    const state: LoadState = {
-      ...request,
-      entryPath,
-      projectRoot,
-      sources: new Map([[entryPath, sourceModule(entryPath, entry.document)]]),
-      projectRoots: new Map(),
-      pending: [entryPath],
-      observedRoots: new Set(),
-      documents: new Map([[entryPath, entry.document]]),
-    }
+    const state = createLoadState(request, entryPath, projectRoot)
     while (state.pending.length > 0) {
       const path = state.pending.shift()!
       const source = state.sources.get(path)!
@@ -93,6 +84,20 @@ const loadGraph = Timings.measure(
     return await completedGraph(state, timings)
   },
 )
+
+function createLoadState(request: LoadRequest, entryPath: string, projectRoot: string): LoadState {
+  const document = request.entry.document
+  return {
+    ...request,
+    entryPath,
+    projectRoot,
+    sources: new Map([[entryPath, sourceModule(entryPath, document)]]),
+    projectRoots: new Map(),
+    pending: [entryPath],
+    observedRoots: new Set(),
+    documents: new Map([[entryPath, document]]),
+  }
+}
 
 async function completedGraph(state: LoadState, timings: Timings): Promise<SourceModule[]> {
   const sources = [...state.sources.values()]
@@ -128,7 +133,7 @@ const discover = Timings.measure(
     }
     for (const statement of AST.GetImportStatements(source.document)) {
       const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
-      const context = { ...state, projectRoot }
+      const context = createModuleResolutionContext(state, projectRoot)
       const targets = specifier === undefined
         ? await resolveBareTargets(source.path, physical, context)
         : await importTargets(specifier, source.path, physical, context)
@@ -148,6 +153,10 @@ const discover = Timings.measure(
     return found
   },
 )
+
+function createModuleResolutionContext(state: LoadState, projectRoot: string): ModuleResolutionContext {
+  return { options: state.options, projectRoot }
+}
 
 async function observeProject(state: LoadState, root: string, timings: Timings): Promise<void> {
   if (state.observedRoots.has(root) || !state.options.observeProjectSources) {

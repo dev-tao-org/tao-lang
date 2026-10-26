@@ -1,12 +1,12 @@
 import * as AST from '@ast-gen/AST'
 import { Errors } from '@shared'
-import type { LinkedDefinition, LinkedModule, ModuleBinding } from './Modules'
+import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, type ModuleBinding } from './Modules'
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
 export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefinition[] {
   const definitions = dependencyDefinitions(modules)
   const definitionByKey = new Map(
-    definitions.map(item => [createDefinitionKey(item.source, item.declaration.name.value), item]),
+    definitions.map(item => [createModuleMemberKey(item.source, item.declaration.name.value), item]),
   )
   const moduleByPath = new Map(modules.map(module => [module.path, module]))
   const knownNames = new Map(modules.map(module => [module.path, collectModuleKnownNames(module)]))
@@ -14,7 +14,7 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
   const visiting = new Set<string>()
   const visited = new Set<string>()
   const visit = (item: DependencyDefinition): void => {
-    const key = createDefinitionKey(item.source, item.declaration.name.value)
+    const key = createModuleMemberKey(item.source, item.declaration.name.value)
     if (visited.has(key)) {
       return
     }
@@ -25,7 +25,7 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
     const module = moduleByPath.get(item.source)!
     const names = knownNames.get(item.source)!
     for (const dependency of dependenciesFor(item, module, definitionByKey, names)) {
-      const target = definitionByKey.get(createDefinitionKey(dependency.source, dependency.target))
+      const target = definitionByKey.get(createModuleMemberKey(dependency.source, dependency.target))
       if (target) {
         visit(target)
       }
@@ -74,7 +74,7 @@ function dependenciesFor(
   if (!AST.IsKind(value, 'Name')) {
     return []
   }
-  if (definitions.has(createDefinitionKey(module.path, value.value))) {
+  if (definitions.has(createModuleMemberKey(module.path, value.value))) {
     return [{ name: value.value, source: module.path, target: value.value }]
   }
   const imports = module.bindings.filter(binding => binding.name === value.value)
@@ -85,8 +85,4 @@ function dependenciesFor(
     Errors.ThrowUserInput(`Unknown let reference ${value.value} in ${item.source}.`)
   }
   return []
-}
-
-function createDefinitionKey(source: string, name: string): string {
-  return `${source}\0${name}`
 }

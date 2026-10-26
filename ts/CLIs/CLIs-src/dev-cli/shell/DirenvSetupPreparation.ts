@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { nullCharacter, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
@@ -85,7 +85,7 @@ async function isRegisteredWorktree(
     cwd: root,
   })
   return worktrees.exitCode === 0
-    && worktrees.stdout.split('\0').includes(`worktree ${canonicalRoot}`)
+    && worktrees.stdout.split(nullCharacter).includes(`worktree ${canonicalRoot}`)
 }
 
 async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<void> {

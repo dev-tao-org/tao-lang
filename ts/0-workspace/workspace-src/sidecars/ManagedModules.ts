@@ -1,8 +1,5 @@
 import { cleanManagedModuleMetadata } from './ManagedModuleCleanup'
-import {
-  inspectGeneratedModuleFiles as inspectGeneratedFiles,
-  typescriptDefaultsDrift,
-} from './ManagedModuleMetadata'
+import * as ManagedModuleMetadata from './ManagedModuleMetadata'
 import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from './ManagedModuleTypes'
 import { prepareManagedModules as prepareProfile, readManagedModules as readProfile } from './ManagedNpmProfile'
 
@@ -27,12 +24,12 @@ export async function readManagedModules(input: ManagedModulesInput): Promise<Pr
 export async function inspectGeneratedModuleFiles(
   input: ManagedModulesInput,
 ): Promise<{ path: string; owner: string; repair: string }[]> {
-  const defaultsDrift = await typescriptDefaultsDrift(input.directory)
+  const defaultsDrift = await ManagedModuleMetadata.typescriptDefaultsDrift(input.directory)
   if (defaultsDrift.length > 0) {
     return defaultsDrift
   }
   const managed = await readProfile(input)
-  return await inspectGeneratedFiles(input, managed)
+  return await ManagedModuleMetadata.inspectGeneratedModuleFiles(input, managed)
 }
 
 /** repairManagedModuleFiles restores the app graph, generated module metadata, and package links. */

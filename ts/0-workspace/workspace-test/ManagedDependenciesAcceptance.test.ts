@@ -2,11 +2,7 @@ import { Errors, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Http, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
-import {
-  buildManagedModulesInput,
-  inspectProjectPreparation,
-  prepareProject,
-} from '../workspace-src/ProjectPreparation'
+import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
@@ -134,7 +130,7 @@ function createFixtureMetadata(name: string, artifact: PackageArtifact, requestU
 
 async function expectInstallRetry(entry: string, root: string): Promise<void> {
   await Tests.rejects(
-    prepareProject(entry, {
+    ProjectPreparation.prepareProject(entry, {
       runtimePins,
       executor: async (_command, args) =>
         args[0] === '--version'
@@ -214,7 +210,8 @@ function verifyRegistryRequests(requests: string[], registry: string): void {
 
 function pipelineServices(): ProjectPipelineServices {
   return {
-    buildManagedInput: async (root, program) => buildManagedModulesInput(root, program.modules, runtimePins),
+    buildManagedInput: async (root, program) =>
+      ProjectPreparation.buildManagedModulesInput(root, program.modules, runtimePins),
     readManaged: readManagedModules,
     inspectGeneratedFiles: inspectGeneratedModuleFiles,
     prepareSidecars: prepareSidecarPipeline,
@@ -256,7 +253,7 @@ async function verifyFrozenReprepare(app: string, entry: string, root: string, r
     invocations.push([...args])
     return createBunExecutor(root, registry)(command, args, cwd)
   }
-  await prepareProject(entry, { executor, runtimePins, repair: true })
+  await ProjectPreparation.prepareProject(entry, { executor, runtimePins, repair: true })
   Tests.expect(invocations.some(args => args.includes('--frozen-lockfile'))).toBe(true)
   Tests.expect(versionLookups).toBe(1)
   Tests.expect(await FileSystem.readFile(lockPath)).toEqual(lockBefore)
@@ -290,7 +287,10 @@ async function verifyLastGoodSurvivesDrift(
   Tests.expect(driftFailure.status).toBe('published')
   Tests.expect(workspace.lastGoodRevision).not.toBe(repaired)
   Tests.expect(published).toHaveLength(publishedCount + 1)
-  await Tests.rejects(inspectProjectPreparation(entry, { runtimePins }), /drifted|Generated dependency files changed/)
+  await Tests.rejects(
+    ProjectPreparation.inspectProjectPreparation(entry, { runtimePins }),
+    /drifted|Generated dependency files changed/,
+  )
 }
 
 async function verifyRuntimeConflictPreservesPreview(
@@ -305,7 +305,7 @@ async function verifyRuntimeConflictPreservesPreview(
   const publishedCount = published.length
   await FileSystem.writeFile(path, `${source}\nrequires npm:react version 1.0.0\n`)
   await Tests.rejects(
-    prepareProject(entry, {
+    ProjectPreparation.prepareProject(entry, {
       runtimePins,
       executor: async () => Errors.ThrowShouldNeverHappen('A runtime conflict must fail before invoking Bun.'),
     }),

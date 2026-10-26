@@ -1,3 +1,4 @@
+import { nullCharacter } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
@@ -64,5 +65,6 @@ export function resolveManagedDurableLockHashPath(input: ManagedModulesInput, gr
 }
 
 function requirementOrderKey(requirement: NormalizedManagedRequirement): string {
-  return `${requirement.directory}\0${requirement.name}\0${requirement.version}\n${requirement.origin}`
+  const declaration = [requirement.directory, requirement.name, requirement.version].join(nullCharacter)
+  return `${declaration}\n${requirement.origin}`
 }

@@ -1,12 +1,7 @@
 import { runCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
-import {
-  nativeLockVersionRoot,
-  publishNativeLockVersion,
-  readNativeLockPointerForSetup,
-  writeNativeLockPointer,
-} from './NativeLockPublication'
+import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
 
 /** prepareNativeLocks builds the shared kernel-lock addon with the pinned native toolchain. */
@@ -20,13 +15,13 @@ async function prepareNativeLock(
   canReuse: (pointer: { identity: string; directory: string }) => Promise<boolean>,
   build: () => Promise<void>,
 ): Promise<void> {
-  const current = await readNativeLockPointerForSetup(root)
+  const current = await NativeLockPublication.readNativeLockPointerForSetup(root)
   if (current?.identity === identity && await canReuse(current)) {
     return
   }
   const stablePointer = { identity, directory: identity }
   if (await canReuse(stablePointer)) {
-    await writeNativeLockPointer(root, stablePointer)
+    await NativeLockPublication.writeNativeLockPointer(root, stablePointer)
     return
   }
   await build()
@@ -56,7 +51,7 @@ async function buildNativeLocks(): Promise<void> {
       await Try(async () => {
         await writeSources(staging, inputs)
         await buildStagedAddon(staging, inputs.node)
-        await publishNativeLockVersion(outputRoot, staging, inputs.identity)
+        await NativeLockPublication.publishNativeLockVersion(outputRoot, staging, inputs.identity)
       }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })
     },
   )
@@ -137,8 +132,8 @@ async function canReusePointer(
 ): Promise<boolean> {
   return await canReuse(
     identity,
-    Path.join(nativeLockVersionRoot(outputRoot, pointer), 'build/Release/tao_os_locks.node'),
-    nativeLockVersionRoot(outputRoot, pointer),
+    Path.join(NativeLockPublication.nativeLockVersionRoot(outputRoot, pointer), 'build/Release/tao_os_locks.node'),
+    NativeLockPublication.nativeLockVersionRoot(outputRoot, pointer),
   )
 }
 

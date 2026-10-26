@@ -5,14 +5,7 @@ import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
-import {
-  loadSession,
-  renameReviewBranch,
-  reviewStatus,
-  saveSession,
-  startReview,
-  withReviewLock,
-} from './ReviewSession'
+import * as ReviewSessionModule2 from './ReviewSession'
 import type { ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
@@ -44,7 +37,7 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
   const root =
     (await git(Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot()), ['rev-parse', '--show-toplevel']))
       .trim()
-  return await withReviewLock(root, async () => {
+  return await ReviewSessionModule2.withReviewLock(root, async () => {
     if (command === 'start' || command === 'continue') {
       const session = command === 'continue'
         ? await continueReview(
@@ -53,7 +46,7 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
           required(options, 'branch'),
           single(options, 'worktree'),
         )
-        : await startReview(
+        : await ReviewSessionModule2.startReview(
           root,
           single(options, 'base') ?? 'main',
           required(options, 'branch'),
@@ -61,7 +54,7 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
         )
       return { session: session.id, reviewedBranch: session.reviewedBranch, reviewedRoot: session.reviewedRoot }
     }
-    return await runSessionCommand(command, options, await loadSession(root), hooks)
+    return await runSessionCommand(command, options, await ReviewSessionModule2.loadSession(root), hooks)
   })
 }
 
@@ -74,10 +67,10 @@ async function runSessionCommand(
   hooks: ReviewHooks,
 ): Promise<Record<string, unknown>> {
   if (command === 'status') {
-    return await reviewStatus(session)
+    return await ReviewSessionModule2.reviewStatus(session)
   }
   if (command === 'rename') {
-    await renameReviewBranch(session, required(options, 'branch'))
+    await ReviewSessionModule2.renameReviewBranch(session, required(options, 'branch'))
     return { reviewedBranch: session.reviewedBranch }
   }
   if (command === 'recover') {
@@ -115,14 +108,14 @@ async function runNoteCommand(
       ? session.recheck.filter(path => !files.includes(path))
       : [...new Set([...session.recheck, ...files])]
   }
-  await saveSession(session)
+  await ReviewSessionModule2.saveSession(session)
   return { notes: session.notes, recheck: session.recheck }
 }
 
 async function runSelectionCommand(
   command: 'plan' | 'accept',
   options: Options,
-  session: Awaited<ReturnType<typeof loadSession>>,
+  session: Awaited<ReturnType<typeof ReviewSessionModule2.loadSession>>,
   hooks: ReviewHooks,
 ): Promise<Record<string, unknown>> {
   const selectionFile = single(options, 'selection')

@@ -1,16 +1,10 @@
 import * as AST from '@ast-gen/AST'
 import { Path } from '@shared/os'
-import type { LinkedProgram } from '@typecheck/Modules'
+import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
 import { compileIdentifier, emitStringLiteral } from './codegen-util'
 
 /** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
 export type ForeignViewPathResolver = (modulePath: string, authoredPath: string) => string
-
-/** getForeignViewKey identifies one foreign view by owning module and source position. */
-export function getForeignViewKey(modulePath: string, start: number): string {
-  // NUL separates the module path from the source offset in this composite key.
-  return `${modulePath}\u0000${start}`
-}
 
 /** compileForeignViews resolves and imports every foreign view in a linked program. */
 export function compileForeignViews(
@@ -50,12 +44,17 @@ function resolveForeignViewPaths(
   declarations: readonly ForeignViewDeclaration[],
   resolvePath?: ForeignViewPathResolver,
 ): ResolvedForeignView[] {
-  return declarations.map(declaration => ({
-    ...declaration,
-    path: resolvePath
-      ? resolvePath(declaration.modulePath, declaration.authoredPath)
-      : Path.resolve(Path.dirname(declaration.modulePath), declaration.authoredPath),
-  }))
+  return declarations.map(declaration => resolveForeignView(declaration, resolvePath))
+}
+
+function resolveForeignView(
+  declaration: ForeignViewDeclaration,
+  resolvePath: ForeignViewPathResolver | undefined,
+): ResolvedForeignView {
+  const path = resolvePath
+    ? resolvePath(declaration.modulePath, declaration.authoredPath)
+    : Path.resolve(Path.dirname(declaration.modulePath), declaration.authoredPath)
+  return { ...declaration, path }
 }
 
 function compareForeignViews(left: ResolvedForeignView, right: ResolvedForeignView): number {
@@ -71,7 +70,8 @@ function compileForeignViewImports(
   const imports: string[] = []
   views.forEach((item, index) => {
     const alias = createForeignViewAlias(index)
-    names.set(getForeignViewKey(item.modulePath, item.view.start), alias)
+    const key = createModuleMemberKey(item.modulePath, item.view.start)
+    names.set(key, alias)
     imports.push(`import { ${compileIdentifier(item.view)} as ${alias} } from ${emitStringLiteral(item.path)};`)
   })
   const importText = imports.join('\n')

@@ -32,10 +32,7 @@ export async function loadRequirementModules(
       if (declarations.length > 0) {
         metadata.push({
           path,
-          document: {
-            ...document,
-            root: { ...document.root, block: { ...document.root.block, statements: declarations } },
-          },
+          document: createRequirementDocument(document, declarations),
           imports: [],
           siblings: [],
         })
@@ -43,4 +40,10 @@ export async function loadRequirementModules(
     }
   }
   return metadata
+}
+
+function createRequirementDocument(document: AST.Document, declarations: AST.RequiresDeclaration[]): AST.Document {
+  const block = { ...document.root.block, statements: declarations }
+  const root = { ...document.root, block }
+  return { ...document, root }
 }

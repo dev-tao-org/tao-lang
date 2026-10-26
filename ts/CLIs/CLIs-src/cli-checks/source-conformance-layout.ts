@@ -31,6 +31,18 @@ export function functionBody(node: TypeScript.Node): TypeScript.ConciseBody | un
   }
 }
 
+/** singleLineImportIssue reports import declarations that span physical lines. */
+export function singleLineImportIssue(
+  node: TypeScript.ImportDeclaration,
+  file: TypeScript.SourceFile,
+): string | undefined {
+  const firstLine = file.getLineAndCharacterOfPosition(node.getStart(file)).line
+  const lastLine = file.getLineAndCharacterOfPosition(node.getEnd() - 1).line
+  return firstLine === lastLine
+    ? undefined
+    : 'import declarations must fit on one line; use a namespace import for long lists'
+}
+
 /** multilineStringIssue reports multiline runtime literals that violate S layout. */
 export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.SourceFile): string | undefined {
   if (!isRuntimeString(node)) {

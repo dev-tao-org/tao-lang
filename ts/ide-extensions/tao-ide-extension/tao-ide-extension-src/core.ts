@@ -2,15 +2,7 @@ import { format, type FormatResult } from '@fix/Format'
 import type { LayoutOptions } from '@fix/lib/layout/Layout'
 import { Errors, Time, Try } from '@shared'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from 'web-tree-sitter'
-import {
-  collectDiagnostics,
-  collectTokens,
-  type Diagnostic,
-  findNodes,
-  type Token,
-  uniqueDiagnostics,
-  uniqueTokens,
-} from './QueryResults'
+import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
 import { editTreeForSource } from './SourceEdit'
 
@@ -93,8 +85,8 @@ export async function createWasmDocumentSession(
 }
 
 interface DocumentResult {
-  tokens: Token[]
-  diagnostics: Diagnostic[]
+  tokens: QueryResults.Token[]
+  diagnostics: QueryResults.Diagnostic[]
 }
 
 function createDocumentSession(options: SessionOptions): DocumentSession {
@@ -141,9 +133,9 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
 }
 
 function collectResults(options: SessionOptions, tree: Tree, source: string): DocumentResult {
-  const tokens = collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
-  const diagnostics = collectDiagnostics(tree.rootNode)
-  for (const injection of findNodes(tree.rootNode, 'TypeScript')) {
+  const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
+  const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
+  for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
     const bodyStart = injection.startIndex + fencePrefix.length
     const bodyEnd = injection.endIndex - fenceSuffix.length
     if (bodyEnd < bodyStart) {
@@ -155,15 +147,15 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
       continue
     }
     Try(() => {
-      tokens.push(...collectTokens(options.tsxQuery, tsxTree.rootNode, bodyStart, measureQuery(options)))
-      diagnostics.push(...collectDiagnostics(tsxTree.rootNode, bodyStart))
+      tokens.push(...QueryResults.collectTokens(options.tsxQuery, tsxTree.rootNode, bodyStart, measureQuery(options)))
+      diagnostics.push(...QueryResults.collectDiagnostics(tsxTree.rootNode, bodyStart))
     }, {
       finally() {
         tsxTree.delete()
       },
     })
   }
-  return { tokens: uniqueTokens(tokens), diagnostics: uniqueDiagnostics(diagnostics) }
+  return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
 }
 
 function trackedDocument(session: DocumentSession, sessions: Set<DocumentSession>): DocumentSession {

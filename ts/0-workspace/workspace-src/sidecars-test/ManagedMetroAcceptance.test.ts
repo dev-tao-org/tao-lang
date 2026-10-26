@@ -3,28 +3,19 @@ import { Errors, Try } from '@shared'
 import { FileSystem, HeadlessBrowser, Platform, Repo, Tests } from '@shared/os'
 import { prepareProject } from '../ProjectPreparation'
 import { openProjectWorkspace } from '../ProjectWorkspace'
-import {
-  acceptanceRoot,
-  createAcceptanceProjects,
-  installFixturePackage,
-  managedGraphExecutor,
-} from './ManagedMetroAcceptanceFixture'
+import * as Fixture from './ManagedMetroAcceptanceFixture'
 import { createFixtureRegistry } from './ManagedMetroFixtureRegistry'
 
 Tests.test('external npm-backed foreign view renders through the default Expo Metro pipeline in Chromium', async () => {
-  const root = acceptanceRoot()
+  const root = Fixture.acceptanceRoot()
   const workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
   let registry: Awaited<ReturnType<typeof createFixtureRegistry>> | undefined
   let browser: HeadlessBrowser.TestBrowser | undefined
   let expo: Runtime.ExpoSession | undefined
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
-    const projects = await createAcceptanceProjects(root)
     registry = await createFixtureRegistry(root)
-    const fixture = await installFixturePackage(root, registry.url)
-    const runtimeResources = FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/_gen_runtime'))
-    const runtimeModules = Repo.resolvePath('ts/7-runtime/node_modules')
-    const executor = managedGraphExecutor({ runtimeModules, runtimeResources, fixtureModules: fixture.nodeModules })
+    const { projects, executor } = await prepareManagedMetroFixture(root, registry.url)
     await prepareProject(projects.entry, { executor })
     const workspace = await openProjectWorkspace(projects.entry, {
       id: `managed-metro-${Platform.randomUUID()}`,
@@ -56,3 +47,16 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
     },
   })
 }, 60_000)
+
+async function prepareManagedMetroFixture(root: string, registryUrl: string) {
+  const projects = await Fixture.createAcceptanceProjects(root)
+  const fixture = await Fixture.installFixturePackage(root, registryUrl)
+  return {
+    projects,
+    executor: Fixture.managedGraphExecutor({
+      runtimeModules: Repo.resolvePath('ts/7-runtime/node_modules'),
+      runtimeResources: FileSystem.realpathSync(Repo.resolvePath('ts/7-runtime/_gen_runtime')),
+      fixtureModules: fixture.nodeModules,
+    }),
+  }
+}

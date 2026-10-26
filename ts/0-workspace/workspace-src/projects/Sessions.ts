@@ -1,12 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
-import {
-  acquireProjectLifecycle,
-  ensureProjectDirectory,
-  isRealDirectory,
-  isRegularFile,
-  pathExists,
-} from './Lifecycle'
+import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout } from './Projects'
 
 /** acquireSession opens a named or internal CLI/Studio project session. */
@@ -19,7 +13,7 @@ export async function acquireSession(
     validateSessionId(id)
   }
   const layout = deriveProjectLayout(Path.resolve(projectRoot))
-  const lifecycle = await acquireProjectLifecycle(layout.root, 2_000)
+  const lifecycle = await Lifecycle.acquireProjectLifecycle(layout.root, 2_000)
   if (!lifecycle) {
     Errors.ThrowUserInput('Project maintenance is active. Retry session startup when it finishes.')
   }
@@ -83,11 +77,11 @@ async function ensureSessionState(directory: string): Promise<void> {
 const sessionMarker = '{"format":1}\n'
 
 async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
-  await ensureProjectDirectory(layout.cacheDirectory)
-  await ensureProjectDirectory(layout.sessionsDirectory)
-  await ensureProjectDirectory(layout.sessionLocksDirectory)
+  await Lifecycle.ensureProjectDirectory(layout.cacheDirectory)
+  await Lifecycle.ensureProjectDirectory(layout.sessionsDirectory)
+  await Lifecycle.ensureProjectDirectory(layout.sessionLocksDirectory)
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
-  if (pathExists(lockPath) && !isRegularFile(lockPath)) {
+  if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
     Errors.ThrowUserInput(`Project session lock is not a regular file: ${lockPath}`)
   }
   return await SessionLock.acquire(lockPath)
@@ -96,7 +90,7 @@ async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>
 
 async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
   const directory = Path.join(layout.sessionsDirectory, id)
-  await ensureProjectDirectory(directory)
+  await Lifecycle.ensureProjectDirectory(directory)
   await ensureSessionState(directory)
   await clearPreviousSidecarSnapshots(directory)
   return { id, directory, lockPath: Path.join(layout.sessionLocksDirectory, `${id}.lock`), release: lock.release }
@@ -104,10 +98,10 @@ async function prepareSession(id: string, layout: ReturnType<typeof deriveProjec
 
 async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
   const snapshots = Path.join(directory, 'foreign-views')
-  if (!pathExists(snapshots)) {
+  if (!Lifecycle.pathExists(snapshots)) {
     return
   }
-  if (!isRealDirectory(snapshots)) {
+  if (!Lifecycle.isRealDirectory(snapshots)) {
     Errors.ThrowUserInput(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
   }
   await FileSystem.rm(snapshots, { recursive: true, force: true })

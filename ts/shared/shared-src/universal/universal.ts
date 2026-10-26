@@ -1,3 +1,4 @@
+export * from './Characters'
 export * as Errors from './Errors'
 export * from './S'
 export * from './SourcePosition'

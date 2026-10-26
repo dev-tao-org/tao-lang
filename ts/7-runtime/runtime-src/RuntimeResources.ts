@@ -14,6 +14,7 @@ export const RuntimeSourceResources = {
   'runtime/MetroClient.d.ts': 'ts/7-runtime/runtime-src/MetroClient.d.ts',
   'shared/shared.ts': 'ts/shared/shared-src/shared.ts',
   'shared/universal/universal.ts': 'ts/shared/shared-src/universal/universal.ts',
+  'shared/universal/Characters.ts': 'ts/shared/shared-src/universal/Characters.ts',
   'shared/universal/Errors.ts': 'ts/shared/shared-src/universal/Errors.ts',
   'shared/universal/S.ts': 'ts/shared/shared-src/universal/S.ts',
   'shared/universal/SourcePosition.ts': 'ts/shared/shared-src/universal/SourcePosition.ts',

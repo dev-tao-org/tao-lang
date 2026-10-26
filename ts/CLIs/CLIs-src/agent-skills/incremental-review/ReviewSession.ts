@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, nullCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import { assertSupportedTransforms, git, head, readJson, snapshot, tree, writeJson } from './ReviewGit'
 import type { ReviewJournal, ReviewSession } from './ReviewTypes'
@@ -155,7 +155,7 @@ export async function assertOwnedSession(session: ReviewSession): Promise<void> 
 export async function requireCleanReviewed(session: ReviewSession): Promise<void> {
   await assertSupportedTransforms(
     session.reviewedRoot,
-    (await git(session.reviewedRoot, ['ls-files', '-z'])).split('\0').filter(Boolean),
+    (await git(session.reviewedRoot, ['ls-files', '-z'])).split(nullCharacter).filter(Boolean),
   )
   if ((await git(session.reviewedRoot, ['status', '--porcelain=v1', '--untracked-files=all'])).trim()) {
     Errors.ThrowUserInput(`Reviewed checkout contains unapproved work: ${session.reviewedRoot}`)
@@ -193,7 +193,7 @@ export async function reviewStatus(session: ReviewSession): Promise<Record<strin
 export async function assertReviewedSnapshot(session: ReviewSession, journal: ReviewJournal): Promise<void> {
   await assertSupportedTransforms(
     session.reviewedRoot,
-    (await git(session.reviewedRoot, ['ls-files', '-z'])).split('\0').filter(Boolean),
+    (await git(session.reviewedRoot, ['ls-files', '-z'])).split(nullCharacter).filter(Boolean),
   )
   const index = await tree(session.reviewedRoot)
   const before = await head(session.root, `${journal.selection.reviewedHead}^{tree}`)

@@ -2,14 +2,7 @@ import { IO } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
-import {
-  activationSourceLine,
-  mergeActivationSourceLine,
-  readOptionalFile,
-  realPathIfPresent,
-  resolveZshrcTarget,
-  writeFileAtomically,
-} from './DirenvSetupFiles'
+import * as DirenvSetupFiles from './DirenvSetupFiles'
 import { prepareDevelopmentShell } from './DirenvSetupPreparation'
 
 export { runDirenvSetup, type SetupEnvironment }
@@ -80,24 +73,26 @@ async function completeDirenvSetup(
     return 0
   }
   const repository = Path.dirname(choicePath)
-  const previousChoice = await readOptionalFile(choicePath)
-  await writeFileAtomically(Path.resolve(repository, 'common-dir'), `${commonDirectory}\n`)
+  const previousChoice = await DirenvSetupFiles.readOptionalFile(choicePath)
+  await DirenvSetupFiles.writeFileAtomically(Path.resolve(repository, 'common-dir'), `${commonDirectory}\n`)
   if (!accepted) {
     if (previousChoice === 'enabled\n') {
       await refreshInstalledActivation(root, shellRoot)
       await revokeDirenvAllowance(root, environment)
     }
-    await writeFileAtomically(choicePath, 'disabled\n')
+    await DirenvSetupFiles.writeFileAtomically(choicePath, 'disabled\n')
     write(
-      `Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:\n${activationSourceLine}\nRun \`./agent shell-setup --configure\` to change this repository's choice.`,
+      `Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:\n${DirenvSetupFiles.activationSourceLine}\nRun \`./agent shell-setup --configure\` to change this repository's choice.`,
     )
     return 0
   }
-  await writeFileAtomically(choicePath, 'pending\n')
+  await DirenvSetupFiles.writeFileAtomically(choicePath, 'pending\n')
   await installActivation(root, shellRoot, environment)
   await updateZshrcSource(zshrc)
-  await writeFileAtomically(choicePath, 'enabled\n')
-  write(`Automatic shell activation is enabled. Open a new zsh terminal or run:\n${activationSourceLine}`)
+  await DirenvSetupFiles.writeFileAtomically(choicePath, 'enabled\n')
+  write(
+    `Automatic shell activation is enabled. Open a new zsh terminal or run:\n${DirenvSetupFiles.activationSourceLine}`,
+  )
   return 0
 }
 
@@ -112,7 +107,7 @@ async function revokeDirenvAllowance(root: string, environment: SetupEnvironment
 
 async function refreshInstalledActivation(root: string, shellRoot: string): Promise<void> {
   const source = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
-  await writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
+  await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
 }
 
 function requireHome(env: Readonly<Record<string, string | undefined>>): string {
@@ -130,7 +125,7 @@ async function hasStoredChoice(
   if (options.configure) {
     return false
   }
-  const previousChoice = await readOptionalFile(choicePath)
+  const previousChoice = await DirenvSetupFiles.readOptionalFile(choicePath)
   return ['enabled\n', 'disabled\n'].includes(previousChoice)
 }
 
@@ -168,7 +163,9 @@ async function installActivation(
 ): Promise<void> {
   const profileClient = Path.resolve(root, '.devenv/profile/bin/direnv')
   const output = environment.resolveDirenvPackage?.(profileClient)
-    ?? (await realPathIfPresent(profileClient)).match(/^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin\/direnv$/)?.[1]
+    ?? (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
+      /^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin\/direnv$/,
+    )?.[1]
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
       `Pinned direnv is missing from this checkout. Rebuild the dev environment, then run:\ncd ${
@@ -197,23 +194,23 @@ async function installActivation(
       `Could not retain the pinned direnv package with a Nix GC root. Shell activation remains disabled.\n${rooted.stderr.trim()}`,
     )
   }
-  await writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), runtime)
-  await writeFileAtomically(Path.resolve(shellRoot, 'envrc'), envrc)
-  await writeFileAtomically(Path.resolve(shellRoot, 'completion.zsh'), completion)
+  await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), runtime)
+  await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'envrc'), envrc)
+  await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'completion.zsh'), completion)
 }
 
 async function updateZshrcSource(zshrc: string): Promise<void> {
   await Try(async () => {
-    const target = resolveZshrcTarget(zshrc)
-    const existing = await readOptionalFile(target)
-    const updated = mergeActivationSourceLine(existing)
+    const target = DirenvSetupFiles.resolveZshrcTarget(zshrc)
+    const existing = await DirenvSetupFiles.readOptionalFile(target)
+    const updated = DirenvSetupFiles.mergeActivationSourceLine(existing)
     if (updated !== existing) {
       await FileSystem.writeFile(target, updated, 'utf8')
     }
   }, {
     catch(cause) {
       Errors.ThrowHostEnvironment(
-        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup --configure:\n${activationSourceLine}`,
+        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup --configure:\n${DirenvSetupFiles.activationSourceLine}`,
         { cause },
       )
     },

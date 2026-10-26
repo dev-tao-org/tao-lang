@@ -1,30 +1,25 @@
-import {
-  type PreviewExpectation,
-  type PreviewIdentity,
-  type PreviewOutcome,
-  PreviewOutcomeTracker,
-} from '../universal/PreviewOutcomeTracker'
+import * as PreviewOutcomeTrackerModule2 from '../universal/PreviewOutcomeTracker'
 import * as Time from '../universal/Time'
 
 /** PreviewRecovery owns bounded acknowledgement recovery for one iframe. */
 export class PreviewRecovery {
-  private readonly tracker: PreviewOutcomeTracker
-  private readonly expectations = new Map<string, PreviewExpectation>()
+  private readonly tracker: PreviewOutcomeTrackerModule2.PreviewOutcomeTracker
+  private readonly expectations = new Map<string, PreviewOutcomeTrackerModule2.PreviewExpectation>()
   private readonly panel: HTMLElement
   private bootId = ''
-  private latest?: PreviewExpectation
-  private baseline?: PreviewExpectation
+  private latest?: PreviewOutcomeTrackerModule2.PreviewExpectation
+  private baseline?: PreviewOutcomeTrackerModule2.PreviewExpectation
   private cancelTimer?: () => void
   private disposed = false
 
   constructor(private readonly frame: HTMLIFrameElement, sessionId: string, frameId: string, timeoutMs = 10_000) {
-    this.tracker = new PreviewOutcomeTracker(sessionId, frameId, timeoutMs)
+    this.tracker = new PreviewOutcomeTrackerModule2.PreviewOutcomeTracker(sessionId, frameId, timeoutMs)
     this.panel = createRecoveryPanel(() => this.reload(true))
     window.addEventListener('pagehide', () => this.dispose(), { once: true })
     this.reload(false)
   }
 
-  expect(expectation: PreviewExpectation): void {
+  expect(expectation: PreviewOutcomeTrackerModule2.PreviewExpectation): void {
     this.latest = expectation
     this.expectations.set(expectation.revision, expectation)
     if (this.expectations.size > 64) {
@@ -35,7 +30,12 @@ export class PreviewRecovery {
     this.render()
   }
 
-  receive(identity: PreviewIdentity, revision: string, kind: PreviewOutcome['kind'], message?: string): boolean {
+  receive(
+    identity: PreviewOutcomeTrackerModule2.PreviewIdentity,
+    revision: string,
+    kind: PreviewOutcomeTrackerModule2.PreviewOutcome['kind'],
+    message?: string,
+  ): boolean {
     const expectation = this.expectations.get(revision)
     if (!expectation || !this.tracker.receive(identity, { ...expectation, kind, message })) {
       return false
@@ -45,13 +45,13 @@ export class PreviewRecovery {
     return true
   }
 
-  terminal(outcome: PreviewOutcome): void {
+  terminal(outcome: PreviewOutcomeTrackerModule2.PreviewOutcome): void {
     this.tracker.terminal(outcome)
     this.scheduleDeadline()
     this.render()
   }
 
-  setBaseline(baseline: PreviewExpectation): void {
+  setBaseline(baseline: PreviewOutcomeTrackerModule2.PreviewExpectation): void {
     this.baseline = baseline
     this.expectations.set(baseline.revision, baseline)
   }
@@ -71,7 +71,7 @@ export class PreviewRecovery {
   }
 
   receiveControlSignal(
-    signal: PreviewIdentity & {
+    signal: PreviewOutcomeTrackerModule2.PreviewIdentity & {
       type: string
       revision?: string
       connected?: boolean

@@ -6,11 +6,7 @@ import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
-import {
-  pruneUnreferencedManagedLocks,
-  readDependencyLock,
-  recordManagedGraphReference,
-} from './dependencies/LockFile'
+import * as LockFile from './dependencies/LockFile'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { validateRequirementPlacement } from './dependencies/Requirements'
 import { prepareDependencies, prepareSourceDependency } from './dependencies/Store'
@@ -21,14 +17,7 @@ import { findNamedPackageRoot, findNearestProjectRoot } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
-import {
-  type BunExecutor,
-  inspectGeneratedModuleFiles,
-  type ManagedModulesInput,
-  prepareManagedModules,
-  readManagedModules,
-  repairManagedModuleFiles,
-} from './sidecars/ManagedModules'
+import * as ManagedModules from './sidecars/ManagedModules'
 
 /** prepareProject resolves the requested source graph before installing only its reachable npm modules. */
 export async function prepareProject(
@@ -47,7 +36,7 @@ export async function prepareProject(
 export type PreparationOptions = {
   update?: string[]
   repair?: boolean
-  executor?: BunExecutor
+  executor?: ManagedModules.BunExecutor
   runtimePins?: Record<string, string>
   runtimeInstaller?: Runtime.RuntimeInstaller
   dependencyOptions?: DependencyStoreOptions
@@ -81,8 +70,8 @@ export async function inspectProjectPreparation(
     }
     return
   }
-  await readManagedModules(input)
-  const drift = await inspectGeneratedModuleFiles(input)
+  await ManagedModules.readManagedModules(input)
+  const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
     Errors.ThrowUserInput(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
   }
@@ -93,8 +82,8 @@ export async function buildManagedModulesInput(
   root: string,
   sources: readonly Pick<SourceModule, 'path' | 'document'>[],
   runtimePins?: Record<string, string>,
-): Promise<ManagedModulesInput | undefined> {
-  const modules = new Map<string, ManagedModulesInput['modules'][number]>()
+): Promise<ManagedModules.ManagedModulesInput | undefined> {
+  const modules = new Map<string, ManagedModules.ManagedModulesInput['modules'][number]>()
   const needed = new Set<string>()
   let foreign = false
   for (const source of sources) {
@@ -129,7 +118,7 @@ export async function buildManagedModulesInput(
 }
 
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
-export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
+export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
   const child = Platform.spawn([command, ...args], {
     cwd,
     env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
@@ -148,7 +137,7 @@ export const executeManagedTool: BunExecutor = async (command, args, cwd) => {
 async function loadProjectManagedInput(
   entry: string,
   options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> = {},
-): Promise<ManagedModulesInput | undefined> {
+): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   const dependencies = new ProjectDependencies(
@@ -179,15 +168,16 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
     return
   }
   const graphKey = Path.relative(root, entry).replaceAll('\\', '/')
-  input.previousGraphReference = (await readDependencyLock(Path.join(root, '.tao/store/dependencies.lock.json')))
-    ?.npmGraphs?.[graphKey]
+  input.previousGraphReference =
+    (await LockFile.readDependencyLock(Path.join(root, '.tao/store/dependencies.lock.json')))
+      ?.npmGraphs?.[graphKey]
   const prepared = options.repair
-    ? await repairManagedModuleFiles(input, executor)
-    : await prepareManagedModules(input, executor)
+    ? await ManagedModules.repairManagedModuleFiles(input, executor)
+    : await ManagedModules.prepareManagedModules(input, executor)
   const durableLockPath = Path.join(root, '.tao/store/npm', `${prepared.graphFingerprint}.lock`)
   const lockHash = Platform.hashText(await FileSystem.readFile(prepared.lockfile, 'utf8'))
-  await recordManagedGraphReference(root, graphKey, prepared.graphFingerprint, durableLockPath, lockHash)
-  await pruneUnreferencedManagedLocks(root)
+  await LockFile.recordManagedGraphReference(root, graphKey, prepared.graphFingerprint, durableLockPath, lockHash)
+  await LockFile.pruneUnreferencedManagedLocks(root)
 }
 
 async function prepareEntrySources(

@@ -1,11 +1,6 @@
 import { createElement } from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import {
-  Pressable as NativePressable,
-  Text as NativeText,
-  TextInput as NativeTextInput,
-  View as NativeView,
-} from 'react-native'
+import * as ReactNative from 'react-native'
 import { DefaultAppearance } from './Appearance'
 import { batch, useComputed, useValue, useWritable } from './ReactiveEngine'
 
@@ -38,15 +33,15 @@ export type TextInputProps = ViewProps & { defaultValue?: string; placeholder?: 
 export type PressableProps = ViewProps & { onPress?: () => void }
 
 function Text({ style, ...props }: ViewProps): ReactElement {
-  return createElement(NativeText, { ...props, style: [textStyle, style] })
+  return createElement(ReactNative.Text, { ...props, style: [textStyle, style] })
 }
 
 function View(props: ViewProps): ReactElement {
-  return createElement(NativeView, props)
+  return createElement(ReactNative.View, props)
 }
 
 function TextInput({ style, ...props }: TextInputProps): ReactElement {
-  return createElement(NativeTextInput, {
+  return createElement(ReactNative.TextInput, {
     placeholderTextColor: DefaultAppearance.border,
     keyboardAppearance: 'dark',
     ...props,
@@ -56,7 +51,7 @@ function TextInput({ style, ...props }: TextInputProps): ReactElement {
 
 function Pressable({ onPress, ...props }: PressableProps): ReactElement {
   const perform = onPress ? () => batch(onPress) : undefined
-  return createElement(NativePressable, { ...props, onPress: perform })
+  return createElement(ReactNative.Pressable, { ...props, onPress: perform })
 }
 
 const textStyle = { color: DefaultAppearance.foreground }

@@ -1,10 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import {
-  cleanManagedModuleMetadata,
-  prepareManagedModules,
-  repairManagedModuleFiles,
-} from '../sidecars/ManagedModules'
+import * as ManagedModules from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
 Tests.test('repairs a corrupt marker only with generated file and profile link proof', async () =>
@@ -13,18 +9,18 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
     const input = createModuleInput(root, moduleDirectory)
     const executor = createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })
-    await prepareManagedModules(input, executor)
+    await ManagedModules.prepareManagedModules(input, executor)
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     await makeCorrupt(marker)
-    await Tests.rejects(prepareManagedModules(input, executor), /needs repair/)
-    await repairManagedModuleFiles(input, executor)
+    await Tests.rejects(ManagedModules.prepareManagedModules(input, executor), /needs repair/)
+    await ManagedModules.repairManagedModuleFiles(input, executor)
     Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).profile).toContain('.tao/cache/managed-modules')
     const manifest = Path.join(moduleDirectory, 'package.json')
     await FileSystem.chmod(manifest, 0o644)
     await FileSystem.writeFile(manifest, '{"authored":true}\n')
     await makeCorrupt(marker)
     await Tests.rejects(
-      repairManagedModuleFiles(input, executor),
+      ManagedModules.repairManagedModuleFiles(input, executor),
       /cannot prove that the generated metadata belongs.*Preserve this marker/,
     )
     Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
@@ -34,7 +30,7 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
   await withDirectory(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
-    await prepareManagedModules(
+    await ManagedModules.prepareManagedModules(
       createModuleInput(root, moduleDirectory),
       createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
     )
@@ -44,7 +40,7 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
     await makeCorrupt(marker)
     await FileSystem.chmod(manifest, 0o644)
     await FileSystem.writeFile(manifest, '{"authored":true}\n')
-    const warnings = await cleanManagedModuleMetadata(root)
+    const warnings = await ManagedModules.cleanManagedModuleMetadata(root)
     Tests.expect(warnings.some(warning => warning.includes(marker))).toBe(true)
     Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
     Tests.expect(FileSystem.lstatSync(link).isSymbolicLink()).toBe(true)

@@ -1,4 +1,4 @@
-import type { compile } from '@compile/Compile'
+import type { compile, CompileOptions } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
@@ -83,7 +83,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   }
   await Runtime.prepareRuntime(runtimeOptions)
   const compile: typeof compileApp = Timings.createTopLevelTimer((timings, input, options) =>
-    timings.run(compileApp, input, { ...options, app })
+    timings.run(compileApp, input, selectCompilationApp(options, app))
   )
   if (await discoverProject(path)) {
     return await openTestProject(path, app, { runtimeOptions, compile })
@@ -94,6 +94,10 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
 }
 
+function selectCompilationApp(options: CompileOptions, app: string): CompileOptions {
+  return { ...options, app }
+}
+
 async function openTestProject(
   path: string,
   app: string,
@@ -102,7 +106,8 @@ async function openTestProject(
   const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}`).slice(0, 16)}`
   for (let slot = 0; slot < 16; slot++) {
     const id = `${prefix}-${slot}`
-    const workspace = await Try(() => openProjectWorkspace(path, { ...options, id }), {
+    const sessionOptions = selectTestSession(options, id)
+    const workspace = await Try(() => openProjectWorkspace(path, sessionOptions), {
       catch(error) {
         if (!Errors.isTaoError(error) || error.message !== `Project session is already active: ${id}`) {
           Errors.Throw(error)
@@ -115,6 +120,10 @@ async function openTestProject(
     }
   }
   return Errors.ThrowHostEnvironment(`All app-test sessions are active for ${path}; retry after a run finishes.`)
+}
+
+function selectTestSession(options: Parameters<typeof openProjectWorkspace>[1], id: string) {
+  return { ...options, id }
 }
 
 function browser(state: Session): TestBrowser {

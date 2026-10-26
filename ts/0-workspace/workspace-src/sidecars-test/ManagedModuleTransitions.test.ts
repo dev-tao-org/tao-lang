@@ -1,11 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import {
-  cleanManagedModuleMetadata,
-  prepareManagedModules,
-  readManagedModules,
-  repairManagedModuleFiles,
-} from '../sidecars/ManagedModules'
+import * as ManagedModules from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
 Tests.test('updates one consumer graph while preserving prior profiles and rejecting authored drift', async () =>
@@ -26,10 +21,10 @@ Tests.test('cleans a mixed-case npm package link recorded by the current owner p
     await FileSystem.mkdir(moduleDirectory, { recursive: true })
     const input = createModuleInput(root, moduleDirectory, '1.3.5')
     input.modules[0]!.requirements = [{ name: 'JSONStream', version: '1.3.5', origin: 'Modules/Json.tao' }]
-    await prepareManagedModules(input, createExecutor({ react: '19.1.0', JSONStream: '1.3.5' }))
+    await ManagedModules.prepareManagedModules(input, createExecutor({ react: '19.1.0', JSONStream: '1.3.5' }))
     const link = Path.join(moduleDirectory, 'node_modules', 'JSONStream')
     Tests.expect(FileSystem.lstatSync(link).isSymbolicLink()).toBe(true)
-    await cleanManagedModuleMetadata(root)
+    await ManagedModules.cleanManagedModuleMetadata(root)
     Tests.expect(await FileSystem.exists(link)).toBe(false)
     Tests.expect(await FileSystem.exists(Path.join(moduleDirectory, '.tao-managed-module.json'))).toBe(false)
   }))
@@ -41,7 +36,7 @@ Tests.test('rejects an unowned module path without creating a Tao project marker
     await FileSystem.mkdir(consumer, { recursive: true })
     await FileSystem.mkdir(unowned, { recursive: true })
     await Tests.rejects(
-      prepareManagedModules({
+      ManagedModules.prepareManagedModules({
         directory: consumer,
         modules: [{ directory: unowned, requirements: [] }],
         target: 'browser',
@@ -56,7 +51,7 @@ Tests.test('rejects an unowned module path without creating a Tao project marker
 Tests.test('rejects unsafe npm package names before starting Bun', async () => {
   let invoked = false
   await Tests.rejects(
-    prepareManagedModules({
+    ManagedModules.prepareManagedModules({
       directory: '/unused/project',
       modules: [{
         directory: '/unused/project/Module',
@@ -101,16 +96,19 @@ async function assertHostCacheRebuild(root: string): Promise<void> {
     await writeInstalledPackages(cwd)
     return { status: 0, stdout: '', stderr: '' }
   }
-  const first = await prepareManagedModules(input, executor)
+  const first = await ManagedModules.prepareManagedModules(input, executor)
   const durableLock = Path.join(root, '.tao', 'store', 'npm', `${first.graphFingerprint}.lock`)
   const lockBytes = await FileSystem.readFile(durableLock, 'utf8')
   const sentinel = Path.join(first.packageDirectory, 'node_modules', '.host-a-sentinel')
   await FileSystem.writeFile(sentinel, 'keep')
-  await prepareManagedModules(input, executor)
+  await ManagedModules.prepareManagedModules(input, executor)
   Tests.expect(await FileSystem.readFile(sentinel, 'utf8')).toBe('keep')
   const otherHost = { ...input, hostIdentity: { os: 'host-b', architecture: 'x64' } }
-  await Tests.rejects(readManagedModules(otherHost), /Managed npm declarations changed or are not prepared/)
-  const rebuiltProfile = await prepareManagedModules(otherHost, executor)
+  await Tests.rejects(
+    ManagedModules.readManagedModules(otherHost),
+    /Managed npm declarations changed or are not prepared/,
+  )
+  const rebuiltProfile = await ManagedModules.prepareManagedModules(otherHost, executor)
   Tests.expect(rebuiltProfile.fingerprint).not.toBe(first.fingerprint)
   Tests.expect(rebuiltProfile.graphFingerprint).toBe(first.graphFingerprint)
   Tests.expect(rebuilt).toBe(true)
@@ -126,20 +124,26 @@ async function assertProfileTransition(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
   const initial = createModuleInput(root, moduleDirectory, '4.1.0')
-  const first = await prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
+  const first = await ManagedModules.prepareManagedModules(
+    initial,
+    createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+  )
   const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
   await damageCurrentOwnershipMarker(marker)
   await Tests.rejects(
-    prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })),
+    ManagedModules.prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })),
     /needs repair/,
   )
-  await repairManagedModuleFiles(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
+  await ManagedModules.repairManagedModuleFiles(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
   Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).generatedHashes).toBeDefined()
 
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   const priorLink = FileSystem.realpathSync(link)
   const updated = createModuleInput(root, moduleDirectory, '4.2.0')
-  const second = await prepareManagedModules(updated, createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }))
+  const second = await ManagedModules.prepareManagedModules(
+    updated,
+    createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }),
+  )
   Tests.expect(second.packageDirectory).not.toBe(first.packageDirectory)
   Tests.expect(await FileSystem.exists(first.packageDirectory)).toBe(true)
   Tests.expect(FileSystem.realpathSync(link)).not.toBe(priorLink)
@@ -152,29 +156,29 @@ async function assertProfileTransition(root: string): Promise<void> {
   await FileSystem.writeFile(manifest, '{"authored":true}\n')
   const next = createModuleInput(root, moduleDirectory, '4.3.0')
   await Tests.rejects(
-    prepareManagedModules(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' })),
+    ManagedModules.prepareManagedModules(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' })),
     /metadata drifted/,
   )
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
-  await repairManagedModuleFiles(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }))
+  await ManagedModules.repairManagedModuleFiles(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }))
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toContain('4.3.0')
 }
 
 async function assertDanglingLinkRepair(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
   await FileSystem.mkdir(moduleDirectory, { recursive: true })
-  const first = await prepareManagedModules(
+  const first = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.1.0'),
     createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
   )
-  const second = await prepareManagedModules(
+  const second = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.2.0'),
     createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }),
   )
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   await FileSystem.rm(second.packageDirectory, { recursive: true, force: true })
   Tests.expect(Try.WithDefault(false, () => FileSystem.lstatSync(link).isSymbolicLink())).toBe(true)
-  const third = await prepareManagedModules(
+  const third = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.3.0'),
     createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }),
   )
@@ -201,13 +205,13 @@ async function assertConsumerConflict(root: string): Promise<void> {
     ...createModuleInput(firstRoot, sharedModule, '4.1.0'),
     modules: [{ directory: sharedModule, requirements: [] }],
   }
-  await prepareManagedModules(firstInput, createExecutor({ react: '19.1.0' }))
+  await ManagedModules.prepareManagedModules(firstInput, createExecutor({ react: '19.1.0' }))
   const manifest = await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')
   const reactLink = Path.join(sharedModule, 'node_modules', 'react')
   const linkTarget = FileSystem.realpathSync(reactLink)
   const secondInput = { ...firstInput, directory: secondRoot, runtimePins: { react: '18.3.1' } }
   await Tests.rejects(
-    prepareManagedModules(secondInput, createExecutor({ react: '18.3.1' })),
+    ManagedModules.prepareManagedModules(secondInput, createExecutor({ react: '18.3.1' })),
     /already owned by consumer profile.*one app dependency graph/,
   )
   Tests.expect(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')).toBe(manifest)
@@ -246,8 +250,8 @@ async function assertConcurrentConsumerRace(root: string): Promise<void> {
   }
   const secondInput = { ...firstInput, directory: Path.join(root, 'consumer-b'), runtimePins: { react: '18.3.1' } }
   const results = await Promise.allSettled([
-    prepareManagedModules(firstInput, executor('19.1.0')),
-    prepareManagedModules(secondInput, executor('18.3.1')),
+    ManagedModules.prepareManagedModules(firstInput, executor('19.1.0')),
+    ManagedModules.prepareManagedModules(secondInput, executor('18.3.1')),
   ])
   Tests.expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
   const failure = results.find(result => result.status === 'rejected')!

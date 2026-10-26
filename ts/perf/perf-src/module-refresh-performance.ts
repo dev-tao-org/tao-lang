@@ -1,11 +1,7 @@
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import {
-  createModuleRefreshFixture,
-  type ModuleRefreshFixture,
-  type ModuleRefreshLayout,
-} from './module-refresh-fixture'
+import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
 /** moduleRefreshPerformance compares generated component module groupings through real Metro refreshes. */
 export async function moduleRefreshPerformance() {
@@ -14,8 +10,8 @@ export async function moduleRefreshPerformance() {
 }
 
 type LayoutRuntime = {
-  name: ModuleRefreshLayout
-  fixture: ModuleRefreshFixture
+  name: ModuleRefreshFixtureModule2.ModuleRefreshLayout
+  fixture: ModuleRefreshFixtureModule2.ModuleRefreshFixture
   application: Runtime.RuntimeApplication
   expo: Runtime.ExpoSession
   page: HeadlessBrowser.Page
@@ -30,7 +26,7 @@ type Resources = {
 }
 type BrowserMetrics = { primaryRenders: number; secondaryRenders: number }
 type RefreshSample = {
-  layout: ModuleRefreshLayout
+  layout: ModuleRefreshFixtureModule2.ModuleRefreshLayout
   sample: number
   factor: number
   editStartMs: number
@@ -40,7 +36,11 @@ type RefreshSample = {
   secondaryRenders: number
   secondaryRenderDelta: number
 }
-const layouts: readonly ModuleRefreshLayout[] = ['single-app', 'per-source-file', 'per-view']
+const layouts: readonly ModuleRefreshFixtureModule2.ModuleRefreshLayout[] = [
+  'single-app',
+  'per-source-file',
+  'per-view',
+]
 const warmupCount = 1
 const measuredSamplesPerLayout = 7
 const reportDefinitions = {
@@ -75,7 +75,7 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   const dependencyDirectory = Repo.resolvePath('ts/7-runtime/node_modules')
   await FileSystem.mkdir(root, { recursive: true })
   for (const name of layouts) {
-    const fixture = createModuleRefreshFixture(name)
+    const fixture = ModuleRefreshFixtureModule2.createModuleRefreshFixture(name)
     const application = await Runtime.create({
       directory: Path.join(root, name),
       dependencyDirectory,
@@ -89,7 +89,10 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   }
 }
 
-async function writeInitialTree(application: Runtime.RuntimeApplication, fixture: ModuleRefreshFixture): Promise<void> {
+async function writeInitialTree(
+  application: Runtime.RuntimeApplication,
+  fixture: ModuleRefreshFixtureModule2.ModuleRefreshFixture,
+): Promise<void> {
   for (const file of fixture.files) {
     const path = file.path === 'src/App.tsx' ? application.appPath : Path.join(application.directory, file.path)
     await FileSystem.mkdir(Path.dirname(path), { recursive: true })

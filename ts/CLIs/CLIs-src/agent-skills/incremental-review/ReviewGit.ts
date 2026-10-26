@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, nullCharacter, Try } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 
 /** git captures Git output without a shell and keeps pathspecs literal. */
@@ -45,9 +45,12 @@ export async function tree(root: string, index?: string): Promise<string> {
 /** snapshot captures saved bytes, deletions, links and executable bits in a private index. */
 export async function snapshot(root: string, directory: string, base: string, files?: string[]): Promise<string> {
   const index = await privateIndex(root, directory, base)
-  const tracked = (await git(root, ['ls-tree', '-r', '--name-only', '-z', base])).split('\0').filter(Boolean)
+  const tracked = (await git(root, ['ls-tree', '-r', '--name-only', '-z', base])).split(nullCharacter).filter(Boolean)
   const candidates = files
-    ?? [...tracked, ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split('\0')]
+    ?? [
+      ...tracked,
+      ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split(nullCharacter),
+    ]
   const selected = candidates.filter(path =>
     path && !path.startsWith('.artifacts/') && (
       tracked.includes(path) || Try.WithDefault(false, () => Boolean(FileSystem.lstatSync(Path.join(root, path))))
@@ -81,7 +84,9 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: str
   for (const revision of typeof reviewed === 'string' ? [reviewed] : reviewed ?? []) {
     previous += await git(root, ['ls-tree', '-r', '--name-only', '-z', revision, '--', ...selections])
   }
-  const files = [...new Set((output + previous).split('\0').filter(path => path && !path.startsWith('.artifacts/')))]
+  const files = [
+    ...new Set((output + previous).split(nullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
+  ]
     .sort()
   if (!files.length) {
     Errors.ThrowUserInput('The literal selection contains no tracked or unignored files.')
@@ -101,7 +106,7 @@ export async function readGitPathEntries(root: string, revision: string, files: 
 /** changedPaths returns literal paths changed between two immutable trees. */
 export async function changedPaths(root: string, before: string, after: string): Promise<string[]> {
   return (await git(root, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', before, after]))
-    .split('\0').filter(Boolean)
+    .split(nullCharacter).filter(Boolean)
 }
 
 /** applyPatch requires exact-context applicability before changing a private index. */
@@ -130,7 +135,7 @@ export async function assertSupportedTransforms(root: string, files: string[], i
     'ident',
     '--',
     ...files,
-  ], { index })).split('\0')
+  ], { index })).split(nullCharacter)
   for (let offset = 0; offset + 2 < attributes.length; offset += 3) {
     const [path, attribute, value] = attributes.slice(offset, offset + 3)
     if (value !== 'unspecified' && value !== 'unset') {

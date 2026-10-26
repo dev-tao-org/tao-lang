@@ -5,11 +5,11 @@ import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
-import { functionBody, functionBodyLineCount, multilineStringIssue } from './source-conformance-layout'
+import * as ConformanceLayout from './source-conformance-layout'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
-import { sourceSizeDiagnostics } from './source-size'
+import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
 export async function checkSourceConformance(root: string): Promise<void> {
@@ -68,6 +68,12 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
+    if (TypeScript.isImportDeclaration(node) && !isExcludedSource(this.filename, this.source)) {
+      const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)
+      if (importIssue) {
+        this.report(node.getStart(this.file), importIssue)
+      }
+    }
     const optionalIssue = optionalAccessIssue(node, this.checker)
     if (optionalIssue) {
       this.report(node.getStart(this.file), optionalIssue)
@@ -80,7 +86,7 @@ class SourceConformanceChecker {
     if (platformIssue) {
       this.report(node.getStart(this.file), platformIssue)
     }
-    const body = functionBody(node)
+    const body = ConformanceLayout.functionBody(node)
     if (body) {
       this.checkFunctionBody(body)
     }
@@ -93,14 +99,14 @@ class SourceConformanceChecker {
     if (TypeScript.isTryStatement(node) && !isTryPrimitive(this.filename)) {
       this.report(node.getStart(this.file), 'use Try from @shared instead of native try/catch/finally')
     }
-    const stringIssue = multilineStringIssue(node, this.file)
+    const stringIssue = ConformanceLayout.multilineStringIssue(node, this.file)
     if (stringIssue) {
       this.report(node.getStart(this.file), stringIssue)
     }
   }
 
   private checkFunctionBody(body: TypeScript.ConciseBody): void {
-    const lines = functionBodyLineCount(body, this.source, this.file)
+    const lines = ConformanceLayout.functionBodyLineCount(body, this.source, this.file)
     if (lines > 45) {
       this.report(body.getStart(this.file), 'function bodies must contain at most 45 physical lines; found ' + lines)
     }

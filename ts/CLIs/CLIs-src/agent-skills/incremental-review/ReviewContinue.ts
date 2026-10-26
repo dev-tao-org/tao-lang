@@ -1,15 +1,7 @@
 import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { git, head, writeJson } from './ReviewGit'
-import {
-  assertOwnedSession,
-  createReview,
-  loadSession,
-  prepareReview,
-  requireCleanReviewed,
-  requireIdleSession,
-  withReviewLock,
-} from './ReviewSession'
+import * as ReviewSessionModule2 from './ReviewSession'
 import type { ReviewSession } from './ReviewTypes'
 
 /** continueReview forks accepted content and historical evidence into an independently owned review. */
@@ -24,13 +16,13 @@ export async function continueReview(
     Errors.ThrowUserInput('Continue requires a different implementation checkout.')
   }
   await requireSameRepository(root, previousRoot)
-  return await withReviewLock(previousRoot, async () => {
-    const previous = await loadSession(previousRoot)
-    await requireIdleSession(previous)
-    await assertOwnedSession(previous)
-    await requireCleanReviewed(previous)
+  return await ReviewSessionModule2.withReviewLock(previousRoot, async () => {
+    const previous = await ReviewSessionModule2.loadSession(previousRoot)
+    await ReviewSessionModule2.requireIdleSession(previous)
+    await ReviewSessionModule2.assertOwnedSession(previous)
+    await ReviewSessionModule2.requireCleanReviewed(previous)
     const reviewedHead = await head(previous.reviewedRoot)
-    const session = await prepareReview(root, previous.base, previous.baseCommit, branch, worktree)
+    const session = await ReviewSessionModule2.prepareReview(root, previous.base, previous.baseCommit, branch, worktree)
     session.accepted = { ...previous.accepted }
     session.recheck = [...previous.recheck]
     session.notes = [...previous.notes]
@@ -42,7 +34,7 @@ export async function continueReview(
     }
     await requireEmptyHistory(session)
     await retainHistory(previous, session)
-    await createReview(session, reviewedHead)
+    await ReviewSessionModule2.createReview(session, reviewedHead)
     return session
   })
 }
