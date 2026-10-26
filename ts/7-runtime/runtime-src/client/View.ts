@@ -65,16 +65,13 @@ export function ViewDeclaration(
 /** ViewRenderArguments packages positional values, children and an optional test identifier. */
 export function ViewRenderArguments(
   values: readonly unknown[] = [],
-  children: readonly ReactNode[] = [],
+  inputChildren: readonly ReactNode[] = [],
   testID?: string,
 ): ViewRenderArguments {
-  return {
-    values,
-    testID,
-    children: children.map((child, index) =>
-      isValidElement(child) ? cloneElement(child, { key: child.key ?? index }) : child
-    ),
-  }
+  const children = inputChildren.map((child, index) =>
+    isValidElement(child) ? cloneElement(child, { key: child.key ?? index }) : child
+  )
+  return { values, testID, children }
 }
 
 /** ViewRenderExpression creates an element for a named view resolved from a Tao scope. */

@@ -1,8 +1,8 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import * as RuntimeScope from '@runtime/Scope'
-import { beginViewRender, finishViewRender, type View, type ViewComponentProps, ViewDeclaration } from '@runtime/View'
+import * as RuntimeScope from '@runtime/client/Scope'
+import * as RuntimeView from '@runtime/client/View'
 import { S } from '@shared'
 import { Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
@@ -46,15 +46,15 @@ function compileImportedRoot(render: string, declaration: string): Readonly<Reco
 function renderRoot(files: Readonly<Record<string, string>>): unknown {
   const execution = executeGeneratedFiles(files, {
     ...RuntimeScope,
-    ViewDeclaration,
-    beginViewRender,
-    finishViewRender,
+    ViewDeclaration: RuntimeView.ViewDeclaration,
+    beginViewRender: RuntimeView.beginViewRender,
+    finishViewRender: RuntimeView.finishViewRender,
     ViewRenderArguments: () => ({}),
     ViewRenderExpression: (view: unknown) => view,
     ModuleApplied() {},
     AppDeclaration: (view: unknown) => view,
   })
-  const root = (execution.default as () => View)()
-  const render = root.render as (props: ViewComponentProps) => unknown
+  const root = (execution.default as () => RuntimeView.View)()
+  const render = root.render as (props: RuntimeView.ViewComponentProps) => unknown
   return render({ view: root, scope: RuntimeScope.Scope(root.scope), children: [] })
 }

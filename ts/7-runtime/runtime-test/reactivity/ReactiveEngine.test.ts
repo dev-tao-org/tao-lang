@@ -1,7 +1,7 @@
 import { Errors } from '@shared'
 import { Tests } from '@shared/os'
-import { createReactiveEngine } from '../../runtime-src/ReactiveEngine'
-import type { ReactiveEngine } from '../../runtime-src/ReactiveEngine'
+import { createReactiveEngine } from '../../runtime-src/client/ReactiveEngine'
+import type { ReactiveEngine } from '../../runtime-src/client/ReactiveEngine'
 
 Tests.test('expressions preserve Object.is values, dynamic dependencies, diamonds, and fresh batched reads', () => {
   const engine = createReactiveEngine()

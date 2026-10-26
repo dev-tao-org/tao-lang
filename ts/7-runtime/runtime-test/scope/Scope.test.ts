@@ -1,9 +1,9 @@
 import { Tests } from '@shared/os'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { AliasBinding, LetDeclaration, Name, Scope, ViewRenderBlock } from '../../runtime-src/Scope'
-import * as View from '../../runtime-src/View'
-import type { ViewComponentProps } from '../../runtime-src/View'
+import { AliasBinding, LetDeclaration, Name, Scope, ViewRenderBlock } from '../../runtime-src/client/Scope'
+import * as View from '../../runtime-src/client/View'
+import type { ViewComponentProps } from '../../runtime-src/client/View'
 
 Tests.test('Scope resolves the nearest lexical definition and preserves parent values', () => {
   const parent = Scope()
