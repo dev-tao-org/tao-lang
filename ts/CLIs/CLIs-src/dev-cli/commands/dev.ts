@@ -188,7 +188,7 @@ function reportReload(timing: ReloadTiming): void {
   for (const [id, frame] of Object.entries(timing.frames)) {
     const label = id === 'left' ? 'narrow' : 'wide'
     IO.print(
-      `  ${label}: write → Metro ${frame.publishToHmrMs.toFixed(1)} ms (${
+      `  ${label}: publication → Metro ${frame.publishToHmrMs.toFixed(1)} ms (${
         (frame.saveToHmrMs / 1000).toFixed(4)
       } s elapsed)`
         + ` | Metro → applied ${frame.hmrToAppliedMs.toFixed(1)} ms (${
@@ -197,7 +197,7 @@ function reportReload(timing: ReloadTiming): void {
     )
   }
   IO.print(
-    `Total ${timing.revision}: save → repaint (preview applied) ${timing.saveToAppliedMs.toFixed(1)} ms (${
+    `Total ${timing.revision}: change observed → preview applied ${timing.saveToAppliedMs.toFixed(1)} ms (${
       (timing.saveToAppliedMs / 1000).toFixed(4)
     } s elapsed, both previews).`,
   )

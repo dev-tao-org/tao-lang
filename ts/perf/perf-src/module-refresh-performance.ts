@@ -29,9 +29,9 @@ type RefreshSample = {
   layout: ModuleRefreshFixtureModule2.ModuleRefreshLayout
   sample: number
   factor: number
-  editStartMs: number
+  publicationStartMs: number
   receiptMs: number
-  durationMs: number
+  publicationToReceiptMs: number
   primaryRenders: number
   secondaryRenders: number
   secondaryRenderDelta: number
@@ -49,15 +49,15 @@ const reportDefinitions = {
   moduleLayouts:
     'One App module; component-only grouped view module plus values and wiring; separate component-only module per view plus values and wiring.',
   refresh:
-    'One existing module file is rewritten per sample with a changed primary label and computed factor; initial full tree is written before Expo starts.',
+    'Each sample submits one complete generated revision through ExpoSession.publish, changing the primary label and computed factor while retaining the full module namespace.',
   receipt:
-    'Monotonic time from immediately before the source write through observing the new label and computed text with both retained counts; React DOM commit observation, not Metro phase timing or physical paint.',
+    'Monotonic time from immediately before submitting the complete revision through observing the new label and computed text with both retained counts; React DOM commit observation, not Metro phase timing or physical paint.',
   samples:
     `${warmupCount} unrecorded warm refresh per layout, then ${measuredSamplesPerLayout} raw measured refreshes per layout in rotating order.`,
   renderMetric:
-    'Secondary component render-count delta around each source write reports unrelated component renders; it is diagnostic, not a pass threshold.',
+    'Secondary component render-count delta around each revision publication reports unrelated component renders; it is diagnostic, not a pass threshold.',
   limits:
-    'Experimental generated workload only. Coordinated/topology changes, invalid-source recovery, publication integration and device rendering are unsupported or unmeasured.',
+    'Experimental generated workload published through ExpoSession.publish. Coordinated/topology changes, invalid-source recovery, filesystem-watch publication and device rendering are unsupported or unmeasured.',
 }
 async function measureLayouts(owned: Resources) {
   if (Platform.systemInfo().os === 'Darwin') {
@@ -80,7 +80,7 @@ async function prepareLayouts(owned: Resources): Promise<void> {
       directory: Path.join(root, name),
       dependencyDirectory,
     })
-    await writeInitialTree(application, fixture)
+    application.generated = createRevision(fixture, 0, 2, 'Primary baseline')
     const expo = await Runtime.start(application)
     owned.expos.push(expo)
     const page = await createPage(expo.url, owned)
@@ -89,14 +89,19 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   }
 }
 
-async function writeInitialTree(
-  application: Runtime.RuntimeApplication,
+function createRevision(
   fixture: ModuleRefreshFixtureModule2.ModuleRefreshFixture,
-): Promise<void> {
-  for (const file of fixture.files) {
-    const path = file.path === 'src/App.tsx' ? application.appPath : Path.join(application.directory, file.path)
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
-    await FileSystem.writeFile(path, file.source, 'utf8')
+  sequence: number,
+  factor: number,
+  label: string,
+): NonNullable<Runtime.RuntimeApplication['generated']> {
+  return {
+    revision: `module-refresh-${sequence}`,
+    sequence,
+    files: Object.fromEntries(fixture.files.map(file => [
+      file.path.replace(/^src\//, ''),
+      file.path === fixture.editedPath ? fixture.editSource(factor, label) : file.source,
+    ])),
   }
 }
 
@@ -144,11 +149,11 @@ async function refreshAndVerify(
   sample: number,
 ): Promise<RefreshSample> {
   const before = await readMetrics(layout.page)
-  const editStartMs = Time.nowMs()
-  const path = layout.fixture.editedPath === 'src/App.tsx'
-    ? layout.application.appPath
-    : Path.join(layout.application.directory, layout.fixture.editedPath)
-  await FileSystem.writeFile(path, layout.fixture.editSource(factor, label), 'utf8')
+  const publicationStartMs = Time.nowMs()
+  const publication = await layout.expo.publish(createRevision(layout.fixture, sample + 1, factor, label))
+  if (publication.status !== 'published') {
+    Errors.ThrowHostEnvironment(`Module refresh publication failed: ${publication.status}`)
+  }
   await waitForReceipt(layout.page, label, factor)
   const receiptMs = Time.nowMs()
   const after = await readMetrics(layout.page)
@@ -156,9 +161,9 @@ async function refreshAndVerify(
     layout: layout.name,
     sample,
     factor,
-    editStartMs,
+    publicationStartMs,
     receiptMs,
-    durationMs: receiptMs - editStartMs,
+    publicationToReceiptMs: receiptMs - publicationStartMs,
     primaryRenders: after.primaryRenders,
     secondaryRenders: after.secondaryRenders,
     secondaryRenderDelta: after.secondaryRenders - before.secondaryRenders,
@@ -194,9 +199,8 @@ async function readMetrics(page: HeadlessBrowser.Page): Promise<BrowserMetrics> 
 
 function summarize(samples: RefreshSample[]) {
   return layouts.map(layout => {
-    const durations = samples.filter(sample => sample.layout === layout).map(sample => sample.durationMs).sort((a, b) =>
-      a - b
-    )
+    const durations = samples.filter(sample => sample.layout === layout).map(sample => sample.publicationToReceiptMs)
+      .sort((a, b) => a - b)
     return {
       layout,
       samples: durations.length,
@@ -224,7 +228,7 @@ async function writeReport(owned: Resources, samples: RefreshSample[]): Promise<
     path,
     JSON.stringify(
       {
-        version: 1,
+        version: 2,
         sessionId: owned.sessionId,
         commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
         modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
