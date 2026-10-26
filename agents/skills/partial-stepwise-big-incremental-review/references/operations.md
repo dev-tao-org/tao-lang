@@ -69,11 +69,11 @@ deletions; do not substitute a broad parent for specifically approved files. For
 both old and new paths or the agreed containing folder. Whole-file approval includes all saved
 edits to those paths; unsaved editor buffers are not filesystem contents.
 
-Already committed contents need only a review checkpoint. Selected pending corrections also need
-an implementation commit, which requires an explicit developer instruction to commit. Content
-approval alone does not grant that instruction: retain the approval as pending and explain the
-required source commit before running a transfer that would create it. Other edits and staging
-selections must remain intact. Do not run full
+Already committed contents need only a review checkpoint. Commit requested implementation
+corrections in coherent chunks as they are completed, including delegated changes, using this
+workflow's standing developer authorization. Source commits remain unapproved until explicit
+acceptance or the standing authored-test policy applies. Preserve unrelated edits and index
+selections; checkpoint source corrections before transferring accepted contents. Do not run full
 verification merely to copy previously committed approved contents. For implementation corrections,
 choose proportionate intermittent checks and retain actionable failures.
 

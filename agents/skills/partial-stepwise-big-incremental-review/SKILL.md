@@ -70,10 +70,11 @@ description: >-
   groups, or sooner when its integration affects the current group).
 - Merge subagent work only when the reviewing developer explicitly says they are ready for that
   integration; completion and passing checks do not authorize merging.
-- Leave corrections pending for inspection until approved. Apply root Git authorization rules:
-  the developer controls the review worktree's index; content approval authorizes recording it on
-  the separate reviewed branch, not staging or committing pending source edits. Staging is never
-  approval. Verify intermittently
+- Commit requested corrections as they are completed, including subagent work, in coherent chunks
+  after validation. This workflow has standing developer authorization for
+  implementation commits; preserve unrelated edits and index selections. Keep committed corrections
+  pending for human inspection until approved. Commits, staging and passing tests never grant
+  acceptance on the separate approved-content branch. Verify intermittently
   in proportion to changed behavior. Focused checks may replace the full pre-commit gate for
   this workflow's checkpoints; run full verification before readiness to land. Do not keep a
   detailed test ledger or rerun application tests for acceptance-only transfers.
