@@ -77,6 +77,7 @@ Tests.test('contextual blocks reject missing renders and misplaced statements in
     'app Demo {}',
     'view Main {}',
     'view Main { render Text render Other }',
+    'view Main { view Private { render Text } render Text }',
     'view Main { render Text let Late = "value" }',
     'view Main { render Text { render inject ```ts return null ``` } }',
     'app Demo { root Main root Other }',

@@ -2,33 +2,29 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import * as RuntimeScope from '@runtime/Scope'
+import type { Scope } from '@runtime/Scope'
 import { ViewDeclaration } from '@runtime/View'
-import { Errors, S } from '@shared'
+import { S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
 import type { LinkedProgram, SourceModule } from '@typecheck/Modules'
 import { compile } from '../compile-src/Compile'
+import { executeGeneratedFiles, transpileGeneratedFiles } from './GeneratedExecution'
 
 Tests.test('Hello World generates generic runtime calls and authored native injections', async () => {
   const source = await Tests.readApp('Hello World')
   const tree = createParser().parse(source)
   const document = transform(tree)!
   const entryPath = Repo.resolvePath('Apps/Tests/Hello World.tao')
-  const body = AST.GetViewDeclarations(document)[0]!.body
-  const statement = body.kind === 'Block' ? body.statements.find(AST.IsViewRenderStatement) : undefined
-  if (statement?.kind !== 'RenderViewExpressionStatement') {
-    Errors.ThrowShouldNeverHappen('Expected a root render.')
-  }
-  const root = statement.expression
   const program = await linkedUIProgram(entryPath, document)
-  const code = compile(document, { revision: 'test-1', program })
+  const code = generatedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')
-  Tests.expect(code).toContain(`TR.Name(_Scope, ${JSON.stringify(root.target.value)})`)
+  Tests.expect(code).toContain('_Imported_Col["Col"]')
   Tests.expect(code).toContain('<Tao.Text>{Value}</Tao.Text>')
   Tests.expect(code.includes('TR.finishViewRender(_Render, useTaoInjection')).toBe(true)
   Tests.expect(code).not.toContain('function TaoInjection')
   Tests.expect(code).not.toContain('TR.RenderInjectStatement')
-  Tests.expect(code).toContain('TR.AppDeclaration(TR.Name(_scope0, "RootView"), "test-1")')
+  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["RootView"], "test-1")')
   Tests.expect(code).toContain("Children: TR.ViewComponentProps['children']")
 })
 
@@ -38,13 +34,13 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const document = transform(createParser().parse(source))!
-  const code = compile(document, {
+  const code = generatedText(compile(document, {
     revision: 'foreign-view',
     resolveForeignViewPath: (modulePath, authoredPath) => `${modulePath}:${authoredPath}`,
-  })
+  }))
 
   Tests.expect(code).toContain('import { FormattedDate as _taoForeignView0 } from "<memory>:./FormattedDate.tsx";')
-  Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _scope0)')
+  Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _Scope)')
 })
 
 Tests.test('foreign views reject non-text parameter contracts', () => {
@@ -74,10 +70,12 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
     { path: helloPath, document: hello, imports: [], siblings: [interactionsPath] },
     { path: interactionsPath, document: interactions, imports: [], siblings: [helloPath] },
   ])
-  const code = compile(hello, { revision: 'folder-apps', program })
-  Tests.expect(code).toContain('TR.AliasBinding(_scope0, "HelloWorld", () => TR.Name(_scope0, "RootView"));')
-  Tests.expect(code).toContain('TR.AliasBinding(_scope1, "Interactions", () => TR.Name(_scope1, "Form"));')
-  Tests.expect(code).toContain('TR.AliasBinding(_scope0, "Interactions", () => TR.Name(_scope1, "Interactions"));')
+  const code = generatedText(compile(hello, { revision: 'folder-apps', program }))
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "HelloWorld", () => _Scope["RootView"]);')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Interactions", () => _Scope["Form"]);')
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["source/interactions.ts"]!["Interactions"]);',
+  )
 })
 
 Tests.test('app registration waits until its root alias is initialized', () => {
@@ -87,9 +85,40 @@ Tests.test('app registration waits until its root alias is initialized', () => {
     let Copy = Main
     let Alias = Root
   `
-  const execute = new Function('TR', generatedJavaScript(source) + '\nreturn TR.Name(_scope0, "Copy");')
-  const root = execute({ ...RuntimeScope, ViewDeclaration, ModuleApplied() {} })
+  const scopes: Record<string, unknown>[] = []
+  const execution = executeGeneratedFiles(compileSource(source), createRuntime(scopes))
+  const root = (execution.default as () => { name: string })()
   Tests.expect(root.name).toBe('Root')
+  Tests.expect(scopes[0]!['Copy']).toBe(scopes[0]!['Alias'])
+})
+
+Tests.test('generated bootstrap initializes imported values before entry values', () => {
+  const parser = createParser()
+  const entryPath = '/app/Main.tao'
+  const valuePath = '/app/Values.tao'
+  const entry = transform(parser.parse(S`
+    use Value from ./Values
+    app Main { root Root }
+    view Root { render inject \`\`\`ts return null \`\`\` }
+    let Copy = Value
+  `))!
+  const values = transform(parser.parse('public let Value = "ready"'))!
+  const statement = AST.GetImportStatements(entry)[0]!
+  const program = linkModules(entryPath, [
+    {
+      path: entryPath,
+      document: entry,
+      imports: [{ statement, targets: [{ path: valuePath, relation: 'same-directory' }] }],
+      siblings: [],
+    },
+    { path: valuePath, document: values, imports: [], siblings: [] },
+  ])
+  const scopes: Record<string, unknown>[] = []
+  const execution = executeGeneratedFiles(compile(entry, { revision: 'global-values', program }), createRuntime(scopes))
+  const root = (execution.default as () => { name: string })()
+
+  Tests.expect(root.name).toBe('Root')
+  Tests.expect(scopes[0]!['Copy']).toBe('ready')
 })
 
 Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {
@@ -99,33 +128,36 @@ Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nest
   Tests.expect(document).toBeDefined()
   const entryPath = Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao')
   const program = await linkedUIProgram(entryPath, document!)
-  const code = compile(document!, { revision: 'kitchen-sink', program })
+  const code = generatedText(compile(document!, { revision: 'kitchen-sink', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Pair", ["First", "Second"]')
-  Tests.expect(code).toContain('TR.ViewRenderArguments([TR.Name(_Scope, "FirstCaption")], [])')
-  Tests.expect(code).toContain('TR.Name(_Render.scope, "Title") as string')
+  Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["FirstCaption"]], [])')
+  Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["Title"]], [])')
   Tests.expect(code).toContain("Caption: string, Children: TR.ViewComponentProps['children']")
-  Tests.expect(code).toContain('TR.AppDeclaration(TR.Name(_scope0, "RootView"), "kitchen-sink")')
+  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["RootView"], "kitchen-sink")')
 })
 
 Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles', () => {
   const { entry, program } = cyclicModuleFixture()
-  const code = compile(entry, { revision: 'modules', program })
+  const files = compile(entry, { revision: 'modules', program })
+  const code = generatedText(files)
 
-  Tests.expect(code).toContain('const _scope0 = TR.Scope();')
-  Tests.expect(code).toContain('const _scope1 = TR.Scope();')
-  Tests.expect(code).toContain('TR.AliasBinding(_scope0, "UI.Root", () => TR.Name(_scope1, "Root"));')
-  Tests.expect(code).toContain('TR.AliasBinding(_scope1, "Entry.Shared", () => TR.Name(_scope0, "Shared"));')
-  Tests.expect(code).toContain('TR.AliasBinding(_scope0, "LocalShared", () => TR.Name(_scope0, "Shared"));')
-  Tests.expect(code).toContain('TR.Name(_Scope, "UI.Root")')
-  Tests.expect(code).toContain('TR.Name(_Scope, "Entry.Shared")')
-  Tests.expect(code).toContain('TR.LetDeclaration(_scope0, "Shared", TR.ViewDeclaration("Shared"')
-  Tests.expect(code).toContain('TR.LetDeclaration(_scope1, "Root", TR.ViewDeclaration("Root"')
-  Tests.expect(code).toContain('TR.AppDeclaration(TR.Name(_scope0, "UI.Root"), "modules")')
-  Tests.expect(code.indexOf('TR.ViewDeclaration("Root"')).toBeLessThan(code.indexOf('"Caption", "module value"'))
-  Tests.expect(code).not.toContain('_views')
+  Tests.expect(code).toContain('const _scope0 = TR.Scope() as Source0.Scope;')
+  Tests.expect(code).toContain('const _scope1 = TR.Scope() as Source1.Scope;')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["source/common.ts"]!["Root"]);')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["source/entry.ts"]!["Shared"]);')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "LocalShared", () => _Modules["source/entry.ts"]!["Shared"]);')
+  Tests.expect(code).toContain('_Scope["UI.Root"]')
+  Tests.expect(code).toContain('_Imported_Entry$Shared["Shared"]')
+  Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Shared", TR.ViewDeclaration("Shared"')
+  Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Root", TR.ViewDeclaration("Root"')
+  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["UI.Root"], "modules")')
+  Tests.expect(files['App.tsx']!.indexOf('bindDeclarations')).toBeLessThan(
+    files['App.tsx']!.indexOf('initializeCaption'),
+  )
+  Tests.expect(code).not.toContain('const _views')
 
-  const importedApp = compile(entry, { revision: 'selected-app', app: 'UI.Extra', program })
-  Tests.expect(importedApp).toContain('TR.AppDeclaration(TR.Name(_scope1, "Root"), "selected-app")')
+  const importedApp = generatedText(compile(entry, { revision: 'selected-app', app: 'UI.Extra', program }))
+  Tests.expect(importedApp).toContain('TR.AppDeclaration(_scope1["Root"], "selected-app")')
 })
 
 function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } {
@@ -189,14 +221,14 @@ Tests.test('injection locals and captures cannot collide with generated callback
       return _taoValues + _taoChildren;
     \`\`\` }
   `
-  Tests.expect(() => new Function(generatedJavaScript(source))).not.toThrow()
+  Tests.expect(() => transpileGeneratedFiles(compileSource(source))).not.toThrow()
 })
 
 Tests.test('injection captures cannot shadow the runtime or use reserved JavaScript names', () => {
   for (const capture of ['TR', 'Tao', 'return']) {
     const source =
       `app Test { root Root }\nview Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }`
-    Tests.expect(() => generatedJavaScript(source)).toThrow(`Injection capture name ${capture} conflicts`)
+    Tests.expect(() => compileSource(source)).toThrow(`Injection capture name ${capture} conflicts`)
   }
 })
 
@@ -208,25 +240,31 @@ Tests.test('escaped authored identifiers stay inside their own injection scope',
       return _tao\\u0056alues;
     \`\`\` }
   `
-  Tests.expect(() => new Function(generatedJavaScript(source))).not.toThrow()
+  Tests.expect(() => transpileGeneratedFiles(compileSource(source))).not.toThrow()
 })
 
-function generatedJavaScript(source: string): string {
+function compileSource(source: string): Readonly<Record<string, string>> {
   const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
-  const code = compile(transform(tree)!, { revision: 'hygiene' })
-    .replace(/^import .*from '@(?:runtime|tao\/runtime-api)';\n/gm, '')
-    .replace(/^(function \w+\(\w+): TR\.ViewComponentProps\)/gm, '$1)')
-    .replace('export default function App()', 'function App()')
-  return stripGeneratedHookParameterTypes(code)
+  return compile(transform(tree)!, { revision: 'hygiene' })
 }
 
-function stripGeneratedHookParameterTypes(code: string): string {
-  // ex: function useTaoInjectionX(Value: string) -> function useTaoInjectionX(Value)
-  return code.replace(/^(function useTaoInjection\w+\()([^\n]*)(\) \{)$/gm, (_match, prefix, parameters, suffix) => {
-    const names = String(parameters).split(', ').map(parameter => parameter.split(': ')[0]).join(', ')
-    return `${prefix}${names}${suffix}`
-  })
+function generatedText(files: Readonly<Record<string, string>>): string {
+  return Object.values(files).join('\n')
+}
+
+function createRuntime(scopes: Record<string, unknown>[]) {
+  return {
+    ...RuntimeScope,
+    Scope(parent?: Scope) {
+      const scope = RuntimeScope.Scope(parent)
+      scopes.push(scope as Record<string, unknown>)
+      return scope
+    },
+    ViewDeclaration,
+    ModuleApplied() {},
+    AppDeclaration: (view: unknown) => view,
+  }
 }
 
 async function linkedUIProgram(

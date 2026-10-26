@@ -33,7 +33,7 @@ Tests.test(
 )
 
 async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
-  const bundleUrl = `${session.url}/index.bundle?platform=web&dev=true&minify=false&lazy=false`
+  const bundleUrl = `${session.url}/Application.bundle?platform=web&dev=true&minify=false&lazy=false`
   await Http.request(`${session.url}/__tao_test/arm`)
   const initial = Http.request(bundleUrl).then(response => response.text())
   await waitFor(async () => (await status(session.url)).held === true)

@@ -35,7 +35,16 @@ export default grammar({
         '{',
         repeat(field('statements', $.LetDeclaration)),
         field('statements', $._ViewRenderStatement),
+        repeat(field('statements', alias($._NestedViewDeclaration, $.ViewDeclaration))),
         '}',
+      )
+    },
+    _NestedViewDeclaration($) {
+      return seq(
+        'view',
+        field('name', $.Identifier),
+        optional(field('parameters', $.ParameterList)),
+        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
       )
     },
     _ViewRenderBlock($) {

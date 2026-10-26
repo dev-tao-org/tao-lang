@@ -1,11 +1,11 @@
 // Standard views are ordinary imported Tao declarations.
 // Project dependency declarations live in ../Dependencies.tao.
 use all from tao@ui
+use ModuleCaption
 use Text as Caption from tao@ui
 use package tao@ui as UI
-use package ./Modules
-use ModuleCaption
 use ModuleCaption as ImportedCaption from ./Modules
+use package ./Modules
 
 file
 let DefaultTitle is text = "Kitchen Sink"
@@ -18,6 +18,7 @@ view RootView {
   let Title = DefaultTitle
   render Col {
     Heading
+    PrivateGreeting
     Text(Title)
     Text(Modules.ModuleCaption)
     Text(ModuleCaption)
@@ -39,6 +40,10 @@ view RootView {
         UI.Text("Right")
       }
     }
+  }
+
+  view PrivateGreeting {
+    render Text("Private nested view")
   }
 }
 
@@ -91,6 +96,7 @@ tests "Kitchen Sink" {
   test(Label "Tagged input and control") {
     run KitchenSink
     expect text "Kitchen Sink"
+    expect text "Private nested view"
     expect text "Sidecar: Validated TypeScript sidecar"
     expect text "Nested lexical scope"
     type "Edited text" into #editable

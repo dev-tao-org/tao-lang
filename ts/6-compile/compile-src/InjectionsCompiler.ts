@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
+import type { ScopeCode } from './codegen-util'
 import {
   type ComponentNames,
   emitInjectionCustomHook,
@@ -14,8 +15,9 @@ export function compileInjection(
   node: AST.Injection,
   bindings: ReadonlySet<string>,
   names: ComponentNames,
+  scope: ScopeCode,
 ): InjectionCompilation {
-  const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
+  const captures = node.captures.map(capture => compileCapture(capture, bindings, names, scope))
   return emitInjectionCustomHook(node, names, captures)
 }
 
@@ -23,12 +25,13 @@ function compileCapture(
   node: AST.Capture,
   bindings: ReadonlySet<string>,
   names: ComponentNames,
+  scope: ScopeCode,
 ): InjectionCapture {
   assertCaptureName(node.name.value)
   return Switch.kind(node.value, {
     Name(name) {
       const text = isTextExpression(name, reference => bindings.has(reference.value))
-      const value = emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
+      const value = emitName(name, scope) + (text ? ' as string' : '')
       return { node, type: text ? 'text' : 'unknown', value }
     },
     ContextReference: reference =>

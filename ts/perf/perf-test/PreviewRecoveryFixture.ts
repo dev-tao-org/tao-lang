@@ -56,9 +56,9 @@ async function createRecoveryWorkspace(root: string) {
   const workspace = createWorkspace({
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
-    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) =>
-      createRecoveryApp(options.revision, mode)
-    ),
+    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => ({
+      'App.tsx': createRecoveryApp(options.revision, mode),
+    })),
   })
   return {
     workspace,

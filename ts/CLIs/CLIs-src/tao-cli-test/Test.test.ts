@@ -11,6 +11,7 @@ Tests.test('Tao app discovery includes developer apps and excludes files without
     'Apps/Dev/Kitchen Sink/Kitchen Sink.tao',
     'Apps/Tests/Interactions.tao',
     'Apps/Tests/Modules/Modules.tao',
+    'Apps/Tests/Nested Views.tao',
     'Apps/Tests/Scopes.tao',
   ])
 })

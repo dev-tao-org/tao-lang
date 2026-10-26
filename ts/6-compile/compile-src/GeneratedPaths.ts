@@ -1,0 +1,56 @@
+import { Errors } from '@shared'
+import { Path, Platform } from '@shared/os'
+import type { LinkedProgram } from '@typecheck/Modules'
+import { emitStringLiteral } from './codegen-util'
+
+/** createGeneratedPaths preserves source-file ownership without exposing absolute host paths. */
+export function createGeneratedPaths(program: LinkedProgram): ReadonlyMap<string, string> {
+  const paths = new Map(
+    program.modules.map(module => [module.path, resolveGeneratedModulePath(program.entry, module.path)]),
+  )
+  const outputs = new Set<string>()
+  for (const path of paths.values()) {
+    const stem = path.replace(/\.ts$/, '')
+    if (outputs.has(stem)) {
+      Errors.ThrowUserInput(`Generated source paths collide: ${path}.`)
+    }
+    outputs.add(stem)
+    outputs.add(stem + '.views')
+  }
+  return paths
+}
+
+/** compileModuleImport emits a portable import between two generated source units. */
+export function compileModuleImport(from: string, to: string): string {
+  const relative = Path.relative(Path.dirname(from), to).replaceAll('\\', '/').replace(/\.tsx?$/, '')
+  return emitStringLiteral(relative.startsWith('.') ? relative : `./${relative}`)
+}
+
+/** resolveViewsPath names the component-only category of an input file. */
+export function resolveViewsPath(main: string): string {
+  return main.replace(/\.ts$/, '.views.tsx')
+}
+
+function resolveGeneratedModulePath(entry: string, source: string): string {
+  if (source === '<memory>') {
+    return 'source/Memory.ts'
+  }
+  const normalized = source.replaceAll('\\', '/')
+  const standardLibrary = normalized.split('/stdlib-src/')[1]
+  if (standardLibrary !== undefined) {
+    return `tao/${escapeCategoryStem(standardLibrary.replaceAll('@', '').replace(/\.tao$/, ''), source)}.ts`
+  }
+  const relative = Path.relative(Path.dirname(entry), source).replaceAll('\\', '/')
+  if (!relative.startsWith('../') && !Path.isAbsolute(relative)) {
+    return `source/${escapeCategoryStem(relative.replace(/\.tao$/, ''), source)}.ts`
+  }
+  const identity = Platform.hashText(source).slice(0, 12)
+  const name = Path.basename(source).replace(/\.tao$/, '')
+  return `modules/${identity}/${escapeCategoryStem(name, source)}.ts`
+}
+
+function escapeCategoryStem(stem: string, source: string): string {
+  return /\.(?:views|design|data|previews)$/.test(stem)
+    ? `${stem}.source-${Platform.hashText(source).slice(0, 8)}`
+    : stem
+}

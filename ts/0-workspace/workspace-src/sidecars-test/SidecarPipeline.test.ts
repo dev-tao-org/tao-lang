@@ -1,10 +1,9 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
-import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
 import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
+import { executeTypeScript, programFor, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
 
 Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks, and preserve prior revisions', async () =>
   await withFixture(async fixture => {
@@ -247,104 +246,3 @@ Tests.test('managed snapshots type-check authored views through the packaged Tao
     Tests.expect(defaults.compilerOptions.paths['@tao/runtime-api'][0]).toContain('/runtime/TaoRuntimeAPI.ts')
     Tests.expect(defaults.compilerOptions.paths['@shared'][0]).toContain('/shared/shared.ts')
   }))
-
-type Fixture = {
-  projectDirectory: string
-  sessionBuildDirectory: string
-  nodeModulesDirectory: string
-  dependencyFingerprint: string
-  target: string
-  program: ReturnType<typeof programFor>
-  directory: string
-  moduleRoot: string
-  taoPath: string
-}
-
-async function withFixture(action: (fixture: Fixture) => Promise<void>): Promise<void> {
-  const fixture = await createFixture()
-  await Try(action.bind(undefined, fixture), {
-    finally: () => FileSystem.rm(fixture.directory, { recursive: true, force: true }),
-  })
-}
-
-function recordingExecutor(onCall: () => void): ContractExecutor {
-  return async () => {
-    onCall()
-    return { status: 0, stdout: '', stderr: '' }
-  }
-}
-
-async function createFixture(): Promise<Fixture> {
-  const directory = Artifacts.resolvePath('tmp', `sidecar-pipeline-${Platform.randomUUID()}`)
-  const projectDirectory = Path.join(directory, 'project')
-  const moduleRoot = Path.join(projectDirectory, '@calendar')
-  const taoPath = Path.join(moduleRoot, 'Calendar.tao')
-  const nodeModulesDirectory = Path.join(directory, 'managed', 'node_modules')
-  await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'), { recursive: true })
-  await FileSystem.writeFile(
-    Path.join(projectDirectory, '.tao', 'cache', 'sidecars', 'typescript-defaults.json'),
-    JSON.stringify({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
-  )
-  await FileSystem.mkdir(Path.join(moduleRoot), { recursive: true })
-  await FileSystem.mkdir(nodeModulesDirectory, { recursive: true })
-  await FileSystem.mkdir(Path.join(nodeModulesDirectory, '@types', 'react'), { recursive: true })
-  await FileSystem.writeFile(
-    Path.join(nodeModulesDirectory, '@types', 'react', 'index.d.ts'),
-    'export type ComponentType<Props> = (props: Props) => unknown\n',
-  )
-  await FileSystem.writeFile(taoPath, 'fixture source path')
-  await FileSystem.writeFile(
-    Path.join(moduleRoot, 'FormattedDate.tsx'),
-    [
-      "import { formatDate } from './format'",
-      "import logo from './logo.png'",
-      'export function FormattedDate(props: { Value: string }) { return null }',
-      'void formatDate; void logo',
-    ].join('\n'),
-  )
-  await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), 'export const formatDate = () => "old"\n')
-  await FileSystem.writeFile(Path.join(moduleRoot, 'logo.png'), 'asset-bytes')
-  const document = transform(
-    createParser().parse(
-      'app Calendar { root FormattedDate } public view FormattedDate(Value text) from ./FormattedDate.tsx',
-    ),
-  )!
-  return {
-    projectDirectory,
-    sessionBuildDirectory: Path.join(projectDirectory, '.tao', 'cache', 'build'),
-    nodeModulesDirectory,
-    dependencyFingerprint: 'managed-graph-v1',
-    target: 'web',
-    program: programFor(taoPath, document),
-    directory,
-    moduleRoot,
-    taoPath,
-  }
-}
-
-async function executeTypeScript(
-  command: string,
-  args: readonly string[],
-  cwd: string,
-): Promise<{ status: number; stdout: string; stderr: string }> {
-  const child = Platform.spawn([command, ...args], {
-    cwd,
-    env: Env.snapshot(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  return { status, stdout, stderr }
-}
-
-function programFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
-  return {
-    entry: path,
-    modules: [{ path, document, bindings: [] }],
-    definitions: [],
-  }
-}

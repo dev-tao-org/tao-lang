@@ -1,0 +1,50 @@
+use Col, Text from tao@ui
+
+let Banner is text = "Original"
+
+app NestedViews {
+  root Main
+}
+
+view Main {
+  render Col {
+    Text(Banner)
+    Owner("Left")
+    Owner("Right")
+  }
+}
+
+view Owner(Label text) {
+  let Caption = Label
+  render Col {
+    Child
+  }
+
+  view Child {
+    render Counter
+  }
+
+  view Counter {
+    render inject Caption Caption ```ts
+      const count = Tao.useWritable(() => 0)
+      const value = Tao.useValue(count)
+      return (
+        <Tao.Pressable testID={Caption} onPress={() => count.update(value + 1)}>
+          <Tao.Text>{Caption}: {value}</Tao.Text>
+        </Tao.Pressable>
+      )
+    ```
+  }
+}
+
+tests "Nested view scope" {
+  test "captures are isolated across owner instances" {
+    run NestedViews
+    expect text "Original"
+    expect text "Left: 0"
+    expect text "Right: 0"
+    press #Left
+    expect text "Left: 1"
+    expect text "Right: 0"
+  }
+}

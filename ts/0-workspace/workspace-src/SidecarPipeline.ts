@@ -137,7 +137,7 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Si
   const canonicalConsumerDirectory = FileSystem.realpathSync(projectDirectory)
   const groups = new Map<string, SidecarGroup>()
   for (const module of options.program.modules) {
-    for (const declaration of AST.GetViewDeclarations(module.document)) {
+    for (const declaration of AST.GetAllViewDeclarations(module.document)) {
       const authoredPath = AST.GetForeignViewPath(declaration)
       if (authoredPath === undefined) {
         continue

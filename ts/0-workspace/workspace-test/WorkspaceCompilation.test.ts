@@ -1,6 +1,7 @@
 import { RuntimeSourceResources } from '@runtime/RuntimeResources'
 import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import TypeScript from 'typescript'
 import { createProject, createWorkspace } from '../workspace-src/Workspace'
 
 Tests.test('project compilation creates its runtime lazily and publishes only changed build files', async () => {
@@ -41,6 +42,10 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
     Tests.expect((await workspace.openFile('Hello World.tao')).status).toBe('published')
     Tests.expect(await FileSystem.readdir(directory)).toEqual(['Hello World.tao'])
     Tests.expect(workspace.runtime?.directory).toBe(Path.join(outputDirectory, 'runtime'))
+    Tests.expect(await FileSystem.exists(Path.join(workspace.runtime!.directory, 'Application.ts'))).toBe(true)
+    Tests.expect(await FileSystem.exists(Path.join(workspace.runtime!.directory, 'index.ts'))).toBe(false)
+    Tests.expect(await FileSystem.readFile(Path.join(workspace.runtime!.directory, 'package.json'), 'utf8'))
+      .toContain('"main": "Application.ts"')
     Tests.expect(await FileSystem.readFile(workspace.runtime!.appPath, 'utf8')).toBe(
       await FileSystem.readFile(Path.join(outputDirectory, 'build/App.tsx'), 'utf8'),
     )
@@ -57,7 +62,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
   const resourcesDirectory = Path.join(root, 'resources')
   await writeResources(resourcesDirectory)
   let installs = 0
-  let code = 'compiled A'
+  let files = { 'App.tsx': 'compiled A', 'source/Widget.ts': 'export const value = 1' }
   let snapshot = 'A'
   const workspace = createWorkspace({
     project,
@@ -71,7 +76,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
         },
       },
     },
-    compile: Timings.createTopLevelTimer(() => code),
+    compile: Timings.createTopLevelTimer(() => files),
     beforeCompile: async () => ({ snapshotDirectories: [Path.join(root, snapshot)] }),
   })
   await Try(async () => {
@@ -79,7 +84,11 @@ async function verifyProjectCompilation(root: string): Promise<void> {
     Tests.expect(installs).toBe(0)
     const source = await Tests.readApp('Hello World')
     Tests.expect((await workspace.update(source)).status).toBe('published')
-    await verifyPublication(workspace, project.buildDirectory, source, () => code = 'compiled B')
+    await verifyPublication(workspace, project.buildDirectory, source, () =>
+      files = {
+        'App.tsx': 'compiled B',
+        'source/Widget.ts': 'export const value = 2',
+      })
     await verifyLiveSnapshotBoundary(workspace, source, value => snapshot = value)
     Tests.expect(installs).toBe(1)
   }, {
@@ -111,7 +120,8 @@ async function verifyLiveSnapshotBoundary(
   Tests.expect(changed.status === 'failed' && changed.error).toContain('Restart the preview session')
   Tests.expect(publications).toBe(0)
   changeSnapshot('A')
-  Tests.expect((await workspace.update(source)).status).toBe('published')
+  const recovered = await workspace.update(source)
+  Tests.expect(recovered.status).toBe('published')
   Tests.expect(publications).toBe(1)
 }
 
@@ -123,18 +133,73 @@ async function verifyPublication(
 ): Promise<void> {
   const runtime = workspace.runtime!
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('compiled A')
-  Tests.expect(await FileSystem.readFile(runtime.appPath, 'utf8')).toBe('compiled A')
-  const original = FileSystem.statSync(runtime.appPath).ino
-  await workspace.update(source)
-  Tests.expect(FileSystem.statSync(runtime.appPath).ino).toBe(original)
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe(
+    'export const value = 1',
+  )
+  await verifyGeneratedBuildConfiguration(buildDirectory, runtime)
+  const unchanged = await verifyUnchangedGeneratedFiles(workspace, source, runtime)
   const runtimeAsset = Path.join(runtime.directory, 'src/_gen_runtime/runtime/TR.ts')
   const assetInode = FileSystem.statSync(runtimeAsset).ino
   changeCode()
   Tests.expect((await workspace.update(source)).status).toBe('published')
   Tests.expect(await FileSystem.readFile(runtime.appPath, 'utf8')).toBe('compiled B')
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('compiled B')
-  Tests.expect(FileSystem.statSync(runtime.appPath).ino).not.toBe(original)
+  Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe(
+    'export const value = 2',
+  )
+  Tests.expect(FileSystem.statSync(runtime.appPath).ino).not.toBe(unchanged.appInode)
+  Tests.expect(FileSystem.statSync(Path.join(runtime.directory, 'src/source/Widget.ts')).ino)
+    .not.toBe(unchanged.sourceInode)
   Tests.expect(FileSystem.statSync(runtimeAsset).ino).toBe(assetInode)
+}
+
+async function verifyGeneratedBuildConfiguration(
+  buildDirectory: string,
+  runtime: NonNullable<ReturnType<typeof createWorkspace>['runtime']>,
+): Promise<void> {
+  const configPath = Path.join(buildDirectory, 'tsconfig.json')
+  const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
+  Tests.expect(config.error).toBeUndefined()
+  Tests.expect(Path.resolve(buildDirectory, config.config.extends)).toBe(
+    Path.join(runtime.directory, 'tsconfig.json'),
+  )
+  const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, buildDirectory)
+  Tests.expect(parsed.fileNames).toContain(Path.join(buildDirectory, 'source/Widget.ts'))
+  Tests.expect(parsed.errors.some(error => error.code === 5083)).toBe(false)
+  Tests.expect(FileSystem.realpathSync(Path.join(buildDirectory, 'node_modules'))).toBe(
+    FileSystem.realpathSync(Path.join(runtime.directory, 'node_modules')),
+  )
+  const physicalBuildDirectory = FileSystem.realpathSync(buildDirectory)
+  const physicalConfig = TypeScript.readConfigFile(
+    Path.join(physicalBuildDirectory, 'tsconfig.json'),
+    TypeScript.sys.readFile,
+  )
+  Tests.expect(physicalConfig.error).toBeUndefined()
+  const physicalParsed = TypeScript.parseJsonConfigFileContent(
+    physicalConfig.config,
+    TypeScript.sys,
+    physicalBuildDirectory,
+  )
+  Tests.expect(physicalParsed.fileNames).toContain(Path.join(physicalBuildDirectory, 'source/Widget.ts'))
+  Tests.expect(physicalParsed.errors.some(error => error.code === 5083)).toBe(false)
+  Tests.expect(FileSystem.realpathSync(Path.join(physicalBuildDirectory, 'node_modules'))).toBe(
+    FileSystem.realpathSync(Path.join(runtime.directory, 'node_modules')),
+  )
+}
+
+async function verifyUnchangedGeneratedFiles(
+  workspace: ReturnType<typeof createWorkspace>,
+  source: string,
+  runtime: NonNullable<ReturnType<typeof createWorkspace>['runtime']>,
+): Promise<{ appInode: number; sourceInode: number }> {
+  Tests.expect(await FileSystem.readFile(runtime.appPath, 'utf8')).toBe('compiled A')
+  const original = FileSystem.statSync(runtime.appPath).ino
+  const sourcePath = Path.join(runtime.directory, 'src/source/Widget.ts')
+  const originalSource = FileSystem.statSync(sourcePath).ino
+  await workspace.update(source)
+  Tests.expect(FileSystem.statSync(runtime.appPath).ino).toBe(original)
+  Tests.expect(FileSystem.statSync(sourcePath).ino).toBe(originalSource)
+  return { appInode: original, sourceInode: originalSource }
 }
 
 async function writeResources(directory: string): Promise<void> {

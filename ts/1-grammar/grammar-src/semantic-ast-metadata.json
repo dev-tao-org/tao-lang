@@ -58,7 +58,7 @@
     "AppDeclarationBlock": { "members": ["RootDeclaration"] },
     "ViewDeclarationBlock": {
       "statementUnion": "ViewDeclarationStatement",
-      "members": ["LetDeclaration", "_ViewRenderStatement"]
+      "members": ["LetDeclaration", "_ViewRenderStatement", "ViewDeclaration"]
     },
     "ViewRenderBlock": {
       "statementUnion": "ViewRenderBlockStatement",

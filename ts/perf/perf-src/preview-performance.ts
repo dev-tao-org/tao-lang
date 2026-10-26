@@ -5,8 +5,8 @@ import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspac
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
 import {
   assertMeasurementScenario,
+  createMeasurementFiles,
   createMeasurementScenarios,
-  createMeasurementSource,
   describeMeasurement,
   measurementFrameIds,
   type PreviewMeasurement,
@@ -60,10 +60,14 @@ type PreviewResult = {
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
-  const source = createMeasurementSource(options.initialSource, owned.measurement)
+  const fixture = createMeasurementFiles(options.initialSource, owned.measurement)
+  const source = fixture.entry
   const scenarios = createMeasurementScenarios(owned.measurement)
   const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
   await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
+  for (const file of fixture.extraFiles) {
+    await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
+  }
   await FileSystem.writeFile(sourcePath, source, 'utf8')
   requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await Runtime.start(options.workspace.runtime!)
@@ -197,7 +201,8 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
 
 function requirePublished(result: UpdateResult): void {
   if (result.status !== 'published') {
-    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.`)
+    const detail = result.status === 'failed' ? ` ${result.error}` : ''
+    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.${detail}`)
   }
 }
 

@@ -10,6 +10,7 @@
     "@tao/typecheck": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "1.4.0"
+    "@types/bun": "1.4.0",
+    "typescript": "5.9.3"
   }
 }

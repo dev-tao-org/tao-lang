@@ -12,20 +12,20 @@ export type CompileOptions = {
   resolveForeignViewPath?: ForeignViewPathResolver
 }
 
-/** compile emits a single Expo app module through typed Tao runtime APIs.
+/** compile emits a complete source-owned Expo module graph through typed Tao runtime APIs.
  *  Full compilation consumes one immutable AST; no previous result is reused. */
 export const compile = Timings.createTopLevelTimer(function(
   timings,
   document: AST.Document,
   options: CompileOptions,
-): string {
+): Readonly<Record<string, string>> {
   return timings.run(generate, document, options)
 })
 
 const generate = Timings.measured('compiler.generate', function(
   document: AST.Document,
   options: CompileOptions,
-): string {
+): Readonly<Record<string, string>> {
   const program = options.program ?? linkSingleFile(document)
   return compileProgram(program, options.revision, options.app, options.resolveForeignViewPath)
 })

@@ -35,7 +35,7 @@ type ResolvedForeignView = ForeignViewDeclaration & { path: string }
 function collectForeignViewDeclarations(program: LinkedProgram): ForeignViewDeclaration[] {
   const foreignViews: ForeignViewDeclaration[] = []
   for (const module of program.modules) {
-    for (const view of AST.GetViewDeclarations(module.document)) {
+    for (const view of AST.GetAllViewDeclarations(module.document)) {
       const authoredPath = AST.GetForeignViewPath(view)
       if (authoredPath) {
         const name = AST.GetViewName(view)

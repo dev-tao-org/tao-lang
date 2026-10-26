@@ -1,7 +1,8 @@
+import { createParser } from '@grammar/parser'
 import { Tests } from '@shared/os'
 import {
+  createMeasurementFiles,
   createMeasurementScenarios,
-  createMeasurementSource,
   describeMeasurement,
   readPreviewMeasurement,
 } from '../perf-src/PreviewMeasurement'
@@ -33,9 +34,36 @@ Tests.test('the default sized measurement retains four established edit names an
     'row',
     'reset',
   ])
-  const source = createMeasurementSource(await Tests.readApp('Hello World'), settings)
+  const source = createMeasurementFiles(await Tests.readApp('Hello World'), settings).entry
   Tests.expect(source).toContain('view Load0 {')
   Tests.expect(source).toContain('view Load499 {')
   Tests.expect(source).not.toContain('view Load500 {')
   Tests.expect(source).toContain('Text("Hello World")')
+})
+
+Tests.test('multi-input measurements distribute unique generated views across imported sibling files', async () => {
+  const settings = readPreviewMeasurement({ editCount: 4, frameCount: 2, extraViews: 7, extraFileCount: 3 })
+  const fixture = createMeasurementFiles(await Tests.readApp('Hello World'), settings)
+  Tests.expect(fixture.extraFiles.map(file => file.name)).toEqual(['LoadViews0', 'LoadViews1', 'LoadViews2'])
+  Tests.expect(fixture.entry).toContain('use package ./LoadViews0')
+  Tests.expect(fixture.entry).toContain('use package ./LoadViews2')
+  Tests.expect(fixture.entry).not.toContain('view Load0 {')
+  Tests.expect(fixture.extraFiles.map(file => (file.source.match(/view Load\d+ \{/g) ?? []).length)).toEqual([3, 2, 2])
+  const allSources = fixture.extraFiles.map(file => file.source).join('\n')
+  for (const file of fixture.extraFiles) {
+    Tests.expect(createParser().parse(file.source).rootNode.hasError).toBe(false)
+  }
+  Tests.expect(allSources).toContain('view Load0 {')
+  Tests.expect(allSources).toContain('view Load6 {')
+  Tests.expect(allSources).not.toContain('view Load7 {')
+  Tests.expect(describeMeasurement(settings).extraFileDefinition).toContain('sibling Tao modules')
+})
+
+Tests.test('multi-input measurements retain the single-file large-source setting when no extra modules are selected', async () => {
+  const settings = readPreviewMeasurement({ editCount: 4, frameCount: 1, extraViews: 3, extraFileCount: 0 })
+  const fixture = createMeasurementFiles(await Tests.readApp('Hello World'), settings)
+  Tests.expect(fixture.extraFiles).toEqual([])
+  Tests.expect(fixture.entry).toContain('view Load0 {')
+  Tests.expect(fixture.entry).toContain('view Load2 {')
+  Tests.expect(fixture.entry).not.toContain('use package ./LoadViews')
 })
