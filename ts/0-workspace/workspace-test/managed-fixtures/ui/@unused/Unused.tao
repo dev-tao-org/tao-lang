@@ -1,0 +1,2 @@
+requires npm:tao-unused-fixture version 1.0.0
+public view Unused { render Text("unused") }

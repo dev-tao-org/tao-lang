@@ -1,0 +1,12 @@
+use Text, Col, Row from tao@ui
+
+app Performance {
+  root Preview
+}
+
+view Preview {
+  render Col {
+    Text("Hello World")
+  }
+}
+

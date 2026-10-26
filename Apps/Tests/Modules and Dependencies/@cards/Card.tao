@@ -1,0 +1,8 @@
+use Text from tao@ui
+use PackageCaption
+
+let Caption = PackageCaption
+
+project view Card {
+  render Text(Caption)
+}
