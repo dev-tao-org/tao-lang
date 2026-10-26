@@ -39,8 +39,12 @@ Tests.test('rebuilds a corrupted snapshot without replacing the previously publi
     const executor = recordingExecutor(() => {})
     const first = await prepareSidecarPipeline({ ...fixture, executor })
     const original = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
-    const root = Path.dirname(Path.dirname(Path.dirname(original)))
-    await FileSystem.writeFile(Path.join(root, '.tao-sidecar-snapshot.json'), '{broken')
+    await FileSystem.writeFile(
+      Path.join(Path.dirname(original), 'format.ts'),
+      'export const formatDate = () => "tampered"\n',
+    )
+    await FileSystem.rm(Path.join(Path.dirname(original), 'logo.png'))
+    await FileSystem.writeFile(Path.join(Path.dirname(original), 'unexpected.bin'), 'unexpected')
 
     const repaired = await prepareSidecarPipeline({ ...fixture, executor })
     const replacement = repaired.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
@@ -49,6 +53,23 @@ Tests.test('rebuilds a corrupted snapshot without replacing the previously publi
     Tests.expect(await FileSystem.readFile(replacement, 'utf8')).toContain("from './format'")
     const cached = await prepareSidecarPipeline({ ...fixture, executor })
     Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(replacement)
+  }))
+
+Tests.test('failed sidecar resolution reports missing import paths for recovery watches', async () =>
+  await withFixture(async fixture => {
+    await FileSystem.rm(Path.join(fixture.moduleRoot, 'logo.png'))
+    const watchedFiles: string[] = []
+    await Tests.rejects(
+      prepareSidecarPipeline({
+        ...fixture,
+        executor: recordingExecutor(() => {}),
+        async onWatchFiles(files) {
+          watchedFiles.push(...files)
+        },
+      }),
+      /Cannot resolve foreign view sidecar import/,
+    )
+    Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'logo.png'))
   }))
 
 Tests.test('collects foreign views through a symlinked project root', async () =>

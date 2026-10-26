@@ -69,6 +69,33 @@ Tests.test('active dependency graphs require restart when authored requirements 
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('same repository aliases at different refs resolve from their individual durable root pins', async () => {
+  const root = Artifacts.resolvePath('tmp', `project-dependency-alias-pins-${Platform.randomUUID()}`)
+  const requirements: DependencyRequirement[] = [
+    { provider: 'github', identifier: 'example/shared', version: 'v1', alias: 'first' },
+    { provider: 'github', identifier: 'example/shared', version: 'v2', alias: 'second' },
+  ]
+  const options: DependencyStoreOptions = {
+    readRequirements: async path => Path.resolve(path) === Path.resolve(root) ? requirements : [],
+    git: {
+      resolveCommit: async () => 'a'.repeat(40),
+      async fetchCommit(_repository, _commit, destination) {
+        await FileSystem.mkdir(Path.join(destination, '.tao'), { recursive: true })
+      },
+    },
+  }
+  await Try(async () => {
+    await createProject(root)
+    await prepareDependencies(root, requirements, options)
+    const dependencies = new ProjectDependencies(root, options)
+    await dependencies.refresh()
+    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'first'))
+      .toEqual(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'))
+    requirements[1] = { ...requirements[1]!, version: 'v3' }
+    await Tests.rejects(dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'), /needs setup/)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
 function fileRequirement(identifier: string): DependencyRequirement {
   return { provider: 'file', identifier, version: 'live', alias: 'local' }
 }

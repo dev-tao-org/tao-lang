@@ -1,16 +1,22 @@
 import { Errors, S, Time, Try } from '@shared'
-import { Artifacts, FileSystem, Http, MetroPlatform, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, Env, FileSystem, Http, MetroPlatform, Path, Platform, Repo, Tests } from '@shared/os'
 import * as Runtime from '../../Runtime'
 import type { ExpoSession } from '../Expo'
 import type { GeneratedRevision } from '../PreviewProtocol'
 import { delayPreload } from './DelayPreload'
-import { verifyMetroBurst } from './MetroStress'
+import { verifyCoupledUpdates, verifyMetroBurst } from './MetroStress'
 
 type MetroRevisionNotice = { revision: string }
 
 type MetroSocketMessage = { type: string; tao?: MetroRevisionNotice; body?: unknown }
 
-type MetroReadStatus = { held: boolean; before: string; after: string }
+type MetroReadStatus = {
+  held: boolean
+  before: string
+  after: string
+  publicationRequests: number
+  sourceRequests: number
+}
 
 Tests.test(
   'Metro freezes delayed initial reads through HMR attachment and repairs coupled generated-file failures',
@@ -21,14 +27,15 @@ Tests.test(
       dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules'),
     })
     const preload = Path.join(directory, 'delay-preload.cjs')
-    await FileSystem.writeFile(preload, delayPreload(application.metroPreloadPath!))
+    const publishBeforeAdmission = Env.get('TAO_METRO_EARLY_PUBLICATION_PROBE') === '1'
+    await FileSystem.writeFile(preload, delayPreload(application.metroPreloadPath!, publishBeforeAdmission))
     const configuration = Path.join(directory, 'metro.config.js')
     const source = await FileSystem.readFile(configuration, 'utf8')
     await FileSystem.writeFile(configuration, `${source}\nmodule.exports.watcher.unstable_lazySha1 = false;\n`)
     application.metroPreloadPath = preload
     application.generated = createRevision('A', 0)
     const session = await Runtime.start(application)
-    await Try(() => verifyOverlapAndRepair(session), {
+    await Try(() => verifyOverlapAndRepair(session, publishBeforeAdmission), {
       async finally() {
         await session.dispose()
         await FileSystem.rm(directory, { recursive: true, force: true })
@@ -38,7 +45,7 @@ Tests.test(
   60_000,
 )
 
-async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
+async function verifyOverlapAndRepair(session: ExpoSession, publishBeforeAdmission: boolean): Promise<void> {
   const bundleUrl = `${session.url}/Application.bundle?platform=web&dev=true&minify=false&lazy=false`
   await Http.request(`${session.url}/__tao_test/arm`)
   const initial = Http.request(bundleUrl).then(response => response.text())
@@ -53,7 +60,11 @@ async function verifyOverlapAndRepair(session: ExpoSession): Promise<void> {
     published = true
     return outcome
   })
-  await Time.sleep(25)
+  if (publishBeforeAdmission) {
+    await waitFor(async () => published)
+  } else {
+    await waitFor(async () => (await readStatus(session.url)).publicationRequests === 1)
+  }
   const advancedWhileReaderHeld = published
   await Http.request(`${session.url}/__tao_test/release`)
   const firstBundle = await initial
@@ -121,25 +132,28 @@ async function verifyMultipleGroups(
     sourceCompleted = true
     return response
   })
-  const pending = session.publish(createRevision('B_PENDING', 3))
-  await Time.sleep(25)
+  let pendingCompleted = false
+  const pending = session.publish(createRevision('B_PENDING', 3)).then(result => {
+    pendingCompleted = true
+    return result
+  })
+  await waitFor(async () => {
+    const status = await readStatus(session.url)
+    return status.publicationRequests === 2 && status.sourceRequests >= 1
+  })
   const completedTooSoon = firstDone
   const sourceCompletedTooSoon = sourceCompleted
+  const pendingCompletedTooSoon = pendingCompleted
   await Http.request(`${session.url}/__tao_test/release`)
   Tests.expect(await first).toMatchObject({ status: 'published' })
   Tests.expect(await pending).toMatchObject({ status: 'published' })
   Tests.expect(completedTooSoon).toBe(false)
   Tests.expect(sourceCompletedTooSoon).toBe(false)
+  Tests.expect(pendingCompletedTooSoon).toBe(false)
   const sourceResponse = await source
   Tests.expect(sourceResponse.headers.get('x-tao-revision')).toBe('B_GROUPS')
   Tests.expect(await sourceResponse.text()).toContain('APP_B_GROUPS')
-  for (const messages of [primary, secondary]) {
-    for (const revision of ['B_GROUPS', 'B_PENDING']) {
-      const update = messages.find(message => message.type === 'update' && message.tao?.revision === revision)
-      Tests.expect(JSON.stringify(update)).toContain(`APP_${revision}`)
-      Tests.expect(JSON.stringify(update)).toContain(`HELPER_${revision}`)
-    }
-  }
+  verifyCoupledUpdates([primary, secondary], ['B_GROUPS', 'B_PENDING'])
   socket.close()
 }
 

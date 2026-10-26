@@ -201,7 +201,7 @@ Tests.test('project cleaning removes generated cache and retains durable store a
     await FileSystem.mkdir(Path.dirname(generated), { recursive: true })
     await FileSystem.mkdir(external, { recursive: true })
     await FileSystem.writeFile(store, '{}')
-    await FileSystem.writeFile(dependencyLock, JSON.stringify({ version: 1, roots: {}, sources: {} }))
+    await FileSystem.writeFile(dependencyLock, JSON.stringify({ version: 2, roots: {}, sources: {}, commitPins: {} }))
     await FileSystem.writeFile(generated, 'generated')
     await FileSystem.writeFile(externalFile, 'keep')
     await FileSystem.symlink(external, externalLink)
@@ -308,8 +308,9 @@ async function writeDependencyLock(taoDirectory: string, root: string, dependenc
   await FileSystem.writeFile(
     Path.join(taoDirectory, 'store', 'dependencies.lock.json'),
     JSON.stringify({
-      version: 1,
+      version: 2,
       roots: { dependency: 'dependency@1.0.0' },
+      commitPins: {},
       sources: {
         dependency: {
           identity: 'dependency',

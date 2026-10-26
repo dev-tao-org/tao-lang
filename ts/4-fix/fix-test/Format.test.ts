@@ -15,7 +15,7 @@ Tests.test('all current named grammar nodes format canonically and remain stable
   Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(concreteSyntaxKinds)
   assertFormatted(syntaxFixture, formattedSyntaxFixture)
   const source = 'use First,Second,Third from @long/package\nview Main(A text,B text){render Panel(A,B)}'
-  Tests.expect(formatted(source, 28)).toBe(S`
+  Tests.expect(formatSource(source, 28)).toBe(S`
     use First,
       Second,
       Third
@@ -25,7 +25,7 @@ Tests.test('all current named grammar nodes format canonically and remain stable
       render Panel(A, B)
     }
   `)
-  Tests.expect(formatted(formatted(source, 28), 120)).toBe(formatted(source, 28))
+  Tests.expect(formatSource(formatSource(source, 28), 120)).toBe(formatSource(source, 28))
 })
 
 Tests.test('formatting normalizes a complete source fixture without changing literals or native code', () => {
@@ -50,7 +50,7 @@ Tests.test('formatting keeps nested private views after the owner render', () =>
 
 Tests.test('argument and parameter lists wrap at the width and retain authored line breaks', () => {
   const source = 'view Main(First text, Second text) { render Panel("Hello", "World") }'
-  const result = formatted(source, 32)
+  const result = formatSource(source, 32)
   Tests.expect(result).toBe(S`
     view Main(
       First text,
@@ -59,7 +59,7 @@ Tests.test('argument and parameter lists wrap at the width and retain authored l
       render Panel("Hello", "World")
     }
   `)
-  Tests.expect(formatted(result, 120)).toBe(result)
+  Tests.expect(formatSource(result, 120)).toBe(result)
   const multiline = S`
     view Main {
       render Text(
@@ -76,13 +76,13 @@ Tests.test('formatting protects unfinished declarations while formatting complet
   const result = format({ source, tree: parser.parse(source) })
   Tests.expect(result.text).toBe('view Ready {\n  render Text("Hi")\n}\n\nview Editing(')
   Tests.expect(result.skipped.length).toBeGreaterThan(0)
-  Tests.expect(formatted(result.text)).toBe(result.text)
+  Tests.expect(formatSource(result.text)).toBe(result.text)
   const invalid = 'public view Root {'
   Tests.expect(format({ source: invalid, tree: parser.parse(invalid) }))
     .toEqual({ status: 'invalid', text: invalid, edits: [], skipped: [{ start: 0, end: invalid.length }] })
 })
 
-function formatted(source: string, width?: number): string {
+function formatSource(source: string, width?: number): string {
   return format({ source, tree: createParser().parse(source) }, { width }).text
 }
 

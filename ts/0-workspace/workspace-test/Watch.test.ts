@@ -1,19 +1,19 @@
-import { Time, Try } from '@shared'
-import { Tests, WorkspaceWatch } from '@shared/os'
-import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
-import type { UpdateResult } from '../workspace-src/Workspace'
+import { Time } from '@shared'
+import { Tests } from '@shared/os'
+import { FileManager } from '../workspace-src/FileManager'
+import * as WatchFixture from './WatchFixture'
 
 Tests.test('opening waits for the latest selected-entry read after an observed change', async () => {
-  const fixture = createManagerFixture(async (_path, _observedAtMs, index) => {
+  const fixture = WatchFixture.createManagerFixture(async (_path, _observedAtMs, index) => {
     if (index === 0) {
       fixtureStarted.resolve()
       await oldRead.promise
-      return snapshot('older')
+      return WatchFixture.createReadSnapshot('older')
     }
-    return snapshot('newer')
+    return WatchFixture.createReadSnapshot('newer')
   })
-  const oldRead = deferredVoid()
-  const fixtureStarted = deferredVoid()
+  const oldRead = WatchFixture.createDeferredVoid()
+  const fixtureStarted = WatchFixture.createDeferredVoid()
   const opening = fixture.manager.openFile('/workspace/App.tao')
   await fixtureStarted.promise
   fixture.notify('change', '/workspace/App.tao')
@@ -30,17 +30,17 @@ Tests.test('opening waits for the latest selected-entry read after an observed c
 })
 
 Tests.test('a rapid workspace burst reads once and compiles only current plus latest work', async () => {
-  const activeGate = deferredVoid()
-  const activeStarted = deferredVoid()
+  const activeGate = WatchFixture.createDeferredVoid()
+  const activeStarted = WatchFixture.createDeferredVoid()
   let reads = 0
-  const fixture = createManagerFixture(
-    async () => snapshot(++reads === 1 ? 'initial' : 'latest'),
+  const fixture = WatchFixture.createManagerFixture(
+    async () => WatchFixture.createReadSnapshot(++reads === 1 ? 'initial' : 'latest'),
     async (source, isCurrent) => {
       if (source === 'active') {
         activeStarted.resolve()
         await activeGate.promise
       }
-      return createUpdateResult(isCurrent() ? 'published' : 'superseded')
+      return WatchFixture.createUpdateResult(isCurrent() ? 'published' : 'superseded')
     },
   )
   await fixture.manager.openFile('/workspace/App.tao')
@@ -61,9 +61,9 @@ Tests.test('a rapid workspace burst reads once and compiles only current plus la
 
 Tests.test('disposal cancels a delayed refresh and closes the workspace watcher', async () => {
   let reads = 0
-  const fixture = createManagerFixture(async () => {
+  const fixture = WatchFixture.createManagerFixture(async () => {
     reads++
-    return snapshot('source')
+    return WatchFixture.createReadSnapshot('source')
   })
   await fixture.manager.openFile('/workspace/App.tao')
   fixture.notify('change', '/workspace/App.tao')
@@ -74,8 +74,8 @@ Tests.test('disposal cancels a delayed refresh and closes the workspace watcher'
 })
 
 Tests.test('concurrent entry switches share the configured workspace watcher root', async () => {
-  const watcherStarted = deferredVoid()
-  const finishWatcherStart = deferredVoid()
+  const watcherStarted = WatchFixture.createDeferredVoid()
+  const finishWatcherStart = WatchFixture.createDeferredVoid()
   const roots: string[] = []
   const manager = new FileManager({
     directory: '/workspace',
@@ -89,7 +89,7 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
       source: 'source',
       observedAtMs,
     }),
-    compile: async () => createUpdateResult('published'),
+    compile: async () => WatchFixture.createUpdateResult('published'),
   })
   const first = manager.openFile('App.tao')
   await watcherStarted.promise
@@ -104,10 +104,10 @@ Tests.test('concurrent entry switches share the configured workspace watcher roo
 
 Tests.test('source notifications refresh the selected entry and ignore output, unrelated and disposed changes', async () => {
   const paths: string[] = []
-  const fixture = createManagerFixture(
+  const fixture = WatchFixture.createManagerFixture(
     async path => {
       paths.push(path)
-      return snapshot(`source-${paths.length}`)
+      return WatchFixture.createReadSnapshot(`source-${paths.length}`)
     },
     undefined,
     { directory: '/workspace', outputDirectory: '/workspace/generated' },
@@ -133,17 +133,17 @@ Tests.test('source notifications refresh the selected entry and ignore output, u
 })
 
 Tests.test('pipeline watches update dynamically and exclude immutable snapshot trees', async () => {
-  const fixture = dynamicWatchFixture()
-  const compiled = new Promise<UpdateResult>(resolve =>
-    fixture.manager.onCompiled(event => event.source === 'read-2' && resolve(event.result))
-  )
+  const fixture = WatchFixture.createDynamicWatchFixture()
+  const compiled = WatchFixture.waitForCompiledSource(fixture.manager, 'read-2')
   await fixture.manager.openFile('/workspace/App.tao')
   await fixture.manager.updatePipelineDirectories(
     ['/workspace/source', '/dependencies/producer/src'],
+    [],
     ['/workspace/.tao/cache/snapshots'],
   )
   await fixture.manager.updatePipelineDirectories(
     ['/workspace/source', '/dependencies/producer/src'],
+    [],
     ['/workspace/.tao/cache/snapshots'],
   )
   Tests.expect(fixture.watchCalls()).toBe(1)
@@ -160,180 +160,45 @@ Tests.test('pipeline watches update dynamically and exclude immutable snapshot t
   fixture.change({ path: '/dependencies/producer/src/View.tao', kind: 'change', observedAtMs: Time.timestampMs() })
   fixture.flush()
   Tests.expect(await compiled).toMatchObject({ status: 'published' })
-  await fixture.manager.updatePipelineDirectories([], [])
+  await fixture.manager.updatePipelineDirectories([], [], [])
   Tests.expect(fixture.updates()).toHaveLength(2)
   Tests.expect(fixture.updates()[1]!.directories).toEqual(['/workspace/static'])
   await fixture.manager.dispose()
 })
 
-function dynamicWatchFixture() {
-  let changed: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  let scheduled: (() => void) | undefined
-  let watches = 0
-  const updates: Array<{ directories: readonly string[]; ignored: readonly string[] }> = []
-  let reads = 0
-  const manager = new FileManager({
-    directory: '/workspace',
-    outputDirectory: '/workspace/output',
-    watchDirectories: ['/workspace/static'],
-    async watch(_root, onChange) {
-      watches++
-      changed = onChange
-      return {
-        async updateDirectories(directories, ignored) {
-          updates.push({ directories, ignored })
-        },
-        async dispose() {},
-      }
-    },
-    read: async (_path, observedAtMs) => ({
-      source: `read-${++reads}`,
-      observedAtMs,
-    }),
-    schedule(_delay, callback) {
-      scheduled = callback
-      return () => scheduled = undefined
-    },
-    compile: async (_request, isCurrent) => createUpdateResult(isCurrent() ? 'published' : 'superseded'),
+Tests.test('reached TypeScript helpers and assets refresh while unrelated assets stay ignored', async () => {
+  const fixture = WatchFixture.createDynamicWatchFixture()
+  await fixture.manager.openFile('/workspace/App.tao')
+  await fixture.manager.updatePipelineDirectories(
+    ['/dependencies/producer/src'],
+    ['/dependencies/producer/src/format.cts', '/dependencies/producer/src/logo.png'],
+    ['/workspace/.tao/cache/snapshots'],
+  )
+
+  const helperCompile = WatchFixture.waitForCompiledSource(fixture.manager, 'read-2')
+  fixture.change({ path: '/dependencies/producer/src/format.cts', kind: 'change', observedAtMs: Time.timestampMs() })
+  Tests.expect(fixture.scheduled()).toBeDefined()
+  fixture.flush()
+  Tests.expect(await helperCompile).toMatchObject({ status: 'published' })
+
+  const assetCompile = WatchFixture.waitForCompiledSource(fixture.manager, 'read-3')
+  fixture.change({ path: '/dependencies/producer/src/logo.png', kind: 'unlink', observedAtMs: Time.timestampMs() })
+  Tests.expect(fixture.scheduled()).toBeDefined()
+  fixture.flush()
+  Tests.expect(await assetCompile).toMatchObject({ status: 'published' })
+
+  await fixture.manager.watchPipelineFiles(['/dependencies/producer/src/new-logo.png'])
+  const recoveryCompile = WatchFixture.waitForCompiledSource(fixture.manager, 'read-4')
+  fixture.change({
+    path: '/dependencies/producer/src/new-logo.png',
+    kind: 'add',
+    observedAtMs: Time.timestampMs(),
   })
-  return {
-    manager,
-    watchCalls: () => watches,
-    updates: () => updates,
-    scheduled: () => scheduled,
-    change: (change: WorkspaceWatch.WorkspaceChange) => changed?.(change),
-    flush() {
-      const callback = scheduled
-      scheduled = undefined
-      callback?.()
-    },
-  }
-}
+  Tests.expect(fixture.scheduled()).toBeDefined()
+  fixture.flush()
+  Tests.expect(await recoveryCompile).toMatchObject({ status: 'published' })
 
-type ReadSnapshot = Exclude<Awaited<ReturnType<NonNullable<FileManagerOptions['read']>>>, UpdateResult>
-
-type ManagerFixtureState = {
-  onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  scheduled: (() => void) | undefined
-  readCount: number
-  activeReads: number
-  maxConcurrentReads: number
-  closed: number
-  compiled: string[]
-  completed: Map<string, UpdateResult>
-  waiters: Map<string, (result: UpdateResult) => void>
-}
-
-function createManagerFixture(
-  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
-  compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult> = async (_source, isCurrent) =>
-    createUpdateResult(isCurrent() ? 'published' : 'superseded'),
-  options: Partial<FileManagerOptions> = {},
-) {
-  const state: ManagerFixtureState = {
-    onChange: undefined,
-    scheduled: undefined,
-    readCount: 0,
-    activeReads: 0,
-    maxConcurrentReads: 0,
-    closed: 0,
-    compiled: [],
-    completed: new Map(),
-    waiters: new Map(),
-  }
-  const manager = createFixtureManager(read, compileSource, state, options)
-  manager.onCompiled(event => {
-    state.completed.set(event.source, event.result)
-    state.waiters.get(event.source)?.(event.result)
-  })
-  return {
-    manager,
-    compiled: state.compiled,
-    get closed() {
-      return state.closed
-    },
-    get readCount() {
-      return state.readCount
-    },
-    get maxConcurrentReads() {
-      return state.maxConcurrentReads
-    },
-    notify(kind: WorkspaceWatch.WorkspaceChange['kind'], path: string) {
-      state.onChange?.({ kind, path, observedAtMs: Time.timestampMs() })
-    },
-    flush() {
-      const callback = state.scheduled
-      state.scheduled = undefined
-      callback?.()
-    },
-    async waitForCompiled(source: string) {
-      const existing = state.completed.get(source)
-      return existing ?? await new Promise(resolve => state.waiters.set(source, resolve))
-    },
-    async dispose() {
-      await manager.dispose()
-    },
-  }
-}
-
-function createFixtureManager(
-  read: (path: string, observedAtMs: number, index: number) => Promise<ReadSnapshot>,
-  compileSource: (source: string, isCurrent: () => boolean) => Promise<UpdateResult>,
-  state: ManagerFixtureState,
-  options: Partial<FileManagerOptions>,
-): FileManager {
-  const manager = new FileManager({
-    ...options,
-    async read(path, observedAtMs) {
-      state.activeReads++
-      state.maxConcurrentReads = Math.max(state.maxConcurrentReads, state.activeReads)
-      return await Try(() => read(path, observedAtMs, state.readCount++), {
-        finally() {
-          state.activeReads--
-        },
-      })
-    },
-    async watch(_directory, change) {
-      state.onChange = change
-      return {
-        async dispose() {
-          state.closed++
-        },
-      }
-    },
-    schedule(_delayMs, callback) {
-      state.scheduled = callback
-      return () => {
-        state.scheduled = undefined
-      }
-    },
-    async compile(request, isCurrent) {
-      state.compiled.push(request.source)
-      return await compileSource(request.source, isCurrent)
-    },
-  })
-  return manager
-}
-
-function snapshot(source: string): ReadSnapshot {
-  return { source, observedAtMs: Time.timestampMs() }
-}
-
-function createUpdateResult(status: Exclude<UpdateResult['status'], 'failed'>): UpdateResult {
-  return {
-    status,
-    revision: 'fixture',
-    timings: [],
-    stages: {
-      typecheck: { stage: 'typecheck', status: 'skipped' },
-      fix: { stage: 'fix', status: 'skipped' },
-      check: { stage: 'check', status: 'skipped' },
-    },
-  }
-}
-
-function deferredVoid() {
-  let resolve!: () => void
-  const promise = new Promise<void>(complete => resolve = complete)
-  return { promise, resolve }
-}
+  fixture.change({ path: '/workspace/unrelated.png', kind: 'change', observedAtMs: Time.timestampMs() })
+  Tests.expect(fixture.scheduled()).toBeUndefined()
+  await fixture.manager.dispose()
+})

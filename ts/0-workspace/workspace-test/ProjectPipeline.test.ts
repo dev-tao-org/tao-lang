@@ -101,6 +101,7 @@ function fakeServices(
         fingerprint: `snapshots-${snapshotCount}`,
         resolveForeignViewPath: () => '/session/foreign-views/view.tsx',
         watchDirectories: ['/project/source'],
+        watchFiles: [],
         snapshotDirectories: ['/session/foreign-views/snapshots'],
       } satisfies PreparedSidecars
     },
