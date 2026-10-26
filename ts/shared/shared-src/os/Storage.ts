@@ -104,14 +104,14 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
 
 function resolveStorageRoots(): StorageRoots {
   const system = Platform.systemInfo().os
-  const current = storagePlatform(system)
+  const current = resolveStoragePlatform(system)
   if (!current) {
     Errors.ThrowHostEnvironment(`Tao storage locations are not defined for this operating system: ${system}`)
   }
   return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
 }
 
-function storagePlatform(system: string): StoragePlatform | undefined {
+function resolveStoragePlatform(system: string): StoragePlatform | undefined {
   if (system === 'Darwin') {
     return 'macos'
   }

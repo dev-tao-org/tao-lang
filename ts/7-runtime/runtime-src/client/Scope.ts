@@ -1,9 +1,6 @@
 import { Errors } from '@shared'
 import type React from './Bridge-React'
 
-/** ScopeAliasNames maps each generated binding name to its authored target name. */
-export type ScopeAliasNames<Bindings extends Scope> = { readonly [Name in keyof Bindings]: string }
-
 /** Scope is one readonly lexical record whose prototype links to its parent scope. */
 export type Scope = Readonly<Record<string, unknown>>
 
@@ -57,3 +54,5 @@ export function ViewRenderBlock<Parent extends Scope>(
   body(Scope(parent) as Parent, children)
   return children
 }
+
+type ScopeAliasNames<Bindings extends Scope> = { readonly [Name in keyof Bindings]: string }

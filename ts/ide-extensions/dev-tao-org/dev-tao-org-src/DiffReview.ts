@@ -1,8 +1,5 @@
 import { Errors } from '@shared'
 
-/** DiffArgumentSide pairs a Git revision with the URI on that side of a comparison. */
-export type DiffArgumentSide<Uri> = { sha: string; uri: Uri }
-
 /** DiffArguments identifies the compared repository revisions and file. */
 export type DiffArguments<Uri> = {
   repoPath: string
@@ -56,3 +53,5 @@ export async function chooseDiffBase(
 export function diffArguments<Uri>(repoPath: string, base: string, uri: Uri): DiffArguments<Uri> {
   return { repoPath, lhs: { sha: base, uri }, rhs: { sha: '', uri }, fromComparison: true, range: null }
 }
+
+type DiffArgumentSide<Uri> = { sha: string; uri: Uri }
