@@ -1,4 +1,5 @@
-import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
+import { Artifacts, Path, Platform } from '@shared/os'
+import { initializeProject } from './projects/Projects'
 
 /** createProject creates a Tao project folder; runtime setup belongs to workspace compilation. */
 export async function createProject(options: ProjectOptions = {}): Promise<Project> {
@@ -6,8 +7,8 @@ export async function createProject(options: ProjectOptions = {}): Promise<Proje
   if (!options.persistent) {
     Artifacts.trackTemporary(directory)
   }
-  await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
-  return { directory, buildDirectory: Path.join(directory, '.tao/cache/build') }
+  const project = await initializeProject(directory)
+  return { directory: project.root, buildDirectory: Path.join(project.root, '.tao/cache/build') }
 }
 
 /** Project identifies an authored Tao project and its separate compilation output directory. */
