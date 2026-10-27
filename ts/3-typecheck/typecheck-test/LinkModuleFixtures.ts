@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { Range } from '@shared'
 import type { SourceModule } from '../typecheck-src/Modules'
 
 /** createSource builds a linked-module fixture with explicit path and siblings. */
@@ -9,7 +10,7 @@ export function createSource(
 ): SourceModule {
   return {
     path,
-    document: { root: { kind: 'File', start: 0, end: 0, block: createBlock(declarations) } },
+    document: { root: { kind: 'File', ...Range(), block: createBlock(declarations) } },
     imports: [],
     siblings,
   }
@@ -19,16 +20,14 @@ export function createSource(
 export function createView(name: string, visibility: AST.Visibility = 'file'): AST.ViewDeclaration {
   return {
     kind: 'ViewDeclaration',
-    start: 0,
-    end: 0,
+    ...Range(),
     name: createIdentifier(name),
     visibility,
     parameters: [],
     body: createViewBlock([{
       kind: 'RenderInjectStatement',
-      start: 0,
-      end: 0,
-      injection: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+      ...Range(),
+      injection: { kind: 'Injection', ...Range(), captures: [], code: '' },
     }]),
   }
 }
@@ -40,8 +39,7 @@ export function createViewRender(
 ): AST.ViewRenderExpression {
   return {
     kind: 'ViewRenderExpression',
-    start: 0,
-    end: 0,
+    ...Range(),
     tag: undefined,
     target: createIdentifier(target),
     arguments: [],
@@ -57,11 +55,10 @@ export function createLetDefinition(
 ): AST.LetDeclaration {
   return {
     kind: 'LetDeclaration',
-    start: 0,
-    end: 0,
+    ...Range(),
     name: createIdentifier(name),
     type: undefined,
-    value: { kind: 'TextLiteral', start: 0, end: 0, value },
+    value: { kind: 'TextLiteral', ...Range(), value },
     visibility,
   }
 }
@@ -73,15 +70,15 @@ export function createViewBlock(statements: readonly AST.ViewDeclarationStatemen
 
 /** createBlock builds a typed AST block from its statements. */
 export function createBlock<Statement extends AST.Node>(statements: readonly Statement[]): AST.Block<Statement> {
-  return { kind: 'Block', start: 0, end: 0, statements }
+  return { kind: 'Block', ...Range(), statements }
 }
 
 /** createIdentifier builds an AST name fixture from its value. */
 export function createIdentifier(value: string): AST.Name {
-  return { kind: 'Name', start: 0, end: value.length, value }
+  return { kind: 'Name', ...Range(0, value.length), value }
 }
 
 /** createParameter builds a named parameter with its explicit Tao type. */
 export function createParameter(name: string, type: string): AST.Parameter {
-  return { kind: 'Parameter', start: 0, end: 0, name: createIdentifier(name), type: createIdentifier(type) }
+  return { kind: 'Parameter', ...Range(), name: createIdentifier(name), type: createIdentifier(type) }
 }

@@ -1,14 +1,12 @@
 import * as AST from '@ast-gen/AST'
-import { Switch, Timings } from '@shared'
+import { type Range, Switch, Timings } from '@shared'
 import { deriveNamespaceFromPath } from './Modules'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
-export type UsageWarning = {
+export type UsageWarning = Range & {
   severity: 'warning'
   code: 'unused-import' | 'unused-declaration'
   message: string
-  start: number
-  end: number
 }
 
 /** unusedWarnings checks lexical references in a complete AST without loading other modules. */

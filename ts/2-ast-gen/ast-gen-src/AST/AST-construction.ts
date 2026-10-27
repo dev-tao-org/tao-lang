@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { Errors } from '@shared'
+import { Errors, Range } from '@shared'
 import * as Generated from '../../_gen_AST/AST-generated'
 
 export * from '../../_gen_AST/AST-generated'
@@ -294,8 +294,8 @@ function constructOptionalVisibility(cst: CST.SyntaxNode): Generated.Visibility 
   return cst.childForFieldName('visibility')?.text as Generated.Visibility | undefined
 }
 
-function getSourceRange(cst: CST.SyntaxNode): { start: number; end: number } {
-  return { start: cst.startIndex, end: cst.endIndex }
+function getSourceRange(cst: CST.SyntaxNode): Range {
+  return Range(cst.startIndex, cst.endIndex)
 }
 
 function makeNode<Kind extends Generated.Node['kind']>(

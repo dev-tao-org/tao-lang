@@ -1,9 +1,8 @@
 import type { SyntaxNode, Tree } from '@cst'
-import { Errors } from '@shared'
-import type { SourceRange } from '../../Source'
+import { Errors, Range } from '@shared'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
-export type Boundary = SourceRange & {
+export type Boundary = Range & {
   spaces: number
   explicitSpace?: number
   lines: number
@@ -30,7 +29,7 @@ export type LayoutPlan = {
   gaps: Boundary[]
   bounds: Map<string, { first: number; last: number }>
   groups: ListGroup[]
-  skipped: SourceRange[]
+  skipped: Range[]
 }
 
 /** createPlan collects tokens once, protecting incomplete declarations and their adjoining gaps. */
@@ -49,7 +48,7 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
   for (const [index, node] of tree.rootNode.namedChildren.entries()) {
     valid[index] = isCompleteNode(node)
     if (!valid[index]) {
-      plan.skipped.push({ start: node.startIndex, end: node.endIndex })
+      plan.skipped.push(Range(node.startIndex, node.endIndex))
     }
     collect(plan, node, index, owners, valid[index]!)
   }

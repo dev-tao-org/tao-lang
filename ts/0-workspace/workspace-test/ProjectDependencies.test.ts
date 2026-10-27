@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Try } from '@shared'
+import { Range, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import type { SourceModule } from '@typecheck/Modules'
@@ -125,12 +125,11 @@ function requirementDeclaration(requirement: DependencyRequirement): AST.Require
   const alias = requirement.alias
   return {
     kind: 'RequiresDeclaration',
-    start: 0,
-    end: 0,
+    ...Range(),
     provider: requirement.provider,
     identifier: requirement.identifier,
     version: requirement.version,
-    alias: alias === undefined ? undefined : { kind: 'Name', start: 0, end: 0, value: alias },
+    alias: alias === undefined ? undefined : { kind: 'Name', ...Range(), value: alias },
   }
 }
 

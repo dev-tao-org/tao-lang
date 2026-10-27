@@ -1,9 +1,9 @@
 import * as CST from '@cst'
 import type { SyntaxNode, Tree } from '@cst'
-import type { SourceRange } from '../../Source'
+import type { Range } from '@shared'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
-export type StatementSlice = SourceRange & { node: SyntaxNode; commented: boolean }
+export type StatementSlice = Range & { node: SyntaxNode; commented: boolean }
 
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
 export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {

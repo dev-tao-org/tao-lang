@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Try } from '@shared'
+import { Errors, Range, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
@@ -105,7 +105,7 @@ export async function withDependencySession<T>(
 }
 
 type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
-type NpmRequirementOccurrence = { path: string; source: string; start: number; end: number; alias?: string }
+type NpmRequirementOccurrence = { path: string; source: string; alias?: string } & Range
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
@@ -219,8 +219,7 @@ function collectNpmRequirementSpans(
     return [{
       path,
       source,
-      start: declaration.start,
-      end: declaration.end,
+      ...Range(declaration.start, declaration.end),
       ...(declaration.alias ? { alias: declaration.alias.value } : {}),
     }]
   })

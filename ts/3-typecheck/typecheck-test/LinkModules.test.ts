@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { Range } from '@shared'
 import { Tests } from '@shared/os'
 import { linkModules } from '../typecheck-src/LinkModules'
 import type { SourceModule } from '../typecheck-src/Modules'
@@ -211,20 +212,18 @@ function renderWithNameArgument(target: string, name: string): AST.ViewRenderExp
 }
 
 function renderViewExpression(expression: AST.ViewRenderExpression): AST.RenderViewExpressionStatement {
-  return { kind: 'RenderViewExpressionStatement', start: 0, end: 0, expression }
+  return { kind: 'RenderViewExpressionStatement', ...Range(), expression }
 }
 
 function useNamed(target: string, alias?: string): AST.UseStatement {
   return {
     kind: 'UseStatement',
-    start: 0,
-    end: 0,
+    ...Range(),
     all: false,
     from: undefined,
     imports: [{
       kind: 'NamedImport',
-      start: 0,
-      end: 0,
+      ...Range(),
       target: Fixtures.createIdentifier(target),
       alias: alias ? Fixtures.createIdentifier(alias) : undefined,
     }],
@@ -232,15 +231,14 @@ function useNamed(target: string, alias?: string): AST.UseStatement {
 }
 
 function useAll(): AST.UseStatement {
-  return { kind: 'UseStatement', start: 0, end: 0, all: true, imports: [], from: undefined }
+  return { kind: 'UseStatement', ...Range(), all: true, imports: [], from: undefined }
 }
 
 function usePackage(path: string, alias?: string): AST.UsePackageStatement {
   return {
     kind: 'UsePackageStatement',
-    start: 0,
-    end: 0,
-    from: { kind: 'ImportPath', start: 0, end: 0, value: path },
+    ...Range(),
+    from: { kind: 'ImportPath', ...Range(), value: path },
     alias: alias ? Fixtures.createIdentifier(alias) : undefined,
   }
 }

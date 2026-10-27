@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { Timings } from '@shared'
+import { Range, Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
@@ -31,12 +31,12 @@ const emitLayout = Timings.measure('formatter.layout', function(
       breakList(plan, group)
     }
     if (gap.editable && whitespace !== plan.source.slice(gap.start, gap.end)) {
-      edits.push({ start: gap.start, end: gap.end, text: whitespace })
+      edits.push({ ...Range(gap.start, gap.end), text: whitespace })
     }
     const token = plan.tokens[index]
     const text = formatToken(plan, index, options, timings)
     if (token && text !== token.text) {
-      edits.push({ start: token.startIndex, end: token.endIndex, text })
+      edits.push({ ...Range(token.startIndex, token.endIndex), text })
     }
     column = advanceColumn(column, text)
   }
@@ -59,7 +59,7 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     newline: plan.newline,
   })
   if (body === undefined) {
-    plan.skipped.push({ start: token.startIndex, end: token.endIndex })
+    plan.skipped.push(Range(token.startIndex, token.endIndex))
     return token.text
   }
   return '```ts' + plan.newline + body.trimEnd()

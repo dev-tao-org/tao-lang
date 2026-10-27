@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { Range } from '@shared'
 import { Tests } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import * as ProjectPipeline from '../workspace-src/ProjectPipeline'
@@ -123,7 +124,7 @@ function program(source: string, requirement: string): LinkedProgram {
 }
 
 function projectDocument(source: string, requirement: string): AST.Document {
-  const sourceRange = { start: 0, end: source.length }
+  const sourceRange = Range(0, source.length)
   return {
     root: {
       ...sourceRange,
@@ -138,11 +139,11 @@ function projectDocument(source: string, requirement: string): AST.Document {
 }
 
 function projectView(source: string): AST.ViewDeclaration {
-  const sourceRange = { start: 0, end: source.length }
+  const sourceRange = Range(0, source.length)
   return {
     ...sourceRange,
     kind: 'ViewDeclaration',
-    name: { kind: 'Name', start: 0, end: 0, value: 'Main' },
+    name: { kind: 'Name', ...Range(), value: 'Main' },
     visibility: undefined,
     parameters: [],
     body: {
@@ -151,7 +152,7 @@ function projectView(source: string): AST.ViewDeclaration {
       statements: [{
         ...sourceRange,
         kind: 'RenderInjectStatement',
-        injection: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+        injection: { kind: 'Injection', ...Range(), captures: [], code: '' },
       }],
     },
   }

@@ -1,3 +1,4 @@
+import { Range } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */
@@ -106,13 +107,12 @@ function stringLayout(
   if (!TypeScript.isTemplateExpression(node)) {
     return layout
   }
-  const ranges: { start: number; end: number }[] = []
+  const ranges: Range[] = []
   let previous: TypeScript.TemplateHead | TypeScript.TemplateMiddle = node.head
   for (const span of node.templateSpans) {
-    ranges.push({
-      start: previous.end - 2 - node.getStart(file),
-      end: span.literal.getStart(file) + 1 - node.getStart(file),
-    })
+    const rangeStart = previous.end - 2 - node.getStart(file)
+    const rangeEnd = span.literal.getStart(file) + 1 - node.getStart(file)
+    ranges.push(Range(rangeStart, rangeEnd))
     if (TypeScript.isTemplateMiddle(span.literal)) {
       previous = span.literal
     }

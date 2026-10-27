@@ -1,17 +1,13 @@
-import { Time } from '@shared'
+import { type Range, Time } from '@shared'
 import { type Node, type Query } from 'web-tree-sitter'
 
 /** Token is a syntax query capture mapped to an editor source range. */
-export interface Token {
-  start: number
-  end: number
+export interface Token extends Range {
   kind: string
 }
 
 /** Diagnostic describes a parser error mapped to an editor source range. */
-export interface Diagnostic {
-  start: number
-  end: number
+export interface Diagnostic extends Range {
   message: string
 }
 

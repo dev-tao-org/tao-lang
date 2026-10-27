@@ -1,10 +1,7 @@
-import { Errors } from '@shared'
+import { Errors, type Range } from '@shared'
 
-/** SourceRange identifies a UTF-16 interval in one immutable source snapshot. */
-export type SourceRange = { start: number; end: number }
-
-/** SourceEdit replaces one source interval without retaining CST nodes. */
-export type SourceEdit = SourceRange & { text: string }
+/** SourceEdit replaces one UTF-16 source interval without retaining CST nodes. */
+export type SourceEdit = Range & { text: string }
 
 /** applyEdits applies ordered, nonoverlapping edits without changing their source snapshot. */
 export function applyEdits(source: string, edits: readonly SourceEdit[]): string {

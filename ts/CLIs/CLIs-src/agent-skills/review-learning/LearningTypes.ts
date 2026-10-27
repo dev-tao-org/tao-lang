@@ -1,3 +1,5 @@
+import type { Range } from '@shared'
+
 /** Correction retains human evidence separately from candidate detection. */
 export type Correction = {
   id: string
@@ -23,7 +25,7 @@ export type QueryRule = {
 }
 
 /** Finding marks a candidate needing contextual judgment before correction. */
-export type Finding = { file: string; start: number; end: number; line: number; message: string }
+export type Finding = { file: string; line: number; message: string } & Range
 
 /** Scan freezes scope membership, content and configuration for reproducible coverage. */
 export type Scan = {
@@ -44,10 +46,12 @@ export type Proposal = {
   scan: string
   analysis: string
   protectedFiles?: string[]
-  edits: { file: string; start: number; end: number; expected: string; replacement: string }[]
+  edits: ProposalEdit[]
   state?: 'pending' | 'applying' | 'applied'
   outputs?: Record<string, { before: string; after: string; done: boolean }>
 }
+
+type ProposalEdit = { file: string; expected: string; replacement: string } & Range
 
 /** LearningState is the append-only correction and scan history with a pending patch queue. */
 export type LearningState = {

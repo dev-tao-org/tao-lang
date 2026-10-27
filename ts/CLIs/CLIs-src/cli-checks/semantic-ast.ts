@@ -124,12 +124,12 @@ function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata) {
 
 function renderSemanticAst(model: ReturnType<typeof createSemanticAstModel>): string {
   return `// @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.\n`
-    + `import type * as CST from '@cst'\nimport { Construct } from '../ast-gen-src/AST/AST-construction'\n`
-    + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly start: number; readonly end: number } & Readonly<Fields>\n`
+    + `import type * as CST from '@cst'\nimport type { Range } from '@shared'\nimport { Construct } from '../ast-gen-src/AST/AST-construction'\n`
+    + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind } & Readonly<Range> & Readonly<Fields>\n`
     + `export type Visibility = ${model.visibility}\nexport type RequirementProvider = ${model.providers}\n`
     + `export type Name = Semantic<'Name', { value: string }>\n`
-    + `export interface Block<Statement extends Node = Node> {\n`
-    + `  readonly kind: 'Block'\n  readonly start: number\n  readonly end: number\n`
+    + `export interface Block<Statement extends Node = Node> extends Readonly<Range> {\n`
+    + `  readonly kind: 'Block'\n`
     + `  readonly statements: readonly Statement[]\n}\n`
     + `${model.declarations}\n`
     + `export type Declaration = ${model.declarationMembers.join(' | ')}\n`
