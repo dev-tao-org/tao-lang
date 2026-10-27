@@ -1,5 +1,5 @@
 import { createFsFromVolume, Volume } from 'memfs'
-import { Errors, nullCharacter, Time } from '../universal/universal'
+import { Errors, NullCharacter, Time } from '../universal/universal'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 import * as Node from './NodeBuiltins'
 
@@ -97,7 +97,7 @@ function createSnapshot(root: string, runtime: string, files: Readonly<Record<st
 
 function isInvalidPath(path: string): boolean {
   const segments = path.split('/')
-  return Node.isAbsolute(path) || path.includes('\\') || path.includes(nullCharacter) || segments[0] === '_gen_runtime'
+  return Node.isAbsolute(path) || path.includes('\\') || path.includes(NullCharacter) || segments[0] === '_gen_runtime'
     || segments.some(segment => !segment || segment === '.' || segment === '..')
 }
 

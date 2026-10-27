@@ -1,4 +1,4 @@
-import { Errors, nullCharacter, Try } from '@shared'
+import { Errors, NullCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { assertOwnedSession, requireCleanReviewed, requireIdleSession } from './ReviewSession'
@@ -72,7 +72,7 @@ export async function validateSelection(session: ReviewSession, selection: Revie
   }
   const revisions = selection.kind === 'reopen' ? [selection.reviewedHead, session.baseCommit] : selection.reviewedHead
   const files = await ReviewGit.expandFiles(session.root, selection.files, revisions)
-  if (files.join(nullCharacter) !== selection.files.join(nullCharacter)) {
+  if (files.join(NullCharacter) !== selection.files.join(NullCharacter)) {
     Errors.ThrowUserInput('The literal selection changed after planning. Generate a new plan.')
   }
   const disk = await ReviewGit.snapshot(session.root, session.directory, selection.sourceHead, files)
@@ -98,12 +98,12 @@ export async function validateSelection(session: ReviewSession, selection: Revie
 
 /** replaceEntries transfers literal object/mode entries, including deletions, between private indices. */
 export async function replaceEntries(root: string, index: string, revision: string, files: string[]): Promise<void> {
-  const removals = files.map(path => `0 ${gitRemovalObjectId}\t${path}${nullCharacter}`).join('')
+  const removals = files.map(path => `0 ${GitRemovalObjectId}\t${path}${NullCharacter}`).join('')
   const entries = await ReviewGit.readGitPathEntries(root, revision, files)
   await ReviewGit.git(root, ['update-index', '-z', '--index-info'], { index, input: removals + entries })
 }
 
-const gitRemovalObjectId = '0'.repeat(40)
+const GitRemovalObjectId = '0'.repeat(40)
 
 async function wholeCandidates(
   session: ReviewSession,

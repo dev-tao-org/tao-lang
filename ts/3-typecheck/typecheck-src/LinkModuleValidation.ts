@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors } from '@shared'
+import { Errors, Switch } from '@shared'
 import type { SourceModule } from './Modules'
 
 /** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
@@ -13,25 +13,30 @@ export function assertUniqueLocalBindings(source: SourceModule): void {
 export function collectReferencedNames(document: AST.Document): ReadonlySet<string> {
   const names = new Set<string>()
   for (const declaration of AST.GetDeclarations(document)) {
-    if (AST.IsAppDeclaration(declaration)) {
-      names.add(AST.GetAppRoot(declaration).value)
-    } else if (AST.IsViewDeclaration(declaration)) {
-      collectViewReferences(declaration, names, new Set())
-    } else if (AST.IsLetDeclaration(declaration)) {
-      addLetReferences(declaration, names)
-    } else if (AST.IsKind(declaration, 'TestsDeclaration')) {
-      for (const test of declaration.block.statements) {
-        for (const step of AST.GetTestSteps(test)) {
-          if (AST.IsKind(step, 'RunStatement')) {
-            names.add(step.app.value)
-          }
-        }
-      }
-    } else {
+    Switch.kind(declaration, {
+      AppDeclaration(app) {
+        names.add(AST.GetAppRoot(app).value)
+      },
+      ViewDeclaration: view => collectViewReferences(view, names, new Set()),
+      LetDeclaration: definition => addLetReferences(definition, names),
+      TestsDeclaration: tests => collectTestReferences(tests, names),
       // Imports and requirements introduce bindings but do not reference Tao values.
-    }
+      UseStatement: Switch.nothing,
+      UsePackageStatement: Switch.nothing,
+      RequiresDeclaration: Switch.nothing,
+    })
   }
   return names
+}
+
+function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>): void {
+  for (const test of tests.block.statements) {
+    for (const step of AST.GetTestSteps(test)) {
+      if (AST.IsKind(step, 'RunStatement')) {
+        names.add(step.app.value)
+      }
+    }
+  }
 }
 
 function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void {
@@ -65,18 +70,15 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
     localNames.add(child.name.value)
   }
   for (const statement of statements) {
-    if (AST.IsLetDeclaration(statement)) {
-      addScopedLetReferences(statement, names, localNames)
-      localNames.add(statement.name.value)
-    } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-      addScopedRenderReferences(statement.expression, names, localNames)
-    } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
-      addInjectionReferences(statement.injection, names, localNames)
-    } else if (AST.IsViewDeclaration(statement)) {
-      collectViewReferences(statement, names, localNames)
-    } else {
-      Errors.ThrowShouldNeverHappen('Unexpected view declaration statement.')
-    }
+    Switch.kind(statement, {
+      LetDeclaration(definition) {
+        addScopedLetReferences(definition, names, localNames)
+        localNames.add(definition.name.value)
+      },
+      RenderViewExpressionStatement: render => addScopedRenderReferences(render.expression, names, localNames),
+      RenderInjectStatement: render => addInjectionReferences(render.injection, names, localNames),
+      ViewDeclaration: view => collectViewReferences(view, names, localNames),
+    })
   }
 }
 

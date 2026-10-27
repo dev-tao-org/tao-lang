@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
-import { createForeignViewContractSource, foreignViewContractOwnership } from '../sidecars/ForeignViewContracts'
+import { createForeignViewContractSource, ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
 import type { SidecarGroup } from './Snapshots'
 
 /** assetDeclarations declares the copied asset formats accepted by sidecar TypeScript modules. */
@@ -89,7 +89,7 @@ function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, 
           exportRelativePath: view.relativeSidecarPath,
         })),
       )
-      files.set(`${contractPath}.tao-managed`, encodeSnapshotText(foreignViewContractOwnership))
+      files.set(`${contractPath}.tao-managed`, encodeSnapshotText(ForeignViewContractOwnership))
     }
     for (const [source, contents] of group.files) {
       files.set(Path.join(modulePath, Path.relative(group.moduleRoot, source)), contents)

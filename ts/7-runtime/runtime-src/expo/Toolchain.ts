@@ -1,4 +1,4 @@
-import { Errors, nullCharacter, Try } from '@shared'
+import { Errors, NullCharacter, Try } from '@shared'
 import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { readRuntimePatches } from './RuntimePatches'
 
@@ -101,7 +101,7 @@ async function toolchainIdentity(
   const architecture = identityInputs?.architecture ?? platform.architecture
   const { patches } = await readRuntimePatches(resourcesDirectory)
   const identity = [manifest, lockfile, JSON.stringify(patches), runtimeVersion, os, architecture, toolchainCachePolicy]
-    .join(nullCharacter)
+    .join(NullCharacter)
   return Platform.hashText(identity)
 }
 

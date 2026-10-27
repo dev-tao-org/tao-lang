@@ -136,8 +136,8 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
   const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
   const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
   for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
-    const bodyStart = injection.startIndex + fencePrefix.length
-    const bodyEnd = injection.endIndex - fenceSuffix.length
+    const bodyStart = injection.startIndex + FencePrefix.length
+    const bodyEnd = injection.endIndex - FenceSuffix.length
     if (bodyEnd < bodyStart) {
       continue
     }
@@ -185,8 +185,8 @@ const initializeParser = createRetryableInitialization((runtimeWasmPath?: string
   )
 )
 
-const fencePrefix = '```ts'
-const fenceSuffix = '```'
+const FencePrefix = '```ts'
+const FenceSuffix = '```'
 
 function measure<T>(options: SessionOptions, phase: 'tao.parse' | 'tsx.parse' | 'query', operation: () => T): T {
   if (!options.measure) {

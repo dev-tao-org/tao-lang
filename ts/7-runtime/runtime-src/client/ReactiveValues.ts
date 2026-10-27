@@ -7,24 +7,24 @@ export function encodeReactiveValue(value: unknown): ReactiveValue {
     return value
   }
   if (Object.is(value, -0)) {
-    return negativeZero
+    return NegativeZero
   }
   if (Number.isNaN(value)) {
-    return nanValue
+    return NaNValue
   }
   return value
 }
 
 /** decodeReactiveValue keeps internal equality sentinels out of public reads and evaluators. */
 export function decodeReactiveValue<T>(value: ReactiveValue): T {
-  if (value === negativeZero) {
+  if (value === NegativeZero) {
     return -0 as T
   }
-  if (value === nanValue) {
+  if (value === NaNValue) {
     return Number.NaN as T
   }
   return value as T
 }
 
-const negativeZero = Object.freeze({ value: '-0' })
-const nanValue = Object.freeze({ value: 'NaN' })
+const NegativeZero = Object.freeze({ value: '-0' })
+const NaNValue = Object.freeze({ value: 'NaN' })

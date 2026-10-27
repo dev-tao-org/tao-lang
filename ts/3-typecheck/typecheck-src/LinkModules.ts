@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors } from '@shared'
+import { Errors, Switch } from '@shared'
 import { orderDefinitions } from './LinkModuleDefinitions'
 import { assertUniqueLocalBindings, collectReferencedNames } from './LinkModuleValidation'
 import { deriveNamespaceFromPath, type LinkedProgram, ModuleBinding, type SourceModule } from './Modules'
@@ -154,13 +154,17 @@ function resolvePackageNamespace(statement: AST.UsePackageStatement): string {
 }
 
 function createImportStatementKey(statement: AST.UseStatement | AST.UsePackageStatement): string {
-  if (AST.IsUsePackageStatement(statement)) {
-    // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
-    return `package:${statement.from.value}:${statement.alias?.value ?? ''}`
-  }
-  const names = statement.imports.map(createNamedImportKey).join(',')
-  // ex: use Foo as Bar from X -> use:Foo:Bar:X
-  return `use:${statement.all ? 'all' : names}:${statement.from?.value ?? ''}`
+  return Switch.kind(statement, {
+    UsePackageStatement(packageImport) {
+      // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
+      return `package:${packageImport.from.value}:${packageImport.alias?.value ?? ''}`
+    },
+    UseStatement(namedImport) {
+      const names = namedImport.imports.map(createNamedImportKey).join(',')
+      // ex: use Foo as Bar from X -> use:Foo:Bar:X
+      return `use:${namedImport.all ? 'all' : names}:${namedImport.from?.value ?? ''}`
+    },
+  })
 }
 
 function createNamedImportKey(imported: AST.NamedImport): string {

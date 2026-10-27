@@ -1,4 +1,4 @@
-import { Errors, nullCharacter, Try } from '@shared'
+import { Errors, NullCharacter, Try } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 
 /** git captures Git output without a shell and keeps pathspecs literal. */
@@ -45,11 +45,11 @@ export async function tree(root: string, index?: string): Promise<string> {
 /** snapshot captures saved bytes, deletions, links and executable bits in a private index. */
 export async function snapshot(root: string, directory: string, base: string, files?: string[]): Promise<string> {
   const index = await privateIndex(root, directory, base)
-  const tracked = (await git(root, ['ls-tree', '-r', '--name-only', '-z', base])).split(nullCharacter).filter(Boolean)
+  const tracked = (await git(root, ['ls-tree', '-r', '--name-only', '-z', base])).split(NullCharacter).filter(Boolean)
   const candidates = files
     ?? [
       ...tracked,
-      ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split(nullCharacter),
+      ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split(NullCharacter),
     ]
   const selected = candidates.filter(path =>
     path && !path.startsWith('.artifacts/') && (
@@ -85,7 +85,7 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: str
     previous += await git(root, ['ls-tree', '-r', '--name-only', '-z', revision, '--', ...selections])
   }
   const files = [
-    ...new Set((output + previous).split(nullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
+    ...new Set((output + previous).split(NullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
   ]
     .sort()
   if (!files.length) {
@@ -106,7 +106,7 @@ export async function readGitPathEntries(root: string, revision: string, files: 
 /** changedPaths returns literal paths changed between two immutable trees. */
 export async function changedPaths(root: string, before: string, after: string): Promise<string[]> {
   return (await git(root, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', before, after]))
-    .split(nullCharacter).filter(Boolean)
+    .split(NullCharacter).filter(Boolean)
 }
 
 /** applyPatch requires exact-context applicability before changing a private index. */
@@ -135,7 +135,7 @@ export async function assertSupportedTransforms(root: string, files: string[], i
     'ident',
     '--',
     ...files,
-  ], { index })).split(nullCharacter)
+  ], { index })).split(NullCharacter)
   for (let offset = 0; offset + 2 < attributes.length; offset += 3) {
     const [path, attribute, value] = attributes.slice(offset, offset + 3)
     if (value !== 'unspecified' && value !== 'unset') {

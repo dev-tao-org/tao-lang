@@ -63,7 +63,7 @@ function createInternalSessionId(kind: 'cli' | 'studio'): string {
 async function ensureSessionState(directory: string): Promise<void> {
   const marker = Path.join(directory, '.tao-session.json')
   const markerContents = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  if (markerContents === sessionMarker) {
+  if (markerContents === SessionMarker) {
     return
   }
   for (const name of await FileSystem.readdir(directory)) {
@@ -71,10 +71,10 @@ async function ensureSessionState(directory: string): Promise<void> {
     const symbolicLink = Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
     await FileSystem.rm(path, { recursive: !symbolicLink, force: true })
   }
-  await FileSystem.writeFile(marker, sessionMarker)
+  await FileSystem.writeFile(marker, SessionMarker)
 }
 
-const sessionMarker = '{"format":1}\n'
+const SessionMarker = '{"format":1}\n'
 
 async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
   await Lifecycle.ensureProjectDirectory(layout.cacheDirectory)

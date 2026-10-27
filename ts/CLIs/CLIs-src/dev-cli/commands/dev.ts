@@ -1,6 +1,6 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Try } from '@shared'
+import { ControlCCharacter, Errors, Try } from '@shared'
 import { Browser, FileSystem, Http, Lifecycle, Platform, Repo, Terminal } from '@shared/os'
 import { execute, type WorkflowUI, type WorkflowWorkspace } from '@workspace/Workflow'
 import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
@@ -121,7 +121,7 @@ function startDevActions(state: DevSession): void {
   }
   state.stopKeys?.()
   const stopKeys = Terminal.listenForKeys(key => {
-    if (key === 'q' || key === '\u0003') {
+    if (key === 'q' || key === ControlCCharacter) {
       requestDevExit(state)
     } else if (key === 'w') {
       openDevBrowser(state)

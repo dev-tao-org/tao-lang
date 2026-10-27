@@ -2,8 +2,8 @@ import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModuleTypes'
 
-/** foreignViewContractOwnership marks contract files managed by Tao. */
-export const foreignViewContractOwnership = 'managed-by-tao\n'
+/** ForeignViewContractOwnership marks contract files managed by Tao. */
+export const ForeignViewContractOwnership = 'managed-by-tao\n'
 
 /** ContractExecutor runs the pinned TypeScript compiler in the module context. */
 export type ContractExecutor = (
@@ -81,11 +81,11 @@ export async function checkForeignViewContract(
 async function writeOwnedContract(path: string, contents: string): Promise<void> {
   const marker = `${path}.tao-managed`
   const ownership = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  if (await FileSystem.exists(path) && ownership !== foreignViewContractOwnership) {
+  if (await FileSystem.exists(path) && ownership !== ForeignViewContractOwnership) {
     Errors.ThrowUserInput(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {
-    await Files.writeReadOnly(marker, foreignViewContractOwnership)
+    await Files.writeReadOnly(marker, ForeignViewContractOwnership)
   }
   await Files.writeReadOnly(path, contents)
 }

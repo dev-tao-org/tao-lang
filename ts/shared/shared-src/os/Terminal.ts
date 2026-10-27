@@ -1,4 +1,4 @@
-import { Errors, Try } from '../universal/universal'
+import { ControlCCharacter, Errors, Try } from '../universal/universal'
 import { createInterface, emitKeypressEvents, type Readable, type ReadLineOptions, StringDecoder } from './NodeBuiltins'
 
 /** stdout exposes the developer output stream. */
@@ -171,7 +171,7 @@ function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecr
     state.pending = state.pending.slice(character.length)
     if (state.pasting) {
       state.value += character
-    } else if (character === '\u0003' || character === '\u0004') {
+    } else if (character === ControlCCharacter || character === '\u0004') {
       reject(new Error('Secret entry cancelled.'))
       return
     } else if (character === '\r' || character === '\n') {

@@ -1,4 +1,4 @@
-import { Errors, nullCharacter, Try } from '@shared'
+import { Errors, NullCharacter, Try } from '@shared'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** createRevisionOwner retains one active and only the latest pending complete generated revision.
@@ -64,7 +64,7 @@ function hasValidRevisionIdentity(revision: GeneratedRevision): boolean {
 
 function isSupportedGeneratedFile(path: string, text: string): boolean {
   const segments = path.split('/')
-  return path.length > 0 && !path.includes('\\') && !path.includes(nullCharacter)
+  return path.length > 0 && !path.includes('\\') && !path.includes(NullCharacter)
     && !segments.some(isUnsupportedSegment) && segments[0] !== '_gen_runtime' && typeof text === 'string'
 }
 

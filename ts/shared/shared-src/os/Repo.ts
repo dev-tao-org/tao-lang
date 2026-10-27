@@ -1,4 +1,4 @@
-import { Errors, nullCharacter } from '../universal/universal'
+import { Errors, NullCharacter } from '../universal/universal'
 import * as FileSystem from './FileSystem'
 import * as Path from './Path'
 import * as Platform from './Platform'
@@ -26,7 +26,7 @@ export function getMainWorktreeRoot(): string {
     return mainWorktreeRoot
   }
   const records = Platform.captureSync('git worktree list --porcelain -z', { cwd: getWorkspaceRoot() }).split(
-    nullCharacter,
+    NullCharacter,
   )
   const first = records[0]
   if (!first?.startsWith('worktree ') || records[1] === 'bare') {
