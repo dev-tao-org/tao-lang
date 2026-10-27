@@ -3,7 +3,7 @@ import type { SyntaxNode, Tree } from '@cst'
 import type { Range } from '@shared'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
-export type StatementSlice = Range & { node: SyntaxNode; commented: boolean }
+export type StatementSlice = { range: Range; node: SyntaxNode; commented: boolean }
 
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
 export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
@@ -14,7 +14,7 @@ export function collectStatementSlices(source: string, tree: Tree): StatementSli
     if (CST.IsComment(node)) {
       // Same-line comments move with the preceding statement; other comments lead the next one.
       if (isSameLineTrailingComment(source, previous, node)) {
-        previous.end = node.endIndex
+        previous.range.end = node.endIndex
         previous.commented = true
       } else {
         leadingCommentStart ??= node.startIndex
@@ -23,8 +23,7 @@ export function collectStatementSlices(source: string, tree: Tree): StatementSli
     }
     // This statement consumes pending leading comments and retains comments nested inside it.
     slices.push({
-      start: leadingCommentStart ?? node.startIndex,
-      end: node.endIndex,
+      range: { start: leadingCommentStart ?? node.startIndex, end: node.endIndex },
       node,
       commented: leadingCommentStart !== undefined || containsComment(node),
     })
@@ -38,7 +37,7 @@ function isSameLineTrailingComment(
   previous: StatementSlice | undefined,
   comment: SyntaxNode,
 ): previous is StatementSlice {
-  return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes('\n')
+  return previous !== undefined && !source.slice(previous.range.end, comment.startIndex).includes('\n')
 }
 
 function containsComment(node: SyntaxNode): boolean {

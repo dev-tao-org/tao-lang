@@ -127,10 +127,10 @@ function projectDocument(source: string, requirement: string): AST.Document {
   const sourceRange = Range(0, source.length)
   return {
     root: {
-      ...sourceRange,
+      range: sourceRange,
       kind: 'File',
       block: {
-        ...sourceRange,
+        range: sourceRange,
         kind: 'Block',
         statements: [projectView(source), projectRequirement(requirement)],
       },
@@ -141,18 +141,18 @@ function projectDocument(source: string, requirement: string): AST.Document {
 function projectView(source: string): AST.ViewDeclaration {
   const sourceRange = Range(0, source.length)
   return {
-    ...sourceRange,
+    range: sourceRange,
     kind: 'ViewDeclaration',
-    name: { kind: 'Name', ...Range(), value: 'Main' },
+    name: { kind: 'Name', range: Range(), value: 'Main' },
     visibility: undefined,
     parameters: [],
     body: {
-      ...sourceRange,
+      range: sourceRange,
       kind: 'Block',
       statements: [{
-        ...sourceRange,
+        range: sourceRange,
         kind: 'RenderInjectStatement',
-        injection: { kind: 'Injection', ...Range(), captures: [], code: '' },
+        injection: { kind: 'Injection', range: Range(), captures: [], code: '' },
       }],
     },
   }
@@ -161,8 +161,7 @@ function projectView(source: string): AST.ViewDeclaration {
 function projectRequirement(version: string): AST.RequiresDeclaration {
   return {
     kind: 'RequiresDeclaration',
-    start: 0,
-    end: 0,
+    range: Range(),
     provider: 'npm',
     identifier: 'dep',
     version,

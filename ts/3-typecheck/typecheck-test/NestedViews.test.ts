@@ -58,8 +58,7 @@ function render(
 ): AST.RenderViewExpressionStatement {
   return {
     kind: 'RenderViewExpressionStatement',
-    start: 0,
-    end: 0,
+    range: { start: 0, end: 0 },
     expression: {
       ...Fixtures.createViewRender(target),
       block: children.length > 0 ? Fixtures.createBlock(children) : undefined,

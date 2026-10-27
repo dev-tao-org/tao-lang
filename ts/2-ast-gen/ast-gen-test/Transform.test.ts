@@ -13,26 +13,21 @@ Tests.test(
     const result = timings.run(transform, tree)
     Tests.expect(result?.root).toStrictEqual({
       kind: 'File',
-      start: 0,
-      end: 34,
+      range: { start: 0, end: 34 },
       block: {
         kind: 'Block',
-        start: 0,
-        end: 34,
+        range: { start: 0, end: 34 },
         statements: [{
           kind: 'AppDeclaration',
-          start: 0,
-          end: 34,
-          name: { kind: 'Name', start: 4, end: 15, value: 'Performance' },
+          range: { start: 0, end: 34 },
+          name: { kind: 'Name', range: { start: 4, end: 15 }, value: 'Performance' },
           block: {
             kind: 'Block',
-            start: 16,
-            end: 34,
+            range: { start: 16, end: 34 },
             statements: [{
               kind: 'RootDeclaration',
-              start: 20,
-              end: 32,
-              view: { kind: 'Name', start: 25, end: 32, value: 'Preview' },
+              range: { start: 20, end: 32 },
+              view: { kind: 'Name', range: { start: 25, end: 32 }, value: 'Preview' },
             }],
           },
           visibility: undefined,
@@ -46,7 +41,7 @@ Tests.test(
     }
     const second = transform(tree)
     Tests.expect(second?.root).not.toBe(root)
-    Tests.expect(second?.root.block.statements[0]?.start).toBe(app.start)
+    Tests.expect(second?.root.block.statements[0]?.range.start).toBe(app.range.start)
     Tests.expect(timings.samples.map(sample => [sample.name, sample.status])).toEqual([
       ['transformer.transform', 'succeeded'],
     ])
@@ -67,7 +62,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
   const view = result?.root.block.statements.find(AST.IsViewDeclaration)
   Tests.expect(view).toMatchObject({
     kind: 'ViewDeclaration',
-    start: source.indexOf('view Preview'),
+    range: { start: source.indexOf('view Preview') },
     name: { kind: 'Name', value: 'Preview' },
     parameters: [],
     body: {
@@ -145,7 +140,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   })
   Tests.expect(result?.root.block.statements[5]).toMatchObject({ kind: 'ViewDeclaration', visibility: 'folder' })
   Tests.expect(result?.root.block.statements[6]).toMatchObject({ kind: 'LetDeclaration', visibility: 'public' })
-  Tests.expect(result?.root.block.statements[0]).toMatchObject({ start: 0, end: source.indexOf('\n') })
+  Tests.expect(result?.root.block.statements[0]).toMatchObject({ range: { start: 0, end: source.indexOf('\n') } })
 })
 
 Tests.test('requirements and foreign views retain authored fields and source ranges', () => {
@@ -180,7 +175,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
   Tests.expect(result?.root.block.statements[5]).toMatchObject({
     body: { kind: 'ForeignView', path: { value: './FormattedDate.tsx' } },
   })
-  Tests.expect(result?.root.block.statements.map(node => source.slice(node.start, node.end))).toEqual([
+  Tests.expect(result?.root.block.statements.map(node => source.slice(node.range.start, node.range.end))).toEqual([
     'requires github:acme/widgets version v1.2.0 as widgets',
     'requires file:../widgets',
     'requires npm:date-fns version 4.1.0',

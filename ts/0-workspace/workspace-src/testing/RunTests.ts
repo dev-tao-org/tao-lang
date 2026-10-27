@@ -142,5 +142,5 @@ function caseLabel(suite: AST.TestsDeclaration, test: AST.TestDeclaration, optio
 }
 
 function lineOf(node: AST.Node, source: string): number {
-  return sourcePositionAt(source, node.start).line + 1
+  return sourcePositionAt(source, node.range.start).line + 1
 }

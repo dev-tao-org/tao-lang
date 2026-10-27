@@ -198,8 +198,7 @@ Tests.test('unknown module-level let references fail with their owning source', 
 function createLetReference(name: string, value: string, visibility?: AST.Visibility): AST.LetDeclaration {
   return {
     kind: 'LetDeclaration',
-    start: 0,
-    end: 0,
+    range: Range(),
     name: Fixtures.createIdentifier(name),
     type: undefined,
     value: Fixtures.createIdentifier(value),
@@ -212,18 +211,18 @@ function renderWithNameArgument(target: string, name: string): AST.ViewRenderExp
 }
 
 function renderViewExpression(expression: AST.ViewRenderExpression): AST.RenderViewExpressionStatement {
-  return { kind: 'RenderViewExpressionStatement', ...Range(), expression }
+  return { kind: 'RenderViewExpressionStatement', range: Range(), expression }
 }
 
 function useNamed(target: string, alias?: string): AST.UseStatement {
   return {
     kind: 'UseStatement',
-    ...Range(),
+    range: Range(),
     all: false,
     from: undefined,
     imports: [{
       kind: 'NamedImport',
-      ...Range(),
+      range: Range(),
       target: Fixtures.createIdentifier(target),
       alias: alias ? Fixtures.createIdentifier(alias) : undefined,
     }],
@@ -231,14 +230,14 @@ function useNamed(target: string, alias?: string): AST.UseStatement {
 }
 
 function useAll(): AST.UseStatement {
-  return { kind: 'UseStatement', ...Range(), all: true, imports: [], from: undefined }
+  return { kind: 'UseStatement', range: Range(), all: true, imports: [], from: undefined }
 }
 
 function usePackage(path: string, alias?: string): AST.UsePackageStatement {
   return {
     kind: 'UsePackageStatement',
-    ...Range(),
-    from: { kind: 'ImportPath', ...Range(), value: path },
+    range: Range(),
+    from: { kind: 'ImportPath', range: Range(), value: path },
     alias: alias ? Fixtures.createIdentifier(alias) : undefined,
   }
 }

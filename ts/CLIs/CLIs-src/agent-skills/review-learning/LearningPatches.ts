@@ -107,19 +107,21 @@ function hasChangedSnapshot(
 }
 
 function buildOutput(proposal: Proposal, file: string, original: string): string {
-  const edits = proposal.edits.filter(edit => edit.file === file).sort((left, right) => left.start - right.start)
+  const edits = proposal.edits.filter(edit => edit.file === file).sort((left, right) =>
+    left.range.start - right.range.start
+  )
   let previousEnd = -1
   let previousStart = -1
   for (const edit of edits) {
     if (hasInvalidEdit(edit, original, previousStart, previousEnd)) {
       Errors.ThrowUserInput(`Overlapping or stale original spans: ${file}`)
     }
-    previousEnd = edit.end - 1
-    previousStart = edit.start
+    previousEnd = edit.range.end - 1
+    previousStart = edit.range.start
   }
   let result = original
   for (const edit of edits.toReversed()) {
-    result = result.slice(0, edit.start) + edit.replacement + result.slice(edit.end)
+    result = result.slice(0, edit.range.start) + edit.replacement + result.slice(edit.range.end)
   }
   return result
 }
@@ -130,8 +132,8 @@ function hasInvalidEdit(
   previousStart: number,
   previousEnd: number,
 ): boolean {
-  return edit.start === previousStart || edit.start <= previousEnd || edit.end > original.length
-    || original.slice(edit.start, edit.end) !== edit.expected
+  return edit.range.start === previousStart || edit.range.start <= previousEnd || edit.range.end > original.length
+    || original.slice(edit.range.start, edit.range.end) !== edit.expected
 }
 
 async function retainOutputs(root: string, proposal: Proposal): Promise<void> {

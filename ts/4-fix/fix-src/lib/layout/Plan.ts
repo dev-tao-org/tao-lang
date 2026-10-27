@@ -2,7 +2,8 @@ import type { SyntaxNode, Tree } from '@cst'
 import { Errors, Range } from '@shared'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
-export type Boundary = Range & {
+export type Boundary = {
+  range: Range
   spaces: number
   explicitSpace?: number
   lines: number
@@ -73,7 +74,7 @@ export function spaceAt(plan: LayoutPlan, index: number, spaces: number): void {
     return
   }
   if (gap.explicitSpace !== undefined && gap.explicitSpace !== spaces) {
-    Errors.ThrowShouldNeverHappen(`Conflicting spacing rules at ${gap.start}.`)
+    Errors.ThrowShouldNeverHappen(`Conflicting spacing rules at ${gap.range.start}.`)
   }
   gap.spaces = spaces
   if (gap.explicitLines === undefined) {
@@ -89,7 +90,7 @@ export function linesAt(plan: LayoutPlan, index: number, lines: number): void {
     return
   }
   if (gap.explicitLines !== undefined && gap.explicitLines !== lines) {
-    Errors.ThrowShouldNeverHappen(`Conflicting layout rules at ${gap.start}.`)
+    Errors.ThrowShouldNeverHappen(`Conflicting layout rules at ${gap.range.start}.`)
   }
   gap.lines = lines
   gap.explicitLines = lines
@@ -117,8 +118,7 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
     const right = owners[index]
     const interior = hasCompleteNeighbors(left, right, valid)
     plan.gaps.push({
-      start,
-      end,
+      range: { start, end },
       spaces: index === 0 || index === plan.tokens.length ? 0 : 1,
       lines: Math.min(2, (original.match(/\n/g) ?? []).length),
       indent: 0,

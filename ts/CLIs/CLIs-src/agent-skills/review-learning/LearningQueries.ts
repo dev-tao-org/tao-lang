@@ -40,8 +40,7 @@ function queryProgram(program: TypeScript.Program, root: string, files: string[]
         const start = node.getStart(source)
         result.push({
           file,
-          start,
-          end: node.end,
+          range: { start, end: node.end },
           line: source.getLineAndCharacterOfPosition(start).line + 1,
           message: `${rule.kind} candidate; contextual judgment required`,
         })

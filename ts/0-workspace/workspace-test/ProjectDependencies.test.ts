@@ -108,12 +108,10 @@ function parsed(root: string, requirements: DependencyRequirement[]): Pick<Sourc
     document: {
       root: {
         kind: 'File',
-        start: 0,
-        end: 0,
+        range: Range(),
         block: {
           kind: 'Block',
-          start: 0,
-          end: 0,
+          range: Range(),
           statements: declarations,
         },
       },
@@ -125,11 +123,11 @@ function requirementDeclaration(requirement: DependencyRequirement): AST.Require
   const alias = requirement.alias
   return {
     kind: 'RequiresDeclaration',
-    ...Range(),
+    range: Range(),
     provider: requirement.provider,
     identifier: requirement.identifier,
     version: requirement.version,
-    alias: alias === undefined ? undefined : { kind: 'Name', ...Range(), value: alias },
+    alias: alias === undefined ? undefined : { kind: 'Name', range: Range(), value: alias },
   }
 }
 

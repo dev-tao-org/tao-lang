@@ -17,7 +17,7 @@ Tests.test('editor formatting returns range edits and discards results for a cha
     if (changeVersion) {
       snapshot.version++
     }
-    return [{ start: 3, end: 5, text: ' ' }]
+    return [{ range: { start: 3, end: 5 }, text: ' ' }]
   })
   const options = { tabSize: 2, insertSpaces: true }
   const cancellation = { isCancellationRequested: false } as vscode.CancellationToken

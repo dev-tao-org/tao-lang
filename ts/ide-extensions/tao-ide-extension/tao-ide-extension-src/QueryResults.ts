@@ -2,12 +2,14 @@ import { type Range, Time } from '@shared'
 import { type Node, type Query } from 'web-tree-sitter'
 
 /** Token is a syntax query capture mapped to an editor source range. */
-export interface Token extends Range {
+export interface Token {
+  range: Range
   kind: string
 }
 
 /** Diagnostic describes a parser error mapped to an editor source range. */
-export interface Diagnostic extends Range {
+export interface Diagnostic {
+  range: Range
   message: string
 }
 
@@ -22,8 +24,10 @@ export function collectTokens(query: Query, node: Node, baseOffset = 0, measure?
         const kind = tokenKind(capture.name)
         return kind
           ? [{
-            start: baseOffset + capture.node.startIndex,
-            end: baseOffset + capture.node.endIndex,
+            range: {
+              start: baseOffset + capture.node.startIndex,
+              end: baseOffset + capture.node.endIndex,
+            },
             kind,
           }]
           : []
@@ -34,13 +38,14 @@ export function collectTokens(query: Query, node: Node, baseOffset = 0, measure?
 /** collectDiagnostics returns ERROR and missing nodes as source diagnostics. */
 export function collectDiagnostics(root: Node, baseOffset = 0): Diagnostic[] {
   return findNodes(root, 'ERROR').map(node => ({
-    start: baseOffset + node.startIndex,
-    end: baseOffset + Math.max(node.endIndex, node.startIndex + 1),
+    range: {
+      start: baseOffset + node.startIndex,
+      end: baseOffset + Math.max(node.endIndex, node.startIndex + 1),
+    },
     message: 'Unexpected syntax',
   })).concat(
     findNodes(root, 'MISSING').map(node => ({
-      start: baseOffset + node.startIndex,
-      end: baseOffset + node.startIndex,
+      range: { start: baseOffset + node.startIndex, end: baseOffset + node.startIndex },
       message: `Expected ${node.type}`,
     })),
   )
@@ -50,26 +55,28 @@ export function collectDiagnostics(root: Node, baseOffset = 0): Diagnostic[] {
 export function uniqueTokens(tokens: Token[]): Token[] {
   const ranges = new Map<string, Token>()
   for (const token of tokens) {
-    const key = `${token.start}:${token.end}`
+    const key = `${token.range.start}:${token.range.end}`
     const existing = ranges.get(key)
     if (!existing || priority(token.kind) < priority(existing.kind)) {
       ranges.set(key, token)
     }
   }
-  return [...ranges.values()].sort((left, right) => left.start - right.start || left.end - right.end)
+  return [...ranges.values()].sort((left, right) =>
+    left.range.start - right.range.start || left.range.end - right.range.end
+  )
 }
 
 /** uniqueDiagnostics removes duplicate diagnostics and sorts by source range. */
 export function uniqueDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
   const seen = new Set<string>()
   return diagnostics.filter(diagnostic => {
-    const key = `${diagnostic.start}:${diagnostic.end}:${diagnostic.message}`
+    const key = `${diagnostic.range.start}:${diagnostic.range.end}:${diagnostic.message}`
     if (seen.has(key)) {
       return false
     }
     seen.add(key)
     return true
-  }).sort((left, right) => left.start - right.start || left.end - right.end)
+  }).sort((left, right) => left.range.start - right.range.start || left.range.end - right.range.end)
 }
 
 /** findNodes recursively collects nodes with a type or missing-node flag. */

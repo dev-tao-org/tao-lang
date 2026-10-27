@@ -10,7 +10,7 @@ export function createSource(
 ): SourceModule {
   return {
     path,
-    document: { root: { kind: 'File', ...Range(), block: createBlock(declarations) } },
+    document: { root: { kind: 'File', range: Range(), block: createBlock(declarations) } },
     imports: [],
     siblings,
   }
@@ -20,14 +20,14 @@ export function createSource(
 export function createView(name: string, visibility: AST.Visibility = 'file'): AST.ViewDeclaration {
   return {
     kind: 'ViewDeclaration',
-    ...Range(),
+    range: Range(),
     name: createIdentifier(name),
     visibility,
     parameters: [],
     body: createViewBlock([{
       kind: 'RenderInjectStatement',
-      ...Range(),
-      injection: { kind: 'Injection', ...Range(), captures: [], code: '' },
+      range: Range(),
+      injection: { kind: 'Injection', range: Range(), captures: [], code: '' },
     }]),
   }
 }
@@ -39,7 +39,7 @@ export function createViewRender(
 ): AST.ViewRenderExpression {
   return {
     kind: 'ViewRenderExpression',
-    ...Range(),
+    range: Range(),
     tag: undefined,
     target: createIdentifier(target),
     arguments: [],
@@ -55,10 +55,10 @@ export function createLetDefinition(
 ): AST.LetDeclaration {
   return {
     kind: 'LetDeclaration',
-    ...Range(),
+    range: Range(),
     name: createIdentifier(name),
     type: undefined,
-    value: { kind: 'TextLiteral', ...Range(), value },
+    value: { kind: 'TextLiteral', range: Range(), value },
     visibility,
   }
 }
@@ -70,15 +70,15 @@ export function createViewBlock(statements: readonly AST.ViewDeclarationStatemen
 
 /** createBlock builds a typed AST block from its statements. */
 export function createBlock<Statement extends AST.Node>(statements: readonly Statement[]): AST.Block<Statement> {
-  return { kind: 'Block', ...Range(), statements }
+  return { kind: 'Block', range: Range(), statements }
 }
 
 /** createIdentifier builds an AST name fixture from its value. */
 export function createIdentifier(value: string): AST.Name {
-  return { kind: 'Name', ...Range(0, value.length), value }
+  return { kind: 'Name', range: Range(0, value.length), value }
 }
 
 /** createParameter builds a named parameter with its explicit Tao type. */
 export function createParameter(name: string, type: string): AST.Parameter {
-  return { kind: 'Parameter', ...Range(), name: createIdentifier(name), type: createIdentifier(type) }
+  return { kind: 'Parameter', range: Range(), name: createIdentifier(name), type: createIdentifier(type) }
 }

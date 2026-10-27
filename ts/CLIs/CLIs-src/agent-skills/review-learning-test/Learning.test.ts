@@ -141,7 +141,8 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   const edits = []
   for (const file of ['source.ts', 'second.ts']) {
     const text = await FileSystem.readFile(Path.join(root, file), 'utf8')
-    edits.push({ file, start: text.indexOf('1'), end: text.indexOf('1') + 1, expected: '1', replacement: '2' })
+    const start = text.indexOf('1')
+    edits.push({ file, range: { start, end: start + 1 }, expected: '1', replacement: '2' })
   }
   await FileSystem.writeFile(
     input,
@@ -208,7 +209,7 @@ async function propose(root: string, scan: string, id: string): Promise<void> {
       id,
       scan,
       analysis: 'Equivalent numeric correction within the explicit scope.',
-      edits: [{ file: 'source.ts', start, end: start + 1, expected: '1', replacement: '2' }],
+      edits: [{ file: 'source.ts', range: { start, end: start + 1 }, expected: '1', replacement: '2' }],
     }),
   )
   await runLearning(['propose', '--repo', root, '--input', input])

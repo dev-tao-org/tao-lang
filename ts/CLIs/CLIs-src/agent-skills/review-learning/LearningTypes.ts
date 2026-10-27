@@ -25,7 +25,7 @@ export type QueryRule = {
 }
 
 /** Finding marks a candidate needing contextual judgment before correction. */
-export type Finding = { file: string; line: number; message: string } & Range
+export type Finding = { file: string; line: number; message: string; range: Range }
 
 /** Scan freezes scope membership, content and configuration for reproducible coverage. */
 export type Scan = {
@@ -51,7 +51,7 @@ export type Proposal = {
   outputs?: Record<string, { before: string; after: string; done: boolean }>
 }
 
-type ProposalEdit = { file: string; expected: string; replacement: string } & Range
+type ProposalEdit = { file: string; expected: string; replacement: string; range: Range }
 
 /** LearningState is the append-only correction and scan history with a pending patch queue. */
 export type LearningState = {

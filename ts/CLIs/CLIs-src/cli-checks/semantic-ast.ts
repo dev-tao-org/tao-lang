@@ -125,10 +125,10 @@ function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata) {
 function renderSemanticAst(model: ReturnType<typeof createSemanticAstModel>): string {
   return `// @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.\n`
     + `import type * as CST from '@cst'\nimport type { Range } from '@shared'\nimport { Construct } from '../ast-gen-src/AST/AST-construction'\n`
-    + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind } & Readonly<Range> & Readonly<Fields>\n`
+    + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly range: Readonly<Range> } & Readonly<Fields>\n`
     + `export type Visibility = ${model.visibility}\nexport type RequirementProvider = ${model.providers}\n`
     + `export type Name = Semantic<'Name', { value: string }>\n`
-    + `export interface Block<Statement extends Node = Node> extends Readonly<Range> {\n`
+    + `export interface Block<Statement extends Node = Node> {\n  readonly range: Readonly<Range>\n`
     + `  readonly kind: 'Block'\n`
     + `  readonly statements: readonly Statement[]\n}\n`
     + `${model.declarations}\n`

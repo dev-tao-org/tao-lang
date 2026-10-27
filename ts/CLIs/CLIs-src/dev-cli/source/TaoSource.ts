@@ -73,7 +73,7 @@ function printUsageWarnings(
 ): void {
   const ast = timings.run(transform, tree)!
   for (const warning of timings.run(unusedWarnings, ast)) {
-    const { row, column } = tree.rootNode.descendantForIndex(warning.start).startPosition
+    const { row, column } = tree.rootNode.descendantForIndex(warning.range.start).startPosition
     warn(`${path}:${row + 1}:${column + 1} [${warning.code}] ${warning.message}`)
   }
 }

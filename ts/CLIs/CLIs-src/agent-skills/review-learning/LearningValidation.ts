@@ -110,8 +110,9 @@ function requireRecord(input: unknown): Record<string, unknown> {
 }
 
 function hasInvalidOffsets(edit: Record<string, unknown>): boolean {
-  return !Number.isInteger(edit.start) || !Number.isInteger(edit.end) || Number(edit.start) < 0
-    || Number(edit.end) < Number(edit.start)
+  const range = isJsonRecord(edit.range) ? edit.range : {}
+  return !Number.isInteger(range.start) || !Number.isInteger(range.end) || Number(range.start) < 0
+    || Number(range.end) < Number(range.start)
 }
 
 function isJsonRecord(input: unknown): input is Record<string, unknown> {

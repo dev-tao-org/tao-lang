@@ -55,7 +55,7 @@ class TaoSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider
       if (type < 0) {
         continue
       }
-      pushSingleLineToken(builder, document, token.start, token.end, semanticTokenTypes[type])
+      pushSingleLineToken(builder, document, token.range.start, token.range.end, semanticTokenTypes[type])
     }
     return builder.build()
   }
@@ -136,7 +136,7 @@ function refreshDocument(
     document.uri,
     result.diagnostics.map(item =>
       new vscode.Diagnostic(
-        new vscode.Range(document.positionAt(item.start), document.positionAt(item.end)),
+        new vscode.Range(document.positionAt(item.range.start), document.positionAt(item.range.end)),
         item.message,
         vscode.DiagnosticSeverity.Error,
       )

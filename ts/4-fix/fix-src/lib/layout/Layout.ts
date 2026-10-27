@@ -30,13 +30,13 @@ const emitLayout = Timings.measure('formatter.layout', function(
       // This gap establishes the group's starting column; breaking changes only later gaps.
       breakList(plan, group)
     }
-    if (gap.editable && whitespace !== plan.source.slice(gap.start, gap.end)) {
-      edits.push({ ...Range(gap.start, gap.end), text: whitespace })
+    if (gap.editable && whitespace !== plan.source.slice(gap.range.start, gap.range.end)) {
+      edits.push({ range: gap.range, text: whitespace })
     }
     const token = plan.tokens[index]
     const text = formatToken(plan, index, options, timings)
     if (token && text !== token.text) {
-      edits.push({ ...Range(token.startIndex, token.endIndex), text })
+      edits.push({ range: Range(token.startIndex, token.endIndex), text })
     }
     column = advanceColumn(column, text)
   }
@@ -107,7 +107,7 @@ function breakList(plan: LayoutPlan, group: ListGroup): void {
 
 function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
   if (!gap.editable) {
-    return plan.source.slice(gap.start, gap.end)
+    return plan.source.slice(gap.range.start, gap.range.end)
   }
   return gap.lines > 0
     ? plan.newline.repeat(gap.lines) + ' '.repeat(gap.indent * indent)

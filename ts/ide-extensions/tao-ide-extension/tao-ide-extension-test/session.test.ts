@@ -32,14 +32,20 @@ Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', asyn
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
     Tests.expect(
-      result.tokens.some(token => token.kind === 'keyword' && source.slice(token.start, token.end) === 'app'),
+      result.tokens.some(token =>
+        token.kind === 'keyword' && source.slice(token.range.start, token.range.end) === 'app'
+      ),
     ).toBe(true)
     Tests.expect(
-      result.tokens.some(token => token.kind === 'property' && source.slice(token.start, token.end) === 'padding'),
+      result.tokens.some(token =>
+        token.kind === 'property' && source.slice(token.range.start, token.range.end) === 'padding'
+      ),
     )
       .toBe(true)
     Tests.expect(
-      result.tokens.some(token => token.kind === 'keyword' && source.slice(token.start, token.end) === 'return'),
+      result.tokens.some(token =>
+        token.kind === 'keyword' && source.slice(token.range.start, token.range.end) === 'return'
+      ),
     )
       .toBe(true)
   }, { finally: runtime.dispose })
@@ -55,7 +61,8 @@ Tests.test('requirements and import source markers receive keyword highlights', 
       const start = source.indexOf(keyword)
       Tests.expect(
         result.tokens.some(token =>
-          token.kind === 'keyword' && token.start === start && source.slice(token.start, token.end) === keyword
+          token.kind === 'keyword' && token.range.start === start
+          && source.slice(token.range.start, token.range.end) === keyword
         ),
       ).toBe(true)
     }
@@ -86,7 +93,7 @@ Tests.test('embedded TSX captures map through Unicode prefixes into editor UTF-1
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
     const titleStart = source.indexOf('title')
-    Tests.expect(result.tokens.some(token => token.kind === 'variable' && token.start === titleStart)).toBe(true)
+    Tests.expect(result.tokens.some(token => token.kind === 'variable' && token.range.start === titleStart)).toBe(true)
     Tests.expect(runtime.document.update(source.replace('<Thing />', '<Thing>')).diagnostics.length).toBeGreaterThan(0)
     Tests.expect(runtime.document.update(source.replace('😀', '😁')).diagnostics).toEqual([])
   }, { finally: runtime.dispose })

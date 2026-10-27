@@ -105,7 +105,7 @@ export async function withDependencySession<T>(
 }
 
 type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
-type NpmRequirementOccurrence = { path: string; source: string; alias?: string } & Range
+type NpmRequirementOccurrence = { path: string; source: string; range: Range; alias?: string }
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
@@ -219,7 +219,7 @@ function collectNpmRequirementSpans(
     return [{
       path,
       source,
-      ...Range(declaration.start, declaration.end),
+      range: declaration.range,
       ...(declaration.alias ? { alias: declaration.alias.value } : {}),
     }]
   })
@@ -236,11 +236,11 @@ async function replaceRequirements(
   }
   for (const [path, values] of grouped) {
     let bytes = new TextEncoder().encode(values[0]!.source)
-    for (const item of values.sort((left, right) => right.start - left.start)) {
+    for (const item of values.sort((left, right) => right.range.start - left.range.start)) {
       const replacement = new TextEncoder().encode(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )
-      bytes = joinBytes(bytes.slice(0, item.start), replacement, bytes.slice(item.end))
+      bytes = joinBytes(bytes.slice(0, item.range.start), replacement, bytes.slice(item.range.end))
     }
     await FileSystem.writeFile(path, new TextDecoder().decode(bytes))
   }
