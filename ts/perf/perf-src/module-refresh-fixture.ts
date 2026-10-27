@@ -71,7 +71,7 @@ function perViewFixture(): ModuleRefreshFixture {
 
 function singleAppSource(factor: number, label: string): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
 
     ${metricsDeclaration}
@@ -92,7 +92,7 @@ function singleAppSource(factor: number, label: string): string {
 
 function sourceFileModule(factor: number, label: string): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
     import { primaryInitial, secondaryInitial } from '../Values'
 
@@ -106,7 +106,7 @@ function sourceFileModule(factor: number, label: string): string {
 
 function primaryViewModule(factor: number, label: string): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
     import { primaryInitial } from '../Values'
 
@@ -117,7 +117,7 @@ function primaryViewModule(factor: number, label: string): string {
 
 function secondaryViewModule(): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
     import { secondaryInitial } from '../Values'
 
@@ -168,7 +168,7 @@ function secondaryComponent(initial: string, exported = false): string {
 
 function wiredAppSource(componentDirectory: string): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
     import { PrimaryView, SecondaryView } from '${componentDirectory}'
 
@@ -185,7 +185,7 @@ function wiredAppSource(componentDirectory: string): string {
 
 function perViewAppSource(): string {
   return S`
-    import React from '@runtime/client/Bridge-React'
+    import React from '@runtime/client/Bridge_react/Bridge_react'
     import Tao from '@tao/runtime-api'
     import { PrimaryView } from './views/Primary'
     import { SecondaryView } from './views/Secondary'

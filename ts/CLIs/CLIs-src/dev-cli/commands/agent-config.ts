@@ -7,7 +7,7 @@ export default registerCommand({
   description: 'Regenerate supported agent subagents and hooks from canonical sources.',
   async action() {
     // Other commands do not need Rulesync's configuration-generation dependency graph.
-    const { generate } = await import('rulesync')
+    const { generate } = await import('../../cli-kit/bridges/Bridge_rulesync')
     const root = Repo.getWorkspaceRoot()
     const targets = [
       { target: 'codexcli', features: ['subagents', 'hooks'] },

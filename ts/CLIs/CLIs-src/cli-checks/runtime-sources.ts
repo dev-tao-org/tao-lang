@@ -21,21 +21,12 @@ async function addDirectorySources(
   resourceDirectory: string,
   sourceRoot: string,
 ): Promise<void> {
-  const sourcePaths = await FileSystem.listSourceFiles(sourceRoot)
+  const sourcePaths = await FileSystem.listProductionSourceFiles(sourceRoot)
   for (const sourcePath of sourcePaths) {
-    if (isRuntimeTestSource(sourceRoot, sourcePath)) {
-      continue
-    }
     const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
     const resourcePath = Path.posix.join(resourceDirectory, relativePath)
     resources[resourcePath] = sourcePath
   }
-}
-
-function isRuntimeTestSource(sourceRoot: string, sourcePath: string): boolean {
-  const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
-  return relativePath.split('/').some(segment => segment.endsWith('-test'))
-    || /\.test\.[cm]?tsx?$/.test(relativePath)
 }
 
 function sortResources(resources: Record<string, string>): Record<string, string> {

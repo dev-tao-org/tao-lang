@@ -1,54 +1,57 @@
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
 /** ServeOptions configures a local HTTP server with an explicit request handler. */
-export type ServeOptions = Bun.ServeOptions<undefined>
+export type ServeOptions = BunHost.ServeOptions<undefined>
 
 /** serve starts a Bun HTTP server for a local tooling surface. */
-export function serve(options: ServeOptions): Bun.Server<undefined> {
-  return Bun.serve(options)
+export function serve(options: ServeOptions): BunHost.Server<undefined> {
+  return BunHost.getRuntime().serve(options)
 }
 
 /** StreamController exposes the enqueue and close operations for local event streams. */
-export type StreamController = ReadableStreamDefaultController<Uint8Array>
+export type StreamController = WebHost.ReadableStreamDefaultController<Uint8Array>
 
 /** HttpRequest describes an incoming HTTP request at the OS boundary. */
-export type HttpRequest = globalThis.Request
+export type HttpRequest = WebHost.Request
 
 /** HttpResponse describes an outgoing HTTP response at the OS boundary. */
-export type HttpResponse = globalThis.Response
+export type HttpResponse = WebHost.Response
 
 /** Bytes describes raw HTTP response bytes at the platform boundary. */
 export type Bytes = Uint8Array
 
 /** response creates an HTTP response through the platform boundary. */
-export function response(body: BodyInit | null = null, init?: ResponseInit): Response {
-  return new Response(body, init)
+export function response(body: WebHost.BodyInit | null = null, init?: WebHost.ResponseInit): WebHost.Response {
+  return new WebHost.Response(body, init)
 }
 
 /** url parses a URL through the platform boundary. */
-export function url(value: string): URL {
-  return new URL(value)
+export function url(value: string): WebHost.URL {
+  return new WebHost.URL(value)
 }
 
 /** bytesResponse creates a response containing one byte sequence. */
-export function bytesResponse(bytes: Uint8Array): Response {
-  return new Response(Buffer.from(bytes))
+export function bytesResponse(bytes: Uint8Array): WebHost.Response {
+  return new WebHost.Response(NodeBuffer.from(bytes))
 }
 
 /** jsonResponse creates a JSON response through the platform boundary. */
-export function jsonResponse(value: unknown, init?: ResponseInit): Response {
-  return Response.json(value, init)
+export function jsonResponse(value: unknown, init?: WebHost.ResponseInit): WebHost.Response {
+  return WebHost.Response.json(value, init)
 }
 
 /** request performs an HTTP request through the platform boundary. */
-export async function request(url: string, init?: RequestInit): Promise<Response> {
-  return await fetch(url, init)
+export async function request(url: string, init?: WebHost.RequestInit): Promise<WebHost.Response> {
+  return await WebHost.fetch(url, init)
 }
 
 /** createAbortController creates a cancellation source for bounded platform requests. */
-export function createAbortController(): AbortController {
-  return new AbortController()
+export function createAbortController(): WebHost.AbortController {
+  return new WebHost.AbortController()
 }
 
 /** stream creates a byte stream through the platform boundary. */
-export function stream(source: UnderlyingDefaultSource<Uint8Array>): ReadableStream<Uint8Array> {
-  return new ReadableStream(source)
+export function stream(source: WebHost.UnderlyingDefaultSource<Uint8Array>): WebHost.ReadableStream<Uint8Array> {
+  return new WebHost.ReadableStream(source)
 }

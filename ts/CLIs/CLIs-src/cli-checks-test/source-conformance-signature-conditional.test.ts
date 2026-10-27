@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { nestedConditionalIssue } from '../cli-checks/source-conformance-conditional'
 import { complexSignatureTypeIssue } from '../cli-checks/source-conformance-signatures'
 

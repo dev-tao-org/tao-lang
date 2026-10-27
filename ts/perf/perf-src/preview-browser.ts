@@ -1,5 +1,6 @@
 import { Time } from '@shared'
 import * as Browser from '@shared/os/browser'
+import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { PreviewRecovery } from '../../shared/shared-src/os/PreviewRecovery'
 import type { PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
 import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
@@ -27,7 +28,8 @@ type PreviewResult = {
 }
 
 const sessionId = Browser.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
-const previewOrigin = new URL(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
+const previewOrigin =
+  new WebHost.URL(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
 const frames = new Map(['left', 'right'].flatMap(id => {
   const frame = Browser.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []

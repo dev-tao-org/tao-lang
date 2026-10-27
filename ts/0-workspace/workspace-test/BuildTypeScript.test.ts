@@ -1,7 +1,7 @@
 import * as Runtime from '@runtime/Runtime'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { prepareBuildTypeScript } from '../workspace-src/BuildTypeScript'
 
 Tests.test('generated build files resolve runtime aliases and JSX packages in their own TypeScript project', async () => {

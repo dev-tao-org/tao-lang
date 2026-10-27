@@ -1,5 +1,7 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from '../bridges/Bridge_node/Bridge_node'
 import { resolveStorage } from '../Storage'
 
 const { join } = Path
@@ -31,13 +33,13 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
     await writeFile(join(cache, 'entry'), 'cache data')
     await writeFile(join(outside, 'keep'), 'durable data')
     await symlink(outside, join(cache, 'external-link'))
-    const moduleUrl = new URL('../Storage.ts', import.meta.url).href
+    const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
     const script = `const storage = await import(${
       JSON.stringify(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
-    const child = Platform.spawn(process.execPath, {
+    const child = Platform.spawn(hostProcess.execPath, {
       variadicArgs: ['-e', script],
-      env: { ...process.env, TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support },
+      env: { ...hostProcess.env, TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support },
       stdout: 'pipe',
       stderr: 'pipe',
     })
@@ -60,7 +62,7 @@ Tests.test('cache leases reclaim crashed probes while protecting a live consumer
     await mkdir(root, { recursive: true })
     await runStorageScript(root, `await storage.acquireCacheLease('crashed');`)
     Tests.expect((await readdir(join(root, 'support/leases'))).length).toBe(1)
-    const moduleUrl = new URL('../Storage.ts', import.meta.url).href
+    const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
     const childScript = S`
       const storage = await import(${JSON.stringify(moduleUrl)});
       process.stdout.write(JSON.stringify(await storage.cleanSharedCache()));
@@ -89,24 +91,25 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
   await Try(async () => {
     await mkdir(root, { recursive: true })
     const path = join(root, 'StorageIsolation.test.ts')
-    const testsUrl = new URL('../Tests.ts', import.meta.url).href
-    const storageUrl = new URL('../Storage.ts', import.meta.url).href
+    const testsUrl = new WebHost.URL('../Tests.ts', import.meta.url).href
+    const storageUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
+    const filesUrl = new WebHost.URL('../FileSystem.ts', import.meta.url).href
     const result = join(root, 'roots.json')
     await writeFile(
       path,
       S`
         import * as Tests from ${JSON.stringify(testsUrl)};
         import * as Storage from ${JSON.stringify(storageUrl)};
-        import { writeFile } from 'node:fs/promises';
+        import { writeFile } from ${JSON.stringify(filesUrl)};
         Tests.test('isolated roots', () => writeFile(${
         JSON.stringify(result)
       }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()])));
       `,
     )
-    const env = { ...process.env }
+    const env = { ...hostProcess.env }
     delete env.TAO_CACHE_DIR
     delete env.TAO_SUPPORT_DIR
-    const child = Platform.spawn(process.execPath, {
+    const child = Platform.spawn(hostProcess.execPath, {
       variadicArgs: ['test', path],
       env,
       stdout: 'pipe',
@@ -125,10 +128,10 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
 })
 
 async function runStorageScript(root: string, source: string): Promise<string> {
-  const moduleUrl = new URL('../Storage.ts', import.meta.url).href
-  const child = Platform.spawn(process.execPath, {
+  const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
+  const child = Platform.spawn(hostProcess.execPath, {
     variadicArgs: ['-e', `const storage = await import(${JSON.stringify(moduleUrl)}); ${source}`],
-    env: { ...process.env, TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') },
+    env: { ...hostProcess.env, TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') },
     stdout: 'pipe',
     stderr: 'pipe',
   })

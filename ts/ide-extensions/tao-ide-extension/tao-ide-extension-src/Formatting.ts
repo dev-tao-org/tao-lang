@@ -1,5 +1,5 @@
 import type { SourceEdit } from '@fix/Format'
-import type * as vscode from 'vscode'
+import type { vscode } from '../../bridges/Bridge_vscode'
 
 /** formattingProvider adapts snapshot edits and lazy preparation to VS Code's format-on-save contract. */
 export function formattingProvider(

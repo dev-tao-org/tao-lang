@@ -1,6 +1,6 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import * as Env from './Env'
-import { dirname, join, lstat, mkdir, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
@@ -17,19 +17,22 @@ export function resolveStorage(
   home: string,
   environment: Record<string, string | undefined>,
 ): StorageRoots {
-  const pathApi = platform === 'windows' ? win32 : posix
+  const pathApi = platform === 'windows' ? Node.win32 : Node.posix
   const bases = Switch<StoragePlatform, StorageRoots>(platform, {
     macos: () => ({
-      cache: posix.join(home, 'Library', 'Caches'),
-      support: posix.join(home, 'Library', 'Application Support'),
+      cache: Node.posix.join(home, 'Library', 'Caches'),
+      support: Node.posix.join(home, 'Library', 'Application Support'),
     }),
     windows() {
-      const localAppData = environment.LOCALAPPDATA || win32.join(home, 'AppData', 'Local')
-      return { cache: win32.join(localAppData, 'Tao', 'Cache'), support: win32.join(localAppData, 'Tao', 'Support') }
+      const localAppData = environment.LOCALAPPDATA || Node.win32.join(home, 'AppData', 'Local')
+      return {
+        cache: Node.win32.join(localAppData, 'Tao', 'Cache'),
+        support: Node.win32.join(localAppData, 'Tao', 'Support'),
+      }
     },
     linux: () => ({
-      cache: xdgPath(environment.XDG_CACHE_HOME, posix.join(home, '.cache')),
-      support: xdgPath(environment.XDG_DATA_HOME, posix.join(home, '.local', 'share')),
+      cache: xdgPath(environment.XDG_CACHE_HOME, Node.posix.join(home, '.cache')),
+      support: xdgPath(environment.XDG_DATA_HOME, Node.posix.join(home, '.local', 'share')),
     }),
   })
   const suffix = platform === 'windows' ? [] : ['Tao']
@@ -52,7 +55,7 @@ export function resolveSupportDirectory(...segments: string[]): string {
 /** withCacheMutation serializes shared-cache writers and cleanup across threads and processes. */
 export async function withCacheMutation<Value>(operation: () => Promise<Value>): Promise<Value> {
   const path = resolveSupportDirectory('locks', 'cache-mutation.lock')
-  await mkdir(dirname(path), { recursive: true })
+  await Node.mkdir(Node.dirname(path), { recursive: true })
   const releaseLocal = await acquireLocalMutation()
   return await Try(async () => {
     const lock = await acquireMutationLock(path)
@@ -63,7 +66,7 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
 /** acquireCacheLease holds a removable lease probe; its lifecycle is serialized by the stable cache-mutation lock. */
 export async function acquireCacheLease(identity: string): Promise<() => void | Promise<void>> {
   const path = resolveSupportDirectory('leases', `${Platform.hashText(identity)}.lock`)
-  await mkdir(dirname(path), { recursive: true })
+  await Node.mkdir(Node.dirname(path), { recursive: true })
   let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
     await hasBusyLease(resolveSupportDirectory('leases'))
@@ -129,18 +132,18 @@ function resolveOverride(
   base: string,
   suffix: string[],
   home: string,
-  pathApi: typeof posix | typeof win32,
+  pathApi: typeof Node.posix | typeof Node.win32,
 ): string {
   const selected = override?.trim() || pathApi.join(base, ...suffix)
   return pathApi.isAbsolute(selected) ? pathApi.resolve(selected) : pathApi.resolve(home, selected)
 }
 
 function xdgPath(value: string | undefined, fallback: string): string {
-  return value && posix.isAbsolute(value) ? posix.resolve(value) : fallback
+  return value && Node.posix.isAbsolute(value) ? Node.posix.resolve(value) : fallback
 }
 
 function resolveBelow(root: string, segments: readonly string[]): string {
-  const result = resolve(root, ...segments)
+  const result = Node.resolve(root, ...segments)
   if (!Path.isWithin(root, result)) {
     Errors.ThrowUserInput(`Storage path escapes its configured root: ${result}`)
   }
@@ -194,7 +197,7 @@ async function releaseCacheLease(path: string, lock: SessionLock.SessionLock): P
 
 async function removeLeaseProbe(path: string, report?: (reason: string) => void): Promise<boolean> {
   return await Try(async () => {
-    await rm(path, { force: true })
+    await Node.rm(path, { force: true })
     return true
   }, { catch: error => blockedProbe(error, path, report) ? false : Errors.Throw(error) })
 }
@@ -216,7 +219,7 @@ function isUnavailableProbe(error: unknown): boolean {
 }
 
 async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
-  const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
+  const entries = await Try(async () => await Node.readdir(directory, { withFileTypes: true }), {
     catch: error => handleLeaseDirectoryFailure(error, directory, report),
   })
   if (!entries) {
@@ -225,11 +228,13 @@ async function hasBusyLease(directory: string, report?: (reason: string) => void
   let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
     if (!entry.isFile()) {
-      report?.(`Unexpected lease entry at ${join(directory, entry.name)}. Inspect it before retrying tao clean --wipe.`)
+      report?.(
+        `Unexpected lease entry at ${Node.join(directory, entry.name)}. Inspect it before retrying tao clean --wipe.`,
+      )
       busy = true
       continue
     }
-    const path = join(directory, entry.name)
+    const path = Node.join(directory, entry.name)
     const lock = await Try(() => SessionLock.acquire(path), {
       catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
     })
@@ -264,21 +269,21 @@ function handleLeaseDirectoryFailure(
 
 async function existingDirectory(path: string): Promise<string | undefined> {
   return await Try(async () => {
-    const info = await lstat(path)
+    const info = await Node.lstat(path)
     if (!info.isDirectory() && !info.isSymbolicLink()) {
       Errors.ThrowHostEnvironment(`Configured cache root is not a directory: ${path}`)
     }
-    return await realpath(path)
+    return await Node.realpath(path)
   }, { catch: error => isMissing(error) ? undefined : Errors.Throw(error) })
 }
 
 async function removeCacheEntries(root: string): Promise<void> {
-  const entries = await readdir(root, { withFileTypes: true })
+  const entries = await Node.readdir(root, { withFileTypes: true })
   for (const entry of entries) {
     if (entry.name === 'native-locks') {
       continue
     }
-    await rm(join(root, entry.name), { recursive: true, force: true })
+    await Node.rm(Node.join(root, entry.name), { recursive: true, force: true })
   }
 }
 

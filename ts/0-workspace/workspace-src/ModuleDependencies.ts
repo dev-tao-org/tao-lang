@@ -3,7 +3,8 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
-import { valid } from 'semver'
+import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import { valid } from './bridges/Bridge_semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
 import { findNamedPackageDirectories, listRecursiveSourceFiles } from './modules/Catalog'
@@ -236,14 +237,14 @@ async function replaceRequirements(
     grouped.set(occurrence.path, [...(grouped.get(occurrence.path) ?? []), occurrence])
   }
   for (const [path, values] of grouped) {
-    let bytes = new TextEncoder().encode(values[0]!.source)
+    let bytes = new WebHost.TextEncoder().encode(values[0]!.source)
     for (const item of values.sort((left, right) => right.start - left.start)) {
-      const replacement = new TextEncoder().encode(
+      const replacement = new WebHost.TextEncoder().encode(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )
       bytes = joinBytes(bytes.slice(0, item.start), replacement, bytes.slice(item.end))
     }
-    await FileSystem.writeFile(path, new TextDecoder().decode(bytes))
+    await FileSystem.writeFile(path, new WebHost.TextDecoder().decode(bytes))
   }
 }
 

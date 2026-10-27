@@ -1,7 +1,7 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
-import { satisfies, valid, validRange } from 'semver'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { satisfies, valid, validRange } from '../bridges/Bridge_semver'
 import { isNpmPackageName } from '../NpmPackageName'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 

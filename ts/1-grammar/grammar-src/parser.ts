@@ -1,6 +1,6 @@
 import { Timings } from '@shared'
 import { Platform, Repo } from '@shared/os'
-import Parser from 'tree-sitter'
+import Parser from './bridges/Bridge_tree-sitter'
 
 /** createParser creates a session parsing complete source snapshots without reusing prior CSTs.
  *  Creation and each parse start fresh timing boundaries; timings.run can reuse an existing collector.

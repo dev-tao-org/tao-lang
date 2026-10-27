@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import * as vscode from 'vscode'
+import { vscode } from '../../bridges/Bridge_vscode'
 import { chooseDiffBase, diffArguments } from './DiffReview'
 
 /** activate registers repository review commands independently of Tao language support. */

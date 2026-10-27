@@ -1,7 +1,7 @@
 import { Errors, Try } from '@shared'
 import * as GeneratedFileSystem from '../../../shared/shared-src/os/GeneratedFileSystem'
-import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
 import * as Path from '../../../shared/shared-src/os/Path'
+import { assertMetroNotLoaded } from '../bridges/Bridge_metro'
 import { createRevisionOwner, type RevisionOwner, type RevisionResult, snapshotRevision } from './GeneratedRevision'
 import { createMetroAdmission, type MetroAdmission } from './MetroAdmission'
 import { installMetroHooks } from './MetroHooks'
@@ -11,7 +11,7 @@ import type { GeneratedRevision } from './PreviewProtocol'
  *  Only this owner changes visible source bytes. A confirmed precommit error restores the old volume;
  *  partial FileMap commits poison the whole session. Build errors retain bytes for the next correction. */
 export function createMetroAdapter(options: MetroAdapterOptions): MetroAdapter {
-  MetroPlatform.assertMetroNotLoaded(options.directory)
+  assertMetroNotLoaded(options.directory)
   const initial = snapshotRevision(options.initial)
   const fileSystem = GeneratedFileSystem.installGeneratedFileSystem(Path.join(options.directory, 'src'), initial.files)
   const admission = createMetroAdmission()

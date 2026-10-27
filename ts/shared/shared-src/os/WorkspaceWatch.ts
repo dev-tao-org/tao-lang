@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import { Path } from '@shared/os'
-import type { Stats } from './NodeBuiltins'
+import type { Stats } from './bridges/Bridge_node/Bridge_node'
 import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
 
 /** WorkspaceChange identifies one authored file or directory notification. */
@@ -105,7 +105,7 @@ function dynamicWatcher(
 }
 
 async function createWatcher(roots: string[], excluded: string[]) {
-  const { watch } = await import('chokidar')
+  const { watch } = await import('./bridges/Bridge_chokidar')
   return watch(roots, {
     ignoreInitial: true,
     followSymlinks: false,

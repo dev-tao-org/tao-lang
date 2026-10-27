@@ -1,5 +1,5 @@
 import { Path } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** getFileExtension returns the final extension used to resolve a sidecar dependency. */
 export const getFileExtension = Path.extname

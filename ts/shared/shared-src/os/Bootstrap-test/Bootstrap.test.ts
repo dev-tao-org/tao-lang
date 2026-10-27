@@ -1,5 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from '../bridges/Bridge_node/Bridge_node'
 
 const { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = FileSystem
 const { delimiter, join } = Path
@@ -50,18 +52,22 @@ async function runBootstrap(
   const bin = join(root, 'bin')
   await mkdir(ts, { recursive: true })
   await mkdir(bin, { recursive: true })
-  await copyFile(new URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
-  await copyFile(new URL('../NodeBuiltins.ts', import.meta.url), join(ts, 'NodeBuiltins.ts'))
+  await copyFile(new WebHost.URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
+  await FileSystem.cp(
+    new WebHost.URL('../bridges/Bridge_node', import.meta.url).pathname,
+    join(ts, 'bridges/Bridge_node'),
+    { recursive: true },
+  )
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
-  const child = Platform.spawn(process.execPath, {
+  const child = Platform.spawn(hostProcess.execPath, {
     variadicArgs: ['-e', script],
     cwd: ts,
     env: {
-      ...process.env,
-      PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
+      ...hostProcess.env,
+      PATH: `${bin}${delimiter}${hostProcess.env.PATH ?? ''}`,
       TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
     },
     stdout: 'pipe',

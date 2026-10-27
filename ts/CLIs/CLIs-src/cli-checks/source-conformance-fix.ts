@@ -1,5 +1,5 @@
 import { FileSystem, Repo } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { optionalAccessIssue, optionalAccessResult } from './source-conformance-optional'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'

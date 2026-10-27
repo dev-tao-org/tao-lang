@@ -2,6 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
+import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import * as Paths from './modules/Paths'
 import { collectModuleSpecifiers, getFileExtension } from './sidecar-pipeline/Imports'
 import * as Snapshots from './sidecar-pipeline/Snapshots'
@@ -230,7 +231,7 @@ async function collectFileClosure(
     if (!isTypeScriptSource(path)) {
       continue
     }
-    const source = new TextDecoder().decode(contents)
+    const source = new WebHost.TextDecoder().decode(contents)
     for (const specifier of collectModuleSpecifiers(source)) {
       if (!specifier.startsWith('.')) {
         continue

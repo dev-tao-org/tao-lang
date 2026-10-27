@@ -1,6 +1,6 @@
-import { Buffer, inspectValue, stripVTControlCharacters } from './NodeBuiltins'
+import { Buffer, inspectValue, stripVTControlCharacters } from './bridges/Bridge_node/Bridge_node'
 
-export { format } from './NodeBuiltins'
+export { format } from './bridges/Bridge_node/Bridge_node'
 
 /** stripAnsi removes terminal control sequences before rendering captured text inside a pane. */
 export function stripAnsi(text: string): string {

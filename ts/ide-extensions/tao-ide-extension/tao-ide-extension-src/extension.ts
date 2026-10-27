@@ -1,5 +1,6 @@
 import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
-import * as vscode from 'vscode'
+import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import { vscode } from '../../bridges/Bridge_vscode'
 import { createWasmDocumentSession, type DocumentSession } from './core'
 import { formattingProvider } from './Formatting'
 import { type Diagnostic, type Token } from './QueryResults'
@@ -187,7 +188,7 @@ async function loadAssets(context: vscode.ExtensionContext) {
   return {
     taoGrammar,
     tsxGrammar,
-    taoQuery: new TextDecoder().decode(taoQuery),
-    tsxQuery: new TextDecoder().decode(tsxQuery),
+    taoQuery: new WebHost.TextDecoder().decode(taoQuery),
+    tsxQuery: new WebHost.TextDecoder().decode(tsxQuery),
   }
 }

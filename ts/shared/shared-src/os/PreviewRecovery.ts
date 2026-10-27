@@ -1,21 +1,27 @@
 import * as PreviewOutcomeTrackerModule2 from '../universal/PreviewOutcomeTracker'
 import * as Time from '../universal/Time'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 
 /** PreviewRecovery owns bounded acknowledgement recovery for one iframe. */
 export class PreviewRecovery {
   private readonly tracker: PreviewOutcomeTrackerModule2.PreviewOutcomeTracker
   private readonly expectations = new Map<string, PreviewOutcomeTrackerModule2.PreviewExpectation>()
-  private readonly panel: HTMLElement
+  private readonly panel: WebHost.HTMLElement
   private bootId = ''
   private latest?: PreviewOutcomeTrackerModule2.PreviewExpectation
   private baseline?: PreviewOutcomeTrackerModule2.PreviewExpectation
   private cancelTimer?: () => void
   private disposed = false
 
-  constructor(private readonly frame: HTMLIFrameElement, sessionId: string, frameId: string, timeoutMs = 10_000) {
+  constructor(
+    private readonly frame: WebHost.HTMLIFrameElement,
+    sessionId: string,
+    frameId: string,
+    timeoutMs = 10_000,
+  ) {
     this.tracker = new PreviewOutcomeTrackerModule2.PreviewOutcomeTracker(sessionId, frameId, timeoutMs)
     this.panel = createRecoveryPanel(() => this.reload(true))
-    window.addEventListener('pagehide', () => this.dispose(), { once: true })
+    WebHost.browserWindow().addEventListener('pagehide', () => this.dispose(), { once: true })
     this.reload(false)
   }
 
@@ -112,9 +118,9 @@ export class PreviewRecovery {
     if (manual) {
       this.tracker.manualRecovery()
     }
-    this.bootId = crypto.randomUUID()
+    this.bootId = WebHost.crypto.randomUUID()
     this.tracker.bindInstance(this.bootId)
-    const url = new URL(this.frame.src)
+    const url = new WebHost.URL(this.frame.src)
     url.searchParams.set('bootId', this.bootId)
     this.frame.src = url.toString()
     const expectation = this.baseline ?? this.latest
@@ -164,17 +170,17 @@ type PreviewControlSignal = PreviewOutcomeTrackerModule2.PreviewIdentity & {
   message?: string
 }
 
-function createRecoveryPanel(reload: () => void): HTMLElement {
-  const panel = document.createElement('aside')
+function createRecoveryPanel(reload: () => void): WebHost.HTMLElement {
+  const panel = WebHost.browserDocument().createElement('aside')
   panel.setAttribute('role', 'alert')
   panel.style.cssText =
     'position:fixed;z-index:100;background:#292020;color:white;padding:16px;border:1px solid #b66;max-height:60vh;overflow:auto'
-  const text = document.createElement('pre')
+  const text = WebHost.browserDocument().createElement('pre')
   text.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere'
-  const button = document.createElement('button')
+  const button = WebHost.browserDocument().createElement('button')
   button.textContent = 'Reload'
   button.onclick = reload
   panel.append(text, button)
-  document.body.append(panel)
+  WebHost.browserDocument().body.append(panel)
   return panel
 }

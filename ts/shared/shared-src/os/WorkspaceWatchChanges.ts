@@ -1,5 +1,5 @@
 import { Time, Try } from '../universal/universal'
-import { stat } from './NodeBuiltins'
+import { stat } from './bridges/Bridge_node/Bridge_node'
 
 /** watchStamp identifies a filesystem observation without reading source contents. */
 export function watchStamp(stats: WatchStats): string {

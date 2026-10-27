@@ -16,7 +16,7 @@ const topologyHookSource = S`
   const markerView = React.createElement(Tao.Text, { testID: 'marker-' + id }, markerValue)
 `
 const reactOwnershipApp = S`
-  import React from '@runtime/client/Bridge-React'
+  import React from '@runtime/client/Bridge_react/Bridge_react'
   import Tao from '@tao/runtime-api'
   import { createReactiveEngine } from './_gen_runtime/runtime/ReactiveEngine'
 

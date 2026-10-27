@@ -1,14 +1,17 @@
 import { Errors, Time } from '@shared'
 import { Path } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
+import { sourceBridgeEmissionIssues } from './source-bridge-emissions'
+import { platformGlobalIssue } from './source-bridge-globals'
+import { createSourceBridgeContext } from './source-bridge-owners'
+import { sourceBridgeIssue, sourceBridgeLoaderAliases } from './source-bridges'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { nestedConditionalIssue } from './source-conformance-conditional'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
 import { optionalAccessIssue } from './source-conformance-optional'
-import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
@@ -18,13 +21,17 @@ export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
   const sources = await conformanceSources(root)
+  const bridgeContext = createSourceBridgeContext(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)
     const { error } = sourceSizeDiagnostics(relative, file.text)
-    issues.push(...error ? [error] : [], ...new SourceConformanceChecker(relative, file, checker).check())
+    issues.push(
+      ...error ? [error] : [],
+      ...new SourceConformanceChecker(relative, file, checker, bridgeContext).check(),
+    )
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
@@ -34,6 +41,8 @@ export async function checkSourceConformance(root: string): Promise<void> {
 
 class SourceConformanceChecker {
   private readonly source: string
+  private readonly excludedSource: boolean
+  private readonly loaderAliases: ReadonlySet<string>
   private readonly issues: string[] = []
   private readonly publicDocs = new Set<number>()
   private readonly comments = new Map<number, TypeScript.CommentRange>()
@@ -43,8 +52,11 @@ class SourceConformanceChecker {
     private readonly filename: string,
     private readonly file: TypeScript.SourceFile,
     private readonly checker: TypeScript.TypeChecker,
+    private readonly bridgeContext: ReturnType<typeof createSourceBridgeContext>,
   ) {
     this.source = file.text
+    this.excludedSource = isExcludedSource(filename, this.source)
+    this.loaderAliases = sourceBridgeLoaderAliases(file)
     this.api = new ExportedApiChecker(
       this.source,
       this.file,
@@ -70,32 +82,41 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
-    if (TypeScript.isImportDeclaration(node) && !isExcludedSource(this.filename, this.source)) {
-      const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)
-      if (importIssue) {
-        this.report(node.getStart(this.file), importIssue)
+    if (TypeScript.isImportDeclaration(node) && !this.excludedSource) {
+      this.reportIssue(node, ConformanceLayout.singleLineImportIssue(node, this.file))
+    }
+    this.reportIssue(node, optionalAccessIssue(node, this.checker))
+    this.reportIssue(node, objectFunctionStyleIssue(node, this.source))
+    this.reportIssue(node, nestedConditionalIssue(node))
+    this.reportIssue(node, complexSignatureTypeIssue(node))
+    this.checkExternalBoundaries(node)
+    this.checkStructure(node)
+  }
+
+  private checkExternalBoundaries(node: TypeScript.Node): void {
+    this.reportIssue(node, platformGlobalIssue(node, this.filename, this.checker, this.excludedSource))
+    const bridgeIssue = sourceBridgeIssue(
+      node,
+      this.filename,
+      this.bridgeContext,
+      this.loaderAliases,
+      this.excludedSource,
+    )
+    this.reportIssue(node, bridgeIssue)
+    if (!this.excludedSource) {
+      for (const issue of sourceBridgeEmissionIssues(node, this.filename, this.bridgeContext)) {
+        this.report(node.getStart(this.file), issue)
       }
     }
-    const optionalIssue = optionalAccessIssue(node, this.checker)
-    if (optionalIssue) {
-      this.report(node.getStart(this.file), optionalIssue)
+  }
+
+  private reportIssue(node: TypeScript.Node, issue: string | undefined): void {
+    if (issue) {
+      this.report(node.getStart(this.file), issue)
     }
-    const functionIssue = objectFunctionStyleIssue(node, this.source)
-    if (functionIssue) {
-      this.report(node.getStart(this.file), functionIssue)
-    }
-    const conditionalIssue = nestedConditionalIssue(node)
-    if (conditionalIssue) {
-      this.report(node.getStart(this.file), conditionalIssue)
-    }
-    const signatureIssue = complexSignatureTypeIssue(node)
-    if (signatureIssue) {
-      this.report(node.getStart(this.file), signatureIssue)
-    }
-    const platformIssue = platformAccessIssue(node, this.filename)
-    if (platformIssue) {
-      this.report(node.getStart(this.file), platformIssue)
-    }
+  }
+
+  private checkStructure(node: TypeScript.Node): void {
     const body = ConformanceLayout.functionBody(node)
     if (body) {
       this.checkFunctionBody(body)

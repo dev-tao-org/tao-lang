@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** nestedConditionalIssue reports ternary expressions nested in the same runtime expression. */
 export function nestedConditionalIssue(node: TypeScript.Node): string | undefined {

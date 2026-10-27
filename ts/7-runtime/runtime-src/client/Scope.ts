@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import type React from './Bridge-React'
+import type React from './Bridge_react/Bridge_react'
 
 /** Scope is one readonly lexical record whose prototype links to its parent scope. */
 export type Scope = Readonly<Record<string, unknown>>

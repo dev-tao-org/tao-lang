@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** conformanceSources lists current implementation and agent-script sources for checking and fixing. */
 export async function conformanceSources(root: string): Promise<string[]> {

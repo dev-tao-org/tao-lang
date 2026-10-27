@@ -1,9 +1,9 @@
 import { Tests } from '@shared/os'
-import { renderToStaticMarkup } from 'react-dom/server'
-import React from '../../runtime-src/client/Bridge-React'
+import React from '../../runtime-src/client/Bridge_react/Bridge_react'
 import { AliasBinding, LetDeclaration, Name, Scope, ViewRenderBlock } from '../../runtime-src/client/Scope'
 import * as View from '../../runtime-src/client/View'
 import type { ViewComponentProps } from '../../runtime-src/client/View'
+import { renderToStaticMarkup } from '../bridges/Bridge_react-dom'
 
 Tests.test('Scope rejects missing and duplicate own definitions while allowing shadowing', () => {
   const parent = Scope()

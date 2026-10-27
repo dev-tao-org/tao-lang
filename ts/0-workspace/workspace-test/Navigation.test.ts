@@ -6,7 +6,7 @@ import * as Runtime from '@runtime/Runtime'
 import { S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { publishBuild } from '../workspace-src/WorkspaceBuild'
 
 Tests.test('standard view uses navigate through generated lexical types to their source-owned definition', async () => {

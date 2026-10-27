@@ -1,7 +1,7 @@
-import type React from '@runtime/client/Bridge-React'
+import type React from '@runtime/client/Bridge_react/Bridge_react'
 import { Switch, Time } from '@shared'
 import { Terminal } from '@shared/os'
-import { render, useStdout } from 'ink'
+import { Ink } from '../../bridges/Bridge_ink'
 import type { OutputRenderer, OutputSnapshot } from '../Output'
 import { OutputView } from './View'
 
@@ -9,7 +9,7 @@ import { OutputView } from './View'
 export function createTUI(): OutputRenderer {
   let latest = emptySnapshot()
   let now = Time.nowMs()
-  const instance = render(<TUI snapshot={latest} now={now} />, {
+  const instance = Ink.render(<TUI snapshot={latest} now={now} />, {
     stdout: Terminal.stderr,
     stderr: Terminal.stderr,
     patchConsole: false,
@@ -40,7 +40,7 @@ function TUI(props: {
   now: number
   snapshot: OutputSnapshot
 }): React.JSX.Element {
-  const { stdout } = useStdout()
+  const { stdout } = Ink.useStdout()
   const width = Math.max(1, stdout.columns ?? 80)
   const height = Math.max(4, stdout.rows ?? 24)
   return <OutputView snapshot={props.snapshot} now={props.now} width={width} height={height} />

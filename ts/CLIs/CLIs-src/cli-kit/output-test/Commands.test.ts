@@ -1,6 +1,6 @@
-import React from '@runtime/client/Bridge-React'
+import React from '@runtime/client/Bridge_react/Bridge_react'
 import { Tests, Text } from '@shared/os'
-import { renderToString } from 'ink'
+import { Ink } from '../bridges/Bridge_ink'
 import { createOutput, formatCommands, type OutputSnapshot } from '../output/Output'
 import { OutputView } from '../output/tui/View'
 
@@ -27,5 +27,5 @@ Tests.test('commands remain last after new output and channels, with emphasized 
 })
 
 function renderView(snapshot: OutputSnapshot): string {
-  return renderToString(React.createElement(OutputView, { snapshot, now: 0, width: 80, height: 24 }))
+  return Ink.renderToString(React.createElement(OutputView, { snapshot, now: 0, width: 80, height: 24 }))
 }

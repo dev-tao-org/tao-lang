@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Path, Platform } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
 import { createConformanceProgram } from '../../cli-checks/source-conformance-program'
 import { isInScope, snapshotScope } from './LearningStore'
 import type { Correction, Finding, QueryRule, Scan } from './LearningTypes'

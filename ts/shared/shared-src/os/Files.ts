@@ -1,5 +1,5 @@
 import { Errors, Try } from '../universal/universal'
-import * as Native from './NodeBuiltins'
+import * as Native from './bridges/Bridge_node/Bridge_node'
 
 /** withWritableFile serializes writes per canonical path and restores the original permission mode. */
 export async function withWritableFile<Value>(

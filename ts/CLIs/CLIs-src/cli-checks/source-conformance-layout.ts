@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */
 export function functionBodyLineCount(

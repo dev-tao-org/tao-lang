@@ -20,6 +20,11 @@ Tests.test('runtime source directories include production additions and exclude 
     Tests.expect(sources['shared/os/preview/PreviewPlatform.ts']).toBeDefined()
     Tests.expect(sources['runtime/Runtime.ts']).toBeUndefined()
     Tests.expect(sources['shared/os/Platform.ts']).toBeUndefined()
+    Tests.expect(sources['runtime/Bridge_react/jsx-runtime.ts']).toBeDefined()
+    Tests.expect(sources['runtime/Bridge_expo.ts']).toBeDefined()
+    Tests.expect(sources['shared/os/bridges/Bridge_browser/Bridge_browser.ts']).toBeDefined()
+    Tests.expect(Object.values(sources).some(path => path.includes('/Bridge_bun/'))).toBe(false)
+    Tests.expect(Object.values(sources).some(path => path.includes('/Bridge_expo-host'))).toBe(false)
 
     const resources = await prepareRuntime()
     const metadata = JSON.parse(await FileSystem.readFile(Path.join(resources, 'runtime.json'), 'utf8')) as {

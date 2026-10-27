@@ -1,5 +1,8 @@
 import { Errors, Try } from '../universal/universal'
-import * as Node from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 
 /** homeDirectory returns the current user's platform home directory. */
 export function homeDirectory(): string {
@@ -13,7 +16,7 @@ export function temporaryDirectory(): string {
 
 /** runtimeVersion returns the active Bun runtime version. */
 export function runtimeVersion(): string {
-  return Bun.version
+  return BunHost.getRuntime().version
 }
 
 /** loadModule loads a known runtime module, including native Node-API addons. */
@@ -38,56 +41,56 @@ export function isPlatformImport(specifier: string): boolean {
 
 /** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
 export function spawn<
-  const In extends Bun.SpawnOptions.Writable = 'ignore',
-  const Out extends Bun.SpawnOptions.Readable = 'pipe',
-  const Err extends Bun.SpawnOptions.Readable = 'inherit',
->(command: string | readonly string[], options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
+  const In extends BunHost.SpawnOptions.Writable = 'ignore',
+  const Out extends BunHost.SpawnOptions.Readable = 'pipe',
+  const Err extends BunHost.SpawnOptions.Readable = 'inherit',
+>(command: string | readonly string[], options: SpawnOptions<In, Out, Err> = {}): BunHost.Subprocess<In, Out, Err> {
   const { variadicArgs = [], ...spawnOptions } = options
   if (preserveTerminalColors(spawnOptions)) {
-    spawnOptions.env = { ...(spawnOptions.env ?? process.env), FORCE_COLOR: '1' }
+    spawnOptions.env = { ...(spawnOptions.env ?? hostProcess.env), FORCE_COLOR: '1' }
   }
   const args = typeof command === 'string' ? command.trim().split(/ +/) : [...command]
-  return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
+  return BunHost.getRuntime().spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
 }
 
 /** argv contains the current CLI invocation arguments. */
-export const argv = process.argv
+export const argv = hostProcess.argv
 
 /** pid identifies the current process. */
-export const pid = process.pid
+export const pid = hostProcess.pid
 
 /** ChildProcess identifies an owned process handled by command supervision. */
-export type ChildProcess = Bun.Subprocess
+export type ChildProcess = BunHost.Subprocess
 
 /** terminate stops an owned child and waits for its process to exit. */
-export async function terminate(child: Bun.Subprocess): Promise<void> {
+export async function terminate(child: BunHost.Subprocess): Promise<void> {
   child.kill('SIGKILL')
   await child.exited
 }
 
 /** onUncaughtException installs a process-wide exception listener. */
 export function onUncaughtException(handler: (error: unknown) => void): void {
-  process.on('uncaughtException', handler)
+  hostProcess.on('uncaughtException', handler)
 }
 
 /** onUnhandledRejection installs a process-wide rejected-promise listener. */
 export function onUnhandledRejection(handler: (error: unknown) => void): void {
-  process.on('unhandledRejection', handler)
+  hostProcess.on('unhandledRejection', handler)
 }
 
 /** exit terminates the current process with the supplied status. */
 export function exit(status: number): never {
-  process.exit(status)
+  return hostProcess.exit(status)
 }
 
 /** randomUUID creates a random identifier for owned artifacts. */
 export function randomUUID(): string {
-  return crypto.randomUUID()
+  return WebHost.crypto.randomUUID()
 }
 
 /** readText consumes a child output stream without exposing the runtime reader. */
-export function readText(stream: ReadableStream<Uint8Array>): Promise<string> {
-  return new Response(stream).text()
+export function readText(stream: WebHost.ReadableStream<Uint8Array>): Promise<string> {
+  return new WebHost.Response(stream).text()
 }
 
 /** isMain reports whether the caller is the program entrypoint. */
@@ -149,17 +152,17 @@ export function captureSync(command: string, options: { variadicArgs?: readonly 
 }
 
 type SpawnOptions<
-  In extends Bun.SpawnOptions.Writable,
-  Out extends Bun.SpawnOptions.Readable,
-  Err extends Bun.SpawnOptions.Readable,
-> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
+  In extends BunHost.SpawnOptions.Writable,
+  Out extends BunHost.SpawnOptions.Readable,
+  Err extends BunHost.SpawnOptions.Readable,
+> = BunHost.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
 
 type SystemInformation = { architecture: string; kernel: string; os: string }
 
 type CaptureOptions = { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean }
 
 function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
-  const environment = options.env ?? process.env
+  const environment = options.env ?? hostProcess.env
   const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
-  return !explicitPreference && options.stderr === 'pipe' && process.stderr.isTTY && process.stderr.hasColors()
+  return !explicitPreference && options.stderr === 'pipe' && hostProcess.stderr.isTTY && hostProcess.stderr.hasColors()
 }

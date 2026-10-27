@@ -1,6 +1,6 @@
 import { DefaultAppearance } from './Appearance'
-import React from './Bridge-React'
-import ReactNative from './Bridge-ReactNative'
+import ReactNative from './Bridge_react-native'
+import React from './Bridge_react/Bridge_react'
 import { batch, useComputed, useValue, useWritable } from './ReactiveEngine'
 
 /** Tao exposes the runtime capabilities available to authored TypeScript. */

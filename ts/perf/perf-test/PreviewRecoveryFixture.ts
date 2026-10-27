@@ -80,7 +80,7 @@ function createRecoveryApp(revision: string, mode: RecoveryMode): string {
     ? "Errors.ThrowUserInput('Deliberate preview render failure');"
     : `return React.createElement('span', { 'data-testid': 'recovery-label' }, '${mode}');`
   return S`
-    import React from '@runtime/client/Bridge-React';
+    import React from '@runtime/client/Bridge_react/Bridge_react';
     import { Errors } from '@shared';
     import * as TR from '@runtime';
     TR.ModuleApplied('${revision}');

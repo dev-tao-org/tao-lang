@@ -1,7 +1,9 @@
-import { createFsFromVolume, Volume } from 'memfs'
 import { Errors, nullCharacter, Time } from '../universal/universal'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { createFsFromVolume, Volume } from './bridges/Bridge_memfs'
+import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import { installGeneratedReaders } from './GeneratedFileReaders'
-import * as Node from './NodeBuiltins'
 
 /** installGeneratedFileSystem makes memory authoritative below one exclusively generated namespace.
  *  The immutable runtime link is the sole passthrough child. Install before Metro captures fs exports;
@@ -107,10 +109,10 @@ function normalizePath(value: unknown): string | undefined {
 }
 
 function normalizePathInput(value: unknown): unknown {
-  if (value instanceof URL) {
+  if (value instanceof WebHost.URL) {
     return Node.fileURLToPath(value)
   }
-  if (Buffer.isBuffer(value)) {
+  if (NodeBuffer.isBuffer(value)) {
     return value.toString()
   }
   return value

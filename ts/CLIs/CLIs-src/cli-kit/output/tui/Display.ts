@@ -1,5 +1,5 @@
 import { Switch } from '@shared'
-import wrapAnsi from 'wrap-ansi'
+import wrapAnsi from '../../bridges/Bridge_wrap-ansi'
 import type { ChannelState } from '../Output'
 
 /** displayStatus maps a channel status to its compact marker and color. */

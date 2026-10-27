@@ -1,4 +1,4 @@
-import { nativePath as NativePath } from './NodeBuiltins'
+import { nativePath as NativePath } from './bridges/Bridge_node/Bridge_node'
 
 export {
   basename,
@@ -12,8 +12,8 @@ export {
   resolve,
   sep,
   win32,
-} from './NodeBuiltins'
-export { fileURLToPath, pathToFileURL } from './NodeBuiltins'
+} from './bridges/Bridge_node/Bridge_node'
+export { fileURLToPath, pathToFileURL } from './bridges/Bridge_node/Bridge_node'
 
 /** isWithin checks lexical containment after resolving paths with the selected platform rules. */
 export function isWithin(root: string, path: string, platform = NativePath): boolean {

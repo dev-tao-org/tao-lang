@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
+import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { createForeignViewContractSource, foreignViewContractOwnership } from '../sidecars/ForeignViewContracts'
 import type { SidecarGroup } from './Snapshots'
 
@@ -203,7 +204,7 @@ function collectExpectedSnapshotDirectories(expectedFiles: ReadonlyMap<string, U
 }
 
 function encodeSnapshotText(value: string): Uint8Array {
-  return new TextEncoder().encode(value)
+  return new WebHost.TextEncoder().encode(value)
 }
 
 function isSymbolicLink(path: string): boolean {

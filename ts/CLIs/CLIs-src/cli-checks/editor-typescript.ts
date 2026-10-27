@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** checkEditorTypeScript verifies editor settings and the managed tsc executable against the pinned compiler. */
 export async function checkEditorTypeScript(): Promise<void> {

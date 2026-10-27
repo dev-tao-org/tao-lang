@@ -1,5 +1,5 @@
 import { sourcePositionAt } from '@shared'
-import { Edit, type Tree } from 'web-tree-sitter'
+import { Edit, type Tree } from './Bridge_web-tree-sitter'
 
 /** editTreeForSource applies the smallest safe UTF-16 edit to an old syntax tree. */
 export function editTreeForSource(tree: Tree, previousSource: string, nextSource: string): void {

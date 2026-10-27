@@ -1,7 +1,7 @@
 import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import TypeScript from 'typescript'
 import { readRuntimeSources } from '../../CLIs/CLIs-src/cli-checks/runtime-sources'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { createProject, createWorkspace } from '../workspace-src/Workspace'
 
 Tests.test('project compilation creates its runtime lazily and publishes only changed build files', async () => {

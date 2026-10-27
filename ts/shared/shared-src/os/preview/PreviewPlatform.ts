@@ -1,4 +1,5 @@
 import * as Time from '../../universal/Time'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import { clearPreviewError, showPreviewError } from './PreviewErrors'
 
 /** initializePreviewClient observes browser failures without changing Metro application. */
@@ -8,8 +9,11 @@ export function initializePreviewClient(): void {
     return
   }
   state.listening = true
-  window.addEventListener('error', event => reportPreviewError('runtime-error', event.message))
-  window.addEventListener('unhandledrejection', event => reportPreviewError('runtime-error', String(event.reason)))
+  WebHost.browserWindow().addEventListener('error', event => reportPreviewError('runtime-error', event.message))
+  WebHost.browserWindow().addEventListener(
+    'unhandledrejection',
+    event => reportPreviewError('runtime-error', String(event.reason)),
+  )
 }
 
 /** reportPreviewError exposes a reported failure without automatically reloading. */
@@ -18,7 +22,7 @@ export function reportPreviewError(kind: 'runtime-error' | 'build-error', messag
     if (previewState()) {
       postPreviewMessage({ type: 'tao.preview-reload' })
     } else {
-      window.location.reload()
+      WebHost.browserWindow().location.reload()
     }
   })
   postPreviewMessage({ type: 'tao.preview-error', kind, message, revision })
@@ -49,7 +53,7 @@ export function reportPreviewEvent(type: 'tao.preview-applied' | 'tao.update-don
   if (type === 'tao.preview-applied') {
     clearPreviewError()
   }
-  window.parent.postMessage({
+  WebHost.browserWindow().parent.postMessage({
     type,
     sessionId: state.sessionId,
     frameId: state.frameId,
@@ -57,7 +61,7 @@ export function reportPreviewEvent(type: 'tao.preview-applied' | 'tao.update-don
     revision: revision ?? state.revision,
     timestampMs: Time.timestampMs(),
     localTime: Time.nowMs(),
-    timeOrigin: performance.timeOrigin,
+    timeOrigin: WebHost.performance.timeOrigin,
     moduleAppliedAtMs: state.moduleAppliedAtMs,
     timings: [...state.timings],
   }, state.parentOrigin)
@@ -88,11 +92,11 @@ type PreviewState = {
 }
 
 function previewState(): PreviewState | undefined {
-  if (typeof window === 'undefined') {
+  if (!WebHost.hasWindow()) {
     return undefined
   }
-  const host = window as Window & { __taoPreview?: PreviewState }
-  if (!host.parent || host.parent === window) {
+  const host = WebHost.browserWindow() as WebHost.Window & { __taoPreview?: PreviewState }
+  if (!host.parent || host.parent === WebHost.browserWindow()) {
     return undefined
   }
   if (host.__taoPreview) {
@@ -102,7 +106,7 @@ function previewState(): PreviewState | undefined {
   if (!search) {
     return undefined
   }
-  const query = new URLSearchParams(search)
+  const query = new WebHost.URLSearchParams(search)
   const sessionId = query.get('sessionId')
   const frameId = query.get('frameId')
   const parentOrigin = query.get('parentOrigin')
@@ -113,7 +117,7 @@ function previewState(): PreviewState | undefined {
     sessionId,
     frameId,
     parentOrigin,
-    bootId: query.get('bootId') ?? crypto.randomUUID(),
+    bootId: query.get('bootId') ?? WebHost.crypto.randomUUID(),
     timings: [],
   }
   return host.__taoPreview
@@ -122,7 +126,7 @@ function previewState(): PreviewState | undefined {
 function postPreviewMessage(message: object): void {
   const state = previewState()
   if (state) {
-    window.parent.postMessage(
+    WebHost.browserWindow().parent.postMessage(
       { ...message, sessionId: state.sessionId, frameId: state.frameId, bootId: state.bootId },
       state.parentOrigin,
     )

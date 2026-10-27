@@ -1,5 +1,7 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from '../bridges/Bridge_node/Bridge_node'
 
 Tests.test('failed cache-mutation acquisition releases lease ownership and retains its probe for later cleanup', async () => {
   await withFailureFixture(async root => {
@@ -100,14 +102,14 @@ async function withFailureFixture(operation: (root: string) => Promise<void>): P
 async function runFailureScript(root: string, body: string): Promise<string> {
   const script = S`
     import { mock } from 'bun:test';
-    import { Try } from ${JSON.stringify(new URL('../../universal/universal.ts', import.meta.url).href)};
+    import { Try } from ${JSON.stringify(new WebHost.URL('../../universal/universal.ts', import.meta.url).href)};
     const fs = await import('node:fs/promises');
     const locks = await import(${JSON.stringify(lockUrl)});
     ${body}
   `
   const child = Platform.spawn(Platform.argv[0]!, {
     variadicArgs: ['-e', script],
-    env: { ...process.env, TAO_CACHE_DIR: Path.join(root, 'cache'), TAO_SUPPORT_DIR: Path.join(root, 'support') },
+    env: { ...hostProcess.env, TAO_CACHE_DIR: Path.join(root, 'cache'), TAO_SUPPORT_DIR: Path.join(root, 'support') },
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -120,5 +122,5 @@ async function runFailureScript(root: string, body: string): Promise<string> {
   return stdout
 }
 
-const lockUrl = new URL('../SessionLock.ts', import.meta.url).href
-const storageUrl = new URL('../Storage.ts', import.meta.url).href
+const lockUrl = new WebHost.URL('../SessionLock.ts', import.meta.url).href
+const storageUrl = new WebHost.URL('../Storage.ts', import.meta.url).href

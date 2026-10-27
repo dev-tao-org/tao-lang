@@ -1,6 +1,6 @@
 import * as Time from '../universal/Time'
-import type { JavaScriptCore } from './NodeBuiltins'
-import { loadModule } from './Platform'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import type { JavaScriptCore } from './bridges/Bridge_bun/Bridge_bun'
 
 /** Snapshot records JavaScriptCore heap bytes and surviving allocation cells. */
 export type Snapshot = { heapBytes: number; liveCells: number }
@@ -17,7 +17,7 @@ export function snapshot(): Snapshot {
 /** forceCollection runs Bun's forced collection and returns its elapsed duration. */
 export function forceCollection(): number {
   const startedAt = Time.nowMs()
-  Bun.gc(true)
+  BunHost.getRuntime().gc(true)
   return Time.nowMs() - startedAt
 }
 
@@ -32,6 +32,6 @@ export function collectAndSweep(): Sweep {
 let javaScriptCore: JavaScriptCore | undefined
 
 function loadJavaScriptCore(): JavaScriptCore {
-  javaScriptCore ??= loadModule<JavaScriptCore>('bun:jsc')
+  javaScriptCore ??= BunHost.loadJavaScriptCore()
   return javaScriptCore
 }

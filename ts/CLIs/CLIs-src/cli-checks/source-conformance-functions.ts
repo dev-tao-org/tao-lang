@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 export { objectFunctionStyleIssue }
 

@@ -30,6 +30,7 @@
       "@tao/runtime-api": ["./7-runtime/runtime-src/client/TaoRuntimeAPI.ts"],
       "@workspace/*": ["./0-workspace/workspace-src/*"],
       "@stdlib/*": ["./stdlib/stdlib-src/*"]
-    }
+    },
+    "jsxImportSource": "@runtime/client/Bridge_react"
   }
 }

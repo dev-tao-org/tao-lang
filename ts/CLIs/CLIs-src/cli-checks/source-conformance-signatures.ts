@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** complexSignatureTypeIssue reports inline structural contracts that belong in named aliases. */
 export function complexSignatureTypeIssue(node: TypeScript.Node): string | undefined {

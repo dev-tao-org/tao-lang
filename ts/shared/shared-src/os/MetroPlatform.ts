@@ -1,5 +1,7 @@
 import { Errors } from '../universal/universal'
-import { AsyncLocalStorage, createRequire, dirname, type IncomingRequest, join, readFileSync } from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { Buffer as NodeBuffer, hostProcess } from './bridges/Bridge_node/Bridge_node'
+import { AsyncLocalStorage, type IncomingRequest } from './bridges/Bridge_node/Bridge_node'
 
 /** createOperationContext retains one admitted Metro operation through asynchronous work. */
 export function createOperationContext<Value>(): OperationContext<Value> {
@@ -13,76 +15,42 @@ export type OperationContext<Value> = {
   run<Result>(value: Value, operation: () => Result): Result
 }
 
-/** loadExpoModule loads a module from the exact Expo CLI dependency graph serving this application. */
-export function loadExpoModule(name: string, directory: string): unknown {
-  return expoLoader(directory)(name)
-}
-
-/** loadMetroModule loads the actual underlying Metro dependency selected by Expo's wrapper. */
-export function loadMetroModule(name: string, directory: string): unknown {
-  const loader = expoLoader(directory)
-  return createRequire(loader.resolve('@expo/metro/package.json'))(name)
-}
-
-/** assertMetroNotLoaded rejects filesystem readers captured before the authoritative preload. */
-export function assertMetroNotLoaded(directory: string): void {
-  const loader = expoLoader(directory)
-  const metro = createRequire(loader.resolve('@expo/metro/package.json'))
-  const paths = [
-    metro.resolve('metro/private/Server'),
-    metro.resolve('metro/private/HmrServer'),
-    loader.resolve('@expo/metro-file-map'),
-  ]
-  if (paths.some(path => loader.cache[path] !== undefined)) {
-    Errors.ThrowHostEnvironment(
-      'Metro was imported before its generated filesystem preload. Restart with Tao preloaded first.',
-    )
-  }
-}
-
-/** readExpoSource reads a guarded dependency source relative to the installed Expo CLI package. */
-export function readExpoSource(path: string, directory: string): string {
-  const loader = expoLoader(directory)
-  const root = dirname(loader.resolve('@expo/cli/package.json'))
-  return readFileSync(join(root, path), 'utf8')
-}
-
 /** currentDirectory returns the dedicated Metro process working directory. */
 export function currentDirectory(): string {
-  return process.cwd()
+  return hostProcess.cwd()
 }
 
 /** messageByteLength measures the immutable serialized websocket payload before queue admission. */
 export function messageByteLength(message: unknown): number {
   if (typeof message === 'string') {
-    return Buffer.byteLength(message)
+    return NodeBuffer.byteLength(message)
   }
-  if (Buffer.isBuffer(message)) {
+  if (NodeBuffer.isBuffer(message)) {
     return message.byteLength
   }
   return 0
 }
 
 /** openWebSocket opens the runtime websocket used by the real Metro protocol acceptance fixture. */
-export function openWebSocket(url: string): WebSocket {
-  return new WebSocket(url)
+export function openWebSocket(url: string): WebHost.WebSocket {
+  return new WebHost.WebSocket(url)
 }
 
 /** synchronizeBuiltinExports updates captured ESM filesystem exports after installing a router. */
-export { syncBuiltinESMExports as synchronizeBuiltinExports } from './NodeBuiltins'
+export { syncBuiltinESMExports as synchronizeBuiltinExports } from './bridges/Bridge_node/Bridge_node'
 
 /** IncomingRequest describes the publication endpoint's bounded request stream. */
-export type { IncomingRequest } from './NodeBuiltins'
+export type { IncomingRequest } from './bridges/Bridge_node/Bridge_node'
 
 /** OutgoingResponse describes Metro's existing HTTP response. */
-export type { OutgoingResponse } from './NodeBuiltins'
+export type { OutgoingResponse } from './bridges/Bridge_node/Bridge_node'
 
 /** readRequestText rejects an oversized publication before allocating its full body. */
 export async function readRequestText(request: IncomingRequest, limit: number): Promise<string> {
-  const chunks: Buffer[] = []
+  const chunks: NodeBuffer[] = []
   let size = 0
   for await (const chunk of request) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    const bytes = NodeBuffer.isBuffer(chunk) ? chunk : NodeBuffer.from(chunk)
     size += bytes.length
     if (size > limit) {
       request.destroy()
@@ -90,11 +58,5 @@ export async function readRequestText(request: IncomingRequest, limit: number): 
     }
     chunks.push(bytes)
   }
-  return Buffer.concat(chunks).toString('utf8')
-}
-
-function expoLoader(directory: string): NodeJS.Require {
-  const application = createRequire(join(directory, 'package.json'))
-  const expo = createRequire(application.resolve('expo/package.json'))
-  return createRequire(expo.resolve('@expo/cli/package.json'))
+  return NodeBuffer.concat(chunks).toString('utf8')
 }

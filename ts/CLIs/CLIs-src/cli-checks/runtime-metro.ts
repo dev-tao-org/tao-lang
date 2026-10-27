@@ -2,11 +2,15 @@ import { Bundle, FileSystem, Path, Repo } from '@shared/os'
 
 /** metroBuildInputs fingerprints the preload sources and dependency patches shipped with the runtime. */
 export async function metroBuildInputs(): Promise<string[]> {
-  const directories = ['ts/7-runtime/runtime-src/expo', 'ts/shared/shared-src/os']
+  const directories = [
+    'ts/7-runtime/runtime-src/expo',
+    'ts/7-runtime/runtime-src/bridges',
+    'ts/shared/shared-src/os',
+    'ts/shared/shared-src/bridges',
+  ]
   const groups = await Promise.all(directories.map(async directory => {
     const root = Repo.resolvePath(directory)
-    const names = await FileSystem.readdir(root)
-    return names.filter(name => name.endsWith('.ts')).map(name => Path.join(root, name))
+    return await FileSystem.listProductionSourceFiles(root)
   }))
   const patchRoot = Repo.resolvePath('ts/patches')
   const patches = (await FileSystem.readdir(patchRoot)).map(name => Path.join(patchRoot, name))

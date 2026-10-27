@@ -1,0 +1,140 @@
+import { Path, Tests } from '@shared/os'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { createSourceBridgeContext } from '../cli-checks/source-bridge-owners'
+import { sourceBridgeIssue, sourceBridgeLoaderAliases } from '../cli-checks/source-bridges'
+
+const bridgeContext = createSourceBridgeContext(repositoryRoot())
+
+Tests.test('source conformance > assigns external module references to exact bridge owners', () => {
+  expectBridgeIssue(
+    "import fs from 'node:fs'",
+    'ts/app.ts',
+    'external module "node:fs" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue("import fs from 'node:fs'", 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts')
+  expectBridgeIssue(
+    "import { x } from '@expo/metro/runtime'",
+    'ts/app.ts',
+    'external module "@expo/metro/runtime" belongs in ts/7-runtime/runtime-src/bridges/Bridge_expo-metro',
+  )
+  expectBridgeIssue(
+    "import { x } from 'unknown-package'",
+    'ts/app.ts',
+    'external module "unknown-package" has no registered bridge owner',
+  )
+  expectBridgeIssue("import { x } from '@shared'", 'ts/app.ts')
+  expectBridgeIssue("import { x } from '@cli-kit'", 'ts/app.ts')
+  expectBridgeIssue("import { x } from '@cst'", 'ts/app.ts')
+  expectBridgeIssue("import { x } from '@grammar/parser'", 'ts/app.ts')
+  expectBridgeIssue("import Tao from '@tao/runtime-api'", 'ts/app.ts')
+  expectBridgeIssue("import { x } from '@tao/runtime/Runtime'", 'ts/app.ts')
+  expectBridgeIssue(
+    "import { x } from '@tao/not-a-workspace-package'",
+    'ts/app.ts',
+    'external module "@tao/not-a-workspace-package" has no registered bridge owner',
+  )
+  expectBridgeIssue("import { x } from './local'", 'ts/app.ts')
+})
+
+Tests.test('source conformance > checks type, re-export, dynamic, require and wrapped module literals', () => {
+  const cases = [
+    { source: "type Stats = import('node:fs').Stats", specifier: 'node:fs', owner: 'node' },
+    { source: "export { readFile } from 'node:fs/promises'", specifier: 'node:fs/promises', owner: 'node' },
+    { source: "const fs = await import('node:fs/promises')", specifier: 'node:fs/promises', owner: 'node' },
+    { source: "const fs = require('node:fs')", specifier: 'node:fs', owner: 'node' },
+    { source: "const fs = require.resolve('node:fs')", specifier: 'node:fs', owner: 'node' },
+    { source: "const parser = Platform.loadModule('tree-sitter')", specifier: 'tree-sitter', owner: 'tree-sitter' },
+  ]
+  for (const { source, specifier, owner } of cases) {
+    const ownerPath = owner === 'node'
+      ? 'ts/shared/shared-src/os/bridges/Bridge_node'
+      : 'ts/1-grammar/grammar-src/bridges/Bridge_tree-sitter.ts'
+    expectBridgeIssue(source, 'ts/app.ts', `external module "${specifier}" belongs in ${ownerPath}`)
+  }
+  expectBridgeIssue("const text = 'node:fs'; // require('node:path')", 'ts/app.ts')
+})
+
+Tests.test('source conformance > retains only the three exact builtin mock fixture exceptions', () => {
+  expectBridgeIssue(
+    "const fs = await import('node:fs/promises')",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+  )
+  expectBridgeIssue(
+    "const fs = await import('node:fs/promises')",
+    'ts/shared/shared-src/os/Storage-test/LeaseFailures.test.ts',
+  )
+  expectBridgeIssue(
+    "const fs = await import('node:fs/promises')",
+    'ts/shared/shared-src/os/SessionLock-test/PointerDiagnostics.test.ts',
+  )
+  expectBridgeIssue(
+    "const fs = await import('node:fs')",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node:fs" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue(
+    "import fs from 'node:fs/promises'",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node:fs/promises" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue(
+    "type Stats = import('node:fs/promises').Stats",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node:fs/promises" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue(
+    "export { readFile } from 'node:fs/promises'",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node:fs/promises" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue(
+    "const fs = require('node:fs/promises')",
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node:fs/promises" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+})
+
+Tests.test('source conformance > recognizes literal calls through loader aliases', () => {
+  const sources = [
+    "const load = require; load('node:fs')",
+    "const requireHere = createRequire(import.meta.url); requireHere('node:fs')",
+    "const requireHere = Node.createRequire(import.meta.url); const load = requireHere; load('node:fs')",
+    "const load = Bridge.createMetroLoader(directory); load('node:fs')",
+    "createExpoCliLoader(directory).resolve('node:fs')",
+    "createExpoLoader(directory)('node:fs')",
+  ]
+  for (const source of sources) {
+    expectBridgeIssue(
+      source,
+      'ts/app.ts',
+      'external module "node:fs" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+    )
+  }
+})
+
+function expectBridgeIssue(source: string, filename: string, expected?: string): void {
+  const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
+  const loaderAliases = sourceBridgeLoaderAliases(file)
+  const issues: string[] = []
+  const visit = (node: TypeScript.Node): void => {
+    const issue = sourceBridgeIssue(node, filename, bridgeContext, loaderAliases, false)
+    if (issue) {
+      issues.push(issue)
+    }
+    TypeScript.forEachChild(node, visit)
+  }
+  visit(file)
+  Tests.expect(issues).toEqual(expected === undefined ? [] : [expected])
+}
+
+function repositoryRoot(): string {
+  let directory = TypeScript.sys.getCurrentDirectory()
+  while (!TypeScript.sys.fileExists(Path.join(directory, 'ts/tsconfig.base.json'))) {
+    const parent = Path.dirname(directory)
+    if (parent === directory) {
+      return directory
+    }
+    directory = parent
+  }
+  return directory
+}

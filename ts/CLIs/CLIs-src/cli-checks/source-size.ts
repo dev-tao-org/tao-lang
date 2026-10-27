@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** sourceSizeDiagnostics enforces the hard line limit on handwritten TypeScript. */
 export function sourceSizeDiagnostics(filename: string, source: string): { error?: string } {

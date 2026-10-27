@@ -1,7 +1,7 @@
 import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { satisfies } from 'semver'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { satisfies } from '../bridges/Bridge_semver'
 import { initializeProject } from '../projects/Projects'
 import type { BunExecutor } from '../sidecars/ManagedModules'
 

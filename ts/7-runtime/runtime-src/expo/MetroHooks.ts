@@ -1,5 +1,9 @@
 import { Errors, Try } from '@shared'
 import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
+import * as ExpoCli from '../bridges/Bridge_expo-cli/Bridge_expo-cli'
+import * as ExpoFileMap from '../bridges/Bridge_expo-metro-file-map'
+import * as ExpoMetro from '../bridges/Bridge_expo-metro/Bridge_expo-metro'
+import * as Metro from '../bridges/Bridge_metro'
 import type { MetroAdmission } from './MetroAdmission'
 import { type HmrSocket, limitHmrSocketQueue } from './MetroSocket'
 import type { GeneratedRevision } from './PreviewProtocol'
@@ -8,17 +12,17 @@ import type { GeneratedRevision } from './PreviewProtocol'
  *  Pin guards deliberately reject unknown private surfaces. Delta listeners reserve before debounce;
  *  HMR leases include complete payload serialization and every synchronous websocket send. */
 export function installMetroHooks(options: MetroHookOptions): void {
-  assertVersion(options.directory, '@expo/metro/package.json', '56.0.2')
-  assertVersion(options.directory, '@expo/cli/package.json', '57.0.31')
-  assertVersion(options.directory, '@expo/metro-file-map/package.json', '57.0.4')
-  const metro = MetroPlatform.loadMetroModule('metro/package.json', options.directory) as { version: string }
-  if (metro.version !== '0.84.5') {
-    Errors.ThrowHostEnvironment(`Unsupported underlying Metro version: ${metro.version}.`)
+  assertVersion(ExpoMetro.readVersion(options.directory), 'Expo Metro', '56.0.2')
+  assertVersion(ExpoCli.readVersion(options.directory), 'Expo CLI', '57.0.31')
+  assertVersion(ExpoFileMap.readVersion(options.directory), 'Expo file map', '57.0.4')
+  const metroVersion = Metro.readVersion(options.directory)
+  if (metroVersion !== '0.84.5') {
+    Errors.ThrowHostEnvironment(`Unsupported underlying Metro version: ${metroVersion}.`)
   }
-  const server = loadPrototype(options.directory, '@expo/metro/metro/Server')
-  const hmr = loadPrototype(options.directory, '@expo/metro/metro/HmrServer')
+  const server = ExpoMetro.loadPrototype('Server', options.directory)
+  const hmr = ExpoMetro.loadPrototype('HmrServer', options.directory)
   assertTimerPatches(options.directory, hmr)
-  const delta = loadPrototype(options.directory, '@expo/metro/metro/DeltaBundler')
+  const delta = ExpoMetro.loadPrototype('DeltaBundler', options.directory)
   for (const name of ['build', 'getRamBundleInfo', 'getAssets', 'getOrderedDependencyPaths']) {
     admitMethod(server, name, options.admission)
   }
@@ -39,27 +43,21 @@ export type MetroHookOptions = {
   reportFatal(message: string): void
 }
 
-type MetroMethod = (this: object, ...arguments_: unknown[]) => unknown
-type MetroPrototype = Record<string, MetroMethod>
+type MetroMethod = ExpoMetro.MetroMethod
+type MetroPrototype = ExpoMetro.MetroPrototype
 type Send = (message: string) => void
 type Client = { sendFn: Send }
 type HmrSocketServer = { prependListener(event: 'connection', listener: (socket: HmrSocket) => void): void }
 
-function assertVersion(directory: string, name: string, expected: string): void {
-  const installed = MetroPlatform.loadExpoModule(name, directory) as { version: string }
-  if (installed.version !== expected) {
-    Errors.ThrowHostEnvironment(`Unsupported Metro dependency ${name}: expected ${expected}, got ${installed.version}.`)
+function assertVersion(version: string, name: string, expected: string): void {
+  if (version !== expected) {
+    Errors.ThrowHostEnvironment(`Unsupported Metro dependency ${name}: expected ${expected}, got ${version}.`)
   }
-}
-
-function loadPrototype(directory: string, name: string): MetroPrototype {
-  const loaded = MetroPlatform.loadExpoModule(name, directory) as { default?: { prototype: MetroPrototype } }
-  return (loaded.default ?? loaded as unknown as { prototype: MetroPrototype }).prototype
 }
 
 function assertTimerPatches(directory: string, hmr: MetroPrototype): void {
   const registration = requireMethod(hmr, '_registerEntryPoint').toString()
-  const requireSource = MetroPlatform.readExpoSource('build/metro-require/require.js', directory)
+  const requireSource = ExpoCli.readRequireSource(directory)
   const hmrPatched = /},\s*0,\s*\)/.test(registration)
   const refreshPatched = /Refresh\.performReactRefresh\(\);\s*}, 0\)/.test(requireSource)
   if (!hmrPatched || !refreshPatched) {
@@ -163,9 +161,9 @@ function wrapChangeListeners(prototype: MetroPrototype, options: MetroHookOption
 }
 
 function boundHmrSockets(directory: string): void {
-  const module = MetroPlatform.loadExpoModule('@expo/metro/metro/lib/createWebsocketServer', directory) as {
+  const module = ExpoMetro.loadSocketFactory<{
     default(...arguments_: unknown[]): HmrSocketServer
-  }
+  }>(directory)
   const createServer = module.default
   if (typeof createServer !== 'function') {
     Errors.ThrowHostEnvironment('Unsupported Metro HMR socket factory.')

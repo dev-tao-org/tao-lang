@@ -1,9 +1,10 @@
 import { Errors } from '@shared'
 import { Platform } from '@shared/os'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
 
 /** build bundles browser entry points for a local tooling surface. */
-export async function build(entrypoints: string[], outdir: string): Promise<Bun.BuildOutput> {
-  return await Bun.build({ entrypoints, outdir, target: 'browser', format: 'esm', sourcemap: 'none' })
+export async function build(entrypoints: string[], outdir: string): Promise<BunHost.BuildOutput> {
+  return await BunHost.getRuntime().build({ entrypoints, outdir, target: 'browser', format: 'esm', sourcemap: 'none' })
 }
 
 /** openUrl opens a web URL in Google Chrome without activating it on macOS. */

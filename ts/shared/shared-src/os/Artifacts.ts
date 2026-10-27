@@ -1,15 +1,17 @@
 import { Errors, Time, Try } from '../universal/universal'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import * as FileSystem from './FileSystem'
-import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFile, writeFileSync } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Repo from './Repo'
 
+export { appendFileSync, mkdirSync, mkdtemp, move } from './bridges/Bridge_node/Bridge_node'
 export { file, mkdir, realpathSync, rm, write } from './FileSystem'
-export { appendFileSync, mkdirSync, mkdtemp, move } from './NodeBuiltins'
 
 /** writePrivate creates a new owner-only artifact without a window of public readability. */
 export function writePrivate(path: string, data: string): Promise<void> {
-  return writeFile(path, data, { mode: 0o600, flag: 'wx' })
+  return Node.writeFile(path, data, { mode: 0o600, flag: 'wx' })
 }
 
 /** resolvePath resolves artifact paths beneath this checkout's shared artifact directory. */
@@ -66,12 +68,12 @@ function registerTemporary(absolute: string): void {
     if (!hasSafeParents(Path.join(directory, 'record.json'))) {
       Errors.ThrowHostEnvironment('Artifact cleanup records must remain inside the checkout artifact directory.')
     }
-    mkdirSync(directory, { recursive: true })
+    Node.mkdirSync(directory, { recursive: true })
     activeRun = {
-      path: Path.join(directory, `${Time.now()}-${process.pid}-${crypto.randomUUID()}.json`),
+      path: Path.join(directory, `${Time.now()}-${hostProcess.pid}-${WebHost.crypto.randomUUID()}.json`),
       record: { status: 'running', artifacts: [] },
     }
-    process.once('exit', completeTemporaryRun)
+    hostProcess.once('exit', completeTemporaryRun)
   }
   if (!activeRun.record.artifacts.includes(absolute)) {
     activeRun.record.artifacts.push(absolute)
@@ -109,7 +111,7 @@ function acquireCleanupLock(): () => void {
   const deadline = Time.now() + 5000
   while (
     !Try(() => {
-      writeFileSync(path, String(process.pid), { flag: 'wx' })
+      Node.writeFileSync(path, String(hostProcess.pid), { flag: 'wx' })
       return true
     }, {
       catch(error) {
@@ -125,7 +127,7 @@ function acquireCleanupLock(): () => void {
     }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10)
   }
-  return () => rmSync(path)
+  return () => Node.rmSync(path)
 }
 
 function isExpiredRun(run: TemporaryRun, now: number): boolean {
@@ -146,8 +148,8 @@ function writeTemporaryRun(): void {
     return
   }
   const temporary = activeRun.path + '.tmp'
-  writeFileSync(temporary, JSON.stringify(activeRun.record))
-  renameSync(temporary, activeRun.path)
+  Node.writeFileSync(temporary, JSON.stringify(activeRun.record))
+  Node.renameSync(temporary, activeRun.path)
 }
 
 async function readTemporaryRuns(directory: string): Promise<{ path: string; record: TemporaryRun }[]> {
@@ -157,7 +159,7 @@ async function readTemporaryRuns(directory: string): Promise<{ path: string; rec
       continue
     }
     const path = Path.join(directory, entry.name)
-    const record: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    const record: unknown = JSON.parse(Node.readFileSync(path, 'utf8'))
     if (!isTemporaryRun(record)) {
       Errors.ThrowHostEnvironment(`Invalid artifact cleanup record: ${path}`)
     }
@@ -186,7 +188,7 @@ function hasSafeParents(path: string): boolean {
   let parent = Path.dirname(path)
   const root = resolvePath()
   while (parent.startsWith(root)) {
-    if (FileSystem.existsSync(parent) && lstatSync(parent).isSymbolicLink()) {
+    if (FileSystem.existsSync(parent) && Node.lstatSync(parent).isSymbolicLink()) {
       return false
     }
     if (parent === root) {

@@ -1,7 +1,7 @@
 import { format, type FormatResult } from '@fix/Format'
 import type { LayoutOptions } from '@fix/lib/layout/Layout'
 import { Errors, Time, Try } from '@shared'
-import { Language, Parser as WebParser, Query as WebQuery, type Tree } from 'web-tree-sitter'
+import { Language, Parser as WebParser, Query as WebQuery, type Tree } from './Bridge_web-tree-sitter'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
 import { editTreeForSource } from './SourceEdit'

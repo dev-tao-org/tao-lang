@@ -169,8 +169,8 @@ function createRevision(revision: string, sequence: number, extra = false): Gene
     sequence,
     files: {
       'App.tsx': S`
-        import React from '@runtime/client/Bridge-React';
-        import ReactNative from '@runtime/client/Bridge-ReactNative';
+        import React from '@runtime/client/Bridge_react/Bridge_react';
+        import ReactNative from '@runtime/client/Bridge_react-native';
         import { helper } from './helper';
         ${extra ? "import { extra } from './extra';" : ''}
         export default function App() { return React.createElement(ReactNative.Text, null, 'APP_${revision}' + helper ${
