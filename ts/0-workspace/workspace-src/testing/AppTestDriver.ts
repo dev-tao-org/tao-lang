@@ -19,41 +19,65 @@ export async function createAppTestDriver(
   signal?: AbortSignal,
 ): Promise<TestDriver> {
   const state: Session = {}
+  const context = { path, source, openBrowser, compileApp, onProgress, signal }
+  const abort = listenForAbort(state, signal)
+  return {
+    run: app => runAppTestSession(app, state, context),
+    press: tag => getBrowser(state).press(tag),
+    type: (tag, value) => getBrowser(state).type(tag, value),
+    expectText: (value, tag) => getBrowser(state).expectText(value, tag),
+    expectInput: (tag, value) => getBrowser(state).expectInput(tag, value),
+    dispose: () => disposeAppTestSession(state, context, abort),
+  }
+}
+
+type DriverContext = {
+  path: string
+  source: string
+  openBrowser: () => Promise<TestBrowser>
+  compileApp: typeof compile
+  onProgress?: TestProgress
+  signal?: AbortSignal
+}
+
+type Session = {
+  workspace?: ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
+  expo?: Runtime.ExpoSession
+  browser?: TestBrowser
+}
+
+function listenForAbort(state: Session, signal?: AbortSignal): () => void {
   const abort = () => {
     void Try.WithDefault(undefined, async () => await state.browser?.dispose())
   }
   signal?.addEventListener('abort', abort, { once: true })
-  return {
-    async run(app) {
-      assertActive(signal)
-      state.workspace = await createTestWorkspace(path, app, compileApp)
-      onProgress?.(`Compiling app ${app}…`)
-      const result = await state.workspace.update(new Document(path, source))
-      assertActive(signal)
-      if (result.status !== 'published') {
-        Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
-      }
-      onProgress?.('Starting Expo…')
-      state.expo = await Runtime.start(state.workspace.runtime!, { signal })
-      assertActive(signal)
-      onProgress?.('Launching headless browser…')
-      state.browser = await openBrowser()
-      assertActive(signal)
-      onProgress?.('Loading app…')
-      await state.browser.open(state.expo.url)
-      onProgress?.('Running test steps…')
-    },
-    press: tag => browser(state).press(tag),
-    type: (tag, value) => browser(state).type(tag, value),
-    expectText: (value, tag) => browser(state).expectText(value, tag),
-    expectInput: (tag, value) => browser(state).expectInput(tag, value),
-    async dispose() {
-      signal?.removeEventListener('abort', abort)
-      onProgress?.('Cleaning up…')
-      await disposeSession(state)
-      onProgress?.('Cleanup complete.')
-    },
+  return abort
+}
+
+async function runAppTestSession(app: string, state: Session, context: DriverContext): Promise<void> {
+  const { path, source, compileApp, onProgress, signal } = context
+  assertActive(signal)
+  state.workspace = await createTestWorkspace(path, app, compileApp)
+  onProgress?.(`Compiling app ${app}…`)
+  const result = await state.workspace.update(new Document(path, source))
+  assertActive(signal)
+  if (result.status !== 'published') {
+    Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
   }
+  onProgress?.('Starting Expo…')
+  state.expo = await Runtime.start(state.workspace.runtime!, { signal })
+  assertActive(signal)
+  await openAppTestBrowser(state, context)
+  onProgress?.('Running test steps…')
+}
+
+async function openAppTestBrowser(state: Session, context: DriverContext): Promise<void> {
+  const { openBrowser, onProgress, signal } = context
+  onProgress?.('Launching headless browser…')
+  state.browser = await openBrowser()
+  assertActive(signal)
+  onProgress?.('Loading app…')
+  await state.browser.open(state.expo!.url)
 }
 
 function assertActive(signal?: AbortSignal): void {
@@ -62,10 +86,11 @@ function assertActive(signal?: AbortSignal): void {
   }
 }
 
-type Session = {
-  workspace?: ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
-  expo?: Runtime.ExpoSession
-  browser?: TestBrowser
+async function disposeAppTestSession(state: Session, context: DriverContext, abort: () => void): Promise<void> {
+  context.signal?.removeEventListener('abort', abort)
+  context.onProgress?.('Cleaning up…')
+  await disposeSession(state)
+  context.onProgress?.('Cleanup complete.')
 }
 
 async function createTestWorkspace(path: string, app: string, compileApp: typeof compile) {
@@ -126,24 +151,20 @@ function selectTestSession(options: Parameters<typeof openProjectWorkspace>[1], 
   return { ...options, id }
 }
 
-function browser(state: Session): TestBrowser {
+function getBrowser(state: Session): TestBrowser {
   return state.browser ?? Errors.ThrowShouldNeverHappen('Run an app before interacting with it.')
 }
 
 async function disposeSession(state: Session): Promise<void> {
-  await Try(async () => {
-    await state.browser?.dispose()
-  }, {
-    async finally() {
-      await Try(async () => {
-        await state.expo?.dispose()
-      }, {
-        async finally() {
-          await Try(() => retainExpoOutput(state), { finally: () => state.workspace?.dispose() })
-        },
-      })
-    },
-  })
+  await Try(() => state.browser?.dispose(), { finally: () => disposeExpoSession(state) })
+}
+
+async function disposeExpoSession(state: Session): Promise<void> {
+  await Try(() => state.expo?.dispose(), { finally: () => disposeWorkspaceSession(state) })
+}
+
+async function disposeWorkspaceSession(state: Session): Promise<void> {
+  await Try(() => retainExpoOutput(state), { finally: () => state.workspace?.dispose() })
 }
 
 async function retainExpoOutput(state: Session): Promise<void> {

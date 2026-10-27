@@ -24,7 +24,7 @@ export default registerCommand({
     flags: '--parallel [workers]',
     description: 'Run concurrently; optionally override the total worker budget (default: 6).',
   }],
-  async action(target?: string, options: { slow?: string } & TestExecutionOptions = {}) {
+  async action(target?: string, options: TestCommandOptions = {}) {
     const slowSeconds = parseSlowTestSeconds(options.slow)
     const execution = { serial: options.serial, parallel: options.parallel, yes: options.yes }
     planTestExecution(execution)
@@ -39,18 +39,28 @@ export default registerCommand({
       Check.assertNewWorkspacePath(Repo.resolvePath(target))
     }
     const workspaceTarget = workspaceTestTarget(target)
-    const args = workspaceTarget ? [workspaceTarget] : target ? ['--test-name-pattern', target] : []
+    const args = resolveTestArguments(workspaceTarget, target)
     await Check.workspaceTests(args, slowSeconds, execution)
   },
 })
+
+type TestCommandOptions = TestExecutionOptions & { slow?: string }
+
+function resolveTestArguments(workspaceTarget: string | undefined, target: string | undefined): string[] {
+  if (workspaceTarget) {
+    return [workspaceTarget]
+  }
+  if (target) {
+    return ['--test-name-pattern', target]
+  }
+  return []
+}
 
 function workspaceTestTarget(target: string | undefined): string | undefined {
   if (!target) {
     return undefined
   }
-  const path = Path.isAbsolute(target) || FileSystem.existsSync(Path.resolve(Repo.resolvePath('ts'), target))
-    ? Path.resolve(Repo.resolvePath('ts'), target)
-    : Repo.resolvePath(target)
+  const path = resolveTestTargetPath(target)
   Check.assertNewWorkspacePath(path)
   const canonical = FileSystem.existsSync(path) ? FileSystem.realpathSync(path) : path
   const root = FileSystem.realpathSync(Repo.getWorkspaceRoot())
@@ -63,4 +73,13 @@ function workspaceTestTarget(target: string | undefined): string | undefined {
     return canonical
   }
   return undefined
+}
+
+function resolveTestTargetPath(target: string): string {
+  const workspacePath = Path.resolve(Repo.resolvePath('ts'), target)
+  const useWorkspacePath = Path.isAbsolute(target) || FileSystem.existsSync(workspacePath)
+  if (useWorkspacePath) {
+    return workspacePath
+  }
+  return Repo.resolvePath(target)
 }

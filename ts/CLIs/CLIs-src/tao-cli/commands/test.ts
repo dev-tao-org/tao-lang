@@ -23,7 +23,7 @@ export default registerCommand({
     flags: '--session <id>',
     description: 'Use a named project session lock.',
   }],
-  async action(target: string, options: TestExecutionOptions & { session?: string } = {}) {
+  async action(target: string, options: TaoTestCommandOptions = {}) {
     const path = resolveCallerPath(target)
     const tests = await findTaoTestFiles(path)
     await withProjectSessions(tests.length > 0 ? tests : [path], async () => {
@@ -31,3 +31,5 @@ export default registerCommand({
     }, options.session)
   },
 })
+
+type TaoTestCommandOptions = TestExecutionOptions & { session?: string }
