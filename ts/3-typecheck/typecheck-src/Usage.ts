@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Switch, Timings } from '@shared'
-import { namespaceFromPath } from './Modules'
+import { deriveNamespaceFromPath } from './Modules'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
@@ -12,7 +12,7 @@ export type UsageWarning = {
 }
 
 /** unusedWarnings checks lexical references in a complete AST without loading other modules. */
-export const unusedWarnings = Timings.topLevelTimer(function(timings, document: AST.Document): UsageWarning[] {
+export const unusedWarnings = Timings.createTopLevelTimer(function(timings, document: AST.Document): UsageWarning[] {
   return timings.run(analyzeUsage, document)
 })
 
@@ -20,28 +20,28 @@ type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report:
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
 const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Document): UsageWarning[] {
-  const scope = childScope()
-  for (const declaration of document.root.declarations) {
+  const scope = createChildScope()
+  for (const declaration of AST.GetDeclarations(document)) {
     declareModuleBinding(declaration, scope)
   }
-  for (const declaration of document.root.declarations) {
+  for (const declaration of AST.GetDeclarations(document)) {
     visitDeclaration(declaration, scope)
   }
-  return scope.all.filter(binding => binding.report && !binding.used).map(warningFor)
+  return scope.all.filter(binding => binding.report && !binding.used).map(createUsageWarning)
     .sort((left, right) => left.start - right.start)
 })
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
-    const visibility = node.visibility ?? (AST.IsAppDeclaration(node) ? 'folder' : 'file')
-    declare(scope, node.name, 'local', visibility === 'file')
+    const reportUnused = AST.GetDeclarationVisibility(node) === 'file'
+    declare(scope, node.name, 'local', reportUnused)
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
       declare(scope, item.alias ?? item.target, 'import')
     }
   } else if (AST.IsUsePackageStatement(node)) {
     // ex: use package @Foo as Bar -> Bar
-    const value = node.alias?.value ?? namespaceFromPath(node.from.value)
+    const value = node.alias?.value ?? deriveNamespaceFromPath(node.from.value)
     if (value) {
       const namespaceName: AST.Name = node.alias ?? { ...node.from, kind: 'Name', value }
       declare(scope, namespaceName, 'namespace')
@@ -53,12 +53,12 @@ function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
 
 function visitDeclaration(node: AST.Declaration, scope: Scope): void {
   Switch.kind(node, {
-    AppDeclaration: app => reference(scope, app.root),
-    LetDefinition: value => visitLet(value, scope),
+    AppDeclaration: app => reference(scope, AST.GetAppRoot(app)),
+    LetDeclaration: value => visitLet(value, scope),
     ViewDeclaration: view => visitView(view, scope),
     TestsDeclaration(tests) {
-      for (const test of tests.tests) {
-        for (const step of test.steps) {
+      for (const test of tests.block.statements) {
+        for (const step of AST.GetTestSteps(test)) {
           if (AST.IsKind(step, 'RunStatement')) {
             reference(scope, step.app)
           }
@@ -72,30 +72,35 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 }
 
 function visitView(node: AST.ViewDeclaration, parent: Scope): void {
-  const scope = childScope(parent)
-  const reportUnusedParameters = !AST.IsKind(node.render, 'ForeignView')
+  const scope = createChildScope(parent)
+  const reportUnusedParameters = AST.GetForeignViewPath(node) === undefined
   for (const parameter of node.parameters) {
     reference(parent, parameter.type)
     declare(scope, parameter.name, 'local', reportUnusedParameters)
   }
-  for (const definition of node.definitions) {
-    visitLet(definition, scope)
-    declare(scope, definition.name)
-  }
-  Switch.kind(node.render, {
-    ViewRender: render => visitRender(render, scope),
-    Injection(injection) {
-      for (const capture of injection.captures) {
-        if (AST.IsKind(capture.value, 'Name')) {
-          reference(scope, capture.value)
-        }
+  const statements = AST.GetViewDeclarationStatements(node)
+  if (statements) {
+    for (const child of statements.filter(AST.IsViewDeclaration)) {
+      declare(scope, child.name)
+    }
+    for (const statement of statements) {
+      if (AST.IsLetDeclaration(statement)) {
+        visitLet(statement, scope)
+        declare(scope, statement.name)
+      } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
+        visitRender(statement.expression, scope)
+      } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
+        visitInjection(statement.injection, scope)
+      } else if (AST.IsViewDeclaration(statement)) {
+        visitView(statement, scope)
+      } else {
+        // The view block grammar and semantic constructor constrain its statements.
       }
-    },
-    ForeignView: Switch.nothing,
-  })
+    }
+  }
 }
 
-function visitLet(node: AST.LetDefinition, scope: Scope): void {
+function visitLet(node: AST.LetDeclaration, scope: Scope): void {
   if (node.type) {
     reference(scope, node.type)
   }
@@ -104,25 +109,36 @@ function visitLet(node: AST.LetDefinition, scope: Scope): void {
   }
 }
 
-function visitRender(node: AST.ViewRender, scope: Scope): void {
+function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   reference(scope, node.target)
   for (const argument of node.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       reference(scope, argument)
     }
   }
-  const children = childScope(scope)
-  for (const child of node.children) {
-    if (AST.IsLetDefinition(child)) {
-      visitLet(child, children)
-      declare(children, child.name)
-    } else {
-      visitRender(child, children)
+  const statements = AST.GetViewRenderBlockStatements(node)
+  if (statements.length > 0) {
+    const childrenScope = createChildScope(scope)
+    for (const child of statements) {
+      if (AST.IsLetDeclaration(child)) {
+        visitLet(child, childrenScope)
+        declare(childrenScope, child.name)
+      } else {
+        visitRender(child, childrenScope)
+      }
     }
   }
 }
 
-function childScope(parent?: Scope): Scope {
+function visitInjection(node: AST.Injection, scope: Scope): void {
+  for (const capture of node.captures) {
+    if (AST.IsKind(capture.value, 'Name')) {
+      reference(scope, capture.value)
+    }
+  }
+}
+
+function createChildScope(parent?: Scope): Scope {
   return { parent, bindings: new Map(), all: parent?.all ?? [] }
 }
 
@@ -149,7 +165,7 @@ function reference(scope: Scope, name: AST.Name): void {
   }
 }
 
-function warningFor(binding: Binding): UsageWarning {
+function createUsageWarning(binding: Binding): UsageWarning {
   const code = binding.kind === 'local' ? 'unused-declaration' : 'unused-import'
   const label = binding.kind === 'local' ? 'Declaration' : 'Imported name'
   const message = `${label} '${binding.name.value}' is not used in this file.`
