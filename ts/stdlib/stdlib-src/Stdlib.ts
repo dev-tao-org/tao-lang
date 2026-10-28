@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
 import ProjectMetadata from './.tao/store/project.json' with { type: 'json' }
@@ -9,7 +9,10 @@ export function projectDirectory(): Promise<string> {
   return defaultProjectDirectory ??= resolveDefaultProjectDirectory()
 }
 
-let defaultProjectDirectory: Promise<string> | undefined
+type CachedProjectDirectory = Promise<string> | undefined
+type CandidateProjectDirectory = string | undefined
+
+let defaultProjectDirectory: CachedProjectDirectory
 
 const embeddedFiles = {
   '@ui/Views.tao': UI,
@@ -23,7 +26,7 @@ async function resolveDefaultProjectDirectory(): Promise<string> {
 }
 
 async function locateProject(
-  candidate: string | undefined,
+  candidate: CandidateProjectDirectory,
   cacheRoot: string,
   resources: Readonly<Record<string, string>>,
 ): Promise<string> {
@@ -31,7 +34,7 @@ async function locateProject(
   return live ?? await Storage.withCacheMutation(() => materializeProject(cacheRoot, resources))
 }
 
-function findLiveProjectRoot(candidate: string | undefined): string | undefined {
+function findLiveProjectRoot(candidate: CandidateProjectDirectory): string | undefined {
   if (!candidate || !FileSystem.existsSync(Path.join(candidate, '.tao', 'store', 'project.json'))) {
     return undefined
   }
@@ -62,7 +65,8 @@ async function materializeProject(cacheRoot: string, resources: Readonly<Record<
 function validateResources(entries: [string, string][]): void {
   if (
     entries.length === 0 || entries.some(([path]) => {
-      return Path.isAbsolute(path) || path.split(/[\\/]/).some(part => !part || part === '.' || part === '..')
+      return Path.isAbsolute(path)
+        || path.split(Regxs.PathSeparatorRegx).some(part => !part || part === '.' || part === '..')
     })
   ) {
     Errors.ThrowUserInput('Embedded stdlib project contains an unsafe resource path.')

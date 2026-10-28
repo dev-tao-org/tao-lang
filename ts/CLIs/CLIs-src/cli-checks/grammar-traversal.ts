@@ -2,7 +2,7 @@
 export type GrammarRule = { type: string; value?: string; content?: GrammarRule; members?: GrammarRule[] }
 
 /** collectOwnedTokens collects literal tokens recursively while stopping at referenced symbols. */
-export function collectOwnedTokens(rule: GrammarRule | undefined): string[] {
+export function collectOwnedTokens(rule: OptionalGrammarRule): string[] {
   if (!rule || rule.type === 'SYMBOL') {
     return []
   }
@@ -11,3 +11,5 @@ export function collectOwnedTokens(rule: GrammarRule | undefined): string[] {
   }
   return [...collectOwnedTokens(rule.content), ...rule.members?.flatMap(collectOwnedTokens) ?? []]
 }
+
+type OptionalGrammarRule = GrammarRule | undefined

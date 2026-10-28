@@ -3,6 +3,8 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareRuntime } from '../../../CLIs/CLIs-src/cli-checks/runtime-build'
 import { prepareToolchain } from '../../runtime-src/expo/Toolchain'
 
+const InstalledRefreshTimerPatchRegx = /Refresh\.performReactRefresh\(\);\s+}, 0\);/
+
 Tests.test(
   'packaged Expo runtime installs frozen dependencies with relocated patches',
   async () => {
@@ -50,6 +52,6 @@ async function verifyInstalledPatchEffects(nodeModules: string): Promise<void> {
   ])
   Tests.expect(fileMap).toContain('applyExternalBatch(changes)')
   Tests.expect(metro).toContain('latestChangeEvent,\n          );\n        },\n        0,')
-  Tests.expect(expoCli).toMatch(/Refresh\.performReactRefresh\(\);\s+}, 0\);/)
+  Tests.expect(expoCli).toMatch(InstalledRefreshTimerPatchRegx)
   Tests.expect(await FileSystem.exists(Path.join(nodeModules, 'expo/package.json'))).toBe(true)
 }

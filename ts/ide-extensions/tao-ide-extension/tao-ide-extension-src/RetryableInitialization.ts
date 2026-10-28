@@ -2,7 +2,7 @@
 export function createRetryableInitialization<Arguments extends readonly unknown[], Result>(
   initialize: (...arguments_: Arguments) => Promise<Result>,
 ): (...arguments_: Arguments) => Promise<Result> {
-  let promise: Promise<Result> | undefined
+  let promise: InitializationPromise<Result>
   return (...arguments_) => {
     promise ??= Promise.resolve().then(() => initialize(...arguments_)).catch(error => {
       promise = undefined
@@ -11,3 +11,5 @@ export function createRetryableInitialization<Arguments extends readonly unknown
     return promise
   }
 }
+
+type InitializationPromise<Result> = Promise<Result> | undefined

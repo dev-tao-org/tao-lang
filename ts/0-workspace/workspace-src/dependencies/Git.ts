@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { FileSystem, Platform } from '@shared/os'
 import type { GitSourceAdapter } from './Types'
 
@@ -40,13 +40,15 @@ function refNames(version: string): string[] {
   return [`refs/tags/${version}^{}`, `refs/tags/${version}`, `refs/heads/${version}`]
 }
 
-function validateCommit(commit: string | undefined, repository: string, version: string): string {
+type CandidateCommit = string | undefined
+
+function validateCommit(commit: CandidateCommit, repository: string, version: string): string {
   if (!isCommit(commit)) {
     Errors.ThrowUserInput(`Cannot resolve ${repository} version ${version} to an immutable commit.`)
   }
   return commit.toLowerCase()
 }
 
-function isCommit(value: string | undefined): value is string {
-  return value !== undefined && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(value)
+function isCommit(value: CandidateCommit): value is string {
+  return value !== undefined && Regxs.GitCommitHashRegx.test(value)
 }

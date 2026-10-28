@@ -5,7 +5,7 @@ import type { UpdateResult } from '@workspace/Workspace'
 
 /** PreviewEditFiles supplies versioned completion observations for one serialized harness edit. */
 export type PreviewEditFiles = {
-  getDocument(path: string): Pick<Document, 'source' | 'version'> | undefined
+  getDocument(path: string): Pick<Document, PreviewDocumentField> | undefined
   onCompiled(listener: (event: CompiledEvent) => void): () => unknown
 }
 
@@ -47,6 +47,7 @@ export function observePreviewEdit(
 }
 
 type ExpectedPreviewEdit = { path: string; source: string; previousVersion: number }
+type PreviewDocumentField = 'source' | 'version'
 
 function matchesFreshCompletion(
   files: PreviewEditFiles,
@@ -54,10 +55,16 @@ function matchesFreshCompletion(
   expected: ExpectedPreviewEdit,
 ): boolean {
   const document = files.getDocument(expected.path)
-  return event.path === expected.path && event.source === expected.source
-    && event.version !== undefined && event.version > expected.previousVersion
-    && event.result.status !== 'superseded'
-    && event.version === document?.version && document.source === expected.source
+  if (event.path !== expected.path || event.source !== expected.source) {
+    return false
+  }
+  if (event.version === undefined || event.version <= expected.previousVersion) {
+    return false
+  }
+  if (event.result.status === 'superseded') {
+    return false
+  }
+  return event.version === document?.version && document.source === expected.source
 }
 
 function createEditFailure(message: string): Errors.TaoError {

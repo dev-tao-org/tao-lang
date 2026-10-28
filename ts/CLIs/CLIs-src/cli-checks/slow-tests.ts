@@ -1,10 +1,10 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
 export async function withTestTimings(
-  run: (reportPath: string | undefined) => Promise<void>,
+  run: (reportPath: OptionalReportPath) => Promise<void>,
   slowSeconds = 0.075,
   output: Pick<typeof IO, 'warn'> = IO,
 ): Promise<void> {
@@ -37,6 +37,10 @@ export function parseSlowTestSeconds(value = '0.075'): number {
   }
   return seconds
 }
+
+type OptionalReportPath = string | undefined
+type OptionalTimedTest = TimedTest | undefined
+type OptionalSuiteAttributes = Record<string, string> | undefined
 
 function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
   const slow = readTestCases(report).filter(test => isSlowTest(test, slowSeconds))
@@ -76,11 +80,11 @@ function formatSlowTest(test: TimedTest): string {
 function readTestCases(report: string): TimedTest[] {
   const suites: Record<string, string>[] = []
   const cases: TimedTest[] = []
-  let current: (typeof cases)[number] | undefined
+  let current: OptionalTimedTest
   // Match whole XML tokens, including quoted > characters; diagnostic CDATA and comments stay opaque.
-  const tokens = report.matchAll(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<(?:"[^"]*"|'[^']*'|[^'">])*>/g)
+  const tokens = report.matchAll(Regxs.XmlToken)
   for (const [token] of tokens) {
-    const tag = token.match(/^<(\/?)(testsuite|testcase|skipped)\b/)
+    const tag = token.match(Regxs.TestReportTag)
     if (!tag) {
       continue
     }
@@ -115,7 +119,7 @@ function readTestCases(report: string): TimedTest[] {
   return cases
 }
 
-function timedTest(token: string, suite: Record<string, string> | undefined): TimedTest {
+function timedTest(token: string, suite: OptionalSuiteAttributes): TimedTest {
   const attributes = xmlAttributes(token)
   return {
     name: attributes.name ?? '<unnamed>',
@@ -132,7 +136,7 @@ function isSlowTest(test: { seconds: number; skipped: boolean }, threshold: numb
 
 function xmlAttributes(token: string): Record<string, string> {
   const attributes: Record<string, string> = {}
-  for (const match of token.matchAll(/([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+  for (const match of token.matchAll(Regxs.XmlAttribute)) {
     attributes[match[1]] = decodeXml(match[2] ?? match[3])
   }
   return attributes
@@ -140,7 +144,7 @@ function xmlAttributes(token: string): Record<string, string> {
 
 function decodeXml(text: string): string {
   const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
-  return text.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entity, name: string) => {
+  return text.replace(Regxs.XmlEntity, (entity, name: string) => {
     if (name.startsWith('#')) {
       const code = name[1].toLowerCase() === 'x' ? parseInt(name.slice(2), 16) : Number(name.slice(1))
       return code <= 0x10FFFF ? String.fromCodePoint(code) : entity

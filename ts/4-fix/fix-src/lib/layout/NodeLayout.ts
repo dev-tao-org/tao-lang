@@ -84,7 +84,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 
-  commaList(tail?: Token<Kind> | Field<Kind>): void {
+  commaList(tail?: CommaListTail<Kind>): void {
     const breaks = this.commaBreaks()
     if (breaks.length === 0) {
       return
@@ -107,6 +107,8 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     return this.node.children.filter(node => node.type === ',').map(node => this.range(node).last + 1)
   }
 }
+
+type CommaListTail<Kind extends NodeType> = Token<Kind> | Field<Kind>
 
 function isBlockItem(node: SyntaxNode, open: SyntaxNode, close: SyntaxNode): boolean {
   return node.startIndex >= open.endIndex && node.endIndex <= close.startIndex && !CST.IsComment(node)

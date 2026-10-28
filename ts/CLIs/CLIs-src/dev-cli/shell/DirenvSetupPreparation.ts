@@ -1,4 +1,4 @@
-import { NullCharacter, Try } from '@shared'
+import { NullCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
@@ -7,7 +7,7 @@ export { prepareDevelopmentShell }
 
 /** prepareDevelopmentShell optionally pre-evaluates the configured checkout's devenv shell. */
 async function prepareDevelopmentShell(
-  prepare: boolean | undefined,
+  prepare: OptionalPrepareRequest,
   environment: SetupEnvironment,
 ): Promise<void> {
   if (!prepare) {
@@ -53,7 +53,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
     cwd: root,
     stdin: `${common}\n`,
   })
-  if (hash.exitCode !== 0 || !/^[a-f0-9]{40,64}$/.test(hash.stdout.trim())) {
+  if (hash.exitCode !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
     return false
   }
   const record = Path.resolve(home, '.tao-dev/shell/repositories', hash.stdout.trim())
@@ -63,11 +63,14 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   return await isRegisteredWorktree(root, canonicalRoot, environment)
 }
 
-function isAlreadyInDevenv(env: Readonly<Record<string, string | undefined>>, root: string): boolean {
+function isAlreadyInDevenv(env: Readonly<Record<string, EnvironmentValue>>, root: string): boolean {
   const devenvRoot = env['DEVENV_ROOT']
   return env['TAO_DEVENV'] === '1' && devenvRoot !== undefined
     && FileSystem.realpathSync(devenvRoot) === root
 }
+
+type OptionalPrepareRequest = boolean | undefined
+type EnvironmentValue = string | undefined
 
 async function isEnabledForCommonDirectory(record: string, common: string): Promise<boolean> {
   const choice = await readOptionalFile(Path.resolve(record, 'choice'))

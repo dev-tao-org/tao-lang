@@ -3,6 +3,8 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
 import { createWatchFixture } from './WatchFixture'
 
+type OptionalCompiledContents = Readonly<Record<string, string>> | undefined
+
 Tests.test('dependency changes reload modules and recover invalid source', async () => {
   const directory = Artifacts.resolvePath('tmp', `module-watch-${Platform.randomUUID()}`)
   const dependency = Path.join(directory, '@cards/Card.tao')
@@ -81,7 +83,7 @@ function card(value: string): string {
   return `use Text from tao@ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
 }
 
-function compiledContents(files: Readonly<Record<string, string>> | undefined): string {
+function compiledContents(files: OptionalCompiledContents): string {
   return Object.values(files ?? {}).join('\n')
 }
 

@@ -10,6 +10,8 @@ import * as Lock from './ManagedNpmLock'
 import { ensureManagedPatches, managedLockPolicyMatches, validateManagedPatches } from './ManagedNpmPolicy'
 import * as State from './ManagedNpmState'
 
+type StoredNpmLock = string | undefined
+
 /** prepareManagedModules installs and audits the app graph, then publishes module resolution metadata. */
 export async function prepareManagedModules(
   input: Types.ManagedModulesInput,
@@ -145,7 +147,7 @@ async function validateBunVersion(
 
 function validateExistingState(
   hasMetadata: boolean,
-  storedLock: string | undefined,
+  storedLock: StoredNpmLock,
   fingerprint: string,
 ): void {
   if (!hasMetadata && storedLock === undefined) {
@@ -179,7 +181,7 @@ function validateLockPolicy(lock: string, input: Types.ManagedModulesInput): voi
 
 async function installFrozenGraph(
   profile: string,
-  storedLock: string | undefined,
+  storedLock: StoredNpmLock,
   executor: Types.BunExecutor,
   repair: boolean,
 ): Promise<void> {
@@ -205,7 +207,7 @@ async function installFrozenGraph(
 async function persistProfile(
   profile: string,
   durableLock: string,
-  storedLock: string | undefined,
+  storedLock: StoredNpmLock,
   input: Types.ManagedModulesInput,
   requirements: readonly Types.NormalizedManagedRequirement[],
   fingerprint: string,

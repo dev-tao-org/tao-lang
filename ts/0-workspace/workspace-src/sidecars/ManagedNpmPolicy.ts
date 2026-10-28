@@ -4,6 +4,8 @@ import TypeScript from 'typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleTypes'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
 
+type RuntimePolicyInput = ManagedRuntimePolicy | undefined
+
 /** compareCodePointStrings sorts domain keys without locale-dependent ordering. */
 export function compareCodePointStrings(left: string, right: string): number {
   if (left < right) {
@@ -17,7 +19,7 @@ export function compareCodePointStrings(left: string, right: string): number {
 
 /** describeManagedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
 export function describeManagedResolutionPolicy(
-  policy: ManagedRuntimePolicy | undefined,
+  policy: RuntimePolicyInput,
 ): Record<string, unknown> | undefined {
   return policy
     ? {
@@ -28,7 +30,7 @@ export function describeManagedResolutionPolicy(
 }
 
 /** calculateManagedPatchIdentity identifies patch bytes separately from the durable dependency graph. */
-export function calculateManagedPatchIdentity(policy: ManagedRuntimePolicy | undefined): string | undefined {
+export function calculateManagedPatchIdentity(policy: RuntimePolicyInput): string | undefined {
   return policy ? Platform.hashText(JSON.stringify(sortRecord(policy.patches))) : undefined
 }
 
@@ -93,7 +95,7 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
   return `${JSON.stringify({ ...lock, ...policy }, null, 2)}\n`
 }
 
-function listManagedPatches(policy: ManagedRuntimePolicy | undefined): [string, string][] {
+function listManagedPatches(policy: RuntimePolicyInput): [string, string][] {
   const patches: [string, string][] = []
   for (const path of Object.values(policy?.patchedDependencies ?? {}).sort()) {
     if (!isManagedPatchPath(path)) {
@@ -109,8 +111,19 @@ function listManagedPatches(policy: ManagedRuntimePolicy | undefined): [string, 
 }
 
 function isManagedPatchPath(path: string): boolean {
+  return hasManagedPatchPrefix(path) && hasSafePatchPathSegments(path)
+}
+
+function hasManagedPatchPrefix(path: string): boolean {
   return path.startsWith('patches/') && !path.includes('\\')
-    && path.split('/').every(part => part !== '..' && part !== '.' && part.length > 0)
+}
+
+function hasSafePatchPathSegments(path: string): boolean {
+  return path.split('/').every(isSafePatchPathSegment)
+}
+
+function isSafePatchPathSegment(part: string): boolean {
+  return part !== '..' && part !== '.' && part.length > 0
 }
 
 function sortRecord(record: Record<string, string>): Record<string, string> {
@@ -121,6 +134,10 @@ function recordsMatch(value: unknown, expected: Record<string, string>): boolean
   if (value === undefined) {
     return Object.keys(expected).length === 0
   }
+  return isRecordValue(value)
+    && JSON.stringify(sortRecord(value)) === JSON.stringify(sortRecord(expected))
+}
+
+function isRecordValue(value: unknown): value is Record<string, string> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-    && JSON.stringify(sortRecord(value as Record<string, string>)) === JSON.stringify(sortRecord(expected))
 }

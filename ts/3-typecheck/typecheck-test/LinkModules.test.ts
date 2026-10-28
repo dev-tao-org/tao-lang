@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Tests } from '@shared/os'
 import { linkModules } from '../typecheck-src/LinkModules'
-import type { SourceModule } from '../typecheck-src/Modules'
+import type { ImportStatement, SourceModule } from '../typecheck-src/Modules'
 import * as Fixtures from './LinkModuleFixtures'
 
 Tests.test('named aliases, public wildcards and folder siblings become local bindings', () => {
@@ -246,9 +246,11 @@ function usePackage(path: string, alias?: string): AST.UsePackageStatement {
 }
 
 function createResolvedImport(
-  statement: AST.UseStatement | AST.UsePackageStatement,
+  statement: ImportStatement,
   path: string,
-  relation: 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public',
+  relation: ImportRelation,
 ): SourceModule['imports'][number] {
   return { statement, targets: [{ path, relation }] }
 }
+
+type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'

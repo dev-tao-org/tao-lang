@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
 import { runCommand } from './cli-kit'
 
@@ -96,7 +96,7 @@ function isInvalidHostCommand(argv: readonly string[]): boolean {
 }
 
 function hasValidPrefixTokens(tokens: readonly string[]): boolean {
-  return tokens.every(token => token !== '' && !/\s/u.test(token)) && !tokens[0]!.startsWith('-')
+  return tokens.every(token => token !== '' && !Regxs.SingleWhitespaceRegx.test(token)) && !tokens[0]!.startsWith('-')
 }
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {

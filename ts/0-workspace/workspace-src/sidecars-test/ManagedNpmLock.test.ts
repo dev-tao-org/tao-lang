@@ -3,6 +3,9 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, readManagedModules } from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
+const ManagedNpmLockSuffixRegx = /\.lock$/
+const MissingDurableLockErrorRegx = /durable lock is missing/
+
 Tests.test('reuses the same npm profile when module directories move within the project', async () =>
   await withProject(async root => {
     const first = Path.join(root, 'Modules')
@@ -58,14 +61,14 @@ Tests.test('missing durable locks are rejected for a prepared current profile', 
     const prepared = await prepareManagedModules(current, executor(['date-fns', '4.1.0']))
     const durableLock = Path.join(root, '.tao', 'store', 'npm', `${prepared.graphFingerprint}.lock`)
     await FileSystem.rm(durableLock, { force: true })
-    await FileSystem.rm(durableLock.replace(/\.lock$/, '.sha256'), { force: true })
+    await FileSystem.rm(durableLock.replace(ManagedNpmLockSuffixRegx, '.sha256'), { force: true })
     let invoked = false
     await Tests.rejects(
       prepareManagedModules(current, async () => {
         invoked = true
         return { status: 0, stdout: '', stderr: '' }
       }),
-      /durable lock is missing/,
+      MissingDurableLockErrorRegx,
     )
     Tests.expect(invoked).toBe(false)
   }))
@@ -81,9 +84,12 @@ Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source r
     const identity = 'e'.repeat(64)
     const referencePath = Path.join(root, '.tao', 'store', 'npm', `${identity}.lock`)
     await FileSystem.writeFile(referencePath, bytes)
-    await FileSystem.writeFile(referencePath.replace(/\.lock$/, '.sha256'), `${Platform.hashText(bytes)}\n`)
+    await FileSystem.writeFile(
+      referencePath.replace(ManagedNpmLockSuffixRegx, '.sha256'),
+      `${Platform.hashText(bytes)}\n`,
+    )
     await FileSystem.rm(durable, { force: true })
-    await FileSystem.rm(durable.replace(/\.lock$/, '.sha256'), { force: true })
+    await FileSystem.rm(durable.replace(ManagedNpmLockSuffixRegx, '.sha256'), { force: true })
     let frozen = false
     const upgradedInput = {
       ...initial,

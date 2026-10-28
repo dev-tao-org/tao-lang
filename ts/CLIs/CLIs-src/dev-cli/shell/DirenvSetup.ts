@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
@@ -13,13 +13,15 @@ const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this
 /** SetupEnvironment injects shell and process dependencies for direnv setup. */
 type SetupEnvironment = {
   confirm: typeof Terminal.askConfirm
-  env: Readonly<Record<string, string | undefined>>
+  env: Readonly<Record<string, EnvironmentValue>>
   interactive: () => boolean
   resolveDirenvPackage?: (profileClient: string) => string | undefined
   root: () => string
   run: (command: string, options?: RunOptions) => Promise<CommandResult>
   write: (message: string) => void
 }
+
+type EnvironmentValue = string | undefined
 
 /** runDirenvSetup offers optional zsh activation through pinned direnv for this Git identity. */
 async function runDirenvSetup(
@@ -110,7 +112,7 @@ async function refreshInstalledActivation(root: string, shellRoot: string): Prom
   await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
 }
 
-function requireHome(env: Readonly<Record<string, string | undefined>>): string {
+function requireHome(env: Readonly<Record<string, EnvironmentValue>>): string {
   const home = env['HOME']
   if (!home) {
     Errors.ThrowHostEnvironment('Shell setup needs HOME to locate developer shell configuration.')
@@ -140,7 +142,7 @@ async function resolveGitIdentity(
   if (git.exitCode !== 0) {
     Errors.ThrowHostEnvironment('Shell setup requires Git and a working repository checkout.')
   }
-  const commonPath = git.stdout.replace(/\n$/, '')
+  const commonPath = git.stdout.replace(Regxs.TrailingNewlineRegx, '')
   rejectLineBreaks(commonPath)
   const commonDirectory = FileSystem.realpathSync(commonPath)
   rejectLineBreaks(commonDirectory)
@@ -150,7 +152,7 @@ async function resolveGitIdentity(
     stdin: `${commonDirectory}\n`,
   })
   const identity = hash.stdout.trim()
-  if (hash.exitCode !== 0 || !/^[a-f0-9]{40,64}$/.test(identity)) {
+  if (hash.exitCode !== 0 || !Regxs.LowercaseHashRangeRegx.test(identity)) {
     Errors.ThrowHostEnvironment('Git could not identify this repository for shell setup.')
   }
   return { commonDirectory, identity }
@@ -164,7 +166,7 @@ async function installActivation(
   const profileClient = Path.resolve(root, '.devenv/profile/bin/direnv')
   const output = environment.resolveDirenvPackage?.(profileClient)
     ?? (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
-      /^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin\/direnv$/,
+      Regxs.NixDirenvExecutableRegx,
     )?.[1]
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
@@ -222,7 +224,7 @@ function quote(value: string): string {
 }
 
 function rejectLineBreaks(...paths: string[]): void {
-  if (paths.some(path => /[\r\n]/.test(path))) {
+  if (paths.some(path => Regxs.LineBreakRegx.test(path))) {
     Errors.ThrowHostEnvironment('Automatic shell activation does not support paths containing line breaks.')
   }
 }

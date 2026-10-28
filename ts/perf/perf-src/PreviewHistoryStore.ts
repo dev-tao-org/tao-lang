@@ -7,7 +7,7 @@ export type HistoryRecord = {
   sourceCommit: string
   sourceTree: string
   capturedAt: string
-  status: 'passed' | 'failed' | 'unavailable'
+  status: HistoryStatus
   command: string
   fixture: FixtureIdentity
   scenarios: string[]
@@ -87,6 +87,7 @@ export function validatePreviewReport(report: string, sourceCommit: string): voi
 
 type FixtureIdentity = { path: string; sha256: string }
 type PreviewHistoryIdentity = { sourceCommit: string; sourceTree: string; fixtureSha256: string }
+type HistoryStatus = 'passed' | 'failed' | 'unavailable'
 
 function matchesRecord(
   record: HistoryRecord,
@@ -94,7 +95,8 @@ function matchesRecord(
 ): boolean {
   const sourceMatches = record.sourceCommit === context.sourceCommit && record.sourceTree === context.sourceTree
   const fixtureMatches = record.fixture?.sha256 === context.fixtureSha256
-  return record.version === 1 && record.status === 'passed' && sourceMatches && fixtureMatches
+  const isSuccessfulRecord = record.version === 1 && record.status === 'passed'
+  return isSuccessfulRecord && sourceMatches && fixtureMatches
 }
 
 function isStorageCheckout(top: string, parent: string, root: string, storage: string): boolean {
@@ -105,5 +107,8 @@ function isSourceReport(value: unknown, sourceCommit: string): boolean {
   if (typeof value !== 'object' || value === null) {
     return false
   }
-  return 'version' in value && value.version === 1 && 'commit' in value && value.commit === sourceCommit
+  if (!('version' in value) || value.version !== 1) {
+    return false
+  }
+  return 'commit' in value && value.commit === sourceCommit
 }

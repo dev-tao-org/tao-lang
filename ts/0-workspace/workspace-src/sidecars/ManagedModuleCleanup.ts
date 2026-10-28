@@ -25,6 +25,8 @@ export async function cleanManagedModuleMetadata(
   return warnings
 }
 
+type MaybeModuleMetadata = Record<string, unknown> | null | undefined
+
 async function walkRoot(root: string, optional: boolean): Promise<string[]> {
   return await Try<Promise<string[]>, string[]>(() => Files.walk(root), {
     catch(error) {
@@ -58,8 +60,7 @@ async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Prom
   const managedRoot = Path.join(projectRoot, '.tao', 'cache', 'managed-modules')
   if (
     profileRoots.some(isSymbolicLink)
-    || !Path.isWithin(managedRoot, profile)
-    || Path.resolve(Path.dirname(profile)) !== Path.resolve(managedRoot)
+    || hasInvalidManagedProfilePath(profile, managedRoot)
   ) {
     return `Skipped uncertain managed module metadata at ${marker}: recorded profile is outside this project's managed module cache.`
   }
@@ -81,19 +82,57 @@ async function readModuleMetadata(marker: string): Promise<Record<string, unknow
   const packages = metadata?.packages
   const files = metadata?.files
   const hashes = metadata?.generatedHashes
-  if (
-    !metadata || typeof metadata.profile !== 'string'
-    || !Array.isArray(packages)
-    || packages.some(name => typeof name !== 'string' || !isNpmPackageName(name))
-    || !Array.isArray(files)
-    || files.some(path => typeof path !== 'string')
-    || files.some(path => typeof path === 'string' && !isManagedModuleFile(Path.dirname(marker), path))
-    || !hashes || typeof hashes !== 'object'
-    || files.some(path => typeof path === 'string' && typeof (hashes as Record<string, unknown>)[path] !== 'string')
-  ) {
+  if (!hasValidModuleMetadata(marker, metadata, packages, files, hashes)) {
     return undefined
   }
   return metadata
+}
+
+function hasValidModuleMetadata(
+  marker: string,
+  metadata: MaybeModuleMetadata,
+  packages: unknown,
+  files: unknown,
+  hashes: unknown,
+): metadata is Record<string, unknown> {
+  return hasModuleProfile(metadata)
+    && hasValidPackageNames(packages)
+    && hasValidModuleFiles(marker, files, hashes)
+}
+
+function hasModuleProfile(metadata: MaybeModuleMetadata): metadata is Record<string, unknown> {
+  return metadata !== undefined && metadata !== null && typeof metadata.profile === 'string'
+}
+
+function hasValidPackageNames(packages: unknown): packages is string[] {
+  return Array.isArray(packages) && packages.every(isPackageName)
+}
+
+function isPackageName(name: unknown): name is string {
+  return typeof name === 'string' && isNpmPackageName(name)
+}
+
+function hasValidModuleFiles(marker: string, files: unknown, hashes: unknown): files is string[] {
+  if (!Array.isArray(files) || typeof hashes !== 'object' || hashes === null) {
+    return false
+  }
+  return files.every(path => isValidModuleFile(marker, path, hashes))
+}
+
+function isValidModuleFile(marker: string, path: unknown, hashes: unknown): path is string {
+  if (typeof path !== 'string' || !isManagedModuleFile(Path.dirname(marker), path)) {
+    return false
+  }
+  return hasStringHash(hashes, path)
+}
+
+function hasStringHash(hashes: unknown, path: string): boolean {
+  return typeof hashes === 'object' && hashes !== null && typeof (hashes as Record<string, unknown>)[path] === 'string'
+}
+
+function hasInvalidManagedProfilePath(profile: string, managedRoot: string): boolean {
+  return !Path.isWithin(managedRoot, profile)
+    || Path.resolve(Path.dirname(profile)) !== Path.resolve(managedRoot)
 }
 
 async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
@@ -184,5 +223,9 @@ function pointsToRecordedTarget(link: string, target: string): boolean {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  return isObjectError(error) && 'code' in error && error.code === 'ENOENT'
+}
+
+function isObjectError(error: unknown): error is object {
+  return typeof error === 'object' && error !== null
 }

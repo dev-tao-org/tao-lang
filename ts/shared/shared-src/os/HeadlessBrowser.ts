@@ -61,6 +61,8 @@ export async function openTestBrowser(): Promise<TestBrowser> {
   })
 }
 
+type ObservedInputValue = string | undefined
+
 function input(page: Page, tag: string) {
   const root = page.getByTestId(tag)
   return page.locator('input, textarea').and(root).or(root.locator('input, textarea'))
@@ -68,7 +70,7 @@ function input(page: Page, tag: string) {
 
 async function expectInput(page: Page, tag: string, value: string): Promise<void> {
   const deadline = Time.nowMs() + 5000
-  let actual: string | undefined
+  let actual: ObservedInputValue
   while (Time.nowMs() < deadline) {
     actual = await input(page, tag).inputValue({ timeout: Math.max(1, deadline - Time.nowMs()) })
     if (actual === value) {

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { publishPreviewArchive } from './Archive'
 import { integrateMain, requireClean, requireCleanBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
@@ -64,12 +64,14 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
   }
   const message = await io.read(path)
   const [title, blank, ...body] = message.trimEnd().split('\n')
-  if (!title || title.length > 72 || blank !== '' || !body[0]?.startsWith('- ')) {
+  const hasValidTitle = Boolean(title) && title.length <= 72
+  const hasRequiredBody = blank === '' && Boolean(body[0]?.startsWith('- '))
+  if (!hasValidTitle || !hasRequiredBody) {
     Errors.ThrowUserInput(
       'The reviewed merge message needs a title of at most 72 characters, a blank line and bullets.',
     )
   }
-  if (body.some(line => !/^(- |  )\S/.test(line))) {
+  if (body.some(line => !Regxs.LandStatusLineRegx.test(line))) {
     Errors.ThrowUserInput(
       'The reviewed merge message body must contain contiguous bullets with indented continuation lines.',
     )

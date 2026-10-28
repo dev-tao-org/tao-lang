@@ -24,8 +24,9 @@ export const test = testApi('test')
 
 const load = createRequire(import.meta.url)
 type TestsModule = BunTestModule
+type TestApiName = 'describe' | 'expect' | 'test'
 
-function testApi<Name extends 'describe' | 'expect' | 'test'>(name: Name): TestsModule[Name] {
+function testApi<Name extends TestApiName>(name: Name): TestsModule[Name] {
   return new Proxy<(...args: unknown[]) => unknown>(function(...args: unknown[]) {
     prepareTestStorage()
     return Reflect.apply(load('bun:test')[name], undefined, args)

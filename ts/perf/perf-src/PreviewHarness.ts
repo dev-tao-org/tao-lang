@@ -3,6 +3,7 @@ import { Errors, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type { createWorkspace } from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
+import type { PreviewFrameCount } from './PreviewMeasurement'
 import { PreviewPublication } from './PreviewPublication'
 import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 import { type ReloadTiming, ReloadTimings } from './ReloadTimings'
@@ -26,7 +27,7 @@ export type HarnessOptions = {
   /** scenarios is the ordered button cycle. The minimal performance cycle is the default. */
   scenarios?: readonly PreviewScenario[]
   previewTimeoutMs?: number
-  frameCount?: 1 | 2
+  frameCount?: PreviewFrameCount
   onReload?(timing: ReloadTiming): void
 }
 
@@ -34,6 +35,7 @@ export type HarnessOptions = {
 export type PreviewHarness = { url: string; dispose(): void }
 
 type Workspace = ReturnType<typeof createWorkspace>
+type OptionalStreamController = Http.StreamController | undefined
 type EditState = { closed: boolean; active: boolean; pending: Set<() => void> }
 type ResolvedHarnessOptions = HarnessOptions & {
   canonicalSource: string
@@ -191,7 +193,7 @@ function eventsResponse(
   publication: PreviewPublication,
   encoder: TextEncoder,
 ): Http.HttpResponse {
-  let streamController: Http.StreamController | undefined
+  let streamController: OptionalStreamController
   const stream = Http.stream({
     start(controller) {
       streamController = controller

@@ -202,8 +202,10 @@ function rankSource(source: string): number {
 }
 
 function isExternalProjectAlias(source: string): boolean {
-  return source.startsWith('@') || /^[A-Za-z0-9_-]+@/.test(source)
+  return source.startsWith('@') || PackageAliasPrefixRegx.test(source)
 }
+
+const PackageAliasPrefixRegx = /^[A-Za-z0-9_-]+@/
 
 function compareText(left: string, right: string): number {
   if (left < right) {

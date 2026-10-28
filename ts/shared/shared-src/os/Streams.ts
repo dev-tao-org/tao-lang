@@ -10,7 +10,7 @@ export function createPassThrough(): Node.nodeStream.PassThrough {
 }
 
 /** createDecoder preserves UTF-8 characters split across streamed process chunks. */
-export function createDecoder(): (chunk: string | Uint8Array) => string {
+export function createDecoder(): (chunk: StreamChunk) => string {
   const decoder = new TextDecoder()
   return chunk => typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true })
 }
@@ -30,3 +30,5 @@ export async function consume(stream: ByteStream, accept: (chunk: Uint8Array) =>
     finally: () => reader.releaseLock(),
   })
 }
+
+type StreamChunk = string | Uint8Array

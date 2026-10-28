@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { Errors, NullCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { assertOwnedSession, requireCleanReviewed, requireIdleSession } from './ReviewSession'
@@ -55,7 +55,7 @@ export async function validateSelection(session: ReviewSession, selection: Revie
   if (selection.version !== 1 || selection.session !== session.id || !selection.files.length) {
     Errors.ThrowUserInput('Selection belongs to a different session or unsupported format.')
   }
-  if (!/^[a-f0-9-]{36}$/.test(selection.proposal)) {
+  if (!Regxs.ReviewProposalIdRegx.test(selection.proposal)) {
     Errors.ThrowUserInput('Selection proposal identity is invalid.')
   }
   const frozen = await ReviewGit.readJson<ReviewSelection>(
@@ -112,7 +112,7 @@ async function wholeCandidates(
   reviewedHead: string,
   diskTree: string,
   indexTree: string,
-): Promise<Pick<ReviewSelection, 'sourceTree' | 'reviewedTree' | 'reconciledIndexTree' | 'kind'>> {
+): Promise<ReviewCandidateTrees> {
   const reviewed = await ReviewGit.privateIndex(session.root, session.directory, reviewedHead)
   const reconciled = await ReviewGit.privateIndex(session.root, session.directory, indexTree)
   await replaceEntries(session.root, reviewed, diskTree, files)
@@ -134,7 +134,7 @@ async function partialCandidates(
   diskTree: string,
   indexTree: string,
   patches: { source?: string; reviewed: string },
-): Promise<Pick<ReviewSelection, 'sourceTree' | 'reviewedTree' | 'reconciledIndexTree' | 'kind'>> {
+): Promise<ReviewCandidateTrees> {
   return await Try(async () => {
     const source = await patchedTree(session, sourceHead, patches.source)
     const reviewed = await patchedTree(session, reviewedHead, patches.reviewed)
@@ -209,7 +209,7 @@ async function assertOnlySelected(root: string, before: string, after: string, f
 
 async function freezeSelection(
   session: ReviewSession,
-  content: Omit<ReviewSelection, 'version' | 'proposal' | 'session'>,
+  content: Omit<ReviewSelection, ReviewSelectionIdentityKeys>,
 ): Promise<ReviewSelection> {
   const proposal = Platform.randomUUID()
   const selection: ReviewSelection = { version: 1, proposal, session: session.id, ...content }
@@ -219,3 +219,7 @@ async function freezeSelection(
   await FileSystem.chmod(proposalPath, 0o444)
   return selection
 }
+
+type ReviewSelectionTreeKeys = 'sourceTree' | 'reviewedTree' | 'reconciledIndexTree' | 'kind'
+type ReviewSelectionIdentityKeys = 'version' | 'proposal' | 'session'
+type ReviewCandidateTrees = Pick<ReviewSelection, ReviewSelectionTreeKeys>

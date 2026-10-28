@@ -1,9 +1,27 @@
 /// <reference types="tree-sitter-cli/dsl" />
 
+const WhitespaceCharacterRegx = /\s/
+const ContextReferenceRegx = /@@[A-Za-z_][A-Za-z0-9_]*/
+const TypeScriptTextCharacterRegx = /[^`]/
+const TypeScriptSingleBacktickRegx = /`[^`]/
+const TypeScriptDoubleBacktickRegx = /``[^`]/
+const RelativeRequirementIdentifierRegx = /\.\.\/[A-Za-z0-9._@/-]+/
+const ScopedRequirementIdentifierRegx = /@[A-Za-z0-9._-]+\/[A-Za-z0-9._@/-]+/
+const RequirementIdentifierRegx = /[A-Za-z0-9._@/-]+/
+const RequirementVersionRegx = /[A-Za-z0-9._+-]+/
+const ImportPathRegx =
+  /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)|([a-zA-Z0-9._-]+@[a-zA-Z0-9._@/-]+\/?[a-zA-Z0-9._@/-]*)/
+const RenderTagRegx = /#[A-Za-z_][A-Za-z0-9_-]*/
+const TextLiteralCharacterRegx = /[^"\\\r\n\u0000-\u001f]/
+const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
+const LineCommentRegx = /\/\/[^\n\r]*/
+const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
+const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+
 export default grammar({
   name: 'tao',
   extras($) {
-    return [/\s/, $.Comment]
+    return [WhitespaceCharacterRegx, $.Comment]
   },
   supertypes: $ => [$._Declaration, $._Expression, $._ViewRenderStatement],
   rules: {
@@ -117,10 +135,16 @@ export default grammar({
       return seq(field('name', $.Identifier), optional(field('value', choice($.QualifiedName, $.ContextReference))))
     },
     ContextReference() {
-      return /@@[A-Za-z_][A-Za-z0-9_]*/
+      return ContextReferenceRegx
     },
     TypeScript() {
-      return token(seq('```ts', repeat(choice(/[^`]/, /`[^`]/, /``[^`]/)), '```'))
+      return token(
+        seq(
+          '```ts',
+          repeat(choice(TypeScriptTextCharacterRegx, TypeScriptSingleBacktickRegx, TypeScriptDoubleBacktickRegx)),
+          '```',
+        ),
+      )
     },
     ViewRenderExpression($) {
       return seq(
@@ -178,13 +202,15 @@ export default grammar({
       return choice('github', 'file', 'npm', 'bundled')
     },
     RequirementIdentifier() {
-      return token(choice(/\.\.\/[A-Za-z0-9._@/-]+/, /@[A-Za-z0-9._-]+\/[A-Za-z0-9._@/-]+/, /[A-Za-z0-9._@/-]+/))
+      return token(
+        choice(RelativeRequirementIdentifierRegx, ScopedRequirementIdentifierRegx, RequirementIdentifierRegx),
+      )
     },
     RequirementVersion() {
-      return token(/[A-Za-z0-9._+-]+/)
+      return token(RequirementVersionRegx)
     },
     ImportPath() {
-      return /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)|([a-zA-Z0-9._-]+@[a-zA-Z0-9._@/-]+\/?[a-zA-Z0-9._@/-]*)/
+      return ImportPathRegx
     },
     Visibility() {
       return choice('file', 'folder', 'package', 'project', 'public')
@@ -233,7 +259,7 @@ export default grammar({
       return seq('input', 'value', field('value', $.TextLiteral))
     },
     RenderTag() {
-      return /#[A-Za-z_][A-Za-z0-9_-]*/
+      return RenderTagRegx
     },
 
     // Expressions
@@ -248,15 +274,15 @@ export default grammar({
       )
     },
     TextLiteral() {
-      return token(seq('"', repeat(choice(/[^"\\\r\n\u0000-\u001f]/, /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/)), '"'))
+      return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
     },
 
     // Names
     Comment() {
-      return token(choice(/\/\/[^\n\r]*/, /\/\*[^*]*\*+([^/*][^*]*\*+)*\//))
+      return token(choice(LineCommentRegx, BlockCommentRegx))
     },
     Identifier() {
-      return /[A-Za-z_][A-Za-z0-9_]*/
+      return IdentifierRegx
     },
     QualifiedName($) {
       return seq($.Identifier, repeat(seq('.', $.Identifier)))

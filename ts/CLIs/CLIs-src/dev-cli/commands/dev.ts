@@ -52,7 +52,8 @@ function devWorkspaceOptions(state: DevSession, entry: string, ui: WorkflowUI) {
     kind: 'studio',
     onSourceUpdate(result: UpdateResult) {
       reportSourceUpdate(result)
-      if (result.status === 'failed' && result.setupRequired && state.workspace && !state.recovery) {
+      const canRecoverSetup = result.status === 'failed' && result.setupRequired && state.workspace
+      if (canRecoverSetup && !state.recovery) {
         state.recovery = restartDevSession(state, entry, options, ui, result.error)
       }
     },
@@ -177,7 +178,11 @@ function reportSourceError(error: unknown): void {
   IO.warn('Could not read changed source: ' + String(error))
 }
 
-function reportExpoOutput(stream: 'stdout' | 'stderr', text: string): void {
+type ExpoOutputStream = 'stdout' | 'stderr'
+type OptionalPreview = PreviewHarness | undefined
+type OptionalExpoSession = Runtime.ExpoSession | undefined
+
+function reportExpoOutput(stream: ExpoOutputStream, text: string): void {
   IO.progress(`[expo ${stream}] ${text.trimEnd().replace('Starting project at ', 'Starting Expo runtime at ')}`)
 }
 
@@ -204,9 +209,9 @@ function reportReload(timing: ReloadTiming): void {
 }
 
 type CleanupOptions = {
-  preview: PreviewHarness | undefined
+  preview: OptionalPreview
   workspace: ReturnType<typeof createWorkspace>
-  expo: Runtime.ExpoSession | undefined
+  expo: OptionalExpoSession
   reportFailure: boolean
 }
 

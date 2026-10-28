@@ -1,4 +1,5 @@
 import { FileSystem, Path, Repo } from '../shared/shared-src/os'
+import { Regxs } from '../shared/shared-src/shared'
 
 /** knipConfiguration checks package workspaces while recognizing imported command registrations. */
 export default {
@@ -85,7 +86,7 @@ function listCLIEntries(): string[] {
 
 function listCommandEntries(registry: string): string[] {
   const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
-  return [...source.matchAll(/^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm)]
+  return [...source.matchAll(Regxs.CommandRegistrationImportRegx)]
     .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
 }
 

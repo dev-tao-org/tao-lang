@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { Env, FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
 import { configuredCommandOutput } from './io'
 import type { OutputChannel } from './output/Output'
@@ -37,21 +37,27 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
 }
 
 /** runSteps awaits variadic workflow stages in order and stops when a stage throws. */
-export async function runSteps(...steps: readonly (() => void | Promise<void>)[]): Promise<void> {
+export async function runSteps(...steps: readonly (() => CommandStepResult)[]): Promise<void> {
   for (const step of steps) {
     await step()
   }
 }
 
-type OutputPipe = (text: string | Uint8Array) => void
+type OutputText = string | Uint8Array
+type CommandStepResult = void | Promise<void>
+type OutputPipe = (text: OutputText) => void
 type Command = string | readonly string[]
+type EnvironmentValue = string | undefined
+type InheritedStreamMode = 'inherit' | 'ignore'
+type ChildShutdown = Promise<void> | undefined
+type ProcessSignal = string | null
 type RunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
-  env?: Record<string, string | undefined>
+  env?: Record<string, EnvironmentValue>
   stdin?: FileSystem.File
-  stdout?: 'inherit' | 'ignore'
-  stderr?: 'inherit' | 'ignore'
+  stdout?: InheritedStreamMode
+  stderr?: InheritedStreamMode
   output?: OutputChannel
   signal?: AbortSignal
   structuredOutput?: boolean
@@ -96,7 +102,7 @@ async function runLoggedCommand(
 }
 
 function manageShutdown(child: Platform.ChildProcess, signal?: AbortSignal) {
-  let stopping: Promise<void> | undefined
+  let stopping: ChildShutdown
   const stop = () => {
     stopping ??= Lifecycle.stopProcess(child, 10_000)
   }
@@ -142,7 +148,7 @@ async function runInheritedCommand(command: Command, options: RunOptions): Promi
   }, { finally: () => shutdown.dispose() })
 }
 
-function requireCommandSuccess(command: Command, options: RunOptions, status: number, signal: string | null): void {
+function requireCommandSuccess(command: Command, options: RunOptions, status: number, signal: ProcessSignal): void {
   if (status !== 0) {
     const args = commandArguments(command, options)
     Errors.ThrowCommandExecution({
@@ -158,7 +164,10 @@ function requireCommandSuccess(command: Command, options: RunOptions, status: nu
 }
 
 function commandArguments(command: Command, options: RunOptions): string[] {
-  return [...typeof command === 'string' ? command.trim().split(/ +/) : command, ...options.variadicArgs ?? []]
+  return [
+    ...typeof command === 'string' ? command.trim().split(Regxs.SpacesRegx) : command,
+    ...options.variadicArgs ?? [],
+  ]
 }
 
 async function forwardOutput(

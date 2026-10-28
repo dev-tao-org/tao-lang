@@ -21,11 +21,13 @@ export async function installWorkspace(completionScript: string): Promise<void> 
   process.stderr.write(`Workspace dependencies installed. Log: ${logPath}\n`)
 }
 
+type OutputStream = 'stdout' | 'stderr'
+
 function runLogged(arguments_: string[], logPath: string): Promise<number> {
   appendFileSync(logPath, `\n$ bun ${arguments_.join(' ')}\n`)
   const child = spawn('bun', arguments_, { stdio: ['inherit', 'pipe', 'pipe'] })
   let lastStream = ''
-  const forward = (stream: 'stdout' | 'stderr', chunk: Buffer) => {
+  const forward = (stream: OutputStream, chunk: Buffer) => {
     if (lastStream !== stream) {
       appendFileSync(logPath, `\n[${stream}]\n`)
       lastStream = stream

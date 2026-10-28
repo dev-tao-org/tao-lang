@@ -51,7 +51,8 @@ function emptySnapshot(): OutputSnapshot {
 }
 
 function createElapsedTicker(isRunning: () => boolean, tick: () => void): { update(): void; dispose(): void } {
-  let cancel: (() => void) | undefined
+  type AnimationCancel = (() => void) | undefined
+  let cancel: AnimationCancel
   let disposed = false
   const canSchedule = () => !cancel && !disposed && isRunning()
   const schedule = () => {

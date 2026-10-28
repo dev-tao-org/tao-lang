@@ -11,7 +11,7 @@ export default Tao
 /** Style describes the supported presentation values for native Tao implementations. */
 export type Style = Readonly<{
   flex?: number
-  flexDirection?: 'row' | 'column'
+  flexDirection?: FlexDirection
   padding?: number
   borderWidth?: number
   fontSize?: number
@@ -54,3 +54,5 @@ function Pressable({ onPress, ...props }: PressableProps): React.ReactElement {
 }
 
 const textStyle = { color: DefaultAppearance.foreground }
+
+type FlexDirection = 'row' | 'column'

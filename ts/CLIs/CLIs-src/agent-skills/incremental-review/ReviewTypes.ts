@@ -28,7 +28,7 @@ export type ReviewSelection = {
   sourceTree: string
   reviewedTree: string
   reconciledIndexTree: string
-  kind: 'files' | 'partial' | 'reopen'
+  kind: ReviewSelectionKind
 }
 
 /** ReviewJournal retains both commits before either branch advances. */
@@ -39,10 +39,15 @@ export type ReviewJournal = {
   originalIndexHash: string
   reconciledIndexHash: string
   reconciledIndex: string
-  phase: 'prepared' | 'source' | 'index' | 'reviewed' | 'complete'
+  phase: ReviewJournalPhase
 }
 
 /** ReviewHooks supplies a fixture-only interruption between branch updates. */
 export type ReviewHooks = {
-  atPhase?: (point: 'source' | 'index' | 'reviewed-tree' | 'reviewed-ref' | 'session') => void | Promise<void>
+  atPhase?: (point: ReviewHookPoint) => ReviewHookResult
 }
+
+type ReviewSelectionKind = 'files' | 'partial' | 'reopen'
+type ReviewJournalPhase = 'prepared' | 'source' | 'index' | 'reviewed' | 'complete'
+type ReviewHookPoint = 'source' | 'index' | 'reviewed-tree' | 'reviewed-ref' | 'session'
+type ReviewHookResult = void | Promise<void>

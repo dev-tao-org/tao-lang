@@ -1,6 +1,8 @@
 import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 
+type ModuleSpecifierNode = TypeScript.Node | undefined
+
 /** getFileExtension returns the final extension used to resolve a sidecar dependency. */
 export const getFileExtension = Path.extname
 
@@ -27,7 +29,7 @@ function isModuleLoader(expression: TypeScript.Expression): boolean {
     || TypeScript.isIdentifier(expression) && expression.text === 'require'
 }
 
-function addLiteralSpecifier(node: TypeScript.Node | undefined, result: Set<string>): void {
+function addLiteralSpecifier(node: ModuleSpecifierNode, result: Set<string>): void {
   if (node && (TypeScript.isStringLiteral(node) || TypeScript.isNoSubstitutionTemplateLiteral(node))) {
     result.add(node.text)
   }

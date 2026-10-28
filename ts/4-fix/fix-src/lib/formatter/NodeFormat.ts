@@ -19,7 +19,7 @@ export class NodeContext<Kind extends NodeType> {
     return this.plan.tokens.slice(range.first, range.last + 1).some(node => CST.IsComment(node))
   }
 
-  protected property(name: Field<Kind>): SyntaxNode | null {
+  protected property(name: Field<Kind>): SelectedPropertyNode {
     return this.node.childForFieldName(name)
   }
 
@@ -101,7 +101,7 @@ export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 
-  private spaces(tokens: readonly Token<Kind>[], side: 'before' | 'after', count: number): void {
+  private spaces(tokens: readonly Token<Kind>[], side: SpaceSide, count: number): void {
     for (const token of tokens) {
       for (const node of this.tokens(token)) {
         const range = this.range(node)
@@ -110,3 +110,6 @@ export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 }
+
+type SelectedPropertyNode = SyntaxNode | null
+type SpaceSide = 'before' | 'after'

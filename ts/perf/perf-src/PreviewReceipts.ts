@@ -107,5 +107,7 @@ function recordFirstMilestone<Value>(frame: FrameReceipts<Value>, milestone: Rec
 }
 
 function parseRevisionNumber(revision: string): number {
-  return Number(revision.replace(/^r/, '')) || 0
+  return Number(revision.replace(RevisionPrefixRegx, '')) || 0
 }
+
+const RevisionPrefixRegx = /^r/

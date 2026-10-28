@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { Platform } from '@shared/os'
 import { validatePreviewReport } from '../../../../perf/perf-src/PreviewHistoryStore'
 import { git, type LandingIO } from './LandingIO'
@@ -43,9 +43,12 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
 }
 
 function isExemptPath(path: string): boolean {
-  return path === '.storage' || /(^|\/)(AGENTS|CLAUDE)\.md$/.test(path)
-    || path.startsWith('agents/') || path.startsWith('.rulesync/') || path.startsWith('.codex/')
-    || path.startsWith('.claude/') || path.startsWith('.cursor/') || path.startsWith('Docs/')
+  const isInstructionPath = path === '.storage' || Regxs.AgentInstructionPathRegx.test(path)
+  const isAgentTools = path.startsWith('agents/') || path.startsWith('.rulesync/')
+  const isAgentEditors = path.startsWith('.codex/') || path.startsWith('.claude/')
+  const isAgentConfiguration = isAgentTools || isAgentEditors
+  const isEditorConfiguration = path.startsWith('.cursor/') || path.startsWith('Docs/')
+  return isInstructionPath || isAgentConfiguration || isEditorConfiguration
 }
 
 async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord> {
@@ -77,8 +80,11 @@ type RecordMetadata = {
 }
 
 function validMetadata(record: RecordMetadata, source: string, tree: string, report: string, fixture: string): boolean {
-  return record.version === 1 && record.status === 'passed' && record.sourceCommit === source
-    && record.sourceTree === tree && record.reportSha256 === Platform.hashText(report)
-    && typeof record.fixture?.path === 'string' && record.fixture.path.endsWith('.tao')
-    && record.fixture?.sha256 === Platform.hashText(fixture)
+  const isPassedSource = record.version === 1 && record.status === 'passed' && record.sourceCommit === source
+  const matchesSourceTree = record.sourceTree === tree && record.reportSha256 === Platform.hashText(report)
+  const hasValidFixturePath = typeof record.fixture?.path === 'string' && record.fixture.path.endsWith('.tao')
+  const matchesFixture = record.fixture?.sha256 === Platform.hashText(fixture)
+  const matchesRecord = isPassedSource && matchesSourceTree
+  const matchesFixtureRecord = hasValidFixturePath && matchesFixture
+  return matchesRecord && matchesFixtureRecord
 }

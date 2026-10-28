@@ -3,6 +3,11 @@ import { Tests, WorkspaceWatch } from '@shared/os'
 import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
+type WatchChangeHandler = (change: WorkspaceWatch.WorkspaceChange) => void
+type OptionalWatchChangeHandler = WatchChangeHandler | undefined
+type ScheduledCallback = () => void
+type OptionalScheduledCallback = ScheduledCallback | undefined
+
 Tests.test('switching entries cancels the previous entry debounce', async () => {
   const reading = gate()
   const release = gate()
@@ -84,8 +89,8 @@ Tests.test('disk compilation failures retain the source identity for edit observ
 })
 
 function managerFixture(options: Partial<FileManagerOptions> = {}) {
-  let notify: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  let scheduled: (() => void) | undefined
+  let notify: OptionalWatchChangeHandler
+  let scheduled: OptionalScheduledCallback
   const compiled: string[] = []
   const manager = new FileManager({
     directory: '/workspace',

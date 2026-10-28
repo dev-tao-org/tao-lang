@@ -19,7 +19,7 @@ export interface SessionOptions {
   tsxParser: WebParser
   taoQuery: WebQuery
   tsxQuery: WebQuery
-  measure?: (phase: 'tao.parse' | 'tsx.parse' | 'query', milliseconds: number) => void
+  measure?: (phase: MeasurementPhase, milliseconds: number) => void
 }
 
 /** WasmAssets contains generated Tree-sitter grammars and highlight queries. */
@@ -89,9 +89,11 @@ interface DocumentResult {
   diagnostics: QueryResults.Diagnostic[]
 }
 
+type MeasurementPhase = 'tao.parse' | 'tsx.parse' | 'query'
+
 function createDocumentSession(options: SessionOptions): DocumentSession {
   let source = ''
-  let taoTree: Tree | undefined
+  let taoTree: OptionalTree
   let disposed = false
 
   return {
@@ -188,7 +190,7 @@ const initializeParser = createRetryableInitialization((runtimeWasmPath?: string
 const FencePrefix = '```ts'
 const FenceSuffix = '```'
 
-function measure<T>(options: SessionOptions, phase: 'tao.parse' | 'tsx.parse' | 'query', operation: () => T): T {
+function measure<T>(options: SessionOptions, phase: MeasurementPhase, operation: () => T): T {
   if (!options.measure) {
     return operation()
   }
@@ -197,6 +199,8 @@ function measure<T>(options: SessionOptions, phase: 'tao.parse' | 'tsx.parse' | 
   options.measure(phase, Time.nowMs() - start)
   return result
 }
+
+type OptionalTree = Tree | undefined
 
 function measureQuery(options: SessionOptions) {
   const measure = options.measure

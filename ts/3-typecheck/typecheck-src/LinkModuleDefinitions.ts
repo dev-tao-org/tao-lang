@@ -13,7 +13,8 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
   return state.orderedDefinitions
 }
 
-type DependencyDefinition = { source: string; declaration: AST.LetDeclaration | AST.AppDeclaration }
+type DependencyDeclaration = AST.LetDeclaration | AST.AppDeclaration
+type DependencyDefinition = { source: string; declaration: DependencyDeclaration }
 type DefinitionOrderState = {
   definitions: readonly DependencyDefinition[]
   definitionsByKey: ReadonlyMap<string, DependencyDefinition>

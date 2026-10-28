@@ -4,11 +4,11 @@ import { Try } from './TryCatch'
 /** TimingSample records one completed operation in its explicitly named monotonic clock domain. */
 export type TimingSample = {
   name: string
-  role: 'orchestration' | 'leaf' | 'observation'
+  role: TimingRole
   clock: string
   startMs: number
   durationMs: number
-  status: 'succeeded' | 'failed'
+  status: TimingStatus
 }
 
 /** Timings collects operation spans for one request or bounded measurement run.
@@ -33,7 +33,7 @@ export class Timings {
 
   /** run executes a descriptor or callable entry with this collector through promise settlement. */
   run<Arguments extends unknown[], Value>(
-    operation: Operation<Arguments, Value> | Entry<Arguments, Value>,
+    operation: RunnableOperation<Arguments, Value>,
     ...arguments_: Arguments
   ): Value {
     if (typeof operation === 'function') {
@@ -82,9 +82,13 @@ export class Timings {
   }
 }
 
+type OperationRole = 'orchestration' | 'leaf'
+type TimingRole = OperationRole | 'observation'
+type TimingStatus = 'succeeded' | 'failed'
+type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | Entry<Arguments, Value>
 type Operation<Arguments extends unknown[], Value> = {
   readonly name: string
-  readonly role: 'orchestration' | 'leaf'
+  readonly role: OperationRole
   readonly [action]: (timings: Timings, ...arguments_: Arguments) => Value
 }
 type Entry<Arguments extends unknown[], Value> = ((...arguments_: Arguments) => Value) & {

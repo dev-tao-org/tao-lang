@@ -4,7 +4,7 @@ export function get(key: string): string | undefined {
 }
 
 /** snapshot copies the current environment for a child with explicit local overrides. */
-export function snapshot(): Record<string, string | undefined> {
+export function snapshot(): Record<string, EnvironmentValue> {
   return { ...process.env }
 }
 
@@ -17,3 +17,5 @@ export function set(key: string, value: string): void {
 export function is(key: string, value: string): boolean {
   return get(key) === value
 }
+
+type EnvironmentValue = string | undefined

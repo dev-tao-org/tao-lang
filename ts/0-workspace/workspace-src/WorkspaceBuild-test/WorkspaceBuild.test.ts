@@ -4,6 +4,9 @@ import { Time, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { publishBuild } from '../WorkspaceBuild'
 
+const MetroRevisionRejectionErrorRegx = /Metro rejected this revision\./
+const PreviewPublicationFailureErrorRegx = /Preview publication failed: error/
+
 Tests.test('seeds a disk build once, then hands the next complete revision to the live publisher', async () => {
   const root = Artifacts.resolvePath('tmp', `workspace-build-${Platform.randomUUID()}`)
   await Try(() => verifyDiskAndMemoryPublication(root), {
@@ -82,7 +85,7 @@ async function verifyRejectedMemoryPublications(
       ...memoryRuntime,
       publishGenerated: async snapshot => publishedOutcome(snapshot, 'error', 'Metro rejected this revision.'),
     }), () => true),
-    /Metro rejected this revision\./,
+    MetroRevisionRejectionErrorRegx,
   )
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(nextFiles['App.tsx'])
   const superseded = await publishWithTimings(
@@ -114,7 +117,7 @@ async function verifyRejectedMemoryPublications(
       }),
       () => true,
     ),
-    /Preview publication failed: error/,
+    PreviewPublicationFailureErrorRegx,
   )
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('committed with error')
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'source/Committed.ts'), 'utf8')).toBe('export {}')
@@ -250,7 +253,7 @@ async function verifyRecoveredPublication(runtime: RuntimeApplication, published
       async () => runtime,
       () => true,
     ),
-    /Metro rejected this revision\./,
+    MetroRevisionRejectionErrorRegx,
   )
   runtime.publishGenerated = async snapshot => {
     published.push(snapshot)

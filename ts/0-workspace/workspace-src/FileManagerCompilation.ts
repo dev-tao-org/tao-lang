@@ -1,4 +1,4 @@
-import { Time, Timings, Try } from '@shared'
+import { Regxs, Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
 import { Document } from './Document'
 import { findNearestProjectRoot } from './modules/Paths'
@@ -11,10 +11,10 @@ export class PipelineWatchDirectories {
   private files: string[] = []
   private snapshots: string[] = []
 
-  constructor(private readonly options: Pick<FileManagerOptions, 'outputDirectory' | 'watchDirectories'>) {}
+  constructor(private readonly options: Pick<FileManagerOptions, PipelineWatchDirectoryOption>) {}
 
   update(
-    root: string | undefined,
+    root: WorkspaceRoot,
     authored: readonly string[],
     files: readonly string[],
     snapshots: readonly string[],
@@ -35,7 +35,7 @@ export class PipelineWatchDirectories {
     return this.files.includes(Path.resolve(path))
   }
 
-  includeFiles(root: string | undefined, paths: readonly string[]): boolean {
+  includeFiles(root: WorkspaceRoot, paths: readonly string[]): boolean {
     const nextFiles = collectUniquePaths([...this.files, ...paths])
     const projectRoots = paths.flatMap(resolveAttemptedFileProject)
     const externalRoots = projectRoots.filter(path => !root || !Path.isWithin(root, path))
@@ -71,7 +71,7 @@ export async function loadFileManagerInput(
   documents: Map<string, Document>,
   read: FileManagerOptions['read'],
   isCurrent: () => boolean,
-): Promise<LoadedSource | UpdateResult> {
+): Promise<LoadedInputResult> {
   if (request.input.kind === 'source') {
     return {
       path: request.input.path,
@@ -115,13 +115,13 @@ export type FileManagerOptions = {
 }
 
 /** CompiledEvent identifies the immutable source version associated with a completed compile. */
-export type CompiledEvent = { path: string | undefined; source: string; version?: number; result: UpdateResult }
+export type CompiledEvent = { path: SourcePath; source: string; version?: number; result: UpdateResult }
 
 /** CompileRequest carries one frozen source snapshot and its timing state into Workspace compilation. */
 export type CompileRequest = {
   id: number
   source: string
-  path: string | undefined
+  path: SourcePath
   startedAtMs: number
   queuedAtMs: number
   timings: Timings
@@ -129,23 +129,14 @@ export type CompileRequest = {
 }
 
 /** FileManagerInput holds either a frozen source or a disk read deferred until its queue turn. */
-export type FileManagerInput =
-  | {
-    kind: 'source'
-    source: string
-    path: string | undefined
-    version?: number
-    startedAtMs: number
-    timings: Timings
-  }
-  | { kind: 'disk'; path: string; startedAtMs: number }
+export type FileManagerInput = SourceFileManagerInput | DiskFileManagerInput
 
 /** QueuedInput adds the identity needed to report completed requests. */
 export type QueuedInput = { id: number; input: FileManagerInput }
 
 /** Pending records the queue generation and completion callback of a source request. */
 export type Pending = QueuedInput & {
-  entryGeneration: number | undefined
+  entryGeneration: EntryGeneration
   observation: number
   queuedAtMs: number
   resolve(result: UpdateResult): void
@@ -153,18 +144,18 @@ export type Pending = QueuedInput & {
 
 /** LoadedSource carries a document snapshot and its source acquisition timings. */
 export type LoadedSource = {
-  path: string | undefined
+  path: SourcePath
   source: string
-  version: number | undefined
+  version: SourceVersion
   startedAtMs: number
   timings: Timings
 }
 
 /** CompletedInput carries request details through compile and publication callbacks. */
 export type CompletedInput = {
-  path: string | undefined
+  path: SourcePath
   source: string
-  version: number | undefined
+  version: SourceVersion
   result: UpdateResult
 }
 
@@ -212,9 +203,8 @@ export function isRelevantChange(
   change: WorkspaceWatch.WorkspaceChange,
   watchesFile: (path: string) => boolean,
 ): boolean {
-  return change.kind === 'addDir' || change.kind === 'unlinkDir'
-    || /\.(?:tao|tsx?|mts|cts|jsx?|json)$/.test(change.path)
-    || watchesFile(change.path)
+  const isDirectoryChange = change.kind === 'addDir' || change.kind === 'unlinkDir'
+  return isDirectoryChange || Regxs.GeneratedFileExtensionRegx.test(change.path) || watchesFile(change.path)
 }
 
 /** createFailedResult creates a failed source-read or compiler result. */
@@ -247,6 +237,22 @@ export function notifyCompletion(
   }
 }
 
+type SourcePath = string | undefined
+type SourceVersion = number | undefined
+type EntryGeneration = number | undefined
+type WorkspaceRoot = string | undefined
+type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
+type SourceFileManagerInput = {
+  kind: 'source'
+  source: string
+  path: SourcePath
+  version?: number
+  startedAtMs: number
+  timings: Timings
+}
+type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number }
+type LoadedInputResult = LoadedSource | UpdateResult
+type SourceReadResult = SourceSnapshot | UpdateResult
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
@@ -255,7 +261,7 @@ const readSource = Timings.createTopLevelTimer(async function(
   path: string,
   observedAtMs: number,
   read: (path: string, observedAtMs: number) => Promise<ReadResult> = defaultRead,
-): Promise<SourceSnapshot | UpdateResult> {
+): Promise<SourceReadResult> {
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
   const snapshot = await timings.run(readWorkspaceSource, path, observedAtMs, read)
   return 'status' in snapshot ? snapshot : { ...snapshot, timings }

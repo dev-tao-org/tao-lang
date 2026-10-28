@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { Platform, Repo } from '@shared/os'
 
 /** PushIO isolates guarded Git reads and the single publication operation. */
@@ -23,7 +23,7 @@ export async function pushBranch(
   assertBareBranch(source)
   await io.capture(['check-ref-format', `refs/heads/${branch}`])
   await io.capture(['check-ref-format', `refs/heads/${source}`])
-  const remotes = (await io.capture(['remote'])).trim().split(/\r?\n/u).filter(Boolean)
+  const remotes = (await io.capture(['remote'])).trim().split(Regxs.ExtensionLineEndingRegx).filter(Boolean)
   if (!remotes.includes(remote) || remote.startsWith('-')) {
     Errors.ThrowUserInput(`Use a configured remote name, such as origin: ${remote}`)
   }
@@ -57,6 +57,8 @@ function assertBareBranch(branch: string): void {
 }
 
 function isRefspecOrOption(branch: string): boolean {
-  return !branch || branch.startsWith('-') || branch.startsWith('+') || branch.startsWith('refs/')
-    || branch.includes(':')
+  const startsWithGitOption = branch.startsWith('-') || branch.startsWith('+')
+  const startsWithFullRef = branch.startsWith('refs/')
+  const hasPrefix = startsWithGitOption || startsWithFullRef
+  return !branch || hasPrefix || branch.includes(':')
 }

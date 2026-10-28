@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 
 /** runSkillScript validates and runs an entry script owned by an installed skill. */
@@ -23,7 +23,10 @@ function resolveSkillScript(entryPath: string, root: string): string {
   const lexicalEntry = Path.resolve(root, entryPath)
   const relative = Path.relative(root, lexicalEntry).replaceAll('\\', '/')
   const segments = relative.split('/')
-  if (segments.length < 5 || segments[0] !== 'agents' || segments[1] !== 'skills' || segments[3] !== 'scripts') {
+  const hasSkillPathPrefix = segments.length >= 5 && segments[0] === 'agents'
+  const hasScriptsDirectory = segments[1] === 'skills' && segments[3] === 'scripts'
+  const hasSkillScriptPath = hasSkillPathPrefix && hasScriptsDirectory
+  if (!hasSkillScriptPath) {
     Errors.ThrowUserInput('Skill scripts must be under agents/skills/<skill>/scripts/.')
   }
   const [skillName] = segments.slice(2, 3)
@@ -37,11 +40,11 @@ function resolveSkillScript(entryPath: string, root: string): string {
   const skillRoot = canonicalDirectory(Path.join(skillsRoot, skillName))
   const scriptsRoot = canonicalDirectory(Path.join(skillRoot, 'scripts'))
   const canonicalEntry = canonicalFile(lexicalEntry)
-  if (
-    !Path.isWithin(root, skillsRoot) || !Path.isWithin(skillsRoot, skillRoot)
-    || !Path.isWithin(skillRoot, scriptsRoot) || !Path.isWithin(scriptsRoot, canonicalEntry)
-    || Path.extname(canonicalEntry) !== '.ts'
-  ) {
+  const skillRootsAreNested = Path.isWithin(root, skillsRoot) && Path.isWithin(skillsRoot, skillRoot)
+  const scriptsRootIsNested = Path.isWithin(skillRoot, scriptsRoot)
+  const rootsAreNested = skillRootsAreNested && scriptsRootIsNested
+  const entryIsInScripts = Path.isWithin(scriptsRoot, canonicalEntry) && Path.extname(canonicalEntry) === '.ts'
+  if (!rootsAreNested || !entryIsInScripts) {
     Errors.ThrowUserInput('The skill script resolves outside its skill scripts directory.')
   }
   validateSkillMarker(skillRoot, skillName)
@@ -70,8 +73,8 @@ function validateSkillMarker(skillRoot: string, skillName: string): void {
     Errors.ThrowUserInput('The skill marker resolves outside the skill directory.')
   }
   const contents = FileSystem.readFileSync(marker, 'utf8')
-  const frontmatter = contents.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1]
-  const name = frontmatter?.match(/^name:\s*([A-Za-z0-9_-]+)\s*$/m)?.[1]
+  const frontmatter = Regxs.SkillFrontmatterBlockRegx.exec(contents)?.[1]
+  const name = frontmatter === undefined ? undefined : Regxs.SkillFrontmatterNameRegx.exec(frontmatter)?.[1]
   if (name !== skillName) {
     Errors.ThrowUserInput(`Skill marker name must match directory '${skillName}'.`)
   }

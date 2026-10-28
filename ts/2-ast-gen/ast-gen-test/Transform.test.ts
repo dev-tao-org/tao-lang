@@ -4,6 +4,9 @@ import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../ast-gen-src/Transform'
 
+const RenderedViewNameRegx = /render (\w+)/
+const PerformanceAppDeclarationRegx = /app Performance[\s\S]*?\n}/
+
 Tests.test(
   'an app becomes semantic declarations and names with source origins',
   Timings.createTopLevelTimer(async timings => {
@@ -76,7 +79,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
         kind: 'RenderViewExpressionStatement',
         expression: {
           kind: 'ViewRenderExpression',
-          target: { kind: 'Name', value: /render (\w+)/.exec(source)![1] },
+          target: { kind: 'Name', value: RenderedViewNameRegx.exec(source)![1] },
           arguments: [],
           block: {
             kind: 'Block',
@@ -96,7 +99,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
 
 async function readAppDeclaration(): Promise<string> {
   return (await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')).match(
-    /app Performance[\s\S]*?\n}/,
+    PerformanceAppDeclarationRegx,
   )![0]
 }
 

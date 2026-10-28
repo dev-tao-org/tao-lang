@@ -1,4 +1,5 @@
 import * as TypeScript from 'typescript'
+import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** nestedConditionalIssue reports ternary expressions nested in the same runtime expression. */
 export function nestedConditionalIssue(node: TypeScript.Node): string | undefined {
@@ -41,8 +42,10 @@ function unwrapCallee(expression: TypeScript.Expression): TypeScript.Expression 
 }
 
 function isCalleeWrapper(node: TypeScript.Expression): node is CalleeWrapper {
-  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
-    || TypeScript.isTypeAssertionExpression(node) || TypeScript.isNonNullExpression(node)
+  if (TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)) {
+    return true
+  }
+  return TypeScript.isTypeAssertionExpression(node) || TypeScript.isNonNullExpression(node)
     || TypeScript.isSatisfiesExpression(node)
 }
 
@@ -53,8 +56,5 @@ function isFallbackSelection(node: TypeScript.Expression): boolean {
 }
 
 function isFunctionBoundary(node: TypeScript.Node): boolean {
-  return TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
-    || TypeScript.isArrowFunction(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node)
-    || TypeScript.isConstructorDeclaration(node)
+  return isRuntimeFunctionNode(node)
 }

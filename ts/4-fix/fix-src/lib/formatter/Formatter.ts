@@ -22,6 +22,12 @@ export function createFormattingPlan(
   return timings.run(collectRules, source, tree, formatting, layout)
 }
 
+type ParentSyntaxNode = SyntaxNode | undefined
+type FormattingRule = (fm: NodeFormat<NodeType>) => void
+type LayoutRule = (lm: NodeLayout<NodeType>) => void
+type OptionalFormattingRule = FormattingRule | undefined
+type OptionalLayoutRule = LayoutRule | undefined
+
 const collectRules = Timings.measured('formatter.rules', function(
   source: string,
   tree: Tree,
@@ -44,14 +50,14 @@ const collectRules = Timings.measured('formatter.rules', function(
 
 function visit(
   node: SyntaxNode,
-  parent: SyntaxNode | undefined,
+  parent: ParentSyntaxNode,
   plan: LayoutPlan,
   formatting: FormattingHandlers,
   layout: LayoutHandlers,
 ): void {
   const kind = node.type as NodeType
-  const formatRule = formatting[kind] as ((fm: NodeFormat<NodeType>) => void) | undefined
-  const layoutRule = layout[kind] as ((lm: NodeLayout<NodeType>) => void) | undefined
+  const formatRule = formatting[kind] as OptionalFormattingRule
+  const layoutRule = layout[kind] as OptionalLayoutRule
   formatRule?.(new NodeFormat(node, plan, parent))
   layoutRule?.(new NodeLayout(node, plan, parent))
   for (const child of node.namedChildren) {

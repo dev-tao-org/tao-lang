@@ -3,11 +3,13 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules } from '../sidecars/ManagedModules'
 import type { BunExecutor } from '../sidecars/ManagedModuleTypes'
 
+const IncompatibleNativeSingletonVersionsErrorRegx = /incompatible singleton native-fixture.*1\.0\.0.*2\.0\.0/
+
 Tests.test('rejects duplicate versions of an implicitly detected native package', async () => {
   await withTemporaryDirectory(async directory => {
     await Tests.rejects(
       prepareManagedModules(input(directory), nativeGraphExecutor),
-      /incompatible singleton native-fixture.*1\.0\.0.*2\.0\.0/,
+      IncompatibleNativeSingletonVersionsErrorRegx,
     )
   })
 })

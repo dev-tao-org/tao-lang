@@ -1,3 +1,4 @@
+import { Regxs } from '@shared'
 import { Path } from '@shared/os'
 
 /** planTypeScriptShards separates install/build, refresh and remaining tests within one process budget. */
@@ -13,11 +14,11 @@ export function planTypeScriptShards(files: readonly string[], workers: number):
 
 function chooseShard(file: string): number {
   const name = Path.basename(file)
-  if (/^(ManagedMetroAcceptance|ToolchainAcceptance)\.test\.ts$/.test(name)) {
+  if (Regxs.ManagedTestShardRegx.test(name)) {
     return 0
   }
   if (
-    /^(ReactOwnership|CompilerRefreshAcceptance|NestedRefresh|PreviewRecovery|MetroIntegration|MetroGuards|SidecarPipeline)\.test\.ts$/
+    Regxs.LargeTestShardRegx
       .test(name)
   ) {
     return 1

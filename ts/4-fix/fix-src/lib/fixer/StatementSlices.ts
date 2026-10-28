@@ -8,7 +8,7 @@ export type StatementSlice = SourceRange & { node: SyntaxNode; commented: boolea
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
 export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
   const slices: StatementSlice[] = []
-  let leadingCommentStart: number | undefined
+  let leadingCommentStart: LeadingCommentStart
   for (const node of tree.rootNode.namedChildren) {
     const previous = slices.at(-1)
     if (CST.IsComment(node)) {
@@ -35,11 +35,14 @@ export function collectStatementSlices(source: string, tree: Tree): StatementSli
 
 function isSameLineTrailingComment(
   source: string,
-  previous: StatementSlice | undefined,
+  previous: PreviousStatementSlice,
   comment: SyntaxNode,
 ): previous is StatementSlice {
   return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes('\n')
 }
+
+type LeadingCommentStart = number | undefined
+type PreviousStatementSlice = StatementSlice | undefined
 
 function containsComment(node: SyntaxNode): boolean {
   return CST.IsComment(node) || node.namedChildren.some(containsComment)

@@ -5,7 +5,7 @@ import type { ChannelState } from '../Output'
 /** displayStatus maps a channel status to its compact marker and color. */
 export function displayStatus(
   status: ChannelState['status'],
-): { mark: string; color: 'green' | 'red' | 'yellow' | 'gray' } {
+): DisplayStatus {
   return Switch(status, {
     idle: () => ({ mark: '○', color: 'gray' }),
     running: () => ({ mark: '●', color: 'yellow' }),
@@ -13,6 +13,9 @@ export function displayStatus(
     failed: () => ({ mark: '✗', color: 'red' }),
   })
 }
+
+type DisplayStatus = { mark: string; color: DisplayColor }
+type DisplayColor = 'green' | 'red' | 'yellow' | 'gray'
 
 /** elapsed formats a channel's completed or current run duration. */
 export function elapsed(channel: ChannelState, now: number): string {

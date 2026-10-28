@@ -5,6 +5,9 @@ import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
+const NamedPackageBoundaryErrorRegx = /crosses a named package boundary/
+const OwningTaoProjectBoundaryErrorRegx = /leaves the owning Tao project/
+
 Tests.test(
   'loads direct directory imports from a virtual entry and records discovery timings',
   Timings.createTopLevelTimer(async timings => {
@@ -115,7 +118,7 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
         { directory: root },
         createParser(),
       ),
-      /crosses a named package boundary/,
+      NamedPackageBoundaryErrorRegx,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -136,7 +139,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
         { directory: projectRoot },
         createParser(),
       ),
-      /leaves the owning Tao project/,
+      OwningTaoProjectBoundaryErrorRegx,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })

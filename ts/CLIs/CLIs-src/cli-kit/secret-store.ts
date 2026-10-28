@@ -1,4 +1,4 @@
-import { Errors, S, Try } from '@shared'
+import { Errors, Regxs, S, Try } from '@shared'
 import { Text } from '@shared/os'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { assertUniqueSecretStoreKeys } from './secret-store-jsonc'
@@ -165,7 +165,7 @@ export async function decryptSecretValues(
 
 /** requireSecretName validates that a secret can become an environment variable. */
 export function requireSecretName(name: string): string {
-  if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+  if (!Regxs.EnvironmentVariableNameRegx.test(name)) {
     Errors.ThrowUserInput(
       `'${name}' is not a usable secret name. Use capitals, digits and underscores, such as ANTHROPIC_API_KEY.`,
     )
@@ -187,7 +187,9 @@ function isStoreKeyArmor(armor: string): boolean {
   return header.split('\n').some(line => line.startsWith('-> X25519 '))
 }
 
-function resolveSecretNote(note: string | undefined, existingNote: string | undefined): { note?: string } {
+type OptionalSecretNote = string | undefined
+
+function resolveSecretNote(note: OptionalSecretNote, existingNote: OptionalSecretNote): { note?: string } {
   if (note !== undefined) {
     return { note }
   }
@@ -224,8 +226,13 @@ function parseStoreKey(value: unknown): StoreKey {
 }
 
 function isStoreKeyShape(value: unknown): value is StoreKey {
-  return isRecord(value) && typeof value.recipient === 'string' && isStringArray(value.wrappedFor)
-    && isStringArray(value.wrappedKey) && value.wrappedKey.length > 0
+  if (!isRecord(value)) {
+    return false
+  }
+  const hasRecipient = typeof value.recipient === 'string'
+  const hasWrappedRecipients = isStringArray(value.wrappedFor)
+  const hasWrappedKey = isStringArray(value.wrappedKey) && value.wrappedKey.length > 0
+  return hasRecipient && hasWrappedRecipients && hasWrappedKey
 }
 
 function isStringArray(value: unknown): value is string[] {

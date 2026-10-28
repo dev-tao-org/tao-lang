@@ -1,14 +1,16 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import * as Catalog from './Catalog'
 import type { ModuleLoadOptions } from './Loader'
 import * as Paths from './Paths'
 
+type PhysicalImporterPath = string | undefined
+
 /** resolveBareTargets resolves unqualified use declarations against a folder or named package. */
 export async function resolveBareTargets(
   importer: string,
-  physicalImporter: string | undefined,
+  physicalImporter: PhysicalImporterPath,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
   if (!physicalImporter) {
@@ -39,7 +41,7 @@ export type ModuleResolutionContext = { projectRoot: string; options: ModuleLoad
 export async function importTargets(
   specifier: string,
   importer: string,
-  physicalImporter: string | undefined,
+  physicalImporter: PhysicalImporterPath,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
   const importedProject = parseProjectImport(specifier)
@@ -48,7 +50,7 @@ export async function importTargets(
   }
   if (specifier.startsWith('@')) {
     const [name, ...parts] = specifier.split('/')
-    if (!/^@[A-Za-z_][\w.-]*$/.test(name!)) {
+    if (!Regxs.ModuleAliasRegx.test(name!)) {
       Errors.ThrowUserInput(`Invalid module path ${specifier}.`)
     }
     return await resolveNamedTargets(name!, parts, importer, physicalImporter, context)
@@ -98,7 +100,7 @@ async function resolveProjectModuleTargets(
 async function relativeTargets(
   specifier: string,
   importer: string,
-  physicalImporter: string | undefined,
+  physicalImporter: PhysicalImporterPath,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
   if (!physicalImporter) {
@@ -133,7 +135,7 @@ async function resolveNamedTargets(
   name: string,
   parts: string[],
   importer: string,
-  physicalImporter: string | undefined,
+  physicalImporter: PhysicalImporterPath,
   context: ModuleResolutionContext,
 ): Promise<ModuleTarget[]> {
   if (!physicalImporter) {
@@ -172,7 +174,7 @@ async function resolveNamedTargets(
 function parseProjectImport(specifier: string): ProjectImport | undefined {
   // ex: x@ui/forms -> { alias: x, module: ui, parts: [forms] }
   const [segment, ...parts] = specifier.split('/')
-  const match = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/.exec(segment!)
+  const match = Regxs.ModuleSourceKeyRegx.exec(segment!)
   return match ? { alias: match[1]!, module: match[2]!, parts } : undefined
 }
 

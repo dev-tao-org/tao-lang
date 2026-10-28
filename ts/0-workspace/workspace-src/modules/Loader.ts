@@ -12,8 +12,8 @@ import { importTargets, type ModuleResolutionContext, resolveBareTargets } from 
 /** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
   directory?: string
-  resolveProject?: (importer: string, alias: string) => Promise<{ root: string } | undefined>
-  observeProjectSources?: (root: string, sources: readonly Pick<SourceModule, 'path' | 'document'>[]) => void
+  resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
+  observeProjectSources?: (root: string, sources: readonly Pick<SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
 }
 
@@ -26,6 +26,9 @@ export const loadModules = Timings.createTopLevelTimer(function(
 ): Promise<SourceModule[]> {
   return timings.run(loadGraph, { entry, options, parser })
 })
+
+type ProjectResolution = { root: string } | undefined
+type SourceModuleField = 'path' | 'document'
 
 type LoadRequest = {
   entry: { path: string; document: AST.Document }
@@ -43,7 +46,11 @@ type LoadState = LoadRequest & {
   documents: Map<string, AST.Document>
 }
 
-type Discovery = Map<string, string | undefined> & {
+type DiscoveredSourceText = string | undefined
+type PhysicalSourcePath = string | undefined
+
+type Discovery = {
+  sources: Map<string, DiscoveredSourceText>
   imports: SourceModule['imports'][number][]
   siblings: string[]
   projectRoots: Map<string, string>
@@ -52,38 +59,60 @@ type Discovery = Map<string, string | undefined> & {
 const loadGraph = Timings.measure(
   'modules.load',
   async function(timings, request: LoadRequest): Promise<SourceModule[]> {
-    const { entry, options, parser } = request
-    const absoluteEntryPath = Path.resolve(entry.path)
-    const entryPath = Try.WithDefault(absoluteEntryPath, () => FileSystem.realpathSync(absoluteEntryPath))
-    const entryDirectory = Path.dirname(entryPath)
-    const configuredDirectory = options.directory && Path.resolve(options.directory)
-    const projectRoot = findNearestProjectRoot(entryDirectory)
-      ?? (configuredDirectory && within(configuredDirectory, entryPath) ? configuredDirectory : entryDirectory)
+    const { entry, options } = request
+    const entryPath = resolveEntryPath(entry.path)
+    const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
     while (state.pending.length > 0) {
-      const path = state.pending.shift()!
-      const source = state.sources.get(path)!
-      const found = await timings.run(discover, state, source)
-      for (const [candidate, text] of found) {
-        if (!state.sources.has(candidate)) {
-          const document = text === undefined
-            ? await readDocument(candidate, parser, state.documents, timings)
-            : parseDocument(text, candidate, parser, timings)
-          state.documents.set(candidate, document)
-          state.sources.set(candidate, sourceModule(candidate, document))
-          state.pending.push(candidate)
-        }
-        const owner = found.projectRoots.get(candidate)
-        if (owner) {
-          state.projectRoots.set(candidate, owner)
-        }
-      }
-      source.imports = found.imports
-      source.siblings = found.siblings
+      await loadNextSource(state, timings)
     }
     return await completedGraph(state, timings)
   },
 )
+
+function resolveEntryPath(path: string): string {
+  const absolutePath = Path.resolve(path)
+  return Try.WithDefault(absolutePath, () => FileSystem.realpathSync(absolutePath))
+}
+
+function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string): string {
+  const entryDirectory = Path.dirname(entryPath)
+  const absoluteConfiguredDirectory = configuredDirectory && Path.resolve(configuredDirectory)
+  return findNearestProjectRoot(entryDirectory)
+    ?? (absoluteConfiguredDirectory && within(absoluteConfiguredDirectory, entryPath)
+      ? absoluteConfiguredDirectory
+      : entryDirectory)
+}
+
+async function loadNextSource(state: LoadState, timings: Timings): Promise<void> {
+  const path = state.pending.shift()!
+  const source = state.sources.get(path)!
+  const discovery = await timings.run(discover, state, source)
+  await addDiscoveredSources(state, discovery, timings)
+  source.imports = discovery.imports
+  source.siblings = discovery.siblings
+}
+
+async function addDiscoveredSources(
+  state: LoadState,
+  discovery: Discovery,
+  timings: Timings,
+): Promise<void> {
+  for (const [candidate, text] of discovery.sources) {
+    if (!state.sources.has(candidate)) {
+      const document = text === undefined
+        ? await readDocument(candidate, state.parser, state.documents, timings)
+        : parseDocument(text, candidate, state.parser, timings)
+      state.documents.set(candidate, document)
+      state.sources.set(candidate, sourceModule(candidate, document))
+      state.pending.push(candidate)
+    }
+    const owner = discovery.projectRoots.get(candidate)
+    if (owner) {
+      state.projectRoots.set(candidate, owner)
+    }
+  }
+}
 
 function createLoadState(request: LoadRequest, entryPath: string, projectRoot: string): LoadState {
   const document = request.entry.document
@@ -116,41 +145,62 @@ async function completedGraph(state: LoadState, timings: Timings): Promise<Sourc
 const discover = Timings.measure(
   'modules.discover',
   async function(timings, state: LoadState, source: SourceModule): Promise<Discovery> {
-    const found: Discovery = Object.assign(new Map(), { imports: [], siblings: [], projectRoots: new Map() })
+    const found: Discovery = { sources: new Map(), imports: [], siblings: [], projectRoots: new Map() }
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     await observeProject(state, projectRoot, timings)
     const physical = await resolvePhysicalSourcePath(source.path, state.entryPath, projectRoot)
-    if (physical) {
-      found.siblings = await listDirectSourceFiles(Path.dirname(physical), projectRoot)
-      for (const path of found.siblings.filter(path => path !== source.path)) {
-        found.set(path, undefined)
-        if (state.projectRoots.has(source.path)) {
-          found.projectRoots.set(path, projectRoot)
-        }
-      }
-    }
-    for (const statement of AST.GetImportStatements(source.document)) {
-      const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
-      const context = createModuleResolutionContext(state, projectRoot)
-      const targets = specifier === undefined
-        ? await resolveBareTargets(source.path, physical, context)
-        : await importTargets(specifier, source.path, physical, context)
-      found.imports.push({
-        statement,
-        targets: targets.map(({ path, relation }) => ({ path, relation })),
-      })
-      for (const target of targets) {
-        if (target.projectRoot) {
-          found.projectRoots.set(target.path, target.projectRoot)
-        }
-        if (!found.has(target.path)) {
-          found.set(target.path, target.source)
-        }
-      }
-    }
+    await discoverSiblings(state, source, physical, projectRoot, found)
+    await discoverImports(state, source, physical, projectRoot, found)
     return found
   },
 )
+
+async function discoverSiblings(
+  state: LoadState,
+  source: SourceModule,
+  physical: PhysicalSourcePath,
+  projectRoot: string,
+  discovery: Discovery,
+): Promise<void> {
+  if (!physical) {
+    return
+  }
+  discovery.siblings = await listDirectSourceFiles(Path.dirname(physical), projectRoot)
+  for (const path of discovery.siblings.filter(path => path !== source.path)) {
+    discovery.sources.set(path, undefined)
+    if (state.projectRoots.has(source.path)) {
+      discovery.projectRoots.set(path, projectRoot)
+    }
+  }
+}
+
+async function discoverImports(
+  state: LoadState,
+  source: SourceModule,
+  physical: PhysicalSourcePath,
+  projectRoot: string,
+  discovery: Discovery,
+): Promise<void> {
+  for (const statement of AST.GetImportStatements(source.document)) {
+    const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+    const context = createModuleResolutionContext(state, projectRoot)
+    const targets = specifier === undefined
+      ? await resolveBareTargets(source.path, physical, context)
+      : await importTargets(specifier, source.path, physical, context)
+    discovery.imports.push({
+      statement,
+      targets: targets.map(({ path, relation }) => ({ path, relation })),
+    })
+    for (const target of targets) {
+      if (target.projectRoot) {
+        discovery.projectRoots.set(target.path, target.projectRoot)
+      }
+      if (!discovery.sources.has(target.path)) {
+        discovery.sources.set(target.path, target.source)
+      }
+    }
+  }
+}
 
 async function resolvePhysicalSourcePath(
   sourcePath: string,

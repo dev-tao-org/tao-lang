@@ -51,12 +51,12 @@ export type ExpoSession = {
 
 /** ExpoOptions streams Expo output while retaining a copy for diagnostics. */
 export type ExpoOptions = {
-  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void
+  onOutput?: (stream: OutputStream, text: string) => void
   signal?: AbortSignal
   generated?: ExpoGeneratedOptions
 }
 
-function expoEnvironment(directory: string): Record<string, string | undefined> {
+function expoEnvironment(directory: string): Record<string, OptionalEnvironmentValue> {
   return {
     ...Env.snapshot(),
     PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
@@ -84,3 +84,6 @@ function formatOutput(output: Lifecycle.ProcessOutput): string {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   return messages.length ? `Expo output:\n${messages.join('\n')}` : ''
 }
+
+type OutputStream = 'stdout' | 'stderr'
+type OptionalEnvironmentValue = string | undefined

@@ -38,6 +38,10 @@ export type WorkflowRequest =
 /** WorkflowWorkspace retains the initialized workspace and the original workflow's first compilation receipt. */
 export type WorkflowWorkspace = Awaited<ReturnType<typeof openProjectWorkspace>> & { initialResult: UpdateResult }
 
+type CompileWorkflowKind = 'compile' | 'preview'
+type PreparationWorkflowKind = 'setup' | 'sidecar-tests'
+type WorkflowExecutionResult = WorkflowWorkspace | TestResult[] | void
+
 /** WorkflowServices isolates readiness and mutation at their owning project boundary. */
 export type WorkflowServices = {
   inspect: typeof inspectProjectPreparation
@@ -49,7 +53,7 @@ export type WorkflowServices = {
  *  Preview restarts use a fresh output session so failed replacement builds retain last-good bundles and snapshots.
  *  Inactive generations are retained until the existing project cache cleanup removes them. */
 export function execute(
-  request: Extract<WorkflowRequest, { kind: 'compile' | 'preview' }>,
+  request: Extract<WorkflowRequest, { kind: CompileWorkflowKind }>,
   ui: WorkflowUI,
   services?: WorkflowServices,
 ): Promise<WorkflowWorkspace>
@@ -59,7 +63,7 @@ export function execute(
   services?: WorkflowServices,
 ): Promise<TestResult[]>
 export function execute(
-  request: Extract<WorkflowRequest, { kind: 'setup' | 'sidecar-tests' }>,
+  request: Extract<WorkflowRequest, { kind: PreparationWorkflowKind }>,
   ui: WorkflowUI,
   services?: WorkflowServices,
 ): Promise<void>
@@ -67,7 +71,7 @@ export async function execute(
   request: WorkflowRequest,
   ui: WorkflowUI,
   services: WorkflowServices = { inspect: inspectProjectPreparation, setup: prepareProject },
-): Promise<WorkflowWorkspace | TestResult[] | void> {
+): Promise<WorkflowExecutionResult> {
   await prepareWorkflow(request, ui, services)
   assertActive(ui)
   return await Try(() => dispatch(request, services), {
@@ -86,8 +90,8 @@ export async function execute(
 function dispatch(
   request: WorkflowRequest,
   services: WorkflowServices,
-): Promise<WorkflowWorkspace | TestResult[] | void> {
-  return Switch.kind<WorkflowRequest, Promise<WorkflowWorkspace | TestResult[] | void>>(request, {
+): Promise<WorkflowExecutionResult> {
+  return Switch.kind<WorkflowRequest, Promise<WorkflowExecutionResult>>(request, {
     async setup() {},
     compile: value => openWorkflowWorkspace(value, services),
     preview: value => openWorkflowWorkspace(value, services),
@@ -139,7 +143,7 @@ function inspectionOptions(request: WorkflowRequest) {
 }
 
 async function openWorkflowWorkspace(
-  request: Extract<WorkflowRequest, { kind: 'compile' | 'preview' }>,
+  request: Extract<WorkflowRequest, { kind: CompileWorkflowKind }>,
   services: WorkflowServices,
 ): Promise<WorkflowWorkspace> {
   const options = createWorkflowWorkspaceOptions(request)
@@ -168,7 +172,7 @@ async function openWorkflowWorkspace(
   })
 }
 
-function createWorkflowWorkspaceOptions(request: Extract<WorkflowRequest, { kind: 'compile' | 'preview' }>) {
+function createWorkflowWorkspaceOptions(request: Extract<WorkflowRequest, { kind: CompileWorkflowKind }>) {
   return request.kind === 'preview' && request.restart
     ? { ...request.options, id: `preview-restart-${Platform.randomUUID()}` }
     : request.options

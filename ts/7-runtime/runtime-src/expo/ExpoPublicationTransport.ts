@@ -122,9 +122,25 @@ function isMatchingPublicationOutcome(
   revision: GeneratedRevision,
   outcome: PublicationOutcome,
 ): boolean {
+  return identifiesPublication(outcome, state, revision) && hasPublishedRevision(outcome)
+    && isTerminalPublicationStatus(outcome.status)
+}
+
+function identifiesPublication(
+  outcome: PublicationOutcome,
+  state: TransportState,
+  revision: GeneratedRevision,
+): boolean {
   return outcome.sessionId === state.sessionId && outcome.revision === revision.revision
-    && outcome.sequence === revision.sequence && typeof outcome.publishedRevision === 'string'
-    && ['published', 'noop', 'superseded', 'error', 'poisoned'].includes(outcome.status)
+    && outcome.sequence === revision.sequence
+}
+
+function hasPublishedRevision(outcome: PublicationOutcome): boolean {
+  return typeof outcome.publishedRevision === 'string'
+}
+
+function isTerminalPublicationStatus(status: PublicationOutcome['status']): boolean {
+  return ['published', 'noop', 'superseded', 'error', 'poisoned'].includes(status)
 }
 
 function retainServedIdentity(state: TransportState, revision: GeneratedRevision, outcome: PublicationOutcome): void {

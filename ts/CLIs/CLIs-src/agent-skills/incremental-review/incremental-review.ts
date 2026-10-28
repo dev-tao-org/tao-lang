@@ -38,7 +38,8 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
     (await git(Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot()), ['rev-parse', '--show-toplevel']))
       .trim()
   return await ReviewSessionModule2.withReviewLock(root, async () => {
-    if (command === 'start' || command === 'continue') {
+    const startsReview = command === 'start' || command === 'continue'
+    if (startsReview) {
       const session = command === 'continue'
         ? await continueReview(
           root,
@@ -59,6 +60,9 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
 }
 
 type Options = Map<string, string[]>
+type NoteCommand = 'note' | 'recheck'
+type SelectionCommand = 'plan' | 'accept'
+type OptionalPath = string | undefined
 
 async function runSessionCommand(
   command: string,
@@ -92,7 +96,7 @@ async function runSessionCommand(
 }
 
 async function runNoteCommand(
-  command: 'note' | 'recheck',
+  command: NoteCommand,
   options: Options,
   session: ReviewSession,
 ): Promise<Record<string, unknown>> {
@@ -113,7 +117,7 @@ async function runNoteCommand(
 }
 
 async function runSelectionCommand(
-  command: 'plan' | 'accept',
+  command: SelectionCommand,
   options: Options,
   session: Awaited<ReturnType<typeof ReviewSessionModule2.loadSession>>,
   hooks: ReviewHooks,
@@ -121,7 +125,8 @@ async function runSelectionCommand(
   const selectionFile = single(options, 'selection')
   const reviewed = single(options, 'reviewed-patch')
   const source = single(options, 'source-patch')
-  if (selectionFile && (options.has('files') || reviewed || source)) {
+  const hasFileOrPatchOptions = options.has('files') || reviewed || source
+  if (selectionFile && hasFileOrPatchOptions) {
     Errors.ThrowUserInput('Use either --selection or --files, not both.')
   }
   if (source && !reviewed) {
@@ -145,11 +150,11 @@ async function runSelectionCommand(
 }
 
 async function resolveSelection(
-  selectionFile: string | undefined,
+  selectionFile: OptionalPath,
   session: ReviewSession,
   options: Options,
-  source: string | undefined,
-  reviewed: string | undefined,
+  source: OptionalPath,
+  reviewed: OptionalPath,
 ): Promise<ReviewSelection> {
   if (selectionFile) {
     return await readJson<ReviewSelection>(Path.resolve(selectionFile))
@@ -177,7 +182,7 @@ function parseOptions(args: string[]): Options {
     'text',
     'state',
   ]
-  let current: string | undefined
+  let current: OptionalPath
   for (const arg of args) {
     if (arg.startsWith('--') && known.includes(arg.slice(2))) {
       current = arg.slice(2)

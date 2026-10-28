@@ -5,7 +5,7 @@ import type { LayoutHandlers } from '../lib/formatter/Formatter'
 /** Layout defines Tao line boundaries, indentation and preserved list wrapping. */
 export const Layout = {
   SourceFile(lm) {
-    let previous: SyntaxNode | undefined
+    let previous: PreviousSyntaxNode
     for (const node of lm.node.namedChildren) {
       // Leave boundaries touching comments alone so their declaration attachment is preserved.
       if (isDeclarationBoundary(previous, node)) {
@@ -50,9 +50,11 @@ export const Layout = {
   },
 } satisfies LayoutHandlers
 
-function isDeclarationBoundary(previous: SyntaxNode | undefined, node: SyntaxNode): previous is SyntaxNode {
+function isDeclarationBoundary(previous: PreviousSyntaxNode, node: SyntaxNode): previous is SyntaxNode {
   return previous !== undefined && !CST.IsComment(node) && !CST.IsComment(previous)
 }
+
+type PreviousSyntaxNode = SyntaxNode | undefined
 
 function isImport(node: SyntaxNode): boolean {
   return node.type === 'UseStatement' || node.type === 'UsePackageStatement'

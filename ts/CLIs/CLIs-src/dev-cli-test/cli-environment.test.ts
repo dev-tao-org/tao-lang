@@ -1,6 +1,12 @@
 import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
+const CompletedWarningSummaryRegx = /Completed: [1-9]\d* warning\(s\), 0 error\(s\)/
+const SlowTestWarningRegx = /Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/
+const LogPathRegx = /Logs: (.+\.log)/
+const TypeScriptTestSuccessRegx = /\[TypeScript tests\] passed in \d+\.\d{2}s/
+const AllTestsSuccessRegx = /\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/
+
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
   const child = Platform.spawn(Repo.resolvePath('agent'), {
     variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
@@ -17,18 +23,18 @@ Tests.test('agent test summarizes results and warnings while retaining full outp
   Tests.expect(status).toBe(0)
   const completed = stderr.indexOf('Completed: ')
   Tests.expect(completed).toBeGreaterThanOrEqual(0)
-  Tests.expect(stderr.slice(completed)).toMatch(/Completed: [1-9]\d* warning\(s\), 0 error\(s\)/)
+  Tests.expect(stderr.slice(completed)).toMatch(CompletedWarningSummaryRegx)
   Tests.expect(stderr.slice(completed)).toContain('Warning: [TypeScript tests] Slow tests (>0 ms):')
-  Tests.expect(stderr.slice(completed)).toMatch(/Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/)
+  Tests.expect(stderr.slice(completed)).toMatch(SlowTestWarningRegx)
   Tests.expect(stdout + stderr.slice(0, completed)).not.toContain('a per-run threshold accepts non-negative seconds')
-  const logPath = /Logs: (.+\.log)/.exec(stderr)?.[1]
+  const logPath = LogPathRegx.exec(stderr)?.[1]
   Tests.expect(logPath).toBeDefined()
   const log = await FileSystem.readFile(Repo.resolvePath(logPath!), 'utf8')
   Tests.expect(log).toContain('bun test --parallel=1')
   Tests.expect(log).toContain('a per-run threshold accepts non-negative seconds')
   Tests.expect(log).toContain('[warn stdout]')
-  Tests.expect(stdout + stderr).toMatch(/\[TypeScript tests\] passed in \d+\.\d{2}s/)
-  Tests.expect(stdout).toMatch(/\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/)
+  Tests.expect(stdout + stderr).toMatch(TypeScriptTestSuccessRegx)
+  Tests.expect(stdout).toMatch(AllTestsSuccessRegx)
 })
 
 Tests.test('fresh setup finds nested extension tools installed after the launcher prepares PATH', async () => {

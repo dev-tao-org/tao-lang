@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { Path } from '@shared/os'
 import type { Stats } from './NodeBuiltins'
 import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
@@ -6,7 +6,7 @@ import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
 /** WorkspaceChange identifies one authored file or directory notification. */
 export type WorkspaceChange = {
   path: string
-  kind: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
+  kind: WorkspaceChangeKind
   observedAtMs: number
 }
 
@@ -63,6 +63,8 @@ export async function watchWorkspace(
   })
   return dynamicWatcher(watcher, root, roots, excluded, reconciliation, () => disposed, () => disposed = true)
 }
+
+type WorkspaceChangeKind = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
 
 function dynamicWatcher(
   watcher: Awaited<ReturnType<typeof createWatcher>>,
@@ -126,7 +128,7 @@ function ignoredPath(root: string, path: string, excluded: readonly string[], st
   if (!relative) {
     return false
   }
-  const parts = relative.split(/[\\/]/)
+  const parts = relative.split(Regxs.PathSeparatorRegx)
   return parts.some(ignoredName) || stats?.isSymbolicLink() === true
     || excluded.some(root => withinDirectory(root, path))
 }

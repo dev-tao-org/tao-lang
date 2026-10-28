@@ -29,7 +29,8 @@ export function collectAndSweep(): Sweep {
   return { durationMs, snapshot: snapshot() }
 }
 
-let javaScriptCore: JavaScriptCore | undefined
+type CachedJavaScriptCore = JavaScriptCore | undefined
+let javaScriptCore: CachedJavaScriptCore
 
 function loadJavaScriptCore(): JavaScriptCore {
   javaScriptCore ??= loadModule<JavaScriptCore>('bun:jsc')

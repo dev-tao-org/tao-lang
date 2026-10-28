@@ -4,7 +4,7 @@ import { Streams, Text } from '@shared/os'
 /** ChannelState describes a bounded presentation snapshot for one independently owned stream. */
 export type ChannelState = {
   title: string
-  status: 'idle' | 'running' | 'passed' | 'failed'
+  status: ChannelStatus
   lines: readonly string[]
   startedAtMs?: number
   finishedAtMs?: number
@@ -26,32 +26,40 @@ export type OutputRenderer = { update(snapshot: OutputSnapshot): void; dispose()
 /** OutputEvent retains the channel and original text for independent file and terminal sinks. */
 export type OutputEvent = {
   channel: ChannelState
-  stream: 'stdout' | 'stderr' | 'progress'
+  stream: OutputStream
   text: string
   main: boolean
-  level: 'info' | 'warn' | 'error'
+  level: OutputLevel
   summary?: boolean
 }
 
 /** OutputChannel owns direct logging handles for one task or child process. */
 export type OutputChannel = {
-  stdout(text: string | Uint8Array): void
-  stderr(text: string | Uint8Array): void
+  stdout(text: OutputText): void
+  stderr(text: OutputText): void
   print(...values: unknown[]): void
   warn(...values: unknown[]): void
   printToStdErr(...values: unknown[]): void
   progress(message: string): void
   summary(...values: unknown[]): void
-  receive(message: Pick<OutputEvent, 'stream' | 'text' | 'level' | 'summary'>): void
+  receive(message: Pick<OutputEvent, OutputEventMessageFields>): void
   start(): void
-  finish(status: 'passed' | 'failed'): void
+  finish(status: OutputCompletion): void
   completion(): string
 }
+
+type ChannelStatus = 'idle' | 'running' | 'passed' | 'failed'
+type OutputStream = 'stdout' | 'stderr' | 'progress'
+type OutputLevel = 'info' | 'warn' | 'error'
+type OutputText = string | Uint8Array
+type OutputCompletion = 'passed' | 'failed'
+type OutputEventMessageFields = 'stream' | 'text' | 'level' | 'summary'
+type OptionalOutputRenderer = OutputRenderer | undefined
 
 /** createOutput routes complete output to sinks while bounding only the visible channel tails. */
 export function createOutput(write: (event: OutputEvent) => void) {
   const states: ChannelState[] = []
-  let renderer: OutputRenderer | undefined
+  let renderer: OptionalOutputRenderer
   let commands: readonly OutputCommand[] = []
   const snapshot = (): OutputSnapshot => ({ main: states[0]!, channels: states.slice(1), commands })
   const update = () => renderer?.update(snapshot())

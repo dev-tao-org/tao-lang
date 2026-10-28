@@ -31,6 +31,8 @@ export async function createAppTestDriver(
   }
 }
 
+type TestWorkspace = ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
+
 type DriverContext = {
   path: string
   source: string
@@ -41,7 +43,7 @@ type DriverContext = {
 }
 
 type Session = {
-  workspace?: ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
+  workspace?: TestWorkspace
   expo?: Runtime.ExpoSession
   browser?: TestBrowser
 }

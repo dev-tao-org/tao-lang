@@ -8,8 +8,8 @@ import { planTypeScriptShards } from './TypeScriptShardPlan'
 /** runTypeScriptTests executes disjoint full-suite shards or preserves Bun's focused selection semantics. */
 export async function runTypeScriptTests(
   plan: TestPlan,
-  channel: OutputChannel | undefined,
-  slowSeconds: number | undefined,
+  channel: OptionalOutputChannel,
+  slowSeconds: OptionalSlowSeconds,
   signal: TestRunSignal,
   workerEnvironment: Record<string, string>,
 ): Promise<void> {
@@ -63,7 +63,7 @@ async function runShard(
   args: readonly string[],
   workers: number,
   output: OutputChannel,
-  slowSeconds: number | undefined,
+  slowSeconds: OptionalSlowSeconds,
   signal: TestRunSignal,
   workerEnvironment: Record<string, string>,
 ): Promise<void> {
@@ -81,3 +81,6 @@ async function runShard(
     output,
   )
 }
+
+type OptionalOutputChannel = OutputChannel | undefined
+type OptionalSlowSeconds = number | undefined

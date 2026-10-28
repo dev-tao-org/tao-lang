@@ -19,7 +19,7 @@ export function waitForTermination(signal?: AbortSignal): Promise<void> {
 }
 
 /** onTermination registers a cooperative shutdown handler and returns its listener cleanup. */
-export function onTermination(handler: (signal: 'SIGINT' | 'SIGTERM') => void): () => void {
+export function onTermination(handler: (signal: TerminationSignal) => void): () => void {
   const interrupt = () => handler('SIGINT')
   const terminate = () => handler('SIGTERM')
   process.on('SIGINT', interrupt)
@@ -49,7 +49,7 @@ export type ProcessOutput = { stdout: string; stderr: string }
 /** captureProcessOutput drains both pipes, buffers their contents, and streams chunks to a listener. */
 export async function captureProcessOutput(
   child: ManagedProcess,
-  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void,
+  onOutput?: OutputListener,
 ): Promise<ProcessOutput> {
   const [stdout, stderr] = await Promise.all([
     readOutput(child.stdout, 'stdout', onOutput),
@@ -58,10 +58,15 @@ export async function captureProcessOutput(
   return { stdout, stderr }
 }
 
+type TerminationSignal = 'SIGINT' | 'SIGTERM'
+type ProcessOutputName = 'stdout' | 'stderr'
+type ProcessOutputStream = ReadableStream<Uint8Array> | null
+type OutputListener = (stream: ProcessOutputName, text: string) => void
+
 async function readOutput(
-  stream: ReadableStream<Uint8Array> | null,
-  name: 'stdout' | 'stderr',
-  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void,
+  stream: ProcessOutputStream,
+  name: ProcessOutputName,
+  onOutput?: OutputListener,
 ): Promise<string> {
   if (!stream) {
     return ''

@@ -6,6 +6,7 @@ import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './PreviewSignal'
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
+type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
 
 type PreviewResult = {
   scenario: string
@@ -129,13 +130,15 @@ function receiveSignal(event: MessageEvent): void {
 }
 
 function isFrameMessage(event: MessageEvent): boolean {
-  const identity = event.data as Partial<PreviewSignal> | undefined
+  const identity = event.data as OptionalSignalIdentity
   if (!identity || identity.sessionId !== sessionId || typeof identity.frameId !== 'string') {
     return false
   }
   const frame = frames.get(identity.frameId)
-  return !!frame && event.source === Browser.frameWindow(frame)
-    && typeof identity.bootId === 'string' && !!recoveries.get(identity.frameId)?.matchesInstance(identity.bootId)
+  if (!frame || event.source !== Browser.frameWindow(frame)) {
+    return false
+  }
+  return typeof identity.bootId === 'string' && !!recoveries.get(identity.frameId)?.matchesInstance(identity.bootId)
 }
 
 function relaySignal(signal: PreviewSignal): void {

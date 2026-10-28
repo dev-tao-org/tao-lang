@@ -48,12 +48,16 @@ Tests.test('Try > preserves synchronous values', () => {
 
 Tests.test('Try.WithDefault > preserves success values and returns the fallback on sync or async failure', async () => {
   const fallback = { recovered: true }
-  const synchronous: string | typeof fallback = Try.WithDefault(fallback, () => 'value')
-  const synchronousFailure: typeof fallback | number = Try.WithDefault(fallback, () => {
+  type RecoveredText = string | typeof fallback
+  type RecoveredNumber = number | typeof fallback
+  type DeferredNumberResult = typeof fallback | Promise<RecoveredNumber>
+  type DeferredTextResult = typeof fallback | Promise<RecoveredText>
+  const synchronous: RecoveredText = Try.WithDefault(fallback, () => 'value')
+  const synchronousFailure: RecoveredNumber = Try.WithDefault(fallback, () => {
     throw new Error('sync failure')
   })
-  const asynchronous: typeof fallback | Promise<number | typeof fallback> = Try.WithDefault(fallback, async () => 7)
-  const asynchronousFailure: typeof fallback | Promise<string | typeof fallback> = Try.WithDefault(
+  const asynchronous: DeferredNumberResult = Try.WithDefault(fallback, async () => 7)
+  const asynchronousFailure: DeferredTextResult = Try.WithDefault(
     fallback,
     () => Promise.reject(new Error('async failure')),
   )
@@ -69,11 +73,14 @@ Tests.test('Try.WithDefault > preserves success values and returns the fallback 
 })
 
 Tests.test('Try.WithDefault > types mixed results without losing synchronous values or asynchronous recovery', async () => {
-  const mixedFailure = Try.WithDefault(false, (): number | Promise<string> => Promise.reject('mixed failure'))
+  type MixedActionResult = number | Promise<string>
+  type SettledMixedValue = number | string | boolean
+  type MixedDefaultResult = number | boolean | Promise<SettledMixedValue>
+  const mixedFailure = Try.WithDefault(false, (): MixedActionResult => Promise.reject('mixed failure'))
   const promisedRecovery: Extract<typeof mixedFailure, Promise<unknown>> = Promise.resolve(false)
-  const mixedSuccess: number | boolean | Promise<number | string | boolean> = Try.WithDefault(
+  const mixedSuccess: MixedDefaultResult = Try.WithDefault(
     false,
-    (): number | Promise<string> => 4,
+    (): MixedActionResult => 4,
   )
   Tests.expect(await mixedFailure).toBe(await promisedRecovery)
   Tests.expect(mixedSuccess).toBe(4)

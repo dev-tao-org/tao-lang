@@ -1,4 +1,4 @@
-import { Errors, Time } from '@shared'
+import { Errors, Regxs, Time } from '@shared'
 import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
@@ -7,6 +7,7 @@ import { nestedConditionalIssue, selectedFunctionCallIssue } from './source-conf
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
+import { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue } from './source-conformance-naming'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
@@ -32,8 +33,11 @@ export async function checkSourceConformance(root: string): Promise<void> {
   }
 }
 
+type ConformanceIssue = string | undefined
+
 class SourceConformanceChecker {
   private readonly source: string
+  private readonly excluded: boolean
   private readonly issues: string[] = []
   private readonly publicDocs = new Set<number>()
   private readonly comments = new Map<number, TypeScript.CommentRange>()
@@ -45,6 +49,7 @@ class SourceConformanceChecker {
     private readonly checker: TypeScript.TypeChecker,
   ) {
     this.source = file.text
+    this.excluded = isExcludedSource(filename, this.source)
     this.api = new ExportedApiChecker(
       this.source,
       this.file,
@@ -70,7 +75,7 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
-    if (TypeScript.isImportDeclaration(node) && !isExcludedSource(this.filename, this.source)) {
+    if (TypeScript.isImportDeclaration(node) && !this.excluded) {
       const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)
       if (importIssue) {
         this.report(node.getStart(this.file), importIssue)
@@ -82,6 +87,11 @@ class SourceConformanceChecker {
     this.reportIssue(node, selectedFunctionCallIssue(node))
     this.reportIssue(node, complexSignatureTypeIssue(node))
     this.reportIssue(node, platformAccessIssue(node, this.filename))
+    if (!this.excluded) {
+      this.reportIssue(node, booleanExpressionIssue(node))
+      this.reportIssue(node, unnamedUnionIssue(node))
+      this.reportIssue(node, namedRegexIssue(node))
+    }
     const body = ConformanceLayout.functionBody(node)
     if (body) {
       this.checkFunctionBody(body)
@@ -101,7 +111,7 @@ class SourceConformanceChecker {
     }
   }
 
-  private reportIssue(node: TypeScript.Node, issue: string | undefined): void {
+  private reportIssue(node: TypeScript.Node, issue: ConformanceIssue): void {
     if (issue) {
       this.report(node.getStart(this.file), issue)
     }
@@ -156,5 +166,6 @@ class SourceConformanceChecker {
 }
 
 function isTryPrimitive(filename: string): boolean {
-  return filename.replaceAll('\\', '/').replace(/^\.\//, '') === 'ts/shared/shared-src/universal/TryCatch.ts'
+  return filename.replaceAll('\\', '/').replace(Regxs.RelativePathPrefix, '')
+    === 'ts/shared/shared-src/universal/TryCatch.ts'
 }

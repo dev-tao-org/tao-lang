@@ -3,6 +3,9 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
+const ManagedModuleRepairRequiredErrorRegx = /needs repair/
+const MarkerOwnershipProofRequiredErrorRegx = /cannot prove that the generated metadata belongs.*Preserve this marker/
+
 Tests.test('repairs a corrupt marker only with generated file and profile link proof', async () =>
   await withDirectory(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
@@ -12,7 +15,7 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     await ManagedModules.prepareManagedModules(input, executor)
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     await makeCorrupt(marker)
-    await Tests.rejects(ManagedModules.prepareManagedModules(input, executor), /needs repair/)
+    await Tests.rejects(ManagedModules.prepareManagedModules(input, executor), ManagedModuleRepairRequiredErrorRegx)
     await ManagedModules.repairManagedModuleFiles(input, executor)
     Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).profile).toContain('.tao/cache/managed-modules')
     const manifest = Path.join(moduleDirectory, 'package.json')
@@ -21,7 +24,7 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     await makeCorrupt(marker)
     await Tests.rejects(
       ManagedModules.repairManagedModuleFiles(input, executor),
-      /cannot prove that the generated metadata belongs.*Preserve this marker/,
+      MarkerOwnershipProofRequiredErrorRegx,
     )
     Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
   }))

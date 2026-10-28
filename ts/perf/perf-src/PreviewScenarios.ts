@@ -28,7 +28,7 @@ export const previewScenarios: readonly PreviewScenario[] = [
 /** applyScenario runs one named edit, rejecting a step the current source cannot accept. */
 export function applyScenario(
   scenarios: readonly PreviewScenario[],
-  name: string | undefined,
+  name: OptionalScenarioName,
   source: string,
   canonical: string,
 ): string {
@@ -38,6 +38,8 @@ export function applyScenario(
   }
   return scenario.apply(source, canonical)
 }
+
+type OptionalScenarioName = string | undefined
 
 function replaceOnce(source: string, from: string, to: string): string {
   if (!source.includes(from)) {

@@ -56,8 +56,10 @@ export function expiredTemporaryArtifacts(runs: readonly TemporaryRun[], now: nu
   return [...new Set(expired)].filter(path => !retained.some(kept => pathsOverlap(path, kept)))
 }
 
-type TemporaryRun = { status: 'running' | 'succeeded' | 'failed'; completedAt?: number; artifacts: string[] }
-let activeRun: { path: string; record: TemporaryRun } | undefined
+type TemporaryRunStatus = 'running' | 'succeeded' | 'failed'
+type TemporaryRun = { status: TemporaryRunStatus; completedAt?: number; artifacts: string[] }
+type ActiveTemporaryRun = { path: string; record: TemporaryRun } | undefined
+let activeRun: ActiveTemporaryRun
 const retentionMs = 24 * 60 * 60 * 1000
 
 function registerTemporary(absolute: string): void {

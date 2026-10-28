@@ -7,6 +7,8 @@ import { linkModules } from '@typecheck/LinkModules'
 import { compile } from '../compile-src/Compile'
 import { createGeneratedPaths } from '../compile-src/GeneratedPaths'
 
+const GeneratedMemoryViewsPathRegx = /^source\/Foo\.views\.source-[a-f0-9]{8}\.ts$/
+
 Tests.test('generated source files own stable components while revision changes stay in bootstrap', () => {
   const document = transform(
     createParser().parse(S`
@@ -37,7 +39,7 @@ Tests.test('source names with category suffixes cannot shadow another input comp
     definitions: [],
   })
   Tests.expect(paths.get('/app/Foo.tao')).toBe('source/Foo.ts')
-  Tests.expect(paths.get('/app/Foo.views.tao')).toMatch(/^source\/Foo\.views\.source-[a-f0-9]{8}\.ts$/)
+  Tests.expect(paths.get('/app/Foo.views.tao')).toMatch(GeneratedMemoryViewsPathRegx)
 })
 
 Tests.test('split initialization binds every module before globally ordered values', () => {

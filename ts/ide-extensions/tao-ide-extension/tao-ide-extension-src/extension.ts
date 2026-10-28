@@ -96,7 +96,7 @@ function createFormatting(
   diagnostics: vscode.DiagnosticCollection,
   sessions: Map<string, DocumentState>,
 ) {
-  let formatter: PromiseLike<EmbeddedFormatter> | undefined
+  let formatter: OptionalEmbeddedFormatter
   return async (document: vscode.TextDocument, indent: number) => {
     const native = document.getText().includes('```ts')
     if (native) {
@@ -109,6 +109,8 @@ function createFormatting(
     return sessions.get(document.uri.toString())?.session?.format({ indent, typescript }).edits ?? []
   }
 }
+
+type OptionalEmbeddedFormatter = PromiseLike<EmbeddedFormatter> | undefined
 
 function refreshDocument(
   document: vscode.TextDocument,

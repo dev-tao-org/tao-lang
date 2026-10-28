@@ -9,7 +9,7 @@ export type PreviewIdentity = { sessionId: string; frameId: string; bootId: stri
 
 /** PreviewOutcome identifies a real application or explicit terminal result. */
 export type PreviewOutcome = PreviewExpectation & {
-  kind: 'applied' | 'noop' | 'superseded' | 'build-error' | 'runtime-error' | 'disconnected' | 'resync-required'
+  kind: PreviewOutcomeKind
   message?: string
 }
 
@@ -86,7 +86,7 @@ export class PreviewOutcomeTracker {
     }
   }
 
-  checkDeadline(now: number): 'reload' | 'failed' | undefined {
+  checkDeadline(now: number): RecoveryAction | undefined {
     const oldest = this.pending.values().next().value
     if (shouldSkipDeadline(oldest, now, this.timeoutMs, this.expired)) {
       return undefined
@@ -135,6 +135,16 @@ export class PreviewOutcomeTracker {
 }
 
 type PendingExpectation = PreviewExpectation & { startedAt: number }
+type OptionalPendingExpectation = PendingExpectation | undefined
+type RecoveryAction = 'reload' | 'failed'
+type PreviewOutcomeKind =
+  | 'applied'
+  | 'noop'
+  | 'superseded'
+  | 'build-error'
+  | 'runtime-error'
+  | 'disconnected'
+  | 'resync-required'
 
 function shouldIgnoreExpectation(
   expired: boolean,
@@ -150,7 +160,7 @@ function shouldRemovePendingOutcome(sequence: number, outcome: PreviewOutcome): 
 }
 
 function shouldSkipDeadline(
-  oldest: PendingExpectation | undefined,
+  oldest: OptionalPendingExpectation,
   now: number,
   timeoutMs: number,
   expired: boolean,

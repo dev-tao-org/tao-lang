@@ -3,7 +3,7 @@ import { S } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 
 /** NamedValue identifies a named AST declaration, parameter, capture or linked module binding. */
-export type NamedValue = Pick<AST.ValueDeclaration | AST.Parameter | AST.Capture, 'name'> | Pick<ModuleBinding, 'name'>
+export type NamedValue = NamedDeclarationValue | NamedBindingValue
 
 /** ScopeCode retains a lexical expression and optional resolved generated reference anchors. */
 export type ScopeCode = string | {
@@ -12,12 +12,12 @@ export type ScopeCode = string | {
 }
 
 /** joinCodeLines joins nonempty emitted parts with one newline. */
-export function joinCodeLines(...parts: readonly (string | undefined)[]): string {
+export function joinCodeLines(...parts: readonly OptionalCodePart[]): string {
   return joinCodeParts(parts, '\n')
 }
 
 /** joinCodeBlocks joins nonempty emitted blocks with a blank line. */
-export function joinCodeBlocks(...parts: readonly (string | undefined)[]): string {
+export function joinCodeBlocks(...parts: readonly OptionalCodePart[]): string {
   return joinCodeParts(parts, '\n\n')
 }
 
@@ -32,7 +32,7 @@ export function emitStringLiteral(value: string): string {
 }
 
 /** emitLiteral serializes a source string as a JavaScript string literal. */
-export function emitLiteral(node: AST.Name | AST.TextLiteral | AST.RenderTag): string {
+export function emitLiteral(node: LiteralNode): string {
   return emitStringLiteral(node.value)
 }
 
@@ -42,12 +42,12 @@ export function compileName(node: NamedValue): string {
 }
 
 /** compileReferenceName quotes the referenced name or linked binding's target. */
-export function compileReferenceName(node: AST.Name | ModuleBinding): string {
+export function compileReferenceName(node: ReferencedName): string {
   return 'target' in node ? emitStringLiteral(node.target) : emitLiteral(node)
 }
 
 /** compileIdentifier emits an already validated source identifier without string quoting. */
-export function compileIdentifier(node: Pick<AST.ViewDeclaration | AST.Capture, 'name'>): string {
+export function compileIdentifier(node: NamedViewNode): string {
   return node.name.value
 }
 
@@ -62,6 +62,15 @@ export function listMap<T>(values: readonly T[], compile: (value: T) => string):
   `
 }
 
-function joinCodeParts(parts: readonly (string | undefined)[], separator: string): string {
+type DeclarationNameNode = AST.ValueDeclaration | AST.Parameter | AST.Capture
+type NamedDeclarationValue = Pick<DeclarationNameNode, 'name'>
+type NamedBindingValue = Pick<ModuleBinding, 'name'>
+type OptionalCodePart = string | undefined
+type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag
+type ReferencedName = AST.Name | ModuleBinding
+type ViewNameNode = AST.ViewDeclaration | AST.Capture
+type NamedViewNode = Pick<ViewNameNode, 'name'>
+
+function joinCodeParts(parts: readonly OptionalCodePart[], separator: string): string {
   return parts.filter(Boolean).join(separator)
 }

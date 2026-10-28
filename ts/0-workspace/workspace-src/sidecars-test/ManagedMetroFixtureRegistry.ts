@@ -1,5 +1,7 @@
 import { FileSystem, Http, Path, Platform, Repo } from '@shared/os'
 
+const FixtureTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
+
 /** createFixtureRegistry serves real fixture tarballs and transitive metadata over loopback. */
 export async function createFixtureRegistry(root: string) {
   const packages = await packageArtifacts(root)
@@ -8,7 +10,7 @@ export async function createFixtureRegistry(root: string) {
     port: 0,
     fetch(request) {
       const path = Http.url(request.url).pathname
-      const tarball = /^\/tarballs\/([a-z0-9-]+)\.tgz$/.exec(path)
+      const tarball = FixtureTarballPathRegx.exec(path)
       if (tarball) {
         const artifact = packages.get(tarball[1]!)
         return artifact ? Http.bytesResponse(artifact.bytes) : Http.response('missing tarball', { status: 404 })

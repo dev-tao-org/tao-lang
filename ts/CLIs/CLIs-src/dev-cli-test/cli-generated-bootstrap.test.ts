@@ -82,7 +82,9 @@ async function assertExistingAstSkipsSetup(root: string): Promise<void> {
   }
 }
 
-function resolveCLIEntry(command: 'agent' | 'dev' | 'tao'): string {
+type CLICommand = 'agent' | 'dev' | 'tao'
+
+function resolveCLIEntry(command: CLICommand): string {
   const entries = {
     agent: './CLIs/CLIs-src/agent-cli/agent-cli.ts',
     dev: './CLIs/CLIs-src/dev-cli/dev-cli.ts',

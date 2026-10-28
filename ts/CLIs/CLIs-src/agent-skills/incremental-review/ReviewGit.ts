@@ -51,16 +51,22 @@ export async function snapshot(root: string, directory: string, base: string, fi
       ...tracked,
       ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split(NullCharacter),
     ]
-  const selected = candidates.filter(path =>
-    path && !path.startsWith('.artifacts/') && (
-      tracked.includes(path) || Try.WithDefault(false, () => Boolean(FileSystem.lstatSync(Path.join(root, path))))
-    )
-  )
+  const selected = candidates.filter(path => isSnapshotCandidate(root, tracked, path))
   await assertSupportedTransforms(root, selected)
   if (selected.length) {
     await git(root, ['add', '-A', '--', ...new Set(selected)], { index })
   }
   return await tree(root, index)
+}
+
+function isSnapshotCandidate(root: string, tracked: string[], path: string): boolean {
+  if (!path || path.startsWith('.artifacts/')) {
+    return false
+  }
+  if (tracked.includes(path)) {
+    return true
+  }
+  return Try.WithDefault(false, () => Boolean(FileSystem.lstatSync(Path.join(root, path))))
 }
 
 /** resolveGitIndexPath locates this checkout's real Git index. */
@@ -74,7 +80,7 @@ export async function indexHash(path: string): Promise<string> {
 }
 
 /** expandFiles resolves literal selections, including tracked descendants deleted from disk. */
-export async function expandFiles(root: string, inputs: string[], reviewed?: string | string[]): Promise<string[]> {
+export async function expandFiles(root: string, inputs: string[], reviewed?: ReviewedRevisions): Promise<string[]> {
   if (!inputs.length) {
     Errors.ThrowUserInput('Select at least one literal file or folder.')
   }
@@ -158,12 +164,16 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
   await FileSystem.rename(pending, path)
 }
 
-type GitOptions = { index?: string; input?: string | Uint8Array }
+type ReviewedRevisions = string | string[]
+type GitInput = string | Uint8Array
+type GitOptions = { index?: string; input?: GitInput }
 
 function safePath(root: string, input: string): string {
   const absolute = Path.resolve(root, input)
   const path = Path.relative(root, absolute).replaceAll('\\', '/')
-  if (!Path.isWithin(root, absolute) || path === '.git' || path.startsWith('.git/') || path.startsWith('.artifacts/')) {
+  const isGitMetadata = path === '.git' || path.startsWith('.git/')
+  const isArtifact = path.startsWith('.artifacts/')
+  if (!Path.isWithin(root, absolute) || isGitMetadata || isArtifact) {
     Errors.ThrowUserInput(`Selection must stay inside authored checkout paths: ${input}`)
   }
   return path || '.'

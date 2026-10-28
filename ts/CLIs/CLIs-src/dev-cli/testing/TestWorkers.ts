@@ -167,7 +167,7 @@ async function runTaoWorker(
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   TestPlanModule2.assertTestRunActive(signal)
   channel.start()
-  let commandFailure: string | undefined
+  let commandFailure: OptionalCommandFailure
   await Try(() =>
     runCommand('bun run', {
       variadicArgs: [
@@ -197,7 +197,7 @@ async function runTaoWorker(
 
 async function readTaoWorkerReport(
   path: string,
-  commandFailure: string | undefined,
+  commandFailure: OptionalCommandFailure,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   return await Try(async () => {
     const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
@@ -225,9 +225,11 @@ function isTaoWorkerReport(value: unknown): value is TestPlanModule2.TaoWorkerRe
     return false
   }
   const report = value as Partial<TestPlanModule2.TaoWorkerReport>
-  return Number.isSafeInteger(report.passed) && (report.passed ?? -1) >= 0
-    && Number.isSafeInteger(report.failed) && (report.failed ?? -1) >= 0
-    && (report.error === undefined || typeof report.error === 'string')
+  const passedCountIsValid = Number.isSafeInteger(report.passed) && (report.passed ?? -1) >= 0
+  const failedCountIsValid = Number.isSafeInteger(report.failed) && (report.failed ?? -1) >= 0
+  const hasNonnegativeCounts = passedCountIsValid && failedCountIsValid
+  const hasValidError = report.error === undefined || typeof report.error === 'string'
+  return hasNonnegativeCounts && hasValidError
 }
 
 function taoWorkerReportPath(index: number): string {
@@ -244,3 +246,5 @@ class TaoWorkerFailure extends Error {
     super('Tao app tests failed.')
   }
 }
+
+type OptionalCommandFailure = string | undefined

@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
@@ -96,7 +96,7 @@ function createRevision(
   label: string,
 ): NonNullable<Runtime.RuntimeApplication['generated']> {
   const files = Object.fromEntries(fixture.files.map(file => [
-    file.path.replace(/^src\//, ''),
+    file.path.replace(Regxs.SourceDirectoryPrefixRegx, ''),
     file.path === fixture.editedPath ? fixture.editSource(factor, label) : file.source,
   ]))
   return {

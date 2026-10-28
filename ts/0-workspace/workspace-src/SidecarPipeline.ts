@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
 import * as Paths from './modules/Paths'
@@ -289,7 +289,7 @@ async function rejectNestedProjectPath(path: string, moduleRoot: string, project
 }
 
 function hasDependencyPath(path: string): boolean {
-  return Path.resolve(path).split(/[\\/]/).includes('node_modules')
+  return Path.resolve(path).split(Regxs.PathSeparatorRegx).includes('node_modules')
 }
 
 function fingerprintFor(

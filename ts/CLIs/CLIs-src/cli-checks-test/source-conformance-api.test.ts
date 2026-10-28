@@ -22,6 +22,29 @@ Tests.test('source conformance > checks workspace declarations and ignores depen
   })
 })
 
+Tests.test('source conformance > enforces naming rules on handwritten sources and excludes generated sources', async () => {
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-naming-rules-'))
+  await Try(async () => {
+    const source = S`
+      const value: First | Second = first
+      const accepted = first && second && third && fourth
+      text.replace(/pattern/g, '')
+    `
+    await FileSystem.write(Path.join(root, 'ts/generated/ignored.ts'), source)
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+    await FileSystem.write(Path.join(root, 'ts/consumer.ts'), source)
+    const diagnostic = await Try(async () => {
+      await checkSourceConformance(root)
+      return ''
+    }, { catch: error => String(error) })
+    Tests.expect(diagnostic).toContain('union types need a purpose-named domain alias')
+    Tests.expect(diagnostic).toContain('boolean expressions need at most two')
+    Tests.expect(diagnostic).toContain('regular expression literals and constructors must initialize a named const')
+  }, {
+    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
+  })
+})
+
 Tests.test('source conformance > resolves imported member types before recommending optional access', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-optional-access-'))
   await Try(async () => {
@@ -40,18 +63,20 @@ Tests.test('source conformance > resolves imported member types before recommend
     )
     const source = S`
       import type { Token } from '@model'
-      declare const token: Token | null
+      type OptionalToken = Token | null
+      type OptionalLabel = 'label' | undefined
+      declare const token: OptionalToken
       token ? token.text as 'label' : undefined
     `
     await FileSystem.write(Path.join(root, 'ts/consumer.ts'), source)
     await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
-      'ts/consumer.ts:3: prefer optional access',
+      'ts/consumer.ts:5: prefer optional access',
     )
     await FileSystem.write(
       Path.join(root, 'ts/consumer.ts'),
       source.replace(
         "token ? token.text as 'label' : undefined",
-        "token?.text as 'label' | undefined",
+        'token?.text as OptionalLabel',
       ),
     )
     await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()

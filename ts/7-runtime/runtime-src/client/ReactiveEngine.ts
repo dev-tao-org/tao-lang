@@ -1,6 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import Preact from './Bridge-Preact'
 import React from './Bridge-React'
+import { runSynchronousReactiveBatch } from './ReactiveBatch'
 import { decodeReactiveValue, encodeReactiveValue } from './ReactiveValues'
 import type { ReactiveValue } from './ReactiveValues'
 
@@ -17,7 +18,7 @@ export type WritableExpression<T> = Expression<T> & {
 
 /** ReactiveEngineOptions selects an honest provider experiment and delivery scheduler. */
 export type ReactiveEngineOptions = {
-  strategy?: 'native-lazy' | 'uncached-public-read'
+  strategy?: ReactiveReadStrategy
   scheduleDelivery?: (deliver: () => void) => void
   maxReentrantDeliveries?: number
 }
@@ -95,7 +96,7 @@ type EngineState = {
   evaluationDepth: number
   deliveryChainCount: number
   deliveryChainActive: boolean
-  cancelDeliveryChainReset: (() => void) | undefined
+  cancelDeliveryChainReset: OptionalDeliveryReset
   deliveryDepth: number
   deliveryScheduled: boolean
   flushingDelivery: boolean
@@ -106,7 +107,10 @@ function buildEngine(state: EngineState): ReactiveEngine {
     createWritable: initial => createWritable(state, initial),
     createComputed: evaluate => createExpression(state, evaluate),
     createConstant: value => createExpression(state, () => value),
-    batch: perform => runBatch(state, perform),
+    batch(perform) {
+      assertActive(state)
+      return runSynchronousReactiveBatch(perform)
+    },
     dispose: () => disposeEngine(state),
   }
 }
@@ -307,18 +311,6 @@ function updateSource<T>(state: EngineState, source: Preact.Signal<ReactiveValue
   }
 }
 
-function runBatch<T>(state: EngineState, perform: () => T): T {
-  assertActive(state)
-  let result!: T
-  Preact.batch(() => {
-    result = perform()
-  })
-  if (isThenable(result)) {
-    Errors.ThrowUserInput('Reactive batches must finish synchronously; do not return a Promise.')
-  }
-  return result
-}
-
 function disposeEngine(state: EngineState): void {
   if (state.disposed) {
     return
@@ -341,6 +333,5 @@ function assertActive(state: EngineState): void {
   }
 }
 
-function isThenable(value: unknown): boolean {
-  return (typeof value === 'object' && value !== null || typeof value === 'function') && 'then' in value
-}
+type ReactiveReadStrategy = 'native-lazy' | 'uncached-public-read'
+type OptionalDeliveryReset = (() => void) | undefined

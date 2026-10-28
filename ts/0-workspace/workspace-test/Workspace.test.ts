@@ -2,6 +2,10 @@ import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, Document } from '../workspace-src/Workspace'
 
+type WorkspaceEventPath = string | undefined
+type WorkspaceEventVersion = number | undefined
+type WorkspaceEvent = { path: WorkspaceEventPath; source: string; version: WorkspaceEventVersion }
+
 Tests.test('a rapid edit burst compiles only the active and newest queued source', async () => {
   const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   let releaseFirst!: () => void
@@ -67,7 +71,7 @@ Tests.test('a virtual document queues immutable versions without reading its ent
   let enteredFirst!: () => void
   const firstGate = new Promise<void>(resolve => releaseFirst = resolve)
   const firstEntered = new Promise<void>(resolve => enteredFirst = resolve)
-  const events: { path: string | undefined; source: string; version: number | undefined }[] = []
+  const events: WorkspaceEvent[] = []
   const workspace = createWorkspace({
     compile: Timings.createTopLevelTimer((_timings, _document, options) => ({ 'App.tsx': options.revision })),
     async publish(app, isCurrent) {

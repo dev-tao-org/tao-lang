@@ -68,10 +68,7 @@ async function cleanSession(
 ): Promise<boolean> {
   const sessionPath = Path.join(layout.sessionsDirectory, id)
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
-  if (
-    Lifecycle.pathExists(sessionPath) && !Lifecycle.isRealDirectory(sessionPath)
-    || Lifecycle.pathExists(lockPath) && !isRegularFile(lockPath)
-  ) {
+  if (isUnsafeSessionDirectory(sessionPath) || isUnsafeLockFile(lockPath)) {
     return true
   }
   const lock = await SessionLock.acquire(lockPath)
@@ -89,6 +86,14 @@ async function cleanSession(
 
 function createEmptyCleanResult(): CleanResult {
   return { removed: [], skippedActive: [], sharedProtected: false, warnings: [] }
+}
+
+function isUnsafeSessionDirectory(path: string): boolean {
+  return Lifecycle.pathExists(path) && !Lifecycle.isRealDirectory(path)
+}
+
+function isUnsafeLockFile(path: string): boolean {
+  return Lifecycle.pathExists(path) && !isRegularFile(path)
 }
 
 async function cleanProjectCache(cache: string, removed: string[]): Promise<void> {
@@ -134,5 +139,8 @@ async function listDirectoryNames(path: string): Promise<string[]> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
 }

@@ -1,5 +1,5 @@
 import { IO, resolveCallerPath } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { Path } from '@shared/os'
 import { readProjectRequirements } from '@workspace/dependencies/Requirements'
 import { findPreparationEntry, listDependencyWork, withDependencySession } from '@workspace/ModuleDependencies'
@@ -18,7 +18,7 @@ export default registerCommand({
     { flags: '--yes', description: 'Confirm dependency downloads.' },
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
-  async action(alias: string | undefined, options: UpdateCommandOptions = {}) {
+  async action(alias: OptionalDependencyAlias, options: UpdateCommandOptions = {}) {
     const target = resolveCallerPath(options.entry ?? '.')
     const project = await discoverProject(target)
       ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
@@ -42,9 +42,10 @@ export default registerCommand({
 })
 
 type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
+type OptionalDependencyAlias = string | undefined
 
 function defaultAlias(requirement: { provider: string; identifier: string }): string {
   return requirement.provider === 'github'
-    ? requirement.identifier.replace(/\.git$/, '').split('/').at(-1)!
+    ? requirement.identifier.replace(Regxs.GitSuffixRegx, '').split('/').at(-1)!
     : Path.basename(requirement.identifier.replaceAll('\\', '/'))
 }

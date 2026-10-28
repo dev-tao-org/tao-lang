@@ -1,4 +1,4 @@
-import { Errors } from '../universal/universal'
+import { Errors, Regxs } from '../universal/universal'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
 import { sep } from './NodeBuiltins'
 
@@ -147,7 +147,11 @@ function isPathReader(
   name: string,
   operation: FileOperations[string],
 ): operation is NonNullable<FileOperations[string]> {
-  return typeof operation === 'function' && /^[a-z]/.test(name) && name !== 'open' && name !== 'openSync'
+  if (typeof operation !== 'function') {
+    return false
+  }
+  const isLowercaseOperation = Regxs.LowercaseOperationNameRegx.test(name)
+  return isLowercaseOperation && name !== 'open' && name !== 'openSync'
 }
 
 function installStreams(options: GeneratedReaderOptions): void {
@@ -211,6 +215,8 @@ function targetsGeneratedPath(options: GeneratedReaderOptions, name: string, arg
     return options.owns(arguments_[1])
   }
   const configuration = arguments_[1]
-  return name === 'glob' && typeof configuration === 'object' && configuration !== null && 'cwd' in configuration
-    && options.owns(configuration.cwd)
+  if (name !== 'glob' || typeof configuration !== 'object' || configuration === null) {
+    return false
+  }
+  return 'cwd' in configuration && options.owns(configuration.cwd)
 }

@@ -1,6 +1,6 @@
 /** PreviewSignal carries a measured milestone from one exact frame instance. */
 export type PreviewSignal = {
-  type: 'tao.preview-applied' | 'tao.update-done'
+  type: PreviewSignalType
   sessionId: string
   frameId: string
   bootId: string
@@ -8,6 +8,9 @@ export type PreviewSignal = {
   timestampMs: number
   timings: unknown[]
 }
+
+/** PreviewSignalType identifies the measured HMR and React milestones. */
+export type PreviewSignalType = 'tao.preview-applied' | 'tao.update-done'
 
 /** isPreviewSignal validates an untrusted measured receipt at the host boundary. */
 export function isPreviewSignal(value: unknown): value is PreviewSignal {
@@ -23,8 +26,8 @@ function hasSignalType(signal: Partial<PreviewSignal>): boolean {
 }
 
 function hasSignalIdentity(signal: Partial<PreviewSignal>): boolean {
-  return typeof signal.sessionId === 'string' && typeof signal.frameId === 'string'
-    && typeof signal.bootId === 'string' && typeof signal.revision === 'string'
+  const hasFrameIdentity = typeof signal.sessionId === 'string' && typeof signal.frameId === 'string'
+  return hasFrameIdentity && typeof signal.bootId === 'string' && typeof signal.revision === 'string'
 }
 
 function hasSignalTiming(signal: Partial<PreviewSignal>): boolean {

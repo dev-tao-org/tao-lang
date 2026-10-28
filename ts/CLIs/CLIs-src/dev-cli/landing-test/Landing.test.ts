@@ -6,6 +6,9 @@ import { pendingPreviewRecords } from '../landing/PreviewRecords'
 import { inspectLanding, publishAndMerge } from '../landing/PullRequest'
 import { recordingLanding } from './RecordingLanding'
 
+const GitMutationCommandRegx = /^(storage )?git (fetch|push|add|commit) /
+const IncompleteLandingEvidenceRegx = /inconsistent or incomplete/
+
 Tests.test('landing orders verification, archive publication, remote confirmation, source push, checks and pinned merge', async () => {
   const f = recordingLanding()
   const proof = await land(f.io)
@@ -35,7 +38,7 @@ Tests.test('dirty authored and ignored-storage work stop before any fetch or pub
     const f = recordingLanding()
     f.state[key] = '?? unrelated.txt'
     await Tests.rejects(land(f.io))
-    Tests.expect(f.calls.some(call => /^(storage )?git (fetch|push|add|commit) /.test(call))).toBe(false)
+    Tests.expect(f.calls.some(call => GitMutationCommandRegx.test(call))).toBe(false)
   }
 })
 
@@ -50,7 +53,7 @@ Tests.test('archived fixture provenance uses its measured commit path and still 
   Tests.expect(f.calls).toContain(`git show ${f.source}:Apps/Tests/Hello World.tao`)
   record.fixture.sha256 = 'corrupted'
   f.files.set(path, JSON.stringify(record))
-  await Tests.rejects(pendingPreviewRecords(f.io), /inconsistent or incomplete/)
+  await Tests.rejects(pendingPreviewRecords(f.io), IncompleteLandingEvidenceRegx)
 })
 
 Tests.test('merge-main preserves merge failures and never publishes', async () => {

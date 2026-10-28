@@ -10,9 +10,9 @@ export async function withRecoveryPreview(
 ): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `preview-recovery-${Platform.randomUUID()}`)
   const { workspace, source, change } = await createRecoveryWorkspace(root)
-  let expo: Runtime.ExpoSession | undefined
-  let browser: Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
-  let host: Awaited<ReturnType<typeof createPreviewHarness>> | undefined
+  let expo: OptionalExpoSession
+  let browser: OptionalRecoveryBrowser
+  let host: OptionalRecoveryHost
   await Try(async () => {
     Tests.expect((await workspace.update(source)).status).toBe('published')
     expo = await Runtime.start(workspace.runtime!)
@@ -49,6 +49,9 @@ export type RecoveryFixture = {
 }
 
 type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
+type OptionalExpoSession = Runtime.ExpoSession | undefined
+type OptionalRecoveryBrowser = Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
+type OptionalRecoveryHost = Awaited<ReturnType<typeof createPreviewHarness>> | undefined
 
 async function createRecoveryWorkspace(root: string) {
   const project = await createProject({ directory: Path.join(root, 'project') })

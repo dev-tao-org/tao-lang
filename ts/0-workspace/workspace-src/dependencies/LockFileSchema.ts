@@ -1,3 +1,4 @@
+import { Regxs } from '@shared'
 import { Path } from '@shared/os'
 import type * as Types from './Types'
 
@@ -12,9 +13,13 @@ export function isDependencyLock(value: unknown): value is Types.DependencyLock 
   const entries = Object.entries(value.sources)
   const sources = value.sources
   const pins = value.commitPins
-  return entries.every(([identity, source]) => isConsistentlyPinnedSource(identity, source, pins))
-    && Object.entries(value.commitPins).every(([key, commit]) => isOwnedCommitPin(key, commit, entries))
-    && Object.values(value.roots).every(pin => hasRootCommitPin(pin, sources, pins))
+  if (!entries.every(([identity, source]) => isConsistentlyPinnedSource(identity, source, pins))) {
+    return false
+  }
+  if (!Object.entries(value.commitPins).every(([key, commit]) => isOwnedCommitPin(key, commit, entries))) {
+    return false
+  }
+  return Object.values(value.roots).every(pin => hasRootCommitPin(pin, sources, pins))
     && (!('npmGraphs' in value) || isGraphRecord(value.npmGraphs))
 }
 
@@ -25,7 +30,8 @@ export function isVersionOne(value: unknown): boolean {
 
 /** isOwnedSourceKey validates a project-relative Tao source identifier. */
 export function isOwnedSourceKey(key: string): boolean {
-  return key.endsWith('.tao') && !key.includes('\\') && !key.startsWith('/') && !key.split('/').includes('..')
+  const hasSourceExtension = key.endsWith('.tao') && !key.includes('\\')
+  return hasSourceExtension && !key.startsWith('/') && !key.split('/').includes('..')
 }
 
 function isCommitPinRecord(value: unknown): value is Types.DependencyCommitPins {
@@ -65,41 +71,67 @@ function isGraphRecord(value: unknown): boolean {
 }
 
 function isManagedGraphReference(value: unknown): value is Types.ManagedGraphReference {
-  return isObjectRecord(value) && 'fingerprint' in value && isSha256(value.fingerprint)
-    && 'lockHash' in value && isSha256(value.lockHash)
-    && 'lockPath' in value && isSafeRelativePath(value.lockPath)
+  if (!isObjectRecord(value) || !('fingerprint' in value) || !isSha256(value.fingerprint)) {
+    return false
+  }
+  if (!('lockHash' in value) || !isSha256(value.lockHash)) {
+    return false
+  }
+  return 'lockPath' in value && isSafeRelativePath(value.lockPath)
 }
 
 function isSha256(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value)
+  return typeof value === 'string' && Regxs.Sha256HashRegx.test(value)
 }
 
 function isSafeRelativePath(value: unknown): boolean {
-  return typeof value === 'string' && !Path.isAbsolute(value) && !value.includes('\\')
-    && !value.split('/').includes('..')
+  if (typeof value !== 'string' || Path.isAbsolute(value)) {
+    return false
+  }
+  return !value.includes('\\') && !value.split('/').includes('..')
 }
 
 function isLockedSource(value: unknown): value is Types.LockedSource {
-  return isObjectRecord(value) && 'identity' in value && typeof value.identity === 'string'
-    && 'provider' in value && ['github', 'file', 'bundled'].includes(String(value.provider))
-    && 'identifier' in value && typeof value.identifier === 'string'
-    && 'version' in value && typeof value.version === 'string'
-    && (value.provider === 'bundled' || 'location' in value && typeof value.location === 'string')
-    && 'requirements' in value && Array.isArray(value.requirements) && value.requirements.every(isRequirement)
-    && (value.provider === 'github' ? isCommit(value.commit) : !('commit' in value))
-    && (!('subdirectory' in value) || typeof value.subdirectory === 'string')
+  if (!isObjectRecord(value) || !hasStringProperty(value, 'identity') || !hasSourceFields(value)) {
+    return false
+  }
+  if (value.provider !== 'bundled' && !hasStringProperty(value, 'location')) {
+    return false
+  }
+  if (!hasSourceRequirements(value)) {
+    return false
+  }
+  const hasValidCommit = value.provider === 'github' ? isCommit(value.commit) : !('commit' in value)
+  return hasValidCommit && (!('subdirectory' in value) || typeof value.subdirectory === 'string')
+}
+
+function hasSourceFields(value: Record<string, unknown>): boolean {
+  if (!('provider' in value) || !['github', 'file', 'bundled'].includes(String(value.provider))) {
+    return false
+  }
+  return hasStringProperty(value, 'identifier') && hasStringProperty(value, 'version')
+}
+
+function hasStringProperty(value: Record<string, unknown>, key: string): boolean {
+  return key in value && typeof value[key] === 'string'
+}
+
+function hasSourceRequirements(value: Record<string, unknown>): boolean {
+  return 'requirements' in value && Array.isArray(value.requirements) && value.requirements.every(isRequirement)
 }
 
 function isCommit(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(value)
+  return typeof value === 'string' && Regxs.GitCommitHashRegx.test(value)
 }
 
 function isRequirement(value: unknown): value is Types.DependencyRequirement {
-  return isObjectRecord(value) && 'provider' in value && ['github', 'file', 'bundled'].includes(String(value.provider))
-    && 'identifier' in value && typeof value.identifier === 'string'
-    && 'version' in value && typeof value.version === 'string'
-    && (!('alias' in value) || typeof value.alias === 'string')
-    && (!('subdirectory' in value) || typeof value.subdirectory === 'string')
+  if (!isObjectRecord(value) || !hasSourceFields(value)) {
+    return false
+  }
+  if ('alias' in value && typeof value.alias !== 'string') {
+    return false
+  }
+  return !('subdirectory' in value) || typeof value.subdirectory === 'string'
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -114,5 +146,8 @@ function isOwnedCommitPin(
   const separator = key.lastIndexOf('@')
   const identity = separator > 0 ? key.slice(0, separator) : undefined
   const source = sources.find(([candidate]) => candidate === identity)?.[1]
-  return !!identity && isLockedSource(source) && source.provider === 'github' && isCommit(commit)
+  if (!identity || !isLockedSource(source)) {
+    return false
+  }
+  return source.provider === 'github' && isCommit(commit)
 }

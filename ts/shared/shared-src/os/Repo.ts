@@ -41,5 +41,6 @@ export function resolvePath(...segments: string[]): string {
   return Path.resolve(getWorkspaceRoot(), ...segments)
 }
 
-let workspaceRoot: string | undefined
-let mainWorktreeRoot: string | undefined
+type CachedRepositoryRoot = string | undefined
+let workspaceRoot: CachedRepositoryRoot
+let mainWorktreeRoot: CachedRepositoryRoot

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { git, head, writeJson } from './ReviewGit'
 import * as ReviewSessionModule2 from './ReviewSession'
@@ -88,7 +88,7 @@ async function copyHistoricalFiles(source: string, destination: string, descend 
 }
 
 function isHistoricalText(entry: { name: string; isFile(): boolean }): boolean {
-  return entry.isFile() && /\.(json|md|txt)$/.test(entry.name) && entry.name !== 'journal.json'
+  return entry.isFile() && Regxs.ReviewArtifactSuffixRegx.test(entry.name) && entry.name !== 'journal.json'
 }
 
 function isHistoricalDirectory(entry: { name: string; isDirectory(): boolean }): boolean {

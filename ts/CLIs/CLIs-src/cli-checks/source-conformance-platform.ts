@@ -17,6 +17,8 @@ export function platformAccessIssue(node: TypeScript.Node, filename: string): st
   }
 }
 
+type MemberAccess = TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression
+
 function isOwnedBuiltinReference(node: TypeScript.Node, filename: string): boolean {
   const normalizedFilename = filename.replaceAll('\\', '/')
   if (normalizedFilename === 'ts/shared/shared-src/os/NodeBuiltins.ts') {
@@ -30,13 +32,10 @@ function isOwnedBuiltinReference(node: TypeScript.Node, filename: string): boole
 
 function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string): boolean {
   const specifier = builtinSpecifier(node)
-  if (
-    specifier === undefined || explicitBuiltinMockFixtures.get(filename)?.has(specifier) !== true
-    || !TypeScript.isCallExpression(node.parent) || !isDynamicImport(node.parent)
-  ) {
+  if (specifier === undefined || explicitBuiltinMockFixtures.get(filename)?.has(specifier) !== true) {
     return false
   }
-  return true
+  return TypeScript.isCallExpression(node.parent) && isDynamicImport(node.parent)
 }
 
 function isDynamicImport(node: TypeScript.CallExpression): boolean {
@@ -85,8 +84,9 @@ function isBuiltinReference(node: TypeScript.Node): boolean {
     return false
   }
   const parent = node.parent
-  return TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent)
-    || TypeScript.isExternalModuleReference(parent) || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
+  const isStaticImport = TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent)
+    || TypeScript.isExternalModuleReference(parent)
+  return isStaticImport || isRuntimeImportCall(parent) || isImportTypeArgument(parent)
 }
 
 function builtinSpecifier(node: TypeScript.Node): string | undefined {
@@ -147,16 +147,34 @@ function isPropertyName(node: TypeScript.Identifier): boolean {
   if (TypeScript.isPropertyAccessExpression(parent)) {
     return parent.name === node
   }
-  if (
-    TypeScript.isPropertyAssignment(parent) || TypeScript.isPropertySignature(parent)
-    || TypeScript.isPropertyDeclaration(parent) || TypeScript.isMethodSignature(parent)
-    || TypeScript.isMethodDeclaration(parent) || TypeScript.isGetAccessorDeclaration(parent)
-    || TypeScript.isSetAccessorDeclaration(parent) || TypeScript.isEnumMember(parent)
-  ) {
+  if (hasDeclaredPropertyName(parent)) {
     return parent.name === node
   }
   return TypeScript.isBindingElement(parent) && parent.propertyName === node
 }
+
+function hasDeclaredPropertyName(node: TypeScript.Node): node is NamedPropertyDeclaration {
+  if (TypeScript.isPropertyAssignment(node) || TypeScript.isPropertySignature(node)) {
+    return true
+  }
+  if (TypeScript.isPropertyDeclaration(node) || TypeScript.isMethodSignature(node)) {
+    return true
+  }
+  if (TypeScript.isMethodDeclaration(node) || TypeScript.isGetAccessorDeclaration(node)) {
+    return true
+  }
+  return TypeScript.isSetAccessorDeclaration(node) || TypeScript.isEnumMember(node)
+}
+
+type NamedPropertyDeclaration =
+  | TypeScript.PropertyAssignment
+  | TypeScript.PropertySignature
+  | TypeScript.PropertyDeclaration
+  | TypeScript.MethodSignature
+  | TypeScript.MethodDeclaration
+  | TypeScript.GetAccessorDeclaration
+  | TypeScript.SetAccessorDeclaration
+  | TypeScript.EnumMember
 
 function isGlobalPropertyAccess(node: TypeScript.Node): boolean {
   if (!TypeScript.isPropertyAccessExpression(node) && !TypeScript.isElementAccessExpression(node)) {
@@ -175,7 +193,7 @@ function isGlobalMember(node: TypeScript.Node, name: string): boolean {
 }
 
 function memberName(
-  node: TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression,
+  node: MemberAccess,
 ): string | undefined {
   if (TypeScript.isPropertyAccessExpression(node)) {
     return node.name.text

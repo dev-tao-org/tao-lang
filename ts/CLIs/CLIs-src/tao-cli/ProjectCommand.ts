@@ -43,7 +43,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
 
 function acquireProjectSessions<Value>(
   roots: readonly string[],
-  sessionId: string | undefined,
+  sessionId: OptionalSessionId,
   acquireLease: typeof Storage.acquireCacheLease,
   action: () => Promise<Value>,
 ): Promise<Value> {
@@ -58,3 +58,5 @@ function acquireProjectSessions<Value>(
     acquireLease,
   )
 }
+
+type OptionalSessionId = string | undefined

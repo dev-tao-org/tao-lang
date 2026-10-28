@@ -1,4 +1,4 @@
-import { Errors, Try } from '../universal/universal'
+import { Errors, Regxs, Try } from '../universal/universal'
 import * as Node from './NodeBuiltins'
 
 /** homeDirectory returns the current user's platform home directory. */
@@ -41,12 +41,12 @@ export function spawn<
   const In extends Bun.SpawnOptions.Writable = 'ignore',
   const Out extends Bun.SpawnOptions.Readable = 'pipe',
   const Err extends Bun.SpawnOptions.Readable = 'inherit',
->(command: string | readonly string[], options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
+>(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
   const { variadicArgs = [], ...spawnOptions } = options
   if (preserveTerminalColors(spawnOptions)) {
     spawnOptions.env = { ...(spawnOptions.env ?? process.env), FORCE_COLOR: '1' }
   }
-  const args = typeof command === 'string' ? command.trim().split(/ +/) : [...command]
+  const args = typeof command === 'string' ? command.trim().split(Regxs.SpacesRegx) : [...command]
   return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
 }
 
@@ -113,7 +113,7 @@ export async function capture(
   command: string,
   options: CaptureOptions = {},
 ): Promise<string> {
-  const args = [...command.trim().split(/ +/), ...options.variadicArgs ?? []]
+  const args = [...command.trim().split(Regxs.SpacesRegx), ...options.variadicArgs ?? []]
   const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
   const [status, stdout, stderr] = await Promise.all([child.exited, readText(child.stdout), readText(child.stderr)])
   if (status !== 0) {
@@ -148,7 +148,7 @@ export async function requireHostProcessAccess(
 
 /** captureSync reads a synchronous tool probe without requiring the Bun runtime. */
 export function captureSync(command: string, options: { variadicArgs?: readonly string[]; cwd?: string } = {}): string {
-  const [executable, ...args] = command.trim().split(/ +/)
+  const [executable, ...args] = command.trim().split(Regxs.SpacesRegx)
   return Node.execFileSync(executable, [...args, ...options.variadicArgs ?? []], {
     cwd: options.cwd,
     encoding: 'utf8',
@@ -165,9 +165,15 @@ type SpawnOptions<
 type SystemInformation = { architecture: string; kernel: string; os: string }
 
 type CaptureOptions = { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean }
+type SpawnCommand = string | readonly string[]
+type EnvironmentValue = string | undefined
+type TerminalColorOptions = { stderr?: unknown; env?: Record<string, EnvironmentValue> }
 
-function preserveTerminalColors(options: { stderr?: unknown; env?: Record<string, string | undefined> }): boolean {
+function preserveTerminalColors(options: TerminalColorOptions): boolean {
   const environment = options.env ?? process.env
   const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
-  return !explicitPreference && options.stderr === 'pipe' && process.stderr.isTTY && process.stderr.hasColors()
+  if (explicitPreference || options.stderr !== 'pipe') {
+    return false
+  }
+  return process.stderr.isTTY && process.stderr.hasColors()
 }

@@ -10,10 +10,13 @@ type CommandResult = { exitCode: number; stderr: string; stdout: string }
 type RunOptions = {
   args?: readonly string[]
   cwd?: string
-  env?: Record<string, string | undefined>
+  env?: Record<string, EnvironmentValue>
   stdin?: string
   timeoutMs?: number
 }
+
+type EnvironmentValue = string | undefined
+type ProcessInputMode = 'ignore' | 'pipe'
 
 /** runCapturedCommand runs a subprocess and returns captured stdout, stderr, and exit code. */
 async function runCapturedCommand(command: string, options: RunOptions = {}): Promise<CommandResult> {
@@ -35,7 +38,7 @@ async function runCapturedCommand(command: string, options: RunOptions = {}): Pr
 }
 
 async function readCommandResult(
-  child: ReturnType<typeof Platform.spawn<'ignore' | 'pipe', 'pipe', 'pipe'>>,
+  child: ReturnType<typeof Platform.spawn<ProcessInputMode, 'pipe', 'pipe'>>,
   timeoutMs?: number,
 ): Promise<CommandResult> {
   const cancel = timeoutMs === undefined

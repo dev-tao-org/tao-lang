@@ -99,7 +99,7 @@ export function file(path: string): File {
 }
 
 /** write writes text or bytes to a file or runtime file handle. */
-export function write(path: string | URL | File, data: string | Uint8Array): Promise<number> {
+export function write(path: WritableTarget, data: WritableData): Promise<number> {
   return Bun.write(path, data)
 }
 
@@ -109,3 +109,6 @@ export async function listSourceFiles(root: string): Promise<string[]> {
   const { sys } = await import('typescript')
   return sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**', '**/_gen_*/**'])
 }
+
+type WritableTarget = string | URL | File
+type WritableData = string | Uint8Array

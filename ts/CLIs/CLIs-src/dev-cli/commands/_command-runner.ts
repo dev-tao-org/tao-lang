@@ -1,5 +1,6 @@
 import '../../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
+import { Regxs } from '@shared'
 import { Platform } from '@shared/os'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
@@ -38,10 +39,10 @@ export async function execute(name = 'dev'): Promise<void> {
   const { Command } = await import('commander')
   const parser = new Command().name(name).configureOutput({
     writeOut(text) {
-      IO.print(text.replace(/\n$/, ''))
+      IO.print(text.replace(Regxs.TrailingNewlineRegx, ''))
     },
     writeErr(text) {
-      IO.printToStdErr(text.replace(/\n$/, ''))
+      IO.printToStdErr(text.replace(Regxs.TrailingNewlineRegx, ''))
     },
   })
   for (const definition of commands) {

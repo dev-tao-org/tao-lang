@@ -50,6 +50,7 @@ type PromptLifecycleOperations = {
 }
 
 type CleanupResult = { failed: false } | { failed: true; error: unknown }
+type PromptResult<Value> = Value | void
 
 async function runPrompt<T>(
   prompt: () => Promise<T>,
@@ -78,7 +79,7 @@ async function runPrompt<T>(
 }
 
 function resolvePromptResult<T>(
-  result: T | void,
+  result: PromptResult<T>,
   promptFailed: boolean,
   promptError: unknown,
   cleanup: CleanupResult,

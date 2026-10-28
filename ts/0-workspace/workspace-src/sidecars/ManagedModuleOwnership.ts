@@ -2,6 +2,9 @@ import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../NpmPackageName'
 
+type SerializedModuleOwner = string | undefined
+type PreviousModuleOwner = ManagedModuleOwner | undefined
+
 /** ManagedModuleOwner records the consumer profile and package links owning generated module files. */
 export type ManagedModuleOwner = {
   profile: string
@@ -11,7 +14,7 @@ export type ManagedModuleOwner = {
 
 /** validateModuleOwnership checks current files and accepts transitions only within one project cache. */
 export async function validateModuleOwnership(
-  ownerText: string | undefined,
+  ownerText: SerializedModuleOwner,
   marker: string,
   profile: string,
   projectRoot: string,
@@ -128,8 +131,10 @@ function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
   const owner = Try.WithDefault(undefined, () => JSON.parse(ownerText) as ManagedModuleOwner)
   if (
     !owner || typeof owner.profile !== 'string' || !Array.isArray(owner.packages)
-    || !owner.packages.every(isPackageName)
   ) {
+    return undefined
+  }
+  if (!owner.packages.every(isPackageName)) {
     return undefined
   }
   return owner
@@ -187,7 +192,7 @@ async function linkPackage(
   localModules: string,
   name: string,
   profile: string,
-  previousOwner: ManagedModuleOwner | undefined,
+  previousOwner: PreviousModuleOwner,
 ): Promise<void> {
   const link = Path.join(localModules, name)
   const target = Path.join(profile, 'node_modules', name)

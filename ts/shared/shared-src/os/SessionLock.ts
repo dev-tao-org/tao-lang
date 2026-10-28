@@ -1,4 +1,4 @@
-import { Errors, Try } from '../universal/universal'
+import { Errors, Regxs, Try } from '../universal/universal'
 import * as Artifacts from './Artifacts'
 import * as FileSystem from './FileSystem'
 import * as Path from './Path'
@@ -30,14 +30,14 @@ export async function acquire(path: string): Promise<SessionLock | undefined> {
 
 /** isSafeVersionName accepts only an addon identity and its optional immutable rebuild suffix. */
 export function isSafeVersionName(identity: string, directory: string): boolean {
-  if (!/^[a-f0-9]{64}$/.test(identity)) {
+  if (!Regxs.LowercaseSha256HashRegx.test(identity)) {
     return false
   }
   if (directory === identity) {
     return true
   }
   const suffix = directory.startsWith(`${identity}-`) ? directory.slice(identity.length + 1) : ''
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(suffix)
+  return Regxs.UuidRegx.test(suffix)
 }
 
 async function readLockPointer(root: string, path: string): Promise<{ identity: string; directory: string }> {
@@ -70,7 +70,10 @@ async function readLockPointer(root: string, path: string): Promise<{ identity: 
 }
 
 function isLockPointerRecord(value: unknown): value is { identity: unknown; directory: unknown } {
-  return typeof value === 'object' && value !== null && 'identity' in value && 'directory' in value
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return 'identity' in value && 'directory' in value
 }
 
 function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown }): pointer is {
@@ -105,6 +108,8 @@ async function loadLockBinding(path: string): Promise<LockBinding> {
 }
 
 function isMissingAddon(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error
-    && ['ENOENT', 'MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND'].includes(String(error.code))
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && ['ENOENT', 'MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND'].includes(String(error.code))
 }

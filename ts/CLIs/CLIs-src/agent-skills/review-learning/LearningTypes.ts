@@ -1,7 +1,7 @@
 /** Correction retains human evidence separately from candidate detection. */
 export type Correction = {
   id: string
-  authority: 'explicit' | 'existing' | 'inferred'
+  authority: CorrectionAuthority
   evidence: string
   before: string
   after: string
@@ -15,7 +15,7 @@ export type Correction = {
 
 /** QueryRule selects a closed syntax or symbol query registry. */
 export type QueryRule = {
-  kind: 'call-name' | 'call-symbol' | 'function-length' | 'returned-method'
+  kind: QueryKind
   name?: string
   declarationFile?: string
   declarationName?: string
@@ -44,8 +44,8 @@ export type Proposal = {
   scan: string
   analysis: string
   protectedFiles?: string[]
-  edits: { file: string; start: number; end: number; expected: string; replacement: string }[]
-  state?: 'pending' | 'applying' | 'applied'
+  edits: LearningEdit[]
+  state?: ProposalState
   outputs?: Record<string, { before: string; after: string; done: boolean }>
 }
 
@@ -59,3 +59,8 @@ export type LearningState = {
   protectedFiles: string[]
   events: { group: string; scans: string[]; pending: string[] }[]
 }
+
+type CorrectionAuthority = 'explicit' | 'existing' | 'inferred'
+type QueryKind = 'call-name' | 'call-symbol' | 'function-length' | 'returned-method'
+type ProposalState = 'pending' | 'applying' | 'applied'
+type LearningEdit = { file: string; start: number; end: number; expected: string; replacement: string }

@@ -3,7 +3,7 @@ import { Streams } from '@shared/os'
 import type { OutputEvent } from './Output'
 
 /** OutputMessage retains severity across captured Tao subprocesses independently of stdio. */
-export type OutputMessage = Pick<OutputEvent, 'stream' | 'level' | 'text' | 'summary'>
+export type OutputMessage = Pick<OutputEvent, OutputMessageFields>
 
 /** encodeOutputMessage frames a Tao event without interpreting arbitrary tool output as diagnostics. */
 export function encodeOutputMessage(event: OutputMessage): string {
@@ -49,13 +49,18 @@ export function createProcessOutput(raw: (text: string) => void, receive: (messa
   }
 }
 
+type OutputMessageFields = 'stream' | 'level' | 'text' | 'summary'
+
 function isOutputMessage(value: unknown): value is OutputMessage {
   if (typeof value !== 'object' || value === null) {
     return false
   }
   const event = value as Partial<OutputMessage>
-  return ['info', 'warn', 'error'].includes(event.level ?? '')
-    && ['stdout', 'stderr', 'progress'].includes(event.stream ?? '')
-    && typeof event.text === 'string'
-    && (event.summary === undefined || typeof event.summary === 'boolean')
+  const hasKnownLevel = ['info', 'warn', 'error'].includes(event.level ?? '')
+  const hasKnownStream = ['stdout', 'stderr', 'progress'].includes(event.stream ?? '')
+  const hasText = typeof event.text === 'string'
+  const hasValidSummary = event.summary === undefined || typeof event.summary === 'boolean'
+  const hasKnownEvent = hasKnownLevel && hasKnownStream
+  const hasValidPayload = hasText && hasValidSummary
+  return hasKnownEvent && hasValidPayload
 }

@@ -5,8 +5,8 @@ import type { UpdateResult } from '../workspace-src/Workspace'
 
 /** createWatchFixture supplies notifications and debounce turns without native observation. */
 export function createWatchFixture() {
-  let changed: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  let scheduled: (() => void) | undefined
+  let changed: OptionalWatchChangeHandler
+  let scheduled: OptionalScheduledCallback
   const options = {
     async watch(_root, onChange) {
       changed = onChange
@@ -18,7 +18,7 @@ export function createWatchFixture() {
         scheduled = undefined
       }
     },
-  } satisfies Pick<FileManagerOptions, 'watch' | 'schedule'>
+  } satisfies Pick<FileManagerOptions, WatchFixtureOption>
   return {
     options,
     notify(path: string): void {
@@ -76,8 +76,8 @@ export function createManagerFixture(
 
 /** createDynamicWatchFixture records directory updates and controls watcher notifications. */
 export function createDynamicWatchFixture() {
-  let changed: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  let scheduled: (() => void) | undefined
+  let changed: OptionalWatchChangeHandler
+  let scheduled: OptionalScheduledCallback
   let watches = 0
   let reads = 0
   const updates: Array<{ directories: readonly string[]; ignored: readonly string[] }> = []
@@ -154,11 +154,17 @@ export function createDeferredVoid() {
   return { promise, resolve }
 }
 
+type WatchChangeHandler = (change: WorkspaceWatch.WorkspaceChange) => void
+type OptionalWatchChangeHandler = WatchChangeHandler | undefined
+type ScheduledCallback = () => void
+type OptionalScheduledCallback = ScheduledCallback | undefined
+type WatchFixtureOption = 'watch' | 'schedule'
+
 type ReadSnapshot = Exclude<Awaited<ReturnType<NonNullable<FileManagerOptions['read']>>>, UpdateResult>
 
 type ManagerFixtureState = {
-  onChange: ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
-  scheduled: (() => void) | undefined
+  onChange: OptionalWatchChangeHandler
+  scheduled: OptionalScheduledCallback
   readCount: number
   activeReads: number
   maxConcurrentReads: number

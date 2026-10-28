@@ -41,7 +41,7 @@ export type AppOptions = {
 
 /** RuntimeTiming describes one measured runtime phase. */
 export type RuntimeTiming = {
-  phase: 'bind' | 'render' | 'render-to-applied'
+  phase: ViewRenderPhase
   durationMs: number
 }
 
@@ -97,14 +97,14 @@ export function finishViewRender(context: ViewRenderContext, result: React.React
 
 /** ProvideRuntimeObserver sets the timing observer for a runtime subtree. */
 export function ProvideRuntimeObserver(
-  observer: RuntimeObserver | undefined,
+  observer: OptionalRuntimeObserver,
   children: React.ReactNode,
 ): React.ReactElement {
   return React.createElement(RuntimeObserverContext.Provider, { value: observer }, children)
 }
 
 const viewMarker: unique symbol = Symbol('TaoView')
-const RuntimeObserverContext = React.createContext<RuntimeObserver | undefined>(undefined)
+const RuntimeObserverContext = React.createContext<OptionalRuntimeObserver>(undefined)
 
 type ViewBodyProps = { candidate: unknown; args: ViewRenderArguments; testID?: string }
 
@@ -118,7 +118,7 @@ function ViewBody({ candidate, args, testID }: ViewBodyProps): React.ReactElemen
   return React.createElement(view.render, componentProps)
 }
 
-function applyTestID(result: React.ReactNode, testID: string | undefined): React.ReactNode {
+function applyTestID(result: React.ReactNode, testID: OptionalTestID): React.ReactNode {
   if (testID === undefined || !React.isValidElement(result)) {
     return result
   }
@@ -149,12 +149,17 @@ function isView(value: unknown): value is View {
 }
 
 function observe(
-  observer: RuntimeObserver | undefined,
+  observer: OptionalRuntimeObserver,
   phase: RuntimeTiming['phase'],
-  startedAt: number | undefined,
+  startedAt: OptionalRenderStartTime,
 ): void {
   if (!observer || startedAt === undefined) {
     return
   }
   observer.onTiming({ phase, durationMs: observer.now() - startedAt })
 }
+
+type ViewRenderPhase = 'bind' | 'render' | 'render-to-applied'
+type OptionalRuntimeObserver = RuntimeObserver | undefined
+type OptionalRenderStartTime = number | undefined
+type OptionalTestID = string | undefined

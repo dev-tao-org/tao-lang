@@ -27,21 +27,11 @@ export function optionalAccessIssue(node: TypeScript.Node, checker: TypeScript.T
   return 'prefer optional access over a nullish-only ternary member read; include undefined in any result assertion'
 }
 
-/** optionalAccessResult replaces a checked member read while retaining its result assertions. */
+/** optionalAccessResult replaces an unasserted checked member read. */
 export function optionalAccessResult(expression: TypeScript.Expression): TypeScript.Expression {
   const factory = TypeScript.factory
   if (TypeScript.isParenthesizedExpression(expression)) {
     return factory.updateParenthesizedExpression(expression, optionalAccessResult(expression.expression))
-  }
-  if (TypeScript.isAsExpression(expression)) {
-    return factory.updateAsExpression(
-      expression,
-      optionalAccessResult(expression.expression),
-      factory.createUnionTypeNode([
-        expression.type,
-        factory.createKeywordTypeNode(TypeScript.SyntaxKind.UndefinedKeyword),
-      ]),
-    )
   }
   const token = factory.createToken(TypeScript.SyntaxKind.QuestionDotToken)
   if (TypeScript.isPropertyAccessExpression(expression)) {
@@ -52,6 +42,8 @@ export function optionalAccessResult(expression: TypeScript.Expression): TypeScr
   }
   return Errors.ThrowShouldNeverHappen('Optional access fixing requires a checked member read.')
 }
+
+type MemberRead = TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression
 
 function isUndefinedIdentifier(expression: TypeScript.Expression): boolean {
   return TypeScript.isIdentifier(expression) && expression.text === 'undefined'
@@ -71,10 +63,7 @@ function isNullishOrTruthy(type: TypeScript.Type): boolean {
   return false
 }
 
-function isMemberRead(node: TypeScript.Expression): node is
-  | TypeScript.PropertyAccessExpression
-  | TypeScript.ElementAccessExpression
-{
+function isMemberRead(node: TypeScript.Expression): node is MemberRead {
   return (TypeScript.isPropertyAccessExpression(node) && !TypeScript.isPrivateIdentifier(node.name))
     || TypeScript.isElementAccessExpression(node)
 }

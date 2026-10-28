@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModuleTypes'
 
@@ -30,7 +30,7 @@ export type ForeignViewContractSourceInput = {
 
 /** createForeignViewContractSource emits the module-local React component contract. */
 export function createForeignViewContractSource(input: ForeignViewContractSourceInput): string {
-  const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(/\.(?:tsx?|mts|cts)$/, '')
+  const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
   return `import type * as React from 'react'\nimport { ${input.name} as TaoForeignView } from ${
     JSON.stringify(
@@ -44,7 +44,7 @@ export async function checkForeignViewContract(
   contract: ForeignViewContract,
   executor: ContractExecutor,
 ): Promise<string> {
-  if (!/^[A-Za-z_$][\w$]*$/.test(contract.name)) {
+  if (!Regxs.JavaScriptIdentifierRegx.test(contract.name)) {
     Errors.ThrowUserInput(`Invalid foreign view export name: ${contract.name}`)
   }
   const exportRelativePath = Path.relative(contract.directory, contract.exportFile)
@@ -52,7 +52,7 @@ export async function checkForeignViewContract(
     Errors.ThrowUserInput(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
   }
   for (const name of Object.keys(contract.parameters)) {
-    if (!/^[A-Za-z_$][\w$]*$/.test(name)) {
+    if (!Regxs.JavaScriptIdentifierRegx.test(name)) {
       Errors.ThrowUserInput(`Invalid foreign view parameter name: ${name}`)
     }
   }

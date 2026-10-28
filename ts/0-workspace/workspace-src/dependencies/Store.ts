@@ -38,7 +38,7 @@ export async function prepareDependencies(
   projectRoot: string,
   requirements: DependencyRequirement[],
   options: DependencyStoreOptions,
-  update: string[] | undefined = [],
+  update: string[] = [],
 ): Promise<DependencyLock> {
   const path = LockFile.resolveDependencyLockPath(projectRoot)
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
@@ -134,6 +134,10 @@ type ResolvedDependencyGraph = {
   commitPins: Record<string, string>
 }
 
+type PreviousDependencyLock = DependencyLock | undefined
+type PreviousLockedSource = LockedSource | undefined
+type OptionalCommit = string | undefined
+
 async function resolveGraph(
   projectRoot: string,
   requirements: DependencyRequirement[],
@@ -183,13 +187,13 @@ async function resolveGraph(
 }
 
 function collectPreviousPins(
-  previous: DependencyLock | undefined,
+  previous: PreviousDependencyLock,
 ): Map<string, string> {
   return new Map(Object.entries(previous?.commitPins ?? {}))
 }
 
 function resolveSourceForVersion(
-  source: LockedSource | undefined,
+  source: PreviousLockedSource,
   commitPins: Record<string, string>,
   identity: string,
   version: string,
@@ -198,7 +202,7 @@ function resolveSourceForVersion(
   return source && commit ? { ...source, version, commit } : undefined
 }
 
-function rejectCommitConflict(identity: string, commit: string | undefined, resolvedPins: Map<string, string>): void {
+function rejectCommitConflict(identity: string, commit: OptionalCommit, resolvedPins: Map<string, string>): void {
   if (!commit) {
     return
   }

@@ -211,7 +211,9 @@ async function waitForReloadReports(owned: Resources): Promise<void> {
   }
 }
 
-function classifySample(index: number): 'first-edit' | 'first-cycle' | 'warm' {
+type SampleKind = 'first-edit' | 'first-cycle' | 'warm'
+
+function classifySample(index: number): SampleKind {
   if (index === 0) {
     return 'first-edit'
   }

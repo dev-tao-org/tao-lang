@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
 /** doctorReport gathers diagnostics for the active implementation without changing developer state. */
@@ -17,6 +17,8 @@ export function assertDoctorReady(status: Check['status']): void {
   }
 }
 
+type OptionalToolOutput = string | undefined
+type CheckStatus = 'pass' | 'warn' | 'fail'
 type DoctorReport = {
   version: 1
   repositoryRoot: string
@@ -35,21 +37,23 @@ function resolveReportStatus(checks: readonly Check[]): Check['status'] {
   return 'pass'
 }
 
-function safeToken(value: string | undefined): string | undefined {
+function safeToken(value: OptionalToolOutput): string | undefined {
   const token = value?.trim()
-  return token && /^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(token) ? token : undefined
+  return token && Regxs.DoctorToken.test(token) ? token : undefined
 }
 
-function toolVersion(output: string | undefined): string | undefined {
-  const token = output?.split('\n')[0]?.trim().split(/\s+/).map(value => value.replace(/,$/, ''))
-    .find(value => /^v?[0-9][0-9A-Za-z._+-]*$/.test(value))
-  return safeToken(token?.replace(/^v/, ''))
+function toolVersion(output: OptionalToolOutput): string | undefined {
+  const token = output?.split('\n')[0]?.trim().split(Regxs.WhitespaceRunsRegx).map(value =>
+    value.replace(Regxs.TrailingComma, '')
+  )
+    .find(value => Regxs.ToolVersionToken.test(value))
+  return safeToken(token?.replace(Regxs.VersionPrefix, ''))
 }
 
 function diagnoseTools(
   tools: readonly string[],
-  versions: readonly (string | undefined)[],
-  failures: readonly (string | undefined)[] = [],
+  versions: readonly OptionalToolOutput[],
+  failures: readonly OptionalToolOutput[] = [],
 ): Check[] {
   return tools.map((name, index) => {
     const version = toolVersion(versions[index])
@@ -75,7 +79,7 @@ function diagnoseTools(
   })
 }
 
-type Check = { name: string; status: 'pass' | 'warn' | 'fail'; detail: string; remediation?: string }
+type Check = { name: string; status: CheckStatus; detail: string; remediation?: string }
 type Fingerprint = {
   version: 1
   architecture?: string
@@ -187,8 +191,8 @@ async function probe(command: string, options: { variadicArgs?: readonly string[
   )
 }
 
-function gitHash(value: string | undefined): string | undefined {
-  return value && /^[0-9a-f]{40}$/.test(value) ? value : undefined
+function gitHash(value: OptionalToolOutput): string | undefined {
+  return value && Regxs.Sha1HashRegx.test(value) ? value : undefined
 }
 
 function isSupportedRuntime(name: string, version: string): boolean {
@@ -199,5 +203,8 @@ function isSupportedRuntime(name: string, version: string): boolean {
   if (name !== 'bun') {
     return true
   }
-  return major > 1 || (major === 1 && (minor > 4 || (minor === 4 && patch >= 2)))
+  if (major !== 1) {
+    return major > 1
+  }
+  return minor > 4 || (minor === 4 && patch >= 2)
 }

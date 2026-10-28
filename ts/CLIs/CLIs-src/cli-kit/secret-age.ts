@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
 import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
@@ -49,8 +49,8 @@ async function decryptWithKey(armor: string, secretKey: string): Promise<string>
 
 async function generateKey(): Promise<{ recipient: string; secretKey: string }> {
   const result = await run('age-keygen')
-  const recipient = /^#\s*public key:\s*(age1\S+)\s*$/m.exec(result)?.[1]
-  const secretKey = /^AGE-SECRET-KEY-1\S+$/m.exec(result)?.[0]
+  const recipient = Regxs.AgePublicKeyCommentRegx.exec(result)?.[1]
+  const secretKey = Regxs.AgeSecretKeyLineRegx.exec(result)?.[0]
   if (recipient === undefined || secretKey === undefined) {
     Errors.ThrowHostEnvironment('age-keygen did not return a valid key pair.')
   }

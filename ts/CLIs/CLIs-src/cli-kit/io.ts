@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { Path, Repo, Terminal, Text } from '@shared/os'
 import { createFileOutput } from './output/Files'
 import * as Output from './output/Output'
@@ -30,11 +30,11 @@ export const IO = {
 
 /** IOConfiguration separates terminal routing from dashboard presentation. */
 export type IOConfiguration = {
-  stdout?: 'terminal' | 'log' | OutputPipe
-  stderr?: 'terminal' | 'both' | 'log' | OutputPipe
-  progress?: 'terminal' | 'log' | 'both'
+  stdout?: OutputDestination
+  stderr?: ErrorOutputDestination
+  progress?: ProgressDestination
   logFile?: string
-  logDirectory?: 'agent' | 'dev'
+  logDirectory?: LogDirectory
   forwardEvents?: boolean
   passthrough?: boolean
 }
@@ -58,7 +58,13 @@ export function renderOutput(renderer: Output.OutputRenderer): void {
   output.render(renderer)
 }
 
-type OutputPipe = (text: string | Uint8Array) => void
+type OutputText = string | Uint8Array
+type OutputPipe = (text: OutputText) => void
+type OutputDestination = 'terminal' | 'log' | OutputPipe
+type ErrorOutputDestination = 'terminal' | 'both' | 'log' | OutputPipe
+type ProgressDestination = 'terminal' | 'log' | 'both'
+type LogDirectory = 'agent' | 'dev'
+type OutputStatus = 'passed' | 'failed'
 let configuration: IOConfiguration = {}
 let plainOutput = createPlainOutput()
 let writeFileOutput = createFileOutput({})
@@ -67,7 +73,8 @@ let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
 let warningDetails: string[] = []
 let output = Output.createOutput(writeOutput)
-let promptRenderer: (() => Promise<Output.OutputRenderer>) | undefined
+type PromptRendererFactory = (() => Promise<Output.OutputRenderer>) | undefined
+let promptRenderer: PromptRendererFactory
 const promptLifecycle = createPromptLifecycle({
   async suspend() {
     if (!tui) {
@@ -146,16 +153,22 @@ function countDiagnostic(event: Output.OutputEvent): void {
     if (!configuration.forwardEvents) {
       warningDetails.push(formatWarningDetail(event))
     }
-  } else if (diagnostics.error === 1 && isQuiet() && !configuration.forwardEvents && !tui) {
+  } else if (shouldReportQuietError()) {
     Terminal.stderr.write('Error recorded: See the log for details.\n')
   } else {
     // Other errors are already routed, or the quiet-mode notice was printed for the first error.
   }
 }
 
+function shouldReportQuietError(): boolean {
+  const isFirstQuietError = diagnostics.error === 1 && isQuiet()
+  const isLocalOutput = !configuration.forwardEvents && !tui
+  return isFirstQuietError && isLocalOutput
+}
+
 function formatWarningDetail(event: Output.OutputEvent): string {
   const channel = event.main ? '' : `[${event.channel.title}] `
-  const message = Text.stripAnsi(event.text).replace(/\s+/g, ' ').trim()
+  const message = Text.stripAnsi(event.text).replace(Regxs.DiagnosticWhitespaceRunsRegx, ' ').trim()
   return `Warning: ${channel}${message}`.slice(0, 240)
 }
 
@@ -163,7 +176,7 @@ function isQuiet(): boolean {
   return configuration.stdout === 'log' && configuration.stderr === 'log'
 }
 
-async function finishOutput(status: 'passed' | 'failed' = 'passed'): Promise<void> {
+async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
   const wasTui = tui
   output.main.finish(status)
   await output.finish()

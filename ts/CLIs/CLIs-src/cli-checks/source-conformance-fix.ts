@@ -62,7 +62,17 @@ function isFixable(node: TypeScript.Node, checker: TypeScript.TypeChecker): bool
   if (!optionalAccessIssue(node, checker)) {
     return false
   }
+  if (TypeScript.isConditionalExpression(node) && hasResultAssertion(node.whenTrue)) {
+    return false
+  }
   // Keep authored comments intact; these cases remain check diagnostics for manual correction.
   const text = node.getText()
   return !text.includes('/*') && !text.includes('//')
+}
+
+function hasResultAssertion(node: TypeScript.Expression): boolean {
+  if (TypeScript.isParenthesizedExpression(node)) {
+    return hasResultAssertion(node.expression)
+  }
+  return TypeScript.isAsExpression(node) || TypeScript.isTypeAssertionExpression(node)
 }

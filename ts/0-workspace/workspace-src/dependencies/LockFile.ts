@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type { DependencyLock, LockedSource, ManagedGraphReference } from './Types'
@@ -40,7 +40,7 @@ export async function readDependencyLock(path: string): Promise<DependencyLock |
 
 /** materializeLocations turns project-relative lock paths into current machine paths. */
 export function materializeLocations(
-  lock: DependencyLock | undefined,
+  lock: OptionalDependencyLock,
   projectRoot: string,
   bundledProjects?: Readonly<Record<string, string>>,
 ): DependencyLock | undefined {
@@ -109,7 +109,7 @@ export async function pruneUnreferencedManagedLocks(projectRoot: string): Promis
       continue
     }
     await FileSystem.rm(path, { force: true })
-    await FileSystem.rm(path.replace(/\.lock$/, '.sha256'), { force: true })
+    await FileSystem.rm(path.replace(Regxs.LockFileExtensionRegx, '.sha256'), { force: true })
   }
 }
 
@@ -145,8 +145,12 @@ export async function recordManagedGraphReference(
 }
 
 type SerializedDependencyLock = Omit<DependencyLock, 'sources'> & {
-  sources: Record<string, LockedSource | Omit<LockedSource, 'location'>>
+  sources: Record<string, SerializedLockedSource>
 }
+
+type SerializedLockedSource = LockedSource | Omit<LockedSource, 'location'>
+type OptionalDependencyLock = DependencyLock | undefined
+type BundledProjects = Readonly<Record<string, string>> | undefined
 
 function relativizeLocations(lock: DependencyLock, projectRoot: string): SerializedDependencyLock {
   return {
@@ -226,7 +230,7 @@ function validateGraphReference(key: string, fingerprint: string, hash: string):
   if (!isOwnedSourceKey(key)) {
     Errors.ThrowUserInput('Managed dependency graph key must be a safe project-relative identifier.')
   }
-  if (!/^[a-f0-9]{64}$/i.test(fingerprint) || !/^[a-f0-9]{64}$/i.test(hash)) {
+  if (!Regxs.Sha256HashRegx.test(fingerprint) || !Regxs.Sha256HashRegx.test(hash)) {
     Errors.ThrowUserInput('Managed dependency graph fingerprint and lock hash must be SHA-256 values.')
   }
 }
@@ -241,7 +245,7 @@ function relativizeProjectPath(projectRoot: string, filePath: string): string {
 
 function requiredBundledLocation(
   identifier: string,
-  bundledProjects: Readonly<Record<string, string>> | undefined,
+  bundledProjects: BundledProjects,
 ): string {
   const location = bundledProjects?.[identifier]
   if (!location) {

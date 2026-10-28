@@ -1,4 +1,6 @@
+import { Regxs } from '@shared'
 import * as TypeScript from 'typescript'
+import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */
 export function functionBodyLineCount(
@@ -21,12 +23,7 @@ export function functionBodyLineCount(
 
 /** functionBody extracts the concise body of a function-like syntax node. */
 export function functionBody(node: TypeScript.Node): TypeScript.ConciseBody | undefined {
-  if (
-    TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
-    || TypeScript.isArrowFunction(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isConstructorDeclaration(node) || TypeScript.isGetAccessorDeclaration(node)
-    || TypeScript.isSetAccessorDeclaration(node)
-  ) {
+  if (isRuntimeFunctionNode(node)) {
     return node.body
   }
 }
@@ -49,20 +46,24 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
     return
   }
   const layout = stringLayout(node, file)
-  if (!/[\r\n]/.test(layout)) {
+  if (!Regxs.NewlineCharacter.test(layout)) {
     return
   }
   if (!isSTemplate(node)) {
     return 'multiline strings must use S from @shared'
   }
-  const lines = layout.split(/\r?\n/)
-  const opening =
-    file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(/^[\t ]*/)![0]
+  const lines = layout.split(Regxs.OptionalCarriageNewline)
+  const opening = file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(
+    Regxs.LeadingHorizontalWhitespaceRegx,
+  )![0]
   const closing = lines[lines.length - 1]
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
   }
 }
+
+type RuntimeString = TypeScript.StringLiteralLike | TypeScript.TemplateExpression
+type InterpolationStart = TypeScript.TemplateHead | TypeScript.TemplateMiddle
 
 function isBraceOnlyLine(
   body: TypeScript.Block,
@@ -83,7 +84,7 @@ function isBraceOnlyLine(
   return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
 }
 
-function isRuntimeString(node: TypeScript.Node): node is TypeScript.StringLiteralLike | TypeScript.TemplateExpression {
+function isRuntimeString(node: TypeScript.Node): node is RuntimeString {
   return (TypeScript.isStringLiteralLike(node) || TypeScript.isTemplateExpression(node))
     && !TypeScript.isLiteralTypeNode(node.parent)
 }
@@ -99,7 +100,7 @@ function invalidSLayout(lines: string[], opening: string, closing: string): bool
 }
 
 function stringLayout(
-  node: TypeScript.StringLiteralLike | TypeScript.TemplateExpression,
+  node: RuntimeString,
   file: TypeScript.SourceFile,
 ): string {
   let layout = node.getText(file)
@@ -107,7 +108,7 @@ function stringLayout(
     return layout
   }
   const ranges: { start: number; end: number }[] = []
-  let previous: TypeScript.TemplateHead | TypeScript.TemplateMiddle = node.head
+  let previous: InterpolationStart = node.head
   for (const span of node.templateSpans) {
     ranges.push({
       start: previous.end - 2 - node.getStart(file),

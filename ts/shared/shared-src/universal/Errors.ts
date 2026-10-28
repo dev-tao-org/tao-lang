@@ -1,3 +1,5 @@
+import * as IdentifiersRegxs from './Regxs/IdentifiersRegxs'
+
 /** TaoError declares errors expected by Tao command and library code. */
 export type TaoError =
   | UserInputError
@@ -72,13 +74,15 @@ export function ThrowCommandExecution(result: CommandErrorResult): never {
 
 // ProcessSignal declares a platform process signal value without depending on Node types.
 type ProcessSignal = string
+type CommandStatus = number | null
+type CommandSignal = ProcessSignal | null
 
 type CommandErrorResult = {
   command: string
   args: readonly string[]
   cwd?: string
-  status: number | null
-  signal: ProcessSignal | null
+  status: CommandStatus
+  signal: CommandSignal
   stdout: string
   stderr: string
   error?: Error
@@ -155,7 +159,7 @@ function formatCommandForError(command: string, args: readonly string[]): string
 
 // Quote a command word that a reader could not paste back as written.
 function formatCommandPart(value: string): string {
-  return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
+  return IdentifiersRegxs.SafeCommandTokenRegx.test(value) ? value : JSON.stringify(value)
 }
 
 function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {

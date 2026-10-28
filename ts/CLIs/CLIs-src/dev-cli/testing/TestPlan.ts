@@ -2,12 +2,12 @@ import { Errors } from '@shared'
 import { Http } from '@shared/os'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
-export type TestExecutionOptions = { serial?: boolean; parallel?: string | boolean; yes?: boolean }
+export type TestExecutionOptions = { serial?: boolean; parallel?: ParallelBudget; yes?: boolean }
 
 /** TestPlan describes the selected suites and worker budget for one test run. */
 export type TestPlan = {
-  typescript: { args: readonly string[]; workers: number } | undefined
-  tao: { target: string; workers: number } | undefined
+  typescript: OptionalTypeScriptPlan
+  tao: OptionalTaoPlan
   serial: boolean
 }
 
@@ -22,6 +22,13 @@ export type TestSectionFailures = { typescript?: string; tao?: string }
 
 /** TestRunSignal carries cancellation through scheduling and subprocess execution. */
 export type TestRunSignal = ReturnType<typeof Http.createAbortController>['signal']
+
+type ParallelBudget = string | boolean
+type OptionalTypeScriptPlan = { args: readonly string[]; workers: number } | undefined
+type OptionalTaoPlan = { target: string; workers: number } | undefined
+type TestSection = 'typescript' | 'tao'
+type SelectedTestSection = { section: TestSection; run: () => Promise<void> }
+type OptionalTestRunSignal = TestRunSignal | undefined
 
 /** TestExecutionRequest carries selected suites and test-worker controls. */
 export type TestExecutionRequest = { typescriptArgs?: readonly string[]; taoTarget?: string } & TestExecutionOptions
@@ -77,8 +84,8 @@ export async function executeTestSections(
   const selected = [
     plan.typescript ? { section: 'typescript' as const, run: operations.typescript } : undefined,
     plan.tao ? { section: 'tao' as const, run: operations.tao } : undefined,
-  ].filter((run): run is { section: 'typescript' | 'tao'; run: () => Promise<void> } => run !== undefined)
-  const results: { section: 'typescript' | 'tao'; failure?: string }[] = []
+  ].filter((run): run is SelectedTestSection => run !== undefined)
+  const results: { section: TestSection; failure?: string }[] = []
   if (plan.serial) {
     for (const section of selected) {
       assertTestRunActive(signal)
@@ -103,7 +110,7 @@ export async function runWorkerBatch<Entry, Result>(
 /** runFilesSequentially stops before the next file and rejects partial success when cancelled. */
 export async function runFilesSequentially<Item, Result>(
   files: readonly Item[],
-  signal: TestRunSignal | undefined,
+  signal: OptionalTestRunSignal,
   execute: (file: Item) => Promise<Result>,
 ): Promise<Result[]> {
   const results: Result[] = []
@@ -116,13 +123,13 @@ export async function runFilesSequentially<Item, Result>(
 }
 
 /** assertTestRunActive rejects scheduling or partial success after cancellation. */
-export function assertTestRunActive(signal: TestRunSignal | undefined): void {
+export function assertTestRunActive(signal: OptionalTestRunSignal): void {
   if (signal?.aborted) {
     Errors.ThrowHostEnvironment('Tao test run interrupted.')
   }
 }
 
-function parseParallelBudget(value: string | boolean): number {
+function parseParallelBudget(value: ParallelBudget): number {
   if (value === false || value === true) {
     return 6
   }
@@ -157,7 +164,7 @@ function resolveSingleSectionWorkerBudget(defaultBudget: boolean, typescriptSele
   return 4
 }
 
-function runSection(section: 'typescript' | 'tao', run: () => Promise<void>, signal?: TestRunSignal) {
+function runSection(section: TestSection, run: () => Promise<void>, signal?: TestRunSignal) {
   return Promise.resolve().then(() => {
     assertTestRunActive(signal)
     return run()

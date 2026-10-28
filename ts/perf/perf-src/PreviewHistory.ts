@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as PreviewHistoryStore from './PreviewHistoryStore'
 
@@ -70,7 +70,7 @@ const inputs = [
 async function captureContext(git: Git): Promise<Context> {
   const sourceCommit = (await git(['rev-parse', 'HEAD'])).trim()
   const sourceTree = (await git(['rev-parse', `${sourceCommit}^{tree}`])).trim()
-  if (!/^[a-f0-9]{40}$/.test(sourceCommit) || !/^[a-f0-9]{40}$/.test(sourceTree)) {
+  if (!Regxs.Sha1HashRegx.test(sourceCommit) || !Regxs.Sha1HashRegx.test(sourceTree)) {
     Errors.ThrowShouldNeverHappen('Performance recording requires full Git commit and tree identities.')
   }
   const source = await git(['show', `${sourceCommit}:${fixturePath}`], true)

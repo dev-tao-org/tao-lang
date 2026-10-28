@@ -7,7 +7,7 @@ Tests.test('Metro refuses unsupported dependency versions and out-of-process wor
   await verifyRejectedMode('workers', 'require one in-process worker')
 }, 60_000)
 
-async function verifyRejectedMode(mode: 'version' | 'workers', expected: string): Promise<void> {
+async function verifyRejectedMode(mode: RejectedMetroMode, expected: string): Promise<void> {
   const directory = Artifacts.resolvePath('tmp/metro-guard', Platform.randomUUID())
   await Try(async () => {
     const application = await Runtime.create({
@@ -30,6 +30,8 @@ async function verifyRejectedMode(mode: 'version' | 'workers', expected: string)
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })
 }
+
+type RejectedMetroMode = 'version' | 'workers'
 
 function versionPreload(production: string): string {
   return S`

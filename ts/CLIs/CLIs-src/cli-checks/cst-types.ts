@@ -38,7 +38,9 @@ function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] 
   )
 }
 
-function findAliases(rule: Rule | undefined, nodeType: string): Rule[] {
+type OptionalRule = Rule | undefined
+
+function findAliases(rule: OptionalRule, nodeType: string): Rule[] {
   if (!rule) {
     return []
   }

@@ -29,7 +29,7 @@ export class ProjectDependencies {
 
   /** observeProjectSources detects complete dependency changes in normal resolution without linking root declarations.
    *  Invalid syntax never reaches this method; a new session after setup replaces established requirements. */
-  observeProjectSources(owner: string, sources: readonly Pick<SourceModule, 'path' | 'document'>[]): void {
+  observeProjectSources(owner: string, sources: readonly ObservedSource[]): void {
     const actual = sources.flatMap(source => collectSourceRequirements(source.document, source.path))
     validateSourceRequirements(actual)
     const expected = this.requirements.get(owner)
@@ -94,6 +94,9 @@ export class ProjectDependencies {
     })
   }
 }
+
+type ObservedSourceField = 'path' | 'document'
+type ObservedSource = Pick<SourceModule, ObservedSourceField>
 
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   return JSON.stringify(

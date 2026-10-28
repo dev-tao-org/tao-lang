@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { safeSourcePath } from './LearningStore'
 import type { Correction, Proposal } from './LearningTypes'
@@ -76,7 +76,7 @@ export function requirePaths(root: string, input: unknown, label: string): strin
 
 /** requireId prevents ambiguous ledger identities and metadata path traversal. */
 export function requireId(input: unknown): asserts input is string {
-  if (typeof input !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,100}$/.test(input)) {
+  if (typeof input !== 'string' || !Regxs.LearningIdentifierRegx.test(input)) {
     Errors.ThrowUserInput('IDs must contain only letters, digits, underscores and hyphens.')
   }
 }
@@ -110,8 +110,9 @@ function requireRecord(input: unknown): Record<string, unknown> {
 }
 
 function hasInvalidOffsets(edit: Record<string, unknown>): boolean {
-  return !Number.isInteger(edit.start) || !Number.isInteger(edit.end) || Number(edit.start) < 0
-    || Number(edit.end) < Number(edit.start)
+  const invalidStart = !Number.isInteger(edit.start) || Number(edit.start) < 0
+  const invalidEnd = !Number.isInteger(edit.end) || Number(edit.end) < Number(edit.start)
+  return invalidStart || invalidEnd
 }
 
 function isJsonRecord(input: unknown): input is Record<string, unknown> {

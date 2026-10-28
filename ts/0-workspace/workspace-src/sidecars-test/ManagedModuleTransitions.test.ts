@@ -3,6 +3,14 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
+const OutsideTaoProjectErrorRegx = /outside a Tao project/
+const InvalidPackageNameErrorRegx = /package name .*invalid/
+const ManagedNpmDeclarationsChangedErrorRegx = /Managed npm declarations changed or are not prepared/
+const ManagedModuleRepairRequiredErrorRegx = /needs repair/
+const ManagedModuleMetadataDriftErrorRegx = /metadata drifted/
+const ConsumerProfileOwnershipConflictErrorRegx = /already owned by consumer profile.*one app dependency graph/
+const ManagedModuleAlreadyOwnedOrUpdatingErrorRegx = /already owned|being updated/
+
 Tests.test('updates one consumer graph while preserving prior profiles and rejecting authored drift', async () =>
   await withDirectory('managed-transition', async root => await assertProfileTransition(root)))
 
@@ -43,7 +51,7 @@ Tests.test('rejects an unowned module path without creating a Tao project marker
         runtimePins: {},
         bunVersion: '1.2.0',
       }, createExecutor({})),
-      /outside a Tao project/,
+      OutsideTaoProjectErrorRegx,
     )
     Tests.expect(await FileSystem.exists(Path.join(unowned, '.tao'))).toBe(false)
   }))
@@ -64,7 +72,7 @@ Tests.test('rejects unsafe npm package names before starting Bun', async () => {
       invoked = true
       return { status: 0, stdout: '', stderr: '' }
     }),
-    /package name .*invalid/,
+    InvalidPackageNameErrorRegx,
   )
   Tests.expect(invoked).toBe(false)
 })
@@ -106,7 +114,7 @@ async function assertHostCacheRebuild(root: string): Promise<void> {
   const otherHost = { ...input, hostIdentity: { os: 'host-b', architecture: 'x64' } }
   await Tests.rejects(
     ManagedModules.readManagedModules(otherHost),
-    /Managed npm declarations changed or are not prepared/,
+    ManagedNpmDeclarationsChangedErrorRegx,
   )
   const rebuiltProfile = await ManagedModules.prepareManagedModules(otherHost, executor)
   Tests.expect(rebuiltProfile.fingerprint).not.toBe(first.fingerprint)
@@ -132,7 +140,7 @@ async function assertProfileTransition(root: string): Promise<void> {
   await damageCurrentOwnershipMarker(marker)
   await Tests.rejects(
     ManagedModules.prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })),
-    /needs repair/,
+    ManagedModuleRepairRequiredErrorRegx,
   )
   await ManagedModules.repairManagedModuleFiles(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
   Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).generatedHashes).toBeDefined()
@@ -157,7 +165,7 @@ async function assertProfileTransition(root: string): Promise<void> {
   const next = createModuleInput(root, moduleDirectory, '4.3.0')
   await Tests.rejects(
     ManagedModules.prepareManagedModules(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' })),
-    /metadata drifted/,
+    ManagedModuleMetadataDriftErrorRegx,
   )
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
   await ManagedModules.repairManagedModuleFiles(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }))
@@ -212,7 +220,7 @@ async function assertConsumerConflict(root: string): Promise<void> {
   const secondInput = { ...firstInput, directory: secondRoot, runtimePins: { react: '18.3.1' } }
   await Tests.rejects(
     ManagedModules.prepareManagedModules(secondInput, createExecutor({ react: '18.3.1' })),
-    /already owned by consumer profile.*one app dependency graph/,
+    ConsumerProfileOwnershipConflictErrorRegx,
   )
   Tests.expect(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8')).toBe(manifest)
   Tests.expect(FileSystem.realpathSync(reactLink)).toBe(linkTarget)
@@ -255,7 +263,13 @@ async function assertConcurrentConsumerRace(root: string): Promise<void> {
   ])
   Tests.expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
   const failure = results.find(result => result.status === 'rejected')!
-  Tests.expect(String(failure.status === 'rejected' ? failure.reason : '')).toMatch(/already owned|being updated/)
+  Tests.expect(String(failure.status === 'rejected' ? failure.reason : '')).toMatch(
+    ManagedModuleAlreadyOwnedOrUpdatingErrorRegx,
+  )
+  await assertConsistentPublishedOwner(sharedModule)
+}
+
+async function assertConsistentPublishedOwner(sharedModule: string): Promise<void> {
   const owner = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, '.tao-managed-module.json'), 'utf8'))
   const manifest = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8'))
   const profileManifest = JSON.parse(await FileSystem.readFile(Path.join(owner.profile, 'package.json'), 'utf8'))

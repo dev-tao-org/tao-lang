@@ -31,7 +31,7 @@ export type PreparationOptions = {
 }
 
 /** ProjectPreparationInspectionOptions selects scoped setup-readiness checks. */
-export type ProjectPreparationInspectionOptions = Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> & {
+export type ProjectPreparationInspectionOptions = Pick<PreparationOptions, ProjectPreparationOption> & {
   moduleRoot?: string
   runtime?: boolean
 }
@@ -92,7 +92,7 @@ export async function inspectProjectPreparation(
 /** buildManagedModulesInput derives an app installation from reachable module-owned npm declarations. */
 export async function buildManagedModulesInput(
   root: string,
-  sources: readonly Pick<SourceModule, 'path' | 'document'>[],
+  sources: readonly Pick<SourceModule, SourceModuleField>[],
   runtimePins?: Record<string, string>,
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const modules = new Map<string, ManagedModules.ManagedModulesInput['modules'][number]>()
@@ -145,10 +145,13 @@ export const executeManagedTool: ManagedModules.BunExecutor = async (command, ar
   return { status, stdout, stderr }
 }
 
+type ProjectPreparationOption = 'runtimePins' | 'dependencyOptions'
+type SourceModuleField = 'path' | 'document'
+
 // loadProjectManagedInput reads the reachable locked graph without downloading dependencies.
 async function loadProjectManagedInput(
   entry: string,
-  options: Pick<PreparationOptions, 'runtimePins' | 'dependencyOptions'> = {},
+  options: Pick<PreparationOptions, ProjectPreparationOption> = {},
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)

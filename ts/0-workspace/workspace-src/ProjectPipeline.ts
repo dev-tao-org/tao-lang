@@ -60,12 +60,12 @@ export function createProjectPipeline(
 }
 
 class PipelineSession implements ProjectPipeline {
-  private graphKey: string | undefined
-  private preparedFingerprint: string | undefined
-  private managedProfile: Awaited<ReturnType<typeof readManagedModules>> | undefined
+  private graphKey?: string
+  private preparedFingerprint?: string
+  private managedProfile?: Awaited<ReturnType<typeof readManagedModules>>
   private readonly baseWatchFolders: readonly string[]
-  private declarationKey: string | undefined
-  private input: ManagedModulesInput | undefined
+  private declarationKey?: string
+  private input?: ManagedModulesInput
 
   constructor(
     private readonly root: string,
@@ -134,7 +134,7 @@ class PipelineSession implements ProjectPipeline {
   private async prepareSidecars(
     program: LinkedProgram,
     managed: Awaited<ReturnType<typeof readManagedModules>>,
-    watchAttemptedFiles: ((files: readonly string[]) => Promise<void>) | undefined,
+    watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ) {
     return await this.services.prepareSidecars({
       program,

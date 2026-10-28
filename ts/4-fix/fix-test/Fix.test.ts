@@ -5,6 +5,14 @@ import { Tests } from '@shared/os'
 import { fix } from '../fix-src/Fix'
 import { format } from '../fix-src/Format'
 
+const TextImportLineRegx = /^use .*\bText\b.*$/gm
+const ColImportLineRegx = /^use .*\bCol\b.*$/gm
+const UnresolvedImportAliasRegx = /Missing as Unresolved/g
+const CaptionImportAliasRegx = /Badge as Caption/g
+const CanonicalTextImportRegx = /use Text from tao@ui/g
+const PreservedLineCommentRegx = /\/\/ Keep this line comment\./g
+const PreservedBlockCommentRegx = /\/\* Keep this block comment\. \*\//g
+
 Tests.test('import organization collects, sorts, merges and deduplicates without removing unused names', () => {
   const source = S`
     use Text from tao@ui
@@ -67,12 +75,12 @@ Tests.test('organizing imports removes partial duplicates across comment groups'
       Badge as Caption, Badge as Caption from tao@ui
     view Main { render Text("Hello") }
   `)
-  Tests.expect(result.match(/^use .*\bText\b.*$/gm)).toHaveLength(1)
-  Tests.expect(result.match(/^use .*\bCol\b.*$/gm)).toHaveLength(1)
-  Tests.expect(result.match(/Missing as Unresolved/g)).toHaveLength(1)
+  Tests.expect(result.match(TextImportLineRegx)).toHaveLength(1)
+  Tests.expect(result.match(ColImportLineRegx)).toHaveLength(1)
+  Tests.expect(result.match(UnresolvedImportAliasRegx)).toHaveLength(1)
   Tests.expect(result).toContain('Row as Alias')
   Tests.expect(result).toContain('use Badge, Badge as Caption from tao@ui')
-  Tests.expect(result.match(/Badge as Caption/g)).toHaveLength(1)
+  Tests.expect(result.match(CaptionImportAliasRegx)).toHaveLength(1)
   Tests.expect(result).toContain('// Keep this group comment.')
   Tests.expect(result).toContain('// Keep this later comment too.')
   Tests.expect(result).toContain('// Keep this member comment.')
@@ -88,9 +96,9 @@ Tests.test('organizing duplicate multiline imports retains their interior commen
       Text from tao@ui
     view Main { render Text("Hello") }
   `)
-  Tests.expect(result.match(/use Text from tao@ui/g)).toHaveLength(1)
-  Tests.expect(result.match(/\/\/ Keep this line comment\./g)).toHaveLength(1)
-  Tests.expect(result.match(/\/\* Keep this block comment\. \*\//g)).toHaveLength(1)
+  Tests.expect(result.match(CanonicalTextImportRegx)).toHaveLength(1)
+  Tests.expect(result.match(PreservedLineCommentRegx)).toHaveLength(1)
+  Tests.expect(result.match(PreservedBlockCommentRegx)).toHaveLength(1)
   Tests.expect(fixSource(result)).toBe(result)
 })
 

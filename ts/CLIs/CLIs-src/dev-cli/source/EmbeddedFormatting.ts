@@ -10,4 +10,5 @@ export const embeddedFormatting = Timings.createTopLevelTimer(function(timings):
   return formatter
 })
 
-let formatter: Promise<EmbeddedFormatter> | undefined
+type OptionalFormatter = Promise<EmbeddedFormatter> | undefined
+let formatter: OptionalFormatter

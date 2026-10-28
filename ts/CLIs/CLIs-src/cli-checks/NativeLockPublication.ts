@@ -47,7 +47,8 @@ export async function writeNativeLockPointer(root: string, pointer: NativeLockPo
   }, { finally: () => FileSystem.rm(pending, { force: true }) })
 }
 
-type PointerRead = { kind: 'missing' | 'invalid' } | { kind: 'valid'; pointer: NativeLockPointer }
+type UnavailablePointerKind = 'missing' | 'invalid'
+type PointerRead = { kind: UnavailablePointerKind } | { kind: 'valid'; pointer: NativeLockPointer }
 
 async function readPointer(root: string): Promise<PointerRead> {
   const path = Path.join(root, 'current.json')
@@ -58,7 +59,10 @@ async function readPointer(root: string): Promise<PointerRead> {
     return { kind: 'missing' }
   }
   const value = Try.WithDefault(undefined, () => JSON.parse(contents) as unknown)
-  if (typeof value !== 'object' || value === null || !('identity' in value) || !('directory' in value)) {
+  if (typeof value !== 'object' || value === null) {
+    return { kind: 'invalid' }
+  }
+  if (!('identity' in value) || !('directory' in value)) {
     return { kind: 'invalid' }
   }
   const pointer = value as { identity: unknown; directory: unknown }
@@ -71,5 +75,8 @@ async function readPointer(root: string): Promise<PointerRead> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
 }

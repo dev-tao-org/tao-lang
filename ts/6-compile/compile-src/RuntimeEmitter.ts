@@ -14,7 +14,7 @@ export type ComponentNames = {
 }
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
-export type InjectionCapture = { node: AST.Capture; type: 'text' | 'children' | 'unknown'; value: string }
+export type InjectionCapture = { node: AST.Capture; type: InjectionCaptureType; value: string }
 
 /** InjectionCapture creates the typed fields for one compiled hook capture. */
 export const InjectionCapture = (
@@ -82,11 +82,14 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
 }
 
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
-export function emitName(node: AST.Name | ModuleBinding, scope: CodegenUtil.ScopeCode): string {
+export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): string {
   const name = 'target' in node ? node.target : node.value
   const reference = typeof scope === 'string' ? undefined : scope.resolveReference(name)
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
+
+type InjectionCaptureType = 'text' | 'children' | 'unknown'
+type EmittableName = AST.Name | ModuleBinding
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(

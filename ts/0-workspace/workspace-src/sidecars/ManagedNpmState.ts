@@ -5,6 +5,9 @@ import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import type { ManagedModulesInput, ManagedRuntimePolicy, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
+type ManagedDurableLock = string | undefined
+type MaybeManagedProfileMetadata = Record<string, unknown> | undefined
+
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
   metadata: Record<string, unknown>,
@@ -13,20 +16,38 @@ export async function validateProfileMetadata(
   requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): Promise<void> {
-  if (
-    metadata.fingerprint !== fingerprint || metadata.graphFingerprint !== graphFingerprint
-    || metadata.target !== input.target || metadata.bunVersion !== input.bunVersion
-    || metadata.policyRegistryVersion !== 1 || metadata.typeScriptDefaultsHash !== typeScriptDefaultsHash()
-    || JSON.stringify(metadata.runtimePins) !== JSON.stringify(input.runtimePins)
-    || JSON.stringify(metadata.singletonPackages)
-      !== JSON.stringify(input.singletonPackages ?? defaultSingletonPackages)
-    || !profileRequirementsMatch(metadata.requirements, requirements)
-  ) {
+  if (!profileMetadataMatches(metadata, input, fingerprint, requirements, graphFingerprint)) {
     const owner = requirements[0]?.origin ?? 'project runtime'
     Errors.ThrowUserInput(
       `Managed npm dependencies changed. Repair with: tao setup --repair (owning declaration: ${owner})`,
     )
   }
+}
+
+function profileMetadataMatches(
+  metadata: Record<string, unknown>,
+  input: ManagedModulesInput,
+  fingerprint: string,
+  requirements: readonly NormalizedManagedRequirement[],
+  graphFingerprint: string,
+): boolean {
+  if (metadata.fingerprint !== fingerprint || metadata.graphFingerprint !== graphFingerprint) {
+    return false
+  }
+  if (metadata.target !== input.target || metadata.bunVersion !== input.bunVersion) {
+    return false
+  }
+  if (metadata.policyRegistryVersion !== 1 || metadata.typeScriptDefaultsHash !== typeScriptDefaultsHash()) {
+    return false
+  }
+  if (JSON.stringify(metadata.runtimePins) !== JSON.stringify(input.runtimePins)) {
+    return false
+  }
+  const expectedSingletons = input.singletonPackages ?? defaultSingletonPackages
+  if (JSON.stringify(metadata.singletonPackages) !== JSON.stringify(expectedSingletons)) {
+    return false
+  }
+  return profileRequirementsMatch(metadata.requirements, requirements)
 }
 
 /** ensureOwnedFile checks generated state and rewrites it only during explicit repair. */
@@ -45,7 +66,7 @@ export async function claimManagedProfile(
   profile: string,
   fingerprint: string,
   repair: boolean,
-  durableLock: string | undefined,
+  durableLock: ManagedDurableLock,
   expectedManifest: string,
 ): Promise<void> {
   const metadataPath = Path.join(profile, '.tao-managed.json')
@@ -59,16 +80,11 @@ export async function claimManagedProfile(
   if (metadataText !== undefined) {
     const metadata = Try.WithDefault(undefined, () => JSON.parse(metadataText) as Record<string, unknown>)
     if (
-      metadata?.fingerprint === fingerprint && typeof metadata.lockHash === 'string'
-      && (durableLock === undefined || metadata.lockHash === Platform.hashText(durableLock))
+      hasMatchingMetadataLock(metadata, fingerprint, durableLock)
     ) {
       return
     }
-    if (
-      !repair || durableLock === undefined
-      || metadata?.fingerprint !== undefined && metadata.fingerprint !== fingerprint
-      || !await profileContentsMatch(profile, durableLock, expectedManifest)
-    ) {
+    if (!repair || durableLock === undefined) {
       if (durableLock === undefined) {
         Errors.ThrowUserInput(
           `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control.`,
@@ -76,10 +92,19 @@ export async function claimManagedProfile(
       }
       Errors.ThrowUserInput(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
     }
+    if (
+      hasConflictingProfileFingerprint(metadata, fingerprint)
+      || !await profileContentsMatch(profile, durableLock, expectedManifest)
+    ) {
+      Errors.ThrowUserInput(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
+    }
     return
   }
   if (current !== owner && (await FileSystem.readdir(profile)).length > 0) {
-    if (!repair || durableLock === undefined || !await profileContentsMatch(profile, durableLock, expectedManifest)) {
+    if (!repair || durableLock === undefined) {
+      Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+    }
+    if (!await profileContentsMatch(profile, durableLock, expectedManifest)) {
       Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
     }
     return
@@ -144,7 +169,7 @@ export async function readOwnedMetadata(
   profile: string,
   fingerprint: string,
   repair: boolean,
-  durableLock: string | undefined,
+  durableLock: ManagedDurableLock,
 ): Promise<Record<string, unknown> | undefined> {
   const path = Path.join(profile, '.tao-managed.json')
   const text = await optionalText(path)
@@ -153,8 +178,7 @@ export async function readOwnedMetadata(
   }
   const parsed = await Try.WithDefault(undefined, () => JSON.parse(text) as Record<string, unknown>)
   if (
-    parsed?.fingerprint === fingerprint && typeof parsed.lockHash === 'string'
-    && (durableLock === undefined || parsed.lockHash === Platform.hashText(durableLock))
+    hasMatchingMetadataLock(parsed, fingerprint, durableLock)
   ) {
     return parsed
   }
@@ -197,14 +221,32 @@ async function profileContentsMatch(profile: string, durableLock: string, expect
     && await optionalText(Path.join(profile, 'package.json')) === expectedManifest
 }
 
+function hasConflictingProfileFingerprint(metadata: MaybeManagedProfileMetadata, fingerprint: string): boolean {
+  return metadata?.fingerprint !== undefined && metadata.fingerprint !== fingerprint
+}
+
+function hasMatchingMetadataLock(
+  metadata: MaybeManagedProfileMetadata,
+  fingerprint: string,
+  durableLock: ManagedDurableLock,
+): boolean {
+  if (metadata?.fingerprint !== fingerprint || typeof metadata.lockHash !== 'string') {
+    return false
+  }
+  return durableLock === undefined || metadata.lockHash === Platform.hashText(durableLock)
+}
+
 function profileRequirementsMatch(value: unknown, requirements: readonly NormalizedManagedRequirement[]): boolean {
   const expected = collectAllRequirements(requirements)
   return isStringRecord(value) && sameStringRecord(value, expected)
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
+  return isObjectRecord(value) && Object.values(value).every(item => typeof item === 'string')
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-    && Object.values(value).every(item => typeof item === 'string')
 }
 
 function sameStringRecord(left: Record<string, string>, right: Record<string, string>): boolean {

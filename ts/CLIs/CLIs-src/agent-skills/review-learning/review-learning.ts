@@ -38,6 +38,7 @@ export async function runLearning(args: string[]): Promise<Record<string, unknow
 }
 
 type Options = Map<string, string[]>
+type OptionalOptionName = string | undefined
 
 async function executeCommand(
   command: string,
@@ -119,7 +120,7 @@ function assertNewId(records: { id: string }[], id: string): void {
 function parseOptions(args: string[]): Options {
   const options: Options = new Map()
   const known = ['repo', 'input', 'rule', 'files', 'proposal', 'protected-files', 'group']
-  let current: string | undefined
+  let current: OptionalOptionName
   for (const arg of args) {
     if (arg.startsWith('--')) {
       current = arg.slice(2)

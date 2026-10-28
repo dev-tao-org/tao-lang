@@ -1,4 +1,4 @@
-import { Errors, Switch, Try } from '@shared'
+import { Errors, Regxs, Switch, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
@@ -27,7 +27,7 @@ export async function resolveSource(
   identity: string,
   projectRoot: string,
   parent: string,
-  previous: LockedSource | undefined,
+  previous: PreviousSource,
   update: boolean,
   options: DependencyStoreOptions,
 ): Promise<LockedSource> {
@@ -37,6 +37,9 @@ export async function resolveSource(
     github: () => resolveGitHubSource(requirement, identity, projectRoot, previous, update, options),
   })
 }
+
+type PreviousSource = LockedSource | undefined
+type OptionalSubdirectory = string | undefined
 
 function preparationNeeded(message: string): never {
   Errors.ThrowUserInput(message)
@@ -114,7 +117,7 @@ async function resolveGitHubSource(
   requirement: DependencyRequirement,
   identity: string,
   projectRoot: string,
-  previous: LockedSource | undefined,
+  previous: PreviousSource,
   update: boolean,
   options: DependencyStoreOptions,
 ): Promise<LockedSource> {
@@ -125,7 +128,7 @@ async function resolveGitHubSource(
   const commit = previous?.commit && previous.version === requirement.version && !update
     ? previous.commit
     : await options.git.resolveCommit(coordinates.repository, requirement.version)
-  if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(commit)) {
+  if (!Regxs.GitCommitHashRegx.test(commit)) {
     preparationNeeded(`GitHub source ${identity} did not resolve to an immutable commit ID.`)
   }
   const root = Path.resolve(options.storeRoot ?? Path.join(projectRoot, '.tao', 'cache', 'dependencies'))
@@ -165,7 +168,7 @@ async function materializeGitHubCache(
 async function githubProjectLocation(
   requirement: DependencyRequirement,
   identity: string,
-  sourceSubdirectory: string | undefined,
+  sourceSubdirectory: OptionalSubdirectory,
   cacheLocation: string,
 ): Promise<string> {
   if (requirement.provider !== 'github') {
@@ -186,7 +189,7 @@ async function githubProjectLocation(
   return location
 }
 
-function normalizeSubdirectory(value: string | undefined): string | undefined {
+function normalizeSubdirectory(value: OptionalSubdirectory): string | undefined {
   if (!value) {
     return undefined
   }
@@ -198,10 +201,13 @@ function normalizeSubdirectory(value: string | undefined): string | undefined {
 }
 
 function githubCoordinates(identifier: string): { repository: string; subdirectory?: string } {
-  const normalized = githubIdentifierPath(identifier).replace(/\/$/, '')
+  const normalized = githubIdentifierPath(identifier).replace(Regxs.TrailingSlashRegx, '')
   // ex: x/foo/ui/forms -> owner x, name foo, subdirectory [ui, forms]
   const [owner, name, ...subdirectory] = normalized.split('/')
-  if (!owner || !name || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name)) {
+  if (!owner || !name) {
+    Errors.ThrowUserInput(`Invalid GitHub dependency identifier ${identifier}.`)
+  }
+  if (!Regxs.GithubCoordinateRegx.test(owner) || !Regxs.GithubCoordinateRegx.test(name)) {
     Errors.ThrowUserInput(`Invalid GitHub dependency identifier ${identifier}.`)
   }
   return {
@@ -217,5 +223,5 @@ function githubCacheName(repository: string): string {
 
 function githubIdentifierPath(identifier: string): string {
   // ex: https://github.com/x/foo.git -> x/foo
-  return identifier.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '')
+  return identifier.replace(Regxs.GithubRepositoryUrlPrefixRegx, '').replace(Regxs.GitSuffixRegx, '')
 }

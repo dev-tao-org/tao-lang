@@ -5,6 +5,8 @@ import { prepareProject } from '../../workspace-src/ProjectPreparation'
 import { cleanProject } from '../../workspace-src/projects/Clean'
 import { initializeProject } from '../../workspace-src/projects/Projects'
 
+const ControlledInstallerFailureRegx = /controlled installer failure/
+
 Tests.test('project clean reports malformed module ownership while cleaning safe cache and retaining authored files', async () => {
   const root = Artifacts.resolvePath('tmp', `project-clean-marker-${Platform.randomUUID()}`)
   await Try(async () => {
@@ -50,7 +52,7 @@ Tests.test('project clean protects runtime cache while automatic setup is active
           },
         },
       })
-    const preparing = Tests.rejects(prepare(), /controlled installer failure/)
+    const preparing = Tests.rejects(prepare(), ControlledInstallerFailureRegx)
     await installStarted
     const protectedClean = await cleanProject(root)
     Tests.expect(protectedClean.sharedProtected).toBe(true)
@@ -59,7 +61,7 @@ Tests.test('project clean protects runtime cache while automatic setup is active
     const cleaned = await cleanProject(root)
     Tests.expect(cleaned.sharedProtected).toBe(false)
     Tests.expect(cleaned.removed).toContain('runtime-toolchains')
-    await Tests.rejects(withDependencySession(root, 'setup', prepare), /controlled installer failure/)
+    await Tests.rejects(withDependencySession(root, 'setup', prepare), ControlledInstallerFailureRegx)
   }, {
     async finally() {
       releaseInstall()

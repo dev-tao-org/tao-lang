@@ -109,5 +109,6 @@ export class PreviewPublication {
 }
 
 type PublicationWorkspace =
-  & Pick<ReturnType<typeof createWorkspace>, 'runtime' | 'lastGoodRevision' | 'onExpected' | 'onPublished'>
+  & Pick<ReturnType<typeof createWorkspace>, PublicationWorkspaceKey>
   & { files: Pick<ReturnType<typeof createWorkspace>['files'], 'onCompiled'> }
+type PublicationWorkspaceKey = 'runtime' | 'lastGoodRevision' | 'onExpected' | 'onPublished'

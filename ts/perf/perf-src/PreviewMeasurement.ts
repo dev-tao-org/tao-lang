@@ -3,7 +3,15 @@ import { Env, type HeadlessBrowser } from '@shared/os'
 import { performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 
 /** PreviewMeasurement selects edit volume, preview frames and generated Tao source shape. */
-export type PreviewMeasurement = { editCount: number; frameCount: 1 | 2; extraViews: number; extraFileCount: number }
+export type PreviewMeasurement = {
+  editCount: number
+  frameCount: PreviewFrameCount
+  extraViews: number
+  extraFileCount: number
+}
+
+/** PreviewFrameCount selects the supported single-frame or dual-frame measurement. */
+export type PreviewFrameCount = 1 | 2
 
 /** MeasurementFile is one generated sibling Tao module. */
 export type MeasurementFile = { name: string; source: string }
@@ -64,8 +72,8 @@ export async function assertMeasurementScenario(
   name: string,
   settings: PreviewMeasurement,
 ): Promise<void> {
-  const scenario = name.replace(/-\d+$/, '')
-  const suffix = settings.editCount === 4 ? '' : ' ' + name.match(/\d+$/)![0]
+  const scenario = name.replace(MeasurementScenarioSuffixRegx, '')
+  const suffix = settings.editCount === 4 ? '' : ' ' + name.match(MeasurementScenarioNumberRegx)![0]
   const label = 'Hello Tao' + suffix
   const detail = 'Second view' + suffix
   for (const frameId of measurementFrameIds(settings.frameCount)) {
@@ -85,7 +93,7 @@ export async function assertMeasurementScenario(
 }
 
 /** measurementFrameIds returns the exact configured receipt quorum. */
-export function measurementFrameIds(frameCount: 1 | 2): readonly string[] {
+export function measurementFrameIds(frameCount: PreviewFrameCount): readonly string[] {
   return frameCount === 1 ? ['left'] : ['left', 'right']
 }
 
@@ -150,8 +158,8 @@ function createCycle(cycle: number): PreviewScenario[] {
 
 async function assertReset(frame: HeadlessBrowser.FrameLocator, frameId: string): Promise<void> {
   await frame.getByText('Hello World', { exact: true }).waitFor()
-  const edited = await frame.getByText(/^Hello Tao(?: \d+)?$/).count()
-  const added = await frame.getByText(/^Second view(?: \d+)?$/).count()
+  const edited = await frame.getByText(EditedViewLabelRegx).count()
+  const added = await frame.getByText(AddedViewLabelRegx).count()
   if (edited || added) {
     Errors.ThrowShouldNeverHappen(`${frameId} frame retained an edited view after reset.`)
   }
@@ -164,3 +172,8 @@ async function hasRowLayout(frame: HeadlessBrowser.FrameLocator, label: string, 
     return !!second && getComputedStyle(parent!).flexDirection === 'row'
   }, detail)
 }
+
+const MeasurementScenarioSuffixRegx = /-\d+$/
+const MeasurementScenarioNumberRegx = /\d+$/
+const EditedViewLabelRegx = /^Hello Tao(?: \d+)?$/
+const AddedViewLabelRegx = /^Second view(?: \d+)?$/

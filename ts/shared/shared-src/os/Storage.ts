@@ -16,7 +16,7 @@ export type StoragePlatform = 'macos' | 'linux' | 'windows'
 export function resolveStorage(
   platform: StoragePlatform,
   home: string,
-  environment: Record<string, string | undefined>,
+  environment: Record<string, EnvironmentValue>,
 ): StorageRoots {
   const pathApi = platform === 'windows' ? win32 : posix
   const bases = Switch<StoragePlatform, StorageRoots>(platform, {
@@ -75,7 +75,7 @@ export async function acquireCacheLease(identity: string): Promise<() => void | 
     activeLeases.add(path)
     releaseLease = () => releaseCacheLease(path, lock)
   })
-  let release: Promise<void> | undefined
+  let release: PendingLeaseRelease
   return () => release ??= releaseLease()
 }
 
@@ -103,6 +103,10 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
   })
 }
 
+type EnvironmentValue = string | undefined
+type PendingLeaseRelease = Promise<void> | undefined
+type StoragePathApi = typeof posix | typeof win32
+
 function resolveStorageRoots(): StorageRoots {
   const system = Platform.systemInfo().os
   const current = resolveStoragePlatform(system)
@@ -124,17 +128,17 @@ function resolveStoragePlatform(system: string): StoragePlatform | undefined {
 }
 
 function resolveOverride(
-  override: string | undefined,
+  override: EnvironmentValue,
   base: string,
   suffix: string[],
   home: string,
-  pathApi: typeof posix | typeof win32,
+  pathApi: StoragePathApi,
 ): string {
   const selected = override?.trim() || pathApi.join(base, ...suffix)
   return pathApi.isAbsolute(selected) ? pathApi.resolve(selected) : pathApi.resolve(home, selected)
 }
 
-function xdgPath(value: string | undefined, fallback: string): string {
+function xdgPath(value: EnvironmentValue, fallback: string): string {
   return value && posix.isAbsolute(value) ? posix.resolve(value) : fallback
 }
 
@@ -210,8 +214,10 @@ function blockedProbe(error: unknown, path: string, report?: (reason: string) =>
 }
 
 function isUnavailableProbe(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error
-    && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
 }
 
 async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
@@ -288,7 +294,10 @@ async function removeCacheEntries(root: string): Promise<void> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
 }
 
 const activeLeases = new Set<string>()

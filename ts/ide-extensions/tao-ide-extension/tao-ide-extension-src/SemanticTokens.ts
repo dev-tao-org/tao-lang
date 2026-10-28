@@ -10,7 +10,7 @@ export function semanticTokenRanges(tokens: readonly Token[]): Token[] {
   const active = new Set<Token>()
   const result: Token[] = []
   let cursor = 0
-  let selected: Token | undefined
+  let selected: OptionalToken
   for (const event of events) {
     if (selected && event.offset > cursor) {
       appendRange(result, cursor, event.offset, selected.kind)
@@ -27,7 +27,7 @@ export function semanticTokenRanges(tokens: readonly Token[]): Token[] {
 }
 
 function innermost(active: Set<Token>): Token | undefined {
-  let selected: Token | undefined
+  let selected: OptionalToken
   for (const token of active) {
     if (!selected || token.end - token.start < selected.end - selected.start) {
       selected = token
@@ -35,6 +35,8 @@ function innermost(active: Set<Token>): Token | undefined {
   }
   return selected
 }
+
+type OptionalToken = Token | undefined
 
 function appendRange(ranges: Token[], start: number, end: number, kind: string): void {
   const previous = ranges.at(-1)

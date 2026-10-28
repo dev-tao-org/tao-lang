@@ -3,6 +3,9 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo, Tests } from '@shared/os'
 import { createWorkspace } from '../workspace-src/Workspace'
 
+type OptionalExpoSession = Runtime.ExpoSession | undefined
+type OptionalBrowser = HeadlessBrowser.Browser | undefined
+
 Tests.test(
   'private child hook state survives owner rerenders and source refresh without leaking captures',
   async () => {
@@ -12,8 +15,8 @@ Tests.test(
       outputDirectory: Path.join(root, 'output'),
       runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
     })
-    let expo: Runtime.ExpoSession | undefined
-    let browser: HeadlessBrowser.Browser | undefined
+    let expo: OptionalExpoSession
+    let browser: OptionalBrowser
     await Try(async () => {
       await FileSystem.cp(Repo.resolvePath('Apps/Tests/Language'), root, { recursive: true })
       const path = Path.join(root, 'PrivateViews.tao')

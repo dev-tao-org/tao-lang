@@ -25,7 +25,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
   const wasRaw = input.isRaw === true
   const wasPaused = input.isPaused()
   let listening = true
-  const readKey = (_text: string | undefined, key: { sequence: string }) => receive(key.sequence)
+  const readKey = (_text: KeypressText, key: { sequence: string }) => receive(key.sequence)
   emitKeypressEvents(input)
   input.on('keypress', readKey)
   input.setRawMode(true)
@@ -119,6 +119,7 @@ export async function askSecret(prompt: string): Promise<string> {
 }
 
 type ConfirmationOptions = { defaultValue?: boolean; message: string; signal?: AbortSignal }
+type KeypressText = string | undefined
 
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
 type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }

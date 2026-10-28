@@ -46,7 +46,9 @@ export default registerCommand({
 
 type TestCommandOptions = TestExecutionOptions & { slow?: string }
 
-function resolveTestArguments(workspaceTarget: string | undefined, target: string | undefined): string[] {
+type OptionalTestTarget = string | undefined
+
+function resolveTestArguments(workspaceTarget: OptionalTestTarget, target: OptionalTestTarget): string[] {
   if (workspaceTarget) {
     return [workspaceTarget]
   }
@@ -56,7 +58,7 @@ function resolveTestArguments(workspaceTarget: string | undefined, target: strin
   return []
 }
 
-function workspaceTestTarget(target: string | undefined): string | undefined {
+function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
   if (!target) {
     return undefined
   }

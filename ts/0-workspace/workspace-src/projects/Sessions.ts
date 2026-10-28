@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout } from './Projects'
@@ -39,12 +39,14 @@ export type ProjectSession = {
 }
 
 /** SessionOptions selects a public session ID or an internal CLI/Studio session. */
-export type SessionOptions = { id?: string; kind?: 'cli' | 'studio' }
+export type SessionOptions = { id?: string; kind?: SessionKind }
 
 /** isProjectSessionId accepts public and internal project session directory names. */
 export function isProjectSessionId(id: string): boolean {
   return id === '.cli' || id === '.studio' || isUserSessionId(id)
 }
+
+type SessionKind = 'cli' | 'studio'
 
 function validateSessionId(id: string): void {
   if (!isUserSessionId(id)) {
@@ -53,10 +55,10 @@ function validateSessionId(id: string): void {
 }
 
 function isUserSessionId(id: string): boolean {
-  return /^[a-z0-9][a-z0-9_-]*$/.test(id)
+  return Regxs.SessionIdRegx.test(id)
 }
 
-function createInternalSessionId(kind: 'cli' | 'studio'): string {
+function createInternalSessionId(kind: SessionKind): string {
   return kind === 'cli' ? '.cli' : '.studio'
 }
 

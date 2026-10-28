@@ -24,6 +24,8 @@ type ForeignViewDeclaration = {
   name: string
 }
 
+type OptionalForeignViewPathResolver = ForeignViewPathResolver | undefined
+
 type ResolvedForeignView = ForeignViewDeclaration & { path: string }
 
 function collectForeignViewDeclarations(program: LinkedProgram): ForeignViewDeclaration[] {
@@ -49,7 +51,7 @@ function resolveForeignViewPaths(
 
 function resolveForeignView(
   declaration: ForeignViewDeclaration,
-  resolvePath: ForeignViewPathResolver | undefined,
+  resolvePath: OptionalForeignViewPathResolver,
 ): ResolvedForeignView {
   const path = resolvePath
     ? resolvePath(declaration.modulePath, declaration.authoredPath)

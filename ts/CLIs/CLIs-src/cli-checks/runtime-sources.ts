@@ -1,4 +1,5 @@
 import { RuntimeSourceDirectories, RuntimeSourceFiles } from '@runtime/RuntimeResources'
+import { Regxs } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 
 /** readRuntimeSources maps declared portable directories and files to their resource paths. */
@@ -35,7 +36,7 @@ async function addDirectorySources(
 function isRuntimeTestSource(sourceRoot: string, sourcePath: string): boolean {
   const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
   return relativePath.split('/').some(segment => segment.endsWith('-test'))
-    || /\.test\.[cm]?tsx?$/.test(relativePath)
+    || Regxs.TestSourceSuffix.test(relativePath)
 }
 
 function sortResources(resources: Record<string, string>): Record<string, string> {

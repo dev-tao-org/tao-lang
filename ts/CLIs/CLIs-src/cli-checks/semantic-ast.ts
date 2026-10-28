@@ -30,6 +30,7 @@ type NodeMetadata = {
 
 type GrammarMetadata = { rules: Record<string, GrammarRule> }
 type GrammarRule = GrammarTraversal.GrammarRule
+type OptionalGrammarRule = GrammarRule | undefined
 type SemanticMetadata = {
   semanticNames: Record<string, string>
   semanticFieldNames: Record<string, Record<string, string>>
@@ -59,10 +60,7 @@ function generateSemanticAst(nodes: NodeMetadata[], grammar: GrammarMetadata, me
 
 function createSemanticAstModel(nodes: NodeMetadata[], grammar: GrammarMetadata, metadata: SemanticMetadata) {
   const concreteNodes = uniqueNodes(
-    nodes.filter(node =>
-      node.named && !node.subtypes
-      && (!omittedRules.has(node.type) || ['Identifier', 'QualifiedName'].includes(node.type))
-    ),
+    nodes.filter(isConcreteSemanticNode),
     metadata,
   )
   const types = unique(['File', ...concreteNodes.map(node => semanticName(node.type, metadata))])
@@ -91,6 +89,13 @@ function createSemanticAstModel(nodes: NodeMetadata[], grammar: GrammarMetadata,
     providers: tokenUnion(grammar.rules.RequirementProvider),
     semanticKinds,
   }
+}
+
+function isConcreteSemanticNode(node: NodeMetadata): boolean {
+  if (!node.named || node.subtypes) {
+    return false
+  }
+  return !omittedRules.has(node.type) || ['Identifier', 'QualifiedName'].includes(node.type)
 }
 
 function generateDeclarations(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
@@ -197,16 +202,20 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
     const type = override ?? fieldType(field.types, metadata)
     const required = field.required || metadata.requiredFields[kind]?.includes(semanticField)
       || metadata.requiredFields[kind]?.includes(name)
-    const optional = field.multiple || required || override?.includes('undefined') || override?.startsWith('readonly ')
+    const optional = field.multiple || required || overrideOmitsOptionality(override)
       ? ''
       : ' | undefined'
     const value = field.multiple && !override ? `readonly (${type})[]` : type
     return `  ${JSON.stringify(semanticField)}: ${value}${optional}`
   })
-  if (kind === 'ImportPath' || kind === 'RenderTag' || kind === 'TextLiteral' || kind === 'ContextReference') {
+  if (['ImportPath', 'RenderTag', 'TextLiteral', 'ContextReference'].includes(kind)) {
     generatedFields.push('  value: string')
   }
   return `export type ${kind} = Semantic<${JSON.stringify(kind)}, {\n${unique(generatedFields).join(';\n')}\n}>`
+}
+
+function overrideOmitsOptionality(override?: string): boolean {
+  return override?.includes('undefined') === true || override?.startsWith('readonly ') === true
 }
 
 function fieldType(types: { type: string }[], metadata: SemanticMetadata): string {
@@ -271,7 +280,7 @@ function subtypeNames(nodes: NodeMetadata[], name: string): string[] {
   return nodes.find(node => node.type === name)?.subtypes?.map(subtype => subtype.type) ?? []
 }
 
-function tokenUnion(rule: GrammarRule | undefined): string {
+function tokenUnion(rule: OptionalGrammarRule): string {
   return unique(GrammarTraversal.collectOwnedTokens(rule)).map(token => JSON.stringify(token)).join(' | ') || 'never'
 }
 

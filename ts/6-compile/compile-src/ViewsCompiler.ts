@@ -13,7 +13,7 @@ export type ViewCompilationContext = {
   scope: string
   moduleIdentity: string
   textBindings: ReadonlySet<string>
-  foreignComponent: string | undefined
+  foreignComponent: OptionalForeignComponent
   scopeType: string
   ownerPath?: readonly string[]
   componentPrefix?: string
@@ -160,7 +160,7 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
   return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
-function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: CodegenUtil.ScopeCode): string {
+function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUtil.ScopeCode): string {
   if (!block) {
     return '[]'
   }
@@ -171,6 +171,9 @@ function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: C
   const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join('\n')
   return RuntimeEmitter.emitViewRenderBlock(scope, statements)
 }
+
+type OptionalForeignComponent = string | undefined
+type OptionalViewRenderBlock = AST.ViewRenderBlock | undefined
 
 function isViewRenderExpression(node: AST.ViewRenderBlockStatement): node is AST.ViewRenderExpression {
   return node.kind === 'ViewRenderExpression'

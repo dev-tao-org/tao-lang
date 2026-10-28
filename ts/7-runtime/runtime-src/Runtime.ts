@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from './expo/PreviewProtocol'
@@ -8,7 +8,7 @@ import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '
 
 /** prepareRuntime installs the pinned bundled runtime toolchain into the supplied cache. */
 export async function prepareRuntime(
-  options: Pick<RuntimeCreateOptions, 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'> = {},
+  options: Pick<RuntimeCreateOptions, RuntimePreparationOption> = {},
 ): Promise<string> {
   const resources = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
   return await prepareToolchain(
@@ -21,7 +21,7 @@ export async function prepareRuntime(
 
 /** preparedRuntime returns the bundled runtime toolchain only when it is already cached. */
 export async function preparedRuntime(
-  options: Pick<RuntimeCreateOptions, 'resourcesDirectory' | 'toolchainCacheDirectory'> = {},
+  options: Pick<RuntimeCreateOptions, RuntimeCacheOption> = {},
 ): Promise<string | undefined> {
   return await findPreparedToolchain(
     Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory()),
@@ -128,7 +128,7 @@ export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy> {
   return readRuntimeDependencyPolicy(defaultResourcesDirectory())
 }
 
-let pinnedDependencies: Promise<Record<string, string>> | undefined
+let pinnedDependencies: OptionalPinnedDependencies
 
 function attachMetroPreload(application: RuntimeApplication, resourcesDirectory: string): RuntimeApplication {
   const metroPreloadPath = Path.join(resourcesDirectory, 'metro/MetroPreload.cjs')
@@ -138,7 +138,7 @@ function attachMetroPreload(application: RuntimeApplication, resourcesDirectory:
 function createGeneratedExpoOptions(
   application: RuntimeApplication,
   initial: GeneratedRevision,
-  options: ExpoOptions | undefined,
+  options: OptionalExpoOptions,
 ): ExpoOptions {
   return { ...options, generated: { initial, preloadPath: application.metroPreloadPath } }
 }
@@ -160,6 +160,10 @@ type RuntimeResources = {
   devDependencies: Record<string, string>
   sourceFiles: string[]
 }
+type RuntimePreparationOption = 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'
+type RuntimeCacheOption = 'resourcesDirectory' | 'toolchainCacheDirectory'
+type OptionalPinnedDependencies = Promise<Record<string, string>> | undefined
+type OptionalExpoOptions = ExpoOptions | undefined
 type RuntimeMetadata = Omit<RuntimeResources, 'devDependencies'> & {
   version: 2
   devDependencies?: Record<string, string>
@@ -196,10 +200,23 @@ function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {
     return false
   }
   const metadata = value as Partial<RuntimeMetadata>
-  return metadata.version === 2 && isSafeIdentity(metadata.identity)
-    && isDependencies(metadata.dependencies)
-    && (metadata.devDependencies === undefined || isDependencies(metadata.devDependencies))
+  return hasValidMetadataIdentity(metadata) && hasValidDependencyMetadata(metadata)
     && isSourceFiles(metadata.sourceFiles)
+}
+
+function hasValidMetadataIdentity(metadata: Partial<RuntimeMetadata>): boolean {
+  return hasSupportedMetadataVersion(metadata) && isSafeIdentity(metadata.identity)
+}
+
+function hasSupportedMetadataVersion(metadata: Partial<RuntimeMetadata>): boolean {
+  return metadata.version === 2
+}
+
+function hasValidDependencyMetadata(metadata: Partial<RuntimeMetadata>): boolean {
+  if (!isDependencies(metadata.dependencies)) {
+    return false
+  }
+  return metadata.devDependencies === undefined || isDependencies(metadata.devDependencies)
 }
 
 function isSourceFiles(value: unknown): value is string[] {
@@ -207,18 +224,53 @@ function isSourceFiles(value: unknown): value is string[] {
 }
 
 function isSafeSourcePath(file: unknown): file is string {
-  return typeof file === 'string' && file.length > 0
-    && !file.startsWith('/') && !file.includes('\\')
-    && !file.split('/').some(segment => segment === '.' || segment === '..')
+  if (!isValidSourcePathText(file)) {
+    return false
+  }
+  return !file.split('/').some(isUnsafeSourcePathSegment)
+}
+
+function isValidSourcePathText(file: unknown): file is string {
+  return typeof file === 'string' && isNonemptyRelativeSourcePath(file)
+}
+
+function isNonemptyRelativeSourcePath(file: string): boolean {
+  return file.length > 0 && !file.startsWith('/') && !file.includes('\\')
+}
+
+function isUnsafeSourcePathSegment(segment: string): boolean {
+  return segment === '.' || segment === '..'
 }
 
 function isSafeIdentity(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9._-]+$/.test(value) && value !== '.' && value !== '..'
+  return typeof value === 'string' && isValidIdentity(value)
+}
+
+function isValidIdentity(value: string): boolean {
+  return isAllowedIdentity(value) && isNonTraversalIdentity(value)
+}
+
+function isAllowedIdentity(value: string): boolean {
+  return Regxs.RuntimeNameRegx.test(value)
+}
+
+function isNonTraversalIdentity(value: string): boolean {
+  return !isTraversalIdentity(value)
+}
+
+function isTraversalIdentity(value: string): boolean {
+  return value === '.' || value === '..'
 }
 
 function isDependencies(value: unknown): value is Record<string, string> {
-  return typeof value === 'object' && value !== null
-    && Object.values(value).every(dependency => typeof dependency === 'string')
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return Object.values(value).every(isStringDependency)
+}
+
+function isStringDependency(value: unknown): value is string {
+  return typeof value === 'string'
 }
 
 async function applicationWithToolchain(

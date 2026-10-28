@@ -41,10 +41,10 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
 }
 
 /** WritableFile writes content to the already opened file. */
-export type WritableFile = { write(contents: string | Uint8Array): Promise<void> }
+export type WritableFile = { write(contents: WritableContents): Promise<void> }
 
 /** WalkOptions selects the Tao project-boundary behavior while traversing files. */
-export type WalkOptions = { taoBoundary?: string | false }
+export type WalkOptions = { taoBoundary?: ProjectBoundary }
 
 /** walk traverses regular files below a directory without following symlinks. */
 export async function walk(root: string, options: WalkOptions = {}): Promise<string[]> {
@@ -72,10 +72,14 @@ export function skipDirectory(name: string, taoBoundary: WalkOptions['taoBoundar
 const excluded = new Set(['node_modules', '.git', '.hg', '.svn', '.jj', 'Pods', '.gradle', '.venv', '.next', '.nuxt'])
 const queues = new Map<string, Promise<void>>()
 
+type WritableContents = string | Uint8Array
+type ProjectBoundary = string | false
+type OriginalPermissionMode = number | undefined
+
 async function createReadOnlyFile(path: string, contents: string): Promise<void> {
   await Try(() => Native.writeFile(path, contents, { flag: 'wx', mode: 0o444 }), {
     async catch(error) {
-      if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'EEXIST') {
+      if (!isExistingFileError(error)) {
         Errors.Throw(error)
       }
       const info = await Native.lstat(path)
@@ -112,7 +116,7 @@ async function withOriginalPermissions<Value>(
   canonical: string,
   operation: (file: WritableFile) => Promise<Value>,
 ): Promise<Value> {
-  let mode: number | undefined
+  let mode: OriginalPermissionMode
   return await Try(async () => {
     const original = await Native.stat(canonical)
     mode = original.mode
@@ -230,5 +234,15 @@ async function missingFilePath(absolute: string): Promise<string> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
+}
+
+function isExistingFileError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'EEXIST'
 }

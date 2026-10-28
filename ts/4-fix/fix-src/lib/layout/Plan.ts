@@ -121,16 +121,21 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
       start,
       end,
       spaces: index === 0 || index === plan.tokens.length ? 0 : 1,
-      lines: Math.min(2, (original.match(/\n/g) ?? []).length),
+      lines: Math.min(2, (original.match(NewlineCharacterGlobalRegx) ?? []).length),
       indent: 0,
-      editable: /^\s*$/.test(original) && Boolean(interior || whole),
+      editable: WhitespaceOnlyRegx.test(original) && Boolean(interior || whole),
     })
   }
 }
 
+type TokenOwner = number | undefined
+
+const NewlineCharacterGlobalRegx = /\n/g
+const WhitespaceOnlyRegx = /^\s*$/
+
 function hasCompleteNeighbors(
-  left: number | undefined,
-  right: number | undefined,
+  left: TokenOwner,
+  right: TokenOwner,
   valid: readonly boolean[],
 ): boolean {
   return left !== undefined && right !== undefined && Boolean(valid[left] && valid[right])

@@ -6,6 +6,8 @@ import type { ManagedModulesInput, NormalizedManagedRequirement } from './Manage
 import { managedLockPolicyMatches, repairManagedLockPolicy } from './ManagedNpmPolicy'
 import { optionalJson, optionalText } from './ManagedNpmState'
 
+type ManagedLockContents = string | undefined
+
 /** readManagedProfileMetadata requires prepared metadata for the active install profile. */
 export async function readManagedProfileMetadata(
   profile: string,
@@ -68,8 +70,8 @@ export async function loadDurableLock(
 }
 
 function validateDurableLock(
-  lock: string | undefined,
-  hash: string | undefined,
+  lock: ManagedLockContents,
+  hash: ManagedLockContents,
   fingerprint: string,
 ): void {
   if ((lock === undefined) !== (hash === undefined) || lock !== undefined && hash !== `${Platform.hashText(lock)}\n`) {

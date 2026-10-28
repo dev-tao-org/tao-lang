@@ -6,6 +6,9 @@ import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
 import type * as ManagedTypes from './ManagedModuleTypes'
 
+type ManagedFileContents = string | undefined
+type PreviousModuleOwner = ManagedModuleOwner | undefined
+
 /** inspectGeneratedModuleFiles reports drift in generated module manifests, configs, and resolution links. */
 export async function inspectGeneratedModuleFiles(
   input: ManagedTypes.ManagedModulesInput,
@@ -95,8 +98,8 @@ export async function typescriptDefaultsDrift(
 }
 
 function createTypeScriptDefaultsDrift(
-  current: string | undefined,
-  ownership: string | undefined,
+  current: ManagedFileContents,
+  ownership: ManagedFileContents,
   defaults: string,
   path: string,
   marker: string,
@@ -234,7 +237,7 @@ function createModuleManifest(dependencies: Record<string, string>): string {
 }
 
 function cannotReplaceModuleFile(
-  previousOwner: ManagedModuleOwner | undefined,
+  previousOwner: PreviousModuleOwner,
   repair: boolean,
   profile: string,
 ): boolean {

@@ -89,11 +89,12 @@ function requirementFromDeclaration(
     Errors.ThrowUserInput(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)
   }
   const version = provider === 'github' ? declaration.version! : declaration.version ?? getDefaultVersion(provider)
+  const aliasFields = declaration.alias ? { alias: declaration.alias.value } : {}
   return {
     provider,
     identifier: declaration.identifier,
     version,
-    ...(declaration.alias ? { alias: declaration.alias.value } : {}),
+    ...aliasFields,
   }
 }
 

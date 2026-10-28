@@ -5,6 +5,8 @@ import type { DependencyRequirement, DependencyStoreOptions } from '../workspace
 import { prepareProject } from '../workspace-src/ProjectPreparation'
 import { initializeProject } from '../workspace-src/projects/Projects'
 
+const ConflictingDependencyCommitErrorRegx = /conflicting commits/
+
 Tests.test('automatic preparation rejects reached aliases that resolve one repository to different commits', async () => {
   const root = Artifacts.resolvePath('tmp', `project-preparation-source-conflict-${Platform.randomUUID()}`)
   const entry = Path.join(root, 'Main.tao')
@@ -35,7 +37,7 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
         + 'requires github:example/shared version v2 as second\n'
         + 'use Widget from first@ui\nuse Widget from second@ui\napp Main { root Widget }\n',
     )
-    await Tests.rejects(prepareProject(entry, { dependencyOptions: options }), /conflicting commits/)
+    await Tests.rejects(prepareProject(entry, { dependencyOptions: options }), ConflictingDependencyCommitErrorRegx)
     const lock = await readDependencyLock(resolveDependencyLockPath(root))
     Tests.expect(lock?.sources['github:example/shared']?.commit).toBe('a'.repeat(40))
     Tests.expect(lock?.roots).toEqual({ first: 'github:example/shared@v1' })

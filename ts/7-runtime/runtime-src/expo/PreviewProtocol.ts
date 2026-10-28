@@ -10,7 +10,9 @@ export type PublicationOutcome = {
   sessionId: string
   revision: string
   sequence: number
-  status: 'published' | 'noop' | 'superseded' | 'error' | 'poisoned'
+  status: PublicationStatus
   publishedRevision: string
   message?: string
 }
+
+type PublicationStatus = 'published' | 'noop' | 'superseded' | 'error' | 'poisoned'

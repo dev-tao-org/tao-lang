@@ -4,6 +4,10 @@ import { auditInstalledGraph, collectAllRequirements } from '../sidecars/Managed
 import type { ManagedModulesInput, NormalizedManagedRequirement } from '../sidecars/ManagedModuleTypes'
 import { calculateManagedGraphFingerprint, normalizeManagedRequirements } from '../sidecars/ManagedNpmIdentity'
 
+const ResolvedPackageNameMismatchErrorRegx = /resolved package different-name/
+const DeclaredPeerRangeMismatchErrorRegx = /does not satisfy \^4/
+const IncompatibleReactSingletonErrorRegx = /incompatible singleton react/
+
 Tests.test('normalization retains named requirement fields without changing the durable graph identity', () => {
   const input = buildManagedInput('/project')
   const requirement = { name: 'Alpha', version: '1.0.0', origin: 'A.tao\nDetails', directory: '/ignored' }
@@ -54,11 +58,11 @@ Tests.test('checks installed npm aliases against target names, ranges, and singl
     await writePackage(profile, 'string-width-cjs', 'different-name', '4.1.0')
     await Tests.rejects(
       auditInstalledGraph(profile, input, requirements),
-      /resolved package different-name/,
+      ResolvedPackageNameMismatchErrorRegx,
     )
 
     await writePackage(profile, 'string-width-cjs', 'string-width', '3.0.0')
-    await Tests.rejects(auditInstalledGraph(profile, input, requirements), /does not satisfy \^4/)
+    await Tests.rejects(auditInstalledGraph(profile, input, requirements), DeclaredPeerRangeMismatchErrorRegx)
 
     await writePackage(profile, 'holder', 'holder', '1.0.0', { 'string-width-cjs': 'npm:string-width' })
     await auditInstalledGraph(profile, input, requirements)
@@ -73,7 +77,7 @@ Tests.test('checks installed npm aliases against target names, ranges, and singl
     await writePackage(profile, 'react-cjs', 'react', '18.0.0')
     await Tests.rejects(
       auditInstalledGraph(profile, { ...input, runtimePins: { react: '19.1.0' } }, requirements),
-      /incompatible singleton react/,
+      IncompatibleReactSingletonErrorRegx,
     )
   }, { finally: () => FileSystem.rm(profile, { recursive: true, force: true }) })
 })

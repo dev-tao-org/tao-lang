@@ -63,11 +63,12 @@ type AdapterState = {
   metro?: MetroServer
 }
 type ExternalChange = {
-  event: 'touch' | 'delete'
+  event: ExternalChangeEvent
   root: string
   relativePath: string
   metadata?: { type: 'f'; size: number; modifiedTime: number }
 }
+type ExternalChangeEvent = 'touch' | 'delete'
 type ExternalFileMap = { __expo: boolean; applyExternalBatch(changes: ExternalChange[]): Promise<{ changed: number }> }
 
 async function commitRevision(state: AdapterState, revision: GeneratedRevision): Promise<RevisionResult> {
@@ -147,5 +148,8 @@ function createChanges(state: AdapterState, root: string, paths: string[]): Exte
 }
 
 function requiresRestart(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'requiresRestart' in error && error.requiresRestart === true
+  if (typeof error !== 'object' || error === null || !('requiresRestart' in error)) {
+    return false
+  }
+  return error.requiresRestart === true
 }

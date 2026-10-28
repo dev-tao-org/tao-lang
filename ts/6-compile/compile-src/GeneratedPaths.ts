@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral } from './codegen-util'
@@ -10,7 +10,7 @@ export function createGeneratedPaths(program: LinkedProgram): ReadonlyMap<string
   )
   const outputs = new Set<string>()
   for (const path of paths.values()) {
-    const stem = path.replace(/\.ts$/, '')
+    const stem = path.replace(TypeScriptFileExtensionRegx, '')
     if (outputs.has(stem)) {
       Errors.ThrowUserInput(`Generated source paths collide: ${path}.`)
     }
@@ -22,13 +22,16 @@ export function createGeneratedPaths(program: LinkedProgram): ReadonlyMap<string
 
 /** compileModuleImport emits a portable import between two generated source units. */
 export function compileModuleImport(from: string, to: string): string {
-  const relative = Path.relative(Path.dirname(from), to).replaceAll('\\', '/').replace(/\.tsx?$/, '')
+  const relative = Path.relative(Path.dirname(from), to).replaceAll('\\', '/').replace(
+    Regxs.TypeScriptSourceExtensionRegx,
+    '',
+  )
   return emitStringLiteral(relative.startsWith('.') ? relative : `./${relative}`)
 }
 
 /** resolveViewsPath names the component-only category of an input file. */
 export function resolveViewsPath(main: string): string {
-  return main.replace(/\.ts$/, '.views.tsx')
+  return main.replace(TypeScriptFileExtensionRegx, '.views.tsx')
 }
 
 function resolveGeneratedModulePath(entry: string, source: string): string {
@@ -38,19 +41,23 @@ function resolveGeneratedModulePath(entry: string, source: string): string {
   const normalized = source.replaceAll('\\', '/')
   const standardLibrary = normalized.split('/stdlib-src/')[1]
   if (standardLibrary !== undefined) {
-    return `tao/${escapeCategoryStem(standardLibrary.replaceAll('@', '').replace(/\.tao$/, ''), source)}.ts`
+    return `tao/${
+      escapeCategoryStem(standardLibrary.replaceAll('@', '').replace(Regxs.TaoSourceExtensionRegx, ''), source)
+    }.ts`
   }
   const relative = Path.relative(Path.dirname(entry), source).replaceAll('\\', '/')
   if (!relative.startsWith('../') && !Path.isAbsolute(relative)) {
-    return `source/${escapeCategoryStem(relative.replace(/\.tao$/, ''), source)}.ts`
+    return `source/${escapeCategoryStem(relative.replace(Regxs.TaoSourceExtensionRegx, ''), source)}.ts`
   }
   const identity = Platform.hashText(source).slice(0, 12)
-  const name = Path.basename(source).replace(/\.tao$/, '')
+  const name = Path.basename(source).replace(Regxs.TaoSourceExtensionRegx, '')
   return `modules/${identity}/${escapeCategoryStem(name, source)}.ts`
 }
 
 function escapeCategoryStem(stem: string, source: string): string {
-  return /\.(?:views|design|data|previews)$/.test(stem)
+  return Regxs.GeneratedModuleExtensionRegx.test(stem)
     ? `${stem}.source-${Platform.hashText(source).slice(0, 8)}`
     : stem
 }
+
+const TypeScriptFileExtensionRegx = /\.ts$/

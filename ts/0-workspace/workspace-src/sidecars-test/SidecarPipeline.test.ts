@@ -5,6 +5,12 @@ import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
 import { createProgramFor, executeTypeScript, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
 
+const ForeignViewSidecarImportErrorRegx = /Cannot resolve foreign view sidecar import/
+const SidecarSnapshotRestartRequiredRegx = /Restart preview to reclaim sidecar snapshots/
+const EscapingModuleBoundaryErrorRegx = /escapes its module boundary/i
+const CrossingModuleBoundaryErrorRegx = /crosses its module boundary/i
+const ForeignViewPropsContractErrorRegx = /does not satisfy its declared props contract/i
+
 Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks, and preserve prior revisions', async () =>
   await withFixture(async fixture => {
     let checks = 0
@@ -67,7 +73,7 @@ Tests.test('failed sidecar resolution reports missing import paths for recovery 
           watchedFiles.push(...files)
         },
       }),
-      /Cannot resolve foreign view sidecar import/,
+      ForeignViewSidecarImportErrorRegx,
     )
     Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'logo.png'))
   }))
@@ -97,7 +103,7 @@ Tests.test('blocks a new snapshot when the active session reaches its snapshot b
     Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(snapshot)
     await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "next"\n')
 
-    await Tests.rejects(prepareSidecarPipeline(options), /Restart preview to reclaim sidecar snapshots/)
+    await Tests.rejects(prepareSidecarPipeline(options), SidecarSnapshotRestartRequiredRegx)
     Tests.expect(await FileSystem.readFile(snapshot, 'utf8')).toContain("from './format'")
   }))
 
@@ -113,7 +119,7 @@ Tests.test('foreign sidecars reject symlink escapes before invoking the checker'
         ...fixture,
         executor: recordingExecutor(() => checks++),
       }),
-      /escapes its module boundary/i,
+      EscapingModuleBoundaryErrorRegx,
     )
     Tests.expect(checks).toBe(0)
   }))
@@ -137,7 +143,7 @@ Tests.test('foreign sidecar imports cannot cross into another named module', asy
         ...fixture,
         executor: recordingExecutor(() => checks++),
       }),
-      /crosses its module boundary/i,
+      CrossingModuleBoundaryErrorRegx,
     )
     Tests.expect(checks).toBe(0)
   }))
@@ -202,7 +208,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
     await Tests.rejects(
       prepareSidecarPipeline({ ...fixture, executor: executeTypeScript }),
-      /crosses its module boundary/i,
+      CrossingModuleBoundaryErrorRegx,
     )
   }))
 
@@ -226,7 +232,7 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
           watchedFiles.push(...files)
         },
       }),
-      /does not satisfy its declared props contract/i,
+      ForeignViewPropsContractErrorRegx,
     )
     Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'FormattedDate.tsx'))
 
@@ -236,7 +242,7 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
     )
     await Tests.rejects(
       prepareSidecarPipeline({ ...fixture, executor }),
-      /does not satisfy its declared props contract/i,
+      ForeignViewPropsContractErrorRegx,
     )
   }))
 

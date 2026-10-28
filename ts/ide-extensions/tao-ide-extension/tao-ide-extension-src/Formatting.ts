@@ -4,7 +4,7 @@ import type * as vscode from 'vscode'
 /** formattingProvider adapts snapshot edits and lazy preparation to VS Code's format-on-save contract. */
 export function formattingProvider(
   editor: typeof vscode,
-  propose: (document: vscode.TextDocument, indent: number) => readonly SourceEdit[] | Promise<readonly SourceEdit[]>,
+  propose: (document: vscode.TextDocument, indent: number) => FormattingProposal,
 ): vscode.DocumentFormattingEditProvider {
   return {
     async provideDocumentFormattingEdits(document, options, cancellation) {
@@ -22,3 +22,5 @@ export function formattingProvider(
     },
   }
 }
+
+type FormattingProposal = readonly SourceEdit[] | Promise<readonly SourceEdit[]>

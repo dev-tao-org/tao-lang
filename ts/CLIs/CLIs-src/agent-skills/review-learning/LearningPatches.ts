@@ -97,13 +97,13 @@ async function assertFreshScan(root: string, scan: Scan, proposal: Proposal): Pr
 
 function hasChangedSnapshot(
   scan: Scan,
-  current: Pick<Scan, 'files' | 'inputs' | 'configs'>,
+  current: Pick<Scan, ScanContentKeys>,
   files: Record<string, string>,
   inputs: Record<string, string>,
 ): boolean {
-  return scan.queryVersion !== 1 || JSON.stringify(current.files) !== JSON.stringify(files)
+  const changedSources = JSON.stringify(current.files) !== JSON.stringify(files)
     || JSON.stringify(current.inputs) !== JSON.stringify(inputs)
-    || JSON.stringify(current.configs) !== JSON.stringify(scan.configs)
+  return scan.queryVersion !== 1 || changedSources || JSON.stringify(current.configs) !== JSON.stringify(scan.configs)
 }
 
 function buildOutput(proposal: Proposal, file: string, original: string): string {
@@ -130,8 +130,10 @@ function hasInvalidEdit(
   previousStart: number,
   previousEnd: number,
 ): boolean {
-  return edit.start === previousStart || edit.start <= previousEnd || edit.end > original.length
-    || original.slice(edit.start, edit.end) !== edit.expected
+  const overlapsPriorEdit = edit.start === previousStart || edit.start <= previousEnd
+  const exceedsOriginal = edit.end > original.length
+  const expectedTextChanged = original.slice(edit.start, edit.end) !== edit.expected
+  return overlapsPriorEdit || exceedsOriginal || expectedTextChanged
 }
 
 async function retainOutputs(root: string, proposal: Proposal): Promise<void> {
@@ -163,3 +165,5 @@ async function markAcceptedPending(root: string, files: string[]): Promise<void>
   session.recheck = [...new Set([...session.recheck, ...affected])]
   await saveSession(session)
 }
+
+type ScanContentKeys = 'files' | 'inputs' | 'configs'

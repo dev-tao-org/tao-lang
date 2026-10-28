@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningState, Scan } from './LearningTypes'
 
@@ -56,7 +56,7 @@ export function safeSourcePath(root: string, input: string, allowRoot = false): 
 export async function snapshotScope(
   root: string,
   correction: Correction,
-): Promise<Pick<Scan, 'files' | 'inputs' | 'configs'>> {
+): Promise<Pick<Scan, ScanContentKeys>> {
   const candidates = await collectSources(root)
   const files: Record<string, string> = {}
   const inputs: Record<string, string> = {}
@@ -78,7 +78,7 @@ export async function snapshotScope(
 
 /** isInScope matches literal files or descendant paths rather than shell patterns. */
 export function isInScope(file: string, scopes: string[]): boolean {
-  return scopes.some(scope => scope === '.' || scope === '' || file === scope || file.startsWith(scope + '/'))
+  return scopes.some(scope => isRootScope(scope) || file === scope || file.startsWith(scope + '/'))
 }
 
 /** ensureProjectMetadataDirectory refuses links before creating owned metadata directories. */
@@ -100,19 +100,27 @@ async function hashFile(root: string, file: string): Promise<string> {
 }
 
 function isUnsafeSourcePath(relative: string, allowRoot: boolean): boolean {
-  return (!relative && !allowRoot) || relative === '..' || relative.startsWith('../') || Path.isAbsolute(relative)
-    || isExcluded(relative)
+  const isUnapprovedRoot = !relative && !allowRoot
+  const escapesRepository = relative === '..' || relative.startsWith('../')
+  const isOutsideRepository = escapesRepository || Path.isAbsolute(relative)
+  return isUnapprovedRoot || isOutsideRepository || isExcluded(relative)
 }
+
+function isRootScope(scope: string): boolean {
+  return scope === '.' || scope === ''
+}
+
+type ScanContentKeys = 'files' | 'inputs' | 'configs'
 
 async function collectSources(root: string): Promise<string[]> {
   const result: string[] = []
-  await walkFiles(root, '', result, file => /\.[cm]?tsx?$/.test(file))
+  await walkFiles(root, '', result, file => Regxs.TypeScriptSourceFileRegx.test(file))
   return result.sort()
 }
 
 async function collectConfigs(root: string): Promise<string[]> {
   const result: string[] = []
-  await walkFiles(root, '', result, file => /(^|\/)(tsconfig[^/]*\.json|package\.json|bun\.lock)$/.test(file))
+  await walkFiles(root, '', result, file => Regxs.ReviewConfigurationFileNameRegx.test(file))
   return result.sort()
 }
 
@@ -131,7 +139,7 @@ async function walkFiles(
       await walkFiles(root, file, output, matches)
     } else if (entry.isFile() && matches(file)) {
       const text = await FileSystem.readFile(Path.join(root, file), 'utf8')
-      if (!/@third-party|@generated|DO NOT EDIT/.test(text.slice(0, 1000))) {
+      if (!Regxs.ReviewGeneratedMarkerRegx.test(text.slice(0, 1000))) {
         output.push(file)
       }
     } else {

@@ -15,7 +15,7 @@ export class ExportedApiChecker {
   ) {}
 
   /** checkScope validates API docs within one source or namespace scope. */
-  checkScope(scope: TypeScript.SourceFile | TypeScript.ModuleBlock, implicitExports = false): void {
+  checkScope(scope: ApiScope, implicitExports = false): void {
     const groups = new Map<string, SourceConformanceApi.ApiGroup>()
     const anonymous: SourceConformanceApi.ApiGroup[] = []
     this.collectScopeDeclarations(scope, implicitExports, groups, anonymous)
@@ -24,7 +24,7 @@ export class ExportedApiChecker {
   }
 
   private collectScopeDeclarations(
-    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
+    scope: ApiScope,
     implicitExports: boolean,
     groups: Map<string, SourceConformanceApi.ApiGroup>,
     anonymous: SourceConformanceApi.ApiGroup[],
@@ -66,7 +66,7 @@ export class ExportedApiChecker {
   }
 
   private addApiGroup(
-    name: string | undefined,
+    name: OptionalApiName,
     nodes: TypeScript.Node[],
     exported: boolean,
     groups: Map<string, SourceConformanceApi.ApiGroup>,
@@ -85,7 +85,7 @@ export class ExportedApiChecker {
   }
 
   private collectScopeExports(
-    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
+    scope: ApiScope,
     groups: Map<string, SourceConformanceApi.ApiGroup>,
     anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
@@ -208,3 +208,6 @@ export class ExportedApiChecker {
     return ranges
   }
 }
+
+type ApiScope = TypeScript.SourceFile | TypeScript.ModuleBlock
+type OptionalApiName = string | undefined

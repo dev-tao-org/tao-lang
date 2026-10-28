@@ -60,8 +60,8 @@ function loadPrototype(directory: string, name: string): MetroPrototype {
 function assertTimerPatches(directory: string, hmr: MetroPrototype): void {
   const registration = requireMethod(hmr, '_registerEntryPoint').toString()
   const requireSource = MetroPlatform.readExpoSource('build/metro-require/require.js', directory)
-  const hmrPatched = /},\s*0,\s*\)/.test(registration)
-  const refreshPatched = /Refresh\.performReactRefresh\(\);\s*}, 0\)/.test(requireSource)
+  const hmrPatched = HmrTimerPatchRegx.test(registration)
+  const refreshPatched = RefreshTimerPatchRegx.test(requireSource)
   if (!hmrPatched || !refreshPatched) {
     Errors.ThrowHostEnvironment('Metro requires the pinned asynchronous HMR and Refresh timer patches.')
   }
@@ -102,8 +102,19 @@ function wrapHttpRequests(prototype: MetroPrototype, options: MetroHookOptions):
 function consumesSource(url: string): boolean {
   const path = url.split('?')[0]
   const decodedPath = path.split('/').map(segment => decodeURIComponent(segment)).join('/')
-  return /\.(bundle|map|assets)$/.test(path) || path === '/symbolicate'
-    || decodedPath.startsWith('/[metro-project]/') || decodedPath.startsWith('/[metro-watchFolders]/')
+  return isMetroAssetPath(path) || path === '/symbolicate' || isMetroWorkspacePath(decodedPath)
+}
+
+function isMetroAssetPath(path: string): boolean {
+  return MetroAssetExtensionRegx.test(path)
+}
+
+const HmrTimerPatchRegx = /},\s*0,\s*\)/
+const RefreshTimerPatchRegx = /Refresh\.performReactRefresh\(\);\s*}, 0\)/
+const MetroAssetExtensionRegx = /\.(bundle|map|assets)$/
+
+function isMetroWorkspacePath(path: string): boolean {
+  return path.startsWith('/[metro-project]/') || path.startsWith('/[metro-watchFolders]/')
 }
 
 function wrapRegistration(prototype: MetroPrototype, options: MetroHookOptions): void {

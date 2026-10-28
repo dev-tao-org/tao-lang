@@ -1,6 +1,7 @@
 import type { TimingSample } from '@shared'
 import type { Publication } from '@workspace/Workspace'
 import { PreviewReceipts } from './PreviewReceipts'
+import type { PreviewSignalType } from './PreviewSignal'
 
 /** ReloadTiming measures one source update through both previews' refresh milestones. */
 export type ReloadTiming = {
@@ -21,7 +22,7 @@ export class ReloadTimings {
   private revision = ''
   private startedAtMs = 0
   private reported = false
-  private publication: Publication | undefined
+  private publication: OptionalPublication
   private readonly receipts = new PreviewReceipts<Signal>()
 
   constructor(
@@ -88,25 +89,38 @@ export class ReloadTimings {
 }
 
 type Signal = {
-  type: 'tao.update-done' | 'tao.preview-applied'
+  type: PreviewSignalType
   sessionId: string
-  frameId: 'left' | 'right'
+  frameId: PreviewFrameSide
   bootId: string
   revision: string
   timestampMs: number
 }
+type PreviewFrameSide = 'left' | 'right'
+type OptionalPublication = Publication | undefined
 
 function isSignal(value: unknown): value is Signal {
   if (typeof value !== 'object' || value === null) {
     return false
   }
   const signal = value as Partial<Signal>
-  return hasIdentity(signal)
-    && (signal.type === 'tao.update-done' || signal.type === 'tao.preview-applied')
-    && typeof signal.timestampMs === 'number' && Number.isFinite(signal.timestampMs)
+  if (!hasIdentity(signal) || !hasSignalMilestone(signal)) {
+    return false
+  }
+  return typeof signal.timestampMs === 'number' && Number.isFinite(signal.timestampMs)
+}
+
+function hasSignalMilestone(signal: Partial<Signal>): boolean {
+  return signal.type === 'tao.update-done' || signal.type === 'tao.preview-applied'
 }
 
 function hasIdentity(signal: Partial<Signal>): boolean {
-  return typeof signal.sessionId === 'string' && typeof signal.revision === 'string'
-    && typeof signal.bootId === 'string' && (signal.frameId === 'left' || signal.frameId === 'right')
+  if (typeof signal.sessionId !== 'string' || typeof signal.revision !== 'string') {
+    return false
+  }
+  return typeof signal.bootId === 'string' && isPreviewFrameSide(signal.frameId)
+}
+
+function isPreviewFrameSide(frameId?: string): boolean {
+  return frameId === 'left' || frameId === 'right'
 }

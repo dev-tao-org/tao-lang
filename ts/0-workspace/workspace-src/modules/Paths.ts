@@ -13,7 +13,7 @@ export function isExcludedPath(path: string, boundary: string): boolean {
 
 /** isExcludedName filters directories that are not authored Tao source. */
 export function isExcludedName(name: string): boolean {
-  return name.startsWith('.') || name.startsWith('_gen') || name === 'output' || name === 'dist' || name === 'build'
+  return name.startsWith('.') || name.startsWith('_gen') || ExcludedBuildDirectoryNames.has(name)
 }
 
 /** findNearestProjectRoot finds the closest ancestor containing a .tao directory. */
@@ -92,7 +92,7 @@ export function getImportRelation(
   importer: string,
   target: string,
   projectRoot: string,
-): 'same-file' | 'same-directory' | 'same-package' | 'same-project' {
+): ImportRelation {
   if (Path.resolve(importer) === Path.resolve(target)) {
     return 'same-file'
   }
@@ -104,8 +104,12 @@ export function getImportRelation(
   if (importerPackage !== targetPackage) {
     return 'same-project'
   }
+
   return 'same-directory'
 }
+
+type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project'
+const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])
 
 function canonicalPath(path: string): string {
   const absolute = Path.resolve(path)

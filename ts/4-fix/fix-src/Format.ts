@@ -14,7 +14,7 @@ export type FormatInput = { source: string; tree: Tree }
 
 /** FormatResult returns formatted source and edits, leaving invalid syntax untouched. */
 export type FormatResult = {
-  status: 'formatted' | 'partial' | 'invalid'
+  status: FormatStatus
   text: string
   edits: readonly SourceEdit[]
   skipped: readonly SourceRange[]
@@ -28,6 +28,8 @@ export const format = Timings.createTopLevelTimer(function(
 ): FormatResult {
   return timings.run(formatSource, input, options)
 })
+
+type FormatStatus = 'formatted' | 'partial' | 'invalid'
 
 const formatSource = Timings.measure('formatter.format', function(
   timings,

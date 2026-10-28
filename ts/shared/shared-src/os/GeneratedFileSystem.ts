@@ -20,8 +20,7 @@ export function installGeneratedFileSystem(
   const normalize = (value: unknown) => normalizePath(value)
   const owns = (value: unknown) => {
     const path = normalize(value)
-    return path !== undefined && (path === root || path.startsWith(root + Node.sep))
-      && path !== runtime && !path.startsWith(runtime + Node.sep)
+    return isGeneratedSourcePath(path, root, runtime)
   }
   const restore = installGeneratedReaders({
     fs: disk,
@@ -78,6 +77,19 @@ export type GeneratedReaderOptions = {
   root: string
 }
 
+function isGeneratedSourcePath(path: OptionalGeneratedPath, root: string, runtime: string): boolean {
+  if (path === undefined || !isInsideRoot(path, root)) {
+    return false
+  }
+  return path !== runtime && !path.startsWith(runtime + Node.sep)
+}
+
+type OptionalGeneratedPath = string | undefined
+
+function isInsideRoot(path: string, root: string): boolean {
+  return path === root || path.startsWith(root + Node.sep)
+}
+
 function createSnapshot(root: string, runtime: string, files: Readonly<Record<string, string>>): GeneratedSnapshot {
   const candidate = createFsFromVolume(new Volume())
   candidate.mkdirSync(root, { recursive: true })
@@ -97,8 +109,10 @@ function createSnapshot(root: string, runtime: string, files: Readonly<Record<st
 
 function isInvalidPath(path: string): boolean {
   const segments = path.split('/')
-  return Node.isAbsolute(path) || path.includes('\\') || path.includes(NullCharacter) || segments[0] === '_gen_runtime'
-    || segments.some(segment => !segment || segment === '.' || segment === '..')
+  if (Node.isAbsolute(path) || path.includes('\\') || path.includes(NullCharacter)) {
+    return true
+  }
+  return segments[0] === '_gen_runtime' || segments.some(segment => !segment || segment === '.' || segment === '..')
 }
 
 function normalizePath(value: unknown): string | undefined {

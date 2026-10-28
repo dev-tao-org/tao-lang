@@ -5,7 +5,7 @@ import { deriveNamespaceFromPath } from './Modules'
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
   severity: 'warning'
-  code: 'unused-import' | 'unused-declaration'
+  code: UsageWarningCode
   message: string
   start: number
   end: number
@@ -16,7 +16,9 @@ export const unusedWarnings = Timings.createTopLevelTimer(function(timings, docu
   return timings.run(analyzeUsage, document)
 })
 
-type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report: boolean; used: boolean }
+type UsageWarningCode = 'unused-import' | 'unused-declaration'
+type BindingKind = 'local' | 'import' | 'namespace'
+type Binding = { name: AST.Name; kind: BindingKind; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
 const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Document): UsageWarning[] {

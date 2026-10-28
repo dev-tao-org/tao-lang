@@ -39,7 +39,7 @@ export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision
 }
 
 /** RevisionResult identifies whether memory remains committed after an ordinary build error. */
-export type RevisionResult = Pick<PublicationOutcome, 'status' | 'message'> & { committed?: boolean }
+export type RevisionResult = Pick<PublicationOutcome, RevisionOutcomeField> & { committed?: boolean }
 
 /** RevisionOwner admits complete revisions while bounding pending work to the latest input. */
 export type RevisionOwner = {
@@ -47,6 +47,7 @@ export type RevisionOwner = {
   publish(revision: GeneratedRevision): Promise<PublicationOutcome>
 }
 
+type RevisionOutcomeField = 'status' | 'message'
 type PendingRevision = { revision: GeneratedRevision; resolve(outcome: PublicationOutcome): void }
 type RevisionState = {
   sessionId: string
@@ -64,8 +65,20 @@ function hasValidRevisionIdentity(revision: GeneratedRevision): boolean {
 
 function isSupportedGeneratedFile(path: string, text: string): boolean {
   const segments = path.split('/')
+  return isSafeGeneratedPath(path, segments) && isSupportedGeneratedRoot(segments)
+    && typeof text === 'string'
+}
+
+function isSafeGeneratedPath(path: string, segments: readonly string[]): boolean {
+  return isSafeGeneratedPathText(path) && !segments.some(isUnsupportedSegment)
+}
+
+function isSafeGeneratedPathText(path: string): boolean {
   return path.length > 0 && !path.includes('\\') && !path.includes(NullCharacter)
-    && !segments.some(isUnsupportedSegment) && segments[0] !== '_gen_runtime' && typeof text === 'string'
+}
+
+function isSupportedGeneratedRoot(segments: readonly string[]): boolean {
+  return segments[0] !== '_gen_runtime'
 }
 
 function isUnsupportedSegment(segment: string): boolean {

@@ -49,18 +49,26 @@ export namespace Try {
 
 type AlwaysPromise<T> = [T] extends [never] ? false : [T] extends [PromiseLike<unknown>] ? true : false
 type MayBePromise<T> = [Extract<T, PromiseLike<unknown>>] extends [never] ? false : true
-type TryResult<Value, Recovery, Final> = AlwaysPromise<Final> extends true ? Promise<Awaited<Value> | Awaited<Recovery>>
-  : AlwaysPromise<Value> extends true
-    ? Exclude<Recovery, PromiseLike<unknown>> | Promise<Awaited<Value> | Awaited<Recovery>>
-  : MayBePromise<Value | Recovery | Final> extends true
-    ? Exclude<Value | Recovery, PromiseLike<unknown>> | Promise<Awaited<Value> | Awaited<Recovery>>
-  : Value | Recovery
+type TryValue<Value, Recovery> = Value | Recovery
+type SettledTryValue<Value, Recovery> = Awaited<Value> | Awaited<Recovery>
+type TryStages<Value, Recovery, Final> = Value | Recovery | Final
+type AsyncActionResult<Value, Recovery> =
+  | Exclude<Recovery, PromiseLike<unknown>>
+  | Promise<SettledTryValue<Value, Recovery>>
+type MixedTryResult<Value, Recovery> =
+  | Exclude<TryValue<Value, Recovery>, PromiseLike<unknown>>
+  | Promise<SettledTryValue<Value, Recovery>>
+type TryResult<Value, Recovery, Final> = AlwaysPromise<Final> extends true ? Promise<SettledTryValue<Value, Recovery>>
+  : AlwaysPromise<Value> extends true ? AsyncActionResult<Value, Recovery>
+  : MayBePromise<TryStages<Value, Recovery, Final>> extends true ? MixedTryResult<Value, Recovery>
+  : TryValue<Value, Recovery>
 type Outcome = { ok: true; value: unknown } | { ok: false; thrown: unknown; error: Errors.TaoError }
 type PendingOutcome = Outcome | Promise<Outcome>
+type OptionalTaoError = Errors.TaoError | undefined
 
 type TryOptions<Recovery = never, Final = void> = {
   catch?: (thrown: unknown) => Recovery
-  finally?: (thrown: unknown, error: Errors.TaoError | undefined) => Final
+  finally?: (thrown: unknown, error: OptionalTaoError) => Final
 }
 
 // Native try/catch is the primitive behind Try; callers use the normalized boundary above.
@@ -81,8 +89,11 @@ function failure(thrown: unknown): Outcome {
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return value !== null && (typeof value === 'object' || typeof value === 'function')
-    && typeof (value as PromiseLike<unknown>).then === 'function'
+  if (value === null) {
+    return false
+  }
+  const canHavePromiseMethods = typeof value === 'object' || typeof value === 'function'
+  return canHavePromiseMethods && typeof (value as PromiseLike<unknown>).then === 'function'
 }
 
 function continueWith(result: PendingOutcome, next: (outcome: Outcome) => PendingOutcome): PendingOutcome {

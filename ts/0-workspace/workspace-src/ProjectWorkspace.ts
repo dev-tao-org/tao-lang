@@ -41,7 +41,8 @@ export async function openProjectWorkspace(
   })
 }
 
-type ProjectWorkspaceOptions = Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
+type ProjectWorkspaceOption = 'directory' | 'outputDirectory' | 'project'
+type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & {
   pipelineServices?: ProjectPipelineServices
 }
 
@@ -49,12 +50,15 @@ type OpenProjectWorkspaceOptions = ProjectWorkspaceOptions & SessionOptions & {
   acquireLease?: typeof Storage.acquireCacheLease
 }
 
+type WorkspaceReleaseResult = void | Promise<void>
+type WorkspaceRelease = () => WorkspaceReleaseResult
+
 function managedWorkspace(
   root: string,
   output: string,
   dependencies: ProjectDependencies,
   options: ProjectWorkspaceOptions,
-  release: () => void | Promise<void>,
+  release: WorkspaceRelease,
 ) {
   const workspaceOptions = createManagedWorkspaceOptions(root, output, dependencies, options)
   const workspace = createWorkspace(workspaceOptions)
@@ -98,7 +102,7 @@ function createProjectRuntimeOptions(root: string, options: ProjectWorkspaceOpti
 function mergeProjectPreparation(
   dependencies: ProjectDependencies,
   managed: ProjectPipelineResult,
-  custom: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+  custom?: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>>,
 ) {
   return {
     ...managed,

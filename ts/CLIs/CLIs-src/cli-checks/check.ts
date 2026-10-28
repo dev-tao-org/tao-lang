@@ -144,7 +144,7 @@ export async function workspaceTests(
 }
 
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
-export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
+export async function workspaceFormat(mode: FormatMode): Promise<void> {
   await assertNewWorkspaceTree()
   await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
     cwd: Repo.getWorkspaceRoot(),
@@ -153,6 +153,8 @@ export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
     cwd: Repo.getWorkspaceRoot(),
   })
 }
+
+type FormatMode = 'fmt' | 'check'
 
 function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   if (args.length === 0) {

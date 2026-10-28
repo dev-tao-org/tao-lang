@@ -15,6 +15,8 @@ type SwitchKey = string | number | symbol
 type SwitchValueKey = SwitchKey | undefined
 type TypeItem = { $type: SwitchKey }
 type KindItem = { kind: SwitchKey }
+type OptionalTypeItem = TypeItem | undefined
+type OptionalKindItem = KindItem | undefined
 
 type TypeHandlers<ItemT extends TypeItem, ResultT> = {
   [KeyT in ItemT['$type']]: (item: Extract<ItemT, { $type: KeyT }>) => ResultT
@@ -69,7 +71,7 @@ function SwitchKind<ItemT extends KindItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-function SwitchTypeMaybe<ItemT extends TypeItem | undefined, ResultT>(
+function SwitchTypeMaybe<ItemT extends OptionalTypeItem, ResultT>(
   item: ItemT,
   handlers: TypeMaybeHandlers<ItemT, ResultT>,
 ): ResultT {
@@ -82,11 +84,11 @@ function SwitchTypeMaybe<ItemT extends TypeItem | undefined, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-type TypeMaybeHandlers<ItemT extends TypeItem | undefined, ResultT> =
+type TypeMaybeHandlers<ItemT extends OptionalTypeItem, ResultT> =
   & TypeHandlers<Exclude<ItemT, undefined>, ResultT>
   & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
 
-function SwitchKindMaybe<ItemT extends KindItem | undefined, ResultT>(
+function SwitchKindMaybe<ItemT extends OptionalKindItem, ResultT>(
   item: ItemT,
   handlers: KindMaybeHandlers<ItemT, ResultT>,
 ): ResultT {
@@ -99,7 +101,7 @@ function SwitchKindMaybe<ItemT extends KindItem | undefined, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-type KindMaybeHandlers<ItemT extends KindItem | undefined, ResultT> =
+type KindMaybeHandlers<ItemT extends OptionalKindItem, ResultT> =
   & KindHandlers<Exclude<ItemT, undefined>, ResultT>
   & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
 

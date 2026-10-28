@@ -5,7 +5,7 @@ import type { ManagedModulesInput, NormalizedManagedRequirement } from './Manage
 import { optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
 /** installHostIdentity returns the host and policy identity stored with generated node_modules. */
-export function installHostIdentity(input: ManagedModulesInput): Record<string, string | number> {
+export function installHostIdentity(input: ManagedModulesInput): Record<string, InstallHostValue> {
   const host = input.hostIdentity ?? Platform.systemInfo()
   return { os: host.os, architecture: host.architecture, installPolicyVersion }
 }
@@ -45,6 +45,8 @@ export async function validateReusableProfile(
   await removeOwnedInstallTree(profile)
   return true
 }
+
+type InstallHostValue = string | number
 
 function validateDurableOwnership(metadata: Record<string, unknown>, fingerprint: string, lock: string): void {
   if (metadata.fingerprint !== fingerprint || metadata.lockHash !== Platform.hashText(lock)) {

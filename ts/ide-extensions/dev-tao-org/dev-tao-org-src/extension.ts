@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import * as vscode from 'vscode'
-import { chooseDiffBase, diffArguments } from './DiffReview'
+import { chooseDiffBase, diffArguments, type OptionalBranchName } from './DiffReview'
 
 /** activate registers repository review commands independently of Tao language support. */
 export function activate(context: vscode.ExtensionContext) {
@@ -62,14 +62,14 @@ async function reviewFile(context: vscode.ExtensionContext, force: boolean): Pro
   }
 }
 
-function pickBranch(branches: readonly string[], selected: string | undefined): Promise<string | undefined> {
+function pickBranch(branches: readonly string[], selected: OptionalBranchName): Promise<OptionalBranchName> {
   return new Promise(resolve => {
     const picker = vscode.window.createQuickPick()
     picker.title = 'Choose this worktree’s review base'
     picker.placeholder = 'Select a local or remote branch'
     picker.items = branches.map(label => ({ label }))
     picker.activeItems = picker.items.filter(item => item.label === selected)
-    const finish = (value: string | undefined) => {
+    const finish = (value: OptionalBranchName) => {
       accepted.dispose()
       hidden.dispose()
       picker.dispose()

@@ -1,5 +1,8 @@
 import { Errors } from '@shared'
 
+/** OptionalBranchName represents a branch that may not be selected or available. */
+export type OptionalBranchName = string | undefined
+
 /** DiffArguments identifies the compared repository revisions and file. */
 export type DiffArguments<Uri> = {
   repoPath: string
@@ -18,10 +21,10 @@ export interface DiffBaseStorage {
 /** chooseDiffBase uses the approved-branch convention or an explicit override, reporting missing refs. */
 export async function chooseDiffBase(
   root: string,
-  currentBranch: string | undefined,
+  currentBranch: OptionalBranchName,
   branches: readonly string[],
   storage: DiffBaseStorage,
-  pick: (branches: readonly string[], selected: string | undefined) => Promise<string | undefined>,
+  pick: (branches: readonly string[], selected: OptionalBranchName) => Promise<OptionalBranchName>,
   force = false,
 ): Promise<string | undefined> {
   const key = `reviewBase:${root}:${currentBranch ?? '<detached>'}`

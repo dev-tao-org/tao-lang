@@ -4,6 +4,7 @@ import { satisfies, valid, validRange } from 'semver'
 import TypeScript from 'typescript'
 import { isNpmPackageName } from '../NpmPackageName'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import * as PackageMetadata from './ManagedPackageMetadata'
 
 /** defaultSingletonPackages lists app frameworks that require one canonical installed path. */
 export const defaultSingletonPackages = ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
@@ -77,7 +78,7 @@ export function graphContentsMatch(
     : undefined
   const root = workspaces?.['']
   const dependencies = root && typeof root === 'object' && 'dependencies' in root
-    ? objectStrings(root.dependencies)
+    ? PackageMetadata.readStringEntries(root.dependencies)
     : {}
   const packages = lock.packages && typeof lock.packages === 'object'
     ? lock.packages as Record<string, unknown>
@@ -116,14 +117,18 @@ export async function auditInstalledGraph(
 
 /** listNativePackageNames lists graph packages with React Native codegen or native build files. */
 export async function listNativePackageNames(profile: string): Promise<string[]> {
-  const manifest = await readJson(Path.join(profile, 'package.json'))
+  const manifest = await PackageMetadata.readPackageMetadata(Path.join(profile, 'package.json'))
   return [
     ...new Set(
-      (await installedPackages(profile, objectStrings(manifest.dependencies)))
+      (await installedPackages(profile, PackageMetadata.readStringEntries(manifest.dependencies)))
         .filter(item => item.native).map(item => item.name),
     ),
   ].sort()
 }
+
+type DependencyVersionRange = string | undefined
+
+const NativePackageMarkerFiles = ['binding.gyp', 'ios', 'android']
 
 type InstalledPackage = {
   directory: string
@@ -186,7 +191,7 @@ async function loadPackage(
   graph: InstalledPackageGraph,
   name: string,
   from: string,
-  range: string | undefined,
+  range: DependencyVersionRange,
   optional: boolean,
   peer = false,
 ): Promise<void> {
@@ -196,7 +201,7 @@ async function loadPackage(
   if (!directory) {
     return
   }
-  const metadata = await readJson(Path.join(directory, 'package.json'))
+  const metadata = await PackageMetadata.readPackageMetadata(Path.join(directory, 'package.json'))
   validateInstalledMetadata(metadata, directory, name, alias?.name ?? name, alias?.range ?? range, peer, from)
   const canonicalDirectory = FileSystem.realpathSync(directory)
   if (graph.visited.has(canonicalDirectory)) {
@@ -230,7 +235,7 @@ function validateInstalledMetadata(
   directory: string,
   name: string,
   expectedName: string,
-  range: string | undefined,
+  range: DependencyVersionRange,
   peer: boolean,
   from: string,
 ): void {
@@ -265,18 +270,18 @@ async function loadPackageDependencies(
   directory: string,
   metadata: Record<string, unknown>,
 ): Promise<void> {
-  const optionalDependencies = objectStrings(metadata.optionalDependencies)
-  const dependencies = { ...objectStrings(metadata.dependencies), ...optionalDependencies }
+  const optionalDependencies = PackageMetadata.readStringEntries(metadata.optionalDependencies)
+  const dependencies = { ...PackageMetadata.readStringEntries(metadata.dependencies), ...optionalDependencies }
   for (const [name, range] of Object.entries(dependencies)) {
     await loadPackage(graph, name, directory, range, name in optionalDependencies)
   }
-  const optionalPeers = optionalPeerNames(metadata.peerDependenciesMeta)
-  for (const [name, range] of Object.entries(objectStrings(metadata.peerDependencies))) {
+  const optionalPeers = PackageMetadata.readOptionalPeerNames(metadata.peerDependenciesMeta)
+  for (const [name, range] of Object.entries(PackageMetadata.readStringEntries(metadata.peerDependencies))) {
     await loadPackage(graph, name, directory, range, optionalPeers.has(name), true)
   }
 }
 
-function validateRange(name: string, actual: string, range: string | undefined, peer: boolean): void {
+function validateRange(name: string, actual: string, range: DependencyVersionRange, peer: boolean): void {
   if (!range || !validRange(range)) {
     return
   }
@@ -290,7 +295,7 @@ function validateRange(name: string, actual: string, range: string | undefined, 
 type ParsedNpmAlias = { name: string; range?: string }
 
 function parseNpmAlias(
-  range: string | undefined,
+  range: DependencyVersionRange,
   name: string,
   from: string,
 ): ParsedNpmAlias | undefined {
@@ -308,35 +313,21 @@ function parseNpmAlias(
 }
 
 async function isNativePackage(directory: string, metadata: Record<string, unknown>): Promise<boolean> {
+  if (hasNativePackageMetadata(metadata)) {
+    return true
+  }
+  return await hasNativePackageMarker(directory)
+}
+
+function hasNativePackageMetadata(metadata: Record<string, unknown>): boolean {
   return metadata.codegenConfig !== undefined || metadata['react-native'] !== undefined
-    || await FileSystem.exists(Path.join(directory, 'binding.gyp'))
-    || await FileSystem.exists(Path.join(directory, 'ios'))
-    || await FileSystem.exists(Path.join(directory, 'android'))
 }
 
-function objectStrings(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object') {
-    return {}
+async function hasNativePackageMarker(directory: string): Promise<boolean> {
+  for (const marker of NativePackageMarkerFiles) {
+    if (await FileSystem.exists(Path.join(directory, marker))) {
+      return true
+    }
   }
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
-  )
-}
-
-function optionalPeerNames(value: unknown): Set<string> {
-  if (!value || typeof value !== 'object') {
-    return new Set()
-  }
-  return new Set(
-    Object.entries(value).filter(([, metadata]) =>
-      metadata && typeof metadata === 'object' && 'optional' in metadata && metadata.optional === true
-    ).map(([name]) => name),
-  )
-}
-
-async function readJson(path: string): Promise<Record<string, unknown>> {
-  return await Try(async () => JSON.parse(await FileSystem.readFile(path, 'utf8')) as Record<string, unknown>, {
-    catch: () =>
-      Errors.ThrowUserInput(`Managed npm state is missing or invalid at ${path}; repair with: tao setup --repair.`),
-  })
+  return false
 }

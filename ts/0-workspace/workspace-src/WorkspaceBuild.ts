@@ -57,6 +57,7 @@ export async function publishBuild(
 }
 
 const mirrors = new WeakMap<RuntimeApplication, string>()
+type PreviousGeneratedFiles = Readonly<Record<string, string>> | undefined
 
 const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', async function(
   buildDirectory: string,
@@ -195,7 +196,7 @@ const publishSnapshot = Timings.measured('workspace.build.publish-snapshot', asy
 async function removeOldSnapshots(
   revisions: string,
   currentDirectory: string,
-  previousDirectory: string | undefined,
+  previousDirectory?: string,
 ): Promise<void> {
   for (const entry of await FileSystem.readdir(revisions)) {
     const path = Path.join(revisions, entry)
@@ -210,7 +211,7 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
   snapshot: string,
   runtime: RuntimeApplication,
   files: Readonly<Record<string, string>>,
-  previousFiles: Readonly<Record<string, string>> | undefined,
+  previousFiles: PreviousGeneratedFiles,
   isCurrent: () => boolean,
 ): Promise<void> {
   if (!isCurrent()) {

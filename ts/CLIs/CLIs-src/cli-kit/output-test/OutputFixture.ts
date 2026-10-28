@@ -72,7 +72,9 @@ function createRecordingRenderer(events: string[]): OutputRenderer {
   }
 }
 
-async function runPromptRecoveryFixture(mode: 'prompt-dispose-recovery' | 'prompt-render-recovery'): Promise<void> {
+type PromptRecoveryMode = 'prompt-dispose-recovery' | 'prompt-render-recovery'
+
+async function runPromptRecoveryFixture(mode: PromptRecoveryMode): Promise<void> {
   const events: string[] = []
   let disposeAttempts = 0
   let rendererCreations = 0

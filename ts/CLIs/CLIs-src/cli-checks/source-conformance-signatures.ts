@@ -1,4 +1,5 @@
 import * as TypeScript from 'typescript'
+import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** complexSignatureTypeIssue reports inline structural contracts that belong in named aliases. */
 export function complexSignatureTypeIssue(node: TypeScript.Node): string | undefined {
@@ -7,6 +8,8 @@ export function complexSignatureTypeIssue(node: TypeScript.Node): string | undef
   }
   return 'signature intersections, conditional/mapped types, and substantial structural records need a purpose-named type alias'
 }
+
+type OptionalSyntaxNode = TypeScript.Node | undefined
 
 function hasComplexTypeAncestor(node: TypeScript.Node): boolean {
   let ancestor = node.parent
@@ -53,8 +56,8 @@ function containsStructuralContract(node: TypeScript.TypeNode): boolean {
 }
 
 function isStructuralType(node: TypeScript.TypeNode): boolean {
-  return TypeScript.isIntersectionTypeNode(node) || TypeScript.isConditionalTypeNode(node)
-    || TypeScript.isMappedTypeNode(node) || TypeScript.isTypeLiteralNode(node)
+  const combinesTypes = TypeScript.isIntersectionTypeNode(node) || TypeScript.isConditionalTypeNode(node)
+  return combinesTypes || TypeScript.isMappedTypeNode(node) || TypeScript.isTypeLiteralNode(node)
 }
 
 function memberType(member: TypeScript.TypeElement): TypeScript.TypeNode | undefined {
@@ -99,15 +102,12 @@ function isDeclaredContractMember(node: TypeScript.Node): boolean {
 }
 
 function isFunctionLike(node: TypeScript.Node): node is TypeScript.SignatureDeclaration {
-  return TypeScript.isFunctionDeclaration(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isFunctionExpression(node) || TypeScript.isArrowFunction(node)
-    || TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node)
-    || TypeScript.isCallSignatureDeclaration(node) || TypeScript.isConstructSignatureDeclaration(node)
-    || TypeScript.isConstructorDeclaration(node)
+  return isRuntimeFunctionNode(node) || TypeScript.isCallSignatureDeclaration(node)
+    || TypeScript.isConstructSignatureDeclaration(node)
 }
 
 function containsNode(root: TypeScript.Node, target: TypeScript.Node): boolean {
-  let ancestor: TypeScript.Node | undefined = target
+  let ancestor: OptionalSyntaxNode = target
   while (ancestor && ancestor !== root) {
     ancestor = ancestor.parent
   }

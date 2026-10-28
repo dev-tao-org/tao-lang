@@ -43,7 +43,7 @@ export type CompiledApp = {
 /** UpdateResult retains the original revision verdict and its measured source-to-publication phases. */
 export type UpdateResult =
   | {
-    status: 'published' | 'invalid' | 'superseded'
+    status: UpdateResultStatus
     revision: string
     timings: TimingSample[]
     stages: PipelineStages
@@ -63,6 +63,11 @@ export type PipelineStages = {
   fix: { stage: 'fix'; status: 'skipped' }
   check: ReturnType<typeof check>
 }
+
+type UpdateResultStatus = 'published' | 'invalid' | 'superseded'
+type WorkspaceSourceInput = string | Document
+type WorkspaceDirectory = string | undefined
+type PreparedWorkspace = Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>>
 
 /** createWorkspace compiles source snapshots through one bounded current-plus-latest queue.
  *  Invalid input and superseded work preserve the last successfully published application. */
@@ -96,15 +101,15 @@ const Publish = Timings.measure('workspace.publish', async function(
 })
 
 class WorkspaceSession {
-  readonly directory: string | undefined
+  readonly directory: WorkspaceDirectory
   private readonly output: ReturnType<typeof createOutputPaths>
   private readonly parser = createParser()
-  private lastGood: string | undefined
+  private lastGood?: string
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
-  private publicationOutcome: PublicationOutcome | undefined
+  private publicationOutcome?: PublicationOutcome
   private snapshotDirectories: readonly string[] = []
-  private application: Runtime.RuntimeApplication | undefined
+  private application?: Runtime.RuntimeApplication
   private readonly publishCallback = this.publish.bind(this)
   private readonly prepareRuntimeCallback = this.prepareRuntime.bind(this)
   readonly files: FileManager
@@ -158,7 +163,7 @@ class WorkspaceSession {
     return await this.files.openFile(path)
   }
 
-  update(source: string | Document, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
+  update(source: WorkspaceSourceInput, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
     return this.files.update(source, startedAtMs)
   }
 
@@ -294,7 +299,7 @@ class WorkspaceSession {
 function createCompilationOptions(
   revision: string,
   program: LinkedProgram,
-  prepared: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+  prepared?: PreparedWorkspace,
 ): CompileOptions {
   return { revision, program, ...prepared }
 }

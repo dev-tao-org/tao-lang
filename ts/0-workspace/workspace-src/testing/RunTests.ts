@@ -26,7 +26,7 @@ export type TestProgress = (message: string) => void
 /** TestResult reports one journey and the source location of its outcome. */
 export type TestResult = {
   label: string
-  status: 'passed' | 'failed'
+  status: TestStatus
   line: number
   durationMs: number
   error?: string
@@ -51,6 +51,11 @@ export async function runTests(document: AST.Document, options: TestOptions): Pr
   return results
 }
 
+type TestStatus = 'passed' | 'failed'
+type CurrentTestStep = AST.TestStep | AST.TestDeclaration
+type OptionalTestDriver = TestDriver | undefined
+type OptionalRenderTag = string | undefined
+
 async function runCase(
   suite: AST.TestsDeclaration,
   test: AST.TestDeclaration,
@@ -58,8 +63,8 @@ async function runCase(
 ): Promise<TestResult> {
   const startedAt = Time.nowMs()
   const label = caseLabel(suite, test, options)
-  let current: AST.TestStep | AST.TestDeclaration = test
-  let driver: TestDriver | undefined
+  let current: CurrentTestStep = test
+  let driver: OptionalTestDriver
   return await Try(async (): Promise<TestResult> => {
     assertJourney(test)
     assertActive(options.signal)
@@ -125,7 +130,7 @@ function hasExpectations(step: AST.ExpectStatement): boolean {
   return step.expectation !== undefined || (step.block?.statements.length ?? 0) > 0
 }
 
-function expectValue(expectation: AST.Expectation, parentTag: string | undefined, driver: TestDriver): Promise<void> {
+function expectValue(expectation: AST.Expectation, parentTag: OptionalRenderTag, driver: TestDriver): Promise<void> {
   return Switch.kind(expectation, {
     TextExpectation: value => driver.expectText(value.value.value, parentTag),
     InputExpectation: value =>

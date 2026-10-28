@@ -13,7 +13,7 @@ export function initializePreviewClient(): void {
 }
 
 /** reportPreviewError exposes a reported failure without automatically reloading. */
-export function reportPreviewError(kind: 'runtime-error' | 'build-error', message: string, revision?: string): void {
+export function reportPreviewError(kind: PreviewErrorKind, message: string, revision?: string): void {
   showPreviewError(message, () => {
     if (previewState()) {
       postPreviewMessage({ type: 'tao.preview-reload' })
@@ -41,7 +41,7 @@ export function beginPreviewRevision(revision: string): void {
 }
 
 /** reportPreviewEvent sends one revision-specific client event to its configured parent. */
-export function reportPreviewEvent(type: 'tao.preview-applied' | 'tao.update-done', revision?: string): void {
+export function reportPreviewEvent(type: PreviewEventType, revision?: string): void {
   const state = previewState()
   if (!state?.revision || (revision && revision !== state.revision)) {
     return
@@ -75,6 +75,9 @@ export function previewTiming(timing: { phase: string; durationMs: number }): vo
 export function isPreview(): boolean {
   return previewState() !== undefined
 }
+
+type PreviewErrorKind = 'runtime-error' | 'build-error'
+type PreviewEventType = 'tao.preview-applied' | 'tao.update-done'
 
 type PreviewState = {
   sessionId: string

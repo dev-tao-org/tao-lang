@@ -5,6 +5,11 @@ import * as ProjectPipeline from '../workspace-src/ProjectPipeline'
 import type { PreparedSidecars } from '../workspace-src/SidecarPipeline'
 import type { PreparedManagedModules } from '../workspace-src/sidecars/ManagedModules'
 
+const RestartRequiredWithoutNativeRebuildRegx =
+  /Dependency graph changed\. Setup and preview restart are required\.(?! A native rebuild)/
+const RestartRequiredWithNativeRebuildRegx =
+  /Dependency graph changed\. Setup and preview restart are required\. A native rebuild is also required\./
+
 Tests.test('a prepared graph is validated once and reused for later source edits', async () => {
   const events: string[] = []
   const services = fakeServices(events)
@@ -27,7 +32,7 @@ Tests.test('a changed dependency graph requests preview restart and retains the 
 
   await Tests.rejects(
     pipeline.beforeCompile(program('changed graph', '2.0.0')),
-    /Dependency graph changed\. Setup and preview restart are required\.(?! A native rebuild)/,
+    RestartRequiredWithoutNativeRebuildRegx,
   )
   Tests.expect(events).toEqual(['input', 'read', 'drift', 'sidecars', 'input'])
 })
@@ -43,7 +48,7 @@ Tests.test('a changed graph with native packages calls out the native rebuild', 
 
   await Tests.rejects(
     pipeline.beforeCompile(program('changed graph', '2.0.0')),
-    /Dependency graph changed\. Setup and preview restart are required\. A native rebuild is also required\./,
+    RestartRequiredWithNativeRebuildRegx,
   )
 })
 

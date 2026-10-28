@@ -1,6 +1,6 @@
 /** DependencyRequirement describes one authored Tao source dependency. */
 export type DependencyRequirement = {
-  provider: 'github' | 'file' | 'bundled'
+  provider: DependencyProvider
   identifier: string
   version: string
   alias?: string
@@ -46,5 +46,8 @@ export type DependencyStoreOptions = {
   readRequirements(root: string): Promise<DependencyRequirement[]>
   git: GitSourceAdapter
   bundledProjects?: Readonly<Record<string, string>>
-  acquireLock?: (path: string) => Promise<{ release(): void } | undefined>
+  acquireLock?: (path: string) => Promise<DependencyLockLease | undefined>
 }
+
+type DependencyProvider = 'github' | 'file' | 'bundled'
+type DependencyLockLease = { release(): void }

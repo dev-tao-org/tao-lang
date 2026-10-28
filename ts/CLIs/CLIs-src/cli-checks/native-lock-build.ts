@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
@@ -150,13 +150,13 @@ async function canReuse(identity: string, binary: string, versionRoot: string): 
 
 async function writeSources(staging: string, inputs: NativeInputs): Promise<void> {
   await FileSystem.mkdir(staging, { recursive: true })
-  const gyp = inputs.sourceContents[0]!.replace(/<!.+?include_dir"\)/, quoteGypPath(inputs.includeDirectory))
+  const gyp = inputs.sourceContents[0]!.replace(Regxs.NativeIncludeDirective, quoteGypPath(inputs.includeDirectory))
   await FileSystem.writeFile(Path.join(staging, sourceNames[0]!), gyp)
   await FileSystem.writeFile(Path.join(staging, sourceNames[1]!), inputs.sourceContents[1]!)
 }
 
 function quoteGypPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/'/g, "\\'")
+  return path.replace(Regxs.WindowsPathSeparator, '/').replace(Regxs.SingleQuote, "\\'")
 }
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {

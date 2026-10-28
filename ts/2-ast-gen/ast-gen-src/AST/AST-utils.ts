@@ -80,7 +80,7 @@ export function FindAppDeclaration(document: AST.Document, name: string): AST.Ap
 }
 
 /** GetImportStatements lists declaration and package imports in a source document. */
-export function GetImportStatements(document: AST.Document): (AST.UseStatement | AST.UsePackageStatement)[] {
+export function GetImportStatements(document: AST.Document): ImportStatement[] {
   return GetDeclarations(document).filter(isImportStatement)
 }
 
@@ -150,7 +150,9 @@ export function IsViewRenderStatement(node: AST.Node): node is AST.ViewRenderSta
   return AST.IsKind(node, ['RenderInjectStatement', 'RenderViewExpressionStatement'])
 }
 
-function isImportStatement(node: AST.Node): node is AST.UseStatement | AST.UsePackageStatement {
+type ImportStatement = AST.UseStatement | AST.UsePackageStatement
+
+function isImportStatement(node: AST.Node): node is ImportStatement {
   return IsUseStatement(node) || IsUsePackageStatement(node)
 }
 

@@ -42,7 +42,8 @@ type AdmissionState = {
   openWaiters: (() => void)[]
   idleWaiters: (() => void)[]
 }
-type AdmissionContext = { kind: 'read' | 'publication'; active: boolean }
+type AdmissionContext = { kind: AdmissionKind; active: boolean }
+type AdmissionKind = 'read' | 'publication'
 const AdmissionContext = (kind: AdmissionContext['kind'], active: boolean): AdmissionContext => ({ kind, active })
 
 async function readOperation<Value>(state: AdmissionState, operation: () => Promise<Value>): Promise<Value> {

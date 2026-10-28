@@ -25,10 +25,9 @@ export async function startReview(
   const statePath = Path.join(directory, 'session.json')
   if (await FileSystem.exists(statePath)) {
     const existing = await loadSession(root)
-    if (
-      existing.reviewedBranch !== branch || existing.base !== base
-      || (worktree && existing.reviewedRoot !== Path.resolve(worktree))
-    ) {
+    const existingSessionDiffers = existing.reviewedBranch !== branch || existing.base !== base
+    const requestedWorktreeDiffers = Boolean(worktree && existing.reviewedRoot !== Path.resolve(worktree))
+    if (existingSessionDiffers || requestedWorktreeDiffers) {
       Errors.ThrowUserInput('A different review session already exists. Resume it using its recorded branch and base.')
     }
     await assertOwnedSession(existing)
@@ -137,10 +136,9 @@ export async function assertOwnedSession(session: ReviewSession): Promise<void> 
   const source = (await git(session.root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
   const reviewed = (await git(session.reviewedRoot, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
   const owner = await readJson<{ id: string; root: string }>(await resolveReviewOwnerPath(session.reviewedRoot))
-  if (
-    source !== session.sourceBranch || reviewed !== session.reviewedBranch || owner.id !== session.id
-    || owner.root !== session.root
-  ) {
+  const branchChanged = source !== session.sourceBranch || reviewed !== session.reviewedBranch
+  const ownershipChanged = owner.id !== session.id || owner.root !== session.root
+  if (branchChanged || ownershipChanged) {
     Errors.ThrowUserInput('Review checkout ownership or branch identity changed; resume the recorded checkouts first.')
   }
   const sourceGit = (await git(session.root, ['rev-parse', '--path-format=absolute', '--git-common-dir'])).trim()

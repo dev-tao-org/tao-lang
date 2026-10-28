@@ -1,7 +1,8 @@
-import { Errors, Time, Timings, Try } from '@shared'
+import { Errors, Time, Try } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
-import { Document, type DocumentSnapshot } from './Document'
+import { Document } from './Document'
 import * as FileManagerCompilation from './FileManagerCompilation'
+import * as FileManagerInputs from './FileManagerInputs'
 import { findNearestProjectRoot } from './modules/Paths'
 import type { UpdateResult } from './Workspace'
 
@@ -9,23 +10,23 @@ export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileMa
 
 /** FileManager owns workspace documents, recursive observation, and the bounded compile lane. */
 export class FileManager {
-  entryPath: string | undefined
+  entryPath: FileManagerEntryPath
   private readonly listeners = new Set<(event: FileManagerCompilation.CompiledEvent) => void>()
   private readonly documents = new Map<string, Document>()
-  private watcher: WorkspaceWatch.WorkspaceWatcher | undefined
-  private watcherStart: Promise<WorkspaceWatch.WorkspaceWatcher> | undefined
-  private watcherRoot: string | undefined
-  private workspaceRoot: string | undefined
+  private watcher?: WorkspaceWatch.WorkspaceWatcher
+  private watcherStart?: Promise<WorkspaceWatch.WorkspaceWatcher>
+  private watcherRoot?: string
+  private workspaceRoot?: string
   private readonly pipelineDirectories: FileManagerCompilation.PipelineWatchDirectories
   private entryGeneration = 0
   private observationGeneration = 0
-  private refreshTimer: (() => void) | undefined
-  private refresh: FileManagerCompilation.Refresh | undefined
+  private refreshTimer?: () => void
+  private refresh?: FileManagerCompilation.Refresh
   private sequence = 0
-  private current: FileManagerCompilation.Pending | undefined
-  private queued: FileManagerCompilation.Pending | undefined
+  private current?: FileManagerCompilation.Pending
+  private queued?: FileManagerCompilation.Pending
   private disposed = false
-  private processing: Promise<void> | undefined
+  private processing?: Promise<void>
 
   constructor(private readonly options: FileManagerCompilation.FileManagerOptions) {
     this.workspaceRoot = options.directory ? Path.resolve(options.directory) : undefined
@@ -94,9 +95,10 @@ export class FileManager {
   }
 
   /** update queues an immutable in-memory source version without writing it to disk. */
-  update(source: string | Document, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
+  update(source: FileManagerInputs.SourceUpdateInput, startedAtMs = Time.timestampMs()): Promise<UpdateResult> {
     this.ensureActive()
-    const input = this.snapshotInput(source, startedAtMs)
+    const context = { documents: this.documents, entryPath: this.entryPath }
+    const input = FileManagerInputs.snapshotFileManagerInput(context, source, startedAtMs)
     return this.enqueue(input, undefined, this.observationGeneration)
   }
 
@@ -199,7 +201,7 @@ export class FileManager {
 
   private async enqueue(
     input: FileManagerCompilation.FileManagerInput,
-    entryGeneration: number | undefined,
+    entryGeneration: EntryGeneration,
     observation: number,
   ): Promise<UpdateResult> {
     let complete!: (result: UpdateResult) => void
@@ -253,42 +255,17 @@ export class FileManager {
       if (loaded.status === 'failed' && request.input.kind === 'disk' && this.isCurrent(request)) {
         this.options.onSourceError?.(loaded.error)
       }
-      return {
-        result: loaded,
-        path: FileManagerCompilation.resolveInputPath(request.input),
-        source: '',
-        version: undefined,
-      }
+      return FileManagerInputs.completeUnloadedInput(request, loaded)
     }
     if (!this.isCurrent(request)) {
       return FileManagerCompilation.createSupersededInput(request)
     }
-    const compileRequest: FileManagerCompilation.CompileRequest = {
-      id: request.id,
-      source: loaded.source,
-      path: loaded.path,
-      startedAtMs: loaded.startedAtMs,
-      queuedAtMs: request.queuedAtMs,
-      timings: loaded.timings,
-      version: loaded.version,
-    }
+    const compileRequest = FileManagerInputs.createCompileRequest(request, loaded)
     const result = await Try(() => this.options.compile(compileRequest, () => this.isCurrent(request)), {
       catch: error => FileManagerCompilation.createFailedResult(request.id, error, loaded.timings.samples),
     })
     return { result, path: loaded.path, source: loaded.source, version: loaded.version }
   }
-
-  private readonly snapshotInput = Timings.createTopLevelTimer(
-    (timings, source: string | Document, startedAtMs: number): FileManagerCompilation.FileManagerInput => {
-      const path = source instanceof Document ? source.path : this.entryPath ?? '<memory>'
-      const document = source instanceof Document ? source : this.documents.get(path) ?? new Document(path)
-      this.documents.set(path, document)
-      const snapshot: DocumentSnapshot = source instanceof Document
-        ? source.snapshot()
-        : document.replaceSource(source)
-      return { kind: 'source', ...snapshot, startedAtMs, timings }
-    },
-  )
 
   private selectWorkspaceRoot(entry: string): void {
     this.workspaceRoot ??= findNearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
@@ -302,9 +279,13 @@ export class FileManager {
   }
 
   private shouldRefresh(change: WorkspaceWatch.WorkspaceChange): boolean {
-    return !this.disposed && this.entryPath !== undefined
+    return this.hasActiveEntry()
       && FileManagerCompilation.isRelevantChange(change, path => this.pipelineDirectories.watchesFile(path))
       && !this.isOutputChange(change.path)
+  }
+
+  private hasActiveEntry(): boolean {
+    return !this.disposed && this.entryPath !== undefined
   }
 
   private isOutputChange(path: string): boolean {
@@ -322,9 +303,16 @@ export class FileManager {
   }
 
   private isCurrent(request: FileManagerCompilation.Pending): boolean {
-    return !this.disposed && request.id === this.latestId()
-      && (request.entryGeneration === undefined || request.entryGeneration === this.entryGeneration)
+    return this.isActiveRequest(request)
       && request.observation === this.observationGeneration
+  }
+
+  private isActiveRequest(request: FileManagerCompilation.Pending): boolean {
+    return !this.disposed && request.id === this.latestId() && this.matchesEntryGeneration(request)
+  }
+
+  private matchesEntryGeneration(request: FileManagerCompilation.Pending): boolean {
+    return request.entryGeneration === undefined || request.entryGeneration === this.entryGeneration
   }
 
   private latestId(): number {
@@ -336,7 +324,7 @@ export class FileManager {
     this.refresh = undefined
   }
 
-  private resolveSuperseded(request: FileManagerCompilation.Pending | undefined): void {
+  private resolveSuperseded(request?: FileManagerCompilation.Pending): void {
     if (request) {
       request.resolve(FileManagerCompilation.createSupersededResult(request.id))
     }
@@ -348,3 +336,6 @@ export class FileManager {
     }
   }
 }
+
+type FileManagerEntryPath = string | undefined
+type EntryGeneration = number | undefined

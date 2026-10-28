@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
@@ -54,12 +54,18 @@ function liveEnvironment(): SecretsEnvironment {
       }
       IO.warn('The value has surrounding whitespace.')
       const answer = await IO.prompt(() => Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: '))
-      return /^n(o)?$/i.test(answer.trim()) ? value : value.trim()
+      return Regxs.NegativeConfirmationRegx.test(answer.trim()) ? value : value.trim()
     },
   }
 }
 
-async function addSecret(name: string, note: string | undefined, environment: SecretsEnvironment): Promise<void> {
+type OptionalSecretDescription = string | undefined
+
+async function addSecret(
+  name: string,
+  note: OptionalSecretDescription,
+  environment: SecretsEnvironment,
+): Promise<void> {
   SecretStoreModule2.requireSecretName(name)
   const original = await readStore()
   if (original.recipients.length === 0) {
@@ -268,13 +274,16 @@ async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Val
 }
 
 function isAlreadyExists(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'EEXIST'
 }
 
 async function recipientOfIdentity(): Promise<string> {
   const identityPath = secretsIdentityPath()
   const contents = await FileSystem.file(identityPath).text()
-  const recorded = /^#\s*public key:\s*(\S+)\s*$/m.exec(contents)?.[1]
+  const recorded = Regxs.PublicKeyCommentRegx.exec(contents)?.[1]
   if (recorded !== undefined) {
     return recorded
   }
