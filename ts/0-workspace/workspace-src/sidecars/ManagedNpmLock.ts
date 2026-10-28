@@ -4,7 +4,7 @@ import { requireSetup } from '../SetupRequired'
 import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
 import { managedLockPolicyMatches, repairManagedLockPolicy } from './ManagedNpmPolicy'
-import { optionalJson, optionalText } from './ManagedNpmState'
+import { type ManagedProfileMetadata, optionalJson, optionalText } from './ManagedNpmState'
 
 type ManagedLockContents = string | undefined
 
@@ -12,7 +12,7 @@ type ManagedLockContents = string | undefined
 export async function readManagedProfileMetadata(
   profile: string,
   requirements: readonly NormalizedManagedRequirement[],
-): Promise<Record<string, unknown>> {
+): Promise<ManagedProfileMetadata> {
   const metadata = await optionalJson(Path.join(profile, '.tao-managed.json'))
   if (!metadata) {
     const owner = requirements[0]?.origin ?? 'project runtime'

@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
-import { optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
+import { type ManagedProfileMetadata, optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
 type InstallHostValue = string | number
 /** installHostIdentity returns the host and policy identity stored with generated node_modules. */
@@ -12,7 +12,7 @@ export function installHostIdentity(input: ManagedModulesInput): Record<string, 
 }
 
 /** validateInstalledHost rejects an installed tree created for another host or install policy. */
-export function validateInstalledHost(metadata: Record<string, unknown>, input: ManagedModulesInput): void {
+export function validateInstalledHost(metadata: ManagedProfileMetadata, input: ManagedModulesInput): void {
   if (hostMatches(metadata, input)) {
     return
   }
@@ -27,7 +27,7 @@ export function validateInstalledHost(metadata: Record<string, unknown>, input: 
 /** validateReusableProfile verifies immutable ownership before deleting a stale host install tree. */
 export async function validateReusableProfile(
   profile: string,
-  metadata: Record<string, unknown>,
+  metadata: ManagedProfileMetadata,
   input: ManagedModulesInput,
   requirements: readonly NormalizedManagedRequirement[],
   fingerprint: string,
@@ -47,7 +47,7 @@ export async function validateReusableProfile(
   return true
 }
 
-function validateDurableOwnership(metadata: Record<string, unknown>, fingerprint: string, lock: string): void {
+function validateDurableOwnership(metadata: ManagedProfileMetadata, fingerprint: string, lock: string): void {
   if (metadata.fingerprint !== fingerprint || metadata.lockHash !== Platform.hashText(lock)) {
     Errors.ThrowUserInput(`Managed npm cache ownership or lock validation failed for ${fingerprint}.`)
   }
@@ -73,7 +73,7 @@ async function removeOwnedInstallTree(profile: string): Promise<void> {
   await FileSystem.rm(nodeModules, { recursive: true, force: true })
 }
 
-function hostMatches(metadata: Record<string, unknown>, input: ManagedModulesInput): boolean {
+function hostMatches(metadata: ManagedProfileMetadata, input: ManagedModulesInput): boolean {
   return serializeInstallHost(metadata.installHost) === serializeInstallHost(installHostIdentity(input))
 }
 

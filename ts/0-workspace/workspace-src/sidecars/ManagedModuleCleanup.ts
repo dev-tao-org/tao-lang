@@ -3,7 +3,8 @@ import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
 
-type MaybeModuleMetadata = Record<string, unknown> | null | undefined
+type ModuleMetadataFields = Record<string, unknown>
+type MaybeModuleMetadata = ModuleMetadataFields | null | undefined
 
 /** cleanManagedModuleMetadata removes recorded metadata owned by this consumer project. */
 export async function cleanManagedModuleMetadata(
@@ -74,7 +75,7 @@ async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Prom
   return undefined
 }
 
-async function readModuleMetadata(marker: string): Promise<Record<string, unknown> | undefined> {
+async function readModuleMetadata(marker: string): Promise<ModuleMetadataFields | undefined> {
   const metadata = await Try.WithDefault(
     undefined,
     async () => parseManagedModuleMetadata(await FileSystem.readFile(marker, 'utf8')),
@@ -86,7 +87,7 @@ async function readModuleMetadata(marker: string): Promise<Record<string, unknow
   if (!hasValidModuleMetadata(marker, profileMetadata, packages, files, hashes)) {
     return undefined
   }
-  return profileMetadata as Record<string, unknown>
+  return profileMetadata
 }
 
 function hasValidModuleMetadata(
@@ -95,13 +96,13 @@ function hasValidModuleMetadata(
   packages: unknown,
   files: unknown,
   hashes: unknown,
-): metadata is Record<string, unknown> {
+): metadata is ModuleMetadataFields {
   return hasModuleProfile(metadata)
     && hasValidPackageNames(packages)
     && hasValidModuleFiles(marker, files, hashes)
 }
 
-function hasModuleProfile(metadata: MaybeModuleMetadata): metadata is Record<string, unknown> {
+function hasModuleProfile(metadata: MaybeModuleMetadata): metadata is ModuleMetadataFields {
   return metadata !== undefined && metadata !== null && typeof metadata.profile === 'string'
 }
 
@@ -114,7 +115,7 @@ function isPackageName(name: unknown): name is string {
 }
 
 function hasValidModuleFiles(marker: string, files: unknown, hashes: unknown): files is string[] {
-  if (!Array.isArray(files) || typeof hashes !== 'object' || hashes === null) {
+  if (!Array.isArray(files) || !isGeneratedFileHashFields(hashes)) {
     return false
   }
   return files.every(path => isValidModuleFile(marker, path, hashes))
@@ -128,7 +129,13 @@ function isValidModuleFile(marker: string, path: unknown, hashes: unknown): path
 }
 
 function hasStringHash(hashes: unknown, path: string): boolean {
-  return typeof hashes === 'object' && hashes !== null && typeof (hashes as Record<string, unknown>)[path] === 'string'
+  return isGeneratedFileHashFields(hashes) && typeof hashes[path] === 'string'
+}
+
+type GeneratedFileHashFields = Record<string, unknown>
+
+function isGeneratedFileHashFields(value: unknown): value is GeneratedFileHashFields {
+  return typeof value === 'object' && value !== null
 }
 
 function hasInvalidManagedProfilePath(profile: string, managedRoot: string): boolean {
@@ -158,11 +165,11 @@ function parseManagedModuleMetadata(contents: string): unknown {
 
 async function cleanModuleFiles(
   marker: string,
-  metadata: Record<string, unknown>,
+  metadata: ModuleMetadataFields,
 ): Promise<boolean> {
   let complete = true
-  const generatedHashes = metadata.generatedHashes && typeof metadata.generatedHashes === 'object'
-    ? metadata.generatedHashes as Record<string, unknown>
+  const generatedHashes = isGeneratedFileHashFields(metadata.generatedHashes)
+    ? metadata.generatedHashes
     : {}
   for (const path of metadata.files as string[]) {
     if (await FileSystem.exists(path) && !FileSystem.lstatSync(path).isSymbolicLink()) {

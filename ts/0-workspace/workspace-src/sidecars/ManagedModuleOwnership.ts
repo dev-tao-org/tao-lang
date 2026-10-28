@@ -128,22 +128,30 @@ async function validateCorruptMarkerRecovery(
   )
 }
 
+type GeneratedModuleDependencyFields = Record<string, unknown>
+type GeneratedModuleManifest = { dependencies?: GeneratedModuleDependencyFields }
+
 function parseGeneratedModulePackageNames(contents: string): string[] {
-  const manifest = JSON.parse(contents) as { dependencies?: Record<string, unknown> }
+  const manifest = JSON.parse(contents) as GeneratedModuleManifest
   return Object.keys(manifest.dependencies ?? {})
 }
 
 function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
-  const owner = Try.WithDefault(undefined, () => parseManagedModuleOwner(ownerText)) as PreviousModuleOwner
-  if (
-    !owner || typeof owner.profile !== 'string' || !Array.isArray(owner.packages)
-  ) {
-    return undefined
+  const owner = Try.WithDefault(undefined, () => parseManagedModuleOwner(ownerText))
+  return isManagedModuleOwner(owner) ? owner : undefined
+}
+
+type ParsedModuleOwnerFields = { profile?: unknown; packages?: unknown } | null | undefined
+
+function isManagedModuleOwner(value: unknown): value is ManagedModuleOwner {
+  const owner = value as ParsedModuleOwnerFields
+  if (!owner) {
+    return false
   }
-  if (!owner.packages.every(isPackageName)) {
-    return undefined
+  if (typeof owner.profile !== 'string' || !Array.isArray(owner.packages)) {
+    return false
   }
-  return owner as ManagedModuleOwner
+  return owner.packages.every(isPackageName)
 }
 
 function parseManagedModuleOwner(contents: string): unknown {

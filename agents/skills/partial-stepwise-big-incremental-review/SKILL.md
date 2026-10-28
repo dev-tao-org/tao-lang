@@ -42,15 +42,17 @@ description: >-
 - Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
   `binary` for binary changes. Add a line anchor only when a particular location is useful.
-  Present only the current file chunk; list later chunk titles until completion or a requested switch.
+  Present three groups together by default; honor a requested count. Keep group boundaries and
+  list later titles until completion or a requested switch.
   Explain partial-file scope in at most two sentences. End immediately after the file list.
 - Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
   Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
-- Number each chunk locally from 1: `1. F43 New: <file link>`. Plain numbers reference current list
-  positions; `F43` references the stable file ID. Restart local numbering for each chunk.
+- Number consecutively across displayed groups from 1: `1. F43 New: <file link>`. Plain numbers
+  reference current positions; `F43` is stable. Restart numbering for the next set; retain
+  positions while that set remains active.
 - Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
-- After handling approvals or corrections, reprint clickable links for every remaining current-chunk
-  file with its stable ID; if complete, present the next agreed chunk. Pause only at the developer's
+- After handling approvals or corrections, reprint clickable links for every remaining displayed
+  file with its stable ID; if complete, present the next agreed set of groups. Pause only at the developer's
   request or a blocking decision; a recap alone is insufficient.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
@@ -93,7 +95,7 @@ description: >-
 
 Propose feature sets, group counts and Tao examples; get agreement first.
 
-List remaining group titles, then only the current chunk's files:
+List remaining group titles, then the current set of groups and their files:
 
 ```text
 **X% done** — <completed>/<frozen total> original review units.

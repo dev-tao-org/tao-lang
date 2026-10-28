@@ -3,6 +3,7 @@ import { FileSystem, Path, Platform } from '@shared/os'
 import TypeScript from 'typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleTypes'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
+import * as PackageMetadata from './ManagedPackageMetadata'
 
 type RuntimePolicyInput = ManagedRuntimePolicy | undefined
 type ManagedRuntimePolicyMap =
@@ -24,7 +25,7 @@ export function compareCodePointStrings(left: string, right: string): number {
 /** describeManagedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
 export function describeManagedResolutionPolicy(
   policy: RuntimePolicyInput,
-): Record<string, unknown> | undefined {
+): PackageMetadata.ManagedMetadataFields | undefined {
   return policy
     ? {
       patchedDependencies: sortRecord(policy.patchedDependencies),
@@ -65,10 +66,10 @@ export async function validateManagedPatches(profile: string, input: ManagedModu
 /** managedLockPolicyMatches verifies the lock's resolution policy against the bundled runtime. */
 export function managedLockPolicyMatches(source: string, input: ManagedModulesInput): boolean {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
-  if (parsed.error || !parsed.config || typeof parsed.config !== 'object') {
+  if (parsed.error || !PackageMetadata.isMetadataObject(parsed.config)) {
     return false
   }
-  const lock = parsed.config as Record<string, unknown>
+  const lock = parsed.config
   const policy = input.runtimePolicy
   return recordsMatch(lock.patchedDependencies, policy?.patchedDependencies ?? {})
     && recordsMatch(lock.overrides, policy?.overrides ?? {})
@@ -77,12 +78,10 @@ export function managedLockPolicyMatches(source: string, input: ManagedModulesIn
 /** repairManagedLockPolicy updates policy metadata only when every overridden version is already locked. */
 export function repairManagedLockPolicy(source: string, input: ManagedModulesInput): string {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
-  const lock = parsed.config as Record<string, unknown>
-  const packages = lock.packages as Record<string, unknown>
+  const lock = parsed.config as PackageMetadata.ManagedMetadataFields
+  const packages = lock.packages as PackageMetadata.ManagedMetadataFields
   for (const [name, version] of Object.entries(input.runtimePolicy?.overrides ?? {})) {
-    const identities = Object.values(packages).flatMap(value =>
-      Array.isArray(value) && typeof value[0] === 'string' && value[0].startsWith(`${name}@`) ? [value[0]] : []
-    )
+    const identities = listLockedPackageIdentities(packages, name)
     if (!identities.length || identities.some(identity => identity !== `${name}@${version}`)) {
       Errors.ThrowUserInput(
         `Runtime patch policy requires ${name}@${version}, but the durable npm graph locks ${
@@ -112,6 +111,12 @@ function listManagedPatches(policy: RuntimePolicyInput): [string, string][] {
     patches.push([path, content])
   }
   return patches
+}
+
+function listLockedPackageIdentities(packages: PackageMetadata.ManagedMetadataFields, name: string): string[] {
+  const entries = Object.values(packages)
+  const identities = entries.map(PackageMetadata.readLockedPackageIdentity)
+  return identities.filter((identity): identity is string => identity !== undefined && identity.startsWith(`${name}@`))
 }
 
 function isManagedPatchPath(path: string): boolean {

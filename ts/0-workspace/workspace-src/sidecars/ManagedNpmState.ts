@@ -5,12 +5,15 @@ import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
 import * as ManagedTypes from './ManagedModuleTypes'
 import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
+/** ManagedProfileMetadata maps generated install-profile marker fields to unvalidated values. */
+export type ManagedProfileMetadata = Record<string, unknown>
+
 type ManagedDurableLock = string | undefined
-type MaybeManagedProfileMetadata = Record<string, unknown> | undefined
+type MaybeManagedProfileMetadata = ManagedProfileMetadata | undefined
 
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
-  metadata: Record<string, unknown>,
+  metadata: ManagedProfileMetadata,
   input: ManagedTypes.ManagedModulesInput,
   fingerprint: string,
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
@@ -25,7 +28,7 @@ export async function validateProfileMetadata(
 }
 
 function profileMetadataMatches(
-  metadata: Record<string, unknown>,
+  metadata: ManagedProfileMetadata,
   input: ManagedTypes.ManagedModulesInput,
   fingerprint: string,
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
@@ -170,7 +173,7 @@ export async function readOwnedMetadata(
   fingerprint: string,
   repair: boolean,
   durableLock: ManagedDurableLock,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<ManagedProfileMetadata | undefined> {
   const path = Path.join(profile, '.tao-managed.json')
   const text = await optionalText(path)
   if (text === undefined || !repair) {
@@ -178,7 +181,7 @@ export async function readOwnedMetadata(
   }
   const parsed = await Try.WithDefault(undefined, () => parseManagedProfileMetadata(text))
   if (hasMatchingMetadataLock(parsed, fingerprint, durableLock)) {
-    return parsed as Record<string, unknown>
+    return parsed as ManagedProfileMetadata
   }
   if (durableLock === undefined) {
     Errors.ThrowUserInput(`Managed npm metadata ownership cannot be verified for ${profile}.`)
@@ -195,7 +198,7 @@ export async function optionalText(path: string): Promise<string | undefined> {
 }
 
 /** optionalJson parses an optional generated state file with a Tao diagnostic on malformed content. */
-export async function optionalJson(path: string): Promise<Record<string, unknown> | undefined> {
+export async function optionalJson(path: string): Promise<ManagedProfileMetadata | undefined> {
   const text = await optionalText(path)
   if (text === undefined) {
     return undefined
@@ -203,10 +206,10 @@ export async function optionalJson(path: string): Promise<Record<string, unknown
   const value = await Try(() => parseManagedProfileMetadata(text), {
     catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`),
   })
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (!isObjectRecord(value)) {
     Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`)
   }
-  return value as Record<string, unknown>
+  return value
 }
 
 /** writeReadOnly writes generated state and restores its read-only permissions. */
@@ -248,7 +251,7 @@ function isStringRecord(value: unknown): value is ManagedTypes.ManagedPackageVer
   return isObjectRecord(value) && Object.values(value).every(item => typeof item === 'string')
 }
 
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
+function isObjectRecord(value: unknown): value is ManagedProfileMetadata {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 

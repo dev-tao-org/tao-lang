@@ -246,7 +246,7 @@ function createProfileMetadata(
   graphFingerprint: string,
   lock: string,
   nativePackages: string[],
-): Record<string, unknown> {
+): State.ManagedProfileMetadata {
   return {
     fingerprint,
     graphFingerprint,
