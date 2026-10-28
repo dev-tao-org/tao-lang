@@ -39,6 +39,21 @@ export type SecretStore = {
   secrets: Readonly<Record<string, SecretEntry>>
 }
 
+/** encodeSecretRecipients retains recipient order for concurrent-change detection. */
+export function encodeSecretRecipients(recipients: SecretStore['recipients']): string {
+  return JSON.stringify(recipients)
+}
+
+/** encodeSecretEntry retains optional absence and field order for concurrent-change detection. */
+export function encodeSecretEntry(entry: OptionalSecretEntry): OptionalEncodedSecret {
+  return JSON.stringify(entry)
+}
+
+/** encodeStoreKey retains optional absence and wrapped-key order for concurrent-change detection. */
+export function encodeStoreKey(key: SecretStore['storeKey']): OptionalEncodedSecret {
+  return JSON.stringify(key)
+}
+
 /** parseSecretStore parses JSONC and rejects shapes that could silently lose a secret. */
 export function parseSecretStore(text: string): SecretStore {
   const parsed = parseConfigFileTextToJson('secrets.jsonc', text)
@@ -188,6 +203,8 @@ function isStoreKeyArmor(armor: string): boolean {
 }
 
 type OptionalSecretNote = string | undefined
+type OptionalSecretEntry = SecretEntry | undefined
+type OptionalEncodedSecret = string | undefined
 
 function resolveSecretNote(note: OptionalSecretNote, existingNote: OptionalSecretNote): { note?: string } {
   if (note !== undefined) {

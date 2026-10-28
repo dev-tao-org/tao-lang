@@ -2,6 +2,7 @@ import { Time } from '@shared'
 import * as Browser from '@shared/os/browser'
 import { PreviewRecovery } from '../../shared/shared-src/os/PreviewRecovery'
 import type { PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
+import * as PreviewBrowserJson from './PreviewBrowserJson'
 import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './PreviewSignal'
 
@@ -41,9 +42,9 @@ const recoveries = new Map(
 const expected = new Set<string>()
 const terminalOutcomes = new Map<string, PreviewOutcome>()
 const pendingSignals: MessageEvent[] = []
-const scenarios = JSON.parse(
+const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   Browser.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
-) as string[]
+)
 let scenarioIndex = 0
 const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
   status: 'ready',
@@ -53,7 +54,7 @@ Browser.setPageState(result)
 const events = Browser.eventStream('/events')
 
 events.addEventListener('expected', event => {
-  const expectation = JSON.parse((event as MessageEvent<string>).data) as { revision: string; sequence: number }
+  const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
   const revision = expectation.revision
   for (const recovery of recoveries.values()) {
     recovery.expect(expectation)
@@ -66,7 +67,7 @@ events.addEventListener('expected', event => {
 })
 
 events.addEventListener('outcome', event => {
-  const outcome = JSON.parse((event as MessageEvent<string>).data) as PreviewOutcome
+  const outcome = PreviewBrowserJson.parsePreviewOutcome((event as MessageEvent<string>).data)
   terminalOutcomes.set(outcome.revision, outcome)
   if (terminalOutcomes.size > 64) {
     terminalOutcomes.delete(terminalOutcomes.keys().next().value!)
@@ -77,7 +78,7 @@ events.addEventListener('outcome', event => {
 })
 
 events.addEventListener('baseline', event => {
-  const baseline = JSON.parse((event as MessageEvent<string>).data) as { revision: string; sequence: number }
+  const baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
   for (const recovery of recoveries.values()) {
     recovery.setBaseline(baseline)
   }
@@ -142,11 +143,10 @@ function isFrameMessage(event: MessageEvent): boolean {
 }
 
 function relaySignal(signal: PreviewSignal): void {
-  const { type, sessionId, frameId, bootId, revision, timestampMs } = signal
   void Browser.requestJson('/receipt', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type, sessionId, frameId, bootId, revision, timestampMs }),
+    body: PreviewBrowserJson.serializePreviewReceipt(signal),
   }).then(undefined, failScenario)
 }
 
@@ -156,7 +156,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ scenario }),
+      body: PreviewBrowserJson.serializeEditScenario(scenario),
     },
   )
   if (update.status !== 'published') {

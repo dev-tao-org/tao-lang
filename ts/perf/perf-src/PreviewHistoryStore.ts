@@ -44,7 +44,8 @@ export async function existingHistory(
     if (!await FileSystem.exists(directory)) {
       continue
     }
-    const record = JSON.parse(await FileSystem.readFile(Path.join(directory, 'record.json'), 'utf8')) as HistoryRecord
+    const recordText = await FileSystem.readFile(Path.join(directory, 'record.json'), 'utf8')
+    const record = parseHistoryRecord(recordText)
     if (!matchesRecord(record, context)) {
       Errors.ThrowUserInput('Existing performance record is incomplete or differs from the source: ' + directory)
     }
@@ -67,7 +68,8 @@ export async function writeHistory(directory: string, record: HistoryRecord, rep
     if (report !== undefined) {
       await FileSystem.writeFile(Path.join(staging, 'report.json'), report, 'utf8')
     }
-    await FileSystem.writeFile(Path.join(staging, 'record.json'), JSON.stringify(record, null, 2) + '\n', 'utf8')
+    const recordText = serializeHistoryRecord(record)
+    await FileSystem.writeFile(Path.join(staging, 'record.json'), recordText, 'utf8')
     if (await FileSystem.exists(directory)) {
       Errors.ThrowUserInput('Performance history already exists: ' + directory)
     }
@@ -79,10 +81,22 @@ export async function writeHistory(directory: string, record: HistoryRecord, rep
 
 /** validatePreviewReport requires the raw capture to name the expected source commit and schema. */
 export function validatePreviewReport(report: string, sourceCommit: string): void {
-  const value: unknown = JSON.parse(report)
+  const value = parsePreviewReport(report)
   if (!isSourceReport(value, sourceCommit)) {
     Errors.ThrowUserInput('The preview report does not identify the measured source commit and schema.')
   }
+}
+
+function parseHistoryRecord(source: string): HistoryRecord {
+  return JSON.parse(source) as HistoryRecord
+}
+
+function serializeHistoryRecord(record: HistoryRecord): string {
+  return JSON.stringify(record, null, 2) + '\n'
+}
+
+function parsePreviewReport(source: string): unknown {
+  return JSON.parse(source)
 }
 
 type FixtureIdentity = { path: string; sha256: string }

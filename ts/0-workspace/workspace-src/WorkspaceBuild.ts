@@ -7,7 +7,7 @@ import { FileSystem, Path, Platform } from '@shared/os'
  *  Memory publication remains the only Metro path; disk snapshots are switched atomically after acceptance. */
 export async function publishBuild(
   buildDirectory: string,
-  files: Readonly<Record<string, string>>,
+  files: GeneratedRevision['files'],
   revision: string,
   prepareRuntime: () => Promise<RuntimeApplication>,
   isCurrent: () => boolean,
@@ -57,7 +57,7 @@ export async function publishBuild(
 }
 
 const mirrors = new WeakMap<RuntimeApplication, string>()
-type PreviousGeneratedFiles = Readonly<Record<string, string>> | undefined
+type PreviousGeneratedFiles = GeneratedRevision['files'] | undefined
 
 const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', async function(
   buildDirectory: string,
@@ -109,7 +109,7 @@ const writeBuild = Timings.measured(
   async function(
     directory: string,
     runtime: RuntimeApplication,
-    files: Readonly<Record<string, string>>,
+    files: GeneratedRevision['files'],
     isCurrent: () => boolean,
   ): Promise<string | undefined> {
     const revisions = `${directory}.revisions`
@@ -133,19 +133,20 @@ const writeBuild = Timings.measured(
 )
 
 async function copyBuildConfiguration(nextDirectory: string, runtime: RuntimeApplication): Promise<void> {
-  const config = {
-    extends: Path.join(runtime.directory, 'tsconfig.json'),
-    include: ['./**/*.ts', './**/*.tsx'],
-  }
-  await FileSystem.writeIfChanged(Path.join(nextDirectory, 'tsconfig.json'), `${JSON.stringify(config, null, 2)}\n`)
+  const configuration = serializePublishedBuildConfiguration(Path.join(runtime.directory, 'tsconfig.json'))
+  await FileSystem.writeIfChanged(Path.join(nextDirectory, 'tsconfig.json'), configuration)
   const targetLink = Path.join(nextDirectory, 'node_modules')
   const dependencyTarget = Path.join(runtime.directory, 'node_modules')
   await FileSystem.symlink(Path.relative(nextDirectory, dependencyTarget), targetLink, 'dir')
 }
 
+function serializePublishedBuildConfiguration(extendsPath: string): string {
+  return `${JSON.stringify({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] }, null, 2)}\n`
+}
+
 async function writeSnapshotFiles(
   nextDirectory: string,
-  files: Readonly<Record<string, string>>,
+  files: GeneratedRevision['files'],
 ): Promise<void> {
   for (const [file, content] of Object.entries(files)) {
     const path = resolveGeneratedPath(nextDirectory, file)
@@ -210,7 +211,7 @@ async function removeOldSnapshots(
 const publishChanged = Timings.measured('workspace.runtime.publish-changed', async function(
   snapshot: string,
   runtime: RuntimeApplication,
-  files: Readonly<Record<string, string>>,
+  files: GeneratedRevision['files'],
   previousFiles: PreviousGeneratedFiles,
   isCurrent: () => boolean,
 ): Promise<void> {
@@ -231,7 +232,7 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
 
 async function writeAtomicGeneratedFiles(
   directory: string,
-  files: Readonly<Record<string, string>>,
+  files: GeneratedRevision['files'],
   isCurrent: () => boolean,
 ): Promise<void> {
   for (const [file, content] of Object.entries(files)) {

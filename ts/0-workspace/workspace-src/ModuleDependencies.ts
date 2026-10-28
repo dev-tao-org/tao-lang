@@ -137,12 +137,16 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
   if (status !== 0) {
     Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${stderr.trim()}`)
   }
-  const value = Try.WithDefault(undefined, () => JSON.parse(stdout.trim()) as unknown)
+  const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(stdout.trim()))
   const version = resolveNpmVersionValue(value)
   if (!version) {
     Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)
   }
   return version
+}
+
+function parseNpmVersionResponse(contents: string): unknown {
+  return JSON.parse(contents) as unknown
 }
 
 function resolveNpmVersionValue(value: unknown): string | undefined {

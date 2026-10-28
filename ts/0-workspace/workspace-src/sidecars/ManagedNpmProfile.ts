@@ -228,11 +228,15 @@ async function persistProfile(
   const metadata = createProfileMetadata(input, requirements, fingerprint, graphFingerprint, lock, nativePackages)
   await State.ensureOwnedFile(
     Path.join(profile, '.tao-managed.json'),
-    `${JSON.stringify(metadata, null, 2)}\n`,
+    serializeProfileMetadata(metadata),
     repair || storedLock === undefined,
   )
   await FileSystem.rm(Path.join(profile, '.tao-managed-building'), { force: true })
   await FileSystem.chmod(lockfile, 0o444)
+}
+
+function serializeProfileMetadata(metadata: ReturnType<typeof createProfileMetadata>): string {
+  return `${JSON.stringify(metadata, null, 2)}\n`
 }
 
 function createProfileMetadata(

@@ -29,7 +29,7 @@ export function publishModuleResolution(
   directory: string,
   profile: string,
   requirements: ManagedTypes.ManagedModuleRequirement[],
-  runtimePins: Record<string, string>,
+  runtimePins: ManagedTypes.ManagedRuntimePins,
   projectRoot: string,
   repair = false,
 ): Promise<void> {
@@ -138,7 +138,7 @@ function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: str
 async function moduleDrift(
   directory: string,
   requirements: ManagedTypes.ManagedModuleRequirement[],
-  runtimePins: Record<string, string>,
+  runtimePins: ManagedTypes.ManagedRuntimePins,
   projectRoot: string,
   managed: ManagedTypes.PreparedManagedModules,
 ): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
@@ -232,7 +232,7 @@ async function repairModuleFiles(
   return previousOwner
 }
 
-function createModuleManifest(dependencies: Record<string, string>): string {
+function createModuleManifest(dependencies: ManagedTypes.ManagedPackageVersionMap): string {
   return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`
 }
 

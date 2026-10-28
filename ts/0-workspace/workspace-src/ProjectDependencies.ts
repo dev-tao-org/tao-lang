@@ -42,11 +42,7 @@ export class ProjectDependencies {
       return
     }
     if (createDependencySignature(actual) !== createDependencySignature(expected)) {
-      if (
-        Object.values(this.current.sources).some(source => source.location === owner && source.provider === 'github')
-      ) {
-        Errors.ThrowUserInput('Pinned remote dependency declarations changed; restore the exact pinned source.')
-      }
+      requireEditableDependencyDeclarations(this.current, owner)
       requireSetup('Dependency declarations changed; setup and preview restart are required.')
     }
   }
@@ -99,8 +95,20 @@ type ObservedSourceField = 'path' | 'document'
 type ObservedSource = Pick<SourceModule, ObservedSourceField>
 
 function createDependencySignature(requirements: DependencyRequirement[]): string {
-  return JSON.stringify(
-    requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
-      .map(item => JSON.stringify(item)).sort(),
+  const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
+  const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort()
+  return JSON.stringify(serializedRequirements)
+}
+
+function serializeDependencyRequirement(requirement: DependencyRequirement): string {
+  return JSON.stringify(requirement)
+}
+
+function requireEditableDependencyDeclarations(lock: DependencyLock, owner: string): void {
+  const pinnedRemote = Object.values(lock.sources).some(source =>
+    source.location === owner && source.provider === 'github'
   )
+  if (pinnedRemote) {
+    Errors.ThrowUserInput('Pinned remote dependency declarations changed; restore the exact pinned source.')
+  }
 }

@@ -61,7 +61,7 @@ export async function validateSelection(session: ReviewSession, selection: Revie
   const frozen = await ReviewGit.readJson<ReviewSelection>(
     Path.join(session.directory, 'plans', `${selection.proposal}.json`),
   )
-  if (JSON.stringify(frozen) !== JSON.stringify(selection)) {
+  if (encodeReviewSelection(frozen) !== encodeReviewSelection(selection)) {
     Errors.ThrowUserInput('Selection differs from its immutable proposal. Generate a new plan.')
   }
   if (
@@ -104,6 +104,10 @@ export async function replaceEntries(root: string, index: string, revision: stri
 }
 
 const GitRemovalObjectId = '0'.repeat(40)
+
+function encodeReviewSelection(selection: ReviewSelection): string {
+  return JSON.stringify(selection)
+}
 
 async function wholeCandidates(
   session: ReviewSession,

@@ -3,6 +3,8 @@ import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
 
+type MaybeModuleMetadata = Record<string, unknown> | null | undefined
+
 /** cleanManagedModuleMetadata removes recorded metadata owned by this consumer project. */
 export async function cleanManagedModuleMetadata(
   projectRoot: string,
@@ -24,8 +26,6 @@ export async function cleanManagedModuleMetadata(
   }
   return warnings
 }
-
-type MaybeModuleMetadata = Record<string, unknown> | null | undefined
 
 async function walkRoot(root: string, optional: boolean): Promise<string[]> {
   return await Try<Promise<string[]>, string[]>(() => Files.walk(root), {
@@ -77,15 +77,16 @@ async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Prom
 async function readModuleMetadata(marker: string): Promise<Record<string, unknown> | undefined> {
   const metadata = await Try.WithDefault(
     undefined,
-    async () => JSON.parse(await FileSystem.readFile(marker, 'utf8')) as Record<string, unknown>,
+    async () => parseManagedModuleMetadata(await FileSystem.readFile(marker, 'utf8')),
   )
-  const packages = metadata?.packages
-  const files = metadata?.files
-  const hashes = metadata?.generatedHashes
-  if (!hasValidModuleMetadata(marker, metadata, packages, files, hashes)) {
+  const profileMetadata = metadata as MaybeModuleMetadata
+  const packages = profileMetadata?.packages
+  const files = profileMetadata?.files
+  const hashes = profileMetadata?.generatedHashes
+  if (!hasValidModuleMetadata(marker, profileMetadata, packages, files, hashes)) {
     return undefined
   }
-  return metadata
+  return profileMetadata as Record<string, unknown>
 }
 
 function hasValidModuleMetadata(
@@ -145,9 +146,14 @@ async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
   }
   const metadata = await Try.WithDefault(
     undefined,
-    async () => JSON.parse(await FileSystem.readFile(marker, 'utf8')) as Record<string, unknown>,
+    async () => parseManagedModuleMetadata(await FileSystem.readFile(marker, 'utf8')),
   )
-  return metadata?.fingerprint === Path.basename(profile) && typeof metadata.lockHash === 'string'
+  const profileMetadata = metadata as MaybeModuleMetadata
+  return profileMetadata?.fingerprint === Path.basename(profile) && typeof profileMetadata.lockHash === 'string'
+}
+
+function parseManagedModuleMetadata(contents: string): unknown {
+  return JSON.parse(contents) as unknown
 }
 
 async function cleanModuleFiles(

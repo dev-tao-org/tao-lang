@@ -3,20 +3,14 @@ import * as GrammarTraversal from './grammar-traversal'
 
 /** writeCSTTypes derives field names and directly owned tokens from the generated grammar. */
 export async function writeCSTTypes(directory: string): Promise<void> {
-  const grammar = JSON.parse(await FileSystem.readFile(Path.join(directory, 'src/grammar.json'), 'utf8')) as {
-    rules: Record<string, Rule>
-  }
-  const nodes = JSON.parse(await FileSystem.readFile(Path.join(directory, 'src/node-types.json'), 'utf8')) as {
-    type: string
-    named: boolean
-    fields?: Record<string, unknown>
-  }[]
+  const grammar = await readCstGrammar(Path.join(directory, 'src/grammar.json'))
+  const nodes = await readCstNodes(Path.join(directory, 'src/node-types.json'))
   const members = nodes.filter(node => node.named).map(node => {
     const fields = union(Object.keys(node.fields ?? {}))
     const directTokens = GrammarTraversal.collectOwnedTokens(grammar.rules[node.type])
     const aliasedTokensForNode = aliasedTokens(grammar.rules, node.type)
     const tokens = union([...directTokens, ...aliasedTokensForNode])
-    return `  ${JSON.stringify(node.type)}: { fields: ${fields}; tokens: ${tokens} }`
+    return `  ${emitCstStringLiteral(node.type)}: { fields: ${fields}; tokens: ${tokens} }`
   })
   await FileSystem.writeIfChanged(
     Path.join(directory, 'CST.ts'),
@@ -27,6 +21,16 @@ export async function writeCSTTypes(directory: string): Promise<void> {
 }
 
 type Rule = GrammarTraversal.GrammarRule & { name?: string; named?: boolean; content?: Rule; members?: Rule[] }
+type CstGrammar = { rules: Record<string, Rule> }
+type CstNode = { type: string; named: boolean; fields?: Record<string, unknown> }
+
+async function readCstGrammar(path: string): Promise<CstGrammar> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstGrammar
+}
+
+async function readCstNodes(path: string): Promise<CstNode[]> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstNode[]
+}
 
 function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] {
   return Object.values(rules).flatMap(rule =>
@@ -53,5 +57,9 @@ function findAliases(rule: OptionalRule, nodeType: string): Rule[] {
 }
 
 function union(values: readonly string[]): string {
-  return [...new Set(values)].map(value => JSON.stringify(value)).join(' | ') || 'never'
+  return [...new Set(values)].map(emitCstStringLiteral).join(' | ') || 'never'
+}
+
+function emitCstStringLiteral(value: string): string {
+  return JSON.stringify(value)
 }

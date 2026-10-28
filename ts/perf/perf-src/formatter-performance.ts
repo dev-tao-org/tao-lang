@@ -31,30 +31,42 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
   const path = Artifacts.resolvePath('logs/performance', `formatter-${Platform.randomUUID()}.json`)
   await Artifacts.mkdir(Path.dirname(path), { recursive: true })
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        system: Platform.systemInfo(),
-        initialization: initialization.samples,
-        wasmBytes: bytes.byteLength,
-        definition:
-          '20 warmups then 100 immutable-snapshot formatting, import-fix and usage-analysis samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
-        fixtures: fixtures.map(fixture => ({ scenario: fixture.scenario, hash: Platform.hashText(fixture.source) })),
-        summary,
-        samples,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: FormatterPerformanceReport = {
+    version: 1,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    system: Platform.systemInfo(),
+    initialization: initialization.samples,
+    wasmBytes: bytes.byteLength,
+    definition:
+      '20 warmups then 100 immutable-snapshot formatting, import-fix and usage-analysis samples per fixture. Excludes parsing, AST construction, disk writes, editor rendering and preview refresh.',
+    fixtures: fixtures.map(fixture => ({ scenario: fixture.scenario, hash: Platform.hashText(fixture.source) })),
+    summary,
+    samples,
+  }
+  await Artifacts.write(path, serializeFormatterPerformanceReport(report))
   return { path, summary }
 })
 
 type FormatterSample = TimingSample & { scenario: string }
+type FormatterPerformanceReport = {
+  version: 1
+  commit: string
+  modified: boolean
+  system: ReturnType<typeof Platform.systemInfo>
+  initialization: TimingSample[]
+  wasmBytes: number
+  definition: string
+  fixtures: FormatterFixtureReport[]
+  summary: ReturnType<typeof summarizeSamples>
+  samples: FormatterSample[]
+}
+
+type FormatterFixtureReport = { scenario: string; hash: string }
+
+function serializeFormatterPerformanceReport(report: FormatterPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
+}
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {
   const tree = createParser().parse(fixture.source)

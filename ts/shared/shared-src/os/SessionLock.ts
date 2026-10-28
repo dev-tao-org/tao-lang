@@ -40,10 +40,12 @@ export function isSafeVersionName(identity: string, directory: string): boolean 
   return Regxs.UuidRegx.test(suffix)
 }
 
-async function readLockPointer(root: string, path: string): Promise<{ identity: string; directory: string }> {
+type LockPointer = { identity: string; directory: string }
+
+async function readLockPointer(root: string, path: string): Promise<LockPointer> {
   return await Try(async () => {
     const contents = await FileSystem.readFile(path, 'utf8')
-    const value: unknown = Try(() => JSON.parse(contents), { catch: () => throwInvalidPointer(path) })
+    const value = parseLockPointer(path, contents)
     if (!isLockPointerRecord(value)) {
       throwInvalidPointer(path)
     }
@@ -69,6 +71,10 @@ async function readLockPointer(root: string, path: string): Promise<{ identity: 
   })
 }
 
+function parseLockPointer(path: string, contents: string): unknown {
+  return Try(() => JSON.parse(contents), { catch: () => throwInvalidPointer(path) })
+}
+
 function isLockPointerRecord(value: unknown): value is { identity: unknown; directory: unknown } {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -77,8 +83,8 @@ function isLockPointerRecord(value: unknown): value is { identity: unknown; dire
 }
 
 function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown }): pointer is {
-  identity: string
-  directory: string
+  identity: LockPointer['identity']
+  directory: LockPointer['directory']
 } {
   return typeof pointer.identity === 'string' && typeof pointer.directory === 'string'
     && isSafeVersionName(pointer.identity, pointer.directory)

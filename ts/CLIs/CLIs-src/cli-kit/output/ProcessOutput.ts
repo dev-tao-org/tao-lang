@@ -32,7 +32,7 @@ export function createProcessOutput(raw: (text: string) => void, receive: (messa
         }
         const frame = pending.slice(0, end + 1)
         pending = pending.slice(end + 1)
-        const message: unknown = Try.WithDefault(undefined, () => JSON.parse(frame.slice(1)))
+        const message = decodeOutputFrame(frame)
         if (isOutputMessage(message)) {
           receive(message)
         } else {
@@ -50,6 +50,10 @@ export function createProcessOutput(raw: (text: string) => void, receive: (messa
 }
 
 type OutputMessageFields = 'stream' | 'level' | 'text' | 'summary'
+
+function decodeOutputFrame(frame: string): unknown {
+  return Try.WithDefault(undefined, () => JSON.parse(frame.slice(1)) as unknown)
+}
 
 function isOutputMessage(value: unknown): value is OutputMessage {
   if (typeof value !== 'object' || value === null) {

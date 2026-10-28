@@ -1,6 +1,6 @@
 import { Errors, NullCharacter, Try } from '@shared'
 import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
-import { readRuntimePatches } from './RuntimePatches'
+import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
 export async function prepareToolchain(
@@ -100,9 +100,14 @@ async function toolchainIdentity(
   const os = identityInputs?.os ?? platform.os
   const architecture = identityInputs?.architecture ?? platform.architecture
   const { patches } = await readRuntimePatches(resourcesDirectory)
-  const identity = [manifest, lockfile, JSON.stringify(patches), runtimeVersion, os, architecture, toolchainCachePolicy]
+  const patchIdentity = serializeRuntimePatchIdentity(patches)
+  const identity = [manifest, lockfile, patchIdentity, runtimeVersion, os, architecture, toolchainCachePolicy]
     .join(NullCharacter)
   return Platform.hashText(identity)
+}
+
+function serializeRuntimePatchIdentity(patches: RuntimePatches['patches']): string {
+  return JSON.stringify(patches)
 }
 
 async function copyToolchainPatches(source: string, target: string): Promise<void> {

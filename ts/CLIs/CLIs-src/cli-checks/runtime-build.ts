@@ -1,14 +1,14 @@
 import { Errors, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { runtimeLock, type RuntimeManifest } from './runtime-lock'
+import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
-import { readRuntimeSources } from './runtime-sources'
+import { readRuntimeSources, type RuntimeSourceContents, type RuntimeSourcePaths } from './runtime-sources'
 
 /** prepareRuntime builds versioned, relocatable Expo runtime resources from declared source inputs. */
 export const prepareRuntime = Timings.createTopLevelTimer(async function(timings): Promise<string> {
   return await BuildLock.withBuildLock(Artifacts.resolvePath('locks/runtime-build.lock'), async () => {
     const inputs = await readInputs()
-    const identity = Platform.hashText(JSON.stringify(inputs))
+    const identity = createRuntimeBuildIdentity(inputs)
     const directory = Artifacts.resolvePath('cache/runtime-build', identity)
     const patchRoot = Repo.resolvePath('ts/patches')
     const patches = Object.keys(inputs.sources).filter(path => Path.dirname(path) === patchRoot)
@@ -24,8 +24,8 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
 
 async function writeRuntimeSources(
   directory: string,
-  sources: Record<string, string>,
-  runtimeSources: Record<string, string>,
+  sources: RuntimeSourceContents,
+  runtimeSources: RuntimeSourcePaths,
 ): Promise<void> {
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = sources[Repo.resolvePath(sourcePath)]
@@ -71,24 +71,14 @@ const buildResources = Timings.measured('runtime.build', async function(
     await writeRuntimeSources(stage, inputs.sources, inputs.runtimeSources)
     await writeMetroResources(stage, inputs.sources)
     const manifest = runtimeManifest(inputs.sources)
-    await FileSystem.writeFile(Path.join(stage, 'package.json'), JSON.stringify(manifest, null, 2))
+    await FileSystem.writeFile(Path.join(stage, 'package.json'), formatRuntimeManifest(manifest))
     await FileSystem.writeFile(
       Path.join(stage, 'bun.lock'),
-      runtimeLock(inputs.sources[Repo.resolvePath('ts/bun.lock')]!, manifest),
+      RuntimeLock.runtimeLock(inputs.sources[Repo.resolvePath('ts/bun.lock')]!, manifest),
     )
     await FileSystem.writeFile(
       Path.join(stage, 'runtime.json'),
-      JSON.stringify(
-        {
-          version: 2,
-          identity,
-          dependencies: manifest.dependencies,
-          devDependencies: manifest.devDependencies,
-          sourceFiles: Object.keys(inputs.runtimeSources),
-        },
-        null,
-        2,
-      ),
+      formatRuntimeMetadata(identity, manifest, inputs.runtimeSources),
     )
     await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
     await FileSystem.rm(directory, { recursive: true, force: true })
@@ -100,16 +90,11 @@ const buildResources = Timings.measured('runtime.build', async function(
   })
 })
 
-function runtimeManifest(sources: Record<string, string>): RuntimeManifest {
-  const parsed = JSON.parse(sources[Path.join(packageRoot, 'package.json')]!) as {
-    dependencies?: Record<string, string>
-    devDependencies?: Record<string, string>
-  }
+function runtimeManifest(sources: RuntimeSourceContents): RuntimeLock.RuntimeManifest {
+  const parsed = parseRuntimePackage(sources[Path.join(packageRoot, 'package.json')]!)
   const dependencies = parsed.dependencies ?? Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
   const devDependencies = parsed.devDependencies ?? {}
-  const workspace = JSON.parse(sources[Repo.resolvePath('ts/package.json')]!) as {
-    patchedDependencies?: Record<string, string>
-  }
+  const workspace = parseRuntimeWorkspace(sources[Repo.resolvePath('ts/package.json')]!)
   return {
     name: 'tao-expo-toolchain',
     private: true,
@@ -129,4 +114,45 @@ async function publishResources(directory: string): Promise<void> {
     return
   }
   await FileSystem.replaceDirectoryLink(directory, target)
+}
+
+type RuntimeBuildInputs = Awaited<ReturnType<typeof readInputs>>
+type RuntimePackage = {
+  dependencies?: RuntimeLock.RuntimeDependencyVersions
+  devDependencies?: RuntimeLock.RuntimeDependencyVersions
+}
+type RuntimeWorkspace = { patchedDependencies?: RuntimeLock.RuntimePatchPaths }
+
+function createRuntimeBuildIdentity(inputs: RuntimeBuildInputs): string {
+  return Platform.hashText(JSON.stringify(inputs))
+}
+
+function formatRuntimeManifest(manifest: RuntimeLock.RuntimeManifest): string {
+  return JSON.stringify(manifest, null, 2)
+}
+
+function formatRuntimeMetadata(
+  identity: string,
+  manifest: RuntimeLock.RuntimeManifest,
+  sources: RuntimeSourcePaths,
+): string {
+  return JSON.stringify(
+    {
+      version: 2,
+      identity,
+      dependencies: manifest.dependencies,
+      devDependencies: manifest.devDependencies,
+      sourceFiles: Object.keys(sources),
+    },
+    null,
+    2,
+  )
+}
+
+function parseRuntimePackage(contents: string): RuntimePackage {
+  return JSON.parse(contents) as RuntimePackage
+}
+
+function parseRuntimeWorkspace(contents: string): RuntimeWorkspace {
+  return JSON.parse(contents) as RuntimeWorkspace
 }

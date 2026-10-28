@@ -5,7 +5,7 @@ import * as Path from '../../../shared/shared-src/os/Path'
 import { createRevisionOwner, type RevisionOwner, type RevisionResult, snapshotRevision } from './GeneratedRevision'
 import { createMetroAdmission, type MetroAdmission } from './MetroAdmission'
 import { installMetroHooks } from './MetroHooks'
-import type { GeneratedRevision } from './PreviewProtocol'
+import type { GeneratedRevision, GeneratedSourceFiles } from './PreviewProtocol'
 
 /** createMetroAdapter installs the generated namespace before Expo imports filesystem readers.
  *  Only this owner changes visible source bytes. A confirmed precommit error restores the old volume;
@@ -132,8 +132,8 @@ function assertSupportedConfiguration(metro: MetroServer): void {
 }
 
 function resolveChangedPaths(
-  previous: Readonly<Record<string, string>>,
-  next: Readonly<Record<string, string>>,
+  previous: GeneratedSourceFiles,
+  next: GeneratedSourceFiles,
 ): string[] {
   return [...new Set([...Object.keys(previous), ...Object.keys(next)])].filter(path => previous[path] !== next[path])
 }

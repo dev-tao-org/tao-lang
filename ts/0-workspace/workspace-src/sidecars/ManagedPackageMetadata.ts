@@ -1,8 +1,9 @@
 import { Errors, Try } from '@shared'
 import { FileSystem } from '@shared/os'
+import type { ManagedPackageVersionMap } from './ManagedModuleTypes'
 
 /** readStringEntries reads string-valued entries from unknown package metadata. */
-export function readStringEntries(value: unknown): Record<string, string> {
+export function readStringEntries(value: unknown): ManagedPackageVersionMap {
   if (!value || typeof value !== 'object') {
     return {}
   }

@@ -32,24 +32,28 @@ export async function prepareExtensionAssets(): Promise<void> {
     cwd: Repo.resolvePath('ts'),
   })
   await copyAssets()
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(sourceRoot, 'package.json'), 'utf8'))
+  const manifest = await FileSystem.readFile(Path.join(sourceRoot, 'package.json'), 'utf8')
+  await FileSystem.writeFile(Path.join(packageRoot, 'package.json'), formatPublishedExtensionManifest(manifest))
+}
+
+type ExtensionManifest = Record<string, unknown> & { files: string[] }
+
+function formatPublishedExtensionManifest(contents: string): string {
+  const manifest = JSON.parse(contents) as ExtensionManifest
   delete manifest.dependencies
   delete manifest.devDependencies
   delete manifest.private
-  await FileSystem.writeFile(
-    Path.join(packageRoot, 'package.json'),
-    JSON.stringify(
-      {
-        ...manifest,
-        name: 'tao',
-        publisher: 'devtao',
-        type: 'commonjs',
-        main: './dist/extension.js',
-        files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
-      },
-      null,
-      2,
-    ),
+  return JSON.stringify(
+    {
+      ...manifest,
+      name: 'tao',
+      publisher: 'devtao',
+      type: 'commonjs',
+      main: './dist/extension.js',
+      files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
+    },
+    null,
+    2,
   )
 }
 

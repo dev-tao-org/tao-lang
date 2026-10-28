@@ -226,27 +226,38 @@ async function writeReport(owned: Resources, samples: RefreshSample[]): Promise<
   const directory = Artifacts.resolvePath('logs/performance')
   const path = Path.join(directory, `module-refresh-${owned.sessionId}.json`)
   await Artifacts.mkdir(directory, { recursive: true })
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 2,
-        sessionId: owned.sessionId,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        system: Platform.systemInfo(),
-        browser: await owned.browser!.version(),
-        pageErrors: owned.pageErrors,
-        definitions: reportDefinitions,
-        summary: summarize(samples),
-        samples,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: ModuleRefreshPerformanceReport = {
+    version: 2,
+    sessionId: owned.sessionId,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    system: Platform.systemInfo(),
+    browser: await owned.browser!.version(),
+    pageErrors: owned.pageErrors,
+    definitions: reportDefinitions,
+    summary: summarize(samples),
+    samples,
+  }
+  await Artifacts.write(path, serializeModuleRefreshPerformanceReport(report))
   Artifacts.trackTemporary(path)
   return path
+}
+
+type ModuleRefreshPerformanceReport = {
+  version: 2
+  sessionId: string
+  commit: string
+  modified: boolean
+  system: ReturnType<typeof Platform.systemInfo>
+  browser: string
+  pageErrors: string[]
+  definitions: typeof reportDefinitions
+  summary: ReturnType<typeof summarize>
+  samples: RefreshSample[]
+}
+
+function serializeModuleRefreshPerformanceReport(report: ModuleRefreshPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
 }
 
 async function disposeLayouts(owned: Resources): Promise<void> {

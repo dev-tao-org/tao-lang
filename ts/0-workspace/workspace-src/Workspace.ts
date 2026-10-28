@@ -1,6 +1,7 @@
 import { transform } from '@ast-gen/Transform'
 import { check } from '@check/Check'
 import { compile, type CompileOptions } from '@compile/Compile'
+import type { CompiledFiles } from '@compile/ModulesCompiler'
 import { createParser } from '@grammar/parser'
 import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
@@ -35,7 +36,7 @@ export type Publication = {
 export type CompiledApp = {
   revision: string
   source: string
-  files: Readonly<Record<string, string>>
+  files: CompiledFiles
   timings: TimingSample[]
   stages: PipelineStages
 }
@@ -204,7 +205,7 @@ class WorkspaceSession {
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
-  private async build(request: CompileRequest): Promise<Readonly<Record<string, string>> | undefined> {
+  private async build(request: CompileRequest): Promise<CompiledFiles | undefined> {
     const progress = this.options.onProgress
     progress?.('Parsing Tao source…')
     const tree = request.timings.run(this.parser.parse, request.source)

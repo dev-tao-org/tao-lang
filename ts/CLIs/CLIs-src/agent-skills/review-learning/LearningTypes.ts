@@ -30,9 +30,9 @@ export type Scan = {
   id: string
   correction: Correction
   queryVersion: number
-  files: Record<string, string>
-  inputs: Record<string, string>
-  configs: Record<string, string>
+  files: LearningFileHashes
+  inputs: LearningFileHashes
+  configs: LearningFileHashes
   selected: string[]
   complete: boolean
   findings: Finding[]
@@ -60,7 +60,14 @@ export type LearningState = {
   events: { group: string; scans: string[]; pending: string[] }[]
 }
 
+/** LearningFileHashes maps repository-relative paths to their retained content hashes. */
+export type LearningFileHashes = Record<string, string>
+
+/** LearningSnapshot retains source membership and configuration identities for a scan. */
+export type LearningSnapshot = Pick<Scan, LearningSnapshotFields>
+
 type CorrectionAuthority = 'explicit' | 'existing' | 'inferred'
 type QueryKind = 'call-name' | 'call-symbol' | 'function-length' | 'returned-method'
 type ProposalState = 'pending' | 'applying' | 'applied'
 type LearningEdit = { file: string; start: number; end: number; expected: string; replacement: string }
+type LearningSnapshotFields = 'files' | 'inputs' | 'configs'

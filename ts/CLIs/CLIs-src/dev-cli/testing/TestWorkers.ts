@@ -6,7 +6,7 @@ import { execute } from '@workspace/Workflow'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { findTaoTestFiles } from './TaoTestDiscovery'
 import * as TestPlanModule2 from './TestPlan'
-import { runTypeScriptTests } from './TypeScriptShards'
+import { runTypeScriptTests, type TestWorkerEnvironment } from './TypeScriptShards'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type { TestExecutionOptions } from './TestPlan'
@@ -70,7 +70,7 @@ type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: 
 async function executeTestPlan(
   options: Parameters<typeof runTestPlan>[0],
   signal: TestPlanModule2.TestRunSignal,
-  workerEnvironment: Record<string, string>,
+  workerEnvironment: TestWorkerEnvironment,
 ): Promise<void> {
   const startedAtMs = Time.nowMs()
   const plan = TestPlanModule2.planTestExecution(options)
@@ -99,7 +99,7 @@ async function runTaoTests(
   plan: TestPlanModule2.TestPlan,
   channels: OutputChannel[],
   signal: TestPlanModule2.TestRunSignal,
-  workerEnvironment: Record<string, string>,
+  workerEnvironment: TestWorkerEnvironment,
   yes?: boolean,
 ): Promise<void> {
   if (!plan.tao) {
@@ -119,7 +119,7 @@ async function executeTaoTests(
   plan: TestPlanModule2.TestPlan,
   channels: OutputChannel[],
   signal: TestPlanModule2.TestRunSignal,
-  workerEnvironment: Record<string, string>,
+  workerEnvironment: TestWorkerEnvironment,
   yes?: boolean,
 ): Promise<void> {
   if (!plan.tao) {
@@ -163,7 +163,7 @@ async function runTaoWorker(
   worker: TestPlanModule2.TaoWorkerPlan,
   channel: OutputChannel,
   signal: TestPlanModule2.TestRunSignal,
-  workerEnvironment: Record<string, string>,
+  workerEnvironment: TestWorkerEnvironment,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   TestPlanModule2.assertTestRunActive(signal)
   channel.start()
@@ -236,7 +236,7 @@ function taoWorkerReportPath(index: number): string {
   return Artifacts.resolvePath('logs', 'test', `${Time.now()}-${index}-${Platform.randomUUID()}.json`)
 }
 
-function testWorkerEnvironment(): Record<string, string> {
+function testWorkerEnvironment(): TestWorkerEnvironment {
   const root = Artifacts.resolvePath('tmp/test-workers', Platform.randomUUID())
   return { TAO_CACHE_DIR: Path.join(root, 'cache'), TAO_SUPPORT_DIR: Path.join(root, 'support') }
 }

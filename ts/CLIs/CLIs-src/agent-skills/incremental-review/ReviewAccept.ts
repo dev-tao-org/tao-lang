@@ -209,7 +209,7 @@ async function finishReviewed(session: ReviewSession, journal: ReviewJournal, ho
 }
 
 async function acquireIndexLock(path: string, session: ReviewSession, journal: ReviewJournal): Promise<void> {
-  const token = JSON.stringify({ session: session.id, proposal: journal.selection.proposal })
+  const token = encodeIndexLockToken(session, journal)
   if (await FileSystem.exists(path)) {
     if (await FileSystem.readFile(path, 'utf8') !== token) {
       Errors.ThrowUserInput('A foreign Git index lock exists; recovery will not remove it.')
@@ -230,6 +230,10 @@ async function recordPhase(
     await ReviewGit.writeJson(Path.join(session.directory, 'receipts', `${journal.selection.proposal}.json`), journal)
   }
   await ReviewGit.writeJson(resolveJournalPath(session), journal)
+}
+
+function encodeIndexLockToken(session: ReviewSession, journal: ReviewJournal): string {
+  return JSON.stringify({ session: session.id, proposal: journal.selection.proposal })
 }
 
 function resolveJournalPath(session: ReviewSession): string {

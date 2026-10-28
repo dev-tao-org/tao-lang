@@ -4,6 +4,7 @@ import { createProjectDependencyOptions } from '../../workspace-src/dependencies
 import type { ProjectPipelineServices } from '../../workspace-src/ProjectPipeline'
 import { inspectProjectPreparation, prepareProject } from '../../workspace-src/ProjectPreparation'
 import type { BunExecutor } from '../../workspace-src/sidecars/ManagedModules'
+import type { ManagedRuntimePins } from '../../workspace-src/sidecars/ManagedModuleTypes'
 import { execute } from '../../workspace-src/Workflow'
 
 /** openAutomaticWorkspace proves real setup and automatic continuation with a fixture-owned local registry. */
@@ -11,7 +12,7 @@ export async function openAutomaticWorkspace(
   entry: string,
   published: string[],
   executor: BunExecutor,
-  runtimePins: Record<string, string>,
+  runtimePins: ManagedRuntimePins,
   pipelineServices: ProjectPipelineServices,
 ) {
   const dependencyOptions = await createProjectDependencyOptions(Path.dirname(entry))

@@ -12,12 +12,20 @@ export type SidecarCommandResult = { status: number; stdout: string; stderr: str
 /** GeneratedModuleFileDrift identifies owned generated metadata that needs repair. */
 export type GeneratedModuleFileDrift = { path: string; owner: string; repair: string }
 
+/** ManagedRuntimePins maps package names to the exact runtime versions prepared for an app. */
+export type ManagedRuntimePins = Record<string, string>
+
+/** ManagedPackageVersionMap maps npm package names to their required version or resolution string. */
+export type ManagedPackageVersionMap = Record<string, string>
+
+type ManagedPatchFiles = Record<string, string>
+
 /** ManagedModulesInput describes the reachable Tao modules and app runtime policy. */
 export type ManagedModulesInput = {
   directory: string
   modules: { directory: string; requirements: ManagedModuleRequirement[] }[]
   target: string
-  runtimePins: Record<string, string>
+  runtimePins: ManagedRuntimePins
   runtimePolicy?: ManagedRuntimePolicy
   bunVersion: string
   singletonPackages?: string[]
@@ -27,9 +35,9 @@ export type ManagedModulesInput = {
 
 /** ManagedRuntimePolicy carries the bundled runtime's exact resolution and install patches. */
 export type ManagedRuntimePolicy = {
-  patchedDependencies: Record<string, string>
-  overrides: Record<string, string>
-  patches: Record<string, string>
+  patchedDependencies: ManagedPackageVersionMap
+  overrides: ManagedPackageVersionMap
+  patches: ManagedPatchFiles
 }
 
 /** BunExecutor runs a pinned Bun command without exposing host process details to orchestration. */

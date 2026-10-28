@@ -130,13 +130,15 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
   for (const group of input.groups) {
     await stageModule(input.options, group, input.stagingRoot, input.nodeModulesDirectory, input.defaultsPath)
   }
-  const marker = JSON.stringify(
-    { fingerprint: input.fingerprint, nodeModulesDirectory: input.nodeModulesDirectory },
-    null,
-    2,
+  await FileSystem.writeFile(
+    Path.join(input.stagingRoot, '.tao-sidecar-snapshot.json'),
+    serializeSidecarSnapshotMarker(input.fingerprint, input.nodeModulesDirectory),
   )
-  await FileSystem.writeFile(Path.join(input.stagingRoot, '.tao-sidecar-snapshot.json'), `${marker}\n`)
   await FileSystem.rename(input.stagingRoot, input.snapshotRoot)
+}
+
+function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
+  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}\n`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {

@@ -2,7 +2,7 @@ import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
 import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
-import type { ManagedModulesInput, ManagedRuntimePolicy, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import * as ManagedTypes from './ManagedModuleTypes'
 import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
 type ManagedDurableLock = string | undefined
@@ -11,9 +11,9 @@ type MaybeManagedProfileMetadata = Record<string, unknown> | undefined
 /** validateProfileMetadata checks a managed graph's declarations against its immutable cache marker. */
 export async function validateProfileMetadata(
   metadata: Record<string, unknown>,
-  input: ManagedModulesInput,
+  input: ManagedTypes.ManagedModulesInput,
   fingerprint: string,
-  requirements: readonly NormalizedManagedRequirement[],
+  requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): Promise<void> {
   if (!profileMetadataMatches(metadata, input, fingerprint, requirements, graphFingerprint)) {
@@ -26,9 +26,9 @@ export async function validateProfileMetadata(
 
 function profileMetadataMatches(
   metadata: Record<string, unknown>,
-  input: ManagedModulesInput,
+  input: ManagedTypes.ManagedModulesInput,
   fingerprint: string,
-  requirements: readonly NormalizedManagedRequirement[],
+  requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
   graphFingerprint: string,
 ): boolean {
   if (metadata.fingerprint !== fingerprint || metadata.graphFingerprint !== graphFingerprint) {
@@ -40,11 +40,11 @@ function profileMetadataMatches(
   if (metadata.policyRegistryVersion !== 1 || metadata.typeScriptDefaultsHash !== typeScriptDefaultsHash()) {
     return false
   }
-  if (JSON.stringify(metadata.runtimePins) !== JSON.stringify(input.runtimePins)) {
+  if (!sameManagedPackageVersions(metadata.runtimePins, input.runtimePins)) {
     return false
   }
   const expectedSingletons = input.singletonPackages ?? defaultSingletonPackages
-  if (JSON.stringify(metadata.singletonPackages) !== JSON.stringify(expectedSingletons)) {
+  if (!sameSerializedSingletonPackages(metadata.singletonPackages, expectedSingletons)) {
     return false
   }
   return profileRequirementsMatch(metadata.requirements, requirements)
@@ -78,7 +78,7 @@ export async function claimManagedProfile(
   }
   const metadataText = await optionalText(metadataPath)
   if (metadataText !== undefined) {
-    const metadata = Try.WithDefault(undefined, () => JSON.parse(metadataText) as Record<string, unknown>)
+    const metadata = Try.WithDefault(undefined, () => parseManagedProfileMetadata(metadataText))
     if (
       hasMatchingMetadataLock(metadata, fingerprint, durableLock)
     ) {
@@ -116,9 +116,9 @@ export async function claimManagedProfile(
 
 /** createManagedProfileManifest serializes exact top-level dependencies for the prepared graph. */
 export function createManagedProfileManifest(
-  requirements: readonly NormalizedManagedRequirement[],
-  runtimePins: Record<string, string>,
-  runtimePolicy?: ManagedRuntimePolicy,
+  requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
+  runtimePins: ManagedTypes.ManagedRuntimePins,
+  runtimePolicy?: ManagedTypes.ManagedRuntimePolicy,
 ): string {
   return `${
     JSON.stringify(
@@ -138,9 +138,9 @@ export function createManagedProfileManifest(
 /** validateManagedManifest checks the generated exact dependency manifest against declarations. */
 export async function validateManagedManifest(
   profile: string,
-  requirements: readonly NormalizedManagedRequirement[],
-  runtimePins: Record<string, string>,
-  runtimePolicy?: ManagedRuntimePolicy,
+  requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
+  runtimePins: ManagedTypes.ManagedRuntimePins,
+  runtimePolicy?: ManagedTypes.ManagedRuntimePolicy,
 ): Promise<void> {
   const expected = createManagedProfileManifest(requirements, runtimePins, runtimePolicy)
   const path = Path.join(profile, 'package.json')
@@ -176,11 +176,9 @@ export async function readOwnedMetadata(
   if (text === undefined || !repair) {
     return await optionalJson(path)
   }
-  const parsed = await Try.WithDefault(undefined, () => JSON.parse(text) as Record<string, unknown>)
-  if (
-    hasMatchingMetadataLock(parsed, fingerprint, durableLock)
-  ) {
-    return parsed
+  const parsed = await Try.WithDefault(undefined, () => parseManagedProfileMetadata(text))
+  if (hasMatchingMetadataLock(parsed, fingerprint, durableLock)) {
+    return parsed as Record<string, unknown>
   }
   if (durableLock === undefined) {
     Errors.ThrowUserInput(`Managed npm metadata ownership cannot be verified for ${profile}.`)
@@ -202,7 +200,7 @@ export async function optionalJson(path: string): Promise<Record<string, unknown
   if (text === undefined) {
     return undefined
   }
-  const value = await Try(() => JSON.parse(text) as unknown, {
+  const value = await Try(() => parseManagedProfileMetadata(text), {
     catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`),
   })
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -221,27 +219,32 @@ async function profileContentsMatch(profile: string, durableLock: string, expect
     && await optionalText(Path.join(profile, 'package.json')) === expectedManifest
 }
 
-function hasConflictingProfileFingerprint(metadata: MaybeManagedProfileMetadata, fingerprint: string): boolean {
-  return metadata?.fingerprint !== undefined && metadata.fingerprint !== fingerprint
+function hasConflictingProfileFingerprint(metadata: unknown, fingerprint: string): boolean {
+  const profileMetadata = metadata as MaybeManagedProfileMetadata
+  return profileMetadata?.fingerprint !== undefined && profileMetadata.fingerprint !== fingerprint
 }
 
 function hasMatchingMetadataLock(
-  metadata: MaybeManagedProfileMetadata,
+  metadata: unknown,
   fingerprint: string,
   durableLock: ManagedDurableLock,
 ): boolean {
-  if (metadata?.fingerprint !== fingerprint || typeof metadata.lockHash !== 'string') {
+  const profileMetadata = metadata as MaybeManagedProfileMetadata
+  if (profileMetadata?.fingerprint !== fingerprint || typeof profileMetadata.lockHash !== 'string') {
     return false
   }
-  return durableLock === undefined || metadata.lockHash === Platform.hashText(durableLock)
+  return durableLock === undefined || profileMetadata.lockHash === Platform.hashText(durableLock)
 }
 
-function profileRequirementsMatch(value: unknown, requirements: readonly NormalizedManagedRequirement[]): boolean {
+function profileRequirementsMatch(
+  value: unknown,
+  requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
+): boolean {
   const expected = collectAllRequirements(requirements)
   return isStringRecord(value) && sameStringRecord(value, expected)
 }
 
-function isStringRecord(value: unknown): value is Record<string, string> {
+function isStringRecord(value: unknown): value is ManagedTypes.ManagedPackageVersionMap {
   return isObjectRecord(value) && Object.values(value).every(item => typeof item === 'string')
 }
 
@@ -249,6 +252,21 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function sameStringRecord(left: Record<string, string>, right: Record<string, string>): boolean {
+function sameStringRecord(
+  left: ManagedTypes.ManagedPackageVersionMap,
+  right: ManagedTypes.ManagedPackageVersionMap,
+): boolean {
+  return sameManagedPackageVersions(left, right)
+}
+
+function parseManagedProfileMetadata(contents: string): unknown {
+  return JSON.parse(contents) as unknown
+}
+
+function sameManagedPackageVersions(left: unknown, right: ManagedTypes.ManagedRuntimePins): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function sameSerializedSingletonPackages(left: unknown, right: readonly string[]): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }

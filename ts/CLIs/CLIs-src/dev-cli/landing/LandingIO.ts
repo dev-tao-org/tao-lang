@@ -38,7 +38,7 @@ export async function git(io: LandingIO, args: readonly string[], storage = fals
 }
 
 function commandProgress(command: string, args: readonly string[]): string | undefined {
-  const stages: Record<string, string> = {
+  const stages: LandingCommandMessages = {
     './agent verify': 'Verifying the reviewed source…',
     'git fetch': 'Fetching remote history…',
     'git push': 'Publishing the pinned commit…',
@@ -54,3 +54,5 @@ function commandProgress(command: string, args: readonly string[]): string | und
   }
   return stages[command] ?? stages[`${command} ${args[0]}`]
 }
+
+type LandingCommandMessages = Record<string, string>

@@ -74,13 +74,17 @@ function validatedPrefixes(value: unknown): Prefix[] {
     if (!hasValidPrefixTokens(tokens)) {
       Errors.ThrowUserInput(`Invalid host command permission prefix '${prefix}'.`)
     }
-    const key = JSON.stringify(tokens)
+    const key = encodePrefixIdentity(tokens)
     if (seen.has(key)) {
       Errors.ThrowUserInput(`Duplicate host command permission prefix '${prefix}'.`)
     }
     seen.add(key)
     return { text: prefix, tokens }
   })
+}
+
+function encodePrefixIdentity(tokens: readonly string[]): string {
+  return JSON.stringify(tokens)
 }
 
 function isValidPrefix(prefix: unknown): prefix is string {

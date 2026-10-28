@@ -2,6 +2,7 @@ import { Errors, Try } from '@shared'
 import * as Env from '../../../shared/shared-src/os/Env'
 import * as FileSystem from '../../../shared/shared-src/os/FileSystem'
 import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
+import { parseGeneratedRevision } from './GeneratedRevision'
 import { createMetroAdapter, type MetroServer } from './MetroAdapter'
 import type { GeneratedRevision } from './PreviewProtocol'
 
@@ -19,7 +20,7 @@ export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): M
       }
       void Try(async () => {
         const text = await MetroPlatform.readRequestText(request, 32 * 1024 * 1024)
-        const revision = JSON.parse(text) as GeneratedRevision
+        const revision = parseGeneratedRevision(text) as GeneratedRevision
         respond(response, 200, await adapter.owner.publish(revision))
       }, {
         catch(error) {
@@ -40,7 +41,9 @@ type Middleware = (
 
 const sessionId = requireEnvironment('TAO_METRO_SESSION')
 const token = requireEnvironment('TAO_METRO_TOKEN')
-const initial = JSON.parse(FileSystem.readFileSync(requireEnvironment('TAO_METRO_SEED'), 'utf8')) as GeneratedRevision
+const initial = parseGeneratedRevision(
+  FileSystem.readFileSync(requireEnvironment('TAO_METRO_SEED'), 'utf8'),
+) as GeneratedRevision
 const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory(), sessionId, initial })
 
 function requireEnvironment(name: string): string {

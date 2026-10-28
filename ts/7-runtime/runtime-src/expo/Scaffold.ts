@@ -1,51 +1,72 @@
 import { Errors, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
+import type { RuntimePackageVersions } from '../Runtime'
 
 /** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
   directory: string,
   resourcesDirectory: string,
-  dependencies: Record<string, string>,
-  devDependencies: Record<string, string>,
+  dependencies: RuntimePackageVersions,
+  devDependencies: RuntimePackageVersions,
   sourceFiles: string[],
-  options: { watchFolders?: readonly string[]; singletonPackages?: readonly string[] } = {},
+  options: ExpoScaffoldOptions = {},
 ): Promise<void> {
   await FileSystem.writeIfChanged(
     Path.join(directory, 'package.json'),
-    JSON.stringify(
-      {
-        name: 'tao-preview',
-        private: true,
-        main: 'Application.ts',
-        dependencies,
-        devDependencies,
-        scripts: { web: 'expo start --web --no-dev' },
-      },
-      null,
-      2,
-    ),
+    serializeExpoPackageManifest(dependencies, devDependencies),
   )
   await FileSystem.writeIfChanged(Path.join(directory, 'Application.ts'), expoEntry)
   await FileSystem.writeIfChanged(Path.join(directory, 'metro.config.js'), metroConfiguration)
   await FileSystem.writeIfChanged(
     Path.join(directory, 'tao-resolution.json'),
-    JSON.stringify(
-      {
-        watchFolders: options.watchFolders ?? [],
-        singletonPackages: options.singletonPackages
-          ?? ['react', 'react-dom', 'react-native', 'react-native-web', 'expo'],
-      },
-      null,
-      2,
-    ),
+    serializeTaoResolution(options),
   )
   await FileSystem.writeIfChanged(
     Path.join(directory, 'app.json'),
-    JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2),
+    serializeExpoAppManifest(),
   )
-  await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), JSON.stringify(expoTypeScriptConfig, null, 2))
+  await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), serializeExpoTypeScriptConfig())
   await FileSystem.mkdir(Path.join(directory, 'src'), { recursive: true })
   await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
+}
+
+type ExpoScaffoldOptions = { watchFolders?: readonly string[]; singletonPackages?: readonly string[] }
+function serializeExpoPackageManifest(
+  dependencies: RuntimePackageVersions,
+  devDependencies: RuntimePackageVersions,
+): string {
+  return JSON.stringify(
+    {
+      name: 'tao-preview',
+      private: true,
+      main: 'Application.ts',
+      dependencies,
+      devDependencies,
+      scripts: { web: 'expo start --web --no-dev' },
+    },
+    null,
+    2,
+  )
+}
+
+function serializeTaoResolution(options: ExpoScaffoldOptions): string {
+  return JSON.stringify(
+    {
+      watchFolders: options.watchFolders ?? [],
+      singletonPackages: options.singletonPackages
+        ?? ['react', 'react-dom', 'react-native', 'react-native-web', 'expo'],
+    },
+    null,
+    2,
+  )
+}
+
+function serializeExpoAppManifest(): string {
+  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2)
+}
+
+function serializeExpoTypeScriptConfig(): string {
+  return JSON.stringify(expoTypeScriptConfig, null, 2)
 }
 
 const metroConfiguration = S`

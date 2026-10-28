@@ -61,7 +61,7 @@ async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord>
   const record = await io.read(`${base}/record.json`)
   const report = await io.read(`${base}/report.json`)
   validatePreviewReport(report, source)
-  const metadata = JSON.parse(record) as RecordMetadata
+  const metadata = parseRecordMetadata(record)
   const tree = await git(io, ['rev-parse', `${source}^{tree}`])
   const fixture = await io.command('git', ['show', `${source}:${metadata.fixture?.path}`])
   if (!validMetadata(metadata, source, tree, report, fixture)) {
@@ -87,4 +87,8 @@ function validMetadata(record: RecordMetadata, source: string, tree: string, rep
   const matchesRecord = isPassedSource && matchesSourceTree
   const matchesFixtureRecord = hasValidFixturePath && matchesFixture
   return matchesRecord && matchesFixtureRecord
+}
+
+function parseRecordMetadata(contents: string): RecordMetadata {
+  return JSON.parse(contents) as RecordMetadata
 }

@@ -14,10 +14,16 @@ export async function prepareBuildTypeScript(buildDirectory: string, runtime: Ru
   }
   await FileSystem.writeIfChanged(
     Path.join(buildDirectory, 'tsconfig.json'),
-    JSON.stringify(configuration, null, 2) + '\n',
+    serializeBuildTypeScriptConfiguration(configuration),
   )
   await linkBuildDependencies(buildDirectory, runtime.directory)
 }
+
+function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
+  return `${JSON.stringify(configuration, null, 2)}\n`
+}
+
+type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {
   const link = Path.join(buildDirectory, 'node_modules')

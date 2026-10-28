@@ -43,6 +43,7 @@ type MetroMethod = (this: object, ...arguments_: unknown[]) => unknown
 type MetroPrototype = Record<string, MetroMethod>
 type Send = (message: string) => void
 type Client = { sendFn: Send }
+type HmrPayload = { type: string; body?: unknown; tao?: unknown }
 type HmrSocketServer = { prependListener(event: 'connection', listener: (socket: HmrSocket) => void): void }
 
 function assertVersion(directory: string, name: string, expected: string): void {
@@ -130,7 +131,7 @@ function wrapRegistration(prototype: MetroPrototype, options: MetroHookOptions):
     return Try(() => options.admission.read(async () => await original.apply(this, arguments_)), {
       catch(error) {
         options.reportError(String(error))
-        client.sendFn(JSON.stringify({ type: 'error', body: { type: 'InternalError', message: String(error) } }))
+        client.sendFn(serializeInternalHmrError(error))
       },
     })
   }
@@ -148,15 +149,21 @@ function wrapHmrCompletion(prototype: MetroPrototype, options: MetroHookOptions)
 }
 
 function wrapSend(send: Send, options: MetroHookOptions): Send {
-  return message => {
-    const payload = JSON.parse(message) as { type: string; body?: unknown; tao?: unknown }
-    const current = options.current()
-    payload.tao = { sessionId: options.sessionId, revision: current.revision, sequence: current.sequence }
-    if (payload.type === 'error') {
-      options.reportError(JSON.stringify(payload.body))
-    }
-    send(JSON.stringify(payload))
+  return message => send(decorateHmrPayload(message, options))
+}
+
+function decorateHmrPayload(message: string, options: MetroHookOptions): string {
+  const payload = JSON.parse(message) as HmrPayload
+  const current = options.current()
+  payload.tao = { sessionId: options.sessionId, revision: current.revision, sequence: current.sequence }
+  if (payload.type === 'error') {
+    options.reportError(JSON.stringify(payload.body))
   }
+  return JSON.stringify(payload)
+}
+
+function serializeInternalHmrError(error: unknown): string {
+  return JSON.stringify({ type: 'error', body: { type: 'InternalError', message: String(error) } })
 }
 
 function wrapChangeListeners(prototype: MetroPrototype, options: MetroHookOptions): void {

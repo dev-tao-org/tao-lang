@@ -64,7 +64,7 @@ async function readInputs(): Promise<NativeInputs> {
   const builderSource = await FileSystem.readFile(import.meta.filename, 'utf8')
   const nodeMetadataCommand =
     'node -p JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})'
-  const node = JSON.parse(await Platform.capture(nodeMetadataCommand)) as NativeInputs['node']
+  const node = parseNativeNodeMetadata(await Platform.capture(nodeMetadataCommand))
   const [addon, nodeGyp, include] = await Promise.all([
     packageMetadata('node-addon-api'),
     packageMetadata('node-gyp'),
@@ -78,7 +78,7 @@ async function readInputs(): Promise<NativeInputs> {
   const lockHash = Platform.hashText(await FileSystem.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'))
   const environment = await toolchainEnvironment()
   const system = Platform.systemInfo()
-  const identity = Platform.hashText(JSON.stringify({
+  const identity = createNativeBuildIdentity({
     sources: sourceContents,
     builderSource,
     node,
@@ -90,7 +90,7 @@ async function readInputs(): Promise<NativeInputs> {
     bun: Platform.runtimeVersion(),
     lockHash,
     environment,
-  }))
+  })
   return { identity, node, includeDirectory: Path.resolve(sharedRoot, include), sourceContents }
 }
 
@@ -109,6 +109,28 @@ async function packageMetadata(
     Errors.ThrowHostEnvironment(`Installed package metadata is invalid for ${packageName}.`)
   }
   return { root, version: manifest.version }
+}
+
+type NativeBuildIdentityInputs = {
+  sources: string[]
+  builderSource: string
+  node: NativeInputs['node']
+  nodeVersionHeader: string
+  nodeAddonApi: string
+  nodeGyp: string
+  architecture: string
+  system: ReturnType<typeof Platform.systemInfo>
+  bun: string
+  lockHash: string
+  environment: unknown
+}
+
+function createNativeBuildIdentity(inputs: NativeBuildIdentityInputs): string {
+  return Platform.hashText(JSON.stringify(inputs))
+}
+
+function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {
+  return JSON.parse(contents) as NativeInputs['node']
 }
 
 async function addonIncludeDirectory(): Promise<string> {

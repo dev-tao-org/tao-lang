@@ -5,16 +5,9 @@ import * as GrammarTraversal from './grammar-traversal'
 /** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata. */
 export async function writeSemanticAst(directory: string): Promise<void> {
   const metadataPath = Path.join(directory, 'src/node-types.json')
-  const nodes = JSON.parse(await FileSystem.readFile(metadataPath, 'utf8')) as NodeMetadata[]
-  const grammar = JSON.parse(
-    await FileSystem.readFile(Path.join(directory, 'src/grammar.json'), 'utf8'),
-  ) as GrammarMetadata
-  const metadata = JSON.parse(
-    await FileSystem.readFile(
-      Repo.resolvePath('ts/1-grammar/grammar-src/semantic-ast-metadata.json'),
-      'utf8',
-    ),
-  ) as SemanticMetadata
+  const nodes = await readNodeMetadata(metadataPath)
+  const grammar = await readGrammarMetadata(Path.join(directory, 'src/grammar.json'))
+  const metadata = await readSemanticMetadata(Repo.resolvePath('ts/1-grammar/grammar-src/semantic-ast-metadata.json'))
   const source = generateSemanticAst(nodes, grammar, metadata)
   const output = Repo.resolvePath('ts/2-ast-gen/_gen_AST/AST-generated.ts')
   await FileSystem.mkdir(Path.dirname(output), { recursive: true })
@@ -32,12 +25,27 @@ type GrammarMetadata = { rules: Record<string, GrammarRule> }
 type GrammarRule = GrammarTraversal.GrammarRule
 type OptionalGrammarRule = GrammarRule | undefined
 type SemanticMetadata = {
-  semanticNames: Record<string, string>
-  semanticFieldNames: Record<string, Record<string, string>>
+  semanticNames: SemanticNames
+  semanticFieldNames: Record<string, SemanticNames>
   requiredFields: Record<string, string[]>
-  fieldTypeOverrides: Record<string, Record<string, string>>
+  fieldTypeOverrides: Record<string, SemanticFieldTypes>
   blocks: Record<string, { members: string[]; statementUnion?: string }>
   unions: Record<string, string[]>
+}
+
+type SemanticNames = Record<string, string>
+type SemanticFieldTypes = Record<string, string>
+
+async function readNodeMetadata(path: string): Promise<NodeMetadata[]> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as NodeMetadata[]
+}
+
+async function readGrammarMetadata(path: string): Promise<GrammarMetadata> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as GrammarMetadata
+}
+
+async function readSemanticMetadata(path: string): Promise<SemanticMetadata> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as SemanticMetadata
 }
 
 const omittedRules = new Set([
@@ -69,7 +77,7 @@ function createSemanticAstModel(nodes: NodeMetadata[], grammar: GrammarMetadata,
   const renderMembers = subtypeNames(nodes, '_ViewRenderStatement').map(name => semanticName(name, metadata))
   const declarations = generateDeclarations(concreteNodes, metadata)
   const semanticKinds = unique(['Name', ...types])
-  const generatedRules = JSON.stringify(semanticKinds)
+  const generatedRules = emitSemanticKinds(semanticKinds)
   const constructorKinds = generateConstructorKinds(nodes, metadata)
   const fieldLayouts = generateFieldLayouts(nodes.filter(node => node.named && !node.subtypes), metadata)
   const semanticTypes = generateSemanticTypes(nodes, metadata)
@@ -149,7 +157,7 @@ function renderSemanticAst(model: ReturnType<typeof createSemanticAstModel>): st
     + `export const SemanticKinds = ${model.generatedRules} as const\n`
     + `export const CstConstructorKinds = ${model.constructorKinds} as const\n`
     + `export const CstFieldLayouts = ${model.fieldLayouts} as const\n`
-    + `export const CstBlockStatementKinds = ${JSON.stringify(model.blockKinds)} as const\n`
+    + `export const CstBlockStatementKinds = ${emitBlockKinds(model.blockKinds)} as const\n`
     + `export type OfKind<Kind extends Node['kind']> = Extract<Node, { readonly kind: Kind }>\n`
     + `export function IsKind<Kind extends Node['kind']>(node: Node, kind: Kind | readonly Kind[]): node is OfKind<Kind> {\n`
     + `  return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)\n`
@@ -206,12 +214,14 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
       ? ''
       : ' | undefined'
     const value = field.multiple && !override ? `readonly (${type})[]` : type
-    return `  ${JSON.stringify(semanticField)}: ${value}${optional}`
+    return `  ${emitSemanticStringLiteral(semanticField)}: ${value}${optional}`
   })
   if (['ImportPath', 'RenderTag', 'TextLiteral', 'ContextReference'].includes(kind)) {
     generatedFields.push('  value: string')
   }
-  return `export type ${kind} = Semantic<${JSON.stringify(kind)}, {\n${unique(generatedFields).join(';\n')}\n}>`
+  return `export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {\n${
+    unique(generatedFields).join(';\n')
+  }\n}>`
 }
 
 function overrideOmitsOptionality(override?: string): boolean {
@@ -271,7 +281,9 @@ function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata)
   const entries = kinds.map(kind =>
     kind === 'Block'
       ? `export function Block(cst: CST.SyntaxNode): Block<Node> { return Construct(cst, 'Block') }`
-      : `export function ${kind}(cst: CST.SyntaxNode): ${kind} { return Construct(cst, ${JSON.stringify(kind)}) }`
+      : `export function ${kind}(cst: CST.SyntaxNode): ${kind} { return Construct(cst, ${
+        emitSemanticStringLiteral(kind)
+      }) }`
   )
   return entries.join('\n')
 }
@@ -281,7 +293,21 @@ function subtypeNames(nodes: NodeMetadata[], name: string): string[] {
 }
 
 function tokenUnion(rule: OptionalGrammarRule): string {
-  return unique(GrammarTraversal.collectOwnedTokens(rule)).map(token => JSON.stringify(token)).join(' | ') || 'never'
+  return unique(GrammarTraversal.collectOwnedTokens(rule)).map(emitSemanticStringLiteral).join(' | ') || 'never'
+}
+
+type BlockKinds = ReturnType<typeof generateBlockKinds>
+
+function emitSemanticKinds(kinds: readonly string[]): string {
+  return JSON.stringify(kinds)
+}
+
+function emitBlockKinds(kinds: BlockKinds): string {
+  return JSON.stringify(kinds)
+}
+
+function emitSemanticStringLiteral(value: string): string {
+  return JSON.stringify(value)
 }
 
 function unique(values: readonly string[]): string[] {

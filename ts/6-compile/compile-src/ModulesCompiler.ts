@@ -11,6 +11,9 @@ import * as RuntimeEmitter from './RuntimeEmitter'
 
 export type { ForeignViewPathResolver } from './ForeignViewsCompiler'
 
+/** CompiledFiles maps generated relative module paths to their emitted TypeScript source. */
+export type CompiledFiles = Readonly<MutableCompiledFiles>
+
 /** compileProgram emits source-owned modules and one ordered, revision-bearing bootstrap.
  *  Components receive lexical records through props; binding-type imports erase at runtime. */
 export function compileProgram(
@@ -18,11 +21,11 @@ export function compileProgram(
   revision: string,
   appName?: string,
   resolveForeignViewPath?: ForeignViewPathResolver,
-): Readonly<Record<string, string>> {
+): CompiledFiles {
   const selected = selectApp(program, appName)
   const paths = createGeneratedPaths(program)
   const textBindings = buildModuleTextBindings(program)
-  const files: Record<string, string> = {}
+  const files: MutableCompiledFiles = {}
   for (const module of program.modules) {
     const path = resolvePath(paths, module.path)
     const generated = compileSource(module, program, paths, textBindings, resolveForeignViewPath)
@@ -36,6 +39,7 @@ export function compileProgram(
 }
 
 type GeneratedSource = { main: string; views: string }
+type MutableCompiledFiles = Record<string, string>
 type GeneratedPaths = ReadonlyMap<string, string>
 type SelectedApp = { source: string; declaration: AST.AppDeclaration }
 type CompiledDeclaration = { node: AST.Declaration; compiled: ReturnType<typeof compileDeclaration> }

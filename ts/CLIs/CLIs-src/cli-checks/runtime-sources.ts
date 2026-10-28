@@ -2,12 +2,18 @@ import { RuntimeSourceDirectories, RuntimeSourceFiles } from '@runtime/RuntimeRe
 import { Regxs } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 
+/** RuntimeSourcePaths maps packaged resource paths to their authored source paths. */
+export type RuntimeSourcePaths = Record<string, string>
+
+/** RuntimeSourceContents maps authored source paths to their captured text. */
+export type RuntimeSourceContents = Record<string, string>
+
 /** readRuntimeSources maps declared portable directories and files to their resource paths. */
 export async function readRuntimeSources(
-  directories: Readonly<Record<string, string>> = RuntimeSourceDirectories,
-  files: Readonly<Record<string, string>> = RuntimeSourceFiles,
-): Promise<Record<string, string>> {
-  const resources: Record<string, string> = {}
+  directories: Readonly<RuntimeSourcePaths> = RuntimeSourceDirectories,
+  files: Readonly<RuntimeSourcePaths> = RuntimeSourceFiles,
+): Promise<RuntimeSourcePaths> {
+  const resources: RuntimeSourcePaths = {}
   for (const [resourceDirectory, sourceDirectory] of Object.entries(directories)) {
     await addDirectorySources(resources, resourceDirectory, Repo.resolvePath(sourceDirectory))
   }
@@ -18,7 +24,7 @@ export async function readRuntimeSources(
 }
 
 async function addDirectorySources(
-  resources: Record<string, string>,
+  resources: RuntimeSourcePaths,
   resourceDirectory: string,
   sourceRoot: string,
 ): Promise<void> {
@@ -39,8 +45,8 @@ function isRuntimeTestSource(sourceRoot: string, sourcePath: string): boolean {
     || Regxs.TestSourceSuffix.test(relativePath)
 }
 
-function sortResources(resources: Record<string, string>): Record<string, string> {
-  const sortedResources: Record<string, string> = {}
+function sortResources(resources: RuntimeSourcePaths): RuntimeSourcePaths {
+  const sortedResources: RuntimeSourcePaths = {}
   for (const resourcePath of Object.keys(resources).sort()) {
     sortedResources[resourcePath] = resources[resourcePath]!
   }

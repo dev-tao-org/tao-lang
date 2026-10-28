@@ -9,22 +9,10 @@ export async function buildDevExtension(): Promise<string> {
   await FileSystem.mkdir(output, { recursive: true })
   await Bundle.bundleNode(Path.join(source, 'dev-tao-org-src/extension.ts'), Path.join(output, 'dist'), ['vscode'])
   await Bundle.validateEditorBundle(Path.join(output, 'dist/extension.js'))
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(source, 'package.json'), 'utf8'))
-  delete manifest.private
-  delete manifest.devDependencies
+  const manifest = await FileSystem.readFile(Path.join(source, 'package.json'), 'utf8')
   await FileSystem.writeFile(
     Path.join(output, 'package.json'),
-    JSON.stringify(
-      {
-        ...manifest,
-        name: 'dev-tao-org',
-        publisher: 'devtao',
-        type: 'commonjs',
-        main: './dist/extension.js',
-      },
-      null,
-      2,
-    ),
+    formatPublishedDevManifest(manifest),
   )
   await FileSystem.cp(Path.join(source, 'README.md'), Path.join(output, 'README.md'))
   await FileSystem.cp(Repo.resolvePath('LICENSE'), Path.join(output, 'LICENSE'))
@@ -34,4 +22,23 @@ export async function buildDevExtension(): Promise<string> {
   })
   IO.print(vsix)
   return vsix
+}
+
+type DevExtensionManifest = Record<string, unknown>
+
+function formatPublishedDevManifest(contents: string): string {
+  const manifest = JSON.parse(contents) as DevExtensionManifest
+  delete manifest.private
+  delete manifest.devDependencies
+  return JSON.stringify(
+    {
+      ...manifest,
+      name: 'dev-tao-org',
+      publisher: 'devtao',
+      type: 'commonjs',
+      main: './dist/extension.js',
+    },
+    null,
+    2,
+  )
 }

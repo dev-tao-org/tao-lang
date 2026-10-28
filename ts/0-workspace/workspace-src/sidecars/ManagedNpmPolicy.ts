@@ -5,6 +5,10 @@ import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleT
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
 
 type RuntimePolicyInput = ManagedRuntimePolicy | undefined
+type ManagedRuntimePolicyMap =
+  | ManagedRuntimePolicy['patchedDependencies']
+  | ManagedRuntimePolicy['overrides']
+  | ManagedRuntimePolicy['patches']
 
 /** compareCodePointStrings sorts domain keys without locale-dependent ordering. */
 export function compareCodePointStrings(left: string, right: string): number {
@@ -31,7 +35,7 @@ export function describeManagedResolutionPolicy(
 
 /** calculateManagedPatchIdentity identifies patch bytes separately from the durable dependency graph. */
 export function calculateManagedPatchIdentity(policy: RuntimePolicyInput): string | undefined {
-  return policy ? Platform.hashText(JSON.stringify(sortRecord(policy.patches))) : undefined
+  return policy ? Platform.hashText(serializeSortedManagedPolicyRecord(policy.patches)) : undefined
 }
 
 /** ensureManagedPatches materializes immutable runtime patches before invoking the package installer. */
@@ -130,14 +134,18 @@ function sortRecord(record: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(record).sort(([left], [right]) => compareCodePointStrings(left, right)))
 }
 
-function recordsMatch(value: unknown, expected: Record<string, string>): boolean {
+function recordsMatch(value: unknown, expected: ManagedRuntimePolicyMap): boolean {
   if (value === undefined) {
     return Object.keys(expected).length === 0
   }
   return isRecordValue(value)
-    && JSON.stringify(sortRecord(value)) === JSON.stringify(sortRecord(expected))
+    && serializeSortedManagedPolicyRecord(value) === serializeSortedManagedPolicyRecord(expected)
 }
 
-function isRecordValue(value: unknown): value is Record<string, string> {
+function serializeSortedManagedPolicyRecord(record: ManagedRuntimePolicyMap): string {
+  return JSON.stringify(sortRecord(record))
+}
+
+function isRecordValue(value: unknown): value is ManagedRuntimePolicyMap {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

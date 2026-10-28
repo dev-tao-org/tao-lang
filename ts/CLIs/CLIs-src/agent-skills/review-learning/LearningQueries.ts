@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import { Path, Platform } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { createConformanceProgram } from '../../cli-checks/source-conformance-program'
-import { isInScope, snapshotScope } from './LearningStore'
+import { encodeLearningSnapshot, isInScope, snapshotScope } from './LearningStore'
 import type { Correction, Finding, QueryRule, Scan } from './LearningTypes'
 import { validateCorrectionAuthority } from './LearningValidation'
 
@@ -15,7 +15,7 @@ export async function runCandidateScan(root: string, correction: Correction, sel
   const program = createConformanceProgram(root, files.map(file => Path.join(root, file)))
   const findings = queryProgram(program, root, included, correction.rule)
   const after = await snapshotScope(root, correction)
-  if (JSON.stringify(snapshot) !== JSON.stringify(after)) {
+  if (encodeLearningSnapshot(snapshot) !== encodeLearningSnapshot(after)) {
     Errors.ThrowUserInput('Source or configuration changed during the scan; rerun against a stable snapshot.')
   }
   return {

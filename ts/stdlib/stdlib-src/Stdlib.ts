@@ -11,13 +11,19 @@ export function projectDirectory(): Promise<string> {
 
 type CachedProjectDirectory = Promise<string> | undefined
 type CandidateProjectDirectory = string | undefined
+type StdlibResourceFiles = Readonly<Record<string, string>>
+type StdlibResourceEntries = [string, string][]
 
 let defaultProjectDirectory: CachedProjectDirectory
 
 const embeddedFiles = {
   '@ui/Views.tao': UI,
   '.tao/.gitignore': ProjectIgnore,
-  '.tao/store/project.json': `${JSON.stringify(ProjectMetadata, null, 2)}\n`,
+  '.tao/store/project.json': serializeEmbeddedProjectMetadata(ProjectMetadata),
+}
+
+function serializeEmbeddedProjectMetadata(metadata: typeof ProjectMetadata): string {
+  return `${JSON.stringify(metadata, null, 2)}\n`
 }
 
 async function resolveDefaultProjectDirectory(): Promise<string> {
@@ -28,7 +34,7 @@ async function resolveDefaultProjectDirectory(): Promise<string> {
 async function locateProject(
   candidate: CandidateProjectDirectory,
   cacheRoot: string,
-  resources: Readonly<Record<string, string>>,
+  resources: StdlibResourceFiles,
 ): Promise<string> {
   const live = findLiveProjectRoot(candidate)
   return live ?? await Storage.withCacheMutation(() => materializeProject(cacheRoot, resources))
@@ -41,11 +47,11 @@ function findLiveProjectRoot(candidate: CandidateProjectDirectory): string | und
   return Try.WithDefault(undefined, () => FileSystem.realpathSync(candidate))
 }
 
-async function materializeProject(cacheRoot: string, resources: Readonly<Record<string, string>>): Promise<string> {
+async function materializeProject(cacheRoot: string, resources: StdlibResourceFiles): Promise<string> {
   const entries = Object.entries(resources).sort(([left], [right]) => left.localeCompare(right))
   validateResources(entries)
   await FileSystem.mkdir(cacheRoot, { recursive: true })
-  const fingerprint = Platform.hashText(JSON.stringify(entries))
+  const fingerprint = Platform.hashText(serializeStdlibResourceEntries(entries))
   const root = Path.resolve(cacheRoot, `project-${fingerprint}`)
   const marker = Path.join(root, '.ready')
   if (await isReadyProject(root, marker, fingerprint, cacheRoot, entries)) {
@@ -62,7 +68,11 @@ async function materializeProject(cacheRoot: string, resources: Readonly<Record<
   return root
 }
 
-function validateResources(entries: [string, string][]): void {
+function serializeStdlibResourceEntries(entries: StdlibResourceEntries): string {
+  return JSON.stringify(entries)
+}
+
+function validateResources(entries: StdlibResourceEntries): void {
   if (
     entries.length === 0 || entries.some(([path]) => {
       return Path.isAbsolute(path)
@@ -78,7 +88,7 @@ async function isReadyProject(
   marker: string,
   fingerprint: string,
   cacheRoot: string,
-  entries: [string, string][],
+  entries: StdlibResourceEntries,
 ): Promise<boolean> {
   if (!await FileSystem.exists(root)) {
     return false
@@ -94,7 +104,7 @@ async function isReadyProject(
   return await resourcesMatch(root, entries)
 }
 
-async function resourcesMatch(root: string, entries: [string, string][]): Promise<boolean> {
+async function resourcesMatch(root: string, entries: StdlibResourceEntries): Promise<boolean> {
   for (const [relative, contents] of entries) {
     const path = Path.resolve(root, ...relative.split('/'))
     if (!await FileSystem.exists(path)) {
@@ -108,7 +118,7 @@ async function resourcesMatch(root: string, entries: [string, string][]): Promis
   return true
 }
 
-async function writeResources(staging: string, entries: [string, string][]): Promise<void> {
+async function writeResources(staging: string, entries: StdlibResourceEntries): Promise<void> {
   for (const [relative, contents] of entries) {
     const target = Path.resolve(staging, ...relative.split('/'))
     const parent = Path.dirname(target)

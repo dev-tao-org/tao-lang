@@ -2,8 +2,11 @@
 export type GeneratedRevision = {
   revision: string
   sequence: number
-  files: Readonly<Record<string, string>>
+  files: GeneratedSourceFiles
 }
+
+/** GeneratedSourceFiles maps generated source paths to their complete text contents. */
+export type GeneratedSourceFiles = Readonly<Record<string, string>>
 
 /** PublicationOutcome distinguishes completed Metro work from preview application. */
 export type PublicationOutcome = {

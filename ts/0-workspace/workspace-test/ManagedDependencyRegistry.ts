@@ -1,4 +1,5 @@
 import { FileSystem, Http, Path, Platform, Repo } from '@shared/os'
+import type { ManagedPackageVersionMap } from '../workspace-src/sidecars/ManagedModuleTypes'
 
 /** startManagedDependencyRegistry creates the isolated package fixtures and serves their registry data. */
 export async function startManagedDependencyRegistry(root: string, requests: string[], reactVersion: string) {
@@ -26,7 +27,7 @@ export async function startManagedDependencyRegistry(root: string, requests: str
   return { packages, server }
 }
 
-type PackageArtifact = { bytes: Http.Bytes; integrity: string; dependencies?: Record<string, string> }
+type PackageArtifact = { bytes: Http.Bytes; integrity: string; dependencies?: ManagedPackageVersionMap }
 
 const NpmTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
 

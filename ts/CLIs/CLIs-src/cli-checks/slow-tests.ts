@@ -40,7 +40,9 @@ export function parseSlowTestSeconds(value = '0.075'): number {
 
 type OptionalReportPath = string | undefined
 type OptionalTimedTest = TimedTest | undefined
-type OptionalSuiteAttributes = Record<string, string> | undefined
+type XmlAttributes = Record<string, string>
+type XmlEntities = Record<string, string>
+type OptionalSuiteAttributes = XmlAttributes | undefined
 
 function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
   const slow = readTestCases(report).filter(test => isSlowTest(test, slowSeconds))
@@ -78,7 +80,7 @@ function formatSlowTest(test: TimedTest): string {
 }
 
 function readTestCases(report: string): TimedTest[] {
-  const suites: Record<string, string>[] = []
+  const suites: XmlAttributes[] = []
   const cases: TimedTest[] = []
   let current: OptionalTimedTest
   // Match whole XML tokens, including quoted > characters; diagnostic CDATA and comments stay opaque.
@@ -134,8 +136,8 @@ function isSlowTest(test: { seconds: number; skipped: boolean }, threshold: numb
   return !test.skipped && Number.isFinite(test.seconds) && test.seconds > threshold
 }
 
-function xmlAttributes(token: string): Record<string, string> {
-  const attributes: Record<string, string> = {}
+function xmlAttributes(token: string): XmlAttributes {
+  const attributes: XmlAttributes = {}
   for (const match of token.matchAll(Regxs.XmlAttribute)) {
     attributes[match[1]] = decodeXml(match[2] ?? match[3])
   }
@@ -143,7 +145,7 @@ function xmlAttributes(token: string): Record<string, string> {
 }
 
 function decodeXml(text: string): string {
-  const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+  const entities: XmlEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
   return text.replace(Regxs.XmlEntity, (entity, name: string) => {
     if (name.startsWith('#')) {
       const code = name[1].toLowerCase() === 'x' ? parseInt(name.slice(2), 16) : Number(name.slice(1))

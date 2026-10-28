@@ -37,7 +37,7 @@ export async function land(io: LandingIO): Promise<LandingProof> {
     Errors.ThrowUserInput('The reviewed merge message changed while land was running; review it and rerun land.')
   }
   const proof = await publishAndMerge(io, branch, message, archive.landingHead)
-  await io.write(`.artifacts/landing/${branch}.json`, JSON.stringify({ ...proof, archive }, null, 2) + '\n')
+  await io.write(`.artifacts/landing/${branch}.json`, formatLandingRecord({ ...proof, archive }))
   return proof
 }
 
@@ -53,7 +53,7 @@ async function existingLanding(io: LandingIO, branch: string): Promise<LandingPr
   }
   const path = `.artifacts/landing/${branch}.json`
   if (!await io.exists(path)) {
-    await io.write(path, JSON.stringify(proof, null, 2) + '\n')
+    await io.write(path, formatLandingRecord(proof))
   }
   return proof
 }
@@ -77,4 +77,10 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
     )
   }
   return message
+}
+
+type LandingRecord = LandingProof & { archive?: Awaited<ReturnType<typeof publishPreviewArchive>> }
+
+function formatLandingRecord(record: LandingRecord): string {
+  return JSON.stringify(record, null, 2) + '\n'
 }

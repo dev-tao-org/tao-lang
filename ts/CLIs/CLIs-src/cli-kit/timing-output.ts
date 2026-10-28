@@ -10,7 +10,9 @@ export function formatTimings(samples: readonly TimingSample[]): string {
   }).join('\n  ')
 }
 
-const names: Record<string, string> = {
+type TimingLabels = Record<string, string>
+
+const names: TimingLabels = {
   'workspace.observe-to-read': 'observe → read',
   'workspace.read': 'read',
   'workspace.queue': 'queue',

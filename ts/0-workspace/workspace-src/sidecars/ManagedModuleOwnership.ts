@@ -4,12 +4,13 @@ import { isNpmPackageName } from '../NpmPackageName'
 
 type SerializedModuleOwner = string | undefined
 type PreviousModuleOwner = ManagedModuleOwner | undefined
+type ManagedGeneratedFileHashes = Record<string, string>
 
 /** ManagedModuleOwner records the consumer profile and package links owning generated module files. */
 export type ManagedModuleOwner = {
   profile: string
   packages: string[]
-  generatedHashes?: Record<string, string>
+  generatedHashes?: ManagedGeneratedFileHashes
 }
 
 /** validateModuleOwnership checks current files and accepts transitions only within one project cache. */
@@ -109,7 +110,7 @@ async function validateCorruptMarkerRecovery(
   const packageFile = files.find(([path]) => Path.basename(path) === 'package.json')
   const packages = packageFile && Try.WithDefault(
     undefined,
-    () => Object.keys((JSON.parse(packageFile[1]) as { dependencies?: Record<string, unknown> }).dependencies ?? {}),
+    () => parseGeneratedModulePackageNames(packageFile[1]),
   )
   const linksMatch = Boolean(packages?.length)
     && (await Promise.all(
@@ -127,8 +128,13 @@ async function validateCorruptMarkerRecovery(
   )
 }
 
+function parseGeneratedModulePackageNames(contents: string): string[] {
+  const manifest = JSON.parse(contents) as { dependencies?: Record<string, unknown> }
+  return Object.keys(manifest.dependencies ?? {})
+}
+
 function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
-  const owner = Try.WithDefault(undefined, () => JSON.parse(ownerText) as ManagedModuleOwner)
+  const owner = Try.WithDefault(undefined, () => parseManagedModuleOwner(ownerText)) as PreviousModuleOwner
   if (
     !owner || typeof owner.profile !== 'string' || !Array.isArray(owner.packages)
   ) {
@@ -137,7 +143,11 @@ function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
   if (!owner.packages.every(isPackageName)) {
     return undefined
   }
-  return owner
+  return owner as ManagedModuleOwner
+}
+
+function parseManagedModuleOwner(contents: string): unknown {
+  return JSON.parse(contents) as unknown
 }
 
 function isPackageName(name: unknown): name is string {

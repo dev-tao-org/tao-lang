@@ -1,10 +1,11 @@
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
 import TypeScript from 'typescript'
+import type { CompiledFiles } from '../compile-src/ModulesCompiler'
 
 /** executeGeneratedFiles loads an emitted module map with an injected runtime boundary. */
 export function executeGeneratedFiles(
-  files: Readonly<Record<string, string>>,
+  files: CompiledFiles,
   runtime: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
   const cache = new Map<string, GeneratedModule>()
@@ -12,7 +13,7 @@ export function executeGeneratedFiles(
 }
 
 /** transpileGeneratedFiles checks generated TypeScript syntax without executing the modules. */
-export function transpileGeneratedFiles(files: Readonly<Record<string, string>>): void {
+export function transpileGeneratedFiles(files: CompiledFiles): void {
   for (const [path, source] of Object.entries(files)) {
     transpile(source, path)
   }
@@ -20,7 +21,7 @@ export function transpileGeneratedFiles(files: Readonly<Record<string, string>>)
 
 function loadGeneratedModule(
   path: string,
-  files: Readonly<Record<string, string>>,
+  files: CompiledFiles,
   runtime: Readonly<Record<string, unknown>>,
   cache: Map<string, GeneratedModule>,
 ): Record<string, unknown> {
@@ -54,7 +55,7 @@ function loadGeneratedModule(
 function resolveGeneratedPath(
   parent: string,
   specifier: string,
-  files: Readonly<Record<string, string>>,
+  files: CompiledFiles,
 ): string {
   const target = Path.join(Path.dirname(parent), specifier)
   const candidates = [`${target}.ts`, `${target}.tsx`, target]

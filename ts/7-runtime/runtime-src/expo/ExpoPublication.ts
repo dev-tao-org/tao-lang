@@ -1,8 +1,10 @@
 import { Errors } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 import { createPublicationTransport, type PublicationTransport } from './ExpoPublicationTransport'
-import { snapshotRevision } from './GeneratedRevision'
+import { serializeGeneratedRevision, snapshotRevision } from './GeneratedRevision'
 import type { GeneratedRevision } from './PreviewProtocol'
+
+type ExpoEnvironment = Record<string, string>
 
 /** prepareExpoPublication seeds the generated preload and creates its bounded parent transport. */
 export async function prepareExpoPublication(
@@ -22,7 +24,7 @@ export async function prepareExpoPublication(
     Errors.ThrowHostEnvironment(`Metro preload is missing: ${preloadPath}`)
   }
   const seed = Path.join(application.directory, '.tao-metro-seed.json')
-  await FileSystem.writeFile(seed, JSON.stringify(initial), { mode: 0o600 })
+  await FileSystem.writeFile(seed, serializeGeneratedRevision(initial), { mode: 0o600 })
   return {
     ...transport,
     sessionId,
@@ -41,4 +43,4 @@ export async function prepareExpoPublication(
 export type ExpoGeneratedOptions = { initial: GeneratedRevision; preloadPath?: string }
 
 /** ExpoPublication carries preload environment and one session-scoped publication transport. */
-export type ExpoPublication = PublicationTransport & { sessionId: string; environment: Record<string, string> }
+export type ExpoPublication = PublicationTransport & { sessionId: string; environment: ExpoEnvironment }

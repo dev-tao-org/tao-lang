@@ -161,37 +161,59 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
   await Artifacts.mkdir(directory, { recursive: true })
   const path = Path.join(directory, `preview-${owned.sessionId}.json`)
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        sessionId: owned.sessionId,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        system: Platform.systemInfo(),
-        browser: await owned.browser!.version(),
-        generatedProject: project.directory,
-        startupMs: owned.startupMs,
-        frameSizes: owned.frameSizes,
-        measurement: PreviewMeasurement.describeMeasurement(owned.measurement),
-        primaryMetric: 'parentClickToLastAppliedMs',
-        reloads: owned.reloads,
-        definitions: {
-          compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
-          updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
-          applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
-          total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
-          observedSource:
-            'Reload source-observed timings may restart after duplicate watch observations; secondary only.',
-        },
-        results: results.map((result, index) => describeResult(result, index, owned.measurement.frameCount)),
-      },
-      null,
-      2,
-    ),
-  )
+  const report: PreviewPerformanceReport = {
+    version: 1,
+    sessionId: owned.sessionId,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    system: Platform.systemInfo(),
+    browser: await owned.browser!.version(),
+    generatedProject: project.directory,
+    startupMs: owned.startupMs,
+    frameSizes: owned.frameSizes,
+    measurement: PreviewMeasurement.describeMeasurement(owned.measurement),
+    primaryMetric: 'parentClickToLastAppliedMs',
+    reloads: owned.reloads,
+    definitions: {
+      compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
+      updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
+      applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
+      total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
+      observedSource: 'Reload source-observed timings may restart after duplicate watch observations; secondary only.',
+    },
+    results: results.map((result, index) => describeResult(result, index, owned.measurement.frameCount)),
+  }
+  await Artifacts.write(path, serializePreviewPerformanceReport(report))
   return path
+}
+
+type PreviewPerformanceReport = {
+  version: 1
+  sessionId: string
+  commit: string
+  modified: boolean
+  system: ReturnType<typeof Platform.systemInfo>
+  browser: string
+  generatedProject: string
+  startupMs: Resources['startupMs']
+  frameSizes: Resources['frameSizes']
+  measurement: ReturnType<typeof PreviewMeasurement.describeMeasurement>
+  primaryMetric: string
+  reloads: ReloadTiming[]
+  definitions: PreviewPerformanceDefinitions
+  results: ReturnType<typeof describeResult>[]
+}
+
+type PreviewPerformanceDefinitions = {
+  compile: string
+  updateDone: string
+  applied: string
+  total: string
+  observedSource: string
+}
+
+function serializePreviewPerformanceReport(report: PreviewPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
 }
 
 function requirePublished(result: UpdateResult): void {

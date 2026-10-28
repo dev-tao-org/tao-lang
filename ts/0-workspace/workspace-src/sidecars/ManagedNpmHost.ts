@@ -15,8 +15,8 @@ export function validateInstalledHost(metadata: Record<string, unknown>, input: 
   if (hostMatches(metadata, input)) {
     return
   }
-  const recorded = JSON.stringify(metadata.installHost ?? 'unknown host')
-  const current = JSON.stringify(installHostIdentity(input))
+  const recorded = serializeInstallHost(metadata.installHost ?? 'unknown host')
+  const current = serializeInstallHost(installHostIdentity(input))
   requireSetup(
     `Managed npm install tree belongs to ${recorded}, but this host is ${current}. `
       + `Run tao setup to rebuild it from the durable lock.`,
@@ -75,7 +75,11 @@ async function removeOwnedInstallTree(profile: string): Promise<void> {
 }
 
 function hostMatches(metadata: Record<string, unknown>, input: ManagedModulesInput): boolean {
-  return JSON.stringify(metadata.installHost) === JSON.stringify(installHostIdentity(input))
+  return serializeInstallHost(metadata.installHost) === serializeInstallHost(installHostIdentity(input))
+}
+
+function serializeInstallHost(identity: unknown): string | undefined {
+  return JSON.stringify(identity)
 }
 
 const installPolicyVersion = 1

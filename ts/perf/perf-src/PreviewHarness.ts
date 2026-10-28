@@ -263,9 +263,13 @@ function pageHtml(
     <!doctype html><html><head><meta charset="utf-8"><meta name="tao-preview-timeout-ms" content="${previewTimeoutMs}"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
     safe(sessionId)
   }"><meta name="tao-preview-url" content="${safe(previewUrl)}"><meta name="tao-scenarios" content="${
-    safe(JSON.stringify(scenarios))
+    safe(serializePreviewScenariosMetadata(scenarios))
   }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:${columns};gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:${DefaultAppearance.background};outline:1px solid ${DefaultAppearance.border};outline-offset:-1px}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
     safe(left)
   }"></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
   `
+}
+
+function serializePreviewScenariosMetadata(scenarios: readonly string[]): string {
+  return JSON.stringify(scenarios)
 }

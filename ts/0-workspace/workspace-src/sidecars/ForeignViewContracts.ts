@@ -2,6 +2,8 @@ import { Errors, Regxs, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModuleTypes'
 
+type ForeignViewParameterTypes = Record<string, string>
+
 /** ForeignViewContractOwnership marks contract files managed by Tao. */
 export const ForeignViewContractOwnership = 'managed-by-tao\n'
 
@@ -16,7 +18,7 @@ export type ContractExecutor = (
 export type ForeignViewContract = {
   directory: string
   name: string
-  parameters: Record<string, string>
+  parameters: ForeignViewParameterTypes
   exportFile: string
   compiler: string
 }
@@ -24,7 +26,7 @@ export type ForeignViewContract = {
 /** ForeignViewContractSourceInput carries the named export and props used to create its compiler contract. */
 export type ForeignViewContractSourceInput = {
   name: string
-  parameters: Record<string, string>
+  parameters: ForeignViewParameterTypes
   exportRelativePath: string
 }
 

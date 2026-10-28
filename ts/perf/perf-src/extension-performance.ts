@@ -45,25 +45,34 @@ async function writeReport(fixture: string, samples: Sample[]) {
   const summary = summarize(samples)
   await Artifacts.mkdir(Path.dirname(path), { recursive: true })
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        definition:
-          'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
-        fixtureHash: Platform.hashText(fixture),
-        system: Platform.systemInfo(),
-        summary,
-        samples,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: ExtensionPerformanceReport = {
+    version: 1,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    definition:
+      'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
+    fixtureHash: Platform.hashText(fixture),
+    system: Platform.systemInfo(),
+    summary,
+    samples,
+  }
+  await Artifacts.write(path, serializeExtensionPerformanceReport(report))
   return { path, summary }
+}
+
+type ExtensionPerformanceReport = {
+  version: 1
+  commit: string
+  modified: boolean
+  definition: string
+  fixtureHash: string
+  system: ReturnType<typeof Platform.systemInfo>
+  summary: ReturnType<typeof summarize>
+  samples: Sample[]
+}
+
+function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
 }
 
 function summarize(samples: Sample[]) {

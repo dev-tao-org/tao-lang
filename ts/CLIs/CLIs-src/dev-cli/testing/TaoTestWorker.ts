@@ -20,12 +20,16 @@ if (Platform.isMain(import.meta)) {
     }, {
       async finally() {
         unregisterTermination()
-        await FileSystem.writeFile(reportPath, JSON.stringify(report))
+        await FileSystem.writeFile(reportPath, encodeTaoWorkerReport(report))
       },
     })
   }, {
     finally: (_thrown, error) => error ? undefined : IO.finish(),
   })
+}
+
+function encodeTaoWorkerReport(report: TaoWorkerReport): string {
+  return JSON.stringify(report)
 }
 
 function workerArguments(args: readonly string[]): { reportPath: string; paths: string[] } {

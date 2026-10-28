@@ -101,7 +101,9 @@ function measureQuery<T>(operation: () => T, measure?: QueryMeasure): T {
   return result
 }
 
-const tokenKinds: Record<string, string> = {
+type TokenKindsByCapture = Record<string, string>
+
+const tokenKinds: TokenKindsByCapture = {
   comment: 'comment',
   constant: 'variable',
   constructor: 'type',

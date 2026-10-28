@@ -18,7 +18,7 @@ const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
 
 async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const inputs = await readInputs()
-  const stamp = JSON.stringify(inputs)
+  const stamp = encodeParserBuildInputs(inputs)
   const outputs = [
     'src/parser.c',
     'src/grammar.json',
@@ -69,7 +69,7 @@ function canReuseParser(force: boolean, current: boolean, outputs: readonly stri
 }
 
 async function readInputs() {
-  const sources: Record<string, string> = {}
+  const sources: ParserSourceContents = {}
   for (
     const filename of [
       'treesitter-grammar.js',
@@ -85,12 +85,9 @@ async function readInputs() {
     sources,
     lock: Platform.hashText(await FileSystem.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
-    node: JSON.parse(
+    node: parseParserNodeMetadata(
       await Platform.capture('node -p JSON.stringify({version:process.version,executable:process.execPath})'),
-    ) as {
-      version: string
-      executable: string
-    },
+    ),
     environment: await collectEnvironmentInputs(),
   }
 }
@@ -101,10 +98,26 @@ async function collectEnvironmentInputs(): Promise<string> {
   return Platform.hashText(sources.join('\n'))
 }
 
+type ParserSourceContents = Record<string, string>
+type ParserNodeMetadata = { version: string; executable: string }
+type ParserBuildInputs = Awaited<ReturnType<typeof readInputs>>
+
+function encodeParserBuildInputs(inputs: ParserBuildInputs): string {
+  return JSON.stringify(inputs)
+}
+
+function parseParserNodeMetadata(contents: string): ParserNodeMetadata {
+  return JSON.parse(contents) as ParserNodeMetadata
+}
+
 async function writeBuildTimings(timings: Timings): Promise<void> {
   const directory = Artifacts.resolvePath('logs/performance')
   await Artifacts.mkdir(directory, { recursive: true })
   const path = Path.join(directory, `parser-build-${Platform.randomUUID()}.json`)
   Artifacts.trackTemporary(path)
-  await Artifacts.write(path, JSON.stringify({ version: 1, samples: timings.samples }, null, 2))
+  await Artifacts.write(path, formatParserBuildTimings(timings))
+}
+
+function formatParserBuildTimings(timings: Timings): string {
+  return JSON.stringify({ version: 1, samples: timings.samples }, null, 2)
 }

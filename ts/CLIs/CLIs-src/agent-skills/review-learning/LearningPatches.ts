@@ -2,7 +2,7 @@ import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import * as LearningStore from './LearningStore'
-import type { LearningState, Proposal, Scan } from './LearningTypes'
+import type { LearningFileHashes, LearningSnapshot, LearningState, Proposal, Scan } from './LearningTypes'
 import { validateCorrectionAuthority } from './LearningValidation'
 
 /** preflightProposal checks snapshot identity, protected scope and nonoverlapping original spans. */
@@ -97,13 +97,14 @@ async function assertFreshScan(root: string, scan: Scan, proposal: Proposal): Pr
 
 function hasChangedSnapshot(
   scan: Scan,
-  current: Pick<Scan, ScanContentKeys>,
-  files: Record<string, string>,
-  inputs: Record<string, string>,
+  current: LearningSnapshot,
+  files: LearningFileHashes,
+  inputs: LearningFileHashes,
 ): boolean {
-  const changedSources = JSON.stringify(current.files) !== JSON.stringify(files)
-    || JSON.stringify(current.inputs) !== JSON.stringify(inputs)
-  return scan.queryVersion !== 1 || changedSources || JSON.stringify(current.configs) !== JSON.stringify(scan.configs)
+  const changedSources = LearningStore.haveDifferentLearningFileHashes(current.files, files)
+    || LearningStore.haveDifferentLearningFileHashes(current.inputs, inputs)
+  return scan.queryVersion !== 1 || changedSources
+    || LearningStore.haveDifferentLearningFileHashes(current.configs, scan.configs)
 }
 
 function buildOutput(proposal: Proposal, file: string, original: string): string {
@@ -165,5 +166,3 @@ async function markAcceptedPending(root: string, files: string[]): Promise<void>
   session.recheck = [...new Set([...session.recheck, ...affected])]
   await saveSession(session)
 }
-
-type ScanContentKeys = 'files' | 'inputs' | 'configs'

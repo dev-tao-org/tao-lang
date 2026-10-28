@@ -1,6 +1,16 @@
 import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
-import type { Correction, LearningState, Scan } from './LearningTypes'
+import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
+
+/** encodeLearningSnapshot retains insertion order in the complete scan identity. */
+export function encodeLearningSnapshot(snapshot: LearningSnapshot): string {
+  return JSON.stringify(snapshot)
+}
+
+/** haveDifferentLearningFileHashes compares captured hashes while retaining path insertion order. */
+export function haveDifferentLearningFileHashes(left: LearningFileHashes, right: LearningFileHashes): boolean {
+  return JSON.stringify(left) !== JSON.stringify(right)
+}
 
 /** withLearningState serializes retained state writes within the authorized checkout. */
 export async function withLearningState<Value>(
@@ -16,7 +26,7 @@ export async function withLearningState<Value>(
   return await Try(async () => {
     const path = Path.join(directory, 'state.json')
     const state: LearningState = await FileSystem.exists(path)
-      ? JSON.parse(await FileSystem.readFile(path, 'utf8'))
+      ? await readLearningState(path)
       : { version: 1, root, corrections: [], scans: [], proposals: [], protectedFiles: [], events: [] }
     if (state.version !== 1 || state.root !== root) {
       Errors.ThrowUserInput('Review learning state belongs to another checkout or version.')
@@ -56,17 +66,17 @@ export function safeSourcePath(root: string, input: string, allowRoot = false): 
 export async function snapshotScope(
   root: string,
   correction: Correction,
-): Promise<Pick<Scan, ScanContentKeys>> {
+): Promise<LearningSnapshot> {
   const candidates = await collectSources(root)
-  const files: Record<string, string> = {}
-  const inputs: Record<string, string> = {}
+  const files: LearningFileHashes = {}
+  const inputs: LearningFileHashes = {}
   for (const file of candidates) {
     inputs[file] = await hashFile(root, file)
     if (isInScope(file, correction.scope) && !isInScope(file, correction.excludedPaths ?? [])) {
       files[file] = inputs[file]!
     }
   }
-  const configs: Record<string, string> = {}
+  const configs: LearningFileHashes = {}
   for (const file of await collectConfigs(root)) {
     configs[file] = await hashFile(root, file)
   }
@@ -110,7 +120,9 @@ function isRootScope(scope: string): boolean {
   return scope === '.' || scope === ''
 }
 
-type ScanContentKeys = 'files' | 'inputs' | 'configs'
+async function readLearningState(path: string): Promise<LearningState> {
+  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as LearningState
+}
 
 async function collectSources(root: string): Promise<string[]> {
   const result: string[] = []

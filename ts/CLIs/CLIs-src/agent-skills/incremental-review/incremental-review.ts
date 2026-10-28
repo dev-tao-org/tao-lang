@@ -10,7 +10,7 @@ import type { ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
 export async function main(): Promise<void> {
-  IO.print(JSON.stringify(await runReview(Platform.argv.slice(2)), null, 2))
+  IO.print(formatReviewResult(await runReview(Platform.argv.slice(2))))
 }
 
 /** runReview executes the incremental-review protocol against one explicit implementation checkout. */
@@ -63,6 +63,12 @@ type Options = Map<string, string[]>
 type NoteCommand = 'note' | 'recheck'
 type SelectionCommand = 'plan' | 'accept'
 type OptionalPath = string | undefined
+
+type ReviewResult = Awaited<ReturnType<typeof runReview>>
+
+function formatReviewResult(result: ReviewResult): string {
+  return JSON.stringify(result, null, 2)
+}
 
 async function runSessionCommand(
   command: string,

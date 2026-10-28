@@ -3,12 +3,15 @@ import { Errors, NullCharacter, Time } from '../universal/universal'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 import * as Node from './NodeBuiltins'
 
+/** GeneratedSourceFiles maps generated paths to the source text stored in each file. */
+export type GeneratedSourceFiles = Readonly<Record<string, string>>
+
 /** installGeneratedFileSystem makes memory authoritative below one exclusively generated namespace.
  *  The immutable runtime link is the sole passthrough child. Install before Metro captures fs exports;
  *  callers must drain all source readers before replacing bytes. Open descriptors retain their owner. */
 export function installGeneratedFileSystem(
   rootPath: string,
-  initial: Readonly<Record<string, string>>,
+  initial: GeneratedSourceFiles,
 ): GeneratedFileSystem {
   const root = Node.resolve(rootPath)
   const runtime = Node.join(root, '_gen_runtime')
@@ -53,7 +56,7 @@ export function installGeneratedFileSystem(
 
 /** GeneratedFileSystem stages complete snapshots independently of their visible publication. */
 export type GeneratedFileSystem = {
-  stage(files: Readonly<Record<string, string>>): GeneratedSnapshot
+  stage(files: GeneratedSourceFiles): GeneratedSnapshot
   replace(snapshot: GeneratedSnapshot): GeneratedSnapshot
   metadata(path: string): { type: 'f'; size: number; modifiedTime: number }
   dispose(): void
@@ -90,7 +93,7 @@ function isInsideRoot(path: string, root: string): boolean {
   return path === root || path.startsWith(root + Node.sep)
 }
 
-function createSnapshot(root: string, runtime: string, files: Readonly<Record<string, string>>): GeneratedSnapshot {
+function createSnapshot(root: string, runtime: string, files: GeneratedSourceFiles): GeneratedSnapshot {
   const candidate = createFsFromVolume(new Volume())
   candidate.mkdirSync(root, { recursive: true })
   const stamp = new Date(Time.now())

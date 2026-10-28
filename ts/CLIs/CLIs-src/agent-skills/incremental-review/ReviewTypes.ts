@@ -9,7 +9,7 @@ export type ReviewSession = {
   base: string
   baseCommit: string
   directory: string
-  accepted: Record<string, string>
+  accepted: AcceptedPathEntries
   recheck: string[]
   notes: string[]
   continuation?: { session: string; root: string; reviewedBranch: string; reviewedHead: string }
@@ -48,6 +48,7 @@ export type ReviewHooks = {
 }
 
 type ReviewSelectionKind = 'files' | 'partial' | 'reopen'
+type AcceptedPathEntries = Record<string, string>
 type ReviewJournalPhase = 'prepared' | 'source' | 'index' | 'reviewed' | 'complete'
 type ReviewHookPoint = 'source' | 'index' | 'reviewed-tree' | 'reviewed-ref' | 'session'
 type ReviewHookResult = void | Promise<void>

@@ -1,6 +1,16 @@
 import { Errors, NullCharacter, Try } from '@shared'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
+/** parseGeneratedRevision reads untrusted JSON for the existing revision owner to validate. */
+export function parseGeneratedRevision(contents: string): unknown {
+  return JSON.parse(contents)
+}
+
+/** serializeGeneratedRevision encodes a complete revision for the Metro publication protocol. */
+export function serializeGeneratedRevision(revision: GeneratedRevision): string {
+  return JSON.stringify(revision)
+}
+
 /** createRevisionOwner retains one active and only the latest pending complete generated revision.
  *  Successful publication includes every server lease, never a preview acknowledgement.
  *  A superseded pending caller receives its own explicit outcome instead of an older result. */
@@ -28,7 +38,7 @@ export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision
   if (!hasValidRevisionIdentity(revision)) {
     Errors.ThrowUserInput('Generated publication requires an identity and a nonnegative integer sequence.')
   }
-  const files: Record<string, string> = Object.create(null)
+  const files: MutableGeneratedSourceFiles = Object.create(null)
   for (const [path, text] of Object.entries(revision.files)) {
     if (!isSupportedGeneratedFile(path, text)) {
       Errors.ThrowUserInput(`Unsupported generated source path: ${path}`)
@@ -48,6 +58,7 @@ export type RevisionOwner = {
 }
 
 type RevisionOutcomeField = 'status' | 'message'
+type MutableGeneratedSourceFiles = Record<string, string>
 type PendingRevision = { revision: GeneratedRevision; resolve(outcome: PublicationOutcome): void }
 type RevisionState = {
   sessionId: string

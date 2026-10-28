@@ -18,11 +18,11 @@ export async function inspectLanding(io: LandingIO, branch: string): Promise<Lan
   if (!mergedAt || !mergeCommit?.oid || !matchesExpectedBranches(pr, branch)) {
     Errors.ThrowHostEnvironment(`GitHub returned incomplete or contradictory merge evidence for ${branch}.`)
   }
-  const comparison = JSON.parse(
+  const comparison = parseCommitComparison(
     await io.command('gh api', [
       `repos/{owner}/{repo}/compare/${mergeCommit.oid}...main`,
     ]),
-  ) as { status?: string }
+  )
   if (comparison.status !== 'ahead' && comparison.status !== 'identical') {
     Errors.ThrowHostEnvironment('The merged pull request commit is not confirmed on remote main.')
   }
@@ -109,7 +109,7 @@ async function reviewedPullRequest(io: LandingIO, branch: string, message: strin
 }
 
 async function listPullRequests(io: LandingIO, branch: string, state: string): Promise<PullRequest[]> {
-  const prs = JSON.parse(
+  const prs = parsePullRequests(
     await io.command('gh pr list', [
       '--head',
       branch,
@@ -122,7 +122,7 @@ async function listPullRequests(io: LandingIO, branch: string, state: string): P
       '--json',
       'url,headRefOid,headRefName,baseRefName,mergedAt,mergeCommit,isCrossRepository',
     ]),
-  ) as PullRequest[]
+  )
   if (prs.some(pr => typeof pr.isCrossRepository !== 'boolean')) {
     Errors.ThrowHostEnvironment('GitHub did not identify the pull request source repository.')
   }
@@ -138,3 +138,12 @@ function requirePullRequestHead(pr: OptionalPullRequest, head: string): asserts 
 type NullableMergeTime = string | null
 type NullableMergeCommit = { oid: string } | null
 type OptionalPullRequest = PullRequest | undefined
+type CommitComparison = { status?: string }
+
+function parseCommitComparison(contents: string): CommitComparison {
+  return JSON.parse(contents) as CommitComparison
+}
+
+function parsePullRequests(contents: string): PullRequest[] {
+  return JSON.parse(contents) as PullRequest[]
+}

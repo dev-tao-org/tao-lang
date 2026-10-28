@@ -131,6 +131,10 @@ function isProjectDirectory(path: string): boolean {
 
 async function ensureProjectIdentity(path: string): Promise<void> {
   if (!await FileSystem.exists(path)) {
-    await FileSystem.writeFile(path, JSON.stringify({ version: 1, id: Platform.randomUUID() }, null, 2) + '\n')
+    await FileSystem.writeFile(path, serializeProjectIdentity(Platform.randomUUID()))
   }
+}
+
+function serializeProjectIdentity(id: string): string {
+  return `${JSON.stringify({ version: 1, id }, null, 2)}\n`
 }

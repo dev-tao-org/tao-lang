@@ -26,10 +26,11 @@ export async function cachedSnapshotMatches(input: CacheValidationInput): Promis
   if (isSymbolicLink(input.snapshotRoot) || isSymbolicLink(markerPath) || !await FileSystem.exists(markerPath)) {
     return false
   }
-  const marker = Try.WithDefault(
+  const parsedMarker = Try.WithDefault(
     undefined,
-    () => JSON.parse(FileSystem.readFileSync(markerPath, 'utf8')) as SnapshotMarker,
+    () => parseSidecarSnapshotMarker(FileSystem.readFileSync(markerPath, 'utf8')),
   )
+  const marker = parsedMarker as OptionalSnapshotMarker
   if (marker?.fingerprint !== input.fingerprint || marker.nodeModulesDirectory !== input.nodeModulesDirectory) {
     return false
   }
@@ -65,6 +66,15 @@ type CacheValidationInput = {
 }
 
 type SnapshotMarker = { fingerprint?: string; nodeModulesDirectory?: string }
+type OptionalSnapshotMarker = SnapshotMarker | undefined
+
+function parseSidecarSnapshotMarker(contents: string): unknown {
+  return JSON.parse(contents) as unknown
+}
+
+function serializeExpectedSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
+  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}\n`
+}
 
 function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, Uint8Array> {
   const files = new Map<string, Uint8Array>()
@@ -97,16 +107,7 @@ function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, 
   })
   files.set(
     '.tao-sidecar-snapshot.json',
-    encodeSnapshotText(
-      JSON.stringify(
-        {
-          fingerprint: input.fingerprint,
-          nodeModulesDirectory: input.nodeModulesDirectory,
-        },
-        null,
-        2,
-      ) + '\n',
-    ),
+    encodeSnapshotText(serializeExpectedSidecarSnapshotMarker(input.fingerprint, input.nodeModulesDirectory)),
   )
   return files
 }

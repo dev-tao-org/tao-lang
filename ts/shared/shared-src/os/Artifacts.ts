@@ -148,8 +148,12 @@ function writeTemporaryRun(): void {
     return
   }
   const temporary = activeRun.path + '.tmp'
-  writeFileSync(temporary, JSON.stringify(activeRun.record))
+  writeFileSync(temporary, serializeTemporaryRun(activeRun.record))
   renameSync(temporary, activeRun.path)
+}
+
+function serializeTemporaryRun(record: TemporaryRun): string {
+  return JSON.stringify(record)
 }
 
 async function readTemporaryRuns(directory: string): Promise<{ path: string; record: TemporaryRun }[]> {
@@ -159,13 +163,17 @@ async function readTemporaryRuns(directory: string): Promise<{ path: string; rec
       continue
     }
     const path = Path.join(directory, entry.name)
-    const record: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    const record: unknown = parseTemporaryRun(readFileSync(path, 'utf8'))
     if (!isTemporaryRun(record)) {
       Errors.ThrowHostEnvironment(`Invalid artifact cleanup record: ${path}`)
     }
     receipts.push({ path, record })
   }
   return receipts
+}
+
+function parseTemporaryRun(contents: string): unknown {
+  return JSON.parse(contents)
 }
 
 function isTemporaryRun(value: unknown): value is TemporaryRun {

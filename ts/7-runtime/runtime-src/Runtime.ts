@@ -2,9 +2,12 @@ import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from './expo/PreviewProtocol'
-import { readRuntimeDependencyPolicy, type RuntimeDependencyPolicy } from './expo/RuntimeDependencyPolicy'
+import * as RuntimeDependencyPolicy from './expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from './expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
+
+/** RuntimePackageVersions maps package names to their pinned install specifications. */
+export type RuntimePackageVersions = Record<string, string>
 
 /** prepareRuntime installs the pinned bundled runtime toolchain into the supplied cache. */
 export async function prepareRuntime(
@@ -119,13 +122,13 @@ export function runtimeTypeScriptPaths(): Record<string, string[]> {
 }
 
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
-export function runtimeDependencies(): Promise<Record<string, string>> {
+export function runtimeDependencies(): Promise<RuntimePackageVersions> {
   return pinnedDependencies ??= readPinnedDependencies()
 }
 
 /** runtimeDependencyPolicy supplies exact Metro patches for independently installed project dependencies. */
-export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy> {
-  return readRuntimeDependencyPolicy(defaultResourcesDirectory())
+export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy.RuntimeDependencyPolicy> {
+  return RuntimeDependencyPolicy.readRuntimeDependencyPolicy(defaultResourcesDirectory())
 }
 
 let pinnedDependencies: OptionalPinnedDependencies
@@ -143,12 +146,12 @@ function createGeneratedExpoOptions(
   return { ...options, generated: { initial, preloadPath: application.metroPreloadPath } }
 }
 
-async function readPinnedDependencies(): Promise<Record<string, string>> {
+async function readPinnedDependencies(): Promise<RuntimePackageVersions> {
   const directory = defaultResourcesDirectory()
   const resources = await readRuntimeResources(directory)
-  const lock = JSON.parse(await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8')) as {
-    packages: Record<string, [string, ...unknown[]]>
-  }
+  const lock = RuntimeDependencyPolicy.parseRuntimeDependencyLock(
+    await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
+  ) as RuntimeDependencyPolicy.RuntimeDependencyLock
   const types = lock.packages['@types/react']?.[0].slice('@types/react@'.length)
     ?? Errors.ThrowShouldNeverHappen('The runtime lock does not pin React contract types.')
   return { ...resources.dependencies, '@types/react': types }
@@ -156,23 +159,22 @@ async function readPinnedDependencies(): Promise<Record<string, string>> {
 
 type RuntimeResources = {
   identity: string
-  dependencies: Record<string, string>
-  devDependencies: Record<string, string>
+  dependencies: RuntimePackageVersions
+  devDependencies: RuntimePackageVersions
   sourceFiles: string[]
 }
 type RuntimePreparationOption = 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'
 type RuntimeCacheOption = 'resourcesDirectory' | 'toolchainCacheDirectory'
-type OptionalPinnedDependencies = Promise<Record<string, string>> | undefined
+type OptionalPinnedDependencies = Promise<RuntimePackageVersions> | undefined
 type OptionalExpoOptions = ExpoOptions | undefined
 type RuntimeMetadata = Omit<RuntimeResources, 'devDependencies'> & {
   version: 2
-  devDependencies?: Record<string, string>
+  devDependencies?: RuntimePackageVersions
 }
-
 async function readRuntimeResources(directory: string): Promise<RuntimeResources> {
   const metadataPath = Path.join(directory, 'runtime.json')
   const metadata = await Try(
-    async () => JSON.parse(await FileSystem.readFile(metadataPath, 'utf8')) as unknown,
+    async () => parseRuntimeMetadata(await FileSystem.readFile(metadataPath, 'utf8')),
     {
       catch(error) {
         Errors.ThrowUserInput(`Compiled runtime resources are unavailable: ${metadataPath}`, { cause: error })
@@ -193,6 +195,10 @@ async function readRuntimeResources(directory: string): Promise<RuntimeResources
     devDependencies: metadata.devDependencies ?? {},
     sourceFiles: metadata.sourceFiles,
   }
+}
+
+function parseRuntimeMetadata(contents: string): unknown {
+  return JSON.parse(contents)
 }
 
 function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {
@@ -262,7 +268,7 @@ function isTraversalIdentity(value: string): boolean {
   return value === '.' || value === '..'
 }
 
-function isDependencies(value: unknown): value is Record<string, string> {
+function isDependencies(value: unknown): value is RuntimePackageVersions {
   if (typeof value !== 'object' || value === null) {
     return false
   }

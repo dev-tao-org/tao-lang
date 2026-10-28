@@ -34,10 +34,16 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
 export type RuntimeManifest = {
   name: string
   private: true
-  dependencies: Record<string, string>
-  devDependencies?: Record<string, string>
-  patchedDependencies?: Record<string, string>
+  dependencies: RuntimeDependencyVersions
+  devDependencies?: RuntimeDependencyVersions
+  patchedDependencies?: RuntimePatchPaths
 }
+
+/** RuntimeDependencyVersions maps runtime package names to declared version constraints. */
+export type RuntimeDependencyVersions = Record<string, string>
+
+/** RuntimePatchPaths maps runtime dependency identities to workspace patch paths. */
+export type RuntimePatchPaths = Record<string, string>
 
 type WorkspaceLock = {
   lockfileVersion: number

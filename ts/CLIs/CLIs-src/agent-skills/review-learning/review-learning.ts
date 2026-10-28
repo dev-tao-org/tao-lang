@@ -9,7 +9,7 @@ import { readLearningInput, requireId, requirePaths, validateCorrection, validat
 
 /** main prints the review-learning skill result without changing Git state. */
 export async function main(): Promise<void> {
-  IO.print(JSON.stringify(await runLearning(Platform.argv.slice(2)), null, 2))
+  IO.print(formatLearningResult(await runLearning(Platform.argv.slice(2))))
 }
 
 /** runLearning executes correction capture, candidate scans and the guarded patch queue. */
@@ -39,6 +39,12 @@ export async function runLearning(args: string[]): Promise<Record<string, unknow
 
 type Options = Map<string, string[]>
 type OptionalOptionName = string | undefined
+
+type LearningResult = Awaited<ReturnType<typeof runLearning>>
+
+function formatLearningResult(result: LearningResult): string {
+  return JSON.stringify(result, null, 2)
+}
 
 async function executeCommand(
   command: string,

@@ -105,8 +105,10 @@ function hasConflictingSecretChange(
   current: SecretStoreModule2.SecretStore,
   name: string,
 ): boolean {
-  return JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
-    || JSON.stringify(current.secrets[name]) !== JSON.stringify(original.secrets[name])
+  return SecretStoreModule2.encodeSecretRecipients(current.recipients)
+      !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
+    || SecretStoreModule2.encodeSecretEntry(current.secrets[name])
+      !== SecretStoreModule2.encodeSecretEntry(original.secrets[name])
     || current.storeKey?.recipient !== original.storeKey?.recipient
 }
 
@@ -162,8 +164,9 @@ async function grantStoreKey(
   await withStoreMutation(async () => {
     const current = await readStore()
     if (
-      JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
-      || JSON.stringify(current.storeKey) !== JSON.stringify(storeKey)
+      SecretStoreModule2.encodeSecretRecipients(current.recipients)
+        !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
+      || SecretStoreModule2.encodeStoreKey(current.storeKey) !== SecretStoreModule2.encodeStoreKey(storeKey)
     ) {
       IO.warn('Recipients changed while decrypting; run secrets again to grant the current recipients access.')
       return

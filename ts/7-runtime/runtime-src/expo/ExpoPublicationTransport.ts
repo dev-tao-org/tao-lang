@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import { Http } from '@shared/os'
-import { snapshotRevision } from './GeneratedRevision'
+import { serializeGeneratedRevision, snapshotRevision } from './GeneratedRevision'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** createPublicationTransport faults a session permanently when server commit completion becomes unknown.
@@ -87,7 +87,7 @@ async function requestRevision(
     const response = await state.request(`${url}/__tao/publish`, {
       method: 'POST',
       headers: { authorization: `Bearer ${state.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify(revision),
+      body: serializeGeneratedRevision(revision),
       signal,
     })
     if (!response.ok) {

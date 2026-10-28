@@ -15,30 +15,24 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   await Artifacts.mkdir(directory, { recursive: true })
   const path = Path.join(directory, `parser-${Platform.randomUUID()}.json`)
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        system: Platform.systemInfo(),
-        bun: await Platform.capture('bun --version'),
-        node: await Platform.capture('node --version'),
-        fixtureHash: Platform.hashText(JSON.stringify(await parserFixtures())),
-        definitions: {
-          cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
-          warm: '20 unrecorded warmups per fixture, then 100 full parses per fixture in one process.',
-          rebuild: 'One forced grammar generation/native rebuild; tool and Node header caches retained.',
-          transformer: 'Minimal benchmark: 20 warmups, then 100 parse-to-code samples, including authored injections.',
-        },
-        summary,
-        samples,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: ParserPerformanceReport = {
+    version: 1,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    system: Platform.systemInfo(),
+    bun: await Platform.capture('bun --version'),
+    node: await Platform.capture('node --version'),
+    fixtureHash: await createParserFixtureFingerprint(),
+    definitions: {
+      cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
+      warm: '20 unrecorded warmups per fixture, then 100 full parses per fixture in one process.',
+      rebuild: 'One forced grammar generation/native rebuild; tool and Node header caches retained.',
+      transformer: 'Minimal benchmark: 20 warmups, then 100 parse-to-code samples, including authored injections.',
+    },
+    summary,
+    samples,
+  }
+  await Artifacts.write(path, serializeParserPerformanceReport(report))
   return { path, summary }
 }
 
@@ -65,6 +59,29 @@ export function summarizeSamples(samples: readonly Sample[]) {
 }
 
 type Sample = TimingSample & { scenario: string }
+type ParserPerformanceReport = {
+  version: 1
+  commit: string
+  modified: boolean
+  system: ReturnType<typeof Platform.systemInfo>
+  bun: string
+  node: string
+  fixtureHash: string
+  definitions: ParserPerformanceDefinitions
+  summary: ReturnType<typeof summarizeSamples>
+  samples: Sample[]
+}
+
+type ParserPerformanceDefinitions = { cold: string; warm: string; rebuild: string; transformer: string }
+
+function serializeParserPerformanceReport(report: ParserPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
+}
+
+async function createParserFixtureFingerprint(): Promise<string> {
+  const fixtures = await parserFixtures()
+  return Platform.hashText(JSON.stringify(fixtures))
+}
 
 async function coldSamples(): Promise<Sample[]> {
   const samples: Sample[] = []
@@ -76,10 +93,14 @@ async function coldSamples(): Promise<Sample[]> {
 
 const sampleColdParser = Timings.createTopLevelTimer(async function(timings, samples: Sample[]) {
   const output = await timings.run(runParserProcess)
-  const child: TimingSample[] = JSON.parse(output)
+  const child = parseColdParserSamples(output)
   samples.push(...child.map(sample => ({ ...sample, scenario: 'cold-initial' })))
   samples.push(...timings.samples.map(sample => ({ ...sample, scenario: 'cold-initial' })))
 })
+
+function parseColdParserSamples(output: string): TimingSample[] {
+  return JSON.parse(output) as TimingSample[]
+}
 
 const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {
   return await Platform.capture('bun run', {
