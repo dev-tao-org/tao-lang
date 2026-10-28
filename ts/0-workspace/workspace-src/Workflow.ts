@@ -143,7 +143,8 @@ async function openWorkflowWorkspace(
   services: WorkflowServices,
 ): Promise<WorkflowWorkspace> {
   const options = createWorkflowWorkspaceOptions(request)
-  const workspace = await (services.openWorkspace ?? openProjectWorkspace)(request.entry, options)
+  const openWorkspace = services.openWorkspace ?? openProjectWorkspace
+  const workspace = await openWorkspace(request.entry, options)
   return await Try(async () => {
     const initialResult = request.kind === 'preview'
       ? await workspace.openFile(request.entry)

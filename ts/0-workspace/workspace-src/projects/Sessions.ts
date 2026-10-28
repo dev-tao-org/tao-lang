@@ -77,9 +77,11 @@ async function ensureSessionState(directory: string): Promise<void> {
 const SessionMarker = '{"format":1}\n'
 
 async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
-  await Lifecycle.ensureProjectDirectory(layout.cacheDirectory)
-  await Lifecycle.ensureProjectDirectory(layout.sessionsDirectory)
-  await Lifecycle.ensureProjectDirectory(layout.sessionLocksDirectory)
+  await Lifecycle.ensureProjectDirectories(
+    layout.cacheDirectory,
+    layout.sessionsDirectory,
+    layout.sessionLocksDirectory,
+  )
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
   if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
     Errors.ThrowUserInput(`Project session lock is not a regular file: ${lockPath}`)
@@ -90,7 +92,7 @@ async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>
 
 async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
   const directory = Path.join(layout.sessionsDirectory, id)
-  await Lifecycle.ensureProjectDirectory(directory)
+  await Lifecycle.ensureProjectDirectories(directory)
   await ensureSessionState(directory)
   await clearPreviousSidecarSnapshots(directory)
   return { id, directory, lockPath: Path.join(layout.sessionLocksDirectory, `${id}.lock`), release: lock.release }

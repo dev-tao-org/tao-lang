@@ -18,13 +18,11 @@ export async function acquireProjectLifecycle(
   return await acquireLifecycleLock(lockPath, waitMs)
 }
 
-/** ensureProjectDirectory creates a directory only when no symlink occupies its path. */
-export async function ensureProjectDirectory(path: string): Promise<void> {
-  if (pathExists(path) && !isRealDirectory(path)) {
-    Errors.ThrowUserInput(`Project state directory is not a real directory: ${path}`)
+/** ensureProjectDirectories creates project state directories sequentially without following symlinks. */
+export async function ensureProjectDirectories(...paths: readonly string[]): Promise<void> {
+  for (const path of paths) {
+    await ensureProjectDirectory(path)
   }
-  await FileSystem.mkdir(path, { recursive: true })
-  requireRealDirectory(path, 'project state directory')
 }
 
 /** isRealDirectory reports a real directory without following a symlink. */
@@ -40,6 +38,14 @@ export function pathExists(path: string): boolean {
 /** isRegularFile reports a non-symlink regular file. */
 export function isRegularFile(path: string): boolean {
   return Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
+}
+
+async function ensureProjectDirectory(path: string): Promise<void> {
+  if (pathExists(path) && !isRealDirectory(path)) {
+    Errors.ThrowUserInput(`Project state directory is not a real directory: ${path}`)
+  }
+  await FileSystem.mkdir(path, { recursive: true })
+  requireRealDirectory(path, 'project state directory')
 }
 
 function requireRealDirectory(path: string, description: string): void {

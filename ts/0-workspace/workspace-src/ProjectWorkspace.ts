@@ -16,7 +16,11 @@ export async function openProjectWorkspace(
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
   const session = await acquireSession(project.root, options)
   const releaseCache = await Try(
-    () => (options.acquireLease ?? Storage.acquireCacheLease)(`${project.root}:${session.id}`),
+    () => {
+      const acquireLease = options.acquireLease ?? Storage.acquireCacheLease
+      const identity = `${project.root}:${session.id}`
+      return acquireLease(identity)
+    },
     {
       catch(error) {
         session.release()

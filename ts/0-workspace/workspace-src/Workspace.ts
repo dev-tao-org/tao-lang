@@ -122,13 +122,9 @@ class WorkspaceSession {
       onSourceError: options.onSourceError,
       async watch(root, change, error, ignored, additional) {
         const stdlib = await Stdlib.projectDirectory()
-        const watcher = await (options.watch ?? WorkspaceWatch.watchWorkspace)(
-          root,
-          change,
-          error,
-          ignored,
-          [...new Set([stdlib, ...additional ?? []])],
-        )
+        const watchWorkspace = options.watch ?? WorkspaceWatch.watchWorkspace
+        const additionalDirectories = [...new Set([stdlib, ...additional ?? []])]
+        const watcher = await watchWorkspace(root, change, error, ignored, additionalDirectories)
         return {
           dispose: () => watcher.dispose(),
           async updateDirectories(directories, excluded) {
@@ -240,7 +236,8 @@ class WorkspaceSession {
     )
     progress?.('Source modules resolved; generating app code…')
     const compileOptions = createCompilationOptions(`r${request.id}`, program, prepared)
-    const files = request.timings.run(this.options.compile ?? compile, document, compileOptions)
+    const compileDocument = this.options.compile ?? compile
+    const files = request.timings.run(compileDocument, document, compileOptions)
     progress?.('App code generation complete.')
     return files
   }

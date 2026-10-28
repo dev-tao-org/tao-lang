@@ -158,7 +158,9 @@ export class FileManager {
     const path = this.entryPath!
     const generation = this.entryGeneration
     const observation = this.observationGeneration
-    this.refreshTimer = (this.options.schedule ?? Time.schedule)(this.options.debounceMs ?? 5, () => {
+    const scheduleRefresh = this.options.schedule ?? Time.schedule
+    const debounceMs = this.options.debounceMs ?? 5
+    this.refreshTimer = scheduleRefresh(debounceMs, () => {
       this.refreshTimer = undefined
       void this.enqueue({ kind: 'disk', path, startedAtMs: change.observedAtMs }, generation, observation)
         .then(refresh.settle)
@@ -176,12 +178,14 @@ export class FileManager {
     }
     this.watcherRoot = root
     const ignoredDirectories = this.pipelineDirectories.ignored()
-    this.watcherStart = (this.options.watch ?? WorkspaceWatch.watchWorkspace)(
+    const watchWorkspace = this.options.watch ?? WorkspaceWatch.watchWorkspace
+    const additionalDirectories = this.pipelineDirectories.additional()
+    this.watcherStart = watchWorkspace(
       root,
       change => this.onChange(change),
       error => this.options.onSourceError?.(error),
       ignoredDirectories,
-      this.pipelineDirectories.additional(),
+      additionalDirectories,
     ).then(watcher => {
       this.watcher = watcher
       return watcher

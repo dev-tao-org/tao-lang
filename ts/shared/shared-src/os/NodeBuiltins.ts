@@ -15,6 +15,7 @@ export {
   appendFileSync,
   constants,
   default as nativeFileSystem,
+  type Dirent,
   existsSync,
   lstatSync,
   mkdirSync,

@@ -14,6 +14,44 @@ export function nestedConditionalIssue(node: TypeScript.Node): string | undefine
   }
 }
 
+/** selectedFunctionCallIssue requires a named callable before invoking a fallback or conditional selection. */
+export function selectedFunctionCallIssue(node: TypeScript.Node): string | undefined {
+  if (!TypeScript.isCallExpression(node)) {
+    return undefined
+  }
+  const callee = unwrapCallee(node.expression)
+  if (TypeScript.isConditionalExpression(callee) || isFallbackSelection(callee)) {
+    return 'select the callable in a named constant before invoking it'
+  }
+}
+
+type CalleeWrapper =
+  | TypeScript.ParenthesizedExpression
+  | TypeScript.AsExpression
+  | TypeScript.TypeAssertion
+  | TypeScript.NonNullExpression
+  | TypeScript.SatisfiesExpression
+
+function unwrapCallee(expression: TypeScript.Expression): TypeScript.Expression {
+  let current = expression
+  while (isCalleeWrapper(current)) {
+    current = current.expression
+  }
+  return current
+}
+
+function isCalleeWrapper(node: TypeScript.Expression): node is CalleeWrapper {
+  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
+    || TypeScript.isTypeAssertionExpression(node) || TypeScript.isNonNullExpression(node)
+    || TypeScript.isSatisfiesExpression(node)
+}
+
+function isFallbackSelection(node: TypeScript.Expression): boolean {
+  return TypeScript.isBinaryExpression(node)
+    && (node.operatorToken.kind === TypeScript.SyntaxKind.QuestionQuestionToken
+      || node.operatorToken.kind === TypeScript.SyntaxKind.BarBarToken)
+}
+
 function isFunctionBoundary(node: TypeScript.Node): boolean {
   return TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
     || TypeScript.isArrowFunction(node) || TypeScript.isMethodDeclaration(node)

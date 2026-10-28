@@ -44,7 +44,8 @@ export async function prepareDependencies(
   await FileSystem.mkdir(Path.dirname(path), { recursive: true })
   const lockPath = Path.join(projectRoot, '.tao', 'locks', 'dependencies.lock')
   await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
-  const lock = await (options.acquireLock ?? SessionLock.acquire)(lockPath)
+  const acquireLock = options.acquireLock ?? SessionLock.acquire
+  const lock = await acquireLock(lockPath)
   if (!lock) {
     preparationNeeded('Another Tao dependency preparation is running; retry.')
   }

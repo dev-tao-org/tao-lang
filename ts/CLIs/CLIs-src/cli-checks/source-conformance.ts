@@ -3,7 +3,7 @@ import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
-import { nestedConditionalIssue } from './source-conformance-conditional'
+import { nestedConditionalIssue, selectedFunctionCallIssue } from './source-conformance-conditional'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
@@ -76,26 +76,12 @@ class SourceConformanceChecker {
         this.report(node.getStart(this.file), importIssue)
       }
     }
-    const optionalIssue = optionalAccessIssue(node, this.checker)
-    if (optionalIssue) {
-      this.report(node.getStart(this.file), optionalIssue)
-    }
-    const functionIssue = objectFunctionStyleIssue(node, this.source)
-    if (functionIssue) {
-      this.report(node.getStart(this.file), functionIssue)
-    }
-    const conditionalIssue = nestedConditionalIssue(node)
-    if (conditionalIssue) {
-      this.report(node.getStart(this.file), conditionalIssue)
-    }
-    const signatureIssue = complexSignatureTypeIssue(node)
-    if (signatureIssue) {
-      this.report(node.getStart(this.file), signatureIssue)
-    }
-    const platformIssue = platformAccessIssue(node, this.filename)
-    if (platformIssue) {
-      this.report(node.getStart(this.file), platformIssue)
-    }
+    this.reportIssue(node, optionalAccessIssue(node, this.checker))
+    this.reportIssue(node, objectFunctionStyleIssue(node, this.source))
+    this.reportIssue(node, nestedConditionalIssue(node))
+    this.reportIssue(node, selectedFunctionCallIssue(node))
+    this.reportIssue(node, complexSignatureTypeIssue(node))
+    this.reportIssue(node, platformAccessIssue(node, this.filename))
     const body = ConformanceLayout.functionBody(node)
     if (body) {
       this.checkFunctionBody(body)
@@ -112,6 +98,12 @@ class SourceConformanceChecker {
     const stringIssue = ConformanceLayout.multilineStringIssue(node, this.file)
     if (stringIssue) {
       this.report(node.getStart(this.file), stringIssue)
+    }
+  }
+
+  private reportIssue(node: TypeScript.Node, issue: string | undefined): void {
+    if (issue) {
+      this.report(node.getStart(this.file), issue)
     }
   }
 

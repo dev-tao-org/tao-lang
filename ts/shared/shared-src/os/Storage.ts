@@ -1,5 +1,6 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
 import * as Env from './Env'
+import type { Dirent } from './NodeBuiltins'
 import { dirname, join, lstat, mkdir, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
@@ -111,17 +112,21 @@ function resolveStorageRoots(): StorageRoots {
   return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
 }
 
+type StorageSystem = 'Darwin' | 'Windows_NT' | 'Linux'
+
 function resolveStoragePlatform(system: string): StoragePlatform | undefined {
-  if (system === 'Darwin') {
-    return 'macos'
+  if (!isStorageSystem(system)) {
+    return undefined
   }
-  if (system === 'Windows_NT') {
-    return 'windows'
-  }
-  if (system === 'Linux') {
-    return 'linux'
-  }
-  return undefined
+  return Switch<StorageSystem, StoragePlatform>(system, {
+    Darwin: () => 'macos',
+    Windows_NT: () => 'windows',
+    Linux: () => 'linux',
+  })
+}
+
+function isStorageSystem(system: string): system is StorageSystem {
+  return system === 'Darwin' || system === 'Windows_NT' || system === 'Linux'
 }
 
 function resolveOverride(
@@ -216,36 +221,42 @@ function isUnavailableProbe(error: unknown): boolean {
 }
 
 async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
-  const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
-    catch: error => handleLeaseDirectoryFailure(error, directory, report),
-  })
+  const entries = await readLeaseDirectory(directory, report)
   if (!entries) {
     return true
   }
   let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
-    if (!entry.isFile()) {
-      report?.(`Unexpected lease entry at ${join(directory, entry.name)}. Inspect it before retrying tao clean --wipe.`)
-      busy = true
-      continue
-    }
-    const path = join(directory, entry.name)
-    const lock = await Try(() => SessionLock.acquire(path), {
-      catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
-    })
-    if (!lock) {
-      report?.(
-        `Shared cache lease could not be cleared: ${path}. Close its owner or resolve the access issue above before retrying.`,
-      )
-      busy = true
-      continue
-    }
-    lock.release()
-    if (!await removeLeaseProbe(path, report)) {
-      busy = true
-    }
+    const entryIsBusy = await checkLeaseEntry(directory, entry, report)
+    // Check every probe even after finding a busy one, so stale probes still get cleaned up.
+    busy = entryIsBusy || busy
   }
   return busy
+}
+
+async function readLeaseDirectory(directory: string, report?: (reason: string) => void): Promise<Dirent[] | undefined> {
+  return await Try(() => readdir(directory, { withFileTypes: true }), {
+    catch: error => handleLeaseDirectoryFailure(error, directory, report),
+  })
+}
+
+async function checkLeaseEntry(directory: string, entry: Dirent, report?: (reason: string) => void): Promise<boolean> {
+  const path = join(directory, entry.name)
+  if (!entry.isFile()) {
+    report?.(`Unexpected lease entry at ${path}. Inspect it before retrying tao clean --wipe.`)
+    return true
+  }
+  const lock = await Try(() => SessionLock.acquire(path), {
+    catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
+  })
+  if (!lock) {
+    report?.(
+      `Shared cache lease could not be cleared: ${path}. Close its owner or resolve the access issue above before retrying.`,
+    )
+    return true
+  }
+  lock.release()
+  return !await removeLeaseProbe(path, report)
 }
 
 function handleLeaseDirectoryFailure(

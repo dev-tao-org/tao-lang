@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Switch, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
@@ -31,13 +31,11 @@ export async function resolveSource(
   update: boolean,
   options: DependencyStoreOptions,
 ): Promise<LockedSource> {
-  if (requirement.provider === 'file') {
-    return await resolveFileSource(requirement, identity, parent)
-  }
-  if (requirement.provider === 'bundled') {
-    return resolveBundledSource(requirement, identity, options)
-  }
-  return await resolveGitHubSource(requirement, identity, projectRoot, previous, update, options)
+  return await Switch.property(requirement, 'provider', {
+    file: () => resolveFileSource(requirement, identity, parent),
+    bundled: async () => resolveBundledSource(requirement, identity, options),
+    github: () => resolveGitHubSource(requirement, identity, projectRoot, previous, update, options),
+  })
 }
 
 function preparationNeeded(message: string): never {
