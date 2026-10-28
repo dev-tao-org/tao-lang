@@ -3,6 +3,8 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
+const ManagedModuleAlreadyOwnedErrorRegx = /already owned/
+
 Tests.test('repairs corrupt current profile metadata only from an intact durable lock', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-metadata-${Platform.randomUUID()}`)
   const moduleDirectory = Path.join(directory, 'Module')
@@ -29,7 +31,7 @@ async function assertVerifiedRepair(input: ManagedModulesInput, baseExecutor: Bu
   foreign.fingerprint = 'f'.repeat(64)
   await FileSystem.chmod(metadata, 0o644)
   await FileSystem.writeFile(metadata, JSON.stringify(foreign))
-  await Tests.rejects(repairManagedModuleFiles(input, baseExecutor), /already owned/)
+  await Tests.rejects(repairManagedModuleFiles(input, baseExecutor), ManagedModuleAlreadyOwnedErrorRegx)
   await FileSystem.writeFile(metadata, originalMetadata)
   let frozenInstalls = 0
   const executor: BunExecutor = async (command, args, cwd) => {

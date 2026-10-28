@@ -2,6 +2,8 @@ import * as Parser from '@grammar/parser'
 import { Tests } from '@shared/os'
 import * as PreviewMeasurement from '../perf-src/PreviewMeasurement'
 
+const LoadViewDeclarationRegx = /view Load\d+ \{/g
+
 Tests.test('repeated measurement edits change source each time and reset each complete cycle', async () => {
   const settings = PreviewMeasurement.readPreviewMeasurement({ editCount: 32, frameCount: 1, extraViews: 0 })
   const canonical = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
@@ -54,7 +56,11 @@ Tests.test('multi-input measurements distribute unique generated views across im
   Tests.expect(fixture.entry).toContain('use package ./LoadViews0')
   Tests.expect(fixture.entry).toContain('use package ./LoadViews2')
   Tests.expect(fixture.entry).not.toContain('view Load0 {')
-  Tests.expect(fixture.extraFiles.map(file => (file.source.match(/view Load\d+ \{/g) ?? []).length)).toEqual([3, 2, 2])
+  Tests.expect(fixture.extraFiles.map(file => (file.source.match(LoadViewDeclarationRegx) ?? []).length)).toEqual([
+    3,
+    2,
+    2,
+  ])
   const allSources = fixture.extraFiles.map(file => file.source).join('\n')
   for (const file of fixture.extraFiles) {
     Tests.expect(Parser.createParser().parse(file.source).rootNode.hasError).toBe(false)

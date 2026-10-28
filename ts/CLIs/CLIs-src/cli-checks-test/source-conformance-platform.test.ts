@@ -38,9 +38,11 @@ Tests.test('platform conformance > routes builtin module references through one 
   )).toBe('runtime builtin imports belong in @shared/os')
 })
 
+type PlatformIssue = string | undefined
+
 function findPlatformIssue(source: string, filename: string): string | undefined {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
-  let issue: string | undefined
+  let issue: PlatformIssue
   const visit = (node: TypeScript.Node): void => {
     issue ??= platformAccessIssue(node, filename)
     TypeScript.forEachChild(node, visit)

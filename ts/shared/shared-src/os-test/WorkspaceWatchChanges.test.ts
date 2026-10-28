@@ -1,9 +1,11 @@
 import { Tests } from '@shared/os'
 import { reconcileWatchChanges } from '../os/WorkspaceWatchChanges'
 
+type WatchStamp = string | undefined
+
 Tests.test('watch reconciliation catches suppressed edits, avoids unchanged work and stops after disposal', async () => {
   let flush = () => {}
-  let finishRead!: (value: string | undefined) => void
+  let finishRead!: (value: WatchStamp) => void
   let stamp = 'first'
   const changes: string[] = []
   const reconciliation = reconcileWatchChanges(

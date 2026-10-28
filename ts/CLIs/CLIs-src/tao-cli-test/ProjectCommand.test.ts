@@ -5,6 +5,8 @@ import type { BunExecutor } from '@workspace/sidecars/ManagedModules'
 import { runSidecarTests } from '@workspace/testing/SidecarTests'
 import { withProjectSessions } from '../tao-cli/ProjectCommand'
 
+const SidecarFailureOutputRegx = /Sidecar tests failed.*test output/
+
 Tests.test('project command sessions acquire distinct projects in stable order and release all leases', async () => {
   const first = tempProject('first')
   const second = tempProject('second')
@@ -43,7 +45,7 @@ Tests.test('sidecar test runner invokes only Bun test in the selected module and
   Tests.expect(calls).toEqual(['bun:test:/module'])
   await Tests.rejects(
     runSidecarTests('/module', async () => ({ status: 1, stdout: 'test output', stderr: '' })),
-    /Sidecar tests failed.*test output/,
+    SidecarFailureOutputRegx,
   )
 })
 

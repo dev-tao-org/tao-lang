@@ -104,7 +104,9 @@ async function mockCommand(
   return { command, exitCode: 0, stdout, stderr: '' }
 }
 
-function resolveGitOutput(args: readonly string[] | undefined, common: string, root: string, identity: string): string {
+type OptionalGitArguments = readonly string[] | undefined
+
+function resolveGitOutput(args: OptionalGitArguments, common: string, root: string, identity: string): string {
   if (args?.[0] === 'rev-parse') {
     return `${common}\n`
   }

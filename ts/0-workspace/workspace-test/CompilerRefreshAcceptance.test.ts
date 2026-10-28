@@ -5,11 +5,17 @@ import type { UpdateResult } from '@workspace/Workspace'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 
+type ActivePreviewWorkspace = Awaited<ReturnType<typeof openProjectWorkspace>>
+type OptionalPreviewWorkspace = ActivePreviewWorkspace | undefined
+type OptionalExpoSession = Runtime.ExpoSession | undefined
+type OptionalBrowser = HeadlessBrowser.Browser | undefined
+type OptionalTimingMeasurement = number | undefined
+
 Tests.test('compiled Tao custom-hook components refresh through Metro with committed state ownership', async () => {
   const root = Artifacts.resolvePath('tmp', `compiler-refresh-${Platform.randomUUID()}`)
-  let workspace: Awaited<ReturnType<typeof openProjectWorkspace>> | undefined
-  let expo: Runtime.ExpoSession | undefined
-  let browser: HeadlessBrowser.Browser | undefined
+  let workspace: OptionalPreviewWorkspace
+  let expo: OptionalExpoSession
+  let browser: OptionalBrowser
   let pageErrors: string[] = []
   await Try(async () => {
     const entry = await createProjectEntry(root)
@@ -199,9 +205,9 @@ async function expectPublished(
 
 async function expectCounters(
   page: HeadlessBrowser.Page,
-  countA: number | undefined,
+  countA: OptionalTimingMeasurement,
   countB: number,
-  scaleA: number | undefined,
+  scaleA: OptionalTimingMeasurement,
   scaleB: number,
 ): Promise<void> {
   if (countA !== undefined) {

@@ -5,6 +5,9 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
+const AmbiguousProjectPackageErrorRegx = /Package @ui is ambiguous/
+const MissingProjectModuleErrorRegx = /Project module tao@missing was not found/
+
 Tests.test('project imports resolve through consumer aliases and producer-local aliases', async () => {
   const consumer = await createProject('consumer')
   const producer = await createProject('producer')
@@ -37,7 +40,7 @@ Tests.test('project module imports reject ambiguous nested package roots', async
     )
     await Tests.rejects(
       loadProjectImportGraph(consumer, producer, icons),
-      /Package @ui is ambiguous/,
+      AmbiguousProjectPackageErrorRegx,
     )
   }, {
     async finally() {
@@ -152,7 +155,7 @@ Tests.test('aliased project imports reject missing physical modules', async () =
         },
         createParser(),
       ),
-      /Project module tao@missing was not found/,
+      MissingProjectModuleErrorRegx,
     )
   }, {
     async finally() {

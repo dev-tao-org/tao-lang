@@ -3,6 +3,15 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as LockFile from '../../workspace-src/dependencies/LockFile'
 import * as Store from '../../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../../workspace-src/dependencies/Types'
+import * as Fixtures from './StoreFixtures'
+
+const ConflictingDependencyCommitsErrorRegx = /conflicting commits/
+const RestoreDependencyLockErrorRegx = /restore it from version control or repair it explicitly/
+const InvalidDependencyLockErrorRegx = /invalid/
+const UnsupportedDependencyLockVersionErrorRegx = /unsupported format version 1/
+const DependencyLockInsideProjectErrorRegx = /inside the project/
+const TaoProjectRootRequiredErrorRegx = /must point to a Tao project root/
+const DependencyLockFileSuffixRegx = /\.lock$/
 
 Tests.test('prepared Git sources reuse immutable pins and explicit updates leave other pins intact', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-store-${Platform.randomUUID()}`)
@@ -39,7 +48,7 @@ Tests.test('file dependencies remain live and retain their managed graph referen
   }
 
   await Try(async () => {
-    await createProjectMarker(source)
+    await Fixtures.createProjectMarker(source)
     await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
     await prepareFileSourceAndGraph(root, source, initial, options)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -71,10 +80,10 @@ Tests.test('transitive requirements cannot pin one Git source to two commits', a
     acquireLock: async () => ({ release() {} }),
     async readRequirements(location) {
       if (location.includes('example--one')) {
-        return [githubRequirement('example/shared', 'v1')]
+        return [Fixtures.createGithubRequirement('example/shared', 'v1')]
       }
       if (location.includes('example--two')) {
-        return [githubRequirement('example/shared', 'v2')]
+        return [Fixtures.createGithubRequirement('example/shared', 'v2')]
       }
       return []
     },
@@ -82,15 +91,19 @@ Tests.test('transitive requirements cannot pin one Git source to two commits', a
       resolveCommit: async (_repository, version) => version === 'v1' ? '1'.repeat(40) : '2'.repeat(40),
       async fetchCommit(_repository, _commit, destination) {
         await FileSystem.mkdir(destination, { recursive: true })
-        await createProjectMarker(destination)
+        await Fixtures.createProjectMarker(destination)
       },
     },
   }
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
     await Tests.rejects(
-      Store.prepareDependencies(root, [githubRequirement('example/one'), githubRequirement('example/two')], options),
-      /conflicting commits/,
+      Store.prepareDependencies(
+        root,
+        [Fixtures.createGithubRequirement('example/one'), Fixtures.createGithubRequirement('example/two')],
+        options,
+      ),
+      ConflictingDependencyCommitsErrorRegx,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -105,7 +118,7 @@ Tests.test('same source at different refs keeps each alias resolvable when commi
     await FileSystem.mkdir(root, { recursive: true })
     const commits = new Map([['example/shared:v1', 'a'.repeat(40)], ['example/shared:v2', 'a'.repeat(40)]])
     const calls: string[] = []
-    const options = fixtureOptions(root, commits, calls)
+    const options = Fixtures.createGitDependencyFixtureOptions(root, commits, calls)
     const lock = await Store.prepareDependencies(
       root,
       requirements,
@@ -123,7 +136,10 @@ Tests.test('same source at different refs keeps each alias resolvable when commi
     const unchanged = await Store.prepareDependencies(root, requirements, options)
     Tests.expect(unchanged.sources['github:example/shared']?.commit).toBe('a'.repeat(40))
     Tests.expect(calls.filter(call => call.startsWith('resolve:')).length).toBe(resolutionCount)
-    await Tests.rejects(Store.prepareDependencies(root, requirements, options, ['first']), /conflicting commits/)
+    await Tests.rejects(
+      Store.prepareDependencies(root, requirements, options, ['first']),
+      ConflictingDependencyCommitsErrorRegx,
+    )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -134,21 +150,24 @@ Tests.test('prepare refuses to replace a malformed durable lock', async () => {
     await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
     await FileSystem.writeFile(lockPath, '{ broken')
     await Tests.rejects(
-      Store.prepareDependencies(root, [], fixtureOptions(root, new Map(), [])),
-      /restore it from version control or repair it explicitly/,
+      Store.prepareDependencies(root, [], Fixtures.createGitDependencyFixtureOptions(root, new Map(), [])),
+      RestoreDependencyLockErrorRegx,
     )
     Tests.expect(await FileSystem.readFile(lockPath, 'utf8')).toBe('{ broken')
     await FileSystem.rm(lockPath)
     const calls: string[] = []
     const commits = new Map([['example/one:main', 'a'.repeat(40)]])
-    const options = fixtureOptions(root, commits, calls)
-    const pinned = await Store.prepareDependencies(root, [githubRequirement('example/one')], options)
+    const options = Fixtures.createGitDependencyFixtureOptions(root, commits, calls)
+    const pinned = await Store.prepareDependencies(root, [Fixtures.createGithubRequirement('example/one')], options)
     pinned.commitPins = {}
     const damaged = JSON.stringify(pinned)
     await FileSystem.writeFile(lockPath, damaged)
     commits.set('example/one:main', 'b'.repeat(40))
     const priorCalls = calls.length
-    await Tests.rejects(Store.prepareDependencies(root, [githubRequirement('example/one')], options), /invalid/)
+    await Tests.rejects(
+      Store.prepareDependencies(root, [Fixtures.createGithubRequirement('example/one')], options),
+      InvalidDependencyLockErrorRegx,
+    )
     Tests.expect(calls).toHaveLength(priorCalls)
     Tests.expect(await FileSystem.readFile(lockPath, 'utf8')).toBe(damaged)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -160,7 +179,7 @@ Tests.test('dependency lock preparation rejects v1 without guessing per-ref comm
   await Try(async () => {
     await FileSystem.mkdir(Path.dirname(path), { recursive: true })
     await FileSystem.writeFile(path, JSON.stringify({ version: 1, roots: {}, sources: {} }))
-    await Tests.rejects(LockFile.readDependencyLock(path), /unsupported format version 1/)
+    await Tests.rejects(LockFile.readDependencyLock(path), UnsupportedDependencyLockVersionErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -177,7 +196,7 @@ Tests.test('managed npm graph references validate paths and survive source prepa
       lockPath: '.tao/store/npm/graph.lock',
       lockHash: hash,
     })
-    await Store.prepareDependencies(root, [], fixtureOptions(root, new Map(), []))
+    await Store.prepareDependencies(root, [], Fixtures.createGitDependencyFixtureOptions(root, new Map(), []))
     Tests.expect(
       (await LockFile.readDependencyLock(Path.join(root, '.tao', 'store', 'dependencies.lock.json')))?.npmGraphs,
     )
@@ -190,12 +209,12 @@ Tests.test('managed npm graph references validate paths and survive source prepa
         Path.join(root, '..', 'outside.lock'),
         hash,
       ),
-      /inside the project/,
+      DependencyLockInsideProjectErrorRegx,
     )
     const durablePath = Path.join(root, '.tao', 'store', 'dependencies.lock.json')
     const stored = await FileSystem.readFile(durablePath, 'utf8')
     await FileSystem.writeFile(durablePath, stored.replace('.tao/store/npm/graph.lock', '../outside.lock'))
-    await Tests.rejects(LockFile.readDependencyLock(durablePath), /invalid/)
+    await Tests.rejects(LockFile.readDependencyLock(durablePath), InvalidDependencyLockErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -219,7 +238,7 @@ Tests.test('bundled sources require ordinary project marker metadata', async () 
   await Try(async () => {
     await FileSystem.mkdir(bundledRoot, { recursive: true })
     await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
-    await Tests.rejects(Store.prepareDependencies(root, [requirement], options), /must point to a Tao project root/)
+    await Tests.rejects(Store.prepareDependencies(root, [requirement], options), TaoProjectRootRequiredErrorRegx)
     await FileSystem.mkdir(Path.join(bundledRoot, '.tao'))
     await Store.prepareDependencies(root, [requirement], options)
     const portableLock = await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8')
@@ -261,7 +280,7 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
     await FileSystem.mkdir(Path.join(profiles, 'retained-install'), { recursive: true })
     for (const path of [referenced, retained, legacyRetained, orphan]) {
       await FileSystem.writeFile(path, path)
-      await FileSystem.writeFile(path.replace(/\.lock$/, '.sha256'), 'hash\n')
+      await FileSystem.writeFile(path.replace(DependencyLockFileSuffixRegx, '.sha256'), 'hash\n')
     }
     await FileSystem.writeFile(
       Path.join(profiles, 'retained-install', '.tao-managed.json'),
@@ -278,14 +297,14 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
     Tests.expect(await FileSystem.exists(retained)).toBe(true)
     Tests.expect(await FileSystem.exists(legacyRetained)).toBe(false)
     Tests.expect(await FileSystem.exists(orphan)).toBe(false)
-    Tests.expect(await FileSystem.exists(orphan.replace(/\.lock$/, '.sha256'))).toBe(false)
+    Tests.expect(await FileSystem.exists(orphan.replace(DependencyLockFileSuffixRegx, '.sha256'))).toBe(false)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
 async function verifyPinnedUpdates(root: string, requirements: DependencyRequirement[]): Promise<void> {
   const commits = new Map([['example/one:main', '1'.repeat(40)], ['example/two:main', '2'.repeat(40)]])
   const calls: string[] = []
-  const options = fixtureOptions(root, commits, calls)
+  const options = Fixtures.createGitDependencyFixtureOptions(root, commits, calls)
   const first = await Store.prepareDependencies(root, requirements, options)
   const savedLock = await FileSystem.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8')
   commits.set('example/one:main', '3'.repeat(40))
@@ -303,36 +322,4 @@ async function verifyPinnedUpdates(root: string, requirements: DependencyRequire
     `fetch:${'2'.repeat(40)}`,
     `fetch:${'3'.repeat(40)}`,
   ])
-}
-
-function fixtureOptions(
-  root: string,
-  commits: Map<string, string>,
-  calls: string[],
-): DependencyStoreOptions {
-  return {
-    storeRoot: Path.join(root, 'cache'),
-    readRequirements: async () => [],
-    acquireLock: async () => ({ release() {} }),
-    git: {
-      async resolveCommit(repository, version) {
-        const key = `${repository.split('/').slice(-2).join('/').replace('.git', '')}:${version}`
-        calls.push(`resolve:${key}`)
-        return commits.get(key)!
-      },
-      async fetchCommit(_repository, commit, destination) {
-        calls.push(`fetch:${commit}`)
-        await FileSystem.mkdir(destination, { recursive: true })
-        await createProjectMarker(destination)
-      },
-    },
-  }
-}
-
-function githubRequirement(identifier: string, version = 'main'): DependencyRequirement {
-  return { provider: 'github', identifier, version }
-}
-
-async function createProjectMarker(root: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
 }

@@ -5,9 +5,11 @@ import { acquireProjectLifecycle } from '../../workspace-src/projects/Lifecycle'
 import { discoverProject, initializeProject } from '../../workspace-src/projects/Projects'
 import { acquireSession } from '../../workspace-src/projects/Sessions'
 
+type OptionalProjectSession = Awaited<ReturnType<typeof acquireSession>> | undefined
+
 Tests.test('named sessions contend, reuse warm state, and clean skips active sessions', async () => {
   const root = temporaryProject()
-  let session: Awaited<ReturnType<typeof acquireSession>> | undefined
+  let session: OptionalProjectSession
   await Try(async () => {
     await initializeProject(root)
     session = await acquireSession(root, { id: 'editor-1' })

@@ -2,6 +2,10 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ModuleDependencies from '../workspace-src/ModuleDependencies'
 
+const ExactSemanticVersionRequiredErrorRegx = /exact semantic version/
+const AmbiguousPackageNameErrorRegx = /ambiguous/
+const DependencySessionAlreadyActiveErrorRegx = /session is already active/
+
 Tests.test('module add replaces an existing npm declaration and preserves its alias', async () => {
   const root = tempRoot()
   const module = Path.join(root, 'Packages', '@widgets')
@@ -66,9 +70,12 @@ Tests.test('module add rejects ambiguous local names and invalid versions', asyn
     await FileSystem.writeFile(Path.join(unique, '.tao'), '')
     await Tests.rejects(
       ModuleDependencies.addModuleNpmDependency(unique, '@widgets', 'lodash@^4.0.0'),
-      /exact semantic version/,
+      ExactSemanticVersionRequiredErrorRegx,
     )
-    await Tests.rejects(ModuleDependencies.addModuleNpmDependency(root, '@widgets', 'lodash@4.0.0'), /ambiguous/)
+    await Tests.rejects(
+      ModuleDependencies.addModuleNpmDependency(root, '@widgets', 'lodash@4.0.0'),
+      AmbiguousPackageNameErrorRegx,
+    )
   }, { finally: () => cleanRoots(root, unique) })
 })
 
@@ -108,7 +115,7 @@ Tests.test('dependency session contention fails before acquiring another cache l
     await ModuleDependencies.withDependencySession(root, 'busy', async () => {
       await Tests.rejects(
         ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease),
-        /session is already active/,
+        DependencySessionAlreadyActiveErrorRegx,
       )
       Tests.expect(leases).toBe(1)
     }, lease)

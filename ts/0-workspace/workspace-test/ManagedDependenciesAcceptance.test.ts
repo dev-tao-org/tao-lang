@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Env } from '@shared/os'
-import { Files, FileSystem, Http, Path, Platform, Repo, Tests } from '@shared/os'
+import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
@@ -10,8 +10,14 @@ import { prepareSidecarPipeline } from '../workspace-src/SidecarPipeline'
 import type { BunExecutor } from '../workspace-src/sidecars/ManagedModules'
 import { inspectGeneratedModuleFiles, readManagedModules } from '../workspace-src/sidecars/ManagedModules'
 import { openAutomaticWorkspace } from './managed-fixtures/AutomaticWorkflow'
+import * as ManagedDependencyRegistry from './ManagedDependencyRegistry'
 
 const runtimePins = { react: '0.0.0-tao-fixture' }
+const ManagedDependencyInstallFailureRegx = /could not be prepared.*fixture install interruption/
+const PackageEntryJavaScriptPathRegx = /index\.js$/
+const GeneratedForeignViewImportRegx = /import\s+\{\s*Widget as _taoForeignView\d+\s*\}\s+from\s+("(?:[^"\\]|\\.)*")/
+const GeneratedDependencyFilesDriftRegx = /drifted|Generated dependency files changed/
+const IncompatibleReactVersionRegx = /incompatible versions of react/
 
 Tests.test('managed npm preparation resolves a local project foreign view through an isolated registry', async () => {
   const root = ArtifactsRoot()
@@ -20,8 +26,11 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
   await FileSystem.mkdir(root, { recursive: true })
   await Try(async () => {
     const { app, ui, entry } = await createFixtureProjects(root)
-    const artifacts = await packageArtifacts(root)
-    const server = startLocalRegistry(artifacts, requests)
+    const { packages: artifacts, server } = await ManagedDependencyRegistry.startManagedDependencyRegistry(
+      root,
+      requests,
+      runtimePins.react,
+    )
     await Try(async () => {
       const registry = `http://127.0.0.1:${server.port}`
       await expectInstallRetry(entry, root)
@@ -69,77 +78,6 @@ async function createFixtureProjects(root: string): Promise<FixtureProjects> {
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
 
-async function packageArtifacts(root: string): Promise<Map<string, PackageArtifact>> {
-  const fixtures = Repo.resolvePath('ts/0-workspace/workspace-test/managed-fixtures/packages')
-  const packages = new Map<string, PackageArtifact>()
-  for (const name of ['react', 'tao-fixture-label', 'string-width']) {
-    const directory = Path.join(root, 'registry', name, 'package')
-    await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
-    await FileSystem.cp(Path.join(fixtures, name), directory, { recursive: true })
-    await FileSystem.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
-    const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))
-    const archive = Path.join(root, 'registry', `${name}.tgz`)
-    await Platform.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
-    const bytes = await FileSystem.readFile(archive)
-    packages.set(name, {
-      bytes,
-      integrity: Platform.hashBytes(bytes, 'sha512'),
-      ...(manifest.dependencies ? { dependencies: manifest.dependencies } : {}),
-    })
-  }
-  return packages
-}
-
-function startLocalRegistry(packages: Map<string, PackageArtifact>, requests: string[]) {
-  return Http.serve({
-    hostname: '127.0.0.1',
-    port: 0,
-    fetch(request) {
-      const path = Http.url(request.url).pathname
-      requests.push(request.url)
-      const tarball = /^\/tarballs\/([a-z0-9-]+)\.tgz$/.exec(path)
-      if (tarball) {
-        const artifact = packages.get(tarball[1]!)
-        return artifact
-          ? Http.bytesResponse(artifact.bytes)
-          : Http.response('missing tarball', { status: 404 })
-      }
-      const name = path.slice(1)
-      const artifact = packages.get(name)
-      return artifact
-        ? Http.jsonResponse(createFixtureMetadata(name, artifact, request.url))
-        : Http.response('not found', { status: 404 })
-    },
-  })
-}
-
-function createFixtureMetadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
-  const version = resolveFixtureVersion(name)
-  const origin = Http.url(requestUrl).origin
-  return {
-    name,
-    versions: {
-      [version]: {
-        name,
-        version,
-        ...(artifact.dependencies ? { dependencies: artifact.dependencies } : {}),
-        dist: { tarball: `${origin}/tarballs/${name}.tgz`, integrity: `sha512-${artifact.integrity}` },
-      },
-    },
-    'dist-tags': { latest: version },
-  }
-}
-
-function resolveFixtureVersion(name: string): string {
-  if (name === 'react') {
-    return runtimePins.react
-  }
-  if (name === 'string-width') {
-    return '4.1.0'
-  }
-  return '1.0.0'
-}
-
 async function expectInstallRetry(entry: string, root: string): Promise<void> {
   await Tests.rejects(
     ProjectPreparation.prepareProject(entry, {
@@ -149,7 +87,7 @@ async function expectInstallRetry(entry: string, root: string): Promise<void> {
           ? { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
           : { status: 1, stdout: '', stderr: 'fixture install interruption' },
     }),
-    /could not be prepared.*fixture install interruption/,
+    ManagedDependencyInstallFailureRegx,
   )
   Tests.expect(await FileSystem.readdir(Path.join(root, 'app/.tao/store/npm'))).toEqual([])
 }
@@ -195,13 +133,13 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
 async function verifyInstalledGraph(
   app: string,
   ui: string,
-  packages: Map<string, PackageArtifact>,
+  packages: RegistryPackages,
   registry: string,
 ): Promise<void> {
   const entry = FileSystem.resolveModule('tao-fixture-label', Path.join(ui, '@ui'))
   const react = FileSystem.resolveModule('react', Path.join(ui, '@ui'))
   Tests.expect(await FileSystem.readFile(entry, 'utf8')).toContain('label:')
-  Tests.expect(await FileSystem.readFile(react.replace(/index\.js$/, 'package.json'), 'utf8'))
+  Tests.expect(await FileSystem.readFile(react.replace(PackageEntryJavaScriptPathRegx, 'package.json'), 'utf8'))
     .toContain(runtimePins.react)
   const profiles = await FileSystem.readdir(Path.join(app, '.tao/cache/managed-modules'))
   const lock = await FileSystem.readFile(Path.join(app, '.tao/cache/managed-modules', profiles[0]!, 'bun.lock'), 'utf8')
@@ -242,7 +180,7 @@ async function verifyCompiledSidecar(
   Tests.expect(published).toHaveLength(2)
   Tests.expect(published[0]).toContain('foreign-views')
   Tests.expect(FileSystem.resolveModule('react', Path.join(ui, '@ui'))).toContain('node_modules/react')
-  const importPath = /import\s+\{\s*Widget as _taoForeignView\d+\s*\}\s+from\s+("(?:[^"\\]|\\.)*")/.exec(published[0]!)
+  const importPath = GeneratedForeignViewImportRegx.exec(published[0]!)
   Tests.expect(importPath).not.toBeNull()
   const modulePath = JSON.parse(importPath![1]!) as string
   const module = Platform.loadModule<{ Widget(props: { Value: string }): unknown }>(modulePath)
@@ -315,7 +253,7 @@ async function verifyLastGoodSurvivesDrift(
   Tests.expect(published).toHaveLength(publishedCount + 1)
   await Tests.rejects(
     ProjectPreparation.inspectProjectPreparation(entry, { runtimePins }),
-    /drifted|Generated dependency files changed/,
+    GeneratedDependencyFilesDriftRegx,
   )
 }
 
@@ -335,7 +273,7 @@ async function verifyRuntimeConflictPreservesPreview(
       runtimePins,
       executor: async () => Errors.ThrowShouldNeverHappen('A runtime conflict must fail before invoking Bun.'),
     }),
-    /incompatible versions of react/,
+    IncompatibleReactVersionRegx,
   )
   Tests.expect((await workspace.files.openFile(entry)).status).toBe('failed')
   Tests.expect(workspace.lastGoodRevision).toBe(lastGood)
@@ -343,7 +281,7 @@ async function verifyRuntimeConflictPreservesPreview(
   await FileSystem.writeFile(path, source)
 }
 
-type PackageArtifact = { bytes: Http.Bytes; integrity: string; dependencies?: Record<string, string> }
+type RegistryPackages = Awaited<ReturnType<typeof ManagedDependencyRegistry.startManagedDependencyRegistry>>['packages']
 
 function ArtifactsRoot(): string {
   return Repo.resolvePath('.artifacts/tmp', `managed-dependencies-${Platform.randomUUID()}`)

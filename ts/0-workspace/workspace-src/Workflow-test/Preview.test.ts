@@ -5,12 +5,14 @@ import { buildManagedModulesInput } from '../ProjectPreparation'
 import { initializeProject } from '../projects/Projects'
 import { execute, type WorkflowWorkspace } from '../Workflow'
 
+type OptionalWorkflowWorkspace = WorkflowWorkspace | undefined
+
 Tests.test('unchanged and partial preview edits never inspect setup or install and retain last-good output', async () => {
   const root = Artifacts.resolvePath('tmp', `workflow-preview-${Platform.randomUUID()}`)
   const entry = Path.join(root, 'Main.tao')
   const events: string[] = []
   const published: string[] = []
-  let workspace: WorkflowWorkspace | undefined
+  let workspace: OptionalWorkflowWorkspace
   await Try(async () => {
     await initializeProject(root)
     await writeFixture(root, entry)

@@ -7,8 +7,8 @@ Tests.test(
   'Tao hook state and expression subscriptions follow committed React ownership through Metro refresh',
   async () => {
     const root = Artifacts.resolvePath('tmp', `react-ownership-${Platform.randomUUID()}`)
-    let browser: Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
-    let expo: Runtime.ExpoSession | undefined
+    let browser: OptionalBrowser
+    let expo: OptionalExpoSession
     await Try(async () => {
       const application = await Runtime.create({
         directory: root,
@@ -109,7 +109,7 @@ async function expectCounterScale(page: HeadlessBrowser.Page, id: string, factor
 
 async function expectValue(page: HeadlessBrowser.Page, testID: string, expected: string): Promise<void> {
   const deadline = Time.nowMs() + 10_000
-  let actual: string | null = null
+  let actual: OptionalObservedText = null
   while (Time.nowMs() < deadline) {
     const locator = page.getByTestId(testID)
     if (await locator.count() > 0) {
@@ -138,10 +138,14 @@ async function valueOf(page: HeadlessBrowser.Page, testID: string): Promise<stri
   return await page.getByTestId(testID).textContent() ?? ''
 }
 
-async function closeBrowser(browser: Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined): Promise<void> {
+async function closeBrowser(browser: OptionalBrowser): Promise<void> {
   await Try(async () => await browser?.close(), { catch: () => undefined })
 }
 
-async function stopExpo(expo: Runtime.ExpoSession | undefined): Promise<void> {
+async function stopExpo(expo: OptionalExpoSession): Promise<void> {
   await Try(async () => await expo?.dispose(), { catch: () => undefined })
 }
+
+type OptionalBrowser = Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
+type OptionalExpoSession = Runtime.ExpoSession | undefined
+type OptionalObservedText = string | null

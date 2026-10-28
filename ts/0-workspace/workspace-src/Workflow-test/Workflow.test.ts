@@ -4,6 +4,11 @@ import type { openProjectWorkspace } from '../ProjectWorkspace'
 import { requireSetup } from '../SetupRequired'
 import { execute, type WorkflowServices, type WorkflowUI } from '../Workflow'
 
+const SetupDeclinedErrorRegx = /declined/
+const SetupCancelledErrorRegx = /cancelled/
+const DurableLockRestoreRequiredRegx = /Restore the durable lock/
+const PreviewRestartIdentifierRegx = /^preview-restart-/
+
 Tests.test('a missing setup is consented once and the original workflow resumes automatically', async () => {
   const events: string[] = []
   const services = recordingServices(events)
@@ -23,7 +28,7 @@ Tests.test('ready setup does not prompt or install, and declined setup never mut
   events.length = 0
   await Tests.rejects(
     execute({ kind: 'setup', entry: '/entry.tao' }, recordingUI(events, false), recordingServices(events)),
-    /declined/,
+    SetupDeclinedErrorRegx,
   )
   Tests.expect(events).toEqual(['inspect', 'prompt'])
 })
@@ -37,14 +42,17 @@ Tests.test('cancellation after consent and uncertain repairs never run setup', a
     cancelled = true
     return true
   }
-  await Tests.rejects(execute({ kind: 'setup', entry: '/entry.tao' }, ui, recordingServices(events)), /cancelled/)
+  await Tests.rejects(
+    execute({ kind: 'setup', entry: '/entry.tao' }, ui, recordingServices(events)),
+    SetupCancelledErrorRegx,
+  )
   Tests.expect(events).toEqual(['inspect'])
   await Tests.rejects(
     execute({ kind: 'setup', entry: '/entry.tao' }, recordingUI(events), {
       ...recordingServices(events),
       inspect: async () => Errors.ThrowUserInput('Restore the durable lock.'),
     }),
-    /Restore the durable lock/,
+    DurableLockRestoreRequiredRegx,
   )
   Tests.expect(events).toEqual(['inspect'])
 })
@@ -74,11 +82,11 @@ Tests.test('preview recovery retains the old session until consent then releases
   const services = {
     ...recordingServices(events),
     openWorkspace(entry: string, options: Parameters<typeof openProjectWorkspace>[1]) {
-      Tests.expect(options?.id).toMatch(/^preview-restart-/)
+      Tests.expect(options?.id).toMatch(PreviewRestartIdentifierRegx)
       return recordingWorkspace(events)(entry, options)
     },
   }
-  await Tests.rejects(execute(request, recordingUI(events, false), services), /declined/)
+  await Tests.rejects(execute(request, recordingUI(events, false), services), SetupDeclinedErrorRegx)
   Tests.expect(events).toEqual(['prompt'])
   events.length = 0
   await execute(request, recordingUI(events), services)

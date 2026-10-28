@@ -1,5 +1,7 @@
 import { Http, Streams, Terminal, Tests } from '@shared/os'
 
+const ConfirmationCancelledRegx = /Confirmation cancelled/
+
 Tests.test('single-key actions restore terminal input and stop receiving keys after disposal', () => {
   for (const initiallyRaw of [false, true]) {
     const input = Object.assign(Streams.createPassThrough(), {
@@ -49,7 +51,7 @@ Tests.test('confirmation cancellation forwards the request signal and closes the
     write() {},
   })
   controller.abort()
-  await Tests.rejects(confirmation, /Confirmation cancelled/)
+  await Tests.rejects(confirmation, ConfirmationCancelledRegx)
   Tests.expect(events).toEqual(['question', 'close'])
 })
 
@@ -68,6 +70,6 @@ Tests.test('an already cancelled confirmation never accepts a noninteractive def
       },
       write() {},
     }),
-    /Confirmation cancelled/,
+    ConfirmationCancelledRegx,
   )
 })

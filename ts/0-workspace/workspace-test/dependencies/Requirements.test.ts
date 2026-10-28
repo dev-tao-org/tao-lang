@@ -4,6 +4,10 @@ import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Requirements from '../../workspace-src/dependencies/Requirements'
 
+const ProjectRootRequirementsOnlyErrorRegx = /project-root Tao files/
+const MissingVersionErrorRegx = /needs a version/
+const DuplicateRequirementErrorRegx = /declared more than once/
+
 Tests.test('project source scanning extracts only project root dependencies and applies defaults', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-requirements-${Platform.randomUUID()}`)
   await Try(async () => {
@@ -29,7 +33,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
     )!
     await Tests.rejects(
       async () => Requirements.validateRequirementPlacement(nested, Path.join(root, 'nested', 'Module.tao'), root),
-      /project-root Tao files/,
+      ProjectRootRequirementsOnlyErrorRegx,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -40,7 +44,7 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
   await Try(async () => {
     await FileSystem.mkdir(root, { recursive: true })
     await FileSystem.writeFile(path, 'requires github:acme/widgets')
-    await Tests.rejects(Requirements.readProjectRequirements(root), /needs a version/)
+    await Tests.rejects(Requirements.readProjectRequirements(root), MissingVersionErrorRegx)
     await FileSystem.writeFile(
       path,
       [
@@ -48,6 +52,6 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
         'requires github:acme/other version v1 as shared',
       ].join('\n'),
     )
-    await Tests.rejects(Requirements.readProjectRequirements(root), /declared more than once/)
+    await Tests.rejects(Requirements.readProjectRequirements(root), DuplicateRequirementErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })

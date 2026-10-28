@@ -2,6 +2,8 @@ import { Errors, Timings, Try } from '@shared'
 import { Tests } from '@shared/os'
 import type { TimingResult } from './Timings.types'
 
+const RuntimeClockNameRegx = /^runtime:/
+
 const concatenate = Timings.measured('concatenate', (left: string, right: string) => left + right)
 const parse = Timings.measured('parse', () => 42)
 const compile = Timings.measure('compile', (timings, suffix: string) => timings.run(parse) + suffix)
@@ -90,7 +92,7 @@ Tests.test('callable entries isolate boundaries and retain the existing context 
   Tests.expect(first).not.toBe(second)
   Tests.expect(first.samples).toHaveLength(1)
   Tests.expect(second.samples).toHaveLength(1)
-  Tests.expect(first.clock).toMatch(/^runtime:/)
+  Tests.expect(first.clock).toMatch(RuntimeClockNameRegx)
   Tests.expect(second.clock).toBe(first.clock)
   Timings.createTopLevelTimer(existing => {
     Tests.expect(existing.run(entry, 'nested')).toBe('nested!')

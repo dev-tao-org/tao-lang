@@ -106,7 +106,7 @@ async function expectIgnored(
   Tests.expect(hasSettled()).toBe(false)
 }
 
-function createResult(status: 'published' | 'superseded' | 'failed'): UpdateResult {
+function createResult(status: UpdateResult['status']): UpdateResult {
   const fields = {
     revision: 'r1',
     timings: [],

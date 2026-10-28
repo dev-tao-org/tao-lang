@@ -1,20 +1,25 @@
 import { Env, FileSystem, Platform, Repo, Tests } from '@shared/os'
 import { outputFixturePath } from './OutputFixture'
 
+const LogPathRegx = /Logs: (.+\.log)/
+const WarningSummaryRegx = /(?:Completed|Failed): 2 warning\(s\)/
+const WarningLineRegx = /^Warning: /gm
+const FailedSummaryRegx = /Failed: 2 warning\(s\), [1-9]\d* error\(s\)/
+
 Tests.test('agent logs preserve levels, nested warnings and stderr while terminal notices stay concise', async () => {
   for (const [mode, terminalOutput] of [['parent', undefined], ['failed', undefined], ['parent', '1']] as const) {
     const { status, stdout, stderr } = await runFixture(mode, terminalOutput)
-    const logPath = /Logs: (.+\.log)/.exec(stderr)?.[1]
+    const logPath = LogPathRegx.exec(stderr)?.[1]
     Tests.expect(logPath).toBeDefined()
     const log = await FileSystem.readFile(Repo.resolvePath(logPath!), 'utf8')
     Tests.expect(log).toContain('[info stderr] [tool] ordinary tool stderr')
     Tests.expect(log).toContain('[warn stdout]')
     Tests.expect(stderr).toContain('2 warning(s)')
     if (!terminalOutput) {
-      const completed = stderr.search(/(?:Completed|Failed): 2 warning\(s\)/)
+      const completed = stderr.search(WarningSummaryRegx)
       const details = stderr.slice(completed)
       Tests.expect(completed).toBeGreaterThanOrEqual(0)
-      Tests.expect(details.match(/^Warning: /gm)?.length).toBe(2)
+      Tests.expect(details.match(WarningLineRegx)?.length).toBe(2)
       Tests.expect(details).toContain('fixture warning at /tmp/fixture.ts:12')
       Tests.expect(details).not.toContain('\u001b[')
     }
@@ -28,7 +33,7 @@ Tests.test('agent logs preserve levels, nested warnings and stderr while termina
       Tests.expect(stdout).not.toContain('fixture routine details')
     }
     if (mode === 'failed') {
-      Tests.expect(stderr).toMatch(/Failed: 2 warning\(s\), [1-9]\d* error\(s\)/)
+      Tests.expect(stderr).toMatch(FailedSummaryRegx)
       Tests.expect(stderr).toContain('Error recorded:')
       Tests.expect(log).toContain('[error stderr]')
       Tests.expect(log).toContain('fixture failure')

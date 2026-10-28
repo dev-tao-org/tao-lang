@@ -4,6 +4,8 @@ const { join } = Path
 const { mkdir, mkdtemp, readFile, rm, stat } = FileSystem
 import { acquire } from '../SessionLock'
 
+const OperatingSystemErrorRegx = /OS error/
+
 Tests.test('session locks exclude another handle and retain their lock file after release', async () => {
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-session-lock-'))
   const path = join(root, 'session.lock')
@@ -31,7 +33,7 @@ Tests.test('session locks support Unicode paths and report open failures separat
     lock?.release()
     await Tests.rejects(acquire(join(root, 'missing', 'session.lock')), error => {
       const native = error as Error & { code?: string; operation?: string; osCode?: number }
-      Tests.expect(native.message).toMatch(/OS error/)
+      Tests.expect(native.message).toMatch(OperatingSystemErrorRegx)
       Tests.expect(native.code).toBe('ERR_SESSION_LOCK_OS')
       Tests.expect(native.operation).toBe('open')
       Tests.expect(typeof native.osCode).toBe('number')

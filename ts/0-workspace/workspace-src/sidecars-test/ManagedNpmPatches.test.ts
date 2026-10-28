@@ -3,6 +3,12 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, readManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
 
+const ManagedModulePolicyChangeErrorRegx = /policy changed/
+const FrozenInstallFailureErrorRegx = /fixture frozen failure/
+const FrozenPackageResolutionChangeErrorRegx = /Frozen repair cannot change package resolutions/
+const RuntimePatchDriftErrorRegx = /patch.*drifted/
+const RuntimeMetadataDriftErrorRegx = /metadata drifted/
+
 Tests.test('installs runtime patches in isolated managed profiles and preserves durable pins when patch bytes change', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-patches-${Platform.randomUUID()}`)
   await FileSystem.mkdir(directory, { recursive: true })
@@ -58,13 +64,13 @@ async function assertPolicyRepair(directory: string): Promise<void> {
       lockHash: Platform.hashText(source),
     },
   }
-  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), /policy changed/)
+  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), ManagedModulePolicyChangeErrorRegx)
   await Tests.rejects(
     repairManagedModuleFiles(input, async (_command, args) =>
       args[0] === '--version'
         ? { status: 0, stdout: '1.2.0\n', stderr: '' }
         : { status: 1, stdout: '', stderr: 'fixture frozen failure' }),
-    /fixture frozen failure/,
+    FrozenInstallFailureErrorRegx,
   )
   const durableFiles = await FileSystem.readdir(Path.dirname(sourcePath))
   Tests.expect(durableFiles.filter(path => path.endsWith('.lock'))).toEqual([`${first.graphFingerprint}.lock`])
@@ -82,7 +88,7 @@ async function assertPolicyRepair(directory: string): Promise<void> {
       { ...incompatible, previousGraphReference: input.previousGraphReference },
       createExecutor(invocations),
     ),
-    /Frozen repair cannot change package resolutions/,
+    FrozenPackageResolutionChangeErrorRegx,
   )
 }
 
@@ -99,8 +105,8 @@ async function assertPatchedProfile(directory: string): Promise<void> {
   Tests.expect(await FileSystem.readFile(patchPath, 'utf8')).toBe('original patch\n')
   await FileSystem.chmod(patchPath, 0o644)
   await FileSystem.writeFile(patchPath, 'tampered')
-  await Tests.rejects(readManagedModules(input), /patch.*drifted/)
-  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), /metadata drifted/)
+  await Tests.rejects(readManagedModules(input), RuntimePatchDriftErrorRegx)
+  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), RuntimeMetadataDriftErrorRegx)
   const changed = createInput(directory, 'changed patch\n')
   const second = await prepareManagedModules(changed, createExecutor(invocations))
   Tests.expect(second.graphFingerprint).toBe(first.graphFingerprint)

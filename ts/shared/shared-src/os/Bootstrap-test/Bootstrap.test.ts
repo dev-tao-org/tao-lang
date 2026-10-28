@@ -4,6 +4,8 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 const { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = FileSystem
 const { delimiter, join } = Path
 
+type FailureStage = 'install' | 'run'
+
 Tests.test('bootstrap imports independently and forwards setup output and flags', async () => {
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-bootstrap-'))
   await Try(async () => {
@@ -44,7 +46,7 @@ Tests.test('bootstrap propagates install and completion failure statuses with re
 async function runBootstrap(
   root: string,
   failureStatus: number,
-  failureStage: 'install' | 'run' = 'install',
+  failureStage: FailureStage = 'install',
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
@@ -75,7 +77,7 @@ async function runBootstrap(
   return { status, stdout, stderr }
 }
 
-async function writeStub(bin: string, failureStatus: number, failureStage: 'install' | 'run'): Promise<void> {
+async function writeStub(bin: string, failureStatus: number, failureStage: FailureStage): Promise<void> {
   const script =
     `#!/bin/sh\nprintf '%s\\n' "$*" >> "$TAO_BOOTSTRAP_CALLS"\necho install-output\necho install-error >&2\nif [ "$1" = '${failureStage}' ]; then exit ${failureStatus}; fi\nexit 0\n`
   const path = join(bin, 'bun')

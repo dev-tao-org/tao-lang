@@ -8,6 +8,14 @@ import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
 import { ProjectDependencies } from '../workspace-src/ProjectDependencies'
 
+const BundledTaoAliasErrorRegx = /alias tao belongs to the bundled Tao project/
+const MissingDurableLockErrorRegx = /missing; restore the exact durable lock/
+const DependencySetupRequiredErrorRegx = /needs setup/
+const DependencyDeclarationChangedErrorRegx = /Dependency declarations changed/
+
+type ObservedSourceField = 'path' | 'document'
+type ObservedSource = Pick<SourceModule, ObservedSourceField>
+
 Tests.test('the standard project is implicit, locked, and observed like other bundled projects', async () => {
   const root = Artifacts.resolvePath('tmp', `implicit-standard-project-${Platform.randomUUID()}`)
   await Try(async () => {
@@ -24,7 +32,7 @@ Tests.test('the standard project is implicit, locked, and observed like other bu
       .toEqual({ root: standardProject })
     Tests.expect(dependencies.sourceDirectories()).toContain(standardProject)
     await FileSystem.writeFile(Path.join(root, 'Dependencies.tao'), 'requires file:../unrelated as tao')
-    await Tests.rejects(options.readRequirements(root), /alias tao belongs to the bundled Tao project/)
+    await Tests.rejects(options.readRequirements(root), BundledTaoAliasErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -57,7 +65,7 @@ Tests.test('active dependency graphs require restart when authored requirements 
 
     requirements = [fileRequirement('./second')]
     Tests.expect(() => dependencies.observeProjectSources(root, parsed(root, requirements)))
-      .toThrow(/Dependency declarations changed/)
+      .toThrow(DependencyDeclarationChangedErrorRegx)
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
     Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'local')).toEqual({ root: first })
 
@@ -65,7 +73,7 @@ Tests.test('active dependency graphs require restart when authored requirements 
     dependencies.observeProjectSources(root, parsed(root, requirements))
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
     await FileSystem.rm(Path.join(root, '.tao/store/dependencies.lock.json'))
-    await Tests.rejects(dependencies.refresh(), /missing; restore the exact durable lock/)
+    await Tests.rejects(dependencies.refresh(), MissingDurableLockErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -92,7 +100,10 @@ Tests.test('same repository aliases at different refs resolve from their individ
     Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'first'))
       .toEqual(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'))
     requirements[1] = { ...requirements[1]!, version: 'v3' }
-    await Tests.rejects(dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'), /needs setup/)
+    await Tests.rejects(
+      dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'),
+      DependencySetupRequiredErrorRegx,
+    )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
@@ -100,7 +111,7 @@ function fileRequirement(identifier: string): DependencyRequirement {
   return { provider: 'file', identifier, version: 'live', alias: 'local' }
 }
 
-function parsed(root: string, requirements: DependencyRequirement[]): Pick<SourceModule, 'path' | 'document'>[] {
+function parsed(root: string, requirements: DependencyRequirement[]): ObservedSource[] {
   const sourcePath = Path.join(root, 'Main.tao')
   const declarations = requirements.map(requirementDeclaration)
   return [{

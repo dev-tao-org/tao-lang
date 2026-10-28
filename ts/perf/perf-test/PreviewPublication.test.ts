@@ -81,8 +81,10 @@ function createPublicationObservation() {
   }
 }
 
+type OptionalPreviewExpectation = PreviewExpectation | undefined
+
 function verifyReloadBaseline(publication: PreviewPublication, expected: PreviewExpectation): void {
-  let baseline: PreviewExpectation | undefined
+  let baseline: OptionalPreviewExpectation
   publication.replay((name, data) => {
     if (name === 'baseline') {
       baseline = data as PreviewExpectation
