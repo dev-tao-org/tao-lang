@@ -28,6 +28,12 @@ medians were 59.2 ms at baseline, 60.1 ms at `d32957b6`, 56.1 ms at `598d640b` a
 `671bea0e`. Baseline has ten warm samples across two sessions; each other revision has five.
 The spread is too broad to attribute a small effect to a particular source change.
 
+The subsequent review correction `e83eb2d3bb6b3e18f1a0855053713e2a297c77de` shares LF constants
+without changing source-position calculations. It has its own immutable preview record under
+`performance/preview/e83eb2d3bb6b3e18f1a0855053713e2a297c77de/`. The preceding correction
+`9b69635c17fd75990f926c2c19a8751c008c371d` changes guidance and type-declaration order only,
+and reuses the measured implementation identity above. Full verification passed after both.
+
 Four multi-cycle commands failed after writing complete browser-result reports. Extra watcher
 publications produced 25–27 reload entries for 24 edits, and the unchanged CLI summary indexed
 reloads and browser results one-to-one. These failed summaries and their raw data are retained;
