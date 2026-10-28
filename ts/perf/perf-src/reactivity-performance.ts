@@ -1,5 +1,5 @@
 import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
-import { Errors, Time, Try } from '@shared'
+import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
 import { measureReactiveHeapRetention } from './reactivity-heap'
 
@@ -42,6 +42,7 @@ export async function reactivityPerformance() {
 }
 
 type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'create-dispose'
+type ScenarioOperation = (index: number) => void
 type Candidate = {
   name: string
   strategy: NonNullable<ReactiveEngineOptions['strategy']>
@@ -180,20 +181,21 @@ function executeScenario(
   update: (value: number) => void,
   read: () => number,
 ): void {
-  for (let index = 1; index <= operations; index++) {
-    if (scenario === 'unchanged-reads') {
-      read()
-    } else if (scenario === 'batched-writes') {
+  const execute = Switch<Scenario, ScenarioOperation>(scenario, {
+    'unchanged-reads': () => read,
+    'observed-writes': () => update,
+    'create-dispose': () => update,
+    'batched-writes': () => index =>
       engine.batch(() => {
         update(-index)
         if (read() !== -index * 2 + 1) {
           Errors.ThrowShouldNeverHappen('Batch reads lost fresh values.')
         }
         update(index)
-      })
-    } else {
-      update(index)
-    }
+      }),
+  })
+  for (let index = 1; index <= operations; index++) {
+    execute(index)
   }
 }
 

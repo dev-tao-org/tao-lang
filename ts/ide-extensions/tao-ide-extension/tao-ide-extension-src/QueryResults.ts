@@ -1,4 +1,4 @@
-import { Time } from '@shared'
+import { Switch, Time } from '@shared'
 import { type Node, type Query } from 'web-tree-sitter'
 
 /** Token is a syntax query capture mapped to an editor source range. */
@@ -122,11 +122,10 @@ function tokenKind(capture: string): string | undefined {
 }
 
 function priority(kind: string): number {
-  if (kind === 'variable') {
-    return 2
-  }
-  if (kind === 'property') {
-    return 1
-  }
-  return 0
+  const rankedKind = kind === 'variable' || kind === 'property' ? kind : undefined
+  return Switch(rankedKind, {
+    variable: () => 2,
+    property: () => 1,
+    undefined: () => 0,
+  })
 }

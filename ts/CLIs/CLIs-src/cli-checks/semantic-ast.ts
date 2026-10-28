@@ -1,3 +1,4 @@
+import { Switch } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -209,34 +210,26 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
 }
 
 function fieldType(types: { type: string }[], metadata: SemanticMetadata): string {
-  const mapped = unique(types.map(type => semanticName(type.type, metadata))).map(type => {
-    if (type === '_Expression') {
-      return 'Expression'
-    }
-    if (type === '_Declaration') {
-      return 'Declaration'
-    }
-    if (type === '_ViewRenderStatement') {
-      return 'ViewRenderStatement'
-    }
-    if (type === 'RequirementIdentifier' || type === 'RequirementVersion') {
-      return 'string'
-    }
-    if (type === 'RequirementProvider') {
-      return 'RequirementProvider'
-    }
-    if (type === 'Visibility') {
-      return 'Visibility'
-    }
-    if (type === 'Block') {
-      return 'Block'
-    }
-    if (type === 'TypeScript') {
-      return 'string'
-    }
-    return type
-  })
+  const semanticTypes = types.map(type => semanticName(type.type, metadata))
+  const mapped = unique(semanticTypes).map(mapFieldType)
   return mapped.join(' | ') || 'never'
+}
+
+function mapFieldType(type: string): string {
+  return isMappedFieldType(type) ? Switch(type, fieldTypeHandlers) : type
+}
+
+function isMappedFieldType(type: string): type is keyof typeof fieldTypeHandlers {
+  return Object.hasOwn(fieldTypeHandlers, type)
+}
+
+const fieldTypeHandlers = {
+  _Expression: () => 'Expression',
+  _Declaration: () => 'Declaration',
+  _ViewRenderStatement: () => 'ViewRenderStatement',
+  RequirementIdentifier: () => 'string',
+  RequirementVersion: () => 'string',
+  TypeScript: () => 'string',
 }
 
 function semanticName(name: string, metadata: SemanticMetadata): string {

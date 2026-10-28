@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Switch } from '@shared'
 import { Platform } from '@shared/os'
 
 /** build bundles browser entry points for a local tooling surface. */
@@ -35,14 +35,12 @@ function nativeBrowser(): BrowserHost {
 }
 
 function browserCommand(url: string, os: string): string[] {
-  if (os === 'Darwin') {
-    return ['open', '-g', '-a', 'Google Chrome', url]
+  if (!Platform.isSupportedHostSystem(os)) {
+    Errors.ThrowHostEnvironment(`Opening a browser is unsupported on ${os}.`)
   }
-  if (os === 'Linux') {
-    return ['google-chrome', url]
-  }
-  if (os === 'Windows_NT') {
-    return ['cmd', '/c', 'start', '', 'chrome', url]
-  }
-  return Errors.ThrowHostEnvironment(`Opening a browser is unsupported on ${os}.`)
+  return Switch<Platform.HostSystem, string[]>(os, {
+    Darwin: () => ['open', '-g', '-a', 'Google Chrome', url],
+    Linux: () => ['google-chrome', url],
+    Windows_NT: () => ['cmd', '/c', 'start', '', 'chrome', url],
+  })
 }

@@ -112,21 +112,15 @@ function resolveStorageRoots(): StorageRoots {
   return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
 }
 
-type StorageSystem = 'Darwin' | 'Windows_NT' | 'Linux'
-
 function resolveStoragePlatform(system: string): StoragePlatform | undefined {
-  if (!isStorageSystem(system)) {
+  if (!Platform.isSupportedHostSystem(system)) {
     return undefined
   }
-  return Switch<StorageSystem, StoragePlatform>(system, {
+  return Switch<Platform.HostSystem, StoragePlatform>(system, {
     Darwin: () => 'macos',
     Windows_NT: () => 'windows',
     Linux: () => 'linux',
   })
-}
-
-function isStorageSystem(system: string): system is StorageSystem {
-  return system === 'Darwin' || system === 'Windows_NT' || system === 'Linux'
 }
 
 function resolveOverride(

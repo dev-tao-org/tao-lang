@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { S } from '@shared'
+import { S, Switch } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 import * as CodegenUtil from './codegen-util'
 
@@ -149,13 +149,11 @@ function emitCaptureParameter(capture: InjectionCapture): string {
 }
 
 function getCaptureParameterType(capture: InjectionCapture): string {
-  if (capture.type === 'children') {
-    return "TR.ViewComponentProps['children']"
-  }
-  if (capture.type === 'text') {
-    return 'string'
-  }
-  return 'unknown'
+  return Switch.property(capture, 'type', {
+    children: () => "TR.ViewComponentProps['children']",
+    text: () => 'string',
+    unknown: () => 'unknown',
+  })
 }
 
 function emitRenderingComponent(

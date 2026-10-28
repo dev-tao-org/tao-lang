@@ -100,6 +100,14 @@ export function systemInfo(): SystemInformation {
   return { architecture: Node.arch(), kernel: Node.release(), os: Node.osType() }
 }
 
+/** HostSystem identifies operating-system names with supported desktop host behavior. */
+export type HostSystem = 'Darwin' | 'Windows_NT' | 'Linux'
+
+/** isSupportedHostSystem narrows an operating-system name before host-specific dispatch. */
+export function isSupportedHostSystem(system: string): system is HostSystem {
+  return system === 'Darwin' || system === 'Windows_NT' || system === 'Linux'
+}
+
 /** capture reads command output and throws when the command fails; trim:false preserves exact text. */
 export async function capture(
   command: string,

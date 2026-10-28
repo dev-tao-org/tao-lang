@@ -1,4 +1,4 @@
-import { Errors, S } from '@shared'
+import { S, Switch } from '@shared'
 
 /** ModuleRefreshLayout selects one experimental component-module grouping. */
 export type ModuleRefreshLayout = 'single-app' | 'per-source-file' | 'per-view'
@@ -12,16 +12,11 @@ export type ModuleRefreshFixture = {
 
 /** createModuleRefreshFixture emits the same two-view behavior with alternative stable module boundaries. */
 export function createModuleRefreshFixture(layout: ModuleRefreshLayout): ModuleRefreshFixture {
-  if (layout === 'single-app') {
-    return singleAppFixture()
-  }
-  if (layout === 'per-source-file') {
-    return sourceFileFixture()
-  }
-  if (layout === 'per-view') {
-    return perViewFixture()
-  }
-  return Errors.ThrowShouldNeverHappen(`Unknown module refresh layout: ${String(layout)}`)
+  return Switch(layout, {
+    'single-app': singleAppFixture,
+    'per-source-file': sourceFileFixture,
+    'per-view': perViewFixture,
+  })
 }
 
 const metricsDeclaration = S`
