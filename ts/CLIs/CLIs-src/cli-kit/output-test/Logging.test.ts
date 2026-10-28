@@ -52,7 +52,7 @@ Tests.test('delegated developer commands retain the agent quiet default and prin
   Tests.expect(stderr).toContain('Completed: 1 warning(s), 0 error(s)')
 })
 
-Tests.test('IO prompt suspends and recreates its configured renderer', async () => {
+Tests.test('IO confirmation suspends and recreates its configured renderer', async () => {
   const { status, stdout } = await runFixture('prompt-lifecycle')
   Tests.expect(status).toBe(0)
   Tests.expect(stdout).toContain('create,dispose,prompt,create')

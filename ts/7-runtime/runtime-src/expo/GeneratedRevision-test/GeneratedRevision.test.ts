@@ -47,6 +47,7 @@ Tests.test('no-op revisions retain served identity and an ordinary committed err
   })
 })
 
+type TestPublicationStatus = 'noop' | 'error' | 'published'
 function publicationStatus(revision: string): TestPublicationStatus {
   if (revision === 'rB') {
     return 'noop'
@@ -56,8 +57,6 @@ function publicationStatus(revision: string): TestPublicationStatus {
   }
   return 'published'
 }
-
-type TestPublicationStatus = 'noop' | 'error' | 'published'
 
 function createRevision(name: string, sequence: number): GeneratedRevision {
   return { revision: name, sequence, files: { 'App.tsx': name } }
