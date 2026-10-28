@@ -9,6 +9,8 @@ import type { DependencyLock, DependencyRequirement, DependencyStoreOptions } fr
 import { findNearestProjectRoot } from './modules/Paths'
 import { requireSetup } from './SetupRequired'
 
+type ObservedSource = Pick<SourceModule, ObservedSourceField>
+
 /** ProjectDependencies resolves reachable locked aliases and observes declarations through the parsed graph. */
 export class ProjectDependencies {
   private current: DependencyLock = { version: 2, roots: {}, sources: {}, commitPins: {} }
@@ -92,7 +94,6 @@ export class ProjectDependencies {
 }
 
 type ObservedSourceField = 'path' | 'document'
-type ObservedSource = Pick<SourceModule, ObservedSourceField>
 
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')

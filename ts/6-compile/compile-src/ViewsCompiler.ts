@@ -160,6 +160,7 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
   return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
+type OptionalViewRenderBlock = AST.ViewRenderBlock | undefined
 function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUtil.ScopeCode): string {
   if (!block) {
     return '[]'
@@ -173,7 +174,6 @@ function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUt
 }
 
 type OptionalForeignComponent = string | undefined
-type OptionalViewRenderBlock = AST.ViewRenderBlock | undefined
 
 function isViewRenderExpression(node: AST.ViewRenderBlockStatement): node is AST.ViewRenderExpression {
   return node.kind === 'ViewRenderExpression'

@@ -38,6 +38,7 @@ export async function readDependencyLock(path: string): Promise<Types.Dependency
   return parsed
 }
 
+type OptionalDependencyLock = Types.DependencyLock | undefined
 /** materializeLocations turns project-relative lock paths into current machine paths. */
 export function materializeLocations(
   lock: OptionalDependencyLock,
@@ -148,7 +149,7 @@ type SerializedDependencyLock = Omit<Types.DependencyLock, 'sources'> & {
 }
 
 type SerializedLockedSource = Types.LockedSource | Omit<Types.LockedSource, 'location'>
-type OptionalDependencyLock = Types.DependencyLock | undefined
+
 type BundledProjects = Types.BundledProjectDirectories | undefined
 type RetainedProfileMetadata = { graphFingerprint?: unknown } | null | undefined
 

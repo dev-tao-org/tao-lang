@@ -9,6 +9,7 @@ import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '
 /** RuntimePackageVersions maps package names to their pinned install specifications. */
 export type RuntimePackageVersions = Record<string, string>
 
+type RuntimePreparationOption = 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'
 /** prepareRuntime installs the pinned bundled runtime toolchain into the supplied cache. */
 export async function prepareRuntime(
   options: Pick<RuntimeCreateOptions, RuntimePreparationOption> = {},
@@ -22,6 +23,7 @@ export async function prepareRuntime(
   )
 }
 
+type RuntimeCacheOption = 'resourcesDirectory' | 'toolchainCacheDirectory'
 /** preparedRuntime returns the bundled runtime toolchain only when it is already cached. */
 export async function preparedRuntime(
   options: Pick<RuntimeCreateOptions, RuntimeCacheOption> = {},
@@ -138,6 +140,7 @@ function attachMetroPreload(application: RuntimeApplication, resourcesDirectory:
   return { ...application, metroPreloadPath }
 }
 
+type OptionalExpoOptions = ExpoOptions | undefined
 function createGeneratedExpoOptions(
   application: RuntimeApplication,
   initial: GeneratedRevision,
@@ -163,10 +166,9 @@ type RuntimeResources = {
   devDependencies: RuntimePackageVersions
   sourceFiles: string[]
 }
-type RuntimePreparationOption = 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'
-type RuntimeCacheOption = 'resourcesDirectory' | 'toolchainCacheDirectory'
+
 type OptionalPinnedDependencies = Promise<RuntimePackageVersions> | undefined
-type OptionalExpoOptions = ExpoOptions | undefined
+
 type RuntimeMetadata = Omit<RuntimeResources, 'devDependencies'> & {
   version: 2
   devDependencies?: RuntimePackageVersions

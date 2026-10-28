@@ -25,6 +25,7 @@ export function AliasBinding(scope: Scope, name: string, resolve: () => unknown)
   Object.defineProperty(scope, name, { get: resolve, enumerable: true })
 }
 
+type ScopeAliasNames<Bindings extends Scope> = { readonly [Name in keyof Bindings]: string }
 /** ScopeAliases projects selected lexical names lazily through their original generated definition types. */
 export function ScopeAliases<Bindings extends Scope>(
   scope: Scope,
@@ -54,5 +55,3 @@ export function ViewRenderBlock<Parent extends Scope>(
   body(Scope(parent) as Parent, children)
   return children
 }
-
-type ScopeAliasNames<Bindings extends Scope> = { readonly [Name in keyof Bindings]: string }

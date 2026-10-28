@@ -8,6 +8,7 @@ import { planTypeScriptShards } from './TypeScriptShardPlan'
 /** TestWorkerEnvironment carries isolated cache and support paths into test subprocesses. */
 export type TestWorkerEnvironment = Record<string, string>
 
+type OptionalOutputChannel = OutputChannel | undefined
 /** runTypeScriptTests executes disjoint full-suite shards or preserves Bun's focused selection semantics. */
 export async function runTypeScriptTests(
   plan: TestPlan,
@@ -85,5 +86,4 @@ async function runShard(
   )
 }
 
-type OptionalOutputChannel = OutputChannel | undefined
 type OptionalSlowSeconds = number | undefined

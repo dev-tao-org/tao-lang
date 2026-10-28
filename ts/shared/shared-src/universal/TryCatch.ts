@@ -1,5 +1,9 @@
 import * as Errors from './Errors'
 
+type TryOptions<Recovery = never, Final = void> = {
+  catch?: (thrown: unknown) => Recovery
+  finally?: (thrown: unknown, error: OptionalTaoError) => Final
+}
 /** Try normalizes failures, allows recovery, and finalizes once with the original callback failure.
  *  Synchronous stages return synchronously; promise-like stages are awaited. Finalizer failures override
  *  pending results or failures, just like native finally, and are normalized before propagation.
@@ -65,11 +69,6 @@ type TryResult<Value, Recovery, Final> = AlwaysPromise<Final> extends true ? Pro
 type Outcome = { ok: true; value: unknown } | { ok: false; thrown: unknown; error: Errors.TaoError }
 type PendingOutcome = Outcome | Promise<Outcome>
 type OptionalTaoError = Errors.TaoError | undefined
-
-type TryOptions<Recovery = never, Final = void> = {
-  catch?: (thrown: unknown) => Recovery
-  finally?: (thrown: unknown, error: OptionalTaoError) => Final
-}
 
 // Native try/catch is the primitive behind Try; callers use the normalized boundary above.
 function capture(action: () => unknown): PendingOutcome {

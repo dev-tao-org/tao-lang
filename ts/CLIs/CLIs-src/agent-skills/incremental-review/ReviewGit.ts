@@ -1,6 +1,7 @@
 import { Errors, NullCharacter, Try } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 
+type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
   const child = Platform.spawn(['git', '--literal-pathspecs', ...args], {
@@ -79,6 +80,7 @@ export async function indexHash(path: string): Promise<string> {
   return Platform.hashBytes(await FileSystem.readFile(path), 'sha256')
 }
 
+type ReviewedRevisions = string | string[]
 /** expandFiles resolves literal selections, including tracked descendants deleted from disk. */
 export async function expandFiles(root: string, inputs: string[], reviewed?: ReviewedRevisions): Promise<string[]> {
   if (!inputs.length) {
@@ -164,9 +166,7 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
   await FileSystem.rename(pending, path)
 }
 
-type ReviewedRevisions = string | string[]
 type GitInput = string | Uint8Array
-type GitOptions = { index?: string; input?: GitInput }
 
 function safePath(root: string, input: string): string {
   const absolute = Path.resolve(root, input)

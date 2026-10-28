@@ -2,6 +2,7 @@ import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
+type OptionalReportPath = string | undefined
 /** withTestTimings prints slow-test warnings after a run while preserving its failure. */
 export async function withTestTimings(
   run: (reportPath: OptionalReportPath) => Promise<void>,
@@ -38,7 +39,6 @@ export function parseSlowTestSeconds(value = '0.075'): number {
   return seconds
 }
 
-type OptionalReportPath = string | undefined
 type OptionalTimedTest = TimedTest | undefined
 type XmlAttributes = Record<string, string>
 type XmlEntities = Record<string, string>

@@ -31,6 +31,7 @@ export function emitStringLiteral(value: string): string {
   return JSON.stringify(value)
 }
 
+type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag
 /** emitLiteral serializes a source string as a JavaScript string literal. */
 export function emitLiteral(node: LiteralNode): string {
   return emitStringLiteral(node.value)
@@ -41,11 +42,13 @@ export function compileName(node: NamedValue): string {
   return emitStringLiteral(typeof node.name === 'string' ? node.name : node.name.value)
 }
 
+type ReferencedName = AST.Name | ModuleBinding
 /** compileReferenceName quotes the referenced name or linked binding's target. */
 export function compileReferenceName(node: ReferencedName): string {
   return 'target' in node ? emitStringLiteral(node.target) : emitLiteral(node)
 }
 
+type NamedViewNode = Pick<ViewNameNode, 'name'>
 /** compileIdentifier emits an already validated source identifier without string quoting. */
 export function compileIdentifier(node: NamedViewNode): string {
   return node.name.value
@@ -66,10 +69,8 @@ type DeclarationNameNode = AST.ValueDeclaration | AST.Parameter | AST.Capture
 type NamedDeclarationValue = Pick<DeclarationNameNode, 'name'>
 type NamedBindingValue = Pick<ModuleBinding, 'name'>
 type OptionalCodePart = string | undefined
-type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag
-type ReferencedName = AST.Name | ModuleBinding
+
 type ViewNameNode = AST.ViewDeclaration | AST.Capture
-type NamedViewNode = Pick<ViewNameNode, 'name'>
 
 function joinCodeParts(parts: readonly OptionalCodePart[], separator: string): string {
   return parts.filter(Boolean).join(separator)

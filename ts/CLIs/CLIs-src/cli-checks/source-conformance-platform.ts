@@ -153,6 +153,15 @@ function isPropertyName(node: TypeScript.Identifier): boolean {
   return TypeScript.isBindingElement(parent) && parent.propertyName === node
 }
 
+type NamedPropertyDeclaration =
+  | TypeScript.PropertyAssignment
+  | TypeScript.PropertySignature
+  | TypeScript.PropertyDeclaration
+  | TypeScript.MethodSignature
+  | TypeScript.MethodDeclaration
+  | TypeScript.GetAccessorDeclaration
+  | TypeScript.SetAccessorDeclaration
+  | TypeScript.EnumMember
 function hasDeclaredPropertyName(node: TypeScript.Node): node is NamedPropertyDeclaration {
   if (TypeScript.isPropertyAssignment(node) || TypeScript.isPropertySignature(node)) {
     return true
@@ -165,16 +174,6 @@ function hasDeclaredPropertyName(node: TypeScript.Node): node is NamedPropertyDe
   }
   return TypeScript.isSetAccessorDeclaration(node) || TypeScript.isEnumMember(node)
 }
-
-type NamedPropertyDeclaration =
-  | TypeScript.PropertyAssignment
-  | TypeScript.PropertySignature
-  | TypeScript.PropertyDeclaration
-  | TypeScript.MethodSignature
-  | TypeScript.MethodDeclaration
-  | TypeScript.GetAccessorDeclaration
-  | TypeScript.SetAccessorDeclaration
-  | TypeScript.EnumMember
 
 function isGlobalPropertyAccess(node: TypeScript.Node): boolean {
   if (!TypeScript.isPropertyAccessExpression(node) && !TypeScript.isElementAccessExpression(node)) {

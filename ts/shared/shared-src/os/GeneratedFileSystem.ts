@@ -80,14 +80,13 @@ export type GeneratedReaderOptions = {
   root: string
 }
 
+type OptionalGeneratedPath = string | undefined
 function isGeneratedSourcePath(path: OptionalGeneratedPath, root: string, runtime: string): boolean {
   if (path === undefined || !isInsideRoot(path, root)) {
     return false
   }
   return path !== runtime && !path.startsWith(runtime + Node.sep)
 }
-
-type OptionalGeneratedPath = string | undefined
 
 function isInsideRoot(path: string, root: string): boolean {
   return path === root || path.startsWith(root + Node.sep)

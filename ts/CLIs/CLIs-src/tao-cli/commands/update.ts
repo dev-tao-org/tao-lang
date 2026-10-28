@@ -8,6 +8,8 @@ import { discoverProject } from '@workspace/projects/Projects'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { confirmDependencyWork } from '../DependencyPrompts'
 
+type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
+type OptionalDependencyAlias = string | undefined
 /** taoUpdateCommand refreshes selected source pins while retaining unrelated lock entries. */
 export default registerCommand({
   name: 'update',
@@ -40,9 +42,6 @@ export default registerCommand({
     })
   },
 })
-
-type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
-type OptionalDependencyAlias = string | undefined
 
 function defaultAlias(requirement: { provider: string; identifier: string }): string {
   return requirement.provider === 'github'

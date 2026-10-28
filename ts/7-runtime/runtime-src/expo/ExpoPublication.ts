@@ -6,6 +6,8 @@ import type { GeneratedRevision } from './PreviewProtocol'
 
 type ExpoEnvironment = Record<string, string>
 
+/** ExpoPublication carries preload environment and one session-scoped publication transport. */
+export type ExpoPublication = PublicationTransport & { sessionId: string; environment: ExpoEnvironment }
 /** prepareExpoPublication seeds the generated preload and creates its bounded parent transport. */
 export async function prepareExpoPublication(
   application: { directory: string; metroPreloadPath?: string },
@@ -41,6 +43,3 @@ export async function prepareExpoPublication(
 
 /** ExpoGeneratedOptions seeds the complete generated source namespace before Metro imports readers. */
 export type ExpoGeneratedOptions = { initial: GeneratedRevision; preloadPath?: string }
-
-/** ExpoPublication carries preload environment and one session-scoped publication transport. */
-export type ExpoPublication = PublicationTransport & { sessionId: string; environment: ExpoEnvironment }

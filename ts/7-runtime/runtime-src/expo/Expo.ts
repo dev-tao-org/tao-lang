@@ -56,6 +56,7 @@ export type ExpoOptions = {
   generated?: ExpoGeneratedOptions
 }
 
+type OptionalEnvironmentValue = string | undefined
 function expoEnvironment(directory: string): Record<string, OptionalEnvironmentValue> {
   return {
     ...Env.snapshot(),
@@ -86,4 +87,3 @@ function formatOutput(output: Lifecycle.ProcessOutput): string {
 }
 
 type OutputStream = 'stdout' | 'stderr'
-type OptionalEnvironmentValue = string | undefined

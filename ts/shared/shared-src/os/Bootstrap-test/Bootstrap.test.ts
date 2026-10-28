@@ -43,6 +43,7 @@ Tests.test('bootstrap propagates install and completion failure statuses with re
   }
 })
 
+type BootstrapResult = { status: number; stdout: string; stderr: string }
 async function runBootstrap(
   root: string,
   failureStatus: number,
@@ -84,5 +85,3 @@ async function writeStub(bin: string, failureStatus: number, failureStage: Failu
   await writeFile(path, script)
   await chmod(path, 0o755)
 }
-
-type BootstrapResult = { status: number; stdout: string; stderr: string }

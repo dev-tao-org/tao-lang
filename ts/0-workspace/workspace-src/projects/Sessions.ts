@@ -3,6 +3,13 @@ import { FileSystem, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout } from './Projects'
 
+/** ProjectSession holds a stable lock for the lifetime of its generated session state. */
+export type ProjectSession = {
+  id: string
+  directory: string
+  lockPath: string
+  release(): void
+}
 /** acquireSession opens a named or internal CLI/Studio project session. */
 export async function acquireSession(
   projectRoot: string,
@@ -28,14 +35,6 @@ export async function acquireSession(
   }, {
     finally: lifecycle.release,
   })
-}
-
-/** ProjectSession holds a stable lock for the lifetime of its generated session state. */
-export type ProjectSession = {
-  id: string
-  directory: string
-  lockPath: string
-  release(): void
 }
 
 /** SessionOptions selects a public session ID or an internal CLI/Studio session. */
@@ -92,6 +91,7 @@ async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>
     ?? Errors.ThrowUserInput(`Project session is already active: ${id}`)
 }
 
+type SessionHandle = NonNullable<Awaited<ReturnType<typeof SessionLock.acquire>>>
 async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
   const directory = Path.join(layout.sessionsDirectory, id)
   await Lifecycle.ensureProjectDirectories(directory)
@@ -110,5 +110,3 @@ async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
   }
   await FileSystem.rm(snapshots, { recursive: true, force: true })
 }
-
-type SessionHandle = NonNullable<Awaited<ReturnType<typeof SessionLock.acquire>>>

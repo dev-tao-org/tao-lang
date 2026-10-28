@@ -2,6 +2,7 @@ import { Time } from '@shared'
 import { Artifacts, Path, Platform, Repo, Terminal } from '@shared/os'
 import type { OutputEvent } from './Output'
 
+type LogDirectory = 'agent' | 'dev'
 /** createFileOutput retains original streams independently from terminal presentation. */
 export function createFileOutput(options: { logDirectory?: LogDirectory; logFile?: string }) {
   const path = options.logFile ? Repo.resolvePath(options.logFile) : Artifacts.resolvePath(
@@ -25,5 +26,3 @@ export function createFileOutput(options: { logDirectory?: LogDirectory; logFile
     Artifacts.appendFileSync(path, `[${event.level} ${event.stream}] ${channel}${event.text}`)
   }
 }
-
-type LogDirectory = 'agent' | 'dev'

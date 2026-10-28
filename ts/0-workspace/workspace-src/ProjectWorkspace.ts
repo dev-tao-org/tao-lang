@@ -7,6 +7,9 @@ import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
 import { createWorkspace, type WorkspaceOptions } from './Workspace'
 
+type OpenProjectWorkspaceOptions = ProjectWorkspaceOptions & SessionOptions & {
+  acquireLease?: typeof Storage.acquireCacheLease
+}
 /** openProjectWorkspace acquires a project session before opening its independent generated workspace. */
 export async function openProjectWorkspace(
   entry: string,
@@ -44,10 +47,6 @@ export async function openProjectWorkspace(
 type ProjectWorkspaceOption = 'directory' | 'outputDirectory' | 'project'
 type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & {
   pipelineServices?: ProjectPipelineServices
-}
-
-type OpenProjectWorkspaceOptions = ProjectWorkspaceOptions & SessionOptions & {
-  acquireLease?: typeof Storage.acquireCacheLease
 }
 
 type WorkspaceReleaseResult = void | Promise<void>

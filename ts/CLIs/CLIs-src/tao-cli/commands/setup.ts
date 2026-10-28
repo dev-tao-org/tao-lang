@@ -6,6 +6,8 @@ import { execute } from '@workspace/Workflow'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { workflowUI } from '../WorkflowUI'
 
+type SetupCommandOptions = { yes?: boolean; repair?: boolean; session?: string }
+type OptionalSetupEntry = string | undefined
 /** taoSetupCommand installs dependencies reachable from one entry after consent. */
 export default registerCommand({
   name: 'setup',
@@ -30,6 +32,3 @@ export default registerCommand({
     })
   },
 })
-
-type SetupCommandOptions = { yes?: boolean; repair?: boolean; session?: string }
-type OptionalSetupEntry = string | undefined

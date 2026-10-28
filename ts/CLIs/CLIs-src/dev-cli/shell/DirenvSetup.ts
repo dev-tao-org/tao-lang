@@ -12,7 +12,7 @@ const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this
 
 /** SetupEnvironment injects shell and process dependencies for direnv setup. */
 type SetupEnvironment = {
-  confirm: typeof Terminal.askConfirm
+  confirm: typeof IO.askConfirm
   env: Readonly<Record<string, EnvironmentValue>>
   interactive: () => boolean
   resolveDirenvPackage?: (profileClient: string) => string | undefined
@@ -37,7 +37,7 @@ async function runDirenvSetup(
 
 function liveEnvironment(): SetupEnvironment {
   return {
-    confirm: options => IO.prompt(() => Terminal.askConfirm(options)),
+    confirm: IO.askConfirm,
     env: Env.snapshot(),
     interactive: Terminal.isInteractive,
     root: Repo.getWorkspaceRoot,

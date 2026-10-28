@@ -81,6 +81,7 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
   )
 }
 
+type EmittableName = AST.Name | ModuleBinding
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
 export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): string {
   const name = 'target' in node ? node.target : node.value
@@ -89,7 +90,6 @@ export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): str
 }
 
 type InjectionCaptureType = 'text' | 'children' | 'unknown'
-type EmittableName = AST.Name | ModuleBinding
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(

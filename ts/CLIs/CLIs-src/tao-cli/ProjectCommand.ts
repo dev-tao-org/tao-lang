@@ -41,6 +41,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
   }
 }
 
+type OptionalSessionId = string | undefined
 function acquireProjectSessions<Value>(
   roots: readonly string[],
   sessionId: OptionalSessionId,
@@ -58,5 +59,3 @@ function acquireProjectSessions<Value>(
     acquireLease,
   )
 }
-
-type OptionalSessionId = string | undefined

@@ -25,6 +25,7 @@ export const previewScenarios: readonly PreviewScenario[] = [
   { name: 'reset', apply: (_source, canonical) => canonical },
 ]
 
+type OptionalScenarioName = string | undefined
 /** applyScenario runs one named edit, rejecting a step the current source cannot accept. */
 export function applyScenario(
   scenarios: readonly PreviewScenario[],
@@ -38,8 +39,6 @@ export function applyScenario(
   }
   return scenario.apply(source, canonical)
 }
-
-type OptionalScenarioName = string | undefined
 
 function replaceOnce(source: string, from: string, to: string): string {
   if (!source.includes(from)) {

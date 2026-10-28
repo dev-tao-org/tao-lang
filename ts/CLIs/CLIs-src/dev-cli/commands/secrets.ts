@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
@@ -48,12 +48,12 @@ function liveEnvironment(): SecretsEnvironment {
     cipher: createAgeCipher(secretsIdentityPath(), './dev secrets setup'),
     now: Time.date,
     async promptSecret(prompt) {
-      const value = await IO.prompt(() => Terminal.askSecret(prompt))
+      const value = await IO.askSecret(prompt)
       if (value === value.trim()) {
         return value
       }
       IO.warn('The value has surrounding whitespace.')
-      const answer = await IO.prompt(() => Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: '))
+      const answer = await IO.askSecret('Remove surrounding whitespace before storing? [Y/n]: ')
       return Regxs.NegativeConfirmationRegx.test(answer.trim()) ? value : value.trim()
     },
   }

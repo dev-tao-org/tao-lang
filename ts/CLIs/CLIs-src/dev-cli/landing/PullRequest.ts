@@ -129,6 +129,7 @@ async function listPullRequests(io: LandingIO, branch: string, state: string): P
   return prs.filter(pr => !pr.isCrossRepository)
 }
 
+type OptionalPullRequest = PullRequest | undefined
 function requirePullRequestHead(pr: OptionalPullRequest, head: string): asserts pr is PullRequest {
   if (!pr || pr.headRefOid !== head || pr.baseRefName !== 'main') {
     Errors.ThrowHostEnvironment('The pull request does not describe the exact current source head.')
@@ -137,7 +138,7 @@ function requirePullRequestHead(pr: OptionalPullRequest, head: string): asserts 
 
 type NullableMergeTime = string | null
 type NullableMergeCommit = { oid: string } | null
-type OptionalPullRequest = PullRequest | undefined
+
 type CommitComparison = { status?: string }
 
 function parseCommitComparison(contents: string): CommitComparison {

@@ -12,6 +12,7 @@ import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
+import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
@@ -21,10 +22,17 @@ export async function checkSourceConformance(root: string): Promise<void> {
   const sources = await conformanceSources(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const typeOrder = analyzeSignatureTypeOrder(program)
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)
     const { error } = sourceSizeDiagnostics(relative, file.text)
+    for (const change of typeOrder.get(file) ?? []) {
+      if (change.newText === '') {
+        const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1
+        issues.push(`${relative}:${line}: put a single-consumer signature type before its owning function`)
+      }
+    }
     issues.push(...error ? [error] : [], ...new SourceConformanceChecker(relative, file, checker).check())
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')

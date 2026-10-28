@@ -11,6 +11,7 @@ import { runTypeScriptTests, type TestWorkerEnvironment } from './TypeScriptShar
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type { TestExecutionOptions } from './TestPlan'
 
+type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: number }
 /** runTestPlan executes selected TypeScript and Tao suites with bounded, independently reported workers. */
 export async function runTestPlan(
   options: TestWorkerOptions,
@@ -64,8 +65,6 @@ export async function runTaoTestFiles(
     },
   )
 }
-
-type TestWorkerOptions = TestPlanModule2.TestExecutionRequest & { slowSeconds?: number }
 
 async function executeTestPlan(
   options: Parameters<typeof runTestPlan>[0],

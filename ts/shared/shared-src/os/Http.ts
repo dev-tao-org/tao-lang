@@ -18,6 +18,7 @@ export type HttpResponse = globalThis.Response
 /** Bytes describes raw HTTP response bytes at the platform boundary. */
 export type Bytes = Uint8Array
 
+type ResponseBody = BodyInit | null
 /** response creates an HTTP response through the platform boundary. */
 export function response(body: ResponseBody = null, init?: ResponseInit): Response {
   return new Response(body, init)
@@ -52,5 +53,3 @@ export function createAbortController(): AbortController {
 export function stream(source: UnderlyingDefaultSource<Uint8Array>): ReadableStream<Uint8Array> {
   return new ReadableStream(source)
 }
-
-type ResponseBody = BodyInit | null

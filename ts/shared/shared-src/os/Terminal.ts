@@ -17,6 +17,7 @@ export function writeLine(message = ''): void {
   stdout.write(`${message}\n`)
 }
 
+type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
 /** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
 export function listenForKeys(receive: (key: string) => void, input: KeyInput = process.stdin): () => void {
   if (!input.isTTY) {
@@ -43,6 +44,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
   }
 }
 
+type ConfirmationOptions = { defaultValue?: boolean; message: string; signal?: AbortSignal }
 /** askConfirm prompts for a yes/no response and closes its reader when the caller cancels. */
 export async function askConfirm(
   options: ConfirmationOptions,
@@ -118,11 +120,10 @@ export async function askSecret(prompt: string): Promise<string> {
   })
 }
 
-type ConfirmationOptions = { defaultValue?: boolean; message: string; signal?: AbortSignal }
 type KeypressText = string | undefined
 
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
-type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
+
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
 

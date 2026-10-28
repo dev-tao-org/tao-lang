@@ -2,6 +2,7 @@ import { Switch } from '@shared'
 import wrapAnsi from 'wrap-ansi'
 import type { ChannelState } from '../Output'
 
+type DisplayStatus = { mark: string; color: DisplayColor }
 /** displayStatus maps a channel status to its compact marker and color. */
 export function displayStatus(
   status: ChannelState['status'],
@@ -14,7 +15,6 @@ export function displayStatus(
   })
 }
 
-type DisplayStatus = { mark: string; color: DisplayColor }
 type DisplayColor = 'green' | 'red' | 'yellow' | 'gray'
 
 /** elapsed formats a channel's completed or current run duration. */

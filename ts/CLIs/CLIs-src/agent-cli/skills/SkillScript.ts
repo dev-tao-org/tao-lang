@@ -40,6 +40,18 @@ function resolveSkillScript(entryPath: string, root: string): string {
   const skillRoot = canonicalDirectory(Path.join(skillsRoot, skillName))
   const scriptsRoot = canonicalDirectory(Path.join(skillRoot, 'scripts'))
   const canonicalEntry = canonicalFile(lexicalEntry)
+  requireSkillScriptInsideOwnedScripts(root, skillsRoot, skillRoot, scriptsRoot, canonicalEntry)
+  validateSkillMarker(skillRoot, skillName)
+  return canonicalEntry
+}
+
+function requireSkillScriptInsideOwnedScripts(
+  root: string,
+  skillsRoot: string,
+  skillRoot: string,
+  scriptsRoot: string,
+  canonicalEntry: string,
+): void {
   const skillRootsAreNested = Path.isWithin(root, skillsRoot) && Path.isWithin(skillsRoot, skillRoot)
   const scriptsRootIsNested = Path.isWithin(skillRoot, scriptsRoot)
   const rootsAreNested = skillRootsAreNested && scriptsRootIsNested
@@ -47,8 +59,6 @@ function resolveSkillScript(entryPath: string, root: string): string {
   if (!rootsAreNested || !entryIsInScripts) {
     Errors.ThrowUserInput('The skill script resolves outside its skill scripts directory.')
   }
-  validateSkillMarker(skillRoot, skillName)
-  return canonicalEntry
 }
 
 function canonicalDirectory(path: string): string {

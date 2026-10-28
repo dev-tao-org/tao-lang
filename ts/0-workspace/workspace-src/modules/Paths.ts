@@ -87,6 +87,7 @@ export function findNamedPackageRoot(path: string, projectRoot: string): string 
   return undefined
 }
 
+type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project'
 /** getImportRelation records the nearest source ownership boundary crossed by an import. */
 export function getImportRelation(
   importer: string,
@@ -108,7 +109,6 @@ export function getImportRelation(
   return 'same-directory'
 }
 
-type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project'
 const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])
 
 function canonicalPath(path: string): string {

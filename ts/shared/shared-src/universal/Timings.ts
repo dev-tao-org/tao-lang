@@ -11,6 +11,8 @@ export type TimingSample = {
   status: TimingStatus
 }
 
+type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | Entry<Arguments, Value>
+
 /** Timings collects operation spans for one request or bounded measurement run.
  *  Define orchestration with measure and leaves with measured; run descriptors through a collector.
  *  Default collectors use the runtime's clock identity; injected clocks require an explicit identity.
@@ -85,7 +87,6 @@ export class Timings {
 type OperationRole = 'orchestration' | 'leaf'
 type TimingRole = OperationRole | 'observation'
 type TimingStatus = 'succeeded' | 'failed'
-type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | Entry<Arguments, Value>
 type Operation<Arguments extends unknown[], Value> = {
   readonly name: string
   readonly role: OperationRole

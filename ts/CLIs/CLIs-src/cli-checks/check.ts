@@ -143,6 +143,7 @@ export async function workspaceTests(
   await runTestPlan({ ...selection, slowSeconds })
 }
 
+type FormatMode = 'fmt' | 'check'
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: FormatMode): Promise<void> {
   await assertNewWorkspaceTree()
@@ -153,8 +154,6 @@ export async function workspaceFormat(mode: FormatMode): Promise<void> {
     cwd: Repo.getWorkspaceRoot(),
   })
 }
-
-type FormatMode = 'fmt' | 'check'
 
 function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   if (args.length === 0) {

@@ -4,6 +4,12 @@ import { formatCommands, type OutputSnapshot } from '../Output'
 import { Columns } from './Columns'
 import { displayStatus, elapsed, wrappedTail } from './Display'
 
+type OutputViewProps = {
+  snapshot: OutputSnapshot
+  now: number
+  width: number
+  height: number
+}
 /** OutputView renders progress, worker panes and a persistent final command footer. */
 export function OutputView(props: OutputViewProps): React.JSX.Element {
   const { snapshot, now, width, height } = props
@@ -21,11 +27,4 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
       {snapshot.commands.length > 0 && <Text>{formatCommands(snapshot.commands, true)}</Text>}
     </Box>
   )
-}
-
-type OutputViewProps = {
-  snapshot: OutputSnapshot
-  now: number
-  width: number
-  height: number
 }

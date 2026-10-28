@@ -3,30 +3,44 @@ import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { optionalAccessIssue, optionalAccessResult } from './source-conformance-optional'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
+import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 
 /** fixSourceConformance applies safe type-aware source fixes within the new workspace. */
 export async function fixSourceConformance(root = Repo.getWorkspaceRoot()): Promise<void> {
   const sources = await conformanceSources(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const typeOrder = analyzeSignatureTypeOrder(program)
   let changed = 0
   for (const filename of sources) {
     const file = program.getSourceFile(filename)
     if (!file) {
       continue
     }
-    const edits = optionalAccessChanges(file, checker)
+    const typeChanges = typeOrder.get(file) ?? []
+    const edits = [
+      ...typeChanges,
+      ...optionalAccessChanges(file, checker).filter(edit => !overlapsMovedType(edit, typeChanges)),
+    ]
     if (edits.length === 0) {
       continue
     }
     let text = file.text
-    for (const edit of edits.reverse()) {
+    for (const edit of edits.sort((first, second) => second.span.start - first.span.start)) {
       text = text.slice(0, edit.span.start) + edit.newText + text.slice(edit.span.start + edit.span.length)
     }
     await FileSystem.write(filename, text)
     changed++
   }
   IO.print(`Fixed source conformance: ${changed} file(s)`)
+}
+
+function overlapsMovedType(edit: TypeScript.TextChange, typeChanges: TypeScript.TextChange[]): boolean {
+  return typeChanges.some(change =>
+    change.span.length > 0
+    && edit.span.start < change.span.start + change.span.length
+    && change.span.start < edit.span.start + edit.span.length
+  )
 }
 
 function optionalAccessChanges(file: TypeScript.SourceFile, checker: TypeScript.TypeChecker): TypeScript.TextChange[] {

@@ -16,13 +16,11 @@ export function workflowUI(yes = false, signal?: AbortSignal): WorkflowUI {
           `Setup is required for ${entry}: ${message} Use tao setup or pass --yes to authorize setup non-interactively.`,
         )
       }
-      return await IO.prompt(() =>
-        Terminal.askConfirm({
-          message: `${message} Set up dependencies and continue?`,
-          defaultValue: true,
-          signal,
-        })
-      )
+      return await IO.askConfirm({
+        message: `${message} Set up dependencies and continue?`,
+        defaultValue: true,
+        signal,
+      })
     },
   }
 }

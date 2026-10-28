@@ -18,6 +18,7 @@ export function waitForTermination(signal?: AbortSignal): Promise<void> {
   })
 }
 
+type TerminationSignal = 'SIGINT' | 'SIGTERM'
 /** onTermination registers a cooperative shutdown handler and returns its listener cleanup. */
 export function onTermination(handler: (signal: TerminationSignal) => void): () => void {
   const interrupt = () => handler('SIGINT')
@@ -58,7 +59,6 @@ export async function captureProcessOutput(
   return { stdout, stderr }
 }
 
-type TerminationSignal = 'SIGINT' | 'SIGTERM'
 type ProcessOutputName = 'stdout' | 'stderr'
 type ProcessOutputStream = ReadableStream<Uint8Array> | null
 type OutputListener = (stream: ProcessOutputName, text: string) => void

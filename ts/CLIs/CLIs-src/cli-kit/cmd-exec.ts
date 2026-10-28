@@ -36,6 +36,7 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
   })
 }
 
+type CommandStepResult = void | Promise<void>
 /** runSteps awaits variadic workflow stages in order and stops when a stage throws. */
 export async function runSteps(...steps: readonly (() => CommandStepResult)[]): Promise<void> {
   for (const step of steps) {
@@ -44,7 +45,7 @@ export async function runSteps(...steps: readonly (() => CommandStepResult)[]): 
 }
 
 type OutputText = string | Uint8Array
-type CommandStepResult = void | Promise<void>
+
 type OutputPipe = (text: OutputText) => void
 type Command = string | readonly string[]
 type EnvironmentValue = string | undefined

@@ -1,6 +1,10 @@
 import type { createWorkspace, Publication, UpdateResult } from '@workspace/Workspace'
 import type { PreviewExpectation, PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
 
+type PublicationWorkspace =
+  & Pick<ReturnType<typeof createWorkspace>, PublicationWorkspaceKey>
+  & { files: Pick<ReturnType<typeof createWorkspace>['files'], 'onCompiled'> }
+
 /** PreviewPublication correlates host expectations with the revision actually served by Metro. */
 export class PreviewPublication {
   private sequence = 0
@@ -108,7 +112,4 @@ export class PreviewPublication {
   }
 }
 
-type PublicationWorkspace =
-  & Pick<ReturnType<typeof createWorkspace>, PublicationWorkspaceKey>
-  & { files: Pick<ReturnType<typeof createWorkspace>['files'], 'onCompiled'> }
 type PublicationWorkspaceKey = 'runtime' | 'lastGoodRevision' | 'onExpected' | 'onPublished'

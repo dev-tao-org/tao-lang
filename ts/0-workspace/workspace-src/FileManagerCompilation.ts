@@ -5,6 +5,8 @@ import { findNearestProjectRoot } from './modules/Paths'
 import { isSetupRequired } from './SetupRequired'
 import type { UpdateResult } from './Workspace'
 
+type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
+
 /** PipelineWatchDirectories tracks the replaceable authored and generated roots of a preview pipeline. */
 export class PipelineWatchDirectories {
   private authored: string[] = []
@@ -65,6 +67,7 @@ export class PipelineWatchDirectories {
   }
 }
 
+type LoadedInputResult = LoadedSource | UpdateResult
 /** loadFileManagerInput captures a queued disk or immutable source input as a document snapshot. */
 export async function loadFileManagerInput(
   request: Pending,
@@ -241,7 +244,6 @@ type SourcePath = string | undefined
 type SourceVersion = number | undefined
 type EntryGeneration = number | undefined
 type WorkspaceRoot = string | undefined
-type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
 type SourceFileManagerInput = {
   kind: 'source'
   source: string
@@ -251,7 +253,7 @@ type SourceFileManagerInput = {
   timings: Timings
 }
 type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number }
-type LoadedInputResult = LoadedSource | UpdateResult
+
 type SourceReadResult = SourceSnapshot | UpdateResult
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
 type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }

@@ -1,6 +1,13 @@
 import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
+type DoctorReport = {
+  version: 1
+  repositoryRoot: string
+  checks: Check[]
+  status: Check['status']
+  fingerprint: Fingerprint
+}
 /** doctorReport gathers diagnostics for the active implementation without changing developer state. */
 export async function doctorReport(fingerprintOnly = false): Promise<DoctorReport> {
   const snapshot = await readSnapshot()
@@ -19,13 +26,6 @@ export function assertDoctorReady(status: Check['status']): void {
 
 type OptionalToolOutput = string | undefined
 type CheckStatus = 'pass' | 'warn' | 'fail'
-type DoctorReport = {
-  version: 1
-  repositoryRoot: string
-  checks: Check[]
-  status: Check['status']
-  fingerprint: Fingerprint
-}
 
 function resolveReportStatus(checks: readonly Check[]): Check['status'] {
   if (checks.some(check => check.status === 'fail')) {

@@ -95,6 +95,10 @@ async function enforceSnapshotLimit(snapshotDirectory: string, maximum: number):
   if (!Number.isInteger(maximum) || maximum < 1) {
     Errors.ThrowUserInput(`Foreign view snapshot limit must be a positive integer: ${maximum}`)
   }
+  await requireSnapshotCapacity(snapshotDirectory, maximum)
+}
+
+async function requireSnapshotCapacity(snapshotDirectory: string, maximum: number): Promise<void> {
   if (await countCompletedSnapshots(snapshotDirectory) >= maximum) {
     Errors.ThrowUserInput(
       `This preview session reached its limit of ${maximum} foreign view snapshots. Restart preview to reclaim sidecar snapshots.`,
@@ -125,6 +129,15 @@ function isPathPresent(path: string): boolean {
   })
 }
 
+type SnapshotStageInput = {
+  options: SnapshotOptions
+  groups: readonly SidecarGroup[]
+  snapshotRoot: string
+  stagingRoot: string
+  fingerprint: string
+  nodeModulesDirectory: string
+  defaultsPath: string
+}
 async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
   await FileSystem.mkdir(input.stagingRoot, { recursive: true })
   for (const group of input.groups) {
@@ -157,16 +170,6 @@ type ForeignViewInput = {
   module: LinkedProgram['modules'][number]
   declaration: AST.ViewDeclaration
   relativeSidecarPath: string
-}
-
-type SnapshotStageInput = {
-  options: SnapshotOptions
-  groups: readonly SidecarGroup[]
-  snapshotRoot: string
-  stagingRoot: string
-  fingerprint: string
-  nodeModulesDirectory: string
-  defaultsPath: string
 }
 
 async function stageModule(

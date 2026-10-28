@@ -19,11 +19,10 @@ export async function prepareBuildTypeScript(buildDirectory: string, runtime: Ru
   await linkBuildDependencies(buildDirectory, runtime.directory)
 }
 
+type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
   return `${JSON.stringify(configuration, null, 2)}\n`
 }
-
-type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {
   const link = Path.join(buildDirectory, 'node_modules')

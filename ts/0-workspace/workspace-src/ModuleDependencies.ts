@@ -18,6 +18,7 @@ export type AddModuleNpmDependencyResult = {
   version: string
 }
 
+type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
 /** addModuleNpmDependency writes an exact npm pin into one project-owned named module. */
 export async function addModuleNpmDependency(
   projectRoot: string,
@@ -83,6 +84,7 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
   return [...new Set(work)].sort()
 }
 
+type DependencySessionId = string | undefined
 /** withDependencySession holds the standard CLI project lock for one dependency command. */
 export async function withDependencySession<T>(
   projectRoot: string,
@@ -103,9 +105,7 @@ export async function withDependencySession<T>(
   })
 }
 
-type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
 type NpmRequirementOccurrence = { path: string; source: string; start: number; end: number; alias?: string }
-type DependencySessionId = string | undefined
 
 async function findAppSources(sources: string[]): Promise<string[]> {
   const candidates = await Promise.all(sources.map(findAppSource))

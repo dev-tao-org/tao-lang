@@ -14,6 +14,8 @@ export const IO = {
   progress: (message: string) => output.main.progress(message),
   summary: (...values: unknown[]) => output.main.summary(...values),
   channel: (options: { title: string }) => output.channel(options.title),
+  askConfirm: askConfirmation,
+  askSecret,
   prompt: withPrompt,
   setCommands(commands: readonly Output.OutputCommand[]) {
     output.setCommands(commands)
@@ -93,6 +95,16 @@ const promptLifecycle = createPromptLifecycle({
     IO.warn('Could not restore terminal output after the prompt:', error)
   },
 })
+
+type ConfirmationArguments = Parameters<typeof Terminal.askConfirm>
+
+function askConfirmation(...args: ConfirmationArguments): Promise<boolean> {
+  return withPrompt(() => Terminal.askConfirm(...args))
+}
+
+function askSecret(message: string): Promise<string> {
+  return withPrompt(() => Terminal.askSecret(message))
+}
 
 function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {
   return promptLifecycle.run(prompt)

@@ -44,6 +44,7 @@ export function encodeSecretRecipients(recipients: SecretStore['recipients']): s
   return JSON.stringify(recipients)
 }
 
+type OptionalSecretEntry = SecretEntry | undefined
 /** encodeSecretEntry retains optional absence and field order for concurrent-change detection. */
 export function encodeSecretEntry(entry: OptionalSecretEntry): OptionalEncodedSecret {
   return JSON.stringify(entry)
@@ -203,7 +204,7 @@ function isStoreKeyArmor(armor: string): boolean {
 }
 
 type OptionalSecretNote = string | undefined
-type OptionalSecretEntry = SecretEntry | undefined
+
 type OptionalEncodedSecret = string | undefined
 
 function resolveSecretNote(note: OptionalSecretNote, existingNote: OptionalSecretNote): { note?: string } {

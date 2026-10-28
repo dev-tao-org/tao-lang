@@ -2,6 +2,8 @@ import * as CST from '@cst'
 import type { Field, NodeType, SyntaxNode, Token } from '@cst'
 import { createNodeKey, type LayoutPlan, spaceAt } from '../layout/Plan'
 
+type SelectedPropertyNode = SyntaxNode | null
+
 /** NodeContext supplies source-anchored selections shared by both handler tables. */
 export class NodeContext<Kind extends NodeType> {
   constructor(
@@ -31,6 +33,8 @@ export class NodeContext<Kind extends NodeType> {
     return this.plan.bounds.get(createNodeKey(node))!
   }
 }
+
+type SpaceSide = 'before' | 'after'
 
 /** NodeFormat declares horizontal spacing and opaque source regions through independent commands. */
 export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
@@ -110,6 +114,3 @@ export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 }
-
-type SelectedPropertyNode = SyntaxNode | null
-type SpaceSide = 'before' | 'after'

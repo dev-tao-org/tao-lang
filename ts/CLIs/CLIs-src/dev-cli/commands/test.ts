@@ -5,6 +5,7 @@ import { runTaoTests } from '../testing/TaoTests'
 import { planTestExecution, type TestExecutionOptions } from '../testing/TestPlan'
 import { registerCommand } from './_command-runner'
 
+type TestCommandOptions = TestExecutionOptions & { slow?: string }
 /** testCommand runs TypeScript and Tao app tests, retaining scoped selections. */
 export default registerCommand({
   name: 'test',
@@ -43,8 +44,6 @@ export default registerCommand({
     await Check.workspaceTests(args, slowSeconds, execution)
   },
 })
-
-type TestCommandOptions = TestExecutionOptions & { slow?: string }
 
 type OptionalTestTarget = string | undefined
 

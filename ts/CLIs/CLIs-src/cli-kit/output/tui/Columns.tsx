@@ -3,6 +3,12 @@ import { Box, Text } from 'ink'
 import type { ChannelState } from '../Output'
 import { displayStatus, elapsed, wrappedTail } from './Display'
 
+type ColumnsProps = {
+  channels: readonly ChannelState[]
+  now: number
+  rows: number
+  width: number
+}
 /** Columns renders channel output in equal-width terminal panes. */
 export function Columns(props: ColumnsProps): React.JSX.Element {
   const count = props.channels.length
@@ -24,13 +30,6 @@ export function Columns(props: ColumnsProps): React.JSX.Element {
       ))}
     </Box>
   )
-}
-
-type ColumnsProps = {
-  channels: readonly ChannelState[]
-  now: number
-  rows: number
-  width: number
 }
 
 type ChannelPaneProps = {

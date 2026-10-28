@@ -1,6 +1,8 @@
 import * as TypeScript from 'typescript'
 import * as SourceConformanceApi from './source-conformance-api'
 
+type OptionalApiName = string | undefined
+
 /** ExportedApiChecker checks documentation and shapes for exported APIs. */
 export class ExportedApiChecker {
   /** publicNamespaces tracks namespaces whose members form part of the public API. */
@@ -210,4 +212,3 @@ export class ExportedApiChecker {
 }
 
 type ApiScope = TypeScript.SourceFile | TypeScript.ModuleBlock
-type OptionalApiName = string | undefined

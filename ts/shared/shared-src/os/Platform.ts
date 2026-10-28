@@ -36,6 +36,12 @@ export function isPlatformImport(specifier: string): boolean {
   return specifier === 'bun' || specifier.startsWith('bun:') || Node.isBuiltin(specifier)
 }
 
+type SpawnOptions<
+  In extends Bun.SpawnOptions.Writable,
+  Out extends Bun.SpawnOptions.Readable,
+  Err extends Bun.SpawnOptions.Readable,
+> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
+type SpawnCommand = string | readonly string[]
 /** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
 export function spawn<
   const In extends Bun.SpawnOptions.Writable = 'ignore',
@@ -95,6 +101,7 @@ export function isMain(meta: ImportMeta): boolean {
   return meta.main ?? false
 }
 
+type SystemInformation = { architecture: string; kernel: string; os: string }
 /** systemInfo reads non-identifying operating-system and architecture information. */
 export function systemInfo(): SystemInformation {
   return { architecture: Node.arch(), kernel: Node.release(), os: Node.osType() }
@@ -108,6 +115,7 @@ export function isSupportedHostSystem(system: string): system is HostSystem {
   return system === 'Darwin' || system === 'Windows_NT' || system === 'Linux'
 }
 
+type CaptureOptions = { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean }
 /** capture reads command output and throws when the command fails; trim:false preserves exact text. */
 export async function capture(
   command: string,
@@ -156,16 +164,6 @@ export function captureSync(command: string, options: { variadicArgs?: readonly 
   })
 }
 
-type SpawnOptions<
-  In extends Bun.SpawnOptions.Writable,
-  Out extends Bun.SpawnOptions.Readable,
-  Err extends Bun.SpawnOptions.Readable,
-> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
-
-type SystemInformation = { architecture: string; kernel: string; os: string }
-
-type CaptureOptions = { variadicArgs?: readonly string[]; cwd?: string; trim?: boolean }
-type SpawnCommand = string | readonly string[]
 type EnvironmentValue = string | undefined
 type TerminalColorOptions = { stderr?: unknown; env?: Record<string, EnvironmentValue> }
 

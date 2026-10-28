@@ -8,6 +8,8 @@ import type { UpdateResult } from './Workspace'
 
 export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileManagerCompilation'
 
+type EntryGeneration = number | undefined
+
 /** FileManager owns workspace documents, recursive observation, and the bounded compile lane. */
 export class FileManager {
   entryPath: FileManagerEntryPath
@@ -338,4 +340,3 @@ export class FileManager {
 }
 
 type FileManagerEntryPath = string | undefined
-type EntryGeneration = number | undefined

@@ -130,6 +130,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
   }
 }
 
+type RegistryPackages = Awaited<ReturnType<typeof ManagedDependencyRegistry.startManagedDependencyRegistry>>['packages']
 async function verifyInstalledGraph(
   app: string,
   ui: string,
@@ -280,8 +281,6 @@ async function verifyRuntimeConflictPreservesPreview(
   Tests.expect(published).toHaveLength(publishedCount)
   await FileSystem.writeFile(path, source)
 }
-
-type RegistryPackages = Awaited<ReturnType<typeof ManagedDependencyRegistry.startManagedDependencyRegistry>>['packages']
 
 function ArtifactsRoot(): string {
   return Repo.resolvePath('.artifacts/tmp', `managed-dependencies-${Platform.randomUUID()}`)

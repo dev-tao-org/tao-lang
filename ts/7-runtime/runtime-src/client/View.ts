@@ -118,6 +118,7 @@ function ViewBody({ candidate, args, testID }: ViewBodyProps): React.ReactElemen
   return React.createElement(view.render, componentProps)
 }
 
+type OptionalTestID = string | undefined
 function applyTestID(result: React.ReactNode, testID: OptionalTestID): React.ReactNode {
   if (testID === undefined || !React.isValidElement(result)) {
     return result
@@ -148,6 +149,7 @@ function isView(value: unknown): value is View {
   return typeof value === 'object' && value !== null && viewMarker in value
 }
 
+type OptionalRenderStartTime = number | undefined
 function observe(
   observer: OptionalRuntimeObserver,
   phase: RuntimeTiming['phase'],
@@ -161,5 +163,3 @@ function observe(
 
 type ViewRenderPhase = 'bind' | 'render' | 'render-to-applied'
 type OptionalRuntimeObserver = RuntimeObserver | undefined
-type OptionalRenderStartTime = number | undefined
-type OptionalTestID = string | undefined

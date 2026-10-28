@@ -1,6 +1,7 @@
 import { Time, Try } from '../universal/universal'
 import { stat } from './NodeBuiltins'
 
+type WatchStats = { mtimeMs: number; ctimeMs: number; size: number; ino: number }
 /** watchStamp identifies a filesystem observation without reading source contents. */
 export function watchStamp(stats: WatchStats): string {
   return `${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}:${stats.ino}`
@@ -41,8 +42,6 @@ export function reconcileWatchChanges(
     },
   }
 }
-
-type WatchStats = { mtimeMs: number; ctimeMs: number; size: number; ino: number }
 
 async function readStamp(path: string): Promise<string | undefined> {
   return await Try.WithDefault(undefined, async () => watchStamp(await stat(path)))

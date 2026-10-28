@@ -53,10 +53,18 @@ async function runPromptLifecycleFixture(): Promise<void> {
   })
   events.push('create')
   renderOutput(renderer())
-  await IO.prompt(async () => {
-    events.push('prompt')
+  const accepted = await IO.askConfirm({ message: 'Fixture confirmation?', defaultValue: false }, {
+    isInteractive: () => true,
+    open: () => ({
+      async question() {
+        events.push('prompt')
+        return 'yes'
+      },
+      close() {},
+    }),
+    write() {},
   })
-  if (events.join(',') !== 'create,dispose,prompt,create') {
+  if (!accepted || events.join(',') !== 'create,dispose,prompt,create') {
     Errors.ThrowShouldNeverHappen(`Unexpected prompt renderer lifecycle: ${events.join(',')}`)
   }
   Terminal.stdout.write(events.join(',') + '\n')

@@ -122,6 +122,7 @@ async function findCachedSnapshot(
   return undefined
 }
 
+type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
 async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<CollectedSidecarInputs> {
   const entryPath = options.program.entry
   const projectDirectory = options.projectDirectory
@@ -256,16 +257,10 @@ async function resolveRelativeImport(path: string, moduleRoot: string, watchFile
   Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
-type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
-
 async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
   const absolute = Path.resolve(path)
-  if (!Paths.within(moduleRoot, absolute) || hasDependencyPath(absolute)) {
-    Errors.ThrowUserInput(`Foreign view sidecar import crosses its module boundary: ${absolute}`)
-  }
-  if (!await FileSystem.exists(absolute) || !FileSystem.statSync(absolute).isFile()) {
-    Errors.ThrowUserInput(`Foreign view sidecar file is unavailable: ${absolute}`)
-  }
+  requireModulePathInsideSidecar(moduleRoot, absolute)
+  await requireAvailableSidecarFile(absolute)
   const realPath = Paths.resolveRealPathInsideProject(absolute, projectDirectory)
   if (!realPath || !Paths.within(moduleRoot, realPath)) {
     Errors.ThrowUserInput(`Foreign view sidecar escapes its module boundary: ${absolute}`)
@@ -276,6 +271,18 @@ async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDi
   }
   await rejectNestedProjectPath(absolute, moduleRoot, projectDirectory)
   return absolute
+}
+
+function requireModulePathInsideSidecar(moduleRoot: string, absolute: string): void {
+  if (!Paths.within(moduleRoot, absolute) || hasDependencyPath(absolute)) {
+    Errors.ThrowUserInput(`Foreign view sidecar import crosses its module boundary: ${absolute}`)
+  }
+}
+
+async function requireAvailableSidecarFile(absolute: string): Promise<void> {
+  if (!await FileSystem.exists(absolute) || !FileSystem.statSync(absolute).isFile()) {
+    Errors.ThrowUserInput(`Foreign view sidecar file is unavailable: ${absolute}`)
+  }
 }
 
 async function rejectNestedProjectPath(path: string, moduleRoot: string, projectDirectory: string): Promise<void> {

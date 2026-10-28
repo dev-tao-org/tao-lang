@@ -6,6 +6,11 @@ import { parseGeneratedRevision } from './GeneratedRevision'
 import { createMetroAdapter, type MetroServer } from './MetroAdapter'
 import type { GeneratedRevision } from './PreviewProtocol'
 
+type Middleware = (
+  request: MetroPlatform.IncomingRequest,
+  response: MetroPlatform.OutgoingResponse,
+  next: (error?: unknown) => void,
+) => void
 /** enhanceMiddleware binds the preloaded memory owner to Expo's existing Metro HTTP server. */
 export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): Middleware {
   adapter.attach(metro)
@@ -32,12 +37,6 @@ export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): M
     }
   }
 }
-
-type Middleware = (
-  request: MetroPlatform.IncomingRequest,
-  response: MetroPlatform.OutgoingResponse,
-  next: (error?: unknown) => void,
-) => void
 
 const sessionId = requireEnvironment('TAO_METRO_SESSION')
 const token = requireEnvironment('TAO_METRO_TOKEN')

@@ -38,6 +38,7 @@ export async function resolveDependencyGraph(
   return graph
 }
 
+type OptionalCommit = string | undefined
 /** rejectCommitConflict requires every occurrence of a source identity to resolve to one commit. */
 export function rejectCommitConflict(
   identity: string,
@@ -54,7 +55,6 @@ export function rejectCommitConflict(
   resolvedPins.set(identity, commit)
 }
 
-type OptionalCommit = string | undefined
 type PreviousLockedSource = Types.LockedSource | undefined
 type DependencyRequest = { requirement: Types.DependencyRequirement; parent: string }
 type ResolvedDependencyGraph = { sources: Types.DependencySources; commitPins: Types.DependencyCommitPins }

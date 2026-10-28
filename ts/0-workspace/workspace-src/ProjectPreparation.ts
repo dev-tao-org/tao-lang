@@ -1,7 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { runtimeDependencies } from '@runtime/Runtime'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
@@ -25,7 +24,7 @@ export type PreparationOptions = {
   update?: string[]
   repair?: boolean
   executor?: ManagedModules.BunExecutor
-  runtimePins?: Record<string, string>
+  runtimePins?: Runtime.RuntimePackageVersions
   runtimeInstaller?: Runtime.RuntimeInstaller
   dependencyOptions?: DependencyStoreOptions
 }
@@ -63,23 +62,12 @@ export async function inspectProjectPreparation(
   const project = await discoverProject(entry)
     ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   const input = await loadProjectManagedInput(entry, options)
-  if (
-    options.moduleRoot
-    && !input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(options.moduleRoot!))
-  ) {
-    Errors.ThrowUserInput(`Module ${options.moduleRoot} has no reachable managed npm or sidecar profile.`)
-  }
+  requireReachableManagedModule(input, options.moduleRoot)
   if (!input) {
     if (options.runtime === false) {
       return
     }
-    if (
-      !await Runtime.preparedRuntime({
-        toolchainCacheDirectory: Path.join(project.root, '.tao/cache/runtime-toolchains'),
-      })
-    ) {
-      requireSetup('The app runtime needs setup.')
-    }
+    await requirePreparedRuntime(project.root)
     return
   }
   await ManagedModules.readManagedModules(input)
@@ -89,11 +77,12 @@ export async function inspectProjectPreparation(
   }
 }
 
+type SourceModuleField = 'path' | 'document'
 /** buildManagedModulesInput derives an app installation from reachable module-owned npm declarations. */
 export async function buildManagedModulesInput(
   root: string,
   sources: readonly Pick<SourceModule, SourceModuleField>[],
-  runtimePins?: Record<string, string>,
+  runtimePins?: Runtime.RuntimePackageVersions,
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const modules = new Map<string, ManagedModules.ManagedModulesInput['modules'][number]>()
   const needed = new Set<string>()
@@ -123,7 +112,7 @@ export async function buildManagedModulesInput(
     directory: root,
     modules: [...modules.values()].filter(module => needed.has(module.directory)),
     target: 'web',
-    runtimePins: runtimePins ?? await runtimeDependencies(),
+    runtimePins: runtimePins ?? await Runtime.runtimeDependencies(),
     runtimePolicy: runtimePins ? undefined : await Runtime.runtimeDependencyPolicy(),
     bunVersion: Platform.runtimeVersion(),
   }
@@ -146,7 +135,27 @@ export const executeManagedTool: ManagedModules.BunExecutor = async (command, ar
 }
 
 type ProjectPreparationOption = 'runtimePins' | 'dependencyOptions'
-type SourceModuleField = 'path' | 'document'
+
+type OptionalManagedInput = ManagedModules.ManagedModulesInput | undefined
+type RequestedModuleRoot = string | undefined
+
+function requireReachableManagedModule(input: OptionalManagedInput, moduleRoot: RequestedModuleRoot): void {
+  if (!moduleRoot) {
+    return
+  }
+  const reachable = input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(moduleRoot))
+  if (!reachable) {
+    Errors.ThrowUserInput(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
+  }
+}
+
+async function requirePreparedRuntime(projectRoot: string): Promise<void> {
+  const toolchainCacheDirectory = Path.join(projectRoot, '.tao/cache/runtime-toolchains')
+  const prepared = await Runtime.preparedRuntime({ toolchainCacheDirectory })
+  if (!prepared) {
+    requireSetup('The app runtime needs setup.')
+  }
+}
 
 // loadProjectManagedInput reads the reachable locked graph without downloading dependencies.
 async function loadProjectManagedInput(

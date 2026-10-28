@@ -72,6 +72,8 @@ function CommitAfterRender(
   return children
 }
 
+type OptionalRuntimeObserver = RuntimeObserver | undefined
+type OptionalRenderStartTime = number | undefined
 function observe(
   observer: OptionalRuntimeObserver,
   phase: 'render-to-applied',
@@ -82,6 +84,3 @@ function observe(
   }
   observer.onTiming({ phase, durationMs: observer.now() - startedAt })
 }
-
-type OptionalRuntimeObserver = RuntimeObserver | undefined
-type OptionalRenderStartTime = number | undefined

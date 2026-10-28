@@ -33,6 +33,7 @@ export function collectStatementSlices(source: string, tree: Tree): StatementSli
   return slices
 }
 
+type PreviousStatementSlice = StatementSlice | undefined
 function isSameLineTrailingComment(
   source: string,
   previous: PreviousStatementSlice,
@@ -42,7 +43,6 @@ function isSameLineTrailingComment(
 }
 
 type LeadingCommentStart = number | undefined
-type PreviousStatementSlice = StatementSlice | undefined
 
 function containsComment(node: SyntaxNode): boolean {
   return CST.IsComment(node) || node.namedChildren.some(containsComment)

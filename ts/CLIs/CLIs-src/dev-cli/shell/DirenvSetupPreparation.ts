@@ -5,6 +5,7 @@ import { readOptionalFile } from './DirenvSetupFiles'
 
 export { prepareDevelopmentShell }
 
+type OptionalPrepareRequest = boolean | undefined
 /** prepareDevelopmentShell optionally pre-evaluates the configured checkout's devenv shell. */
 async function prepareDevelopmentShell(
   prepare: OptionalPrepareRequest,
@@ -63,14 +64,12 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   return await isRegisteredWorktree(root, canonicalRoot, environment)
 }
 
+type EnvironmentValue = string | undefined
 function isAlreadyInDevenv(env: Readonly<Record<string, EnvironmentValue>>, root: string): boolean {
   const devenvRoot = env['DEVENV_ROOT']
   return env['TAO_DEVENV'] === '1' && devenvRoot !== undefined
     && FileSystem.realpathSync(devenvRoot) === root
 }
-
-type OptionalPrepareRequest = boolean | undefined
-type EnvironmentValue = string | undefined
 
 async function isEnabledForCommonDirectory(record: string, common: string): Promise<boolean> {
   const choice = await readOptionalFile(Path.resolve(record, 'choice'))

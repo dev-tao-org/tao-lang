@@ -108,17 +108,9 @@ async function relativeTargets(
   }
   const target = Path.resolve(Path.dirname(importer), specifier)
   const files = await listDirectImportFiles(target, context.projectRoot)
-  const sourcePackage = Paths.findNamedPackageRoot(importer, context.projectRoot)
-  if (
-    files.some(path =>
-      Paths.findNamedPackageRoot(path, context.projectRoot) !== sourcePackage
-      && Paths.findNamedPackageRoot(path, context.projectRoot) !== undefined
-    )
-  ) {
-    Errors.ThrowUserInput(`Relative module ${specifier} crosses a named package boundary.`)
-  }
-  if (files.length === 0 && !await FileSystem.exists(target)) {
-    Errors.ThrowUserInput(`Cannot resolve module ${specifier} from ${importer}.`)
+  requireRelativeModuleWithinPackage(files, importer, specifier, context.projectRoot)
+  if (files.length === 0) {
+    await requireRelativeTargetExists(target, specifier, importer)
   }
   if (files.length === 0) {
     if (!Paths.resolveRealPathInsideProject(target, context.projectRoot)) {
@@ -129,6 +121,33 @@ async function relativeTargets(
     }
   }
   return files.map(path => ({ path, relation: Paths.getImportRelation(importer, path, context.projectRoot) }))
+}
+
+function requireRelativeModuleWithinPackage(
+  files: readonly string[],
+  importer: string,
+  specifier: string,
+  projectRoot: string,
+): void {
+  const sourcePackage = Paths.findNamedPackageRoot(importer, projectRoot)
+  if (
+    files.some(path =>
+      Paths.findNamedPackageRoot(path, projectRoot) !== sourcePackage
+      && Paths.findNamedPackageRoot(path, projectRoot) !== undefined
+    )
+  ) {
+    Errors.ThrowUserInput(`Relative module ${specifier} crosses a named package boundary.`)
+  }
+}
+
+async function requireRelativeTargetExists(
+  target: string,
+  specifier: string,
+  importer: string,
+): Promise<void> {
+  if (!await FileSystem.exists(target)) {
+    Errors.ThrowUserInput(`Cannot resolve module ${specifier} from ${importer}.`)
+  }
 }
 
 async function resolveNamedTargets(

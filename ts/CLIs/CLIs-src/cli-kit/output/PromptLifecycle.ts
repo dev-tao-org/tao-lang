@@ -1,5 +1,10 @@
 import { Errors, Try } from '@shared'
 
+type PromptLifecycleOperations = {
+  suspend: () => Promise<boolean>
+  resume: () => Promise<void>
+  reportResumeFailure: (error: unknown) => void
+}
 /** createPromptLifecycle suspends a terminal renderer for one prompt and rejects overlapping readers. */
 export function createPromptLifecycle(operations: PromptLifecycleOperations) {
   let promptActive = false
@@ -41,12 +46,6 @@ export function createPromptLifecycle(operations: PromptLifecycleOperations) {
     transition = transition.then(operation, operation)
     return transition
   }
-}
-
-type PromptLifecycleOperations = {
-  suspend: () => Promise<boolean>
-  resume: () => Promise<void>
-  reportResumeFailure: (error: unknown) => void
 }
 
 type CleanupResult = { failed: false } | { failed: true; error: unknown }

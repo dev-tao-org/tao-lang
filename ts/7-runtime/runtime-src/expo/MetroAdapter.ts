@@ -7,6 +7,8 @@ import { createMetroAdmission, type MetroAdmission } from './MetroAdmission'
 import { installMetroHooks } from './MetroHooks'
 import type { GeneratedRevision, GeneratedSourceFiles } from './PreviewProtocol'
 
+/** MetroAdapter exposes publication and binds the already running Expo Metro server. */
+export type MetroAdapter = { owner: RevisionOwner; attach(metro: MetroServer): void }
 /** createMetroAdapter installs the generated namespace before Expo imports filesystem readers.
  *  Only this owner changes visible source bytes. A confirmed precommit error restores the old volume;
  *  partial FileMap commits poison the whole session. Build errors retain bytes for the next correction. */
@@ -43,9 +45,6 @@ export function createMetroAdapter(options: MetroAdapterOptions): MetroAdapter {
 
 /** MetroAdapterOptions seeds one generated publication owner in the dedicated Metro process. */
 export type MetroAdapterOptions = { directory: string; sessionId: string; initial: GeneratedRevision }
-
-/** MetroAdapter exposes publication and binds the already running Expo Metro server. */
-export type MetroAdapter = { owner: RevisionOwner; attach(metro: MetroServer): void }
 
 /** MetroServer describes only the pinned private access needed for explicit FileMap batches. */
 export type MetroServer = {

@@ -245,6 +245,7 @@ function usePackage(path: string, alias?: string): AST.UsePackageStatement {
   }
 }
 
+type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'
 function createResolvedImport(
   statement: ImportStatement,
   path: string,
@@ -252,5 +253,3 @@ function createResolvedImport(
 ): SourceModule['imports'][number] {
   return { statement, targets: [{ path, relation }] }
 }
-
-type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'

@@ -55,9 +55,7 @@ async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord>
   const directory = `performance/preview/${source}`
   const pending = `.artifacts/notes/preview-history/${source}`
   const base = await io.exists(`${pending}/record.json`) ? pending : `.storage/${directory}`
-  if (!await io.exists(`${base}/record.json`) || !await io.exists(`${base}/report.json`)) {
-    Errors.ThrowUserInput(`Missing preview measurement for ${source}; historical capture is not available.`)
-  }
+  await requirePreviewRecordFiles(io, base, source)
   const record = await io.read(`${base}/record.json`)
   const report = await io.read(`${base}/report.json`)
   validatePreviewReport(report, source)
@@ -68,6 +66,12 @@ async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord>
     Errors.ThrowUserInput(`Preview record ${source} is failed, unavailable, inconsistent or incomplete.`)
   }
   return { source, record, report, directory }
+}
+
+async function requirePreviewRecordFiles(io: LandingIO, base: string, source: string): Promise<void> {
+  if (!await io.exists(`${base}/record.json`) || !await io.exists(`${base}/report.json`)) {
+    Errors.ThrowUserInput(`Missing preview measurement for ${source}; historical capture is not available.`)
+  }
 }
 
 type RecordMetadata = {

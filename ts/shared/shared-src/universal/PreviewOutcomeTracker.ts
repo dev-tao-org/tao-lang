@@ -22,6 +22,8 @@ export type PreviewOutcomeSnapshot = {
   diagnostics: readonly string[]
 }
 
+type RecoveryAction = 'reload' | 'failed'
+
 /** PreviewOutcomeTracker bounds outstanding work independently for one preview frame. */
 export class PreviewOutcomeTracker {
   private bootId?: string
@@ -136,7 +138,6 @@ export class PreviewOutcomeTracker {
 
 type PendingExpectation = PreviewExpectation & { startedAt: number }
 type OptionalPendingExpectation = PendingExpectation | undefined
-type RecoveryAction = 'reload' | 'failed'
 type PreviewOutcomeKind =
   | 'applied'
   | 'noop'

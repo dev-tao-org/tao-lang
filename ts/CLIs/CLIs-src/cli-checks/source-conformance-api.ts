@@ -98,12 +98,11 @@ function isExported(node: TypeScript.Node): boolean {
     && TypeScript.getModifiers(node)?.some(modifier => modifier.kind === TypeScript.SyntaxKind.ExportKeyword) === true
 }
 
+type LocalNamedExport = TypeScript.ExportDeclaration & { exportClause: TypeScript.NamedExports }
 /** isLocalNamedExport detects named exports that refer to local declarations. */
 function isLocalNamedExport(node: TypeScript.ExportDeclaration): node is LocalNamedExport {
   return !node.moduleSpecifier && node.exportClause !== undefined && TypeScript.isNamedExports(node.exportClause)
 }
-
-type LocalNamedExport = TypeScript.ExportDeclaration & { exportClause: TypeScript.NamedExports }
 
 /** normalizeDoc removes JSDoc formatting and normalizes description whitespace. */
 function normalizeDoc(text: string): string {

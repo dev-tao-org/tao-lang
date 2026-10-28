@@ -12,6 +12,7 @@ export function initializePreviewClient(): void {
   window.addEventListener('unhandledrejection', event => reportPreviewError('runtime-error', String(event.reason)))
 }
 
+type PreviewErrorKind = 'runtime-error' | 'build-error'
 /** reportPreviewError exposes a reported failure without automatically reloading. */
 export function reportPreviewError(kind: PreviewErrorKind, message: string, revision?: string): void {
   showPreviewError(message, () => {
@@ -40,6 +41,7 @@ export function beginPreviewRevision(revision: string): void {
   state.timings = []
 }
 
+type PreviewEventType = 'tao.preview-applied' | 'tao.update-done'
 /** reportPreviewEvent sends one revision-specific client event to its configured parent. */
 export function reportPreviewEvent(type: PreviewEventType, revision?: string): void {
   const state = previewState()
@@ -75,9 +77,6 @@ export function previewTiming(timing: { phase: string; durationMs: number }): vo
 export function isPreview(): boolean {
   return previewState() !== undefined
 }
-
-type PreviewErrorKind = 'runtime-error' | 'build-error'
-type PreviewEventType = 'tao.preview-applied' | 'tao.update-done'
 
 type PreviewState = {
   sessionId: string

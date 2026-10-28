@@ -26,6 +26,9 @@ type KindHandlers<ItemT extends KindItem, ResultT> = {
   [KeyT in ItemT['kind']]: (item: Extract<ItemT, { kind: KeyT }>) => ResultT
 }
 
+type ValueHandlers<ValueT extends SwitchValueKey, ResultT> =
+  & { [KeyT in Exclude<ValueT, undefined> & SwitchKey]: (value: KeyT) => ResultT }
+  & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
 function Switch<ValueT extends SwitchValueKey, ResultT>(
   input: ValueT,
   handlers: ValueHandlers<ValueT, ResultT>,
@@ -38,10 +41,6 @@ function Switch<ValueT extends SwitchValueKey, ResultT>(
   }
   return (handler as (value: ValueT) => ResultT)(input)
 }
-
-type ValueHandlers<ValueT extends SwitchValueKey, ResultT> =
-  & { [KeyT in Exclude<ValueT, undefined> & SwitchKey]: (value: KeyT) => ResultT }
-  & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
 
 function SwitchType<ItemT extends TypeItem, ResultT>(
   item: ItemT,
@@ -71,6 +70,9 @@ function SwitchKind<ItemT extends KindItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
+type TypeMaybeHandlers<ItemT extends OptionalTypeItem, ResultT> =
+  & TypeHandlers<Exclude<ItemT, undefined>, ResultT>
+  & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
 function SwitchTypeMaybe<ItemT extends OptionalTypeItem, ResultT>(
   item: ItemT,
   handlers: TypeMaybeHandlers<ItemT, ResultT>,
@@ -84,10 +86,9 @@ function SwitchTypeMaybe<ItemT extends OptionalTypeItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-type TypeMaybeHandlers<ItemT extends OptionalTypeItem, ResultT> =
-  & TypeHandlers<Exclude<ItemT, undefined>, ResultT>
+type KindMaybeHandlers<ItemT extends OptionalKindItem, ResultT> =
+  & KindHandlers<Exclude<ItemT, undefined>, ResultT>
   & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
-
 function SwitchKindMaybe<ItemT extends OptionalKindItem, ResultT>(
   item: ItemT,
   handlers: KindMaybeHandlers<ItemT, ResultT>,
@@ -101,10 +102,11 @@ function SwitchKindMaybe<ItemT extends OptionalKindItem, ResultT>(
   return (handler as (item: ItemT) => ResultT)(item)
 }
 
-type KindMaybeHandlers<ItemT extends OptionalKindItem, ResultT> =
-  & KindHandlers<Exclude<ItemT, undefined>, ResultT>
-  & (undefined extends ItemT ? { undefined: (item: undefined) => ResultT } : {})
-
+type PropertyHandlers<ItemT, PropertyT extends keyof ItemT, ResultT> = PropertyValue<ItemT, PropertyT> extends
+  infer ValueT ?
+    & { [KeyT in Exclude<ValueT, undefined> & SwitchKey]: (value: KeyT) => ResultT }
+    & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
+  : never
 function SwitchProperty<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   item: ItemT,
   propertyName: PropertyT,
@@ -122,12 +124,13 @@ function SwitchProperty<ItemT extends object, PropertyT extends keyof ItemT, Res
 
 type PropertyValue<ItemT, PropertyT extends keyof ItemT> = ItemT[PropertyT]
 
-type PropertyHandlers<ItemT, PropertyT extends keyof ItemT, ResultT> = PropertyValue<ItemT, PropertyT> extends
-  infer ValueT ?
-    & { [KeyT in Exclude<ValueT, undefined> & SwitchKey]: (value: KeyT) => ResultT }
-    & (undefined extends ValueT ? { undefined: (value: undefined) => ResultT } : {})
-  : never
-
+type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> =
+  & {
+    [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
+  }
+  & (undefined extends ItemT[PropertyT]
+    ? { undefined: (item: Extract<ItemT, Partial<Record<PropertyT, undefined>>>) => ResultT }
+    : {})
 // Unlike property dispatch, each handler receives the item narrowed to that property's member.
 function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   item: ItemT,
@@ -143,14 +146,6 @@ function SwitchOn<ItemT extends object, PropertyT extends keyof ItemT, ResultT>(
   }
   return (handler as (item: ItemT) => ResultT)(item)
 }
-
-type OnHandlers<ItemT extends object, PropertyT extends keyof ItemT, ResultT> =
-  & {
-    [KeyT in ItemT[PropertyT] & PropertyKey]: (item: Extract<ItemT, Record<PropertyT, KeyT>>) => ResultT
-  }
-  & (undefined extends ItemT[PropertyT]
-    ? { undefined: (item: Extract<ItemT, Partial<Record<PropertyT, undefined>>>) => ResultT }
-    : {})
 
 function ownHandler<HandlersT extends object>(handlers: HandlersT, key: PropertyKey): unknown {
   return Object.hasOwn(handlers, key) ? handlers[key as keyof HandlersT] : undefined

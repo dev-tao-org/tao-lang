@@ -4,6 +4,7 @@ import { NullCharacter, Regxs } from '@shared'
 /** ImportStatement identifies one authored module import form. */
 export type ImportStatement = AST.UseStatement | AST.UsePackageStatement
 
+type ModuleMember = string | number
 /** createModuleMemberKey identifies a module-owned member by name, authored path or source offset. */
 export function createModuleMemberKey(modulePath: string, member: ModuleMember): string {
   return `${modulePath}${NullCharacter}${member}`
@@ -55,7 +56,6 @@ function isNamedImportPathSegment(part: string): boolean {
   return part !== '' && part !== '.' && part !== '..'
 }
 
-type ModuleMember = string | number
 type TaoIdentifierInput = string | undefined
 
 function isTaoIdentifier(name: TaoIdentifierInput): name is string {

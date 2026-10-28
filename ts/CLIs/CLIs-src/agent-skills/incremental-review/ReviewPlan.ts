@@ -211,6 +211,7 @@ async function assertOnlySelected(root: string, before: string, after: string, f
   }
 }
 
+type ReviewSelectionIdentityKeys = 'version' | 'proposal' | 'session'
 async function freezeSelection(
   session: ReviewSession,
   content: Omit<ReviewSelection, ReviewSelectionIdentityKeys>,
@@ -225,5 +226,5 @@ async function freezeSelection(
 }
 
 type ReviewSelectionTreeKeys = 'sourceTree' | 'reviewedTree' | 'reconciledIndexTree' | 'kind'
-type ReviewSelectionIdentityKeys = 'version' | 'proposal' | 'session'
+
 type ReviewCandidateTrees = Pick<ReviewSelection, ReviewSelectionTreeKeys>
