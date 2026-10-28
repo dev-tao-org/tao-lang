@@ -51,8 +51,6 @@ export type Proposal = {
   outputs?: Record<string, { before: string; after: string; done: boolean }>
 }
 
-type ProposalEdit = { file: string; expected: string; replacement: string; range: Range }
-
 /** LearningState is the append-only correction and scan history with a pending patch queue. */
 export type LearningState = {
   version: 1
@@ -63,3 +61,5 @@ export type LearningState = {
   protectedFiles: string[]
   events: { group: string; scans: string[]; pending: string[] }[]
 }
+
+type ProposalEdit = { file: string; expected: string; replacement: string; range: Range }

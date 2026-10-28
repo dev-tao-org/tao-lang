@@ -70,7 +70,7 @@ scan covers the full rule scope (`complete`). A scan narrowed with `--files` may
 Review the exact matches in context; do not apply based only on text or a scan result. The scan
 returns an ID; use that exact returned `scan.id` in the proposal. For the one-line fixture above,
 `oldCheck(value)` occupies source offsets 0 through 15 (end-exclusive). Save a proposal using
-`file`, `start`, `end`, `expected`, and `replacement`; include `protectedFiles` when a current
+`file`, `range`, `expected`, and `replacement`, with `start` and `end` inside `range`; include `protectedFiles` when a current
 human-review group must not be changed. `<scan-id-from-output>` below is a placeholder, not a literal
 value:
 
@@ -80,7 +80,12 @@ value:
   "scan": "<scan-id-from-output>",
   "analysis": "The correction explicitly replaces oldCheck with newCheck for every call in src; this matching call has the same role and arguments.",
   "edits": [
-    { "file": "src/example.ts", "start": 0, "end": 15, "expected": "oldCheck(value)", "replacement": "newCheck(value)" }
+    {
+      "file": "src/example.ts",
+      "range": { "start": 0, "end": 15 },
+      "expected": "oldCheck(value)",
+      "replacement": "newCheck(value)"
+    }
   ],
   "protectedFiles": []
 }
