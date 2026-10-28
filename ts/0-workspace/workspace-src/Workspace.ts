@@ -1,47 +1,41 @@
 import { transform } from '@ast-gen/Transform'
 import { check } from '@check/Check'
-import { compile } from '@compile/Compile'
-import { fix } from '@fix/Fix'
+import { compile, type CompileOptions } from '@compile/Compile'
 import { createParser } from '@grammar/parser'
+import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Timings, type TimingSample } from '@shared'
-import { Path } from '@shared/os'
+import { Path, WorkspaceWatch } from '@shared/os'
+import * as Stdlib from '@stdlib/Stdlib'
+import { linkModules } from '@typecheck/LinkModules'
+import type { LinkedProgram } from '@typecheck/Modules'
 import { typecheck } from '@typecheck/Typecheck'
+import { prepareBuildTypeScript } from './BuildTypeScript'
 import type { Document } from './Document'
 import { type CompileRequest, FileManager } from './FileManager'
-import type { Project } from './Project'
+import { loadModules } from './modules/Loader'
 import { publishBuild } from './WorkspaceBuild'
+import type { WorkspaceOptions } from './WorkspaceOptions'
 
 export { Document } from './Document'
-export { createProject } from './Project'
-export type { Project, ProjectOptions } from './Project'
+export * from './Project'
+export type { WorkspaceOptions } from './WorkspaceOptions'
 
-/** WorkspaceOptions configures output publication for a single compile session. */
-export type WorkspaceOptions = {
-  directory?: string
-  outputDirectory?: string
-  project?: Project
-  runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
-  compile?: typeof compile
-  publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
-  onExpected?: (revision: string, startedAtMs: number) => void
-  onSourceUpdate?: (result: UpdateResult) => void
-  onSourceError?: (error: unknown) => void
-}
-
-/** Publication records the exact revision and measured pipeline when output reaches disk. */
+/** Publication records the exact revision and measured pipeline when output reaches its delivery owner. */
 export type Publication = {
   revision: string
   startedAtMs: number
+  publicationStartedAtMs: number
   publishedAtMs: number
   timings: readonly TimingSample[]
+  outcome?: PublicationOutcome
 }
 
 /** CompiledApp carries the exact source snapshot and compiler timings for a revision. */
 export type CompiledApp = {
   revision: string
   source: string
-  code: string
+  files: Readonly<Record<string, string>>
   timings: TimingSample[]
   stages: PipelineStages
 }
@@ -54,12 +48,19 @@ export type UpdateResult =
     timings: TimingSample[]
     stages: PipelineStages
   }
-  | { status: 'failed'; revision: string; error: string; timings: TimingSample[]; stages: PipelineStages }
+  | {
+    status: 'failed'
+    revision: string
+    error: string
+    setupRequired?: boolean
+    timings: TimingSample[]
+    stages: PipelineStages
+  }
 
 /** PipelineStages names downstream passes that are explicitly skipped by workspace compilation. */
 export type PipelineStages = {
   typecheck: ReturnType<typeof typecheck>
-  fix: ReturnType<typeof fix>
+  fix: { stage: 'fix'; status: 'skipped' }
   check: ReturnType<typeof check>
 }
 
@@ -69,15 +70,40 @@ export function createWorkspace(options: WorkspaceOptions) {
   return new WorkspaceSession(options)
 }
 
-const WorkspacePublish = Timings.measure('workspace.publish', publishWorkspace)
+type ProjectResolution = { root: string } | undefined
+type WorkspaceOutputPaths = { buildDirectory: string; runtimeDirectory: string }
+
+const LinkModules = Timings.measured('modules.link', linkModules)
+const PrepareDependencies = Timings.measured('dependencies.prepared', async function(
+  prepare: WorkspaceOptions['beforeCompile'],
+  program: LinkedProgram,
+  watchAttemptedFiles: (files: readonly string[]) => Promise<void>,
+) {
+  return await prepare?.(program, watchAttemptedFiles)
+})
+
+const LoadSources = Timings.measured(
+  'dependencies.sources',
+  async (load: WorkspaceOptions['beforeLoad']) => await load?.(),
+)
+const Publish = Timings.measure('workspace.publish', async function(
+  timings,
+  publish: (timings: Timings, output: CompiledApp, isCurrent: () => boolean) => Promise<void>,
+  output: CompiledApp,
+  isCurrent: () => boolean,
+) {
+  await publish(timings, output, isCurrent)
+})
 
 class WorkspaceSession {
   readonly directory: string | undefined
-  private readonly output: ReturnType<typeof outputPaths>
+  private readonly output: ReturnType<typeof createOutputPaths>
   private readonly parser = createParser()
   private lastGood: string | undefined
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
+  private publicationOutcome: PublicationOutcome | undefined
+  private snapshotDirectories: readonly string[] = []
   private application: Runtime.RuntimeApplication | undefined
   private readonly publishCallback = this.publish.bind(this)
   private readonly prepareRuntimeCallback = this.prepareRuntime.bind(this)
@@ -86,13 +112,31 @@ class WorkspaceSession {
   constructor(private readonly options: WorkspaceOptions) {
     const directory = options.directory ?? options.project?.directory
     this.directory = directory ? Path.resolve(directory) : undefined
-    this.output = outputPaths(options)
+    this.output = createOutputPaths(options)
     this.files = new FileManager({
       directory: this.directory,
       outputDirectory: options.outputDirectory ?? (options.project && Path.join(options.project.directory, '.tao')),
+      watchDirectories: options.watchDirectories,
       compile: (request, isCurrent) => this.compileAndPublish(request, isCurrent),
       onSourceUpdate: options.onSourceUpdate,
       onSourceError: options.onSourceError,
+      async watch(root, change, error, ignored, additional) {
+        const stdlib = await Stdlib.projectDirectory()
+        const watcher = await (options.watch ?? WorkspaceWatch.watchWorkspace)(
+          root,
+          change,
+          error,
+          ignored,
+          [...new Set([stdlib, ...additional ?? []])],
+        )
+        return {
+          dispose: () => watcher.dispose(),
+          async updateDirectories(directories, excluded) {
+            await watcher.updateDirectories?.([...new Set([stdlib, ...directories])], excluded)
+          },
+        }
+      },
+      schedule: options.schedule,
     })
   }
 
@@ -130,20 +174,19 @@ class WorkspaceSession {
     const revision = `r${request.id}`
     const timings = request.timings
     timings.record('workspace.queue', request.queuedAtMs)
-    const { tree } = this.parser.parse(request.source, timings)
-    const document = transform(tree, timings)
-    const stages = skippedStages()
-    if (!document) {
+    const stages = createSkippedStages()
+    const files = await this.build(request)
+    if (files === undefined) {
       return { status: 'invalid', revision, timings: timings.samples, stages }
     }
-    const code = (this.options.compile ?? compile)(document, { revision }, timings)
-    const output = { revision, source: request.source, code, timings: timings.samples, stages }
+    const output = { revision, source: request.source, files, timings: timings.samples, stages }
     this.options.onExpected?.(revision, request.startedAtMs)
     for (const listener of this.expectedListeners) {
       listener(revision, request.startedAtMs)
     }
-    await WorkspacePublish(timings, this.publishCallback, output, isCurrent, timings)
-    if (!isCurrent()) {
+    const publicationStartedAtMs = Time.timestampMs()
+    await timings.run(Publish, this.publishCallback, output, isCurrent)
+    if (!isCurrent() || this.publicationOutcome?.status === 'superseded') {
       return { status: 'superseded', revision, timings: timings.samples, stages }
     }
     this.lastGood = revision
@@ -151,14 +194,75 @@ class WorkspaceSession {
       listener({
         revision,
         startedAtMs: request.startedAtMs,
+        publicationStartedAtMs,
         publishedAtMs: Time.timestampMs(),
         timings: timings.samples,
+        outcome: this.publicationOutcome,
       })
     }
     return { status: 'published', revision, timings: timings.samples, stages }
   }
 
-  private async publish(output: CompiledApp, isCurrent: () => boolean, timings: Timings): Promise<void> {
+  private async build(request: CompileRequest): Promise<Readonly<Record<string, string>> | undefined> {
+    const progress = this.options.onProgress
+    progress?.('Parsing Tao source…')
+    const tree = request.timings.run(this.parser.parse, request.source)
+    progress?.('Tao source parsing complete; transforming AST…')
+    const document = request.timings.run(transform, tree)
+    if (!document) {
+      return undefined
+    }
+    progress?.('Resolving source modules and visibility…')
+    await request.timings.run(LoadSources, this.options.beforeLoad)
+    const sources = await request.timings.run(
+      loadModules,
+      { path: request.path ?? '<memory>', document },
+      {
+        directory: this.directory,
+        resolveProject: (importer, alias) => this.resolveProject(importer, alias),
+        observeProjectSources: this.options.observeProjectSources,
+        includeModuleRequirements: this.options.includeModuleRequirements,
+      },
+      this.parser,
+    )
+    const program = request.timings.run(LinkModules, Path.resolve(request.path ?? '<memory>'), sources)
+    const prepared = await request.timings.run(
+      PrepareDependencies,
+      this.options.beforeCompile,
+      program,
+      files => this.files.watchPipelineFiles(files),
+    )
+    this.acceptSnapshots(prepared?.snapshotDirectories ?? [])
+    await this.files.updatePipelineDirectories(
+      prepared?.watchDirectories ?? [],
+      prepared?.watchFiles ?? [],
+      prepared?.snapshotDirectories ?? [],
+    )
+    progress?.('Source modules resolved; generating app code…')
+    const compileOptions = createCompilationOptions(`r${request.id}`, program, prepared)
+    const files = request.timings.run(this.options.compile ?? compile, document, compileOptions)
+    progress?.('App code generation complete.')
+    return files
+  }
+
+  private async resolveProject(importer: string, alias: string): Promise<ProjectResolution> {
+    return alias === 'tao'
+      ? { root: await Stdlib.projectDirectory() }
+      : await this.options.resolveProject?.(importer, alias)
+  }
+
+  private acceptSnapshots(directories: readonly string[]): void {
+    const next = [...directories].sort()
+    const unchanged = next.length === this.snapshotDirectories.length
+      && next.every((path, index) => path === this.snapshotDirectories[index])
+    if (this.application?.publishGenerated && !unchanged) {
+      Errors.ThrowUserInput('Sidecar snapshot changed. Restart the preview session to load its new files.')
+    }
+    this.snapshotDirectories = next
+  }
+
+  private async publish(timings: Timings, output: CompiledApp, isCurrent: () => boolean): Promise<void> {
+    this.publicationOutcome = undefined
     if (this.options.publish) {
       await this.options.publish(output, isCurrent)
       return
@@ -166,39 +270,49 @@ class WorkspaceSession {
     if (!this.output) {
       return
     }
-    await publishBuild(
+    this.publicationOutcome = await publishBuild(
       this.output.buildDirectory,
-      output.code,
+      output.files,
+      output.revision,
       this.prepareRuntimeCallback,
       isCurrent,
       timings,
+      this.options.onProgress,
     )
   }
 
   private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
-    const output = this.output ?? Errors.ThrowUnexpected('Runtime compilation requires a workspace output directory.')
-    this.application ??= await Runtime.create({
-      ...this.options.runtimeOptions,
-      directory: output.runtimeDirectory,
-    })
+    const output = this.output
+      ?? Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
+    if (!this.application) {
+      const runtimeOptions = createWorkspaceRuntimeOptions(this.options, output.runtimeDirectory)
+      const application = await Runtime.create(runtimeOptions)
+      await prepareBuildTypeScript(output.buildDirectory, application)
+      this.application = application
+    }
     return this.application
   }
 }
 
-function publishWorkspace(
-  publish: (output: CompiledApp, isCurrent: () => boolean, timings: Timings) => Promise<void>,
-  output: CompiledApp,
-  isCurrent: () => boolean,
-  timings: Timings,
-): Promise<void> {
-  return publish(output, isCurrent, timings)
+function createCompilationOptions(
+  revision: string,
+  program: LinkedProgram,
+  prepared: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+): CompileOptions {
+  return { revision, program, ...prepared }
 }
 
-function skippedStages(): PipelineStages {
-  return { typecheck: typecheck(), fix: fix(), check: check() }
+function createWorkspaceRuntimeOptions(options: WorkspaceOptions, directory: string): Runtime.RuntimeCreateOptions {
+  return { ...options.runtimeOptions, directory, onProgress: options.onProgress }
 }
 
-function outputPaths(options: WorkspaceOptions): { buildDirectory: string; runtimeDirectory: string } | undefined {
+function createSkippedStages(): PipelineStages {
+  return { typecheck: typecheck(), fix: { stage: 'fix', status: 'skipped' }, check: check() }
+}
+
+function createOutputPaths(
+  options: WorkspaceOptions,
+): WorkspaceOutputPaths | undefined {
   if (options.outputDirectory) {
     const directory = Path.resolve(options.outputDirectory)
     return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'runtime') }
