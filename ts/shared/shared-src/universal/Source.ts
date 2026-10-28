@@ -1,3 +1,5 @@
+import { LineFeedCharacter, LineFeedCharacterCode } from './Characters'
+
 /** Span represents a source range or a syntax node with numeric source indices. */
 export type Span = Range | { readonly range: Range } | { readonly startIndex: number; readonly endIndex: number }
 
@@ -43,7 +45,8 @@ export const compareByRange = (left: Span, right: Span): number =>
   startOf(left) - startOf(right) || endOf(left) - endOf(right)
 
 /** lineStartBefore returns the first offset after the nearest preceding LF. */
-export const lineStartBefore = (source: string, offset: number): number => source.lastIndexOf('\n', offset) + 1
+export const lineStartBefore = (source: string, offset: number): number =>
+  source.lastIndexOf(LineFeedCharacter, offset) + 1
 
 /** slice extracts source text using a span or explicit UTF-16 offsets. */
 export function slice(source: string, span: Span): string
@@ -63,7 +66,7 @@ export function positionAt(source: string, offset: number): SourcePosition {
   let line = 0
   let lineStart = 0
   for (let index = 0; index < offset; index++) {
-    if (source.charCodeAt(index) === 10) {
+    if (source.charCodeAt(index) === LineFeedCharacterCode) {
       line++
       lineStart = index + 1
     }
@@ -76,7 +79,7 @@ export function offsetAt(source: string, position: SourcePosition): number {
   let line = 0
   let lineStart = 0
   for (let index = 0; index < source.length && line < position.line; index++) {
-    if (source.charCodeAt(index) === 10) {
+    if (source.charCodeAt(index) === LineFeedCharacterCode) {
       line++
       lineStart = index + 1
     }
