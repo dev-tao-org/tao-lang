@@ -1,5 +1,6 @@
 import * as CST from '@cst'
 import type { Field, NodeType, SyntaxNode, Token } from '@cst'
+import { Source } from '@shared'
 import { NodeContext } from '../formatter/NodeFormat'
 import { linesAt } from './Plan'
 
@@ -96,7 +97,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
       first,
       last: suffix?.type === 'TypeScript' ? end - 1 : last,
       preserve: this.plan.tokens.slice(first, end).some(node => CST.IsComment(node))
-        || this.plan.source.slice(this.node.startIndex, this.plan.tokens[end - 1]!.endIndex).includes('\n'),
+        || Source.slice(this.plan.source, Source.startToEnd(this.node, this.plan.tokens[end - 1]!)).includes('\n'),
       breaks: [...breaks, ...suffix ? [end] : []],
       indentStart: first + 1,
       indentEnd: end,

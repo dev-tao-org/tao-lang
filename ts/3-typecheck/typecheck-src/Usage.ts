@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { type Range, Switch, Timings } from '@shared'
+import { Range, Source, Switch, Timings } from '@shared'
 import { deriveNamespaceFromPath } from './Modules'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
@@ -27,7 +27,7 @@ const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Do
     visitDeclaration(declaration, scope)
   }
   return scope.all.filter(binding => binding.report && !binding.used).map(createUsageWarning)
-    .sort((left, right) => left.range.start - right.range.start)
+    .sort(Source.compareByRange)
 })
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {

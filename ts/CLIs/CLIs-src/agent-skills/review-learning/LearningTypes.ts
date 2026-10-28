@@ -1,4 +1,4 @@
-import type { Range } from '@shared'
+import { Range } from '@shared'
 
 /** Correction retains human evidence separately from candidate detection. */
 export type Correction = {

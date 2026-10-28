@@ -1,3 +1,4 @@
+import { Range } from '@shared'
 import { Tests } from '@shared/os'
 import type * as vscode from 'vscode'
 import { formattingProvider } from '../tao-ide-extension-src/Formatting'
@@ -17,7 +18,7 @@ Tests.test('editor formatting returns range edits and discards results for a cha
     if (changeVersion) {
       snapshot.version++
     }
-    return [{ range: { start: 3, end: 5 }, text: ' ' }]
+    return [{ range: Range(3, 5), text: ' ' }]
   })
   const options = { tabSize: 2, insertSpaces: true }
   const cancellation = { isCancellationRequested: false } as vscode.CancellationToken

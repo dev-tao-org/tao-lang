@@ -1,4 +1,4 @@
-import { type Range, Time } from '@shared'
+import { Range, Source, Time } from '@shared'
 import { type Node, type Query } from 'web-tree-sitter'
 
 /** Token is a syntax query capture mapped to an editor source range. */
@@ -24,10 +24,7 @@ export function collectTokens(query: Query, node: Node, baseOffset = 0, measure?
         const kind = tokenKind(capture.name)
         return kind
           ? [{
-            range: {
-              start: baseOffset + capture.node.startIndex,
-              end: baseOffset + capture.node.endIndex,
-            },
+            range: Range(baseOffset + capture.node.startIndex, baseOffset + capture.node.endIndex),
             kind,
           }]
           : []
@@ -38,14 +35,11 @@ export function collectTokens(query: Query, node: Node, baseOffset = 0, measure?
 /** collectDiagnostics returns ERROR and missing nodes as source diagnostics. */
 export function collectDiagnostics(root: Node, baseOffset = 0): Diagnostic[] {
   return findNodes(root, 'ERROR').map(node => ({
-    range: {
-      start: baseOffset + node.startIndex,
-      end: baseOffset + Math.max(node.endIndex, node.startIndex + 1),
-    },
+    range: Range(baseOffset + node.startIndex, baseOffset + Math.max(node.endIndex, node.startIndex + 1)),
     message: 'Unexpected syntax',
   })).concat(
     findNodes(root, 'MISSING').map(node => ({
-      range: { start: baseOffset + node.startIndex, end: baseOffset + node.startIndex },
+      range: Range(baseOffset + node.startIndex, baseOffset + node.startIndex),
       message: `Expected ${node.type}`,
     })),
   )
@@ -61,9 +55,7 @@ export function uniqueTokens(tokens: Token[]): Token[] {
       ranges.set(key, token)
     }
   }
-  return [...ranges.values()].sort((left, right) =>
-    left.range.start - right.range.start || left.range.end - right.range.end
-  )
+  return [...ranges.values()].sort(Source.compareByRange)
 }
 
 /** uniqueDiagnostics removes duplicate diagnostics and sorts by source range. */
@@ -76,7 +68,7 @@ export function uniqueDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
     }
     seen.add(key)
     return true
-  }).sort((left, right) => left.range.start - right.range.start || left.range.end - right.range.end)
+  }).sort(Source.compareByRange)
 }
 
 /** findNodes recursively collects nodes with a type or missing-node flag. */

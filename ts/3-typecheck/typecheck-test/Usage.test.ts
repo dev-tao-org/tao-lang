@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { S } from '@shared'
+import { S, Source } from '@shared'
 import { Tests } from '@shared/os'
 import { unusedWarnings } from '../typecheck-src/Usage'
 
@@ -33,7 +33,7 @@ Tests.test('unused warnings follow lexical bindings, captures and namespace uses
   const ast = transform(createParser().parse(source))!
   Tests.expect(ast).toBeDefined()
   const warnings = unusedWarnings(ast)
-  Tests.expect(warnings.map(warning => [warning.code, source.slice(warning.range.start, warning.range.end)]))
+  Tests.expect(warnings.map(warning => [warning.code, Source.slice(source, warning)]))
     .toEqual([
       ['unused-import', 'Caption'],
       ['unused-import', 'Other'],
@@ -55,7 +55,7 @@ Tests.test('qualified namespace use ignores an ordinary local binding with the s
     }
   `
   const ast = transform(createParser().parse(source))!
-  Tests.expect(unusedWarnings(ast).map(warning => [warning.code, source.slice(warning.range.start, warning.range.end)]))
+  Tests.expect(unusedWarnings(ast).map(warning => [warning.code, Source.slice(source, warning)]))
     .toEqual([['unused-declaration', 'UI']])
 })
 
@@ -77,7 +77,7 @@ Tests.test('nested view bindings and parameters follow their lexical owner', () 
     }
   `
   const ast = transform(createParser().parse(source))!
-  Tests.expect(unusedWarnings(ast).map(warning => source.slice(warning.range.start, warning.range.end))).toEqual([
+  Tests.expect(unusedWarnings(ast).map(warning => Source.slice(source, warning))).toEqual([
     'UnusedHelper',
   ])
   Tests.expect(AST.GetDeclarations(ast)).toHaveLength(2)

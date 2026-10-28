@@ -1,4 +1,4 @@
-import { Errors, type Range } from '@shared'
+import { Errors, Range, Source } from '@shared'
 
 /** SourceEdit replaces one UTF-16 source interval without retaining CST nodes. */
 export type SourceEdit = { range: Range; text: string }
@@ -11,10 +11,10 @@ export function applyEdits(source: string, edits: readonly SourceEdit[]): string
     if (isInvalidEdit(edit, offset, source.length)) {
       Errors.ThrowShouldNeverHappen('Source edits overlap or leave their snapshot.')
     }
-    parts.push(source.slice(offset, edit.range.start), edit.text)
+    parts.push(Source.slice(source, offset, edit.range.start), edit.text)
     offset = edit.range.end
   }
-  parts.push(source.slice(offset))
+  parts.push(Source.slice(source, offset, source.length))
   return parts.join('')
 }
 

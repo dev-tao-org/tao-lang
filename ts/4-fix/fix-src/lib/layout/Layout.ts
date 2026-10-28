@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { Range, Timings } from '@shared'
+import { Source, Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
@@ -30,13 +30,13 @@ const emitLayout = Timings.measure('formatter.layout', function(
       // This gap establishes the group's starting column; breaking changes only later gaps.
       breakList(plan, group)
     }
-    if (gap.editable && whitespace !== plan.source.slice(gap.range.start, gap.range.end)) {
+    if (gap.editable && whitespace !== Source.slice(plan.source, gap)) {
       edits.push({ range: gap.range, text: whitespace })
     }
     const token = plan.tokens[index]
     const text = formatToken(plan, index, options, timings)
     if (token && text !== token.text) {
-      edits.push({ range: Range(token.startIndex, token.endIndex), text })
+      edits.push({ range: Source.from(token), text })
     }
     column = advanceColumn(column, text)
   }
@@ -59,7 +59,7 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     newline: plan.newline,
   })
   if (body === undefined) {
-    plan.skipped.push(Range(token.startIndex, token.endIndex))
+    plan.skipped.push(Source.from(token))
     return token.text
   }
   return '```ts' + plan.newline + body.trimEnd()
@@ -107,7 +107,7 @@ function breakList(plan: LayoutPlan, group: ListGroup): void {
 
 function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
   if (!gap.editable) {
-    return plan.source.slice(gap.range.start, gap.range.end)
+    return Source.slice(plan.source, gap)
   }
   return gap.lines > 0
     ? plan.newline.repeat(gap.lines) + ' '.repeat(gap.indent * indent)

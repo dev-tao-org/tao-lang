@@ -1,4 +1,4 @@
-import { Range } from '@shared'
+import { Range, Source } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */
@@ -57,8 +57,7 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
     return 'multiline strings must use S from @shared'
   }
   const lines = layout.split(/\r?\n/)
-  const opening =
-    file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(/^[\t ]*/)![0]
+  const opening = indentationBefore(file.text, node.getStart(file))
   const closing = lines[lines.length - 1]
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
@@ -74,14 +73,22 @@ function isBraceOnlyLine(
   last: number,
 ): boolean {
   if (index === first && index === last) {
-    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, body.getEnd() - 1)
   }
   const lineStart = lineStarts[index]
   const lineEnd = lineStarts[index + 1] ?? source.length
   if (index === first) {
-    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, lineEnd)
   }
-  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
+  return index === last && isBlankSpan(source, lineStart, body.getEnd() - 1)
+}
+
+function isBlankSpan(source: string, start: number, end: number): boolean {
+  return Source.slice(source, start, end).trim() === ''
+}
+
+function indentationBefore(source: string, offset: number): string {
+  return Source.slice(source, Source.lineStartBefore(source, offset), offset).match(/^[\t ]*/)![0]
 }
 
 function isRuntimeString(node: TypeScript.Node): node is TypeScript.StringLiteralLike | TypeScript.TemplateExpression {
@@ -110,15 +117,26 @@ function stringLayout(
   const ranges: Range[] = []
   let previous: TypeScript.TemplateHead | TypeScript.TemplateMiddle = node.head
   for (const span of node.templateSpans) {
-    const rangeStart = previous.end - 2 - node.getStart(file)
-    const rangeEnd = span.literal.getStart(file) + 1 - node.getStart(file)
+    const rangeStart = templateInterpolationStart(previous, node.getStart(file))
+    const rangeEnd = templateInterpolationEnd(span.literal.getStart(file), node.getStart(file))
     ranges.push(Range(rangeStart, rangeEnd))
     if (TypeScript.isTemplateMiddle(span.literal)) {
       previous = span.literal
     }
   }
   for (const range of ranges.reverse()) {
-    layout = layout.slice(0, range.start) + 'x' + layout.slice(range.end)
+    layout = Source.replace(layout, range, 'x')
   }
   return layout
+}
+
+function templateInterpolationStart(
+  previous: TypeScript.TemplateHead | TypeScript.TemplateMiddle,
+  templateStart: number,
+): number {
+  return previous.end - 2 - templateStart
+}
+
+function templateInterpolationEnd(literalStart: number, templateStart: number): number {
+  return literalStart + 1 - templateStart
 }

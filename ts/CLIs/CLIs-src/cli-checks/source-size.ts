@@ -1,3 +1,4 @@
+import { Source } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** sourceSizeDiagnostics enforces the hard line limit on handwritten TypeScript. */
@@ -26,5 +27,9 @@ function isExternalPath(path: string): boolean {
 function hasExternalProvenance(source: string): boolean {
   // Whole-file imports identify their source with @third-party; generators use @generated.
   const comments = TypeScript.getLeadingCommentRanges(source, 0) ?? []
-  return comments.some(comment => /@(?:generated|third-party)\b/u.test(source.slice(comment.pos, comment.end)))
+  return comments.some(comment => isExternalProvenanceComment(source, comment))
+}
+
+function isExternalProvenanceComment(source: string, comment: TypeScript.CommentRange): boolean {
+  return /@(?:generated|third-party)\b/u.test(Source.slice(source, comment.pos, comment.end))
 }

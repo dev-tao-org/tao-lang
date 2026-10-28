@@ -1,3 +1,4 @@
+import { Source } from '@shared'
 import * as TypeScript from 'typescript'
 
 export {
@@ -125,11 +126,11 @@ function hasDescription(text: string, name?: string): boolean {
 
 /** hasValidDocLayout checks the repository JSDoc opening, continuation, and closing layout. */
 function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
-  const lines = source.slice(range.pos, range.end).split(/\r\n|\r|\n/)
+  const lines = Source.slice(source, range.pos, range.end).split(/\r\n|\r|\n/)
   if (lines.length === 1) {
     return true
   }
-  const indentation = source.slice(source.lastIndexOf('\n', range.pos) + 1, range.pos).match(/^[\t ]*/)![0]
+  const indentation = Source.slice(source, Source.lineStartBefore(source, range.pos), range.pos).match(/^[\t ]*/)![0]
   const prefix = indentation + ' *  '
   return /^\/\*\* \S+ \S/.test(lines[0]) && /\S \*\/$/.test(lines[lines.length - 1])
     && lines.slice(1).every(line => line.startsWith(prefix) && /^\S/.test(line.slice(prefix.length)))

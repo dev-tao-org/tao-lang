@@ -1,3 +1,4 @@
+import { Range } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { Correction, LearningState } from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
@@ -142,7 +143,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   for (const file of ['source.ts', 'second.ts']) {
     const text = await FileSystem.readFile(Path.join(root, file), 'utf8')
     const start = text.indexOf('1')
-    edits.push({ file, range: { start, end: start + 1 }, expected: '1', replacement: '2' })
+    edits.push({ file, range: Range(start, start + 1), expected: '1', replacement: '2' })
   }
   await FileSystem.writeFile(
     input,
@@ -209,7 +210,7 @@ async function propose(root: string, scan: string, id: string): Promise<void> {
       id,
       scan,
       analysis: 'Equivalent numeric correction within the explicit scope.',
-      edits: [{ file: 'source.ts', range: { start, end: start + 1 }, expected: '1', replacement: '2' }],
+      edits: [{ file: 'source.ts', range: Range(start, start + 1), expected: '1', replacement: '2' }],
     }),
   )
   await runLearning(['propose', '--repo', root, '--input', input])

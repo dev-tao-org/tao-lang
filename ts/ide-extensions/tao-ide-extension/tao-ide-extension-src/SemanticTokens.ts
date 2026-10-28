@@ -1,3 +1,4 @@
+import { Range } from '@shared'
 import { type Token, uniqueTokens } from './QueryResults'
 
 /** semanticTokenRanges splits enclosing captures around more specific nested captures.
@@ -38,9 +39,13 @@ function innermost(active: Set<Token>): Token | undefined {
 
 function appendRange(ranges: Token[], start: number, end: number, kind: string): void {
   const previous = ranges.at(-1)
-  if (previous?.range.end === start && previous.kind === kind) {
+  if (previous && isAdjacentTokenOfKind(previous, start, kind)) {
     previous.range.end = end
   } else {
-    ranges.push({ range: { start, end }, kind })
+    ranges.push({ range: Range(start, end), kind })
   }
+}
+
+function isAdjacentTokenOfKind(previous: Token, start: number, kind: string): boolean {
+  return previous.range.end === start && previous.kind === kind
 }

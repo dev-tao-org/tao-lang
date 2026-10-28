@@ -1,5 +1,5 @@
 import type { SyntaxNode, Tree } from '@cst'
-import { Errors, Range } from '@shared'
+import { Errors, Range, Source } from '@shared'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
 export type Boundary = {
@@ -49,7 +49,7 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
   for (const [index, node] of tree.rootNode.namedChildren.entries()) {
     valid[index] = isCompleteNode(node)
     if (!valid[index]) {
-      plan.skipped.push(Range(node.startIndex, node.endIndex))
+      plan.skipped.push(Source.from(node))
     }
     collect(plan, node, index, owners, valid[index]!)
   }
@@ -113,12 +113,12 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
   for (let index = 0; index <= plan.tokens.length; index++) {
     const start = plan.tokens[index - 1]?.endIndex ?? 0
     const end = plan.tokens[index]?.startIndex ?? plan.source.length
-    const original = plan.source.slice(start, end)
+    const original = Source.slice(plan.source, start, end)
     const left = owners[index - 1]
     const right = owners[index]
     const interior = hasCompleteNeighbors(left, right, valid)
     plan.gaps.push({
-      range: { start, end },
+      range: Range(start, end),
       spaces: index === 0 || index === plan.tokens.length ? 0 : 1,
       lines: Math.min(2, (original.match(/\n/g) ?? []).length),
       indent: 0,

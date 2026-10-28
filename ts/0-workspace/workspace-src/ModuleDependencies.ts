@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Range, Try } from '@shared'
+import { Errors, Range, Source, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
@@ -236,7 +236,7 @@ async function replaceRequirements(
   }
   for (const [path, values] of grouped) {
     let bytes = new TextEncoder().encode(values[0]!.source)
-    for (const item of values.sort((left, right) => right.range.start - left.range.start)) {
+    for (const item of values.sort((left, right) => Source.compareByRange(right, left))) {
       const replacement = new TextEncoder().encode(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, S, Timings } from '@shared'
+import { Errors, Range, S, Source, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../ast-gen-src/Transform'
@@ -13,21 +13,21 @@ Tests.test(
     const result = timings.run(transform, tree)
     Tests.expect(result?.root).toStrictEqual({
       kind: 'File',
-      range: { start: 0, end: 34 },
+      range: Range(0, 34),
       block: {
         kind: 'Block',
-        range: { start: 0, end: 34 },
+        range: Range(0, 34),
         statements: [{
           kind: 'AppDeclaration',
-          range: { start: 0, end: 34 },
-          name: { kind: 'Name', range: { start: 4, end: 15 }, value: 'Performance' },
+          range: Range(0, 34),
+          name: { kind: 'Name', range: Range(4, 15), value: 'Performance' },
           block: {
             kind: 'Block',
-            range: { start: 16, end: 34 },
+            range: Range(16, 34),
             statements: [{
               kind: 'RootDeclaration',
-              range: { start: 20, end: 32 },
-              view: { kind: 'Name', range: { start: 25, end: 32 }, value: 'Preview' },
+              range: Range(20, 32),
+              view: { kind: 'Name', range: Range(25, 32), value: 'Preview' },
             }],
           },
           visibility: undefined,
@@ -175,7 +175,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
   Tests.expect(result?.root.block.statements[5]).toMatchObject({
     body: { kind: 'ForeignView', path: { value: './FormattedDate.tsx' } },
   })
-  Tests.expect(result?.root.block.statements.map(node => source.slice(node.range.start, node.range.end))).toEqual([
+  Tests.expect(result?.root.block.statements.map(node => Source.slice(source, node.range))).toEqual([
     'requires github:acme/widgets version v1.2.0 as widgets',
     'requires file:../widgets',
     'requires npm:date-fns version 4.1.0',

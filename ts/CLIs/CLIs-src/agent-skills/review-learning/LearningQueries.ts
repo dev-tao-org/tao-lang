@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Range } from '@shared'
 import { Path, Platform } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { createConformanceProgram } from '../../cli-checks/source-conformance-program'
@@ -40,7 +40,7 @@ function queryProgram(program: TypeScript.Program, root: string, files: string[]
         const start = node.getStart(source)
         result.push({
           file,
-          range: { start, end: node.end },
+          range: Range(start, node.end),
           line: source.getLineAndCharacterOfPosition(start).line + 1,
           message: `${rule.kind} candidate; contextual judgment required`,
         })

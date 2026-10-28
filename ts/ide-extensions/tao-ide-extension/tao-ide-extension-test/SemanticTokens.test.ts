@@ -1,3 +1,4 @@
+import { Range, Source } from '@shared'
 import { Tests } from '@shared/os'
 import { semanticTokenRanges } from '../tao-ide-extension-src/SemanticTokens'
 
@@ -6,11 +7,11 @@ Tests.test('editor tokens retain expressions inside template strings without ove
   const name = source.indexOf('name')
   const method = source.indexOf('toUpperCase')
   const tokens = semanticTokenRanges([
-    { range: { start: 0, end: source.length }, kind: 'string' },
-    { range: { start: name, end: name + 4 }, kind: 'variable' },
-    { range: { start: method, end: method + 11 }, kind: 'function' },
+    { range: Range(0, source.length), kind: 'string' },
+    { range: Range(name, name + 4), kind: 'variable' },
+    { range: Range(method, method + 11), kind: 'function' },
   ])
-  Tests.expect(tokens.map(token => [source.slice(token.range.start, token.range.end), token.kind])).toEqual([
+  Tests.expect(tokens.map(token => [Source.slice(source, token), token.kind])).toEqual([
     ['`Hello ${', 'string'],
     ['name', 'variable'],
     ['.', 'string'],

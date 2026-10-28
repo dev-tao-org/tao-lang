@@ -1,6 +1,6 @@
 import { format, type FormatResult } from '@fix/Format'
 import type { LayoutOptions } from '@fix/lib/layout/Layout'
-import { Errors, Time, Try } from '@shared'
+import { Errors, Source, Time, Try } from '@shared'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from 'web-tree-sitter'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
@@ -141,7 +141,7 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
     if (bodyEnd < bodyStart) {
       continue
     }
-    const embedded = source.slice(bodyStart, bodyEnd)
+    const embedded = Source.slice(source, bodyStart, bodyEnd)
     const tsxTree = measure(options, 'tsx.parse', () => options.tsxParser.parse(embedded))
     if (!tsxTree) {
       continue

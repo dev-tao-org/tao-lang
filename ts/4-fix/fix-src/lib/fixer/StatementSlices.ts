@@ -1,6 +1,6 @@
 import * as CST from '@cst'
 import type { SyntaxNode, Tree } from '@cst'
-import type { Range } from '@shared'
+import { Range, Source } from '@shared'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
 export type StatementSlice = { range: Range; node: SyntaxNode; commented: boolean }
@@ -23,7 +23,7 @@ export function collectStatementSlices(source: string, tree: Tree): StatementSli
     }
     // This statement consumes pending leading comments and retains comments nested inside it.
     slices.push({
-      range: { start: leadingCommentStart ?? node.startIndex, end: node.endIndex },
+      range: Range(leadingCommentStart ?? node.startIndex, node.endIndex),
       node,
       commented: leadingCommentStart !== undefined || containsComment(node),
     })
@@ -37,7 +37,7 @@ function isSameLineTrailingComment(
   previous: StatementSlice | undefined,
   comment: SyntaxNode,
 ): previous is StatementSlice {
-  return previous !== undefined && !source.slice(previous.range.end, comment.startIndex).includes('\n')
+  return previous !== undefined && !Source.slice(source, previous.range.end, comment.startIndex).includes('\n')
 }
 
 function containsComment(node: SyntaxNode): boolean {

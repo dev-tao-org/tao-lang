@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { Range } from '@shared'
 import { Tests } from '@shared/os'
 import { linkModules } from '../typecheck-src/LinkModules'
 import { collectReferencedNames } from '../typecheck-src/LinkModuleValidation'
@@ -58,7 +59,7 @@ function render(
 ): AST.RenderViewExpressionStatement {
   return {
     kind: 'RenderViewExpressionStatement',
-    range: { start: 0, end: 0 },
+    range: Range(0, 0),
     expression: {
       ...Fixtures.createViewRender(target),
       block: children.length > 0 ? Fixtures.createBlock(children) : undefined,

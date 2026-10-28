@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, sourcePositionAt, Switch, Time, Try } from '@shared'
+import { Errors, Source, Switch, Time, Try } from '@shared'
 
 /** TestDriver runs one isolated app journey against a platform's visible UI. */
 export type TestDriver = {
@@ -142,5 +142,5 @@ function caseLabel(suite: AST.TestsDeclaration, test: AST.TestDeclaration, optio
 }
 
 function lineOf(node: AST.Node, source: string): number {
-  return sourcePositionAt(source, node.range.start).line + 1
+  return Source.positionAt(source, node.range.start).line + 1
 }

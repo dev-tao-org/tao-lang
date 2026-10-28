@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import * as CST from '@cst'
 import type { Tree } from '@cst'
+import { Range, Source } from '@shared'
 import { collectStatementSlices, type StatementSlice } from '../lib/fixer/StatementSlices'
 import type { SourceEdit } from '../Source'
 
@@ -16,11 +17,11 @@ export function organizeImports(source: string, tree: Tree, ast: AST.Document): 
   const remaining = slices.filter(slice => !byStart.has(slice.node.startIndex))
   const newline = source.includes('\r\n') ? '\r\n' : '\n'
   const importText = groupImports(source, imported, byStart, newline).join(newline)
-  const body = remaining.map(slice => source.slice(slice.range.start, slice.range.end)).join(newline.repeat(2))
+  const body = remaining.map(slice => Source.slice(source, slice)).join(newline.repeat(2))
   const text = importText + (body ? newline.repeat(2) + body : '')
   const start = slices[0]!.range.start
   const end = slices.at(-1)!.range.end
-  return source.slice(start, end) === text ? [] : [{ range: { start, end }, text }]
+  return Source.slice(source, start, end) === text ? [] : [{ range: Range(start, end), text }]
 }
 
 type Import = AST.UseStatement | AST.UsePackageStatement
@@ -46,7 +47,7 @@ function groupImports(
         const duplicate = isDuplicateImport(statement, seenImports)
         recordImports(statement, seenImports)
         output.push(
-          duplicate ? retainComments(source, slice, newline) : source.slice(slice.range.start, slice.range.end),
+          duplicate ? retainComments(source, slice, newline) : Source.slice(source, slice),
         )
       }
     } else {
@@ -58,12 +59,12 @@ function groupImports(
 }
 
 function retainComments(source: string, slice: StatementSlice, newline: string, statementText = ''): string {
-  const comments = collectCommentNodes(slice.node).map(node => source.slice(node.startIndex, node.endIndex))
+  const comments = collectCommentNodes(slice.node).map(node => Source.slice(source, node))
   const retained = [
-    source.slice(slice.range.start, slice.node.startIndex),
+    Source.slice(source, slice.range.start, slice.node.startIndex),
     ...comments,
     statementText,
-    source.slice(slice.node.endIndex, slice.range.end),
+    Source.slice(source, slice.node.endIndex, slice.range.end),
   ]
     .map(text => text.trim())
     .filter(Boolean)
@@ -86,7 +87,7 @@ function renderCommentedNamedImport(
 ): string {
   const newImports = collectNewNamedImports(statement, seenImports)
   if (newImports.length === statement.imports.length) {
-    return source.slice(slice.range.start, slice.range.end)
+    return Source.slice(source, slice)
   }
   return retainComments(source, slice, newline, renderNamedImport(statement, newImports))
 }

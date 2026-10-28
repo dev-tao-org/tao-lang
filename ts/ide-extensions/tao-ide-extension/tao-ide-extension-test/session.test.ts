@@ -1,5 +1,5 @@
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Try } from '@shared'
+import { Source, Try } from '@shared'
 import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
 import { createWasmDocumentSession } from '../tao-ide-extension-src/core'
 
@@ -32,20 +32,14 @@ Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', asyn
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
     Tests.expect(
-      result.tokens.some(token =>
-        token.kind === 'keyword' && source.slice(token.range.start, token.range.end) === 'app'
-      ),
+      result.tokens.some(token => token.kind === 'keyword' && Source.slice(source, token) === 'app'),
     ).toBe(true)
     Tests.expect(
-      result.tokens.some(token =>
-        token.kind === 'property' && source.slice(token.range.start, token.range.end) === 'padding'
-      ),
+      result.tokens.some(token => token.kind === 'property' && Source.slice(source, token) === 'padding'),
     )
       .toBe(true)
     Tests.expect(
-      result.tokens.some(token =>
-        token.kind === 'keyword' && source.slice(token.range.start, token.range.end) === 'return'
-      ),
+      result.tokens.some(token => token.kind === 'keyword' && Source.slice(source, token) === 'return'),
     )
       .toBe(true)
   }, { finally: runtime.dispose })
@@ -62,7 +56,7 @@ Tests.test('requirements and import source markers receive keyword highlights', 
       Tests.expect(
         result.tokens.some(token =>
           token.kind === 'keyword' && token.range.start === start
-          && source.slice(token.range.start, token.range.end) === keyword
+          && Source.slice(source, token) === keyword
         ),
       ).toBe(true)
     }

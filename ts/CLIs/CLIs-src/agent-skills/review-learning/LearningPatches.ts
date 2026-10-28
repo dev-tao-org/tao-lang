@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Source } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import * as LearningStore from './LearningStore'
@@ -107,9 +107,7 @@ function hasChangedSnapshot(
 }
 
 function buildOutput(proposal: Proposal, file: string, original: string): string {
-  const edits = proposal.edits.filter(edit => edit.file === file).sort((left, right) =>
-    left.range.start - right.range.start
-  )
+  const edits = proposal.edits.filter(edit => edit.file === file).sort(Source.compareByRange)
   let previousEnd = -1
   let previousStart = -1
   for (const edit of edits) {
@@ -121,7 +119,7 @@ function buildOutput(proposal: Proposal, file: string, original: string): string
   }
   let result = original
   for (const edit of edits.toReversed()) {
-    result = result.slice(0, edit.range.start) + edit.replacement + result.slice(edit.range.end)
+    result = Source.replace(result, edit, edit.replacement)
   }
   return result
 }
@@ -133,7 +131,7 @@ function hasInvalidEdit(
   previousEnd: number,
 ): boolean {
   return edit.range.start === previousStart || edit.range.start <= previousEnd || edit.range.end > original.length
-    || original.slice(edit.range.start, edit.range.end) !== edit.expected
+    || Source.slice(original, edit) !== edit.expected
 }
 
 async function retainOutputs(root: string, proposal: Proposal): Promise<void> {

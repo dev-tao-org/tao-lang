@@ -124,13 +124,13 @@ function program(source: string, requirement: string): LinkedProgram {
 }
 
 function projectDocument(source: string, requirement: string): AST.Document {
-  const sourceRange = Range(0, source.length)
+  const range = Range(0, source.length)
   return {
     root: {
-      range: sourceRange,
+      range,
       kind: 'File',
       block: {
-        range: sourceRange,
+        range,
         kind: 'Block',
         statements: [projectView(source), projectRequirement(requirement)],
       },
@@ -139,18 +139,18 @@ function projectDocument(source: string, requirement: string): AST.Document {
 }
 
 function projectView(source: string): AST.ViewDeclaration {
-  const sourceRange = Range(0, source.length)
+  const range = Range(0, source.length)
   return {
-    range: sourceRange,
+    range,
     kind: 'ViewDeclaration',
     name: { kind: 'Name', range: Range(), value: 'Main' },
     visibility: undefined,
     parameters: [],
     body: {
-      range: sourceRange,
+      range,
       kind: 'Block',
       statements: [{
-        range: sourceRange,
+        range,
         kind: 'RenderInjectStatement',
         injection: { kind: 'Injection', range: Range(), captures: [], code: '' },
       }],
