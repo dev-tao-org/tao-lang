@@ -1,0 +1,20 @@
+import type { TimingSample } from '@shared'
+
+/** describePreviewOutput joins browser scenarios to watcher timings by revision, never by array position. */
+export function describePreviewOutput<Timing extends OutputTiming>(capture: OutputCapture<Timing>) {
+  return capture.results.map(result => {
+    const timing = capture.reloads.findLast(timing => timing.revision === result.revision)
+    return { scenario: result.scenario, timing }
+  })
+}
+
+type OutputTiming = {
+  revision: string
+  saveToHmrMs: number
+  saveToAppliedMs: number
+  pipeline: readonly TimingSample[]
+}
+type OutputCapture<Timing> = {
+  results: readonly { scenario: string; revision: string }[]
+  reloads: readonly Timing[]
+}

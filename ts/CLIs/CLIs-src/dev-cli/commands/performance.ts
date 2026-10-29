@@ -1,10 +1,11 @@
-import { formatTimings, IO } from '@cli-kit'
+import { formatTimings, IO, resolveCallerPath } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Timings } from '@shared'
 import { Artifacts, FileSystem, Path, Repo, Tests } from '@shared/os'
 import { createProjectDependencyOptions } from '@workspace/dependencies/Options'
 import { prepareDependencies } from '@workspace/dependencies/Store'
 import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
+import { describePreviewOutput } from '../../../../perf/perf-src/PreviewOutput'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
@@ -18,7 +19,11 @@ export default registerCommand({
     description: 'parser, formatter, reactivity, modules, extension, preview or record (current commit).',
     defaultValue: 'parser',
   }],
-  action: Timings.createTopLevelTimer(async function(timings, target: string) {
+  options: [{ flags: '--fixture <path>', description: 'Canonical Tao fixture for preview comparisons.' }],
+  action: Timings.createTopLevelTimer(async function(timings, target: string, options: { fixture?: string }) {
+    if (options.fixture && target !== 'preview') {
+      Errors.ThrowUserInput('--fixture is available only for performance preview.')
+    }
     if (target === 'modules') {
       return runModules()
     }
@@ -44,7 +49,10 @@ export default registerCommand({
       return
     }
     if (target === 'preview') {
-      await runPreview()
+      const source = options.fixture
+        ? await FileSystem.readFile(resolveCallerPath(options.fixture), 'utf8')
+        : undefined
+      await runPreview(source)
       return
     }
     const { parserPerformance } = await import('../../../../perf/perf-src/parser-performance')
@@ -131,9 +139,13 @@ async function runPreview(initialSource?: string) {
     initialSource: initialSource ?? await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
-  for (const [index, timing] of result.reloads.entries()) {
+  for (const { scenario, timing } of describePreviewOutput(result)) {
+    if (!timing) {
+      IO.warn(`${scenario}: no matching watcher timing; browser samples remain in the raw report.`)
+      continue
+    }
     IO.print(
-      `${result.results[index].scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
+      `${scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
         + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
     )
     IO.print('  ' + formatTimings(timing.pipeline))
