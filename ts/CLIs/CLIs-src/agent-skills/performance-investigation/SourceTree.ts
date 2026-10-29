@@ -1,0 +1,79 @@
+import { Errors, NullCharacter, Try } from '@shared'
+import { FileSystem, Path } from '@shared/os'
+import { captureGit } from './Git'
+
+/** TreeEntry retains Git's source type, content identity and literal path. */
+export type TreeEntry = { mode: string; hash: string; path: string }
+
+/** readTreeEntries reads literal paths including whitespace without Git's display quoting. */
+export async function readTreeEntries(root: string, tree: string, env?: Record<string, string>): Promise<TreeEntry[]> {
+  const output = await captureGit(root, ['ls-tree', '-rz', tree], { env })
+  return output.split(NullCharacter).filter(Boolean).map(entry => {
+    const separator = entry.indexOf('\t')
+    const [mode, , hash] = entry.slice(0, separator).split(' ')
+    return { mode, hash, path: entry.slice(separator + 1) }
+  })
+}
+
+/** assertNoContentTransforms rejects attributes that can change saved or materialized source bytes. */
+export async function assertNoContentTransforms(root: string, files: string[], cached = false): Promise<void> {
+  const args = ['check-attr', '-z', '--stdin', 'filter', 'working-tree-encoding', 'ident', 'text', 'eol']
+  if (cached) {
+    args.splice(1, 0, '--cached')
+  }
+  const input = files.join(NullCharacter) + NullCharacter
+  const attributes = (await captureGit(root, args, { input })).split(NullCharacter)
+  for (let offset = 0; offset + 2 < attributes.length; offset += 3) {
+    const [path, attribute, value] = attributes.slice(offset, offset + 3)
+    if (value !== 'unspecified' && value !== 'unset') {
+      Errors.ThrowUserInput(`Snapshot cannot preserve Git transform ${attribute}=${value} for ${path}.`)
+    }
+  }
+}
+
+/** assertRegisteredGitlinks rejects embedded repositories without a declared transferable submodule boundary. */
+export async function assertRegisteredGitlinks(root: string, tree: string, env: Record<string, string>): Promise<void> {
+  const links = (await readTreeEntries(root, tree, env)).filter(entry => entry.mode === GitlinkMode)
+  if (!links.length) {
+    return
+  }
+  await Try(() => captureGit(root, ['submodule', 'status', '--', ...links.map(entry => entry.path)], { env }), {
+    catch() {
+      Errors.ThrowUserInput('An undeclared embedded Git repository cannot be snapshotted; capture it separately.')
+    },
+  })
+  const dirty = await captureGit(root, [
+    'submodule',
+    'foreach',
+    '--quiet',
+    '--recursive',
+    'git --no-optional-locks status --porcelain=v1 -uall',
+  ], { env })
+  if (dirty) {
+    Errors.ThrowUserInput('A submodule has saved changes; snapshot it separately before measuring the parent.')
+  }
+}
+
+/** assertMaterializedTree verifies raw bytes, symlinks and executable modes independently of Git status. */
+export async function assertMaterializedTree(root: string, entries: TreeEntry[]): Promise<void> {
+  for (const entry of entries.filter(entry => entry.mode !== GitlinkMode)) {
+    const path = Path.join(root, entry.path)
+    const stat = await FileSystem.lstat(path)
+    const symbolic = entry.mode === SymlinkMode
+    const hash = symbolic
+      ? await captureGit(root, ['hash-object', '--stdin'], { input: await FileSystem.readlink(path) })
+      : await captureGit(root, ['hash-object', '--no-filters', '--', entry.path])
+    const matchingType = stat.isSymbolicLink() === symbolic && hasExpectedMode(entry, stat.mode)
+    if (hash.trim() !== entry.hash || !matchingType) {
+      Errors.ThrowUserInput(`Received source differs from the captured Git tree: ${entry.path}.`)
+    }
+  }
+}
+
+const GitlinkMode = '160000'
+const SymlinkMode = '120000'
+const ExecutableMode = '100755'
+
+function hasExpectedMode(entry: TreeEntry, mode: number): boolean {
+  return entry.mode === SymlinkMode || Boolean(mode & 0o111) === (entry.mode === ExecutableMode)
+}
