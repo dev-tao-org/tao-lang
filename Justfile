@@ -39,6 +39,12 @@ doctor *ARGS:
 shell-setup:
     ./dev shell-setup --configure
 
+# Install the official Tailscale macOS app; sign in and approve native prompts afterward
+[group('Setup')]
+[positional-arguments]
+tailscale-install *ARGS:
+    ./dev tailscale-install "$@"
+
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
 clean:
