@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { Errors, LineFeedCharacter, NullCharacter, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { captureGit } from './Git'
 
@@ -56,16 +56,17 @@ export async function assertRegisteredGitlinks(root: string, tree: string, env: 
 
 /** assertMaterializedTree verifies raw bytes, symlinks and executable modes independently of Git status. */
 export async function assertMaterializedTree(root: string, entries: TreeEntry[]): Promise<void> {
+  const hashes = await readRegularFileHashes(root, entries)
   for (const entry of entries.filter(entry => entry.mode !== GitlinkMode)) {
     const path = Path.join(root, entry.path)
     const stat = await FileSystem.lstat(path)
     const symbolic = entry.mode === SymlinkMode
     const hash = symbolic
       ? await captureGit(root, ['hash-object', '--stdin'], { input: await FileSystem.readlink(path) })
-      : await captureGit(root, ['hash-object', '--no-filters', '--', entry.path])
+      : hashes.get(entry.path)!
     const matchingType = stat.isSymbolicLink() === symbolic && hasExpectedMode(entry, stat.mode)
     if (hash.trim() !== entry.hash || !matchingType) {
-      Errors.ThrowUserInput(`Received source differs from the captured Git tree: ${entry.path}.`)
+      Errors.ThrowUserInput(`Saved source differs from the captured Git tree: ${entry.path}.`)
     }
   }
 }
@@ -73,6 +74,23 @@ export async function assertMaterializedTree(root: string, entries: TreeEntry[])
 const GitlinkMode = '160000'
 const SymlinkMode = '120000'
 const ExecutableMode = '100755'
+const HashBatchSize = 128
+
+async function readRegularFileHashes(root: string, entries: TreeEntry[]): Promise<Map<string, string>> {
+  const files = entries.filter(entry => entry.mode !== GitlinkMode && entry.mode !== SymlinkMode)
+  const hashes = new Map<string, string>()
+  for (let offset = 0; offset < files.length; offset += HashBatchSize) {
+    const batch = files.slice(offset, offset + HashBatchSize)
+    const paths = batch.map(entry => entry.path)
+    const output = await captureGit(root, ['hash-object', '--no-filters', '--', ...paths])
+    const values = output.trim().split(LineFeedCharacter)
+    if (values.length !== batch.length) {
+      Errors.ThrowUserInput('Git did not return one raw content hash per source file.')
+    }
+    batch.forEach((entry, index) => hashes.set(entry.path, values[index]))
+  }
+  return hashes
+}
 
 function hasExpectedMode(entry: TreeEntry, mode: number): boolean {
   return entry.mode === SymlinkMode || Boolean(mode & 0o111) === (entry.mode === ExecutableMode)

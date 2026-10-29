@@ -1,11 +1,13 @@
 import { IO, runCommand } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
+import { isValidEditCount } from '../../../../perf/perf-src/PreviewMeasurement'
 import { runWithEvidence } from './Evidence'
 import { captureGit, resolveCommit } from './Git'
 import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFiles'
 import { type PreviewReport, requireReport } from './ReportContract'
 import { collectSamples } from './RunnerSamples'
+import { assertMaterializedTree, readTreeEntries } from './SourceTree'
 
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
 export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number }
@@ -125,6 +127,8 @@ async function requireCleanSource(root: string): Promise<void> {
   if (status) {
     Errors.ThrowUserInput('Measure a prepared immutable clone; its tracked and unignored source must be clean.')
   }
+  const entries = await readTreeEntries(root, 'HEAD')
+  await assertMaterializedTree(root, entries)
 }
 
 function requireRunnerOptions(options: RunnerOptions): void {
@@ -134,8 +138,4 @@ function requireRunnerOptions(options: RunnerOptions): void {
   if (!isValidEditCount(options.edits)) {
     Errors.ThrowUserInput('Edit count must be a positive multiple of four.')
   }
-}
-
-function isValidEditCount(count: number): boolean {
-  return Number.isInteger(count) && count >= 4 && count % 4 === 0
 }

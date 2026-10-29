@@ -32,7 +32,7 @@ executable bits, not dependencies, ignored files or uncommitted submodule conten
 lists submodule pins and preserves dirty provenance; separately transfer required submodule data.
 Active Git content transforms are rejected instead of silently normalizing saved bytes.
 Undeclared embedded repositories are rejected. Executable bits are captured even when the controller
-ignores mode changes; received source bytes, symlinks and modes are verified against the Git tree.
+ignores mode changes; captured and received source bytes, symlinks and modes are verified against the Git tree.
 
 `receive` verifies the bundle hash and clones into a new directory; it never resets an existing
 checkout. A requested historical SHA must exist in the bundle. Seed required submodule pins as
@@ -110,6 +110,8 @@ PERF ssh tao-bench --cwd /Users/ro/Timing/tooling --detach /Users/ro/Timing/job.
 The default is one session per job so the skill can balance checkpoint order across rounds.
 `--samples 5` batches five sessions of one checkpoint; use it only when that ordering is intended.
 The tooling checkout stays fixed while each job executes the candidate's own preview command.
+The runner audits candidate source bytes, symlinks and modes after setup and around each session;
+Git's clean status alone is insufficient because content transformations can hide byte differences.
 Keep the candidate toolchain/browser versions equal, and record any harness version differences.
 Older checkpoints lacking `--fixture` or repeated-edit support are incompatible: do not retry with
 silently changed workload semantics. Prepare an explicit, retained instrumentation patch shared

@@ -1,7 +1,7 @@
 import { Errors, LineFeedCharacter, NullCharacter, Time, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
-import { assertNoContentTransforms, assertRegisteredGitlinks } from './SourceTree'
+import * as SourceTree from './SourceTree'
 
 /** PerformanceSnapshot identifies a transferable source tree independently of the developer's stage state. */
 export type PerformanceSnapshot = {
@@ -77,13 +77,15 @@ async function snapshotSavedTree(root: string, base: string, env: Record<string,
   await captureGit(root, ['read-tree', base], { env })
   const files = await selectSavedFiles(root, base)
   const input = files.join(NullCharacter) + NullCharacter
-  await assertNoContentTransforms(root, files)
+  await SourceTree.assertNoContentTransforms(root, files)
   if (files.length) {
     await captureGit(root, [
       '-c',
       'core.autocrlf=false',
       '-c',
       'core.filemode=true',
+      '-c',
+      'core.symlinks=true',
       'add',
       '-A',
       '--pathspec-from-file=-',
@@ -91,7 +93,9 @@ async function snapshotSavedTree(root: string, base: string, env: Record<string,
     ], { env, input })
   }
   const tree = (await captureGit(root, ['write-tree'], { env })).trim()
-  await assertRegisteredGitlinks(root, tree, env)
+  await SourceTree.assertRegisteredGitlinks(root, tree, env)
+  const entries = await SourceTree.readTreeEntries(root, tree, env)
+  await SourceTree.assertMaterializedTree(root, entries)
   return tree
 }
 

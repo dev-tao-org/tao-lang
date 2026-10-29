@@ -110,6 +110,11 @@ export function classifyMeasurementSample(index: number): 'first-edit' | 'first-
   return index < 4 ? 'first-cycle' : 'warm'
 }
 
+/** isValidEditCount requires complete four-edit preview cycles. */
+export function isValidEditCount(count: number): boolean {
+  return Number.isInteger(count) && count >= 4 && count % 4 === 0
+}
+
 function appendViews(source: string, start: number, count: number): string {
   const declarations = Array.from({ length: count }, (_, index) => createViewDeclaration(start + index))
   return declarations.length ? source + '\n' + declarations.join('\n\n') + '\n' : source
@@ -136,10 +141,6 @@ function createViewDeclaration(index: number): string {
 function readCount(name: string, fallback: number): number {
   const value = Env.get(name)
   return value === undefined ? fallback : Number(value)
-}
-
-function isValidEditCount(count: number): boolean {
-  return Number.isInteger(count) && count >= 4 && count % 4 === 0
 }
 
 function createCycle(cycle: number): PreviewScenario[] {
