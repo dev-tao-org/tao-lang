@@ -2,8 +2,8 @@ import { runtimeTypeScriptPaths } from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
-import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from './ManagedModuleOwnership'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
+import { linkModulePackages, validateModuleLinks, validateModuleOwnership } from './ManagedModuleOwnership'
 import type * as ManagedTypes from './ManagedModuleTypes'
 
 type ManagedFileContents = string | undefined
