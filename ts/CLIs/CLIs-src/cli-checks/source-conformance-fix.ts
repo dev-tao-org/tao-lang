@@ -1,26 +1,45 @@
-import { FileSystem, Repo } from '@shared/os'
+import { FileSystem, Path, Repo } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
+import { getSingleLineCallChanges } from './source-conformance-call-layout'
+import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { optionalAccessIssue, optionalAccessResult } from './source-conformance-optional'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 
+type SourceConformanceFixOptions = { excludedFiles?: readonly string[] }
+
 /** fixSourceConformance applies safe type-aware source fixes within the new workspace. */
-export async function fixSourceConformance(root = Repo.getWorkspaceRoot()): Promise<void> {
+export async function fixSourceConformance(
+  root = Repo.getWorkspaceRoot(),
+  options: SourceConformanceFixOptions = {},
+): Promise<void> {
   const sources = await conformanceSources(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const constantOrder = analyzeConstantOrder(program)
   const typeOrder = analyzeSignatureTypeOrder(program)
+  const excludedFiles = new Set(options.excludedFiles?.map(filename => Path.resolve(root, filename)) ?? [])
   let changed = 0
   for (const filename of sources) {
+    if (excludedFiles.has(Path.resolve(filename))) {
+      continue
+    }
     const file = program.getSourceFile(filename)
     if (!file) {
       continue
     }
     const typeChanges = typeOrder.get(file) ?? []
+    const constantChanges = constantOrder.get(file) ?? []
+    const structuralChanges = [...typeChanges, ...constantChanges]
+    const accessChanges = optionalAccessChanges(file, checker)
+      .filter(edit => !overlapsChanges(edit, structuralChanges))
+    const callChanges = getSingleLineCallChanges(file)
+      .filter(edit => !overlapsChanges(edit, structuralChanges) && !overlapsChanges(edit, accessChanges))
     const edits = [
-      ...typeChanges,
-      ...optionalAccessChanges(file, checker).filter(edit => !overlapsMovedType(edit, typeChanges)),
+      ...structuralChanges,
+      ...accessChanges,
+      ...callChanges,
     ]
     if (edits.length === 0) {
       continue
@@ -35,8 +54,8 @@ export async function fixSourceConformance(root = Repo.getWorkspaceRoot()): Prom
   IO.print(`Fixed source conformance: ${changed} file(s)`)
 }
 
-function overlapsMovedType(edit: TypeScript.TextChange, typeChanges: TypeScript.TextChange[]): boolean {
-  return typeChanges.some(change =>
+function overlapsChanges(edit: TypeScript.TextChange, changes: TypeScript.TextChange[]): boolean {
+  return changes.some(change =>
     change.span.length > 0
     && edit.span.start < change.span.start + change.span.length
     && change.span.start < edit.span.start + edit.span.length

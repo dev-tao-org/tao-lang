@@ -109,6 +109,9 @@ function collect(plan: LayoutPlan, node: SyntaxNode, owner: number, owners: numb
   plan.bounds.set(createNodeKey(node), { first, last: plan.tokens.length - 1 })
 }
 
+const NewlineCharacterGlobalRegx = /\n/g
+const WhitespaceOnlyRegx = /^\s*$/
+
 function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly boolean[], whole: boolean): void {
   for (let index = 0; index <= plan.tokens.length; index++) {
     const start = plan.tokens[index - 1]?.endIndex ?? 0
@@ -129,9 +132,6 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
 }
 
 type TokenOwner = number | undefined
-
-const NewlineCharacterGlobalRegx = /\n/g
-const WhitespaceOnlyRegx = /^\s*$/
 
 function hasCompleteNeighbors(
   left: TokenOwner,

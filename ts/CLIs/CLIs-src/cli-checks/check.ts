@@ -145,11 +145,17 @@ export async function workspaceTests(
 
 type FormatMode = 'fmt' | 'check'
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
-export async function workspaceFormat(mode: FormatMode): Promise<void> {
+export async function workspaceFormat(mode: FormatMode, excludedPaths: readonly string[] = []): Promise<void> {
   await assertNewWorkspaceTree()
   await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
+    variadicArgs: excludedPaths,
     cwd: Repo.getWorkspaceRoot(),
   })
+  const justfile = Repo.resolvePath('Justfile')
+  const excludesJustfile = excludedPaths.some(path => Path.resolve(Repo.getWorkspaceRoot(), path) === justfile)
+  if (excludesJustfile) {
+    return
+  }
   await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
     cwd: Repo.getWorkspaceRoot(),
   })

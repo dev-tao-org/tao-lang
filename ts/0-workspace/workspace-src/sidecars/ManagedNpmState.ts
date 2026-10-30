@@ -103,7 +103,7 @@ export async function claimManagedProfile(
     }
     return
   }
-  if (current !== owner && (await FileSystem.readdir(profile)).length > 0) {
+  if (current !== owner && !await FileSystem.isEmptyDir(profile)) {
     if (!repair || durableLock === undefined) {
       Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
     }
@@ -181,7 +181,7 @@ export async function readOwnedMetadata(
   }
   const parsed = await Try.WithDefault(undefined, () => parseManagedProfileMetadata(text))
   if (hasMatchingMetadataLock(parsed, fingerprint, durableLock)) {
-    return parsed as ManagedProfileMetadata
+    return parsed
   }
   if (durableLock === undefined) {
     Errors.ThrowUserInput(`Managed npm metadata ownership cannot be verified for ${profile}.`)
@@ -222,21 +222,19 @@ async function profileContentsMatch(profile: string, durableLock: string, expect
     && await optionalText(Path.join(profile, 'package.json')) === expectedManifest
 }
 
-function hasConflictingProfileFingerprint(metadata: unknown, fingerprint: string): boolean {
-  const profileMetadata = metadata as MaybeManagedProfileMetadata
-  return profileMetadata?.fingerprint !== undefined && profileMetadata.fingerprint !== fingerprint
+function hasConflictingProfileFingerprint(metadata: MaybeManagedProfileMetadata, fingerprint: string): boolean {
+  return metadata?.fingerprint !== undefined && metadata.fingerprint !== fingerprint
 }
 
 function hasMatchingMetadataLock(
-  metadata: unknown,
+  metadata: MaybeManagedProfileMetadata,
   fingerprint: string,
   durableLock: ManagedDurableLock,
-): boolean {
-  const profileMetadata = metadata as MaybeManagedProfileMetadata
-  if (profileMetadata?.fingerprint !== fingerprint || typeof profileMetadata.lockHash !== 'string') {
+): metadata is ManagedProfileMetadata {
+  if (metadata?.fingerprint !== fingerprint || typeof metadata.lockHash !== 'string') {
     return false
   }
-  return durableLock === undefined || profileMetadata.lockHash === Platform.hashText(durableLock)
+  return durableLock === undefined || metadata.lockHash === Platform.hashText(durableLock)
 }
 
 function profileRequirementsMatch(
@@ -262,8 +260,9 @@ function sameStringRecord(
   return sameManagedPackageVersions(left, right)
 }
 
-function parseManagedProfileMetadata(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+function parseManagedProfileMetadata(contents: string): MaybeManagedProfileMetadata {
+  const value: unknown = JSON.parse(contents)
+  return isObjectRecord(value) ? value : undefined
 }
 
 function sameManagedPackageVersions(left: unknown, right: ManagedTypes.ManagedRuntimePins): boolean {

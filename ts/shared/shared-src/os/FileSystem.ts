@@ -61,6 +61,11 @@ export function resolvePackageDirectory(packageName: string, fromDirectory: stri
   }
 }
 
+/** isEmptyDir reports whether a directory contains no entries and propagates filesystem failures. */
+export async function isEmptyDir(path: string): Promise<boolean> {
+  return (await Native.readdir(path)).length === 0
+}
+
 /** exists reports whether a filesystem path is accessible, including directories. */
 export async function exists(path: string): Promise<boolean> {
   return await Try.WithDefault(false, async () => {

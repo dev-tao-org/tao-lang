@@ -66,6 +66,8 @@ export function createMeasurementFiles(source: string, settings: PreviewMeasurem
   return { entry, extraFiles }
 }
 
+const MeasurementScenarioSuffixRegx = /-\d+$/
+const MeasurementScenarioNumberRegx = /\d+$/
 /** assertMeasurementScenario proves each configured preview rendered the actual requested edit. */
 export async function assertMeasurementScenario(
   page: HeadlessBrowser.Page,
@@ -156,6 +158,7 @@ function createCycle(cycle: number): PreviewScenario[] {
   ]
 }
 
+const EditedViewLabelRegx = /^Hello Tao(?: \d+)?$/
 async function assertReset(frame: HeadlessBrowser.FrameLocator, frameId: string): Promise<void> {
   await frame.getByText('Hello World', { exact: true }).waitFor()
   const edited = await frame.getByText(EditedViewLabelRegx).count()
@@ -173,7 +176,4 @@ async function hasRowLayout(frame: HeadlessBrowser.FrameLocator, label: string, 
   }, detail)
 }
 
-const MeasurementScenarioSuffixRegx = /-\d+$/
-const MeasurementScenarioNumberRegx = /\d+$/
-const EditedViewLabelRegx = /^Hello Tao(?: \d+)?$/
 const AddedViewLabelRegx = /^Second view(?: \d+)?$/

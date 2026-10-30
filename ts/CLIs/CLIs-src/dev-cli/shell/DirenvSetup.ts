@@ -8,7 +8,6 @@ import { prepareDevelopmentShell } from './DirenvSetupPreparation'
 export { runDirenvSetup, type SetupEnvironment }
 
 const ACTIVATION_SOURCE = 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'
-const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this repo (and its worktrees)?"
 
 /** SetupEnvironment injects shell and process dependencies for direnv setup. */
 type SetupEnvironment = {
@@ -50,6 +49,7 @@ function isSetupDisabled(environment: SetupEnvironment): boolean {
   return environment.env['TAO_DEV_SHELL_SETUP'] === '0' || !environment.interactive()
 }
 
+const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this repo (and its worktrees)?"
 async function completeDirenvSetup(
   options: { configure?: boolean },
   environment: SetupEnvironment,

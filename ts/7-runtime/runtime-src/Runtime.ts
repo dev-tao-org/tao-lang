@@ -154,7 +154,8 @@ async function readPinnedDependencies(): Promise<RuntimePackageVersions> {
   const resources = await readRuntimeResources(directory)
   const lock = RuntimeDependencyPolicy.parseRuntimeDependencyLock(
     await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
-  ) as RuntimeDependencyPolicy.RuntimeDependencyLock
+    Path.join(directory, 'bun.lock'),
+  )
   const types = lock.packages['@types/react']?.[0].slice('@types/react@'.length)
     ?? Errors.ThrowShouldNeverHappen('The runtime lock does not pin React contract types.')
   return { ...resources.dependencies, '@types/react': types }

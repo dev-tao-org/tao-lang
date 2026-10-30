@@ -3,11 +3,15 @@ import { FileSystem, Path } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
 /** RuntimeDependencyLock carries package identities and lockfile records from bun.lock. */
-export type RuntimeDependencyLock = { packages: Record<string, [string, ...unknown[]]> }
+export type RuntimeDependencyLock = Record<string, unknown> & { packages: Record<string, [string, ...unknown[]]> }
 
-/** parseRuntimeDependencyLock reads bun.lock JSON without claiming to validate its shape. */
-export function parseRuntimeDependencyLock(contents: string): unknown {
-  return JSON.parse(contents)
+/** parseRuntimeDependencyLock validates package identities in a bun.lock JSON document. */
+export function parseRuntimeDependencyLock(contents: string, path: string): RuntimeDependencyLock {
+  const parsed: unknown = JSON.parse(contents)
+  if (!isRuntimeDependencyLock(parsed)) {
+    Errors.ThrowUserInput(`Runtime dependency lock ${path} must contain package records with string identities.`)
+  }
+  return parsed
 }
 
 type RuntimePackageOverrides = Record<string, string>
@@ -35,10 +39,27 @@ export async function readRuntimeDependencyPolicy(directory: string): Promise<Ru
   }
   const lock = parseRuntimeDependencyLock(
     await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
-  ) as RuntimeDependencyLock
+    Path.join(directory, 'bun.lock'),
+  )
   const wrapper = lock.packages['@expo/metro']?.[0]
   if (wrapper) {
     overrides['@expo/metro'] = wrapper.slice('@expo/metro@'.length)
   }
   return { patchedDependencies, overrides, patches }
+}
+
+function isRuntimeDependencyLock(value: unknown): value is RuntimeDependencyLock {
+  return isObjectRecord(value) && isRuntimePackageRecord(value.packages)
+}
+
+function isRuntimePackageRecord(value: unknown): value is Record<string, [string, ...unknown[]]> {
+  return isObjectRecord(value) && Object.values(value).every(isRuntimePackageTuple)
+}
+
+function isRuntimePackageTuple(value: unknown): value is [string, ...unknown[]] {
+  return Array.isArray(value) && typeof value[0] === 'string'
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

@@ -3,24 +3,23 @@ import * as ManagedModuleMetadata from './ManagedModuleMetadata'
 import * as ManagedModuleTypes from './ManagedModuleTypes'
 import { prepareManagedModules as prepareProfile, readManagedModules as readProfile } from './ManagedNpmProfile'
 
+type PrepareManagedModules = (
+  input: ManagedModuleTypes.ManagedModulesInput,
+  executor: ManagedModuleTypes.BunExecutor,
+) => Promise<ManagedModuleTypes.PreparedManagedModules>
+type ReadManagedModules = (
+  input: ManagedModuleTypes.ManagedModulesInput,
+) => Promise<ManagedModuleTypes.PreparedManagedModules>
+
 export type * from './ManagedModuleTypes'
 
 export { cleanManagedModuleMetadata }
 
 /** prepareManagedModules resolves an exact app-local npm graph and publishes module resolution links. */
-export async function prepareManagedModules(
-  input: ManagedModuleTypes.ManagedModulesInput,
-  executor: ManagedModuleTypes.BunExecutor,
-): Promise<ManagedModuleTypes.PreparedManagedModules> {
-  return await prepareProfile(input, executor)
-}
+export const prepareManagedModules: PrepareManagedModules = prepareProfile
 
 /** readManagedModules validates declaration freshness before exposing installed module resolution. */
-export async function readManagedModules(
-  input: ManagedModuleTypes.ManagedModulesInput,
-): Promise<ManagedModuleTypes.PreparedManagedModules> {
-  return await readProfile(input)
-}
+export const readManagedModules: ReadManagedModules = readProfile
 
 /** inspectGeneratedModuleFiles reports generated module metadata drift with its declaration owner and repair command. */
 export async function inspectGeneratedModuleFiles(

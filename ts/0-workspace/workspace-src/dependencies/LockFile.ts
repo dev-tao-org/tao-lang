@@ -151,7 +151,6 @@ type SerializedDependencyLock = Omit<Types.DependencyLock, 'sources'> & {
 type SerializedLockedSource = Types.LockedSource | Omit<Types.LockedSource, 'location'>
 
 type BundledProjects = Types.BundledProjectDirectories | undefined
-type RetainedProfileMetadata = { graphFingerprint?: unknown } | null | undefined
 
 function relativizeLocations(lock: Types.DependencyLock, projectRoot: string): SerializedDependencyLock {
   return {
@@ -268,7 +267,9 @@ async function parseRetainedProfileMetadata(path: string): Promise<unknown> {
 }
 
 function readRetainedGraphFingerprint(metadata: unknown): string | undefined {
-  const fingerprint = (metadata as RetainedProfileMetadata)?.graphFingerprint
+  const fingerprint = metadata !== null && typeof metadata === 'object' && 'graphFingerprint' in metadata
+    ? metadata.graphFingerprint
+    : undefined
   return typeof fingerprint === 'string' ? fingerprint : undefined
 }
 

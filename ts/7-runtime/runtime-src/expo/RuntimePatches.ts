@@ -10,7 +10,7 @@ type RuntimePatchContents = Record<string, string>
 
 /** readRuntimePatches validates dependency patch paths and reads their relocatable source bytes. */
 export async function readRuntimePatches(directory: string): Promise<RuntimePatches> {
-  const manifest = await readRuntimePackageManifest(Path.join(directory, 'package.json')) as RuntimePackageManifest
+  const manifest = await readRuntimePackageManifest(Path.join(directory, 'package.json'))
   const patchedDependencies = manifest.patchedDependencies ?? {}
   const patches: RuntimePatchContents = {}
   const entries = Object.entries(patchedDependencies).sort((left, right) => left[1].localeCompare(right[1]))
@@ -25,8 +25,25 @@ export async function readRuntimePatches(directory: string): Promise<RuntimePatc
 
 type RuntimePackageManifest = { patchedDependencies?: PatchedDependencyPaths }
 
-async function readRuntimePackageManifest(path: string): Promise<unknown> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8'))
+async function readRuntimePackageManifest(path: string): Promise<RuntimePackageManifest> {
+  const parsed: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
+  if (!isRuntimePackageManifest(parsed)) {
+    Errors.ThrowUserInput(`Runtime package manifest ${path} must be an object with string patch paths.`)
+  }
+  return parsed
+}
+
+function isRuntimePackageManifest(value: unknown): value is RuntimePackageManifest {
+  return isObjectRecord(value)
+    && (!('patchedDependencies' in value) || isStringRecord(value.patchedDependencies))
+}
+
+function isStringRecord(value: unknown): value is PatchedDependencyPaths {
+  return isObjectRecord(value) && Object.values(value).every(item => typeof item === 'string')
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isSupportedPatchPath(path: string): boolean {

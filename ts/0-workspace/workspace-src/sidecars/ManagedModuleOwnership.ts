@@ -141,21 +141,25 @@ function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
   return isManagedModuleOwner(owner) ? owner : undefined
 }
 
-type ParsedModuleOwnerFields = { profile?: unknown; packages?: unknown } | null | undefined
+type ParsedModuleOwnerFields = Record<string, unknown>
 
 function isManagedModuleOwner(value: unknown): value is ManagedModuleOwner {
-  const owner = value as ParsedModuleOwnerFields
-  if (!owner) {
+  if (!isParsedModuleOwnerFields(value)) {
     return false
   }
-  if (typeof owner.profile !== 'string' || !Array.isArray(owner.packages)) {
+  if (typeof value.profile !== 'string' || !Array.isArray(value.packages)) {
     return false
   }
-  return owner.packages.every(isPackageName)
+  return value.packages.every(isPackageName)
 }
 
-function parseManagedModuleOwner(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+function parseManagedModuleOwner(contents: string): ParsedModuleOwnerFields | undefined {
+  const value: unknown = JSON.parse(contents)
+  return isParsedModuleOwnerFields(value) ? value : undefined
+}
+
+function isParsedModuleOwnerFields(value: unknown): value is ParsedModuleOwnerFields {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isPackageName(name: unknown): name is string {

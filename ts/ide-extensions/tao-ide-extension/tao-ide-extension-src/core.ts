@@ -134,32 +134,6 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
   }
 }
 
-function collectResults(options: SessionOptions, tree: Tree, source: string): DocumentResult {
-  const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
-  const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
-  for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
-    const bodyStart = injection.startIndex + FencePrefix.length
-    const bodyEnd = injection.endIndex - FenceSuffix.length
-    if (bodyEnd < bodyStart) {
-      continue
-    }
-    const embedded = source.slice(bodyStart, bodyEnd)
-    const tsxTree = measure(options, 'tsx.parse', () => options.tsxParser.parse(embedded))
-    if (!tsxTree) {
-      continue
-    }
-    Try(() => {
-      tokens.push(...QueryResults.collectTokens(options.tsxQuery, tsxTree.rootNode, bodyStart, measureQuery(options)))
-      diagnostics.push(...QueryResults.collectDiagnostics(tsxTree.rootNode, bodyStart))
-    }, {
-      finally() {
-        tsxTree.delete()
-      },
-    })
-  }
-  return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
-}
-
 function trackedDocument(session: DocumentSession, sessions: Set<DocumentSession>): DocumentSession {
   let disposed = false
   sessions.add(session)
@@ -189,6 +163,32 @@ const initializeParser = createRetryableInitialization((runtimeWasmPath?: string
 
 const FencePrefix = '```ts'
 const FenceSuffix = '```'
+
+function collectResults(options: SessionOptions, tree: Tree, source: string): DocumentResult {
+  const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
+  const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
+  for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
+    const bodyStart = injection.startIndex + FencePrefix.length
+    const bodyEnd = injection.endIndex - FenceSuffix.length
+    if (bodyEnd < bodyStart) {
+      continue
+    }
+    const embedded = source.slice(bodyStart, bodyEnd)
+    const tsxTree = measure(options, 'tsx.parse', () => options.tsxParser.parse(embedded))
+    if (!tsxTree) {
+      continue
+    }
+    Try(() => {
+      tokens.push(...QueryResults.collectTokens(options.tsxQuery, tsxTree.rootNode, bodyStart, measureQuery(options)))
+      diagnostics.push(...QueryResults.collectDiagnostics(tsxTree.rootNode, bodyStart))
+    }, {
+      finally() {
+        tsxTree.delete()
+      },
+    })
+  }
+  return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
+}
 
 function measure<T>(options: SessionOptions, phase: MeasurementPhase, operation: () => T): T {
   if (!options.measure) {

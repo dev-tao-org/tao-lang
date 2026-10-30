@@ -58,6 +58,8 @@ function loadPrototype(directory: string, name: string): MetroPrototype {
   return (loaded.default ?? loaded as unknown as { prototype: MetroPrototype }).prototype
 }
 
+const HmrTimerPatchRegx = /},\s*0,\s*\)/
+const RefreshTimerPatchRegx = /Refresh\.performReactRefresh\(\);\s*}, 0\)/
 function assertTimerPatches(directory: string, hmr: MetroPrototype): void {
   const registration = requireMethod(hmr, '_registerEntryPoint').toString()
   const requireSource = MetroPlatform.readExpoSource('build/metro-require/require.js', directory)
@@ -106,13 +108,10 @@ function consumesSource(url: string): boolean {
   return isMetroAssetPath(path) || path === '/symbolicate' || isMetroWorkspacePath(decodedPath)
 }
 
+const MetroAssetExtensionRegx = /\.(bundle|map|assets)$/
 function isMetroAssetPath(path: string): boolean {
   return MetroAssetExtensionRegx.test(path)
 }
-
-const HmrTimerPatchRegx = /},\s*0,\s*\)/
-const RefreshTimerPatchRegx = /Refresh\.performReactRefresh\(\);\s*}, 0\)/
-const MetroAssetExtensionRegx = /\.(bundle|map|assets)$/
 
 function isMetroWorkspacePath(path: string): boolean {
   return path.startsWith('/[metro-project]/') || path.startsWith('/[metro-watchFolders]/')

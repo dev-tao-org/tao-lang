@@ -3,7 +3,7 @@ import * as TypeScript from 'typescript'
 export { isRuntimeFunctionNode, objectFunctionStyleIssue }
 
 const inlineIssue = 'single-return object functions should use expression-bodied arrow properties'
-const methodIssue = 'multi-statement object functions must use method syntax'
+
 type ObjectFunction = TypeScript.MethodDeclaration | TypeScript.ArrowFunction | TypeScript.FunctionExpression
 type ExpressionWrapper =
   | TypeScript.ParenthesizedExpression
@@ -24,6 +24,7 @@ function isRuntimeFunctionNode(node: TypeScript.Node): node is TypeScript.Functi
   return TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node)
 }
 
+const methodIssue = 'multi-statement object functions must use method syntax'
 /** objectFunctionStyleIssue reports safe object-function style changes. */
 function objectFunctionStyleIssue(node: TypeScript.Node, source: string): string | undefined {
   if (TypeScript.isMethodDeclaration(node) && TypeScript.isObjectLiteralExpression(node.parent)) {

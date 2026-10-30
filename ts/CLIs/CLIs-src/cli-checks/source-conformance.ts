@@ -3,7 +3,9 @@ import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
+import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { nestedConditionalIssue, selectedFunctionCallIssue } from './source-conformance-conditional'
+import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
@@ -22,11 +24,24 @@ export async function checkSourceConformance(root: string): Promise<void> {
   const sources = await conformanceSources(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const constantOrder = analyzeConstantOrder(program)
   const typeOrder = analyzeSignatureTypeOrder(program)
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)
     const { error } = sourceSizeDiagnostics(relative, file.text)
+    for (const change of constantOrder.get(file) ?? []) {
+      if (change.newText === '') {
+        const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1
+        issues.push(`${relative}:${line}: put a single-consumer constant before its module-level owner`)
+      }
+    }
+    if (!isExcludedSource(filename, file.text)) {
+      for (const change of getSingleLineCallChanges(file)) {
+        const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1
+        issues.push(`${relative}:${line}: fit bare-identifier call arguments on one line`)
+      }
+    }
     for (const change of typeOrder.get(file) ?? []) {
       if (change.newText === '') {
         const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1

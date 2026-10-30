@@ -204,15 +204,7 @@ async function repairModuleFiles(
   rejectSymlink(marker)
   const owner = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
   const expectedOwner = createModuleOwnerMarker(files, requirements, profile)
-  const previousOwner = await validateModuleOwnership(
-    owner,
-    marker,
-    profile,
-    projectRoot,
-    files,
-    expectedOwner,
-    repair,
-  )
+  const previousOwner = await validateModuleOwnership(owner, marker, profile, projectRoot, files, expectedOwner, repair)
   await validateModuleLinks(directory, profile, requirements.map(({ name }) => name), previousOwner)
   for (const [path] of files) {
     if (await FileSystem.exists(path) && owner !== expectedOwner) {

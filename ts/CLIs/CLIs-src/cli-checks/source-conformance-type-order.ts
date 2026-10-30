@@ -1,7 +1,7 @@
 import * as TypeScript from 'typescript'
 import { isExcludedSource } from './source-size'
 
-export { analyzeSignatureTypeOrder }
+export { analyzeSignatureTypeOrder, containsNode, movableStart }
 
 type SignatureTypeOrder = Map<TypeScript.SourceFile, TypeScript.TextChange[]>
 
@@ -148,6 +148,7 @@ function resolveCommandOwner(node: TypeScript.Node): TypeScript.ExportAssignment
   return undefined
 }
 
+/** containsNode checks whether a source node is inside a declaration. */
 function containsNode(owner: TypeScript.Node, node: TypeScript.Node): boolean {
   return owner.pos <= node.pos && node.end <= owner.end && owner.getSourceFile() === node.getSourceFile()
 }
@@ -187,6 +188,7 @@ function collectChanges(candidates: SignatureCandidates): SignatureTypeOrder {
   return changes
 }
 
+/** movableStart finds a declaration's safe source start while preserving leading comments. */
 function movableStart(node: TypeScript.Node): number | undefined {
   const file = node.getSourceFile()
   const trivia = file.text.slice(node.getFullStart(), node.getStart(file))

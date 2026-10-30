@@ -139,8 +139,7 @@ async function linkRuntimeSources(directory: string, resourcesDirectory: string,
   }
   if (current?.isDirectory()) {
     await removeOwnedSourceCopies(target, sourceFiles)
-    const remaining = await FileSystem.readdir(target)
-    if (remaining.length > 0) {
+    if (!await FileSystem.isEmptyDir(target)) {
       Errors.ThrowUserInput(`Generated runtime source path contains user files: ${target}`)
     }
     await FileSystem.rmdir(target)
@@ -161,9 +160,9 @@ async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): P
     await FileSystem.rm(Path.join(target, file), { force: true })
   }
   for (const directory of directories.toReversed()) {
-    const entries = await Try.WithDefault([], () => FileSystem.readdir(directory))
+    const directoryIsEmpty = await Try.WithDefault(true, () => FileSystem.isEmptyDir(directory))
     const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
-    if (current?.isDirectory() && entries.length === 0) {
+    if (current?.isDirectory() && directoryIsEmpty) {
       await FileSystem.rmdir(directory)
     }
   }
