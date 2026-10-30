@@ -119,11 +119,7 @@ Tests.test('same source at different refs keeps each alias resolvable when commi
     const commits = new Map([['example/shared:v1', 'a'.repeat(40)], ['example/shared:v2', 'a'.repeat(40)]])
     const calls: string[] = []
     const options = Fixtures.createGitDependencyFixtureOptions(root, commits, calls)
-    const lock = await Store.prepareDependencies(
-      root,
-      requirements,
-      options,
-    )
+    const lock = await Store.prepareDependencies(root, requirements, options)
     Tests.expect(lock.commitPins).toEqual({
       'github:example/shared@v1': 'a'.repeat(40),
       'github:example/shared@v2': 'a'.repeat(40),
