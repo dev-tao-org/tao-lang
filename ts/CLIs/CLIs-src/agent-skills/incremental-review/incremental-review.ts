@@ -1,0 +1,217 @@
+import { IO } from '@cli-kit'
+import { Errors, Lists } from '@shared'
+import { FileSystem, Path, Platform, Repo } from '@shared/os'
+import { acceptSelection, recoverAcceptance } from './ReviewAccept'
+import { continueReview } from './ReviewContinue'
+import { expandFiles, git, readJson, writeJson } from './ReviewGit'
+import { planReopen, planSelection } from './ReviewPlan'
+import * as ReviewSessionModule2 from './ReviewSession'
+import type { IncrementalReviewResult, ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
+
+/** main prints the incremental-review result for the skill's thin entry script. */
+export async function main(): Promise<void> {
+  IO.print(formatReviewResult(await runReview(Platform.argv.slice(2))))
+}
+
+/** runReview executes the incremental-review protocol against one explicit implementation checkout. */
+export async function runReview(args: string[], hooks: ReviewHooks = {}): Promise<IncrementalReviewResult> {
+  const command = args[0]
+  if (!command || ['help', '--help', '-h'].includes(command)) {
+    return {
+      commands: [
+        'start --base main --branch feat/<topic>-incremental-review-approved [--worktree PATH]',
+        'continue --from OLD_IMPLEMENTATION --branch feat/<topic>-incremental-review-approved [--worktree PATH]',
+        'rename --branch feat/<topic>-incremental-review-approved',
+        'status',
+        'plan --files PATH... --out JSON [--source-patch PATCH --reviewed-patch PATCH]',
+        'accept --files PATH... | accept --selection JSON',
+        'reopen --files PATH...',
+        'recheck --files PATH... [--state pending|clear]',
+        'note --text TEXT',
+        'recover',
+      ],
+      scope: 'Every command accepts --repo ROOT. Use saved disk content; stage state is preserved.',
+    }
+  }
+  const options = parseOptions(args.slice(1))
+  const root =
+    (await git(Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot()), ['rev-parse', '--show-toplevel']))
+      .trim()
+  return await ReviewSessionModule2.withReviewLock(root, async () => {
+    const startsReview = command === 'start' || command === 'continue'
+    if (startsReview) {
+      const session = command === 'continue'
+        ? await continueReview(
+          root,
+          required(options, 'from'),
+          required(options, 'branch'),
+          single(options, 'worktree'),
+        )
+        : await ReviewSessionModule2.startReview(
+          root,
+          single(options, 'base') ?? 'main',
+          required(options, 'branch'),
+          single(options, 'worktree'),
+        )
+      return { session: session.id, reviewedBranch: session.reviewedBranch, reviewedRoot: session.reviewedRoot }
+    }
+    return await runSessionCommand(command, options, await ReviewSessionModule2.loadSession(root), hooks)
+  })
+}
+
+type Options = Map<string, string[]>
+type NoteCommand = 'note' | 'recheck'
+type SelectionCommand = 'plan' | 'accept'
+type OptionalPath = string | undefined
+type ReviewNoteResult = { notes: string[]; recheck: string[] }
+
+function formatReviewResult(result: IncrementalReviewResult): string {
+  return JSON.stringify(result, null, 2)
+}
+
+async function runSessionCommand(
+  command: string,
+  options: Options,
+  session: ReviewSession,
+  hooks: ReviewHooks,
+): Promise<IncrementalReviewResult> {
+  if (command === 'status') {
+    return await ReviewSessionModule2.reviewStatus(session)
+  }
+  if (command === 'rename') {
+    await ReviewSessionModule2.renameReviewBranch(session, required(options, 'branch'))
+    return { reviewedBranch: session.reviewedBranch }
+  }
+  if (command === 'recover') {
+    await recoverAcceptance(session)
+    return { recovered: true }
+  }
+  if (command === 'plan' || command === 'accept') {
+    return await runSelectionCommand(command, options, session, hooks)
+  }
+  if (command === 'reopen') {
+    const selection = await planReopen(session, options.get('files') ?? [])
+    await acceptSelection(session, selection, hooks)
+    return { reopened: selection.files }
+  }
+  if (command === 'note' || command === 'recheck') {
+    return await runNoteCommand(command, options, session)
+  }
+  Errors.ThrowUserInput('Expected start, continue, rename, status, plan, accept, reopen, recheck, note or recover.')
+}
+
+async function runNoteCommand(
+  command: NoteCommand,
+  options: Options,
+  session: ReviewSession,
+): Promise<ReviewNoteResult> {
+  if (command === 'note') {
+    session.notes.push(required(options, 'text'))
+  } else {
+    const files = await expandFiles(session.root, options.get('files') ?? [], session.reviewedBranch)
+    const state = single(options, 'state') ?? 'pending'
+    if (!['pending', 'clear'].includes(state)) {
+      Errors.ThrowUserInput('--state must be pending or clear.')
+    }
+    session.recheck = state === 'clear'
+      ? session.recheck.filter(path => !files.includes(path))
+      : Lists.unique(session.recheck, files)
+  }
+  await ReviewSessionModule2.saveSession(session)
+  return { notes: session.notes, recheck: session.recheck }
+}
+
+async function runSelectionCommand(
+  command: SelectionCommand,
+  options: Options,
+  session: ReviewSession,
+  hooks: ReviewHooks,
+): Promise<IncrementalReviewResult> {
+  const selectionFile = single(options, 'selection')
+  const reviewed = single(options, 'reviewed-patch')
+  const source = single(options, 'source-patch')
+  const hasFileOrPatchOptions = options.has('files') || reviewed || source
+  if (selectionFile && hasFileOrPatchOptions) {
+    Errors.ThrowUserInput('Use either --selection or --files, not both.')
+  }
+  if (source && !reviewed) {
+    Errors.ThrowUserInput('--source-patch requires --reviewed-patch against the reviewed baseline.')
+  }
+  const selection = await resolveSelection(selectionFile, session, options, source, reviewed)
+  if (command === 'plan') {
+    const out = Path.resolve(required(options, 'out'))
+    if (await FileSystem.exists(out)) {
+      Errors.ThrowUserInput(`Proposal destination already exists: ${out}`)
+    }
+    await writeJson(out, selection)
+    return {
+      proposal: out,
+      sourceDiff: `git diff ${selection.sourceHead} ${selection.sourceTree}`,
+      reviewedDiff: `git diff ${selection.reviewedHead} ${selection.reviewedTree}`,
+    }
+  }
+  await acceptSelection(session, selection, hooks)
+  return { accepted: selection.files, kind: selection.kind }
+}
+
+async function resolveSelection(
+  selectionFile: OptionalPath,
+  session: ReviewSession,
+  options: Options,
+  source: OptionalPath,
+  reviewed: OptionalPath,
+): Promise<ReviewSelection> {
+  if (selectionFile) {
+    return await readJson<ReviewSelection>(Path.resolve(selectionFile))
+  }
+  const files = options.get('files') ?? []
+  if (reviewed) {
+    return await planSelection(session, files, { source, reviewed })
+  }
+  return await planSelection(session, files, undefined)
+}
+
+function parseOptions(args: string[]): Options {
+  const options: Options = new Map()
+  const known = [
+    'repo',
+    'base',
+    'from',
+    'branch',
+    'worktree',
+    'files',
+    'out',
+    'selection',
+    'source-patch',
+    'reviewed-patch',
+    'text',
+    'state',
+  ]
+  let current: OptionalPath
+  for (const arg of args) {
+    if (arg.startsWith('--') && known.includes(arg.slice(2))) {
+      current = arg.slice(2)
+      if (options.has(current)) {
+        Errors.ThrowUserInput(`Option repeated: ${arg}`)
+      }
+      options.set(current, [])
+    } else if (current) {
+      options.get(current)!.push(arg)
+    } else {
+      Errors.ThrowUserInput(`Expected a named option, received ${arg}.`)
+    }
+  }
+  return options
+}
+
+function single(options: Options, name: string): string | undefined {
+  const values = options.get(name)
+  if (values && values.length !== 1) {
+    Errors.ThrowUserInput(`--${name} requires exactly one value.`)
+  }
+  return values?.[0]
+}
+
+function required(options: Options, name: string): string {
+  return single(options, name) ?? Errors.ThrowUserInput(`--${name} is required.`)
+}
