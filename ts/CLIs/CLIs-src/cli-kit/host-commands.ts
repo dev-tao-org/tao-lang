@@ -1,9 +1,6 @@
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
 import { runCommand } from './cli-kit'
-
-/** HostCommandRoute identifies a supported host command and unchanged trailing arguments. */
-export type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
 export async function runHostCommand(argv: readonly string[]): Promise<void> {
@@ -16,8 +13,9 @@ export async function runHostCommand(argv: readonly string[]): Promise<void> {
   await runCommand(route.command, { variadicArgs: route.variadicArgs, cwd })
 }
 
-/** resolveHostCommand applies the longest exact-token permission prefix to a supported target. */
-export function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
+type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
+
+function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
   if (isInvalidHostCommand(argv)) {
     Errors.ThrowUserInput('Name an allowlisted host command without leading options.')
   }
@@ -76,13 +74,17 @@ function validatedPrefixes(value: unknown): Prefix[] {
     if (!hasValidPrefixTokens(tokens)) {
       Errors.ThrowUserInput(`Invalid host command permission prefix '${prefix}'.`)
     }
-    const key = JSON.stringify(tokens)
+    const key = encodePrefixIdentity(tokens)
     if (seen.has(key)) {
       Errors.ThrowUserInput(`Duplicate host command permission prefix '${prefix}'.`)
     }
     seen.add(key)
     return { text: prefix, tokens }
   })
+}
+
+function encodePrefixIdentity(tokens: readonly string[]): string {
+  return JSON.stringify(tokens)
 }
 
 function isValidPrefix(prefix: unknown): prefix is string {
@@ -98,11 +100,14 @@ function isInvalidHostCommand(argv: readonly string[]): boolean {
 }
 
 function hasValidPrefixTokens(tokens: readonly string[]): boolean {
-  return tokens.every(token => token !== '' && !/\s/u.test(token)) && !tokens[0]!.startsWith('-')
+  return tokens.every(token => token !== '' && !Regxs.SingleWhitespaceRegx.test(token)) && !tokens[0]!.startsWith('-')
 }
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {
-  if (prefix.text === 'performance preview' || prefix.text === 'performance record') {
+  if (prefix.text === 'push') {
+    return { command: './agent push', variadicArgs: trailing }
+  }
+  if (isPerformanceOperation(prefix)) {
     return { command: './dev ' + prefix.text, variadicArgs: trailing }
   }
   if (prefix.tokens.length === 1 && developerCommands.has(prefix.tokens[0]!)) {
@@ -116,6 +121,10 @@ function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostComman
     return { command: `git ${prefix.tokens[1]}`, variadicArgs: trailing }
   }
   Errors.ThrowUserInput(`Host operation '${prefix.text}' is allowlisted but has no supported target.`)
+}
+
+function isPerformanceOperation(prefix: Prefix): boolean {
+  return ['performance preview', 'performance modules', 'performance record'].includes(prefix.text)
 }
 
 function isNativeGitPrefix(prefix: Prefix): boolean {

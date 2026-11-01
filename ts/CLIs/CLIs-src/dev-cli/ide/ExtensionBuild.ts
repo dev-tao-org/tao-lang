@@ -1,12 +1,13 @@
 import { IO, runCommand } from '@cli-kit'
-import { Try } from '@shared'
-import { Artifacts, Bundle, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
+import { Errors, Try } from '@shared'
+import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
 /** buildExtension packages the current Tao grammar and editor adapter into one standalone VSIX. */
 export async function buildExtension(): Promise<string> {
   await prepareExtensionAssets()
-  await Bundle.bundleNode(Path.join(sourceRoot, 'ide-extension-src/extension.ts'), Path.join(packageRoot, 'dist'), [
+  await Bundle.bundleNode(Path.join(sourceRoot, 'tao-ide-extension-src/extension.ts'), Path.join(packageRoot, 'dist'), [
     'vscode',
   ])
   await validateRelocatedPackage()
@@ -21,8 +22,7 @@ export async function buildExtension(): Promise<string> {
 /** prepareExtensionAssets generates the Tao WASM parser and stages the extension's portable assets. */
 export async function prepareExtensionAssets(): Promise<void> {
   await prepareParser()
-  await FileSystem.mkdir(Path.join(packageRoot, 'grammars'), { recursive: true })
-  await FileSystem.mkdir(Path.join(packageRoot, 'runtime'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(packageRoot, 'grammars'), Path.join(packageRoot, 'runtime'))
   await runCommand('tree-sitter build --wasm --output', {
     variadicArgs: [
       Path.join(packageRoot, 'grammars/tree-sitter-tao.wasm'),
@@ -31,28 +31,32 @@ export async function prepareExtensionAssets(): Promise<void> {
     cwd: Repo.resolvePath('ts'),
   })
   await copyAssets()
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(sourceRoot, 'package.json'), 'utf8'))
+  const manifest = await FileSystem.readFile(Path.join(sourceRoot, 'package.json'), 'utf8')
+  await FileSystem.writeFile(Path.join(packageRoot, 'package.json'), formatPublishedExtensionManifest(manifest))
+}
+
+type ExtensionManifest = Record<string, unknown> & { files: string[] }
+
+function formatPublishedExtensionManifest(contents: string): string {
+  const manifest = JSON.parse(contents) as ExtensionManifest
   delete manifest.dependencies
   delete manifest.devDependencies
   delete manifest.private
-  await FileSystem.writeFile(
-    Path.join(packageRoot, 'package.json'),
-    JSON.stringify(
-      {
-        ...manifest,
-        name: 'tao',
-        publisher: 'devtao',
-        type: 'commonjs',
-        main: './dist/extension.js',
-        files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
-      },
-      null,
-      2,
-    ),
+  return JSON.stringify(
+    {
+      ...manifest,
+      name: 'tao',
+      publisher: 'devtao',
+      type: 'commonjs',
+      main: './dist/extension.js',
+      files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
+    },
+    null,
+    2,
   )
 }
 
-const sourceRoot = Repo.resolvePath('ts/ide-extension')
+const sourceRoot = Repo.resolvePath('ts/ide-extensions/tao-ide-extension')
 const packageRoot = Repo.resolvePath('.artifacts/ide-extension/package')
 const vsixPath = Repo.resolvePath('.artifacts/ide-extension/tao-language.vsix')
 
@@ -67,44 +71,67 @@ async function validateRelocatedPackage(): Promise<void> {
 }
 
 async function copyAssets(): Promise<void> {
-  const modules = Path.join(sourceRoot, 'node_modules')
+  const modulesDirectory = Path.join(sourceRoot, 'node_modules')
   await FileSystem.cp(
-    Path.join(modules, 'web-tree-sitter/web-tree-sitter.wasm'),
+    Path.join(modulesDirectory, 'web-tree-sitter/web-tree-sitter.wasm'),
     Path.join(packageRoot, 'runtime/web-tree-sitter.wasm'),
   )
   await FileSystem.cp(
-    Path.join(modules, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
+    Path.join(modulesDirectory, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
     Path.join(packageRoot, 'grammars/tree-sitter-tsx.wasm'),
   )
-  await FileSystem.mkdir(Path.join(packageRoot, 'queries'), { recursive: true })
+  await FileSystem.mkdir(Path.join(packageRoot, 'queries'))
   await FileSystem.cp(
     Repo.resolvePath('ts/1-grammar/grammar-src/queries/highlights.scm'),
     Path.join(packageRoot, 'queries/tao-highlights.scm'),
   )
-  await writeTsxQueries(modules)
+  await writeTsxQueries(modulesDirectory)
   await FileSystem.cp(Repo.resolvePath('LICENSE'), Path.join(packageRoot, 'LICENSE'))
   await FileSystem.cp(Path.join(sourceRoot, 'README.md'), Path.join(packageRoot, 'README.md'))
   await FileSystem.cp(
     Path.join(sourceRoot, 'language-configuration.json'),
     Path.join(packageRoot, 'language-configuration.json'),
   )
+  await copyLanguageIcons()
+  const formatterNotice = await copyFormatter()
   const notices = await Promise.all(
     ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
-      `${name}\n\n${await FileSystem.readFile(Path.join(modules, name, 'LICENSE'), 'utf8')}`
+      `${name}\n\n${await FileSystem.readFile(Path.join(modulesDirectory, name, 'LICENSE'), 'utf8')}`
     ),
   )
-  await FileSystem.writeFile(Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'), notices.join('\n\n'))
+  await FileSystem.writeFile(
+    Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'),
+    [...notices, formatterNotice].join('\n\n'),
+  )
 }
 
-async function writeTsxQueries(modules: string): Promise<void> {
-  const typescript = FileSystem.realpathSync(Path.join(modules, 'tree-sitter-typescript'))
-  const javascript = Path.join(Path.dirname(typescript), 'tree-sitter-javascript')
+async function copyFormatter(): Promise<string> {
+  const bytes = await FormatterResources.typeScriptFormatterBytes()
+  await FileSystem.writeFile(Path.join(packageRoot, 'runtime/typescript-formatter.wasm'), bytes)
+  const formatterPackage = FileSystem.resolvePackageDirectory('@dprint/formatter', Repo.resolvePath('ts/4-fix'))
+  if (!formatterPackage) {
+    Errors.ThrowHostEnvironment('Cannot locate the installed @dprint/formatter package for extension licensing.')
+  }
+  const wrapperLicense = await FileSystem.readFile(Path.join(formatterPackage, 'LICENSE'), 'utf8')
+  return `@dprint/formatter\n\n${wrapperLicense}\n\n@dprint/typescript\n\n${createTypeScriptFormatter(bytes).license}`
+}
+
+async function copyLanguageIcons(): Promise<void> {
+  const icons = Repo.resolvePath('Assets/Icons')
+  await FileSystem.mkdir(Path.join(packageRoot, 'icons'))
+  await FileSystem.cp(Path.join(icons, 'tao-light.svg'), Path.join(packageRoot, 'icons/tao-light.svg'))
+  await FileSystem.cp(Path.join(icons, 'tao-dark.svg'), Path.join(packageRoot, 'icons/tao-dark.svg'))
+}
+
+async function writeTsxQueries(modulesDirectory: string): Promise<void> {
+  const typescriptDirectory = FileSystem.realpathSync(Path.join(modulesDirectory, 'tree-sitter-typescript'))
+  const javascriptDirectory = Path.join(Path.dirname(typescriptDirectory), 'tree-sitter-javascript')
   const paths = [
-    Path.join(javascript, 'queries/highlights.scm'),
-    Path.join(javascript, 'queries/highlights-jsx.scm'),
-    Path.join(typescript, 'queries/highlights.scm'),
+    Path.join(javascriptDirectory, 'queries/highlights.scm'),
+    Path.join(javascriptDirectory, 'queries/highlights-jsx.scm'),
+    Path.join(typescriptDirectory, 'queries/highlights.scm'),
   ]
   const queries = await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
   await FileSystem.writeFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), queries.join('\n'))
-  await FileSystem.cp(Path.join(javascript, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
+  await FileSystem.cp(Path.join(javascriptDirectory, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
 }

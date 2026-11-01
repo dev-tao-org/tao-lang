@@ -1,18 +1,28 @@
 import { Errors, Try } from '@shared'
-import { Platform, Text } from '@shared/os'
+import { Platform, Terminal, Text } from '@shared/os'
 import { IO } from './cli-kit'
 
 Platform.onUncaughtException(fatalError)
 Platform.onUnhandledRejection(fatalError)
 
-function fatalError(error: unknown): void {
+async function fatalError(error: unknown): Promise<void> {
   const commandFailure = Errors.isCommandExecutionError(error)
   const status = commandFailure ? error.result.status : undefined
-  Try(() => printError(error), {
+  await Try(async () => {
+    printError(error)
+    IO.summary(`Failed: ${Errors.fromUnknown(error).message.split('\n')[0]!.slice(0, 240)}`)
+    await IO.finish('failed')
+  }, {
+    catch: () => writeFallbackError(error),
     finally() {
       Platform.exit(status ?? 1)
     },
   })
+}
+
+function writeFallbackError(error: unknown): void {
+  const { stacks, details } = Errors.describe(error)
+  Terminal.stderr.write(`${[...stacks, Text.inspect(details)].filter(Boolean).join('\n')}\n`)
 }
 
 function printError(error: unknown): void {
