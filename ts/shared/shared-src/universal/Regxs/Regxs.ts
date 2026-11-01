@@ -1,0 +1,7 @@
+export * from './CliRegxs'
+export * from './HashesRegxs'
+export * from './IdentifiersRegxs'
+export * from './PathsRegxs'
+export * from './SourceConformanceRegxs'
+export * from './TextRegxs'
+export * from './ToolingRegxs'
