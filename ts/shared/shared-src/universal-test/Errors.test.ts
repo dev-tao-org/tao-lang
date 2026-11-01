@@ -23,6 +23,18 @@ Tests.describe('Errors diagnostics', () => {
   })
 })
 
+Tests.test('host failures can be constructed synchronously for deferred rejection', () => {
+  const cause = new Error('host')
+  const details = { operation: 'preview edit' }
+  const error: Errors.TaoError = Errors.createHostEnvironmentError('edit failed', { cause, details })
+  Tests.expect(Errors.isTaoError(error)).toBe(true)
+  Tests.expect(error.name).toBe('HostEnvironmentError')
+  Tests.expect(error.message).toBe('edit failed')
+  Tests.expect(error.messageForUser).toBe('edit failed')
+  Tests.expect(error.cause).toBe(cause)
+  Tests.expect(error.details).toBe(details)
+})
+
 Tests.describe('Errors throwing helpers', () => {
   Tests.test('ThrowX preserves each error category, message and context', () => {
     const details = { field: 'input' }

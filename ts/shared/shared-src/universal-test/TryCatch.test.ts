@@ -44,6 +44,9 @@ Tests.test('Try > preserves synchronous values', () => {
   })
   Tests.expect(result).toBe(value)
   Tests.expect(recovered).toBe(42)
+  const failure = Errors.createHostEnvironmentError('synchronous failure')
+  const recoveredFailure: Errors.TaoError = Try(() => Errors.Throw(failure), { catch: Errors.fromUnknown })
+  Tests.expect(recoveredFailure).toBe(failure)
 })
 
 Tests.test('Try.WithDefault > preserves success values and returns the fallback on sync or async failure', async () => {
