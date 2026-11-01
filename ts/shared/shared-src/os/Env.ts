@@ -1,6 +1,13 @@
+import * as Errors from '../universal/Errors'
+
 /** get reads a variable from the current process environment. */
 export function get(key: string): string | undefined {
   return process.env[key]
+}
+
+/** require reads a variable and fails when the host environment does not define it. */
+export function require(name: string): string {
+  return get(name) ?? Errors.ThrowHostEnvironment(`Missing environment variable: ${name}`)
 }
 
 type EnvironmentValue = string | undefined
