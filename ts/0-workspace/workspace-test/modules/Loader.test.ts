@@ -15,8 +15,7 @@ Tests.test(
     await Try(async () => {
       const directory = Path.join(root, 'views')
       const emptyDirectory = Path.join(root, 'empty')
-      await FileSystem.mkdir(directory, { recursive: true })
-      await FileSystem.mkdir(emptyDirectory, { recursive: true })
+      await FileSystem.mkdirs(directory, emptyDirectory)
       const target = Path.join(directory, 'Card.tao')
       await FileSystem.writeFile(target, view('Card'))
 
@@ -68,8 +67,7 @@ Tests.test('resolves a named package recursively and reports its import ownershi
     const packageRoot = Path.join(root, '@parts')
     const card = Path.join(packageRoot, 'nested', 'Card.tao')
     const nestedProjectCard = Path.join(root, 'child', '.tao', '@parts', 'Nested.tao')
-    await FileSystem.mkdir(Path.dirname(card), { recursive: true })
-    await FileSystem.mkdir(Path.dirname(nestedProjectCard), { recursive: true })
+    await FileSystem.mkdirs(Path.dirname(card), Path.dirname(nestedProjectCard))
     await FileSystem.writeFile(card, view('Card'))
     await FileSystem.writeFile(nestedProjectCard, view('Nested'))
     const sources = await loadModules(
@@ -89,8 +87,7 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
   await Try(async () => {
     const standardRoot = Path.join(root, 'standard')
     const standardPath = Path.join(standardRoot, '@ui', 'Views.tao')
-    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
-    await FileSystem.mkdir(Path.dirname(standardPath), { recursive: true })
+    await FileSystem.mkdirs(Path.join(standardRoot, '.tao'), Path.dirname(standardPath))
     await FileSystem.writeFile(standardPath, view('Actual'))
     const sources = await loadModules(
       parseEntry(Path.join(root, 'Main.tao'), `use all from tao@ui\n${app('Main')}`),
@@ -128,11 +125,11 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
   await Try(async () => {
     const outside = Path.join(root, 'Outside.tao')
     const link = Path.join(root, 'project', 'Linked.tao')
-    await FileSystem.mkdir(Path.dirname(link), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(link))
     await FileSystem.writeFile(outside, view('Outside'))
     await FileSystem.symlink(outside, link)
     const projectRoot = Path.join(root, 'project')
-    await FileSystem.mkdir(Path.join(projectRoot, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(projectRoot, '.tao'))
     await Tests.rejects(
       loadModules(
         parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao\n${app('Main')}`),
@@ -150,7 +147,7 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
   const standardRoot = Path.join(unrelatedWorkspace, 'standard-library')
   const standardView = Path.join(standardRoot, '@ui', 'Views.tao')
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(standardRoot, '.tao'))
     await writeSources(standardView, 'public view Text { render Text("Text") }\npublic view Col { render Col {} }')
     const source = await FileSystem.readFile(entryPath, 'utf8')
     const modules = await loadModules(
@@ -177,12 +174,12 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
 
 async function createProject(): Promise<string> {
   const root = Artifacts.resolvePath('tmp', `module-loader-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '.tao'))
   return root
 }
 
 async function writeSources(path: string, source: string): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(path))
   await FileSystem.writeFile(path, source)
 }
 

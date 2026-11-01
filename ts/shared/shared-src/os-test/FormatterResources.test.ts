@@ -3,7 +3,7 @@ import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 Tests.test('setup can load formatter resources before the optional formatter package is installed', async () => {
   const directory = Artifacts.resolvePath('tmp', `formatter-bootstrap-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(async () => {
     const path = Path.join(directory, 'FormatterResources.ts')
     await FileSystem.cp(Repo.resolvePath('ts/shared/shared-src/os/FormatterResources.ts'), path)

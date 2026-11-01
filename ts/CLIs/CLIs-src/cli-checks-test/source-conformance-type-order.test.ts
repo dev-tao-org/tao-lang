@@ -40,7 +40,7 @@ Tests.test('source type order > moves owned contracts before functions while pre
 type SourceFixtureAction = (root: string, paths: string[]) => Promise<void>
 
 async function withSources(run: SourceFixtureAction): Promise<void> {
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-type-order-'))
   await Try(async () => {
     const paths = ['example.ts', 'consumer.d.ts', 'generated.ts'].map(name => Path.join(root, 'ts', name))

@@ -5,7 +5,7 @@ import { fixSourceConformance } from '../cli-checks/source-conformance-fix'
 import { unnamedUnionIssue } from '../cli-checks/source-conformance-naming'
 
 Tests.test('source fixing > fixes unasserted optional reads and leaves casts for named absence aliases', async () => {
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-source-fix-'))
   await Try(async () => {
     const path = Path.join(root, 'ts/example.ts')

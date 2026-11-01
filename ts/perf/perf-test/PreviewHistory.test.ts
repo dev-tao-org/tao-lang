@@ -69,7 +69,7 @@ const report = JSON.stringify({ version: 1, commit, modified: true }) + '\n'
 
 async function withFixture(run: (fixture: ReturnType<typeof createFixture>) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `preview-history-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   const fixture = createFixture(root)
   await FileSystem.writeFile(fixture.reportPath, report)
   await Try(() => run(fixture), {

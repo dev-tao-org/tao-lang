@@ -18,7 +18,7 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
   let browser: OptionalTestBrowser
   let expo: OptionalExpoSession
   await Try(async () => {
-    await FileSystem.mkdir(root, { recursive: true })
+    await FileSystem.mkdir(root)
     registry = await createFixtureRegistry(root)
     const { projects, executor } = await prepareManagedMetroFixture(root, registry.url)
     await prepareProject(projects.entry, { executor })

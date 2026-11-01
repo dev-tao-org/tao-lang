@@ -70,13 +70,13 @@ async function writePackage(
   dependencies: Record<string, string>,
 ): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
 }
 
 async function writeNativePackage(root: string, version: string): Promise<void> {
   const directory = Path.join(root, 'native-fixture')
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
     JSON.stringify({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
@@ -85,7 +85,7 @@ async function writeNativePackage(root: string, version: string): Promise<void> 
 
 async function withTemporaryDirectory(action: (directory: string) => Promise<void>): Promise<void> {
   const directory = Artifacts.resolvePath('tmp', `native-singleton-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(() => action(directory), {
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })

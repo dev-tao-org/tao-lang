@@ -94,6 +94,6 @@ async function writePackage(
   dependencies?: Record<string, string>,
 ): Promise<void> {
   const directory = Path.join(profile, 'node_modules', installName)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
 }

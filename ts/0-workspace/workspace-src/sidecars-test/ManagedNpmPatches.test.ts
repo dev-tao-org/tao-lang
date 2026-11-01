@@ -11,7 +11,7 @@ const RuntimeMetadataDriftErrorRegx = /metadata drifted/
 
 Tests.test('installs runtime patches in isolated managed profiles and preserves durable pins when patch bytes change', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-patches-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(() => assertPatchedProfile(directory), {
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })
@@ -19,7 +19,7 @@ Tests.test('installs runtime patches in isolated managed profiles and preserves 
 
 Tests.test('repairs runtime policy through a frozen copy while preserving every durable package resolution', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-policy-repair-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(() => assertPolicyRepair(directory), {
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })
@@ -27,7 +27,7 @@ Tests.test('repairs runtime policy through a frozen copy while preserving every 
 
 Tests.test('removing runtime policy preserves durable package resolutions through frozen repair', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-policy-removal-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(async () => {
     const input = createInput(directory)
     const invocations: string[][] = []
@@ -153,7 +153,7 @@ function createExecutor(invocations: string[][]): BunExecutor {
       )
     }
     const packageDirectory = Path.join(cwd, 'node_modules/fixture')
-    await FileSystem.mkdir(packageDirectory, { recursive: true })
+    await FileSystem.mkdir(packageDirectory)
     await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), '{"name":"fixture","version":"1.0.0"}')
     return { status: 0, stdout: '', stderr: '' }
   }

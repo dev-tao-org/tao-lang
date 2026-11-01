@@ -8,8 +8,7 @@ Tests.test('repairs a partial active native-lock version without changing its pu
   const active = Path.join(root, identity)
   const staging = Path.join(root, 'staging')
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(active, 'build/Release'), { recursive: true })
-    await FileSystem.mkdir(Path.join(staging, 'build/Release'), { recursive: true })
+    await FileSystem.mkdirs(Path.join(active, 'build/Release'), Path.join(staging, 'build/Release'))
     await FileSystem.writeFile(Path.join(active, 'active-addon.marker'), 'keep')
     await FileSystem.writeFile(Path.join(staging, 'build/Release/tao_os_locks.node'), 'rebuilt')
     await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity, directory: identity }))

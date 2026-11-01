@@ -55,7 +55,7 @@ async function prepareLocalRuntime(root: string): Promise<{
     toolchainCacheDirectory: Path.join(root, 'runtime-toolchains'),
     install: {
       async install(directory: string) {
-        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'))
       },
     },
   }

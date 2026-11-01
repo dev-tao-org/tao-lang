@@ -4,7 +4,7 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 Tests.test('read-only metadata handles concurrent creators without accepting conflicting contents', async () => {
   const root = Artifacts.resolvePath('tmp', `metadata-race-${Platform.randomUUID()}`)
   await Try(async () => {
-    await FileSystem.mkdir(root, { recursive: true })
+    await FileSystem.mkdir(root)
     Tests.expect(await raceCreator(Path.join(root, 'same'), 'expected')).toBe('ok')
     Tests.expect(await raceCreator(Path.join(root, 'different'), 'other')).toContain('created concurrently')
     Tests.expect(await FileSystem.readFile(Path.join(root, 'different'), 'utf8')).toBe('other')
@@ -33,7 +33,7 @@ async function raceCreator(path: string, winningContent: string): Promise<string
     }, { catch: error => error.message });
     process.stdout.write(result);
   `
-  const child = Platform.spawn(Platform.argv[0]!, { variadicArgs: ['-e', script], stdout: 'pipe', stderr: 'pipe' })
+  const child = Platform.spawnPiped(Platform.argv[0]!, { variadicArgs: ['-e', script] })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),

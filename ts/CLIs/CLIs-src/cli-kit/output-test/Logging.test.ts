@@ -71,12 +71,16 @@ Tests.test('IO retries renderer creation after prompt cleanup fails', async () =
 })
 
 async function runFixture(mode: string, terminalOutput?: string) {
-  const child = Platform.spawn('bun run', {
+  const environment = {
+    ...Env.snapshot(),
+    TERMINAL_OUTPUT: terminalOutput,
+    TERMINAL_UI: '0',
+    CLI_OUTPUT_EVENTS: undefined,
+  }
+  const child = Platform.spawnPiped('bun run', {
     variadicArgs: [outputFixturePath, mode],
     cwd: Repo.getWorkspaceRoot(),
-    env: { ...Env.snapshot(), TERMINAL_OUTPUT: terminalOutput, TERMINAL_UI: '0', CLI_OUTPUT_EVENTS: undefined },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

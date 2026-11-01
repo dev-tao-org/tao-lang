@@ -7,7 +7,7 @@ Tests.test('shared node-gyp options use local headers and deduplicate the warnin
   const nodeRoot = Path.join(root, 'node')
   const executable = Path.join(nodeRoot, 'bin/node')
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(nodeRoot, 'include/node'), { recursive: true })
+    await FileSystem.mkdir(Path.join(nodeRoot, 'include/node'))
     await FileSystem.writeFile(Path.join(nodeRoot, 'include/node/node.h'), '')
     const options = nodeGypOptions(executable, '--trace-warnings --disable-warning=DEP0169')
     Tests.expect(options.root).toBe(nodeRoot)

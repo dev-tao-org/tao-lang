@@ -3,7 +3,7 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { resolveStorage } from '../Storage'
 
 const { join } = Path
-const { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } = FileSystem
+const { mkdir, mkdirs, mkdtemp, readdir, readFile, rm, symlink, writeFile } = FileSystem
 
 Tests.test('resolveStorage uses native Tao cache and support locations per platform', () => {
   Tests.expect(resolveStorage('macos', '/Users/ro', {})).toEqual({
@@ -26,8 +26,7 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
   const support = join(root, 'support')
   const outside = join(root, 'outside')
   await Try(async () => {
-    await mkdir(cache)
-    await mkdir(outside)
+    await mkdirs(cache, outside)
     await writeFile(join(cache, 'entry'), 'cache data')
     await writeFile(join(outside, 'keep'), 'durable data')
     await symlink(outside, join(cache, 'external-link'))
@@ -35,11 +34,10 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
     const script = `const storage = await import(${
       JSON.stringify(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
-    const child = Platform.spawn(process.execPath, {
+    const environment = { ...process.env, TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
+    const child = Platform.spawnPiped(process.execPath, {
       variadicArgs: ['-e', script],
-      env: { ...process.env, TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      env: environment,
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
@@ -57,7 +55,7 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
 Tests.test('cache leases reclaim crashed probes while protecting a live consumer in another process', async () => {
   const root = Artifacts.resolvePath('tmp', `lease-recovery-${Platform.randomUUID()}`)
   await Try(async () => {
-    await mkdir(root, { recursive: true })
+    await mkdir(root)
     await runStorageScript(root, `await storage.acquireCacheLease('crashed');`)
     Tests.expect((await readdir(join(root, 'support/leases'))).length).toBe(1)
     const moduleUrl = new URL('../Storage.ts', import.meta.url).href
@@ -87,7 +85,7 @@ Tests.test('cache leases reclaim crashed probes while protecting a live consumer
 Tests.test('direct test invocations isolate Tao storage without a test-plan worker', async () => {
   const root = Artifacts.resolvePath('tmp', `direct-test-storage-${Platform.randomUUID()}`)
   await Try(async () => {
-    await mkdir(root, { recursive: true })
+    await mkdir(root)
     const path = join(root, 'StorageIsolation.test.ts')
     const testsUrl = new URL('../Tests.ts', import.meta.url).href
     const storageUrl = new URL('../Storage.ts', import.meta.url).href
@@ -106,11 +104,9 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
     const env = { ...process.env }
     delete env.TAO_CACHE_DIR
     delete env.TAO_SUPPORT_DIR
-    const child = Platform.spawn(process.execPath, {
+    const child = Platform.spawnPiped(process.execPath, {
       variadicArgs: ['test', path],
       env,
-      stdout: 'pipe',
-      stderr: 'pipe',
     })
     const [status, , stderr] = await Promise.all([
       child.exited,
@@ -126,11 +122,10 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
 
 async function runStorageScript(root: string, source: string): Promise<string> {
   const moduleUrl = new URL('../Storage.ts', import.meta.url).href
-  const child = Platform.spawn(process.execPath, {
+  const environment = { ...process.env, TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
+  const child = Platform.spawnPiped(process.execPath, {
     variadicArgs: ['-e', `const storage = await import(${JSON.stringify(moduleUrl)}); ${source}`],
-    env: { ...process.env, TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

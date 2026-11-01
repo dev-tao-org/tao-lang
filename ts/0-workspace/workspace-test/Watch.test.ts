@@ -209,7 +209,7 @@ Tests.test('failed external sidecar inputs register their project before missing
   const missingAsset = Path.join(producer, 'new', 'logo.png')
   const fixture = WatchFixture.createDynamicWatchFixture()
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(producer, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(producer, '.tao'))
     await fixture.manager.openFile('/workspace/App.tao')
     await fixture.manager.watchPipelineFiles([missingAsset])
     Tests.expect(fixture.updates().at(-1)?.directories).toContain(producer)

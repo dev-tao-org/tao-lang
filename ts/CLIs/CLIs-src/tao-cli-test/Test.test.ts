@@ -17,7 +17,7 @@ Tests.test('Tao app discovery includes developer apps and excludes files without
 })
 
 Tests.test('tao test resolves default folders and relative files from the caller and reports failure', async () => {
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/tao cli-'))
   await Try(async () => {
     await initializeProject(directory)
@@ -28,17 +28,16 @@ Tests.test('tao test resolves default folders and relative files from the caller
     const dependencies = await createProjectDependencyOptions(directory)
     await prepareDependencies(directory, await dependencies.readRequirements(directory), dependencies)
     for (const args of [[], ['Journey.tao']]) {
-      const child = Platform.spawn(Repo.resolvePath('tao'), {
+      const environment = {
+        ...Env.snapshot(),
+        TAO_CLI_CWD: undefined,
+        TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
+        TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
+      }
+      const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
         variadicArgs: ['test', ...args],
         cwd: directory,
-        env: {
-          ...Env.snapshot(),
-          TAO_CLI_CWD: undefined,
-          TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
-          TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
-        },
-        stdout: 'pipe',
-        stderr: 'pipe',
+        env: environment,
       })
       const [status, stdout, stderr] = await Promise.all([
         child.exited,

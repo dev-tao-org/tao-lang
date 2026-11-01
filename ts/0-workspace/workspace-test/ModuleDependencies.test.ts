@@ -11,7 +11,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
   const module = Path.join(root, 'Packages', '@widgets')
   const source = Path.join(module, 'Views.tao')
   await Try(async () => {
-    await FileSystem.mkdir(module, { recursive: true })
+    await FileSystem.mkdir(module)
     await FileSystem.writeFile(Path.join(root, '.tao'), '')
     await FileSystem.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as graph\n')
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', '@scope/graph@2.4.1')
@@ -32,7 +32,7 @@ Tests.test('module add resolves bare packages through the injected executor and 
   const module = Path.join(root, 'Packages', '@widgets')
   let asked = ''
   await Try(async () => {
-    await FileSystem.mkdir(module, { recursive: true })
+    await FileSystem.mkdir(module)
     await FileSystem.writeFile(Path.join(root, '.tao'), '')
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', 'date-fns', async (name, cwd) => {
       asked = `${name}:${cwd}`
@@ -50,7 +50,7 @@ Tests.test('module add accepts legacy mixed-case npm package names', async () =>
   const root = tempRoot()
   const module = Path.join(root, 'Packages', '@widgets')
   await Try(async () => {
-    await FileSystem.mkdir(module, { recursive: true })
+    await FileSystem.mkdir(module)
     await FileSystem.writeFile(Path.join(root, '.tao'), '')
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', 'JSONStream@1.3.5')
     Tests.expect(result.packageName).toBe('JSONStream')
@@ -63,10 +63,9 @@ Tests.test('module add rejects ambiguous local names and invalid versions', asyn
   const root = tempRoot()
   const unique = tempRoot()
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, 'One', '@widgets'), { recursive: true })
-    await FileSystem.mkdir(Path.join(root, 'Two', '@widgets'), { recursive: true })
+    await FileSystem.mkdirs(Path.join(root, 'One', '@widgets'), Path.join(root, 'Two', '@widgets'))
     await FileSystem.writeFile(Path.join(root, '.tao'), '')
-    await FileSystem.mkdir(Path.join(unique, 'One', '@widgets'), { recursive: true })
+    await FileSystem.mkdir(Path.join(unique, 'One', '@widgets'))
     await FileSystem.writeFile(Path.join(unique, '.tao'), '')
     await Tests.rejects(
       ModuleDependencies.addModuleNpmDependency(unique, '@widgets', 'lodash@^4.0.0'),
@@ -83,7 +82,7 @@ Tests.test('prepare entry discovery picks one app and releases injected cache le
   const root = tempRoot()
   let released = false
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, '.tao'))
     const entry = Path.join(root, 'Main.tao')
     await FileSystem.writeFile(entry, 'app Main { root Main }')
     Tests.expect(await ModuleDependencies.findPreparationEntry(root)).toBe(entry)
@@ -111,7 +110,7 @@ Tests.test('dependency session contention fails before acquiring another cache l
     return () => {}
   }
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, '.tao'))
     await ModuleDependencies.withDependencySession(root, 'busy', async () => {
       await Tests.rejects(
         ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease),

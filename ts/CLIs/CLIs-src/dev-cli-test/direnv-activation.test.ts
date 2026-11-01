@@ -48,12 +48,7 @@ async function createRuntimeFixture(): Promise<RuntimeFixture> {
   const runtime = Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh')
   const record = Path.join(home, '.tao-dev/shell/repositories', 'a'.repeat(40))
   const bin = Path.join(home, 'bin')
-  await FileSystem.mkdir(record, { recursive: true })
-  await FileSystem.mkdir(common, { recursive: true })
-  await FileSystem.mkdir(worktreeA, { recursive: true })
-  await FileSystem.mkdir(worktreeB, { recursive: true })
-  await FileSystem.mkdir(bin, { recursive: true })
-  await FileSystem.mkdir(Path.join(home, '.tao-dev/shell/direnv/bin'), { recursive: true })
+  await FileSystem.mkdirs(record, common, worktreeA, worktreeB, bin, Path.join(home, '.tao-dev/shell/direnv/bin'))
   await FileSystem.writeFile(Path.join(record, 'choice'), 'disabled\n', 'utf8')
   await FileSystem.writeFile(Path.join(record, 'common-dir'), `${common}\n`, 'utf8')
   await FileSystem.writeFile(Path.join(worktreeB, '.envrc'), '# disabled worktree\n', 'utf8')
@@ -112,29 +107,28 @@ async function runActivationHook(fixture: RuntimeFixture, activeRoot: string): P
   stdout: string
 }> {
   const parent = Path.dirname(fixture.root)
-  const child = Platform.spawn('zsh', {
+  const environment = {
+    HOME: fixture.home,
+    PATH: `${Path.join(fixture.home, 'bin')}:${Env.get('PATH') ?? ''}`,
+    DIRENV_DIR: `-${activeRoot}`,
+    TAO_TEST_ACTIVE: 'from-sibling-A',
+    TAO_TEST_COMMON: Path.join(Path.dirname(fixture.root), 'common.git'),
+    TAO_TEST_EXPORT_LOG: Path.join(fixture.home, 'export-cwd'),
+    TAO_TEST_HOOK_LOG: Path.join(fixture.home, 'hook-called'),
+    TAO_TEST_ID: 'a'.repeat(40),
+    TAO_TEST_PARENT: parent,
+    TAO_TEST_ROOT: fixture.root,
+    TAO_TEST_RUNTIME: fixture.runtime,
+    TAO_TEST_WORKTREE_A: fixture.worktreeA,
+    TAO_TEST_WORKTREE_B: fixture.worktreeB,
+  }
+  const child = Platform.spawnPiped('zsh', {
     variadicArgs: [
       '-fic',
       '_tao_dev_direnv_hook() { print -r -- stale >> "$TAO_TEST_HOOK_LOG"; }; source "$TAO_TEST_RUNTIME"; _tao_dev_direnv_hook; print -r -- "TAO_ACTIVE:${TAO_TEST_ACTIVE-unset}"; print -r -- "DIRENV_DIR:$DIRENV_DIR"',
     ],
     cwd: fixture.root,
-    env: {
-      HOME: fixture.home,
-      PATH: `${Path.join(fixture.home, 'bin')}:${Env.get('PATH') ?? ''}`,
-      DIRENV_DIR: `-${activeRoot}`,
-      TAO_TEST_ACTIVE: 'from-sibling-A',
-      TAO_TEST_COMMON: Path.join(Path.dirname(fixture.root), 'common.git'),
-      TAO_TEST_EXPORT_LOG: Path.join(fixture.home, 'export-cwd'),
-      TAO_TEST_HOOK_LOG: Path.join(fixture.home, 'hook-called'),
-      TAO_TEST_ID: 'a'.repeat(40),
-      TAO_TEST_PARENT: parent,
-      TAO_TEST_ROOT: fixture.root,
-      TAO_TEST_RUNTIME: fixture.runtime,
-      TAO_TEST_WORKTREE_A: fixture.worktreeA,
-      TAO_TEST_WORKTREE_B: fixture.worktreeB,
-    },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout] = await Promise.all([
     child.exited,

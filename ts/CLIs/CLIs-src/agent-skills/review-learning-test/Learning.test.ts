@@ -105,7 +105,7 @@ test('protects checkpointed review groups and marks accepted paths pending witho
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('Protected')
   await runLearning(['checkpoint', '--repo', root, '--group', 'next', '--protected-files'])
   const directory = Path.join(root, '.artifacts/notes/incremental-review/active')
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const accepted = { 'source.ts': 'accepted-tree-entry' }
   await FileSystem.writeFile(
     Path.join(directory, 'session.json'),
@@ -120,7 +120,7 @@ test('protects checkpointed review groups and marks accepted paths pending witho
       reviewedBranch: 'approved',
     }),
   )
-  await FileSystem.mkdir(Path.join(root, '.git/refs/heads'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '.git/refs/heads'))
   await FileSystem.writeFile(Path.join(root, '.git/index'), 'user staging')
   await FileSystem.writeFile(Path.join(root, '.git/refs/heads/approved'), 'accepted commit')
   await runLearning(['apply', '--repo', root, '--proposal', 'change'])
@@ -170,7 +170,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
 })
 async function createFixture(): Promise<string> {
   const root = Path.join(Repo.getWorkspaceRoot(), '.artifacts/notes/review-learning-tests', Platform.randomUUID())
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   return root
 }
 

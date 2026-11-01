@@ -77,7 +77,7 @@ async function openPreview(entry: string, events: string[], published: string[])
 }
 
 async function writeFixture(root: string, entry: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, '@widgets/feature'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '@widgets/feature'))
   await FileSystem.writeFile(entry, 'use Widget from @widgets/feature\napp Main { root Widget }')
   await FileSystem.writeFile(Path.join(root, '@widgets/feature/Widget.tao'), widgetSource)
   await FileSystem.writeFile(Path.join(root, '@widgets/Requirements.tao'), metadataSource)

@@ -69,9 +69,7 @@ Tests.test('root requirement observation never links unrelated root declarations
 })
 
 async function writeFixture(directory: string, dependency: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
-  await FileSystem.mkdir(Path.dirname(dependency), { recursive: true })
-  await FileSystem.mkdir(Path.join(directory, 'feature'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(directory, '.tao'), Path.dirname(dependency), Path.join(directory, 'feature'))
   await FileSystem.writeFile(dependency, card('First value'))
   await FileSystem.writeFile(
     Path.join(directory, 'feature/App.tao'),

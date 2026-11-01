@@ -20,7 +20,7 @@ type MockCommandResult = { command: string; exitCode: number; stderr: string; st
 async function createFixtureRoot(): Promise<{ home: string; root: string }> {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-direnv-setup-'))
   const home = Path.join(root, 'developer-home')
-  await FileSystem.mkdir(home, { recursive: true })
+  await FileSystem.mkdir(home)
   return { home, root }
 }
 
@@ -32,13 +32,11 @@ async function writeFixtureTree(root: string, home: string): Promise<FixturePath
   const profileClient = Path.join(root, '.devenv/profile/bin/direnv')
   const packageOutput = Path.join(root, 'nix/store/0123456789abcdfghijklmnpqrsvwxyz-direnv-2.37.1')
   const storeDirenv = Path.join(packageOutput, 'bin/direnv')
-  await FileSystem.mkdir(common, { recursive: true })
-  await FileSystem.mkdir(Path.join(root, '.artifacts/cache/dev-shell'), { recursive: true })
-  await FileSystem.mkdir(Path.join(packageOutput, 'bin'), { recursive: true })
+  await FileSystem.mkdirs(common, Path.join(root, '.artifacts/cache/dev-shell'), Path.join(packageOutput, 'bin'))
   await FileSystem.writeFile(storeDirenv, 'direnv', 'utf8')
-  await FileSystem.mkdir(Path.join(profileClient, '..'), { recursive: true })
+  await FileSystem.mkdir(Path.join(profileClient, '..'))
   await FileSystem.symlink(storeDirenv, profileClient)
-  await FileSystem.mkdir(Path.join(root, 'ts/CLIs/CLIs-src/dev-cli/shell'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, 'ts/CLIs/CLIs-src/dev-cli/shell'))
   await FileSystem.writeFile(
     Path.join(root, 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'),
     '# runtime fixture\n',
@@ -98,7 +96,7 @@ async function mockCommand(
   const stdout = command === 'git' ? resolveGitOutput(spec.args, paths.common, root, identity) : ''
   if (command === 'nix-store') {
     const addRoot = spec.args?.[3] ?? ''
-    await FileSystem.mkdir(Path.join(addRoot, 'bin'), { recursive: true })
+    await FileSystem.mkdir(Path.join(addRoot, 'bin'))
     await FileSystem.writeFile(Path.join(addRoot, 'bin/direnv'), 'direnv', 'utf8')
   }
   return { command, exitCode: 0, stdout, stderr: '' }

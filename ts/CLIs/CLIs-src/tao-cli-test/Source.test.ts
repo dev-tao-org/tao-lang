@@ -5,23 +5,22 @@ import { initializeProject } from '@workspace/projects/Projects'
 Tests.test('tao fmt and fix resolve source paths from the caller directory', async () => {
   const directory = Artifacts.resolvePath('tmp', `source-cli-${Platform.randomUUID()}`)
   const path = Path.join(directory, 'Example.tao')
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await initializeProject(directory)
   await Try(async () => {
     for (const command of ['fmt', 'fix']) {
       for (const cwd of [Repo.getWorkspaceRoot(), directory]) {
         await FileSystem.writeFile(path, 'view Main{render Missing}')
-        const child = Platform.spawn(Repo.resolvePath('tao'), {
+        const environment = {
+          ...Env.snapshot(),
+          TAO_CLI_CWD: undefined,
+          TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
+          TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
+        }
+        const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
           variadicArgs: [command, Path.relative(cwd, path)],
           cwd,
-          env: {
-            ...Env.snapshot(),
-            TAO_CLI_CWD: undefined,
-            TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
-            TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
-          },
-          stdout: 'pipe',
-          stderr: 'pipe',
+          env: environment,
         })
         const [status, stdout, stderr] = await Promise.all([
           child.exited,
@@ -43,11 +42,9 @@ Tests.test('root agent test rejects legacy and outside Tao targets before compil
       ['../outside.tao', 'Requested paths must remain inside'],
     ]
   ) {
-    const child = Platform.spawn(Repo.resolvePath('agent'), {
+    const child = Platform.spawnPiped(Repo.resolvePath('agent'), {
       variadicArgs: ['test', target],
       cwd: Repo.getWorkspaceRoot(),
-      stdout: 'pipe',
-      stderr: 'pipe',
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
@@ -67,18 +64,17 @@ Tests.test('cold project compilation requests preparation without installing run
       Path.join(directory, 'Main.tao'),
       'use Text from tao@ui\napp Main { root Greeting }\nview Greeting { render Text("Hi") }',
     )
-    const child = Platform.spawn(Repo.resolvePath('tao'), {
+    const environment = {
+      ...Env.snapshot(),
+      TAO_CLI_CWD: undefined,
+      TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
+      TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
+    }
+    const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
       variadicArgs: ['compile', 'Main.tao'],
       cwd: directory,
-      env: {
-        ...Env.snapshot(),
-        TAO_CLI_CWD: undefined,
-        TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
-        TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
-      },
+      env: environment,
       stdin: 'ignore',
-      stdout: 'pipe',
-      stderr: 'pipe',
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,

@@ -22,7 +22,7 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
   const directory = Path.join(root, 'authored')
   const outputDirectory = Path.join(root, 'output')
   const resourcesDirectory = Path.join(root, 'resources')
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'Hello World.tao'),
     await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
@@ -36,7 +36,7 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
       toolchainCacheDirectory: Path.join(root, 'toolchains'),
       install: {
         async install(target) {
-          await FileSystem.mkdir(Path.join(target, 'node_modules'), { recursive: true })
+          await FileSystem.mkdir(Path.join(target, 'node_modules'))
         },
       },
     },
@@ -75,7 +75,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
       install: {
         async install(directory) {
           installs++
-          await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+          await FileSystem.mkdir(Path.join(directory, 'node_modules'))
         },
       },
     },
@@ -206,7 +206,7 @@ async function verifyUnchangedGeneratedFiles(
 }
 
 async function writeResources(directory: string): Promise<void> {
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const runtimeSources = await readRuntimeSources()
   const sourceFiles = Object.keys(runtimeSources)
   await FileSystem.writeFile(
@@ -226,7 +226,7 @@ async function writeResources(directory: string): Promise<void> {
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const content = await FileSystem.readFile(Repo.resolvePath(sourcePath), 'utf8')
     const target = Path.join(directory, resource)
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, content)
   }
 }

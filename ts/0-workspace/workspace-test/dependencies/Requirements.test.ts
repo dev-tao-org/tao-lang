@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as Requirements from '../../workspace-src/dependencies/Requirements'
 
@@ -11,15 +11,15 @@ const DuplicateRequirementErrorRegx = /declared more than once/
 Tests.test('project source scanning extracts only project root dependencies and applies defaults', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-requirements-${Platform.randomUUID()}`)
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, 'nested'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, 'nested'))
     await FileSystem.writeFile(
       Path.join(root, 'Main.tao'),
-      [
-        'requires github:acme/widgets version v2',
-        'requires file:../local',
-        'requires bundled:tao',
-        'requires npm:date-fns version 4.1.0',
-      ].join('\n'),
+      S`
+        requires github:acme/widgets version v2
+        requires file:../local
+        requires bundled:tao
+        requires npm:date-fns version 4.1.0
+      `,
     )
     await FileSystem.writeFile(Path.join(root, 'nested', 'Module.tao'), 'requires github:acme/other version v1')
     const requirements = await Requirements.readProjectRequirements(root)
@@ -42,15 +42,15 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
   const root = Artifacts.resolvePath('tmp', `dependency-validation-${Platform.randomUUID()}`)
   const path = Path.join(root, 'Main.tao')
   await Try(async () => {
-    await FileSystem.mkdir(root, { recursive: true })
+    await FileSystem.mkdir(root)
     await FileSystem.writeFile(path, 'requires github:acme/widgets')
     await Tests.rejects(Requirements.readProjectRequirements(root), MissingVersionErrorRegx)
     await FileSystem.writeFile(
       path,
-      [
-        'requires github:acme/widgets version v1 as shared',
-        'requires github:acme/other version v1 as shared',
-      ].join('\n'),
+      S`
+        requires github:acme/widgets version v1 as shared
+        requires github:acme/other version v1 as shared
+      `,
     )
     await Tests.rejects(Requirements.readProjectRequirements(root), DuplicateRequirementErrorRegx)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
