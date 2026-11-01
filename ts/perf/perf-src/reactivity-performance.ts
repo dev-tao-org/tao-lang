@@ -10,7 +10,7 @@ export async function reactivityPerformance() {
   const heapCandidates = candidates.filter(candidate => !candidate.deferred)
   const heapRetention = measureReactiveHeapRetention(heapCandidates)
   const path = Artifacts.resolvePath('logs/performance', `reactivity-${Platform.randomUUID()}.json`)
-  await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'))
   const report: ReactivityPerformanceReport = {
     version: 2,
     commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),

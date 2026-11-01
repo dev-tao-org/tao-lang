@@ -6,7 +6,7 @@ import type { ReviewJournal, ReviewSession } from './ReviewTypes'
 /** withReviewLock serializes operations without leaving stale locks after interruption. */
 export async function withReviewLock<Value>(root: string, action: () => Promise<Value>): Promise<Value> {
   const directory = sessionDirectory(root)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const lock = await SessionLock.acquire(Path.join(directory, 'operation.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another incremental review operation owns this session.')

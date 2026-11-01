@@ -20,8 +20,7 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
     git: {
       resolveCommit: async (_repository, version) => version === 'v1' ? 'a'.repeat(40) : 'b'.repeat(40),
       async fetchCommit(_repository, _commit, destination) {
-        await FileSystem.mkdir(Path.join(destination, '.tao'), { recursive: true })
-        await FileSystem.mkdir(Path.join(destination, '@ui'), { recursive: true })
+        await FileSystem.mkdirs(Path.join(destination, '.tao'), Path.join(destination, '@ui'))
         await FileSystem.writeFile(
           Path.join(destination, '@ui', 'Widget.tao'),
           'public view Widget { render Text("ok") }\n',

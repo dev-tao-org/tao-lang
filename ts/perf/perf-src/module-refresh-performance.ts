@@ -73,7 +73,7 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `module-refresh-${owned.sessionId}`)
   owned.root = root
   const dependencyDirectory = Repo.resolvePath('ts/7-runtime/node_modules')
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   for (const name of layouts) {
     const fixture = ModuleRefreshFixtureModule2.createModuleRefreshFixture(name)
     const application = await Runtime.create({
@@ -225,7 +225,7 @@ async function writeReport(owned: Resources, samples: RefreshSample[]): Promise<
   }
   const directory = Artifacts.resolvePath('logs/performance')
   const path = Path.join(directory, `module-refresh-${owned.sessionId}.json`)
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const report: ModuleRefreshPerformanceReport = {
     version: 2,
     sessionId: owned.sessionId,

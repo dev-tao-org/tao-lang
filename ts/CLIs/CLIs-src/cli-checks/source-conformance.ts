@@ -3,6 +3,7 @@ import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
+import { arrayMultilineStringIssue } from './source-conformance-array-strings'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { nestedConditionalIssue, selectedFunctionCallIssue } from './source-conformance-conditional'
 import { analyzeConstantOrder } from './source-conformance-constant-order'
@@ -98,6 +99,9 @@ class SourceConformanceChecker {
   }
 
   private checkNode(node: TypeScript.Node): void {
+    if (!this.excluded) {
+      this.reportIssue(node, arrayMultilineStringIssue(node))
+    }
     if (TypeScript.isImportDeclaration(node) && !this.excluded) {
       const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)
       if (importIssue) {

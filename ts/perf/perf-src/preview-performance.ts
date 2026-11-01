@@ -59,7 +59,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
   const source = fixture.entry
   const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
   const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
-  await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(sourcePath))
   for (const file of fixture.extraFiles) {
     await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
   }
@@ -136,7 +136,7 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   await options.workspace.dispose()
   const output = owned.expo ? await owned.expo.output() : undefined
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)
-  await Artifacts.mkdir(Path.dirname(logPath), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(logPath))
   Artifacts.trackTemporary(logPath)
   await Artifacts.write(logPath, [output?.stdout, output?.stderr, ...owned.errors].filter(Boolean).join('\n'))
   for (const cleanup of cleanups) {
@@ -158,7 +158,7 @@ async function waitForFrameText(
 
 async function writeReport(project: Project, owned: Resources, results: PreviewResult[]): Promise<string> {
   const directory = Artifacts.resolvePath('logs/performance')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const path = Path.join(directory, `preview-${owned.sessionId}.json`)
   Artifacts.trackTemporary(path)
   const report: PreviewPerformanceReport = {

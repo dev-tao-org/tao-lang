@@ -22,7 +22,7 @@ async function ensureShellCompletionCache(): Promise<void> {
   if (FileSystem.existsSync(completion)) {
     return
   }
-  await FileSystem.mkdir(cache, { recursive: true })
+  await FileSystem.mkdir(cache)
   await FileSystem.writeFile(
     completion,
     '# Tao dev shell completion is generated during ./agent setup.\n',

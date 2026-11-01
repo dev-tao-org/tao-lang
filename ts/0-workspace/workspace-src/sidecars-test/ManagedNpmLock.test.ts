@@ -10,8 +10,7 @@ Tests.test('reuses the same npm profile when module directories move within the 
   await withProject(async root => {
     const first = Path.join(root, 'Modules')
     const second = Path.join(root, 'Elsewhere')
-    await FileSystem.mkdir(first, { recursive: true })
-    await FileSystem.mkdir(second, { recursive: true })
+    await FileSystem.mkdirs(first, second)
     const initial = input(root, [{ directory: first, requirements: [dateFns] }])
     const prepared = await prepareManagedModules(initial, executor(['date-fns', '4.1.0']))
     const moved = input(root, [{ directory: second, requirements: [dateFns] }])
@@ -24,7 +23,7 @@ Tests.test('reuses the same npm profile when module directories move within the 
 Tests.test('changed exact roots resolve a new graph despite an intact old source reference', async () =>
   await withProject(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     const original = input(root, [{ directory: moduleDirectory, requirements: [dateFns] }])
     const first = await prepareManagedModules(original, executor(['date-fns', '4.1.0']))
     const oldLockPath = Path.join(root, '.tao', 'store', 'npm', `${first.graphFingerprint}.lock`)
@@ -56,7 +55,7 @@ Tests.test('changed exact roots resolve a new graph despite an intact old source
 Tests.test('missing durable locks are rejected for a prepared current profile', async () =>
   await withProject(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     const current = input(root, [{ directory: moduleDirectory, requirements: [dateFns] }])
     const prepared = await prepareManagedModules(current, executor(['date-fns', '4.1.0']))
     const durableLock = Path.join(root, '.tao', 'store', 'npm', `${prepared.graphFingerprint}.lock`)
@@ -76,7 +75,7 @@ Tests.test('missing durable locks are rejected for a prepared current profile', 
 Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source references', async () =>
   await withProject(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     const initial = input(root, [{ directory: moduleDirectory, requirements: [dateFns] }])
     const first = await prepareManagedModules(initial, executor(['date-fns', '4.1.0']))
     const durable = Path.join(root, '.tao', 'store', 'npm', `${first.graphFingerprint}.lock`)
@@ -157,13 +156,13 @@ async function writeGraph(root: string, dependency: [string, string]): Promise<v
 async function writePackages(root: string, dependencies: Record<string, string>): Promise<void> {
   for (const [name, version] of Object.entries(dependencies)) {
     const packageDirectory = Path.join(root, 'node_modules', name)
-    await FileSystem.mkdir(packageDirectory, { recursive: true })
+    await FileSystem.mkdir(packageDirectory)
     await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), JSON.stringify({ name, version }))
   }
 }
 
 async function withProject(action: (root: string) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `managed-npm-lock-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(() => action(root), { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 }

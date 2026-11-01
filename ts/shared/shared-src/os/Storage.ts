@@ -1,7 +1,8 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
 import * as Env from './Env'
+import * as FileSystem from './FileSystem'
 import type { Dirent } from './NodeBuiltins'
-import { dirname, join, lstat, mkdir, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
+import { dirname, join, lstat, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
@@ -53,7 +54,7 @@ export function resolveSupportDirectory(...segments: string[]): string {
 /** withCacheMutation serializes shared-cache writers and cleanup across threads and processes. */
 export async function withCacheMutation<Value>(operation: () => Promise<Value>): Promise<Value> {
   const path = resolveSupportDirectory('locks', 'cache-mutation.lock')
-  await mkdir(dirname(path), { recursive: true })
+  await FileSystem.mkdir(dirname(path))
   const releaseLocal = await acquireLocalMutation()
   return await Try(async () => {
     const lock = await acquireMutationLock(path)
@@ -64,7 +65,7 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
 /** acquireCacheLease holds a removable lease probe; its lifecycle is serialized by the stable cache-mutation lock. */
 export async function acquireCacheLease(identity: string): Promise<() => void | Promise<void>> {
   const path = resolveSupportDirectory('leases', `${Platform.hashText(identity)}.lock`)
-  await mkdir(dirname(path), { recursive: true })
+  await FileSystem.mkdir(dirname(path))
   let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
     await hasBusyLease(resolveSupportDirectory('leases'))

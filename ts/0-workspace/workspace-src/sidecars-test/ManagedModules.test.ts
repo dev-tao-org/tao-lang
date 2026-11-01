@@ -48,7 +48,7 @@ async function assertProfileRepair(fixture: Fixtures.ManagedFixture, fingerprint
 
 async function assertPackageResolutionStaysInProfile(profile: string): Promise<void> {
   const packageDirectory = Path.join(profile, 'node_modules', 'events')
-  await FileSystem.mkdir(packageDirectory, { recursive: true })
+  await FileSystem.mkdir(packageDirectory)
   await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), '{"name":"events","version":"3.3.0"}\n')
   Tests.expect(FileSystem.resolvePackageDirectory('events', profile)).toBe(packageDirectory)
   Tests.expect(FileSystem.resolvePackageDirectory('missing-package', profile)).toBe(undefined)
@@ -119,7 +119,7 @@ Tests.test('checks a foreign view contract with the installed TypeScript compile
 })
 
 async function assertForeignView(directory: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(directory, 'node_modules', '@types', 'react'), { recursive: true })
+  await FileSystem.mkdir(Path.join(directory, 'node_modules', '@types', 'react'))
   await FileSystem.writeFile(Path.join(directory, 'tsconfig.json'), foreignViewTsconfig())
   await FileSystem.writeFile(
     Path.join(directory, 'Card.ts'),

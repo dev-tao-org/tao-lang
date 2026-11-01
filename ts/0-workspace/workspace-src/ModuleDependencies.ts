@@ -123,12 +123,8 @@ async function containsApp(path: string): Promise<boolean> {
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
-  const child = Platform.spawn(['bun', 'info', packageName, 'version', '--json'], {
-    cwd,
-    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+  const child = Platform.spawnPiped(['bun', 'info', packageName, 'version', '--json'], { cwd, env: environment })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),

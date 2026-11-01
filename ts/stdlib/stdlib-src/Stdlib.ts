@@ -50,7 +50,7 @@ function findLiveProjectRoot(candidate: CandidateProjectDirectory): string | und
 async function materializeProject(cacheRoot: string, resources: StdlibResourceFiles): Promise<string> {
   const entries = Object.entries(resources).sort(([left], [right]) => left.localeCompare(right))
   validateResources(entries)
-  await FileSystem.mkdir(cacheRoot, { recursive: true })
+  await FileSystem.mkdir(cacheRoot)
   const fingerprint = Platform.hashText(serializeStdlibResourceEntries(entries))
   const root = Path.resolve(cacheRoot, `project-${fingerprint}`)
   const marker = Path.join(root, '.ready')
@@ -58,7 +58,7 @@ async function materializeProject(cacheRoot: string, resources: StdlibResourceFi
     return root
   }
   const staging = `${root}.${Platform.randomUUID()}.pending`
-  await FileSystem.mkdir(staging, { recursive: true })
+  await FileSystem.mkdir(staging)
   await Try(async () => {
     await writeResources(staging, entries)
     await FileSystem.writeFile(Path.join(staging, '.ready'), `${fingerprint}\n`)
@@ -122,7 +122,7 @@ async function writeResources(staging: string, entries: StdlibResourceEntries): 
   for (const [relative, contents] of entries) {
     const target = Path.resolve(staging, ...relative.split('/'))
     const parent = Path.dirname(target)
-    await FileSystem.mkdir(parent, { recursive: true })
+    await FileSystem.mkdir(parent)
     assertContainedPath(parent, staging)
     await FileSystem.writeFile(target, contents)
   }

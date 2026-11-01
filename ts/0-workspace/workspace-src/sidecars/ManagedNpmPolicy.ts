@@ -48,7 +48,7 @@ export async function ensureManagedPatches(
   for (const [path, content] of listManagedPatches(input.runtimePolicy)) {
     const destination = Path.join(profile, path)
     validateManagedProfilePath(input.directory, destination)
-    await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(destination))
     await ensureOwnedFile(destination, content, repair)
   }
 }

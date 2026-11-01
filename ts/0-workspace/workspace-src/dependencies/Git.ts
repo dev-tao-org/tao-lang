@@ -24,7 +24,7 @@ async function fetchGitHubCommit(repository: string, commit: string, destination
   if (!isCommit(commit)) {
     Errors.ThrowUserInput(`Invalid immutable Git commit ID ${commit}.`)
   }
-  await FileSystem.mkdir(destination, { recursive: true })
+  await FileSystem.mkdir(destination)
   await Platform.capture('git', { variadicArgs: ['init', '--quiet', destination] })
   await Platform.capture('git', {
     variadicArgs: ['-C', destination, 'fetch', '--quiet', '--depth=1', repository, commit],

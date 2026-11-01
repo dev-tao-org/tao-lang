@@ -7,7 +7,7 @@ Tests.test('runtime source directories include production additions and exclude 
   const root = Artifacts.resolvePath('tmp', `runtime-source-folders-${Platform.randomUUID()}`)
   await Try(async () => {
     const client = Path.join(root, 'client')
-    await FileSystem.mkdir(Path.join(client, 'helper-test'), { recursive: true })
+    await FileSystem.mkdir(Path.join(client, 'helper-test'))
     await FileSystem.writeFile(Path.join(client, 'Helper.ts'), 'export {}')
     await FileSystem.writeFile(Path.join(client, 'Helper.test.ts'), 'export {}')
     await FileSystem.writeFile(Path.join(client, 'helper-test/Hidden.ts'), 'export {}')

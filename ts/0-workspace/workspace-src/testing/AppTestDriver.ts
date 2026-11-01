@@ -1,6 +1,6 @@
 import type { compile, CompileOptions } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Timings, Try } from '@shared'
+import { Errors, joinTextLines, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
@@ -115,7 +115,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   if (await discoverProject(path)) {
     return await openTestProject(path, app, { runtimeOptions, compile })
   }
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'))
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
   Artifacts.trackTemporary(directory)
   return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
@@ -174,7 +174,7 @@ async function retainExpoOutput(state: Session): Promise<void> {
     const output = await state.expo.output()
     await FileSystem.writeFile(
       Path.join(state.workspace.runtime.directory, 'expo.log'),
-      [output.stdout, output.stderr].join('\n'),
+      joinTextLines(output.stdout, output.stderr),
     )
   }
 }

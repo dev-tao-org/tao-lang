@@ -33,7 +33,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
     await writeSemanticAst(outputRoot)
     return
   }
-  await FileSystem.mkdir(outputRoot, { recursive: true })
+  await FileSystem.mkdir(outputRoot)
   await FileSystem.rm(stampPath, { force: true })
   for (const filename of ['binding.gyp', 'binding.cc']) {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
@@ -112,7 +112,7 @@ function parseParserNodeMetadata(contents: string): ParserNodeMetadata {
 
 async function writeBuildTimings(timings: Timings): Promise<void> {
   const directory = Artifacts.resolvePath('logs/performance')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const path = Path.join(directory, `parser-build-${Platform.randomUUID()}.json`)
   Artifacts.trackTemporary(path)
   await Artifacts.write(path, formatParserBuildTimings(timings))

@@ -29,7 +29,7 @@ export async function withTemporaryDirectory(
   action: (directory: string) => Promise<void>,
 ): Promise<void> {
   const directory = Artifacts.resolvePath('tmp', `${prefix}-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await Try(() => action(directory), {
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),
   })
@@ -62,7 +62,7 @@ export async function writePackage(
   dependencies?: Record<string, string>,
 ): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
     JSON.stringify({ name, version, peerDependencies, dependencies }),
@@ -74,11 +74,13 @@ async function createManagedFixture(): Promise<ManagedFixture> {
   const directory = Artifacts.resolvePath('tmp', `managed-modules-${Platform.randomUUID()}`)
   const moduleDirectory = Path.join(directory, 'Modules')
   const externalModule = Artifacts.resolvePath('tmp', `external-module-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(moduleDirectory, { recursive: true })
-  await FileSystem.mkdir(externalModule, { recursive: true })
-  await FileSystem.mkdir(Path.join(directory, '.tao'), { recursive: true })
-  await FileSystem.mkdir(Path.join(externalModule, '.tao'), { recursive: true })
-  await FileSystem.mkdir(Path.join(directory, 'Other'), { recursive: true })
+  await FileSystem.mkdirs(
+    moduleDirectory,
+    externalModule,
+    Path.join(directory, '.tao'),
+    Path.join(externalModule, '.tao'),
+    Path.join(directory, 'Other'),
+  )
   await FileSystem.writeFile(Path.join(moduleDirectory, '.gitignore'), '# authored\nlocal.txt\n')
   await FileSystem.writeFile(Path.join(directory, 'Other', 'package.json'), '{"name":"user-owned"}\n')
   const state = { frozen: false }

@@ -11,7 +11,7 @@ Tests.test('generated and disk streams retain native pipe behavior through pinne
   const directory = Artifacts.resolvePath('tmp/generated-streams', Platform.randomUUID())
   const root = Path.join(directory, 'src')
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, '_gen_runtime'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, '_gen_runtime'))
     await FileSystem.writeFile(Path.join(directory, 'outside.ts'), 'outside')
     await Bundle.bundleNode(Repo.resolvePath('ts/shared/shared-src/os/GeneratedFileSystem.ts'), directory, [])
     const result = await Platform.capture('node -e', {

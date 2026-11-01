@@ -67,7 +67,7 @@ function expectFixedOrdering(fixed: string): void {
 type SourceAction = (root: string, path: string) => Promise<void>
 
 async function withSource(run: SourceAction): Promise<void> {
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-constant-order-'))
   const path = Path.join(root, 'ts/example.ts')
   await Try(async () => {

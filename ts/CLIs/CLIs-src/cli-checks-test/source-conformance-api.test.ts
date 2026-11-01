@@ -3,7 +3,7 @@ import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { checkSourceConformance } from '../cli-checks/source-conformance'
 
 Tests.test('source conformance > checks workspace declarations and ignores dependency and legacy sources', async () => {
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-source-conformance-'))
   await Try(async () => {
     await FileSystem.write(

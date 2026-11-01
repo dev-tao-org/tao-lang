@@ -9,7 +9,7 @@ const MarkerOwnershipProofRequiredErrorRegx = /cannot prove that the generated m
 Tests.test('repairs a corrupt marker only with generated file and profile link proof', async () =>
   await withDirectory(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     const input = createModuleInput(root, moduleDirectory)
     const executor = createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })
     await ManagedModules.prepareManagedModules(input, executor)
@@ -32,7 +32,7 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
 Tests.test('clean warns and preserves authored files and links for a corrupt marker', async () =>
   await withDirectory(async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     await ManagedModules.prepareManagedModules(
       createModuleInput(root, moduleDirectory),
       createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
@@ -84,7 +84,7 @@ function createExecutor(dependencies: Record<string, string>): BunExecutor {
     )
     for (const [name, version] of Object.entries(dependencies)) {
       const directory = Path.join(cwd, 'node_modules', name)
-      await FileSystem.mkdir(directory, { recursive: true })
+      await FileSystem.mkdir(directory)
       await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version }))
       await FileSystem.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
     }
@@ -99,7 +99,7 @@ async function makeCorrupt(marker: string): Promise<void> {
 
 async function withDirectory(action: (root: string) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `managed-marker-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(() => action(root), {
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })

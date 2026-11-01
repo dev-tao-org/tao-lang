@@ -129,7 +129,7 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
   })
 
   await Try(async () => {
-    await FileSystem.mkdir(directory, { recursive: true })
+    await FileSystem.mkdir(directory)
     await FileSystem.writeFile(pathA, source)
     await FileSystem.writeFile(pathB, source.replace('Hello World', 'Source B'))
     const openA = workspace.openFile(pathA)

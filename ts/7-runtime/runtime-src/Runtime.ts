@@ -43,7 +43,7 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
   const resources = await readRuntimeResources(resourcesDirectory)
   options.onProgress?.('Runtime resources ready.')
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const dependencyDirectory = options.dependencyDirectory ?? await prepareToolchain(
     cacheDirectory,
     resourcesDirectory,

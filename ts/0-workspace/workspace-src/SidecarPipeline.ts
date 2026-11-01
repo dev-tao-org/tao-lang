@@ -134,9 +134,11 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Co
   return await Try(
     async () => {
       await collectProgramSidecarViews(options, canonicalConsumerDirectory, groups, watchFiles)
+      const sortedGroups = [...groups.values()].sort(compareSidecarModuleRoots)
+      const sortedWatchFiles = [...watchFiles].sort()
       return {
-        groups: [...groups.values()].sort((left, right) => left.moduleRoot.localeCompare(right.moduleRoot)),
-        watchFiles: [...watchFiles].sort(),
+        groups: sortedGroups,
+        watchFiles: sortedWatchFiles,
       }
     },
     {
@@ -146,6 +148,10 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Co
       },
     },
   )
+}
+
+function compareSidecarModuleRoots(left: Snapshots.SidecarGroup, right: Snapshots.SidecarGroup): number {
+  return left.moduleRoot.localeCompare(right.moduleRoot)
 }
 
 async function collectProgramSidecarViews(

@@ -28,7 +28,7 @@ async function verifyDiskAndMemoryPublication(root: string): Promise<void> {
   const runtime: RuntimeApplication = { directory: Path.dirname(appPath), appPath }
   const published: GeneratedRevision[] = []
 
-  await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(appPath))
   await FileSystem.writeFile(appPath, initialFiles['App.tsx'])
   await publishWithTimings(buildDirectory, initialFiles, 'revision-1', async () => runtime, () => true)
   Tests.expect(await FileSystem.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(initialFiles['App.tsx'])
@@ -155,7 +155,7 @@ Tests.test('a build that becomes stale before the atomic mirror swap preserves t
   const appPath = Path.join(runtimeDirectory, 'src/App.tsx')
   const runtime: RuntimeApplication = { directory: runtimeDirectory, appPath }
   await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(appPath))
     await FileSystem.writeFile(appPath, 'initial')
     await publishWithTimings(buildDirectory, { 'App.tsx': 'initial' }, 'revision-1', async () => runtime, () => true)
     let checks = 0
@@ -178,7 +178,7 @@ Tests.test('mirrors a committed memory revision after its source becomes stale',
   const appPath = Path.join(root, 'runtime/src/App.tsx')
   const runtime: RuntimeApplication = { directory: Path.dirname(appPath), appPath }
   await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(appPath), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(appPath))
     await FileSystem.writeFile(appPath, 'initial')
     await publishWithTimings(buildDirectory, { 'App.tsx': 'initial' }, 'revision-1', async () => runtime, () => true)
     let current = true

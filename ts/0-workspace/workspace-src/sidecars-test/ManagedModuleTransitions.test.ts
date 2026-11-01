@@ -26,7 +26,7 @@ Tests.test('repairs a dangling link recorded by the prior owner profile', async 
 Tests.test('cleans a mixed-case npm package link recorded by the current owner profile', async () =>
   await withDirectory('managed-mixed-case-cleanup', async root => {
     const moduleDirectory = Path.join(root, 'Modules')
-    await FileSystem.mkdir(moduleDirectory, { recursive: true })
+    await FileSystem.mkdir(moduleDirectory)
     const input = createModuleInput(root, moduleDirectory, '1.3.5')
     input.modules[0]!.requirements = [{ name: 'JSONStream', version: '1.3.5', origin: 'Modules/Json.tao' }]
     await ManagedModules.prepareManagedModules(input, createExecutor({ react: '19.1.0', JSONStream: '1.3.5' }))
@@ -41,8 +41,7 @@ Tests.test('rejects an unowned module path without creating a Tao project marker
   await withDirectory('managed-unowned-module', async root => {
     const consumer = Path.join(root, 'consumer')
     const unowned = Path.join(root, 'unowned')
-    await FileSystem.mkdir(consumer, { recursive: true })
-    await FileSystem.mkdir(unowned, { recursive: true })
+    await FileSystem.mkdirs(consumer, unowned)
     await Tests.rejects(
       ManagedModules.prepareManagedModules({
         directory: consumer,
@@ -82,7 +81,7 @@ Tests.test('rebuilds a host-specific installed tree from the unchanged durable l
 
 async function assertHostCacheRebuild(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Module')
-  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  await FileSystem.mkdir(moduleDirectory)
   const input = {
     ...createModuleInput(root, moduleDirectory, '4.1.0'),
     hostIdentity: { os: 'host-a', architecture: 'arm64' },
@@ -130,7 +129,7 @@ async function writeInstalledPackages(root: string): Promise<void> {
 
 async function assertProfileTransition(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
-  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  await FileSystem.mkdir(moduleDirectory)
   const initial = createModuleInput(root, moduleDirectory, '4.1.0')
   const first = await ManagedModules.prepareManagedModules(
     initial,
@@ -174,7 +173,7 @@ async function assertProfileTransition(root: string): Promise<void> {
 
 async function assertDanglingLinkRepair(root: string): Promise<void> {
   const moduleDirectory = Path.join(root, 'Modules')
-  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  await FileSystem.mkdir(moduleDirectory)
   const first = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.1.0'),
     createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
@@ -207,8 +206,7 @@ async function assertConsumerConflict(root: string): Promise<void> {
   const sharedModule = Path.join(root, 'Shared')
   const firstRoot = Path.join(root, 'first')
   const secondRoot = Path.join(root, 'second')
-  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
-  await FileSystem.mkdir(sharedModule, { recursive: true })
+  await FileSystem.mkdirs(Path.join(root, '.tao'), sharedModule)
   const firstInput = {
     ...createModuleInput(firstRoot, sharedModule, '4.1.0'),
     modules: [{ directory: sharedModule, requirements: [] }],
@@ -229,8 +227,7 @@ async function assertConsumerConflict(root: string): Promise<void> {
 async function assertConcurrentConsumerRace(root: string): Promise<void> {
   const sourceRoot = Path.join(root, 'SharedProject')
   const sharedModule = Path.join(sourceRoot, 'Modules', 'Shared')
-  await FileSystem.mkdir(Path.join(sourceRoot, '.tao'), { recursive: true })
-  await FileSystem.mkdir(sharedModule, { recursive: true })
+  await FileSystem.mkdirs(Path.join(sourceRoot, '.tao'), sharedModule)
   let release!: () => void
   const gate = new Promise<void>(resolve => {
     release = resolve
@@ -324,14 +321,14 @@ async function writeLock(root: string, dependencies: Record<string, string>): Pr
 
 async function writePackage(root: string, name: string, version: string): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version }))
   await FileSystem.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
 }
 
 async function withDirectory(prefix: string, action: (root: string) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `${prefix}-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(() => action(root), {
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })

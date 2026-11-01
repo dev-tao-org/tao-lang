@@ -8,12 +8,11 @@ const TypeScriptTestSuccessRegx = /\[TypeScript tests\] passed in \d+\.\d{2}s/
 const AllTestsSuccessRegx = /\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/
 
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
-  const child = Platform.spawn(Repo.resolvePath('agent'), {
+  const environment = { ...Env.snapshot(), TERMINAL_OUTPUT: undefined }
+  const child = Platform.spawnPiped(Repo.resolvePath('agent'), {
     variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
     cwd: Repo.getWorkspaceRoot(),
-    env: { ...Env.snapshot(), TERMINAL_OUTPUT: undefined },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
@@ -38,10 +37,10 @@ Tests.test('agent test summarizes results and warnings while retaining full outp
 })
 
 Tests.test('fresh setup finds nested extension tools installed after the launcher prepares PATH', async () => {
-  await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await FileSystem.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-environment-'))
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(root, '.config'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, '.config'))
     await FileSystem.cp(
       Repo.resolvePath('.config/prepared-environment.sh'),
       Path.join(root, '.config/prepared-environment.sh'),
@@ -50,7 +49,7 @@ Tests.test('fresh setup finds nested extension tools installed after the launche
     for (const file of ['devenv.nix', 'devenv.yaml', 'devenv.lock']) {
       await FileSystem.writeFile(Path.join(root, file), '', 'utf8')
     }
-    await FileSystem.mkdir(Path.join(root, 'ts/ide-extensions/tao-ide-extension'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, 'ts/ide-extensions/tao-ide-extension'))
     await FileSystem.writeFile(Path.join(root, 'ts/ide-extensions/tao-ide-extension/package.json'), '{}', 'utf8')
     const tool = Path.join(root, 'fixture-tool')
     await FileSystem.writeFile(tool, '#!/bin/sh\n', 'utf8')
@@ -78,13 +77,12 @@ Tests.test('fresh setup finds nested extension tools installed after the launche
 })
 
 Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async () => {
-  await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await FileSystem.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-environment-failure-'))
   await Try(async () => {
     const repository = Path.join(root, 'repo')
     const bin = Path.join(root, 'bin')
-    await FileSystem.mkdir(Path.join(repository, '.config'), { recursive: true })
-    await FileSystem.mkdir(bin, { recursive: true })
+    await FileSystem.mkdirs(Path.join(repository, '.config'), bin)
     await FileSystem.cp(
       Repo.resolvePath('.config/prepared-environment.sh'),
       Path.join(repository, '.config/prepared-environment.sh'),
@@ -96,17 +94,21 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
     const git = Path.join(bin, 'git')
     await FileSystem.writeFile(git, '#!/bin/sh\necho fixture-git-failure >&2\nexit 1\n', 'utf8')
     await FileSystem.chmod(git, 0o755)
-    const child = Platform.spawn('sh', {
+    const environment = {
+      ...Env.snapshot(),
+      PATH: `${bin}:${Env.get('PATH') ?? ''}`,
+      TAO_DEVENV: '1',
+      DEVENV_ROOT: repository,
+    }
+    const child = Platform.spawnPiped('sh', {
       variadicArgs: [
         '-c',
         '. "$1"',
         Path.join(repository, 'agent'),
         Path.join(repository, '.config/cli-environment.sh'),
       ],
-      env: { ...Env.snapshot(), PATH: `${bin}:${Env.get('PATH') ?? ''}`, TAO_DEVENV: '1', DEVENV_ROOT: repository },
+      env: environment,
       cwd: repository,
-      stdout: 'pipe',
-      stderr: 'pipe',
     })
     const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
     Tests.expect(status).toBe(1)
@@ -115,17 +117,16 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
 })
 
 Tests.test('fatal CLI errors remain visible when the configured log path is unwritable', async () => {
-  const child = Platform.spawn(Repo.resolvePath('agent'), {
+  const environment = {
+    ...Env.snapshot(),
+    OUTPUT_LOG_FILE: 'ts',
+    TERMINAL_OUTPUT: '1',
+    TERMINAL_UI: '0',
+  }
+  const child = Platform.spawnPiped(Repo.resolvePath('agent'), {
     variadicArgs: ['unrecognized-command'],
     cwd: Repo.getWorkspaceRoot(),
-    env: {
-      ...Env.snapshot(),
-      OUTPUT_LOG_FILE: 'ts',
-      TERMINAL_OUTPUT: '1',
-      TERMINAL_UI: '0',
-    },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
   Tests.expect(status).toBe(1)

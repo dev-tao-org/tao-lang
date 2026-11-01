@@ -62,9 +62,9 @@ export async function existingHistory(
 /** writeHistory publishes a complete record directory by rename without replacing an earlier record. */
 export async function writeHistory(directory: string, record: HistoryRecord, report?: string): Promise<void> {
   const staging = `${directory}.${Platform.randomUUID()}.pending`
-  await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(directory))
   await Try(async () => {
-    await FileSystem.mkdir(staging)
+    await FileSystem.createExclusiveDirectory(staging)
     if (report !== undefined) {
       await FileSystem.writeFile(Path.join(staging, 'report.json'), report, 'utf8')
     }

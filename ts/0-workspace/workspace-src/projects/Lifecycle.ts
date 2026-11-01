@@ -11,7 +11,7 @@ export async function acquireProjectLifecycle(
   requireRealDirectory(layout.taoDirectory, 'Tao project metadata')
   const locksRoot = Path.join(layout.taoDirectory, 'locks')
   ensureDirectoryParent(layout.taoDirectory, locksRoot)
-  await FileSystem.mkdir(locksRoot, { recursive: true })
+  await FileSystem.mkdir(locksRoot)
   requireRealDirectory(locksRoot, 'project lock directory')
   const lockPath = Path.join(locksRoot, 'lifecycle.lock')
   ensureRegularLockPath(lockPath)
@@ -44,7 +44,7 @@ async function ensureProjectDirectory(path: string): Promise<void> {
   if (pathExists(path) && !isRealDirectory(path)) {
     Errors.ThrowUserInput(`Project state directory is not a real directory: ${path}`)
   }
-  await FileSystem.mkdir(path, { recursive: true })
+  await FileSystem.mkdir(path)
   requireRealDirectory(path, 'project state directory')
 }
 

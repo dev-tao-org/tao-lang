@@ -118,7 +118,7 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
   const root = await createProject('stdlib-import')
   await Try(async () => {
     const standardRoot = Path.join(root, 'stdlib')
-    await FileSystem.mkdir(Path.join(standardRoot, '.tao'), { recursive: true })
+    await FileSystem.mkdir(Path.join(standardRoot, '.tao'))
     const sourcePath = Path.join(standardRoot, '@ui', 'Views.tao')
     await writeSource(sourcePath, 'view Text { render Text("Text") }')
     const entryPath = Path.join(root, 'Main.tao')
@@ -167,7 +167,7 @@ Tests.test('aliased project imports reject missing physical modules', async () =
 
 async function createProject(name: string): Promise<string> {
   const root = Artifacts.resolvePath('tmp', `module-${name}-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '.tao'))
   return root
 }
 
@@ -177,7 +177,7 @@ function inside(root: string, path: string): boolean {
 }
 
 async function writeSource(path: string, source: string): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(path))
   await FileSystem.writeFile(path, source)
 }
 

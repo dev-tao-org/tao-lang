@@ -43,7 +43,7 @@ type Sample = { phase: string; durationMs: number }
 async function writeReport(fixture: string, samples: Sample[]) {
   const path = Artifacts.resolvePath('logs/performance', `extension-${Platform.randomUUID()}.json`)
   const summary = summarize(samples)
-  await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(path))
   Artifacts.trackTemporary(path)
   const report: ExtensionPerformanceReport = {
     version: 1,

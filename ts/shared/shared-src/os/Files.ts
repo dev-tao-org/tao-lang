@@ -1,4 +1,5 @@
 import { Errors, Try } from '../universal/universal'
+import * as FileSystem from './FileSystem'
 import * as Native from './NodeBuiltins'
 
 /** withWritableFile serializes writes per canonical path and restores the original permission mode. */
@@ -14,7 +15,7 @@ export async function withWritableFile<Value>(
 export async function writeReadOnly(path: string, contents: string): Promise<void> {
   const absolute = Native.resolve(path)
   const parent = Native.dirname(absolute)
-  await Native.mkdir(parent, { recursive: true })
+  await FileSystem.mkdir(parent)
   const canonicalParent = await Native.realpath(parent)
   const canonical = Native.join(canonicalParent, Native.basename(absolute))
   await serialized(canonical, async () => {

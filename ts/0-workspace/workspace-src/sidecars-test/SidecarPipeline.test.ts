@@ -1,5 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
+import { S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
@@ -127,15 +128,15 @@ Tests.test('foreign sidecars reject symlink escapes before invoking the checker'
 Tests.test('foreign sidecar imports cannot cross into another named module', async () =>
   await withFixture(async fixture => {
     const otherModule = Path.join(fixture.projectDirectory, '@other')
-    await FileSystem.mkdir(otherModule, { recursive: true })
+    await FileSystem.mkdir(otherModule)
     await FileSystem.writeFile(Path.join(otherModule, 'helper.ts'), 'export const helper = true\n')
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      [
-        "import { helper } from '../@other/helper'",
-        'export function FormattedDate(props: { Value: string }) { return null }',
-        'void helper; void props',
-      ].join('\n'),
+      S`
+        import { helper } from '../@other/helper'
+        export function FormattedDate(props: { Value: string }) { return null }
+        void helper; void props
+      `,
     )
     let checks = 0
     await Tests.rejects(
@@ -153,8 +154,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     const dependencyRoot = Path.join(fixture.directory, 'dependency')
     const moduleRoot = Path.join(dependencyRoot, '@widgets')
     const taoPath = Path.join(moduleRoot, 'Widgets.tao')
-    await FileSystem.mkdir(Path.join(dependencyRoot, '.tao'), { recursive: true })
-    await FileSystem.mkdir(moduleRoot, { recursive: true })
+    await FileSystem.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
     await FileSystem.writeFile(taoPath, 'public view FormattedDate(Value text) from ./FormattedDate.tsx\n')
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tao'),
@@ -162,10 +162,10 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     )
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tsx'),
-      [
-        "import { formatDate } from './format'",
-        'export function FormattedDate(props: { Value: string }) { return formatDate(props.Value) }',
-      ].join('\n'),
+      S`
+        import { formatDate } from './format'
+        export function FormattedDate(props: { Value: string }) { return formatDate(props.Value) }
+      `,
     )
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'format.ts'),
@@ -190,8 +190,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     const moduleRoot = Path.join(dependencyRoot, '@widgets')
     const taoPath = Path.join(moduleRoot, 'Widgets.tao')
     const sidecarPath = Path.join(moduleRoot, 'FormattedDate.tsx')
-    await FileSystem.mkdir(Path.join(dependencyRoot, '.tao'), { recursive: true })
-    await FileSystem.mkdir(moduleRoot, { recursive: true })
+    await FileSystem.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
     await FileSystem.writeFile(taoPath, 'public view FormattedDate(Value text) from ./FormattedDate.tsx\n')
     const consumerHelper = Path.join(fixture.moduleRoot, 'consumer-helper.ts')
     await FileSystem.writeFile(consumerHelper, 'export const value = true\n')
@@ -256,15 +255,15 @@ Tests.test('managed snapshots type-check authored views through the packaged Tao
     await ensureTypeScriptDefaults(fixture.projectDirectory)
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      [
-        "import Tao from '@tao/runtime-api'",
-        "import type { TextInputProps } from '@tao/runtime-api'",
-        'export function FormattedDate(props: { Value: string }) {',
-        '  const inputProps: TextInputProps = { placeholder: props.Value }',
-        '  void inputProps',
-        '  return Tao.Text({ children: props.Value })',
-        '}',
-      ].join('\n'),
+      S`
+        import Tao from '@tao/runtime-api'
+        import type { TextInputProps } from '@tao/runtime-api'
+        export function FormattedDate(props: { Value: string }) {
+          const inputProps: TextInputProps = { placeholder: props.Value }
+          void inputProps
+          return Tao.Text({ children: props.Value })
+        }
+      `,
     )
 
     const prepared = await prepareSidecarPipeline({

@@ -143,7 +143,7 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
 
 async function writeGeneratedEnv(contents: string): Promise<void> {
   const directory = Artifacts.resolvePath('cache', 'secrets')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const temporaryDirectory = await Artifacts.mkdtemp(Path.join(directory, 'env-'))
   const temporary = Path.join(temporaryDirectory, 'secrets.env')
   await Try(async () => {
@@ -199,7 +199,7 @@ async function setupSecrets(): Promise<void> {
     Errors.ThrowUserInput('Secure Enclave secrets setup requires macOS with age-plugin-se.')
   }
   const identityPath = secretsIdentityPath()
-  await FileSystem.mkdir(Path.dirname(identityPath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(identityPath))
   const existed = FileSystem.existsSync(identityPath)
   if (!existed) {
     await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', {
@@ -237,9 +237,9 @@ async function readStore(): Promise<SecretStoreModule2.SecretStore> {
 }
 
 async function writeStore(store: SecretStoreModule2.SecretStore): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(storePath))
   const directory = Artifacts.resolvePath('cache', 'secrets')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
   await Try(async () => {
     await Artifacts.write(temporary, SecretStoreModule2.formatSecretStore(store))
@@ -250,11 +250,11 @@ async function writeStore(store: SecretStoreModule2.SecretStore): Promise<void> 
 }
 
 async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
-  await Artifacts.mkdir(Path.dirname(lockPath), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(lockPath))
   const deadline = Time.nowMs() + 30_000
   while (true) {
     const acquired = await Try(async () => {
-      await Artifacts.mkdir(lockPath)
+      await Artifacts.createExclusiveDirectory(lockPath)
       return true
     }, {
       catch(error) {
@@ -298,12 +298,7 @@ async function recipientOfIdentity(): Promise<string> {
 }
 
 async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
-  const child = Platform.spawn(command, {
-    variadicArgs: options.variadicArgs,
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const child = Platform.spawnPiped(command, { variadicArgs: options.variadicArgs })
   const [status, stdout] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),

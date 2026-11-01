@@ -26,7 +26,7 @@ async function withRepository(action: (root: string, remote: string) => Promise<
   const directory = Repo.resolvePath('.artifacts/tmp/push-test', Platform.randomUUID())
   const root = Path.join(directory, 'source')
   const remote = Path.join(directory, 'remote.git')
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(async () => {
     await git(root, ['init', '-b', 'main'])
     await git(root, ['config', '--local', 'user.name', 'Push Fixture'])

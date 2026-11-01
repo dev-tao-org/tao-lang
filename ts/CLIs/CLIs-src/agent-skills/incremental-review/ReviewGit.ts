@@ -4,13 +4,9 @@ import { Env, FileSystem, Path, Platform } from '@shared/os'
 type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
-  const child = Platform.spawn(['git', '--literal-pathspecs', ...args], {
-    cwd: root,
-    env: { ...Env.snapshot(), GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' },
-    stdin: options.input === undefined ? 'ignore' : 'pipe',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const environment = { ...Env.snapshot(), GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
+  const stdin = options.input === undefined ? 'ignore' : 'pipe'
+  const child = Platform.spawnPiped(['git', '--literal-pathspecs', ...args], { cwd: root, env: environment, stdin })
   if (options.input !== undefined && child.stdin) {
     child.stdin.write(options.input)
     child.stdin.end()

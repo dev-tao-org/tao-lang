@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 
-const { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = FileSystem
+const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FileSystem
 const { delimiter, join } = Path
 
 type FailureStage = 'install' | 'run'
@@ -51,24 +51,22 @@ async function runBootstrap(
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
-  await mkdir(ts, { recursive: true })
-  await mkdir(bin, { recursive: true })
+  await mkdirs(ts, bin)
   await copyFile(new URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
   await copyFile(new URL('../NodeBuiltins.ts', import.meta.url), join(ts, 'NodeBuiltins.ts'))
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
-  const child = Platform.spawn(process.execPath, {
+  const environment = {
+    ...process.env,
+    PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
+    TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
+  }
+  const child = Platform.spawnPiped(process.execPath, {
     variadicArgs: ['-e', script],
     cwd: ts,
-    env: {
-      ...process.env,
-      PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-      TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
-    },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

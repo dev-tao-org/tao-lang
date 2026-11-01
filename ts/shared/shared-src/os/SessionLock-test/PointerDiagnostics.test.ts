@@ -4,7 +4,7 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 Tests.test('production session acquisition gives setup guidance for malformed and outdated pointers', async () => {
   const root = Artifacts.resolvePath('tmp', `lock-pointer-errors-${Platform.randomUUID()}`)
   await Try(async () => {
-    await FileSystem.mkdir(root, { recursive: true })
+    await FileSystem.mkdir(root)
     const artifactsUrl = new URL('../Artifacts.ts', import.meta.url).href
     const lockUrl = new URL('../SessionLock.ts', import.meta.url).href
     const script = S`
@@ -26,7 +26,7 @@ Tests.test('production session acquisition gives setup guidance for malformed an
       }
       process.stdout.write(JSON.stringify(failures));
     `
-    const child = Platform.spawn(Platform.argv[0]!, { variadicArgs: ['-e', script], stdout: 'pipe', stderr: 'pipe' })
+    const child = Platform.spawnPiped(Platform.argv[0]!, { variadicArgs: ['-e', script] })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
       Platform.readText(child.stdout),

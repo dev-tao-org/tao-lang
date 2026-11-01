@@ -35,7 +35,7 @@ async function createPackageArtifacts(root: string): Promise<Map<string, Package
   const packages = new Map<string, PackageArtifact>()
   for (const name of ['react', 'tao-fixture-label', 'string-width']) {
     const directory = Path.join(root, 'registry', name, 'package')
-    await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(directory))
     await FileSystem.cp(Path.join(fixtures, name), directory, { recursive: true })
     await FileSystem.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
     const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))

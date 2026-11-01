@@ -18,13 +18,13 @@ export async function initializeProject(path: string): Promise<ProjectLayout> {
     Errors.ThrowUserInput(`A Tao project is already initialized at ${root}`)
   }
   await rejectNestedProject(root)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   const nested = await Files.findProjectMarker(root)
   if (nested) {
     Errors.ThrowUserInput(`Cannot initialize a Tao project containing another project at ${Path.dirname(nested)}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdir(tao, { recursive: true })
+  await FileSystem.mkdir(tao)
   return await ensureProjectMetadata(root)
 }
 
@@ -35,9 +35,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
     Errors.ThrowUserInput(`No initialized Tao project exists at ${root}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdir(Path.join(tao, 'cache'), { recursive: true })
-  await FileSystem.mkdir(Path.join(tao, 'locks', 'sessions'), { recursive: true })
-  await FileSystem.mkdir(Path.join(tao, 'store'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(tao, 'cache'), Path.join(tao, 'locks', 'sessions'), Path.join(tao, 'store'))
   await ensureProjectIdentity(Path.join(tao, 'store', 'project.json'))
   const ignore = Path.join(tao, '.gitignore')
   if (!await FileSystem.exists(ignore)) {

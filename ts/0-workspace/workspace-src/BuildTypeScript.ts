@@ -5,7 +5,7 @@ import { FileSystem, Path } from '@shared/os'
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
  *  Call once when preparing the runtime, outside ordinary source refreshes. */
 export async function prepareBuildTypeScript(buildDirectory: string, runtime: RuntimeApplication): Promise<void> {
-  await FileSystem.mkdir(buildDirectory, { recursive: true })
+  await FileSystem.mkdir(buildDirectory)
   const runtimeConfig = Path.relative(buildDirectory, Path.join(runtime.directory, 'tsconfig.json'))
     .replaceAll('\\', '/')
   const configuration = {

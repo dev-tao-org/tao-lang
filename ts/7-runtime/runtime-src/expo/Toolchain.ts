@@ -14,7 +14,7 @@ export async function prepareToolchain(
   const toolchainKey = await toolchainIdentity(resourcesDirectory, identityInputs)
   const target = Path.join(cacheDirectory, toolchainKey)
   await BuildLock.withBuildLock(Path.join(cacheDirectory, `${toolchainKey}.lock`), async () => {
-    await FileSystem.mkdir(target, { recursive: true })
+    await FileSystem.mkdir(target)
     await FileSystem.writeIfChanged(
       Path.join(target, 'package.json'),
       await FileSystem.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
@@ -58,11 +58,10 @@ export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> 
 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
-    const child = Platform.spawn(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
+    const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+    const child = Platform.spawnPiped(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
       cwd: cacheDirectory,
-      env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      env: environment,
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
@@ -114,7 +113,7 @@ async function copyToolchainPatches(source: string, target: string): Promise<voi
   const { patches } = await readRuntimePatches(source)
   for (const [path, content] of Object.entries(patches)) {
     const destination = Path.join(target, path)
-    await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(destination))
     await FileSystem.writeIfChanged(destination, content)
   }
 }

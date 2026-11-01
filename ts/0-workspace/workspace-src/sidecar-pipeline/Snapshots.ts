@@ -58,6 +58,8 @@ export async function cachedSnapshotMatches(
   })
 }
 
+const DefaultSnapshotLimit = 128
+
 /** buildSnapshot validates inputs in staging before publishing an immutable snapshot. */
 export async function buildSnapshot(
   options: SnapshotOptions,
@@ -66,9 +68,9 @@ export async function buildSnapshot(
   fingerprint: string,
   nodeModulesDirectory: string,
   defaultsPath: string,
-  snapshotLimit = defaultSnapshotLimit,
+  snapshotLimit = DefaultSnapshotLimit,
 ): Promise<string> {
-  await FileSystem.mkdir(Path.dirname(snapshotRoot), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(snapshotRoot))
   const recoveryRoot = `${snapshotRoot}.recovered`
   const publishedRoot = resolvePublishedSnapshotRoot(snapshotRoot, recoveryRoot)
   await enforceSnapshotLimit(Path.dirname(snapshotRoot), snapshotLimit)
@@ -139,7 +141,7 @@ type SnapshotStageInput = {
   defaultsPath: string
 }
 async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
-  await FileSystem.mkdir(input.stagingRoot, { recursive: true })
+  await FileSystem.mkdir(input.stagingRoot)
   for (const group of input.groups) {
     await stageModule(input.options, group, input.stagingRoot, input.nodeModulesDirectory, input.defaultsPath)
   }
@@ -164,8 +166,6 @@ function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string
   return recoveryRoot
 }
 
-const defaultSnapshotLimit = 128
-
 type ForeignViewInput = {
   module: LinkedProgram['modules'][number]
   declaration: AST.ViewDeclaration
@@ -180,7 +180,7 @@ async function stageModule(
   defaultsPath: string,
 ): Promise<void> {
   const destination = snapshotModuleDirectory(stagingRoot, group.moduleRoot)
-  await FileSystem.mkdir(destination, { recursive: true })
+  await FileSystem.mkdir(destination)
   await writeModuleMetadata(destination, defaultsPath)
   await FileSystem.symlink(nodeModulesDirectory, Path.join(destination, 'node_modules'), 'dir')
   await copyModuleFiles(group, destination)
@@ -199,7 +199,7 @@ async function writeModuleMetadata(destination: string, defaultsPath: string): P
 async function copyModuleFiles(group: SidecarGroup, destination: string): Promise<void> {
   for (const [source, contents] of group.files) {
     const target = Path.join(destination, Path.relative(group.moduleRoot, source))
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, contents)
   }
 }

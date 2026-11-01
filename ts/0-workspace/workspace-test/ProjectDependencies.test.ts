@@ -88,7 +88,7 @@ Tests.test('same repository aliases at different refs resolve from their individ
     git: {
       resolveCommit: async () => 'a'.repeat(40),
       async fetchCommit(_repository, _commit, destination) {
-        await FileSystem.mkdir(Path.join(destination, '.tao'), { recursive: true })
+        await FileSystem.mkdir(Path.join(destination, '.tao'))
       },
     },
   }
@@ -146,5 +146,5 @@ function requirementDeclaration(requirement: DependencyRequirement): AST.Require
 }
 
 async function createProject(path: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(path, '.tao'), { recursive: true })
+  await FileSystem.mkdir(Path.join(path, '.tao'))
 }

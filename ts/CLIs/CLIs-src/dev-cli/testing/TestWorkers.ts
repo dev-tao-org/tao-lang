@@ -139,7 +139,7 @@ async function executeTaoTests(
     (_, index) => IO.channel({ title: `Tao worker ${index + 1}` }),
   ))
   const reportPaths = channels.map((_, index) => taoWorkerReportPath(index))
-  await Artifacts.mkdir(Path.dirname(reportPaths[0] ?? Artifacts.resolvePath('logs', 'test')), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(reportPaths[0] ?? Artifacts.resolvePath('logs', 'test')))
   const workers = TestPlanModule2.planTaoWorkers(files, reportPaths)
   const results = await TestPlanModule2.runWorkerBatch(
     workers,

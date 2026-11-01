@@ -6,7 +6,7 @@ export async function buildDevExtension(): Promise<string> {
   const source = Repo.resolvePath('ts/ide-extensions/dev-tao-org')
   const output = Repo.resolvePath('.artifacts/ide-extensions/dev-tao-org/package')
   const vsix = Repo.resolvePath('.artifacts/ide-extensions/dev-tao-org/dev-tao-org.vsix')
-  await FileSystem.mkdir(output, { recursive: true })
+  await FileSystem.mkdir(output)
   await Bundle.bundleNode(Path.join(source, 'dev-tao-org-src/extension.ts'), Path.join(output, 'dist'), ['vscode'])
   await Bundle.validateEditorBundle(Path.join(output, 'dist/extension.js'))
   const manifest = await FileSystem.readFile(Path.join(source, 'package.json'), 'utf8')

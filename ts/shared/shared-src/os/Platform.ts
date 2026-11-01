@@ -42,18 +42,63 @@ type SpawnOptions<
   Err extends Bun.SpawnOptions.Readable,
 > = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
 type SpawnCommand = string | readonly string[]
-/** spawn starts a child process, retaining terminal colors when diagnostic output is piped. */
-export function spawn<
-  const In extends Bun.SpawnOptions.Writable = 'ignore',
-  const Out extends Bun.SpawnOptions.Readable = 'pipe',
-  const Err extends Bun.SpawnOptions.Readable = 'inherit',
->(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
-  const { variadicArgs = [], ...spawnOptions } = options
-  if (preserveTerminalColors(spawnOptions)) {
-    spawnOptions.env = { ...(spawnOptions.env ?? process.env), FORCE_COLOR: '1' }
-  }
-  const args = typeof command === 'string' ? command.trim().split(Regxs.SpacesRegx) : [...command]
-  return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
+type SpawnOutputOption = 'stdout' | 'stderr' | 'stdio'
+
+/** ChildProcessInput describes supported standard-input sources for owned subprocesses. */
+export type ChildProcessInput = Bun.SpawnOptions.Writable
+
+type NamedSpawnOptions<
+  In extends Bun.SpawnOptions.Writable,
+  Out extends Bun.SpawnOptions.Readable,
+  Err extends Bun.SpawnOptions.Readable,
+> = Omit<SpawnOptions<In, Out, Err>, SpawnOutputOption> & { stdout?: never; stderr?: never; stdio?: never }
+
+/** spawnPiped starts a child process and captures both output streams. */
+export function spawnPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'pipe', 'pipe'> = {},
+): Bun.Subprocess<In, 'pipe', 'pipe'> {
+  return spawn(command, { ...options, stdout: 'pipe', stderr: 'pipe' })
+}
+
+/** spawnStderrPiped starts a child process and captures standard error. */
+export function spawnStderrPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'ignore', 'pipe'> = {},
+): Bun.Subprocess<In, 'ignore', 'pipe'> {
+  return spawn(command, { ...options, stdout: 'ignore', stderr: 'pipe' })
+}
+
+/** spawnInherited starts a child process with output streams inherited. */
+export function spawnInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'inherit', 'inherit'> = {},
+): Bun.Subprocess<In, 'inherit', 'inherit'> {
+  return spawn(command, { ...options, stdout: 'inherit', stderr: 'inherit' })
+}
+
+/** spawnStderrInherited starts a child process with standard error inherited. */
+export function spawnStderrInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'ignore', 'inherit'> = {},
+): Bun.Subprocess<In, 'ignore', 'inherit'> {
+  return spawn(command, { ...options, stdout: 'ignore', stderr: 'inherit' })
+}
+
+/** spawnStdoutInherited starts a child process with standard output inherited. */
+export function spawnStdoutInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'inherit', 'ignore'> = {},
+): Bun.Subprocess<In, 'inherit', 'ignore'> {
+  return spawn(command, { ...options, stdout: 'inherit', stderr: 'ignore' })
+}
+
+/** spawnSilent starts a child process with output streams ignored. */
+export function spawnSilent<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+  command: SpawnCommand,
+  options: NamedSpawnOptions<In, 'ignore', 'ignore'> = {},
+): Bun.Subprocess<In, 'ignore', 'ignore'> {
+  return spawn(command, { ...options, stdout: 'ignore', stderr: 'ignore' })
 }
 
 /** argv contains the current CLI invocation arguments. */
@@ -122,7 +167,7 @@ export async function capture(
   options: CaptureOptions = {},
 ): Promise<string> {
   const args = [...command.trim().split(Regxs.SpacesRegx), ...options.variadicArgs ?? []]
-  const child = spawn(command, { variadicArgs: options.variadicArgs, cwd: options.cwd, stdout: 'pipe', stderr: 'pipe' })
+  const child = spawnPiped(command, { variadicArgs: options.variadicArgs, cwd: options.cwd })
   const [status, stdout, stderr] = await Promise.all([child.exited, readText(child.stdout), readText(child.stderr)])
   if (status !== 0) {
     Errors.ThrowCommandExecution({
@@ -162,6 +207,26 @@ export function captureSync(command: string, options: { variadicArgs?: readonly 
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
+}
+
+function spawn<
+  const In extends Bun.SpawnOptions.Writable = 'ignore',
+  const Out extends Bun.SpawnOptions.Readable = 'pipe',
+  const Err extends Bun.SpawnOptions.Readable = 'inherit',
+>(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
+  const { variadicArgs = [], ...spawnOptions } = options
+  const environment = spawnEnvironment(spawnOptions)
+  if (environment) {
+    spawnOptions.env = environment
+  }
+  const args = typeof command === 'string' ? command.trim().split(Regxs.SpacesRegx) : [...command]
+  return Bun.spawn<In, Out, Err>([...args, ...variadicArgs], spawnOptions)
+}
+
+function spawnEnvironment(options: TerminalColorOptions): Record<string, EnvironmentValue> | undefined {
+  return preserveTerminalColors(options)
+    ? { ...(options.env ?? process.env), FORCE_COLOR: '1' }
+    : undefined
 }
 
 type EnvironmentValue = string | undefined

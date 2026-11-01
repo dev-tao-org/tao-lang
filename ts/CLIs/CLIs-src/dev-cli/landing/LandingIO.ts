@@ -26,7 +26,7 @@ export function createLandingIO(): LandingIO {
     exists: path => FileSystem.exists(Path.resolve(root, path)),
     async write(path, text) {
       const destination = Path.resolve(root, path)
-      await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+      await FileSystem.mkdir(Path.dirname(destination))
       await FileSystem.writeFile(destination, text)
     },
   }

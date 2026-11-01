@@ -3,17 +3,14 @@ import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { findProjectMarker, findProjects, walk, withWritableFile, writeReadOnly } from '../Files'
 
 const { join, relative } = Path
-const { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } = FileSystem
+const { mkdir, mkdirs, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } = FileSystem
 const { temporaryDirectory } = Platform
 
 Tests.test('walk skips dependency and VCS trees and does not follow directory symlinks', async () => {
   const root = await mkdtemp(join(temporaryDirectory(), 'tao-files-'))
   const outside = await mkdtemp(join(temporaryDirectory(), 'tao-files-outside-'))
   await Try(async () => {
-    await mkdir(join(root, 'node_modules'), { recursive: true })
-    await mkdir(join(root, '.git'), { recursive: true })
-    await mkdir(join(root, '.tao'), { recursive: true })
-    await mkdir(join(root, 'src'), { recursive: true })
+    await mkdirs(join(root, 'node_modules'), join(root, '.git'), join(root, '.tao'), join(root, 'src'))
     await writeFile(join(root, 'node_modules', 'hidden'), '')
     await writeFile(join(root, '.git', 'hidden'), '')
     await writeFile(join(root, '.tao', 'boundary'), '')
@@ -37,8 +34,7 @@ Tests.test('walk skips dependency and VCS trees and does not follow directory sy
 Tests.test('findProjectMarker sees empty nested boundaries and ignores excluded trees', async () => {
   const root = await mkdtemp(join(temporaryDirectory(), 'tao-marker-'))
   await Try(async () => {
-    await mkdir(join(root, 'node_modules', '.tao'), { recursive: true })
-    await mkdir(join(root, 'src', '.tao'), { recursive: true })
+    await mkdirs(join(root, 'node_modules', '.tao'), join(root, 'src', '.tao'))
     const canonical = await realpath(root)
     Tests.expect(await findProjectMarker(root)).toBe(join(canonical, 'src', '.tao'))
   }, {
@@ -52,9 +48,8 @@ Tests.test('findProjects stops at empty project markers instead of traversing th
   const root = await mkdtemp(join(temporaryDirectory(), 'tao-project-roots-'))
   const canonical = await realpath(root)
   await Try(async () => {
-    await mkdir(join(root, 'App', '.tao', 'cache', 'nested', '.tao'), { recursive: true })
-    await mkdir(join(root, 'Other', 'src', '.tao'), { recursive: true })
-    await mkdir(join(root, 'node_modules', 'Ignored', '.tao'), { recursive: true })
+    await mkdirs(join(root, 'App', '.tao', 'cache', 'nested', '.tao'), join(root, 'Other', 'src', '.tao'))
+    await mkdir(join(root, 'node_modules', 'Ignored', '.tao'))
     Tests.expect(await findProjects(root)).toEqual([
       join(canonical, 'App'),
       join(canonical, 'Other', 'src'),

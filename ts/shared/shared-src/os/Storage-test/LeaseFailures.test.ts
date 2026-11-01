@@ -105,11 +105,14 @@ async function runFailureScript(root: string, body: string): Promise<string> {
     const locks = await import(${JSON.stringify(lockUrl)});
     ${body}
   `
-  const child = Platform.spawn(Platform.argv[0]!, {
+  const environment = {
+    ...process.env,
+    TAO_CACHE_DIR: Path.join(root, 'cache'),
+    TAO_SUPPORT_DIR: Path.join(root, 'support'),
+  }
+  const child = Platform.spawnPiped(Platform.argv[0]!, {
     variadicArgs: ['-e', script],
-    env: { ...process.env, TAO_CACHE_DIR: Path.join(root, 'cache'), TAO_SUPPORT_DIR: Path.join(root, 'support') },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

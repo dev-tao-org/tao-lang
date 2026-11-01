@@ -55,11 +55,7 @@ Tests.test('session locks are released by the kernel when their owning process e
     const script = `const lock = require(${
       JSON.stringify(addon)
     }).acquire(process.argv[1]); if (!lock) process.exit(3); process.stdout.write('locked'); process.exit(0)`
-    const child = Platform.spawn(process.execPath, {
-      variadicArgs: ['-e', script, path],
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+    const child = Platform.spawnPiped(process.execPath, { variadicArgs: ['-e', script, path] })
     const [status, stdout] = await Promise.all([child.exited, Platform.readText(child.stdout)])
     Tests.expect(status).toBe(0)
     Tests.expect(stdout).toBe('locked')

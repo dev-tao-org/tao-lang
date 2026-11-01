@@ -14,7 +14,7 @@ export async function withFixture(
   prepare?: (root: string) => Promise<void>,
 ): Promise<void> {
   const root = Repo.resolvePath('.artifacts/tmp/incremental-review-test', Platform.randomUUID())
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(async () => {
     await git(root, ['init', '-b', 'main'])
     await git(root, ['config', '--local', 'user.name', 'Incremental Review Fixture'])
@@ -38,7 +38,7 @@ export async function withFixture(
 
 /** put saves fixture bytes without staging them. */
 export async function put(root: string, path: string, text: string): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(Path.join(root, path)), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(Path.join(root, path)))
   await FileSystem.writeFile(Path.join(root, path), text)
 }
 

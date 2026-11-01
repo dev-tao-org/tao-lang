@@ -26,7 +26,7 @@ export async function writeExpoApplication(
     serializeExpoAppManifest(),
   )
   await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), serializeExpoTypeScriptConfig())
-  await FileSystem.mkdir(Path.join(directory, 'src'), { recursive: true })
+  await FileSystem.mkdir(Path.join(directory, 'src'))
   await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
 }
 

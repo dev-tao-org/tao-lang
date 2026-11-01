@@ -23,7 +23,7 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
   const root = ArtifactsRoot()
   const requests: string[] = []
   const workspaceHandles: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(async () => {
     const { app, ui, entry } = await createFixtureProjects(root)
     const { packages: artifacts, server } = await ManagedDependencyRegistry.startManagedDependencyRegistry(
@@ -98,26 +98,22 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
     }
     const registryArguments = ['--registry', registry]
-    const child = Platform.spawn([command, ...args, ...registryArguments], {
-      cwd,
-      env: {
-        ...Env.snapshot(),
-        HOME: root,
-        USERPROFILE: root,
-        BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
-        BUN_CONFIG_REGISTRY: registry,
-        HTTP_PROXY: '',
-        HTTPS_PROXY: '',
-        ALL_PROXY: '',
-        http_proxy: '',
-        https_proxy: '',
-        all_proxy: '',
-        NO_PROXY: '*',
-        no_proxy: '*',
-      },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+    const environment = {
+      ...Env.snapshot(),
+      HOME: root,
+      USERPROFILE: root,
+      BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
+      BUN_CONFIG_REGISTRY: registry,
+      HTTP_PROXY: '',
+      HTTPS_PROXY: '',
+      ALL_PROXY: '',
+      http_proxy: '',
+      https_proxy: '',
+      all_proxy: '',
+      NO_PROXY: '*',
+      no_proxy: '*',
+    }
+    const child = Platform.spawnPiped([command, ...args, ...registryArguments], { cwd, env: environment })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
       Platform.readText(child.stdout),

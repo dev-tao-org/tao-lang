@@ -51,7 +51,7 @@ export async function linkModulePackages(
 ): Promise<void> {
   await validateModuleLinks(directory, profile, packages, previousOwner)
   const localModules = Path.join(directory, 'node_modules')
-  await FileSystem.mkdir(localModules, { recursive: true })
+  await FileSystem.mkdir(localModules)
   for (const name of previousOwner?.packages ?? []) {
     if (!packages.includes(name)) {
       await removeOwnedLink(localModules, name, previousOwner!.profile)
@@ -218,7 +218,7 @@ async function linkPackage(
 ): Promise<void> {
   const link = Path.join(localModules, name)
   const target = Path.join(profile, 'node_modules', name)
-  await FileSystem.mkdir(Path.dirname(link), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(link))
   if (!isSymbolicLink(link) && !FileSystem.existsSync(link)) {
     await FileSystem.symlink(target, link, 'dir')
     return

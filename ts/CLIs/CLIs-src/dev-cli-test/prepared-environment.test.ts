@@ -18,9 +18,7 @@ Tests.test('prepared activation retains toolchain values, rejects changed inputs
 })
 
 async function prepareFixture(root: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, '.config'), { recursive: true })
-  await FileSystem.mkdir(Path.join(root, '.devenv'), { recursive: true })
-  await FileSystem.mkdir(Path.join(root, 'tools/bin'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(root, '.config'), Path.join(root, '.devenv'), Path.join(root, 'tools/bin'))
   for (const file of ['devenv.nix', 'devenv.yaml', 'devenv.lock']) {
     await FileSystem.writeFile(Path.join(root, file), '', 'utf8')
   }

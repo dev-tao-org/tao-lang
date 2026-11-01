@@ -47,7 +47,7 @@ async function buildNativeLocks(): Promise<void> {
     async pointer => await canReusePointer(inputs.identity, pointer),
     async () => {
       const staging = Artifacts.resolvePath('cache', `.native-locks-${Platform.randomUUID()}`)
-      await FileSystem.mkdir(outputRoot, { recursive: true })
+      await FileSystem.mkdir(outputRoot)
       await Try(async () => {
         await writeSources(staging, inputs)
         await buildStagedAddon(staging, inputs.node)
@@ -171,7 +171,7 @@ async function canReuse(identity: string, binary: string, versionRoot: string): 
 }
 
 async function writeSources(staging: string, inputs: NativeInputs): Promise<void> {
-  await FileSystem.mkdir(staging, { recursive: true })
+  await FileSystem.mkdir(staging)
   const gyp = inputs.sourceContents[0]!.replace(Regxs.NativeIncludeDirective, quoteGypPath(inputs.includeDirectory))
   await FileSystem.writeFile(Path.join(staging, sourceNames[0]!), gyp)
   await FileSystem.writeFile(Path.join(staging, sourceNames[1]!), inputs.sourceContents[1]!)

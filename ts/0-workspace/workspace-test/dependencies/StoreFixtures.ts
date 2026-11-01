@@ -19,7 +19,7 @@ export function createGitDependencyFixtureOptions(
       },
       async fetchCommit(_repository, commit, destination) {
         calls.push(`fetch:${commit}`)
-        await FileSystem.mkdir(destination, { recursive: true })
+        await FileSystem.mkdir(destination)
         await createProjectMarker(destination)
       },
     },
@@ -33,5 +33,5 @@ export function createGithubRequirement(identifier: string, version = 'main'): D
 
 /** createProjectMarker creates Tao's project marker in a prepared source fixture. */
 export async function createProjectMarker(root: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, '.tao'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '.tao'))
 }

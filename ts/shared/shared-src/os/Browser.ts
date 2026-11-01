@@ -28,7 +28,7 @@ function nativeBrowser(): BrowserHost {
     os: Platform.systemInfo().os,
     requireAccess: Platform.requireHostProcessAccess,
     async start(command) {
-      const child = Platform.spawn(command, { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' })
+      const child = Platform.spawnSilent(command)
       return await child.exited
     },
   }

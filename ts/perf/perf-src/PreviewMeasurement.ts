@@ -159,6 +159,7 @@ function createCycle(cycle: number): PreviewScenario[] {
 }
 
 const EditedViewLabelRegx = /^Hello Tao(?: \d+)?$/
+const AddedViewLabelRegx = /^Second view(?: \d+)?$/
 async function assertReset(frame: HeadlessBrowser.FrameLocator, frameId: string): Promise<void> {
   await frame.getByText('Hello World', { exact: true }).waitFor()
   const edited = await frame.getByText(EditedViewLabelRegx).count()
@@ -175,5 +176,3 @@ async function hasRowLayout(frame: HeadlessBrowser.FrameLocator, label: string, 
     return !!second && getComputedStyle(parent!).flexDirection === 'row'
   }, detail)
 }
-
-const AddedViewLabelRegx = /^Second view(?: \d+)?$/

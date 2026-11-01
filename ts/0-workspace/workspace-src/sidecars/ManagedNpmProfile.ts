@@ -87,8 +87,7 @@ async function prepareProfile(
   const durableLock = Identity.resolveManagedDurableLockPath(input, graphFingerprint)
   const durableHash = Identity.resolveManagedDurableLockHashPath(input, graphFingerprint)
   State.validateManagedProfilePath(input.directory, profile)
-  await FileSystem.mkdir(profile, { recursive: true })
-  await FileSystem.mkdir(Path.dirname(durableLock), { recursive: true })
+  await FileSystem.mkdirs(profile, Path.dirname(durableLock))
   const storedLock = await Lock.loadDurableLock(input, normalized, graphFingerprint, durableLock, durableHash, repair)
   await State.claimManagedProfile(
     profile,

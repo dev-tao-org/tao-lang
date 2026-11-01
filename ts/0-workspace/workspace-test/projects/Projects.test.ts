@@ -18,9 +18,7 @@ Tests.test('named sessions contend, reuse warm state, and clean skips active ses
     const sidecarSnapshot = Path.join(session.directory, 'foreign-views', 'snapshot', 'source.tsx')
     const warmCompilerState = Path.join(session.directory, 'compiler-cache', 'state.json')
     const lockPath = session.lockPath
-    await FileSystem.mkdir(Path.dirname(sharedBuild), { recursive: true })
-    await FileSystem.mkdir(Path.dirname(sidecarSnapshot), { recursive: true })
-    await FileSystem.mkdir(Path.dirname(warmCompilerState), { recursive: true })
+    await FileSystem.mkdirs(Path.dirname(sharedBuild), Path.dirname(sidecarSnapshot), Path.dirname(warmCompilerState))
     await FileSystem.writeFile(sharedBuild, 'generated')
     await FileSystem.writeFile(sidecarSnapshot, 'old snapshot')
     await FileSystem.writeFile(warmCompilerState, 'warm')
@@ -111,8 +109,7 @@ Tests.test('session startup refuses a symlinked generated session directory', as
   const external = Artifacts.resolvePath('tmp', `tao-session-dir-${Platform.randomUUID()}`)
   await Try(async () => {
     const layout = await initializeProject(root)
-    await FileSystem.mkdir(layout.sessionsDirectory, { recursive: true })
-    await FileSystem.mkdir(external, { recursive: true })
+    await FileSystem.mkdirs(layout.sessionsDirectory, external)
     await FileSystem.writeFile(Path.join(external, 'keep.txt'), 'outside')
     await FileSystem.symlink(external, Path.join(layout.sessionsDirectory, 'named'))
 
@@ -134,7 +131,7 @@ Tests.test('session startup refuses a symlinked sidecar snapshot root without fo
     await initializeProject(root)
     const session = await acquireSession(root, { id: 'snapshot-link' })
     const externalFile = Path.join(external, 'keep.txt')
-    await FileSystem.mkdir(external, { recursive: true })
+    await FileSystem.mkdir(external)
     await FileSystem.writeFile(externalFile, 'outside')
     session.release()
     await FileSystem.symlink(external, Path.join(session.directory, 'foreign-views'))
@@ -165,7 +162,7 @@ Tests.test('initialization rejects an ancestor project across a child Git bounda
   await Try(async () => {
     await initializeProject(root)
     const childGitRoot = Path.join(root, 'child')
-    await FileSystem.mkdir(Path.join(childGitRoot, '.git'), { recursive: true })
+    await FileSystem.mkdir(Path.join(childGitRoot, '.git'))
     const nested = Path.join(childGitRoot, 'nested')
 
     await expectFailure(() => initializeProject(nested))
@@ -199,9 +196,7 @@ Tests.test('project cleaning removes generated cache and retains durable store a
     const generated = Path.join(layout.cacheDirectory, 'build', 'output.js')
     const externalFile = Path.join(external, 'keep.txt')
     const externalLink = Path.join(layout.cacheDirectory, 'external')
-    await FileSystem.mkdir(Path.dirname(store), { recursive: true })
-    await FileSystem.mkdir(Path.dirname(generated), { recursive: true })
-    await FileSystem.mkdir(external, { recursive: true })
+    await FileSystem.mkdirs(Path.dirname(store), Path.dirname(generated), external)
     await FileSystem.writeFile(store, '{}')
     await FileSystem.writeFile(dependencyLock, JSON.stringify({ version: 2, roots: {}, sources: {}, commitPins: {} }))
     await FileSystem.writeFile(generated, 'generated')
@@ -229,7 +224,7 @@ Tests.test('clean protects sessions when the project cache path is a symlink', a
     const layout = await initializeProject(root)
     const session = await acquireSession(root, { id: 'preserve-me' })
     const externalSession = Path.join(external, 'sessions', 'preserve-me')
-    await FileSystem.mkdir(externalSession, { recursive: true })
+    await FileSystem.mkdir(externalSession)
     await FileSystem.writeFile(Path.join(externalSession, 'keep.txt'), 'outside')
     session.release()
     await FileSystem.rm(layout.cacheDirectory, { recursive: true, force: true })
@@ -274,9 +269,7 @@ async function createManagedFileDependency(root: string, dependency: string): Pr
     Path.join(module, 'tsconfig.json'),
     '{"extends":"defaults.json"}\n',
   ]] as const
-  await FileSystem.mkdir(Path.join(dependency, '.tao'), { recursive: true })
-  await FileSystem.mkdir(module, { recursive: true })
-  await FileSystem.mkdir(profile, { recursive: true })
+  await FileSystem.mkdirs(Path.join(dependency, '.tao'), module, profile)
   await FileSystem.writeFile(
     Path.join(profile, '.tao-managed.json'),
     JSON.stringify({ fingerprint: 'fixture', lockHash: 'fixture' }),

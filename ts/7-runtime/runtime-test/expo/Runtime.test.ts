@@ -35,7 +35,7 @@ Tests.test('runtime preparation installs a cold pinned cache and reuses it', asy
       install: {
         async install(directory: string) {
           installs++
-          await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+          await FileSystem.mkdir(Path.join(directory, 'node_modules'))
         },
       },
     }
@@ -56,7 +56,7 @@ Tests.test('runtime toolchain cache identity includes runtime version and reuses
     const installer = {
       async install(directory: string) {
         installs++
-        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'))
       },
     }
     const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
@@ -85,13 +85,13 @@ Tests.test('runtime toolchain copies dependency patches and invalidates the cach
         patchedDependencies: { 'expo@57.0.30': patchPath },
       }),
     )
-    await FileSystem.mkdir(Path.dirname(Path.join(resources, patchPath)), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(Path.join(resources, patchPath)))
     await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes A')
     let installs = 0
     const installer = {
       async install(directory: string) {
         installs++
-        await FileSystem.mkdir(Path.join(directory, 'node_modules'), { recursive: true })
+        await FileSystem.mkdir(Path.join(directory, 'node_modules'))
       },
     }
     const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
@@ -112,8 +112,7 @@ async function verifyLinkedSourceParents(root: string): Promise<void> {
   const directory = Path.join(root, 'generated')
   const sources = Path.join(directory, 'src/_gen_runtime')
   const separateDirectory = Path.join(root, 'separate-owned-fixture')
-  await FileSystem.mkdir(sources, { recursive: true })
-  await FileSystem.mkdir(separateDirectory, { recursive: true })
+  await FileSystem.mkdirs(sources, separateDirectory)
   const sentinel = Path.join(separateDirectory, 'TR.ts')
   const owned = Path.join(sources, 'owned.ts')
   await FileSystem.writeFile(sentinel, 'preserve linked contents')
@@ -141,7 +140,7 @@ async function verifyRuntimeCreate(root: string): Promise<void> {
 async function verifyUnrelatedRuntimeFilesArePreserved(root: string, resourcesDirectory: string): Promise<void> {
   const directory = Path.join(root, 'runtime-with-user-file')
   const userFile = Path.join(directory, 'src/_gen_runtime/user-data.txt')
-  await FileSystem.mkdir(Path.dirname(userFile), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(userFile))
   await FileSystem.writeFile(userFile, 'preserve me')
   await Tests.expect(Runtime.create({
     directory,
@@ -149,7 +148,7 @@ async function verifyUnrelatedRuntimeFilesArePreserved(root: string, resourcesDi
     toolchainCacheDirectory: Path.join(root, 'user-file-toolchains'),
     install: {
       async install(target) {
-        await FileSystem.mkdir(Path.join(target, 'node_modules'), { recursive: true })
+        await FileSystem.mkdir(Path.join(target, 'node_modules'))
       },
     },
   })).rejects.toThrow('contains user files')
@@ -238,19 +237,19 @@ type CreatedApplications = {
 
 async function writeLegacyRuntimeDirectory(directory: string, resourcesDirectory: string): Promise<void> {
   const target = Path.join(directory, 'src/_gen_runtime')
-  await FileSystem.mkdir(target, { recursive: true })
+  await FileSystem.mkdir(target)
   await FileSystem.writeFile(
     Path.join(target, 'TR.js'),
     await FileSystem.readFile(Path.join(resourcesDirectory, 'runtime/TR.ts'), 'utf8'),
   )
   await FileSystem.writeFile(Path.join(target, 'HMRClient.js'), 'legacy HMR bundle')
   const legacyNativeSource = Path.join(target, 'runtime/Native.ts')
-  await FileSystem.mkdir(Path.dirname(legacyNativeSource), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(legacyNativeSource))
   await FileSystem.writeFile(legacyNativeSource, 'legacy Native runtime source')
 }
 
 async function writeResources(directory: string, dependencies: Record<string, string>, label: string): Promise<void> {
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const runtimeSources = await readRuntimeSources()
   await FileSystem.writeFile(
     Path.join(directory, 'runtime.json'),
@@ -266,7 +265,7 @@ async function writeResources(directory: string, dependencies: Record<string, st
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = await FileSystem.readFile(Repo.resolvePath(sourcePath), 'utf8')
     const target = Path.join(directory, resource)
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, source)
   }
 }

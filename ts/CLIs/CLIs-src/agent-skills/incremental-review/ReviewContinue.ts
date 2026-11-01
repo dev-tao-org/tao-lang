@@ -61,7 +61,7 @@ async function requireEmptyHistory(session: ReviewSession): Promise<void> {
 
 async function retainHistory(previous: ReviewSession, session: ReviewSession): Promise<void> {
   const evidence = Path.join(session.directory, 'evidence/previous')
-  await FileSystem.mkdir(evidence, { recursive: true })
+  await FileSystem.mkdir(evidence)
   await writeJson(Path.join(evidence, 'session.json'), previous)
   await copyHistoricalFiles(Path.dirname(previous.directory), Path.dirname(session.directory), false)
   for (const directory of ['receipts', 'plans', 'evidence']) {
@@ -77,7 +77,7 @@ async function copyHistoricalFiles(source: string, destination: string, descend 
     const path = Path.join(source, entry.name)
     const target = Path.join(destination, entry.name)
     if (isHistoricalText(entry)) {
-      await FileSystem.mkdir(destination, { recursive: true })
+      await FileSystem.mkdir(destination)
       await FileSystem.writeFile(target, await FileSystem.readFile(path))
     } else if (descend && isHistoricalDirectory(entry)) {
       await copyHistoricalFiles(path, target)

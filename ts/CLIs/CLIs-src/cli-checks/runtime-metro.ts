@@ -23,7 +23,7 @@ export async function writeMetroResources(directory: string, sources: RuntimeSou
   for (const [source, content] of Object.entries(sources)) {
     if (Path.dirname(source) === prefix) {
       const output = Path.join(directory, 'patches', Path.basename(source))
-      await FileSystem.mkdir(Path.dirname(output), { recursive: true })
+      await FileSystem.mkdir(Path.dirname(output))
       await FileSystem.writeFile(output, content)
     }
   }

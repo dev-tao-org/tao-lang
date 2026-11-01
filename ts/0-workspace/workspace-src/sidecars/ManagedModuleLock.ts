@@ -15,7 +15,7 @@ export async function withManagedModuleLock<Value>(
     )
   }
   const lockDirectory = Path.join(ownerRoot, '.tao', 'locks')
-  await FileSystem.mkdir(lockDirectory, { recursive: true })
+  await FileSystem.mkdir(lockDirectory)
   const lockPath = Path.join(lockDirectory, `module-${Platform.hashText(canonicalDirectory)}.lock`)
   const lock = await SessionLock.acquire(lockPath)
   if (!lock) {

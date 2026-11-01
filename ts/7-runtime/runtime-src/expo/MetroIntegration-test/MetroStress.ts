@@ -50,7 +50,7 @@ export async function verifyMetroBurst(
     boundary: 'RSS observations only; no GC baseline or soak claim.',
   }
   const path = Artifacts.resolvePath('notes/radical-preview', `metro-burst-${Platform.randomUUID()}.json`)
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(path))
   await FileSystem.writeFile(path, JSON.stringify(report, null, 2))
 }
 

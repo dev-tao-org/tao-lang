@@ -4,7 +4,7 @@ import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFile, writ
 import * as Path from './Path'
 import * as Repo from './Repo'
 
-export { file, mkdir, realpathSync, rm, write } from './FileSystem'
+export { createExclusiveDirectory, file, mkdir, mkdirs, realpathSync, rm, write } from './FileSystem'
 export { appendFileSync, mkdirSync, mkdtemp, move } from './NodeBuiltins'
 
 /** writePrivate creates a new owner-only artifact without a window of public readability. */

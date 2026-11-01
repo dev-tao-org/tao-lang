@@ -44,7 +44,7 @@ type ResolvedHarnessOptions = HarnessOptions & {
 
 async function prepareBrowserClient(sessionId: string): Promise<string> {
   const directory = Artifacts.resolvePath('tmp', `preview-ui-${sessionId}`)
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   Artifacts.trackTemporary(directory)
   const build = await Browser.build([Repo.resolvePath('ts/perf/perf-src/preview-browser.ts')], directory)
   if (!build.success) {

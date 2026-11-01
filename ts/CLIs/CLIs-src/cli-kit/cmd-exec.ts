@@ -50,8 +50,15 @@ type OutputPipe = (text: OutputText) => void
 type Command = string | readonly string[]
 type EnvironmentValue = string | undefined
 type InheritedStreamMode = 'inherit' | 'ignore'
+type CapturedStreamMode = 'ignore' | 'pipe'
 type ChildShutdown = Promise<void> | undefined
 type ProcessSignal = string | null
+type ChildSpawnOptions<In extends Platform.ChildProcessInput> = {
+  variadicArgs?: readonly string[]
+  cwd?: string
+  env?: Record<string, EnvironmentValue>
+  stdin?: In
+}
 type RunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
@@ -69,21 +76,22 @@ async function runLoggedCommand(
   options: RunOptions,
   output: ReturnType<typeof configuredCommandOutput>,
 ): Promise<void> {
-  const child = Platform.spawn(command, {
+  const environment = {
+    ...Env.snapshot(),
+    ...options.env,
+    TERMINAL_UI: '0',
+    TERMINAL_OUTPUT: '1',
+    OUTPUT_LOG_FILE: undefined,
+    CLI_OUTPUT_EVENTS: options.structuredOutput ? '1' : undefined,
+  }
+  const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
-    env: {
-      ...Env.snapshot(),
-      ...options.env,
-      TERMINAL_UI: '0',
-      TERMINAL_OUTPUT: '1',
-      OUTPUT_LOG_FILE: undefined,
-      CLI_OUTPUT_EVENTS: options.structuredOutput ? '1' : undefined,
-    },
+    env: environment,
     stdin: options.stdin ?? (options.output ? 'ignore' : 'inherit'),
-    stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
-    stderr: 'pipe',
-  })
+  }
+  const stdout = options.stdout === 'ignore' ? 'ignore' : 'pipe'
+  const child = spawnLoggedCommand(command, spawnOptions, stdout)
   const shutdown = manageShutdown(child, options.signal)
   await Try(async () => {
     const [status] = await Promise.all([
@@ -100,6 +108,17 @@ async function runLoggedCommand(
     },
     finally: () => shutdown.dispose(),
   })
+}
+
+function spawnLoggedCommand<In extends Platform.ChildProcessInput>(
+  command: Command,
+  options: ChildSpawnOptions<In>,
+  stdout: CapturedStreamMode,
+) {
+  if (stdout === 'ignore') {
+    return Platform.spawnStderrPiped(command, options)
+  }
+  return Platform.spawnPiped(command, options)
 }
 
 function manageShutdown(child: Platform.ChildProcess, signal?: AbortSignal) {
@@ -134,19 +153,39 @@ function commandStderr(
 }
 
 async function runInheritedCommand(command: Command, options: RunOptions): Promise<void> {
-  const child = Platform.spawn(command, {
+  const environment = { ...Env.snapshot(), ...options.env }
+  const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
-    env: { ...Env.snapshot(), ...options.env },
     stdin: options.stdin ?? 'inherit',
-    stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
-    stderr: options.stderr ?? 'inherit',
-  })
+    env: environment,
+  }
+  const stdout = options.stdout === 'ignore' ? 'ignore' : 'inherit'
+  const stderr = options.stderr ?? 'inherit'
+  const child = spawnInheritedCommand(command, spawnOptions, stdout, stderr)
   const shutdown = manageShutdown(child, options.signal)
   await Try(async () => {
     requireCommandSuccess(command, options, await child.exited, child.signalCode)
     shutdown.assertCompleted()
   }, { finally: () => shutdown.dispose() })
+}
+
+function spawnInheritedCommand<In extends Platform.ChildProcessInput>(
+  command: Command,
+  options: ChildSpawnOptions<In>,
+  stdout: InheritedStreamMode,
+  stderr: InheritedStreamMode,
+) {
+  if (stdout === 'inherit') {
+    if (stderr === 'inherit') {
+      return Platform.spawnInherited(command, options)
+    }
+    return Platform.spawnStdoutInherited(command, options)
+  }
+  if (stderr === 'inherit') {
+    return Platform.spawnStderrInherited(command, options)
+  }
+  return Platform.spawnSilent(command, options)
 }
 
 function requireCommandSuccess(command: Command, options: RunOptions, status: number, signal: ProcessSignal): void {

@@ -218,7 +218,7 @@ async function freezeSelection(
 ): Promise<ReviewSelection> {
   const proposal = Platform.randomUUID()
   const selection: ReviewSelection = { version: 1, proposal, session: session.id, ...content }
-  await FileSystem.mkdir(Path.join(session.directory, 'plans'), { recursive: true })
+  await FileSystem.mkdir(Path.join(session.directory, 'plans'))
   const proposalPath = Path.join(session.directory, 'plans', `${proposal}.json`)
   await ReviewGit.writeJson(proposalPath, selection)
   await FileSystem.chmod(proposalPath, 0o444)

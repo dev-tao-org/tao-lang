@@ -42,9 +42,9 @@ export async function prepareDependencies(
   update: string[] = [],
 ): Promise<Types.DependencyLock> {
   const path = LockFile.resolveDependencyLockPath(projectRoot)
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(path))
   const lockPath = Path.join(projectRoot, '.tao', 'locks', 'dependencies.lock')
-  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(lockPath))
   const acquireLock = options.acquireLock ?? SessionLock.acquire
   const lock = await acquireLock(lockPath)
   if (!lock) {
@@ -111,7 +111,7 @@ export async function prepareSourceDependency(
   const sourceRequirements = await options.readRequirements(source.location)
   const resolvedSource = { ...source, requirements: sourceRequirements }
   const result = overlayPreparedSource(previous, resolvedSource, requirement, { projectRoot, owner, alias, identity })
-  await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(path))
   await LockFile.writeDependencyLock(path, result, projectRoot)
   if (source.commit) {
     resolvedPins.set(identity, source.commit)

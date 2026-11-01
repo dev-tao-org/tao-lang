@@ -23,7 +23,6 @@ export {
   copyFile,
   cp,
   lstat,
-  mkdir,
   mkdtemp,
   open,
   opendir,
@@ -39,6 +38,23 @@ export {
   writeFile,
 } from './NodeBuiltins'
 export { nativeFileSystemPromises } from './NodeBuiltins'
+
+/** mkdir creates a directory and any missing parents. */
+export async function mkdir(path: string): Promise<string | undefined> {
+  return await Native.mkdir(path, { recursive: true })
+}
+
+/** mkdirs creates each directory and its missing parents in argument order. */
+export async function mkdirs(...paths: string[]): Promise<void> {
+  for (const path of paths) {
+    await mkdir(path)
+  }
+}
+
+/** createExclusiveDirectory creates one directory and fails with EEXIST when its path already exists. */
+export async function createExclusiveDirectory(path: string): Promise<void> {
+  await Native.mkdir(path)
+}
 
 /** resolveModule resolves a package entry using dependencies visible from a caller-owned directory. */
 export function resolveModule(packageName: string, fromDirectory: string): string {

@@ -139,7 +139,7 @@ export async function recordManagedGraphReference(
   const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
   const reference: Types.ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
   const updated: Types.DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
-  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(lockPath))
   await writeDependencyLock(lockPath, updated, projectRoot)
   return updated
 }

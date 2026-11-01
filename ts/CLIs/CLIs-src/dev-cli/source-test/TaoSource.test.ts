@@ -4,7 +4,7 @@ import { updateTaoSource } from '../source/TaoSource'
 
 Tests.test('source commands organize imports, format valid declarations and preserve invalid input on failed fixes', async () => {
   const directory = Artifacts.resolvePath('tmp', `source-tools-${Platform.randomUUID()}`)
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   const path = Path.join(directory, 'Example.tao')
   await Try(() => runSourceCommands(path), {
     finally: () => FileSystem.rm(directory, { recursive: true, force: true }),

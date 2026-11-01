@@ -12,7 +12,7 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   samples.push(...await transformerSamples())
   const summary = summarizeSamples(samples)
   const directory = Artifacts.resolvePath('logs/performance')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const path = Path.join(directory, `parser-${Platform.randomUUID()}.json`)
   Artifacts.trackTemporary(path)
   const report: ParserPerformanceReport = {

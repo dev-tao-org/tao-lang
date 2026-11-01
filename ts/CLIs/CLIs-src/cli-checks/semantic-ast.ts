@@ -10,7 +10,7 @@ export async function writeSemanticAst(directory: string): Promise<void> {
   const metadata = await readSemanticMetadata(Repo.resolvePath('ts/1-grammar/grammar-src/semantic-ast-metadata.json'))
   const source = generateSemanticAst(nodes, grammar, metadata)
   const output = Repo.resolvePath('ts/2-ast-gen/_gen_AST/AST-generated.ts')
-  await FileSystem.mkdir(Path.dirname(output), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(output))
   await FileSystem.writeIfChanged(output, source)
 }
 

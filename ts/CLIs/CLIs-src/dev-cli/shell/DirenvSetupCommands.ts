@@ -23,22 +23,20 @@ async function runCapturedCommand(command: string, options: RunOptions = {}): Pr
   const spawnOptions = {
     cwd: options.cwd,
     env: options.env,
-    stdout: 'pipe' as const,
-    stderr: 'pipe' as const,
     variadicArgs: options.args,
   }
   if (options.stdin !== undefined) {
-    const child = Platform.spawn(command, { ...spawnOptions, stdin: 'pipe' })
+    const child = Platform.spawnPiped(command, { ...spawnOptions, stdin: 'pipe' })
     child.stdin.write(options.stdin)
     child.stdin.end()
     return await readCommandResult(child, options.timeoutMs)
   }
-  const child = Platform.spawn(command, { ...spawnOptions, stdin: 'ignore' })
+  const child = Platform.spawnPiped(command, { ...spawnOptions, stdin: 'ignore' })
   return await readCommandResult(child, options.timeoutMs)
 }
 
 async function readCommandResult(
-  child: ReturnType<typeof Platform.spawn<ProcessInputMode, 'pipe', 'pipe'>>,
+  child: ReturnType<typeof Platform.spawnPiped<ProcessInputMode>>,
   timeoutMs?: number,
 ): Promise<CommandResult> {
   const cancel = timeoutMs === undefined

@@ -70,7 +70,7 @@ async function completeDirenvSetup(
   }
   const zshrc = Path.resolve(env['ZDOTDIR'] || home, '.zshrc')
   const accepted = await environment.confirm({ defaultValue: false, message: SETUP_PROMPT })
-  await FileSystem.mkdir(shellRoot, { recursive: true })
+  await FileSystem.mkdir(shellRoot)
   if (await hasStoredChoice(options, choicePath)) {
     return 0
   }

@@ -31,7 +31,7 @@ async function writeRuntimeSources(
     const source = sources[Repo.resolvePath(sourcePath)]
       ?? Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
     const target = Path.join(directory, resource)
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, source)
   }
 }
@@ -67,7 +67,7 @@ const buildResources = Timings.measured('runtime.build', async function(
 ) {
   const stage = `${directory}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FileSystem.mkdir(stage, { recursive: true })
+    await FileSystem.mkdir(stage)
     await writeRuntimeSources(stage, inputs.sources, inputs.runtimeSources)
     await writeMetroResources(stage, inputs.sources)
     const manifest = runtimeManifest(inputs.sources)
@@ -80,7 +80,7 @@ const buildResources = Timings.measured('runtime.build', async function(
       Path.join(stage, 'runtime.json'),
       formatRuntimeMetadata(identity, manifest, inputs.runtimeSources),
     )
-    await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(directory))
     await FileSystem.rm(directory, { recursive: true, force: true })
     await FileSystem.rename(stage, directory)
   }, {

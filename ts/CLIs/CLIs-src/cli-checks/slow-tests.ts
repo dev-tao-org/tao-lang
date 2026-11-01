@@ -59,7 +59,7 @@ function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
 async function prepareTestReport(): Promise<string | undefined> {
   return Try(async () => {
     const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
-    await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+    await Artifacts.mkdir(Path.dirname(path))
     Artifacts.trackTemporary(path)
     await Artifacts.write(path, '')
     return path

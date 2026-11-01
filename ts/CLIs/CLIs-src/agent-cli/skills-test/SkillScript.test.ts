@@ -36,10 +36,10 @@ Tests.test('rejects a skills root symlink that escapes the workspace', async () 
   await withFixture(async root => {
     const outside = Path.join(Repo.resolvePath('.artifacts/tmp/skill-script-tests-outside'), Platform.randomUUID())
     const scripts = Path.join(outside, 'demo/scripts')
-    await FileSystem.mkdir(scripts, { recursive: true })
+    await FileSystem.mkdir(scripts)
     await FileSystem.writeFile(Path.join(outside, 'demo/SKILL.md'), '---\nname: demo\n---\n')
     await FileSystem.writeFile(Path.join(scripts, 'run.ts'), 'void 0')
-    await FileSystem.mkdir(Path.join(root, 'agents'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, 'agents'))
     await Try(async () => {
       await FileSystem.symlink(outside, Path.join(root, 'agents/skills'), 'dir')
       await Tests.rejects(runSkillScript('agents/skills/demo/scripts/run.ts', [], root))
@@ -50,7 +50,7 @@ Tests.test('rejects a skills root symlink that escapes the workspace', async () 
 Tests.test('rejects a missing skill marker and unsupported extensions', async () => {
   await withFixture(async root => {
     const scripts = Path.join(root, 'agents/skills/demo/scripts')
-    await FileSystem.mkdir(scripts, { recursive: true })
+    await FileSystem.mkdir(scripts)
     await FileSystem.writeFile(Path.join(scripts, 'run.ts'), 'void 0')
     await Tests.rejects(runSkillScript('agents/skills/demo/scripts/run.ts', [], root))
     const marker = Path.join(root, 'agents/skills/demo/SKILL.md')
@@ -64,17 +64,17 @@ Tests.test('rejects a missing skill marker and unsupported extensions', async ()
 
 async function withFixture(action: (root: string) => Promise<void>): Promise<void> {
   const root = Repo.resolvePath('.artifacts/tmp/skill-script-tests', Platform.randomUUID())
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   await Try(() => action(root), { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 }
 
 async function addSkill(root: string): Promise<string> {
   const scripts = Path.join(root, 'agents/skills/demo/scripts')
-  await FileSystem.mkdir(scripts, { recursive: true })
+  await FileSystem.mkdir(scripts)
   await FileSystem.writeFile(Path.join(root, 'agents/skills/demo/SKILL.md'), '---\nname: demo\n---\n')
   const entry = Path.join(scripts, 'run.ts')
   const capture = JSON.stringify(Path.join(root, 'captured.json'))
-  await FileSystem.mkdir(Path.join(root, 'ts'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, 'ts'))
   await FileSystem.writeFile(
     Path.join(root, 'ts/tsconfig.json'),
     JSON.stringify({ extends: Repo.resolvePath('ts/tsconfig.base.json') }),

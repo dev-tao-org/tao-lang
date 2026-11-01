@@ -2,7 +2,7 @@ import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
-  await FileSystem.mkdir(Artifacts.resolvePath('tmp'), { recursive: true })
+  await FileSystem.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-generated-bootstrap-'))
   await Try(async () => {
     await createLauncherFixture(root)
@@ -18,9 +18,7 @@ type LauncherResult = { status: number; stdout: string; stderr: string }
 
 async function createLauncherFixture(root: string): Promise<void> {
   const bin = Path.join(root, 'bin')
-  await FileSystem.mkdir(Path.join(root, '.config'), { recursive: true })
-  await FileSystem.mkdir(bin, { recursive: true })
-  await FileSystem.mkdir(Path.join(root, 'ts/2-ast-gen/_gen_AST'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(root, '.config'), bin, Path.join(root, 'ts/2-ast-gen/_gen_AST'))
   for (const launcher of ['agent', 'dev', 'tao']) {
     await FileSystem.cp(Repo.resolvePath(launcher), Path.join(root, launcher))
   }
@@ -32,7 +30,7 @@ async function createLauncherFixture(root: string): Promise<void> {
 }
 
 async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'))
   for (const [launcher, command] of [['agent', 'agent'], ['dev', 'dev'], ['tao', 'tao']] as const) {
     await removeGeneratedAst(root)
     await writeCalls(root, '')
@@ -61,7 +59,7 @@ async function assertMissingDependenciesRequireSetup(root: string): Promise<void
 }
 
 async function assertPreparationFailureStopsLauncher(root: string): Promise<void> {
-  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, 'ts/node_modules'))
   await removeGeneratedAst(root)
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
@@ -139,20 +137,19 @@ async function runLauncher(
   arguments_: readonly string[],
   extraEnvironment: Record<string, string> = {},
 ): Promise<LauncherResult> {
-  const child = Platform.spawn(Path.join(root, launcher), {
+  const environment = {
+    ...Env.snapshot(),
+    PATH: `${Path.join(root, 'bin')}:${Env.get('PATH') ?? ''}`,
+    BOOTSTRAP_LOG: Path.join(root, 'calls'),
+    DEVENV_ROOT: root,
+    TAO_CLI_ROOT: root,
+    TAO_DEVENV: '1',
+    ...extraEnvironment,
+  }
+  const child = Platform.spawnPiped(Path.join(root, launcher), {
     variadicArgs: arguments_,
     cwd: root,
-    env: {
-      ...Env.snapshot(),
-      PATH: `${Path.join(root, 'bin')}:${Env.get('PATH') ?? ''}`,
-      BOOTSTRAP_LOG: Path.join(root, 'calls'),
-      DEVENV_ROOT: root,
-      TAO_CLI_ROOT: root,
-      TAO_DEVENV: '1',
-      ...extraEnvironment,
-    },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const [stdout, stderr, status] = await Promise.all([
     Platform.readText(child.stdout),

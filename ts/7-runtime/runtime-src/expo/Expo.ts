@@ -12,12 +12,11 @@ export async function createExpoSession(
 ): Promise<ExpoSession> {
   const port = unusedPort()
   const publication = await prepareExpoPublication(application, options.generated)
-  const child = Platform.spawn('expo', {
+  const environment = { ...expoEnvironment(application.directory), ...publication.environment }
+  const child = Platform.spawnPiped('expo', {
     variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
     cwd: application.directory,
-    env: { ...expoEnvironment(application.directory), ...publication.environment },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: environment,
   })
   const url = `http://127.0.0.1:${port}`
   const output = Lifecycle.captureProcessOutput(child, options.onOutput)

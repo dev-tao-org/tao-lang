@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
@@ -66,14 +66,14 @@ async function prepareJournal(session: ReviewSession, selection: ReviewSelection
 
 function reviewedMessage(selection: ReviewSelection, sourceCommit: string): string {
   const action = selection.kind === 'reopen' ? 'reopen' : 'accept'
-  return [
+  return joinTextLines(
     `Review: ${action} ${selection.files.length} path(s)`,
     '',
     `Source: ${sourceCommit}`,
     `Approval: ${selection.proposal}`,
     `Kind: ${selection.kind}`,
     ...selection.files.map(path => `Path: ${JSON.stringify(path)}`),
-  ].join('\n')
+  )
 }
 
 async function requireFinishedJournal(session: ReviewSession): Promise<void> {
@@ -226,7 +226,7 @@ async function recordPhase(
 ): Promise<void> {
   journal.phase = phase
   if (phase === 'complete') {
-    await FileSystem.mkdir(Path.join(session.directory, 'receipts'), { recursive: true })
+    await FileSystem.mkdir(Path.join(session.directory, 'receipts'))
     await ReviewGit.writeJson(Path.join(session.directory, 'receipts', `${journal.selection.proposal}.json`), journal)
   }
   await ReviewGit.writeJson(resolveJournalPath(session), journal)

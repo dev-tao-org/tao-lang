@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
 import type { SidecarCommandResult } from '../sidecars/ManagedModuleTypes'
@@ -40,12 +40,8 @@ export async function executeTypeScript(
   args: readonly string[],
   cwd: string,
 ): Promise<SidecarCommandResult> {
-  const child = Platform.spawn([command, ...args], {
-    cwd,
-    env: Env.snapshot(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const env = Env.snapshot()
+  const child = Platform.spawnPiped([command, ...args], { cwd, env })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),
@@ -69,14 +65,12 @@ async function createFixture(): Promise<Fixture> {
   const moduleRoot = Path.join(projectDirectory, '@calendar')
   const taoPath = Path.join(moduleRoot, 'Calendar.tao')
   const nodeModulesDirectory = Path.join(directory, 'managed', 'node_modules')
-  await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'), { recursive: true })
+  await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'))
   await FileSystem.writeFile(
     Path.join(projectDirectory, '.tao', 'cache', 'sidecars', 'typescript-defaults.json'),
     JSON.stringify({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
   )
-  await FileSystem.mkdir(moduleRoot, { recursive: true })
-  await FileSystem.mkdir(nodeModulesDirectory, { recursive: true })
-  await FileSystem.mkdir(Path.join(nodeModulesDirectory, '@types', 'react'), { recursive: true })
+  await FileSystem.mkdirs(moduleRoot, nodeModulesDirectory, Path.join(nodeModulesDirectory, '@types', 'react'))
   await FileSystem.writeFile(
     Path.join(nodeModulesDirectory, '@types', 'react', 'index.d.ts'),
     'export type ComponentType<Props> = (props: Props) => unknown\n',
@@ -84,12 +78,12 @@ async function createFixture(): Promise<Fixture> {
   await FileSystem.writeFile(taoPath, 'fixture source path')
   await FileSystem.writeFile(
     Path.join(moduleRoot, 'FormattedDate.tsx'),
-    [
-      "import { formatDate } from './format'",
-      "import logo from './logo.png'",
-      'export function FormattedDate(props: { Value: string }) { return null }',
-      'void formatDate; void logo',
-    ].join('\n'),
+    S`
+      import { formatDate } from './format'
+      import logo from './logo.png'
+      export function FormattedDate(props: { Value: string }) { return null }
+      void formatDate; void logo
+    `,
   )
   await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), 'export const formatDate = () => "old"\n')
   await FileSystem.writeFile(Path.join(moduleRoot, 'logo.png'), 'asset-bytes')

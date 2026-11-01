@@ -36,7 +36,7 @@ async function decryptStoreKey(identityPath: string, setupCommand: string, armor
 
 async function decryptWithKey(armor: string, secretKey: string): Promise<string> {
   const directory = Artifacts.resolvePath('cache', 'secrets')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const temporary = await Artifacts.mkdtemp(Path.join(directory, 'ciphertext-'))
   const path = Path.join(temporary, 'value.age')
   return Try(async () => {
@@ -69,11 +69,9 @@ async function run(
   command: string,
   options: { variadicArgs?: readonly string[]; stdin?: string } = {},
 ): Promise<string> {
-  const child = Platform.spawn(command, {
+  const child = Platform.spawnPiped(command, {
     variadicArgs: options.variadicArgs,
     stdin: 'pipe',
-    stdout: 'pipe',
-    stderr: 'pipe',
   })
   if (options.stdin !== undefined) {
     child.stdin.write(options.stdin)

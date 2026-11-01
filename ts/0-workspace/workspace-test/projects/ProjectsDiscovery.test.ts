@@ -12,7 +12,7 @@ Tests.test('project metadata initializes at a boundary and discovery walks upwar
     Tests.expect(await FileSystem.readFile(Path.join(layout.taoDirectory, 'store', 'project.json'), 'utf8')).toBe(
       identity,
     )
-    await FileSystem.mkdir(Path.join(root, 'src'), { recursive: true })
+    await FileSystem.mkdir(Path.join(root, 'src'))
     Tests.expect(await discoverProject(Path.join(root, 'src', 'Main.tao'))).toEqual(layout)
     Tests.expect(await FileSystem.readFile(Path.join(root, '.tao', '.gitignore'), 'utf8')).toBe('cache/\nlocks/\n')
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -23,8 +23,7 @@ Tests.test('project discovery excludes a legacy home cache but accepts durable h
   const homeAlias = `${home}-alias`
   await Try(async () => {
     const legacyTao = Path.join(home, '.tao')
-    await FileSystem.mkdir(Path.join(legacyTao, 'cache'), { recursive: true })
-    await FileSystem.mkdir(Path.join(home, 'child'), { recursive: true })
+    await FileSystem.mkdirs(Path.join(legacyTao, 'cache'), Path.join(home, 'child'))
     await FileSystem.symlink(home, homeAlias)
 
     Tests.expect(isDiscoverableProjectDirectory(home, homeAlias)).toBe(false)
@@ -32,7 +31,7 @@ Tests.test('project discovery excludes a legacy home cache but accepts durable h
     Tests.expect(findNearestProjectRoot(Path.join(home, 'child'), home)).toBeUndefined()
     Tests.expect(findNearestProjectRoot(Path.join(homeAlias, 'child'), homeAlias)).toBeUndefined()
 
-    await FileSystem.mkdir(Path.join(legacyTao, 'store'), { recursive: true })
+    await FileSystem.mkdir(Path.join(legacyTao, 'store'))
     await FileSystem.writeFile(Path.join(legacyTao, 'store', 'project.json'), '{}')
     Tests.expect(isDiscoverableProjectDirectory(home, homeAlias)).toBe(true)
     Tests.expect((await discoverProject(Path.join(home, 'child'), home))?.root).toBe(home)
@@ -50,8 +49,7 @@ Tests.test('initialization canonicalizes symlinked target ancestors before check
   await Try(async () => {
     await initializeProject(root)
     const child = Path.join(root, 'child')
-    await FileSystem.mkdir(child, { recursive: true })
-    await FileSystem.mkdir(aliases, { recursive: true })
+    await FileSystem.mkdirs(child, aliases)
     await FileSystem.symlink(child, Path.join(aliases, 'alias'))
 
     await expectFailure(() => initializeProject(Path.join(aliases, 'alias', 'nested')))
@@ -68,8 +66,7 @@ Tests.test('project initialization skips nested markers reached only through dir
   const root = temporaryProject()
   const external = temporaryProject()
   await Try(async () => {
-    await FileSystem.mkdir(Path.join(external, '.tao'), { recursive: true })
-    await FileSystem.mkdir(root, { recursive: true })
+    await FileSystem.mkdirs(Path.join(external, '.tao'), root)
     await FileSystem.symlink(external, Path.join(root, 'linked'))
     Tests.expect((await initializeProject(root)).root).toBe(root)
   }, {

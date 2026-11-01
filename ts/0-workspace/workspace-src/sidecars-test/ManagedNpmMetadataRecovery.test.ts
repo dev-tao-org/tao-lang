@@ -8,7 +8,7 @@ const ManagedModuleAlreadyOwnedErrorRegx = /already owned/
 Tests.test('repairs corrupt current profile metadata only from an intact durable lock', async () => {
   const directory = Artifacts.resolvePath('tmp', `managed-metadata-${Platform.randomUUID()}`)
   const moduleDirectory = Path.join(directory, 'Module')
-  await FileSystem.mkdir(moduleDirectory, { recursive: true })
+  await FileSystem.mkdir(moduleDirectory)
   const input: ManagedModulesInput = {
     directory,
     modules: [{ directory: moduleDirectory, requirements: [] }],
@@ -64,7 +64,7 @@ const fixtureExecutor: BunExecutor = async (_command, args, cwd) => {
     )
   }
   const react = Path.join(cwd, 'node_modules', 'react')
-  await FileSystem.mkdir(react, { recursive: true })
+  await FileSystem.mkdir(react)
   await FileSystem.writeFile(Path.join(react, 'package.json'), '{"name":"react","version":"19.1.0"}')
   return { status: 0, stdout: '', stderr: '' }
 }

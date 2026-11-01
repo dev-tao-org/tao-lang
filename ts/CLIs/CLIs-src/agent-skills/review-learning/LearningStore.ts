@@ -100,7 +100,7 @@ export async function ensureProjectMetadataDirectory(root: string, directory: st
     if (FileSystem.existsSync(current) && FileSystem.lstatSync(current).isSymbolicLink()) {
       Errors.ThrowUserInput('Review learning metadata directories must not be symbolic links.')
     }
-    await FileSystem.mkdir(current, { recursive: true })
+    await FileSystem.mkdir(current)
   }
 }
 

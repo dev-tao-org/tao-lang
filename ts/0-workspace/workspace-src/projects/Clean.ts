@@ -118,7 +118,7 @@ async function ensureLockDirectory(path: string): Promise<boolean> {
   if (Lifecycle.pathExists(parent) && !Lifecycle.isRealDirectory(parent)) {
     return false
   }
-  await FileSystem.mkdir(path, { recursive: true })
+  await FileSystem.mkdir(path)
   return Lifecycle.isRealDirectory(path)
 }
 

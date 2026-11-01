@@ -25,3 +25,10 @@ export function S(parts: TemplateStringsArray, ...values: unknown[]): string {
   }
   return lines.slice(start, end).map(line => line.trim() ? line.slice(margin) : '').join('\n')
 }
+
+type TextLine = string | null | undefined
+
+/** joinTextLines joins line values without normalizing or trimming their contents. */
+export function joinTextLines(...parts: readonly TextLine[]): string {
+  return parts.join('\n')
+}

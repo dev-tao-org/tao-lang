@@ -22,8 +22,7 @@ export async function buildExtension(): Promise<string> {
 /** prepareExtensionAssets generates the Tao WASM parser and stages the extension's portable assets. */
 export async function prepareExtensionAssets(): Promise<void> {
   await prepareParser()
-  await FileSystem.mkdir(Path.join(packageRoot, 'grammars'), { recursive: true })
-  await FileSystem.mkdir(Path.join(packageRoot, 'runtime'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(packageRoot, 'grammars'), Path.join(packageRoot, 'runtime'))
   await runCommand('tree-sitter build --wasm --output', {
     variadicArgs: [
       Path.join(packageRoot, 'grammars/tree-sitter-tao.wasm'),
@@ -81,7 +80,7 @@ async function copyAssets(): Promise<void> {
     Path.join(modulesDirectory, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
     Path.join(packageRoot, 'grammars/tree-sitter-tsx.wasm'),
   )
-  await FileSystem.mkdir(Path.join(packageRoot, 'queries'), { recursive: true })
+  await FileSystem.mkdir(Path.join(packageRoot, 'queries'))
   await FileSystem.cp(
     Repo.resolvePath('ts/1-grammar/grammar-src/queries/highlights.scm'),
     Path.join(packageRoot, 'queries/tao-highlights.scm'),
@@ -119,7 +118,7 @@ async function copyFormatter(): Promise<string> {
 
 async function copyLanguageIcons(): Promise<void> {
   const icons = Repo.resolvePath('Assets/Icons')
-  await FileSystem.mkdir(Path.join(packageRoot, 'icons'), { recursive: true })
+  await FileSystem.mkdir(Path.join(packageRoot, 'icons'))
   await FileSystem.cp(Path.join(icons, 'tao-light.svg'), Path.join(packageRoot, 'icons/tao-light.svg'))
   await FileSystem.cp(Path.join(icons, 'tao-dark.svg'), Path.join(packageRoot, 'icons/tao-dark.svg'))
 }

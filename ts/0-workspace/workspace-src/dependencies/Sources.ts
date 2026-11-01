@@ -157,7 +157,7 @@ async function materializeGitHubCache(
   if (await FileSystem.exists(cacheLocation)) {
     return
   }
-  await FileSystem.mkdir(Path.dirname(cacheLocation), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(cacheLocation))
   const pending = `${cacheLocation}.${Platform.randomUUID()}.pending`
   await Try(async () => {
     await options.git.fetchCommit(repository, commit, pending)

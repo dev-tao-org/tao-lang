@@ -27,7 +27,7 @@ async function readOptionalFile(path: string): Promise<string> {
 async function writeFileAtomically(path: string, content: string): Promise<void> {
   const staged = `${path}.${Platform.randomUUID()}.tmp`
   await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(path))
     await FileSystem.writeFile(staged, content, 'utf8')
     await FileSystem.rename(staged, path)
   }, {

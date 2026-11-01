@@ -10,7 +10,7 @@ import * as Tests from '../Tests'
 Tests.test('generated namespace routes reads, absence and retained descriptors while outside files stay on disk', async () => {
   const directory = Artifacts.resolvePath('tmp/generated-filesystem', Platform.randomUUID())
   const root = Path.join(directory, 'src')
-  await FileSystem.mkdir(Path.join(root, '_gen_runtime'), { recursive: true })
+  await FileSystem.mkdir(Path.join(root, '_gen_runtime'))
   await FileSystem.writeFile(Path.join(root, 'disk-only.ts'), 'disk ghost')
   await FileSystem.writeFile(Path.join(directory, 'outside.ts'), 'outside')
   await Bundle.bundleNode(Repo.resolvePath('ts/shared/shared-src/os/GeneratedFileSystem.ts'), directory, [])

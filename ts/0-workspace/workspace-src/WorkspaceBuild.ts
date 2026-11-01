@@ -114,7 +114,7 @@ const writeBuild = Timings.measured(
   ): Promise<string | undefined> {
     const revisions = `${directory}.revisions`
     const revisionDirectory = Path.join(revisions, Platform.randomUUID())
-    await FileSystem.mkdir(revisionDirectory, { recursive: true })
+    await FileSystem.mkdir(revisionDirectory)
     await Try(async () => {
       await copyBuildConfiguration(revisionDirectory, runtime)
       await writeSnapshotFiles(revisionDirectory, files)
@@ -150,7 +150,7 @@ async function writeSnapshotFiles(
 ): Promise<void> {
   for (const [file, content] of Object.entries(files)) {
     const path = resolveGeneratedPath(nextDirectory, file)
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(path))
     await FileSystem.writeFile(path, content)
   }
 }
@@ -170,7 +170,7 @@ const publishSnapshot = Timings.measured('workspace.build.publish-snapshot', asy
 ): Promise<void> {
   const parent = Path.dirname(directory)
   const revisions = `${directory}.revisions`
-  await FileSystem.mkdir(parent, { recursive: true })
+  await FileSystem.mkdir(parent)
   const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
   const previous = current?.isSymbolicLink()
     ? await Try.WithDefault(undefined, () => FileSystem.realpathSync(directory))
@@ -240,7 +240,7 @@ async function writeAtomicGeneratedFiles(
       return
     }
     const path = resolveGeneratedPath(directory, file)
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(path))
     const previous = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
     if (previous !== content) {
       await writeAtomic(path, content, isCurrent)

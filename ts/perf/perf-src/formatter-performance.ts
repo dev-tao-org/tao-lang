@@ -29,7 +29,7 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
   const samples = fixtures.flatMap(fixture => sampleFixture(fixture, typescript))
   const summary = summarizeSamples(samples)
   const path = Artifacts.resolvePath('logs/performance', `formatter-${Platform.randomUUID()}.json`)
-  await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(path))
   Artifacts.trackTemporary(path)
   const report: FormatterPerformanceReport = {
     version: 1,
