@@ -2,13 +2,13 @@ import { Errors, Switch, Try } from '@shared'
 import { Platform } from '@shared/os'
 import { inspectProjectPreparation, type PreparationOptions, prepareProject } from './ProjectPreparation'
 import { discoverProject } from './projects/Projects'
-import { openProjectWorkspace } from './ProjectWorkspace'
+import { openProjectWorkspace, type ProjectWorkspaceOptions } from './ProjectWorkspace'
 import { isSetupRequired, requireSetup } from './SetupRequired'
 import type { BunExecutor } from './sidecars/ManagedModules'
 import { runAppTests, type TestBrowser } from './testing/AppTests'
 import type { TestProgress, TestResult } from './testing/RunTests'
 import { runSidecarTests } from './testing/SidecarTests'
-import type { UpdateResult } from './Workspace'
+import type { UpdateResult, WorkspaceSession } from './Workspace'
 
 /** WorkflowUI supplies consent and cancellation for exactly one caller's workflow. */
 export type WorkflowUI = {
@@ -19,11 +19,11 @@ export type WorkflowUI = {
 /** WorkflowRequest names existing workflows and their owning execution inputs. */
 export type WorkflowRequest =
   | { kind: 'setup'; entry: string; preparation?: PreparationOptions; for?: 'app-tests' }
-  | { kind: 'compile'; entry: string; options?: Parameters<typeof openProjectWorkspace>[1] }
+  | { kind: 'compile'; entry: string; options?: ProjectWorkspaceOptions }
   | {
     kind: 'preview'
     entry: string
-    options?: Parameters<typeof openProjectWorkspace>[1]
+    options?: ProjectWorkspaceOptions
     restart?: { reason: string; suspend(): Promise<void> }
   }
   | {
@@ -36,7 +36,7 @@ export type WorkflowRequest =
   | { kind: 'sidecar-tests'; entry: string; moduleRoot: string; executor: BunExecutor }
 
 /** WorkflowWorkspace retains the initialized workspace and the original workflow's first compilation receipt. */
-export type WorkflowWorkspace = Awaited<ReturnType<typeof openProjectWorkspace>> & { initialResult: UpdateResult }
+export type WorkflowWorkspace = WorkspaceSession & { initialResult: UpdateResult }
 
 type CompileWorkflowKind = 'compile' | 'preview'
 type PreparationWorkflowKind = 'setup' | 'sidecar-tests'

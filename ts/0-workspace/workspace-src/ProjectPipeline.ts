@@ -5,12 +5,12 @@ import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
 import { requireSetup } from './SetupRequired'
-import { type PreparedSidecars, prepareSidecarPipeline } from './SidecarPipeline'
-import { inspectGeneratedModuleFiles, type ManagedModulesInput, readManagedModules } from './sidecars/ManagedModules'
+import * as SidecarPipeline from './SidecarPipeline'
+import * as ManagedModules from './sidecars/ManagedModules'
 
 /** ProjectPipelineResult exposes validated foreign-view routing and dynamic source watches. */
 export type ProjectPipelineResult = {
-  resolveForeignViewPath?: PreparedSidecars['resolveForeignViewPath']
+  resolveForeignViewPath?: SidecarPipeline.PreparedSidecars['resolveForeignViewPath']
   watchDirectories: readonly string[]
   watchFiles: readonly string[]
   snapshotDirectories: readonly string[]
@@ -35,10 +35,10 @@ export type ProjectPipeline = {
 
 /** ProjectPipelineServices isolates prepared graph reads for focused lifecycle tests. */
 export type ProjectPipelineServices = {
-  buildManagedInput(root: string, program: LinkedProgram): Promise<ManagedModulesInput | undefined>
-  readManaged(input: ManagedModulesInput): ReturnType<typeof readManagedModules>
-  inspectGeneratedFiles(input: ManagedModulesInput): ReturnType<typeof inspectGeneratedModuleFiles>
-  prepareSidecars(options: Parameters<typeof prepareSidecarPipeline>[0]): ReturnType<typeof prepareSidecarPipeline>
+  buildManagedInput(root: string, program: LinkedProgram): Promise<ManagedModules.ManagedModulesInput | undefined>
+  readManaged(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.PreparedManagedModules>
+  inspectGeneratedFiles(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.GeneratedModuleFileDrift[]>
+  prepareSidecars(options: SidecarPipeline.SidecarPipelineOptions): Promise<SidecarPipeline.PreparedSidecars>
 }
 
 /** createProjectPipeline binds prepared dependencies and immutable sidecar snapshots to a session.
@@ -51,9 +51,9 @@ export function createProjectPipeline(
   runtimeOptions: ProjectRuntimeOptions,
   services: ProjectPipelineServices = {
     buildManagedInput: async (projectRoot, program) => buildManagedModulesInput(projectRoot, program.modules),
-    readManaged: readManagedModules,
-    inspectGeneratedFiles: inspectGeneratedModuleFiles,
-    prepareSidecars: prepareSidecarPipeline,
+    readManaged: ManagedModules.readManagedModules,
+    inspectGeneratedFiles: ManagedModules.inspectGeneratedModuleFiles,
+    prepareSidecars: SidecarPipeline.prepareSidecarPipeline,
   },
 ): ProjectPipeline {
   return new PipelineSession(root, sessionDirectory, runtimeOptions, services)
@@ -62,10 +62,10 @@ export function createProjectPipeline(
 class PipelineSession implements ProjectPipeline {
   private graphKey?: string
   private preparedFingerprint?: string
-  private managedProfile?: Awaited<ReturnType<typeof readManagedModules>>
+  private managedProfile?: ManagedModules.PreparedManagedModules
   private readonly baseWatchFolders: readonly string[]
   private declarationKey?: string
-  private input?: ManagedModulesInput
+  private input?: ManagedModules.ManagedModulesInput
 
   constructor(
     private readonly root: string,
@@ -87,15 +87,7 @@ class PipelineSession implements ProjectPipeline {
     const key = input ? createManagedGraphKey(input) : createEmptyManagedGraphKey()
     this.rejectChangedGraph(key)
     if (!input) {
-      if (!this.runtimeOptions.dependencyDirectory) {
-        this.runtimeOptions.dependencyDirectory = await Runtime.preparedRuntime({
-          toolchainCacheDirectory: this.runtimeOptions.toolchainCacheDirectory,
-          resourcesDirectory: this.runtimeOptions.resourcesDirectory,
-        })
-          ?? requireSetup(
-            'Runtime is not prepared. Prepare dependencies with tao setup <entry>, then retry.',
-          )
-      }
+      await this.prepareRuntimeIfNeeded()
       this.graphKey = key
       this.declarationKey = declarationKey
       this.input = input
@@ -113,17 +105,29 @@ class PipelineSession implements ProjectPipeline {
     return createPipelineResult(sidecars)
   }
 
+  private async prepareRuntimeIfNeeded(): Promise<void> {
+    if (this.runtimeOptions.dependencyDirectory) {
+      return
+    }
+    const dependencyDirectory = await Runtime.preparedRuntime({
+      toolchainCacheDirectory: this.runtimeOptions.toolchainCacheDirectory,
+      resourcesDirectory: this.runtimeOptions.resourcesDirectory,
+    })
+    if (dependencyDirectory === undefined) {
+      requireSetup('Runtime is not prepared. Prepare dependencies with tao setup <entry>, then retry.')
+    }
+    this.runtimeOptions.dependencyDirectory = dependencyDirectory
+  }
+
   private rejectChangedGraph(key: string): void {
     if (this.graphKey === undefined || this.graphKey === key) {
       return
     }
-    const native = (this.managedProfile?.nativePackages.length ?? 0) > 0
-      ? ' A native rebuild is also required.'
-      : ''
-    requireSetup(`Dependency graph changed. Setup and preview restart are required.${native}`)
+    const nativeRebuildRequirement = describeNativeRebuildRequirement(this.managedProfile)
+    requireSetup(`Dependency graph changed. Setup and preview restart are required.${nativeRebuildRequirement}`)
   }
 
-  private async readManagedProfile(input: ManagedModulesInput, key: string) {
+  private async readManagedProfile(input: ManagedModules.ManagedModulesInput, key: string) {
     if (this.preparedFingerprint !== key || !this.managedProfile) {
       this.managedProfile = await this.services.readManaged(input)
       this.preparedFingerprint = key
@@ -133,7 +137,7 @@ class PipelineSession implements ProjectPipeline {
 
   private async prepareSidecars(
     program: LinkedProgram,
-    managed: Awaited<ReturnType<typeof readManagedModules>>,
+    managed: ManagedModules.PreparedManagedModules,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ) {
     return await this.services.prepareSidecars({
@@ -149,11 +153,19 @@ class PipelineSession implements ProjectPipeline {
   }
 
   private updateRuntimeOptions(
-    input: ManagedModulesInput,
-    managed: Awaited<ReturnType<typeof readManagedModules>>,
+    input: ManagedModules.ManagedModulesInput,
+    managed: ManagedModules.PreparedManagedModules,
   ): void {
     configureRuntimeDependencies(this.runtimeOptions, input, managed, this.baseWatchFolders, this.sessionDirectory)
   }
+}
+
+function describeNativeRebuildRequirement(profile: ManagedModules.PreparedManagedModules | undefined): string {
+  const nativePackageCount = profile?.nativePackages.length ?? 0
+  if (nativePackageCount > 0) {
+    return ' A native rebuild is also required.'
+  }
+  return ''
 }
 
 // createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
@@ -186,7 +198,7 @@ function serializeDeclarationFingerprint(declaration: AST.Declaration): unknown[
   return authoredPath ? [['foreign']] : []
 }
 
-function createManagedGraphKey(input: ManagedModulesInput): string {
+function createManagedGraphKey(input: ManagedModules.ManagedModulesInput): string {
   return JSON.stringify({
     modules: input.modules.map(module => ({
       directory: module.directory,
@@ -204,7 +216,7 @@ function createEmptyManagedGraphKey(): string {
   return JSON.stringify({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
 }
 
-function createPipelineResult(sidecars: PreparedSidecars): ProjectPipelineResult {
+function createPipelineResult(sidecars: SidecarPipeline.PreparedSidecars): ProjectPipelineResult {
   return {
     resolveForeignViewPath: sidecars.resolveForeignViewPath,
     watchDirectories: sidecars.watchDirectories,
@@ -213,7 +225,10 @@ function createPipelineResult(sidecars: PreparedSidecars): ProjectPipelineResult
   }
 }
 
-async function validateGeneratedFiles(services: ProjectPipelineServices, input: ManagedModulesInput): Promise<void> {
+async function validateGeneratedFiles(
+  services: ProjectPipelineServices,
+  input: ManagedModules.ManagedModulesInput,
+): Promise<void> {
   const drift = await services.inspectGeneratedFiles(input)
   if (drift.length > 0) {
     const first = drift[0]!
@@ -223,8 +238,8 @@ async function validateGeneratedFiles(services: ProjectPipelineServices, input: 
 
 function configureRuntimeDependencies(
   options: ProjectRuntimeOptions,
-  input: ManagedModulesInput,
-  managed: Awaited<ReturnType<typeof readManagedModules>>,
+  input: ManagedModules.ManagedModulesInput,
+  managed: ManagedModules.PreparedManagedModules,
   baseWatchFolders: readonly string[],
   sessionDirectory: string,
 ): void {
