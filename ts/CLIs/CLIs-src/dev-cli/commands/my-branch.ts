@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { Env, Platform, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
@@ -35,7 +35,7 @@ async function resolveDeveloperBranch(name: string, cwd: string): Promise<string
     return developerBranch(configured)
   }
   const identity = await optionalGitValue('user.name', cwd)
-  const firstName = slug(identity.split(/\s+/u)[0] ?? '')
+  const firstName = slug(identity.split(Regxs.BranchSlugWhitespaceRegx)[0] ?? '')
   return `${developerPrefix}${firstName || 'local'}`
 }
 
@@ -44,7 +44,9 @@ function developerBranch(name: string): string {
 }
 
 function slug(value: string): string {
-  return value.toLowerCase().replaceAll(/[^a-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '')
+  return value.toLowerCase()
+    .replaceAll(Regxs.BranchSlugInvalidCharacterRegx, '-')
+    .replace(Regxs.BranchSlugEdgeDashesRegx, '')
 }
 
 async function optionalGitValue(key: string, cwd: string): Promise<string> {

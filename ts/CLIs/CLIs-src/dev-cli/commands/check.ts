@@ -1,11 +1,5 @@
 import { runSteps } from '@cli-kit'
-import {
-  workspaceConformance,
-  workspaceDeadExports,
-  workspaceFormat,
-  workspaceShellSyntax,
-  workspaceTypes,
-} from '../../cli-checks/check'
+import * as Check from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
 import doctor from './doctor'
 
@@ -17,11 +11,11 @@ export default registerCommand({
     // App/IDE/runtime checks await their new implementations.
     await runSteps(
       () => doctor.action([]),
-      () => workspaceTypes(),
-      () => workspaceShellSyntax(),
-      () => workspaceDeadExports(),
-      () => workspaceConformance(),
-      () => workspaceFormat('check'),
+      () => Check.workspaceTypes(),
+      () => Check.workspaceShellSyntax(),
+      () => Check.workspaceDeadExports(),
+      () => Check.workspaceConformance(),
+      () => Check.workspaceFormat('check'),
     )
   },
 })

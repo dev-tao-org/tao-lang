@@ -13,12 +13,13 @@ export default registerCommand({
     description: 'Limit formatting to named files or globs; checks stay workspace-wide.',
     variadic: true,
   }],
-  async action(paths: string[]) {
+  options: [{ flags: '--yes', description: 'Authorize required app dependency setup.' }],
+  async action(paths: string[], options: { yes?: boolean } = {}) {
     // Native app journeys await their testing implementation.
     await runSteps(
       () => fmt.action(paths),
       () => check.action(),
-      () => workspaceTests(),
+      () => workspaceTests([], undefined, { yes: options.yes }),
     )
   },
 })
