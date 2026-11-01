@@ -1,11 +1,30 @@
 import * as TypeScript from 'typescript'
 
-export { objectFunctionStyleIssue }
+export { isRuntimeFunctionNode, objectFunctionStyleIssue }
 
 const inlineIssue = 'single-return object functions should use expression-bodied arrow properties'
-const methodIssue = 'multi-statement object functions must use method syntax'
-type ObjectFunction = TypeScript.MethodDeclaration | TypeScript.ArrowFunction | TypeScript.FunctionExpression
 
+type ObjectFunction = TypeScript.MethodDeclaration | TypeScript.ArrowFunction | TypeScript.FunctionExpression
+type ExpressionWrapper =
+  | TypeScript.ParenthesizedExpression
+  | TypeScript.AsExpression
+  | TypeScript.SatisfiesExpression
+  | TypeScript.NonNullExpression
+
+/** isRuntimeFunctionNode identifies function declarations which can own executable bodies. */
+function isRuntimeFunctionNode(node: TypeScript.Node): node is TypeScript.FunctionLikeDeclaration {
+  if (
+    TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node) || TypeScript.isArrowFunction(node)
+  ) {
+    return true
+  }
+  if (TypeScript.isMethodDeclaration(node) || TypeScript.isConstructorDeclaration(node)) {
+    return true
+  }
+  return TypeScript.isGetAccessorDeclaration(node) || TypeScript.isSetAccessorDeclaration(node)
+}
+
+const methodIssue = 'multi-statement object functions must use method syntax'
 /** objectFunctionStyleIssue reports safe object-function style changes. */
 function objectFunctionStyleIssue(node: TypeScript.Node, source: string): string | undefined {
   if (TypeScript.isMethodDeclaration(node) && TypeScript.isObjectLiteralExpression(node.parent)) {
@@ -25,9 +44,13 @@ function objectFunctionStyleIssue(node: TypeScript.Node, source: string): string
     return isBindingSafe(value) ? methodIssue : undefined
   }
   if (TypeScript.isFunctionExpression(value) && !value.name && isBindingSafe(value)) {
-    return isSingleReturnValue(value)
-      ? hasReturnComments(value, source) ? undefined : inlineIssue
-      : methodIssue
+    if (!isSingleReturnValue(value)) {
+      return methodIssue
+    }
+    if (hasReturnComments(value, source)) {
+      return undefined
+    }
+    return inlineIssue
   }
   return undefined
 }
@@ -38,7 +61,10 @@ function canUseInlineArrow(node: ObjectFunction, source: string): boolean {
 
 function isSingleReturnValue(node: ObjectFunction): boolean {
   const body = node.body
-  if (!body || !TypeScript.isBlock(body) || isGenerator(node) || body.statements.length !== 1) {
+  if (!body || !TypeScript.isBlock(body) || isGenerator(node)) {
+    return false
+  }
+  if (body.statements.length !== 1) {
     return false
   }
   const statement = body.statements[0]
@@ -55,8 +81,9 @@ function hasReturnComments(node: ObjectFunction, source: string): boolean {
   if (!expression) {
     return false
   }
-  return hasLeadingComment(source, statement.getFullStart()) || hasLeadingComment(source, expression.getFullStart())
-    || hasLeadingComment(source, body.getFullStart())
+  const hasStatementComments = hasLeadingComment(source, statement.getFullStart())
+    || hasLeadingComment(source, expression.getFullStart())
+  return hasStatementComments || hasLeadingComment(source, body.getFullStart())
     || (TypeScript.getTrailingCommentRanges(source, expression.end)?.length ?? 0) > 0
 }
 
@@ -92,9 +119,13 @@ function isBindingSafe(root: ObjectFunction): boolean {
 }
 
 function hasSensitiveBinding(node: TypeScript.Node): boolean {
-  return node.kind === TypeScript.SyntaxKind.ThisKeyword || node.kind === TypeScript.SyntaxKind.SuperKeyword
-    || (TypeScript.isIdentifier(node) && node.text === 'arguments')
-    || (TypeScript.isMetaProperty(node) && node.keywordToken === TypeScript.SyntaxKind.NewKeyword)
+  if (node.kind === TypeScript.SyntaxKind.ThisKeyword || node.kind === TypeScript.SyntaxKind.SuperKeyword) {
+    return true
+  }
+  if (TypeScript.isIdentifier(node) && node.text === 'arguments') {
+    return true
+  }
+  return TypeScript.isMetaProperty(node) && node.keywordToken === TypeScript.SyntaxKind.NewKeyword
 }
 
 function isNonArrowFunction(node: TypeScript.Node): boolean {
@@ -110,12 +141,9 @@ function unwrapExpression(expression: TypeScript.Expression): TypeScript.Express
   return current
 }
 
-function isExpressionWrapper(node: TypeScript.Expression): node is
-  | TypeScript.ParenthesizedExpression
-  | TypeScript.AsExpression
-  | TypeScript.SatisfiesExpression
-  | TypeScript.NonNullExpression
-{
-  return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
-    || TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
+function isExpressionWrapper(node: TypeScript.Expression): node is ExpressionWrapper {
+  if (TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)) {
+    return true
+  }
+  return TypeScript.isSatisfiesExpression(node) || TypeScript.isNonNullExpression(node)
 }
