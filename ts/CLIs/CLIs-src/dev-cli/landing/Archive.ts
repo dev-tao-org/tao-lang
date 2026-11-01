@@ -1,14 +1,17 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords, type PreviewRecord } from './PreviewRecords'
 import { pinArchive, requireSourceHead } from './SourceIdentity'
 import { requireOwnedStorageChanges } from './StorageStatus'
 
-/** publishPreviewArchive publishes only validated task records, confirms the remote and then pins the gitlink. */
+/** PublishedPreviewArchive retains the storage commit and source records published for a landing head. */
+export type PublishedPreviewArchive = { commit: string; sources: string[]; landingHead: string }
+
+/** publishPreviewArchive publishes validated task records, confirms the remote and pins the gitlink. */
 export async function publishPreviewArchive(
   io: LandingIO,
   verifiedHead: string,
-): Promise<{ commit: string; sources: string[]; landingHead: string }> {
+): Promise<PublishedPreviewArchive> {
   await requireSourceHead(io, verifiedHead)
   if ((await git(io, ['submodule', 'status', '--', '.storage'])).startsWith('-')) {
     await git(io, ['submodule', 'update', '--init', '--', '.storage'])
@@ -29,7 +32,7 @@ export async function publishPreviewArchive(
   await requireSourceHead(io, verifiedHead)
   await git(io, ['push', 'origin', `${commit}:${remote}`], true)
   const advertised = await git(io, ['ls-remote', '--exit-code', 'origin', remote], true)
-  if (advertised.split(/\s/)[0] !== commit) {
+  if (advertised.split(Regxs.SingleWhitespaceRegx)[0] !== commit) {
     Errors.ThrowHostEnvironment('Archive remote changed after publication; rerun land to reconcile it safely.')
   }
   const landingHead = await pinArchive(io, verifiedHead, commit)
@@ -38,7 +41,7 @@ export async function publishPreviewArchive(
 
 async function archiveRemote(io: LandingIO): Promise<string> {
   const advertisement = await git(io, ['ls-remote', '--symref', 'origin', 'HEAD'], true)
-  const remote = /^ref: (refs\/heads\/[^\s]+)\s+HEAD/m.exec(advertisement)?.[1]
+  const remote = Regxs.GitRefHeadRegx.exec(advertisement)?.[1]
   if (!remote) {
     Errors.ThrowHostEnvironment('The storage remote did not advertise its default branch.')
   }

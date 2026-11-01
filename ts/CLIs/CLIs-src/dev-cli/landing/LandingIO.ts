@@ -26,7 +26,7 @@ export function createLandingIO(): LandingIO {
     exists: path => FileSystem.exists(Path.resolve(root, path)),
     async write(path, text) {
       const destination = Path.resolve(root, path)
-      await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+      await FileSystem.mkdir(Path.dirname(destination))
       await FileSystem.writeFile(destination, text)
     },
   }
@@ -38,7 +38,7 @@ export async function git(io: LandingIO, args: readonly string[], storage = fals
 }
 
 function commandProgress(command: string, args: readonly string[]): string | undefined {
-  const stages: Record<string, string> = {
+  const stages: LandingCommandMessages = {
     './agent verify': 'Verifying the reviewed source…',
     'git fetch': 'Fetching remote history…',
     'git push': 'Publishing the pinned commit…',
@@ -54,3 +54,5 @@ function commandProgress(command: string, args: readonly string[]): string | und
   }
   return stages[command] ?? stages[`${command} ${args[0]}`]
 }
+
+type LandingCommandMessages = Record<string, string>

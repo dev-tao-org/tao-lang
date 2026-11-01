@@ -6,15 +6,6 @@ import { requireSourceHead } from './SourceIdentity'
 /** LandingProof retains GitHub's merged identity plus the authoritative main ancestry confirmation. */
 export type LandingProof = { branch: string; url: string; sourceCommit: string; mergeCommit: string; mergedAt: string }
 
-/** proveLanded queries merged pull requests and proves that their merge commit remains on remote main. */
-export async function proveLanded(io: LandingIO, branch: string): Promise<LandingProof> {
-  const proof = await inspectLanding(io, branch)
-  if (!proof) {
-    Errors.ThrowUserInput(`No authoritative merged pull request was found for ${branch}.`)
-  }
-  return proof
-}
-
 /** inspectLanding distinguishes a successful unmerged lookup from unavailable or contradictory remote evidence. */
 export async function inspectLanding(io: LandingIO, branch: string): Promise<LandingProof | undefined> {
   requireFeatureBranch(branch)
@@ -23,14 +14,15 @@ export async function inspectLanding(io: LandingIO, branch: string): Promise<Lan
   if (!pr) {
     return undefined
   }
-  if (!pr.mergedAt || !pr.mergeCommit?.oid || pr.baseRefName !== 'main' || pr.headRefName !== branch) {
+  const { mergedAt, mergeCommit } = pr
+  if (!mergedAt || !mergeCommit?.oid || !matchesExpectedBranches(pr, branch)) {
     Errors.ThrowHostEnvironment(`GitHub returned incomplete or contradictory merge evidence for ${branch}.`)
   }
-  const comparison = JSON.parse(
+  const comparison = parseCommitComparison(
     await io.command('gh api', [
-      `repos/{owner}/{repo}/compare/${pr.mergeCommit.oid}...main`,
+      `repos/{owner}/{repo}/compare/${mergeCommit.oid}...main`,
     ]),
-  ) as { status?: string }
+  )
   if (comparison.status !== 'ahead' && comparison.status !== 'identical') {
     Errors.ThrowHostEnvironment('The merged pull request commit is not confirmed on remote main.')
   }
@@ -38,8 +30,8 @@ export async function inspectLanding(io: LandingIO, branch: string): Promise<Lan
     branch,
     url: pr.url,
     sourceCommit: pr.headRefOid,
-    mergeCommit: pr.mergeCommit.oid,
-    mergedAt: pr.mergedAt,
+    mergeCommit: mergeCommit.oid,
+    mergedAt,
   }
 }
 
@@ -76,14 +68,26 @@ export async function publishAndMerge(
   return proof
 }
 
+function matchesExpectedBranches(pr: PullRequest, branch: string): boolean {
+  return pr.baseRefName === 'main' && pr.headRefName === branch
+}
+
+async function proveLanded(io: LandingIO, branch: string): Promise<LandingProof> {
+  const proof = await inspectLanding(io, branch)
+  if (!proof) {
+    Errors.ThrowUserInput(`No authoritative merged pull request was found for ${branch}.`)
+  }
+  return proof
+}
+
 type PullRequest = {
   url: string
   headRefOid: string
   headRefName: string
   baseRefName: string
   isCrossRepository: boolean
-  mergedAt: string | null
-  mergeCommit: { oid: string } | null
+  mergedAt: NullableMergeTime
+  mergeCommit: NullableMergeCommit
 }
 
 async function reviewedPullRequest(io: LandingIO, branch: string, message: string) {
@@ -105,7 +109,7 @@ async function reviewedPullRequest(io: LandingIO, branch: string, message: strin
 }
 
 async function listPullRequests(io: LandingIO, branch: string, state: string): Promise<PullRequest[]> {
-  const prs = JSON.parse(
+  const prs = parsePullRequests(
     await io.command('gh pr list', [
       '--head',
       branch,
@@ -118,15 +122,29 @@ async function listPullRequests(io: LandingIO, branch: string, state: string): P
       '--json',
       'url,headRefOid,headRefName,baseRefName,mergedAt,mergeCommit,isCrossRepository',
     ]),
-  ) as PullRequest[]
+  )
   if (prs.some(pr => typeof pr.isCrossRepository !== 'boolean')) {
     Errors.ThrowHostEnvironment('GitHub did not identify the pull request source repository.')
   }
   return prs.filter(pr => !pr.isCrossRepository)
 }
 
-function requirePullRequestHead(pr: PullRequest | undefined, head: string): asserts pr is PullRequest {
+type OptionalPullRequest = PullRequest | undefined
+function requirePullRequestHead(pr: OptionalPullRequest, head: string): asserts pr is PullRequest {
   if (!pr || pr.headRefOid !== head || pr.baseRefName !== 'main') {
     Errors.ThrowHostEnvironment('The pull request does not describe the exact current source head.')
   }
+}
+
+type NullableMergeTime = string | null
+type NullableMergeCommit = { oid: string } | null
+
+type CommitComparison = { status?: string }
+
+function parseCommitComparison(contents: string): CommitComparison {
+  return JSON.parse(contents) as CommitComparison
+}
+
+function parsePullRequests(contents: string): PullRequest[] {
+  return JSON.parse(contents) as PullRequest[]
 }
