@@ -1,6 +1,5 @@
-import { createInterface, type ReadLineOptions } from 'node:readline/promises'
-import { StringDecoder } from 'node:string_decoder'
-import { Errors, Try } from '../universal/universal'
+import { ControlCCharacter, Errors, Try } from '../universal/universal'
+import { createInterface, emitKeypressEvents, type Readable, type ReadLineOptions, StringDecoder } from './NodeBuiltins'
 
 /** stdout exposes the developer output stream. */
 export const stdout = process.stdout
@@ -18,16 +17,51 @@ export function writeLine(message = ''): void {
   stdout.write(`${message}\n`)
 }
 
-/** askConfirm prompts for a yes/no response. */
-export async function askConfirm(options: { defaultValue?: boolean; message: string }): Promise<boolean> {
-  if (!isInteractive()) {
+type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
+/** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
+export function listenForKeys(receive: (key: string) => void, input: KeyInput = process.stdin): () => void {
+  if (!input.isTTY) {
+    return () => {}
+  }
+  const wasRaw = input.isRaw === true
+  const wasPaused = input.isPaused()
+  let listening = true
+  const readKey = (_text: KeypressText, key: { sequence: string }) => receive(key.sequence)
+  emitKeypressEvents(input)
+  input.on('keypress', readKey)
+  input.setRawMode(true)
+  input.resume()
+  return () => {
+    if (!listening) {
+      return
+    }
+    listening = false
+    input.off('keypress', readKey)
+    input.setRawMode(wasRaw)
+    if (wasPaused) {
+      input.pause()
+    }
+  }
+}
+
+type ConfirmationOptions = { defaultValue?: boolean; message: string; signal?: AbortSignal }
+/** askConfirm prompts for a yes/no response and closes its reader when the caller cancels. */
+export async function askConfirm(
+  options: ConfirmationOptions,
+  terminal: ConfirmationTerminal = confirmationTerminal,
+): Promise<boolean> {
+  if (options.signal?.aborted) {
+    Errors.ThrowUserInput('Confirmation cancelled.')
+  }
+  if (!terminal.isInteractive()) {
     return options.defaultValue ?? false
   }
   const suffix = options.defaultValue ? '[Y/n]' : '[y/N]'
-  const readline = createInterface(confirmReadlineOptions())
+  const readline = terminal.open()
   return await Try(async () => {
     while (true) {
-      const answer = (await readline.question(`${options.message} ${suffix} `)).trim().toLowerCase()
+      const answer = (await readline.question(`${options.message} ${suffix} `, { signal: options.signal }))
+        .trim().toLowerCase()
       if (answer === '' && options.defaultValue !== undefined) {
         return options.defaultValue
       }
@@ -37,9 +71,15 @@ export async function askConfirm(options: { defaultValue?: boolean; message: str
       if (answer === 'n' || answer === 'no') {
         return false
       }
-      stderr.write('Answer yes or no.\n')
+      terminal.write('Answer yes or no.\n')
     }
   }, {
+    catch(error) {
+      if (options.signal?.aborted) {
+        Errors.ThrowUserInput('Confirmation cancelled.')
+      }
+      return Errors.Throw(error)
+    },
     finally() {
       readline.close()
     },
@@ -80,9 +120,26 @@ export async function askSecret(prompt: string): Promise<string> {
   })
 }
 
+type KeypressText = string | undefined
+
 type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
+
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
+
+type ConfirmationTerminal = {
+  isInteractive(): boolean
+  open(): { question(message: string, options: { signal?: AbortSignal }): Promise<string>; close(): void }
+  write(message: string): void
+}
+
+const confirmationTerminal: ConfirmationTerminal = {
+  isInteractive,
+  open: () => createInterface(confirmReadlineOptions()),
+  write(message) {
+    stderr.write(message)
+  },
+}
 
 function confirmReadlineOptions(): ReadLineOptions {
   return {
@@ -116,7 +173,7 @@ function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecr
     state.pending = state.pending.slice(character.length)
     if (state.pasting) {
       state.value += character
-    } else if (character === '\u0003' || character === '\u0004') {
+    } else if (character === ControlCCharacter || character === '\u0004') {
       reject(new Error('Secret entry cancelled.'))
       return
     } else if (character === '\r' || character === '\n') {
@@ -126,6 +183,8 @@ function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecr
       state.value = [...state.value].slice(0, -1).join('')
     } else if (character >= ' ' && character !== '\u001b') {
       state.value += character
+    } else {
+      // Ignore unsupported control characters instead of adding them to the secret.
     }
   }
 }
