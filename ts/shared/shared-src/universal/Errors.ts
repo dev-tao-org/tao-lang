@@ -68,7 +68,15 @@ export function ThrowHostEnvironment(
   messageForUser: string,
   opts?: { cause?: unknown; details?: ErrorDetails },
 ): never {
-  throw new HostEnvironmentError(messageForUser, opts)
+  throw createHostEnvironmentError(messageForUser, opts)
+}
+
+/** createHostEnvironmentError creates a host failure for deferred rejection boundaries. */
+export function createHostEnvironmentError(
+  messageForUser: string,
+  opts?: { cause?: unknown; details?: ErrorDetails },
+): TaoError {
+  return new HostEnvironmentError(messageForUser, opts)
 }
 
 /** ThrowCommandExecution throws a structured child process failure.
