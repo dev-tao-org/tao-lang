@@ -1,7 +1,9 @@
-import { S } from '@shared'
-import { Tests } from '@shared/os'
+import { joinTextLines, S, Try } from '@shared'
+import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
+import { checkSourceConformance } from '../cli-checks/source-conformance'
 import { getSingleLineCallChanges } from '../cli-checks/source-conformance-call-layout'
+import { fixSourceConformance } from '../cli-checks/source-conformance-fix'
 
 Tests.test('call layout > collapses fitting multiline identifier-only calls', () => {
   const source = S`
@@ -29,7 +31,22 @@ Tests.test('call layout > preserves fitting widths, indentation, optional calls 
     )
   `
   Tests.expect(applyChanges(source)).toContain('await client?.load<Result>(alpha, beta)')
-  Tests.expect(applyChanges('  run(\n    alpha,\n    beta,\n  )').split('\n')[0]).toBe('  run(alpha, beta)')
+  Tests.expect(applyChanges(joinTextLines('  run(', '    alpha,', '    beta,', '  )')).split('\n')[0])
+    .toBe('  run(alpha, beta)')
+})
+
+Tests.test('call layout > compacts split property callees and fitting if headers', () => {
+  const source = S`
+    if (
+      Regxs.LargeTestShardRegx
+        .test(name)
+    ) {
+      return 1
+    }
+  `
+  Tests.expect(applyChanges(source)).toContain('if (Regxs.LargeTestShardRegx.test(name)) {')
+  Tests.expect(applyChanges(joinTextLines('if (', '  ready(name)', ') {', '  return', '}')))
+    .toContain('if (ready(name)) {')
 })
 
 Tests.test('call layout > leaves calls with comments, nonidentifier args, nested calls, or excessive width alone', () => {
@@ -48,6 +65,21 @@ Tests.test('call layout > leaves calls with comments, nonidentifier args, nested
       alpha,
       beta,
     )
+    if (
+      getValue(
+        compute(name),
+      )
+    ) {
+      return 1
+    }
+    if (
+      run(
+        alpha, // retain comment
+        beta,
+      )
+    ) {
+      return 1
+    }
     ${'x'.repeat(105)}.run(
       alpha,
       beta,
@@ -57,14 +89,51 @@ Tests.test('call layout > leaves calls with comments, nonidentifier args, nested
 })
 
 Tests.test('call layout > collapses an eligible call inside an ineligible outer call', () => {
-  const source = 'outer(inner(\n  alpha,\n  beta\n), other())'
+  const source = joinTextLines('outer(inner(', '  alpha,', '  beta', '), other())')
   Tests.expect(applyChanges(source)).toBe('outer(inner(alpha, beta), other())')
 })
 
 Tests.test('call layout > produces no changes after the first formatting pass', () => {
-  const source = 'run(\n  alpha,\n  beta,\n)'
+  const source = joinTextLines(
+    'if (',
+    '  service',
+    '    .run(',
+    '      alpha,',
+    '      beta,',
+    '    )',
+    ') {',
+    '  return',
+    '}',
+  )
   const formatted = applyChanges(source)
   Tests.expect(getSingleLineCallChanges(parse(formatted))).toEqual([])
+})
+
+Tests.test('call layout > checker reports and fixer compacts fitting split if headers idempotently', async () => {
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-call-layout-'))
+  await Try(async () => {
+    const path = Path.join(root, 'ts/consumer.ts')
+    const source = S`
+      type TestRegx = { test(value: string): boolean }
+      declare const Regxs: { LargeTestShardRegx: TestRegx }
+      declare const name: string
+      if (
+        Regxs.LargeTestShardRegx
+          .test(name)
+      ) {
+        name.toLowerCase()
+      }
+    `
+    await FileSystem.write(path, source)
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow('fit simple calls and if headers on one line')
+    await fixSourceConformance(root)
+    const fixed = await FileSystem.readFile(path, 'utf8')
+    Tests.expect(fixed).toContain('if (Regxs.LargeTestShardRegx.test(name)) {')
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+    await fixSourceConformance(root)
+    Tests.expect(await FileSystem.readFile(path, 'utf8')).toBe(fixed)
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
 function applyChanges(source: string): string {

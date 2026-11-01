@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult, type WorkspaceSession } from '../workspace-src/Workspace'
 import { createWatchFixture, type WatchFixture } from './WatchFixture'
@@ -54,7 +54,13 @@ Tests.test('root requirement observation never links unrelated root declarations
   await Try(async () => {
     await writeFixture(directory, Path.join(directory, '@cards/Card.tao'))
     const rootFile = Path.join(directory, 'Unrelated.tao')
-    await FileSystem.writeFile(rootFile, 'view Hidden { render Unknown }\napp Other { root Hidden }')
+    await FileSystem.writeFile(
+      rootFile,
+      S`
+        view Hidden { render Unknown }
+        app Other { root Hidden }
+      `,
+    )
     const result = await workspace.openFile(Path.join(directory, 'feature/App.tao'))
     Tests.expect(result.status).toBe('published')
     Tests.expect(observed).toContain(rootFile)
@@ -73,12 +79,18 @@ async function writeFixture(directory: string, dependency: string): Promise<void
   await FileSystem.writeFile(dependency, card('First value'))
   await FileSystem.writeFile(
     Path.join(directory, 'feature/App.tao'),
-    'use Card from @cards\napp Main { root Card }',
+    S`
+      use Card from @cards
+      app Main { root Card }
+    `,
   )
 }
 
 function card(value: string): string {
-  return `use Text from tao@ui\nproject view Card { render Text(${JSON.stringify(value)}) }`
+  return S`
+    use Text from tao@ui
+    project view Card { render Text(${JSON.stringify(value)}) }
+  `
 }
 
 function compiledContents(files: OptionalCompiledContents): string {

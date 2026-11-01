@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { updateTaoSource } from '../source/TaoSource'
 
@@ -17,7 +17,14 @@ async function runSourceCommands(path: string): Promise<void> {
   const print = (message: string) => {
     messages.push(message)
   }
-  await FileSystem.writeFile(path, 'use Text from tao@ui\nuse Col from tao@ui\nview Main{render Text( "Hi" )}')
+  await FileSystem.writeFile(
+    path,
+    S`
+      use Text from tao@ui
+      use Col from tao@ui
+      view Main{render Text( "Hi" )}
+    `,
+  )
   await updateTaoSource(path, 'fix', print, message => warnings.push(message))
   Tests.expect(await FileSystem.readFile(path, 'utf8'))
     .toBe('use Col, Text from tao@ui\n\nview Main {\n  render Text("Hi")\n}')
@@ -25,7 +32,11 @@ async function runSourceCommands(path: string): Promise<void> {
     `${path}:1:5 [unused-import] Imported name 'Col' is not used in this file.`,
     `${path}:3:6 [unused-declaration] Declaration 'Main' is not used in this file.`,
   ])
-  const invalid = 'view Main{render Text( "Hi" )}\n\nview Editing('
+  const invalid = S`
+    view Main{render Text( "Hi" )}
+
+    view Editing(
+  `
   await FileSystem.writeFile(path, invalid)
   await Tests.expect(updateTaoSource(path, 'fix', print)).rejects.toThrow('complete Tao document')
   Tests.expect(await FileSystem.readFile(path, 'utf8')).toBe(invalid)

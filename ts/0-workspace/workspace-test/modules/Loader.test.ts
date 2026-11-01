@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Timings, Try } from '@shared'
+import { S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
@@ -21,7 +21,14 @@ Tests.test(
 
       const sources = await timings.run(
         loadModules,
-        parseEntry(Path.join(root, 'Main.virtual.tao'), `use all from ./views\nuse all from ./empty\n${app('Main')}`),
+        parseEntry(
+          Path.join(root, 'Main.virtual.tao'),
+          S`
+            use all from ./views
+            use all from ./empty
+            ${app('Main')}
+          `,
+        ),
         { directory: root },
         createParser(),
       )
@@ -148,7 +155,13 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
   const standardView = Path.join(standardRoot, '@ui', 'Views.tao')
   await Try(async () => {
     await FileSystem.mkdir(Path.join(standardRoot, '.tao'))
-    await writeSources(standardView, 'public view Text { render Text("Text") }\npublic view Col { render Col {} }')
+    await writeSources(
+      standardView,
+      S`
+        public view Text { render Text("Text") }
+        public view Col { render Col {} }
+      `,
+    )
     const source = await FileSystem.readFile(entryPath, 'utf8')
     const modules = await loadModules(
       parseEntry(entryPath, source),

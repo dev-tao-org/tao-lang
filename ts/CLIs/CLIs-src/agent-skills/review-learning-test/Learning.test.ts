@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, joinTextLines, S } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type * as LearningTypes from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
@@ -10,7 +10,14 @@ test('captures corrections and follows symbol aliases without matching unrelated
   await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
   await FileSystem.writeFile(
     Path.join(root, 'consumer.ts'),
-    "import { target as alias } from './source'\nalias()\nconst other = { target() {} }; other.target()\n",
+    joinTextLines(
+      S`
+        import { target as alias } from './source'
+        alias()
+        const other = { target() {} }; other.target()
+      `,
+      '',
+    ),
   )
   await capture(root, 'explicit')
   const scan = await scanLearning(root, 'example')

@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { fixSourceConformance } from '../cli-checks/source-conformance-fix'
 import { createConformanceProgram } from '../cli-checks/source-conformance-program'
@@ -47,14 +47,27 @@ async function withSources(run: SourceFixtureAction): Promise<void> {
     await FileSystem.write(paths[0]!, source)
     await FileSystem.write(
       paths[1]!,
-      "import type { Public as Renamed } from './example'\nexport type Consumer = Renamed\n",
+      joinTextLines(
+        S`
+          import type { Public as Renamed } from './example'
+          export type Consumer = Renamed
+        `,
+        '',
+      ),
     )
     await FileSystem.write(paths[2]!, generated)
     await run(root, paths)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 }
 
-const generated = '// @generated\nfunction read(value: Generated): void {}\ntype Generated = string\n'
+const generated = joinTextLines(
+  S`
+    // @generated
+    function read(value: Generated): void {}
+    type Generated = string
+  `,
+  '',
+)
 const RuntimeRecordCalls = /record\('[^']+'\)/g
 const source = S`
   declare function record(value: string): void

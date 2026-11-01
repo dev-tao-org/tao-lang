@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { checkSourceConformance } from '../cli-checks/source-conformance'
 
@@ -8,7 +8,13 @@ Tests.test('source conformance > checks workspace declarations and ignores depen
   await Try(async () => {
     await FileSystem.write(
       Path.join(root, 'ts/public.d.ts'),
-      '/** publicValue stores a number. */\nexport declare const publicValue: number\n',
+      joinTextLines(
+        S`
+          /** publicValue stores a number. */
+          export declare const publicValue: number
+        `,
+        '',
+      ),
     )
     await FileSystem.write(Path.join(root, 'ts/node_modules/ignored/index.ts'), 'export const missingDocs = 1')
     await FileSystem.write(Path.join(root, '.x-tao-old-v1/ignored.ts'), 'export const missingDocs = 1')
@@ -56,10 +62,13 @@ Tests.test('source conformance > resolves imported member types before recommend
     )
     await FileSystem.write(
       Path.join(root, 'ts/model.ts'),
-      S`
-        /** Token represents a parsed label. */
-        export interface Token { text: string }
-      `,
+      joinTextLines(
+        S`
+          /** Token represents a parsed label. */
+          export interface Token { text: string }
+        `,
+        '',
+      ),
     )
     const source = S`
       import type { Token } from '@model'
@@ -86,37 +95,68 @@ Tests.test('source conformance > resolves imported member types before recommend
 })
 
 Tests.test('source conformance > requires one-line imports and accepts namespace-qualified types', async () => {
-  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-single-line-import-'))
-  await Try(async () => {
-    await FileSystem.write(
-      Path.join(root, 'ts/tsconfig.base.json'),
-      JSON.stringify({ compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } } }),
-    )
-    await FileSystem.write(
-      Path.join(root, 'ts/model.ts'),
-      '/** Token represents a parsed label. */\nexport interface Token { text: string }\n',
-    )
-    await FileSystem.write(
-      Path.join(root, 'ts/generated/imports.ts'),
-      "import {\n  type Token,\n} from '@model'\ntype GeneratedToken = Token\n",
-    )
-    await FileSystem.write(
-      Path.join(root, 'ts/vendor/imports.ts'),
-      "// @third-party external library source\nimport {\n  type Token,\n} from '@model'\ntype VendorToken = Token\n",
-    )
-    await FileSystem.write(
-      Path.join(root, 'ts/consumer.ts'),
-      "import {\n  type Token,\n} from '@model'\ntype TokenAlias = Token\n",
-    )
-    await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
-      'ts/consumer.ts:1: import declarations must fit on one line; use a namespace import for long lists',
-    )
-    await FileSystem.write(
-      Path.join(root, 'ts/consumer.ts'),
-      "import * as Model from '@model'\ntype TokenAlias = Model.Token\n",
-    )
-    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
-  }, {
-    finally: () => FileSystem.rm(root, { recursive: true, force: true }),
+  await withTemporaryWorkspace('single-line-import', async root => {
+    await writeImportFixture(root)
+    await verifySingleLineImports(root)
   })
 })
+
+async function withTemporaryWorkspace(name: string, run: (root: string) => Promise<void>): Promise<void> {
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp'))
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', `tao-${name}-`))
+  await Try(() => run(root), { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+}
+
+async function writeImportFixture(root: string): Promise<void> {
+  await FileSystem.write(
+    Path.join(root, 'ts/tsconfig.base.json'),
+    JSON.stringify({ compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } } }),
+  )
+  await FileSystem.write(Path.join(root, 'ts/model.ts'), ImportedTokenSource)
+  await FileSystem.write(Path.join(root, 'ts/generated/imports.ts'), GeneratedImportSource)
+  await FileSystem.write(Path.join(root, 'ts/vendor/imports.ts'), VendorImportSource)
+  await FileSystem.write(Path.join(root, 'ts/consumer.ts'), MultilineImportSource)
+}
+
+async function verifySingleLineImports(root: string): Promise<void> {
+  await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
+    'ts/consumer.ts:1: import declarations must fit on one line; use a namespace import for long lists',
+  )
+  await FileSystem.write(Path.join(root, 'ts/consumer.ts'), NamespaceImportSource)
+  await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+}
+
+const ImportedTokenSource = joinTextLines(
+  S`
+    /** Token represents a parsed label. */
+    export interface Token { text: string }
+  `,
+  '',
+)
+const MultilineImportSource = joinTextLines(
+  S`
+    import {
+      type Token,
+    } from '@model'
+    type TokenAlias = Token
+  `,
+  '',
+)
+const GeneratedImportSource = MultilineImportSource.replace('TokenAlias', 'GeneratedToken')
+const VendorImportSource = joinTextLines(
+  S`
+    // @third-party external library source
+    import {
+      type Token,
+    } from '@model'
+    type VendorToken = Token
+  `,
+  '',
+)
+const NamespaceImportSource = joinTextLines(
+  S`
+    import * as Model from '@model'
+    type TokenAlias = Model.Token
+  `,
+  '',
+)

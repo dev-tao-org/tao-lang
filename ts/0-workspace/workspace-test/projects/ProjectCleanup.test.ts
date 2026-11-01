@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { withDependencySession } from '../../workspace-src/ModuleDependencies'
 import { prepareProject } from '../../workspace-src/ProjectPreparation'
@@ -6,6 +6,13 @@ import { cleanProject } from '../../workspace-src/projects/Clean'
 import { initializeProject } from '../../workspace-src/projects/Projects'
 
 const ControlledInstallerFailureRegx = /controlled installer failure/
+const EntrySource = joinTextLines(
+  S`
+    view Root { render Text("ok") }
+    app Main { root Root }
+  `,
+  '',
+)
 
 Tests.test('project clean reports malformed module ownership while cleaning safe cache and retaining authored files', async () => {
   const root = Artifacts.resolvePath('tmp', `project-clean-marker-${Platform.randomUUID()}`)
@@ -40,7 +47,7 @@ Tests.test('project clean protects runtime cache while automatic setup is active
   })
   await Try(async () => {
     await initializeProject(root)
-    await FileSystem.writeFile(entry, 'view Root { render Text("ok") }\napp Main { root Root }\n')
+    await FileSystem.writeFile(entry, EntrySource)
     const prepare = () =>
       prepareProject(entry, {
         runtimeInstaller: {

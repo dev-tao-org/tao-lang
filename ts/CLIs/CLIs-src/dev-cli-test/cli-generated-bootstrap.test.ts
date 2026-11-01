@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
@@ -25,7 +25,17 @@ async function createLauncherFixture(root: string): Promise<void> {
   for (const config of ['cli-environment.sh', 'prepared-environment.sh', 'ensure-cli-generated.sh']) {
     await FileSystem.cp(Repo.resolvePath(`.config/${config}`), Path.join(root, '.config', config))
   }
-  await writeFixtureCommand(bin, 'git', '#!/bin/sh\nprintf fixture-hash\\n\n')
+  await writeFixtureCommand(
+    bin,
+    'git',
+    joinTextLines(
+      S`
+        #!/bin/sh
+        printf fixture-hash\\n
+      `,
+      '',
+    ),
+  )
   await writeFixtureCommand(bin, 'bun', fakeBunScript())
 }
 

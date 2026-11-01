@@ -14,7 +14,10 @@ Tests.test('all current named grammar nodes format canonically and remain stable
   Tests.expect(tree.rootNode.hasError).toBe(false)
   Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(concreteSyntaxKinds)
   assertFormatted(syntaxFixture, formattedSyntaxFixture)
-  const source = 'use First,Second,Third from @long/package\nview Main(A text,B text){render Panel(A,B)}'
+  const source = S`
+    use First,Second,Third from @long/package
+    view Main(A text,B text){render Panel(A,B)}
+  `
   Tests.expect(formatSource(source, 28)).toBe(S`
     use First,
       Second,
@@ -67,11 +70,22 @@ Tests.test('argument and parameter lists wrap at the width and retain authored l
       )
     }
   `
-  assertFormatted('view Main { render Text(\n"Hi"\n) }', multiline)
+  assertFormatted(
+    S`
+      view Main { render Text(
+      "Hi"
+      ) }
+    `,
+    multiline,
+  )
 })
 
 Tests.test('formatting protects unfinished declarations while formatting complete neighbors', () => {
-  const source = 'view Ready{render Text( "Hi" )}\n\nview Editing('
+  const source = S`
+    view Ready{render Text( "Hi" )}
+
+    view Editing(
+  `
   const parser = createParser()
   const result = format({ source, tree: parser.parse(source) })
   Tests.expect(result.text).toBe('view Ready {\n  render Text("Hi")\n}\n\nview Editing(')

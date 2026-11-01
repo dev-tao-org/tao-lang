@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { S } from '@shared'
+import { joinTextLines, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/managed-modules/ManagedModuleMetadata'
@@ -197,7 +197,14 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     const importPath = Path.relative(Path.dirname(sidecarPath), consumerHelper).replaceAll('\\', '/')
     await FileSystem.writeFile(
       sidecarPath,
-      `import { value } from './${importPath}'\nexport function FormattedDate(props: { Value: string }) { return null }\nvoid value; void props\n`,
+      joinTextLines(
+        S`
+          import { value } from './${importPath}'
+          export function FormattedDate(props: { Value: string }) { return null }
+          void value; void props
+        `,
+        '',
+      ),
     )
     const dependencyDocument = transform(
       createParser().parse(

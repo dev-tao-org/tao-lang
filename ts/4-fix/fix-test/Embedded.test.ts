@@ -4,6 +4,12 @@ import { FormatterResources, Tests } from '@shared/os'
 import { format } from '../fix-src/Format'
 import { createTypeScriptFormatter } from '../fix-src/lib/formatter/Embedded'
 
+const MultilineLiteral = S`
+  const value = \`first
+    second\`;
+  return value
+`
+
 Tests.test('native TSX formatting preserves literal values, aligns fences and leaves incomplete bodies alone', async () => {
   const typescript = createTypeScriptFormatter(await FormatterResources.typeScriptFormatterBytes())
   const source = S`
@@ -24,7 +30,7 @@ Tests.test('native TSX formatting preserves literal values, aligns fences and le
     format({ source: formatted.text, tree: parser.parse(formatted.text) }, { typescript }).edits,
   )
     .toEqual([])
-  const literal = 'const value = `first\n  second`;\nreturn value'
+  const literal = MultilineLiteral
   const token = '```ts' + literal + '```'
   const literalSource = 'view Literal { render inject ' + token + ' }'
   const result = format({ source: literalSource, tree: parser.parse(literalSource) }, { typescript })

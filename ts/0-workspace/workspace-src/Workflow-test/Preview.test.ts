@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWatchFixture } from '../../workspace-test/WatchFixture'
 import { buildManagedModulesInput } from '../ProjectPreparation'
@@ -78,10 +78,19 @@ async function openPreview(entry: string, events: string[], published: string[])
 
 async function writeFixture(root: string, entry: string): Promise<void> {
   await FileSystem.mkdir(Path.join(root, '@widgets/feature'))
-  await FileSystem.writeFile(entry, 'use Widget from @widgets/feature\napp Main { root Widget }')
+  await FileSystem.writeFile(
+    entry,
+    S`
+      use Widget from @widgets/feature
+      app Main { root Widget }
+    `,
+  )
   await FileSystem.writeFile(Path.join(root, '@widgets/feature/Widget.tao'), widgetSource)
   await FileSystem.writeFile(Path.join(root, '@widgets/Requirements.tao'), metadataSource)
 }
 
-const widgetSource = 'use Text from tao@ui\npublic view Widget { render Text("First") }'
+const widgetSource = S`
+  use Text from tao@ui
+  public view Widget { render Text("First") }
+`
 const metadataSource = 'public view Unrelated { render Unknown }'

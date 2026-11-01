@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 const CompletedWarningSummaryRegx = /Completed: [1-9]\d* warning\(s\), 0 error\(s\)/
@@ -6,6 +6,14 @@ const SlowTestWarningRegx = /Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/
 const LogPathRegx = /Logs: (.+\.log)/
 const TypeScriptTestSuccessRegx = /\[TypeScript tests\] passed in \d+\.\d{2}s/
 const AllTestsSuccessRegx = /\n\t\u001b\[32mAll tests passed in \d+\.\d{2}s\u001b\[0m\n/
+const GitFingerprintFailureScript = joinTextLines(
+  S`
+    #!/bin/sh
+    echo fixture-git-failure >&2
+    exit 1
+  `,
+  '',
+)
 
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
   const environment = { ...Env.snapshot(), TERMINAL_OUTPUT: undefined }
@@ -92,7 +100,11 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
       Path.join(repository, '.config/cli-environment.sh'),
     )
     const git = Path.join(bin, 'git')
-    await FileSystem.writeFile(git, '#!/bin/sh\necho fixture-git-failure >&2\nexit 1\n', 'utf8')
+    await FileSystem.writeFile(
+      git,
+      GitFingerprintFailureScript,
+      'utf8',
+    )
     await FileSystem.chmod(git, 0o755)
     const environment = {
       ...Env.snapshot(),

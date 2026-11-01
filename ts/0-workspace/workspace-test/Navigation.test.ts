@@ -45,7 +45,10 @@ Tests.test('generated scope types permit cyclic modules and self-imported aliase
     app Main { root Root }
     view Root { render inject Value \`\`\`ts return Value \`\`\` }
   `))!
-  const other = transform(parser.parse('use Shared from ./Main\npublic let Value = Shared'))!
+  const other = transform(parser.parse(S`
+    use Shared from ./Main
+    public let Value = Shared
+  `))!
   const statements = AST.GetImportStatements(entry)
   const otherStatement = AST.GetImportStatements(other)[0]!
   const program = linkModules('/app/Main.tao', [{

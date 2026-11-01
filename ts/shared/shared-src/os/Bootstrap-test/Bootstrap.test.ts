@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 
 const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FileSystem
@@ -77,8 +77,17 @@ async function runBootstrap(
 }
 
 async function writeStub(bin: string, failureStatus: number, failureStage: FailureStage): Promise<void> {
-  const script =
-    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$TAO_BOOTSTRAP_CALLS"\necho install-output\necho install-error >&2\nif [ "$1" = '${failureStage}' ]; then exit ${failureStatus}; fi\nexit 0\n`
+  const script = joinTextLines(
+    S`
+      #!/bin/sh
+      printf '%s\\n' "$*" >> "$TAO_BOOTSTRAP_CALLS"
+      echo install-output
+      echo install-error >&2
+      if [ "$1" = '${failureStage}' ]; then exit ${failureStatus}; fi
+      exit 0
+    `,
+    '',
+  )
   const path = join(bin, 'bun')
   await writeFile(path, script)
   await chmod(path, 0o755)

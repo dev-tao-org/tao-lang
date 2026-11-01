@@ -206,7 +206,10 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
 }
 
 Tests.test('standalone compilation rejects unresolved use statements', () => {
-  const tree = createParser().parse('use package @common as UI\napp Main { root UI.Root }')
+  const tree = createParser().parse(S`
+    use package @common as UI
+    app Main { root UI.Root }
+  `)
   const document = transform(tree)!
 
   Tests.expect(() => compile(document, { revision: 'standalone' })).toThrow('linked program')
@@ -226,16 +229,20 @@ Tests.test('injection locals and captures cannot collide with generated callback
 
 Tests.test('injection captures cannot shadow the runtime or use reserved JavaScript names', () => {
   for (const capture of ['TR', 'Tao', 'return', 'implements', 'await', 'arguments', 'eval']) {
-    const source =
-      `app Test { root Root }\nview Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }`
+    const source = S`
+      app Test { root Root }
+      view Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }
+    `
     Tests.expect(() => compileSource(source)).toThrow(`Injection capture name ${capture} conflicts`)
   }
 })
 
 Tests.test('contextual TypeScript keywords remain valid JavaScript injection captures', () => {
   for (const capture of ['string', 'type', 'namespace']) {
-    const source =
-      `app Test { root Root }\nview Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }`
+    const source = S`
+      app Test { root Root }
+      view Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }
+    `
     const files = compileSource(source)
     Tests.expect(Object.values(files).join('\n')).toContain(`${capture}: unknown`)
     Tests.expect(() => transpileGeneratedFiles(files)).not.toThrow()

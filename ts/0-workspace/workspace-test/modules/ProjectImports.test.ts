@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import { loadModules } from '../../workspace-src/modules/Loader'
@@ -63,7 +63,11 @@ async function writeProjectImportSources(producer: string, icons: string): Promi
   }
   await writeSource(
     paths.card,
-    'use Caption from @ui/controls\nuse Label from icons@icons/labels\nview Card { render Text("Card") }',
+    S`
+      use Caption from @ui/controls
+      use Label from icons@icons/labels
+      view Card { render Text("Card") }
+    `,
   )
   await writeSource(paths.caption, 'view Caption { render Text("Caption") }')
   await writeSource(paths.unrelated, 'view Unused { render Text("Unused") }')
@@ -74,7 +78,13 @@ async function writeProjectImportSources(producer: string, icons: string): Promi
 async function loadProjectImportGraph(consumer: string, producer: string, icons: string): Promise<SourceModule[]> {
   const entryPath = Path.join(consumer, 'Main.tao')
   return await loadModules(
-    parseEntry(entryPath, 'use Card from widgets@ui/controls\napp Main { root Card }'),
+    parseEntry(
+      entryPath,
+      S`
+        use Card from widgets@ui/controls
+        app Main { root Card }
+      `,
+    ),
     {
       directory: consumer,
       resolveProject: projectResolver(consumer, producer, icons).resolveProject,
@@ -126,7 +136,13 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
     await writeSource(sourcePath, 'view Text { render Text("Text") }')
     const entryPath = Path.join(root, 'Main.tao')
     const modules = await loadModules(
-      parseEntry(entryPath, 'use all from tao@ui\napp Main { root Root }'),
+      parseEntry(
+        entryPath,
+        S`
+          use all from tao@ui
+          app Main { root Root }
+        `,
+      ),
       {
         directory: root,
         resolveProject: async (_importer, alias) =>
@@ -151,7 +167,13 @@ Tests.test('aliased project imports reject missing physical modules', async () =
   await Try(async () => {
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(consumer, 'Main.tao'), 'use all from tao@missing\napp Main { root Root }'),
+        parseEntry(
+          Path.join(consumer, 'Main.tao'),
+          S`
+            use all from tao@missing
+            app Main { root Root }
+          `,
+        ),
         {
           directory: consumer,
           resolveProject: async (_importer, alias) => alias === 'tao' ? { root: producer } : undefined,

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, S } from '@shared'
 import { Tests } from '@shared/os'
 import { pushBranch, type PushIO } from '../push/Push'
 
@@ -67,7 +67,10 @@ function recordingIO(calls: string[][]): PushIO {
     async capture(args) {
       calls.push([...args])
       if (args[0] === 'remote') {
-        return 'origin\nupstream'
+        return S`
+          origin
+          upstream
+        `
       }
       return args[0] === 'rev-parse' ? commit : ''
     },

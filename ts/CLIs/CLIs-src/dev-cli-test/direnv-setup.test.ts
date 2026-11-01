@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { runDirenvSetup, type SetupEnvironment } from '../dev-cli/shell/DirenvSetup'
 
@@ -48,7 +48,14 @@ async function writeFixtureTree(root: string, home: string): Promise<FixturePath
     '# completion fixture\n',
     'utf8',
   )
-  await FileSystem.writeFile(zshrc, '# personal settings\nexport EDITOR=vim', 'utf8')
+  await FileSystem.writeFile(
+    zshrc,
+    S`
+      # personal settings
+      export EDITOR=vim
+    `,
+    'utf8',
+  )
   return { choice, common, packageOutput, shell, zshrc }
 }
 
