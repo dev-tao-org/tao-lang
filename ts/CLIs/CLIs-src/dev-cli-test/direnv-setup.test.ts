@@ -15,7 +15,7 @@ type FixtureState = {
   shell: string
   zshrc: string
 }
-type MockCommandResult = { command: string; exitCode: number; stderr: string; stdout: string }
+type MockCommandResult = { status: number; stderr: string; stdout: string }
 
 async function createFixtureRoot(): Promise<{ home: string; root: string }> {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-direnv-setup-'))
@@ -99,7 +99,7 @@ async function mockCommand(
     await FileSystem.mkdir(Path.join(addRoot, 'bin'))
     await FileSystem.writeFile(Path.join(addRoot, 'bin/direnv'), 'direnv', 'utf8')
   }
-  return { command, exitCode: 0, stdout, stderr: '' }
+  return { status: 0, stdout, stderr: '' }
 }
 
 type OptionalGitArguments = readonly string[] | undefined
