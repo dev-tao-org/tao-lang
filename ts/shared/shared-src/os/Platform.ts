@@ -57,7 +57,7 @@ type NamedSpawnOptions<
 export function spawnPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'pipe', 'pipe'> = {},
-): Bun.Subprocess<In, 'pipe', 'pipe'> {
+): PipedChildProcess<In> {
   return spawn(command, { ...options, stdout: 'pipe', stderr: 'pipe' })
 }
 
@@ -110,6 +110,9 @@ export const pid = process.pid
 /** ChildProcess identifies an owned process handled by command supervision. */
 export type ChildProcess = Bun.Subprocess
 
+/** PipedChildProcess owns captured output streams for one subprocess. */
+export type PipedChildProcess<In extends ChildProcessInput = 'ignore'> = Bun.Subprocess<In, 'pipe', 'pipe'>
+
 /** terminate stops an owned child and waits for its process to exit. */
 export async function terminate(child: Bun.Subprocess): Promise<void> {
   child.kill('SIGKILL')
@@ -146,10 +149,14 @@ export function isMain(meta: ImportMeta): boolean {
   return meta.main ?? false
 }
 
-type SystemInformation = { architecture: string; kernel: string; os: string }
+/** SystemInformation identifies the host platform without exposing user-specific details. */
+export type SystemInformation = { architecture: string; kernel: string; os: string }
 /** systemInfo reads non-identifying operating-system and architecture information. */
 export function systemInfo(): SystemInformation {
-  return { architecture: Node.arch(), kernel: Node.release(), os: Node.osType() }
+  const architecture = Node.arch()
+  const kernel = Node.release()
+  const os = Node.osType()
+  return { architecture, kernel, os }
 }
 
 /** HostSystem identifies operating-system names with supported desktop host behavior. */

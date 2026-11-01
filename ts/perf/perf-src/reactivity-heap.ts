@@ -1,12 +1,14 @@
-import { createReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
+import { createReactiveEngine } from '@runtime/client/ReactiveEngine'
 import { JavaScriptHeap } from '@shared/os'
 
 /** ReactiveHeapCandidate identifies the graph policy retained for heap sampling. */
 export type ReactiveHeapCandidate = {
   name: string
-  strategy: NonNullable<ReactiveEngineOptions['strategy']>
+  strategy: ReactiveReadStrategy
   retainIntermediate?: boolean
 }
+
+type ReactiveReadStrategy = 'native-lazy' | 'uncached-public-read'
 
 /** ReactiveHeapSample records retained heap state and collection durations for one repetition. */
 export type ReactiveHeapSample = {

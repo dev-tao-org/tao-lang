@@ -1,9 +1,9 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
-import { cleanManagedModuleMetadata } from '../sidecars/ManagedModules'
+import { cleanManagedModuleMetadata } from '../sidecars/managed-modules/ManagedModules'
 import * as Lifecycle from './Lifecycle'
-import { deriveProjectLayout } from './Projects'
+import { deriveProjectLayout, type ProjectLayout } from './Projects'
 import { isProjectSessionId } from './Sessions'
 
 /** CleanResult reports removed project cache, active sessions, and retained shared project cache. */
@@ -22,7 +22,7 @@ export async function cleanProject(root: string): Promise<CleanResult> {
   return await Try(() => cleanProjectUnderLifecycle(layout), { finally: lifecycle.release })
 }
 
-async function cleanProjectUnderLifecycle(layout: ReturnType<typeof deriveProjectLayout>): Promise<CleanResult> {
+async function cleanProjectUnderLifecycle(layout: ProjectLayout): Promise<CleanResult> {
   const removed: string[] = []
   const skippedActive: string[] = []
   const warnings: string[] = []
@@ -45,7 +45,7 @@ async function cleanProjectUnderLifecycle(layout: ReturnType<typeof deriveProjec
 }
 
 async function cleanInactiveSessions(
-  layout: ReturnType<typeof deriveProjectLayout>,
+  layout: ProjectLayout,
   removed: string[],
 ): Promise<string[]> {
   const sessions = await listDirectoryNames(layout.sessionsDirectory)
@@ -53,7 +53,7 @@ async function cleanInactiveSessions(
     .filter(name => name.endsWith('.lock'))
     .map(name => name.slice(0, -'.lock'.length))
   const skipped: string[] = []
-  for (const id of [...new Set([...sessions, ...locks])].sort()) {
+  for (const id of Lists.unique(sessions, locks).sort()) {
     if (isProjectSessionId(id) && await cleanSession(layout, id, removed)) {
       skipped.push(id)
     }
@@ -62,7 +62,7 @@ async function cleanInactiveSessions(
 }
 
 async function cleanSession(
-  layout: ReturnType<typeof deriveProjectLayout>,
+  layout: ProjectLayout,
   id: string,
   removed: string[],
 ): Promise<boolean> {

@@ -29,7 +29,9 @@ async function writeRuntimeSources(
 ): Promise<void> {
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = sources[Repo.resolvePath(sourcePath)]
-      ?? Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
+    if (source === undefined) {
+      Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
+    }
     const target = Path.join(directory, resource)
     await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, source)
@@ -45,7 +47,7 @@ const resourceFiles = [
 ]
 const runtimeDevelopmentPackages = new Set(['typescript', '@types/react', '@types/react-dom'])
 
-async function readInputs() {
+async function readInputs(): Promise<RuntimeBuildInputs> {
   const runtimeSources = await readRuntimeSources()
   const paths = [
     ...Object.values(runtimeSources),
@@ -63,7 +65,7 @@ async function readInputs() {
 const buildResources = Timings.measured('runtime.build', async function(
   directory: string,
   identity: string,
-  inputs: Awaited<ReturnType<typeof readInputs>>,
+  inputs: RuntimeBuildInputs,
 ) {
   const stage = `${directory}.${Platform.randomUUID()}.pending`
   await Try(async () => {
@@ -92,8 +94,11 @@ const buildResources = Timings.measured('runtime.build', async function(
 
 function runtimeManifest(sources: RuntimeSourceContents): RuntimeLock.RuntimeManifest {
   const parsed = parseRuntimePackage(sources[Path.join(packageRoot, 'package.json')]!)
-  const dependencies = parsed.dependencies ?? Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
-  const devDependencies = parsed.devDependencies ?? {}
+  const dependencies = parsed.dependencies
+  if (dependencies === undefined) {
+    Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
+  }
+  const devDependencies = parsed.devDependencies === undefined ? {} : parsed.devDependencies
   const workspace = parseRuntimeWorkspace(sources[Repo.resolvePath('ts/package.json')]!)
   return {
     name: 'tao-expo-toolchain',
@@ -116,7 +121,7 @@ async function publishResources(directory: string): Promise<void> {
   await FileSystem.replaceDirectoryLink(directory, target)
 }
 
-type RuntimeBuildInputs = Awaited<ReturnType<typeof readInputs>>
+type RuntimeBuildInputs = { sources: RuntimeSourceContents; runtimeSources: RuntimeSourcePaths }
 type RuntimePackage = {
   dependencies?: RuntimeLock.RuntimeDependencyVersions
   devDependencies?: RuntimeLock.RuntimeDependencyVersions

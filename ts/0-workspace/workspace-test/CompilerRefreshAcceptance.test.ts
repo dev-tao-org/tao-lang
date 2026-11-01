@@ -1,11 +1,11 @@
 import * as Runtime from '@runtime/Runtime'
 import { Errors, S, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo, Tests } from '@shared/os'
-import type { UpdateResult } from '@workspace/Workspace'
+import type { UpdateResult, WorkspaceSession } from '@workspace/Workspace'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 
-type ActivePreviewWorkspace = Awaited<ReturnType<typeof openProjectWorkspace>>
+type ActivePreviewWorkspace = WorkspaceSession
 type OptionalPreviewWorkspace = ActivePreviewWorkspace | undefined
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 type OptionalBrowser = HeadlessBrowser.Browser | undefined
@@ -137,7 +137,7 @@ async function verifyInitialCounters(page: HeadlessBrowser.Page): Promise<void> 
 async function verifyComputedEdit(
   page: HeadlessBrowser.Page,
   entry: string,
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
 ): Promise<void> {
   await publishSource(entry, workspace, taoAppSource(3, true))
   await expectCounters(page, 2, 11, 6, 33)
@@ -146,7 +146,7 @@ async function verifyComputedEdit(
 async function verifyInvalidRecovery(
   page: HeadlessBrowser.Page,
   entry: string,
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
 ): Promise<void> {
   const publishedPath = workspace.runtime!.appPath
   const lastGood = await FileSystem.readFile(publishedPath, 'utf8')
@@ -162,7 +162,7 @@ async function verifyInvalidRecovery(
 async function verifyRemovedCounter(
   page: HeadlessBrowser.Page,
   entry: string,
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
 ): Promise<void> {
   await page.getByTestId('increment-B').click()
   await expectValue(page, 'count-B', '11')
@@ -177,7 +177,7 @@ async function verifyRemovedCounter(
 async function verifyHookTopologyChange(
   page: HeadlessBrowser.Page,
   entry: string,
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
 ): Promise<void> {
   await publishSource(entry, workspace, taoAppSource(4, true, true))
   await expectCounters(page, 1, 10, 4, 40)
@@ -187,7 +187,7 @@ async function verifyHookTopologyChange(
 
 async function publishSource(
   entry: string,
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
   source: string,
 ): Promise<void> {
   await FileSystem.writeFile(entry, source, 'utf8')

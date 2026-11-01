@@ -1,4 +1,4 @@
-import { Errors, S, Try } from '@shared'
+import { Errors, Lists, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { RuntimePackageVersions } from '../Runtime'
 
@@ -50,15 +50,22 @@ function serializeExpoPackageManifest(
 }
 
 function serializeTaoResolution(options: ExpoScaffoldOptions): string {
+  const singletonPackages = resolveSingletonPackages(options)
   return JSON.stringify(
     {
       watchFolders: options.watchFolders ?? [],
-      singletonPackages: options.singletonPackages
-        ?? ['react', 'react-dom', 'react-native', 'react-native-web', 'expo'],
+      singletonPackages,
     },
     null,
     2,
   )
+}
+
+function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string[] {
+  if (options.singletonPackages !== undefined && options.singletonPackages !== null) {
+    return options.singletonPackages
+  }
+  return ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
 }
 
 function serializeExpoAppManifest(): string {
@@ -153,7 +160,7 @@ async function linkRuntimeSources(directory: string, resourcesDirectory: string,
 
 async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): Promise<void> {
   const oldSources = [...sourceFiles, 'runtime/Native.ts', 'TR.js', 'HMRClient.js']
-  const directories = [...new Set(oldSources.flatMap(file => parentDirectories(target, file)))]
+  const directories = Lists.unique(oldSources.flatMap(file => parentDirectories(target, file)))
     .sort((left, right) => left.length - right.length)
   await assertUnlinkedDirectories(directories)
   for (const file of oldSources) {

@@ -3,7 +3,7 @@ import { Errors, S } from '@shared'
 import { Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from './codegen-util'
-import { compileDeclaration, type DeclarationContext } from './DeclarationCompiler'
+import * as DeclarationCompiler from './DeclarationCompiler'
 import { compileForeignViews, type ForeignViewPathResolver } from './ForeignViewsCompiler'
 import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from './GeneratedPaths'
 import { buildModuleTextBindings } from './ModuleTextBindings'
@@ -42,7 +42,7 @@ type GeneratedSource = { main: string; views: string }
 type MutableCompiledFiles = Record<string, string>
 type GeneratedPaths = ReadonlyMap<string, string>
 type SelectedApp = { source: string; declaration: AST.AppDeclaration }
-type CompiledDeclaration = { node: AST.Declaration; compiled: ReturnType<typeof compileDeclaration> }
+type CompiledDeclaration = { node: AST.Declaration; compiled: DeclarationCompiler.DeclarationCompilation }
 
 function compileSource(
   module: LinkedModule,
@@ -56,7 +56,7 @@ function compileSource(
   const context = createModuleCompilationContext(module, textBindings, foreign.names)
   const declarations = AST.GetDeclarations(module.document).map(node => ({
     node,
-    compiled: compileDeclaration(node, context),
+    compiled: DeclarationCompiler.compileDeclaration(node, context),
   }))
   const components = joinCodeBlocks(...declarations.map(item => item.compiled.components))
   const mainPath = resolvePath(paths, module.path)
@@ -82,7 +82,7 @@ function createModuleCompilationContext(
   module: LinkedModule,
   textBindings: ReadonlyMap<string, ReadonlySet<string>>,
   foreignNames: ReadonlyMap<string, string>,
-): DeclarationContext {
+): DeclarationCompiler.DeclarationContext {
   return {
     scope: '_Scope',
     scopeType: 'ModuleScope',
@@ -97,7 +97,7 @@ function createModuleCompilationContext(
 function compileMain(
   module: LinkedModule,
   paths: GeneratedPaths,
-  context: DeclarationContext,
+  context: DeclarationCompiler.DeclarationContext,
   declarations: readonly CompiledDeclaration[],
   hasComponents: boolean,
   foreignImports: string,
@@ -146,7 +146,7 @@ function compileAliases(module: LinkedModule, paths: GeneratedPaths): string {
 function compileBindingTypes(
   module: LinkedModule,
   paths: GeneratedPaths,
-  context: DeclarationContext,
+  context: DeclarationCompiler.DeclarationContext,
 ): string {
   const members = AST.GetDeclarations(module.document).filter(AST.IsValueDeclaration).map(node => {
     const type = resolveBindingType(node, context)
@@ -174,7 +174,7 @@ function compileBindingTypes(
   }\n};\n\nexport type Imports = {\n  ${projections.join('\n  ')}\n};`
 }
 
-function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationContext): string {
+function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationCompiler.DeclarationContext): string {
   if (!AST.IsLetDeclaration(node)) {
     return 'TR.View'
   }
@@ -229,7 +229,9 @@ function resolvePath(paths: GeneratedPaths, source: string): string {
 
 function selectApp(program: LinkedProgram, appName?: string): SelectedApp {
   const entry = program.modules.find(module => module.path === program.entry)
-    ?? Errors.ThrowShouldNeverHappen(`Linked entry module is missing from the program: ${program.entry}.`)
+  if (entry === undefined) {
+    Errors.ThrowShouldNeverHappen(`Linked entry module is missing from the program: ${program.entry}.`)
+  }
   if (appName === undefined) {
     const apps = AST.GetAppDeclarations(entry.document)
     if (apps.length !== 1) {
@@ -242,7 +244,9 @@ function selectApp(program: LinkedProgram, appName?: string): SelectedApp {
     return { source: entry.path, declaration: direct }
   }
   const binding = entry.bindings.find(candidate => candidate.name === appName)
-    ?? Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+  if (binding === undefined) {
+    Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+  }
   const owner = program.modules.find(module => module.path === binding.source)
   const declaration = owner && AST.FindAppDeclaration(owner.document, binding.target)
   return declaration ? { source: binding.source, declaration } : Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)

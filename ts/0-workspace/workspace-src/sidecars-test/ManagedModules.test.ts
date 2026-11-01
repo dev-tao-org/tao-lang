@@ -1,7 +1,7 @@
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
-import * as ManagedModules from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput, PreparedManagedModules } from '../sidecars/ManagedModuleTypes'
+import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
+import type * as ManagedModuleTypes from '../sidecars/managed-modules/ManagedModuleTypes'
 import * as Fixtures from './ManagedModuleFixtures'
 
 const ManagedModuleManifestDriftErrorRegx = /manifest drifted/
@@ -54,13 +54,13 @@ async function assertPackageResolutionStaysInProfile(profile: string): Promise<v
   Tests.expect(FileSystem.resolvePackageDirectory('missing-package', profile)).toBe(undefined)
 }
 
-async function assertPrepared(fixture: Fixtures.ManagedFixture): Promise<PreparedManagedModules> {
+async function assertPrepared(fixture: Fixtures.ManagedFixture): Promise<ManagedModuleTypes.PreparedManagedModules> {
   const prepared = await ManagedModules.prepareManagedModules(fixture.input, fixture.executor)
   Tests.expect(prepared.fingerprint).toBe((await ManagedModules.readManagedModules(fixture.input)).fingerprint)
   Tests.expect(await FileSystem.exists(Path.join(fixture.moduleDirectory, 'node_modules', 'date-fns'))).toBe(true)
   const dependencies = JSON.parse(await FileSystem.readFile(Path.join(fixture.moduleDirectory, 'package.json'), 'utf8'))
     .dependencies
-  Tests.expect(dependencies).toEqual({ react: '19.1.0', 'date-fns': '4.1.0' })
+  Tests.expect(dependencies).toEqual({ 'react': '19.1.0', 'date-fns': '4.1.0' })
   return prepared
 }
 
@@ -169,11 +169,11 @@ async function assertPeerFailure(directory: string): Promise<void> {
   await Tests.rejects(ManagedModules.prepareManagedModules(input, peerExecutor), PeerDependencyIncompatibilityErrorRegx)
 }
 
-const peerExecutor: BunExecutor = async (_command, args, cwd) => {
+const peerExecutor: ManagedModuleTypes.BunExecutor = async (_command, args, cwd) => {
   if (args[0] === '--version') {
     return { status: 0, stdout: '1.2.0\n', stderr: '' }
   }
-  await Fixtures.writeLock(cwd, { react: '19.1.0', 'peer-holder': '1.0.0' })
+  await Fixtures.writeLock(cwd, { 'react': '19.1.0', 'peer-holder': '1.0.0' })
   await Fixtures.writePackage(cwd, 'react', '19.1.0')
   await Fixtures.writePackage(cwd, 'peer-holder', '1.0.0', { react: '^18' })
   return { status: 0, stdout: '', stderr: '' }
@@ -187,7 +187,7 @@ Tests.test('rejects duplicate framework resolutions and reports their installed 
 })
 
 Tests.test('rejects non-exact module requirements before starting Bun', async () => {
-  const input: ManagedModulesInput = {
+  const input: ManagedModuleTypes.ManagedModulesInput = {
     directory: '/unused/project',
     modules: [{
       directory: '/unused/project/Module',
@@ -222,11 +222,11 @@ async function assertSingletonFailure(directory: string): Promise<void> {
   )
 }
 
-const singletonExecutor: BunExecutor = async (_command, args, cwd) => {
+const singletonExecutor: ManagedModuleTypes.BunExecutor = async (_command, args, cwd) => {
   if (args[0] === '--version') {
     return { status: 0, stdout: '1.2.0\n', stderr: '' }
   }
-  await Fixtures.writeLock(cwd, { react: '19.1.0', 'wrapper-a': '1.0.0' })
+  await Fixtures.writeLock(cwd, { 'react': '19.1.0', 'wrapper-a': '1.0.0' })
   await Fixtures.writePackage(cwd, 'react', '19.1.0')
   await Fixtures.writePackage(cwd, 'wrapper-a', '1.0.0', undefined, { react: '^19' })
   await Fixtures.writePackage(Path.join(cwd, 'node_modules', 'wrapper-a'), 'react', '19.0.0')

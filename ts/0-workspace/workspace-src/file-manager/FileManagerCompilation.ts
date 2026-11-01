@@ -1,9 +1,9 @@
-import { Regxs, Time, Timings, Try } from '@shared'
+import { Lists, Regxs, Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
-import { Document } from './Document'
-import { findNearestProjectRoot } from './modules/Paths'
-import { isSetupRequired } from './SetupRequired'
-import type { UpdateResult } from './Workspace'
+import { Document } from '../Document'
+import { findNearestProjectRoot } from '../modules/Paths'
+import { isSetupRequired } from '../SetupRequired'
+import type { UpdateResult } from '../Workspace'
 
 type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
 
@@ -296,7 +296,7 @@ function resolveAttemptedFileProject(path: string): string[] {
 }
 
 function collectUniquePaths(paths: readonly string[]): string[] {
-  return [...new Set(paths.map(path => Path.resolve(path)))].sort()
+  return Lists.unique(paths.map(path => Path.resolve(path))).sort()
 }
 
 function haveSamePaths(left: readonly string[], right: readonly string[]): boolean {

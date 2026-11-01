@@ -107,7 +107,9 @@ function canonicalProjectTarget(path: string): string {
     current = parent
   }
   const physical = Try.WithDefault(undefined, () => FileSystem.realpathSync(current))
-    ?? Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+  if (physical === undefined) {
+    Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+  }
   return missing.reduce((directory, name) => Path.join(directory, name), physical)
 }
 

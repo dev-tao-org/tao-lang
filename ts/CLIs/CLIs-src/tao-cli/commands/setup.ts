@@ -21,7 +21,9 @@ export default registerCommand({
   async action(entry: OptionalSetupEntry, options: SetupCommandOptions = {}) {
     const target = resolveCallerPath(entry ?? '.')
     const project = await discoverProject(target)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    }
     const selected = await findPreparationEntry(project.root, entry ? target : undefined)
     await withDependencySession(project.root, options.session, async () => {
       IO.print(`Setting up dependencies for ${selected}`)

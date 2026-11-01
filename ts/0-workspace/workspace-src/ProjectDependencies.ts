@@ -55,9 +55,13 @@ export class ProjectDependencies {
     const requirements = this.requirements.get(owner) ?? await this.options.readRequirements(owner)
     this.requirements.set(owner, requirements)
     const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
-      ?? Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
+    if (requirement === undefined) {
+      Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
+    }
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
-      ?? requireSetup(`Dependency ${alias} needs setup.`)
+    if (source === undefined) {
+      requireSetup(`Dependency ${alias} needs setup.`)
+    }
     if (source.identity !== createSourceIdentity(requirement, owner, this.root)) {
       requireSetup(`Dependency ${alias} needs setup.`)
     }

@@ -23,7 +23,9 @@ export default registerCommand({
   async action(alias: OptionalDependencyAlias, options: UpdateCommandOptions = {}) {
     const target = resolveCallerPath(options.entry ?? '.')
     const project = await discoverProject(target)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    }
     const requirements = await readProjectRequirements(project.root)
     const aliases = requirements.map(requirement => requirement.alias ?? defaultAlias(requirement))
     const update = alias ? [alias] : aliases

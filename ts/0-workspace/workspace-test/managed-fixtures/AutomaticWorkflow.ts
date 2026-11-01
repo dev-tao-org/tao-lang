@@ -3,8 +3,8 @@ import { Path, Tests } from '@shared/os'
 import { createProjectDependencyOptions } from '../../workspace-src/dependencies/Options'
 import type { ProjectPipelineServices } from '../../workspace-src/ProjectPipeline'
 import { inspectProjectPreparation, prepareProject } from '../../workspace-src/ProjectPreparation'
-import type { BunExecutor } from '../../workspace-src/sidecars/ManagedModules'
-import type { ManagedRuntimePins } from '../../workspace-src/sidecars/ManagedModuleTypes'
+import type { BunExecutor } from '../../workspace-src/sidecars/managed-modules/ManagedModules'
+import type { ManagedRuntimePins } from '../../workspace-src/sidecars/managed-modules/ManagedModuleTypes'
 import { execute } from '../../workspace-src/Workflow'
 
 /** openAutomaticWorkspace proves real setup and automatic continuation with a fixture-owned local registry. */

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Lists } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import * as LearningStore from './LearningStore'
@@ -163,6 +163,6 @@ async function markAcceptedPending(root: string, files: string[]): Promise<void>
   const session = await loadSession(root)
   await requireIdleSession(session)
   const affected = files.filter(file => file in session.accepted)
-  session.recheck = [...new Set([...session.recheck, ...affected])]
+  session.recheck = Lists.unique(session.recheck, affected)
   await saveSession(session)
 }

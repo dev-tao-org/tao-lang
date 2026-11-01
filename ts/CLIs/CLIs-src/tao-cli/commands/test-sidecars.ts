@@ -20,7 +20,9 @@ export default registerCommand({
   async action(moduleName: string, options: { session?: string; yes?: boolean } = {}) {
     const caller = resolveCallerPath('.')
     const project = await discoverProject(caller)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    }
     const moduleRoot = await resolveModuleRoot(project.root, moduleName)
     const entry = await findModuleEntry(moduleRoot, project.root)
     await withProjectSessions([moduleRoot, entry], async () => {

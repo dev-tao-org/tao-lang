@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Lists, Regxs, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
@@ -81,7 +81,7 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
       work.push(`sidecar:${path}`)
     }
   }
-  return [...new Set(work)].sort()
+  return Lists.unique(work).sort()
 }
 
 type DependencySessionId = string | undefined

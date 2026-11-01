@@ -1,8 +1,10 @@
 import { Errors } from '@shared'
 import { Tests } from '@shared/os'
-import type { openProjectWorkspace } from '../ProjectWorkspace'
+import { openProjectWorkspace } from '../ProjectWorkspace'
+import type { ProjectWorkspaceOptions } from '../ProjectWorkspace'
 import { requireSetup } from '../SetupRequired'
 import { execute, type WorkflowServices, type WorkflowUI } from '../Workflow'
+import type { WorkspaceSession } from '../Workspace'
 
 const SetupDeclinedErrorRegx = /declined/
 const SetupCancelledErrorRegx = /cancelled/
@@ -81,7 +83,7 @@ Tests.test('preview recovery retains the old session until consent then releases
   }
   const services = {
     ...recordingServices(events),
-    openWorkspace(entry: string, options: Parameters<typeof openProjectWorkspace>[1]) {
+    openWorkspace(entry: string, options?: ProjectWorkspaceOptions) {
       Tests.expect(options?.id).toMatch(PreviewRestartIdentifierRegx)
       return recordingWorkspace(events)(entry, options)
     },
@@ -151,7 +153,7 @@ function recordingWorkspace(events: string[], needsSetup = false): typeof openPr
       async dispose() {
         events.push('dispose')
       },
-    } as unknown as Awaited<ReturnType<typeof openProjectWorkspace>>
+    } as unknown as WorkspaceSession
   }
 }
 

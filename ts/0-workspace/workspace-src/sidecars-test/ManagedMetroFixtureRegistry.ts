@@ -1,9 +1,11 @@
 import { FileSystem, Http, Path, Platform, Repo } from '@shared/os'
 
-const FixtureTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
+/** FixtureRegistry exposes the test registry URL and its cleanup operation. */
+export type FixtureRegistry = { url: string; stop(force?: boolean): void }
 
+const FixtureTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
 /** createFixtureRegistry serves real fixture tarballs and transitive metadata over loopback. */
-export async function createFixtureRegistry(root: string) {
+export async function createFixtureRegistry(root: string): Promise<FixtureRegistry> {
   const packages = await packageArtifacts(root)
   const server = Http.serve({
     hostname: '127.0.0.1',
@@ -51,8 +53,8 @@ async function packageArtifacts(root: string): Promise<Map<string, PackageArtifa
 function createFixtureMetadata(name: string, artifact: PackageArtifact, requestUrl: string): unknown {
   const origin = Http.url(requestUrl).origin
   return {
-    name,
-    versions: {
+    'name': name,
+    'versions': {
       [artifact.version]: {
         name: artifact.name,
         version: artifact.version,

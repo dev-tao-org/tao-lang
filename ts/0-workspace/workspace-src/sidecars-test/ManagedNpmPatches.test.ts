@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules, readManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const ManagedModulePolicyChangeErrorRegx = /policy changed/
 const FrozenInstallFailureErrorRegx = /fixture frozen failure/
@@ -31,7 +31,7 @@ Tests.test('removing runtime policy preserves durable package resolutions throug
   await Try(async () => {
     const input = createInput(directory)
     const invocations: string[][] = []
-    const original = await prepareManagedModules(input, createExecutor(invocations))
+    const original = await ManagedModules.prepareManagedModules(input, createExecutor(invocations))
     const lockPath = `.tao/store/npm/${original.graphFingerprint}.lock`
     const source = await FileSystem.readFile(Path.join(directory, lockPath), 'utf8')
     const removed = {
@@ -39,13 +39,13 @@ Tests.test('removing runtime policy preserves durable package resolutions throug
       runtimePolicy: undefined,
       previousGraphReference: { fingerprint: original.graphFingerprint, lockPath, lockHash: Platform.hashText(source) },
     }
-    const repaired = await repairManagedModuleFiles(removed, createExecutor(invocations))
+    const repaired = await ManagedModules.repairManagedModuleFiles(removed, createExecutor(invocations))
     const lock = JSON.parse(await FileSystem.readFile(repaired.lockfile, 'utf8'))
     Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
     Tests.expect(lock.packages).toEqual({ fixture: ['fixture@1.0.0', '', {}, 'sha512-fixture'] })
     Tests.expect(lock).not.toHaveProperty('patchedDependencies')
     Tests.expect(lock).not.toHaveProperty('overrides')
-    Tests.expect(await readManagedModules(removed)).toEqual(repaired)
+    Tests.expect(await ManagedModules.readManagedModules(removed)).toEqual(repaired)
     Tests.expect(await FileSystem.readFile(Path.join(directory, lockPath), 'utf8')).toBe(source)
   }, { finally: () => FileSystem.rm(directory, { recursive: true, force: true }) })
 })
@@ -53,7 +53,7 @@ Tests.test('removing runtime policy preserves durable package resolutions throug
 async function assertPolicyRepair(directory: string): Promise<void> {
   const invocations: string[][] = []
   const original = { ...createInput(directory), runtimePolicy: undefined }
-  const first = await prepareManagedModules(original, createExecutor(invocations))
+  const first = await ManagedModules.prepareManagedModules(original, createExecutor(invocations))
   const sourcePath = Path.join(directory, '.tao/store/npm', `${first.graphFingerprint}.lock`)
   const source = await FileSystem.readFile(sourcePath, 'utf8')
   const input = {
@@ -64,9 +64,12 @@ async function assertPolicyRepair(directory: string): Promise<void> {
       lockHash: Platform.hashText(source),
     },
   }
-  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), ManagedModulePolicyChangeErrorRegx)
   await Tests.rejects(
-    repairManagedModuleFiles(input, async (_command, args) =>
+    ManagedModules.prepareManagedModules(input, createExecutor(invocations)),
+    ManagedModulePolicyChangeErrorRegx,
+  )
+  await Tests.rejects(
+    ManagedModules.repairManagedModuleFiles(input, async (_command, args) =>
       args[0] === '--version'
         ? { status: 0, stdout: '1.2.0\n', stderr: '' }
         : { status: 1, stdout: '', stderr: 'fixture frozen failure' }),
@@ -75,7 +78,7 @@ async function assertPolicyRepair(directory: string): Promise<void> {
   const durableFiles = await FileSystem.readdir(Path.dirname(sourcePath))
   Tests.expect(durableFiles.filter(path => path.endsWith('.lock'))).toEqual([`${first.graphFingerprint}.lock`])
   Tests.expect(await FileSystem.readFile(sourcePath, 'utf8')).toBe(source)
-  const repaired = await repairManagedModuleFiles(input, createExecutor(invocations))
+  const repaired = await ManagedModules.repairManagedModuleFiles(input, createExecutor(invocations))
   Tests.expect(repaired.graphFingerprint).not.toBe(first.graphFingerprint)
   Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
   const lock = await FileSystem.readFile(repaired.lockfile, 'utf8')
@@ -84,7 +87,7 @@ async function assertPolicyRepair(directory: string): Promise<void> {
   const incompatible = createInput(directory)
   incompatible.runtimePolicy!.overrides.fixture = '2.0.0'
   await Tests.rejects(
-    repairManagedModuleFiles(
+    ManagedModules.repairManagedModuleFiles(
       { ...incompatible, previousGraphReference: input.previousGraphReference },
       createExecutor(invocations),
     ),
@@ -95,7 +98,7 @@ async function assertPolicyRepair(directory: string): Promise<void> {
 async function assertPatchedProfile(directory: string): Promise<void> {
   const input = createInput(directory)
   const invocations: string[][] = []
-  const first = await prepareManagedModules(input, createExecutor(invocations))
+  const first = await ManagedModules.prepareManagedModules(input, createExecutor(invocations))
   const manifest = JSON.parse(await FileSystem.readFile(Path.join(first.packageDirectory, 'package.json'), 'utf8'))
   Tests.expect(manifest.patchedDependencies).toEqual({ 'fixture@1.0.0': 'patches/fixture.patch' })
   Tests.expect(manifest.overrides).toEqual({ fixture: '1.0.0' })
@@ -105,15 +108,18 @@ async function assertPatchedProfile(directory: string): Promise<void> {
   Tests.expect(await FileSystem.readFile(patchPath, 'utf8')).toBe('original patch\n')
   await FileSystem.chmod(patchPath, 0o644)
   await FileSystem.writeFile(patchPath, 'tampered')
-  await Tests.rejects(readManagedModules(input), RuntimePatchDriftErrorRegx)
-  await Tests.rejects(prepareManagedModules(input, createExecutor(invocations)), RuntimeMetadataDriftErrorRegx)
+  await Tests.rejects(ManagedModules.readManagedModules(input), RuntimePatchDriftErrorRegx)
+  await Tests.rejects(
+    ManagedModules.prepareManagedModules(input, createExecutor(invocations)),
+    RuntimeMetadataDriftErrorRegx,
+  )
   const changed = createInput(directory, 'changed patch\n')
-  const second = await prepareManagedModules(changed, createExecutor(invocations))
+  const second = await ManagedModules.prepareManagedModules(changed, createExecutor(invocations))
   Tests.expect(second.graphFingerprint).toBe(first.graphFingerprint)
   Tests.expect(second.fingerprint).not.toBe(first.fingerprint)
   Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
   Tests.expect(await FileSystem.readFile(durablePath, 'utf8')).toBe(originalLock)
-  Tests.expect(await readManagedModules(changed)).toEqual(second)
+  Tests.expect(await ManagedModules.readManagedModules(changed)).toEqual(second)
 }
 
 function createInput(directory: string, patch = 'original patch\n'): ManagedModulesInput {

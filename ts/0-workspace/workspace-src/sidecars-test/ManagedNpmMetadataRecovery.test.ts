@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const ManagedModuleAlreadyOwnedErrorRegx = /already owned/
 

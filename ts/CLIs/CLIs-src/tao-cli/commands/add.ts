@@ -22,7 +22,9 @@ export default registerCommand({
     }
     const caller = resolveCallerPath('.')
     const project = await discoverProject(caller)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    }
     await withDependencySession(project.root, options.session, async () => {
       if (
         !options.yes && !await IO.askConfirm({

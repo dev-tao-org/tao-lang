@@ -1,8 +1,9 @@
+import type { RuntimeApplication } from '@runtime/Runtime'
 import { Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import TypeScript from 'typescript'
 import { readRuntimeSources } from '../../CLIs/CLIs-src/cli-checks/runtime-sources'
-import { createProject, createWorkspace } from '../workspace-src/Workspace'
+import { createProject, createWorkspace, type WorkspaceSession } from '../workspace-src/Workspace'
 
 Tests.test('project compilation creates its runtime lazily and publishes only changed build files', async () => {
   const root = Artifacts.resolvePath('tmp', `project-compile-${Platform.randomUUID()}`)
@@ -102,7 +103,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
 }
 
 async function verifyLiveSnapshotBoundary(
-  workspace: ReturnType<typeof createWorkspace>,
+  workspace: WorkspaceSession,
   source: string,
   changeSnapshot: (value: string) => void,
 ): Promise<void> {
@@ -129,7 +130,7 @@ async function verifyLiveSnapshotBoundary(
 }
 
 async function verifyPublication(
-  workspace: ReturnType<typeof createWorkspace>,
+  workspace: WorkspaceSession,
   buildDirectory: string,
   source: string,
   changeCode: () => void,
@@ -158,7 +159,7 @@ async function verifyPublication(
 
 async function verifyGeneratedBuildConfiguration(
   buildDirectory: string,
-  runtime: NonNullable<ReturnType<typeof createWorkspace>['runtime']>,
+  runtime: RuntimeApplication,
 ): Promise<void> {
   const configPath = Path.join(buildDirectory, 'tsconfig.json')
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
@@ -191,9 +192,9 @@ async function verifyGeneratedBuildConfiguration(
 }
 
 async function verifyUnchangedGeneratedFiles(
-  workspace: ReturnType<typeof createWorkspace>,
+  workspace: WorkspaceSession,
   source: string,
-  runtime: NonNullable<ReturnType<typeof createWorkspace>['runtime']>,
+  runtime: RuntimeApplication,
 ): Promise<{ appInode: number; sourceInode: number }> {
   Tests.expect(await FileSystem.readFile(runtime.appPath, 'utf8')).toBe('compiled A')
   const original = FileSystem.statSync(runtime.appPath).ino

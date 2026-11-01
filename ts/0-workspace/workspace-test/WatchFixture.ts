@@ -1,10 +1,10 @@
 import { Errors, Time, Try } from '@shared'
 import { WorkspaceWatch } from '@shared/os'
-import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
+import { FileManager, type FileManagerOptions } from '../workspace-src/file-manager/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
 /** createWatchFixture supplies notifications and debounce turns without native observation. */
-export function createWatchFixture() {
+export function createWatchFixture(): WatchFixture {
   let changed: OptionalWatchChangeHandler
   let scheduled: OptionalScheduledCallback
   const options = {
@@ -159,8 +159,10 @@ type OptionalWatchChangeHandler = WatchChangeHandler | undefined
 type ScheduledCallback = () => void
 type OptionalScheduledCallback = ScheduledCallback | undefined
 type WatchFixtureOption = 'watch' | 'schedule'
+/** WatchFixture supplies an observable manager configuration with direct event notifications. */
+export type WatchFixture = { options: Pick<FileManagerOptions, WatchFixtureOption>; notify(path: string): void }
 
-type ReadSnapshot = Exclude<Awaited<ReturnType<NonNullable<FileManagerOptions['read']>>>, UpdateResult>
+type ReadSnapshot = { source: string; observedAtMs: number }
 
 type ManagerFixtureState = {
   onChange: OptionalWatchChangeHandler

@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { Errors, Lists, NullCharacter, Try } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 
 type GitOptions = { index?: string; input?: GitInput }
@@ -43,15 +43,19 @@ export async function tree(root: string, index?: string): Promise<string> {
 export async function snapshot(root: string, directory: string, base: string, files?: string[]): Promise<string> {
   const index = await privateIndex(root, directory, base)
   const tracked = (await git(root, ['ls-tree', '-r', '--name-only', '-z', base])).split(NullCharacter).filter(Boolean)
-  const candidates = files
-    ?? [
+  let candidates: string[]
+  if (files !== undefined) {
+    candidates = files
+  } else {
+    candidates = [
       ...tracked,
       ...(await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).split(NullCharacter),
     ]
+  }
   const selected = candidates.filter(path => isSnapshotCandidate(root, tracked, path))
   await assertSupportedTransforms(root, selected)
   if (selected.length) {
-    await git(root, ['add', '-A', '--', ...new Set(selected)], { index })
+    await git(root, ['add', '-A', '--', ...Lists.unique(selected)], { index })
   }
   return await tree(root, index)
 }
@@ -89,7 +93,7 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: Rev
     previous += await git(root, ['ls-tree', '-r', '--name-only', '-z', revision, '--', ...selections])
   }
   const files = [
-    ...new Set((output + previous).split(NullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
+    ...Lists.unique((output + previous).split(NullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
   ]
     .sort()
   if (!files.length) {

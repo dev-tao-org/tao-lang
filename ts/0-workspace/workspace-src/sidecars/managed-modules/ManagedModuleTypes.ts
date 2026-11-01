@@ -1,4 +1,4 @@
-import type { ManagedGraphReference } from '../dependencies/Types'
+import type { ManagedGraphReference } from '../../dependencies/Types'
 
 /** ManagedModuleRequirement pins one npm package to the declaration that owns it. */
 export type ManagedModuleRequirement = { name: string; version: string; origin: string }

@@ -1,6 +1,6 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 
 type SerializedModuleOwner = string | undefined
 type PreviousModuleOwner = ManagedModuleOwner | undefined
@@ -73,7 +73,7 @@ export async function validateModuleLinks(
   if (isSymbolicLink(localModules)) {
     Errors.ThrowUserInput(`Module resolution directory is already owned: ${localModules}`)
   }
-  for (const name of new Set([...packages, ...previousOwner?.packages ?? []])) {
+  for (const name of Lists.unique(packages, previousOwner?.packages ?? [])) {
     const link = Path.join(localModules, name)
     if (Path.dirname(link) !== localModules && isSymbolicLink(Path.dirname(link))) {
       Errors.ThrowUserInput(`Module resolution path is not owned by the current or prior profile: ${link}`)

@@ -1,6 +1,8 @@
+import type { Parser } from '@grammar/parser'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
+import type { ParserFixture } from './parser-fixtures'
 import { transformerSamples } from './transformer-samples'
 
 /** parserPerformance measures fresh-process startup and warmed full parses, retaining raw samples.
@@ -36,8 +38,18 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   return { path, summary }
 }
 
+/** ParserSampleSummary records the measured distribution for one parser operation. */
+export type ParserSampleSummary = {
+  phase: string
+  count: number
+  minMs: number
+  medianMs: number
+  p95Ms: number
+  maxMs: number
+}
+
 /** summarizeSamples groups raw operation samples by scenario and reports their distribution. */
-export function summarizeSamples(samples: readonly Sample[]) {
+export function summarizeSamples(samples: readonly Sample[]): ParserSampleSummary[] {
   const groups = new Map<string, number[]>()
   for (const sample of samples) {
     const key = sample.scenario + '/' + sample.name
@@ -63,12 +75,12 @@ type ParserPerformanceReport = {
   version: 1
   commit: string
   modified: boolean
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   bun: string
   node: string
   fixtureHash: string
   definitions: ParserPerformanceDefinitions
-  summary: ReturnType<typeof summarizeSamples>
+  summary: ParserSampleSummary[]
   samples: Sample[]
 }
 
@@ -124,8 +136,8 @@ async function warmSamples(): Promise<Sample[]> {
 const sampleWarmParser = Timings.createTopLevelTimer(
   function(
     timings,
-    parser: ReturnType<typeof import('../../1-grammar/grammar-src/parser').createParser>,
-    fixture: Awaited<ReturnType<typeof parserFixtures>>[number],
+    parser: Parser,
+    fixture: ParserFixture,
     index: number,
     samples: Sample[],
   ) {

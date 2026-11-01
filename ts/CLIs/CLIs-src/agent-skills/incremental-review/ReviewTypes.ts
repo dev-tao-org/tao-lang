@@ -15,6 +15,22 @@ export type ReviewSession = {
   continuation?: { session: string; root: string; reviewedBranch: string; reviewedHead: string }
 }
 
+/** ReviewStatus reports the implementation snapshot against the owned reviewed checkout. */
+export type ReviewStatus = {
+  sourceBranch: string
+  sourceHead: string
+  reviewedBranch: string
+  reviewedHead: string
+  reviewedRoot: string
+  pending: string
+  recheck: string[]
+  notes: string[]
+  journal: OptionalReviewJournalPhase
+  outline: string
+  comparison: string
+  gitLens: string
+}
+
 /** ReviewSelection freezes candidate trees and the exact source snapshot that was shown. */
 export type ReviewSelection = {
   version: 1
@@ -50,5 +66,6 @@ export type ReviewHooks = {
 type ReviewSelectionKind = 'files' | 'partial' | 'reopen'
 type AcceptedPathEntries = Record<string, string>
 type ReviewJournalPhase = 'prepared' | 'source' | 'index' | 'reviewed' | 'complete'
+type OptionalReviewJournalPhase = ReviewJournalPhase | undefined
 type ReviewHookPoint = 'source' | 'index' | 'reviewed-tree' | 'reviewed-ref' | 'session'
 type ReviewHookResult = void | Promise<void>

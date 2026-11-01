@@ -21,7 +21,9 @@ export async function prepareExpoPublication(
     return { ...transport, sessionId, environment: {} }
   }
   const preloadPath = generated.preloadPath ?? application.metroPreloadPath
-    ?? Errors.ThrowHostEnvironment('Metro preload resources are missing. Rebuild the Tao runtime.')
+  if (preloadPath === undefined || preloadPath === null) {
+    Errors.ThrowHostEnvironment('Metro preload resources are missing. Rebuild the Tao runtime.')
+  }
   if (!FileSystem.existsSync(preloadPath)) {
     Errors.ThrowHostEnvironment(`Metro preload is missing: ${preloadPath}`)
   }

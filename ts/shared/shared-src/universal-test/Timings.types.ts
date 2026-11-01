@@ -1,7 +1,7 @@
 import { Timings } from '@shared'
 
-/** TimingResult proves the callable entry retains its callback's ordinary result type. */
-export type TimingResult = ReturnType<typeof entry>
+/** OperationValue represents the numeric value returned by the typed operation fixtures. */
+export type OperationValue = number
 
 const operation = Timings.measured('typed', (value: string) => value.length)
 const orchestration = Timings.measure('typed-parent', (timings, value: string) => timings.run(operation, value))
@@ -10,9 +10,9 @@ const entry = Timings.createTopLevelTimer((timings, value: string) => timings.ru
 const constructor: new() => Timings = Timings
 void constructor
 Timings.createTopLevelTimer(collector => {
-  const result: number = collector.run(operation, 'Tao')
-  const nested: number = collector.run(entry, 'Tao')
-  const direct: number = entry('Tao')
+  const result: OperationValue = collector.run(operation, 'Tao')
+  const nested: OperationValue = collector.run(entry, 'Tao')
+  const direct: OperationValue = entry('Tao')
   void [result, nested, direct]
   // @ts-expect-error Measured operations are descriptors, not callable functions.
   operation('Tao')

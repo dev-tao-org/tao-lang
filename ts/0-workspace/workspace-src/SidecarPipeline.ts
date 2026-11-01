@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Lists, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
 import * as Paths from './modules/Paths'
@@ -36,15 +36,11 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
   const nodeModulesDirectory = FileSystem.realpathSync(options.nodeModulesDirectory)
   const { groups, watchFiles } = await collectSidecarInputs(options)
   await options.onWatchFiles?.(watchFiles)
-  const defaultsPath = options.typescriptDefaultsPath
-    ?? Path.join(
-      options.projectDirectory ?? Path.dirname(options.program.entry),
-      '.tao/cache/sidecars/typescript-defaults.json',
-    )
+  const defaultsPath = resolveTypeScriptDefaultsPath(options)
   const defaultsContents = await FileSystem.readFile(defaultsPath, 'utf8')
   const fingerprint = fingerprintFor(options, nodeModulesDirectory, groups, defaultsContents)
   const requestedSnapshotRoot = Path.join(options.sessionBuildDirectory, 'foreign-views', fingerprint)
-  const cachedRoot = await findCachedSnapshot(
+  const cachedRoot = await Snapshots.findCachedSnapshot(
     requestedSnapshotRoot,
     groups,
     fingerprint,
@@ -74,10 +70,19 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
       const key = createModuleMemberKey(absoluteModulePath, resolvedAuthoredPath)
       return pathMap.get(key) ?? Errors.ThrowUserInput(`Foreign view path was not validated: ${authoredPath}`)
     },
-    watchDirectories: [...new Set(groups.flatMap(group => [...group.files.keys()].map(Path.dirname)))].sort(),
+    watchDirectories: Lists.unique(groups.flatMap(group => [...group.files.keys()].map(Path.dirname))).sort(),
     watchFiles,
     snapshotDirectories: [snapshotRoot, ...snapshotDirectories],
   }
+}
+
+function resolveTypeScriptDefaultsPath(options: SidecarPipelineOptions): string {
+  const projectDirectory = options.projectDirectory === undefined
+    ? Path.dirname(options.program.entry)
+    : options.projectDirectory
+  return options.typescriptDefaultsPath === undefined
+    ? Path.join(projectDirectory, '.tao/cache/sidecars/typescript-defaults.json')
+    : options.typescriptDefaultsPath
 }
 
 function snapshotForeignViewPaths(
@@ -89,7 +94,9 @@ function snapshotForeignViewPaths(
     const directory = directories[index]!
     for (const view of group.views) {
       const authoredPath = AST.GetForeignViewPath(view.declaration)
-        ?? Errors.Throw(`Expected a foreign view render for ${AST.GetViewName(view.declaration)}.`)
+      if (authoredPath === undefined) {
+        Errors.Throw(`Expected a foreign view render for ${AST.GetViewName(view.declaration)}.`)
+      }
       pathMap.set(
         createModuleMemberKey(view.module.path, resolveAuthoredForeignPath(view.module.path, authoredPath.value)),
         Path.join(directory, view.relativeSidecarPath),
@@ -97,29 +104,6 @@ function snapshotForeignViewPaths(
     }
   })
   return pathMap
-}
-
-async function findCachedSnapshot(
-  requestedRoot: string,
-  groups: readonly Snapshots.SidecarGroup[],
-  fingerprint: string,
-  nodeModulesDirectory: string,
-  defaultsPath: string,
-): Promise<string | undefined> {
-  if (await Snapshots.cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
-    return requestedRoot
-  }
-  const parent = Path.dirname(requestedRoot)
-  const recoveryPrefix = `${Path.basename(requestedRoot)}.recovered`
-  const siblings = await Try.WithDefault<Promise<string[]>, string[]>([], () => FileSystem.readdir(parent))
-  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
-    .map(name => Path.join(parent, name))
-  for (const candidate of candidates) {
-    if (await Snapshots.cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
-      return candidate
-    }
-  }
-  return undefined
 }
 
 type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
@@ -183,7 +167,9 @@ async function collectSidecarView(
     Paths.findNearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,
   )
   const realModulePath = Paths.resolveRealPathInsideProject(modulePath, projectRoot)
-    ?? Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
+  if (realModulePath === undefined) {
+    Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
+  }
   const moduleRoot = Paths.findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
   const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
   watchAttemptedPath(resolvedAuthoredPath, moduleRoot, watchFiles)

@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Lists, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type * as Types from './Types'
@@ -78,7 +78,7 @@ export async function readFileSourceRoots(projectRoot: string): Promise<string[]
         )
       ),
   )
-  return [...new Set(roots)]
+  return Lists.unique(roots)
 }
 
 /** pruneUnreferencedManagedLocks removes only locks absent from source locks and retained profiles. */
@@ -134,8 +134,10 @@ export async function recordManagedGraphReference(
 ): Promise<Types.DependencyLock> {
   validateGraphReference(graphKey, fingerprint, lockHash)
   const lockPath = resolveDependencyLockPath(projectRoot)
-  const lock = await readDependencyLock(lockPath)
-    ?? { version: 2, roots: {}, sources: {}, commitPins: {} }
+  const storedLock = await readDependencyLock(lockPath)
+  const lock: Types.DependencyLock = storedLock === undefined
+    ? { version: 2, roots: {}, sources: {}, commitPins: {} }
+    : storedLock
   const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
   const reference: Types.ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
   const updated: Types.DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }

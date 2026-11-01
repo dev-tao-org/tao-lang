@@ -119,7 +119,7 @@ type NativeBuildIdentityInputs = {
   nodeAddonApi: string
   nodeGyp: string
   architecture: string
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   bun: string
   lockHash: string
   environment: unknown

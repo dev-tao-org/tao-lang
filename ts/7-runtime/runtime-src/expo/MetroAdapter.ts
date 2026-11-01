@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import * as GeneratedFileSystem from '../../../shared/shared-src/os/GeneratedFileSystem'
 import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
 import * as Path from '../../../shared/shared-src/os/Path'
@@ -134,7 +134,7 @@ function resolveChangedPaths(
   previous: GeneratedSourceFiles,
   next: GeneratedSourceFiles,
 ): string[] {
-  return [...new Set([...Object.keys(previous), ...Object.keys(next)])].filter(path => previous[path] !== next[path])
+  return Lists.unique(Object.keys(previous), Object.keys(next)).filter(path => previous[path] !== next[path])
 }
 
 function createChanges(state: AdapterState, root: string, paths: string[]): ExternalChange[] {

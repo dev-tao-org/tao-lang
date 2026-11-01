@@ -25,7 +25,7 @@ export async function runTestPlan(
 /** runTaoTestFiles executes preselected Tao files without preparing shared compiler assets. */
 export async function runTaoTestFiles(
   paths: readonly string[],
-  signal?: ReturnType<typeof Http.createAbortController>['signal'],
+  signal?: Http.HttpAbortSignal,
 ): Promise<{ passed: number; failed: number }> {
   const progress = (message: string) => IO.progress(message)
   const results = await TestPlanModule2.runFilesSequentially(paths, signal, async file => {

@@ -42,7 +42,7 @@ export type IOConfiguration = {
 }
 
 /** configuredCommandOutput captures child streams whenever a channel or dashboard owns their display. */
-export function configuredCommandOutput(channel?: Output.OutputChannel) {
+export function configuredCommandOutput(channel?: Output.OutputChannel): ConfiguredCommandOutput {
   const selected = channel ?? output.main
   return {
     captureCommands: !configuration.passthrough,
@@ -52,6 +52,16 @@ export function configuredCommandOutput(channel?: Output.OutputChannel) {
     progressPipe: selected.progress,
     receive: selected.receive,
   }
+}
+
+/** ConfiguredCommandOutput exposes the active child-output pipes and routing policy. */
+export type ConfiguredCommandOutput = {
+  captureCommands: boolean
+  mirrorCommandStderr: boolean
+  stdoutPipe(text: Output.OutputText): void
+  stderrPipe(text: Output.OutputText): void
+  progressPipe(message: string): void
+  receive(message: Output.OutputEventMessage): void
 }
 
 /** renderOutput installs the sole terminal renderer for this process. */

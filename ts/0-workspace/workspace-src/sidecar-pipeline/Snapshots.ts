@@ -40,22 +40,28 @@ export function snapshotModuleDirectory(snapshotRoot: string, moduleRoot: string
   return Path.join(snapshotRoot, 'modules', Platform.hashText(moduleRoot).slice(0, 16))
 }
 
-/** cachedSnapshotMatches confirms the exact immutable snapshot inventory against captured inputs. */
-export async function cachedSnapshotMatches(
-  snapshotRoot: string,
+/** findCachedSnapshot selects an exact or recovered snapshot whose complete inputs still match. */
+export async function findCachedSnapshot(
+  requestedRoot: string,
+  groups: readonly SidecarGroup[],
   fingerprint: string,
   nodeModulesDirectory: string,
-  groups: readonly SidecarGroup[],
   defaultsPath: string,
-): Promise<boolean> {
-  return await SnapshotIntegrity.cachedSnapshotMatches({
-    snapshotRoot,
-    fingerprint,
-    nodeModulesDirectory,
-    groups,
-    defaultsPath,
-    moduleDirectories: groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot)),
-  })
+): Promise<string | undefined> {
+  if (await cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
+    return requestedRoot
+  }
+  const parent = Path.dirname(requestedRoot)
+  const recoveryPrefix = `${Path.basename(requestedRoot)}.recovered`
+  const siblings = await Try.WithDefault<Promise<string[]>, string[]>([], () => FileSystem.readdir(parent))
+  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
+    .map(name => Path.join(parent, name))
+  for (const candidate of candidates) {
+    if (await cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
+      return candidate
+    }
+  }
+  return undefined
 }
 
 const DefaultSnapshotLimit = 128
@@ -91,6 +97,23 @@ export async function buildSnapshot(
     },
   )
   return publishedRoot
+}
+
+async function cachedSnapshotMatches(
+  snapshotRoot: string,
+  fingerprint: string,
+  nodeModulesDirectory: string,
+  groups: readonly SidecarGroup[],
+  defaultsPath: string,
+): Promise<boolean> {
+  return await SnapshotIntegrity.cachedSnapshotMatches({
+    snapshotRoot,
+    fingerprint,
+    nodeModulesDirectory,
+    groups,
+    defaultsPath,
+    moduleDirectories: groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot)),
+  })
 }
 
 async function enforceSnapshotLimit(snapshotDirectory: string, maximum: number): Promise<void> {

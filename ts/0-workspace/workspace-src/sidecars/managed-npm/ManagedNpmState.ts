@@ -1,8 +1,8 @@
 import { Errors, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
-import { collectAllRequirements, defaultSingletonPackages } from './ManagedModuleGraph'
-import { typeScriptDefaultsHash } from './ManagedModuleMetadata'
-import * as ManagedTypes from './ManagedModuleTypes'
+import { collectAllRequirements, defaultSingletonPackages } from '../managed-modules/ManagedModuleGraph'
+import { typeScriptDefaultsHash } from '../managed-modules/ManagedModuleMetadata'
+import * as ManagedTypes from '../managed-modules/ManagedModuleTypes'
 import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
 
 /** ManagedProfileMetadata maps generated install-profile marker fields to unvalidated values. */

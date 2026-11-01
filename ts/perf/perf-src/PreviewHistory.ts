@@ -50,7 +50,7 @@ export async function recordPreviewPerformance(
   })
 }
 
-type Git = NonNullable<PreviewHistoryOptions['git']>
+type Git = (args: readonly string[], exact?: boolean) => Promise<string>
 type Context = { sourceCommit: string; sourceTree: string; source: string; fixtureSha256: string }
 
 const fixturePath = 'ts/perf/perf-fixtures/Performance/Performance.tao'

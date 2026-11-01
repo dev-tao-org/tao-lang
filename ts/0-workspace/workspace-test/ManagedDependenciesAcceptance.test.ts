@@ -5,10 +5,10 @@ import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { initializeProject } from '../workspace-src/projects/Projects'
-import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 import { prepareSidecarPipeline } from '../workspace-src/SidecarPipeline'
-import type { BunExecutor } from '../workspace-src/sidecars/ManagedModules'
-import { inspectGeneratedModuleFiles, readManagedModules } from '../workspace-src/sidecars/ManagedModules'
+import type { BunExecutor } from '../workspace-src/sidecars/managed-modules/ManagedModules'
+import * as ManagedModules from '../workspace-src/sidecars/managed-modules/ManagedModules'
+import type { UpdateResult, WorkspaceSession } from '../workspace-src/Workspace'
 import { openAutomaticWorkspace } from './managed-fixtures/AutomaticWorkflow'
 import * as ManagedDependencyRegistry from './ManagedDependencyRegistry'
 
@@ -22,7 +22,7 @@ const IncompatibleReactVersionRegx = /incompatible versions of react/
 Tests.test('managed npm preparation resolves a local project foreign view through an isolated registry', async () => {
   const root = ArtifactsRoot()
   const requests: string[] = []
-  const workspaceHandles: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
+  const workspaceHandles: WorkspaceSession[] = []
   await FileSystem.mkdir(root)
   await Try(async () => {
     const { app, ui, entry } = await createFixtureProjects(root)
@@ -126,7 +126,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
   }
 }
 
-type RegistryPackages = Awaited<ReturnType<typeof ManagedDependencyRegistry.startManagedDependencyRegistry>>['packages']
+type RegistryPackages = ManagedDependencyRegistry.ManagedDependencyRegistryPackages
 async function verifyInstalledGraph(
   app: string,
   ui: string,
@@ -159,14 +159,14 @@ function pipelineServices(): ProjectPipelineServices {
   return {
     buildManagedInput: async (root, program) =>
       ProjectPreparation.buildManagedModulesInput(root, program.modules, runtimePins),
-    readManaged: readManagedModules,
-    inspectGeneratedFiles: inspectGeneratedModuleFiles,
+    readManaged: ManagedModules.readManagedModules,
+    inspectGeneratedFiles: ManagedModules.inspectGeneratedModuleFiles,
     prepareSidecars: prepareSidecarPipeline,
   }
 }
 
 async function verifyCompiledSidecar(
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
   entry: string,
   ui: string,
   published: string[],
@@ -184,11 +184,7 @@ async function verifyCompiledSidecar(
   Tests.expect(module.Widget({ Value: 'acceptance' })).toBe('label:acceptance')
 }
 
-type WorkspaceOpenFileResult = Awaited<
-  ReturnType<Awaited<ReturnType<typeof openProjectWorkspace>>['files']['openFile']>
->
-
-function resolveOpenFileOutcome(result: WorkspaceOpenFileResult): string {
+function resolveOpenFileOutcome(result: UpdateResult): string {
   if (result.status === 'published') {
     return 'published'
   }
@@ -221,7 +217,7 @@ async function verifyFrozenReprepare(app: string, entry: string, root: string, r
 }
 
 async function verifyLastGoodSurvivesDrift(
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
   entry: string,
   ui: string,
   published: string[],
@@ -255,7 +251,7 @@ async function verifyLastGoodSurvivesDrift(
 }
 
 async function verifyRuntimeConflictPreservesPreview(
-  workspace: Awaited<ReturnType<typeof openProjectWorkspace>>,
+  workspace: WorkspaceSession,
   entry: string,
   ui: string,
   published: string[],

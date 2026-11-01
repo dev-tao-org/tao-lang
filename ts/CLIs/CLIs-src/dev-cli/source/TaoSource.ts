@@ -3,7 +3,7 @@ import { IO } from '@cli-kit'
 import { fix } from '@fix/Fix'
 import { format, type FormatInput, type FormatResult } from '@fix/Format'
 import type { EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
-import { createParser } from '@grammar/parser'
+import { createParser, type ParsedTree, type Parser } from '@grammar/parser'
 import { Errors, Timings } from '@shared'
 import { FileSystem } from '@shared/os'
 import { unusedWarnings } from '@typecheck/Usage'
@@ -33,7 +33,7 @@ export const updateTaoSource = Timings.createTopLevelTimer(async function(
 })
 
 type SourceUpdateMode = 'format' | 'fix'
-type SourceParser = ReturnType<typeof createParser>
+type SourceParser = Parser
 
 async function readSourceSnapshot(path: string, parser: SourceParser, timings: Timings): Promise<FormatInput> {
   const source = await FileSystem.readFile(path, 'utf8')
@@ -67,7 +67,7 @@ function describeSourceUpdate(path: string, mode: SourceUpdateMode, result: Form
 
 function printUsageWarnings(
   path: string,
-  tree: ReturnType<ReturnType<typeof createParser>['parse']>,
+  tree: ParsedTree,
   timings: Timings,
   warn: (message: string) => void,
 ): void {

@@ -4,8 +4,8 @@ import { Errors, joinTextLines, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
-import { openProjectWorkspace } from '../ProjectWorkspace'
-import { createWorkspace } from '../Workspace'
+import { openProjectWorkspace, type ProjectWorkspaceOptions } from '../ProjectWorkspace'
+import { createWorkspace, type WorkspaceSession } from '../Workspace'
 import type { TestBrowser } from './AppTests'
 import type { TestDriver, TestProgress } from './RunTests'
 
@@ -31,7 +31,7 @@ export async function createAppTestDriver(
   }
 }
 
-type TestWorkspace = ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
+type TestWorkspace = WorkspaceSession
 
 type DriverContext = {
   path: string
@@ -128,7 +128,7 @@ function selectCompilationApp(options: CompileOptions, app: string): CompileOpti
 async function openTestProject(
   path: string,
   app: string,
-  options: Parameters<typeof openProjectWorkspace>[1],
+  options: ProjectWorkspaceOptions,
 ) {
   const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}`).slice(0, 16)}`
   for (let slot = 0; slot < 16; slot++) {
@@ -149,7 +149,7 @@ async function openTestProject(
   return Errors.ThrowHostEnvironment(`All app-test sessions are active for ${path}; retry after a run finishes.`)
 }
 
-function selectTestSession(options: Parameters<typeof openProjectWorkspace>[1], id: string) {
+function selectTestSession(options: ProjectWorkspaceOptions, id: string) {
   return { ...options, id }
 }
 

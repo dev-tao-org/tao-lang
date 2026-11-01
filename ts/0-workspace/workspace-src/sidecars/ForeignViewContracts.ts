@@ -1,6 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
-import type { SidecarCommandResult } from './ManagedModuleTypes'
+import type { SidecarCommandResult } from './managed-modules/ManagedModuleTypes'
 
 type ForeignViewParameterTypes = Record<string, string>
 

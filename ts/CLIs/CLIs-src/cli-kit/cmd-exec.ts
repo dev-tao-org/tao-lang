@@ -1,6 +1,6 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Env, FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
-import { configuredCommandOutput } from './io'
+import { type ConfiguredCommandOutput, configuredCommandOutput } from './io'
 import type { OutputChannel } from './output/Output'
 import { createProcessOutput } from './output/ProcessOutput'
 
@@ -74,7 +74,7 @@ type RunOptions = {
 async function runLoggedCommand(
   command: Command,
   options: RunOptions,
-  output: ReturnType<typeof configuredCommandOutput>,
+  output: ConfiguredCommandOutput,
 ): Promise<void> {
   const environment = {
     ...Env.snapshot(),
@@ -147,7 +147,7 @@ function manageShutdown(child: Platform.ChildProcess, signal?: AbortSignal) {
 
 function commandStderr(
   options: RunOptions,
-  output: ReturnType<typeof configuredCommandOutput>,
+  output: ConfiguredCommandOutput,
 ): OutputPipe {
   return options.stderr === 'ignore' && !output.mirrorCommandStderr ? () => {} : output.stderrPipe
 }
@@ -213,7 +213,7 @@ function commandArguments(command: Command, options: RunOptions): string[] {
 async function forwardOutput(
   stream: Streams.ByteStream,
   pipe: OutputPipe,
-  receive: ReturnType<typeof configuredCommandOutput>['receive'],
+  receive: ConfiguredCommandOutput['receive'],
 ): Promise<void> {
   const output = createProcessOutput(pipe, receive)
   await Streams.consume(stream, output.write)

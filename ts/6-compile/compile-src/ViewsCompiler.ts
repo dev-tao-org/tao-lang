@@ -41,7 +41,9 @@ function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationC
     Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
-    ?? Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
+  if (component === undefined) {
+    Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
+  }
   return { initialization: RuntimeEmitter.emitForeignView(node, context.scope, component), components: '' }
 }
 
@@ -53,7 +55,9 @@ function compileTaoView(
   const definitions = block.statements.filter(AST.IsLetDeclaration)
   const children = block.statements.filter(AST.IsViewDeclaration)
   const render = block.statements.find(isRenderStatement)
-    ?? Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
+  if (render === undefined) {
+    Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
+  }
   const inheritedText = new Set(context.textBindings)
   for (const child of children) {
     inheritedText.delete(child.name.value)

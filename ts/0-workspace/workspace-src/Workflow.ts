@@ -4,7 +4,7 @@ import { inspectProjectPreparation, type PreparationOptions, prepareProject } fr
 import { discoverProject } from './projects/Projects'
 import { openProjectWorkspace, type ProjectWorkspaceOptions } from './ProjectWorkspace'
 import { isSetupRequired, requireSetup } from './SetupRequired'
-import type { BunExecutor } from './sidecars/ManagedModules'
+import type { BunExecutor } from './sidecars/managed-modules/ManagedModules'
 import { runAppTests, type TestBrowser } from './testing/AppTests'
 import type { TestProgress, TestResult } from './testing/RunTests'
 import { runSidecarTests } from './testing/SidecarTests'
@@ -16,24 +16,31 @@ export type WorkflowUI = {
   cancelled?: () => boolean
 }
 
+type SetupWorkflowRequest = { kind: 'setup'; entry: string; preparation?: PreparationOptions; for?: 'app-tests' }
+type CompileWorkflowRequest = { kind: 'compile'; entry: string; options?: ProjectWorkspaceOptions }
+type PreviewRestart = { reason: string; suspend(): Promise<void> }
+type PreviewWorkflowRequest = {
+  kind: 'preview'
+  entry: string
+  options?: ProjectWorkspaceOptions
+  restart?: PreviewRestart
+}
+type AppTestsWorkflowRequest = {
+  kind: 'app-tests'
+  entry: string
+  openBrowser: () => Promise<TestBrowser>
+  onProgress?: TestProgress
+  signal?: AbortSignal
+}
+type SidecarTestsWorkflowRequest = { kind: 'sidecar-tests'; entry: string; moduleRoot: string; executor: BunExecutor }
+
 /** WorkflowRequest names existing workflows and their owning execution inputs. */
 export type WorkflowRequest =
-  | { kind: 'setup'; entry: string; preparation?: PreparationOptions; for?: 'app-tests' }
-  | { kind: 'compile'; entry: string; options?: ProjectWorkspaceOptions }
-  | {
-    kind: 'preview'
-    entry: string
-    options?: ProjectWorkspaceOptions
-    restart?: { reason: string; suspend(): Promise<void> }
-  }
-  | {
-    kind: 'app-tests'
-    entry: string
-    openBrowser: () => Promise<TestBrowser>
-    onProgress?: TestProgress
-    signal?: AbortSignal
-  }
-  | { kind: 'sidecar-tests'; entry: string; moduleRoot: string; executor: BunExecutor }
+  | SetupWorkflowRequest
+  | CompileWorkflowRequest
+  | PreviewWorkflowRequest
+  | AppTestsWorkflowRequest
+  | SidecarTestsWorkflowRequest
 
 /** WorkflowWorkspace retains the initialized workspace and the original workflow's first compilation receipt. */
 export type WorkflowWorkspace = WorkspaceSession & { initialResult: UpdateResult }
@@ -92,9 +99,9 @@ function dispatch(
   services: WorkflowServices,
 ): Promise<WorkflowExecutionResult> {
   return Switch.kind<WorkflowRequest, Promise<WorkflowExecutionResult>>(request, {
-    async setup() {},
-    compile: value => openWorkflowWorkspace(value, services),
-    preview: value => openWorkflowWorkspace(value, services),
+    async 'setup'() {},
+    'compile': value => openWorkflowWorkspace(value, services),
+    'preview': value => openWorkflowWorkspace(value, services),
     'app-tests': value => runAppTests(value.entry, value.openBrowser, value.onProgress, value.signal),
     'sidecar-tests': value => runSidecarTests(value.moduleRoot, value.executor),
   })

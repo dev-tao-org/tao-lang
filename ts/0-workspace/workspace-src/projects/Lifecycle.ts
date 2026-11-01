@@ -6,7 +6,7 @@ import { deriveProjectLayout } from './Projects'
 export async function acquireProjectLifecycle(
   root: string,
   waitMs = 0,
-): Promise<Awaited<ReturnType<typeof SessionLock.acquire>>> {
+): Promise<SessionLock.SessionLock | undefined> {
   const layout = deriveProjectLayout(Path.resolve(root))
   requireRealDirectory(layout.taoDirectory, 'Tao project metadata')
   const locksRoot = Path.join(layout.taoDirectory, 'locks')

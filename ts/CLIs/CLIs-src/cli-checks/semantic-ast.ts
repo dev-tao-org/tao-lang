@@ -1,4 +1,4 @@
-import { Switch } from '@shared'
+import { Lists, Switch } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -35,6 +35,24 @@ type SemanticMetadata = {
 
 type SemanticNames = Record<string, string>
 type SemanticFieldTypes = Record<string, string>
+type SemanticBlockKinds = Record<string, string[]>
+type SemanticAstModel = {
+  blockStatementUnions: string
+  blocks: string
+  unions: string
+  blockKinds: SemanticBlockKinds
+  constructorKinds: string
+  constructors: string
+  declarations: string
+  declarationMembers: string[]
+  expressionMembers: string[]
+  fieldLayouts: string
+  generatedRules: string
+  renderMembers: string[]
+  visibility: string
+  providers: string
+  semanticKinds: string[]
+}
 
 async function readNodeMetadata(path: string): Promise<NodeMetadata[]> {
   return JSON.parse(await FileSystem.readFile(path, 'utf8')) as NodeMetadata[]
@@ -66,17 +84,21 @@ function generateSemanticAst(nodes: NodeMetadata[], grammar: GrammarMetadata, me
   return renderSemanticAst(createSemanticAstModel(nodes, grammar, metadata))
 }
 
-function createSemanticAstModel(nodes: NodeMetadata[], grammar: GrammarMetadata, metadata: SemanticMetadata) {
+function createSemanticAstModel(
+  nodes: NodeMetadata[],
+  grammar: GrammarMetadata,
+  metadata: SemanticMetadata,
+): SemanticAstModel {
   const concreteNodes = uniqueNodes(
     nodes.filter(isConcreteSemanticNode),
     metadata,
   )
-  const types = unique(['File', ...concreteNodes.map(node => semanticName(node.type, metadata))])
+  const types = Lists.unique(['File', ...concreteNodes.map(node => semanticName(node.type, metadata))])
   const declarationMembers = subtypeNames(nodes, '_Declaration').map(name => semanticName(name, metadata))
   const expressionMembers = subtypeNames(nodes, '_Expression').map(name => semanticName(name, metadata))
   const renderMembers = subtypeNames(nodes, '_ViewRenderStatement').map(name => semanticName(name, metadata))
   const declarations = generateDeclarations(concreteNodes, metadata)
-  const semanticKinds = unique(['Name', ...types])
+  const semanticKinds = Lists.unique(['Name', ...types])
   const generatedRules = emitSemanticKinds(semanticKinds)
   const constructorKinds = generateConstructorKinds(nodes, metadata)
   const fieldLayouts = generateFieldLayouts(nodes.filter(node => node.named && !node.subtypes), metadata)
@@ -88,11 +110,11 @@ function createSemanticAstModel(nodes: NodeMetadata[], grammar: GrammarMetadata,
     constructorKinds,
     constructors,
     declarations,
-    declarationMembers: unique(declarationMembers),
-    expressionMembers: unique(expressionMembers),
+    declarationMembers: Lists.unique(declarationMembers),
+    expressionMembers: Lists.unique(expressionMembers),
     fieldLayouts,
     generatedRules,
-    renderMembers: unique(renderMembers),
+    renderMembers: Lists.unique(renderMembers),
     visibility: tokenUnion(grammar.rules.Visibility),
     providers: tokenUnion(grammar.rules.RequirementProvider),
     semanticKinds,
@@ -127,7 +149,7 @@ function generateSemanticTypes(nodes: NodeMetadata[], metadata: SemanticMetadata
   return { blockStatementUnions, blocks, unions }
 }
 
-function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata) {
+function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata): SemanticBlockKinds {
   return Object.fromEntries(
     Object.entries(metadata.blocks).map(([name, block]) => [
       name,
@@ -136,7 +158,7 @@ function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata) {
   )
 }
 
-function renderSemanticAst(model: ReturnType<typeof createSemanticAstModel>): string {
+function renderSemanticAst(model: SemanticAstModel): string {
   return `// @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.\n`
     + `import type * as CST from '@cst'\nimport { Construct } from '../ast-gen-src/AST/AST-construction'\n`
     + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly start: number; readonly end: number } & Readonly<Fields>\n`
@@ -220,7 +242,7 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
     generatedFields.push('  value: string')
   }
   return `export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {\n${
-    unique(generatedFields).join(';\n')
+    Lists.unique(generatedFields).join(';\n')
   }\n}>`
 }
 
@@ -230,7 +252,7 @@ function overrideOmitsOptionality(override?: string): boolean {
 
 function fieldType(types: { type: string }[], metadata: SemanticMetadata): string {
   const semanticTypes = types.map(type => semanticName(type.type, metadata))
-  const mapped = unique(semanticTypes).map(mapFieldType)
+  const mapped = Lists.unique(semanticTypes).map(mapFieldType)
   return mapped.join(' | ') || 'never'
 }
 
@@ -269,7 +291,7 @@ function uniqueNodes(nodes: NodeMetadata[], metadata?: SemanticMetadata): NodeMe
 
 function resolveMembers(members: readonly string[], nodes: NodeMetadata[], metadata: SemanticMetadata): string[] {
   const expanded = members.flatMap(name => subtypeNames(nodes, name).length ? subtypeNames(nodes, name) : [name])
-  return unique(expanded.map(name => semanticName(name, metadata)))
+  return Lists.unique(expanded.map(name => semanticName(name, metadata)))
 }
 
 function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
@@ -277,7 +299,7 @@ function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata)
     nodes.filter(node => node.named && !node.subtypes && !omittedRules.has(node.type)),
     metadata,
   )
-  const kinds = unique(['File', 'Block', 'Name', ...constructors.map(node => semanticName(node.type, metadata))])
+  const kinds = Lists.unique(['File', 'Block', 'Name', ...constructors.map(node => semanticName(node.type, metadata))])
   const entries = kinds.map(kind =>
     kind === 'Block'
       ? `export function Block(cst: CST.SyntaxNode): Block<Node> { return Construct(cst, 'Block') }`
@@ -293,23 +315,17 @@ function subtypeNames(nodes: NodeMetadata[], name: string): string[] {
 }
 
 function tokenUnion(rule: OptionalGrammarRule): string {
-  return unique(GrammarTraversal.collectOwnedTokens(rule)).map(emitSemanticStringLiteral).join(' | ') || 'never'
+  return Lists.unique(GrammarTraversal.collectOwnedTokens(rule)).map(emitSemanticStringLiteral).join(' | ') || 'never'
 }
-
-type BlockKinds = ReturnType<typeof generateBlockKinds>
 
 function emitSemanticKinds(kinds: readonly string[]): string {
   return JSON.stringify(kinds)
 }
 
-function emitBlockKinds(kinds: BlockKinds): string {
+function emitBlockKinds(kinds: SemanticBlockKinds): string {
   return JSON.stringify(kinds)
 }
 
 function emitSemanticStringLiteral(value: string): string {
   return JSON.stringify(value)
-}
-
-function unique(values: readonly string[]): string[] {
-  return [...new Set(values)]
 }

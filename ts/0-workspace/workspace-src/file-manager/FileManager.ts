@@ -1,10 +1,10 @@
 import { Errors, Time, Try } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
-import { Document } from './Document'
+import { Document } from '../Document'
+import { findNearestProjectRoot } from '../modules/Paths'
+import type { UpdateResult } from '../Workspace'
 import * as FileManagerCompilation from './FileManagerCompilation'
 import * as FileManagerInputs from './FileManagerInputs'
-import { findNearestProjectRoot } from './modules/Paths'
-import type { UpdateResult } from './Workspace'
 
 export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileManagerCompilation'
 

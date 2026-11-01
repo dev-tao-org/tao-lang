@@ -5,10 +5,11 @@ import { createProjectDependencyOptions } from '../../workspace-src/dependencies
 import { prepareDependencies } from '../../workspace-src/dependencies/Store'
 import { initializeProject } from '../../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../../workspace-src/ProjectWorkspace'
+import type { WorkspaceSession } from '../../workspace-src/Workspace'
 
 Tests.test('project workspaces isolate named outputs and retain exclusive ownership until disposal', async () => {
   const root = Artifacts.resolvePath('tmp', `project-workspace-${Platform.randomUUID()}`)
-  const workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
+  const workspaces: WorkspaceSession[] = []
   await Try(() => verifyProjectWorkspaces(root, workspaces), {
     finally: () => disposeProjectWorkspaces(root, workspaces),
   })
@@ -16,7 +17,7 @@ Tests.test('project workspaces isolate named outputs and retain exclusive owners
 
 async function verifyProjectWorkspaces(
   root: string,
-  workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[],
+  workspaces: WorkspaceSession[],
 ): Promise<void> {
   const entry = await createProjectEntry(root)
   const runtimeOptions = await prepareLocalRuntime(root)
@@ -65,7 +66,7 @@ async function prepareLocalRuntime(root: string): Promise<{
 
 async function disposeProjectWorkspaces(
   root: string,
-  workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[],
+  workspaces: WorkspaceSession[],
 ): Promise<void> {
   for (const workspace of workspaces) {
     await workspace.dispose()

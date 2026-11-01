@@ -36,7 +36,7 @@ async function runCapturedCommand(command: string, options: RunOptions = {}): Pr
 }
 
 async function readCommandResult(
-  child: ReturnType<typeof Platform.spawnPiped<ProcessInputMode>>,
+  child: Platform.PipedChildProcess<ProcessInputMode>,
   timeoutMs?: number,
 ): Promise<CommandResult> {
   const cancel = timeoutMs === undefined

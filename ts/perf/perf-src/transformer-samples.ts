@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Timings, type TimingSample } from '@shared'
 
+import type { Parser } from '@grammar/parser'
 import { Repo, Tests } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
@@ -27,7 +28,7 @@ const sampleCompilation = Timings.createTopLevelTimer(
   async function(
     timings,
     source: string,
-    parser: ReturnType<typeof createParser>,
+    parser: Parser,
     index: number,
     samples: TransformerSample[],
   ) {
@@ -45,7 +46,7 @@ const sampleCompilation = Timings.createTopLevelTimer(
 const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async function(
   timings,
   source: string,
-  parser: ReturnType<typeof createParser>,
+  parser: Parser,
 ) {
   const tree = timings.run(parser.parse, source)
   const document = timings.run(transform, tree)

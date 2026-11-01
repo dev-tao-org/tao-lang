@@ -9,8 +9,8 @@ Tests.test('runtime packaging replaces workspace roots while preserving locked r
     overrides: { unrelated: { dependency: '1.0.0' } },
     packages: {
       '@tao/runtime': ['@tao/runtime@workspace:7-runtime'],
-      expo: ['expo@57.0.30', '', { dependencies: { react: '19.2.3' } }, 'expo-integrity'],
-      react: ['react@19.2.3', '', {}, 'react-integrity'],
+      'expo': ['expo@57.0.30', '', { dependencies: { react: '19.2.3' } }, 'expo-integrity'],
+      'react': ['react@19.2.3', '', {}, 'react-integrity'],
       '@types/react': ['@types/react@19.2.0', '', {}, 'types-react-integrity'],
       '@types/react-dom': ['@types/react-dom@19.2.0', '', {}, 'types-react-dom-integrity'],
     },
@@ -29,8 +29,8 @@ Tests.test('runtime packaging replaces workspace roots while preserving locked r
     },
   })
   Tests.expect(packaged.packages).toEqual({
-    expo: ['expo@57.0.30', '', { dependencies: { react: '19.2.3' } }, 'expo-integrity'],
-    react: ['react@19.2.3', '', {}, 'react-integrity'],
+    'expo': ['expo@57.0.30', '', { dependencies: { react: '19.2.3' } }, 'expo-integrity'],
+    'react': ['react@19.2.3', '', {}, 'react-integrity'],
     '@types/react': ['@types/react@19.2.0', '', {}, 'types-react-integrity'],
     '@types/react-dom': ['@types/react-dom@19.2.0', '', {}, 'types-react-dom-integrity'],
   })

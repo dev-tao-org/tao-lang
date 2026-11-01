@@ -324,7 +324,7 @@ function createTypeScriptDefaults(): string {
           lib: ['ES2022', 'DOM'],
           paths: {
             ...runtimeTypeScriptPaths(),
-            react: ['node_modules/@types/react'],
+            'react': ['node_modules/@types/react'],
             'react/*': ['node_modules/@types/react/*'],
             'react-native': ['node_modules/react-native'],
             'react-native/*': ['node_modules/react-native/*'],

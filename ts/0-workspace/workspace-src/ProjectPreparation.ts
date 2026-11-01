@@ -17,7 +17,7 @@ import { ProjectDependencies } from './ProjectDependencies'
 import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
-import * as ManagedModules from './sidecars/ManagedModules'
+import * as ManagedModules from './sidecars/managed-modules/ManagedModules'
 
 /** PreparationOptions supplies explicit updates and local dependency-fixture adapters. */
 export type PreparationOptions = {
@@ -41,7 +41,9 @@ export async function prepareProject(
   options: PreparationOptions = {},
 ): Promise<void> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  }
   await ensureProjectMetadata(project.root)
   const lifecycle = await Lifecycle.acquireProjectLifecycle(project.root)
   if (!lifecycle) {
@@ -49,7 +51,9 @@ export async function prepareProject(
   }
   return await Try(async () => {
     const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
-      ?? Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
+    if (!lock) {
+      Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
+    }
     return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
   }, { finally: lifecycle.release })
 }
@@ -60,7 +64,9 @@ export async function inspectProjectPreparation(
   options: ProjectPreparationInspectionOptions = {},
 ): Promise<void> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  }
   const input = await loadProjectManagedInput(entry, options)
   requireReachableManagedModule(input, options.moduleRoot)
   if (!input) {
@@ -159,7 +165,9 @@ async function loadProjectManagedInput(
   options: Pick<PreparationOptions, ProjectPreparationOption> = {},
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  }
   const dependencies = new ProjectDependencies(
     project.root,
     options.dependencyOptions ?? await createProjectDependencyOptions(project.root),
@@ -206,7 +214,9 @@ async function prepareEntrySources(
   services: DependencyStoreOptions,
 ): Promise<SourceModule[]> {
   const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
-    ?? Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
+  if (!lock) {
+    Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
+  }
   const resolutions = new Map<string, Promise<{ root: string }>>()
   const resolvedPins = new Map<string, string>()
   return await Try(() =>
@@ -214,7 +224,10 @@ async function prepareEntrySources(
       resolveProject(importer, alias) {
         const owner = findNearestProjectRoot(Path.dirname(importer)) ?? root
         const key = `${owner}:${alias}`
-        const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services, resolvedPins)
+        let resolved = resolutions.get(key)
+        if (resolved === undefined) {
+          resolved = prepareSourceDependency(root, owner, alias, services, resolvedPins)
+        }
         resolutions.set(key, resolved)
         return resolved
       },
@@ -228,7 +241,9 @@ async function loadEntry(
 ): Promise<SourceModule[]> {
   const parser = createParser()
   const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')))
-    ?? Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
+  if (document === undefined) {
+    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
+  }
   return await loadModules(
     { path: entry, document },
     {

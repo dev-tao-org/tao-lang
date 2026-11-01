@@ -1,8 +1,8 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { satisfies, valid, validRange } from 'semver'
 import TypeScript from 'typescript'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 import * as ManagedTypes from './ManagedModuleTypes'
 import * as PackageMetadata from './ManagedPackageMetadata'
 
@@ -104,12 +104,7 @@ export async function auditInstalledGraph(
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
 ): Promise<void> {
   const packages = await installedPackages(profile, collectAllRequirements(requirements, input.runtimePins))
-  const singletons = new Set([
-    ...defaultSingletonPackages,
-    ...input.singletonPackages ?? [],
-    ...Object.keys(input.runtimePins),
-    ...packages.filter(item => item.native).map(item => item.name),
-  ])
+  const singletons = collectSingletonPackageNames(input, packages)
   for (const name of singletons) {
     validateSingleton(name, packages, input.runtimePins[name])
   }
@@ -122,7 +117,7 @@ export async function listNativePackageNames(profile: string): Promise<string[]>
   const packages = await installedPackages(profile, dependencies)
   const nativePackages = packages.filter(item => item.native)
   const nativePackageNames = nativePackages.map(item => item.name)
-  const uniqueNativePackageNames = [...new Set(nativePackageNames)]
+  const uniqueNativePackageNames = Lists.unique(nativePackageNames)
   return uniqueNativePackageNames.sort()
 }
 
@@ -138,6 +133,16 @@ type InstalledPackage = {
 }
 
 type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string> }
+
+function collectSingletonPackageNames(
+  input: ManagedTypes.ManagedModulesInput,
+  packages: readonly InstalledPackage[],
+): string[] {
+  const declaredSingletons = input.singletonPackages ?? []
+  const runtimePackageNames = Object.keys(input.runtimePins)
+  const nativePackageNames = packages.filter(item => item.native).map(item => item.name)
+  return Lists.unique(defaultSingletonPackages, declaredSingletons, runtimePackageNames, nativePackageNames)
+}
 
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {
@@ -273,7 +278,7 @@ async function loadPackageDependencies(
   metadata: PackageMetadata.ManagedMetadataFields,
 ): Promise<void> {
   const optionalDependencies = PackageMetadata.readStringEntries(metadata.optionalDependencies)
-  const dependencies = { ...PackageMetadata.readStringEntries(metadata.dependencies), ...optionalDependencies }
+  const dependencies = collectPackageDependencies(metadata, optionalDependencies)
   for (const [name, range] of Object.entries(dependencies)) {
     await loadPackage(graph, name, directory, range, name in optionalDependencies)
   }
@@ -281,6 +286,14 @@ async function loadPackageDependencies(
   for (const [name, range] of Object.entries(PackageMetadata.readStringEntries(metadata.peerDependencies))) {
     await loadPackage(graph, name, directory, range, optionalPeers.has(name), true)
   }
+}
+
+function collectPackageDependencies(
+  metadata: PackageMetadata.ManagedMetadataFields,
+  optionalDependencies: ManagedTypes.ManagedPackageVersionMap,
+): ManagedTypes.ManagedPackageVersionMap {
+  const requiredDependencies = PackageMetadata.readStringEntries(metadata.dependencies)
+  return { ...requiredDependencies, ...optionalDependencies }
 }
 
 function validateRange(name: string, actual: string, range: DependencyVersionRange, peer: boolean): void {

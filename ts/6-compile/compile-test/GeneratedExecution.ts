@@ -59,8 +59,11 @@ function resolveGeneratedPath(
 ): string {
   const target = Path.join(Path.dirname(parent), specifier)
   const candidates = [`${target}.ts`, `${target}.tsx`, target]
-  return candidates.find(candidate => candidate in files)
-    ?? Errors.ThrowShouldNeverHappen(`Generated import ${specifier} from ${parent} is missing.`)
+  const resolved = candidates.find(candidate => candidate in files)
+  if (resolved === undefined) {
+    Errors.ThrowShouldNeverHappen(`Generated import ${specifier} from ${parent} is missing.`)
+  }
+  return resolved
 }
 
 function transpile(source: string, path: string): string {
@@ -69,8 +72,7 @@ function transpile(source: string, path: string): string {
     compilerOptions: { module: TypeScript.ModuleKind.CommonJS, target: TypeScript.ScriptTarget.ES2022 },
     reportDiagnostics: true,
   })
-  const errors = output.diagnostics?.filter(diagnostic => diagnostic.category === TypeScript.DiagnosticCategory.Error)
-    ?? []
+  const errors = collectTranspileErrors(output)
   if (errors.length > 0) {
     Errors.ThrowUserInput(
       `Generated TypeScript failed to transpile in ${path}: ${errors.map(error => error.messageText).join('; ')}`,
@@ -80,3 +82,10 @@ function transpile(source: string, path: string): string {
 }
 
 type GeneratedModule = { exports: Record<string, unknown> }
+
+function collectTranspileErrors(output: TypeScript.TranspileOutput): TypeScript.Diagnostic[] {
+  if (!output.diagnostics) {
+    return []
+  }
+  return output.diagnostics.filter(diagnostic => diagnostic.category === TypeScript.DiagnosticCategory.Error)
+}

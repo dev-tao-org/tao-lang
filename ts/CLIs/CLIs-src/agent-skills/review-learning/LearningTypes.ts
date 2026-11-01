@@ -60,6 +60,19 @@ export type LearningState = {
   events: { group: string; scans: string[]; pending: string[] }[]
 }
 
+/** LearningStatus exposes retained history and the identifiers of completed proposals. */
+export type LearningStatus = LearningState & { appliedProposals: string[] }
+
+/** ReviewLearningCommandResult preserves every public command response shape. */
+export type ReviewLearningCommandResult =
+  | { commands: string[]; scope: string }
+  | LearningStatus
+  | { correction: Correction }
+  | Scan
+  | { proposal: Proposal }
+  | { event: LearningState['events'][number]; protectedFiles: string[] }
+  | { proposal: string; state: Proposal['state']; pendingHumanReview: true }
+
 /** LearningFileHashes maps repository-relative paths to their retained content hashes. */
 export type LearningFileHashes = Record<string, string>
 

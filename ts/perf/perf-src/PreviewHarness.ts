@@ -1,7 +1,7 @@
 import { DefaultAppearance } from '@runtime/client/Appearance'
 import { Errors, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
-import type { createWorkspace } from '@workspace/Workspace'
+import type * as Workspace from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
 import type { PreviewFrameCount } from './PreviewMeasurement'
 import { PreviewPublication } from './PreviewPublication'
@@ -19,7 +19,7 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
 
 /** HarnessOptions binds one browser surface to a workspace and running Expo URL. */
 export type HarnessOptions = {
-  workspace: Workspace
+  workspace: Workspace.WorkspaceSession
   previewUrl: string
   sessionId: string
   /** canonicalSource is the authored fixture text restored by the reset scenario. */
@@ -34,7 +34,6 @@ export type HarnessOptions = {
 /** PreviewHarness exposes a local URL and deterministic resource disposal. */
 export type PreviewHarness = { url: string; dispose(): void }
 
-type Workspace = ReturnType<typeof createWorkspace>
 type OptionalStreamController = Http.StreamController | undefined
 type EditState = { closed: boolean; active: boolean; pending: Set<() => void> }
 type ResolvedHarnessOptions = HarnessOptions & {
@@ -211,7 +210,7 @@ function eventsResponse(
     headers: {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache',
-      connection: 'keep-alive',
+      'connection': 'keep-alive',
     },
   })
 }

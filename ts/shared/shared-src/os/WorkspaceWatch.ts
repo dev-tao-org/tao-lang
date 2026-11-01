@@ -1,5 +1,6 @@
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, Lists, Regxs, Time, Try } from '@shared'
 import { Path } from '@shared/os'
+import type { FSWatcher } from 'chokidar'
 import type { Stats } from './NodeBuiltins'
 import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
 
@@ -14,6 +15,14 @@ export type WorkspaceChange = {
 export type WorkspaceWatcher = {
   updateDirectories?(additionalDirectories: readonly string[], ignoredDirectories: readonly string[]): Promise<void>
   dispose(): Promise<void>
+}
+
+/** WorkspaceWatchSession is the Chokidar handle that observes a workspace tree. */
+export type WorkspaceWatchSession = FSWatcher
+
+type WatchChangeReconciliation = {
+  observe(path: string, stamp: string): void
+  dispose(): void
 }
 
 /** watchWorkspace observes a source tree without following links or debouncing compilation.
@@ -67,11 +76,11 @@ export async function watchWorkspace(
 type WorkspaceChangeKind = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
 
 function dynamicWatcher(
-  watcher: Awaited<ReturnType<typeof createWatcher>>,
+  watcher: WorkspaceWatchSession,
   root: string,
   roots: string[],
   excluded: string[],
-  reconciliation: ReturnType<typeof reconcileWatchChanges>,
+  reconciliation: WatchChangeReconciliation,
   isDisposed: () => boolean,
   dispose: () => void,
 ): WorkspaceWatcher {
@@ -138,7 +147,7 @@ function withinDirectory(root: string, path: string): boolean {
 }
 
 function collectUniquePaths(paths: readonly string[]): string[] {
-  return [...new Set(paths.map(path => Path.resolve(path)))].sort()
+  return Lists.unique(paths.map(path => Path.resolve(path))).sort()
 }
 
 function ignoredName(name: string): boolean {

@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
-import { assertDoctorReady, doctorReport } from '../../cli-checks/doctor'
+import { assertDoctorReady, type DoctorReport, doctorReport } from '../../cli-checks/doctor'
 import { registerCommand } from './_command-runner'
 
 /** doctorCommand reports setup issues or explicitly requested environment diagnostics. */
@@ -33,7 +33,6 @@ export default registerCommand({
   },
 })
 
-type DoctorReport = Awaited<ReturnType<typeof doctorReport>>
 type DoctorOutput = DoctorReport | DoctorReport['fingerprint']
 
 function formatDoctorOutput(report: DoctorOutput): string {

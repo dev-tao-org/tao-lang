@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 /** ManagedFixture holds the paths and executor used by managed module graph tests. */
 export type ManagedFixture = {
@@ -129,5 +129,5 @@ async function writeFixtureLock(root: string): Promise<void> {
   if (await FileSystem.exists(path)) {
     return
   }
-  await writeLock(root, { react: '19.1.0', 'date-fns': '4.1.0' })
+  await writeLock(root, { 'react': '19.1.0', 'date-fns': '4.1.0' })
 }

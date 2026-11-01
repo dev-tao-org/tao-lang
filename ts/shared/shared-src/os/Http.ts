@@ -18,6 +18,12 @@ export type HttpResponse = globalThis.Response
 /** Bytes describes raw HTTP response bytes at the platform boundary. */
 export type Bytes = Uint8Array
 
+/** HttpAbortController owns cancellation for platform HTTP operations. */
+export type HttpAbortController = AbortController
+
+/** HttpAbortSignal carries cancellation across platform HTTP operations. */
+export type HttpAbortSignal = AbortSignal
+
 type ResponseBody = BodyInit | null
 /** response creates an HTTP response through the platform boundary. */
 export function response(body: ResponseBody = null, init?: ResponseInit): Response {
@@ -45,7 +51,7 @@ export async function request(url: string, init?: RequestInit): Promise<Response
 }
 
 /** createAbortController creates a cancellation source for bounded platform requests. */
-export function createAbortController(): AbortController {
+export function createAbortController(): HttpAbortController {
   return new AbortController()
 }
 

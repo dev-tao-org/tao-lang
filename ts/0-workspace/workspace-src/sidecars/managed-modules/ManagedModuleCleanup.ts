@@ -1,6 +1,6 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
 
 type ModuleMetadataFields = {
@@ -39,7 +39,7 @@ export async function cleanManagedModuleMetadata(
 async function findManagedModuleMarkers(roots: readonly string[]): Promise<string[]> {
   const rootResults = await Promise.all(roots.map((root, index) => walkRoot(root, index > 0)))
   const markerPaths = rootResults.flat().filter(path => Path.basename(path) === '.tao-managed-module.json')
-  return [...new Set(markerPaths)]
+  return Lists.unique(markerPaths)
 }
 
 async function walkRoot(root: string, optional: boolean): Promise<string[]> {

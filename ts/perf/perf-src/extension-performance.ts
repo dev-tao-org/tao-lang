@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Lists, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createWasmDocumentSession } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/core'
 import { semanticTokenRanges } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/SemanticTokens'
@@ -66,8 +66,8 @@ type ExtensionPerformanceReport = {
   modified: boolean
   definition: string
   fixtureHash: string
-  system: ReturnType<typeof Platform.systemInfo>
-  summary: ReturnType<typeof summarize>
+  system: Platform.SystemInformation
+  summary: ExtensionPerformanceSummary
   samples: Sample[]
 }
 
@@ -75,8 +75,15 @@ function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport)
   return JSON.stringify(report, null, 2)
 }
 
-function summarize(samples: Sample[]) {
-  const phases = [...new Set(samples.map(sample => sample.phase))]
+type ExtensionPerformanceSummary = {
+  phase: string
+  count: number
+  medianMs: number
+  p95Ms: number
+}[]
+
+function summarize(samples: Sample[]): ExtensionPerformanceSummary {
+  const phases = Lists.unique(samples.map(sample => sample.phase))
   return phases.map(phase => {
     const values = samples.filter(sample => sample.phase === phase).map(sample => sample.durationMs).sort((a, b) =>
       a - b

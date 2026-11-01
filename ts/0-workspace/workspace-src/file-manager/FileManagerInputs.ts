@@ -1,7 +1,7 @@
 import { Timings } from '@shared'
-import { Document, type DocumentSnapshot } from './Document'
+import { Document, type DocumentSnapshot } from '../Document'
+import type { UpdateResult } from '../Workspace'
 import * as Compilation from './FileManagerCompilation'
-import type { UpdateResult } from './Workspace'
 
 /** SourceUpdateInput selects authored text or a manager-owned versioned document. */
 export type SourceUpdateInput = string | Document

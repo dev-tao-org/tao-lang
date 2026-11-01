@@ -4,7 +4,7 @@ import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { applyLearningProposal, findScan, preflightProposal } from './LearningPatches'
 import { runCandidateScan } from './LearningQueries'
 import { safeSourcePath, withLearningState } from './LearningStore'
-import type { LearningState } from './LearningTypes'
+import type { LearningState, LearningStatus, ReviewLearningCommandResult } from './LearningTypes'
 import { readLearningInput, requireId, requirePaths, validateCorrection, validateProposal } from './LearningValidation'
 
 /** main prints the review-learning skill result without changing Git state. */
@@ -13,7 +13,7 @@ export async function main(): Promise<void> {
 }
 
 /** runLearning executes correction capture, candidate scans and the guarded patch queue. */
-export async function runLearning(args: string[]): Promise<Record<string, unknown>> {
+export async function runLearning(args: string[]): Promise<ReviewLearningCommandResult> {
   const command = args[0]
   if (!command || ['help', '--help', '-h'].includes(command)) {
     return {
@@ -40,9 +40,7 @@ export async function runLearning(args: string[]): Promise<Record<string, unknow
 type Options = Map<string, string[]>
 type OptionalOptionName = string | undefined
 
-type LearningResult = Awaited<ReturnType<typeof runLearning>>
-
-function formatLearningResult(result: LearningResult): string {
+function formatLearningResult(result: ReviewLearningCommandResult): string {
   return JSON.stringify(result, null, 2)
 }
 
@@ -50,12 +48,9 @@ async function executeCommand(
   command: string,
   options: Options,
   state: LearningState,
-): Promise<Record<string, unknown>> {
+): Promise<ReviewLearningCommandResult> {
   if (command === 'status') {
-    return {
-      ...state,
-      appliedProposals: state.proposals.filter(proposal => proposal.state === 'applied').map(proposal => proposal.id),
-    }
+    return describeLearningStatus(state)
   }
   if (command === 'capture') {
     const correction = validateCorrection(state.root, await readLearningInput(required(options, 'input')))
@@ -69,7 +64,9 @@ async function executeCommand(
   if (command === 'scan') {
     const id = required(options, 'rule')
     const correction = state.corrections.find(record => record.id === id)
-      ?? Errors.ThrowUserInput(`Unknown correction: ${id}`)
+    if (!correction) {
+      Errors.ThrowUserInput(`Unknown correction: ${id}`)
+    }
     const files = requirePaths(state.root, options.get('files') ?? [], 'files')
     const scan = await runCandidateScan(state.root, correction, files)
     state.scans.push(scan)
@@ -86,11 +83,16 @@ async function executeCommand(
   return await executeQueueCommand(command, options, state)
 }
 
+function describeLearningStatus(state: LearningState): LearningStatus {
+  const appliedProposals = state.proposals.filter(proposal => proposal.state === 'applied').map(proposal => proposal.id)
+  return { ...state, appliedProposals }
+}
+
 async function executeQueueCommand(
   command: string,
   options: Options,
   state: LearningState,
-): Promise<Record<string, unknown>> {
+): Promise<ReviewLearningCommandResult> {
   if (command === 'checkpoint') {
     state.protectedFiles = requirePaths(
       state.root,
@@ -108,7 +110,9 @@ async function executeQueueCommand(
   if (command === 'apply' || command === 'recover') {
     const id = required(options, 'proposal')
     const proposal = state.proposals.find(record => record.id === id)
-      ?? Errors.ThrowUserInput(`Unknown proposal: ${id}`)
+    if (!proposal) {
+      Errors.ThrowUserInput(`Unknown proposal: ${id}`)
+    }
     const protectedFiles = (options.get('protected-files') ?? []).map(file => safeSourcePath(state.root, file, true))
     await applyLearningProposal(state, proposal, protectedFiles)
     return { proposal: id, state: proposal.state, pendingHumanReview: true }

@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { initializeProject } from '@workspace/projects/Projects'
-import type { BunExecutor } from '@workspace/sidecars/ManagedModules'
+import type { BunExecutor } from '@workspace/sidecars/managed-modules/ManagedModules'
 import { runSidecarTests } from '@workspace/testing/SidecarTests'
 import { withProjectSessions } from '../tao-cli/ProjectCommand'
 

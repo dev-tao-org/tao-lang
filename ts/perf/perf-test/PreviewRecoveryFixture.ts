@@ -2,7 +2,7 @@ import * as Runtime from '@runtime/Runtime'
 import { Errors, S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo, Tests } from '@shared/os'
 import { createProject, createWorkspace } from '@workspace/Workspace'
-import { createPreviewHarness } from '../perf-src/PreviewHarness'
+import { createPreviewHarness, type PreviewHarness } from '../perf-src/PreviewHarness'
 
 /** withRecoveryPreview runs the real dual-frame host against a controlled render fixture. */
 export async function withRecoveryPreview(
@@ -50,8 +50,8 @@ export type RecoveryFixture = {
 
 type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
 type OptionalExpoSession = Runtime.ExpoSession | undefined
-type OptionalRecoveryBrowser = Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
-type OptionalRecoveryHost = Awaited<ReturnType<typeof createPreviewHarness>> | undefined
+type OptionalRecoveryBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
+type OptionalRecoveryHost = PreviewHarness | undefined
 
 async function createRecoveryWorkspace(root: string) {
   const project = await createProject({ directory: Path.join(root, 'project') })

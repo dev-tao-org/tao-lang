@@ -5,6 +5,9 @@ import * as Platform from './Platform'
 
 export type { Browser, FrameLocator, Page } from 'playwright'
 
+/** HeadlessBrowserSession is the Playwright browser handle owned by one headless operation. */
+export type HeadlessBrowserSession = Browser
+
 /** TestBrowser provides isolated headless UI operations for app journeys. */
 export type TestBrowser = {
   open(url: string): Promise<void>
@@ -16,7 +19,10 @@ export type TestBrowser = {
 }
 
 /** launch starts isolated headless Chrome after checking host access. */
-export async function launch(operation: string, options: { handleSignals?: boolean } = {}): Promise<Browser> {
+export async function launch(
+  operation: string,
+  options: { handleSignals?: boolean } = {},
+): Promise<HeadlessBrowserSession> {
   if (Platform.systemInfo().os === 'Darwin') {
     await Platform.requireHostProcessAccess(`Run ./agent unsandboxed ${operation}; Chrome was not launched.`)
   }

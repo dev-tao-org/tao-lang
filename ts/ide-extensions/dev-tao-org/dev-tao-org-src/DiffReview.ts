@@ -41,15 +41,36 @@ export async function chooseDiffBase(
         : 'This worktree has a detached HEAD. Use Dev Tao: Change Diff Base to select an existing branch.',
     )
   }
-  const preferred = saved ?? inferred
-  const selected = preferred && branches.includes(preferred) ? preferred : branches.find(branch => branch === 'main')
-    ?? branches.find(branch => branch === 'origin/main')
+  const preferred = choosePreferredBase(saved, inferred, branches)
+  const selected = preferred && branches.includes(preferred) ? preferred : chooseDefaultBase(branches)
   const chosen = await pick(branches, selected)
   if (chosen && branches.includes(chosen)) {
     await storage.update(key, chosen)
     return chosen
   }
   return undefined
+}
+
+function choosePreferredBase(
+  saved: OptionalBranchName,
+  inferred: OptionalBranchName,
+  branches: readonly string[],
+): OptionalBranchName {
+  if (saved !== undefined) {
+    return saved
+  }
+  if (inferred !== undefined) {
+    return inferred
+  }
+  return chooseDefaultBase(branches)
+}
+
+function chooseDefaultBase(branches: readonly string[]): OptionalBranchName {
+  const localMain = branches.find(branch => branch === 'main')
+  if (localMain !== undefined) {
+    return localMain
+  }
+  return branches.find(branch => branch === 'origin/main')
 }
 
 /** diffArguments places the comparison branch left of the current working file, preserving addition semantics. */

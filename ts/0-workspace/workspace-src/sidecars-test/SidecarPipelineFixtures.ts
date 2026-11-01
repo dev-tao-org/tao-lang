@@ -1,9 +1,11 @@
+import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
+import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
-import type { SidecarCommandResult } from '../sidecars/ManagedModuleTypes'
+import type { SidecarCommandResult } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 /** Fixture owns the isolated source module and prepared sidecar contract paths. */
 export type Fixture = {
@@ -12,11 +14,14 @@ export type Fixture = {
   nodeModulesDirectory: string
   dependencyFingerprint: string
   target: string
-  program: ReturnType<typeof createProgramFor>
+  program: SidecarFixtureProgram
   directory: string
   moduleRoot: string
   taoPath: string
 }
+
+/** SidecarFixtureProgram keeps its fixture-owned module list editable between contract scenarios. */
+export type SidecarFixtureProgram = Omit<LinkedProgram, 'modules'> & { modules: LinkedModule[] }
 
 /** withFixture runs a sidecar assertion and removes only its isolated fixture afterward. */
 export async function withFixture(action: (fixture: Fixture) => Promise<void>): Promise<void> {
@@ -51,7 +56,7 @@ export async function executeTypeScript(
 }
 
 /** createProgramFor links one parsed source module for a sidecar contract fixture. */
-export function createProgramFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
+export function createProgramFor(path: string, document: AST.Document): SidecarFixtureProgram {
   return {
     entry: path,
     modules: [{ path, document, bindings: [] }],

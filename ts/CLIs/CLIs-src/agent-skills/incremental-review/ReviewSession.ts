@@ -1,7 +1,7 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { Errors, Lists, NullCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import { assertSupportedTransforms, git, head, readJson, snapshot, tree, writeJson } from './ReviewGit'
-import type { ReviewJournal, ReviewSession } from './ReviewTypes'
+import type { ReviewJournal, ReviewSession, ReviewStatus } from './ReviewTypes'
 
 /** withReviewLock serializes operations without leaving stale locks after interruption. */
 export async function withReviewLock<Value>(root: string, action: () => Promise<Value>): Promise<Value> {
@@ -161,7 +161,7 @@ export async function requireCleanReviewed(session: ReviewSession): Promise<void
 }
 
 /** reviewStatus compares reviewed content directly with the implementation's saved working snapshot. */
-export async function reviewStatus(session: ReviewSession): Promise<Record<string, unknown>> {
+export async function reviewStatus(session: ReviewSession): Promise<ReviewStatus> {
   await assertOwnedSession(session)
   const sourceHead = await head(session.root)
   const reviewedHead = await head(session.reviewedRoot)
@@ -177,7 +177,7 @@ export async function reviewStatus(session: ReviewSession): Promise<Record<strin
     reviewedHead,
     reviewedRoot: session.reviewedRoot,
     pending,
-    recheck: [...new Set([...session.recheck, ...recheck])],
+    recheck: Lists.unique(session.recheck, recheck),
     notes: session.notes,
     journal: journal?.phase,
     outline: await git(session.root, ['diff', '--stat', reviewedHead, diskTree]),

@@ -3,7 +3,7 @@ import { createParser } from '@grammar/parser'
 import { S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
-import { ensureTypeScriptDefaults } from '../sidecars/ManagedModuleMetadata'
+import { ensureTypeScriptDefaults } from '../sidecars/managed-modules/ManagedModuleMetadata'
 import { createProgramFor, executeTypeScript, recordingExecutor, withFixture } from './SidecarPipelineFixtures'
 
 const ForeignViewSidecarImportErrorRegx = /Cannot resolve foreign view sidecar import/

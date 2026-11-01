@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '../universal/universal'
+import { Errors, Lists, Time, Try } from '../universal/universal'
 import * as FileSystem from './FileSystem'
 import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFile, writeFileSync } from './NodeBuiltins'
 import * as Path from './Path'
@@ -53,7 +53,7 @@ export async function cleanPartial(): Promise<number> {
 export function expiredTemporaryArtifacts(runs: readonly TemporaryRun[], now: number): string[] {
   const retained = runs.filter(run => !isExpiredRun(run, now)).flatMap(run => run.artifacts)
   const expired = runs.filter(run => isExpiredRun(run, now)).flatMap(run => run.artifacts)
-  return [...new Set(expired)].filter(path => !retained.some(kept => pathsOverlap(path, kept)))
+  return Lists.unique(expired).filter(path => !retained.some(kept => pathsOverlap(path, kept)))
 }
 
 type TemporaryRunStatus = 'running' | 'succeeded' | 'failed'

@@ -34,7 +34,32 @@ const branch = 'feat/landing'
 const pending = `.artifacts/notes/preview-history/${source}`
 const fixture = 'App Hello\n'
 
-function initialState() {
+type RecordingLandingState = {
+  dirty: string
+  storageDirty: string
+  integrated: boolean
+  implementation: boolean
+  prOpen: boolean
+  merged: boolean
+  fail: string
+  remoteHead: string
+  localArchivePaths: string
+  archiveBase: string
+  localHead: string
+  advanceHeadOn: string
+  localArchiveHead: string
+  advanceArchiveOn: string
+  pinnedArchive: string
+  userStagedPaths: string
+  committedUserPaths: string
+  pointerPending: boolean
+  pointerParents: string
+  pointerPaths: string
+  crossRepository: boolean
+  integrationChanges: boolean
+}
+
+function initialState(): RecordingLandingState {
   return {
     dirty: '',
     storageDirty: '',
@@ -84,7 +109,7 @@ function commandReply(
   command: string,
   args: readonly string[],
   directory: string,
-  state: ReturnType<typeof initialState>,
+  state: RecordingLandingState,
   calls: string[],
 ): string {
   const storage = directory.endsWith('/.storage')
@@ -108,7 +133,7 @@ function commandReply(
   return gitReply(args, state, storage)
 }
 
-function gitReply(args: readonly string[], state: ReturnType<typeof initialState>, storage: boolean): string {
+function gitReply(args: readonly string[], state: RecordingLandingState, storage: boolean): string {
   applyGitChanges(args, state, storage)
   const exact: Record<string, string> = {
     'branch --show-current': branch,
@@ -119,12 +144,12 @@ function gitReply(args: readonly string[], state: ReturnType<typeof initialState
     'ls-remote --symref origin HEAD': 'ref: refs/heads/main\tHEAD\n',
   }
   const prefixes: Record<string, string> = {
-    status: storage ? state.storageDirty : state.dirty || state.userStagedPaths,
+    'status': storage ? state.storageDirty : state.dirty || state.userStagedPaths,
     'merge-base': state.archiveBase,
-    log: storage ? state.localArchivePaths : 'd'.repeat(40),
+    'log': storage ? state.localArchivePaths : 'd'.repeat(40),
     'rev-list': source,
     'diff-tree': state.implementation ? 'ts/source.ts' : 'AGENTS.md',
-    show: args.includes('--format=%P') ? state.pointerParents : fixture,
+    'show': args.includes('--format=%P') ? state.pointerParents : fixture,
     'ls-remote': `${archive}\trefs/heads/main\n`,
     'ls-files': `160000 ${state.pinnedArchive} 0\t.storage`,
     'ls-tree': `160000 commit ${state.pinnedArchive}\t.storage`,
@@ -146,7 +171,7 @@ function gitReply(args: readonly string[], state: ReturnType<typeof initialState
   Errors.ThrowShouldNeverHappen(`Unrecognized recording Git command: ${words}`)
 }
 
-function applyGitChanges(args: readonly string[], state: ReturnType<typeof initialState>, storage: boolean): void {
+function applyGitChanges(args: readonly string[], state: RecordingLandingState, storage: boolean): void {
   if (args.join(' ') === 'merge --no-edit refs/remotes/origin/main') {
     state.integrated = state.integrationChanges
     if (state.integrated) {
@@ -164,7 +189,7 @@ function applyGitChanges(args: readonly string[], state: ReturnType<typeof initi
   }
 }
 
-function githubReply(command: string, args: readonly string[], state: ReturnType<typeof initialState>): string {
+function githubReply(command: string, args: readonly string[], state: RecordingLandingState): string {
   if (command === 'gh api') {
     return '{"status":"ahead"}'
   }

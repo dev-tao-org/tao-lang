@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Lists, Try } from '@shared'
 import * as vscode from 'vscode'
 import { chooseDiffBase, diffArguments, type OptionalBranchName } from './DiffReview'
 
@@ -40,12 +40,10 @@ async function reviewFile(context: vscode.ExtensionContext, force: boolean): Pro
     await vscode.window.showWarningMessage('The current file does not belong to an available Git repository.')
     return
   }
-  const branches = [
-    ...new Set(
-      (await repository.getBranches({ remote: true }))
-        .map(branch => branch.name).filter((name): name is string => Boolean(name)),
-    ),
-  ].sort()
+  const branches = Lists.unique(
+    (await repository.getBranches({ remote: true }))
+      .map(branch => branch.name).filter((name): name is string => Boolean(name)),
+  ).sort()
   const base = await chooseDiffBase(
     repository.rootUri.toString(),
     repository.state.HEAD?.name,

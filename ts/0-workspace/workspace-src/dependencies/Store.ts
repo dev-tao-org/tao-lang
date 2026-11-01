@@ -86,11 +86,18 @@ export async function prepareSourceDependency(
 ): Promise<{ root: string }> {
   const requirements = await options.readRequirements(owner)
   const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
-    ?? Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
+  if (requirement === undefined) {
+    Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
+  }
   const path = LockFile.resolveDependencyLockPath(projectRoot)
-  const previous =
-    LockFile.materializeLocations(await LockFile.readDependencyLock(path), projectRoot, options.bundledProjects)
-      ?? { version: 2 as const, roots: {}, sources: {}, commitPins: {} }
+  const storedLock = LockFile.materializeLocations(
+    await LockFile.readDependencyLock(path),
+    projectRoot,
+    options.bundledProjects,
+  )
+  const previous = storedLock === undefined
+    ? { version: 2 as const, roots: {}, sources: {}, commitPins: {} }
+    : storedLock
   const identity = createSourceIdentity(requirement, owner, projectRoot)
   const previousSource = resolveSourceForVersion(
     previous.sources[identity],

@@ -13,7 +13,7 @@ type EmbeddedOptions = { indent: number; level: number; width: number; newline: 
 
 const initialize = Timings.measured('formatter.typescript.initialize', function(bytes: Uint8Array) {
   const formatter = createFromBuffer(Uint8Array.from(bytes))
-  formatter.setConfig({}, { semiColons: 'asi', quoteStyle: 'preferSingle', 'jsx.quoteStyle': 'preferDouble' })
+  formatter.setConfig({}, { 'semiColons': 'asi', 'quoteStyle': 'preferSingle', 'jsx.quoteStyle': 'preferDouble' })
   const format: EmbeddedFormatter = (source, options) =>
     Try.WithDefault(undefined, () =>
       formatter.formatText({

@@ -1,9 +1,9 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import * as Graph from './ManagedModuleGraph'
-import * as Metadata from './ManagedModuleMetadata'
-import type * as Types from './ManagedModuleTypes'
+import { requireSetup } from '../../SetupRequired'
+import * as Graph from '../managed-modules/ManagedModuleGraph'
+import * as Metadata from '../managed-modules/ManagedModuleMetadata'
+import type * as Types from '../managed-modules/ManagedModuleTypes'
 import * as Host from './ManagedNpmHost'
 import * as Identity from './ManagedNpmIdentity'
 import * as Lock from './ManagedNpmLock'
@@ -234,7 +234,7 @@ async function persistProfile(
   await FileSystem.chmod(lockfile, 0o444)
 }
 
-function serializeProfileMetadata(metadata: ReturnType<typeof createProfileMetadata>): string {
+function serializeProfileMetadata(metadata: State.ManagedProfileMetadata): string {
   return `${JSON.stringify(metadata, null, 2)}\n`
 }
 

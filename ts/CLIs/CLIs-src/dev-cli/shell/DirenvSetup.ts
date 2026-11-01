@@ -164,10 +164,13 @@ async function installActivation(
   environment: SetupEnvironment,
 ): Promise<void> {
   const profileClient = Path.resolve(root, '.devenv/profile/bin/direnv')
-  const output = environment.resolveDirenvPackage?.(profileClient)
-    ?? (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
+  const resolvedPackage = environment.resolveDirenvPackage?.(profileClient)
+  let output = resolvedPackage
+  if (output === undefined) {
+    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
       Regxs.NixDirenvExecutableRegx,
     )?.[1]
+  }
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
       `Pinned direnv is missing from this checkout. Rebuild the dev environment, then run:\ncd ${

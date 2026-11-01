@@ -1,4 +1,4 @@
-import { createFsFromVolume, Volume } from 'memfs'
+import { createFsFromVolume, type IFs, Volume } from 'memfs'
 import { Errors, NullCharacter, Time } from '../universal/universal'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 import * as Node from './NodeBuiltins'
@@ -63,7 +63,7 @@ export type GeneratedFileSystem = {
 }
 
 /** GeneratedSnapshot retains a complete immutable-by-contract memory filesystem. */
-export type GeneratedSnapshot = ReturnType<typeof createFsFromVolume>
+export type GeneratedSnapshot = IFs
 
 /** FileOperations exposes the dynamic Node filesystem dispatch boundary. */
 export type FileOperations = Record<string, (...args: unknown[]) => unknown>

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Lists } from '@shared'
 import { Path, Platform } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { createConformanceProgram } from '../../cli-checks/source-conformance-program'
@@ -73,7 +73,7 @@ function resolveTarget(
   if (source) {
     visit(source)
   }
-  const unique = [...new Set(found)]
+  const unique = Lists.unique(found)
   if (unique.length !== 1) {
     Errors.ThrowUserInput('call-symbol requires one unambiguous declaration in the scanned scope.')
   }

@@ -1,7 +1,7 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import { requireSetup } from '../../SetupRequired'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from '../managed-modules/ManagedModuleTypes'
 import { type ManagedProfileMetadata, optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
 type InstallHostValue = string | number

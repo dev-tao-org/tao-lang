@@ -1,7 +1,8 @@
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
+import type * as Workspace from '@workspace/Workspace'
+import type { Project, UpdateResult } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
 import * as PreviewMeasurement from './PreviewMeasurement'
 import type { ReloadTiming } from './ReloadTimings'
@@ -23,7 +24,7 @@ export async function previewPerformance(options: PreviewOptions) {
 
 /** PreviewOptions supplies a compile session, generated app, and canonical starting Tao source. */
 export type PreviewOptions = {
-  workspace: ReturnType<typeof createWorkspace>
+  workspace: Workspace.WorkspaceSession
   project: Project
   initialSource: string
   measurement?: Partial<PreviewMeasurement.PreviewMeasurement>
@@ -38,7 +39,7 @@ type Resources = {
   startupMs?: number
   frameSizes?: PreviewFrameSize[]
   harness?: PreviewHarness
-  browser?: HeadlessBrowser.Browser
+  browser?: HeadlessBrowser.HeadlessBrowserSession
 }
 type PreviewResult = {
   scenario: string
@@ -192,16 +193,16 @@ type PreviewPerformanceReport = {
   sessionId: string
   commit: string
   modified: boolean
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   browser: string
   generatedProject: string
   startupMs: Resources['startupMs']
   frameSizes: Resources['frameSizes']
-  measurement: ReturnType<typeof PreviewMeasurement.describeMeasurement>
+  measurement: PreviewMeasurement.MeasurementDescription
   primaryMetric: string
   reloads: ReloadTiming[]
   definitions: PreviewPerformanceDefinitions
-  results: ReturnType<typeof describeResult>[]
+  results: PreviewPerformanceResult[]
 }
 
 type PreviewPerformanceDefinitions = {
@@ -245,7 +246,12 @@ function classifySample(index: number): SampleKind {
   return 'warm'
 }
 
-function describeResult(result: PreviewResult, index: number, frameCount: number) {
+type PreviewPerformanceResult = PreviewResult & {
+  sample: SampleKind
+  parentClickToLastAppliedMs: number
+}
+
+function describeResult(result: PreviewResult, index: number, frameCount: number): PreviewPerformanceResult {
   const frames = Object.values(result.frames)
   if (frames.length !== frameCount) {
     Errors.ThrowShouldNeverHappen(`Measurement ${result.revision} did not collect its complete React receipt quorum.`)

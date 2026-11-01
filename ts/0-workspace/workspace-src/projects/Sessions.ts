@@ -1,7 +1,7 @@
 import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
-import { deriveProjectLayout } from './Projects'
+import { deriveProjectLayout, type ProjectLayout } from './Projects'
 
 /** ProjectSession holds a stable lock for the lifetime of its generated session state. */
 export type ProjectSession = {
@@ -76,7 +76,7 @@ async function ensureSessionState(directory: string): Promise<void> {
   await FileSystem.writeFile(marker, SessionMarker)
 }
 
-async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
+async function acquireSessionLock(layout: ProjectLayout, id: string): Promise<SessionLock.SessionLock> {
   await Lifecycle.ensureProjectDirectories(
     layout.cacheDirectory,
     layout.sessionsDirectory,
@@ -86,12 +86,18 @@ async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>
   if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
     Errors.ThrowUserInput(`Project session lock is not a regular file: ${lockPath}`)
   }
-  return await SessionLock.acquire(lockPath)
-    ?? Errors.ThrowUserInput(`Project session is already active: ${id}`)
+  const lock = await SessionLock.acquire(lockPath)
+  if (lock === undefined) {
+    Errors.ThrowUserInput(`Project session is already active: ${id}`)
+  }
+  return lock
 }
 
-type SessionHandle = NonNullable<Awaited<ReturnType<typeof SessionLock.acquire>>>
-async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
+async function prepareSession(
+  id: string,
+  layout: ProjectLayout,
+  lock: SessionLock.SessionLock,
+): Promise<ProjectSession> {
   const directory = Path.join(layout.sessionsDirectory, id)
   await Lifecycle.ensureProjectDirectories(directory)
   await ensureSessionState(directory)

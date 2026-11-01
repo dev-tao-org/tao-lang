@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
-import { createParser } from '@grammar/parser'
+import type { Parser } from '@grammar/parser'
 import { Errors, Timings, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
@@ -22,7 +22,7 @@ export const loadModules = Timings.createTopLevelTimer(function(
   timings,
   entry: { path: string; document: AST.Document },
   options: ModuleLoadOptions,
-  parser: ReturnType<typeof createParser>,
+  parser: Parser,
 ): Promise<SourceModule[]> {
   return timings.run(loadGraph, { entry, options, parser })
 })
@@ -33,7 +33,7 @@ type SourceModuleField = 'path' | 'document'
 type LoadRequest = {
   entry: { path: string; document: AST.Document }
   options: ModuleLoadOptions
-  parser: ReturnType<typeof createParser>
+  parser: Parser
 }
 
 type LoadState = LoadRequest & {
@@ -78,10 +78,14 @@ function resolveEntryPath(path: string): string {
 function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string): string {
   const entryDirectory = Path.dirname(entryPath)
   const absoluteConfiguredDirectory = configuredDirectory && Path.resolve(configuredDirectory)
-  return findNearestProjectRoot(entryDirectory)
-    ?? (absoluteConfiguredDirectory && within(absoluteConfiguredDirectory, entryPath)
-      ? absoluteConfiguredDirectory
-      : entryDirectory)
+  const projectRoot = findNearestProjectRoot(entryDirectory)
+  if (projectRoot !== undefined) {
+    return projectRoot
+  }
+  if (absoluteConfiguredDirectory && within(absoluteConfiguredDirectory, entryPath)) {
+    return absoluteConfiguredDirectory
+  }
+  return entryDirectory
 }
 
 async function loadNextSource(state: LoadState, timings: Timings): Promise<void> {
@@ -234,7 +238,7 @@ async function observeProject(state: LoadState, root: string, timings: Timings):
 
 async function readDocument(
   path: string,
-  parser: ReturnType<typeof createParser>,
+  parser: Parser,
   documents: Map<string, AST.Document>,
   timings: Timings,
 ): Promise<AST.Document> {
@@ -246,7 +250,7 @@ async function readDocument(
 function parseDocument(
   source: string,
   path: string,
-  parser: ReturnType<typeof createParser>,
+  parser: Parser,
   timings: Timings,
 ): AST.Document {
   const document = timings.run(transform, timings.run(parser.parse, source))

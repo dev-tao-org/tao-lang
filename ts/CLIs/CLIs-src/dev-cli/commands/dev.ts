@@ -3,7 +3,7 @@ import * as Runtime from '@runtime/Runtime'
 import { ControlCCharacter, Errors, Try } from '@shared'
 import { Browser, FileSystem, Http, Lifecycle, Platform, Repo, Terminal } from '@shared/os'
 import { execute, type WorkflowUI, type WorkflowWorkspace } from '@workspace/Workflow'
-import { createWorkspace, type UpdateResult } from '@workspace/Workspace'
+import type { UpdateResult, WorkspaceSession } from '@workspace/Workspace'
 import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
 import { previewScenarios } from '../../../../perf/perf-src/PreviewScenarios'
 import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
@@ -47,7 +47,13 @@ async function runDevSession(yes?: boolean): Promise<void> {
   })
 }
 
-function devWorkspaceOptions(state: DevSession, entry: string, ui: WorkflowUI) {
+type DevWorkspaceOptions = {
+  kind: 'studio'
+  onSourceUpdate(result: UpdateResult): void
+  onSourceError(error: unknown): void
+}
+
+function devWorkspaceOptions(state: DevSession, entry: string, ui: WorkflowUI): DevWorkspaceOptions {
   const options = {
     kind: 'studio',
     onSourceUpdate(result: UpdateResult) {
@@ -65,7 +71,7 @@ function devWorkspaceOptions(state: DevSession, entry: string, ui: WorkflowUI) {
 async function restartDevSession(
   state: DevSession,
   entry: string,
-  options: ReturnType<typeof devWorkspaceOptions>,
+  options: DevWorkspaceOptions,
   ui: WorkflowUI,
   reason: string,
 ): Promise<void> {
@@ -89,7 +95,7 @@ async function restartDevSession(
 
 type DevSession = {
   stopped: boolean
-  controller: ReturnType<typeof Http.createAbortController>
+  controller: Http.HttpAbortController
   stopKeys?: () => void
   workspace?: WorkflowWorkspace
   expo?: Runtime.ExpoSession
@@ -103,7 +109,9 @@ async function startDevRuntime(state: DevSession): Promise<void> {
   }
   const workspace = state.workspace ?? Errors.ThrowShouldNeverHappen('Preview workspace is unavailable.')
   const entryPath = workspace.files.entryPath
-    ?? Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
+  if (!entryPath) {
+    Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
+  }
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
   state.preview = await createPreviewHarness({
     workspace,
@@ -210,7 +218,7 @@ function reportReload(timing: ReloadTiming): void {
 
 type CleanupOptions = {
   preview: OptionalPreview
-  workspace: ReturnType<typeof createWorkspace>
+  workspace: WorkspaceSession
   expo: OptionalExpoSession
   reportFailure: boolean
 }
@@ -229,7 +237,7 @@ async function cleanup(options: CleanupOptions): Promise<void> {
   })
 }
 
-function printExpoOutput(output: Awaited<ReturnType<Runtime.ExpoSession['output']>>): void {
+function printExpoOutput(output: Lifecycle.ProcessOutput): void {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   if (messages.length) {
     IO.printToStdErr('Expo diagnostics:\n' + messages.join('\n'))

@@ -3,17 +3,17 @@ import { Errors, Try } from '@shared'
 import { FileSystem, HeadlessBrowser, Platform, Repo, Tests } from '@shared/os'
 import { prepareProject } from '../ProjectPreparation'
 import { openProjectWorkspace } from '../ProjectWorkspace'
+import type { WorkspaceSession } from '../Workspace'
 import * as Fixture from './ManagedMetroAcceptanceFixture'
-import { createFixtureRegistry } from './ManagedMetroFixtureRegistry'
+import { createFixtureRegistry, type FixtureRegistry } from './ManagedMetroFixtureRegistry'
 
-type FixtureRegistry = Awaited<ReturnType<typeof createFixtureRegistry>>
 type OptionalFixtureRegistry = FixtureRegistry | undefined
 type OptionalTestBrowser = HeadlessBrowser.TestBrowser | undefined
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 
 Tests.test('external npm-backed foreign view renders through the default Expo Metro pipeline in Chromium', async () => {
   const root = Fixture.acceptanceRoot()
-  const workspaces: Awaited<ReturnType<typeof openProjectWorkspace>>[] = []
+  const workspaces: WorkspaceSession[] = []
   let registry: OptionalFixtureRegistry
   let browser: OptionalTestBrowser
   let expo: OptionalExpoSession

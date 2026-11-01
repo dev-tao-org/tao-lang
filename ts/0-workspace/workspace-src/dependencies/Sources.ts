@@ -100,7 +100,9 @@ function resolveBundledSource(
     Errors.Throw('Expected bundled dependency.')
   }
   const root = options.bundledProjects?.[requirement.identifier]
-    ?? preparationNeeded(`Bundled project ${requirement.identifier} is unavailable; prepare dependencies, then retry.`)
+  if (root === undefined) {
+    preparationNeeded(`Bundled project ${requirement.identifier} is unavailable; prepare dependencies, then retry.`)
+  }
   const location = Path.resolve(root)
   requireProjectRoot(location, `Bundled project ${requirement.identifier}`)
   return {

@@ -1,3 +1,4 @@
+import { Lists } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -57,7 +58,7 @@ function findAliases(rule: OptionalRule, nodeType: string): Rule[] {
 }
 
 function union(values: readonly string[]): string {
-  return [...new Set(values)].map(emitCstStringLiteral).join(' | ') || 'never'
+  return Lists.unique(values).map(emitCstStringLiteral).join(' | ') || 'never'
 }
 
 function emitCstStringLiteral(value: string): string {

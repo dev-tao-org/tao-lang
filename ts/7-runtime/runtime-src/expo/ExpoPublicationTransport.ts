@@ -86,7 +86,7 @@ async function requestRevision(
   return await Try(async () => {
     const response = await state.request(`${url}/__tao/publish`, {
       method: 'POST',
-      headers: { authorization: `Bearer ${state.token}`, 'content-type': 'application/json' },
+      headers: { 'authorization': `Bearer ${state.token}`, 'content-type': 'application/json' },
       body: serializeGeneratedRevision(revision),
       signal,
     })

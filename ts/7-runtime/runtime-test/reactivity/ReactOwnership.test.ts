@@ -33,7 +33,7 @@ Tests.test(
 )
 
 async function verifyOwnershipJourney(
-  browser: Awaited<ReturnType<typeof HeadlessBrowser.launch>>,
+  browser: HeadlessBrowser.HeadlessBrowserSession,
   expo: Runtime.ExpoSession,
 ): Promise<void> {
   const page = await browser.newPage({ viewport: { width: 768, height: 1024 } })
@@ -146,6 +146,6 @@ async function stopExpo(expo: OptionalExpoSession): Promise<void> {
   await Try(async () => await expo?.dispose(), { catch: () => undefined })
 }
 
-type OptionalBrowser = Awaited<ReturnType<typeof HeadlessBrowser.launch>> | undefined
+type OptionalBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 type OptionalObservedText = string | null

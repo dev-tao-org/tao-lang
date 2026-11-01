@@ -1,7 +1,8 @@
 import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
-type DoctorReport = {
+/** DoctorReport contains environment diagnostics and the host fingerprint. */
+export type DoctorReport = {
   version: 1
   repositoryRoot: string
   checks: Check[]
@@ -89,9 +90,17 @@ type Fingerprint = {
   toolchain: { name: string; present: boolean; version?: string; hash?: string }[]
 }
 
+type DoctorSnapshot = {
+  versions: OptionalToolOutput[]
+  failures: OptionalToolOutput[]
+  commit: OptionalToolOutput
+  describe: OptionalToolOutput
+  changes: OptionalToolOutput
+}
+
 const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
 
-async function readSnapshot() {
+async function readSnapshot(): Promise<DoctorSnapshot> {
   const [probes, commit, describe, changes] = await Promise.all([
     Promise.all(tools.map(probeTool)),
     probe('git rev-parse HEAD'),
@@ -120,9 +129,7 @@ async function probeTool(tool: string): Promise<{ output?: string; failure?: str
   })
 }
 
-type Snapshot = Awaited<ReturnType<typeof readSnapshot>>
-
-async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
+async function readFingerprint(snapshot: DoctorSnapshot): Promise<Fingerprint> {
   const system = Platform.systemInfo()
   const fingerprint: Fingerprint = {
     version: 1,
@@ -147,7 +154,7 @@ async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
   return fingerprint
 }
 
-async function readChecks(snapshot: Snapshot): Promise<Check[]> {
+async function readChecks(snapshot: DoctorSnapshot): Promise<Check[]> {
   const checks = diagnoseTools(tools, snapshot.versions, snapshot.failures)
   const main = Try.WithDefault(undefined, Repo.getMainWorktreeRoot)
   checks.push({

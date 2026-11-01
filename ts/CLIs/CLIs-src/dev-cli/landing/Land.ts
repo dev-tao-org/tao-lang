@@ -1,5 +1,5 @@
 import { Errors, Regxs } from '@shared'
-import { publishPreviewArchive } from './Archive'
+import { type PublishedPreviewArchive, publishPreviewArchive } from './Archive'
 import { integrateMain, requireClean, requireCleanBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
 import { inspectLanding, type LandingProof, publishAndMerge } from './PullRequest'
@@ -79,7 +79,7 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
   return message
 }
 
-type LandingRecord = LandingProof & { archive?: Awaited<ReturnType<typeof publishPreviewArchive>> }
+type LandingRecord = LandingProof & { archive?: PublishedPreviewArchive }
 
 function formatLandingRecord(record: LandingRecord): string {
   return JSON.stringify(record, null, 2) + '\n'

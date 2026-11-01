@@ -66,7 +66,9 @@ const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', 
   timings: Timings,
 ): Promise<PublicationOutcome> {
   const publish = runtime.publishGenerated
-    ?? Errors.ThrowShouldNeverHappen('The preview publisher disappeared during publication.')
+  if (publish === undefined) {
+    Errors.ThrowShouldNeverHappen('The preview publisher disappeared during publication.')
+  }
   const outcome = await publish(generated)
   const committed = outcome.status === 'published' || outcome.publishedRevision === generated.revision
   if (committed && generated.sequence > (runtime.generated?.sequence ?? -1)) {
@@ -87,7 +89,11 @@ const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', 
     }
   }
   if (outcome.status === 'error' || outcome.status === 'poisoned') {
-    Errors.ThrowUserInput(outcome.message ?? `Preview publication failed: ${outcome.status}`)
+    const message = outcome.message
+    if (message === undefined) {
+      Errors.ThrowUserInput(`Preview publication failed: ${outcome.status}`)
+    }
+    Errors.ThrowUserInput(message)
   }
   return outcome
 })

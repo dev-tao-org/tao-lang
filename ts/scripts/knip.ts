@@ -19,7 +19,7 @@ export default {
       'runtime-src/client/HMRClient.ts',
       'runtime-src/expo/MetroPreload.ts',
     ]),
-    CLIs: createPackageWorkspace([
+    'CLIs': createPackageWorkspace([
       ...listCLIEntries(),
       ...listCLIEntries().flatMap(listCommandEntries),
       'CLIs-src/dev-cli/commands/_setup.ts',
@@ -28,15 +28,15 @@ export default {
       'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
       ...await listSkillEntries(),
     ]),
-    perf: createPackageWorkspace([
+    'perf': createPackageWorkspace([
       'perf-src/parser-sample.ts',
       'perf-src/parser-performance.ts',
       'perf-src/preview-performance.ts',
       'perf-src/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
     ]),
-    shared: createPackageWorkspace([]),
-    stdlib: createPackageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
+    'shared': createPackageWorkspace([]),
+    'stdlib': createPackageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
     'ide-extensions/tao-ide-extension': createNestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
     'ide-extensions/dev-tao-org': createNestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
   },

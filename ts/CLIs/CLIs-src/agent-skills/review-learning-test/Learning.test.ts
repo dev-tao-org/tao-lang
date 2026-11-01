@@ -1,5 +1,6 @@
+import { Errors } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import type { Correction, LearningState } from '../review-learning/LearningTypes'
+import type { Correction, LearningState, LearningStatus, Scan } from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
 
 const { expect, test } = Tests
@@ -12,9 +13,9 @@ test('captures corrections and follows symbol aliases without matching unrelated
     "import { target as alias } from './source'\nalias()\nconst other = { target() {} }; other.target()\n",
   )
   await capture(root, 'explicit')
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   expect(scan.findings).toHaveLength(1)
-  expect((await runLearning(['status', '--repo', root])).corrections).toHaveLength(1)
+  expect((await readLearningStatus(root)).corrections).toHaveLength(1)
 })
 
 test('rejects authority values that only coerce to an allowed authority string', async () => {
@@ -22,7 +23,7 @@ test('rejects authority values that only coerce to an allowed authority string',
   for (const authority of [['explicit'], ['existing'], ['inferred']]) {
     await expect(capture(root, authority)).rejects.toThrow('authority must be')
   }
-  expect((await runLearning(['status', '--repo', root])).corrections).toHaveLength(0)
+  expect((await readLearningStatus(root)).corrections).toHaveLength(0)
 })
 
 test('revalidates existing rule evidence before scanning and applying', async () => {
@@ -35,7 +36,7 @@ test('revalidates existing rule evidence before scanning and applying', async ()
   await FileSystem.writeFile(policy, 'Keep the existing return value.')
   await expect(runLearning(['scan', '--repo', root, '--rule', 'example'])).rejects.toThrow('authority quote')
   await FileSystem.writeFile(policy, quote)
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'existing-rule')
   await FileSystem.writeFile(policy, 'Keep the existing return value.')
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'existing-rule']))
@@ -52,11 +53,11 @@ test('preflights authority, protection, stale coverage and exact edits before ap
   const root = await createFixture()
   await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
   await capture(root, 'inferred')
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'first')
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'first'])).rejects.toThrow('inferred')
   await capture(root, 'explicit', 'authorized')
-  const fresh = await runLearning(['scan', '--repo', root, '--rule', 'authorized'])
+  const fresh = await scanLearning(root, 'authorized')
   await propose(root, fresh.id as string, 'second')
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'second', '--protected-files', 'source.ts']))
     .rejects.toThrow('Protected')
@@ -72,7 +73,7 @@ test('invalidates edits and config changes and rejects overlapping or escaping e
   const original = 'export function target() { return 1 }\n'
   await FileSystem.writeFile(Path.join(root, 'source.ts'), original)
   await capture(root, 'explicit')
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'change')
   await FileSystem.writeFile(Path.join(root, 'source.ts'), original + '// changed\n')
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('stale')
@@ -99,7 +100,7 @@ test('protects checkpointed review groups and marks accepted paths pending witho
   const root = await createFixture()
   await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
   await capture(root, 'explicit')
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'change')
   await runLearning(['checkpoint', '--repo', root, '--group', 'current', '--protected-files', 'source.ts'])
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('Protected')
@@ -136,7 +137,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
   await FileSystem.writeFile(Path.join(root, 'second.ts'), 'const second = 1\n')
   await capture(root, 'explicit')
-  const scan = await runLearning(['scan', '--repo', root, '--rule', 'example'])
+  const scan = await scanLearning(root, 'example')
   const input = Path.join(root, 'proposal.json')
   const edits = []
   for (const file of ['source.ts', 'second.ts']) {
@@ -166,12 +167,28 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   await FileSystem.writeFile(Path.join(root, 'second.ts'), proposal.outputs['second.ts']!.before)
   await runLearning(['recover', '--repo', root, '--proposal', 'batch'])
   expect(await FileSystem.readFile(Path.join(root, 'second.ts'), 'utf8')).toContain('second = 2')
-  expect((await runLearning(['status', '--repo', root])).appliedProposals).toEqual(['batch'])
+  expect((await readLearningStatus(root)).appliedProposals).toEqual(['batch'])
 })
 async function createFixture(): Promise<string> {
   const root = Path.join(Repo.getWorkspaceRoot(), '.artifacts/notes/review-learning-tests', Platform.randomUUID())
   await FileSystem.mkdir(root)
   return root
+}
+
+async function scanLearning(root: string, id: string): Promise<Scan> {
+  const result = await runLearning(['scan', '--repo', root, '--rule', id])
+  if (!('findings' in result) || !('complete' in result)) {
+    Errors.ThrowShouldNeverHappen('Review learning scan returned a different command result.')
+  }
+  return result
+}
+
+async function readLearningStatus(root: string): Promise<LearningStatus> {
+  const result = await runLearning(['status', '--repo', root])
+  if (!('corrections' in result) || !('appliedProposals' in result)) {
+    Errors.ThrowShouldNeverHappen('Review learning status returned a different command result.')
+  }
+  return result
 }
 
 async function capture(

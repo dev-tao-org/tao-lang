@@ -11,9 +11,11 @@ import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
 import { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue } from './source-conformance-naming'
+import { objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
+import { concreteReturnTypeIssue, ownLineNullishIssue } from './source-conformance-result-contracts'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
@@ -100,7 +102,10 @@ class SourceConformanceChecker {
 
   private checkNode(node: TypeScript.Node): void {
     if (!this.excluded) {
+      this.reportIssue(node, concreteReturnTypeIssue(node, this.checker))
+      this.reportIssue(node, ownLineNullishIssue(node, this.file))
       this.reportIssue(node, arrayMultilineStringIssue(node))
+      this.reportIssue(node, objectLiteralKeysIssue(node))
     }
     if (TypeScript.isImportDeclaration(node) && !this.excluded) {
       const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)

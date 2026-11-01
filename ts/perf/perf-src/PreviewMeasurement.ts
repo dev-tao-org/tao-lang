@@ -100,7 +100,7 @@ export function measurementFrameIds(frameCount: PreviewFrameCount): readonly str
 }
 
 /** describeMeasurement labels first-edit and warm sample boundaries without mixing startup into edits. */
-export function describeMeasurement(settings: PreviewMeasurement) {
+export function describeMeasurement(settings: PreviewMeasurement): MeasurementDescription {
   return {
     ...settings,
     firstEditIndex: 0,
@@ -110,6 +110,16 @@ export function describeMeasurement(settings: PreviewMeasurement) {
     largeSource: 'Extra view declarations compile into output but are not mounted in the app.',
     extraFileDefinition: 'Extra file count partitions extra view declarations across imported sibling Tao modules.',
   }
+}
+
+/** MeasurementDescription records the configured workload and its sample boundaries. */
+export type MeasurementDescription = PreviewMeasurement & {
+  firstEditIndex: number
+  warmStartIndex: number
+  warmEditCount: number
+  warmDefinition: string
+  largeSource: string
+  extraFileDefinition: string
 }
 
 function appendViews(source: string, start: number, count: number): string {

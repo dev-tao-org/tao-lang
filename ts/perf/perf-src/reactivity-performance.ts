@@ -1,7 +1,7 @@
 import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
 import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
-import { measureReactiveHeapRetention } from './reactivity-heap'
+import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */
 export async function reactivityPerformance() {
@@ -39,11 +39,11 @@ type ReactivityPerformanceReport = {
   version: 2
   commit: string
   modified: boolean
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   definitions: ReactivityPerformanceDefinitions
-  summary: ReturnType<typeof summarize>
+  summary: ReactivityPerformanceSummary[]
   samples: Sample[]
-  heapRetention: ReturnType<typeof measureReactiveHeapRetention>
+  heapRetention: ReactiveHeapSample[]
 }
 
 type ReactivityPerformanceDefinitions = {
@@ -77,6 +77,16 @@ type Sample = {
   notifications: number
   expressions: number
   observations: number
+}
+
+type ReactivityPerformanceSummary = {
+  candidate: string
+  scenario: Scenario
+  samples: number
+  medianMs: number
+  p95Ms: number
+  evaluations: number[]
+  notifications: number[]
 }
 
 const operations = 1000

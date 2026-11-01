@@ -1,12 +1,12 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Lists } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
 import * as ReviewSessionModule2 from './ReviewSession'
-import type { ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
+import type { ReviewHooks, ReviewSelection, ReviewSession, ReviewStatus } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
 export async function main(): Promise<void> {
@@ -14,7 +14,7 @@ export async function main(): Promise<void> {
 }
 
 /** runReview executes the incremental-review protocol against one explicit implementation checkout. */
-export async function runReview(args: string[], hooks: ReviewHooks = {}): Promise<Record<string, unknown>> {
+export async function runReview(args: string[], hooks: ReviewHooks = {}): Promise<IncrementalReviewResult> {
   const command = args[0]
   if (!command || ['help', '--help', '-h'].includes(command)) {
     return {
@@ -63,10 +63,20 @@ type Options = Map<string, string[]>
 type NoteCommand = 'note' | 'recheck'
 type SelectionCommand = 'plan' | 'accept'
 type OptionalPath = string | undefined
+type ReviewNoteResult = { notes: string[]; recheck: string[] }
 
-type ReviewResult = Awaited<ReturnType<typeof runReview>>
+type IncrementalReviewResult =
+  | { commands: string[]; scope: string }
+  | { session: string; reviewedBranch: string; reviewedRoot: string }
+  | { proposal: string; sourceDiff: string; reviewedDiff: string }
+  | { accepted: string[]; kind: ReviewSelection['kind'] }
+  | { reopened: string[] }
+  | { reviewedBranch: string }
+  | { recovered: true }
+  | { notes: string[]; recheck: string[] }
+  | ReviewStatus
 
-function formatReviewResult(result: ReviewResult): string {
+function formatReviewResult(result: IncrementalReviewResult): string {
   return JSON.stringify(result, null, 2)
 }
 
@@ -75,7 +85,7 @@ async function runSessionCommand(
   options: Options,
   session: ReviewSession,
   hooks: ReviewHooks,
-): Promise<Record<string, unknown>> {
+): Promise<IncrementalReviewResult> {
   if (command === 'status') {
     return await ReviewSessionModule2.reviewStatus(session)
   }
@@ -105,7 +115,7 @@ async function runNoteCommand(
   command: NoteCommand,
   options: Options,
   session: ReviewSession,
-): Promise<Record<string, unknown>> {
+): Promise<ReviewNoteResult> {
   if (command === 'note') {
     session.notes.push(required(options, 'text'))
   } else {
@@ -116,7 +126,7 @@ async function runNoteCommand(
     }
     session.recheck = state === 'clear'
       ? session.recheck.filter(path => !files.includes(path))
-      : [...new Set([...session.recheck, ...files])]
+      : Lists.unique(session.recheck, files)
   }
   await ReviewSessionModule2.saveSession(session)
   return { notes: session.notes, recheck: session.recheck }
@@ -125,9 +135,9 @@ async function runNoteCommand(
 async function runSelectionCommand(
   command: SelectionCommand,
   options: Options,
-  session: Awaited<ReturnType<typeof ReviewSessionModule2.loadSession>>,
+  session: ReviewSession,
   hooks: ReviewHooks,
-): Promise<Record<string, unknown>> {
+): Promise<IncrementalReviewResult> {
   const selectionFile = single(options, 'selection')
   const reviewed = single(options, 'reviewed-patch')
   const source = single(options, 'source-patch')

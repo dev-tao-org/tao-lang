@@ -11,7 +11,12 @@ export type TimingSample = {
   status: TimingStatus
 }
 
-type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | Entry<Arguments, Value>
+/** TimingEntry preserves a callable timing boundary and its collector-aware operation. */
+export type TimingEntry<Arguments extends unknown[], Value> = ((...arguments_: Arguments) => Value) & {
+  readonly [entry]: (timings: Timings, ...arguments_: Arguments) => Value
+}
+
+type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | TimingEntry<Arguments, Value>
 
 /** Timings collects operation spans for one request or bounded measurement run.
  *  Define orchestration with measure and leaves with measured; run descriptors through a collector.
@@ -76,7 +81,7 @@ export class Timings {
   static createTopLevelTimer<Arguments extends unknown[], Value>(
     action: (timings: Timings, ...arguments_: Arguments) => Value,
     options?: { clock: string; now: () => number },
-  ): Entry<Arguments, Value> {
+  ): TimingEntry<Arguments, Value> {
     return Object.assign(
       (...arguments_: Arguments) => action(new Timings(options?.clock, options?.now), ...arguments_),
       { [entry]: action },
@@ -91,9 +96,6 @@ type Operation<Arguments extends unknown[], Value> = {
   readonly name: string
   readonly role: OperationRole
   readonly [action]: (timings: Timings, ...arguments_: Arguments) => Value
-}
-type Entry<Arguments extends unknown[], Value> = ((...arguments_: Arguments) => Value) & {
-  readonly [entry]: (timings: Timings, ...arguments_: Arguments) => Value
 }
 const entry = Symbol('timing entry')
 const action = Symbol('timing operation')

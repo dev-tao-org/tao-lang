@@ -51,9 +51,12 @@ export type OutputChannel = {
 type ChannelStatus = 'idle' | 'running' | 'passed' | 'failed'
 type OutputStream = 'stdout' | 'stderr' | 'progress'
 type OutputLevel = 'info' | 'warn' | 'error'
-type OutputText = string | Uint8Array
+/** OutputText is one complete or partial output chunk from a process or terminal. */
+export type OutputText = string | Uint8Array
 type OutputCompletion = 'passed' | 'failed'
 type OutputEventMessageFields = 'stream' | 'text' | 'level' | 'summary'
+/** OutputEventMessage contains the child-process fields accepted by output sinks. */
+export type OutputEventMessage = Pick<OutputEvent, OutputEventMessageFields>
 type OptionalOutputRenderer = OutputRenderer | undefined
 
 /** createOutput routes complete output to sinks while bounding only the visible channel tails. */

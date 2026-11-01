@@ -3,7 +3,7 @@ import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
 import { initializeProject } from '../projects/Projects'
-import type { BunExecutor } from '../sidecars/ManagedModules'
+import type { BunExecutor } from '../sidecars/managed-modules/ManagedModules'
 
 /** AcceptanceProjects identifies the app and UI projects used by Metro acceptance cases. */
 export type AcceptanceProjects = { app: string; ui: string; entry: string }

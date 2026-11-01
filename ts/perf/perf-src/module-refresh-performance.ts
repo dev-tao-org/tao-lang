@@ -22,7 +22,7 @@ type Resources = {
   expos: Runtime.ExpoSession[]
   pageErrors: string[]
   root?: string
-  browser?: HeadlessBrowser.Browser
+  browser?: HeadlessBrowser.HeadlessBrowserSession
 }
 type BrowserMetrics = { primaryRenders: number; secondaryRenders: number }
 type RefreshSample = {
@@ -89,12 +89,17 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   }
 }
 
+type GeneratedModuleRevision = {
+  revision: string
+  sequence: number
+  files: Readonly<Record<string, string>>
+}
 function createRevision(
   fixture: ModuleRefreshFixtureModule2.ModuleRefreshFixture,
   sequence: number,
   factor: number,
   label: string,
-): NonNullable<Runtime.RuntimeApplication['generated']> {
+): GeneratedModuleRevision {
   const files = Object.fromEntries(fixture.files.map(file => [
     file.path.replace(Regxs.SourceDirectoryPrefixRegx, ''),
     file.path === fixture.editedPath ? fixture.editSource(factor, label) : file.source,
@@ -248,13 +253,21 @@ type ModuleRefreshPerformanceReport = {
   sessionId: string
   commit: string
   modified: boolean
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   browser: string
   pageErrors: string[]
   definitions: typeof reportDefinitions
-  summary: ReturnType<typeof summarize>
+  summary: ModuleRefreshPerformanceSummary
   samples: RefreshSample[]
 }
+
+type ModuleRefreshPerformanceSummary = {
+  layout: ModuleRefreshFixtureModule2.ModuleRefreshLayout
+  samples: number
+  medianMs: number
+  p95Ms: number
+  unrelatedSecondaryRenderDeltas: number[]
+}[]
 
 function serializeModuleRefreshPerformanceReport(report: ModuleRefreshPerformanceReport): string {
   return JSON.stringify(report, null, 2)

@@ -1,9 +1,10 @@
-import type { createWorkspace, Publication, UpdateResult } from '@workspace/Workspace'
+import type * as Workspace from '@workspace/Workspace'
+import type { Publication, UpdateResult } from '@workspace/Workspace'
 import type { PreviewExpectation, PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
 
 type PublicationWorkspace =
-  & Pick<ReturnType<typeof createWorkspace>, PublicationWorkspaceKey>
-  & { files: Pick<ReturnType<typeof createWorkspace>['files'], 'onCompiled'> }
+  & Pick<Workspace.WorkspaceSession, PublicationWorkspaceKey>
+  & { files: Pick<Workspace.WorkspaceSession['files'], 'onCompiled'> }
 
 /** PreviewPublication correlates host expectations with the revision actually served by Metro. */
 export class PreviewPublication {

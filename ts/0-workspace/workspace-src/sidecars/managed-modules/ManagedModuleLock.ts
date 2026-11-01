@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
-import { findNearestProjectRoot } from '../modules/Paths'
+import { findNearestProjectRoot } from '../../modules/Paths'
 
 /** withManagedModuleLock serializes publication and cleanup for one live module directory. */
 export async function withManagedModuleLock<Value>(

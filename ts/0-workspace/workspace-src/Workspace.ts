@@ -1,26 +1,27 @@
 import { transform } from '@ast-gen/Transform'
-import { check } from '@check/Check'
+import { check, type CheckResult } from '@check/Check'
 import { compile, type CompileOptions } from '@compile/Compile'
 import type { CompiledFiles } from '@compile/ModulesCompiler'
-import { createParser } from '@grammar/parser'
+import { createParser, type Parser } from '@grammar/parser'
 import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Time, Timings, type TimingSample } from '@shared'
+import { Errors, Lists, Time, Timings, type TimingSample } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
 import type { LinkedProgram } from '@typecheck/Modules'
-import { typecheck } from '@typecheck/Typecheck'
+import { typecheck, type TypecheckResult } from '@typecheck/Typecheck'
 import { prepareBuildTypeScript } from './BuildTypeScript'
 import type { Document } from './Document'
-import { type CompileRequest, FileManager } from './FileManager'
+import { type CompileRequest, FileManager } from './file-manager/FileManager'
 import { loadModules } from './modules/Loader'
 import { publishBuild } from './WorkspaceBuild'
-import type { WorkspaceOptions } from './WorkspaceOptions'
+import type { WorkspaceOptions, WorkspacePreparation } from './WorkspaceOptions'
 
 export { Document } from './Document'
 export * from './Project'
 export type { WorkspaceOptions } from './WorkspaceOptions'
+export type { WorkspaceSession }
 
 /** Publication records the exact revision and measured pipeline when output reaches its delivery owner. */
 export type Publication = {
@@ -60,19 +61,19 @@ export type UpdateResult =
 
 /** PipelineStages names downstream passes that are explicitly skipped by workspace compilation. */
 export type PipelineStages = {
-  typecheck: ReturnType<typeof typecheck>
+  typecheck: TypecheckResult
   fix: { stage: 'fix'; status: 'skipped' }
-  check: ReturnType<typeof check>
+  check: CheckResult
 }
 
 type UpdateResultStatus = 'published' | 'invalid' | 'superseded'
 type WorkspaceSourceInput = string | Document
 type WorkspaceDirectory = string | undefined
-type PreparedWorkspace = Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>>
+type PreparedWorkspace = WorkspacePreparation
 
 /** createWorkspace compiles source snapshots through one bounded current-plus-latest queue.
  *  Invalid input and superseded work preserve the last successfully published application. */
-export function createWorkspace(options: WorkspaceOptions) {
+export function createWorkspace(options: WorkspaceOptions): WorkspaceSession {
   return new WorkspaceSession(options)
 }
 
@@ -101,10 +102,13 @@ const Publish = Timings.measure('workspace.publish', async function(
   await publish(timings, output, isCurrent)
 })
 
+type OptionalWorkspaceOutput = WorkspaceOutputPaths | undefined
+
+/** WorkspaceSession owns document compilation, publication and watches for one workspace lifetime. */
 class WorkspaceSession {
   readonly directory: WorkspaceDirectory
-  private readonly output: ReturnType<typeof createOutputPaths>
-  private readonly parser = createParser()
+  private readonly output: OptionalWorkspaceOutput
+  private readonly parser: Parser = createParser()
   private lastGood?: string
   private readonly expectedListeners = new Set<(revision: string, startedAtMs: number) => void>()
   private readonly publishedListeners = new Set<(publication: Publication) => void>()
@@ -129,12 +133,12 @@ class WorkspaceSession {
       async watch(root, change, error, ignored, additional) {
         const stdlib = await Stdlib.projectDirectory()
         const watchWorkspace = options.watch ?? WorkspaceWatch.watchWorkspace
-        const additionalDirectories = [...new Set([stdlib, ...additional ?? []])]
+        const additionalDirectories = Lists.unique([stdlib], additional ?? [])
         const watcher = await watchWorkspace(root, change, error, ignored, additionalDirectories)
         return {
           dispose: () => watcher.dispose(),
           async updateDirectories(directories, excluded) {
-            await watcher.updateDirectories?.([...new Set([stdlib, ...directories])], excluded)
+            await watcher.updateDirectories?.(Lists.unique([stdlib], directories), excluded)
           },
         }
       },
@@ -286,7 +290,9 @@ class WorkspaceSession {
 
   private async prepareRuntime(): Promise<Runtime.RuntimeApplication> {
     const output = this.output
-      ?? Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
+    if (output === undefined) {
+      Errors.ThrowShouldNeverHappen('Runtime compilation requires a workspace output directory.')
+    }
     if (!this.application) {
       const runtimeOptions = createWorkspaceRuntimeOptions(this.options, output.runtimeDirectory)
       const application = await Runtime.create(runtimeOptions)

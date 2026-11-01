@@ -16,6 +16,16 @@ export const prepareParser = Timings.createTopLevelTimer(
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
 const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
 
+type ParserSourceContents = Record<string, string>
+type ParserNodeMetadata = { version: string; executable: string }
+type ParserBuildInputs = {
+  sources: ParserSourceContents
+  lock: string
+  system: Platform.SystemInformation
+  node: ParserNodeMetadata
+  environment: string
+}
+
 async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const inputs = await readInputs()
   const stamp = encodeParserBuildInputs(inputs)
@@ -54,7 +64,7 @@ const generateParser = Timings.measured('parser.generate', async function(): Pro
 })
 
 const buildParserNative = Timings.measured('parser.native-build', async function(
-  inputs: Awaited<ReturnType<typeof readInputs>>,
+  inputs: ParserBuildInputs,
 ): Promise<void> {
   const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
@@ -68,7 +78,7 @@ function canReuseParser(force: boolean, current: boolean, outputs: readonly stri
   return !force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))
 }
 
-async function readInputs() {
+async function readInputs(): Promise<ParserBuildInputs> {
   const sources: ParserSourceContents = {}
   for (
     const filename of [
@@ -97,10 +107,6 @@ async function collectEnvironmentInputs(): Promise<string> {
   const sources = await Promise.all(paths.map(path => FileSystem.file(Repo.resolvePath(path)).text()))
   return Platform.hashText(sources.join('\n'))
 }
-
-type ParserSourceContents = Record<string, string>
-type ParserNodeMetadata = { version: string; executable: string }
-type ParserBuildInputs = Awaited<ReturnType<typeof readInputs>>
 
 function encodeParserBuildInputs(inputs: ParserBuildInputs): string {
   return JSON.stringify(inputs)

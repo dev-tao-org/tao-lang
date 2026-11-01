@@ -1,8 +1,9 @@
 import { Errors } from '@shared'
 import { Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import type { ManagedGraphReference } from '../../dependencies/Types'
+import { requireSetup } from '../../SetupRequired'
+import { graphContentsMatch, validateGraphContents } from '../managed-modules/ManagedModuleGraph'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from '../managed-modules/ManagedModuleTypes'
 import { managedLockPolicyMatches, repairManagedLockPolicy } from './ManagedNpmPolicy'
 import { type ManagedProfileMetadata, optionalJson, optionalText } from './ManagedNpmState'
 
@@ -96,7 +97,7 @@ async function recoverManagedLock(
 
 async function readReferencedLock(
   input: ManagedModulesInput,
-  reference: NonNullable<ManagedModulesInput['previousGraphReference']>,
+  reference: ManagedGraphReference,
   requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
   repair: boolean,

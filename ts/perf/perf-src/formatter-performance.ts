@@ -6,7 +6,7 @@ import { createParser } from '@grammar/parser'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { unusedWarnings } from '@typecheck/Usage'
-import { summarizeSamples } from './parser-performance'
+import { type ParserSampleSummary, summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
 export const formatterPerformance = Timings.createTopLevelTimer(async function(initialization) {
@@ -53,12 +53,12 @@ type FormatterPerformanceReport = {
   version: 1
   commit: string
   modified: boolean
-  system: ReturnType<typeof Platform.systemInfo>
+  system: Platform.SystemInformation
   initialization: TimingSample[]
   wasmBytes: number
   definition: string
   fixtures: FormatterFixtureReport[]
-  summary: ReturnType<typeof summarizeSamples>
+  summary: ParserSampleSummary[]
   samples: FormatterSample[]
 }
 

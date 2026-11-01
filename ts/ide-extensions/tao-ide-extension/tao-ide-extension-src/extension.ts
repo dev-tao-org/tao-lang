@@ -1,6 +1,6 @@
 import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import * as vscode from 'vscode'
-import { createWasmDocumentSession, type DocumentSession } from './core'
+import { createWasmDocumentSession, type DocumentSession, type WasmDocumentSession } from './core'
 import { formattingProvider } from './Formatting'
 import { type Diagnostic, type Token } from './QueryResults'
 import { semanticTokenRanges } from './SemanticTokens'
@@ -63,7 +63,7 @@ class TaoSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider
 
 function registerLanguage(
   context: vscode.ExtensionContext,
-  parser: Awaited<ReturnType<typeof createWasmDocumentSession>>,
+  parser: WasmDocumentSession,
 ) {
   const diagnostics = vscode.languages.createDiagnosticCollection('tao')
   const sessions = new Map<string, DocumentState>()
@@ -92,7 +92,7 @@ function registerLanguage(
 
 function createFormatting(
   context: vscode.ExtensionContext,
-  parser: Awaited<ReturnType<typeof createWasmDocumentSession>>,
+  parser: WasmDocumentSession,
   diagnostics: vscode.DiagnosticCollection,
   sessions: Map<string, DocumentState>,
 ) {
@@ -114,7 +114,7 @@ type OptionalEmbeddedFormatter = PromiseLike<EmbeddedFormatter> | undefined
 
 function refreshDocument(
   document: vscode.TextDocument,
-  parser: Awaited<ReturnType<typeof createWasmDocumentSession>>,
+  parser: WasmDocumentSession,
   diagnostics: vscode.DiagnosticCollection,
   sessions: Map<string, DocumentState>,
 ) {

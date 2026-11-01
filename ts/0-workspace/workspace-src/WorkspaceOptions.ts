@@ -1,7 +1,7 @@
 import type { compile } from '@compile/Compile'
 import type { RuntimeCreateOptions } from '@runtime/Runtime'
 import type { LinkedProgram } from '@typecheck/Modules'
-import type { FileManagerOptions } from './FileManager'
+import type { FileManagerOptions } from './file-manager/FileManager'
 import type { ModuleLoadOptions } from './modules/Loader'
 import type { Project } from './Project'
 import type { ProjectPipelineResult } from './ProjectPipeline'
@@ -30,7 +30,8 @@ export type WorkspaceOptions = {
 }
 
 type WatchAttemptedFiles = (files: readonly string[]) => Promise<void>
-type WorkspacePreparation = Partial<ProjectPipelineResult>
+/** WorkspacePreparation contains optional results returned by a project pipeline callback. */
+export type WorkspacePreparation = Partial<ProjectPipelineResult>
 type PrepareWorkspace = (
   program: LinkedProgram,
   watchAttemptedFiles: WatchAttemptedFiles,

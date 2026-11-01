@@ -21,7 +21,7 @@ export type TestSectionOperations = { typescript: () => Promise<void>; tao: () =
 export type TestSectionFailures = { typescript?: string; tao?: string }
 
 /** TestRunSignal carries cancellation through scheduling and subprocess execution. */
-export type TestRunSignal = ReturnType<typeof Http.createAbortController>['signal']
+export type TestRunSignal = Http.HttpAbortSignal
 
 type ParallelBudget = string | boolean
 type OptionalTypeScriptPlan = { args: readonly string[]; workers: number } | undefined

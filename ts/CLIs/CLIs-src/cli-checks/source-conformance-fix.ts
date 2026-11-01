@@ -3,6 +3,7 @@ import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { analyzeConstantOrder } from './source-conformance-constant-order'
+import { getQuotedObjectKeyChanges } from './source-conformance-object-keys'
 import { optionalAccessIssue, optionalAccessResult } from './source-conformance-optional'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
@@ -29,18 +30,7 @@ export async function fixSourceConformance(
     if (!file) {
       continue
     }
-    const typeChanges = typeOrder.get(file) ?? []
-    const constantChanges = constantOrder.get(file) ?? []
-    const structuralChanges = [...typeChanges, ...constantChanges]
-    const accessChanges = optionalAccessChanges(file, checker)
-      .filter(edit => !overlapsChanges(edit, structuralChanges))
-    const callChanges = getSingleLineCallChanges(file)
-      .filter(edit => !overlapsChanges(edit, structuralChanges) && !overlapsChanges(edit, accessChanges))
-    const edits = [
-      ...structuralChanges,
-      ...accessChanges,
-      ...callChanges,
-    ]
+    const edits = collectSourceChanges(file, checker, typeOrder.get(file) ?? [], constantOrder.get(file) ?? [])
     if (edits.length === 0) {
       continue
     }
@@ -52,6 +42,23 @@ export async function fixSourceConformance(
     changed++
   }
   IO.print(`Fixed source conformance: ${changed} file(s)`)
+}
+
+function collectSourceChanges(
+  file: TypeScript.SourceFile,
+  checker: TypeScript.TypeChecker,
+  typeChanges: TypeScript.TextChange[],
+  constantChanges: TypeScript.TextChange[],
+): TypeScript.TextChange[] {
+  const structuralChanges = [...typeChanges, ...constantChanges]
+  const accessChanges = optionalAccessChanges(file, checker)
+    .filter(edit => !overlapsChanges(edit, structuralChanges))
+  const callChanges = getSingleLineCallChanges(file)
+    .filter(edit => !overlapsChanges(edit, structuralChanges) && !overlapsChanges(edit, accessChanges))
+  const previousChanges = [...structuralChanges, ...accessChanges, ...callChanges]
+  const quoteChanges = getQuotedObjectKeyChanges(file)
+    .filter(edit => !overlapsChanges(edit, previousChanges))
+  return [...previousChanges, ...quoteChanges]
 }
 
 function overlapsChanges(edit: TypeScript.TextChange, changes: TypeScript.TextChange[]): boolean {

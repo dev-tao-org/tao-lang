@@ -1,6 +1,6 @@
 import { Errors, Time } from '@shared'
 import { Tests, WorkspaceWatch } from '@shared/os'
-import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager'
+import { FileManager, type FileManagerOptions } from '../workspace-src/file-manager/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
 type WatchChangeHandler = (change: WorkspaceWatch.WorkspaceChange) => void

@@ -18,7 +18,9 @@ export async function runAppTests(
 ): Promise<TestResult[]> {
   const source = await FileSystem.readFile(path, 'utf8')
   const document = transform(createParser().parse(source))
-    ?? Errors.ThrowUserInput(`Invalid Tao test source: ${path}`)
+  if (document === undefined) {
+    Errors.ThrowUserInput(`Invalid Tao test source: ${path}`)
+  }
   const createDriver = () => createAppTestDriver(path, source, openBrowser, compile, onProgress, signal)
   return await runTests(document, { path, source, onProgress, signal, createDriver })
 }
