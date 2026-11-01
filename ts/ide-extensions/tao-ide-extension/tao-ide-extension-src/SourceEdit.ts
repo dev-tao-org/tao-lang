@@ -47,10 +47,16 @@ function pointAt(source: string, index: number): { row: number; column: number }
   return { row: position.line, column: position.column }
 }
 
-function isHighSurrogate(value: number): boolean {
-  return value >= 0xd800 && value <= 0xdbff
+const HighSurrogateStart = 0xd800
+const HighSurrogateEnd = 0xdbff
+
+function isHighSurrogate(codeUnit: number): boolean {
+  return codeUnit >= HighSurrogateStart && codeUnit <= HighSurrogateEnd
 }
 
-function isLowSurrogate(value: number): boolean {
-  return value >= 0xdc00 && value <= 0xdfff
+const LowSurrogateStart = 0xdc00
+const LowSurrogateEnd = 0xdfff
+
+function isLowSurrogate(codeUnit: number): boolean {
+  return codeUnit >= LowSurrogateStart && codeUnit <= LowSurrogateEnd
 }
