@@ -3,9 +3,9 @@ import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { cleanProject } from '../../workspace-src/projects/Clean'
 import { acquireProjectLifecycle } from '../../workspace-src/projects/Lifecycle'
 import { discoverProject, initializeProject } from '../../workspace-src/projects/Projects'
-import { acquireSession } from '../../workspace-src/projects/Sessions'
+import { acquireSession, type ProjectSession } from '../../workspace-src/projects/Sessions'
 
-type OptionalProjectSession = Awaited<ReturnType<typeof acquireSession>> | undefined
+type OptionalProjectSession = ProjectSession | undefined
 
 Tests.test('named sessions contend, reuse warm state, and clean skips active sessions', async () => {
   const root = temporaryProject()
@@ -85,7 +85,7 @@ Tests.test('session startup and cleanup contend on the project lifecycle lock', 
 
 Tests.test('different sessions both start during concurrent project opens', async () => {
   const root = temporaryProject()
-  const sessions: Awaited<ReturnType<typeof acquireSession>>[] = []
+  const sessions: ProjectSession[] = []
   await Try(async () => {
     await initializeProject(root)
     sessions.push(

@@ -3,7 +3,7 @@ import { Tests } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import * as ProjectPipeline from '../workspace-src/ProjectPipeline'
 import type { PreparedSidecars } from '../workspace-src/SidecarPipeline'
-import type { PreparedManagedModules } from '../workspace-src/sidecars/ManagedModules'
+import type { PreparedManagedModules } from '../workspace-src/sidecars/managed-modules/ManagedModules'
 
 const RestartRequiredWithoutNativeRebuildRegx =
   /Dependency graph changed\. Setup and preview restart are required\.(?! A native rebuild)/

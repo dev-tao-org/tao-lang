@@ -280,7 +280,7 @@ function createRuntime(scopes: Record<string, unknown>[]) {
 async function linkedUIProgram(
   entryPath: string,
   document: AST.Document,
-): Promise<ReturnType<typeof linkModules>> {
+): Promise<LinkedProgram> {
   const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@ui/Views.tao')
   const uiSource = await FileSystem.readFile(uiPath, 'utf8')
   const uiDocument = transform(createParser().parse(uiSource))!

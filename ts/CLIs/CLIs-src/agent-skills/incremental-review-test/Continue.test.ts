@@ -5,6 +5,7 @@ import { acceptSelection } from '../incremental-review/ReviewAccept'
 import { git, head, resolveGitIndexPath } from '../incremental-review/ReviewGit'
 import { planSelection } from '../incremental-review/ReviewPlan'
 import { loadSession, saveSession } from '../incremental-review/ReviewSession'
+import type { ReviewStatus } from '../incremental-review/ReviewTypes'
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('continuation inherits acceptance and evidence while reopening uses the original baseline', async () => {
@@ -30,7 +31,7 @@ Tests.test('continuation inherits acceptance and evidence while reopening uses t
     Tests.expect(continued.accepted).toEqual(session.accepted)
     Tests.expect(continued.recheck).toEqual(session.recheck)
     Tests.expect(continued.notes).toEqual(session.notes)
-    Tests.expect((await runReview(['status', '--repo', next])).recheck).toEqual(['other', 'content'])
+    Tests.expect((await readReviewStatus(next)).recheck).toEqual(['other', 'content'])
     Tests.expect(continued.baseCommit).toBe(session.baseCommit)
     Tests.expect(continued.base).toBe(session.base)
     Tests.expect(await head(continued.reviewedRoot)).toBe(before.reviewedHead)
@@ -96,4 +97,12 @@ async function captureOldState(root: string, reviewedRoot: string) {
     other: await read(root, 'other'),
     session: await read(root, '.artifacts/notes/incremental-review/active/session.json'),
   }
+}
+
+async function readReviewStatus(root: string): Promise<ReviewStatus> {
+  const result = await runReview(['status', '--repo', root])
+  if (!('recheck' in result) || !('pending' in result)) {
+    Errors.ThrowShouldNeverHappen('Incremental review status returned a different command result.')
+  }
+  return result
 }

@@ -67,7 +67,17 @@ const tree = 'b'.repeat(40)
 const source = '  app Example { root RootView }\n'
 const report = JSON.stringify({ version: 1, commit, modified: true }) + '\n'
 
-async function withFixture(run: (fixture: ReturnType<typeof createFixture>) => Promise<void>): Promise<void> {
+type PreviewHistoryFixture = {
+  root: string
+  reportPath: string
+  sources: string[]
+  gitCalls: (readonly string[])[]
+  dirty: boolean
+  head: string
+  record(measure?: (input: string) => Promise<{ path: string }>): Promise<{ directory: string; reused: boolean }>
+}
+
+async function withFixture(run: (fixture: PreviewHistoryFixture) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `preview-history-${Platform.randomUUID()}`)
   await FileSystem.mkdir(root)
   const fixture = createFixture(root)

@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import * as ManagedModules from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const ManagedModuleRepairRequiredErrorRegx = /needs repair/
 const MarkerOwnershipProofRequiredErrorRegx = /cannot prove that the generated metadata belongs.*Preserve this marker/
@@ -11,7 +11,7 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     const moduleDirectory = Path.join(root, 'Modules')
     await FileSystem.mkdir(moduleDirectory)
     const input = createModuleInput(root, moduleDirectory)
-    const executor = createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })
+    const executor = createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' })
     await ManagedModules.prepareManagedModules(input, executor)
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     await makeCorrupt(marker)
@@ -35,7 +35,7 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
     await FileSystem.mkdir(moduleDirectory)
     await ManagedModules.prepareManagedModules(
       createModuleInput(root, moduleDirectory),
-      createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+      createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' }),
     )
     const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
     const manifest = Path.join(moduleDirectory, 'package.json')

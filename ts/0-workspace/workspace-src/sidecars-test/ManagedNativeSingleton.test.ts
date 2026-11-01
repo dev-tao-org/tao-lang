@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules } from '../sidecars/ManagedModules'
-import type { BunExecutor } from '../sidecars/ManagedModuleTypes'
+import { prepareManagedModules } from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const IncompatibleNativeSingletonVersionsErrorRegx = /incompatible singleton native-fixture.*1\.0\.0.*2\.0\.0/
 

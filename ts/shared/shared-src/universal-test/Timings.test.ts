@@ -1,6 +1,6 @@
 import { Errors, Timings, Try } from '@shared'
 import { Tests } from '@shared/os'
-import type { TimingResult } from './Timings.types'
+import type { OperationValue } from './Timings.types'
 
 const RuntimeClockNameRegx = /^runtime:/
 
@@ -26,7 +26,7 @@ Tests.test(
     Tests.expect(timings.run(concatenate, 'T', 'ao')).toBe('Tao')
     Tests.expect(timings.run(nothing)).toBeUndefined()
     Tests.expect(timings.samples.map(sample => sample.role)).toEqual(['leaf', 'leaf'])
-    const result: TimingResult = timings.run(parse)
+    const result: OperationValue = timings.run(parse)
     Tests.expect(result).toBe(42)
   }),
 )

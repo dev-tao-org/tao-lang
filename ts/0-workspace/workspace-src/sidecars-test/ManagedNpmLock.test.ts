@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { prepareManagedModules, readManagedModules } from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import { prepareManagedModules, readManagedModules } from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const ManagedNpmLockSuffixRegx = /\.lock$/
 const MissingDurableLockErrorRegx = /durable lock is missing/
@@ -104,7 +104,7 @@ Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source r
         return { status: 0, stdout: '1.3.0\n', stderr: '' }
       }
       frozen ||= args.includes('--frozen-lockfile')
-      await writePackages(cwd, { react: '19.1.0', 'date-fns': '4.1.0' })
+      await writePackages(cwd, { 'react': '19.1.0', 'date-fns': '4.1.0' })
       return { status: 0, stdout: '', stderr: '' }
     })
     Tests.expect(upgraded.graphFingerprint).toBe(first.graphFingerprint)

@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import * as ManagedModules from '../sidecars/ManagedModules'
-import type { BunExecutor, ManagedModulesInput } from '../sidecars/ManagedModuleTypes'
+import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
+import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 const OutsideTaoProjectErrorRegx = /outside a Tao project/
 const InvalidPackageNameErrorRegx = /package name .*invalid/
@@ -99,7 +99,7 @@ async function assertHostCacheRebuild(root: string): Promise<void> {
       }
       return { status: 0, stdout: '', stderr: '' }
     }
-    await writeLock(cwd, { react: '19.1.0', 'date-fns': '4.1.0' })
+    await writeLock(cwd, { 'react': '19.1.0', 'date-fns': '4.1.0' })
     await writeInstalledPackages(cwd)
     return { status: 0, stdout: '', stderr: '' }
   }
@@ -133,15 +133,15 @@ async function assertProfileTransition(root: string): Promise<void> {
   const initial = createModuleInput(root, moduleDirectory, '4.1.0')
   const first = await ManagedModules.prepareManagedModules(
     initial,
-    createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+    createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' }),
   )
   const marker = Path.join(moduleDirectory, '.tao-managed-module.json')
   await damageCurrentOwnershipMarker(marker)
   await Tests.rejects(
-    ManagedModules.prepareManagedModules(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' })),
+    ManagedModules.prepareManagedModules(initial, createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' })),
     ManagedModuleRepairRequiredErrorRegx,
   )
-  await ManagedModules.repairManagedModuleFiles(initial, createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }))
+  await ManagedModules.repairManagedModuleFiles(initial, createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' }))
   Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).generatedHashes).toBeDefined()
 
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
@@ -149,7 +149,7 @@ async function assertProfileTransition(root: string): Promise<void> {
   const updated = createModuleInput(root, moduleDirectory, '4.2.0')
   const second = await ManagedModules.prepareManagedModules(
     updated,
-    createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }),
+    createExecutor({ 'react': '19.1.0', 'date-fns': '4.2.0' }),
   )
   Tests.expect(second.packageDirectory).not.toBe(first.packageDirectory)
   Tests.expect(await FileSystem.exists(first.packageDirectory)).toBe(true)
@@ -163,11 +163,11 @@ async function assertProfileTransition(root: string): Promise<void> {
   await FileSystem.writeFile(manifest, '{"authored":true}\n')
   const next = createModuleInput(root, moduleDirectory, '4.3.0')
   await Tests.rejects(
-    ManagedModules.prepareManagedModules(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' })),
+    ManagedModules.prepareManagedModules(next, createExecutor({ 'react': '19.1.0', 'date-fns': '4.3.0' })),
     ManagedModuleMetadataDriftErrorRegx,
   )
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
-  await ManagedModules.repairManagedModuleFiles(next, createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }))
+  await ManagedModules.repairManagedModuleFiles(next, createExecutor({ 'react': '19.1.0', 'date-fns': '4.3.0' }))
   Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toContain('4.3.0')
 }
 
@@ -176,18 +176,18 @@ async function assertDanglingLinkRepair(root: string): Promise<void> {
   await FileSystem.mkdir(moduleDirectory)
   const first = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.1.0'),
-    createExecutor({ react: '19.1.0', 'date-fns': '4.1.0' }),
+    createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' }),
   )
   const second = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.2.0'),
-    createExecutor({ react: '19.1.0', 'date-fns': '4.2.0' }),
+    createExecutor({ 'react': '19.1.0', 'date-fns': '4.2.0' }),
   )
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   await FileSystem.rm(second.packageDirectory, { recursive: true, force: true })
   Tests.expect(Try.WithDefault(false, () => FileSystem.lstatSync(link).isSymbolicLink())).toBe(true)
   const third = await ManagedModules.prepareManagedModules(
     createModuleInput(root, moduleDirectory, '4.3.0'),
-    createExecutor({ react: '19.1.0', 'date-fns': '4.3.0' }),
+    createExecutor({ 'react': '19.1.0', 'date-fns': '4.3.0' }),
   )
   Tests.expect(first.packageDirectory).not.toBe(third.packageDirectory)
   Tests.expect(FileSystem.realpathSync(link)).toBe(

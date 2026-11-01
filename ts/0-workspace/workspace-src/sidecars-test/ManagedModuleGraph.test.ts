@@ -1,8 +1,8 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { auditInstalledGraph, collectAllRequirements } from '../sidecars/ManagedModuleGraph'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from '../sidecars/ManagedModuleTypes'
-import { calculateManagedGraphFingerprint, normalizeManagedRequirements } from '../sidecars/ManagedNpmIdentity'
+import { auditInstalledGraph, collectAllRequirements } from '../sidecars/managed-modules/ManagedModuleGraph'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from '../sidecars/managed-modules/ManagedModuleTypes'
+import * as ManagedNpmIdentity from '../sidecars/managed-npm/ManagedNpmIdentity'
 
 const ResolvedPackageNameMismatchErrorRegx = /resolved package different-name/
 const DeclaredPeerRangeMismatchErrorRegx = /does not satisfy \^4/
@@ -15,14 +15,16 @@ Tests.test('normalization retains named requirement fields without changing the 
     { directory: '/project/z', requirements: [{ name: 'alpha', version: '1.0.0', origin: 'Z.tao' }] },
     { directory: '/project/a', requirements: [requirement] },
   ]
-  const normalized = normalizeManagedRequirements(input)
+  const normalized = ManagedNpmIdentity.normalizeManagedRequirements(input)
   Tests.expect(normalized).toEqual([
     { directory: '/project/a', name: 'Alpha', version: '1.0.0', origin: 'A.tao\nDetails' },
     { directory: '/project/z', name: 'alpha', version: '1.0.0', origin: 'Z.tao' },
   ])
   const canonicalGraph =
     '{"requirements":{"Alpha":"1.0.0","alpha":"1.0.0"},"target":"browser","runtimePins":{},"singletonPackages":["expo","react","react-dom","react-native","react-native-web"],"policyRegistryVersion":1}'
-  Tests.expect(calculateManagedGraphFingerprint(input, normalized)).toBe(Platform.hashText(canonicalGraph))
+  Tests.expect(ManagedNpmIdentity.calculateManagedGraphFingerprint(input, normalized)).toBe(
+    Platform.hashText(canonicalGraph),
+  )
 })
 
 Tests.test('managed requirements validate the complete version without treating newlines as field separators', () => {
@@ -34,7 +36,7 @@ Tests.test('accepts mixed-case npm package names in managed requirements', () =>
   Tests.expect(collectAllRequirements([
     { directory: '', name: 'JSONStream', version: '1.3.5', origin: 'Legacy.tao' },
     { directory: '', name: '@scope/JSONStream', version: '1.3.5', origin: 'Scoped.tao' },
-  ])).toEqual({ '@scope/JSONStream': '1.3.5', JSONStream: '1.3.5' })
+  ])).toEqual({ '@scope/JSONStream': '1.3.5', 'JSONStream': '1.3.5' })
 })
 
 Tests.test('orders canonical npm requirements by code point', () => {

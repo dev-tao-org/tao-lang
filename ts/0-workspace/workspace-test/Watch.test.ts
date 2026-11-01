@@ -1,6 +1,6 @@
 import { Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { FileManager } from '../workspace-src/FileManager'
+import { FileManager } from '../workspace-src/file-manager/FileManager'
 import * as WatchFixture from './WatchFixture'
 
 Tests.test('opening waits for the latest selected-entry read after an observed change', async () => {

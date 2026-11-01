@@ -1,6 +1,6 @@
 import type { RuntimeApplication } from '@runtime/Runtime'
 import { Tests } from '@shared/os'
-import type { CompiledEvent } from '@workspace/FileManager'
+import type { CompiledEvent } from '@workspace/file-manager/FileManager'
 import type { Publication, UpdateResult } from '@workspace/Workspace'
 import { type PreviewExpectation, PreviewOutcomeTracker } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
 import { PreviewPublication } from '../perf-src/PreviewPublication'

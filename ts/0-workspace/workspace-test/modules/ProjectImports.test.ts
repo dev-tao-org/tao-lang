@@ -3,6 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import type { SourceModule } from '@typecheck/Modules'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
 const AmbiguousProjectPackageErrorRegx = /Package @ui is ambiguous/
@@ -51,7 +52,9 @@ Tests.test('project module imports reject ambiguous nested package roots', async
   })
 })
 
-async function writeProjectImportSources(producer: string, icons: string) {
+type ProjectImportPaths = { card: string; caption: string; unrelated: string; label: string }
+
+async function writeProjectImportSources(producer: string, icons: string): Promise<ProjectImportPaths> {
   const paths = {
     card: Path.join(producer, 'packages', '@ui', 'controls', 'Card.tao'),
     caption: Path.join(producer, 'packages', '@ui', 'controls', 'Caption.tao'),
@@ -68,7 +71,7 @@ async function writeProjectImportSources(producer: string, icons: string) {
   return paths
 }
 
-async function loadProjectImportGraph(consumer: string, producer: string, icons: string) {
+async function loadProjectImportGraph(consumer: string, producer: string, icons: string): Promise<SourceModule[]> {
   const entryPath = Path.join(consumer, 'Main.tao')
   return await loadModules(
     parseEntry(entryPath, 'use Card from widgets@ui/controls\napp Main { root Card }'),
@@ -95,8 +98,8 @@ function projectResolver(consumer: string, producer: string, icons: string) {
 }
 
 function assertProjectImportGraph(
-  modules: Awaited<ReturnType<typeof loadModules>>,
-  paths: Awaited<ReturnType<typeof writeProjectImportSources>>,
+  modules: SourceModule[],
+  paths: ProjectImportPaths,
 ): void {
   const byPath = new Map(modules.map(module => [module.path, module]))
   Tests.expect(byPath.has(paths.card)).toBe(true)

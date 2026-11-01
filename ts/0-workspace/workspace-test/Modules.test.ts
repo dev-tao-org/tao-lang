@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
-import { createWorkspace, type UpdateResult } from '../workspace-src/Workspace'
-import { createWatchFixture } from './WatchFixture'
+import { createWorkspace, type UpdateResult, type WorkspaceSession } from '../workspace-src/Workspace'
+import { createWatchFixture, type WatchFixture } from './WatchFixture'
 
 type OptionalCompiledContents = Readonly<Record<string, string>> | undefined
 
@@ -86,8 +86,8 @@ function compiledContents(files: OptionalCompiledContents): string {
 }
 
 async function changeDependency(
-  workspace: ReturnType<typeof createWorkspace>,
-  observation: ReturnType<typeof createWatchFixture>,
+  workspace: WorkspaceSession,
+  observation: WatchFixture,
   path: string,
   source: string,
 ): Promise<UpdateResult> {

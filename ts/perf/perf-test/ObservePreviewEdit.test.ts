@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import { Tests } from '@shared/os'
 import { Document } from '@workspace/Document'
-import type { CompiledEvent } from '@workspace/FileManager'
+import type { CompiledEvent } from '@workspace/file-manager/FileManager'
 import type { UpdateResult } from '@workspace/Workspace'
 import { observePreviewEdit } from '../perf-src/ObservePreviewEdit'
 
@@ -96,8 +96,19 @@ function createCompletionFixture() {
   }
 }
 
+type CompletionFixture = {
+  document: Document
+  listeners: Set<(event: CompiledEvent) => void>
+  pending: Set<() => void>
+  files: {
+    getDocument(path: string): Document
+    onCompiled(listener: (event: CompiledEvent) => void): () => boolean
+  }
+  emit(event: CompiledEvent): void
+}
+
 async function expectIgnored(
-  fixture: ReturnType<typeof createCompletionFixture>,
+  fixture: CompletionFixture,
   event: CompiledEvent,
   hasSettled: () => boolean,
 ): Promise<void> {
