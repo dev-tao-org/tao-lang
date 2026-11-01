@@ -40,7 +40,7 @@ export function ScopeAliases<Bindings extends Scope>(
 
 /** Name resolves a value from the nearest lexical scope. */
 export function Name(scope: Scope, name: string): unknown {
-  if (!(name in scope)) {
+  if (!hasScopeBinding(scope, name)) {
     Errors.ThrowUserInput(`Undefined name "${name}"`)
   }
   return scope[name]
@@ -54,4 +54,8 @@ export function ViewRenderBlock<Parent extends Scope>(
   const children: React.ReactNode[] = []
   body(Scope(parent) as Parent, children)
   return children
+}
+
+function hasScopeBinding(scope: Scope, name: string): boolean {
+  return name in scope
 }

@@ -15,8 +15,12 @@ export default class PreviewHMRClient extends MetroHMRClient {
 }
 
 function describeError(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'message' in error) {
+  if (hasErrorMessage(error)) {
     return String(error.message)
   }
   return String(error)
+}
+
+function hasErrorMessage(error: unknown): error is { message: unknown } {
+  return typeof error === 'object' && error !== null && 'message' in error
 }

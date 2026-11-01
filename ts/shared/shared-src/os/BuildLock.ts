@@ -48,5 +48,9 @@ function readOwner(path: string): string | undefined {
 }
 
 function errorCode(error: unknown): unknown {
-  return typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined
+  return isErrorWithCode(error) ? error.code : undefined
+}
+
+function isErrorWithCode(error: unknown): error is { code: unknown } {
+  return typeof error === 'object' && error !== null && 'code' in error
 }

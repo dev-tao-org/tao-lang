@@ -1,6 +1,7 @@
 import { Errors, Lists } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
+import type { ReviewSession } from '../incremental-review/ReviewTypes'
 import * as LearningStore from './LearningStore'
 import type { LearningFileHashes, LearningSnapshot, LearningState, Proposal, Scan } from './LearningTypes'
 import { validateCorrectionAuthority } from './LearningValidation'
@@ -162,7 +163,11 @@ async function markAcceptedPending(root: string, files: string[]): Promise<void>
   }
   const session = await loadSession(root)
   await requireIdleSession(session)
-  const affected = files.filter(file => file in session.accepted)
+  const affected = files.filter(file => hasAcceptedContent(session, file))
   session.recheck = Lists.unique(session.recheck, affected)
   await saveSession(session)
+}
+
+function hasAcceptedContent(session: ReviewSession, file: string): boolean {
+  return file in session.accepted
 }

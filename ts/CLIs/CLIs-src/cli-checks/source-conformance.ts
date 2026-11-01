@@ -14,6 +14,7 @@ import { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue } from './so
 import { objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
+import { predicateOperatorIssue } from './source-conformance-predicates'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { concreteReturnTypeIssue, ownLineNullishIssue } from './source-conformance-result-contracts'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
@@ -106,6 +107,7 @@ class SourceConformanceChecker {
       this.reportIssue(node, ownLineNullishIssue(node, this.file))
       this.reportIssue(node, arrayMultilineStringIssue(node))
       this.reportIssue(node, objectLiteralKeysIssue(node))
+      this.reportIssue(node, predicateOperatorIssue(node))
     }
     if (TypeScript.isImportDeclaration(node) && !this.excluded) {
       const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)

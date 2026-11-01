@@ -162,7 +162,7 @@ function installStreams(options: GeneratedReaderOptions): void {
   for (const name of ['ReadStream', 'FileReadStream']) {
     const original = options.original[name]
     const constructor = function(this: unknown, path: unknown, configuration: unknown) {
-      if (options.owns(path) && this instanceof original) {
+      if (options.owns(path) && isOriginalStreamInstance(this, original)) {
         // graceful-fs supplies its own open method; generated streams must open through the captured snapshot.
         Object.defineProperty(this, 'open', { value: original.prototype.open, configurable: true, writable: true })
       }
@@ -186,6 +186,10 @@ function readStreamConfiguration(options: GeneratedReaderOptions, path: unknown,
 
 function hasStreamDescriptor(configuration: unknown): boolean {
   return typeof configuration === 'object' && configuration !== null && 'fd' in configuration
+}
+
+function isOriginalStreamInstance(value: unknown, original: FileOperations[string]): boolean {
+  return value instanceof original
 }
 
 function assertReadOnly(flags: unknown): void {
@@ -218,5 +222,9 @@ function targetsGeneratedPath(options: GeneratedReaderOptions, name: string, arg
   if (name !== 'glob' || typeof configuration !== 'object' || configuration === null) {
     return false
   }
-  return 'cwd' in configuration && options.owns(configuration.cwd)
+  return hasDirectoryConfiguration(configuration) && options.owns(configuration.cwd)
+}
+
+function hasDirectoryConfiguration(configuration: object): configuration is { cwd: unknown } {
+  return 'cwd' in configuration
 }

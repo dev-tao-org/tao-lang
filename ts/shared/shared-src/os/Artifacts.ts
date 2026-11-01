@@ -115,7 +115,7 @@ function acquireCleanupLock(): () => void {
       return true
     }, {
       catch(error) {
-        if (error instanceof Error && (error as Error & { code?: string }).code === 'EEXIST') {
+        if (Errors.isNativeError(error) && (error as Error & { code?: string }).code === 'EEXIST') {
           return false
         }
         Errors.Throw(error)

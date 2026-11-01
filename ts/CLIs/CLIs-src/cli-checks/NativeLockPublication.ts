@@ -62,16 +62,20 @@ async function readPointer(root: string): Promise<PointerRead> {
   if (typeof value !== 'object' || value === null) {
     return { kind: 'invalid' }
   }
-  if (!('identity' in value) || !('directory' in value)) {
+  if (!hasNativeLockPointerFields(value)) {
     return { kind: 'invalid' }
   }
-  const pointer = value as { identity: unknown; directory: unknown }
+  const pointer = value
   if (typeof pointer.identity !== 'string' || typeof pointer.directory !== 'string') {
     return { kind: 'invalid' }
   }
   const normalized = { identity: pointer.identity, directory: pointer.directory }
   const versionRoot = Try.WithDefault(undefined, () => nativeLockVersionRoot(root, normalized))
   return versionRoot ? { kind: 'valid', pointer: normalized } : { kind: 'invalid' }
+}
+
+function hasNativeLockPointerFields(value: object): value is { identity: unknown; directory: unknown } {
+  return 'identity' in value && 'directory' in value
 }
 
 function isMissing(error: unknown): boolean {

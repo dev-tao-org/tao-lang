@@ -157,7 +157,7 @@ async function partialCandidates(
         `Partial selection cannot be applied safely for ${
           files.join(', ')
         }. Include the missing reviewed context or defer this selection. ${
-          error instanceof Error ? error.message : String(error)
+          Errors.isNativeError(error) ? error.message : String(error)
         }`,
       )
     },

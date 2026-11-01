@@ -77,7 +77,7 @@ export function graphContentsMatch(
     ? lock.workspaces
     : undefined
   const root = workspaces?.['']
-  const dependencies = PackageMetadata.isMetadataObject(root) && 'dependencies' in root
+  const dependencies = PackageMetadata.hasPackageDependencies(root)
     ? PackageMetadata.readStringEntries(root.dependencies)
     : {}
   const packages = PackageMetadata.isMetadataObject(lock.packages)
@@ -280,7 +280,7 @@ async function loadPackageDependencies(
   const optionalDependencies = PackageMetadata.readStringEntries(metadata.optionalDependencies)
   const dependencies = collectPackageDependencies(metadata, optionalDependencies)
   for (const [name, range] of Object.entries(dependencies)) {
-    await loadPackage(graph, name, directory, range, name in optionalDependencies)
+    await loadPackage(graph, name, directory, range, PackageMetadata.isOptionalDependency(name, optionalDependencies))
   }
   const optionalPeers = PackageMetadata.readOptionalPeerNames(metadata.peerDependenciesMeta)
   for (const [name, range] of Object.entries(PackageMetadata.readStringEntries(metadata.peerDependencies))) {

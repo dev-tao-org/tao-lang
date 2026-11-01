@@ -107,7 +107,7 @@ async function runTaoTests(
   await Try(() => executeTaoTests(plan, channels, signal, workerEnvironment, yes), {
     catch(error) {
       channels.forEach((channel, index) => {
-        channel.finish(error instanceof TaoWorkerFailure && !error.workerFailures.includes(index) ? 'passed' : 'failed')
+        channel.finish(isUnfailedTaoWorker(error, index) ? 'passed' : 'failed')
       })
       Errors.Throw(error)
     },
@@ -244,6 +244,10 @@ class TaoWorkerFailure extends Error {
   constructor(readonly workerFailures: readonly number[]) {
     super('Tao app tests failed.')
   }
+}
+
+function isUnfailedTaoWorker(error: unknown, index: number): error is TaoWorkerFailure {
+  return error instanceof TaoWorkerFailure && !error.workerFailures.includes(index)
 }
 
 type OptionalCommandFailure = string | undefined

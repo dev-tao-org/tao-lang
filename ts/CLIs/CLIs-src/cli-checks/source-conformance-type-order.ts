@@ -29,6 +29,7 @@ type SignatureCandidate = {
 type SignatureCandidates = Map<TypeScript.Symbol, SignatureCandidate>
 type FileTypeInsertions = Map<TypeScript.SourceFile, Map<number, TypeScript.TextChange>>
 type FunctionBodyNode = TypeScript.Node | undefined
+type FunctionBodyOwner = TypeScript.SignatureDeclaration & { body: FunctionBodyNode }
 
 function collectCandidates(program: TypeScript.Program, checker: TypeScript.TypeChecker): SignatureCandidates {
   const candidates: SignatureCandidates = new Map()
@@ -99,7 +100,7 @@ function resolveConsumer(node: TypeScript.Node, checker: TypeScript.TypeChecker)
     }
     if (TypeScript.isFunctionLike(ancestor)) {
       const owner = resolveFunctionOwner(ancestor, checker)
-      const body = 'body' in ancestor ? ancestor.body as FunctionBodyNode : undefined
+      const body = hasFunctionBody(ancestor) ? ancestor.body : undefined
       if (owner) {
         return { owner, signature: !body || !containsNode(body, node) }
       }
@@ -110,6 +111,10 @@ function resolveConsumer(node: TypeScript.Node, checker: TypeScript.TypeChecker)
     ancestor = ancestor.parent
   }
   return undefined
+}
+
+function hasFunctionBody(node: TypeScript.SignatureDeclaration): node is FunctionBodyOwner {
+  return 'body' in node
 }
 
 function resolveFunctionOwner(

@@ -269,10 +269,14 @@ async function parseRetainedProfileMetadata(path: string): Promise<unknown> {
 }
 
 function readRetainedGraphFingerprint(metadata: unknown): string | undefined {
-  const fingerprint = metadata !== null && typeof metadata === 'object' && 'graphFingerprint' in metadata
+  const fingerprint = hasRetainedGraphFingerprint(metadata)
     ? metadata.graphFingerprint
     : undefined
   return typeof fingerprint === 'string' ? fingerprint : undefined
+}
+
+function hasRetainedGraphFingerprint(metadata: unknown): metadata is { graphFingerprint: unknown } {
+  return metadata !== null && typeof metadata === 'object' && 'graphFingerprint' in metadata
 }
 
 function isRegularFile(path: string): boolean {

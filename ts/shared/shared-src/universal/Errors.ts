@@ -10,6 +10,11 @@ export type TaoError =
 /** ErrorDetails declares structured context attached to Tao errors. */
 export type ErrorDetails = Record<string, unknown>
 
+/** isNativeError checks whether a value belongs to the native Error prototype chain. */
+export function isNativeError(error: unknown): error is Error {
+  return error instanceof Error
+}
+
 /** isTaoError checks whether a value is one of Tao's structured errors. */
 export function isTaoError(error: unknown): error is TaoError {
   // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
@@ -163,7 +168,7 @@ function formatCommandPart(value: string): string {
 }
 
 function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {
-  if (!(error instanceof Error)) {
+  if (!isNativeError(error)) {
     return error
   }
   if (seen.has(error)) {
@@ -183,9 +188,13 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
     ...fields,
     name: error.name,
     message: error.message,
-    ...(error instanceof AggregateError
+    ...(isAggregateError(error)
       ? { errors: error.errors.map(member => errorDetails(member, stacks, seen)) }
       : {}),
     ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
   }
+}
+
+function isAggregateError(error: Error): error is AggregateError {
+  return error instanceof AggregateError
 }

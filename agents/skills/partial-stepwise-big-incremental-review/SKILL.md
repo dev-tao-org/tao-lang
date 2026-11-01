@@ -42,8 +42,8 @@ description: >-
 - Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
   `binary` for binary changes. Add a line anchor only when a particular location is useful.
-  Present three groups together by default; honor a requested count. Keep group boundaries and
-  list later titles until completion or a requested switch.
+  Present at least three whole groups totaling at least ten files, or all remaining files if fewer.
+  Honor explicit overrides. Keep group boundaries and list later titles.
   Explain partial-file scope in at most two sentences. End immediately after the file list.
 - Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
   Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.

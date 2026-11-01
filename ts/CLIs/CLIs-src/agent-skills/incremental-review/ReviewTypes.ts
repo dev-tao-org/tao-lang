@@ -1,3 +1,15 @@
+/** IncrementalReviewResult preserves the response contracts of the review commands. */
+export type IncrementalReviewResult =
+  | { commands: string[]; scope: string }
+  | { session: string; reviewedBranch: string; reviewedRoot: string }
+  | { proposal: string; sourceDiff: string; reviewedDiff: string }
+  | { accepted: string[]; kind: ReviewSelection['kind'] }
+  | { reopened: string[] }
+  | { reviewedBranch: string }
+  | { recovered: true }
+  | { notes: string[]; recheck: string[] }
+  | ReviewStatus
+
 /** ReviewSession records the source and owned reviewed checkout for one review. */
 export type ReviewSession = {
   version: 1

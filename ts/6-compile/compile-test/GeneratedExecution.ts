@@ -59,11 +59,15 @@ function resolveGeneratedPath(
 ): string {
   const target = Path.join(Path.dirname(parent), specifier)
   const candidates = [`${target}.ts`, `${target}.tsx`, target]
-  const resolved = candidates.find(candidate => candidate in files)
+  const resolved = candidates.find(candidate => hasGeneratedFile(candidate, files))
   if (resolved === undefined) {
     Errors.ThrowShouldNeverHappen(`Generated import ${specifier} from ${parent} is missing.`)
   }
   return resolved
+}
+
+function hasGeneratedFile(path: string, files: CompiledFiles): boolean {
+  return path in files
 }
 
 function transpile(source: string, path: string): string {

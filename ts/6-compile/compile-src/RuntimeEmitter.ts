@@ -84,7 +84,7 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
 type EmittableName = AST.Name | ModuleBinding
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
 export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): string {
-  const name = 'target' in node ? node.target : node.value
+  const name = CodegenUtil.isModuleBinding(node) ? node.target : node.value
   const reference = typeof scope === 'string' ? undefined : scope.resolveReference(name)
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }

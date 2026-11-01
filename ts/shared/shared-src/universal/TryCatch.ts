@@ -31,7 +31,7 @@ export function Try<Value, Recovery = never, Final = void>(
       )
     })
   })
-  return (completed instanceof Promise ? completed.then(unwrap) : unwrap(completed)) as TryResult<
+  return (isNativePromise(completed) ? completed.then(unwrap) : unwrap(completed)) as TryResult<
     Value,
     Recovery,
     Final
@@ -96,7 +96,11 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
 }
 
 function continueWith(result: PendingOutcome, next: (outcome: Outcome) => PendingOutcome): PendingOutcome {
-  return result instanceof Promise ? result.then(next) : next(result)
+  return isNativePromise(result) ? result.then(next) : next(result)
+}
+
+function isNativePromise(value: PendingOutcome): value is Promise<Outcome> {
+  return value instanceof Promise
 }
 
 function unwrap(outcome: Outcome): unknown {

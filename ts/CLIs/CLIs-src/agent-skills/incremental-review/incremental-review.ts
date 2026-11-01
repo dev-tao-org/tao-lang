@@ -6,7 +6,7 @@ import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
 import * as ReviewSessionModule2 from './ReviewSession'
-import type { ReviewHooks, ReviewSelection, ReviewSession, ReviewStatus } from './ReviewTypes'
+import type { IncrementalReviewResult, ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
 export async function main(): Promise<void> {
@@ -64,17 +64,6 @@ type NoteCommand = 'note' | 'recheck'
 type SelectionCommand = 'plan' | 'accept'
 type OptionalPath = string | undefined
 type ReviewNoteResult = { notes: string[]; recheck: string[] }
-
-type IncrementalReviewResult =
-  | { commands: string[]; scope: string }
-  | { session: string; reviewedBranch: string; reviewedRoot: string }
-  | { proposal: string; sourceDiff: string; reviewedDiff: string }
-  | { accepted: string[]; kind: ReviewSelection['kind'] }
-  | { reopened: string[] }
-  | { reviewedBranch: string }
-  | { recovered: true }
-  | { notes: string[]; recheck: string[] }
-  | ReviewStatus
 
 function formatReviewResult(result: IncrementalReviewResult): string {
   return JSON.stringify(result, null, 2)

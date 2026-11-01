@@ -123,11 +123,15 @@ function normalizePath(value: unknown): string | undefined {
 }
 
 function normalizePathInput(value: unknown): unknown {
-  if (value instanceof URL) {
+  if (isNativeURL(value)) {
     return Node.fileURLToPath(value)
   }
   if (Buffer.isBuffer(value)) {
     return value.toString()
   }
   return value
+}
+
+function isNativeURL(value: unknown): value is URL {
+  return value instanceof URL
 }

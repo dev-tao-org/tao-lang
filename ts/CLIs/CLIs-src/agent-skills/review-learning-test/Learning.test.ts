@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import type { Correction, LearningState, LearningStatus, Scan } from '../review-learning/LearningTypes'
+import type * as LearningTypes from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
 
 const { expect, test } = Tests
@@ -150,7 +150,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   )
   await runLearning(['propose', '--repo', root, '--input', input])
   const statePath = Path.join(root, '.artifacts/notes/review-learning/state.json')
-  const state = JSON.parse(await FileSystem.readFile(statePath, 'utf8')) as LearningState
+  const state = JSON.parse(await FileSystem.readFile(statePath, 'utf8')) as LearningTypes.LearningState
   const proposal = state.proposals[0]!
   proposal.state = 'applying'
   proposal.outputs = {}
@@ -175,27 +175,37 @@ async function createFixture(): Promise<string> {
   return root
 }
 
-async function scanLearning(root: string, id: string): Promise<Scan> {
+async function scanLearning(root: string, id: string): Promise<LearningTypes.Scan> {
   const result = await runLearning(['scan', '--repo', root, '--rule', id])
-  if (!('findings' in result) || !('complete' in result)) {
+  if (!isLearningScan(result)) {
     Errors.ThrowShouldNeverHappen('Review learning scan returned a different command result.')
   }
   return result
 }
 
-async function readLearningStatus(root: string): Promise<LearningStatus> {
+async function readLearningStatus(root: string): Promise<LearningTypes.LearningStatus> {
   const result = await runLearning(['status', '--repo', root])
-  if (!('corrections' in result) || !('appliedProposals' in result)) {
+  if (!isLearningStatus(result)) {
     Errors.ThrowShouldNeverHappen('Review learning status returned a different command result.')
   }
   return result
+}
+
+function isLearningScan(result: LearningTypes.ReviewLearningCommandResult): result is LearningTypes.Scan {
+  return 'findings' in result && 'complete' in result
+}
+
+function isLearningStatus(
+  result: LearningTypes.ReviewLearningCommandResult,
+): result is LearningTypes.LearningStatus {
+  return 'corrections' in result && 'appliedProposals' in result
 }
 
 async function capture(
   root: string,
   authority: unknown,
   id = 'example',
-  authoritySource?: Correction['authoritySource'],
+  authoritySource?: LearningTypes.Correction['authoritySource'],
 ): Promise<void> {
   const input = Path.join(root, 'capture.json')
   await FileSystem.writeFile(

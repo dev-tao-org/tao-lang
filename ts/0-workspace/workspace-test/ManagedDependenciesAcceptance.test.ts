@@ -188,10 +188,14 @@ function resolveOpenFileOutcome(result: UpdateResult): string {
   if (result.status === 'published') {
     return 'published'
   }
-  if ('error' in result) {
+  if (hasOpenFileError(result)) {
     return result.error
   }
   return result.status
+}
+
+function hasOpenFileError(result: UpdateResult): result is Extract<UpdateResult, { status: 'failed' }> {
+  return 'error' in result
 }
 
 async function verifyFrozenReprepare(app: string, entry: string, root: string, registry: string): Promise<void> {

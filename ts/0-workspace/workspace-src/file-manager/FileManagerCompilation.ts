@@ -85,7 +85,7 @@ export async function loadFileManagerInput(
     }
   }
   const snapshot = await readSource(request.input.path, request.input.startedAtMs, read)
-  if ('status' in snapshot) {
+  if (isUpdateResult(snapshot)) {
     return snapshot
   }
   if (!isCurrent()) {
@@ -101,6 +101,13 @@ export async function loadFileManagerInput(
     startedAtMs: snapshot.observedAtMs,
     timings: snapshot.timings,
   }
+}
+
+type FileManagerReadOutcome = LoadedInputResult | SourceReadResult | ReadResult
+
+/** isUpdateResult distinguishes a completed workspace outcome from captured source input. */
+export function isUpdateResult(value: FileManagerReadOutcome): value is UpdateResult {
+  return 'status' in value
 }
 
 /** FileManagerOptions connects source observation to the workspace compiler. */
@@ -266,7 +273,7 @@ const readSource = Timings.createTopLevelTimer(async function(
 ): Promise<SourceReadResult> {
   timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
   const snapshot = await timings.run(readWorkspaceSource, path, observedAtMs, read)
-  return 'status' in snapshot ? snapshot : { ...snapshot, timings }
+  return isUpdateResult(snapshot) ? snapshot : { ...snapshot, timings }
 })
 
 const readWorkspaceSource = Timings.measured('workspace.read', function(
@@ -275,7 +282,7 @@ const readWorkspaceSource = Timings.measured('workspace.read', function(
   read: (path: string, observedAtMs: number) => Promise<ReadResult>,
 ): Promise<ReadResult> {
   return read(path, observedAtMs).then(result => {
-    if ('status' in result) {
+    if (isUpdateResult(result)) {
       return result
     }
     return { source: result.source, observedAtMs }

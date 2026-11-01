@@ -226,7 +226,7 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
   }
   await writeAtomicGeneratedFiles(Path.join(runtime.directory, 'src'), files, isCurrent)
   for (const file of Object.keys(previousFiles ?? {})) {
-    if (!(file in files)) {
+    if (!hasGeneratedSourceFile(files, file)) {
       await FileSystem.rm(resolveGeneratedPath(Path.join(runtime.directory, 'src'), file), { force: true })
     }
   }
@@ -235,6 +235,10 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
     Errors.ThrowUserInput('Generated app build changed while publishing.')
   }
 })
+
+function hasGeneratedSourceFile(files: GeneratedRevision['files'], file: string): boolean {
+  return file in files
+}
 
 async function writeAtomicGeneratedFiles(
   directory: string,

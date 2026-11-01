@@ -1,4 +1,4 @@
-import { NullCharacter, Regxs, Try } from '@shared'
+import { Errors, NullCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
@@ -108,5 +108,5 @@ async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<voi
 }
 
 function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
+  return Errors.isNativeError(cause) ? cause.message : String(cause)
 }

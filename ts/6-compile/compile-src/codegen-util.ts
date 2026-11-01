@@ -45,7 +45,12 @@ export function compileName(node: NamedValue): string {
 type ReferencedName = AST.Name | ModuleBinding
 /** compileReferenceName quotes the referenced name or linked binding's target. */
 export function compileReferenceName(node: ReferencedName): string {
-  return 'target' in node ? emitStringLiteral(node.target) : emitLiteral(node)
+  return isModuleBinding(node) ? emitStringLiteral(node.target) : emitLiteral(node)
+}
+
+/** isModuleBinding narrows a source name or linked binding by its target field. */
+export function isModuleBinding(node: ReferencedName): node is ModuleBinding {
+  return 'target' in node
 }
 
 type NamedViewNode = Pick<ViewNameNode, 'name'>
