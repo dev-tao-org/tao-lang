@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { readRuntimeSources } from '../../../CLIs/CLIs-src/cli-checks/runtime-sources'
@@ -277,7 +277,7 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
   const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, directory)
   const program = TypeScript.createProgram(parsed.fileNames, { ...parsed.options, noEmit: true })
   const diagnostics = [...configDiagnostics, ...parsed.errors, ...TypeScript.getPreEmitDiagnostics(program)].map(
-    diagnostic => TypeScript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+    diagnostic => TypeScript.flattenDiagnosticMessageText(diagnostic.messageText, NewlineCharacter),
   )
   Tests.expect(diagnostics).toEqual([])
   Tests.expect(parsed.fileNames).toContain(appPath)

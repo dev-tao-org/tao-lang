@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { S, Timings, Try } from '@shared'
+import { NewlineCharacter, S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
@@ -53,7 +53,7 @@ Tests.test('loads a project through a symlink using canonical source roots', asy
     await FileSystem.symlink(root, alias)
     const aliasEntry = Path.join(alias, 'Main.tao')
     const sources = await loadModules(
-      parseEntry(aliasEntry, `use Nearby\n${app('Main')}`),
+      parseEntry(aliasEntry, `use Nearby${NewlineCharacter}${app('Main')}`),
       { directory: alias },
       createParser(),
     )
@@ -78,7 +78,7 @@ Tests.test('resolves a named package recursively and reports its import ownershi
     await FileSystem.writeFile(card, view('Card'))
     await FileSystem.writeFile(nestedProjectCard, view('Nested'))
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use all from @parts\n${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use all from @parts${NewlineCharacter}${app('Main')}`),
       { directory: root },
       createParser(),
     )
@@ -97,7 +97,7 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
     await FileSystem.mkdirs(Path.join(standardRoot, '.tao'), Path.dirname(standardPath))
     await FileSystem.writeFile(standardPath, view('Actual'))
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use all from tao@ui\n${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use all from tao@ui${NewlineCharacter}${app('Main')}`),
       {
         directory: root,
         resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
@@ -118,7 +118,7 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
     await writeSources(Path.join(root, '@tao', 'Card.tao'), view('Card'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(root, 'Main.tao'), `use all from ./@tao\n${app('Main')}`),
+        parseEntry(Path.join(root, 'Main.tao'), `use all from ./@tao${NewlineCharacter}${app('Main')}`),
         { directory: root },
         createParser(),
       ),
@@ -139,7 +139,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
     await FileSystem.mkdir(Path.join(projectRoot, '.tao'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao\n${app('Main')}`),
+        parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao${NewlineCharacter}${app('Main')}`),
         { directory: projectRoot },
         createParser(),
       ),

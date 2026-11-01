@@ -1,4 +1,4 @@
-import { Errors, S } from '@shared'
+import { Errors, NewlineCharacter, S } from '@shared'
 import { Env, Path, Platform, Repo, Tests } from '@shared/os'
 
 const ProbeSource = S`
@@ -42,7 +42,12 @@ Tests.test('commands throw by default and preserve nonzero results only through 
   const asynchronous = await Platform.runIgnoreStatus(command)
   const synchronous = Platform.runIgnoreStatusSync(command)
   for (const result of [asynchronous, synchronous]) {
-    Tests.expect(result).toMatchObject({ status: 7, signal: null, stdout: ' output\n', stderr: 'diagnostic\n' })
+    Tests.expect(result).toMatchObject({
+      status: 7,
+      signal: null,
+      stdout: ' output' + NewlineCharacter,
+      stderr: 'diagnostic' + NewlineCharacter,
+    })
     Tests.expect(result.command).toBe('bun')
     Tests.expect(result.args).toEqual(['-e', NonzeroSource])
   }
@@ -59,8 +64,8 @@ function isNonzeroCommandFailure(error: unknown): boolean {
     args: ['-e', NonzeroSource],
     status: 7,
     signal: null,
-    stdout: ' output\n',
-    stderr: 'diagnostic\n',
+    stdout: ' output' + NewlineCharacter,
+    stderr: 'diagnostic' + NewlineCharacter,
   })
   return true
 }

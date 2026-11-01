@@ -1,4 +1,5 @@
 import * as Parser from '@grammar/parser'
+import { NewlineCharacter } from '@shared'
 import { Tests } from '@shared/os'
 import * as PreviewMeasurement from '../perf-src/PreviewMeasurement'
 
@@ -61,7 +62,7 @@ Tests.test('multi-input measurements distribute unique generated views across im
     2,
     2,
   ])
-  const allSources = fixture.extraFiles.map(file => file.source).join('\n')
+  const allSources = fixture.extraFiles.map(file => file.source).join(NewlineCharacter)
   for (const file of fixture.extraFiles) {
     Tests.expect(Parser.createParser().parse(file.source).rootNode.hasError).toBe(false)
   }

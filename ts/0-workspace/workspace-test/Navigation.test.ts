@@ -3,7 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { compile } from '@compile/Compile'
 import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
-import { S, Timings, Try } from '@shared'
+import { NewlineCharacter, S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
 import TypeScript from 'typescript'
@@ -89,7 +89,11 @@ async function inspectGeneratedTypes(
     const service = TypeScript.createLanguageService(createLanguageServiceHost(parsed))
     await Try(() => {
       const diagnostics = parsed.fileNames.flatMap(path => service.getSemanticDiagnostics(path))
-      Tests.expect(diagnostics.map(diagnostic => TypeScript.flattenDiagnosticMessageText(diagnostic.messageText, '\n')))
+      Tests.expect(
+        diagnostics.map(diagnostic =>
+          TypeScript.flattenDiagnosticMessageText(diagnostic.messageText, NewlineCharacter)
+        ),
+      )
         .toEqual([])
       inspect(service, build)
     }, { finally: () => service.dispose() })

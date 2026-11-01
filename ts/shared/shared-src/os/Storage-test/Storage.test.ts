@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { Objects, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { resolveStorage } from '../Storage'
 
@@ -101,7 +101,7 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
       }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()])));
       `,
     )
-    const env = { ...process.env }
+    const env = Objects.copy(process.env)
     delete env.TAO_CACHE_DIR
     delete env.TAO_SUPPORT_DIR
     const child = Platform.spawnPiped(process.execPath, {

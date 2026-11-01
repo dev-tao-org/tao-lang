@@ -1,4 +1,4 @@
-import { Addr, Errors, joinTextLines, S, Try } from '@shared'
+import { Addr, Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
@@ -75,7 +75,10 @@ async function createFixtureProjects(root: string): Promise<FixtureProjects> {
   await FileSystem.cp(Path.join(fixtures, 'app'), app, { recursive: true })
   await FileSystem.cp(Path.join(fixtures, 'ui'), ui, { recursive: true })
   await FileSystem.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
-  await FileSystem.writeFile(Path.join(app, 'Unused.tao'), 'requires github:unused/project version v1 as unused\n')
+  await FileSystem.writeFile(
+    Path.join(app, 'Unused.tao'),
+    'requires github:unused/project version v1 as unused' + NewlineCharacter,
+  )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
 
@@ -85,7 +88,7 @@ async function expectInstallRetry(entry: string, root: string): Promise<void> {
       runtimePins,
       executor: async (_command, args) =>
         args[0] === '--version'
-          ? { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+          ? { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
           : { status: 1, stdout: '', stderr: 'fixture install interruption' },
     }),
     ManagedDependencyInstallFailureRegx,
@@ -96,7 +99,7 @@ async function expectInstallRetry(entry: string, root: string): Promise<void> {
 function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     const registryArguments = ['--registry', registry]
     const environment = {
@@ -123,7 +126,11 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
     const lockExists = await FileSystem.exists(Path.join(cwd, 'bun.lock'))
     return lockExists || status !== 0
       ? { status, stdout, stderr }
-      : { status: 1, stdout, stderr: `${stderr}\nBun exited successfully without writing bun.lock. ${stdout}` }
+      : {
+        status: 1,
+        stdout,
+        stderr: `${stderr}${NewlineCharacter}Bun exited successfully without writing bun.lock. ${stdout}`,
+      }
   }
 }
 
@@ -210,7 +217,7 @@ async function verifyFrozenReprepare(app: string, entry: string, root: string, r
   const executor: BunExecutor = async (command, args, cwd) => {
     if (args[0] === '--version') {
       versionLookups += 1
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     invocations.push([...args])
     return createBunExecutor(root, registry)(command, args, cwd)
@@ -256,7 +263,7 @@ async function verifyLastGoodSurvivesDrift(
   const publishedCount = published.length
   Tests.expect(publishedCount).toBeGreaterThan(1)
   const moduleConfig = Path.join(ui, '@ui/tsconfig.json')
-  await Files.withWritableFile(moduleConfig, file => file.write('{ drifted }\n'))
+  await Files.withWritableFile(moduleConfig, file => file.write('{ drifted }' + NewlineCharacter))
   const driftFailure = await workspace.files.openFile(entry)
   Tests.expect(driftFailure.status).toBe('published')
   Tests.expect(workspace.lastGoodRevision).not.toBe(repaired)
@@ -277,7 +284,7 @@ async function verifyRuntimeConflictPreservesPreview(
   const source = await FileSystem.readFile(path, 'utf8')
   const lastGood = workspace.lastGoodRevision
   const publishedCount = published.length
-  await FileSystem.writeFile(path, `${source}\nrequires npm:react version 1.0.0\n`)
+  await FileSystem.writeFile(path, `${source}${NewlineCharacter}requires npm:react version 1.0.0${NewlineCharacter}`)
   await Tests.rejects(
     ProjectPreparation.prepareProject(entry, {
       runtimePins,

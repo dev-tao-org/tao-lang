@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 type RuntimeFixture = {
@@ -49,9 +49,9 @@ async function createRuntimeFixture(): Promise<RuntimeFixture> {
   const record = Path.join(home, '.tao-dev/shell/repositories', 'a'.repeat(40))
   const bin = Path.join(home, 'bin')
   await FileSystem.mkdirs(record, common, worktreeA, worktreeB, bin, Path.join(home, '.tao-dev/shell/direnv/bin'))
-  await FileSystem.writeFile(Path.join(record, 'choice'), 'disabled\n', 'utf8')
-  await FileSystem.writeFile(Path.join(record, 'common-dir'), `${common}\n`, 'utf8')
-  await FileSystem.writeFile(Path.join(worktreeB, '.envrc'), '# disabled worktree\n', 'utf8')
+  await FileSystem.writeFile(Path.join(record, 'choice'), 'disabled' + NewlineCharacter, 'utf8')
+  await FileSystem.writeFile(Path.join(record, 'common-dir'), `${common}${NewlineCharacter}`, 'utf8')
+  await FileSystem.writeFile(Path.join(worktreeB, '.envrc'), '# disabled worktree' + NewlineCharacter, 'utf8')
   await writeExecutable(Path.join(bin, 'git'), gitFixtureScript())
   await writeExecutable(
     Path.join(home, '.tao-dev/shell/direnv/bin/direnv'),

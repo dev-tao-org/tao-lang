@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -71,7 +71,7 @@ async function assertPolicyRepair(directory: string): Promise<void> {
   await Tests.rejects(
     ManagedModules.repairManagedModuleFiles(input, async (_command, args) =>
       args[0] === '--version'
-        ? { status: 0, stdout: '1.2.0\n', stderr: '' }
+        ? { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
         : { status: 1, stdout: '', stderr: 'fixture frozen failure' }),
     FrozenInstallFailureErrorRegx,
   )
@@ -113,7 +113,7 @@ async function assertPatchedProfile(directory: string): Promise<void> {
     ManagedModules.prepareManagedModules(input, createExecutor(invocations)),
     RuntimeMetadataDriftErrorRegx,
   )
-  const changed = createInput(directory, 'changed patch\n')
+  const changed = createInput(directory, 'changed patch' + NewlineCharacter)
   const second = await ManagedModules.prepareManagedModules(changed, createExecutor(invocations))
   Tests.expect(second.graphFingerprint).toBe(first.graphFingerprint)
   Tests.expect(second.fingerprint).not.toBe(first.fingerprint)
@@ -122,7 +122,7 @@ async function assertPatchedProfile(directory: string): Promise<void> {
   Tests.expect(await ManagedModules.readManagedModules(changed)).toEqual(second)
 }
 
-function createInput(directory: string, patch = 'original patch\n'): ManagedModulesInput {
+function createInput(directory: string, patch = ('original patch' + NewlineCharacter)): ManagedModulesInput {
   return {
     directory,
     modules: [{ directory, requirements: [] }],
@@ -140,7 +140,7 @@ function createInput(directory: string, patch = 'original patch\n'): ManagedModu
 function createExecutor(invocations: string[][]): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+      return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     invocations.push([...args])
     const manifest = JSON.parse(await FileSystem.readFile(Path.join(cwd, 'package.json'), 'utf8'))

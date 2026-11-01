@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Tests } from '@shared/os'
 import { runReview } from '../incremental-review/incremental-review'
 import { acceptSelection } from '../incremental-review/ReviewAccept'
@@ -9,51 +9,54 @@ import type { IncrementalReviewResult, ReviewStatus } from '../incremental-revie
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('continuation inherits acceptance and evidence while reopening uses the original baseline', async () => {
-  await withFixture({ content: 'original\n', other: 'original\n' }, async ({ root, session }) => {
-    await put(root, 'content', 'accepted\n')
-    await acceptSelection(session, await planSelection(session, ['content']))
-    session.recheck = ['other']
-    session.notes = ['Retain this concern']
-    await saveSession(session)
-    await put(root, '.artifacts/notes/incremental-review/progress.json', '{"completed":1}\n')
-    await put(root, '.artifacts/notes/incremental-review/current-group.md', 'Current group\n')
-    const next = Path.join(root, '.artifacts/next')
-    await git(root, ['worktree', 'add', '-b', 'feat/next', next, 'HEAD'])
-    await put(root, 'content', 'old pending edit\n')
-    await put(root, 'other', 'old staged edit\n')
-    await git(root, ['add', 'other'])
-    await put(next, 'content', 'new pending edit\n')
-    const before = await captureOldState(root, session.reviewedRoot)
-    const args = ['continue', '--repo', next, '--from', root, '--branch', 'feat/next-incremental-review-approved']
-    await runReview(args)
-    const continued = await loadSession(next)
-    Tests.expect(continued.id).not.toBe(session.id)
-    Tests.expect(continued.accepted).toEqual(session.accepted)
-    Tests.expect(continued.recheck).toEqual(session.recheck)
-    Tests.expect(continued.notes).toEqual(session.notes)
-    Tests.expect((await readReviewStatus(next)).recheck).toEqual(['other', 'content'])
-    Tests.expect(continued.baseCommit).toBe(session.baseCommit)
-    Tests.expect(continued.base).toBe(session.base)
-    Tests.expect(await head(continued.reviewedRoot)).toBe(before.reviewedHead)
-    Tests.expect(await read(continued.reviewedRoot, 'content')).toBe('accepted\n')
-    Tests.expect(await read(next, '.artifacts/notes/incremental-review/progress.json')).toBe('{"completed":1}\n')
-    Tests.expect(await FileSystem.exists(Path.join(continued.directory, 'journal.json'))).toBe(false)
-    Tests.expect(await FileSystem.exists(Path.join(continued.directory, 'evidence/previous/session.json'))).toBe(true)
-    await Tests.expect(() => runReview(args)).toThrow('already exists')
-    await runReview(['reopen', '--repo', next, '--files', 'content'])
-    Tests.expect(await read(continued.reviewedRoot, 'content')).toBe('original\n')
-    Tests.expect(await read(next, 'content')).toBe('new pending edit\n')
-    Tests.expect(await captureOldState(root, session.reviewedRoot)).toEqual(before)
-  })
+  await withFixture(
+    { content: 'original' + NewlineCharacter, other: 'original' + NewlineCharacter },
+    async ({ root, session }) => {
+      await put(root, 'content', 'accepted' + NewlineCharacter)
+      await acceptSelection(session, await planSelection(session, ['content']))
+      session.recheck = ['other']
+      session.notes = ['Retain this concern']
+      await saveSession(session)
+      await put(root, '.artifacts/notes/incremental-review/progress.json', '{"completed":1}' + NewlineCharacter)
+      await put(root, '.artifacts/notes/incremental-review/current-group.md', 'Current group' + NewlineCharacter)
+      const next = Path.join(root, '.artifacts/next')
+      await git(root, ['worktree', 'add', '-b', 'feat/next', next, 'HEAD'])
+      await put(root, 'content', 'old pending edit' + NewlineCharacter)
+      await put(root, 'other', 'old staged edit' + NewlineCharacter)
+      await git(root, ['add', 'other'])
+      await put(next, 'content', 'new pending edit' + NewlineCharacter)
+      const before = await captureOldState(root, session.reviewedRoot)
+      const args = ['continue', '--repo', next, '--from', root, '--branch', 'feat/next-incremental-review-approved']
+      await runReview(args)
+      const continued = await loadSession(next)
+      Tests.expect(continued.id).not.toBe(session.id)
+      Tests.expect(continued.accepted).toEqual(session.accepted)
+      Tests.expect(continued.recheck).toEqual(session.recheck)
+      Tests.expect(continued.notes).toEqual(session.notes)
+      Tests.expect((await readReviewStatus(next)).recheck).toEqual(['other', 'content'])
+      Tests.expect(continued.baseCommit).toBe(session.baseCommit)
+      Tests.expect(continued.base).toBe(session.base)
+      Tests.expect(await head(continued.reviewedRoot)).toBe(before.reviewedHead)
+      Tests.expect(await read(continued.reviewedRoot, 'content')).toBe('accepted\n')
+      Tests.expect(await read(next, '.artifacts/notes/incremental-review/progress.json')).toBe('{"completed":1}\n')
+      Tests.expect(await FileSystem.exists(Path.join(continued.directory, 'journal.json'))).toBe(false)
+      Tests.expect(await FileSystem.exists(Path.join(continued.directory, 'evidence/previous/session.json'))).toBe(true)
+      await Tests.expect(() => runReview(args)).toThrow('already exists')
+      await runReview(['reopen', '--repo', next, '--files', 'content'])
+      Tests.expect(await read(continued.reviewedRoot, 'content')).toBe('original\n')
+      Tests.expect(await read(next, 'content')).toBe('new pending edit\n')
+      Tests.expect(await captureOldState(root, session.reviewedRoot)).toEqual(before)
+    },
+  )
 })
 
 Tests.test('an existing destination branch refuses before installing continuation history', async () => {
-  await withFixture({ content: 'original\n' }, async ({ root, session }) => {
+  await withFixture({ content: 'original' + NewlineCharacter }, async ({ root, session }) => {
     const next = Path.join(root, '.artifacts/next')
     await git(root, ['worktree', 'add', '-b', 'feat/next', next, 'HEAD'])
     const branch = 'feat/next-incremental-review-approved'
     await git(root, ['branch', branch])
-    await put(root, '.artifacts/notes/incremental-review/progress.json', '{"completed":1}\n')
+    await put(root, '.artifacts/notes/incremental-review/progress.json', '{"completed":1}' + NewlineCharacter)
     await Tests.expect(() => runReview(['continue', '--repo', next, '--from', root, '--branch', branch]))
       .toThrow('branch already exists')
     const state = Path.join(next, '.artifacts/notes/incremental-review')
@@ -66,8 +69,8 @@ Tests.test('an existing destination branch refuses before installing continuatio
 })
 
 Tests.test('continuation refuses interrupted and foreign source sessions before creating a branch', async () => {
-  await withFixture({ content: 'original\n' }, async ({ root, session }) => {
-    await put(root, 'content', 'accepted\n')
+  await withFixture({ content: 'original' + NewlineCharacter }, async ({ root, session }) => {
+    await put(root, 'content', 'accepted' + NewlineCharacter)
     const selection = await planSelection(session, ['content'])
     await Tests.expect(() =>
       acceptSelection(session, selection, {

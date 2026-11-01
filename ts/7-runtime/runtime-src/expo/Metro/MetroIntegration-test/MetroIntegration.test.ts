@@ -1,4 +1,4 @@
-import { Errors, S, Time, Try } from '@shared'
+import { Errors, joinTextLines, Objects, S, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Http, MetroPlatform, Path, Platform, Repo, Tests } from '@shared/os'
 import * as Runtime from '../../../Runtime'
 import type { ExpoSession } from '../../Expo/Expo'
@@ -31,7 +31,8 @@ Tests.test(
     await FileSystem.writeFile(preload, delayPreload(application.metroPreloadPath!, publishBeforeAdmission))
     const configuration = Path.join(directory, 'metro.config.js')
     const source = await FileSystem.readFile(configuration, 'utf8')
-    await FileSystem.writeFile(configuration, `${source}\nmodule.exports.watcher.unstable_lazySha1 = false;\n`)
+    const updatedConfiguration = joinTextLines(source, 'module.exports.watcher.unstable_lazySha1 = false;', '')
+    await FileSystem.writeFile(configuration, updatedConfiguration)
     application.metroPreloadPath = preload
     application.generated = createRevision('A', 0)
     const session = await Runtime.start(application)
@@ -96,7 +97,7 @@ async function verifyGeneratedFailures(
   Tests.expect((await (await Http.request(`${session.url}/__tao/session`)).json() as { revision: string }).revision)
     .toBe('B_PENDING')
   Tests.expect(await session.publish({ ...added, revision: 'C2', sequence: 5 })).toMatchObject({ status: 'published' })
-  const removed = { ...added, revision: 'D', sequence: 6, files: { ...added.files } }
+  const removed = { ...added, revision: 'D', sequence: 6, files: Objects.copy(added.files) }
   delete removed.files['extra.ts']
   Tests.expect(await session.publish(removed)).toMatchObject({ status: 'error', publishedRevision: 'D' })
   Tests.expect(messages.some(message => message.type === 'error' && message.tao?.revision === 'D')).toBe(true)

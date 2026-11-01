@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -35,7 +35,7 @@ function input(directory: string) {
 
 const nativeGraphExecutor: BunExecutor = async (_command, args, directory) => {
   if (args[0] === '--version') {
-    return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
   }
   const dependencies = { 'wrapper-a': '1.0.0', 'wrapper-b': '1.0.0' }
   await writeLock(directory, dependencies)

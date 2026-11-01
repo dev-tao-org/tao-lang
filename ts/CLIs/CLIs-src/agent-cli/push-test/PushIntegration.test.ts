@@ -1,11 +1,11 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { pushBranch, type PushIO } from '../push/Push'
 
 Tests.test('a local guarded push updates only its destination despite broader remote configuration', async () => {
   await withRepository(async (root, remote) => {
     const before = await git(remote, ['rev-parse', 'refs/heads/main'])
-    await FileSystem.writeFile(Path.join(root, 'fixture.txt'), 'approved update\n')
+    await FileSystem.writeFile(Path.join(root, 'fixture.txt'), 'approved update' + NewlineCharacter)
     await git(root, ['add', 'fixture.txt'])
     await git(root, ['commit', '-m', 'Fixture update'])
     await git(root, ['tag', '-a', 'fixture-tag', '-m', 'Do not publish this tag'])
@@ -31,7 +31,7 @@ async function withRepository(action: (root: string, remote: string) => Promise<
     await git(root, ['init', '-b', 'main'])
     await git(root, ['config', '--local', 'user.name', 'Push Fixture'])
     await git(root, ['config', '--local', 'user.email', 'push@example.invalid'])
-    await FileSystem.writeFile(Path.join(root, 'fixture.txt'), 'baseline\n')
+    await FileSystem.writeFile(Path.join(root, 'fixture.txt'), 'baseline' + NewlineCharacter)
     await git(root, ['add', 'fixture.txt'])
     await git(root, ['commit', '-m', 'Fixture baseline'])
     await git(root, ['branch', 'keep'])

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, S, Timings } from '@shared'
+import { Errors, NewlineCharacter, S, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../ast-gen-src/Transform'
@@ -148,7 +148,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   })
   Tests.expect(result?.root.block.statements[5]).toMatchObject({ kind: 'ViewDeclaration', visibility: 'folder' })
   Tests.expect(result?.root.block.statements[6]).toMatchObject({ kind: 'LetDeclaration', visibility: 'public' })
-  Tests.expect(result?.root.block.statements[0]).toMatchObject({ start: 0, end: source.indexOf('\n') })
+  Tests.expect(result?.root.block.statements[0]).toMatchObject({ start: 0, end: source.indexOf(NewlineCharacter) })
 })
 
 Tests.test('requirements and foreign views retain authored fields and source ranges', () => {

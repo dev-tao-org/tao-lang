@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { NewlineCharacter, NullCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import { runDirenvSetup, type SetupEnvironment } from '../dev-cli/shell/DirenvSetup'
 
@@ -39,13 +39,13 @@ async function writeFixtureTree(root: string, home: string): Promise<FixturePath
   await FileSystem.mkdir(Path.join(root, 'ts/CLIs/CLIs-src/dev-cli/shell'))
   await FileSystem.writeFile(
     Path.join(root, 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'),
-    '# runtime fixture\n',
+    '# runtime fixture' + NewlineCharacter,
     'utf8',
   )
-  await FileSystem.writeFile(Path.join(root, '.envrc'), '# envrc fixture\n', 'utf8')
+  await FileSystem.writeFile(Path.join(root, '.envrc'), '# envrc fixture' + NewlineCharacter, 'utf8')
   await FileSystem.writeFile(
     Path.join(root, '.artifacts/cache/dev-shell/completion.zsh'),
-    '# completion fixture\n',
+    '# completion fixture' + NewlineCharacter,
     'utf8',
   )
   await FileSystem.writeFile(
@@ -113,12 +113,12 @@ type OptionalGitArguments = readonly string[] | undefined
 
 function resolveGitOutput(args: OptionalGitArguments, common: string, root: string, identity: string): string {
   if (args?.[0] === 'rev-parse') {
-    return `${common}\n`
+    return `${common}${NewlineCharacter}`
   }
   if (args?.[0] === 'worktree') {
-    return `worktree ${root}\0HEAD ${identity}\0\0`
+    return `worktree ${root}${NullCharacter}HEAD ${identity}${NullCharacter}${NullCharacter}`
   }
-  return `${identity}\n`
+  return `${identity}${NewlineCharacter}`
 }
 
 async function createFixture(): Promise<FixtureState> {
@@ -164,7 +164,11 @@ Tests.test('reconfiguring an enabled shell setup off revokes only its direnv all
   await withFixture(async fixtureState => {
     await runDirenvSetup({}, fixtureState.environment)
     fixtureState.commandCalls.length = 0
-    await FileSystem.writeFile(Path.join(fixtureState.shell, 'activation.zsh'), '# stale runtime\n', 'utf8')
+    await FileSystem.writeFile(
+      Path.join(fixtureState.shell, 'activation.zsh'),
+      '# stale runtime' + NewlineCharacter,
+      'utf8',
+    )
     fixtureState.environment.confirm = async options => {
       fixtureState.prompts.push(options)
       return false

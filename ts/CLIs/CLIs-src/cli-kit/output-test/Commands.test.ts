@@ -1,4 +1,5 @@
 import React from '@runtime/client/Bridge-React'
+import { NewlineCharacter } from '@shared'
 import { Tests, Text } from '@shared/os'
 import { renderToString } from 'ink'
 import { createOutput, formatCommands, type OutputSnapshot } from '../output/Output'
@@ -9,7 +10,9 @@ Tests.test('commands remain last after new output and channels, with emphasized 
   output.setCommands([{ key: 'w', label: 'open web' }, { key: 'q', label: 'quit' }])
   output.main.print('Opening Chrome…')
   let rendered = renderView(output.snapshot())
-  Tests.expect(Text.stripAnsi(rendered).trimEnd()).toEndWith('No active channels.\nCommands: open web | quit')
+  Tests.expect(Text.stripAnsi(rendered).trimEnd()).toEndWith(
+    'No active channels.' + NewlineCharacter + 'Commands: open web | quit',
+  )
   const channel = output.channel('Compile')
   channel.print('Changed source')
   rendered = renderView(output.snapshot())

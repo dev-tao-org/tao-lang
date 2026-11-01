@@ -50,10 +50,12 @@ async function runBootstrap(
   failureStage: FailureStage = 'install',
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
+  const universal = join(root, 'universal')
   const bin = join(root, 'bin')
-  await mkdirs(ts, bin)
+  await mkdirs(ts, universal, bin)
   await copyFile(new URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
   await copyFile(new URL('../NodeBuiltins.ts', import.meta.url), join(ts, 'NodeBuiltins.ts'))
+  await copyFile(new URL('../../universal/Characters.ts', import.meta.url), join(universal, 'Characters.ts'))
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
