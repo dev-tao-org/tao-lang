@@ -1,14 +1,4 @@
-import { IO } from '@cli-kit'
-import { Env, Platform } from '@shared/os'
-import setup from './setup'
+import { installWorkspace } from '../../../../shared/shared-src/os/Bootstrap'
 
-const terminal = !Env.is('TERMINAL_OUTPUT', '0')
-IO.config({
-  stdout: terminal ? 'terminal' : 'log',
-  stderr: terminal ? 'terminal' : 'both',
-  progress: terminal ? 'terminal' : 'log',
-  logDirectory: 'dev',
-  logFile: Env.get('OUTPUT_LOG_FILE'),
-})
-// Registration does not load Commander; setup can install dependencies before normal CLI parsing.
-await setup.action(Platform.argv.slice(2))
+// This entry must not load the CLI or workspace dependency graph before installation.
+await installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts')
