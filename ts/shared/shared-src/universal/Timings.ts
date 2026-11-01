@@ -12,8 +12,8 @@ export type TimingSample = {
 }
 
 /** TimingEntry preserves a callable timing boundary and its collector-aware operation. */
-export type TimingEntry<Arguments extends unknown[], Value> = ((...arguments_: Arguments) => Value) & {
-  readonly [entry]: (timings: Timings, ...arguments_: Arguments) => Value
+export type TimingEntry<Arguments extends unknown[], Value> = ((...args: Arguments) => Value) & {
+  readonly [entry]: (timings: Timings, ...args: Arguments) => Value
 }
 
 type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments, Value> | TimingEntry<Arguments, Value>
@@ -41,13 +41,13 @@ export class Timings {
   /** run executes a descriptor or callable entry with this collector through promise settlement. */
   run<Arguments extends unknown[], Value>(
     operation: RunnableOperation<Arguments, Value>,
-    ...arguments_: Arguments
+    ...args: Arguments
   ): Value {
     if (typeof operation === 'function') {
-      return operation[entry](this, ...arguments_)
+      return operation[entry](this, ...args)
     }
     const startMs = this.now()
-    return Try(() => operation[action](this, ...arguments_), {
+    return Try(() => operation[action](this, ...args), {
       finally: (_thrown, error) => {
         this.samples.push({
           name: operation.name,
@@ -64,7 +64,7 @@ export class Timings {
   /** measure defines a non-callable orchestration operation receiving its execution context first. */
   static measure<Arguments extends unknown[], Value>(
     name: string,
-    callback: (timings: Timings, ...arguments_: Arguments) => Value,
+    callback: (timings: Timings, ...args: Arguments) => Value,
   ): Operation<Arguments, Value> {
     return { name, role: 'orchestration', [action]: callback }
   }
@@ -72,18 +72,18 @@ export class Timings {
   /** measured defines a non-callable leaf receiving only its authored arguments. */
   static measured<Arguments extends unknown[], Value>(
     name: string,
-    callback: (...arguments_: Arguments) => Value,
+    callback: (...args: Arguments) => Value,
   ): Operation<Arguments, Value> {
-    return { name, role: 'leaf', [action]: (_timings, ...arguments_) => callback(...arguments_) }
+    return { name, role: 'leaf', [action]: (_timings, ...args) => callback(...args) }
   }
 
   /** createTopLevelTimer creates a callable fresh-collector boundary that run can enter with an existing collector. */
   static createTopLevelTimer<Arguments extends unknown[], Value>(
-    action: (timings: Timings, ...arguments_: Arguments) => Value,
+    action: (timings: Timings, ...args: Arguments) => Value,
     options?: { clock: string; now: () => number },
   ): TimingEntry<Arguments, Value> {
     return Object.assign(
-      (...arguments_: Arguments) => action(new Timings(options?.clock, options?.now), ...arguments_),
+      (...args: Arguments) => action(new Timings(options?.clock, options?.now), ...args),
       { [entry]: action },
     )
   }
@@ -95,7 +95,7 @@ type TimingStatus = 'succeeded' | 'failed'
 type Operation<Arguments extends unknown[], Value> = {
   readonly name: string
   readonly role: OperationRole
-  readonly [action]: (timings: Timings, ...arguments_: Arguments) => Value
+  readonly [action]: (timings: Timings, ...args: Arguments) => Value
 }
 const entry = Symbol('timing entry')
 const action = Symbol('timing operation')

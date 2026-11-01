@@ -1,8 +1,8 @@
 import { Errors, S, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Http, MetroPlatform, Path, Platform, Repo, Tests } from '@shared/os'
-import * as Runtime from '../../Runtime'
-import type { ExpoSession } from '../Expo'
-import type { GeneratedRevision } from '../PreviewProtocol'
+import * as Runtime from '../../../Runtime'
+import type { ExpoSession } from '../../Expo/Expo'
+import type { GeneratedRevision } from '../../PreviewProtocol'
 import { delayPreload } from './DelayPreload'
 import { verifyCoupledUpdates, verifyMetroBurst } from './MetroStress'
 

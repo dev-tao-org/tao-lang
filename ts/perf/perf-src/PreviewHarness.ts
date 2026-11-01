@@ -1,5 +1,5 @@
 import { DefaultAppearance } from '@runtime/client/Appearance'
-import { Errors, S, Try } from '@shared'
+import { Addr, Errors, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type * as Workspace from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
@@ -68,7 +68,7 @@ async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: s
   )
   const server = Http.serve({
     idleTimeout: 0,
-    hostname: '127.0.0.1',
+    hostname: Addr.Localhost,
     port: 0,
     fetch: createRequestHandler(options, sessionDir, streams, publication, encoder, reload, edits),
   })

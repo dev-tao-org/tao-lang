@@ -1,6 +1,6 @@
 import * as TypeScript from 'typescript'
 
-export { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue }
+export { argumentsIdentifierIssue, booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue }
 
 const MaximumBooleanOperators = 2
 const AbsenceTypeNames = new Set(['Missing', 'None'])
@@ -11,6 +11,23 @@ type TransparentExpression =
   | TypeScript.TypeAssertion
   | TypeScript.NonNullExpression
   | TypeScript.SatisfiesExpression
+
+/** argumentsIdentifierIssue replaces local and parameter bindings with the concise args name. */
+function argumentsIdentifierIssue(node: TypeScript.Node): string | undefined {
+  if (!TypeScript.isIdentifier(node) || node.text !== 'arguments_') {
+    return undefined
+  }
+  const declaration = node.parent
+  if (TypeScript.isVariableDeclaration(declaration) || TypeScript.isParameter(declaration)) {
+    return declaration.name === node
+      ? 'name argument-array bindings args instead of arguments_'
+      : undefined
+  }
+  if (TypeScript.isBindingElement(declaration)) {
+    return declaration.name === node ? 'name argument-array bindings args instead of arguments_' : undefined
+  }
+  return undefined
+}
 
 /** booleanExpressionIssue limits connected logical expressions while keeping evaluation boundaries separate. */
 function booleanExpressionIssue(node: TypeScript.Node): string | undefined {

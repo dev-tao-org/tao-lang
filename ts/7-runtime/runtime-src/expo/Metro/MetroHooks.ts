@@ -1,8 +1,8 @@
 import { Errors, Try } from '@shared'
-import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import type { GeneratedRevision } from '../PreviewProtocol'
 import type { MetroAdmission } from './MetroAdmission'
 import { type HmrSocket, limitHmrSocketQueue } from './MetroSocket'
-import type { GeneratedRevision } from './PreviewProtocol'
 
 /** installMetroHooks admits all supported source-consuming Metro operations before graph reads.
  *  Pin guards deliberately reject unknown private surfaces. Delta listeners reserve before debounce;
@@ -39,7 +39,7 @@ export type MetroHookOptions = {
   reportFatal(message: string): void
 }
 
-type MetroMethod = (this: object, ...arguments_: unknown[]) => unknown
+type MetroMethod = (this: object, ...args: unknown[]) => unknown
 type MetroPrototype = Record<string, MetroMethod>
 type Send = (message: string) => void
 type Client = { sendFn: Send }
@@ -79,25 +79,25 @@ function requireMethod(prototype: MetroPrototype, name: string): MetroMethod {
 
 function admitMethod(prototype: MetroPrototype, name: string, admission: MetroAdmission): void {
   const original = requireMethod(prototype, name)
-  prototype[name] = function(...arguments_) {
-    return admission.read(async () => await original.apply(this, arguments_))
+  prototype[name] = function(...args) {
+    return admission.read(async () => await original.apply(this, args))
   }
 }
 
 function wrapHttpRequests(prototype: MetroPrototype, options: MetroHookOptions): void {
   const original = requireMethod(prototype, '_processRequest')
-  prototype._processRequest = function(...arguments_) {
-    const request = arguments_[0] as MetroPlatform.IncomingRequest
-    const response = arguments_[1] as MetroPlatform.OutgoingResponse
+  prototype._processRequest = function(...args) {
+    const request = args[0] as MetroPlatform.IncomingRequest
+    const response = args[1] as MetroPlatform.OutgoingResponse
     if (!consumesSource(request.url ?? '')) {
-      return original.apply(this, arguments_)
+      return original.apply(this, args)
     }
     return options.admission.read(async () => {
       const revision = options.current()
       response.setHeader('x-tao-session', options.sessionId)
       response.setHeader('x-tao-revision', revision.revision)
       response.setHeader('x-tao-sequence', String(revision.sequence))
-      return await original.apply(this, arguments_)
+      return await original.apply(this, args)
     })
   }
 }
@@ -120,14 +120,14 @@ function isMetroWorkspacePath(path: string): boolean {
 function wrapRegistration(prototype: MetroPrototype, options: MetroHookOptions): void {
   const original = requireMethod(prototype, '_registerEntryPoint')
   const clients = new WeakSet<object>()
-  prototype._registerEntryPoint = function(...arguments_) {
-    const client = arguments_[0] as Client
+  prototype._registerEntryPoint = function(...args) {
+    const client = args[0] as Client
     if (!clients.has(client)) {
       client.sendFn = wrapSend(client.sendFn, options)
       clients.add(client)
     }
-    arguments_[2] = wrapSend(arguments_[2] as Send, options)
-    return Try(() => options.admission.read(async () => await original.apply(this, arguments_)), {
+    args[2] = wrapSend(args[2] as Send, options)
+    return Try(() => options.admission.read(async () => await original.apply(this, args)), {
       catch(error) {
         options.reportError(String(error))
         client.sendFn(serializeInternalHmrError(error))
@@ -138,8 +138,8 @@ function wrapRegistration(prototype: MetroPrototype, options: MetroHookOptions):
 
 function wrapHmrCompletion(prototype: MetroPrototype, options: MetroHookOptions): void {
   const original = requireMethod(prototype, '_handleFileChange')
-  prototype._handleFileChange = function(...arguments_) {
-    return Try(() => options.admission.read(async () => await original.apply(this, arguments_)), {
+  prototype._handleFileChange = function(...args) {
+    return Try(() => options.admission.read(async () => await original.apply(this, args)), {
       catch(error) {
         options.reportFatal(String(error))
       },
@@ -167,28 +167,28 @@ function serializeInternalHmrError(error: unknown): string {
 
 function wrapChangeListeners(prototype: MetroPrototype, options: MetroHookOptions): void {
   const original = requireMethod(prototype, 'listen')
-  prototype.listen = function(...arguments_) {
-    const callback = arguments_[1] as (event: unknown) => Promise<unknown>
-    arguments_[1] = (event: unknown) =>
+  prototype.listen = function(...args) {
+    const callback = args[1] as (event: unknown) => Promise<unknown>
+    args[1] = (event: unknown) =>
       Try(() => options.admission.schedule(() => callback(event)), {
         catch(error) {
           options.reportError(String(error))
         },
       })
-    return original.apply(this, arguments_)
+    return original.apply(this, args)
   }
 }
 
 function boundHmrSockets(directory: string): void {
   const module = MetroPlatform.loadExpoModule('@expo/metro/metro/lib/createWebsocketServer', directory) as {
-    default(...arguments_: unknown[]): HmrSocketServer
+    default(...args: unknown[]): HmrSocketServer
   }
   const createServer = module.default
   if (typeof createServer !== 'function') {
     Errors.ThrowHostEnvironment('Unsupported Metro HMR socket factory.')
   }
-  module.default = (...arguments_) => {
-    const server = createServer(...arguments_)
+  module.default = (...args) => {
+    const server = createServer(...args)
     server.prependListener('connection', socket => limitHmrSocketQueue(socket))
     return server
   }

@@ -1,6 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
 import { FileSystem, Path, Storage } from '@shared/os'
-import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
+import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from './expo/PreviewProtocol'
 import * as RuntimeDependencyPolicy from './expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from './expo/Scaffold'
@@ -106,7 +106,7 @@ export type RuntimeCreateOptions = {
   singletonPackages?: readonly string[]
 }
 
-export type { ExpoOptions, ExpoSession } from './expo/Expo'
+export type { ExpoOptions, ExpoSession } from './expo/Expo/Expo'
 export type { RuntimeInstaller } from './expo/Toolchain'
 
 /** runtimeTypeScriptPaths resolves authored API aliases to the immutable packaged runtime sources. */

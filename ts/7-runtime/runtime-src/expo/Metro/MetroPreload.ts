@@ -1,10 +1,10 @@
 import { Errors, Try } from '@shared'
-import * as Env from '../../../shared/shared-src/os/Env'
-import * as FileSystem from '../../../shared/shared-src/os/FileSystem'
-import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
-import { parseGeneratedRevision } from './GeneratedRevision'
+import * as Env from '../../../../shared/shared-src/os/Env'
+import * as FileSystem from '../../../../shared/shared-src/os/FileSystem'
+import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import { parseGeneratedRevision } from '../GeneratedRevision'
+import type { GeneratedRevision } from '../PreviewProtocol'
 import { createMetroAdapter, type MetroServer } from './MetroAdapter'
-import type { GeneratedRevision } from './PreviewProtocol'
 
 type Middleware = (
   request: MetroPlatform.IncomingRequest,

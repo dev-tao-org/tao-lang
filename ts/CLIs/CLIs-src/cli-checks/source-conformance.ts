@@ -10,7 +10,7 @@ import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
-import { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue } from './source-conformance-naming'
+import * as ConformanceNaming from './source-conformance-naming'
 import { objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
@@ -103,6 +103,7 @@ class SourceConformanceChecker {
 
   private checkNode(node: TypeScript.Node): void {
     if (!this.excluded) {
+      this.reportIssue(node, ConformanceNaming.argumentsIdentifierIssue(node))
       this.reportIssue(node, concreteReturnTypeIssue(node, this.checker))
       this.reportIssue(node, ownLineNullishIssue(node, this.file))
       this.reportIssue(node, arrayMultilineStringIssue(node))
@@ -122,9 +123,9 @@ class SourceConformanceChecker {
     this.reportIssue(node, complexSignatureTypeIssue(node))
     this.reportIssue(node, platformAccessIssue(node, this.filename))
     if (!this.excluded) {
-      this.reportIssue(node, booleanExpressionIssue(node))
-      this.reportIssue(node, unnamedUnionIssue(node))
-      this.reportIssue(node, namedRegexIssue(node))
+      this.reportIssue(node, ConformanceNaming.booleanExpressionIssue(node))
+      this.reportIssue(node, ConformanceNaming.unnamedUnionIssue(node))
+      this.reportIssue(node, ConformanceNaming.namedRegexIssue(node))
     }
     const body = ConformanceLayout.functionBody(node)
     if (body) {

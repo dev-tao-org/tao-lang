@@ -134,7 +134,7 @@ function fakeBunScript(): string {
 async function runLauncher(
   root: string,
   launcher: string,
-  arguments_: readonly string[],
+  args: readonly string[],
   extraEnvironment: Record<string, string> = {},
 ): Promise<LauncherResult> {
   const environment = {
@@ -147,7 +147,7 @@ async function runLauncher(
     ...extraEnvironment,
   }
   const child = Platform.spawnPiped(Path.join(root, launcher), {
-    variadicArgs: arguments_,
+    variadicArgs: args,
     cwd: root,
     env: environment,
   })

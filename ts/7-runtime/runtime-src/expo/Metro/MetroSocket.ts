@@ -1,19 +1,19 @@
-import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
 
 /** limitHmrSocketQueue expires only the lagging HMR instance instead of dropping dependent deltas.
  *  One arbitrarily large message may enter an empty queue; further queued payloads obey the cap. */
 export function limitHmrSocketQueue(socket: HmrSocket, limit = 4 * 1024 * 1024): void {
   const send = socket.send
-  socket.send = (...arguments_) => {
+  socket.send = (...args) => {
     if (socket.readyState !== 1) {
       return
     }
-    const size = MetroPlatform.messageByteLength(arguments_[0])
+    const size = MetroPlatform.messageByteLength(args[0])
     if (socket.bufferedAmount > 0 && socket.bufferedAmount + size > limit) {
       socket.terminate()
       return
     }
-    return send.apply(socket, arguments_)
+    return send.apply(socket, args)
   }
 }
 
@@ -21,6 +21,6 @@ export function limitHmrSocketQueue(socket: HmrSocket, limit = 4 * 1024 * 1024):
 export type HmrSocket = {
   bufferedAmount: number
   readyState: number
-  send(...arguments_: unknown[]): unknown
+  send(...args: unknown[]): unknown
   terminate(): void
 }

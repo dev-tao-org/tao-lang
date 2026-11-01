@@ -9,13 +9,13 @@ export function installGeneratedReaders(options: GeneratedReaderOptions): () => 
   installPromiseReaders(options)
   installDescriptors(options, descriptors)
   installStreams(options)
-  options.fs.watch = (path, ...arguments_) => {
+  options.fs.watch = (path, ...args) => {
     const normalized = options.normalize(path)
     const ancestor = normalized !== undefined && options.root.startsWith(normalized + sep)
     if (options.owns(path) || ancestor) {
       unsupported('watch')
     }
-    return options.original.watch(path, ...arguments_)
+    return options.original.watch(path, ...args)
   }
   return () => {
     restoreFunctions(options.fs, options.original)
@@ -46,25 +46,25 @@ function installPathReaders(options: GeneratedReaderOptions, descriptors: Descri
     }
     const base = name.endsWith('Sync') ? name.slice(0, -4) : name
     if (readers.has(base)) {
-      options.fs[name] = (value, ...arguments_) => {
+      options.fs[name] = (value, ...args) => {
         const descriptor = typeof value === 'number' ? descriptors.get(value) : undefined
         if (descriptor) {
-          return invoke(descriptor.owner, name, descriptor.descriptor, ...arguments_)
+          return invoke(descriptor.owner, name, descriptor.descriptor, ...args)
         }
         if (!options.owns(value)) {
-          return original(value, ...arguments_)
+          return original(value, ...args)
         }
-        return invoke(options.current(), name, options.normalize(value), ...arguments_)
+        return invoke(options.current(), name, options.normalize(value), ...args)
       }
       if (base === 'realpath') {
         Object.assign(options.fs[name], { native: options.fs[name] })
       }
     } else if (!streams.has(name)) {
-      options.fs[name] = (...arguments_) => {
-        if (targetsGeneratedPath(options, base, arguments_)) {
+      options.fs[name] = (...args) => {
+        if (targetsGeneratedPath(options, base, args)) {
           unsupported(name)
         }
-        return original(...arguments_)
+        return original(...args)
       }
     } else {
       // Read streams install dedicated revision-preserving routing below.
@@ -77,21 +77,21 @@ function installPromiseReaders(options: GeneratedReaderOptions): void {
     if (typeof original !== 'function') {
       continue
     }
-    options.promises[name] = (value, ...arguments_) => {
+    options.promises[name] = (value, ...args) => {
       if (!options.owns(value)) {
-        if (!readers.has(name) && targetsGeneratedPath(options, name, [value, ...arguments_])) {
+        if (!readers.has(name) && targetsGeneratedPath(options, name, [value, ...args])) {
           unsupported(`promises.${name}`)
         }
-        return original(value, ...arguments_)
+        return original(value, ...args)
       }
       if (!readers.has(name) && name !== 'open') {
         unsupported(`promises.${name}`)
       }
       if (name === 'open') {
-        assertReadOnly(arguments_[0])
+        assertReadOnly(args[0])
       }
       const api = options.current().promises as unknown as FileOperations
-      return api[name](options.normalize(value), ...arguments_)
+      return api[name](options.normalize(value), ...args)
     }
   }
 }
@@ -103,42 +103,42 @@ function installDescriptors(options: GeneratedReaderOptions, descriptors: Descri
     descriptors.set(exposed, { owner, descriptor })
     return exposed
   }
-  options.fs.openSync = (path, flags, ...arguments_) => {
+  options.fs.openSync = (path, flags, ...args) => {
     if (!options.owns(path)) {
-      return options.original.openSync(path, flags, ...arguments_)
+      return options.original.openSync(path, flags, ...args)
     }
     assertReadOnly(flags)
     const owner = options.current()
-    const descriptor = invoke(owner, 'openSync', options.normalize(path), flags, ...arguments_) as number
+    const descriptor = invoke(owner, 'openSync', options.normalize(path), flags, ...args) as number
     return retainDescriptor(owner, descriptor)
   }
-  options.fs.open = (path, flags, ...arguments_) => {
+  options.fs.open = (path, flags, ...args) => {
     if (!options.owns(path)) {
-      return options.original.open(path, flags, ...arguments_)
+      return options.original.open(path, flags, ...args)
     }
     assertReadOnly(flags)
-    const callback = arguments_.pop() as (error: unknown, descriptor?: number) => void
+    const callback = args.pop() as (error: unknown, descriptor?: number) => void
     const owner = options.current()
     return invoke(
       owner,
       'open',
       options.normalize(path),
       flags,
-      ...arguments_,
+      ...args,
       (error: unknown, descriptor: number) =>
         error ? callback(error) : callback(null, retainDescriptor(owner, descriptor)),
     )
   }
   for (const name of descriptorOperations) {
-    options.fs[name] = (value, ...arguments_) => {
+    options.fs[name] = (value, ...args) => {
       const descriptor = typeof value === 'number' ? descriptors.get(value) : undefined
       if (!descriptor) {
-        return options.original[name](value, ...arguments_)
+        return options.original[name](value, ...args)
       }
       if (name.startsWith('close')) {
         descriptors.delete(value as number)
       }
-      return invoke(descriptor.owner, name, descriptor.descriptor, ...arguments_)
+      return invoke(descriptor.owner, name, descriptor.descriptor, ...args)
     }
   }
 }
@@ -198,27 +198,27 @@ function assertReadOnly(flags: unknown): void {
   }
 }
 
-function invoke(owner: GeneratedSnapshot, name: string, ...arguments_: unknown[]): unknown {
+function invoke(owner: GeneratedSnapshot, name: string, ...args: unknown[]): unknown {
   const operation = (owner as unknown as FileOperations)[name]
   if (typeof operation !== 'function') {
     unsupported(name)
   }
-  return operation.apply(owner, arguments_)
+  return operation.apply(owner, args)
 }
 
 function unsupported(operation: string): never {
   return Errors.ThrowHostEnvironment(`Unsupported generated filesystem operation: ${operation}`)
 }
 
-function targetsGeneratedPath(options: GeneratedReaderOptions, name: string, arguments_: unknown[]): boolean {
-  const first = arguments_[0]
+function targetsGeneratedPath(options: GeneratedReaderOptions, name: string, args: unknown[]): boolean {
+  const first = args[0]
   if (Array.isArray(first) ? first.some(options.owns) : options.owns(first)) {
     return true
   }
   if (destinationPaths.has(name)) {
-    return options.owns(arguments_[1])
+    return options.owns(args[1])
   }
-  const configuration = arguments_[1]
+  const configuration = args[1]
   if (name !== 'glob' || typeof configuration !== 'object' || configuration === null) {
     return false
   }

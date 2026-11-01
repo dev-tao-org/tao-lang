@@ -1,7 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import { Http } from '@shared/os'
-import { serializeGeneratedRevision, snapshotRevision } from './GeneratedRevision'
-import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
+import { serializeGeneratedRevision, snapshotRevision } from '../GeneratedRevision'
+import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
 
 /** createPublicationTransport faults a session permanently when server commit completion becomes unknown.
  *  The deadline concerns Metro server completion, independently of preview acknowledgement deadlines.

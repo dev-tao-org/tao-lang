@@ -1,7 +1,7 @@
 import { Time } from '@shared'
 import { Artifacts, FileSystem, Http, Path, Platform, Tests } from '@shared/os'
-import type { ExpoSession } from '../Expo'
-import type { GeneratedRevision } from '../PreviewProtocol'
+import type { ExpoSession } from '../../Expo/Expo'
+import type { GeneratedRevision } from '../../PreviewProtocol'
 
 type MetroUpdate = { type: string; tao?: { revision: string } }
 /** verifyCoupledUpdates checks every HMR group received each complete app/helper revision. */

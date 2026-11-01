@@ -1,9 +1,9 @@
-import { Errors, Try } from '@shared'
+import { Addr, Errors, Try } from '@shared'
 import { Env, Http, Lifecycle, Path, Platform } from '@shared/os'
-import type { RuntimeApplication } from '../Runtime'
+import type { RuntimeApplication } from '../../Runtime'
+import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
 import { type ExpoGeneratedOptions, prepareExpoPublication } from './ExpoPublication'
 import { waitForExpoReady } from './ExpoReadiness'
-import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** createExpoSession starts a managed Expo web server and waits for its first response. */
 export async function createExpoSession(
@@ -18,7 +18,7 @@ export async function createExpoSession(
     cwd: application.directory,
     env: environment,
   })
-  const url = `http://127.0.0.1:${port}`
+  const url = Addr.localhostUrl(port)
   const output = Lifecycle.captureProcessOutput(child, options.onOutput)
   await Try(() => waitForExpoReady(url, () => child.exitCode === null, undefined, undefined, options.signal), {
     async catch(error) {
@@ -71,7 +71,7 @@ function expoEnvironment(directory: string): Record<string, OptionalEnvironmentV
 
 function unusedPort(): number {
   const server = Http.serve({
-    hostname: '127.0.0.1',
+    hostname: Addr.Localhost,
     port: 0,
     fetch: () => Http.response(),
   })

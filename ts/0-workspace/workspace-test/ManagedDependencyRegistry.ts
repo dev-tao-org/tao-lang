@@ -1,3 +1,4 @@
+import { Addr } from '@shared'
 import { FileSystem, Http, Path, Platform, Repo } from '@shared/os'
 import type { ManagedPackageVersionMap } from '../workspace-src/sidecars/managed-modules/ManagedModuleTypes'
 
@@ -6,7 +7,7 @@ const NpmTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
 export async function startManagedDependencyRegistry(root: string, requests: string[], reactVersion: string) {
   const packages = await createPackageArtifacts(root)
   const server = Http.serve({
-    hostname: '127.0.0.1',
+    hostname: Addr.Localhost,
     port: 0,
     fetch(request) {
       const path = Http.url(request.url).pathname

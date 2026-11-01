@@ -1,8 +1,8 @@
 import { Errors } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
+import { serializeGeneratedRevision, snapshotRevision } from '../GeneratedRevision'
+import type { GeneratedRevision } from '../PreviewProtocol'
 import { createPublicationTransport, type PublicationTransport } from './ExpoPublicationTransport'
-import { serializeGeneratedRevision, snapshotRevision } from './GeneratedRevision'
-import type { GeneratedRevision } from './PreviewProtocol'
 
 type ExpoEnvironment = Record<string, string>
 

@@ -1,7 +1,22 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
 import * as TypeScript from 'typescript'
-import { booleanExpressionIssue, namedRegexIssue, unnamedUnionIssue } from '../cli-checks/source-conformance-naming'
+import * as ConformanceNaming from '../cli-checks/source-conformance-naming'
+
+Tests.test('source conformance > rejects arguments_ local and parameter bindings only', () => {
+  const source = S`
+    const arguments_ = []
+    function read(...arguments_: unknown[]) { return arguments_ }
+    type Callback = (...arguments_: unknown[]) => void
+    const record = { arguments_: 'property' }
+    record.arguments_
+    const text = 'arguments_'
+    function readIntrinsic() { return arguments }
+    const { arguments_: args } = record
+    const { value: arguments_ } = record
+  `
+  Tests.expect(issuesFor(source, ConformanceNaming.argumentsIdentifierIssue)).toEqual([1, 2, 3, 9])
+})
 
 Tests.test('source conformance > counts connected boolean operators through parentheses and negation', () => {
   const source = S`
@@ -16,7 +31,7 @@ Tests.test('source conformance > counts connected boolean operators through pare
     (a && b satisfies boolean) || c && d;
     <boolean>(a && b) || c && d;
   `
-  Tests.expect(issuesFor(source, booleanExpressionIssue)).toEqual([3, 4, 5, 7, 8, 9, 10])
+  Tests.expect(issuesFor(source, ConformanceNaming.booleanExpressionIssue)).toEqual([3, 4, 5, 7, 8, 9, 10])
 })
 
 Tests.test('source conformance > keeps nullish, call, comparison and callback boolean boundaries separate', () => {
@@ -30,7 +45,7 @@ Tests.test('source conformance > keeps nullish, call, comparison and callback bo
     const narrowed = value && value.name && value.name.length
     a && (b ?? c) && d && e
   `
-  Tests.expect(issuesFor(source, booleanExpressionIssue)).toEqual([6, 8])
+  Tests.expect(issuesFor(source, ConformanceNaming.booleanExpressionIssue)).toEqual([6, 8])
 })
 
 Tests.test('source conformance > names unions in parameters, values, members and nested contracts', () => {
@@ -46,7 +61,7 @@ Tests.test('source conformance > names unions in parameters, values, members and
     type Tuple = [First | Second]
     type NestedUnion = (First | Second) | Third
   `
-  Tests.expect(issuesFor(source, unnamedUnionIssue)).toEqual([3, 4, 5, 6, 7, 8, 9, 10])
+  Tests.expect(issuesFor(source, ConformanceNaming.unnamedUnionIssue)).toEqual([3, 4, 5, 6, 7, 8, 9, 10])
 })
 
 Tests.test('source conformance > permits only simple absence unions in direct or async returns', () => {
@@ -64,7 +79,7 @@ Tests.test('source conformance > permits only simple absence unions in direct or
     class Reader { get value(): Value | undefined { return undefined } }
     declare function named(): OptionalValue
   `
-  Tests.expect(issuesFor(source, unnamedUnionIssue)).toEqual([6, 7, 8, 9])
+  Tests.expect(issuesFor(source, ConformanceNaming.unnamedUnionIssue)).toEqual([6, 7, 8, 9])
 })
 
 Tests.test('source conformance > requires regex literals as named const initializers', () => {
@@ -89,7 +104,7 @@ Tests.test('source conformance > requires regex literals as named const initiali
     text.replace(new globalThis.RegExp(pattern), '')
     text.replace((RegExp)(pattern), '')
   `
-  Tests.expect(issuesFor(source, namedRegexIssue)).toEqual([3, 4, 5, 6, 7, 8, 10, 14, 16, 18, 19])
+  Tests.expect(issuesFor(source, ConformanceNaming.namedRegexIssue)).toEqual([3, 4, 5, 6, 7, 8, 10, 14, 16, 18, 19])
 })
 
 type IssueForNode = (node: TypeScript.Node) => string | undefined

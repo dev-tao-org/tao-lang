@@ -2,13 +2,13 @@ import { appendFileSync, mkdirSync, resolve, spawn, writeFileSync } from './Node
 
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
 export async function installWorkspace(completionScript: string): Promise<void> {
-  const arguments_ = process.argv.slice(process.argv[2] === '--agent' ? 3 : 2)
+  const args = process.argv.slice(process.argv[2] === '--agent' ? 3 : 2)
   const logDirectory = resolve('..', '.artifacts', 'logs', 'setup')
   mkdirSync(logDirectory, { recursive: true })
   const logPath = resolve(logDirectory, 'bootstrap.log')
   writeFileSync(logPath, '')
   process.stderr.write('\u001b[90mInstalling workspace dependencies…\u001b[0m\n')
-  const installStatus = await runLogged(['install', ...arguments_], logPath)
+  const installStatus = await runLogged(['install', ...args], logPath)
   if (installStatus !== 0) {
     process.stderr.write(`Workspace installation failed. See ${logPath}\n`)
     process.exit(installStatus)
@@ -23,9 +23,9 @@ export async function installWorkspace(completionScript: string): Promise<void> 
 
 type OutputStream = 'stdout' | 'stderr'
 
-function runLogged(arguments_: string[], logPath: string): Promise<number> {
-  appendFileSync(logPath, `\n$ bun ${arguments_.join(' ')}\n`)
-  const child = spawn('bun', arguments_, { stdio: ['inherit', 'pipe', 'pipe'] })
+function runLogged(args: string[], logPath: string): Promise<number> {
+  appendFileSync(logPath, `\n$ bun ${args.join(' ')}\n`)
+  const child = spawn('bun', args, { stdio: ['inherit', 'pipe', 'pipe'] })
   let lastStream = ''
   const forward = (stream: OutputStream, chunk: Buffer) => {
     if (lastStream !== stream) {

@@ -1,11 +1,11 @@
 import { Errors, Lists, Try } from '@shared'
-import * as GeneratedFileSystem from '../../../shared/shared-src/os/GeneratedFileSystem'
-import * as MetroPlatform from '../../../shared/shared-src/os/MetroPlatform'
-import * as Path from '../../../shared/shared-src/os/Path'
-import { createRevisionOwner, type RevisionOwner, type RevisionResult, snapshotRevision } from './GeneratedRevision'
+import * as GeneratedFileSystem from '../../../../shared/shared-src/os/GeneratedFileSystem'
+import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import * as Path from '../../../../shared/shared-src/os/Path'
+import { createRevisionOwner, type RevisionOwner, type RevisionResult, snapshotRevision } from '../GeneratedRevision'
+import type { GeneratedRevision, GeneratedSourceFiles } from '../PreviewProtocol'
 import { createMetroAdmission, type MetroAdmission } from './MetroAdmission'
 import { installMetroHooks } from './MetroHooks'
-import type { GeneratedRevision, GeneratedSourceFiles } from './PreviewProtocol'
 
 /** MetroAdapter exposes publication and binds the already running Expo Metro server. */
 export type MetroAdapter = { owner: RevisionOwner; attach(metro: MetroServer): void }
