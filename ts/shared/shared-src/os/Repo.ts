@@ -1,4 +1,4 @@
-import { Errors } from '../universal/universal'
+import { Errors, NullCharacter } from '../universal/universal'
 import * as FileSystem from './FileSystem'
 import * as Path from './Path'
 import * as Platform from './Platform'
@@ -25,7 +25,9 @@ export function getMainWorktreeRoot(): string {
   if (mainWorktreeRoot) {
     return mainWorktreeRoot
   }
-  const records = Platform.captureSync('git worktree list --porcelain -z', { cwd: getWorkspaceRoot() }).split('\0')
+  const records = Platform.captureSync('git worktree list --porcelain -z', { cwd: getWorkspaceRoot() }).split(
+    NullCharacter,
+  )
   const first = records[0]
   if (!first?.startsWith('worktree ') || records[1] === 'bare') {
     Errors.ThrowHostEnvironment('Git did not report a primary working checkout.')
@@ -39,5 +41,6 @@ export function resolvePath(...segments: string[]): string {
   return Path.resolve(getWorkspaceRoot(), ...segments)
 }
 
-let workspaceRoot: string | undefined
-let mainWorktreeRoot: string | undefined
+type CachedRepositoryRoot = string | undefined
+let workspaceRoot: CachedRepositoryRoot
+let mainWorktreeRoot: CachedRepositoryRoot

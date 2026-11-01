@@ -1,3 +1,5 @@
+import * as IdentifiersRegxs from './Regxs/IdentifiersRegxs'
+
 /** TaoError declares errors expected by Tao command and library code. */
 export type TaoError =
   | UserInputError
@@ -7,6 +9,11 @@ export type TaoError =
 
 /** ErrorDetails declares structured context attached to Tao errors. */
 export type ErrorDetails = Record<string, unknown>
+
+/** isNativeError checks whether a value belongs to the native Error prototype chain. */
+export function isNativeError(error: unknown): error is Error {
+  return error instanceof Error
+}
 
 /** isTaoError checks whether a value is one of Tao's structured errors. */
 export function isTaoError(error: unknown): error is TaoError {
@@ -45,10 +52,13 @@ export function ThrowUserInput(messageForUser: string, details?: ErrorDetails): 
   throw new UserInputError(messageForUser, details)
 }
 
-/** ThrowUnexpected throws an internal Tao error.
+/** ThrowShouldNeverHappen throws an internal Tao error.
  *  Use for an invariant Tao or an upstream layer should guarantee. This is a Tao bug, not the author's;
  *  the reader and recovery owner is a Tao developer. */
-export function ThrowUnexpected(messageForUser: string, opts?: { cause?: unknown; details?: ErrorDetails }): never {
+export function ThrowShouldNeverHappen(
+  messageForUser: string,
+  opts?: { cause?: unknown; details?: ErrorDetails },
+): never {
   throw new UnexpectedBehaviorError(messageForUser, opts)
 }
 
@@ -58,7 +68,15 @@ export function ThrowHostEnvironment(
   messageForUser: string,
   opts?: { cause?: unknown; details?: ErrorDetails },
 ): never {
-  throw new HostEnvironmentError(messageForUser, opts)
+  throw createHostEnvironmentError(messageForUser, opts)
+}
+
+/** createHostEnvironmentError creates a host failure for deferred rejection boundaries. */
+export function createHostEnvironmentError(
+  messageForUser: string,
+  opts?: { cause?: unknown; details?: ErrorDetails },
+): TaoError {
+  return new HostEnvironmentError(messageForUser, opts)
 }
 
 /** ThrowCommandExecution throws a structured child process failure.
@@ -69,13 +87,15 @@ export function ThrowCommandExecution(result: CommandErrorResult): never {
 
 // ProcessSignal declares a platform process signal value without depending on Node types.
 type ProcessSignal = string
+type CommandStatus = number | null
+type CommandSignal = ProcessSignal | null
 
 type CommandErrorResult = {
   command: string
   args: readonly string[]
   cwd?: string
-  status: number | null
-  signal: ProcessSignal | null
+  status: CommandStatus
+  signal: CommandSignal
   stdout: string
   stderr: string
   error?: Error
@@ -152,11 +172,11 @@ function formatCommandForError(command: string, args: readonly string[]): string
 
 // Quote a command word that a reader could not paste back as written.
 function formatCommandPart(value: string): string {
-  return /^[\w./:=@+-]+$/.test(value) ? value : JSON.stringify(value)
+  return IdentifiersRegxs.SafeCommandTokenRegx.test(value) ? value : JSON.stringify(value)
 }
 
 function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): unknown {
-  if (!(error instanceof Error)) {
+  if (!isNativeError(error)) {
     return error
   }
   if (seen.has(error)) {
@@ -176,9 +196,13 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
     ...fields,
     name: error.name,
     message: error.message,
-    ...(error instanceof AggregateError
+    ...(isAggregateError(error)
       ? { errors: error.errors.map(member => errorDetails(member, stacks, seen)) }
       : {}),
     ...(cause === undefined ? {} : { cause: errorDetails(cause, stacks, seen) }),
   }
+}
+
+function isAggregateError(error: Error): error is AggregateError {
+  return error instanceof AggregateError
 }
