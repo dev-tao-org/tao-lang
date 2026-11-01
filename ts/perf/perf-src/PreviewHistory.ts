@@ -1,12 +1,6 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
-import {
-  existingHistory,
-  historyDirectories,
-  type HistoryRecord,
-  validatePreviewReport,
-  writeHistory,
-} from './PreviewHistoryStore'
+import * as PreviewHistoryStore from './PreviewHistoryStore'
 
 /** PreviewHistoryOptions supplies the checkout and Git boundary for commit-linked capture. */
 export type PreviewHistoryOptions = {
@@ -29,8 +23,8 @@ export async function recordPreviewPerformance(
   const context = await captureContext(git)
   const pending = Path.join(root, '.artifacts/notes/preview-history')
   return await BuildLock.withBuildLock(Path.join(pending, `${context.sourceCommit}.lock`), async () => {
-    const directories = await historyDirectories(root, context.sourceCommit, git)
-    const existing = await existingHistory(directories, context)
+    const directories = await PreviewHistoryStore.resolveHistoryDirectories(root, context.sourceCommit, git)
+    const existing = await PreviewHistoryStore.existingHistory(directories, context)
     if (existing) {
       return { directory: existing, reused: true }
     }
@@ -41,21 +35,25 @@ export async function recordPreviewPerformance(
       const result = await measure(context.source)
       await requireCleanInputs(git, context.sourceCommit)
       const report = await readMeasuredReport(result.path, context.sourceCommit)
-      await writeHistory(directory, { ...record, status: 'passed', reportSha256: Platform.hashText(report) }, report)
+      await PreviewHistoryStore.writeHistory(directory, {
+        ...record,
+        status: 'passed',
+        reportSha256: Platform.hashText(report),
+      }, report)
       return { directory, reused: false }
     }, {
       async catch(error) {
-        await writeHistory(directory, { ...record, status: 'failed', error: String(error) })
+        await PreviewHistoryStore.writeHistory(directory, { ...record, status: 'failed', error: String(error) })
         Errors.Throw(error)
       },
     })
   })
 }
 
-type Git = NonNullable<PreviewHistoryOptions['git']>
+type Git = (args: readonly string[], exact?: boolean) => Promise<string>
 type Context = { sourceCommit: string; sourceTree: string; source: string; fixtureSha256: string }
 
-const fixturePath = 'Apps/Tests/Hello World.tao'
+const fixturePath = 'ts/perf/perf-fixtures/Performance/Performance.tao'
 const inputs = [
   'ts',
   'Justfile',
@@ -72,14 +70,14 @@ const inputs = [
 async function captureContext(git: Git): Promise<Context> {
   const sourceCommit = (await git(['rev-parse', 'HEAD'])).trim()
   const sourceTree = (await git(['rev-parse', `${sourceCommit}^{tree}`])).trim()
-  if (!/^[a-f0-9]{40}$/.test(sourceCommit) || !/^[a-f0-9]{40}$/.test(sourceTree)) {
-    Errors.ThrowUnexpected('Performance recording requires full Git commit and tree identities.')
+  if (!Regxs.Sha1HashRegx.test(sourceCommit) || !Regxs.Sha1HashRegx.test(sourceTree)) {
+    Errors.ThrowShouldNeverHappen('Performance recording requires full Git commit and tree identities.')
   }
   const source = await git(['show', `${sourceCommit}:${fixturePath}`], true)
   return { sourceCommit, sourceTree, source, fixtureSha256: Platform.hashText(source) }
 }
 
-function newRecord(context: Context): HistoryRecord {
+function newRecord(context: Context): PreviewHistoryStore.HistoryRecord {
   return {
     version: 1,
     sourceCommit: context.sourceCommit,
@@ -88,7 +86,7 @@ function newRecord(context: Context): HistoryRecord {
     status: 'failed',
     command: './agent unsandboxed performance record',
     fixture: { path: fixturePath, sha256: context.fixtureSha256 },
-    scenarios: ['text', 'add-text', 'row'],
+    scenarios: ['text', 'add-text', 'row', 'reset'],
     sourceIsolation:
       'Committed fixture copied into the generated benchmark workspace; passed records require clean implementation inputs before and after capture. Raw report dirty-state provenance is preserved.',
   }
@@ -106,6 +104,6 @@ async function requireCleanInputs(git: Git, sourceCommit: string): Promise<void>
 
 async function readMeasuredReport(path: string, sourceCommit: string): Promise<string> {
   const report = await FileSystem.readFile(path, 'utf8')
-  validatePreviewReport(report, sourceCommit)
+  PreviewHistoryStore.validatePreviewReport(report, sourceCommit)
   return report
 }

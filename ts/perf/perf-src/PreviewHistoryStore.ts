@@ -7,17 +7,17 @@ export type HistoryRecord = {
   sourceCommit: string
   sourceTree: string
   capturedAt: string
-  status: 'passed' | 'failed' | 'unavailable'
+  status: HistoryStatus
   command: string
-  fixture: { path: string; sha256: string }
+  fixture: FixtureIdentity
   scenarios: string[]
   sourceIsolation: string
   reportSha256?: string
   error?: string
 }
 
-/** historyDirectories chooses initialized submodule storage or the persistent pending-record directory. */
-export async function historyDirectories(
+/** resolveHistoryDirectories chooses initialized submodule storage or the persistent pending-record directory. */
+export async function resolveHistoryDirectories(
   root: string,
   commit: string,
   git: (args: readonly string[]) => Promise<string>,
@@ -38,13 +38,14 @@ export async function historyDirectories(
 /** existingHistory reuses a complete valid record and refuses corrupt, partial or failed records. */
 export async function existingHistory(
   directories: readonly string[],
-  context: { sourceCommit: string; sourceTree: string; fixtureSha256: string },
+  context: PreviewHistoryIdentity,
 ): Promise<string | undefined> {
   for (const directory of directories) {
     if (!await FileSystem.exists(directory)) {
       continue
     }
-    const record = JSON.parse(await FileSystem.readFile(Path.join(directory, 'record.json'), 'utf8')) as HistoryRecord
+    const recordText = await FileSystem.readFile(Path.join(directory, 'record.json'), 'utf8')
+    const record = parseHistoryRecord(recordText)
     if (!matchesRecord(record, context)) {
       Errors.ThrowUserInput('Existing performance record is incomplete or differs from the source: ' + directory)
     }
@@ -61,13 +62,14 @@ export async function existingHistory(
 /** writeHistory publishes a complete record directory by rename without replacing an earlier record. */
 export async function writeHistory(directory: string, record: HistoryRecord, report?: string): Promise<void> {
   const staging = `${directory}.${Platform.randomUUID()}.pending`
-  await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(directory))
   await Try(async () => {
-    await FileSystem.mkdir(staging)
+    await FileSystem.createExclusiveDirectory(staging)
     if (report !== undefined) {
       await FileSystem.writeFile(Path.join(staging, 'report.json'), report, 'utf8')
     }
-    await FileSystem.writeFile(Path.join(staging, 'record.json'), JSON.stringify(record, null, 2) + '\n', 'utf8')
+    const recordText = serializeHistoryRecord(record)
+    await FileSystem.writeFile(Path.join(staging, 'record.json'), recordText, 'utf8')
     if (await FileSystem.exists(directory)) {
       Errors.ThrowUserInput('Performance history already exists: ' + directory)
     }
@@ -79,19 +81,36 @@ export async function writeHistory(directory: string, record: HistoryRecord, rep
 
 /** validatePreviewReport requires the raw capture to name the expected source commit and schema. */
 export function validatePreviewReport(report: string, sourceCommit: string): void {
-  const value: unknown = JSON.parse(report)
+  const value = parsePreviewReport(report)
   if (!isSourceReport(value, sourceCommit)) {
     Errors.ThrowUserInput('The preview report does not identify the measured source commit and schema.')
   }
 }
 
+function parseHistoryRecord(source: string): HistoryRecord {
+  return JSON.parse(source) as HistoryRecord
+}
+
+function serializeHistoryRecord(record: HistoryRecord): string {
+  return JSON.stringify(record, null, 2) + '\n'
+}
+
+function parsePreviewReport(source: string): unknown {
+  return JSON.parse(source)
+}
+
+type FixtureIdentity = { path: string; sha256: string }
+type PreviewHistoryIdentity = { sourceCommit: string; sourceTree: string; fixtureSha256: string }
+type HistoryStatus = 'passed' | 'failed' | 'unavailable'
+
 function matchesRecord(
   record: HistoryRecord,
-  context: { sourceCommit: string; sourceTree: string; fixtureSha256: string },
+  context: PreviewHistoryIdentity,
 ): boolean {
   const sourceMatches = record.sourceCommit === context.sourceCommit && record.sourceTree === context.sourceTree
   const fixtureMatches = record.fixture?.sha256 === context.fixtureSha256
-  return record.version === 1 && record.status === 'passed' && sourceMatches && fixtureMatches
+  const isSuccessfulRecord = record.version === 1 && record.status === 'passed'
+  return isSuccessfulRecord && sourceMatches && fixtureMatches
 }
 
 function isStorageCheckout(top: string, parent: string, root: string, storage: string): boolean {
@@ -102,5 +121,8 @@ function isSourceReport(value: unknown, sourceCommit: string): boolean {
   if (typeof value !== 'object' || value === null) {
     return false
   }
-  return 'version' in value && value.version === 1 && 'commit' in value && value.commit === sourceCommit
+  if (!('version' in value) || value.version !== 1) {
+    return false
+  }
+  return 'commit' in value && value.commit === sourceCommit
 }
