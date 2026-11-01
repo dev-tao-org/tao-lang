@@ -1,109 +1,233 @@
-import { Time } from '@shared'
-import { Artifacts, Path, Platform, Repo, Terminal, Text } from '@shared/os'
+import { Errors, Regxs } from '@shared'
+import { Path, Repo, Terminal, Text } from '@shared/os'
+import { createFileOutput } from './output/Files'
+import * as Output from './output/Output'
+import { createPlainOutput } from './output/Plain'
+import { encodeOutputMessage } from './output/ProcessOutput'
+import { createPromptLifecycle } from './output/PromptLifecycle'
 
-/** IO routes output through channels selected once by each CLI entrypoint. */
+/** IO routes direct and process-scoped output through one presentation and file policy. */
 export const IO = {
-  ...outputMethods(text => stdoutPipe(text), text => stderrPipe(text)),
+  print: (...values: unknown[]) => output.main.print(...values),
+  warn: (...values: unknown[]) => output.main.warn(...values),
+  printToStdErr: (...values: unknown[]) => output.main.printToStdErr(...values),
+  progress: (message: string) => output.main.progress(message),
+  summary: (...values: unknown[]) => output.main.summary(...values),
+  channel: (options: { title: string }) => output.channel(options.title),
+  askConfirm: askConfirmation,
+  askSecret,
+  prompt: withPrompt,
+  setCommands(commands: readonly Output.OutputCommand[]) {
+    output.setCommands(commands)
+    if (!tui) {
+      printCommands()
+    }
+  },
+  setPromptRenderer(factory: () => Promise<Output.OutputRenderer>) {
+    promptRenderer = factory
+  },
   config: configureOutput,
-  progress: printProgress,
+  finish: finishOutput,
 }
 
-/** configuredCommandOutput exposes the configured command streams to cmd-exec. */
-export function configuredCommandOutput() {
-  return { captureCommands, mirrorCommandStderr, stdoutPipe, stderrPipe, progressPipe: printProgress }
-}
-
-type OutputPipe = (text: string | Uint8Array) => void
-type IOConfiguration = {
-  stdout?: 'terminal' | 'log' | OutputPipe
-  stderr?: 'terminal' | 'both' | OutputPipe
-  progress?: 'terminal' | 'log' | 'both'
+/** IOConfiguration separates terminal routing from dashboard presentation. */
+export type IOConfiguration = {
+  stdout?: OutputDestination
+  stderr?: ErrorOutputDestination
+  progress?: ProgressDestination
   logFile?: string
-  logDirectory?: 'agent' | 'dev'
+  logDirectory?: LogDirectory
+  forwardEvents?: boolean
+  passthrough?: boolean
 }
 
-let stdoutPipe: OutputPipe = terminalStdout
-let stderrPipe: OutputPipe = terminalStderr
-let progressPipe: OutputPipe = terminalStderr
-let captureCommands = false
-let mirrorCommandStderr = false
-let agentLog: string
-
-function configureOutput(configuration: IOConfiguration): void {
-  stdoutPipe = typeof configuration.stdout === 'function'
-    ? configuration.stdout
-    : configuration.stdout === 'log'
-    ? loggedStdout
-    : terminalStdout
-  stderrPipe = typeof configuration.stderr === 'function'
-    ? configuration.stderr
-    : configuration.stderr === 'both'
-    ? loggedStderr
-    : terminalStderr
-  progressPipe = configuration.progress === 'log'
-    ? loggedStdout
-    : configuration.progress === 'both'
-    ? loggedStderr
-    : terminalStderr
-  captureCommands = stdoutPipe !== terminalStdout || stderrPipe !== terminalStderr
-  mirrorCommandStderr = configuration.stderr === 'both'
-  agentLog = configuration.logFile
-    ? Repo.resolvePath(configuration.logFile)
-    : Artifacts.resolvePath(
-      'logs',
-      configuration.logDirectory ?? 'dev',
-      `${Time.date().toISOString().replaceAll(':', '-')}-${Platform.pid}.log`,
-    )
-  if (usesLogFiles(configuration)) {
-    Artifacts.mkdirSync(Path.dirname(agentLog), { recursive: true })
-    const logPath = Path.join(Artifacts.realpathSync(Path.dirname(agentLog)), Path.basename(agentLog))
-    const announcement = `Logs: ${Path.relative(Repo.getWorkspaceRoot(), logPath)}\n`
-    Artifacts.trackTemporary(agentLog)
-    Artifacts.appendFileSync(agentLog, announcement)
-    Terminal.stderr.write(announcement)
-  }
-}
-
-function usesLogFiles(configuration: IOConfiguration): boolean {
-  const modes = [configuration.stdout, configuration.stderr, configuration.progress]
-  return modes.some(mode => mode === 'log' || mode === 'both')
-}
-
-function printProgress(text: string): void {
-  progressPipe(`\u001b[90m${text}\u001b[0m\n`)
-}
-
-function outputMethods(outputPipe: OutputPipe, errorPipe: OutputPipe) {
+/** configuredCommandOutput captures child streams whenever a channel or dashboard owns their display. */
+export function configuredCommandOutput(channel?: Output.OutputChannel): ConfiguredCommandOutput {
+  const selected = channel ?? output.main
   return {
-    print(...args: unknown[]): void {
-      outputPipe(`${Text.format(...args)}\n`)
-    },
-    warn(...args: unknown[]): void {
-      outputPipe(`\u001b[33m${Text.format(...args)}\u001b[0m\n`)
-    },
-    printToStdErr(...args: unknown[]): void {
-      errorPipe(`\u001b[31m${Text.format(...args)}\u001b[0m\n`)
-    },
+    captureCommands: !configuration.passthrough,
+    mirrorCommandStderr: configuration.stderr === 'both',
+    stdoutPipe: selected.stdout,
+    stderrPipe: selected.stderr,
+    progressPipe: selected.progress,
+    receive: selected.receive,
   }
 }
 
-function loggedStdout(text: string | Uint8Array): void {
-  logToFile(text)
+/** ConfiguredCommandOutput exposes the active child-output pipes and routing policy. */
+export type ConfiguredCommandOutput = {
+  captureCommands: boolean
+  mirrorCommandStderr: boolean
+  stdoutPipe(text: Output.OutputText): void
+  stderrPipe(text: Output.OutputText): void
+  progressPipe(message: string): void
+  receive(message: Output.OutputEventMessage): void
 }
 
-function loggedStderr(text: string | Uint8Array): void {
-  terminalStderr(text)
-  logToFile(text)
+/** renderOutput installs the sole terminal renderer for this process. */
+export function renderOutput(renderer: Output.OutputRenderer): void {
+  tui = true
+  output.render(renderer)
 }
 
-function terminalStdout(text: string | Uint8Array): void {
-  Terminal.stdout.write(text)
+type OutputText = string | Uint8Array
+type OutputPipe = (text: OutputText) => void
+type OutputDestination = 'terminal' | 'log' | OutputPipe
+type ErrorOutputDestination = 'terminal' | 'both' | 'log' | OutputPipe
+type ProgressDestination = 'terminal' | 'log' | 'both'
+type LogDirectory = 'agent' | 'dev'
+type OutputStatus = 'passed' | 'failed'
+let configuration: IOConfiguration = {}
+let plainOutput = createPlainOutput()
+let writeFileOutput = createFileOutput({})
+let tui = false
+let lastMainOutput = ''
+let diagnostics = { warn: 0, error: 0 }
+let warningDetails: string[] = []
+let output = Output.createOutput(writeOutput)
+type PromptRendererFactory = (() => Promise<Output.OutputRenderer>) | undefined
+let promptRenderer: PromptRendererFactory
+const promptLifecycle = createPromptLifecycle({
+  async suspend() {
+    if (!tui) {
+      return false
+    }
+    await output.finish()
+    tui = false
+    return true
+  },
+  async resume() {
+    if (promptRenderer) {
+      renderOutput(await promptRenderer())
+    }
+  },
+  reportResumeFailure(error) {
+    IO.warn('Could not restore terminal output after the prompt:', error)
+  },
+})
+
+type ConfirmationArguments = Parameters<typeof Terminal.askConfirm>
+
+function askConfirmation(...args: ConfirmationArguments): Promise<boolean> {
+  return withPrompt(() => Terminal.askConfirm(...args))
 }
 
-function terminalStderr(text: string | Uint8Array): void {
-  Terminal.stderr.write(text)
+function askSecret(message: string): Promise<string> {
+  return withPrompt(() => Terminal.askSecret(message))
 }
 
-function logToFile(text: string | Uint8Array): void {
-  Artifacts.appendFileSync(agentLog, text)
+function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {
+  return promptLifecycle.run(prompt)
+}
+
+function configureOutput(options: IOConfiguration): void {
+  if (tui) {
+    Errors.ThrowShouldNeverHappen('Cannot reconfigure output while a TUI is active.')
+  }
+  configuration = options
+  lastMainOutput = ''
+  diagnostics = { warn: 0, error: 0 }
+  warningDetails = []
+  plainOutput = createPlainOutput()
+  writeFileOutput = createFileOutput(options)
+  output = Output.createOutput(writeOutput)
+  output.main.start()
+}
+
+function writeOutput(event: Output.OutputEvent): void {
+  if (event.main && event.stream === 'stdout') {
+    lastMainOutput = event.text
+  }
+  const mode = configuration[event.stream] ?? 'terminal'
+  if (configuration.passthrough) {
+    plainOutput.write(event)
+    return
+  }
+  writeFileOutput(event)
+  countDiagnostic(event)
+  if (configuration.forwardEvents) {
+    Terminal.stdout.write(encodeOutputMessage(event))
+    return
+  }
+  if (typeof mode === 'function') {
+    mode(event.text)
+    return
+  }
+  if (!tui && (mode !== 'log' || event.summary)) {
+    plainOutput.write(event)
+    printCommands()
+  }
+}
+
+function printCommands(): void {
+  const commands = output.snapshot().commands
+  if (commands.length && configuration.stderr !== 'log') {
+    Terminal.stderr.write(Output.formatCommands(commands, Terminal.stderr.isTTY === true) + '\n')
+  }
+}
+
+function countDiagnostic(event: Output.OutputEvent): void {
+  if (event.level === 'info') {
+    return
+  }
+  diagnostics[event.level]++
+  if (event.level === 'warn') {
+    if (!configuration.forwardEvents) {
+      warningDetails.push(formatWarningDetail(event))
+    }
+  } else if (shouldReportQuietError()) {
+    Terminal.stderr.write('Error recorded: See the log for details.\n')
+  } else {
+    // Other errors are already routed, or the quiet-mode notice was printed for the first error.
+  }
+}
+
+function shouldReportQuietError(): boolean {
+  const isFirstQuietError = diagnostics.error === 1 && isQuiet()
+  const isLocalOutput = !configuration.forwardEvents && !tui
+  return isFirstQuietError && isLocalOutput
+}
+
+function formatWarningDetail(event: Output.OutputEvent): string {
+  const channel = event.main ? '' : `[${event.channel.title}] `
+  const message = Text.stripAnsi(event.text).replace(Regxs.DiagnosticWhitespaceRunsRegx, ' ').trim()
+  return `Warning: ${channel}${message}`.slice(0, 240)
+}
+
+function isQuiet(): boolean {
+  return configuration.stdout === 'log' && configuration.stderr === 'log'
+}
+
+async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
+  const wasTui = tui
+  output.main.finish(status)
+  await output.finish()
+  tui = false
+  plainOutput.finish()
+  if (wasTui) {
+    const snapshot = output.snapshot()
+    for (const state of snapshot.channels) {
+      Terminal.stderr.write(`[${state.title}] ${Output.formatChannelCompletion(state)}\n`)
+      if (state.status === 'failed') {
+        Terminal.stderr.write(state.lines.slice(-12).join('\n') + '\n')
+      }
+    }
+    const summary = lastMainOutput || snapshot.main.lines.filter(Boolean).at(-1)
+    if (summary) {
+      Terminal.stderr.write(summary.endsWith('\n') ? summary : summary + '\n')
+    }
+  }
+  if (!configuration.forwardEvents && !configuration.passthrough) {
+    const notices = `${diagnostics.warn} warning(s), ${diagnostics.error} error(s)`
+    if (isQuiet() || diagnostics.warn || diagnostics.error) {
+      Terminal.stderr.write(
+        `${status === 'passed' ? 'Completed' : 'Failed'}: ${notices}. Logs: ${
+          Path.relative(Repo.getWorkspaceRoot(), writeFileOutput.path)
+        }\n`,
+      )
+      for (const warning of warningDetails) {
+        Terminal.stderr.write(warning + '\n')
+      }
+    }
+  }
 }
