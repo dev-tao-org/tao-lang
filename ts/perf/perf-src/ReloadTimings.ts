@@ -17,6 +17,14 @@ export type ReloadTiming = {
   }>
 }
 
+type PreviewScenarioRevision = { revision: string; scenario: string }
+
+/** describeReloadScenario matches scenario labels by revision while retaining unmatched reloads in output. */
+export function describeReloadScenario(revision: string, results: readonly PreviewScenarioRevision[]): string {
+  const result = results.find(result => result.revision === revision)
+  return result?.scenario ?? `observed revision ${revision}`
+}
+
 /** ReloadTimings correlates current-revision receipts and reports each completed reload once. */
 export class ReloadTimings {
   private revision = ''

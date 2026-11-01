@@ -106,6 +106,7 @@ async function runPreview(initialSource?: string) {
   await prepareRuntime()
   const { createProject } = await import('@workspace/Workspace')
   const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
+  const { describeReloadScenario } = await import('../../../../perf/perf-src/ReloadTimings')
   const project = await createProject()
   const dependencies = await createProjectDependencyOptions(project.directory)
   await prepareDependencies(project.directory, await dependencies.readRequirements(project.directory), dependencies)
@@ -131,9 +132,10 @@ async function runPreview(initialSource?: string) {
     initialSource: initialSource ?? await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
-  for (const [index, timing] of result.reloads.entries()) {
+  for (const timing of result.reloads) {
+    const scenario = describeReloadScenario(timing.revision, result.results)
     IO.print(
-      `${result.results[index].scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
+      `${scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
         + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
     )
     IO.print('  ' + formatTimings(timing.pipeline))
