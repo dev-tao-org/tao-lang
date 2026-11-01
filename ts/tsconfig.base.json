@@ -3,6 +3,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "target": "ESNext",
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
@@ -14,10 +15,11 @@
     "skipLibCheck": true,
     "paths": {
       "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
+      "@cst": ["./1-grammar/grammar-src/CST.ts"],
       "@shared": ["./shared/shared-src/shared.ts"],
       "@shared/os": ["./shared/shared-src/os.ts"],
       "@shared/os/browser": ["./shared/shared-src/os/BrowserRuntime.ts"],
-      "@shared/os/preview": ["./shared/shared-src/os/PreviewPlatform.ts"],
+      "@shared/os/preview": ["./shared/shared-src/os/preview/PreviewPlatform.ts"],
       "@grammar/*": ["./1-grammar/grammar-src/*"],
       "@ast-gen/*": ["./2-ast-gen/ast-gen-src/*"],
       "@typecheck/*": ["./3-typecheck/typecheck-src/*"],
@@ -25,7 +27,9 @@
       "@check/*": ["./5-check/check-src/*"],
       "@compile/*": ["./6-compile/compile-src/*"],
       "@runtime/*": ["./7-runtime/runtime-src/*"],
-      "@workspace/*": ["./0-workspace/workspace-src/*"]
+      "@tao/runtime-api": ["./7-runtime/runtime-src/client/TaoRuntimeAPI.ts"],
+      "@workspace/*": ["./0-workspace/workspace-src/*"],
+      "@stdlib/*": ["./stdlib/stdlib-src/*"]
     }
   }
 }

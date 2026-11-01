@@ -5,15 +5,22 @@
   "type": "module",
   "module": "shared-src/shared.ts",
   "dependencies": {
+    "@dprint/typescript": "0.96.1",
     "chokidar": "5.0.0",
+    "memfs": "4.80.0",
+    "playwright": "1.58.2",
     "typescript": "5.9.3"
   },
-  "devDependencies": { "@types/bun": "1.4.0" },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "node-addon-api": "8.5.0",
+    "node-gyp": "12.1.0"
+  },
   "exports": {
     ".": "./shared-src/shared.ts",
     "./os": "./shared-src/os.ts",
     "./os/browser": "./shared-src/os/BrowserRuntime.ts",
-    "./os/preview": "./shared-src/os/PreviewPlatform.ts",
+    "./os/preview": "./shared-src/os/preview/PreviewPlatform.ts",
     "./universal": "./shared-src/universal/universal.ts"
   }
 }
