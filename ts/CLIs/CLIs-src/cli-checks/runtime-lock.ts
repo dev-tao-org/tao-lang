@@ -5,7 +5,7 @@ import TypeScript from 'typescript'
 export function runtimeLock(source: string, manifest: RuntimeManifest): string {
   const parsed = TypeScript.parseConfigFileTextToJson('bun.lock', source)
   if (parsed.error) {
-    Errors.ThrowUnexpected('The workspace dependency lock could not be read for runtime packaging.')
+    Errors.ThrowShouldNeverHappen('The workspace dependency lock could not be read for runtime packaging.')
   }
   const lock = parsed.config as WorkspaceLock
   const packages = Object.fromEntries(
@@ -23,6 +23,7 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
         },
       },
       packages,
+      ...(lock.patchedDependencies ? { patchedDependencies: lock.patchedDependencies } : {}),
     },
     null,
     2,
@@ -33,12 +34,20 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
 export type RuntimeManifest = {
   name: string
   private: true
-  dependencies: Record<string, string>
-  devDependencies?: Record<string, string>
+  dependencies: RuntimeDependencyVersions
+  devDependencies?: RuntimeDependencyVersions
+  patchedDependencies?: RuntimePatchPaths
 }
+
+/** RuntimeDependencyVersions maps runtime package names to declared version constraints. */
+export type RuntimeDependencyVersions = Record<string, string>
+
+/** RuntimePatchPaths maps runtime dependency identities to workspace patch paths. */
+export type RuntimePatchPaths = Record<string, string>
 
 type WorkspaceLock = {
   lockfileVersion: number
   configVersion: number
   packages: Record<string, [string, ...unknown[]]>
+  patchedDependencies?: Record<string, unknown>
 }
