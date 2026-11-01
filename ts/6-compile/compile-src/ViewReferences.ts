@@ -1,4 +1,5 @@
 import type * as AST from '@ast-gen/AST'
+import { NewlineCharacter } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 import { emitStringLiteral, type ScopeCode } from './codegen-util'
 
@@ -33,7 +34,7 @@ export function createViewReferences(
         const type = `ModuleImports[${emitStringLiteral(binding.name)}]`
         const mapping = `{ [${emitStringLiteral(binding.target)}]: ${emitStringLiteral(binding.name)} }`
         return `const ${createProjectionName(binding)} = TR.ScopeAliases<${type}>(_Scope, ${mapping});`
-      }).join('\n'),
+      }).join(NewlineCharacter),
   }
 }
 

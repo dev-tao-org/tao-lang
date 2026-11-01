@@ -1,4 +1,4 @@
-import { Addr, Errors, Try } from '@shared'
+import { Addr, Errors, NewlineCharacter, Try } from '@shared'
 import { Env, Http, Lifecycle, Path, Platform } from '@shared/os'
 import type { RuntimeApplication } from '../../Runtime'
 import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
@@ -82,7 +82,7 @@ function unusedPort(): number {
 
 function formatOutput(output: Lifecycle.ProcessOutput): string {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
-  return messages.length ? `Expo output:\n${messages.join('\n')}` : ''
+  return messages.length ? `Expo output:${NewlineCharacter}${messages.join(NewlineCharacter)}` : ''
 }
 
 type OutputStream = 'stdout' | 'stderr'

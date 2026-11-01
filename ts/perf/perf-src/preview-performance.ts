@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import type * as Workspace from '@workspace/Workspace'
 import type { Project, UpdateResult } from '@workspace/Workspace'
@@ -139,7 +139,10 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)
   await Artifacts.mkdir(Path.dirname(logPath))
   Artifacts.trackTemporary(logPath)
-  await Artifacts.write(logPath, [output?.stdout, output?.stderr, ...owned.errors].filter(Boolean).join('\n'))
+  await Artifacts.write(
+    logPath,
+    [output?.stdout, output?.stderr, ...owned.errors].filter(Boolean).join(NewlineCharacter),
+  )
   for (const cleanup of cleanups) {
     if (cleanup.status === 'rejected') {
       Errors.Throw(cleanup.reason)

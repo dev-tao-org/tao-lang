@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 export {
@@ -46,7 +46,7 @@ function resolveZshrcTarget(zshrc: string): string {
 /** mergeActivationSourceLine retains one canonical Tao activation line among unrelated settings. */
 function mergeActivationSourceLine(existing: string): string {
   let sourced = false
-  const normalized = existing.split('\n').flatMap(line => {
+  const normalized = existing.split(NewlineCharacter).flatMap(line => {
     const trimmed = line.trim()
     if (trimmed !== activationSourceLine && !LEGACY_SOURCE_LINES.has(trimmed)) {
       return [line]
@@ -56,14 +56,14 @@ function mergeActivationSourceLine(existing: string): string {
     }
     sourced = true
     return [trimmed === activationSourceLine ? line : activationSourceLine]
-  }).join('\n')
+  }).join(NewlineCharacter)
   if (sourced) {
     return normalized
   }
-  if (!normalized || normalized.endsWith('\n')) {
-    return `${normalized}${activationSourceLine}\n`
+  if (!normalized || normalized.endsWith(NewlineCharacter)) {
+    return `${normalized}${activationSourceLine}${NewlineCharacter}`
   }
-  return `${normalized}\n${activationSourceLine}\n`
+  return `${normalized}${NewlineCharacter}${activationSourceLine}${NewlineCharacter}`
 }
 
 /** realPathIfPresent resolves a path when it exists and returns an empty string otherwise. */

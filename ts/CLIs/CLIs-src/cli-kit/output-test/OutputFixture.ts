@@ -1,5 +1,5 @@
 import '../fatal-errors'
-import { Errors, joinTextLines, Try } from '@shared'
+import { Errors, EscapeCharacter, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Platform, Repo, Terminal } from '@shared/os'
 import { runCommand } from '../cmd-exec'
 import { IO, renderOutput } from '../io'
@@ -31,8 +31,8 @@ async function runFixture(): Promise<void> {
   }
   await configureCLIOutput(mode === 'dev-child' ? 'dev' : 'agent')
   IO.print('fixture routine details')
-  IO.channel({ title: 'tool' }).stderr('ordinary tool stderr\n')
-  IO.warn(joinTextLines('\u001b[33mfixture warning\u001b[0m', '  at /tmp/fixture.ts:12'))
+  IO.channel({ title: 'tool' }).stderr('ordinary tool stderr' + NewlineCharacter)
+  IO.warn(joinTextLines(EscapeCharacter + '[33mfixture warning' + EscapeCharacter + '[0m', '  at /tmp/fixture.ts:12'))
   if (mode === 'parent' || mode === 'failed') {
     await runCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
   }
@@ -67,7 +67,7 @@ async function runPromptLifecycleFixture(): Promise<void> {
   if (!accepted || events.join(',') !== 'create,dispose,prompt,create') {
     Errors.ThrowShouldNeverHappen(`Unexpected prompt renderer lifecycle: ${events.join(',')}`)
   }
-  Terminal.stdout.write(events.join(',') + '\n')
+  Terminal.stdout.write(events.join(',') + NewlineCharacter)
   await IO.finish()
 }
 
@@ -121,6 +121,6 @@ async function runPromptRecoveryFixture(mode: PromptRecoveryMode): Promise<void>
   await IO.prompt(async () => {
     events.push('prompt 2')
   })
-  Terminal.stdout.write(events.join(',') + '\n')
+  Terminal.stdout.write(events.join(',') + NewlineCharacter)
   await IO.finish()
 }

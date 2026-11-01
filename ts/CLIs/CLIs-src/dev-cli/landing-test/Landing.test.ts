@@ -1,4 +1,4 @@
-import { joinTextLines, S } from '@shared'
+import { joinTextLines, NullCharacter, S } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { publishPreviewArchive } from '../landing/Archive'
 import { integrateMain } from '../landing/Integration'
@@ -161,7 +161,7 @@ Tests.test('a retry after merge returns authoritative proof without publishing a
 Tests.test('matching incomplete archive copies resume while unknown local archive history is preserved', async () => {
   const f = recordingLanding()
   const path = `performance/preview/${f.source}/record.json`
-  f.state.storageDirty = `?? ${path}\0`
+  f.state.storageDirty = `?? ${path}${NullCharacter}`
   f.files.set(`.storage/${path}`, f.files.get(`${f.pending}/record.json`)!)
   await publishPreviewArchive(f.io, f.source)
   Tests.expect(f.calls.some(call => call.startsWith('storage git push'))).toBe(true)

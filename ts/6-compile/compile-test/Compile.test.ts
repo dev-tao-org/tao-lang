@@ -4,7 +4,7 @@ import { createParser } from '@grammar/parser'
 import * as RuntimeScope from '@runtime/client/Scope'
 import type { Scope } from '@runtime/client/Scope'
 import { ViewDeclaration } from '@runtime/client/View'
-import { S } from '@shared'
+import { NewlineCharacter, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
 import type { LinkedProgram, SourceModule } from '@typecheck/Modules'
@@ -244,7 +244,7 @@ Tests.test('contextual TypeScript keywords remain valid JavaScript injection cap
       view Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }
     `
     const files = compileSource(source)
-    Tests.expect(Object.values(files).join('\n')).toContain(`${capture}: unknown`)
+    Tests.expect(Object.values(files).join(NewlineCharacter)).toContain(`${capture}: unknown`)
     Tests.expect(() => transpileGeneratedFiles(files)).not.toThrow()
   }
 })
@@ -267,7 +267,7 @@ function compileSource(source: string): Readonly<Record<string, string>> {
 }
 
 function combineGeneratedText(files: Readonly<Record<string, string>>): string {
-  return Object.values(files).join('\n')
+  return Object.values(files).join(NewlineCharacter)
 }
 
 function createRuntime(scopes: Record<string, unknown>[]) {

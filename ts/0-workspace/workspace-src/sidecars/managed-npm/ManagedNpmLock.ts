@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { Path, Platform } from '@shared/os'
 import type { ManagedGraphReference } from '../../dependencies/Types'
 import { requireSetup } from '../../SetupRequired'
@@ -63,7 +63,7 @@ export async function loadDurableLock(
   if (lock === undefined) {
     lock = await recoverManagedLock(input, requirements, graphFingerprint, repair)
     if (lock !== undefined) {
-      hash = `${Platform.hashText(lock)}\n`
+      hash = `${Platform.hashText(lock)}${NewlineCharacter}`
     }
   }
   validateDurableLock(lock, hash, graphFingerprint)
@@ -75,7 +75,10 @@ function validateDurableLock(
   hash: ManagedLockContents,
   fingerprint: string,
 ): void {
-  if ((lock === undefined) !== (hash === undefined) || lock !== undefined && hash !== `${Platform.hashText(lock)}\n`) {
+  if (
+    (lock === undefined) !== (hash === undefined)
+    || lock !== undefined && hash !== `${Platform.hashText(lock)}${NewlineCharacter}`
+  ) {
     Errors.ThrowUserInput(
       `Managed npm durable lock is changed or incomplete for ${fingerprint}; restore it and its SHA-256 file from version control.`,
     )

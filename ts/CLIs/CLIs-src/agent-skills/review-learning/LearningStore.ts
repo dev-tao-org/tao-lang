@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
@@ -41,7 +41,7 @@ export async function withLearningState<Value>(
 export async function saveLearningState(state: LearningState): Promise<void> {
   const path = Path.join(state.root, '.artifacts/notes/review-learning/state.json')
   const temporary = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(temporary, JSON.stringify(state, null, 2) + '\n', { flag: 'wx' })
+  await FileSystem.writeFile(temporary, JSON.stringify(state, null, 2) + NewlineCharacter, { flag: 'wx' })
   await FileSystem.rename(temporary, path)
 }
 

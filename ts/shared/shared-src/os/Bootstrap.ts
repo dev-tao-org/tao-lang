@@ -1,3 +1,4 @@
+import { EscapeCharacter, NewlineCharacter } from '../universal/Characters'
 import { appendFileSync, mkdirSync, resolve, spawn, writeFileSync } from './NodeBuiltins'
 
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
@@ -7,29 +8,31 @@ export async function installWorkspace(completionScript: string): Promise<void> 
   mkdirSync(logDirectory, { recursive: true })
   const logPath = resolve(logDirectory, 'bootstrap.log')
   writeFileSync(logPath, '')
-  process.stderr.write('\u001b[90mInstalling workspace dependencies…\u001b[0m\n')
+  process.stderr.write(
+    EscapeCharacter + '[90mInstalling workspace dependencies\u2026' + EscapeCharacter + '[0m' + NewlineCharacter,
+  )
   const installStatus = await runLogged(['install', ...args], logPath)
   if (installStatus !== 0) {
-    process.stderr.write(`Workspace installation failed. See ${logPath}\n`)
+    process.stderr.write(`Workspace installation failed. See ${logPath}${NewlineCharacter}`)
     process.exit(installStatus)
   }
   const completeStatus = await runLogged(['run', completionScript], logPath)
   if (completeStatus !== 0) {
-    process.stderr.write(`Workspace setup completion failed. See ${logPath}\n`)
+    process.stderr.write(`Workspace setup completion failed. See ${logPath}${NewlineCharacter}`)
     process.exit(completeStatus)
   }
-  process.stderr.write(`Workspace dependencies installed. Log: ${logPath}\n`)
+  process.stderr.write(`Workspace dependencies installed. Log: ${logPath}${NewlineCharacter}`)
 }
 
 type OutputStream = 'stdout' | 'stderr'
 
 function runLogged(args: string[], logPath: string): Promise<number> {
-  appendFileSync(logPath, `\n$ bun ${args.join(' ')}\n`)
+  appendFileSync(logPath, `${NewlineCharacter}$ bun ${args.join(' ')}${NewlineCharacter}`)
   const child = spawn('bun', args, { stdio: ['inherit', 'pipe', 'pipe'] })
   let lastStream = ''
   const forward = (stream: OutputStream, chunk: Buffer) => {
     if (lastStream !== stream) {
-      appendFileSync(logPath, `\n[${stream}]\n`)
+      appendFileSync(logPath, `${NewlineCharacter}[${stream}]${NewlineCharacter}`)
       lastStream = stream
     }
     const output = stream === 'stdout' ? process.stdout : process.stderr
@@ -40,8 +43,8 @@ function runLogged(args: string[], logPath: string): Promise<number> {
   child.stderr.on('data', (chunk: Buffer) => forward('stderr', chunk))
   return new Promise(resolve => {
     child.once('error', error => {
-      process.stderr.write(`${error.message}\n`)
-      appendFileSync(logPath, `[spawn error] ${error.message}\n`)
+      process.stderr.write(`${error.message}${NewlineCharacter}`)
+      appendFileSync(logPath, `[spawn error] ${error.message}${NewlineCharacter}`)
       resolve(1)
     })
     child.once('close', status => resolve(status ?? 1))

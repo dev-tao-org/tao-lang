@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
@@ -142,7 +142,7 @@ async function toolchainEnvironment(): Promise<unknown> {
   const sources = await Promise.all(paths.map(path => FileSystem.readFile(Repo.resolvePath(path), 'utf8')))
   const environment = Env.snapshot()
   return {
-    sources: Platform.hashText(sources.join('\n')),
+    sources: Platform.hashText(sources.join(NewlineCharacter)),
     variables: Object.fromEntries(['CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'SDKROOT', 'GYP_MSVS_VERSION']
       .map(name => [name, environment[name]])),
   }

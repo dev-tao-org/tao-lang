@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, S } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, S } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type * as LearningTypes from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
@@ -7,7 +7,7 @@ const { expect, test } = Tests
 
 test('captures corrections and follows symbol aliases without matching unrelated calls', async () => {
   const root = await createFixture()
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }' + NewlineCharacter)
   await FileSystem.writeFile(
     Path.join(root, 'consumer.ts'),
     joinTextLines(
@@ -35,7 +35,7 @@ test('rejects authority values that only coerce to an allowed authority string',
 
 test('revalidates existing rule evidence before scanning and applying', async () => {
   const root = await createFixture()
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }' + NewlineCharacter)
   const policy = Path.join(root, 'POLICY.md')
   const quote = 'Every target must return 2.'
   await FileSystem.writeFile(policy, quote)
@@ -49,7 +49,7 @@ test('revalidates existing rule evidence before scanning and applying', async ()
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'existing-rule']))
     .rejects.toThrow('authority quote')
   expect(await FileSystem.readFile(Path.join(root, 'source.ts'), 'utf8')).toContain('return 1')
-  await FileSystem.writeFile(policy, quote + '\nAdditional guidance.')
+  await FileSystem.writeFile(policy, quote + (NewlineCharacter + 'Additional guidance.'))
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'existing-rule'])).rejects.toThrow('stale')
   await FileSystem.writeFile(policy, quote)
   await runLearning(['apply', '--repo', root, '--proposal', 'existing-rule'])
@@ -58,7 +58,7 @@ test('revalidates existing rule evidence before scanning and applying', async ()
 
 test('preflights authority, protection, stale coverage and exact edits before applying', async () => {
   const root = await createFixture()
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }' + NewlineCharacter)
   await capture(root, 'inferred')
   const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'first')
@@ -68,7 +68,7 @@ test('preflights authority, protection, stale coverage and exact edits before ap
   await propose(root, fresh.id as string, 'second')
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'second', '--protected-files', 'source.ts']))
     .rejects.toThrow('Protected')
-  await FileSystem.writeFile(Path.join(root, 'added.ts'), 'const added = 1\n')
+  await FileSystem.writeFile(Path.join(root, 'added.ts'), 'const added = 1' + NewlineCharacter)
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'second'])).rejects.toThrow('stale')
   await FileSystem.rm(Path.join(root, 'added.ts'))
   await runLearning(['apply', '--repo', root, '--proposal', 'second'])
@@ -77,15 +77,15 @@ test('preflights authority, protection, stale coverage and exact edits before ap
 
 test('invalidates edits and config changes and rejects overlapping or escaping edits', async () => {
   const root = await createFixture()
-  const original = 'export function target() { return 1 }\n'
+  const original = 'export function target() { return 1 }' + NewlineCharacter
   await FileSystem.writeFile(Path.join(root, 'source.ts'), original)
   await capture(root, 'explicit')
   const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'change')
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), original + '// changed\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), original + ('// changed' + NewlineCharacter))
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('stale')
   await FileSystem.writeFile(Path.join(root, 'source.ts'), original)
-  await FileSystem.writeFile(Path.join(root, 'tsconfig.json'), '{}\n')
+  await FileSystem.writeFile(Path.join(root, 'tsconfig.json'), '{}' + NewlineCharacter)
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('stale')
   await FileSystem.rm(Path.join(root, 'tsconfig.json'))
   const input = Path.join(root, 'proposal.json')
@@ -105,7 +105,7 @@ test('invalidates edits and config changes and rejects overlapping or escaping e
 
 test('protects checkpointed review groups and marks accepted paths pending without altering accepted content', async () => {
   const root = await createFixture()
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }' + NewlineCharacter)
   await capture(root, 'explicit')
   const scan = await scanLearning(root, 'example')
   await propose(root, scan.id as string, 'change')
@@ -141,8 +141,8 @@ test('protects checkpointed review groups and marks accepted paths pending witho
 
 test('recovers interrupted multi-file output and refuses foreign edits without rolling anything back', async () => {
   const root = await createFixture()
-  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }\n')
-  await FileSystem.writeFile(Path.join(root, 'second.ts'), 'const second = 1\n')
+  await FileSystem.writeFile(Path.join(root, 'source.ts'), 'export function target() { return 1 }' + NewlineCharacter)
+  await FileSystem.writeFile(Path.join(root, 'second.ts'), 'const second = 1' + NewlineCharacter)
   await capture(root, 'explicit')
   const scan = await scanLearning(root, 'example')
   const input = Path.join(root, 'proposal.json')
@@ -167,7 +167,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   }
   await FileSystem.writeFile(statePath, JSON.stringify(state))
   await FileSystem.writeFile(Path.join(root, 'source.ts'), proposal.outputs['source.ts']!.after)
-  await FileSystem.writeFile(Path.join(root, 'second.ts'), '// user changed this\n')
+  await FileSystem.writeFile(Path.join(root, 'second.ts'), '// user changed this' + NewlineCharacter)
   await expect(runLearning(['recover', '--repo', root, '--proposal', 'batch'])).rejects.toThrow('stale')
   expect(await FileSystem.readFile(Path.join(root, 'second.ts'), 'utf8')).toBe('// user changed this\n')
   expect(await FileSystem.readFile(Path.join(root, 'source.ts'), 'utf8')).toContain('return 2')

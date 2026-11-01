@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, readManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -40,7 +40,7 @@ Tests.test('changed exact roots resolve a new graph despite an intact old source
     let frozen = false
     const prepared = await prepareManagedModules(newInput, async (_command, args, cwd) => {
       if (args[0] === '--version') {
-        return { status: 0, stdout: '1.2.0\n', stderr: '' }
+        return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
       }
       frozen ||= args.includes('--frozen-lockfile')
       await writeGraph(cwd, ['lodash', '4.17.21'])
@@ -85,7 +85,7 @@ Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source r
     await FileSystem.writeFile(referencePath, bytes)
     await FileSystem.writeFile(
       referencePath.replace(ManagedNpmLockSuffixRegx, '.sha256'),
-      `${Platform.hashText(bytes)}\n`,
+      `${Platform.hashText(bytes)}${NewlineCharacter}`,
     )
     await FileSystem.rm(durable, { force: true })
     await FileSystem.rm(durable.replace(ManagedNpmLockSuffixRegx, '.sha256'), { force: true })
@@ -101,7 +101,7 @@ Tests.test('Bun upgrades reuse byte-identical durable graphs from exact source r
     }
     const upgraded = await prepareManagedModules(upgradedInput, async (_command, args, cwd) => {
       if (args[0] === '--version') {
-        return { status: 0, stdout: '1.3.0\n', stderr: '' }
+        return { status: 0, stdout: '1.3.0' + NewlineCharacter, stderr: '' }
       }
       frozen ||= args.includes('--frozen-lockfile')
       await writePackages(cwd, { 'react': '19.1.0', 'date-fns': '4.1.0' })
@@ -125,7 +125,7 @@ function input(
 function executor(dependency: [string, string]): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+      return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     if (!args.includes('--frozen-lockfile')) {
       await writeGraph(cwd, dependency)

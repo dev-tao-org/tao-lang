@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
@@ -176,7 +176,7 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
 }
 
 function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}\n`
+  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {
@@ -211,7 +211,10 @@ async function stageModule(
 }
 
 async function writeModuleMetadata(destination: string, defaultsPath: string): Promise<void> {
-  await FileSystem.writeFile(Path.join(destination, 'package.json'), '{"private":true,"type":"module"}\n')
+  await FileSystem.writeFile(
+    Path.join(destination, 'package.json'),
+    '{"private":true,"type":"module"}' + NewlineCharacter,
+  )
   await FileSystem.writeFile(
     Path.join(destination, 'tsconfig.json'),
     SnapshotIntegrity.createTypeScriptConfigContent(defaultsPath),

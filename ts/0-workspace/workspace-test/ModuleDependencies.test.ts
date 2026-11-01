@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ModuleDependencies from '../workspace-src/ModuleDependencies'
 
@@ -13,7 +13,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
   await Try(async () => {
     await FileSystem.mkdir(module)
     await FileSystem.writeFile(Path.join(root, '.tao'), '')
-    await FileSystem.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as graph\n')
+    await FileSystem.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as graph' + NewlineCharacter)
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', '@scope/graph@2.4.1')
     Tests.expect(result).toEqual({
       moduleRoot: module,

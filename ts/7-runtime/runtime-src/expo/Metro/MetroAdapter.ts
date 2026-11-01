@@ -1,4 +1,4 @@
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, Try } from '@shared'
 import * as GeneratedFileSystem from '../../../../shared/shared-src/os/GeneratedFileSystem'
 import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
 import * as Path from '../../../../shared/shared-src/os/Path'
@@ -105,10 +105,10 @@ async function commitRevision(state: AdapterState, revision: GeneratedRevision):
 
 function completeRevision(state: AdapterState, result: RevisionResult): RevisionResult {
   if (state.poisoned) {
-    return { status: 'poisoned', message: state.errors.join('\n') }
+    return { status: 'poisoned', message: state.errors.join(NewlineCharacter) }
   }
   return state.errors.length > 0 && result.status === 'published'
-    ? { status: 'error', committed: true, message: state.errors.join('\n') }
+    ? { status: 'error', committed: true, message: state.errors.join(NewlineCharacter) }
     : result
 }
 

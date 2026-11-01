@@ -1,4 +1,4 @@
-import { joinTextLines, S, Try } from '@shared'
+import { joinTextLines, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
@@ -91,7 +91,7 @@ async function createManagedFixture(): Promise<ManagedFixture> {
       '',
     ),
   )
-  await FileSystem.writeFile(Path.join(directory, 'Other', 'package.json'), '{"name":"user-owned"}\n')
+  await FileSystem.writeFile(Path.join(directory, 'Other', 'package.json'), '{"name":"user-owned"}' + NewlineCharacter)
   const state = { frozen: false }
   return {
     directory,
@@ -122,7 +122,7 @@ function buildManagedInput(directory: string, moduleDirectory: string, externalM
 function fixtureExecutor(state: { frozen: boolean }): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+      return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     Tests.expect(args).toContain('install')
     state.frozen ||= args.includes('--frozen-lockfile')

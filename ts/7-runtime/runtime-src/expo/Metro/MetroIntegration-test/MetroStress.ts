@@ -1,4 +1,4 @@
-import { Time } from '@shared'
+import { NewlineCharacter, Time } from '@shared'
 import { Artifacts, FileSystem, Http, Path, Platform, Tests } from '@shared/os'
 import type { ExpoSession } from '../../Expo/Expo'
 import type { GeneratedRevision } from '../../PreviewProtocol'
@@ -25,7 +25,7 @@ export async function verifyMetroBurst(
   const startedAt = Time.nowMs()
   const requests = Array.from({ length: 100 }, (_, index) => {
     const revision = createRevision(`BURST_${index}`, index + 10)
-    const app = `${revision.files['App.tsx']}\nexport { large } from './large';\n`
+    const app = `${revision.files['App.tsx']}${NewlineCharacter}export { large } from './large';${NewlineCharacter}`
     return session.publish({ ...revision, files: { ...revision.files, ...extraFiles, 'App.tsx': app } })
   })
   const outcomes = await Promise.all(requests)
@@ -60,9 +60,12 @@ function createLargerNamespace(): Record<string, string> {
     `large/part${index}.ts`,
     `export const value${index} = ${JSON.stringify(`LARGE_GRAPH_${index}:${'x'.repeat(1024)}`)};`,
   ]))
-  const imports = names.map(index => `import { value${index} } from './large/part${index}';`).join('\n')
+  const imports = names.map(index => `import { value${index} } from './large/part${index}';`).join(NewlineCharacter)
   const values = names.map(index => `value${index}`).join(', ')
-  return { ...files, 'large.ts': `${imports}\nexport const large = [${values}].join('');\n` }
+  return {
+    ...files,
+    'large.ts': `${imports}${NewlineCharacter}export const large = [${values}].join('');${NewlineCharacter}`,
+  }
 }
 
 async function readMemoryUsage(url: string): Promise<number> {

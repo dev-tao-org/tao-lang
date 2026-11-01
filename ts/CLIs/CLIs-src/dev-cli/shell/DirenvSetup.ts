@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Regxs, S, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
@@ -76,13 +76,14 @@ async function completeDirenvSetup(
   }
   const repository = Path.dirname(choicePath)
   const previousChoice = await DirenvSetupFiles.readOptionalFile(choicePath)
-  await DirenvSetupFiles.writeFileAtomically(Path.resolve(repository, 'common-dir'), `${commonDirectory}\n`)
+  const commonDirectoryPath = Path.resolve(repository, 'common-dir')
+  await DirenvSetupFiles.writeFileAtomically(commonDirectoryPath, `${commonDirectory}${NewlineCharacter}`)
   if (!accepted) {
-    if (previousChoice === 'enabled\n') {
+    if (previousChoice === ('enabled' + NewlineCharacter)) {
       await refreshInstalledActivation(root, shellRoot)
       await revokeDirenvAllowance(root, environment)
     }
-    await DirenvSetupFiles.writeFileAtomically(choicePath, 'disabled\n')
+    await DirenvSetupFiles.writeFileAtomically(choicePath, 'disabled' + NewlineCharacter)
     write(S`
       Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:
       ${DirenvSetupFiles.activationSourceLine}
@@ -90,12 +91,12 @@ async function completeDirenvSetup(
     `)
     return 0
   }
-  await DirenvSetupFiles.writeFileAtomically(choicePath, 'pending\n')
+  await DirenvSetupFiles.writeFileAtomically(choicePath, 'pending' + NewlineCharacter)
   await installActivation(root, shellRoot, environment)
   await updateZshrcSource(zshrc)
-  await DirenvSetupFiles.writeFileAtomically(choicePath, 'enabled\n')
+  await DirenvSetupFiles.writeFileAtomically(choicePath, 'enabled' + NewlineCharacter)
   write(
-    `Automatic shell activation is enabled. Open a new zsh terminal or run:\n${DirenvSetupFiles.activationSourceLine}`,
+    `Automatic shell activation is enabled. Open a new zsh terminal or run:${NewlineCharacter}${DirenvSetupFiles.activationSourceLine}`,
   )
   return 0
 }
@@ -104,7 +105,7 @@ async function revokeDirenvAllowance(root: string, environment: SetupEnvironment
   const denied = await environment.run('direnv', { args: ['deny', root], cwd: root })
   if (denied.status !== 0) {
     Errors.ThrowHostEnvironment(
-      `Could not revoke direnv trust for ${root} (exit ${denied.status}):\n${denied.stderr.trim()}`,
+      `Could not revoke direnv trust for ${root} (exit ${denied.status}):${NewlineCharacter}${denied.stderr.trim()}`,
     )
   }
 }
@@ -130,7 +131,7 @@ async function hasStoredChoice(
     return false
   }
   const previousChoice = await DirenvSetupFiles.readOptionalFile(choicePath)
-  return ['enabled\n', 'disabled\n'].includes(previousChoice)
+  return ['enabled' + NewlineCharacter, 'disabled' + NewlineCharacter].includes(previousChoice)
 }
 
 async function resolveGitIdentity(
@@ -151,7 +152,7 @@ async function resolveGitIdentity(
   const hash = await environment.run('git', {
     args: ['hash-object', '--stdin'],
     cwd: root,
-    stdin: `${commonDirectory}\n`,
+    stdin: `${commonDirectory}${NewlineCharacter}`,
   })
   const identity = hash.stdout.trim()
   if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(identity)) {
@@ -186,7 +187,9 @@ async function installActivation(
   const devenv = await environment.run('devenv', { args: ['version'], cwd: root })
   if (devenv.status !== 0) {
     Errors.ThrowHostEnvironment(
-      `devenv version failed (exit ${devenv.status}):\n${devenv.stderr.trim() || devenv.stdout.trim()}`,
+      `devenv version failed (exit ${devenv.status}):${NewlineCharacter}${
+        devenv.stderr.trim() || devenv.stdout.trim()
+      }`,
     )
   }
   const runtime = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
@@ -194,14 +197,14 @@ async function installActivation(
   const completionPath = Path.resolve(root, '.artifacts/cache/dev-shell/completion.zsh')
   const completion = FileSystem.existsSync(completionPath)
     ? await FileSystem.readFile(completionPath, 'utf8')
-    : '# Tao dev shell completion is generated during ./agent setup.\n'
+    : ('# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter)
   const rooted = await environment.run('nix-store', {
     args: ['--realise', output, '--add-root', Path.resolve(shellRoot, 'direnv'), '--indirect'],
     cwd: root,
   })
   if (rooted.status !== 0) {
     Errors.ThrowHostEnvironment(
-      `Could not retain the pinned direnv package with a Nix GC root. Shell activation remains disabled.\n${rooted.stderr.trim()}`,
+      `Could not retain the pinned direnv package with a Nix GC root. Shell activation remains disabled.${NewlineCharacter}${rooted.stderr.trim()}`,
     )
   }
   await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), runtime)
@@ -220,7 +223,7 @@ async function updateZshrcSource(zshrc: string): Promise<void> {
   }, {
     catch(cause) {
       Errors.ThrowHostEnvironment(
-        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup --configure:\n${DirenvSetupFiles.activationSourceLine}`,
+        `Could not update shell configuration at ${zshrc}. Add this line to its managed source, then run ./agent shell-setup --configure:${NewlineCharacter}${DirenvSetupFiles.activationSourceLine}`,
         { cause },
       )
     },

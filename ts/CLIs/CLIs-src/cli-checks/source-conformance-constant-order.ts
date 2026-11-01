@@ -1,3 +1,4 @@
+import { NewlineCharacter } from '@shared'
 import * as TypeScript from 'typescript'
 import { containsNode, movableStart } from './source-conformance-type-order'
 import { isExcludedSource } from './source-size'
@@ -335,7 +336,7 @@ function addMove(
   const edits = changes.get(file) ?? []
   const fileInsertions = insertions.get(file) ?? new Map<number, TypeScript.TextChange>()
   const existing = fileInsertions.get(insertion)
-  const text = file.text.slice(start, declaration.end) + '\n'
+  const text = file.text.slice(start, declaration.end) + NewlineCharacter
   if (existing) {
     existing.newText += text
   } else {

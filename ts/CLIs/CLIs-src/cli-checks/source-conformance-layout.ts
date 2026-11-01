@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
@@ -58,9 +58,10 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
     return MultilineStringMessage
   }
   const lines = layout.split(Regxs.OptionalCarriageNewline)
-  const opening = file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(
-    Regxs.LeadingHorizontalWhitespaceRegx,
-  )![0]
+  const opening =
+    file.text.slice(file.text.lastIndexOf(NewlineCharacter, node.getStart(file)) + 1, node.getStart(file)).match(
+      Regxs.LeadingHorizontalWhitespaceRegx,
+    )![0]
   const closing = lines[lines.length - 1]
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'

@@ -1,5 +1,6 @@
 import * as CST from '@cst'
 import type { SyntaxNode, Tree } from '@cst'
+import { NewlineCharacter } from '@shared'
 import type { SourceRange } from '../../Source'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
@@ -39,7 +40,7 @@ function isSameLineTrailingComment(
   previous: PreviousStatementSlice,
   comment: SyntaxNode,
 ): previous is StatementSlice {
-  return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes('\n')
+  return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes(NewlineCharacter)
 }
 
 type LeadingCommentStart = number | undefined

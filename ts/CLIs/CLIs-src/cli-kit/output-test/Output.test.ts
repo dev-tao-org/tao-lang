@@ -1,4 +1,4 @@
-import { joinTextLines } from '@shared'
+import { EscapeCharacter, joinTextLines, NewlineCharacter, RecordSeparatorCharacter } from '@shared'
 import { Tests, Text } from '@shared/os'
 import { createOutput, formatChannelCompletion } from '../output/Output'
 import { createProcessOutput, encodeOutputMessage, type OutputMessage } from '../output/ProcessOutput'
@@ -10,7 +10,7 @@ Tests.test('output preserves streamed UTF-8 and raw sink text while keeping visi
   const worker = output.channel('worker')
   worker.stdout(new Uint8Array([0xe2, 0x82]))
   worker.stdout(new Uint8Array([0xac]))
-  worker.stdout('\n')
+  worker.stdout(NewlineCharacter)
   worker.warn('ready')
 
   Tests.expect(events.map(event => event.text)).toEqual(['€', '\n', '\u001b[33mready\u001b[0m\n'])
@@ -23,7 +23,7 @@ Tests.test('output preserves streamed UTF-8 and raw sink text while keeping visi
 Tests.test('output snapshots retain only the bounded tail of each channel', async () => {
   const output = createOutput(() => {})
   const worker = output.channel('worker')
-  worker.stdout(Array.from({ length: 100 }, (_, index) => `line-${index}\n`).join('') + 'last')
+  worker.stdout(Array.from({ length: 100 }, (_, index) => `line-${index}${NewlineCharacter}`).join('') + 'last')
 
   const lines = output.snapshot().channels[0]?.lines ?? []
   Tests.expect(lines).toHaveLength(80)
@@ -36,9 +36,9 @@ Tests.test('subprocess output retains framed severity across byte fragments with
   const raw: string[] = []
   const messages: OutputMessage[] = []
   const pipe = createProcessOutput(text => raw.push(text), event => messages.push(event))
-  const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '€ warning\n' })
+  const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '\u20AC warning' + NewlineCharacter })
   const encoder = new TextEncoder()
-  const source = joinTextLines('normal stderr', frame + '\u001einvalid', 'trailing')
+  const source = joinTextLines('normal stderr', frame + (RecordSeparatorCharacter + 'invalid'), 'trailing')
   const bytes = encoder.encode(source)
   for (const byte of bytes) {
     pipe.write(new Uint8Array([byte]))
@@ -49,7 +49,8 @@ Tests.test('subprocess output retains framed severity across byte fragments with
 })
 
 Tests.test('wrapped tails preserve ANSI styling and complete Unicode while selecting from the bottom', () => {
-  const source = '\u001b[31mab界e\u0301👨‍👩‍👧‍👦z\u001b[0m'
+  const source = EscapeCharacter
+    + '[31mab\u754Ce\u0301\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66z' + EscapeCharacter + '[0m'
   const wrapped = wrappedTail([source], 4, 8)
   Tests.expect(wrapped.join('')).toContain('\u001b[31m')
   Tests.expect(Text.stripAnsi(wrapped.join('')).normalize('NFC')).toBe('ab界e\u0301👨‍👩‍👧‍👦z'.normalize('NFC'))

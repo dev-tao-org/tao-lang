@@ -1,4 +1,4 @@
-import { Errors, Lists, NullCharacter, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
 import { Env, FileSystem, Path, Platform } from '@shared/os'
 
 type GitOptions = { index?: string; input?: GitInput }
@@ -156,7 +156,7 @@ export async function readJson<Value>(path: string): Promise<Value> {
 /** writeJson atomically replaces retained state. */
 export async function writeJson(path: string, value: unknown): Promise<void> {
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(value, null, 2) + '\n')
+  await FileSystem.writeFile(pending, JSON.stringify(value, null, 2) + NewlineCharacter)
   await FileSystem.rename(pending, path)
 }
 

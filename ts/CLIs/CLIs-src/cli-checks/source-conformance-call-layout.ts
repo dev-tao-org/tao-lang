@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { CarriageReturnCharacter, NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** getSingleLineCallChanges collapses fitting multiline simple calls and if headers. */
@@ -171,10 +171,10 @@ function fitsOnOneLine(node: TypeScript.CallExpression, replacement: string, fil
 const MaximumCallLineWidth = 120
 function fitsRangeOnOneLine(start: number, end: number, replacement: string, file: TypeScript.SourceFile): boolean {
   const startLineStart = file.getLineStarts()[file.getLineAndCharacterOfPosition(start).line]
-  const lineEnd = file.text.indexOf('\n', end)
+  const lineEnd = file.text.indexOf(NewlineCharacter, end)
   const endLineEnd = lineEnd < 0 ? file.text.length : lineEnd
   const prefix = file.text.slice(startLineStart, start)
   const suffix = file.text.slice(end, endLineEnd)
-  const suffixWithoutCarriageReturn = suffix.endsWith('\r') ? suffix.slice(0, -1) : suffix
+  const suffixWithoutCarriageReturn = suffix.endsWith(CarriageReturnCharacter) ? suffix.slice(0, -1) : suffix
   return prefix.length + replacement.length + suffixWithoutCarriageReturn.length <= MaximumCallLineWidth
 }

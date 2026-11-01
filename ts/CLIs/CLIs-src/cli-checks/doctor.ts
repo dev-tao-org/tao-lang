@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
 
 /** DoctorReport contains environment diagnostics and the host fingerprint. */
@@ -44,7 +44,7 @@ function safeToken(value: OptionalToolOutput): string | undefined {
 }
 
 function toolVersion(output: OptionalToolOutput): string | undefined {
-  const token = output?.split('\n')[0]?.trim().split(Regxs.WhitespaceRunsRegx).map(value =>
+  const token = output?.split(NewlineCharacter)[0]?.trim().split(Regxs.WhitespaceRunsRegx).map(value =>
     value.replace(Regxs.TrailingComma, '')
   )
     .find(value => Regxs.ToolVersionToken.test(value))

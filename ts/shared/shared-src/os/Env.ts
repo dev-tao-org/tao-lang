@@ -1,4 +1,5 @@
 import * as Errors from '../universal/Errors'
+import * as Objects from '../universal/Objects'
 
 /** get reads a variable from the current process environment. */
 export function get(key: string): string | undefined {
@@ -13,7 +14,7 @@ export function require(name: string): string {
 type EnvironmentValue = string | undefined
 /** snapshot copies the current environment for a child with explicit local overrides. */
 export function snapshot(): Record<string, EnvironmentValue> {
-  return { ...process.env }
+  return Objects.copy(process.env)
 }
 
 /** set updates a variable in the current process environment. */

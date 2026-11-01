@@ -1,5 +1,6 @@
 import * as CST from '@cst'
 import type { Field, NodeType, SyntaxNode, Token } from '@cst'
+import { NewlineCharacter } from '@shared'
 import { createNodeKey, type LayoutPlan, spaceAt } from '../layout/Plan'
 
 type SelectedPropertyNode = SyntaxNode | null
@@ -13,7 +14,7 @@ export class NodeContext<Kind extends NodeType> {
   ) {}
 
   isMultiline(): boolean {
-    return this.node.text.includes('\n')
+    return this.node.text.includes(NewlineCharacter)
   }
 
   hasComments(): boolean {

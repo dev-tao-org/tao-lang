@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
 import { fix } from '../fix-src/Fix'
 import { format } from '../fix-src/Format'
@@ -53,7 +53,7 @@ function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter
       return undefined
     }
     return key === 'code'
-      ? typescript(item, { indent: 2, level: 0, width: 120, newline: '\n' })
+      ? typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
       : item
   })
 }

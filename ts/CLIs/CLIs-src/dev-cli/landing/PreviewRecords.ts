@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
 import { validatePreviewReport } from '../../../../perf/perf-src/PreviewHistoryStore'
 import { git, type LandingIO } from './LandingIO'
@@ -17,7 +17,7 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
     'HEAD',
     '--',
     'AGENTS.md',
-  ])).split('\n')[0]
+  ])).split(NewlineCharacter)[0]
   if (!introduced) {
     Errors.ThrowUserInput('Cannot locate the preview-record policy introduction in this branch.')
   }
@@ -30,10 +30,11 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
     '^origin/main',
   ])
   const result: PreviewRecord[] = []
-  for (const source of commits.split('\n').filter(Boolean)) {
-    const paths = (await git(io, ['diff-tree', '--no-commit-id', '--name-only', '-r', source])).split('\n').filter(
-      Boolean,
-    )
+  for (const source of commits.split(NewlineCharacter).filter(Boolean)) {
+    const paths = (await git(io, ['diff-tree', '--no-commit-id', '--name-only', '-r', source])).split(NewlineCharacter)
+      .filter(
+        Boolean,
+      )
     if (paths.every(isExemptPath)) {
       continue
     }

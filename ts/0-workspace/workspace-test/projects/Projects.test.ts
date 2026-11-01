@@ -1,4 +1,4 @@
-import { Time, Try } from '@shared'
+import { NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { cleanProject } from '../../workspace-src/projects/Clean'
 import { acquireProjectLifecycle } from '../../workspace-src/projects/Lifecycle'
@@ -265,9 +265,9 @@ async function createManagedFileDependency(root: string, dependency: string): Pr
   const layout = await initializeProject(root)
   const module = Path.join(dependency, 'module')
   const profile = Path.join(layout.cacheDirectory, 'managed-modules', 'fixture')
-  const files = [[Path.join(module, 'package.json'), '{"private":true}\n'], [
+  const files = [[Path.join(module, 'package.json'), '{"private":true}' + NewlineCharacter], [
     Path.join(module, 'tsconfig.json'),
-    '{"extends":"defaults.json"}\n',
+    '{"extends":"defaults.json"}' + NewlineCharacter,
   ]] as const
   await FileSystem.mkdirs(Path.join(dependency, '.tao'), module, profile)
   await FileSystem.writeFile(

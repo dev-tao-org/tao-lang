@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { joinTextLines, S } from '@shared'
+import { joinTextLines, NewlineCharacter, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/managed-modules/ManagedModuleMetadata'
@@ -31,7 +31,10 @@ Tests.test('sidecar snapshots include helpers and assets, reuse unchanged checks
     Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(originalSnapshot)
     Tests.expect(checks).toBe(1)
 
-    await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "new"\n')
+    await FileSystem.writeFile(
+      Path.join(fixture.moduleRoot, 'format.ts'),
+      'export const formatDate = () => "new"' + NewlineCharacter,
+    )
     const changed = await prepareSidecarPipeline({ ...fixture, executor })
     const nextSnapshot = changed.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     Tests.expect(nextSnapshot).not.toBe(originalSnapshot)
@@ -48,7 +51,7 @@ Tests.test('rebuilds a corrupted snapshot without replacing the previously publi
     const original = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     await FileSystem.writeFile(
       Path.join(Path.dirname(original), 'format.ts'),
-      'export const formatDate = () => "tampered"\n',
+      'export const formatDate = () => "tampered"' + NewlineCharacter,
     )
     await FileSystem.rm(Path.join(Path.dirname(original), 'logo.png'))
     await FileSystem.writeFile(Path.join(Path.dirname(original), 'unexpected.bin'), 'unexpected')
@@ -102,7 +105,10 @@ Tests.test('blocks a new snapshot when the active session reaches its snapshot b
     const snapshot = first.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     const cached = await prepareSidecarPipeline(options)
     Tests.expect(cached.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')).toBe(snapshot)
-    await FileSystem.writeFile(Path.join(fixture.moduleRoot, 'format.ts'), 'export const formatDate = () => "next"\n')
+    await FileSystem.writeFile(
+      Path.join(fixture.moduleRoot, 'format.ts'),
+      'export const formatDate = () => "next"' + NewlineCharacter,
+    )
 
     await Tests.rejects(prepareSidecarPipeline(options), SidecarSnapshotRestartRequiredRegx)
     Tests.expect(await FileSystem.readFile(snapshot, 'utf8')).toContain("from './format'")
@@ -111,7 +117,7 @@ Tests.test('blocks a new snapshot when the active session reaches its snapshot b
 Tests.test('foreign sidecars reject symlink escapes before invoking the checker', async () =>
   await withFixture(async fixture => {
     const outside = Path.join(fixture.directory, 'outside.tsx')
-    await FileSystem.writeFile(outside, 'export function FormattedDate() { return null }\n')
+    await FileSystem.writeFile(outside, 'export function FormattedDate() { return null }' + NewlineCharacter)
     await FileSystem.rm(Path.join(fixture.moduleRoot, 'FormattedDate.tsx'), { force: true })
     await FileSystem.symlink(outside, Path.join(fixture.moduleRoot, 'FormattedDate.tsx'), 'file')
     let checks = 0
@@ -129,7 +135,7 @@ Tests.test('foreign sidecar imports cannot cross into another named module', asy
   await withFixture(async fixture => {
     const otherModule = Path.join(fixture.projectDirectory, '@other')
     await FileSystem.mkdir(otherModule)
-    await FileSystem.writeFile(Path.join(otherModule, 'helper.ts'), 'export const helper = true\n')
+    await FileSystem.writeFile(Path.join(otherModule, 'helper.ts'), 'export const helper = true' + NewlineCharacter)
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
       S`
@@ -155,10 +161,13 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     const moduleRoot = Path.join(dependencyRoot, '@widgets')
     const taoPath = Path.join(moduleRoot, 'Widgets.tao')
     await FileSystem.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
-    await FileSystem.writeFile(taoPath, 'public view FormattedDate(Value text) from ./FormattedDate.tsx\n')
+    await FileSystem.writeFile(
+      taoPath,
+      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
+    )
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tao'),
-      'public view FormattedDate(Value text) from ./FormattedDate.tsx\n',
+      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
     )
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tsx'),
@@ -169,7 +178,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     )
     await FileSystem.writeFile(
       Path.join(moduleRoot, 'format.ts'),
-      'export const formatDate = (value: string) => value\n',
+      'export const formatDate = (value: string) => value' + NewlineCharacter,
     )
     const dependencyDocument = transform(
       createParser().parse(
@@ -191,9 +200,12 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     const taoPath = Path.join(moduleRoot, 'Widgets.tao')
     const sidecarPath = Path.join(moduleRoot, 'FormattedDate.tsx')
     await FileSystem.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
-    await FileSystem.writeFile(taoPath, 'public view FormattedDate(Value text) from ./FormattedDate.tsx\n')
+    await FileSystem.writeFile(
+      taoPath,
+      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
+    )
     const consumerHelper = Path.join(fixture.moduleRoot, 'consumer-helper.ts')
-    await FileSystem.writeFile(consumerHelper, 'export const value = true\n')
+    await FileSystem.writeFile(consumerHelper, 'export const value = true' + NewlineCharacter)
     const importPath = Path.relative(Path.dirname(sidecarPath), consumerHelper).replaceAll('\\', '/')
     await FileSystem.writeFile(
       sidecarPath,
@@ -227,7 +239,7 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
 
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      'export function OtherView(props: { Value: string }) { return null }\n',
+      'export function OtherView(props: { Value: string }) { return null }' + NewlineCharacter,
     )
     const watchedFiles: string[] = []
     await Tests.rejects(
@@ -244,7 +256,7 @@ Tests.test('foreign view contracts accept matching named exports and reject inva
 
     await FileSystem.writeFile(
       Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      'export function FormattedDate(props: { Value: number }) { return null }\n',
+      'export function FormattedDate(props: { Value: number }) { return null }' + NewlineCharacter,
     )
     await Tests.rejects(
       prepareSidecarPipeline({ ...fixture, executor }),

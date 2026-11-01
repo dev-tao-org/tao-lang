@@ -1,4 +1,5 @@
 import type { TimingSample } from '@shared'
+import { NewlineCharacter } from '@shared'
 
 /** formatTimings formats recorded pipeline spans for compiler and retained-loop output. */
 export function formatTimings(samples: readonly TimingSample[]): string {
@@ -7,7 +8,7 @@ export function formatTimings(samples: readonly TimingSample[]): string {
     const elapsedSeconds = (sample.startMs + sample.durationMs - startedAtMs) / 1000
     return `${names[sample.name] ?? sample.name}: ${sample.durationMs.toFixed(2)} ms `
       + `(${elapsedSeconds.toFixed(4)} s elapsed)${sample.status === 'failed' ? ' (failed)' : ''}`
-  }).join('\n  ')
+  }).join(NewlineCharacter + '  ')
 }
 
 type TimingLabels = Record<string, string>

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Switch } from '@shared'
+import { Errors, NewlineCharacter, Switch } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 import * as CodegenUtil from './codegen-util'
 import type { DeclarationCompilation } from './DeclarationCompiler'
@@ -75,7 +75,7 @@ function compileTaoView(
   const nested = compileNestedViews(node, children, nestedContext, names, bindings)
   const valuesCode = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope))
     .join(
-      '\n',
+      NewlineCharacter,
     )
   const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
   const statements = CodegenUtil.joinCodeLines(
@@ -173,7 +173,9 @@ function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUt
   if (block.statements.every(isViewRenderExpression)) {
     return CodegenUtil.listMap(block.statements, child => compileViewRenderExpression(child, scope))
   }
-  const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join('\n')
+  const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join(
+    NewlineCharacter,
+  )
   return RuntimeEmitter.emitViewRenderBlock(scope, statements)
 }
 

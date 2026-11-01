@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isDiscoverableProjectDirectory } from '../modules/Paths'
 
@@ -136,5 +136,5 @@ async function ensureProjectIdentity(path: string): Promise<void> {
 }
 
 function serializeProjectIdentity(id: string): string {
-  return `${JSON.stringify({ version: 1, id }, null, 2)}\n`
+  return `${JSON.stringify({ version: 1, id }, null, 2)}${NewlineCharacter}`
 }

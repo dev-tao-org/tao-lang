@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { recordPreviewPerformance } from '../perf-src/PreviewHistory'
 
@@ -64,8 +64,8 @@ Tests.test('a changed HEAD during capture cannot produce a successful record', a
 
 const commit = 'a'.repeat(40)
 const tree = 'b'.repeat(40)
-const source = '  app Example { root RootView }\n'
-const report = JSON.stringify({ version: 1, commit, modified: true }) + '\n'
+const source = '  app Example { root RootView }' + NewlineCharacter
+const report = JSON.stringify({ version: 1, commit, modified: true }) + NewlineCharacter
 
 type PreviewHistoryFixture = {
   root: string

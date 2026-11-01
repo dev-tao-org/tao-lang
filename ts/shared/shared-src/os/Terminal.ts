@@ -1,3 +1,4 @@
+import * as Characters from '../universal/Characters'
 import { ControlCCharacter, Errors, Try } from '../universal/universal'
 import { createInterface, emitKeypressEvents, type Readable, type ReadLineOptions, StringDecoder } from './NodeBuiltins'
 
@@ -14,7 +15,7 @@ export function isInteractive(): boolean {
 
 /** writeLine writes human-readable text plus a newline to stdout. */
 export function writeLine(message = ''): void {
-  stdout.write(`${message}\n`)
+  stdout.write(`${message}${Characters.NewlineCharacter}`)
 }
 
 type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
@@ -71,7 +72,7 @@ export async function askConfirm(
       if (answer === 'n' || answer === 'no') {
         return false
       }
-      terminal.write('Answer yes or no.\n')
+      terminal.write('Answer yes or no.' + Characters.NewlineCharacter)
     }
   }, {
     catch(error) {
@@ -104,7 +105,7 @@ export async function askSecret(prompt: string): Promise<string> {
     input.once('error', failed)
     input.setRawMode(true)
     input.resume()
-    stderr.write(prompt + '\u001b[?2004h')
+    stderr.write(prompt + (Characters.EscapeCharacter + '[?2004h'))
     return result.promise
   }, {
     finally() {
@@ -115,7 +116,7 @@ export async function askSecret(prompt: string): Promise<string> {
       if (wasPaused) {
         input.pause()
       }
-      stderr.write('\u001b[?2004l\n')
+      stderr.write(Characters.EscapeCharacter + '[?2004l' + Characters.NewlineCharacter)
     },
   })
 }
@@ -156,7 +157,7 @@ function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: Buf
 function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecret, reject: RejectSecret): void {
   state.pending += state.decoder.write(chunk)
   while (state.pending) {
-    const marker = state.pasting ? '\u001b[201~' : '\u001b[200~'
+    const marker = state.pasting ? (Characters.EscapeCharacter + '[201~') : (Characters.EscapeCharacter + '[200~')
     if (state.pending.startsWith(marker)) {
       state.pending = state.pending.slice(marker.length)
       if (state.pasting) {
@@ -173,15 +174,15 @@ function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecr
     state.pending = state.pending.slice(character.length)
     if (state.pasting) {
       state.value += character
-    } else if (character === ControlCCharacter || character === '\u0004') {
+    } else if (character === ControlCCharacter || character === Characters.ControlDCharacter) {
       reject(new Error('Secret entry cancelled.'))
       return
-    } else if (character === '\r' || character === '\n') {
+    } else if (character === Characters.CarriageReturnCharacter || character === Characters.NewlineCharacter) {
       resolve(state.value)
       return
-    } else if (character === '\u007f' || character === '\b') {
+    } else if (character === Characters.DeleteCharacter || character === Characters.BackspaceCharacter) {
       state.value = [...state.value].slice(0, -1).join('')
-    } else if (character >= ' ' && character !== '\u001b') {
+    } else if (character >= ' ' && character !== Characters.EscapeCharacter) {
       state.value += character
     } else {
       // Ignore unsupported control characters instead of adding them to the secret.

@@ -1,4 +1,6 @@
+import { NewlineCharacter } from '../universal/Characters'
 import * as PreviewOutcomeTrackerModule2 from '../universal/PreviewOutcomeTracker'
+import * as Styles from '../universal/Styles'
 import * as Time from '../universal/Time'
 
 type PreviewControlSignal = PreviewOutcomeTrackerModule2.PreviewIdentity & {
@@ -156,7 +158,7 @@ export class PreviewRecovery {
   private render(): void {
     const snapshot = this.tracker.snapshot()
     this.panel.hidden = !snapshot.error
-    this.panel.querySelector('pre')!.textContent = snapshot.diagnostics.join('\n\n')
+    this.panel.querySelector('pre')!.textContent = snapshot.diagnostics.join(NewlineCharacter.repeat(2))
     const bounds = this.frame.getBoundingClientRect()
     this.panel.style.left = `${bounds.left + 8}px`
     this.panel.style.top = `${bounds.top + 8}px`
@@ -167,10 +169,18 @@ export class PreviewRecovery {
 function createRecoveryPanel(reload: () => void): HTMLElement {
   const panel = document.createElement('aside')
   panel.setAttribute('role', 'alert')
-  panel.style.cssText =
-    'position:fixed;z-index:100;background:#292020;color:white;padding:16px;border:1px solid #b66;max-height:60vh;overflow:auto'
+  panel.style.cssText = Styles.declarations({
+    'position': 'fixed',
+    'z-index': '100',
+    'background': '#292020',
+    'color': 'white',
+    'padding': '16px',
+    'border': '1px solid #b66',
+    'max-height': '60vh',
+    'overflow': 'auto',
+  })
   const text = document.createElement('pre')
-  text.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere'
+  text.style.cssText = Styles.declarations({ 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' })
   const button = document.createElement('button')
   button.textContent = 'Reload'
   button.onclick = reload

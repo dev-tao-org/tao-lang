@@ -1,6 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Errors, joinTextLines, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
@@ -96,12 +96,15 @@ async function copyAssets(): Promise<void> {
   const formatterNotice = await copyFormatter()
   const notices = await Promise.all(
     ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
-      `${name}\n\n${await FileSystem.readFile(Path.join(modulesDirectory, name, 'LICENSE'), 'utf8')}`
+      `${name}${NewlineCharacter}${NewlineCharacter}${await FileSystem.readFile(
+        Path.join(modulesDirectory, name, 'LICENSE'),
+        'utf8',
+      )}`
     ),
   )
   await FileSystem.writeFile(
     Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'),
-    [...notices, formatterNotice].join('\n\n'),
+    [...notices, formatterNotice].join(NewlineCharacter + NewlineCharacter),
   )
 }
 
@@ -140,6 +143,6 @@ async function writeTsxQueries(modulesDirectory: string): Promise<void> {
     Path.join(typescriptDirectory, 'queries/highlights.scm'),
   ]
   const queries = await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
-  await FileSystem.writeFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), queries.join('\n'))
+  await FileSystem.writeFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), queries.join(NewlineCharacter))
   await FileSystem.cp(Path.join(javascriptDirectory, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
 }

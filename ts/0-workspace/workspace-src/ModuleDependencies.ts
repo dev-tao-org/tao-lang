@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Lists, Regxs, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, Regxs, Try } from '@shared'
 import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
@@ -212,7 +212,9 @@ async function writeRequirement(
   const existing = await Try.WithDefault('', () => FileSystem.readFile(sourcePath, 'utf8'))
   await FileSystem.writeFile(
     sourcePath,
-    `${existing}${existing && !existing.endsWith('\n') ? '\n' : ''}requires npm:${packageName} version ${version}\n`,
+    `${existing}${
+      existing && !existing.endsWith(NewlineCharacter) ? NewlineCharacter : ''
+    }requires npm:${packageName} version ${version}${NewlineCharacter}`,
   )
   return sourcePath
 }

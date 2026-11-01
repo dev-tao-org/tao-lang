@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout, type ProjectLayout } from './Projects'
@@ -61,7 +61,7 @@ function createInternalSessionId(kind: SessionKind): string {
   return kind === 'cli' ? '.cli' : '.studio'
 }
 
-const SessionMarker = '{"format":1}\n'
+const SessionMarker = '{"format":1}' + NewlineCharacter
 async function ensureSessionState(directory: string): Promise<void> {
   const marker = Path.join(directory, '.tao-session.json')
   const markerContents = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))

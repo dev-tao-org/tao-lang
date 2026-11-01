@@ -1,4 +1,4 @@
-import { joinTextLines, S, Try } from '@shared'
+import { joinTextLines, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { readDependencyLock, resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
@@ -23,7 +23,7 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
         await FileSystem.mkdirs(Path.join(destination, '.tao'), Path.join(destination, '@ui'))
         await FileSystem.writeFile(
           Path.join(destination, '@ui', 'Widget.tao'),
-          'public view Widget { render Text("ok") }\n',
+          'public view Widget { render Text("ok") }' + NewlineCharacter,
         )
       },
     },

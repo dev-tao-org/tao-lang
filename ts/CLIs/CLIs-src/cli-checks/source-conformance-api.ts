@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 
 export {
@@ -129,8 +129,9 @@ function hasValidDocLayout(source: string, range: TypeScript.CommentRange): bool
   if (lines.length === 1) {
     return true
   }
-  const indentation =
-    source.slice(source.lastIndexOf('\n', range.pos) + 1, range.pos).match(Regxs.LeadingHorizontalWhitespaceRegx)![0]
+  const indentation = source.slice(source.lastIndexOf(NewlineCharacter, range.pos) + 1, range.pos).match(
+    Regxs.LeadingHorizontalWhitespaceRegx,
+  )![0]
   const prefix = indentation + ' *  '
   return Regxs.DocOpeningLine.test(lines[0]) && Regxs.DocClosingLine.test(lines[lines.length - 1])
     && lines.slice(1).every(line => line.startsWith(prefix) && Regxs.NonWhitespaceStart.test(line.slice(prefix.length)))

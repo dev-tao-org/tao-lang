@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Path, Repo, Terminal, Text } from '@shared/os'
 import { createFileOutput } from './output/Files'
 import * as Output from './output/Output'
@@ -162,7 +162,7 @@ function writeOutput(event: Output.OutputEvent): void {
 function printCommands(): void {
   const commands = output.snapshot().commands
   if (commands.length && configuration.stderr !== 'log') {
-    Terminal.stderr.write(Output.formatCommands(commands, Terminal.stderr.isTTY === true) + '\n')
+    Terminal.stderr.write(Output.formatCommands(commands, Terminal.stderr.isTTY === true) + NewlineCharacter)
   }
 }
 
@@ -176,7 +176,7 @@ function countDiagnostic(event: Output.OutputEvent): void {
       warningDetails.push(formatWarningDetail(event))
     }
   } else if (shouldReportQuietError()) {
-    Terminal.stderr.write('Error recorded: See the log for details.\n')
+    Terminal.stderr.write('Error recorded: See the log for details.' + NewlineCharacter)
   } else {
     // Other errors are already routed, or the quiet-mode notice was printed for the first error.
   }
@@ -207,14 +207,14 @@ async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
   if (wasTui) {
     const snapshot = output.snapshot()
     for (const state of snapshot.channels) {
-      Terminal.stderr.write(`[${state.title}] ${Output.formatChannelCompletion(state)}\n`)
+      Terminal.stderr.write(`[${state.title}] ${Output.formatChannelCompletion(state)}${NewlineCharacter}`)
       if (state.status === 'failed') {
-        Terminal.stderr.write(state.lines.slice(-12).join('\n') + '\n')
+        Terminal.stderr.write(state.lines.slice(-12).join(NewlineCharacter) + NewlineCharacter)
       }
     }
     const summary = lastMainOutput || snapshot.main.lines.filter(Boolean).at(-1)
     if (summary) {
-      Terminal.stderr.write(summary.endsWith('\n') ? summary : summary + '\n')
+      Terminal.stderr.write(summary.endsWith(NewlineCharacter) ? summary : summary + NewlineCharacter)
     }
   }
   if (!configuration.forwardEvents && !configuration.passthrough) {
@@ -223,10 +223,10 @@ async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
       Terminal.stderr.write(
         `${status === 'passed' ? 'Completed' : 'Failed'}: ${notices}. Logs: ${
           Path.relative(Repo.getWorkspaceRoot(), writeFileOutput.path)
-        }\n`,
+        }${NewlineCharacter}`,
       )
       for (const warning of warningDetails) {
-        Terminal.stderr.write(warning + '\n')
+        Terminal.stderr.write(warning + NewlineCharacter)
       }
     }
   }

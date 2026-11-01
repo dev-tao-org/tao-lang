@@ -1,5 +1,5 @@
 import type { SyntaxNode, Tree } from '@cst'
-import { Errors } from '@shared'
+import { CarriageReturnCharacter, Errors, NewlineCharacter } from '@shared'
 import type { SourceRange } from '../../Source'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
@@ -37,7 +37,9 @@ export type LayoutPlan = {
 export function createPlan(source: string, tree: Tree): LayoutPlan {
   const plan: LayoutPlan = {
     source,
-    newline: source.includes('\r\n') ? '\r\n' : '\n',
+    newline: source.includes(CarriageReturnCharacter + NewlineCharacter)
+      ? (CarriageReturnCharacter + NewlineCharacter)
+      : NewlineCharacter,
     tokens: [],
     gaps: [],
     bounds: new Map(),

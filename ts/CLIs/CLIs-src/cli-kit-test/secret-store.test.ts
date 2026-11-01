@@ -1,4 +1,4 @@
-import { S } from '@shared'
+import { NewlineCharacter, S } from '@shared'
 import { Tests } from '@shared/os'
 import * as SecretStoreModule2 from '../cli-kit/secret-store'
 
@@ -58,7 +58,7 @@ TestCase('secret store format > keeps addedAt, advances updatedAt and retains no
         "secrets": { "TOKEN": { "addedAt": "2026-01-01T00:00:00.000Z", "note": "build", "value": ["old"] } }
       }
   `)
-  const updated = SecretStoreModule2.withSecret(original, 'TOKEN', 'new armor\n', {
+  const updated = SecretStoreModule2.withSecret(original, 'TOKEN', 'new armor' + NewlineCharacter, {
     now: new Date('2026-02-01T00:00:00.000Z'),
   })
 
@@ -145,7 +145,7 @@ function recordingCipher(): RecordingCipher {
     encrypt: async () => 'wrapped',
     async decrypt() {
       calls.machineDecrypt += 1
-      return 'AGE-SECRET-KEY-1store\n'
+      return ('AGE-SECRET-KEY-1store' + NewlineCharacter)
     },
     async decryptWithKey(_armor, secretKey) {
       Expect(secretKey).toBe('AGE-SECRET-KEY-1store')

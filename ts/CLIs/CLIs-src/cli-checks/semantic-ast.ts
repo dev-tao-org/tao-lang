@@ -1,4 +1,4 @@
-import { joinTextLines, Lists, S, Switch } from '@shared'
+import { joinTextLines, Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -133,19 +133,19 @@ function generateDeclarations(nodes: NodeMetadata[], metadata: SemanticMetadata)
     `export type File = Semantic<'File', { block: DeclarationBlock }>`,
     ...nodes.filter(node => semanticName(node.type, metadata) !== 'Name' && node.type !== 'Block')
       .map(node => generateNodeType(node, metadata)),
-  ].join('\n\n')
+  ].join(NewlineCharacter.repeat(2))
 }
 
 function generateSemanticTypes(nodes: NodeMetadata[], metadata: SemanticMetadata) {
   const blockStatementUnions = Object.values(metadata.blocks).filter(block => block.statementUnion).map(block =>
     `export type ${block.statementUnion} = ${resolveMembers(block.members, nodes, metadata).join(' | ')}`
-  ).join('\n')
+  ).join(NewlineCharacter)
   const blocks = Object.entries(metadata.blocks).map(([name, block]) =>
     `export type ${name} = Block<${block.statementUnion ?? resolveMembers(block.members, nodes, metadata).join(' | ')}>`
-  ).join('\n')
+  ).join(NewlineCharacter)
   const unions = Object.entries(metadata.unions).map(([name, members]) =>
     `export type ${name} = ${resolveMembers(members, nodes, metadata).join(' | ')}`
-  ).join('\n')
+  ).join(NewlineCharacter)
   return { blockStatementUnions, blocks, unions }
 }
 
@@ -227,7 +227,7 @@ function generateFieldLayouts(nodes: NodeMetadata[], metadata: SemanticMetadata)
 function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): string {
   const kind = semanticName(node.type, metadata)
   const fields = node.fields ?? {}
-  const allFields = { ...fields }
+  const allFields = Objects.copy(fields)
   const overrides = metadata.fieldTypeOverrides[kind] ?? {}
   for (const field of Object.keys(overrides)) {
     if (!allFields[field]) {
@@ -251,7 +251,7 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
   }
   return S`
     export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {
-    ${Lists.unique(generatedFields).join(';\n')}
+    ${Lists.unique(generatedFields).join(`;${NewlineCharacter}`)}
     }>
   `
 }
@@ -317,7 +317,7 @@ function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata)
         emitSemanticStringLiteral(kind)
       }) }`
   )
-  return entries.join('\n')
+  return entries.join(NewlineCharacter)
 }
 
 function subtypeNames(nodes: NodeMetadata[], name: string): string[] {

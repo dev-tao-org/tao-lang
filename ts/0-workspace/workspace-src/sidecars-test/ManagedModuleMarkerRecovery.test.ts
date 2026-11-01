@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -20,7 +20,7 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).profile).toContain('.tao/cache/managed-modules')
     const manifest = Path.join(moduleDirectory, 'package.json')
     await FileSystem.chmod(manifest, 0o644)
-    await FileSystem.writeFile(manifest, '{"authored":true}\n')
+    await FileSystem.writeFile(manifest, '{"authored":true}' + NewlineCharacter)
     await makeCorrupt(marker)
     await Tests.rejects(
       ManagedModules.repairManagedModuleFiles(input, executor),
@@ -42,7 +42,7 @@ Tests.test('clean warns and preserves authored files and links for a corrupt mar
     const link = Path.join(moduleDirectory, 'node_modules', 'react')
     await makeCorrupt(marker)
     await FileSystem.chmod(manifest, 0o644)
-    await FileSystem.writeFile(manifest, '{"authored":true}\n')
+    await FileSystem.writeFile(manifest, '{"authored":true}' + NewlineCharacter)
     const warnings = await ManagedModules.cleanManagedModuleMetadata(root)
     Tests.expect(warnings.some(warning => warning.includes(marker))).toBe(true)
     Tests.expect(await FileSystem.readFile(manifest, 'utf8')).toBe('{"authored":true}\n')
@@ -63,7 +63,7 @@ function createModuleInput(root: string, directory: string): ManagedModulesInput
 function createExecutor(dependencies: Record<string, string>): BunExecutor {
   return async (_command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: '1.2.0\n', stderr: '' }
+      return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     if (args.includes('--frozen-lockfile')) {
       return { status: 0, stdout: '', stderr: '' }

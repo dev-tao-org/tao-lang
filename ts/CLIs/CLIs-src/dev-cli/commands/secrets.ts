@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
@@ -176,7 +176,7 @@ async function grantStoreKey(
 }
 
 function armorLines(armor: string): string[] {
-  return armor.trimEnd().split('\n')
+  return armor.trimEnd().split(NewlineCharacter)
 }
 
 async function listSecrets(): Promise<void> {

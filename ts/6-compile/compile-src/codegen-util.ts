@@ -1,5 +1,5 @@
 import type * as AST from '@ast-gen/AST'
-import { S } from '@shared'
+import { NewlineCharacter, S } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 
 /** NamedValue identifies a named AST declaration, parameter, capture or linked module binding. */
@@ -13,12 +13,12 @@ export type ScopeCode = string | {
 
 /** joinCodeLines joins nonempty emitted parts with one newline. */
 export function joinCodeLines(...parts: readonly OptionalCodePart[]): string {
-  return joinCodeParts(parts, '\n')
+  return joinCodeParts(parts, NewlineCharacter)
 }
 
 /** joinCodeBlocks joins nonempty emitted blocks with a blank line. */
 export function joinCodeBlocks(...parts: readonly OptionalCodePart[]): string {
-  return joinCodeParts(parts, '\n\n')
+  return joinCodeParts(parts, NewlineCharacter + NewlineCharacter)
 }
 
 /** getScopeValue returns the lexical record expression behind a generated scope. */
@@ -63,7 +63,7 @@ export function compileIdentifier(node: NamedViewNode): string {
 export function listMap<T>(values: readonly T[], compile: (value: T) => string): string {
   const items = values.map(compile)
   const inline = `[${items.join(', ')}]`
-  return inline.length <= 100 && !inline.includes('\n') ? inline : S`
+  return inline.length <= 100 && !inline.includes(NewlineCharacter) ? inline : S`
     [
       ${items.join(',\n')}
     ]

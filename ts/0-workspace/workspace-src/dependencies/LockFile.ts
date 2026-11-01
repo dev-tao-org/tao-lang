@@ -1,4 +1,4 @@
-import { Errors, Lists, Regxs, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type * as Types from './Types'
@@ -120,7 +120,7 @@ export async function writeDependencyLock(
   await Try(async () => {
     await FileSystem.writeFile(temporary, contents)
     await FileSystem.rename(temporary, path)
-    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), '1\n')
+    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), `1${NewlineCharacter}`)
   }, { finally: () => FileSystem.rm(temporary, { force: true }) })
 }
 
@@ -189,7 +189,8 @@ async function pruneMissingGraphReferences(
   lock: Types.DependencyLock,
   projectRoot: string,
 ): Promise<Types.DependencyLock> {
-  const npmGraphs = { ...lock.npmGraphs }
+  const existingGraphs: NonNullable<Types.DependencyLock['npmGraphs']> = lock.npmGraphs ?? {}
+  const npmGraphs = Objects.copy(existingGraphs)
   let changed = false
   for (const key of Object.keys(npmGraphs)) {
     if (!isOwnedSourceKey(key)) {
@@ -260,7 +261,7 @@ async function parseDependencyLockFile(path: string): Promise<unknown> {
 
 function serializeDependencyLock(lock: Types.DependencyLock, projectRoot: string): string {
   const portableLock = relativizeLocations(lock, projectRoot)
-  return JSON.stringify(portableLock, null, 2) + '\n'
+  return JSON.stringify(portableLock, null, 2) + NewlineCharacter
 }
 
 async function parseRetainedProfileMetadata(path: string): Promise<unknown> {

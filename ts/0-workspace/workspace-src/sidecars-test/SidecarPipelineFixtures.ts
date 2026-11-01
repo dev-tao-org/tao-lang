@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
@@ -78,7 +78,7 @@ async function createFixture(): Promise<Fixture> {
   await FileSystem.mkdirs(moduleRoot, nodeModulesDirectory, Path.join(nodeModulesDirectory, '@types', 'react'))
   await FileSystem.writeFile(
     Path.join(nodeModulesDirectory, '@types', 'react', 'index.d.ts'),
-    'export type ComponentType<Props> = (props: Props) => unknown\n',
+    'export type ComponentType<Props> = (props: Props) => unknown' + NewlineCharacter,
   )
   await FileSystem.writeFile(taoPath, 'fixture source path')
   await FileSystem.writeFile(
@@ -90,7 +90,8 @@ async function createFixture(): Promise<Fixture> {
       void formatDate; void logo
     `,
   )
-  await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), 'export const formatDate = () => "old"\n')
+  const formatSource = 'export const formatDate = () => "old"' + NewlineCharacter
+  await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), formatSource)
   await FileSystem.writeFile(Path.join(moduleRoot, 'logo.png'), 'asset-bytes')
   const document = transform(
     createParser().parse(

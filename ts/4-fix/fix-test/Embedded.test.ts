@@ -1,5 +1,5 @@
 import { createParser } from '@grammar/parser'
-import { S } from '@shared'
+import { CarriageReturnCharacter, NewlineCharacter, S } from '@shared'
 import { FormatterResources, Tests } from '@shared/os'
 import { format } from '../fix-src/Format'
 import { createTypeScriptFormatter } from '../fix-src/lib/formatter/Embedded'
@@ -41,7 +41,8 @@ Tests.test('native TSX formatting preserves literal values, aligns fences and le
   Tests.expect(partial.status).toBe('partial')
   Tests.expect(partial.text).toContain(brokenToken)
   Tests.expect(partial.skipped).toHaveLength(1)
-  const crlf = source.replaceAll('\n', '\r\n') + '\r\n'
+  const crlf = source.replaceAll(NewlineCharacter, CarriageReturnCharacter + NewlineCharacter)
+    + (CarriageReturnCharacter + NewlineCharacter)
   const windows = format({ source: crlf, tree: parser.parse(crlf) }, { typescript }).text
-  Tests.expect(windows.replaceAll('\r\n', '')).not.toContain('\n')
+  Tests.expect(windows.replaceAll(CarriageReturnCharacter + NewlineCharacter, '')).not.toContain('\n')
 })

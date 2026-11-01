@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { createForeignViewContractSource, ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
 import type { SidecarGroup } from './Snapshots'
@@ -53,7 +53,7 @@ export function createTypeScriptConfigContent(defaultsPath: string): string {
       null,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }
 
 type CacheValidationInput = {
@@ -73,14 +73,17 @@ function parseSidecarSnapshotMarker(contents: string): unknown {
 }
 
 function serializeExpectedSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}\n`
+  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
 }
 
 function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, Uint8Array> {
   const files = new Map<string, Uint8Array>()
   input.groups.forEach((group, index) => {
     const modulePath = Path.relative(input.snapshotRoot, input.moduleDirectories[index]!)
-    files.set(Path.join(modulePath, 'package.json'), encodeSnapshotText('{"private":true,"type":"module"}\n'))
+    files.set(
+      Path.join(modulePath, 'package.json'),
+      encodeSnapshotText('{"private":true,"type":"module"}' + NewlineCharacter),
+    )
     files.set(
       Path.join(modulePath, 'tsconfig.json'),
       encodeSnapshotText(createTypeScriptConfigContent(input.defaultsPath)),

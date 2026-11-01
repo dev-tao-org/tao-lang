@@ -1,5 +1,5 @@
 import { IO, type OutputChannel, runCommand } from '@cli-kit'
-import { Errors, Time, Try } from '@shared'
+import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { discoverProject } from '@workspace/projects/Projects'
 import { execute } from '@workspace/Workflow'
@@ -89,9 +89,13 @@ async function executeTestPlan(
     if (!plan.typescript && outcomes.tao) {
       Errors.ThrowUserInput('Tao app tests failed.')
     }
-    Errors.ThrowUserInput(`Test execution failed:\n${failures.join('\n')}`)
+    Errors.ThrowUserInput(`Test execution failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
-  IO.summary(`\n\t\u001b[32mAll tests passed in ${((Time.nowMs() - startedAtMs) / 1000).toFixed(2)}s\u001b[0m\n`)
+  IO.summary(
+    `${NewlineCharacter}${TabCharacter}${EscapeCharacter}[32mAll tests passed in ${
+      ((Time.nowMs() - startedAtMs) / 1000).toFixed(2)
+    }s${EscapeCharacter}[0m${NewlineCharacter}`,
+  )
 }
 
 async function runTaoTests(

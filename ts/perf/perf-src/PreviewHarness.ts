@@ -1,5 +1,5 @@
 import { DefaultAppearance } from '@runtime/client/Appearance'
-import { Addr, Errors, joinTextLines, S, Try } from '@shared'
+import { Addr, Errors, joinTextLines, NewlineCharacter, S, Styles, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type * as Workspace from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
@@ -48,7 +48,8 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
   const build = await Browser.build([Repo.resolvePath('ts/perf/perf-src/preview-browser.ts')], directory)
   if (!build.success) {
     Errors.ThrowShouldNeverHappen(
-      'Could not bundle the preview harness browser client: ' + build.logs.map(log => log.message).join('\n'),
+      'Could not bundle the preview harness browser client: '
+        + build.logs.map(log => log.message).join(NewlineCharacter),
     )
   }
   return directory
@@ -197,7 +198,7 @@ function eventsResponse(
     start(controller) {
       streamController = controller
       streams.add(controller)
-      controller.enqueue(encoder.encode('retry: 1000\n\n'))
+      controller.enqueue(encoder.encode(joinTextLines('retry: 1000', '', '')))
       publication.replay((name, data) => controller.enqueue(encodeEvent(encoder, name, data)))
     },
     cancel() {
@@ -259,15 +260,55 @@ function pageHtml(
   const safe = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
   const rightFrame = frameCount === 2 ? `<iframe id="right" title="Wide preview" src="${safe(right)}"></iframe>` : ''
   const columns = frameCount === 2 ? '380px minmax(600px,1fr)' : 'minmax(380px,1fr)'
+  const styleText = createPreviewPageStyles(columns)
   return S`
     <!doctype html><html><head><meta charset="utf-8"><meta name="tao-preview-timeout-ms" content="${previewTimeoutMs}"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
     safe(sessionId)
   }"><meta name="tao-preview-url" content="${safe(previewUrl)}"><meta name="tao-scenarios" content="${
     safe(serializePreviewScenariosMetadata(scenarios))
-  }"><title>Tao preview performance</title><style>html,body{height:100%;margin:0;font:14px system-ui;color:#e8e6e3;background:#202020;color-scheme:dark}header{height:44px;display:flex;align-items:center;gap:12px;padding:0 12px}button{font:inherit;color:inherit;background:#333;border:1px solid #555;border-radius:4px;padding:5px 10px}button:hover{background:#404040}button:disabled{color:#a8a6a3}main{height:calc(100% - 44px);display:grid;grid-template-columns:${columns};gap:1px;background:#484848}iframe{width:100%;height:100%;border:0;background:${DefaultAppearance.background};outline:1px solid ${DefaultAppearance.border};outline-offset:-1px}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
+  }"><title>Tao preview performance</title><style>${styleText}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
     safe(left)
   }"></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
   `
+}
+
+function createPreviewPageStyles(columns: string): string {
+  return Styles.stylesheet({
+    'html,body': {
+      'height': '100%',
+      'margin': '0',
+      'font': '14px system-ui',
+      'color': '#e8e6e3',
+      'background': '#202020',
+      'color-scheme': 'dark',
+    },
+    'header': { 'height': '44px', 'display': 'flex', 'align-items': 'center', 'gap': '12px', 'padding': '0 12px' },
+    'button': {
+      'font': 'inherit',
+      'color': 'inherit',
+      'background': '#333',
+      'border': '1px solid #555',
+      'border-radius': '4px',
+      'padding': '5px 10px',
+    },
+    'button:hover': { 'background': '#404040' },
+    'button:disabled': { 'color': '#a8a6a3' },
+    'main': {
+      'height': 'calc(100% - 44px)',
+      'display': 'grid',
+      'grid-template-columns': columns,
+      'gap': '1px',
+      'background': '#484848',
+    },
+    'iframe': {
+      'width': '100%',
+      'height': '100%',
+      'border': '0',
+      'background': DefaultAppearance.background,
+      'outline': `1px solid ${DefaultAppearance.border}`,
+      'outline-offset': '-1px',
+    },
+  })
 }
 
 function serializePreviewScenariosMetadata(scenarios: readonly string[]): string {

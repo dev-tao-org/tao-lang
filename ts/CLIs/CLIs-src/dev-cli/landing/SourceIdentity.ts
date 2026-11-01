@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, TabCharacter } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 
 /** requireSourceHead rejects changes to the reviewed source identity before publication. */
@@ -26,7 +26,7 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
     )
   }
   const indexed = await git(io, ['ls-files', '--stage', '--', '.storage'])
-  if (indexed !== `160000 ${publishedArchive} 0\t.storage`) {
+  if (indexed !== `160000 ${publishedArchive} 0${TabCharacter}.storage`) {
     Errors.ThrowUserInput('The staged archive identity changed after publication; review before rerunning land.')
   }
   await requireSourceHead(io, verifiedHead)
@@ -52,7 +52,7 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
 
 async function requireArchiveGitlink(io: LandingIO, source: string, publishedArchive: string): Promise<void> {
   const entry = await git(io, ['ls-tree', source, '--', '.storage'])
-  if (entry !== `160000 commit ${publishedArchive}\t.storage`) {
+  if (entry !== `160000 commit ${publishedArchive}${TabCharacter}.storage`) {
     Errors.ThrowUserInput(
       'The source commit does not pin the confirmed published archive; review before rerunning land.',
     )

@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, S, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
@@ -67,7 +67,7 @@ export async function installFixturePackage(
 export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): BunExecutor {
   return async (_command, args, directory) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     await recordProfileInstall(directory, options)
     return { status: 0, stdout: '', stderr: '' }
@@ -77,7 +77,7 @@ export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): B
 function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     // Clear both spellings because subprocess tools use different proxy-variable casing.
     const env = {
@@ -119,7 +119,7 @@ async function recordProfileInstall(
   lock.overrides = manifest.overrides
   Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
-  await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}\n`)
+  await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}${NewlineCharacter}`)
 }
 
 async function materializeLockGraph(

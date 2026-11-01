@@ -1,5 +1,5 @@
 import type { RuntimeApplication } from '@runtime/Runtime'
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
@@ -21,7 +21,7 @@ export async function prepareBuildTypeScript(buildDirectory: string, runtime: Ru
 
 type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
-  return `${JSON.stringify(configuration, null, 2)}\n`
+  return `${JSON.stringify(configuration, null, 2)}${NewlineCharacter}`
 }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {

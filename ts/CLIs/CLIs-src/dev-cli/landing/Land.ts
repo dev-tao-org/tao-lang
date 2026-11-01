@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { type PublishedPreviewArchive, publishPreviewArchive } from './Archive'
 import { integrateMain, requireClean, requireCleanBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
@@ -63,7 +63,7 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
     Errors.ThrowUserInput(`Prepare and review the merge message at ${path} before landing.`)
   }
   const message = await io.read(path)
-  const [title, blank, ...body] = message.trimEnd().split('\n')
+  const [title, blank, ...body] = message.trimEnd().split(NewlineCharacter)
   const hasValidTitle = Boolean(title) && title.length <= 72
   const hasRequiredBody = blank === '' && Boolean(body[0]?.startsWith('- '))
   if (!hasValidTitle || !hasRequiredBody) {
@@ -82,5 +82,5 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
 type LandingRecord = LandingProof & { archive?: PublishedPreviewArchive }
 
 function formatLandingRecord(record: LandingRecord): string {
-  return JSON.stringify(record, null, 2) + '\n'
+  return JSON.stringify(record, null, 2) + NewlineCharacter
 }

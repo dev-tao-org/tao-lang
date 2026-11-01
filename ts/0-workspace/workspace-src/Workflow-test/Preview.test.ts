@@ -1,4 +1,4 @@
-import { Errors, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWatchFixture } from '../../workspace-test/WatchFixture'
 import { buildManagedModulesInput } from '../ProjectPreparation'
@@ -23,7 +23,7 @@ Tests.test('unchanged and partial preview edits never inspect setup or install a
     Tests.expect((await workspace.files.openFile(entry)).status).toBe('failed')
     Tests.expect(workspace.lastGoodRevision).toBe(first)
     Tests.expect(events).toEqual(['startup', 'input'])
-    await FileSystem.writeFile(requirements, `${metadataSource}\nrequires npm:fixture version 1.0.0`)
+    await FileSystem.writeFile(requirements, `${metadataSource}${NewlineCharacter}requires npm:fixture version 1.0.0`)
     const changed = await workspace.files.openFile(entry)
     Tests.expect(changed.status === 'failed' && changed.setupRequired).toBe(true)
     Tests.expect(workspace.lastGoodRevision).toBe(first)

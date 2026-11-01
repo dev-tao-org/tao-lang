@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime/Runtime'
-import { Errors, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo, Tests } from '@shared/os'
 import type { UpdateResult, WorkspaceSession } from '@workspace/Workspace'
 import { initializeProject } from '../workspace-src/projects/Projects'
@@ -40,9 +40,9 @@ Tests.test('compiled Tao custom-hook components refresh through Metro with commi
     async catch(error) {
       const output = await expo?.output()
       Errors.ThrowUserInput(
-        `Compiler-to-Metro refresh acceptance failed. ${output ? `${output.stdout}\n${output.stderr}` : ''} ${
-          String(error)
-        }`,
+        `Compiler-to-Metro refresh acceptance failed. ${
+          output ? `${output.stdout}${NewlineCharacter}${output.stderr}` : ''
+        } ${String(error)}`,
       )
     },
     async finally() {

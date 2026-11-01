@@ -1,4 +1,4 @@
-import { Time } from '@shared'
+import { CarriageReturnCharacter, EscapeCharacter, NewlineCharacter, Time } from '@shared'
 import { Streams, Text } from '@shared/os'
 
 /** ChannelState describes a bounded presentation snapshot for one independently owned stream. */
@@ -95,7 +95,9 @@ export function createOutput(write: (event: OutputEvent) => void) {
 export function formatCommands(commands: readonly OutputCommand[], emphasize = false): string {
   const labels = commands.map(command => {
     const key = command.key
-    return emphasize ? command.label.replace(key, `\u001b[1;4;36m${key}\u001b[0m`) : command.label
+    return emphasize
+      ? command.label.replace(key, `${EscapeCharacter}[1;4;36m${key}${EscapeCharacter}[0m`)
+      : command.label
   })
   return 'Commands: ' + labels.join(' | ')
 }
@@ -126,11 +128,22 @@ function createChannel(
   return {
     stdout: text => emit('stdout', stdout(text)),
     stderr: text => emit('stderr', stderr(text)),
-    print: (...values) => emit('stdout', Text.format(...values) + '\n'),
-    warn: (...values) => emit('stdout', '\u001b[33m' + Text.format(...values) + '\u001b[0m\n', 'warn'),
-    printToStdErr: (...values) => emit('stderr', '\u001b[31m' + Text.format(...values) + '\u001b[0m\n', 'error'),
-    progress: message => emit('progress', '\u001b[90m' + message + '\u001b[0m\n'),
-    summary: (...values) => emit('stdout', Text.format(...values) + '\n', 'info', true),
+    print: (...values) => emit('stdout', Text.format(...values) + NewlineCharacter),
+    warn: (...values) =>
+      emit(
+        'stdout',
+        (EscapeCharacter + '[33m') + Text.format(...values) + (EscapeCharacter + '[0m' + NewlineCharacter),
+        'warn',
+      ),
+    printToStdErr: (...values) =>
+      emit(
+        'stderr',
+        (EscapeCharacter + '[31m') + Text.format(...values) + (EscapeCharacter + '[0m' + NewlineCharacter),
+        'error',
+      ),
+    progress: message =>
+      emit('progress', (EscapeCharacter + '[90m') + message + (EscapeCharacter + '[0m' + NewlineCharacter)),
+    summary: (...values) => emit('stdout', Text.format(...values) + NewlineCharacter, 'info', true),
     receive: message => emit(message.stream, message.text, message.level, message.summary),
     start(): void {
       state.status = 'running'
@@ -150,6 +163,6 @@ function createChannel(
 function appendTail(state: ChannelState, text: string): void {
   const lines = [...state.lines]
   const partial = lines.pop() ?? ''
-  lines.push(...(partial + text.replaceAll('\r', '\n')).split('\n'))
+  lines.push(...(partial + text.replaceAll(CarriageReturnCharacter, NewlineCharacter)).split(NewlineCharacter))
   state.lines = lines.slice(-80).map(line => line.slice(-16000))
 }

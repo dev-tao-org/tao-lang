@@ -1,11 +1,11 @@
-import { Errors, joinTextLines, Regxs, S, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './managed-modules/ManagedModuleTypes'
 
 type ForeignViewParameterTypes = Record<string, string>
 
 /** ForeignViewContractOwnership marks contract files managed by Tao. */
-export const ForeignViewContractOwnership = 'managed-by-tao\n'
+export const ForeignViewContractOwnership = 'managed-by-tao' + NewlineCharacter
 
 /** ContractExecutor runs the pinned TypeScript compiler in the module context. */
 export type ContractExecutor = (
@@ -33,7 +33,7 @@ export type ForeignViewContractSourceInput = {
 /** createForeignViewContractSource emits the module-local React component contract. */
 export function createForeignViewContractSource(input: ForeignViewContractSourceInput): string {
   const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
-  const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
+  const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
   const foreignViewName = input.name
   const resolvedImportPath = JSON.stringify(importPath.startsWith('.') ? importPath : `./${importPath}`)
   return joinTextLines(

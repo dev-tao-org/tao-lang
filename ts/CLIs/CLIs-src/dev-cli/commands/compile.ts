@@ -1,4 +1,5 @@
 import { formatTimings, IO, resolveCallerPath } from '@cli-kit'
+import { NewlineCharacter } from '@shared'
 import { execute } from '@workspace/Workflow'
 import { prepareNativeLocks } from '../../cli-checks/native-lock-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
@@ -25,6 +26,6 @@ async function compileEntry(entry: string, session?: string, yes?: boolean): Pro
   const workspace = await execute({ kind: 'compile', entry, options: { id: session } }, workflowUI(yes))
   const result = workspace.initialResult
   await workspace.dispose()
-  IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
+  IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${formatTimings(result.timings)}`)
   IO.print(workspace.runtime!.appPath)
 }

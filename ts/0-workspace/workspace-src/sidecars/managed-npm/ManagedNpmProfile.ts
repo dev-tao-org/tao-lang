@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
 import * as Graph from '../managed-modules/ManagedModuleGraph'
@@ -219,7 +219,7 @@ async function persistProfile(
     await State.writeReadOnly(durableLock, lock)
     await State.writeReadOnly(
       Identity.resolveManagedDurableLockHashPath(input, graphFingerprint),
-      `${Platform.hashText(lock)}\n`,
+      `${Platform.hashText(lock)}${NewlineCharacter}`,
     )
   }
   const nativePackages = await Graph.listNativePackageNames(profile)
@@ -235,7 +235,7 @@ async function persistProfile(
 }
 
 function serializeProfileMetadata(metadata: State.ManagedProfileMetadata): string {
-  return `${JSON.stringify(metadata, null, 2)}\n`
+  return `${JSON.stringify(metadata, null, 2)}${NewlineCharacter}`
 }
 
 function createProfileMetadata(

@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -52,7 +52,7 @@ async function assertVerifiedRepair(input: ManagedModulesInput, baseExecutor: Bu
 
 const fixtureExecutor: BunExecutor = async (_command, args, cwd) => {
   if (args[0] === '--version') {
-    return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
   }
   const lock = Path.join(cwd, 'bun.lock')
   if (!await FileSystem.exists(lock)) {

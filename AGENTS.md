@@ -88,6 +88,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Use `Switch(...)` or `Switch.*` from `@shared` for switch dispatch; never use native `switch` statements.
   - Keep import declarations on one formatted line. Keep short named imports; when a named list would wrap, prefer one namespace import and qualify values and types through it. Prefer module namespaces over exported aggregate objects or defaults created only for this style; generated and whole-file third-party source are outside this rule.
   - Multiline strings use indented `S` templates with aligned closing backticks.
+  - Author CSS declarations and stylesheet rules as typed objects rendered through shared `Styles`; retain literal CSS only for external source contracts and independent expected-byte fixtures.
   - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
   - Function bodies: at most 45 physical interior lines, including comments and blanks.
   - Handwritten TypeScript files: 250-line soft limit, 350-line hard limit; generated and whole-file third-party sources are excluded. Mark imported whole files with `@third-party` source provenance.

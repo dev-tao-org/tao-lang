@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import * as CST from '@cst'
 import type { Tree } from '@cst'
+import { CarriageReturnCharacter, NewlineCharacter } from '@shared'
 import { collectStatementSlices, type StatementSlice } from '../lib/fixer/StatementSlices'
 import type { SourceEdit } from '../Source'
 
@@ -14,7 +15,9 @@ export function organizeImports(source: string, tree: Tree, ast: AST.Document): 
   const slices = collectStatementSlices(source, tree)
   const imported = slices.filter(slice => byStart.has(slice.node.startIndex))
   const remaining = slices.filter(slice => !byStart.has(slice.node.startIndex))
-  const newline = source.includes('\r\n') ? '\r\n' : '\n'
+  const newline = source.includes(CarriageReturnCharacter + NewlineCharacter)
+    ? (CarriageReturnCharacter + NewlineCharacter)
+    : NewlineCharacter
   const importText = groupImports(source, imported, byStart, newline).join(newline)
   const body = remaining.map(slice => source.slice(slice.start, slice.end)).join(newline.repeat(2))
   const text = importText + (body ? newline.repeat(2) + body : '')

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, joinTextLines, S } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, S } from '@shared'
 import { Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from './codegen-util'
@@ -117,7 +117,7 @@ function compileMain(
         ${item.compiled.initialization}
       }
     `
-  ).join('\n\n')
+  ).join(NewlineCharacter + NewlineCharacter)
   return S`
     import * as TR from '@runtime';
     ${componentImport}
@@ -140,7 +140,7 @@ function compileAliases(module: LinkedModule, paths: GeneratedPaths): string {
   return module.bindings.map(binding => {
     const targetScope = `_Modules[${emitStringLiteral(resolvePath(paths, binding.source))}]!`
     return RuntimeEmitter.emitModuleBinding(binding, '_Scope', targetScope)
-  }).join('\n')
+  }).join(NewlineCharacter)
 }
 
 function compileBindingTypes(
@@ -170,14 +170,14 @@ function compileBindingTypes(
     )
   }
   return joinTextLines(
-    imports.join('\n'),
+    imports.join(NewlineCharacter),
     '',
     'export type Scope = {',
-    `  ${[...members, ...aliases].join('\n  ')}`,
+    `  ${[...members, ...aliases].join(NewlineCharacter + '  ')}`,
     '};',
     '',
     'export type Imports = {',
-    `  ${projections.join('\n  ')}`,
+    `  ${projections.join(NewlineCharacter + '  ')}`,
     '};',
   )
 }
@@ -206,7 +206,7 @@ function compileBootstrap(
   )
   const moduleScopesCode = program.modules.map((module, index) =>
     `${emitStringLiteral(resolvePath(paths, module.path))}: _scope${index}`
-  ).join(',\n')
+  ).join(',' + NewlineCharacter)
   const aliases = program.modules.map((_module, index) => `Source${index}.bindAliases(_scope${index}, _Modules);`)
   const views = program.modules.map((_module, index) => `Source${index}.bindDeclarations(_scope${index});`)
   const values = program.definitions.map(definition => {

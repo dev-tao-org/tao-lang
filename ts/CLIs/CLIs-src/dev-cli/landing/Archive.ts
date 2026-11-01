@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords, type PreviewRecord } from './PreviewRecords'
 import { pinArchive, requireSourceHead } from './SourceIdentity'
@@ -62,7 +62,9 @@ async function reconcileArchive(io: LandingIO, remote: string, records: PreviewR
   if (base !== tip) {
     Errors.ThrowUserInput('Storage history diverged; resolve it without rewriting history before retrying land.')
   }
-  const local = (await git(io, ['log', '--format=', '--name-only', `${tip}..HEAD`], { storage: true })).split('\n')
+  const local = (await git(io, ['log', '--format=', '--name-only', `${tip}..HEAD`], { storage: true })).split(
+    NewlineCharacter,
+  )
     .filter(Boolean)
   const allowed = new Set(
     records.flatMap(record => [`${record.directory}/record.json`, `${record.directory}/report.json`]),

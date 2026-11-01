@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult, type WorkspaceSession } from '../workspace-src/Workspace'
 import { createWatchFixture, type WatchFixture } from './WatchFixture'
@@ -94,7 +94,7 @@ function card(value: string): string {
 }
 
 function compiledContents(files: OptionalCompiledContents): string {
-  return Object.values(files ?? {}).join('\n')
+  return Object.values(files ?? {}).join(NewlineCharacter)
 }
 
 async function changeDependency(

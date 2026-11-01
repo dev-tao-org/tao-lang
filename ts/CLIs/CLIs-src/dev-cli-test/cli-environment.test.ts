@@ -1,4 +1,4 @@
-import { joinTextLines, S, Try } from '@shared'
+import { joinTextLines, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 const CompletedWarningSummaryRegx = /Completed: [1-9]\d* warning\(s\), 0 error\(s\)/
@@ -60,7 +60,7 @@ Tests.test('fresh setup finds nested extension tools installed after the launche
     await FileSystem.mkdir(Path.join(root, 'ts/ide-extensions/tao-ide-extension'))
     await FileSystem.writeFile(Path.join(root, 'ts/ide-extensions/tao-ide-extension/package.json'), '{}', 'utf8')
     const tool = Path.join(root, 'fixture-tool')
-    await FileSystem.writeFile(tool, '#!/bin/sh\n', 'utf8')
+    await FileSystem.writeFile(tool, '#!/bin/sh' + NewlineCharacter, 'utf8')
     await FileSystem.chmod(tool, 0o755)
     const path = await Platform.capture('sh', {
       variadicArgs: [

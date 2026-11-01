@@ -1,3 +1,4 @@
+import { NewlineCharacter } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** arrayMultilineStringIssue requires newline-joined array literals to use the shared line helper. */
@@ -29,7 +30,7 @@ function isNewlineJoin(
     return false
   }
   const [separator] = node.arguments
-  return node.arguments.length === 1 && TypeScript.isStringLiteralLike(separator) && separator.text === '\n'
+  return node.arguments.length === 1 && TypeScript.isStringLiteralLike(separator) && separator.text === NewlineCharacter
 }
 
 function isJoinAccess(expression: TypeScript.Expression): expression is JoinAccess {

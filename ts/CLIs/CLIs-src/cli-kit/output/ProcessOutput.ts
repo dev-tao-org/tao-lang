@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, RecordSeparatorCharacter, Try } from '@shared'
 import { Streams } from '@shared/os'
 import type { OutputEvent } from './Output'
 
@@ -7,8 +7,9 @@ export type OutputMessage = Pick<OutputEvent, OutputMessageFields>
 
 /** encodeOutputMessage frames a Tao event without interpreting arbitrary tool output as diagnostics. */
 export function encodeOutputMessage(event: OutputMessage): string {
-  return '\u001e'
-    + JSON.stringify({ stream: event.stream, level: event.level, text: event.text, summary: event.summary }) + '\n'
+  return RecordSeparatorCharacter
+    + JSON.stringify({ stream: event.stream, level: event.level, text: event.text, summary: event.summary })
+    + NewlineCharacter
 }
 
 /** createProcessOutput decodes Tao event frames and forwards ordinary tool bytes unchanged. */
@@ -19,14 +20,14 @@ export function createProcessOutput(raw: (text: string) => void, receive: (messa
     write(chunk: Uint8Array): void {
       pending += decode(chunk)
       while (pending) {
-        const marker = pending.indexOf('\u001e')
+        const marker = pending.indexOf(RecordSeparatorCharacter)
         if (marker !== 0) {
           const end = marker < 0 ? pending.length : marker
           raw(pending.slice(0, end))
           pending = pending.slice(end)
           continue
         }
-        const end = pending.indexOf('\n')
+        const end = pending.indexOf(NewlineCharacter)
         if (end < 0) {
           return
         }

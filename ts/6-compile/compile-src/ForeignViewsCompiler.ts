@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
 import { compileIdentifier, emitStringLiteral } from './codegen-util'
@@ -76,7 +77,7 @@ function compileForeignViewImports(
     names.set(key, alias)
     imports.push(`import { ${compileIdentifier(item.view)} as ${alias} } from ${emitStringLiteral(item.path)};`)
   })
-  const importText = imports.join('\n')
+  const importText = imports.join(NewlineCharacter)
   return { imports: importText, names }
 }
 

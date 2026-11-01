@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import TypeScript from 'typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../managed-modules/ManagedModuleTypes'
@@ -91,7 +91,7 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
     }
   }
   const repairedLock = applyManagedLockPolicy(lock, input.runtimePolicy)
-  return `${JSON.stringify(repairedLock, null, 2)}\n`
+  return `${JSON.stringify(repairedLock, null, 2)}${NewlineCharacter}`
 }
 
 function applyManagedLockPolicy(

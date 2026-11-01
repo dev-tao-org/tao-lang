@@ -1,4 +1,5 @@
 import { createFsFromVolume, type IFs, Volume } from 'memfs'
+import * as Objects from '../universal/Objects'
 import { Errors, NullCharacter, Time } from '../universal/universal'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 import * as Node from './NodeBuiltins'
@@ -16,8 +17,8 @@ export function installGeneratedFileSystem(
   const root = Node.resolve(rootPath)
   const runtime = Node.join(root, '_gen_runtime')
   const disk = Node.nativeFileSystem as unknown as FileOperations
-  const original = { ...disk }
-  const originalPromises = { ...Node.nativeFileSystemPromises } as unknown as FileOperations
+  const original = Objects.copy(disk)
+  const originalPromises = Objects.copy(Node.nativeFileSystemPromises) as unknown as FileOperations
   const runtimeTarget = original.realpathSync(runtime) as string
   let current = createSnapshot(root, runtimeTarget, initial)
   const normalize = (value: unknown) => normalizePath(value)

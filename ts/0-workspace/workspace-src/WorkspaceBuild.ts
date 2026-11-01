@@ -1,6 +1,6 @@
 import type { GeneratedRevision, PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import type { RuntimeApplication } from '@runtime/Runtime'
-import { Errors, Timings, Try } from '@shared'
+import { Errors, NewlineCharacter, Objects, Timings, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 /** publishBuild publishes one complete generated-file revision and maintains its disk inspection mirror.
@@ -29,7 +29,7 @@ export async function publishBuild(
   const generated = {
     revision,
     sequence: Math.max(runtime.publicationSequence ?? 0, runtime.generated?.sequence ?? 0) + 1,
-    files: { ...files },
+    files: Objects.copy(files),
   }
   runtime.publicationSequence = generated.sequence
   if (runtime.publishGenerated) {
@@ -147,7 +147,7 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: RuntimeApp
 }
 
 function serializePublishedBuildConfiguration(extendsPath: string): string {
-  return `${JSON.stringify({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] }, null, 2)}\n`
+  return `${JSON.stringify({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] }, null, 2)}${NewlineCharacter}`
 }
 
 async function writeSnapshotFiles(

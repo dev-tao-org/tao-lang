@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, NullCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
@@ -21,7 +21,9 @@ async function prepareDevelopmentShell(
   }, {
     catch(cause) {
       environment.write(
-        `Development shell preparation was unavailable; directory entry will retry normally.\n${errorMessage(cause)}`,
+        `Development shell preparation was unavailable; directory entry will retry normally.${NewlineCharacter}${
+          errorMessage(cause)
+        }`,
       )
     },
   })
@@ -52,7 +54,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   const hash = await environment.run('git', {
     args: ['hash-object', '--stdin'],
     cwd: root,
-    stdin: `${common}\n`,
+    stdin: `${common}${NewlineCharacter}`,
   })
   if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
     return false
@@ -74,7 +76,7 @@ function isAlreadyInDevenv(env: Readonly<Record<string, EnvironmentValue>>, root
 async function isEnabledForCommonDirectory(record: string, common: string): Promise<boolean> {
   const choice = await readOptionalFile(Path.resolve(record, 'choice'))
   const recordedCommon = await readOptionalFile(Path.resolve(record, 'common-dir'))
-  return choice === 'enabled\n' && recordedCommon === `${common}\n`
+  return choice === ('enabled' + NewlineCharacter) && recordedCommon === `${common}${NewlineCharacter}`
 }
 
 async function isRegisteredWorktree(
@@ -102,7 +104,7 @@ async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<voi
   })
   if (prepared.status !== 0) {
     write(
-      `Development shell preparation was unavailable (exit ${prepared.status}); directory entry will retry normally.\n${prepared.stderr.trim()}`,
+      `Development shell preparation was unavailable (exit ${prepared.status}); directory entry will retry normally.${NewlineCharacter}${prepared.stderr.trim()}`,
     )
   }
 }

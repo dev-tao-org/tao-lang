@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { Timings } from '@shared'
+import { NewlineCharacter, Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
@@ -116,6 +116,6 @@ function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
 
 function advanceColumn(column: number, text: string): number {
   // After a newline, only the final line contributes; count Unicode code points, not UTF-16 units.
-  const newline = text.lastIndexOf('\n')
+  const newline = text.lastIndexOf(NewlineCharacter)
   return newline < 0 ? column + [...text].length : [...text.slice(newline + 1)].length
 }

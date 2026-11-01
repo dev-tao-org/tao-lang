@@ -1,5 +1,5 @@
 import { runtimeTypeScriptPaths } from '@runtime/Runtime'
-import { Errors, joinTextLines, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
@@ -57,14 +57,14 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
   rejectSymlink(marker)
   const owned = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
   const current = await Try.WithDefault(undefined, () => FileSystem.readFile(path, 'utf8'))
-  if (current !== undefined && owned !== 'managed-by-tao\n') {
+  if (current !== undefined && owned !== ('managed-by-tao' + NewlineCharacter)) {
     Errors.ThrowUserInput(`TypeScript defaults are already owned: ${path}`)
   }
-  if (owned !== undefined && owned !== 'managed-by-tao\n') {
+  if (owned !== undefined && owned !== ('managed-by-tao' + NewlineCharacter)) {
     Errors.ThrowUserInput(`TypeScript defaults ownership marker is invalid: ${marker}`)
   }
   if (owned === undefined) {
-    await Files.writeReadOnly(marker, 'managed-by-tao\n')
+    await Files.writeReadOnly(marker, 'managed-by-tao' + NewlineCharacter)
   }
   if (current !== defaults) {
     await Files.writeReadOnly(path, defaults)
@@ -104,7 +104,7 @@ function createTypeScriptDefaultsDrift(
   path: string,
   marker: string,
 ): ManagedTypes.GeneratedModuleFileDrift[] {
-  if (current === defaults && ownership === 'managed-by-tao\n') {
+  if (current === defaults && ownership === ('managed-by-tao' + NewlineCharacter)) {
     return []
   }
   let driftPath = path
@@ -132,7 +132,7 @@ function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: str
       null,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }
 
 async function moduleDrift(
@@ -225,7 +225,7 @@ async function repairModuleFiles(
 }
 
 function createModuleManifest(dependencies: ManagedTypes.ManagedPackageVersionMap): string {
-  return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`
+  return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}${NewlineCharacter}`
 }
 
 function cannotReplaceModuleFile(
@@ -253,7 +253,7 @@ function createModuleOwnerMarker(
       null,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }
 
 async function moduleIgnoreDrift(directory: string): Promise<boolean> {
@@ -277,15 +277,15 @@ async function ensureModuleIgnore(directory: string, owned: boolean): Promise<vo
     if (!owned || start !== current.lastIndexOf('# tao-managed-sidecars:begin')) {
       Errors.ThrowUserInput(`Module ignore block is already present without Tao ownership: ${path}`)
     }
-    const end = current.indexOf('# tao-managed-sidecars:end\n', start)
-    if (end < start || end !== current.lastIndexOf('# tao-managed-sidecars:end\n')) {
+    const end = current.indexOf('# tao-managed-sidecars:end' + NewlineCharacter, start)
+    if (end < start || end !== current.lastIndexOf('# tao-managed-sidecars:end' + NewlineCharacter)) {
       Errors.ThrowUserInput(`Module ignore block is invalid: ${path}`)
     }
-    const endExclusive = end + '# tao-managed-sidecars:end\n'.length
+    const endExclusive = end + ('# tao-managed-sidecars:end' + NewlineCharacter).length
     await writeModuleIgnore(path, `${current.slice(0, start)}${block}${current.slice(endExclusive)}`)
     return
   }
-  const next = `${current}${current.length > 0 && !current.endsWith('\n') ? '\n' : ''}${block}`
+  const next = `${current}${current.length > 0 && !current.endsWith(NewlineCharacter) ? NewlineCharacter : ''}${block}`
   await writeModuleIgnore(path, next)
 }
 
@@ -345,5 +345,5 @@ function createTypeScriptDefaults(): string {
       null,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }

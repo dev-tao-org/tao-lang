@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as LockFile from '../../workspace-src/dependencies/LockFile'
 import * as Store from '../../workspace-src/dependencies/Store'
@@ -49,7 +49,7 @@ Tests.test('file dependencies remain live and retain their managed graph referen
 
   await Try(async () => {
     await Fixtures.createProjectMarker(source)
-    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}' + NewlineCharacter)
     await prepareFileSourceAndGraph(root, source, initial, options)
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -65,7 +65,7 @@ async function prepareFileSourceAndGraph(
   const durable = Path.join(root, '.tao', 'store', 'npm', 'app.lock')
   await FileSystem.mkdir(Path.dirname(durable))
   await FileSystem.writeFile(durable, 'graph')
-  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash\n')
+  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash' + NewlineCharacter)
   await LockFile.recordManagedGraphReference(root, 'Main.tao', 'a'.repeat(64), durable, 'b'.repeat(64))
   const roundTripped = await LockFile.readDependencyLock(Path.join(root, '.tao', 'store', 'dependencies.lock.json'))
   Tests.expect(roundTripped?.sources['file:local-source']?.location).toBe('local-source')
@@ -233,7 +233,7 @@ Tests.test('bundled sources require ordinary project marker metadata', async () 
   }
   await Try(async () => {
     await FileSystem.mkdir(bundledRoot)
-    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}' + NewlineCharacter)
     await Tests.rejects(Store.prepareDependencies(root, [requirement], options), TaoProjectRootRequiredErrorRegx)
     await FileSystem.mkdir(Path.join(bundledRoot, '.tao'))
     await Store.prepareDependencies(root, [requirement], options)
@@ -253,7 +253,7 @@ async function roundTripBundledLock(root: string): Promise<void> {
   const durable = Path.join(root, '.tao', 'store', 'npm', 'bundled.lock')
   await FileSystem.mkdir(Path.dirname(durable))
   await FileSystem.writeFile(durable, 'graph')
-  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash\n')
+  await FileSystem.writeFile(`${durable.slice(0, -'.lock'.length)}.sha256`, 'hash' + NewlineCharacter)
   await LockFile.recordManagedGraphReference(root, 'Main.tao', 'c'.repeat(64), durable, 'd'.repeat(64))
   const lock = await LockFile.readDependencyLock(Path.join(root, '.tao', 'store', 'dependencies.lock.json'))
   Tests.expect(lock?.sources['bundled:tao']?.location).toBeUndefined()
@@ -271,11 +271,11 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
   const orphan = Path.join(npm, 'orphan.lock')
   await Try(async () => {
     await FileSystem.mkdirs(npm, profiles)
-    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}\n')
+    await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'app Main {}' + NewlineCharacter)
     await FileSystem.mkdir(Path.join(profiles, 'retained-install'))
     for (const path of [referenced, retained, legacyRetained, orphan]) {
       await FileSystem.writeFile(path, path)
-      await FileSystem.writeFile(path.replace(DependencyLockFileSuffixRegx, '.sha256'), 'hash\n')
+      await FileSystem.writeFile(path.replace(DependencyLockFileSuffixRegx, '.sha256'), 'hash' + NewlineCharacter)
     }
     await FileSystem.writeFile(
       Path.join(profiles, 'retained-install', '.tao-managed.json'),

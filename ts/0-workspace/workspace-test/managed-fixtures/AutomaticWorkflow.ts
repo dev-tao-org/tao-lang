@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { Path, Tests } from '@shared/os'
 import { createProjectDependencyOptions } from '../../workspace-src/dependencies/Options'
 import type { ProjectPipelineServices } from '../../workspace-src/ProjectPipeline'
@@ -23,7 +23,7 @@ export async function openAutomaticWorkspace(
     options: {
       id: 'managed-acceptance',
       async publish(output) {
-        published.push(Object.values(output.files).join('\n'))
+        published.push(Object.values(output.files).join(NewlineCharacter))
       },
       acquireLease: async () => () => {},
       // Explicit openFile calls drive refreshes in this setup acceptance test.

@@ -1,4 +1,5 @@
 import { Http, Streams, Terminal, Tests } from '@shared/os'
+import { ControlCCharacter } from '../../universal/Characters'
 
 const ConfirmationCancelledRegx = /Confirmation cancelled/
 
@@ -16,7 +17,7 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
     const stop = Terminal.listenForKeys(key => keys.push(key), input)
     Tests.expect(input.isRaw).toBe(true)
     Tests.expect(input.isPaused()).toBe(false)
-    input.emit('data', Buffer.from('wq\u0003'))
+    input.emit('data', Buffer.from('wq' + ControlCCharacter))
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     stop()
     Tests.expect(input.isRaw).toBe(initiallyRaw)

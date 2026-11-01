@@ -1,3 +1,4 @@
+import { NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
@@ -33,11 +34,11 @@ async function assertProfileRepair(fixture: Fixtures.ManagedFixture, fingerprint
   const currentRequirements = metadata.requirements
   metadata.requirements = [['Modules', 'date-fns', '4.1.0']]
   await FileSystem.chmod(metadataPath, 0o644)
-  await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
+  await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}${NewlineCharacter}`)
   await Tests.rejects(ManagedModules.readManagedModules(fixture.input), ManagedModuleDependenciesChangedErrorRegx)
   metadata.requirements = currentRequirements
   metadata.target = 'tampered'
-  await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}\n`)
+  await FileSystem.writeFile(metadataPath, `${JSON.stringify(metadata)}${NewlineCharacter}`)
   await Tests.rejects(ManagedModules.readManagedModules(fixture.input), ManagedModuleDependenciesChangedErrorRegx)
   const repaired = await ManagedModules.repairManagedModuleFiles(fixture.input, fixture.executor)
   Tests.expect(repaired.fingerprint).toBe(fingerprint)
@@ -49,7 +50,10 @@ async function assertProfileRepair(fixture: Fixtures.ManagedFixture, fingerprint
 async function assertPackageResolutionStaysInProfile(profile: string): Promise<void> {
   const packageDirectory = Path.join(profile, 'node_modules', 'events')
   await FileSystem.mkdir(packageDirectory)
-  await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), '{"name":"events","version":"3.3.0"}\n')
+  await FileSystem.writeFile(
+    Path.join(packageDirectory, 'package.json'),
+    '{"name":"events","version":"3.3.0"}' + NewlineCharacter,
+  )
   Tests.expect(FileSystem.resolvePackageDirectory('events', profile)).toBe(packageDirectory)
   Tests.expect(FileSystem.resolvePackageDirectory('missing-package', profile)).toBe(undefined)
 }
@@ -171,7 +175,7 @@ async function assertPeerFailure(directory: string): Promise<void> {
 
 const peerExecutor: ManagedModuleTypes.BunExecutor = async (_command, args, cwd) => {
   if (args[0] === '--version') {
-    return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
   }
   await Fixtures.writeLock(cwd, { 'react': '19.1.0', 'peer-holder': '1.0.0' })
   await Fixtures.writePackage(cwd, 'react', '19.1.0')
@@ -224,7 +228,7 @@ async function assertSingletonFailure(directory: string): Promise<void> {
 
 const singletonExecutor: ManagedModuleTypes.BunExecutor = async (_command, args, cwd) => {
   if (args[0] === '--version') {
-    return { status: 0, stdout: '1.2.0\n', stderr: '' }
+    return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
   }
   await Fixtures.writeLock(cwd, { 'react': '19.1.0', 'wrapper-a': '1.0.0' })
   await Fixtures.writePackage(cwd, 'react', '19.1.0')

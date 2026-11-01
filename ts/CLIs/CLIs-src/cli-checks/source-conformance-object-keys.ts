@@ -11,6 +11,18 @@ export function objectLiteralKeysIssue(node: TypeScript.Node): string | undefine
     : undefined
 }
 
+/** objectCopyIssue requires the shared shallow-copy helper for spread-only object literals. */
+export function objectCopyIssue(node: TypeScript.Node, filename: string): string | undefined {
+  if (!TypeScript.isObjectLiteralExpression(node)) {
+    return undefined
+  }
+  const isSingleSpread = node.properties.length === 1 && TypeScript.isSpreadAssignment(node.properties[0])
+  if (!isSingleSpread || isObjectsCopyImplementation(node, filename)) {
+    return undefined
+  }
+  return 'use Objects.copy(source) for shallow object copies'
+}
+
 /** getQuotedObjectKeyChanges quotes eligible string keys in consistently quoted object literals. */
 export function getQuotedObjectKeyChanges(file: TypeScript.SourceFile): TypeScript.TextChange[] {
   const changes: TypeScript.TextChange[] = []
@@ -70,6 +82,16 @@ function isStringKey(name: OptionalPropertyName): name is TypeScript.StringLiter
 
 function isIdentifierKey(name: OptionalPropertyName): name is TypeScript.Identifier {
   return name !== undefined && TypeScript.isIdentifier(name)
+}
+
+function isObjectsCopyImplementation(node: TypeScript.ObjectLiteralExpression, filename: string): boolean {
+  const returnStatement = node.parent
+  if (!filename.endsWith('/universal/Objects.ts') || !TypeScript.isReturnStatement(returnStatement)) {
+    return false
+  }
+  const functionDeclaration = returnStatement.parent.parent
+  return TypeScript.isFunctionDeclaration(functionDeclaration)
+    && functionDeclaration.name?.text === 'copy'
 }
 
 function quote(key: string): string {

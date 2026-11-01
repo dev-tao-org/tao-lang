@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from '../managed-modules/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../managed-modules/ManagedModuleMetadata'
@@ -74,7 +74,7 @@ export async function claimManagedProfile(
 ): Promise<void> {
   const metadataPath = Path.join(profile, '.tao-managed.json')
   const marker = Path.join(profile, '.tao-managed-building')
-  const owner = `${fingerprint}\n`
+  const owner = `${fingerprint}${NewlineCharacter}`
   const current = await optionalText(marker)
   if (current !== undefined && current !== owner) {
     Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
@@ -133,7 +133,7 @@ export function createManagedProfileManifest(
       null,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }
 
 /** validateManagedManifest checks the generated exact dependency manifest against declarations. */

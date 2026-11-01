@@ -1,4 +1,4 @@
-import { Errors, Regxs, Time } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Time } from '@shared'
 import { Path } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
@@ -11,7 +11,7 @@ import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
 import * as ConformanceLayout from './source-conformance-layout'
 import * as ConformanceNaming from './source-conformance-naming'
-import { objectLiteralKeysIssue } from './source-conformance-object-keys'
+import { objectCopyIssue, objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { platformAccessIssue } from './source-conformance-platform'
 import { predicateOperatorIssue } from './source-conformance-predicates'
@@ -56,7 +56,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
-    Errors.ThrowUserInput(issues.join('\n'))
+    Errors.ThrowUserInput(issues.join(NewlineCharacter))
   }
 }
 
@@ -108,6 +108,7 @@ class SourceConformanceChecker {
       this.reportIssue(node, ownLineNullishIssue(node, this.file))
       this.reportIssue(node, arrayMultilineStringIssue(node))
       this.reportIssue(node, objectLiteralKeysIssue(node))
+      this.reportIssue(node, objectCopyIssue(node, this.filename))
       this.reportIssue(node, predicateOperatorIssue(node))
     }
     if (TypeScript.isImportDeclaration(node) && !this.excluded) {

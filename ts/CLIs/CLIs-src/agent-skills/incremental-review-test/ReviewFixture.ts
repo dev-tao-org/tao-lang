@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { git } from '../incremental-review/ReviewGit'
 import { startReview, withReviewLock } from '../incremental-review/ReviewSession'
@@ -20,7 +20,7 @@ export async function withFixture(
     await git(root, ['config', '--local', 'user.name', 'Incremental Review Fixture'])
     await git(root, ['config', '--local', 'user.email', 'incremental-review@example.invalid'])
     await git(root, ['config', '--local', 'core.filemode', 'true'])
-    await FileSystem.writeFile(Path.join(root, '.git/info/exclude'), '.artifacts/\n')
+    await FileSystem.writeFile(Path.join(root, '.git/info/exclude'), '.artifacts/' + NewlineCharacter)
     for (const [path, text] of Object.entries(files)) {
       await put(root, path, text)
     }
