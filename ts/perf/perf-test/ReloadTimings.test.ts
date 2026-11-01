@@ -1,5 +1,16 @@
 import { Tests } from '@shared/os'
-import { type ReloadTiming, ReloadTimings } from '../perf-src/ReloadTimings'
+import { describeReloadScenario, type ReloadTiming, ReloadTimings } from '../perf-src/ReloadTimings'
+
+Tests.test('reload output labels measured and extra watched revisions without assuming equal array lengths', () => {
+  const results = [
+    { revision: 'r2', scenario: 'text' },
+    { revision: 'r3', scenario: 'add-text' },
+    { revision: 'r4', scenario: 'row' },
+    { revision: 'r6', scenario: 'reset' },
+  ]
+  const labels = ['r2', 'r3', 'r4', 'r5', 'r6'].map(revision => describeReloadScenario(revision, results))
+  Tests.expect(labels).toEqual(['text', 'add-text', 'row', 'observed revision r5', 'reset'])
+})
 
 Tests.test('reload output waits for both matching previews and measures from the observed save', () => {
   const reported: ReloadTiming[] = []

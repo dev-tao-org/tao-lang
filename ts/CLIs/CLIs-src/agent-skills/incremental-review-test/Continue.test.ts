@@ -5,7 +5,7 @@ import { acceptSelection } from '../incremental-review/ReviewAccept'
 import { git, head, resolveGitIndexPath } from '../incremental-review/ReviewGit'
 import { planSelection } from '../incremental-review/ReviewPlan'
 import { loadSession, saveSession } from '../incremental-review/ReviewSession'
-import type { ReviewStatus } from '../incremental-review/ReviewTypes'
+import type { IncrementalReviewResult, ReviewStatus } from '../incremental-review/ReviewTypes'
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('continuation inherits acceptance and evidence while reopening uses the original baseline', async () => {
@@ -101,8 +101,12 @@ async function captureOldState(root: string, reviewedRoot: string) {
 
 async function readReviewStatus(root: string): Promise<ReviewStatus> {
   const result = await runReview(['status', '--repo', root])
-  if (!('recheck' in result) || !('pending' in result)) {
+  if (!isReviewStatus(result)) {
     Errors.ThrowShouldNeverHappen('Incremental review status returned a different command result.')
   }
   return result
+}
+
+function isReviewStatus(result: IncrementalReviewResult): result is ReviewStatus {
+  return 'recheck' in result && 'pending' in result
 }
