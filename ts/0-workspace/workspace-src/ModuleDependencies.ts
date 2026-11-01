@@ -124,16 +124,14 @@ async function containsApp(path: string): Promise<boolean> {
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
   const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const child = Platform.spawnPiped(['bun', 'info', packageName, 'version', '--json'], { cwd, env: environment })
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${stderr.trim()}`)
+  const result = await Platform.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
+    cwd,
+    env: environment,
+  })
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
   }
-  const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(stdout.trim()))
+  const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(result.stdout.trim()))
   const version = resolveNpmVersionValue(value)
   if (!version) {
     Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)

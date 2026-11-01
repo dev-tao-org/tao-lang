@@ -127,13 +127,8 @@ export async function buildManagedModulesInput(
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
 export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
   const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const child = Platform.spawnPiped([command, ...args], { cwd, env: environment })
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  return { status, stdout, stderr }
+  const result = await Platform.runIgnoreStatus([command, ...args], { cwd, env: environment })
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
 type ProjectPreparationOption = 'runtimePins' | 'dependencyOptions'

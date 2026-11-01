@@ -100,9 +100,9 @@ async function completeDirenvSetup(
 
 async function revokeDirenvAllowance(root: string, environment: SetupEnvironment): Promise<void> {
   const denied = await environment.run('direnv', { args: ['deny', root], cwd: root })
-  if (denied.exitCode !== 0) {
+  if (denied.status !== 0) {
     Errors.ThrowHostEnvironment(
-      `Could not revoke direnv trust for ${root} (exit ${denied.exitCode}):\n${denied.stderr.trim()}`,
+      `Could not revoke direnv trust for ${root} (exit ${denied.status}):\n${denied.stderr.trim()}`,
     )
   }
 }
@@ -139,7 +139,7 @@ async function resolveGitIdentity(
     args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
     cwd: root,
   })
-  if (git.exitCode !== 0) {
+  if (git.status !== 0) {
     Errors.ThrowHostEnvironment('Shell setup requires Git and a working repository checkout.')
   }
   const commonPath = git.stdout.replace(Regxs.TrailingNewlineRegx, '')
@@ -152,7 +152,7 @@ async function resolveGitIdentity(
     stdin: `${commonDirectory}\n`,
   })
   const identity = hash.stdout.trim()
-  if (hash.exitCode !== 0 || !Regxs.LowercaseHashRangeRegx.test(identity)) {
+  if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(identity)) {
     Errors.ThrowHostEnvironment('Git could not identify this repository for shell setup.')
   }
   return { commonDirectory, identity }
@@ -179,9 +179,9 @@ async function installActivation(
     )
   }
   const devenv = await environment.run('devenv', { args: ['version'], cwd: root })
-  if (devenv.exitCode !== 0) {
+  if (devenv.status !== 0) {
     Errors.ThrowHostEnvironment(
-      `devenv version failed (exit ${devenv.exitCode}):\n${devenv.stderr.trim() || devenv.stdout.trim()}`,
+      `devenv version failed (exit ${devenv.status}):\n${devenv.stderr.trim() || devenv.stdout.trim()}`,
     )
   }
   const runtime = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
@@ -194,7 +194,7 @@ async function installActivation(
     args: ['--realise', output, '--add-root', Path.resolve(shellRoot, 'direnv'), '--indirect'],
     cwd: root,
   })
-  if (rooted.exitCode !== 0) {
+  if (rooted.status !== 0) {
     Errors.ThrowHostEnvironment(
       `Could not retain the pinned direnv package with a Nix GC root. Shell activation remains disabled.\n${rooted.stderr.trim()}`,
     )

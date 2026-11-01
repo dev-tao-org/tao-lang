@@ -45,7 +45,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
     args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
     cwd: root,
   })
-  if (git.exitCode !== 0) {
+  if (git.status !== 0) {
     return false
   }
   const common = FileSystem.realpathSync(git.stdout.trim())
@@ -54,7 +54,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
     cwd: root,
     stdin: `${common}\n`,
   })
-  if (hash.exitCode !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
+  if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
     return false
   }
   const record = Path.resolve(home, '.tao-dev/shell/repositories', hash.stdout.trim())
@@ -86,7 +86,7 @@ async function isRegisteredWorktree(
     args: ['worktree', 'list', '--porcelain', '-z'],
     cwd: root,
   })
-  return worktrees.exitCode === 0
+  return worktrees.status === 0
     && worktrees.stdout.split(NullCharacter).includes(`worktree ${canonicalRoot}`)
 }
 
@@ -100,9 +100,9 @@ async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<voi
     env: { ...env, DEVENV_TUI: 'false' },
     timeoutMs: 60_000,
   })
-  if (prepared.exitCode !== 0) {
+  if (prepared.status !== 0) {
     write(
-      `Development shell preparation was unavailable (exit ${prepared.exitCode}); directory entry will retry normally.\n${prepared.stderr.trim()}`,
+      `Development shell preparation was unavailable (exit ${prepared.status}); directory entry will retry normally.\n${prepared.stderr.trim()}`,
     )
   }
 }

@@ -5,21 +5,15 @@ type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
   const environment = { ...Env.snapshot(), GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
-  const stdin = options.input === undefined ? 'ignore' : 'pipe'
-  const child = Platform.spawnPiped(['git', '--literal-pathspecs', ...args], { cwd: root, env: environment, stdin })
-  if (options.input !== undefined && child.stdin) {
-    child.stdin.write(options.input)
-    child.stdin.end()
+  const result = await Platform.runIgnoreStatus(['git', '--literal-pathspecs', ...args], {
+    cwd: root,
+    env: environment,
+    stdin: options.input,
+  })
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowUserInput(`Git ${args[0]} failed: ${result.stderr.trim() || result.stdout.trim()}`)
   }
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowUserInput(`Git ${args[0]} failed: ${stderr.trim() || stdout.trim()}`)
-  }
-  return stdout
+  return result.stdout
 }
 
 /** head returns the exact commit behind a branch or HEAD. */

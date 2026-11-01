@@ -9,7 +9,7 @@ export type BunTestModule = typeof import('bun:test')
 export { rejects, throws } from 'node:assert/strict'
 export { AsyncLocalStorage } from 'node:async_hooks'
 export { Buffer } from 'node:buffer'
-export { execFileSync, spawn } from 'node:child_process'
+export { spawn, spawnSync } from 'node:child_process'
 export { createHash, randomUUID } from 'node:crypto'
 export {
   appendFileSync,

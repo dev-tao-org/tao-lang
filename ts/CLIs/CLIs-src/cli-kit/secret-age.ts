@@ -69,21 +69,12 @@ async function run(
   command: string,
   options: { variadicArgs?: readonly string[]; stdin?: string } = {},
 ): Promise<string> {
-  const child = Platform.spawnPiped(command, {
+  const result = await Platform.runIgnoreStatus(command, {
     variadicArgs: options.variadicArgs,
-    stdin: 'pipe',
+    stdin: options.stdin,
   })
-  if (options.stdin !== undefined) {
-    child.stdin.write(options.stdin)
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowHostEnvironment(`${command} failed while processing the secrets store (exit ${result.status}).`)
   }
-  child.stdin.end()
-  const [status, stdout] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowHostEnvironment(`${command} failed while processing the secrets store (exit ${status}).`)
-  }
-  return stdout
+  return result.stdout
 }

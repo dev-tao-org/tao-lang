@@ -82,14 +82,12 @@ description: >-
   groups, or sooner when its integration affects the current group).
 - Merge subagent work only when the reviewing developer explicitly says they are ready for that
   integration; completion and passing checks do not authorize merging.
-- Commit requested corrections as they are completed, including subagent work, in coherent chunks
-  after validation. This workflow has standing developer authorization for
-  implementation commits; preserve unrelated edits and index selections. Keep committed corrections
-  pending for human inspection until approved. Commits, staging and passing tests never grant
-  acceptance on the separate approved-content branch. Verify intermittently
-  in proportion to changed behavior. Focused checks may replace the full pre-commit gate for
-  this workflow's checkpoints; run full verification before readiness to land. Do not keep a
-  detailed test ledger or rerun application tests for acceptance-only transfers.
+- Commit validated requested corrections, including subagent work, in coherent chunks under this
+  workflow's standing developer authorization; preserve unrelated edits and index selections.
+  Keep corrections pending human acceptance on the approved-content branch; commits, staging and
+  tests never grant it. Verify proportionately: focused checks may cover checkpoints, with full
+  verification before readiness to land. Omit detailed test ledgers and application reruns for
+  acceptance-only transfers.
 
 ## Presentation formats
 
@@ -130,6 +128,8 @@ Omit unused headings. End at the file list, except an outstanding subagent-readi
 - Track specific accepted files requiring a semantic recheck after shared behavior changes, with a
   concrete reason. Unchanged file contents do not prove unchanged correctness. Resolve these flags
   with the developer before claiming the review complete.
+- Keep correction rechecks out of review groups until all required checks pass. Then explicitly
+  confirm those checks passed and propose reviewing the changes since approval before presenting them.
 
 ## Execute and resume
 

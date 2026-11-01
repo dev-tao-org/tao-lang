@@ -298,16 +298,11 @@ async function recipientOfIdentity(): Promise<string> {
 }
 
 async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
-  const child = Platform.spawnPiped(command, { variadicArgs: options.variadicArgs })
-  const [status, stdout] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${status}).`)
+  const result = await Platform.runIgnoreStatus(command, { variadicArgs: options.variadicArgs })
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${result.status}).`)
   }
-  return stdout
+  return result.stdout
 }
 
 function secretsIdentityPath(): string {

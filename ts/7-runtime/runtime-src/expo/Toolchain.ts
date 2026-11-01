@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { NullCharacter, Try } from '@shared'
 import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
@@ -59,26 +59,10 @@ export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
     const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-    const child = Platform.spawnPiped(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
+    await Platform.run(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
       cwd: cacheDirectory,
       env: environment,
     })
-    const [status, stdout, stderr] = await Promise.all([
-      child.exited,
-      Platform.readText(child.stdout),
-      Platform.readText(child.stderr),
-    ])
-    if (status !== 0) {
-      Errors.ThrowCommandExecution({
-        command: 'bun',
-        args: ['install', '--frozen-lockfile', '--ignore-scripts'],
-        cwd: cacheDirectory,
-        status,
-        signal: null,
-        stdout,
-        stderr,
-      })
-    }
   },
 }
 
