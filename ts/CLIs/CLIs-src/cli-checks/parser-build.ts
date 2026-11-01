@@ -1,22 +1,34 @@
 import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { writeCSTTypes } from './cst-types'
+import { nodeGypOptions } from './NodeGyp'
+import { writeSemanticAst } from './semantic-ast'
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
-export async function prepareParser(force = false, timings = new Timings(`process:${Platform.pid}`)): Promise<void> {
-  await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
-}
-
-const GenerateParser = Timings.measure('parser.generate', generateParser)
-const BuildParserNative = Timings.measure('parser.native-build', buildParserNative)
+export const prepareParser = Timings.createTopLevelTimer(
+  async function(timings, force: boolean = false): Promise<void> {
+    await BuildLock.withBuildLock(Artifacts.resolvePath('locks/parser.lock'), () => rebuildParser(force, timings))
+  },
+)
 
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
 const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
 
+type ParserSourceContents = Record<string, string>
+type ParserNodeMetadata = { version: string; executable: string }
+type ParserBuildInputs = {
+  sources: ParserSourceContents
+  lock: string
+  system: Platform.SystemInformation
+  node: ParserNodeMetadata
+  environment: string
+}
+
 async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const inputs = await readInputs()
-  const stamp = JSON.stringify(inputs)
+  const stamp = encodeParserBuildInputs(inputs)
   const outputs = [
     'src/parser.c',
     'src/grammar.json',
@@ -27,81 +39,91 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const stampPath = Path.join(outputRoot, 'inputs.json')
   const current = FileSystem.existsSync(stampPath) && await FileSystem.file(stampPath).text() === stamp
   if (canReuseParser(force, current, outputs)) {
+    await writeCSTTypes(outputRoot)
+    await writeSemanticAst(outputRoot)
     return
   }
-  await FileSystem.mkdir(outputRoot, { recursive: true })
+  await FileSystem.mkdir(outputRoot)
   await FileSystem.rm(stampPath, { force: true })
   for (const filename of ['binding.gyp', 'binding.cc']) {
     await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
-  await GenerateParser(timings)
-  await BuildParserNative(timings, inputs)
+  await timings.run(generateParser)
+  await writeCSTTypes(outputRoot)
+  await writeSemanticAst(outputRoot)
+  await timings.run(buildParserNative, inputs)
   await FileSystem.write(stampPath, stamp)
   await writeBuildTimings(timings)
 }
 
-async function generateParser(): Promise<void> {
+const generateParser = Timings.measured('parser.generate', async function(): Promise<void> {
   await runCommand('tree-sitter generate --abi 15 --output', {
     variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
     cwd: grammarRoot,
   })
-}
+})
 
-async function buildParserNative(inputs: Awaited<ReturnType<typeof readInputs>>): Promise<void> {
+const buildParserNative = Timings.measured('parser.native-build', async function(
+  inputs: ParserBuildInputs,
+): Promise<void> {
+  const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [outputRoot, ...nodeHeaders(inputs.node.executable)],
+    variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
-    env: nodeGypEnvironment(),
+    env: options.environment,
   })
-}
+})
 
 function canReuseParser(force: boolean, current: boolean, outputs: readonly string[]): boolean {
   return !force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))
 }
 
-async function readInputs() {
-  const sources: Record<string, string> = {}
-  for (const filename of ['treesitter-grammar.js', 'tree-sitter.json', 'binding.gyp', 'binding.cc']) {
+async function readInputs(): Promise<ParserBuildInputs> {
+  const sources: ParserSourceContents = {}
+  for (
+    const filename of [
+      'treesitter-grammar.js',
+      'semantic-ast-metadata.json',
+      'tree-sitter.json',
+      'binding.gyp',
+      'binding.cc',
+    ]
+  ) {
     sources[filename] = await FileSystem.file(Path.join(grammarRoot, filename)).text()
   }
   return {
     sources,
     lock: Platform.hashText(await FileSystem.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
-    node: JSON.parse(
+    node: parseParserNodeMetadata(
       await Platform.capture('node -p JSON.stringify({version:process.version,executable:process.execPath})'),
-    ) as {
-      version: string
-      executable: string
-    },
-    environment: await environmentInputs(),
+    ),
+    environment: await collectEnvironmentInputs(),
   }
 }
 
-function nodeHeaders(executable: string): string[] {
-  const root = Path.dirname(Path.dirname(executable))
-  return FileSystem.existsSync(Path.join(root, 'include/node/node.h')) ? ['--nodedir', root] : []
-}
-
-function nodeGypEnvironment(): Record<string, string | undefined> {
-  const flag = '--disable-warning=DEP0169'
-  const options = (Env.get('NODE_OPTIONS') ?? '').split(/\s+/).filter(Boolean)
-  if (!options.includes(flag)) {
-    options.push(flag)
-  }
-  return { NODE_OPTIONS: options.join(' ') }
-}
-
-async function environmentInputs(): Promise<string> {
+async function collectEnvironmentInputs(): Promise<string> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
   const sources = await Promise.all(paths.map(path => FileSystem.file(Repo.resolvePath(path)).text()))
   return Platform.hashText(sources.join('\n'))
 }
 
+function encodeParserBuildInputs(inputs: ParserBuildInputs): string {
+  return JSON.stringify(inputs)
+}
+
+function parseParserNodeMetadata(contents: string): ParserNodeMetadata {
+  return JSON.parse(contents) as ParserNodeMetadata
+}
+
 async function writeBuildTimings(timings: Timings): Promise<void> {
   const directory = Artifacts.resolvePath('logs/performance')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const path = Path.join(directory, `parser-build-${Platform.randomUUID()}.json`)
   Artifacts.trackTemporary(path)
-  await Artifacts.write(path, JSON.stringify({ version: 1, samples: timings.samples }, null, 2))
+  await Artifacts.write(path, formatParserBuildTimings(timings))
+}
+
+function formatParserBuildTimings(timings: Timings): string {
+  return JSON.stringify({ version: 1, samples: timings.samples }, null, 2)
 }

@@ -13,8 +13,7 @@ export async function checkEditorTypeScript(): Promise<void> {
   }
 }
 
-/** assertEditorTypeScript verifies that editor SDK settings select the compiler used by check. */
-export function assertEditorTypeScript(source: string, readVersion = sdkVersion): void {
+function assertEditorTypeScript(source: string): void {
   const parsed = TypeScript.parseConfigFileTextToJson('.vscode/settings.json', source)
   if (parsed.error) {
     Errors.ThrowUserInput('Cannot parse .vscode/settings.json for the editor TypeScript SDK.')
@@ -28,7 +27,7 @@ export function assertEditorTypeScript(source: string, readVersion = sdkVersion)
   if (settings['js/ts.experimental.useTsgo'] === true || settings['typescript.experimental.useTsgo'] === true) {
     Errors.ThrowUserInput('Disable experimental TypeScript Native Preview to match the compiler used by check.')
   }
-  const version = readVersion(sdk)
+  const version = sdkVersion(sdk)
   if (version !== TypeScript.version) {
     Errors.ThrowUserInput(`Editor TypeScript ${version} differs from check (${TypeScript.version}).`)
   }
