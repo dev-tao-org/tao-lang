@@ -1,7 +1,7 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Lists, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { createWasmDocumentSession } from '../../ide-extension/ide-extension-src/core'
-import { semanticTokenRanges } from '../../ide-extension/ide-extension-src/SemanticTokens'
+import { createWasmDocumentSession } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/core'
+import { semanticTokenRanges } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/SemanticTokens'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {
@@ -28,7 +28,7 @@ export async function extensionPerformance() {
       semanticTokenRanges(result.tokens)
       current.push({ phase: 'editor.token-ranges', durationMs: Time.nowMs() - rangesStarted })
       if (result.diagnostics.length > 0 || result.tokens.length === 0) {
-        Errors.ThrowUnexpected('Extension performance fixture did not produce valid highlighted syntax.')
+        Errors.ThrowShouldNeverHappen('Extension performance fixture did not produce valid highlighted syntax.')
       }
       if (index >= 20) {
         samples.push(...current)
@@ -43,31 +43,47 @@ type Sample = { phase: string; durationMs: number }
 async function writeReport(fixture: string, samples: Sample[]) {
   const path = Artifacts.resolvePath('logs/performance', `extension-${Platform.randomUUID()}.json`)
   const summary = summarize(samples)
-  await Artifacts.mkdir(Path.dirname(path), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(path))
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        definition:
-          'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
-        fixtureHash: Platform.hashText(fixture),
-        system: Platform.systemInfo(),
-        summary,
-        samples,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: ExtensionPerformanceReport = {
+    version: 1,
+    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    definition:
+      'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
+    fixtureHash: Platform.hashText(fixture),
+    system: Platform.systemInfo(),
+    summary,
+    samples,
+  }
+  await Artifacts.write(path, serializeExtensionPerformanceReport(report))
   return { path, summary }
 }
 
-function summarize(samples: Sample[]) {
-  const phases = [...new Set(samples.map(sample => sample.phase))]
+type ExtensionPerformanceReport = {
+  version: 1
+  commit: string
+  modified: boolean
+  definition: string
+  fixtureHash: string
+  system: Platform.SystemInformation
+  summary: ExtensionPerformanceSummary
+  samples: Sample[]
+}
+
+function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport): string {
+  return JSON.stringify(report, null, 2)
+}
+
+type ExtensionPerformanceSummary = {
+  phase: string
+  count: number
+  medianMs: number
+  p95Ms: number
+}[]
+
+function summarize(samples: Sample[]): ExtensionPerformanceSummary {
+  const phases = Lists.unique(samples.map(sample => sample.phase))
   return phases.map(phase => {
     const values = samples.filter(sample => sample.phase === phase).map(sample => sample.durationMs).sort((a, b) =>
       a - b
