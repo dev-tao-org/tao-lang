@@ -32,9 +32,13 @@ export function createLandingIO(): LandingIO {
   }
 }
 
-/** git reads or mutates the selected repository using literal arguments. */
-export async function git(io: LandingIO, args: readonly string[], storage = false): Promise<string> {
-  return (await io.command('git', args, storage ? Path.join(io.root, '.storage') : io.root)).trim()
+type GitOptions = { storage?: boolean; trim?: boolean }
+
+/** git runs literal arguments in the selected repository; trim:false preserves exact output bytes. */
+export async function git(io: LandingIO, args: readonly string[], options: GitOptions = {}): Promise<string> {
+  const directory = options.storage ? Path.join(io.root, '.storage') : io.root
+  const output = await io.command('git', args, directory)
+  return options.trim === false ? output : output.trim()
 }
 
 function commandProgress(command: string, args: readonly string[]): string | undefined {

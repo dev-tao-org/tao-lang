@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, S } from '@shared'
+import { Errors, joinTextLines, S } from '@shared'
 import { Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from './codegen-util'
@@ -169,9 +169,17 @@ function compileBindingTypes(
       `readonly ${emitStringLiteral(binding.name)}: Pick<${importedScope}, ${emitStringLiteral(binding.target)}>;`,
     )
   }
-  return `${imports.join('\n')}\n\nexport type Scope = {\n  ${
-    [...members, ...aliases].join('\n  ')
-  }\n};\n\nexport type Imports = {\n  ${projections.join('\n  ')}\n};`
+  return joinTextLines(
+    imports.join('\n'),
+    '',
+    'export type Scope = {',
+    `  ${[...members, ...aliases].join('\n  ')}`,
+    '};',
+    '',
+    'export type Imports = {',
+    `  ${projections.join('\n  ')}`,
+    '};',
+  )
 }
 
 function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationCompiler.DeclarationContext): string {

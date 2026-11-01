@@ -3,7 +3,7 @@ import { fix } from '@fix/Fix'
 import { format } from '@fix/Format'
 import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import { createParser } from '@grammar/parser'
-import { Errors, Timings, type TimingSample } from '@shared'
+import { Errors, joinTextLines, S, Timings, type TimingSample } from '@shared'
 import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { unusedWarnings } from '@typecheck/Usage'
 import { type ParserSampleSummary, summarizeSamples } from './parser-performance'
@@ -19,11 +19,16 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
     },
     {
       scenario: '500-views',
-      source: 'use Text from tao@ui\nuse Col from tao@ui\n'
-        + Array.from(
+      source: joinTextLines(
+        S`
+          use Text from tao@ui
+          use Col from tao@ui
+        `,
+        Array.from(
           { length: 500 },
           (_, index) => `view Example${index}(Title text, Subtitle text) { render Col { Text(Title) Text(Subtitle) } }`,
         ).join('\n'),
+      ),
     },
   ]
   const samples = fixtures.flatMap(fixture => sampleFixture(fixture, typescript))

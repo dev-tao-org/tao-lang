@@ -82,9 +82,7 @@ export async function claimManagedProfile(
   const metadataText = await optionalText(metadataPath)
   if (metadataText !== undefined) {
     const metadata = Try.WithDefault(undefined, () => parseManagedProfileMetadata(metadataText))
-    if (
-      hasMatchingMetadataLock(metadata, fingerprint, durableLock)
-    ) {
+    if (hasMatchingMetadataLock(metadata, fingerprint, durableLock)) {
       return
     }
     if (!repair || durableLock === undefined) {

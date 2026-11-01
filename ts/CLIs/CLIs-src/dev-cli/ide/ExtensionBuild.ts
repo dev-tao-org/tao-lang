@@ -1,6 +1,6 @@
 import { IO, runCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 
@@ -113,7 +113,15 @@ async function copyFormatter(): Promise<string> {
     Errors.ThrowHostEnvironment('Cannot locate the installed @dprint/formatter package for extension licensing.')
   }
   const wrapperLicense = await FileSystem.readFile(Path.join(formatterPackage, 'LICENSE'), 'utf8')
-  return `@dprint/formatter\n\n${wrapperLicense}\n\n@dprint/typescript\n\n${createTypeScriptFormatter(bytes).license}`
+  return joinTextLines(
+    '@dprint/formatter',
+    '',
+    wrapperLicense,
+    '',
+    '@dprint/typescript',
+    '',
+    createTypeScriptFormatter(bytes).license,
+  )
 }
 
 async function copyLanguageIcons(): Promise<void> {

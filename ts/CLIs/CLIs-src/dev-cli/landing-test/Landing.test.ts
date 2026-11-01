@@ -1,3 +1,4 @@
+import { joinTextLines, S } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { publishPreviewArchive } from '../landing/Archive'
 import { integrateMain } from '../landing/Integration'
@@ -116,7 +117,19 @@ Tests.test('a changed PR head and failed required checks cannot issue a merge', 
     } else {
       f.state.fail = 'gh pr checks'
     }
-    await Tests.rejects(publishAndMerge(f.io, f.branch, 'Land tooling\n\n- Reviewed\n', f.source))
+    await Tests.rejects(publishAndMerge(
+      f.io,
+      f.branch,
+      joinTextLines(
+        S`
+          Land tooling
+
+          - Reviewed
+        `,
+        '',
+      ),
+      f.source,
+    ))
     Tests.expect(f.calls.some(call => call.startsWith('gh pr merge'))).toBe(false)
   }
 })
@@ -229,7 +242,10 @@ Tests.test('archive pointers retain the verified parent and only the storage dif
     if (kind === 'parent') {
       invalid.state.pointerParents = invalid.tree
     } else {
-      invalid.state.pointerPaths = '.storage\nts/new-source.ts'
+      invalid.state.pointerPaths = S`
+        .storage
+        ts/new-source.ts
+      `
     }
     await Tests.rejects(land(invalid.io))
     Tests.expect(invalid.calls.some(call => call.startsWith('git push'))).toBe(false)

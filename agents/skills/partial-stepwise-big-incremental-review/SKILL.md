@@ -12,10 +12,9 @@ description: >-
 
 ## Guide the review
 
-- Start with the complete proposed grouping in review order, using the format below. Get the
-  developer's explicit agreement, or iterate on the grouping, before presenting the first group.
-  Group one feature at a time; combine features only when each is required to review the other.
-  Projects and Dependencies and Sidecars normally belong in separate groups.
+- Propose all groups in review order and get explicit agreement before presenting files. Group one
+  feature at a time; combine only mutually dependent features. Normally separate Projects,
+  Dependencies and Sidecars.
 - Organize large reviews into functional feature sets containing review groups. Include each
   specification with its first related implementation group; keep design-only specifications with
   related planning. Give each feature set and group a brief cognitive overview of its contribution.
@@ -54,6 +53,8 @@ description: >-
 - After handling approvals or corrections, reprint clickable links for every remaining displayed
   file with its stable ID; if complete, present the next agreed set of groups. Pause only at the developer's
   request or a blocking decision; a recap alone is insufficient.
+- On request, [open all displayed groups](references/operations.md#open-displayed-groups) in one
+  shell command. Opening files never grants approval.
 - Accept content outside the current group.
   Keep the developer in their implementation checkout; the separate agent-owned review branch
   records accepted content and need not build independently. Only the implementation branch lands.

@@ -39,6 +39,25 @@ branch directly with Working Tree, then use the overall Files Changed tree. This
 corrections; comparing with implementation HEAD omits uncommitted edits. Staged versus unstaged
 selection is independent of this comparison. Commit-to-commit views may need refreshing.
 
+## Open displayed groups
+
+Treat “open all” or “open groups” as a request to open every file in the currently displayed review
+groups together. Preserve the displayed order and use absolute paths. Use one shell command,
+not computer-use clicks or separate launches per file. This action neither approves files nor
+advances the review group.
+
+Use the requested editor. On this macOS host the default review editor is Cursor:
+
+```sh
+open -g -a Cursor /absolute/first.ts /absolute/second.ts /absolute/third.ts
+```
+
+Use the existing application instance and prefer background opening; honor an explicit request to
+bring it forward. Respect the editor's existing window preferences and never claim the tabs or
+window were verified from a successful shell exit alone. Do not change editor settings or close
+existing tabs. A request to open files authorizes this scoped shell launch; no additional approval
+question is needed. Do not open future groups automatically.
+
 ## Continue in another implementation worktree
 
 After creating the new implementation branch/worktree, continue from the original implementation

@@ -161,7 +161,14 @@ function createCycle(cycle: number): PreviewScenario[] {
     { name: `text-${cycle}`, apply: source => source.replace('Hello World', label) },
     {
       name: `add-text-${cycle}`,
-      apply: source => source.replace(`Text("${label}")`, `Text("${label}")\n    Text("${detail}")`),
+      apply: source =>
+        source.replace(
+          `Text("${label}")`,
+          S`
+            Text("${label}")
+                Text("${detail}")
+          `,
+        ),
     },
     { name: `row-${cycle}`, apply: source => source.replace('render Col {', 'render Row {') },
     { name: `reset-${cycle}`, apply: (_source, canonical) => canonical },

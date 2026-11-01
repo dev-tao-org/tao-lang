@@ -1,4 +1,4 @@
-import { Addr, Errors, Try } from '@shared'
+import { Addr, Errors, joinTextLines, S, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
@@ -230,14 +230,26 @@ async function verifyLastGoodSurvivesDrift(
   const lastGood = workspace.lastGoodRevision
   await FileSystem.writeFile(
     Path.join(ui, '@ui/Widget.tsx'),
-    "import { label } from 'tao-fixture-label'\nexport function Widget({ Value }: { Value: number }) { return label(String(Value)) }\n",
+    joinTextLines(
+      S`
+        import { label } from 'tao-fixture-label'
+        export function Widget({ Value }: { Value: number }) { return label(String(Value)) }
+      `,
+      '',
+    ),
   )
   const contractFailure = await workspace.files.openFile(entry)
   Tests.expect(contractFailure.status).toBe('failed')
   Tests.expect(workspace.lastGoodRevision).toBe(lastGood)
   await FileSystem.writeFile(
     Path.join(ui, '@ui/Widget.tsx'),
-    "import { label } from 'tao-fixture-label'\nexport function Widget() { return label('fixture-rendered') }\n",
+    joinTextLines(
+      S`
+        import { label } from 'tao-fixture-label'
+        export function Widget() { return label('fixture-rendered') }
+      `,
+      '',
+    ),
   )
   Tests.expect((await workspace.files.openFile(entry)).status).toBe('published')
   const repaired = workspace.lastGoodRevision

@@ -49,8 +49,10 @@ function isPrivateApiMember(node: TypeScript.Node): boolean {
   return hasPrivateName(node)
 }
 
+type ApiMember = TypeScript.TypeElement | TypeScript.ClassElement | TypeScript.ParameterDeclaration
+
 /** isApiMember identifies signature members which may carry public docs. */
-function isApiMember(node: TypeScript.Node): boolean {
+function isApiMember(node: TypeScript.Node): node is ApiMember {
   return TypeScript.isTypeElement(node) || TypeScript.isClassElement(node) || TypeScript.isParameter(node)
 }
 
@@ -144,12 +146,19 @@ function hasPrivateName(node: TypeScript.Node): boolean {
   return false
 }
 
-function isPublicShapeExpression(node: TypeScript.Node): boolean {
+type PublicShapeExpression =
+  | TypeScript.ObjectLiteralExpression
+  | TypeScript.ArrowFunction
+  | TypeScript.FunctionExpression
+
+function isPublicShapeExpression(node: TypeScript.Node): node is PublicShapeExpression {
   return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
     || TypeScript.isFunctionExpression(node)
 }
 
-function isImplementationContainer(node: TypeScript.Node): boolean {
+type ImplementationContainer = TypeScript.Block | TypeScript.ModuleBlock | TypeScript.ClassStaticBlockDeclaration
+
+function isImplementationContainer(node: TypeScript.Node): node is ImplementationContainer {
   return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node)
     || TypeScript.isClassStaticBlockDeclaration(node)
 }

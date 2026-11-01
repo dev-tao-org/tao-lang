@@ -1,5 +1,5 @@
 import { DefaultAppearance } from '@runtime/client/Appearance'
-import { Addr, Errors, S, Try } from '@shared'
+import { Addr, Errors, joinTextLines, S, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type * as Workspace from '@workspace/Workspace'
 import { observePreviewEdit } from './ObservePreviewEdit'
@@ -235,7 +235,8 @@ function sendEvent(
 }
 
 function encodeEvent(encoder: TextEncoder, name: string, data: object): Uint8Array {
-  return encoder.encode(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)
+  const message = joinTextLines(`event: ${name}`, `data: ${JSON.stringify(data)}`, '', '')
+  return encoder.encode(message)
 }
 
 function frameUrl(previewUrl: string, sessionId: string, parentOrigin: string, frameId: string): string {

@@ -1,14 +1,28 @@
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
 import { createWasmDocumentSession } from '../tao-ide-extension-src/core'
+
+const ExpectedSaveFormatting = S`
+  // Title
+  view Ready {
+    render Text("Hi 😀")
+  }
+
+  view Editing(
+`
 
 Tests.test('save formatting uses the WASM snapshot, preserving partial edits and parser ownership', async () => {
   const runtime = await loadRuntime()
   const typescript = createTypeScriptFormatter(await FormatterResources.typeScriptFormatterBytes())
   Try(() => {
-    const source = '// Title\nview Ready{render Text( "Hi 😀" )}\n\nview Editing('
-    const expected = '// Title\nview Ready {\n  render Text("Hi 😀")\n}\n\nview Editing('
+    const source = S`
+      // Title
+      view Ready{render Text( "Hi 😀" )}
+
+      view Editing(
+    `
+    const expected = ExpectedSaveFormatting
     runtime.document.update(source)
     const result = runtime.document.format()
     Tests.expect(result.text).toBe(expected)
@@ -48,7 +62,10 @@ Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', asyn
 Tests.test('requirements and import source markers receive keyword highlights', async () => {
   const runtime = await loadRuntime()
   Try(() => {
-    const source = 'requires npm:date-fns version 4.1.0 as dateFns\nuse Text from tao@ui'
+    const source = S`
+      requires npm:date-fns version 4.1.0 as dateFns
+      use Text from tao@ui
+    `
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
     for (const keyword of ['requires', 'version', 'as', 'from']) {
@@ -81,8 +98,10 @@ Tests.test('incremental malformed edits recover without affecting another open d
 Tests.test('embedded TSX captures map through Unicode prefixes into editor UTF-16 offsets', async () => {
   const runtime = await loadRuntime()
   Try(() => {
-    const source =
-      'app Demo { root Main }\nview Main { render inject ```ts const emoji = "😀"; const title = <Thing /> ``` }'
+    const source = S`
+      app Demo { root Main }
+      view Main { render inject \`\`\`ts const emoji = "😀"; const title = <Thing /> \`\`\` }
+    `
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
     const titleStart = source.indexOf('title')

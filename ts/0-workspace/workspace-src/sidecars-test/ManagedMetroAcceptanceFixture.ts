@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, S, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
@@ -32,7 +32,13 @@ export async function createAcceptanceProjects(root: string): Promise<Acceptance
   await FileSystem.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
   await FileSystem.writeFile(
     Path.join(ui, '@ui/Widget.tsx'),
-    "import { label } from 'tao-fixture-label'\nexport function Widget() { return label('metro-rendered') }\n",
+    joinTextLines(
+      S`
+        import { label } from 'tao-fixture-label'
+        export function Widget() { return label('metro-rendered') }
+      `,
+      '',
+    ),
   )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }

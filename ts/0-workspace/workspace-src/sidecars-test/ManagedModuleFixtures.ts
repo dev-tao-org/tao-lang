@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
@@ -81,7 +81,16 @@ async function createManagedFixture(): Promise<ManagedFixture> {
     Path.join(externalModule, '.tao'),
     Path.join(directory, 'Other'),
   )
-  await FileSystem.writeFile(Path.join(moduleDirectory, '.gitignore'), '# authored\nlocal.txt\n')
+  await FileSystem.writeFile(
+    Path.join(moduleDirectory, '.gitignore'),
+    joinTextLines(
+      S`
+        # authored
+        local.txt
+      `,
+      '',
+    ),
+  )
   await FileSystem.writeFile(Path.join(directory, 'Other', 'package.json'), '{"name":"user-owned"}\n')
   const state = { frozen: false }
   return {

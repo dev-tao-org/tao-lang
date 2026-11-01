@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Regxs, S, Try } from '@shared'
 import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
@@ -83,9 +83,11 @@ async function completeDirenvSetup(
       await revokeDirenvAllowance(root, environment)
     }
     await DirenvSetupFiles.writeFileAtomically(choicePath, 'disabled\n')
-    write(
-      `Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:\n${DirenvSetupFiles.activationSourceLine}\nRun \`./agent shell-setup --configure\` to change this repository's choice.`,
-    )
+    write(S`
+      Automatic shell activation is off for new terminals. In every already-open zsh terminal, run:
+      ${DirenvSetupFiles.activationSourceLine}
+      Run \`./agent shell-setup --configure\` to change this repository's choice.
+    `)
     return 0
   }
   await DirenvSetupFiles.writeFileAtomically(choicePath, 'pending\n')
@@ -173,9 +175,12 @@ async function installActivation(
   }
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
-      `Pinned direnv is missing from this checkout. Rebuild the dev environment, then run:\ncd ${
-        quote(root)
-      }\n./enter-tao-dev-env.sh\n./agent shell-setup --configure`,
+      S`
+        Pinned direnv is missing from this checkout. Rebuild the dev environment, then run:
+        cd ${quote(root)}
+        ./enter-tao-dev-env.sh
+        ./agent shell-setup --configure
+      `,
     )
   }
   const devenv = await environment.run('devenv', { args: ['version'], cwd: root })

@@ -1,5 +1,5 @@
 import { runtimeTypeScriptPaths } from '@runtime/Runtime'
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
@@ -298,7 +298,17 @@ async function writeModuleIgnore(path: string, contents: string): Promise<void> 
 }
 
 function createModuleIgnoreBlock(): string {
-  return '# tao-managed-sidecars:begin\n/package.json\n/tsconfig.json\n/node_modules/\n/.tao-managed-module.json\n/.tao-*.contract.ts\n/.tao-*.contract.ts.tao-managed\n# tao-managed-sidecars:end\n'
+  return joinTextLines(
+    '# tao-managed-sidecars:begin',
+    '/package.json',
+    '/tsconfig.json',
+    '/node_modules/',
+    '/.tao-managed-module.json',
+    '/.tao-*.contract.ts',
+    '/.tao-*.contract.ts.tao-managed',
+    '# tao-managed-sidecars:end',
+    '',
+  )
 }
 
 function rejectSymlink(path: string): void {

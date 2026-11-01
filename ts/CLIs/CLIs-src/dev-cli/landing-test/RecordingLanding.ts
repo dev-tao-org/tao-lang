@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, joinTextLines, S } from '@shared'
 import { Platform } from '@shared/os'
 import { type LandingIO } from '../landing/LandingIO'
 
@@ -89,7 +89,17 @@ function initialState(): RecordingLandingState {
 function initialFiles(): Map<string, string> {
   const report = JSON.stringify({ version: 1, commit: source, samples: [1] }) + '\n'
   return new Map([
-    [`.artifacts/merge/${branch}.msg`, `Land tooling\n\n- Archive ${archive} source ${source}\n`],
+    [
+      `.artifacts/merge/${branch}.msg`,
+      joinTextLines(
+        S`
+          Land tooling
+
+          - Archive ${archive} source ${source}
+        `,
+        '',
+      ),
+    ],
     [`${pending}/report.json`, report],
     [
       `${pending}/record.json`,

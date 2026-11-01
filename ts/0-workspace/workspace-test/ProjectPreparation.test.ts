@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { readDependencyLock, resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
@@ -32,9 +32,16 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
     await initializeProject(root)
     await FileSystem.writeFile(
       entry,
-      'requires github:example/shared version v1 as first\n'
-        + 'requires github:example/shared version v2 as second\n'
-        + 'use Widget from first@ui\nuse Widget from second@ui\napp Main { root Widget }\n',
+      joinTextLines(
+        S`
+          requires github:example/shared version v1 as first
+          requires github:example/shared version v2 as second
+          use Widget from first@ui
+          use Widget from second@ui
+          app Main { root Widget }
+        `,
+        '',
+      ),
     )
     await Tests.rejects(prepareProject(entry, { dependencyOptions: options }), ConflictingDependencyCommitErrorRegx)
     const lock = await readDependencyLock(resolveDependencyLockPath(root))

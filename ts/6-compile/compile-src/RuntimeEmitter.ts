@@ -28,7 +28,10 @@ export type InjectionCompilation = { hookDeclaration: string; invocation: string
 
 /** emitRuntimeImports supplies the private generated boundary and the authored Tao API. */
 export function emitRuntimeImports(): string {
-  return "import * as TR from '@runtime';\nimport Tao from '@tao/runtime-api';"
+  return S`
+    import * as TR from '@runtime';
+    import Tao from '@tao/runtime-api';
+  `
 }
 
 /** emitModuleApplied registers the generated revision with preview instrumentation. */

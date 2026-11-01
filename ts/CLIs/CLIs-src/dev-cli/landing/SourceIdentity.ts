@@ -11,7 +11,7 @@ export async function requireSourceHead(io: LandingIO, expectedHead: string): Pr
 /** pinArchive records only the archive gitlink above the exact verified source and returns its checked identity. */
 export async function pinArchive(io: LandingIO, verifiedHead: string, publishedArchive: string): Promise<string> {
   await requireSourceHead(io, verifiedHead)
-  if (await git(io, ['rev-parse', 'HEAD'], true) !== publishedArchive) {
+  if (await git(io, ['rev-parse', 'HEAD'], { storage: true }) !== publishedArchive) {
     Errors.ThrowUserInput('Storage advanced after remote confirmation; rerun land before pinning its archive.')
   }
   await git(io, ['update-index', '--cacheinfo', `160000,${publishedArchive},.storage`])

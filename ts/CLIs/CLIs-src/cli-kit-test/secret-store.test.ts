@@ -35,7 +35,18 @@ TestCase('secret store format > rejects a malformed value instead of dropping it
   Expect(() => SecretStoreModule2.parseSecretStore('{"secrets":{"BAD\\nINJECT":{"value":[]}}}')).toThrow(
     'usable secret name',
   )
-  Expect(() => SecretStoreModule2.renderSecretEnvFile(new Map([['BAD\nINJECT', 'value']]), new Date(0))).toThrow(
+  Expect(() =>
+    SecretStoreModule2.renderSecretEnvFile(
+      new Map([[
+        S`
+          BAD
+          INJECT
+        `,
+        'value',
+      ]]),
+      new Date(0),
+    )
+  ).toThrow(
     'usable secret name',
   )
 })
@@ -65,7 +76,13 @@ TestCase('secret store format > formats entries in sorted order and renders sort
   )
   const formatted = SecretStoreModule2.formatSecretStore(store, '')
   const env = SecretStoreModule2.renderSecretEnvFile(
-    new Map([['ZED', 'z\nvalue'], ['ABLE', 'a']]),
+    new Map([[
+      'ZED',
+      S`
+        z
+        value
+      `,
+    ], ['ABLE', 'a']]),
     new Date('2026-02-01T00:00:00.000Z'),
   )
 
@@ -100,7 +117,15 @@ TestCase('secret store format > rejects device-encrypted values before using the
   const store: SecretStoreModule2.SecretStore = {
     recipients: ['age1machine'],
     storeKey: { recipient: 'age1store', wrappedFor: ['age1machine'], wrappedKey: ['wrapped-key'] },
-    secrets: { TOKEN: { addedAt: '', value: ['-----BEGIN AGE ENCRYPTED FILE-----\nnot-keyed'] } },
+    secrets: {
+      TOKEN: {
+        addedAt: '',
+        value: [S`
+          -----BEGIN AGE ENCRYPTED FILE-----
+          not-keyed
+        `],
+      },
+    },
   }
   const { cipher, calls } = recordingCipher()
 
@@ -109,8 +134,11 @@ TestCase('secret store format > rejects device-encrypted values before using the
   Expect(calls.valueDecrypt).toBe(0)
 })
 
-const storeKeyArmor =
-  '-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=\n-----END AGE ENCRYPTED FILE-----'
+const storeKeyArmor = S`
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhZ2UxCgo=
+  -----END AGE ENCRYPTED FILE-----
+`
 function recordingCipher(): RecordingCipher {
   const calls = { machineDecrypt: 0, recipientCheck: 0, valueDecrypt: 0 }
   const cipher: SecretStoreModule2.Cipher = {

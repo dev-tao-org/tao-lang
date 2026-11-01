@@ -1,4 +1,4 @@
-import { S } from '@shared'
+import { joinTextLines, S } from '@shared'
 import { Tests } from '@shared/os'
 
 Tests.describe('S', () => {
@@ -24,14 +24,14 @@ Tests.describe('S', () => {
   })
 
   Tests.test('preserves indentation inside multiline values on their own line and inline', () => {
-    const code = '    nested\n      deeper'
+    const code = joinTextLines('    nested', '      deeper')
     Tests.expect(S`
       before
       ${code}
       after
     `).toBe('before\n    nested\n      deeper\nafter')
     Tests.expect(S`
-      head ${'first\n  second'}
+      head ${joinTextLines('first', '  second')}
       tail
     `).toBe('head first\n  second\ntail')
   })

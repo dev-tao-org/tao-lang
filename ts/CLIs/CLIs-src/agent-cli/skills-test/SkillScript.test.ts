@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { runSkillScript } from '../skills/SkillScript'
 
@@ -37,7 +37,17 @@ Tests.test('rejects a skills root symlink that escapes the workspace', async () 
     const outside = Path.join(Repo.resolvePath('.artifacts/tmp/skill-script-tests-outside'), Platform.randomUUID())
     const scripts = Path.join(outside, 'demo/scripts')
     await FileSystem.mkdir(scripts)
-    await FileSystem.writeFile(Path.join(outside, 'demo/SKILL.md'), '---\nname: demo\n---\n')
+    await FileSystem.writeFile(
+      Path.join(outside, 'demo/SKILL.md'),
+      joinTextLines(
+        S`
+          ---
+          name: demo
+          ---
+        `,
+        '',
+      ),
+    )
     await FileSystem.writeFile(Path.join(scripts, 'run.ts'), 'void 0')
     await FileSystem.mkdir(Path.join(root, 'agents'))
     await Try(async () => {
@@ -54,9 +64,29 @@ Tests.test('rejects a missing skill marker and unsupported extensions', async ()
     await FileSystem.writeFile(Path.join(scripts, 'run.ts'), 'void 0')
     await Tests.rejects(runSkillScript('agents/skills/demo/scripts/run.ts', [], root))
     const marker = Path.join(root, 'agents/skills/demo/SKILL.md')
-    await FileSystem.writeFile(marker, '---\nname: another-skill\n---\n')
+    await FileSystem.writeFile(
+      marker,
+      joinTextLines(
+        S`
+          ---
+          name: another-skill
+          ---
+        `,
+        '',
+      ),
+    )
     await Tests.rejects(runSkillScript('agents/skills/demo/scripts/run.ts', [], root))
-    await FileSystem.writeFile(marker, '---\nname: demo\n---\n')
+    await FileSystem.writeFile(
+      marker,
+      joinTextLines(
+        S`
+          ---
+          name: demo
+          ---
+        `,
+        '',
+      ),
+    )
     await FileSystem.writeFile(Path.join(scripts, 'run.js'), 'void 0')
     await Tests.rejects(runSkillScript('agents/skills/demo/scripts/run.js', [], root))
   })
@@ -71,7 +101,17 @@ async function withFixture(action: (root: string) => Promise<void>): Promise<voi
 async function addSkill(root: string): Promise<string> {
   const scripts = Path.join(root, 'agents/skills/demo/scripts')
   await FileSystem.mkdir(scripts)
-  await FileSystem.writeFile(Path.join(root, 'agents/skills/demo/SKILL.md'), '---\nname: demo\n---\n')
+  await FileSystem.writeFile(
+    Path.join(root, 'agents/skills/demo/SKILL.md'),
+    joinTextLines(
+      S`
+        ---
+        name: demo
+        ---
+      `,
+      '',
+    ),
+  )
   const entry = Path.join(scripts, 'run.ts')
   const capture = JSON.stringify(Path.join(root, 'captured.json'))
   await FileSystem.mkdir(Path.join(root, 'ts'))
@@ -81,11 +121,24 @@ async function addSkill(root: string): Promise<string> {
   )
   await FileSystem.writeFile(
     entry,
-    "import { main } from '../../../../ts/implementation'\nawait main()\n",
+    joinTextLines(
+      S`
+        import { main } from '../../../../ts/implementation'
+        await main()
+      `,
+      '',
+    ),
   )
   await FileSystem.writeFile(
     Path.join(root, 'ts/implementation.ts'),
-    `import { Try } from '@shared'\nimport { FileSystem, Platform } from '@shared/os'\nexport async function main() { await FileSystem.writeFile(${capture}, JSON.stringify({ args: Platform.argv.slice(2), aliasResolved: typeof Try === 'function' })) }\n`,
+    joinTextLines(
+      S`
+            import { Try } from '@shared'
+            import { FileSystem, Platform } from '@shared/os'
+            export async function main() { await FileSystem.writeFile(${capture}, JSON.stringify({ args: Platform.argv.slice(2), aliasResolved: typeof Try === 'function' })) }
+      `,
+      '',
+    ),
   )
   return entry
 }

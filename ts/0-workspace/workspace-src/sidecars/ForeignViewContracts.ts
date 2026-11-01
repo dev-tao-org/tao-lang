@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, joinTextLines, Regxs, S, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './managed-modules/ManagedModuleTypes'
 
@@ -34,11 +34,24 @@ export type ForeignViewContractSourceInput = {
 export function createForeignViewContractSource(input: ForeignViewContractSourceInput): string {
   const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join('\n')
-  return `import type * as React from 'react'\nimport { ${input.name} as TaoForeignView } from ${
-    JSON.stringify(
-      importPath.startsWith('.') ? importPath : `./${importPath}`,
-    )
-  }\n\nexport type TaoForeignViewProps = {\n${parameters}\n}\n\nconst taoForeignViewContract: React.ComponentType<TaoForeignViewProps> = TaoForeignView\nvoid taoForeignViewContract\n`
+  const foreignViewName = input.name
+  const resolvedImportPath = JSON.stringify(importPath.startsWith('.') ? importPath : `./${importPath}`)
+  return joinTextLines(
+    S`
+      import type * as React from 'react'
+      import { ${foreignViewName} as TaoForeignView } from ${resolvedImportPath}
+
+      export type TaoForeignViewProps = {
+    `,
+    parameters,
+    S`
+      }
+
+      const taoForeignViewContract: React.ComponentType<TaoForeignViewProps> = TaoForeignView
+      void taoForeignViewContract
+    `,
+    '',
+  )
 }
 
 /** checkForeignViewContract writes and type-checks a module-local React component contract. */

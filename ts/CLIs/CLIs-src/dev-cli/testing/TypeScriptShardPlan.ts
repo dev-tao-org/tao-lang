@@ -17,10 +17,7 @@ function chooseShard(file: string): number {
   if (Regxs.ManagedTestShardRegx.test(name)) {
     return 0
   }
-  if (
-    Regxs.LargeTestShardRegx
-      .test(name)
-  ) {
+  if (Regxs.LargeTestShardRegx.test(name)) {
     return 1
   }
   return 2

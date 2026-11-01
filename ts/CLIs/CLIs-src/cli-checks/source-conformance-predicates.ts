@@ -64,11 +64,15 @@ function hasNamedBinding(owner: BoundCallable): boolean {
   return TypeScript.isPropertyAssignment(binding) && isStaticName(binding.name)
 }
 
-function isBindingWrapper(node: TypeScript.Node): boolean {
+type BindingWrapper = TypeScript.ParenthesizedExpression | TypeScript.AsExpression | TypeScript.SatisfiesExpression
+
+function isBindingWrapper(node: TypeScript.Node): node is BindingWrapper {
   return TypeScript.isParenthesizedExpression(node) || TypeScript.isAsExpression(node)
     || TypeScript.isSatisfiesExpression(node)
 }
 
-function isStaticName(node: TypeScript.Node): boolean {
+type StaticName = TypeScript.Identifier | TypeScript.StringLiteral | TypeScript.NumericLiteral
+
+function isStaticName(node: TypeScript.Node): node is StaticName {
   return TypeScript.isIdentifier(node) || TypeScript.isStringLiteral(node) || TypeScript.isNumericLiteral(node)
 }

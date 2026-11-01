@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 
 Tests.test('prepared activation retains toolchain values, rejects changed inputs and avoids another shell activation', async () => {
@@ -27,7 +27,17 @@ async function prepareFixture(root: string): Promise<void> {
   }
   for (const tool of ['bun', 'node']) {
     const path = Path.join(root, 'tools/bin', tool)
-    await FileSystem.writeFile(path, '#!/bin/sh\nexit 0\n', 'utf8')
+    await FileSystem.writeFile(
+      path,
+      joinTextLines(
+        S`
+          #!/bin/sh
+          exit 0
+        `,
+        '',
+      ),
+      'utf8',
+    )
     await FileSystem.chmod(path, 0o755)
   }
   await FileSystem.symlink(Path.join(root, 'tools'), Path.join(root, '.devenv/profile'))

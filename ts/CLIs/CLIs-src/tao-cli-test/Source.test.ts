@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { initializeProject } from '@workspace/projects/Projects'
 
@@ -62,7 +62,11 @@ Tests.test('cold project compilation requests preparation without installing run
   await Try(async () => {
     await FileSystem.writeFile(
       Path.join(directory, 'Main.tao'),
-      'use Text from tao@ui\napp Main { root Greeting }\nview Greeting { render Text("Hi") }',
+      S`
+        use Text from tao@ui
+        app Main { root Greeting }
+        view Greeting { render Text("Hi") }
+      `,
     )
     const environment = {
       ...Env.snapshot(),

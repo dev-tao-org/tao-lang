@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { auditInstalledGraph, collectAllRequirements } from '../sidecars/managed-modules/ManagedModuleGraph'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -10,7 +10,15 @@ const IncompatibleReactSingletonErrorRegx = /incompatible singleton react/
 
 Tests.test('normalization retains named requirement fields without changing the durable graph identity', () => {
   const input = buildManagedInput('/project')
-  const requirement = { name: 'Alpha', version: '1.0.0', origin: 'A.tao\nDetails', directory: '/ignored' }
+  const requirement = {
+    name: 'Alpha',
+    version: '1.0.0',
+    origin: S`
+      A.tao
+      Details
+    `,
+    directory: '/ignored',
+  }
   input.modules = [
     { directory: '/project/z', requirements: [{ name: 'alpha', version: '1.0.0', origin: 'Z.tao' }] },
     { directory: '/project/a', requirements: [requirement] },
@@ -28,7 +36,15 @@ Tests.test('normalization retains named requirement fields without changing the 
 })
 
 Tests.test('managed requirements validate the complete version without treating newlines as field separators', () => {
-  const requirements = [{ directory: '', name: 'alpha', version: '1.0.0\nOther.tao', origin: 'Owner.tao' }]
+  const requirements = [{
+    directory: '',
+    name: 'alpha',
+    version: S`
+      1.0.0
+      Other.tao
+    `,
+    origin: 'Owner.tao',
+  }]
   Tests.expect(() => collectAllRequirements(requirements)).toThrow('exact version for alpha in Owner.tao')
 })
 

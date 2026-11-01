@@ -1,5 +1,5 @@
 import '../fatal-errors'
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, Try } from '@shared'
 import { Platform, Repo, Terminal } from '@shared/os'
 import { runCommand } from '../cmd-exec'
 import { IO, renderOutput } from '../io'
@@ -32,7 +32,7 @@ async function runFixture(): Promise<void> {
   await configureCLIOutput(mode === 'dev-child' ? 'dev' : 'agent')
   IO.print('fixture routine details')
   IO.channel({ title: 'tool' }).stderr('ordinary tool stderr\n')
-  IO.warn('\u001b[33mfixture warning\u001b[0m\n  at /tmp/fixture.ts:12')
+  IO.warn(joinTextLines('\u001b[33mfixture warning\u001b[0m', '  at /tmp/fixture.ts:12'))
   if (mode === 'parent' || mode === 'failed') {
     await runCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
   }

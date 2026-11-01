@@ -1,13 +1,13 @@
-import { Errors } from '@shared'
+import { Errors, joinTextLines } from '@shared'
 import { Tests } from '@shared/os'
 
 Tests.describe('Errors diagnostics', () => {
   Tests.test('describe separates aggregate stacks and retains details while stopping cause cycles', () => {
     const cause = Object.assign(new Error('inner'), { context: 'retained' })
     cause.cause = cause
-    cause.stack = 'Error: inner\n    at inner-frame'
+    cause.stack = joinTextLines('Error: inner', '    at inner-frame')
     const error = new AggregateError([cause, 'raw failure'], 'outer')
-    error.stack = 'AggregateError: outer\n    at outer-frame'
+    error.stack = joinTextLines('AggregateError: outer', '    at outer-frame')
     Tests.expect(Errors.describe(error)).toEqual({
       stacks: ['    at outer-frame', '    at inner-frame'],
       details: {

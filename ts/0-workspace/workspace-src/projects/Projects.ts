@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isDiscoverableProjectDirectory } from '../modules/Paths'
 
@@ -39,7 +39,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
   await ensureProjectIdentity(Path.join(tao, 'store', 'project.json'))
   const ignore = Path.join(tao, '.gitignore')
   if (!await FileSystem.exists(ignore)) {
-    await FileSystem.writeFile(ignore, 'cache/\nlocks/\n')
+    await FileSystem.writeFile(ignore, joinTextLines('cache/', 'locks/', ''))
   }
   return deriveProjectLayout(root)
 }

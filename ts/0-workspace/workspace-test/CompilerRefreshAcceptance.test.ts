@@ -90,7 +90,10 @@ function taoAppSource(factor: number, includePrimary: boolean, includeExtraHook 
 
 function injectionSource(factor: number, includeExtraHook: boolean): string {
   const extraHooks = includeExtraHook
-    ? 'const topology = Tao.useWritable(() => "topology")\nconst topologyValue = Tao.useValue(topology)'
+    ? S`
+      const topology = Tao.useWritable(() => "topology")
+      const topologyValue = Tao.useValue(topology)
+    `
     : ''
   const topologyView = includeExtraHook
     ? "<Tao.Text testID={'topology-' + Id}>{topologyValue}</Tao.Text>"

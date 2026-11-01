@@ -61,7 +61,7 @@ async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord>
   validatePreviewReport(report, source)
   const metadata = parseRecordMetadata(record)
   const tree = await git(io, ['rev-parse', `${source}^{tree}`])
-  const fixture = await io.command('git', ['show', `${source}:${metadata.fixture?.path}`])
+  const fixture = await git(io, ['show', `${source}:${metadata.fixture?.path}`], { trim: false })
   if (!validMetadata(metadata, source, tree, report, fixture)) {
     Errors.ThrowUserInput(`Preview record ${source} is failed, unavailable, inconsistent or incomplete.`)
   }
