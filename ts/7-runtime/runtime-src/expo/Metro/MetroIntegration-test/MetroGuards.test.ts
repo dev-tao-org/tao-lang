@@ -1,6 +1,6 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import * as Runtime from '../../Runtime'
+import * as Runtime from '../../../Runtime'
 
 Tests.test('Metro refuses unsupported dependency versions and out-of-process worker configuration', async () => {
   await verifyRejectedMode('version', 'Unsupported underlying Metro version')

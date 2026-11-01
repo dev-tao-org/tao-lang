@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Addr, Errors, Try } from '@shared'
 import { Env } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
@@ -32,7 +32,8 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
       runtimePins.react,
     )
     await Try(async () => {
-      const registry = `http://127.0.0.1:${server.port}`
+      const port = server.port ?? Errors.ThrowShouldNeverHappen('Dependency registry did not bind a TCP port.')
+      const registry = Addr.localhostUrl(port)
       await expectInstallRetry(entry, root)
       const published: string[] = []
       const workspace = await openAutomaticWorkspace(
