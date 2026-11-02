@@ -49,6 +49,38 @@ Tests.test('an ordinary terminal keeps worker output visible instead of spending
   Tests.expect(rendered.trimEnd()).toEndWith('Commands: quit')
 })
 
+Tests.test('short ordinary terminals retain every compact worker status and the command footer', () => {
+  const snapshot = workerSnapshot()
+  snapshot.channels[0].status = 'passed'
+  snapshot.channels[1].status = 'failed'
+  snapshot.channels[2].status = 'idle'
+  for (const width of [80, 100]) {
+    const rendered = renderView(snapshot, width, 12)
+    const lines = rendered.split(NewlineCharacter)
+    Tests.expect(lines.length).toBeLessThanOrEqual(12)
+    Tests.expect(lines.every(line => line.length <= width)).toBe(true)
+    for (const channel of snapshot.channels) {
+      Tests.expect(rendered).toContain(channel.title)
+    }
+    Tests.expect(rendered).toContain('✓ TypeScript tests')
+    Tests.expect(rendered).toContain('✗ TypeScript shard 1')
+    Tests.expect(rendered).toContain('○ TypeScript shard 2')
+    Tests.expect(rendered).toContain('● Run')
+    Tests.expect(lines.at(-1)).toBe('Commands: quit')
+  }
+})
+
+Tests.test('worker overflow is summarized within capacity and tiny terminals retain the footer', () => {
+  const snapshot = workerSnapshot()
+  const rendered = renderView(snapshot, 80, 8)
+  Tests.expect(rendered.split(NewlineCharacter).length).toBeLessThanOrEqual(8)
+  Tests.expect(rendered).toContain('TypeScript tests')
+  Tests.expect(rendered).toContain('4 more channels')
+  Tests.expect(rendered.trimEnd()).toEndWith('Commands: quit')
+  Tests.expect(renderView(snapshot, 80, 2)).toBe('● Run 0:12\nCommands: quit')
+  Tests.expect(renderView(snapshot, 80, 1)).toBe('Commands: quit')
+})
+
 function workerSnapshot(): OutputSnapshot {
   const titles = [
     'TypeScript tests',
