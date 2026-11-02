@@ -2,10 +2,10 @@ import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Tests } from '@shared/os'
 import { runReview } from '../incremental-review/incremental-review'
 import { acceptSelection } from '../incremental-review/ReviewAccept'
-import { git, head, resolveGitIndexPath } from '../incremental-review/ReviewGit'
+import { git, head, readJson, resolveGitIndexPath } from '../incremental-review/ReviewGit'
 import { planSelection } from '../incremental-review/ReviewPlan'
 import { loadSession, saveSession } from '../incremental-review/ReviewSession'
-import type { IncrementalReviewResult, ReviewStatus } from '../incremental-review/ReviewTypes'
+import type * as ReviewTypes from '../incremental-review/ReviewTypes'
 import { put, read, withFixture } from './ReviewFixture'
 
 Tests.test('continuation inherits acceptance and evidence while reopening uses the original baseline', async () => {
@@ -69,27 +69,63 @@ Tests.test('an existing destination branch refuses before installing continuatio
 })
 
 Tests.test('continuation refuses interrupted and foreign source sessions before creating a branch', async () => {
-  await withFixture({ content: 'original' + NewlineCharacter }, async ({ root, session }) => {
-    await put(root, 'content', 'accepted' + NewlineCharacter)
-    const selection = await planSelection(session, ['content'])
-    await Tests.expect(() =>
-      acceptSelection(session, selection, {
-        atPhase() {
-          Errors.ThrowUserInput('Interrupted fixture')
-        },
-      })
-    ).toThrow()
-    const next = Path.join(root, '.artifacts/next')
-    await git(root, ['worktree', 'add', '-b', 'feat/next', next, 'HEAD'])
-    const args = ['continue', '--repo', next, '--from', root, '--branch', 'feat/next-incremental-review-approved']
-    await Tests.expect(() => runReview(args)).toThrow('interrupted acceptance')
-    await FileSystem.rm(Path.join(session.directory, 'journal.json'))
-    session.id = 'foreign'
-    await saveSession(session)
-    await Tests.expect(() => runReview(args)).toThrow('ownership')
-    Tests.expect((await git(root, ['branch', '--list', 'feat/next-incremental-review-approved'])).trim()).toBe('')
-  })
+  await withFixture(
+    { content: 'original' + NewlineCharacter, other: 'original' + NewlineCharacter },
+    async ({ root, session }) => {
+      await put(root, 'content', 'accepted' + NewlineCharacter)
+      await put(root, 'other', 'staged' + NewlineCharacter)
+      await git(root, ['add', 'other'])
+      await put(root, 'other', 'unstaged' + NewlineCharacter)
+      const next = Path.join(root, '.artifacts/next')
+      await git(root, ['worktree', 'add', '-b', 'feat/next', next, 'HEAD'])
+      const blocker = await interruptAcceptance(session)
+      const args = ['continue', '--repo', next, '--from', root, '--branch', 'feat/next-incremental-review-approved']
+      const beforeRefusal = await captureOldState(root, session.reviewedRoot)
+      await Tests.expect(() => runReview(args)).toThrow('interrupted acceptance')
+      Tests.expect(await captureOldState(root, session.reviewedRoot)).toEqual(beforeRefusal)
+      Tests.expect((await git(root, ['branch', '--list', 'feat/next-incremental-review-approved'])).trim()).toBe('')
+      await recoverInterruption(session, blocker)
+      session.id = 'foreign'
+      await saveSession(session)
+      await Tests.expect(() => runReview(args)).toThrow('ownership')
+      Tests.expect((await git(root, ['branch', '--list', 'feat/next-incremental-review-approved'])).trim()).toBe('')
+    },
+  )
 })
+
+async function recoverInterruption(session: ReviewTypes.ReviewSession, blocker: string): Promise<void> {
+  const indexPath = await resolveGitIndexPath(session.root)
+  const interruptedIndex = await FileSystem.readFile(indexPath)
+  await FileSystem.rm(blocker)
+  await runReview(['recover', '--repo', session.root])
+  const journal = await readJson<ReviewTypes.ReviewJournal>(Path.join(session.directory, 'journal.json'))
+  Tests.expect(journal.phase).toBe('complete')
+  Tests.expect(await read(session.reviewedRoot, 'content')).toBe('accepted\n')
+  Tests.expect(await read(session.root, 'content')).toBe('accepted\n')
+  Tests.expect(await git(session.root, ['show', ':other'])).toBe('staged\n')
+  Tests.expect(await read(session.root, 'other')).toBe('unstaged\n')
+  Tests.expect(await FileSystem.readFile(indexPath)).toEqual(interruptedIndex)
+  Tests.expect((await loadSession(session.root)).accepted).toHaveProperty('content')
+  const beforeRetry = await captureOldState(session.root, session.reviewedRoot)
+  await runReview(['recover', '--repo', session.root])
+  Tests.expect(await captureOldState(session.root, session.reviewedRoot)).toEqual(beforeRetry)
+}
+
+async function interruptAcceptance(session: ReviewTypes.ReviewSession): Promise<string> {
+  const selection = await planSelection(session, ['content'])
+  const blocker = Path.join(session.directory, 'receipts')
+  const token = 'Fixture blocks receipt directory creation'
+  await FileSystem.writeFile(blocker, token, { flag: 'wx' })
+  await Tests.expect(() => acceptSelection(session, selection)).toThrow()
+  Tests.expect(await FileSystem.readFile(blocker, 'utf8')).toBe(token)
+  const journal = await readJson<ReviewTypes.ReviewJournal>(Path.join(session.directory, 'journal.json'))
+  Tests.expect(journal.phase).toBe('reviewed')
+  Tests.expect(await head(session.root)).toBe(journal.sourceCommit)
+  Tests.expect(await head(session.reviewedRoot)).toBe(journal.reviewedCommit)
+  Tests.expect(await git(session.root, ['show', ':other'])).toBe('staged\n')
+  Tests.expect(await read(session.root, 'other')).toBe('unstaged\n')
+  return blocker
+}
 
 async function captureOldState(root: string, reviewedRoot: string) {
   return {
@@ -102,7 +138,7 @@ async function captureOldState(root: string, reviewedRoot: string) {
   }
 }
 
-async function readReviewStatus(root: string): Promise<ReviewStatus> {
+async function readReviewStatus(root: string): Promise<ReviewTypes.ReviewStatus> {
   const result = await runReview(['status', '--repo', root])
   if (!isReviewStatus(result)) {
     Errors.ThrowShouldNeverHappen('Incremental review status returned a different command result.')
@@ -110,6 +146,6 @@ async function readReviewStatus(root: string): Promise<ReviewStatus> {
   return result
 }
 
-function isReviewStatus(result: IncrementalReviewResult): result is ReviewStatus {
+function isReviewStatus(result: ReviewTypes.IncrementalReviewResult): result is ReviewTypes.ReviewStatus {
   return 'recheck' in result && 'pending' in result
 }

@@ -3,19 +3,18 @@ import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
 import { assertOwnedSession, assertReviewedSnapshot, saveSession } from './ReviewSession'
-import type { ReviewHooks, ReviewJournal, ReviewSelection, ReviewSession } from './ReviewTypes'
+import type { ReviewJournal, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** acceptSelection validates both trees and journals exact commits before advancing either branch. */
 export async function acceptSelection(
   session: ReviewSession,
   selection: ReviewSelection,
-  hooks: ReviewHooks = {},
 ): Promise<void> {
   await requireFinishedJournal(session)
   await validateSelection(session, selection)
   const journal = await prepareJournal(session, selection)
   await ReviewGit.writeJson(resolveJournalPath(session), journal)
-  await finishJournal(session, journal, hooks)
+  await finishJournal(session, journal)
 }
 
 /** recoverAcceptance completes a frozen journal idempotently without reverting source edits. */
@@ -97,7 +96,7 @@ async function createCommit(
   return (await ReviewGit.git(session.root, ['commit-tree', candidate, '-p', parent, '-m', message])).trim()
 }
 
-async function finishJournal(session: ReviewSession, journal: ReviewJournal, hooks: ReviewHooks = {}): Promise<void> {
+async function finishJournal(session: ReviewSession, journal: ReviewJournal): Promise<void> {
   await assertOwnedSession(session)
   await assertReviewedSnapshot(session, journal)
   await requireExpectedRefs(session, journal)
@@ -116,11 +115,9 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal, hoo
       ])
     }
     await recordPhase(session, journal, 'source')
-    await hooks.atPhase?.('source')
     await installIndex(sourceIndex, lock, journal)
     await recordPhase(session, journal, 'index')
-    await hooks.atPhase?.('index')
-    await finishReviewed(session, journal, hooks)
+    await finishReviewed(session, journal)
   }, { finally: () => FileSystem.rm(lock, { force: true }) })
   for (const path of journal.selection.files) {
     if (journal.selection.kind === 'reopen') {
@@ -133,7 +130,6 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal, hoo
     session.recheck = session.recheck.filter(path => !journal.selection.files.includes(path))
   }
   await saveSession(session)
-  await hooks.atPhase?.('session')
   await recordPhase(session, journal, 'complete')
 }
 
@@ -184,7 +180,7 @@ async function installIndex(path: string, lock: string, journal: ReviewJournal):
   }
 }
 
-async function finishReviewed(session: ReviewSession, journal: ReviewJournal, hooks: ReviewHooks): Promise<void> {
+async function finishReviewed(session: ReviewSession, journal: ReviewJournal): Promise<void> {
   await assertReviewedSnapshot(session, journal)
   if (await ReviewGit.head(session.reviewedRoot) !== journal.reviewedCommit) {
     if (await ReviewGit.tree(session.reviewedRoot) !== journal.selection.reviewedTree) {
@@ -196,7 +192,6 @@ async function finishReviewed(session: ReviewSession, journal: ReviewJournal, ho
         journal.reviewedCommit,
       ])
     }
-    await hooks.atPhase?.('reviewed-tree')
     await ReviewGit.git(session.root, [
       'update-ref',
       `refs/heads/${session.reviewedBranch}`,
@@ -205,7 +200,6 @@ async function finishReviewed(session: ReviewSession, journal: ReviewJournal, ho
     ])
   }
   await recordPhase(session, journal, 'reviewed')
-  await hooks.atPhase?.('reviewed-ref')
 }
 
 async function acquireIndexLock(path: string, session: ReviewSession, journal: ReviewJournal): Promise<void> {

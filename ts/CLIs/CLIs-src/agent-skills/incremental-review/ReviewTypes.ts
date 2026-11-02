@@ -70,14 +70,7 @@ export type ReviewJournal = {
   phase: ReviewJournalPhase
 }
 
-/** ReviewHooks supplies a fixture-only interruption between branch updates. */
-export type ReviewHooks = {
-  atPhase?: (point: ReviewHookPoint) => ReviewHookResult
-}
-
 type ReviewSelectionKind = 'files' | 'partial' | 'reopen'
 type AcceptedPathEntries = Record<string, string>
 type ReviewJournalPhase = 'prepared' | 'source' | 'index' | 'reviewed' | 'complete'
 type OptionalReviewJournalPhase = ReviewJournalPhase | undefined
-type ReviewHookPoint = 'source' | 'index' | 'reviewed-tree' | 'reviewed-ref' | 'session'
-type ReviewHookResult = void | Promise<void>

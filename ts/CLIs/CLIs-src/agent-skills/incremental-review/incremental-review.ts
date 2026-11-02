@@ -6,7 +6,7 @@ import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
 import { planReopen, planSelection } from './ReviewPlan'
 import * as ReviewSessionModule2 from './ReviewSession'
-import type { IncrementalReviewResult, ReviewHooks, ReviewSelection, ReviewSession } from './ReviewTypes'
+import type { IncrementalReviewResult, ReviewSelection, ReviewSession } from './ReviewTypes'
 
 /** main prints the incremental-review result for the skill's thin entry script. */
 export async function main(): Promise<void> {
@@ -14,7 +14,7 @@ export async function main(): Promise<void> {
 }
 
 /** runReview executes the incremental-review protocol against one explicit implementation checkout. */
-export async function runReview(args: string[], hooks: ReviewHooks = {}): Promise<IncrementalReviewResult> {
+export async function runReview(args: string[]): Promise<IncrementalReviewResult> {
   const command = args[0]
   if (!command || ['help', '--help', '-h'].includes(command)) {
     return {
@@ -55,7 +55,7 @@ export async function runReview(args: string[], hooks: ReviewHooks = {}): Promis
         )
       return { session: session.id, reviewedBranch: session.reviewedBranch, reviewedRoot: session.reviewedRoot }
     }
-    return await runSessionCommand(command, options, await ReviewSessionModule2.loadSession(root), hooks)
+    return await runSessionCommand(command, options, await ReviewSessionModule2.loadSession(root))
   })
 }
 
@@ -73,7 +73,6 @@ async function runSessionCommand(
   command: string,
   options: Options,
   session: ReviewSession,
-  hooks: ReviewHooks,
 ): Promise<IncrementalReviewResult> {
   if (command === 'status') {
     return await ReviewSessionModule2.reviewStatus(session)
@@ -87,11 +86,11 @@ async function runSessionCommand(
     return { recovered: true }
   }
   if (command === 'plan' || command === 'accept') {
-    return await runSelectionCommand(command, options, session, hooks)
+    return await runSelectionCommand(command, options, session)
   }
   if (command === 'reopen') {
     const selection = await planReopen(session, options.get('files') ?? [])
-    await acceptSelection(session, selection, hooks)
+    await acceptSelection(session, selection)
     return { reopened: selection.files }
   }
   if (command === 'note' || command === 'recheck') {
@@ -125,7 +124,6 @@ async function runSelectionCommand(
   command: SelectionCommand,
   options: Options,
   session: ReviewSession,
-  hooks: ReviewHooks,
 ): Promise<IncrementalReviewResult> {
   const selectionFile = single(options, 'selection')
   const reviewed = single(options, 'reviewed-patch')
@@ -150,7 +148,7 @@ async function runSelectionCommand(
       reviewedDiff: `git diff ${selection.reviewedHead} ${selection.reviewedTree}`,
     }
   }
-  await acceptSelection(session, selection, hooks)
+  await acceptSelection(session, selection)
   return { accepted: selection.files, kind: selection.kind }
 }
 
