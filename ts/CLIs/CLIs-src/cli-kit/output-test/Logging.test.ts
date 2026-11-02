@@ -79,6 +79,17 @@ Tests.test('batch commands cannot consume parent input under captured or delegat
   }
 })
 
+Tests.test('fatal command failures exit unsuccessfully while preserving nonzero command status', async () => {
+  for (const [commandStatus, expectedStatus] of [['0', 1], ['null', 1], ['7', 7]] as const) {
+    const result = await Platform.runIgnoreStatus(['bun', 'run', outputFixturePath, 'command-failure', commandStatus], {
+      cwd: Repo.getWorkspaceRoot(),
+      addEnv: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', CLI_OUTPUT_EVENTS: undefined },
+    })
+    Tests.expect(result.status).toBe(expectedStatus)
+    Tests.expect(result.stdout + result.stderr).toContain('Command failed: fixture')
+  }
+})
+
 async function runFixture(mode: string, terminalOutput?: string, input = '') {
   const addEnv = {
     TERMINAL_OUTPUT: terminalOutput,

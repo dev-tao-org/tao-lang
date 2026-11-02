@@ -16,7 +16,7 @@ async function fatalError(error: unknown): Promise<void> {
   }, {
     catch: () => writeFallbackError(error),
     finally() {
-      Platform.exit(status ?? 1)
+      Platform.exit(status || 1)
     },
   })
 }

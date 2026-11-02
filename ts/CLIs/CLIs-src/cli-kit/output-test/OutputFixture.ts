@@ -15,6 +15,11 @@ if (Platform.isMain(import.meta)) {
 
 async function runFixture(): Promise<void> {
   const mode = Platform.argv[2]
+  if (mode === 'command-failure') {
+    await configureCLIOutput('agent')
+    const status = Platform.argv[3] === 'null' ? null : Number(Platform.argv[3])
+    Errors.ThrowCommandExecution({ command: 'fixture', args: [], status, signal: null, stdout: '', stderr: '' })
+  }
   if (mode === 'command-eof' || mode === 'command-eof-delegate') {
     await configureCLIOutput('dev', { delegate: mode === 'command-eof-delegate' })
     await runNonInteractiveCommand('cat')

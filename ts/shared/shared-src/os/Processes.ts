@@ -1,9 +1,10 @@
 import * as ExternalErrors from '../universal/Errors/external'
-import { Errors, Regxs, Time, Try } from '../universal/universal'
+import { Errors, Regxs, Try } from '../universal/universal'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
 import * as Node from './bridges/Bridge_node/Bridge_node'
 import Env from './Env'
+import { collectCommand } from './ProcessesCapture'
 
 type SpawnOptions<
   In extends BunHost.SpawnOptions.Writable,
@@ -176,66 +177,9 @@ export async function readText(stream: WebHost.ReadableStream<Uint8Array>): Prom
 }
 
 type CommandInvocationField = 'command' | 'args' | 'cwd'
-type CommandInvocation = Pick<CommandResult, CommandInvocationField>
+/** CommandInvocation identifies the executable, arguments and working directory before execution. */
+export type CommandInvocation = Pick<CommandResult, CommandInvocationField>
 type CommandInputMode = 'pipe' | 'ignore'
-type CapturedChild = PipedChildProcess<CommandInputMode>
-type CommandStreams = { stdout: Promise<string>; stderr: Promise<string> }
-
-async function collectCommand(
-  child: CapturedChild,
-  invocation: CommandInvocation,
-  options: RunOptions,
-): Promise<AsyncCommandResult> {
-  const streams = { stdout: readText(child.stdout), stderr: readText(child.stderr) }
-  const cancel = startCommandTimeout(child, options.timeoutMs)
-  return await Try(async () => {
-    const input = writeCommandInput(child, options.stdin)
-    const [status, stdout, stderr] = await Promise.all([child.exited, streams.stdout, streams.stderr, input])
-    return createCommandResult(invocation, status, child.signalCode, stdout, stderr)
-  }, {
-    catch: error => failCommandIo(child, invocation, streams, error),
-    finally: cancel,
-  })
-}
-
-type CommandInput = ProcessInput | undefined
-
-async function writeCommandInput(child: CapturedChild, input: CommandInput): Promise<void> {
-  if (input !== undefined && child.stdin) {
-    await child.stdin.write(input)
-    await child.stdin.end()
-  }
-}
-
-async function failCommandIo(
-  child: CapturedChild,
-  invocation: CommandInvocation,
-  streams: CommandStreams,
-  error: unknown,
-): Promise<never> {
-  await Try(() => terminate(child), {
-    catch: cleanup => throwCommandFailure(invocation, cleanup),
-  })
-  const [status, stdout, stderr] = await Promise.allSettled([child.exited, streams.stdout, streams.stderr])
-  const result = createCommandResult(
-    invocation,
-    status.status === 'fulfilled' ? status.value : null,
-    child.signalCode,
-    stdout.status === 'fulfilled' ? stdout.value : '',
-    stderr.status === 'fulfilled' ? stderr.value : '',
-  )
-  return throwCommandFailure(invocation, error, result)
-}
-
-type CommandTimeout = number | undefined
-
-function startCommandTimeout(child: BunHost.Subprocess, timeoutMs: CommandTimeout): () => void {
-  if (timeoutMs === undefined) {
-    return () => undefined
-  }
-  return Time.schedule(timeoutMs, () => child.kill('SIGKILL'))
-}
-
 function requireCommandSuccess(result: CommandResult): asserts result is CompletedCommandResult {
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowCommandExecution(result)
