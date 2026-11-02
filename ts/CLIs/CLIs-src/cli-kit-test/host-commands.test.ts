@@ -7,10 +7,10 @@ Tests.test('host secret entry owns the terminal while batch host operations keep
     async requireAccess() {
       events.push('access')
     },
-    async interactive(command, options) {
+    async executeInteractive(command, options) {
       events.push(`interactive:${command}:${options?.variadicArgs?.join(' ')}`)
     },
-    async noninteractive(command, options) {
+    async executeNonInteractive(command, options) {
       events.push(`noninteractive:${command}:${options?.variadicArgs?.join(' ')}`)
     },
   }

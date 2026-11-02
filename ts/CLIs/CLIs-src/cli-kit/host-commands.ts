@@ -13,20 +13,20 @@ export async function runHostCommand(
   await execution.requireAccess(
     'Invoke this operation through ./agent unsandboxed in a host-enabled harness.',
   )
-  const execute = requiresHostTerminal(argv) ? execution.interactive : execution.noninteractive
+  const execute = requiresHostTerminal(argv) ? execution.executeInteractive : execution.executeNonInteractive
   await execute(route.command, { variadicArgs: route.variadicArgs, cwd })
 }
 
 type HostCommandExecution = {
   requireAccess: typeof Platform.requireHostProcessAccess
-  interactive: typeof runInteractiveCommand
-  noninteractive: typeof runNonInteractiveCommand
+  executeInteractive: typeof runInteractiveCommand
+  executeNonInteractive: typeof runNonInteractiveCommand
 }
 
 const liveExecution: HostCommandExecution = {
   requireAccess: Platform.requireHostProcessAccess,
-  interactive: runInteractiveCommand,
-  noninteractive: runNonInteractiveCommand,
+  executeInteractive: runInteractiveCommand,
+  executeNonInteractive: runNonInteractiveCommand,
 }
 
 function requiresHostTerminal(argv: readonly string[]): boolean {
