@@ -3,10 +3,21 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { NewlineCharacter, S, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { linkModules } from '@typecheck/LinkModules'
 import { loadModules } from '../../workspace-src/modules/Loader'
 
 const NamedPackageBoundaryErrorRegx = /crosses a named package boundary/
 const OwningTaoProjectBoundaryErrorRegx = /leaves the owning Tao project/
+
+Tests.test('relative imports cannot expose folder declarations from a different directory', async () => {
+  const root = await createProject()
+  await Try(async () => {
+    await writeSources(Path.join(root, 'Child', 'Secrets.tao'), 'folder let Secret = "private"')
+    const entry = parseEntry(Path.join(root, 'Main.tao'), 'use ./Child Secret')
+    const modules = await loadModules(entry, { directory: root }, createParser())
+    Tests.expect(() => linkModules(entry.path, modules)).toThrow('it is not visible')
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test(
   'loads direct directory imports from a virtual entry and records discovery timings',
@@ -34,7 +45,7 @@ Tests.test(
       )
 
       Tests.expect(sources.map(source => source.path)).toEqual([Path.join(root, 'Main.virtual.tao'), target])
-      Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'same-directory' }])
+      Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'same-project' }])
       Tests.expect(sources[0]!.imports[1]!.targets).toEqual([])
       Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.load')
       Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.discover')
@@ -178,6 +189,7 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
       'Modules and Dependencies.tao',
       'Nearby.tao',
       'Public/Caption.tao',
+      '@cards/Captions.tao',
       '@cards/Card.tao',
       '@cards/Data/Caption.tao',
       Path.relative(Path.dirname(entryPath), standardView),

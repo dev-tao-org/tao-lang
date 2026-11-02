@@ -4,7 +4,7 @@ use tao@ui all
 use ModuleCaption
 use tao@ui Text as Caption
 use package tao@ui as UI
-use ./Modules ModuleCaption as ImportedCaption
+use ModuleCaption as ImportedCaption
 use package ./Modules
 use ./Library LibraryGreeting
 

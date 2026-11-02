@@ -22,7 +22,7 @@ export async function resolveBareTargets(
     : await Catalog.listDirectSourceFiles(Path.dirname(physicalImporter), context.projectRoot)
   return paths.filter(path => path !== importer).map(path => ({
     path,
-    relation: packageRoot ? 'same-package' : 'same-directory',
+    relation: Paths.getImportRelation(importer, path, context.projectRoot),
   }))
 }
 
@@ -184,9 +184,7 @@ async function resolveNamedTargets(
   }
   return files.map(path => ({
     path,
-    relation: Paths.findNamedPackageRoot(importer, context.projectRoot) === packageRoot
-      ? 'same-package'
-      : 'same-project',
+    relation: Paths.getImportRelation(importer, path, context.projectRoot),
   }))
 }
 

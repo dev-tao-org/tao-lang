@@ -121,8 +121,8 @@ function assertProjectImportGraph(
     { path: paths.card, relation: 'public' },
   ])
   Tests.expect(byPath.get(paths.card)!.imports[0]!.targets).toEqual([
-    { path: paths.caption, relation: 'same-package' },
-    { path: paths.card, relation: 'same-package' },
+    { path: paths.caption, relation: 'same-directory' },
+    { path: paths.card, relation: 'same-file' },
   ])
   Tests.expect(byPath.get(paths.card)!.imports[1]!.targets).toEqual([{ path: paths.label, relation: 'public' }])
 }

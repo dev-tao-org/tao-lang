@@ -94,19 +94,20 @@ export function getImportRelation(
   target: string,
   projectRoot: string,
 ): ImportRelation {
-  if (Path.resolve(importer) === Path.resolve(target)) {
+  const importerPath = Path.resolve(importer)
+  const targetPath = Path.resolve(target)
+  if (importerPath === targetPath) {
     return 'same-file'
   }
-  const importerPackage = findNamedPackageRoot(importer, projectRoot)
-  const targetPackage = findNamedPackageRoot(target, projectRoot)
+  if (Path.dirname(importerPath) === Path.dirname(targetPath)) {
+    return 'same-directory'
+  }
+  const importerPackage = findNamedPackageRoot(importerPath, projectRoot)
+  const targetPackage = findNamedPackageRoot(targetPath, projectRoot)
   if (importerPackage && importerPackage === targetPackage) {
     return 'same-package'
   }
-  if (importerPackage !== targetPackage) {
-    return 'same-project'
-  }
-
-  return 'same-directory'
+  return 'same-project'
 }
 
 const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])

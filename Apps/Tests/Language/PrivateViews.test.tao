@@ -1,4 +1,4 @@
-use ./Language Language
+use Language
 
 tests "Nested view scope" {
   test "captures are isolated across owner instances" {

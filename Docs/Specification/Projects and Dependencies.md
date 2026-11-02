@@ -58,6 +58,22 @@ project with an `@ui` module; another dependency cannot reuse the alias. Develop
 source and watches edits. Packaged tools materialize the versioned bundled project without
 recording its machine-specific location in the source lock.
 
+#### `use LanguageFeatures`
+
+A bare import selects declarations by name without choosing a source file. Outside a named module,
+it searches the other Tao files in the same folder; inside a named module, it searches that module's
+tree. `use LanguageFeatures, Caption as Heading` can select names from different files. File-private
+declarations remain inaccessible, and multiple visible matches are an ambiguity error.
+
+Declarations marked `folder` are also available implicitly to sibling files, without a `use`.
+
+#### `use package ./cards as Cards`
+
+Import the visible declarations under a namespace, accessed as `Cards.Caption` rather than
+`Caption`. Without `as Cards`, the namespace is derived from the source path. In contrast,
+`use ./cards Caption, Card as Panel` selects individual local names; `use ./cards all` imports
+all public declarations as local names. All forms retain their visibility and ownership boundaries.
+
 #### `tao setup` and `tao update`
 
 Compilation, developer web preview and tests check their requirements and offer missing setup,
