@@ -8,6 +8,10 @@ description: >-
 
 # Worktree status
 
+- Before calling a worktree safe to retire, require `git-workflow`'s
+  [evidence preservation receipt](../git-workflow/references/branch-evidence.md); inspect ignored
+  task evidence and submodule contents even when ordinary Git status is clean.
+
 - Run `./agent worktree-status` from the Tao worktree root. Read its full report in the named `.artifacts/logs/agent/worktree-status/` log if the agent wrapper truncates the display.
 - Show each worktree once with its verdict and latest attached task: app, title, description, creation time, and last activity time. The report states how many other tasks match; use `./agent reclaim --report-json` for every task's full metadata in its named log.
 - Treat `reclaimable` as what `./agent unsandboxed reclaim --execute` would **attempt**, not a promise that Git will remove the directory. The status command never removes anything. An unreadable installed task index makes an unmatched worktree unclassified.

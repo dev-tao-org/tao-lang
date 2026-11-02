@@ -9,10 +9,12 @@ description: >-
 # Storage Archive
 
 Preview timing history is owned by `pipeline-performance`'s
-[preview history](../pipeline-performance/references/preview-history.md). Its pre-landing archive
-push and pointer update are authorized by that workflow; the screenshot capture/visual-approval
-steps below apply to screenshots. The new implementation's authorized `land` command publishes
-and pins timing records; `performance record` captures them locally without publication.
+[preview history](../pipeline-performance/references/preview-history.md). `git-workflow`'s
+[branch evidence](../git-workflow/references/branch-evidence.md) requires durable archive
+preservation before branch completion, merge handoff or retirement, including before landing.
+The screenshot capture/visual-approval steps below apply to screenshots. The authorized `land`
+command publishes and pins timing records during landing; `performance record` only captures
+them locally and cannot complete an earlier branch handoff.
 
 `Docs/Roadmap/UI screenshot archive/Plan - UI screenshot archive.md` owns what the archive records
 and why: the device and appearance matrix, file names, the per-run manifest, and the submodule rules.
