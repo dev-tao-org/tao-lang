@@ -3,7 +3,7 @@
 Proposed local state and detached in-memory drafts support editing datasource values before explicitly saving them; these examples are not yet executable.
 
 ```tao
-use Button, Col, Text, TextInput from tao@ui
+use tao@ui Button, Col, Text, TextInput
 
 data Items / Item {
    Name text,

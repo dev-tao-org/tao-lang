@@ -4,7 +4,7 @@ import { Tests } from '@shared/os'
 import * as AST from '../ast-gen-src/AST'
 
 Tests.test('field construction preserves import order and absence while checking expected semantic kinds', () => {
-  const tree = createParser().parse('use First, Second as Alias from ./views/common')
+  const tree = createParser().parse('use ./views/common First, Second as Alias')
   const statement = tree.rootNode.namedChildren.find(node => node.type === 'UseStatement')!
   const use = AST.UseStatement(statement)
   Tests.expect(use.imports.map(node => node.target.value)).toEqual(['First', 'Second'])

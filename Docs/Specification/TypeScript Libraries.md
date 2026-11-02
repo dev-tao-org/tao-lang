@@ -3,7 +3,7 @@
 A TypeScript library publishes selected Tao views as typed React components.
 
 ```tao
-use Text from tao@ui
+use tao@ui Text
 use package ./cards as Cards
 
 ts-library Demo {

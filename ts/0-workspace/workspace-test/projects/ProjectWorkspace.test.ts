@@ -42,7 +42,7 @@ async function createProjectEntry(root: string): Promise<string> {
   await FileSystem.writeFile(
     entry,
     S`
-      use Text from tao@ui
+      use tao@ui Text
       app Main { root Greeting }
       view Greeting { render Text("Hi") }
     `,

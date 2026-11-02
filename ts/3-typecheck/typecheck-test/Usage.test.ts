@@ -7,11 +7,11 @@ import { unusedWarnings } from '../typecheck-src/Usage'
 
 Tests.test('unused warnings follow lexical bindings, captures and namespace uses without treating exports as unused', () => {
   const source = S`
-    use Text, Col, Text as Caption from tao@ui
+    use tao@ui Text, Col, Text as Caption
     use package tao@ui as UI
     use package @tao/other as Other
     use package @tao/widgets
-    use all from ./UnusedWildcard
+    use ./UnusedWildcard all
     app Demo { root Main }
     let Unused = "keep me"
     public let Published = "available elsewhere"

@@ -8,9 +8,9 @@ requires file:../shared-widgets as shared
 
 ...
 
-use Button from widgets@ui/controls
-use Badge from @widgets/ui
-use Text, Row, Col, Input from tao@ui
+use widgets@ui/controls Button
+use @widgets/ui Badge
+use tao@ui Text, Row, Col, Input
 ```
 
 #### `tao init ./Calendar`
@@ -39,19 +39,19 @@ Aliases default from the source name and must be unique in their declaration sco
 File dependencies are live paths relative to the declaring project or dependency. Their optional
 version is descriptive and defaults to `live`. `requires bundled:tao` selects bundled source.
 
-#### `use Button from widgets@ui/controls`
+#### `use widgets@ui/controls Button`
 
 The alias selects a dependency project, `ui` selects its named module, and `controls` selects a
 subdirectory's direct Tao files. Omitting the subdirectory selects the module tree. Modules can
 use their own project's dependency aliases; imports expose public declarations across projects.
 
-#### `use Badge from @widgets/ui`
+#### `use @widgets/ui Badge`
 
 Local imports discover named module folders, including beneath ordinary subfolders. Duplicate
 module names are errors; relative imports cannot cross named module boundaries. Dependency
 projects follow the same discovery rules.
 
-#### `use Text, Row, Col, Input from tao@ui`
+#### `use tao@ui Text, Row, Col, Input`
 
 The automatically supplied `tao` alias exposes these standard views from an ordinary bundled
 project with an `@ui` module; another dependency cannot reuse the alias. Development uses its live

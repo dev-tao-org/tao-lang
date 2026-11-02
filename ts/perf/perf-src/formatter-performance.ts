@@ -21,8 +21,8 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
       scenario: '500-views',
       source: joinTextLines(
         S`
-          use Text from tao@ui
-          use Col from tao@ui
+          use tao@ui Text
+          use tao@ui Col
         `,
         Array.from(
           { length: 500 },

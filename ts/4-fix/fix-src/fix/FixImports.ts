@@ -167,7 +167,7 @@ function renderNamedImport(statement: AST.UseStatement, imports: readonly AST.Na
     `${imported.target.value}${imported.alias ? ` as ${imported.alias.value}` : ''}`
   ).join(', ')
   const source = statement.from?.value ?? ''
-  return `use ${names}${source ? ` from ${source}` : ''}`
+  return `use ${source ? `${source} ` : ''}${names}`
 }
 
 function collectImportIdentities(statement: Import): string[] {
@@ -187,7 +187,7 @@ function renderGroups(groups: ReadonlyMap<string, Group>): string[] {
       return group.text
     }
     const namesCode = group.form === 'all' ? 'all' : [...group.names].sort().join(', ')
-    return `use ${namesCode}${group.source ? ` from ${group.source}` : ''}`
+    return `use ${group.source ? `${group.source} ` : ''}${namesCode}`
   })
 }
 

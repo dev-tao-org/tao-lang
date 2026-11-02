@@ -71,7 +71,7 @@ Tests.test('text literals reject raw JSON control characters but retain escaped 
   Tests.expect(escapedControl.rootNode.hasError).toBe(false)
 })
 
-Tests.test('contextual blocks reject missing renders and misplaced statements in syntax diagnostics', () => {
+Tests.test('syntax diagnostics reject invalid contextual statements and superseded imports', () => {
   const parser = createParser()
   const invalidSources = [
     'app Demo {}',
@@ -82,6 +82,8 @@ Tests.test('contextual blocks reject missing renders and misplaced statements in
     'view Main { render Text { render inject ```ts return null ``` } }',
     'app Demo { root Main root Other }',
     'tests { test { expect { #save input value "Ready" } } }',
+    'use Text from tao@ui',
+    'use all from tao@ui',
   ]
 
   for (const source of invalidSources) {
@@ -91,9 +93,9 @@ Tests.test('contextual blocks reject missing renders and misplaced statements in
 
 Tests.test('module imports, visibility prefixes and qualified references parse', () => {
   const source = S`
-    use Name, Other as Alias from ./views/common
+    use ./views/common Name, Other as Alias
     use Standalone
-    use all from tao@ui
+    use tao@ui all
     use package tao@ui as UI
     file app Demo { root UI.Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
@@ -121,8 +123,8 @@ Tests.test('requirements, package subpath imports and foreign views parse', () =
     requires file:../widgets as widgets
     requires npm:@date-fns/tz version 4.1.0
     requires bundled:tao version v2 as tao
-    use Save from @store
-    use Button from widgets@ui/controls
+    use @store Save
+    use widgets@ui/controls Button
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = createParser().parse(source)

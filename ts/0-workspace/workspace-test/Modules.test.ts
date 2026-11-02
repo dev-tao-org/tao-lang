@@ -80,7 +80,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
   await FileSystem.writeFile(
     Path.join(directory, 'feature/App.tao'),
     S`
-      use Card from @cards
+      use @cards Card
       app Main { root Card }
     `,
   )
@@ -88,7 +88,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 
 function card(value: string): string {
   return S`
-    use Text from tao@ui
+    use tao@ui Text
     project view Card { render Text(${JSON.stringify(value)}) }
   `
 }

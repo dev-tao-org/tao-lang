@@ -150,7 +150,7 @@ function appendViews(source: string, start: number, count: number): string {
 function createViewModule(start: number, count: number): string {
   const declarations = Array.from({ length: count }, (_, index) => `public ${createViewDeclaration(start + index)}`)
   return S`
-    use Col, Text from tao@ui
+    use tao@ui Col, Text
     ${declarations.join('\n\n')}
   `
 }

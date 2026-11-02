@@ -1,4 +1,4 @@
-use Text, Col, Row from tao@ui
+use tao@ui Text, Col, Row
 
 app Preview {
   root Stage

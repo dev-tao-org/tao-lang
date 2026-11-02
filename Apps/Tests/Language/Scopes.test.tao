@@ -1,4 +1,4 @@
-use Language from ./Language
+use ./Language Language
 
 tests "Lexical scopes" {
   test "Nearest value and isolated child blocks" {

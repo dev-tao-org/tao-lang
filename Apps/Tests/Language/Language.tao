@@ -1,6 +1,6 @@
-use Col from tao@ui
-use ScopeExamples from ./Scopes
-use PrivateViewExamples from ./PrivateViews
+use tao@ui Col
+use ./Scopes ScopeExamples
+use ./PrivateViews PrivateViewExamples
 
 folder app Language {
   root LanguageExamples

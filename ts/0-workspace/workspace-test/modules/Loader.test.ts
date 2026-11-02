@@ -24,8 +24,8 @@ Tests.test(
         parseEntry(
           Path.join(root, 'Main.virtual.tao'),
           S`
-            use all from ./views
-            use all from ./empty
+            use ./views all
+            use ./empty all
             ${app('Main')}
           `,
         ),
@@ -78,7 +78,7 @@ Tests.test('resolves a named package recursively and reports its import ownershi
     await FileSystem.writeFile(card, view('Card'))
     await FileSystem.writeFile(nestedProjectCard, view('Nested'))
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use all from @parts${NewlineCharacter}${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use @parts all${NewlineCharacter}${app('Main')}`),
       { directory: root },
       createParser(),
     )
@@ -97,7 +97,7 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
     await FileSystem.mkdirs(Path.join(standardRoot, '.tao'), Path.dirname(standardPath))
     await FileSystem.writeFile(standardPath, view('Actual'))
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use all from tao@ui${NewlineCharacter}${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use tao@ui all${NewlineCharacter}${app('Main')}`),
       {
         directory: root,
         resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
@@ -118,7 +118,7 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
     await writeSources(Path.join(root, '@tao', 'Card.tao'), view('Card'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(root, 'Main.tao'), `use all from ./@tao${NewlineCharacter}${app('Main')}`),
+        parseEntry(Path.join(root, 'Main.tao'), `use ./@tao all${NewlineCharacter}${app('Main')}`),
         { directory: root },
         createParser(),
       ),
@@ -139,7 +139,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
     await FileSystem.mkdir(Path.join(projectRoot, '.tao'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(projectRoot, 'Main.tao'), `use all from ./Linked.tao${NewlineCharacter}${app('Main')}`),
+        parseEntry(Path.join(projectRoot, 'Main.tao'), `use ./Linked.tao all${NewlineCharacter}${app('Main')}`),
         { directory: projectRoot },
         createParser(),
       ),

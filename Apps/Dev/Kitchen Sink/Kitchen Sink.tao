@@ -1,12 +1,12 @@
 // Standard views are ordinary imported Tao declarations.
 // Project dependency declarations live in ../Dependencies.tao.
-use all from tao@ui
+use tao@ui all
 use ModuleCaption
-use Text as Caption from tao@ui
+use tao@ui Text as Caption
 use package tao@ui as UI
-use ModuleCaption as ImportedCaption from ./Modules
+use ./Modules ModuleCaption as ImportedCaption
 use package ./Modules
-use LibraryGreeting from ./Library
+use ./Library LibraryGreeting
 
 file
 let DefaultTitle is text = "Kitchen Sink"

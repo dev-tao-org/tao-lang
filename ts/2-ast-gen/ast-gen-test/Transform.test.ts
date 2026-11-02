@@ -100,9 +100,9 @@ async function readAppDeclaration(): Promise<string> {
 
 Tests.test('module statements and declaration visibility become semantic nodes', () => {
   const source = Shared.S`
-    use Name, Other as Alias from ./views/common
+    use ./views/common Name, Other as Alias
     use Standalone
-    use all from tao@ui
+    use tao@ui all
     use package tao@ui as UI
     file app Demo { root UI . Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
@@ -158,7 +158,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     requires file:../widgets
     requires npm:date-fns version 4.1.0
     requires bundled:tao as tao
-    use Button from widgets@ui/controls
+    use widgets@ui/controls Button
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = createParser().parse(source)
@@ -189,7 +189,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     'requires file:../widgets',
     'requires npm:date-fns version 4.1.0',
     'requires bundled:tao as tao',
-    'use Button from widgets@ui/controls',
+    'use widgets@ui/controls Button',
     'public view FormattedDate(Value text) from ./FormattedDate.tsx',
   ])
 })

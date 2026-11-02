@@ -71,7 +71,7 @@ function observePageErrors(page: HeadlessBrowser.Page): string[] {
 function taoAppSource(factor: number, includePrimary: boolean, includeExtraHook = false): string {
   const primary = includePrimary ? '    #A Counter("A", "1")' : ''
   return S`
-    use Col from tao@ui
+    use tao@ui Col
 
     app Main { root Root }
 

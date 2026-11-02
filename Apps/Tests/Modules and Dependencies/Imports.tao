@@ -1,7 +1,7 @@
-use Text, Col from tao@ui
-use Card as ImportedCard from @cards
+use tao@ui Text, Col
+use @cards Card as ImportedCard
 use package @cards as Cards
-use all from ./Public
+use ./Public all
 
 let Caption = "Caller scope"
 

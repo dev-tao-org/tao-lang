@@ -28,7 +28,7 @@ Tests.test('imported prototype-named views retain their descriptor when rendered
 function compileImportedRoot(render: string, declaration: string): Readonly<Record<string, string>> {
   const parser = createParser()
   const entry = transform(parser.parse(S`
-    use __proto__ as Imported from ./Other
+    use ./Other __proto__ as Imported
     app Main { root Root }
     view Root { ${render} }
   `))!

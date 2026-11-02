@@ -20,16 +20,16 @@ async function runSourceCommands(path: string): Promise<void> {
   await FileSystem.writeFile(
     path,
     S`
-      use Text from tao@ui
-      use Col from tao@ui
+      use tao@ui Text
+      use tao@ui Col
       view Main{render Text( "Hi" )}
     `,
   )
   await updateTaoSource(path, 'fix', print, message => warnings.push(message))
   Tests.expect(await FileSystem.readFile(path, 'utf8'))
-    .toBe('use Col, Text from tao@ui\n\nview Main {\n  render Text("Hi")\n}')
+    .toBe('use tao@ui Col, Text\n\nview Main {\n  render Text("Hi")\n}')
   Tests.expect(warnings).toEqual([
-    `${path}:1:5 [unused-import] Imported name 'Col' is not used in this file.`,
+    `${path}:1:12 [unused-import] Imported name 'Col' is not used in this file.`,
     `${path}:3:6 [unused-declaration] Declaration 'Main' is not used in this file.`,
   ])
   const invalid = S`

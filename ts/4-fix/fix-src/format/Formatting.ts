@@ -59,7 +59,7 @@ export const Formatting = {
   },
   UseStatement(fm) {
     fm.oneSpaceAfter('use')
-    fm.oneSpaceAround('from')
+    fm.oneSpaceBeforeProperty('imports', 'all')
     fm.commaSpacedList()
   },
   UsePackageStatement(fm) {

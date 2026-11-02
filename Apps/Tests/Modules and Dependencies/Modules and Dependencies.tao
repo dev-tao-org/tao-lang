@@ -1,4 +1,4 @@
-use ModuleExamples from ./Imports
+use ./Imports ModuleExamples
 
 folder app ModulesAndDependencies {
   root ModuleExamples

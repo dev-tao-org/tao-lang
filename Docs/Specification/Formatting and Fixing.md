@@ -3,7 +3,7 @@
 Formatting normalizes Tao layout without changing meaning; explicitly requested fixing reorganizes imports and reports unused bindings.
 
 ```tao
-use Text, Col from tao@ui
+use tao@ui Text, Col
 
 public
 view Greeting(Title text, Subtitle text) {
@@ -40,11 +40,11 @@ Fenced TypeScript is formatted as TSX with the same width and indentation, prese
 literal whitespace. An incomplete TypeScript body stays unchanged while complete surrounding Tao
 syntax can still be formatted.
 
-#### `use Col, Text from tao@ui`
+#### `use tao@ui Col, Text`
 
 Fixing combines compatible imports, removes exact duplicates, and sorts selected names and
 sources. Aliases and comment-separated groups remain intact. Long named-import lists use a hanging
-indent, with `from ...` on the following line.
+indent after `use <source> FirstName,` on the first line.
 
 #### Unused bindings
 

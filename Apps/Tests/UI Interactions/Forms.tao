@@ -1,4 +1,4 @@
-use Col, Input from tao@ui
+use tao@ui Col, Input
 
 folder view Form {
   render Col {

@@ -162,7 +162,7 @@ function createImportStatementKey(statement: Modules.ImportStatement): string {
     },
     UseStatement(namedImport) {
       const names = namedImport.imports.map(createNamedImportKey).join(',')
-      // ex: use Foo as Bar from X -> use:Foo:Bar:X
+      // ex: use ./X Foo as Bar -> use:Foo:Bar:./X
       return `use:${namedImport.all ? 'all' : names}:${namedImport.from?.value ?? ''}`
     },
   })

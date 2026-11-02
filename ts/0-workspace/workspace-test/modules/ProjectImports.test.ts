@@ -64,8 +64,8 @@ async function writeProjectImportSources(producer: string, icons: string): Promi
   await writeSource(
     paths.card,
     S`
-      use Caption from @ui/controls
-      use Label from icons@icons/labels
+      use @ui/controls Caption
+      use icons@icons/labels Label
       view Card { render Text("Card") }
     `,
   )
@@ -81,7 +81,7 @@ async function loadProjectImportGraph(consumer: string, producer: string, icons:
     parseEntry(
       entryPath,
       S`
-        use Card from widgets@ui/controls
+        use widgets@ui/controls Card
         app Main { root Card }
       `,
     ),
@@ -139,7 +139,7 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
       parseEntry(
         entryPath,
         S`
-          use all from tao@ui
+          use tao@ui all
           app Main { root Root }
         `,
       ),
@@ -170,7 +170,7 @@ Tests.test('aliased project imports reject missing physical modules', async () =
         parseEntry(
           Path.join(consumer, 'Main.tao'),
           S`
-            use all from tao@missing
+            use tao@missing all
             app Main { root Root }
           `,
         ),

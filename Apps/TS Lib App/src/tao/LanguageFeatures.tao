@@ -1,6 +1,6 @@
-use all from tao@ui
-use Text as AliasText from tao@ui
-use all from ./cards
+use tao@ui all
+use tao@ui Text as AliasText
+use ./cards all
 use package ./cards as Cards
 use FolderScope, PackageScope, ProjectScope
 

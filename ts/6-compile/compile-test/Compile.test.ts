@@ -98,7 +98,7 @@ Tests.test('generated bootstrap initializes imported values before entry values'
   const entryPath = '/app/Main.tao'
   const valuePath = '/app/Values.tao'
   const entry = transform(parser.parse(S`
-    use Value from ./Values
+    use ./Values Value
     app Main { root Root }
     view Root { render inject \`\`\`ts return null \`\`\` }
     let Copy = Value
@@ -165,7 +165,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
   const entry = transform(
     createParser().parse(S`
       use package @common as UI
-      use Shared as LocalShared from ./entry
+      use ./entry Shared as LocalShared
       app Main { root UI.Root }
       view Shared { render UI.Root }
       let Caption = "module value"
@@ -173,7 +173,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
   )!
   const common = transform(
     createParser().parse(S`
-      use Shared as Entry from ./entry
+      use ./entry Shared as Entry
       app Extra { root Root }
       view Root { render Entry.Shared }
     `),

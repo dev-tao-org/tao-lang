@@ -185,12 +185,12 @@ export default grammar({
     },
     UseStatement($) {
       return choice(
-        seq('use', field('all', $.All), 'from', field('from', $.ImportPath)),
+        seq('use', field('from', $.ImportPath), field('all', $.All)),
         seq(
           'use',
+          optional(field('from', $.ImportPath)),
           field('imports', $.NamedImport),
           repeat(seq(',', field('imports', $.NamedImport))),
-          optional(seq('from', field('from', $.ImportPath))),
         ),
       )
     },

@@ -39,14 +39,14 @@ Tests.test('private views shadow inherited text without string capture annotatio
 Tests.test('generated scope types permit cyclic modules and self-imported aliases', async () => {
   const parser = createParser()
   const entry = transform(parser.parse(S`
-    use Value from ./Other
-    use Shared as Own from ./Main
+    use ./Other Value
+    use ./Main Shared as Own
     public let Shared = "ready"
     app Main { root Root }
     view Root { render inject Value \`\`\`ts return Value \`\`\` }
   `))!
   const other = transform(parser.parse(S`
-    use Shared from ./Main
+    use ./Main Shared
     public let Value = Shared
   `))!
   const statements = AST.GetImportStatements(entry)

@@ -1,4 +1,4 @@
-use Text, Col from tao@ui
+use tao@ui Text, Col
 
 let Greeting is text = "File scope"
 let __proto__ = "Prototype name"

@@ -39,7 +39,7 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
   {
     path: 'src/tao/Library.tao',
     contents: S`
-      use Text from tao@ui
+      use tao@ui Text
 
       ts-library Demo {
         publish { Greeting, }

@@ -15,14 +15,13 @@ Tests.test('all current named grammar nodes format canonically and remain stable
   Tests.expect([...namedKinds(tree.rootNode)].sort()).toEqual(concreteSyntaxKinds)
   assertFormatted(syntaxFixture, formattedSyntaxFixture)
   const source = S`
-    use First,Second,Third from @long/package
+    use @long/package First,Second,Third
     view Main(A text,B text){render Panel(A,B)}
   `
   Tests.expect(formatSource(source, 28)).toBe(S`
-    use First,
+    use @long/package First,
       Second,
       Third
-    from @long/package
 
     view Main(A text, B text) {
       render Panel(A, B)

@@ -5,8 +5,8 @@ import { S } from '@shared'
 export const syntaxFixture = S`
   // Current syntax
   use package tao@ui as UI
-  use all from ./Shared
-  use Card as Panel,Heading from @cards
+  use ./Shared all
+  use @cards Card as Panel,Heading
   use Local
   requires github:acme/widgets version v1.2.0 as widgets
   requires npm:@date-fns/tz version 4.1.0
@@ -28,8 +28,8 @@ export const syntaxFixture = S`
 export const formattedSyntaxFixture = S`
   // Current syntax
   use package tao@ui as UI
-  use all from ./Shared
-  use Card as Panel, Heading from @cards
+  use ./Shared all
+  use @cards Card as Panel, Heading
   use Local
   requires github:acme/widgets version v1.2.0 as widgets
   requires npm:@date-fns/tz version 4.1.0

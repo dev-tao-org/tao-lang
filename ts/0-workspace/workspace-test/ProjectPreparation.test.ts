@@ -36,8 +36,8 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
         S`
           requires github:example/shared version v1 as first
           requires github:example/shared version v2 as second
-          use Widget from first@ui
-          use Widget from second@ui
+          use first@ui Widget
+          use second@ui Widget
           app Main { root Widget }
         `,
         '',

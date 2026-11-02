@@ -19,9 +19,9 @@
 (LetDeclaration ["let" "is"] @keyword)
 (LetDeclaration name: (Identifier) @variable)
 (LetDeclaration type: (QualifiedName) @type)
-(UseStatement ["use" "from"] @keyword)
+(UseStatement "use" @keyword)
 (All) @keyword
-(UsePackageStatement ["use" "package" "from" "as"] @keyword)
+(UsePackageStatement ["use" "package" "as"] @keyword)
 (NamedImport "as" @keyword)
 (RequiresDeclaration ["requires" "version" "as"] @keyword)
 (RequirementProvider) @type

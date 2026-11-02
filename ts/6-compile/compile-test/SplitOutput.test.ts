@@ -45,7 +45,7 @@ Tests.test('source names with category suffixes cannot shadow another input comp
 Tests.test('split initialization binds every module before globally ordered values', () => {
   const parser = createParser()
   const entry = transform(parser.parse(S`
-    use Value from ./Other
+    use ./Other Value
     app Main { root Root }
     view Root { render inject \`\`\`ts return null \`\`\` }
     let Copy = Value

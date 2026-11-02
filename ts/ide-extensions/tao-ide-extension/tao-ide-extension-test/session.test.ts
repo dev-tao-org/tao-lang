@@ -64,11 +64,11 @@ Tests.test('requirements and import source markers receive keyword highlights', 
   Shared.Try(() => {
     const source = Shared.S`
       requires npm:date-fns version 4.1.0 as dateFns
-      use Text from tao@ui
+      use tao@ui Text
     `
     const result = runtime.document.update(source)
     Tests.expect(result.diagnostics).toEqual([])
-    for (const keyword of ['requires', 'version', 'as', 'from']) {
+    for (const keyword of ['requires', 'version', 'as', 'use']) {
       const start = source.indexOf(keyword)
       Tests.expect(
         result.tokens.some(token =>

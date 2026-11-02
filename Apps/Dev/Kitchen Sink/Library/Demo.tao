@@ -1,4 +1,4 @@
-use Col, Text from tao@ui
+use tao@ui Col, Text
 
 ts-library KitchenSinkLibrary {
   publish { LibraryGreeting, }

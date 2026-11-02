@@ -62,7 +62,7 @@ Tests.test('cold project compilation requests preparation without installing run
     await FileSystem.writeFile(
       Path.join(directory, 'Main.tao'),
       S`
-        use Text from tao@ui
+        use tao@ui Text
         app Main { root Greeting }
         view Greeting { render Text("Hi") }
       `,

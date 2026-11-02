@@ -81,7 +81,7 @@ async function writeFixture(root: string, entry: string): Promise<void> {
   await FileSystem.writeFile(
     entry,
     S`
-      use Widget from @widgets/feature
+      use @widgets/feature Widget
       app Main { root Widget }
     `,
   )
@@ -90,7 +90,7 @@ async function writeFixture(root: string, entry: string): Promise<void> {
 }
 
 const widgetSource = S`
-  use Text from tao@ui
+  use tao@ui Text
   public view Widget { render Text("First") }
 `
 const metadataSource = 'public view Unrelated { render Unknown }'

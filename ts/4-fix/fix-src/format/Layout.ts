@@ -49,7 +49,7 @@ export const Layout = {
     lm.list()
   },
   UseStatement(lm) {
-    lm.commaList('from')
+    lm.commaList()
   },
   Injection(lm) {
     lm.commaList('code')

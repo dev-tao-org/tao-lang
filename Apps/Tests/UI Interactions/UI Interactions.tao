@@ -1,4 +1,4 @@
-use Form from ./Forms
+use ./Forms Form
 
 folder app UIInteractions {
   root Form
