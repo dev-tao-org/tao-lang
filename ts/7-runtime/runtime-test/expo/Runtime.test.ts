@@ -6,6 +6,15 @@ import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
 import * as Runtime from '../../runtime-src/Runtime'
 
+Tests.test('web preview scaffold excludes native platforms that trigger Expo Xcode probes', async () => {
+  const directory = Artifacts.resolvePath('tmp', 'web-scaffold-' + Platform.randomUUID())
+  Artifacts.trackTemporary(directory)
+  await FileSystem.mkdir(directory)
+  await writeExpoApplication(directory, directory, {}, {}, [])
+  const app = JSON.parse(await FileSystem.readFile(Path.join(directory, 'app.json'), 'utf8'))
+  Tests.expect(app.expo.platforms).toEqual(['web'])
+})
+
 Tests.test('Runtime.create prepares relocated compiled resources and reuses the pinned toolchain', async () => {
   const root = Artifacts.resolvePath('tmp', `runtime-create-${Platform.randomUUID()}`)
   await Try(() => verifyRuntimeCreate(root), {
