@@ -1,9 +1,11 @@
+import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
+import { NewlineCharacter, S, Try } from '@shared'
+import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
+import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
-import type { SidecarCommandResult } from '../sidecars/ManagedModuleTypes'
+import type { SidecarCommandResult } from '../sidecars/managed-modules/ManagedModuleTypes'
 
 /** Fixture owns the isolated source module and prepared sidecar contract paths. */
 export type Fixture = {
@@ -12,11 +14,14 @@ export type Fixture = {
   nodeModulesDirectory: string
   dependencyFingerprint: string
   target: string
-  program: ReturnType<typeof createProgramFor>
+  program: SidecarFixtureProgram
   directory: string
   moduleRoot: string
   taoPath: string
 }
+
+/** SidecarFixtureProgram keeps its fixture-owned module list editable between contract scenarios. */
+export type SidecarFixtureProgram = Omit<LinkedProgram, 'modules'> & { modules: LinkedModule[] }
 
 /** withFixture runs a sidecar assertion and removes only its isolated fixture afterward. */
 export async function withFixture(action: (fixture: Fixture) => Promise<void>): Promise<void> {
@@ -40,12 +45,7 @@ export async function executeTypeScript(
   args: readonly string[],
   cwd: string,
 ): Promise<SidecarCommandResult> {
-  const child = Platform.spawn([command, ...args], {
-    cwd,
-    env: Env.snapshot(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  const child = Platform.spawnPiped([command, ...args], { cwd })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),
@@ -55,7 +55,7 @@ export async function executeTypeScript(
 }
 
 /** createProgramFor links one parsed source module for a sidecar contract fixture. */
-export function createProgramFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
+export function createProgramFor(path: string, document: AST.Document): SidecarFixtureProgram {
   return {
     entry: path,
     modules: [{ path, document, bindings: [] }],
@@ -69,29 +69,28 @@ async function createFixture(): Promise<Fixture> {
   const moduleRoot = Path.join(projectDirectory, '@calendar')
   const taoPath = Path.join(moduleRoot, 'Calendar.tao')
   const nodeModulesDirectory = Path.join(directory, 'managed', 'node_modules')
-  await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'), { recursive: true })
+  await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'))
   await FileSystem.writeFile(
     Path.join(projectDirectory, '.tao', 'cache', 'sidecars', 'typescript-defaults.json'),
     JSON.stringify({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
   )
-  await FileSystem.mkdir(moduleRoot, { recursive: true })
-  await FileSystem.mkdir(nodeModulesDirectory, { recursive: true })
-  await FileSystem.mkdir(Path.join(nodeModulesDirectory, '@types', 'react'), { recursive: true })
+  await FileSystem.mkdirs(moduleRoot, nodeModulesDirectory, Path.join(nodeModulesDirectory, '@types', 'react'))
   await FileSystem.writeFile(
     Path.join(nodeModulesDirectory, '@types', 'react', 'index.d.ts'),
-    'export type ComponentType<Props> = (props: Props) => unknown\n',
+    'export type ComponentType<Props> = (props: Props) => unknown' + NewlineCharacter,
   )
   await FileSystem.writeFile(taoPath, 'fixture source path')
   await FileSystem.writeFile(
     Path.join(moduleRoot, 'FormattedDate.tsx'),
-    [
-      "import { formatDate } from './format'",
-      "import logo from './logo.png'",
-      'export function FormattedDate(props: { Value: string }) { return null }',
-      'void formatDate; void logo',
-    ].join('\n'),
+    S`
+      import { formatDate } from './format'
+      import logo from './logo.png'
+      export function FormattedDate(props: { Value: string }) { return null }
+      void formatDate; void logo
+    `,
   )
-  await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), 'export const formatDate = () => "old"\n')
+  const formatSource = 'export const formatDate = () => "old"' + NewlineCharacter
+  await FileSystem.writeFile(Path.join(moduleRoot, 'format.ts'), formatSource)
   await FileSystem.writeFile(Path.join(moduleRoot, 'logo.png'), 'asset-bytes')
   const document = transform(
     createParser().parse(
