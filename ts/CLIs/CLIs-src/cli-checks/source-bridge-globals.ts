@@ -8,7 +8,7 @@ export function platformGlobalIssue(
   checker?: TypeScript.TypeChecker,
   excludedSource = isExcludedSource(filename, node.getSourceFile().text),
 ): string | undefined {
-  if (excludedSource || isUniversalTimeAccess(node, filename) || isBrowserExecutionCallback(node, checker)) {
+  if (shouldSkipPlatformReference(node, filename, checker, excludedSource)) {
     return
   }
   const globalName = referencedGlobalName(node)
@@ -70,6 +70,15 @@ const browserGlobalNames = new Set([
 
 const platformGlobals = new Set(['process', 'Bun', 'Buffer', 'Date', ...browserGlobalNames])
 
+function shouldSkipPlatformReference(
+  node: TypeScript.Node,
+  filename: string,
+  checker: TypeScript.TypeChecker | undefined,
+  excluded: boolean,
+): boolean {
+  return excluded || isUniversalTimeAccess(node, filename) || isBrowserExecutionCallback(node, checker)
+}
+
 function getGlobalOwnerPath(name: string): string | undefined {
   if (name === 'process' || name === 'Buffer') {
     return 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts'
@@ -94,7 +103,7 @@ function referencedGlobalName(node: TypeScript.Node): string | undefined {
   if (TypeScript.isPropertyAccessExpression(node) || TypeScript.isElementAccessExpression(node)) {
     const member = accessedMemberName(node)
     if (member !== undefined && platformGlobals.has(member) && isGlobalThisAccess(node)) {
-      return member
+      return member !== 'Date' || isWallClockAccess(node) ? member : undefined
     }
   }
 }
@@ -179,7 +188,7 @@ function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean
   return false
 }
 
-function isWallClockAccess(node: TypeScript.Identifier): boolean {
+function isWallClockAccess(node: TypeScript.Expression): boolean {
   const parent = node.parent
   if (
     (TypeScript.isPropertyAccessExpression(parent) || TypeScript.isElementAccessExpression(parent))

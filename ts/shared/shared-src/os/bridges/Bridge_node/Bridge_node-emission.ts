@@ -1,3 +1,5 @@
+import { S } from '../../../universal/S'
+
 /** metroImports emits Node imports required by the isolated Metro configuration. */
 export const metroImports = S`
   const path = require('node:path');
@@ -10,4 +12,3 @@ export const bundleBanner = 'const __taoImportMetaUrl = require("node:url").path
 /** nodeMetadataProbe reads the Node executable and ABI environment in an isolated process. */
 export const nodeMetadataProbe =
   'JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})'
-import { S } from '../../../universal/S'

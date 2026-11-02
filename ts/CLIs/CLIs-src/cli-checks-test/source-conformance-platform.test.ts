@@ -1,6 +1,7 @@
 import { Tests } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { platformGlobalIssue } from '../cli-checks/source-bridge-globals'
+import { createFixtureProgram } from './conformance-fixtures'
 
 Tests.test('platform conformance > restricts raw globals to platform bridge owners', () => {
   Tests.expect(findPlatformIssue('process.cwd()', 'ts/app.ts')).toBe(
@@ -18,13 +19,23 @@ Tests.test('platform conformance > restricts raw globals to platform bridge owne
   Tests.expect(findPlatformIssue('Date.now()', 'ts/app.ts')).toBe(
     'platform global "Date" belongs in ts/shared/shared-src/universal/Time.ts',
   )
-  for (const source of ['Date["now"]()', 'new Date']) {
+  for (
+    const source of [
+      'Date["now"]()',
+      'new Date',
+      'new globalThis.Date()',
+      'globalThis.Date.now()',
+      'globalThis["Date"]["now"]()',
+    ]
+  ) {
     Tests.expect(findPlatformIssue(source, 'ts/app.ts')).toBe(
       'platform global "Date" belongs in ts/shared/shared-src/universal/Time.ts',
     )
     Tests.expect(findPlatformIssue(source, 'ts/shared/shared-src/universal/Time.ts')).toBeUndefined()
   }
   Tests.expect(findPlatformIssue('new Date(0)', 'ts/app.ts')).toBeUndefined()
+  Tests.expect(findPlatformIssue('new globalThis.Date(0)', 'ts/app.ts')).toBeUndefined()
+  Tests.expect(findPlatformIssue('new globalThis["Date"](0)', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('record.process()', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('type T = TypeScript.Node', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('import { Buffer as NodeBuffer } from "./bridge"', 'ts/app.ts')).toBeUndefined()
@@ -40,14 +51,7 @@ Tests.test('platform conformance > follows shorthand values and respects shadowe
     ],
     [globals, 'declare const process: { cwd(): string }'],
   ])
-  const host = TypeScript.createCompilerHost({ noLib: true })
-  host.getSourceFile = path => {
-    const text = sources.get(path)
-    return text === undefined
-      ? undefined
-      : TypeScript.createSourceFile(path, text, TypeScript.ScriptTarget.Latest, true)
-  }
-  const program = TypeScript.createProgram([...sources.keys()], { noLib: true }, host)
+  const program = createFixtureProgram(sources)
   const checker = program.getTypeChecker()
   const issues: Array<{ source: string; issue: string }> = []
   const visit = (node: TypeScript.Node): void => {
@@ -74,14 +78,7 @@ Tests.test('platform conformance > permits globals only inside serialized browse
     [filename, source],
     [browserTypes, 'interface Page { evaluate(callback: () => unknown): void }'],
   ])
-  const host = TypeScript.createCompilerHost({ noLib: true })
-  host.getSourceFile = path => {
-    const text = sources.get(path)
-    return text === undefined
-      ? undefined
-      : TypeScript.createSourceFile(path, text, TypeScript.ScriptTarget.Latest, true)
-  }
-  const program = TypeScript.createProgram([...sources.keys()], { noLib: true }, host)
+  const program = createFixtureProgram(sources)
   const checker = program.getTypeChecker()
   const file = program.getSourceFile(filename)!
   const issues: string[] = []

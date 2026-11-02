@@ -5,6 +5,7 @@ import { type SourceBridgeContext, sourceBridgeOwnerIssue } from './source-bridg
 export type SourceLoaderAliases = {
   checker: TypeScript.TypeChecker
   symbols: Set<TypeScript.Symbol>
+  synthetic: boolean
 }
 
 /** sourceBridgeIssue rejects external module references outside their exact package bridge. */
@@ -31,18 +32,19 @@ export function sourceBridgeIssue(
 /** sourceBridgeLoaderAliases finds local aliases of supported literal module loaders once per file. */
 export function sourceBridgeLoaderAliases(
   file: TypeScript.SourceFile,
-  checker = createBindingChecker(file),
+  checker?: TypeScript.TypeChecker,
 ): SourceLoaderAliases {
-  const aliases: SourceLoaderAliases = { checker, symbols: new Set() }
+  const aliases: SourceLoaderAliases = {
+    checker: checker ?? createBindingChecker(file),
+    symbols: new Set(),
+    synthetic: checker === undefined,
+  }
   let changed = true
   while (changed) {
     changed = false
     const visit = (node: TypeScript.Node): void => {
-      if (
-        TypeScript.isVariableDeclaration(node) && TypeScript.isIdentifier(node.name)
-        && isLoaderAlias(node.initializer, aliases)
-      ) {
-        const symbol = checker.getSymbolAtLocation(node.name)
+      if (isLoaderAliasDeclaration(node, aliases)) {
+        const symbol = aliases.checker.getSymbolAtLocation(node.name)
         if (symbol !== undefined && !aliases.symbols.has(symbol)) {
           aliases.symbols.add(symbol)
           changed = true
@@ -76,9 +78,18 @@ export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: Sour
   if (!TypeScript.isCallExpression(parent) || parent.arguments[0] !== node) {
     return
   }
-  if (isModuleLoadingCall(parent.expression, loaderAliases) || isPlatformLoadModuleCall(parent.expression)) {
+  if (
+    isModuleLoadingCall(parent.expression, loaderAliases) || isPlatformLoadModuleCall(parent.expression, loaderAliases)
+  ) {
     return node.text
   }
+}
+
+type NamedLoaderAlias = TypeScript.VariableDeclaration & { name: TypeScript.Identifier }
+
+function isLoaderAliasDeclaration(node: TypeScript.Node, aliases: SourceLoaderAliases): node is NamedLoaderAlias {
+  return TypeScript.isVariableDeclaration(node) && TypeScript.isIdentifier(node.name)
+    && isLoaderAlias(node.initializer, aliases)
 }
 
 function createBindingChecker(file: TypeScript.SourceFile): TypeScript.TypeChecker {
@@ -115,15 +126,15 @@ function isModuleLoadingCall(expression: TypeScript.Expression, loaderAliases: S
     return isLoaderBinding(expression, loaderAliases)
   }
   if (TypeScript.isCallExpression(expression)) {
-    return isLoaderFactory(expression.expression)
+    return isLoaderFactory(expression.expression, loaderAliases)
   }
   return TypeScript.isPropertyAccessExpression(expression) && expression.name.text === 'resolve'
     && isModuleLoadingCall(expression.expression, loaderAliases)
 }
 
-function isPlatformLoadModuleCall(expression: TypeScript.Expression): boolean {
+function isPlatformLoadModuleCall(expression: TypeScript.Expression, aliases: SourceLoaderAliases): boolean {
   return TypeScript.isPropertyAccessExpression(expression) && expression.name.text === 'loadModule'
-    && TypeScript.isIdentifier(expression.expression) && expression.expression.text === 'Platform'
+    && isKnownLoaderOperation(expression, 'loadModule', aliases)
 }
 
 function isDynamicImportCall(node: TypeScript.Node): boolean {
@@ -136,21 +147,59 @@ function isLoaderAlias(initializer: TypeScript.Expression | undefined, aliases: 
     return false
   }
   if (TypeScript.isIdentifier(initializer)) {
-    return isLoaderBinding(initializer, aliases) || initializer.text === 'createRequire'
+    return isLoaderBinding(initializer, aliases) || isLoaderFactory(initializer, aliases)
   }
   if (TypeScript.isPropertyAccessExpression(initializer)) {
     return TypeScript.isIdentifier(initializer.expression) && isLoaderBinding(initializer.expression, aliases)
         && initializer.name.text === 'resolve'
-      || TypeScript.isIdentifier(initializer.expression) && initializer.expression.text === 'Platform'
-        && initializer.name.text === 'loadModule'
+      || isPlatformLoadModuleCall(initializer, aliases)
   }
-  return TypeScript.isCallExpression(initializer) && isLoaderFactory(initializer.expression)
+  return TypeScript.isCallExpression(initializer) && isLoaderFactory(initializer.expression, aliases)
 }
 
-function isLoaderFactory(expression: TypeScript.Expression): boolean {
+function isLoaderFactory(expression: TypeScript.Expression, aliases: SourceLoaderAliases): boolean {
   const name = loaderFactoryName(expression)
-  return name !== undefined
-    && ['createRequire', 'createExpoLoader', 'createExpoCliLoader', 'createMetroLoader'].includes(name)
+  return name !== undefined && name !== 'loadModule' && isKnownLoaderOperation(expression, name, aliases)
+}
+
+const loaderOperationOwners = new Map<string, string>([
+  ['createRequire', '/node_modules/@types/node/module.d.ts'],
+  ['createExpoLoader', '/ts/7-runtime/runtime-src/bridges/Bridge_expo/Bridge_expo-host.ts'],
+  ['createExpoCliLoader', '/ts/7-runtime/runtime-src/bridges/Bridge_expo-cli/Bridge_expo-cli.ts'],
+  ['createMetroLoader', '/ts/7-runtime/runtime-src/bridges/Bridge_expo-metro/Bridge_expo-metro.ts'],
+  ['loadModule', '/ts/shared/shared-src/os/Platform.ts'],
+])
+
+function isKnownLoaderOperation(
+  expression: TypeScript.Expression,
+  name: string,
+  aliases: SourceLoaderAliases,
+): boolean {
+  const owner = loaderOperationOwners.get(name)
+  if (owner === undefined) {
+    return false
+  }
+  const reference = aliases.checker.getSymbolAtLocation(expression)
+  const symbol = reference && (reference.flags & TypeScript.SymbolFlags.Alias)
+    ? aliases.checker.getAliasedSymbol(reference)
+    : reference
+  if (
+    symbol?.declarations?.some(declaration =>
+      declaration.getSourceFile().fileName.replaceAll('\\', '/').endsWith(owner)
+    )
+  ) {
+    return true
+  }
+  return aliases.synthetic && symbol?.declarations === undefined && isUnboundLoaderReference(expression, aliases)
+}
+
+function isUnboundLoaderReference(expression: TypeScript.Expression, aliases: SourceLoaderAliases): boolean {
+  const root = TypeScript.isPropertyAccessExpression(expression) ? expression.expression : expression
+  const symbol = aliases.checker.getSymbolAtLocation(root)
+  return symbol?.declarations === undefined
+    || symbol.declarations.every(declaration =>
+      TypeScript.isNamespaceImport(declaration) || TypeScript.isImportSpecifier(declaration)
+    )
 }
 
 function loaderFactoryName(expression: TypeScript.Expression): string | undefined {

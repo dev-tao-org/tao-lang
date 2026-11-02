@@ -2,6 +2,7 @@ import { Repo, Tests } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { createSourceBridgeContext } from '../cli-checks/source-bridge-owners'
 import { sourceBridgeIssue, sourceBridgeLoaderAliases } from '../cli-checks/source-bridges'
+import { createFixtureProgram } from './conformance-fixtures'
 
 const bridgeContext = createSourceBridgeContext(Repo.getWorkspaceRoot())
 
@@ -125,9 +126,42 @@ Tests.test('source conformance > resolves loader aliases by binding across lexic
   )
 })
 
+Tests.test('source conformance > respects shadowed factory and platform namespace bindings', () => {
+  const sources = [
+    "function inspect(createRequire: () => (label: string) => void) { const load = createRequire(); load('react') }",
+    "function inspect(Node: { createRequire(): (label: string) => void }) { const load = Node.createRequire(); load('react') }",
+    "function inspect(Platform: { loadModule(label: string): void }) { Platform.loadModule('react') }",
+    "function inspect(Platform: { loadModule(label: string): void }) { const load = Platform.loadModule; load('react') }",
+    "function inspect(Node: any) { const load = Node.createRequire(); load('react') }",
+  ]
+  for (const source of sources) {
+    expectBridgeIssue(source, 'ts/app.ts')
+  }
+})
+
+Tests.test('source conformance > recognizes resolved owner factories while ignoring local namespace parameters', () => {
+  const filename = '/fixture/consumer.ts'
+  const declarations = '/fixture/node_modules/@types/node/module.d.ts'
+  const sources = new Map([
+    [
+      filename,
+      "const load = Node.createRequire(''); load('react'); function inspect(Node: any) { const load = Node.createRequire(); load('react') }",
+    ],
+    [declarations, 'declare namespace Node { function createRequire(path: string): (name: string) => unknown }'],
+  ])
+  const program = createFixtureProgram(sources)
+  Tests.expect(findBridgeIssues(program.getSourceFile(filename)!, 'ts/app.ts', program.getTypeChecker())).toEqual([
+    'external module "react" belongs in ts/7-runtime/runtime-src/client/Bridge_react',
+  ])
+})
+
 function expectBridgeIssue(source: string, filename: string, expected?: string): void {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
-  const loaderAliases = sourceBridgeLoaderAliases(file)
+  Tests.expect(findBridgeIssues(file, filename)).toEqual(expected === undefined ? [] : [expected])
+}
+
+function findBridgeIssues(file: TypeScript.SourceFile, filename: string, checker?: TypeScript.TypeChecker): string[] {
+  const loaderAliases = sourceBridgeLoaderAliases(file, checker)
   const issues: string[] = []
   const visit = (node: TypeScript.Node): void => {
     const issue = sourceBridgeIssue(node, filename, bridgeContext, loaderAliases, false)
@@ -137,5 +171,5 @@ function expectBridgeIssue(source: string, filename: string, expected?: string):
     TypeScript.forEachChild(node, visit)
   }
   visit(file)
-  Tests.expect(issues).toEqual(expected === undefined ? [] : [expected])
+  return issues
 }

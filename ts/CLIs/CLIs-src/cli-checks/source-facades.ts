@@ -170,14 +170,16 @@ function mayAccessImplementation(importer: string, owner: ModuleFacade): boolean
 function findNearestFacade(filename: string, context: SourceFacadeContext): ModuleFacade | undefined {
   let owner: ModuleFacade | undefined
   for (const candidate of context.facades.values()) {
-    if (
-      isInside(filename, candidate.directory)
-      && (owner === undefined || candidate.directory.length > owner.directory.length)
-    ) {
+    if (isCloserFacade(filename, candidate, owner)) {
       owner = candidate
     }
   }
   return owner
+}
+
+function isCloserFacade(filename: string, candidate: ModuleFacade, owner: ModuleFacade | undefined): boolean {
+  return isInside(filename, candidate.directory)
+    && (owner === undefined || candidate.directory.length > owner.directory.length)
 }
 
 function isInside(filename: string, directory: string): boolean {
