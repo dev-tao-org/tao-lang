@@ -1,9 +1,9 @@
-import { Errors, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
+import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
 import { initializeProject } from '../projects/Projects'
-import type { BunExecutor } from '../sidecars/ManagedModules'
+import type { BunExecutor } from '../sidecars/managed-modules/ManagedModules'
 
 /** AcceptanceProjects identifies the app and UI projects used by Metro acceptance cases. */
 export type AcceptanceProjects = { app: string; ui: string; entry: string }
@@ -32,7 +32,13 @@ export async function createAcceptanceProjects(root: string): Promise<Acceptance
   await FileSystem.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
   await FileSystem.writeFile(
     Path.join(ui, '@ui/Widget.tsx'),
-    "import { label } from 'tao-fixture-label'\nexport function Widget() { return label('metro-rendered') }\n",
+    joinTextLines(
+      S`
+        import { label } from 'tao-fixture-label'
+        export function Widget() { return label('metro-rendered') }
+      `,
+      '',
+    ),
   )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
@@ -43,7 +49,7 @@ export async function installFixturePackage(
   registry: string,
 ): Promise<{ nodeModules: string; lock: string }> {
   const directory = Path.join(root, 'fixture-install')
-  await FileSystem.mkdir(directory, { recursive: true })
+  await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
     JSON.stringify({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }, null, 2),
@@ -61,7 +67,7 @@ export async function installFixturePackage(
 export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): BunExecutor {
   return async (_command, args, directory) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     await recordProfileInstall(directory, options)
     return { status: 0, stdout: '', stderr: '' }
@@ -71,28 +77,24 @@ export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): B
 function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
-      return { status: 0, stdout: `${Platform.runtimeVersion()}\n`, stderr: '' }
+      return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
-    const child = Platform.spawn([command, ...args, '--registry', registry], {
-      cwd,
-      env: {
-        ...Env.snapshot(),
-        HOME: root,
-        USERPROFILE: root,
-        BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
-        BUN_CONFIG_REGISTRY: registry,
-        HTTP_PROXY: '',
-        HTTPS_PROXY: '',
-        ALL_PROXY: '',
-        http_proxy: '',
-        https_proxy: '',
-        all_proxy: '',
-        NO_PROXY: '*',
-        no_proxy: '*',
-      },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+    // Clear both spellings because subprocess tools use different proxy-variable casing.
+    const addEnv = {
+      HOME: root,
+      USERPROFILE: root,
+      BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
+      BUN_CONFIG_REGISTRY: registry,
+      HTTP_PROXY: '',
+      HTTPS_PROXY: '',
+      ALL_PROXY: '',
+      http_proxy: '',
+      https_proxy: '',
+      all_proxy: '',
+      NO_PROXY: '*',
+      no_proxy: '*',
+    }
+    const child = Platform.spawnPiped([command, ...args, '--registry', registry], { cwd, addEnv })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
       Platform.readText(child.stdout),
@@ -107,7 +109,7 @@ async function recordProfileInstall(
   options: ManagedGraphFixturePaths,
 ): Promise<void> {
   const nodeModules = Path.join(directory, 'node_modules')
-  await FileSystem.mkdir(nodeModules, { recursive: true })
+  await FileSystem.mkdir(nodeModules)
   const lock = await readLock(Path.join(options.runtimeResources, 'bun.lock'))
   const fixtureLock = await readLock(Path.join(Path.dirname(options.fixtureModules), 'bun.lock'))
   const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))
@@ -116,7 +118,7 @@ async function recordProfileInstall(
   lock.overrides = manifest.overrides
   Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
-  await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}\n`)
+  await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}${NewlineCharacter}`)
 }
 
 async function materializeLockGraph(
@@ -126,7 +128,7 @@ async function materializeLockGraph(
 ): Promise<void> {
   const sources = await readPackageSources(options)
   const wrappers = Path.join(Path.dirname(nodeModules), '.acceptance-packages')
-  await FileSystem.mkdir(wrappers, { recursive: true })
+  await FileSystem.mkdir(wrappers)
   for (const [key, value] of Object.entries(lock.packages)) {
     const identity = lockIdentity(value)
     const source = sources.get(identity)
@@ -150,7 +152,7 @@ async function materializeLockGraph(
       continue
     }
     const scope = name.startsWith('@') ? Path.join(nodeModules, name.split('/')[0]!) : nodeModules
-    await FileSystem.mkdir(scope, { recursive: true })
+    await FileSystem.mkdir(scope)
     await FileSystem.symlink(
       resolveWrapperPath(wrappers, name),
       Path.join(scope, packageName.split('/').at(-1)!),
@@ -197,7 +199,7 @@ async function scanSources(root: string, result: Map<string, string>, profiles =
 }
 
 async function createPackageWrapper(source: string, target: string): Promise<void> {
-  await FileSystem.mkdir(target, { recursive: true })
+  await FileSystem.mkdir(target)
   for (const name of await FileSystem.readdir(source)) {
     if (name === 'node_modules') {
       continue
@@ -232,7 +234,7 @@ async function linkDependencies(
       continue
     }
     const scope = name.startsWith('@') ? Path.join(target, name.split('/')[0]!) : target
-    await FileSystem.mkdir(scope, { recursive: true })
+    await FileSystem.mkdir(scope)
     await FileSystem.symlink(resolveWrapperPath(wrappers, child), Path.join(scope, name.split('/').at(-1)!), 'dir')
   }
 }
