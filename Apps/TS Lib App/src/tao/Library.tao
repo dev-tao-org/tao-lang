@@ -1,8 +1,9 @@
 use Col, Text from tao@ui
 use package ./cards as Cards
+use LanguageFeatures from ./LanguageFeatures
 
 ts-library Demo {
-  publish { Greeting, Panel, Cards as cards, }
+  publish { Greeting, Panel, LanguageFeatures, Cards as cards, }
 }
 
 public
@@ -17,9 +18,11 @@ view Greeting(First text, Second text) {
     render inject ```ts
       const count = Tao.useWritable(() => 0)
       const value = Tao.useValue(count)
+      const caption = Tao.useComputed(() => 'Nested private Tao helper ' + count.jsValue(), [count])
+      const label = Tao.useValue(caption)
       return (
         <Tao.Pressable onPress={() => count.update(value + 1)}>
-          <Tao.Text>{'Nested private Tao helper ' + value}</Tao.Text>
+          <Tao.Text>{label}</Tao.Text>
         </Tao.Pressable>
       )
     ```

@@ -1,0 +1,16 @@
+use Text from tao@ui
+
+folder
+view FolderScope {
+  render Text("Folder-scoped view")
+}
+
+package
+view PackageScope {
+  render Text("Package-scoped view")
+}
+
+project
+view ProjectScope {
+  render Text("Project-scoped view")
+}

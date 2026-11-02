@@ -12,6 +12,7 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await first.getByText('Lovelace', { exact: true }).waitFor()
   await page.getByTestId('react-child').waitFor()
   await first.getByText('Published submodule', { exact: true }).waitFor()
+  await verifyLanguageFeatures(page)
   await first.getByText('Nested private Tao helper 0', { exact: true }).click()
   await first.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   await second.getByText('Nested private Tao helper 0', { exact: true }).waitFor()
@@ -26,4 +27,28 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await second.getByText('Nested private Tao helper 0', { exact: true }).click()
   await second.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   expect(errors).toEqual([])
+}
+
+async function verifyLanguageFeatures(page: Page): Promise<void> {
+  const features = page.getByTestId('language-features')
+  for (
+    const text of [
+      'File-scoped text',
+      'Folder-scoped view',
+      'Package-scoped view',
+      'Project-scoped view',
+      'Wildcard import',
+      'Tao alias',
+      'Namespace member',
+      'Nested lexical text',
+      'Aliased capture: Ada',
+      'Foreign view: Ada',
+      'Escaped "text", backslash \\ and Unicode ☺',
+    ]
+  ) {
+    await features.getByText(text, { exact: true }).waitFor()
+  }
+  const input = features.getByRole('textbox')
+  await input.fill('Edited library input')
+  expect(await input.inputValue()).toBe('Edited library input')
 }

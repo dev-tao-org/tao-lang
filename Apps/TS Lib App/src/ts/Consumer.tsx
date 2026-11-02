@@ -1,6 +1,7 @@
 import library from '@example/tao-library'
 import Card from '@example/tao-library/cards/Greeting'
 import Greeting from '@example/tao-library/Greeting'
+import LanguageFeatures from '@example/tao-library/LanguageFeatures'
 import Panel from '@example/tao-library/Panel'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
@@ -29,6 +30,9 @@ export default function Consumer() {
               <Text style={styles.label} testID="react-child">React child</Text>
             </Panel>
             <Card Value="Published submodule" />
+            <View testID="language-features">
+              <LanguageFeatures Name="Ada" />
+            </View>
           </library.Provider>
         </View>
       )}

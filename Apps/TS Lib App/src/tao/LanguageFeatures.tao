@@ -1,0 +1,41 @@
+use all from tao@ui
+use Text as AliasText from tao@ui
+use all from ./cards
+use package ./cards as Cards
+use FolderScope, PackageScope, ProjectScope
+
+file
+let FileCaption is text = "File-scoped text"
+
+file
+let EscapedCaption = "Escaped \"text\", backslash \\ and Unicode \u263A"
+
+public
+view LanguageFeatures(Name text) {
+  render Col {
+    Text(FileCaption)
+    FolderScope
+    PackageScope
+    ProjectScope
+    Caption("Wildcard import")
+    AliasText("Tao alias")
+    Cards.Caption("Namespace member")
+    Col {
+      let FileCaption = "Nested lexical text"
+      Text(FileCaption)
+    }
+    CapturedCaption(Name)
+    ForeignGreeting(Name)
+    #libraryInput
+    Input("Library input")
+    Text(EscapedCaption)
+  }
+
+  view CapturedCaption(Value text) {
+    render inject Caption Value ```ts
+      return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
+    ```
+  }
+}
+
+view ForeignGreeting(Value text) from ../ts/ForeignGreeting.tsx
