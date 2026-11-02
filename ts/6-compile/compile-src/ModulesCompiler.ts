@@ -6,6 +6,8 @@ import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from './codegen-util
 import { compileDeclaration, type DeclarationContext } from './DeclarationCompiler'
 import { compileForeignViews, type ForeignViewPathResolver } from './ForeignViewsCompiler'
 import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from './GeneratedPaths'
+import type { GeneratedModulePaths } from './GeneratedPaths'
+import { compileModuleInitialization } from './ModuleInitialization'
 import { buildModuleTextBindings } from './ModuleTextBindings'
 import * as RuntimeEmitter from './RuntimeEmitter'
 
@@ -23,6 +25,19 @@ export function compileProgram(
   resolveForeignViewPath?: ForeignViewPathResolver,
 ): CompiledFiles {
   const selected = selectApp(program, appName)
+  const sources = compileModuleSources(program, resolveForeignViewPath)
+  const files = { ...sources.files }
+  files['App.tsx'] = compileBootstrap(program, selected, revision, sources.paths)
+  return files
+}
+
+type CompiledModuleSources = { files: CompiledFiles; paths: GeneratedModulePaths }
+
+/** compileModuleSources emits shared declaration bodies and derives their output paths once per compilation. */
+export function compileModuleSources(
+  program: LinkedProgram,
+  resolveForeignViewPath?: ForeignViewPathResolver,
+): CompiledModuleSources {
   const paths = createGeneratedPaths(program)
   const textBindings = buildModuleTextBindings(program)
   const files: MutableCompiledFiles = {}
@@ -34,20 +49,18 @@ export function compileProgram(
       files[resolveViewsPath(path)] = generated.views
     }
   }
-  files['App.tsx'] = compileBootstrap(program, paths, selected, revision)
-  return files
+  return { files, paths }
 }
 
 type GeneratedSource = { main: string; views: string }
 type MutableCompiledFiles = Record<string, string>
-type GeneratedPaths = ReadonlyMap<string, string>
 type SelectedApp = { source: string; declaration: AST.AppDeclaration }
 type CompiledDeclaration = { node: AST.Declaration; compiled: ReturnType<typeof compileDeclaration> }
 
 function compileSource(
   module: LinkedModule,
   program: LinkedProgram,
-  paths: GeneratedPaths,
+  paths: GeneratedModulePaths,
   textBindings: ReadonlyMap<string, ReadonlySet<string>>,
   resolveForeignViewPath?: ForeignViewPathResolver,
 ): GeneratedSource {
@@ -96,7 +109,7 @@ function createModuleCompilationContext(
 
 function compileMain(
   module: LinkedModule,
-  paths: GeneratedPaths,
+  paths: GeneratedModulePaths,
   context: DeclarationContext,
   declarations: readonly CompiledDeclaration[],
   hasComponents: boolean,
@@ -136,7 +149,7 @@ function compileMain(
   `
 }
 
-function compileAliases(module: LinkedModule, paths: GeneratedPaths): string {
+function compileAliases(module: LinkedModule, paths: GeneratedModulePaths): string {
   return module.bindings.map(binding => {
     const targetScope = `_Modules[${emitStringLiteral(resolvePath(paths, binding.source))}]!`
     return RuntimeEmitter.emitModuleBinding(binding, '_Scope', targetScope)
@@ -145,7 +158,7 @@ function compileAliases(module: LinkedModule, paths: GeneratedPaths): string {
 
 function compileBindingTypes(
   module: LinkedModule,
-  paths: GeneratedPaths,
+  paths: GeneratedModulePaths,
   context: DeclarationContext,
 ): string {
   const members = AST.GetDeclarations(module.document).filter(AST.IsValueDeclaration).map(node => {
@@ -186,44 +199,26 @@ function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationCont
 
 function compileBootstrap(
   program: LinkedProgram,
-  paths: GeneratedPaths,
   selected: SelectedApp,
   revision: string,
+  paths: GeneratedModulePaths,
 ): string {
-  const imports = program.modules.map((module, index) =>
-    `import * as Source${index} from ${compileModuleImport('App.tsx', resolvePath(paths, module.path))};`
-  )
-  const scopes = program.modules.map((_module, index) =>
-    RuntimeEmitter.emitScope(`_scope${index}`, `Source${index}.Scope`)
-  )
-  const moduleScopesCode = program.modules.map((module, index) =>
-    `${emitStringLiteral(resolvePath(paths, module.path))}: _scope${index}`
-  ).join(',\n')
-  const aliases = program.modules.map((_module, index) => `Source${index}.bindAliases(_scope${index}, _Modules);`)
-  const views = program.modules.map((_module, index) => `Source${index}.bindDeclarations(_scope${index});`)
-  const values = program.definitions.map(definition => {
-    const index = program.modules.findIndex(module => module.path === definition.source)
-    return `Source${index}.initialize${definition.declaration.name.value}(_scope${index});`
-  })
-  const selectedIndex = program.modules.findIndex(module => module.path === selected.source)
+  const initialization = compileModuleInitialization(program, 'App.tsx', paths)
+  const scope = initialization.scopes.get(selected.source)!
   return S`
     import * as TR from '@runtime';
-    ${imports.join('\n')}
+    ${initialization.imports}
 
     ${RuntimeEmitter.emitModuleApplied(revision)}
-    ${scopes.join('\n')}
-    const _Modules = { ${moduleScopesCode} };
-    ${aliases.join('\n')}
-    ${views.join('\n')}
-    ${values.join('\n')}
+    ${initialization.body}
 
     export default function App() {
-      return ${RuntimeEmitter.emitAppDeclaration(selected.declaration, `_scope${selectedIndex}`, revision)};
+      return ${RuntimeEmitter.emitAppDeclaration(selected.declaration, scope, revision)};
     }
   `
 }
 
-function resolvePath(paths: GeneratedPaths, source: string): string {
+function resolvePath(paths: GeneratedModulePaths, source: string): string {
   return paths.get(source) ?? Errors.ThrowShouldNeverHappen(`Missing generated source path: ${source}.`)
 }
 

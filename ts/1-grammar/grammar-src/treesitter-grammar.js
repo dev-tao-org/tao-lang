@@ -37,6 +37,8 @@ export default grammar({
         $.UseStatement,
         $.UsePackageStatement,
         $.RequiresDeclaration,
+        $.TypeScriptLibraryDeclaration,
+        $.PublishDeclaration,
       )
     },
     _Expression($) {
@@ -168,6 +170,19 @@ export default grammar({
     },
 
     // Modules
+    TypeScriptLibraryDeclaration($) {
+      return seq('ts-library', field('name', $.Identifier), '{', field('publication', $.PublishDeclaration), '}')
+    },
+    PublishDeclaration($) {
+      return seq(
+        'publish',
+        '{',
+        optional(
+          seq(field('members', $.NamedImport), repeat(seq(',', field('members', $.NamedImport))), optional(',')),
+        ),
+        '}',
+      )
+    },
     UseStatement($) {
       return choice(
         seq('use', field('all', $.All), 'from', field('from', $.ImportPath)),

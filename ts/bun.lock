@@ -202,6 +202,22 @@
         "@types/bun": "1.4.0",
       },
     },
+    "ts-api": {
+      "name": "@tao/ts-api",
+      "dependencies": {
+        "@tao/runtime": "workspace:*",
+        "@tao/shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@tao/workspace": "workspace:*",
+        "@types/bun": "1.4.0",
+        "@types/react": "~19.2.0",
+        "typescript": "5.9.3",
+      },
+      "peerDependencies": {
+        "react": "19.2.3",
+      },
+    },
   },
   "trustedDependencies": [
     "tree-sitter",
@@ -727,6 +743,8 @@
     "@tao/shared": ["@tao/shared@workspace:shared"],
 
     "@tao/stdlib": ["@tao/stdlib@workspace:stdlib"],
+
+    "@tao/ts-api": ["@tao/ts-api@workspace:ts-api"],
 
     "@tao/typecheck": ["@tao/typecheck@workspace:3-typecheck"],
 

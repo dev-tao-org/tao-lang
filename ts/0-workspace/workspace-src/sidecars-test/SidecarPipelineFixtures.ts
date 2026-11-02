@@ -54,7 +54,7 @@ export async function executeTypeScript(
 export function createProgramFor(path: string, document: NonNullable<ReturnType<typeof transform>>) {
   return {
     entry: path,
-    modules: [{ path, document, bindings: [] }],
+    modules: [{ path, document, bindings: [], imports: [] }],
     definitions: [],
   }
 }

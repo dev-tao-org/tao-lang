@@ -24,6 +24,8 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
       UseStatement: Switch.nothing,
       UsePackageStatement: Switch.nothing,
       RequiresDeclaration: Switch.nothing,
+      TypeScriptLibraryDeclaration: Switch.nothing,
+      PublishDeclaration: Switch.nothing,
     })
   }
   return names
