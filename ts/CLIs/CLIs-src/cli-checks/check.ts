@@ -73,6 +73,7 @@ export async function workspaceTypes(): Promise<void> {
     'perf',
     'shared',
     'stdlib',
+    'ts-api',
   ]
   const discoveredProjects = await Promise.all(packages.map(async project => {
     const sourceFiles = await FileSystem.listSourceFiles(Repo.resolvePath('ts', project))

@@ -10,6 +10,8 @@ export const syntaxFixture = S`
   use Local
   requires github:acme/widgets version v1.2.0 as widgets
   requires npm:@date-fns/tz version 4.1.0
+  ts-library Demo{publish{Root as Main,}}
+  publish{Root,}
   file let Caption is text="Hello"
   folder app Demo{root Root}
   public view Root( Title text,Subtitle text ){
@@ -31,6 +33,16 @@ export const formattedSyntaxFixture = S`
   use Local
   requires github:acme/widgets version v1.2.0 as widgets
   requires npm:@date-fns/tz version 4.1.0
+
+  ts-library Demo {
+    publish {
+      Root as Main,
+    }
+  }
+
+  publish {
+    Root,
+  }
 
   file
   let Caption is text = "Hello"
@@ -84,6 +96,8 @@ export const formattedSyntaxFixture = S`
 
 /** syntaxKinds makes grammar additions require an explicit fixture coverage decision. */
 export const syntaxKinds = {
+  TypeScriptLibraryDeclaration: true,
+  PublishDeclaration: true,
   SourceFile: true,
   _Declaration: true,
   _Expression: true,

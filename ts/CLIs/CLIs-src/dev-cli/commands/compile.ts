@@ -1,29 +1,33 @@
 import { formatTimings, IO, resolveCallerPath } from '@cli-kit'
 import { NewlineCharacter } from '@shared'
-import { execute } from '@workspace/Workflow'
-import { prepareNativeLocks } from '../../cli-checks/native-lock-build'
-import { prepareRuntime } from '../../cli-checks/runtime-build'
-import { workflowUI } from '../../tao-cli/WorkflowUI'
+import { type CompileTarget, resolveCompileTarget } from '@workspace/CompileTarget'
+import { prepareCompiledApplication, publishCompiledLibrary } from '../../tao-cli/CompileApplication'
 import { registerCommand } from './_command-runner'
 
-/** compileCommand compiles an entry file into an isolated Expo runtime. */
+type CompileCommandOptions = { session?: string; yes?: boolean; package?: string }
+
+/** compileCommand compiles an explicit Tao entry or a package-configured app or library target. */
 export default registerCommand({
   name: 'compile',
-  description: 'Compile a Tao app entry file into a generated Expo runtime.',
-  arguments: [{ name: 'entry', required: true, description: 'Tao app entry file.' }],
+  description: 'Compile a Tao entry file or a target configured by package.json tao.compile.',
+  arguments: [{ name: 'target', description: 'Tao entry file or configured app/library declaration name.' }],
   options: [
     { flags: '--session <id>', description: 'Use an independent named session.' },
     { flags: '--yes', description: 'Authorize required dependency setup.' },
+    { flags: '--package <directory>', description: 'Select the authored TypeScript package directory.' },
   ],
-  async action(entry: string, options: { session?: string; yes?: boolean } = {}) {
-    await prepareNativeLocks()
-    await prepareRuntime()
-    await compileEntry(resolveCallerPath(entry), options.session, options.yes)
+  async action(argument?: string, options: CompileCommandOptions = {}) {
+    const target = await resolveCompileTarget(resolveCallerPath(options.package ?? '.'), argument)
+    if (target.kind === 'library') {
+      IO.print(await publishCompiledLibrary(target, options.session))
+      return
+    }
+    await compileEntry(target, options.session, options.yes)
   },
 })
 
-async function compileEntry(entry: string, session?: string, yes?: boolean): Promise<void> {
-  const workspace = await execute({ kind: 'compile', entry, options: { id: session } }, workflowUI(yes))
+async function compileEntry(target: CompileTarget, session?: string, yes?: boolean): Promise<void> {
+  const workspace = await prepareCompiledApplication(target, session, yes)
   const result = workspace.initialResult
   await workspace.dispose()
   IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${formatTimings(result.timings)}`)

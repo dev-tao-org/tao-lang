@@ -19,6 +19,22 @@ export async function bundleNode(entrypoint: string, outdir: string, external: s
   }
 }
 
+/** bundleLibrary emits one portable runtime closure while leaving host React and native peers external. */
+export async function bundleLibrary(entrypoint: string, outdir: string, tsconfig: string): Promise<void> {
+  const result = await Bun.build({
+    entrypoints: [entrypoint],
+    outdir,
+    target: 'browser',
+    format: 'esm',
+    tsconfig,
+    external: ['react', 'react/jsx-runtime', 'react-native', '@preact/signals-core'],
+    naming: '_Library.js',
+  })
+  if (!result.success) {
+    Errors.ThrowUserInput(`Library bundling failed: ${result.logs.map(log => log.message).join('\n')}`)
+  }
+}
+
 /** validateEditorBundle activates a packaged extension under Node with only the editor API stubbed. */
 export async function validateEditorBundle(path: string): Promise<void> {
   const script = S`

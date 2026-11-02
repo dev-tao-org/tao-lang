@@ -1,5 +1,6 @@
 import { configureCLIOutput } from '@cli-kit'
 import '../dev-cli/commands/compile'
+import './commands/run'
 import './commands/test'
 import './commands/fmt'
 import './commands/fix'

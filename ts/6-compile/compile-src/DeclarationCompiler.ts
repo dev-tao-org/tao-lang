@@ -22,6 +22,8 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
     UseStatement: omitRuntimeDeclaration,
     UsePackageStatement: omitRuntimeDeclaration,
     RequiresDeclaration: omitRuntimeDeclaration,
+    TypeScriptLibraryDeclaration: omitRuntimeDeclaration,
+    PublishDeclaration: omitRuntimeDeclaration,
   })
 }
 

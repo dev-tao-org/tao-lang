@@ -58,7 +58,7 @@ export async function executeTypeScript(
 export function createProgramFor(path: string, document: AST.Document): SidecarFixtureProgram {
   return {
     entry: path,
-    modules: [{ path, document, bindings: [] }],
+    modules: [{ path, document, bindings: [], imports: [] }],
     definitions: [],
   }
 }

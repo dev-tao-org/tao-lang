@@ -70,7 +70,15 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
     UseStatement: Switch.nothing,
     UsePackageStatement: Switch.nothing,
     RequiresDeclaration: Switch.nothing,
+    TypeScriptLibraryDeclaration: library => visitPublication(library.publication, scope),
+    PublishDeclaration: publication => visitPublication(publication, scope),
   })
+}
+
+function visitPublication(node: AST.PublishDeclaration, scope: Scope): void {
+  for (const member of node.members) {
+    reference(scope, member.target)
+  }
 }
 
 function visitView(node: AST.ViewDeclaration, parent: Scope): void {

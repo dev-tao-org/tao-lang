@@ -2,6 +2,14 @@ import type { FormattingHandlers } from '../lib/formatter/Formatter'
 
 /** Formatting defines Tao horizontal spacing and opaque embedded content. */
 export const Formatting = {
+  TypeScriptLibraryDeclaration(fm) {
+    fm.oneSpaceAfter('ts-library')
+    fm.oneSpaceAround('{', '}')
+  },
+  PublishDeclaration(fm) {
+    fm.oneSpaceAround('{', '}')
+    fm.commaSpacedList()
+  },
   AppDeclaration(fm) {
     fm.oneSpaceAfter('app')
   },

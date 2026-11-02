@@ -7,7 +7,8 @@ import { ViewDeclaration } from '@runtime/client/View'
 import { NewlineCharacter, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { linkModules } from '@typecheck/LinkModules'
-import type { LinkedProgram, SourceModule } from '@typecheck/Modules'
+import type { LinkedProgram } from '@typecheck/Modules'
+import { loadModules } from '@workspace/modules/Loader'
 import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles, transpileGeneratedFiles } from './GeneratedExecution'
 
@@ -185,6 +186,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
         {
           path: '/entry',
           document: entry,
+          imports: [],
           bindings: [
             { name: 'UI.Root', source: '/common', target: 'Root' },
             { name: 'UI.Extra', source: '/common', target: 'Extra' },
@@ -194,6 +196,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: LinkedProgram } 
         {
           path: '/common',
           document: common,
+          imports: [],
           bindings: [{ name: 'Entry.Shared', source: '/entry', target: 'Shared' }],
         },
       ],
@@ -288,28 +291,10 @@ async function linkedUIProgram(
   entryPath: string,
   document: AST.Document,
 ): Promise<LinkedProgram> {
-  const uiPath = Repo.resolvePath('ts/stdlib/stdlib-src/@ui/Views.tao')
-  const uiSource = await FileSystem.readFile(uiPath, 'utf8')
-  const uiDocument = transform(createParser().parse(uiSource))!
-  const modulesPath = Path.join(Path.dirname(entryPath), 'Modules.tao')
-  const modulesDocument = FileSystem.existsSync(modulesPath)
-    ? transform(createParser().parse(await FileSystem.readFile(modulesPath, 'utf8')))
-    : undefined
-  const imports: SourceModule['imports'][number][] = AST.GetImportStatements(document)
-    .map(statement => {
-      const from = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
-      const isUI = from === 'tao@ui'
-      return {
-        statement,
-        targets: [{ path: isUI ? uiPath : modulesPath, relation: isUI ? 'public' : 'same-directory' }],
-      }
-    })
-  const sources: SourceModule[] = [
-    { path: entryPath, document, imports, siblings: modulesDocument ? [modulesPath] : [] },
-    { path: uiPath, document: uiDocument, imports: [], siblings: [] },
-  ]
-  if (modulesDocument) {
-    sources.push({ path: modulesPath, document: modulesDocument, imports: [], siblings: [] })
-  }
+  const sources = await loadModules({ path: entryPath, document }, {
+    directory: Path.dirname(entryPath),
+    resolveProject: async (_importer, alias) =>
+      alias === 'tao' ? { root: Repo.resolvePath('ts/stdlib/stdlib-src') } : undefined,
+  }, createParser())
   return linkModules(entryPath, sources)
 }

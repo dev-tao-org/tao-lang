@@ -185,7 +185,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
         'public view FormattedDate(Value text) from ./FormattedDate.tsx',
       ),
     )!
-    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
+    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
     const prepared = await prepareSidecarPipeline({ ...fixture, executor: executeTypeScript })
     const snapshotSidecar = prepared.resolveForeignViewPath(taoPath, './FormattedDate.tsx')
     Tests.expect(await FileSystem.readFile(snapshotSidecar, 'utf8')).toContain("from './format'")
@@ -223,7 +223,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
         'public view FormattedDate(Value text) from ./FormattedDate.tsx',
       ),
     )!
-    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [] })
+    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
     await Tests.rejects(
       prepareSidecarPipeline({ ...fixture, executor: executeTypeScript }),
       CrossingModuleBoundaryErrorRegx,

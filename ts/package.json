@@ -16,7 +16,8 @@
     "ide-extensions/*",
     "perf",
     "shared",
-    "stdlib"
+    "stdlib",
+    "ts-api"
   ],
   "overrides": {
     "rulesync": { "js-yaml": "5.4.2" }

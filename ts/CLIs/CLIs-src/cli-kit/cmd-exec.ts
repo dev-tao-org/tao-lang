@@ -1,6 +1,6 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
-import { type ConfiguredCommandOutput, configuredCommandOutput } from './io'
+import { type ConfiguredCommandOutput, configuredCommandOutput, IO } from './io'
 import type { OutputChannel } from './output/Output'
 import { createProcessOutput } from './output/ProcessOutput'
 
@@ -34,6 +34,34 @@ export async function runCommand(command: Command, options: RunOptions = {}): Pr
       output.progressPipe(`[${((Time.nowMs() - started) / 1000).toFixed(2)}s] (${label})`)
     },
   })
+}
+
+/** runForegroundCommand gives an interactive child its real terminal and drains cooperative shutdown on Ctrl+C. */
+export async function runForegroundCommand(command: Command, options: ForegroundOptions = {}): Promise<void> {
+  await IO.prompt(async () => {
+    const spawnOptions = createForegroundOptions(options)
+    const child = Platform.spawnInherited(command, spawnOptions)
+    let stopping: ChildShutdown
+    const stop = Lifecycle.onTermination(() => stopping ??= Lifecycle.stopProcess(child, 10_000))
+    await Try(async () => {
+      const status = await child.exited
+      if (!stopping) {
+        requireCommandSuccess(command, options, status, child.signalCode)
+      }
+    }, {
+      async finally() {
+        stop()
+        await stopping
+      },
+    })
+  })
+}
+
+type ForegroundOption = 'variadicArgs' | 'cwd' | 'addEnv'
+type ForegroundOptions = Pick<RunOptions, ForegroundOption>
+
+function createForegroundOptions(options: ForegroundOptions) {
+  return { ...options, stdin: 'inherit' as const }
 }
 
 type CommandStepResult = void | Promise<void>

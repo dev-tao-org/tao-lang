@@ -6,6 +6,7 @@ use Text as Caption from tao@ui
 use package tao@ui as UI
 use ModuleCaption as ImportedCaption from ./Modules
 use package ./Modules
+use LibraryGreeting from ./Library
 
 file
 let DefaultTitle is text = "Kitchen Sink"
@@ -19,6 +20,7 @@ view RootView {
   render Col {
     Heading
     PrivateGreeting
+    LibraryGreeting("Typed", "TypeScript props")
     Text(Title)
     Text(Modules.ModuleCaption)
     Text(ModuleCaption)

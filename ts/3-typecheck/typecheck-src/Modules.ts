@@ -29,6 +29,7 @@ export type LinkedModule = {
   path: string
   document: AST.Document
   bindings: readonly ModuleBinding[]
+  imports: SourceModule['imports']
 }
 
 /** LinkedDefinition identifies a module-level value in initialization order. */

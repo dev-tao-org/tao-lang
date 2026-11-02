@@ -27,6 +27,7 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     path: source.path,
     document: source.document,
     bindings: bindings.get(source.path)!,
+    imports: source.imports,
   }))
   return { entry, modules: linkedModules, definitions: orderDefinitions(linkedModules) }
 }

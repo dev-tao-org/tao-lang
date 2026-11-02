@@ -30,6 +30,7 @@
       "@compile/*": ["./6-compile/compile-src/*"],
       "@runtime/*": ["./7-runtime/runtime-src/*"],
       "@tao/runtime-api": ["./7-runtime/runtime-src/client/TaoRuntimeAPI.ts"],
+      "@tao/ts-api": ["./ts-api/ts-api-src/ts-api.ts"],
       "@workspace/*": ["./0-workspace/workspace-src/*"],
       "@stdlib/*": ["./stdlib/stdlib-src/*"]
     }

@@ -37,6 +37,7 @@ export default {
     ]),
     'shared': createPackageWorkspace([]),
     'stdlib': createPackageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
+    'ts-api': createPackageWorkspace(['ts-api-src/ts-api.ts']),
     'ide-extensions/tao-ide-extension': createNestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
     'ide-extensions/dev-tao-org': createNestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
   },

@@ -3,8 +3,11 @@ import { Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral } from './codegen-util'
 
+/** GeneratedModulePaths maps authored module identities to portable generated source paths. */
+export type GeneratedModulePaths = ReadonlyMap<string, string>
+
 /** createGeneratedPaths preserves source-file ownership without exposing absolute host paths. */
-export function createGeneratedPaths(program: LinkedProgram): ReadonlyMap<string, string> {
+export function createGeneratedPaths(program: LinkedProgram): GeneratedModulePaths {
   const paths = new Map(
     program.modules.map(module => [module.path, resolveGeneratedModulePath(program.entry, module.path)]),
   )
