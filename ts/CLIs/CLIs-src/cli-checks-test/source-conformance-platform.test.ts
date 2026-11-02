@@ -18,9 +18,52 @@ Tests.test('platform conformance > restricts raw globals to platform bridge owne
   Tests.expect(findPlatformIssue('Date.now()', 'ts/app.ts')).toBe(
     'platform global "Date" belongs in ts/shared/shared-src/universal/Time.ts',
   )
+  for (const source of ['Date["now"]()', 'new Date']) {
+    Tests.expect(findPlatformIssue(source, 'ts/app.ts')).toBe(
+      'platform global "Date" belongs in ts/shared/shared-src/universal/Time.ts',
+    )
+    Tests.expect(findPlatformIssue(source, 'ts/shared/shared-src/universal/Time.ts')).toBeUndefined()
+  }
+  Tests.expect(findPlatformIssue('new Date(0)', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('record.process()', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('type T = TypeScript.Node', 'ts/app.ts')).toBeUndefined()
   Tests.expect(findPlatformIssue('import { Buffer as NodeBuffer } from "./bridge"', 'ts/app.ts')).toBeUndefined()
+})
+
+Tests.test('platform conformance > follows shorthand values and respects shadowed globalThis bindings', () => {
+  const filename = '/fixture/consumer.ts'
+  const globals = '/fixture/globals.d.ts'
+  const sources = new Map([
+    [
+      filename,
+      'const host = { process }; function read(globalThis: { process: string }) { return globalThis.process }',
+    ],
+    [globals, 'declare const process: { cwd(): string }'],
+  ])
+  const host = TypeScript.createCompilerHost({ noLib: true })
+  host.getSourceFile = path => {
+    const text = sources.get(path)
+    return text === undefined
+      ? undefined
+      : TypeScript.createSourceFile(path, text, TypeScript.ScriptTarget.Latest, true)
+  }
+  const program = TypeScript.createProgram([...sources.keys()], { noLib: true }, host)
+  const checker = program.getTypeChecker()
+  const issues: Array<{ source: string; issue: string }> = []
+  const visit = (node: TypeScript.Node): void => {
+    const issue = platformGlobalIssue(node, 'ts/consumer.ts', checker)
+    if (issue) {
+      issues.push({ source: node.getText(), issue })
+    }
+    TypeScript.forEachChild(node, visit)
+  }
+  visit(program.getSourceFile(filename)!)
+  Tests.expect(issues).toEqual([
+    {
+      source: 'process',
+      issue: 'platform global "process" belongs in ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts',
+    },
+  ])
 })
 
 Tests.test('platform conformance > permits globals only inside serialized browser callbacks', () => {

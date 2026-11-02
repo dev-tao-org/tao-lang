@@ -1,9 +1,9 @@
-import { Path, Tests } from '@shared/os'
+import { Repo, Tests } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { createSourceBridgeContext } from '../cli-checks/source-bridge-owners'
 import { sourceBridgeIssue, sourceBridgeLoaderAliases } from '../cli-checks/source-bridges'
 
-const bridgeContext = createSourceBridgeContext(repositoryRoot())
+const bridgeContext = createSourceBridgeContext(Repo.getWorkspaceRoot())
 
 Tests.test('source conformance > assigns external module references to exact bridge owners', () => {
   expectBridgeIssue(
@@ -112,6 +112,19 @@ Tests.test('source conformance > recognizes literal calls through loader aliases
   }
 })
 
+Tests.test('source conformance > resolves loader aliases by binding across lexical scopes', () => {
+  expectBridgeIssue(
+    "const load = require; function inspect(load: (label: string) => void) { load('react') }",
+    'ts/app.ts',
+  )
+  expectBridgeIssue("function inspect(require: (label: string) => void) { require('react') }", 'ts/app.ts')
+  expectBridgeIssue(
+    "const load = require; function inspect(load: (label: string) => void) { load('label') }; load('react')",
+    'ts/app.ts',
+    'external module "react" belongs in ts/7-runtime/runtime-src/client/Bridge_react',
+  )
+})
+
 function expectBridgeIssue(source: string, filename: string, expected?: string): void {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
   const loaderAliases = sourceBridgeLoaderAliases(file)
@@ -125,16 +138,4 @@ function expectBridgeIssue(source: string, filename: string, expected?: string):
   }
   visit(file)
   Tests.expect(issues).toEqual(expected === undefined ? [] : [expected])
-}
-
-function repositoryRoot(): string {
-  let directory = TypeScript.sys.getCurrentDirectory()
-  while (!TypeScript.sys.fileExists(Path.join(directory, 'ts/tsconfig.base.json'))) {
-    const parent = Path.dirname(directory)
-    if (parent === directory) {
-      return directory
-    }
-    directory = parent
-  }
-  return directory
 }

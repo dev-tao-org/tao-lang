@@ -1,6 +1,7 @@
 import { runCommand } from '@cli-kit'
 import { Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
 import { writeSemanticAst } from './semantic-ast'
@@ -86,7 +87,7 @@ async function readInputs() {
     lock: Platform.hashText(await FileSystem.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
     node: JSON.parse(
-      await Platform.capture('node -p JSON.stringify({version:process.version,executable:process.execPath})'),
+      await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
     ) as {
       version: string
       executable: string

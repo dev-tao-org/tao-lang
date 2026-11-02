@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, ExternalErrors, Time, Try } from '@shared'
 import Preact from './Bridge_preact-signals-core'
 import React from './Bridge_react/Bridge_react'
 import { decodeReactiveValue, encodeReactiveValue } from './ReactiveValues'
@@ -260,7 +260,7 @@ function flushDelivery(state: EngineState): void {
         for (const deliver of current) {
           Try(deliver, {
             catch(error) {
-              failure ??= Errors.fromUnknown(error)
+              failure ??= ExternalErrors.fromUnknown(error)
             },
           })
         }

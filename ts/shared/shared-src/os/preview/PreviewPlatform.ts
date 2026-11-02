@@ -9,8 +9,8 @@ export function initializePreviewClient(): void {
     return
   }
   state.listening = true
-  WebHost.browserWindow().addEventListener('error', event => reportPreviewError('runtime-error', event.message))
-  WebHost.browserWindow().addEventListener(
+  WebHost.getBrowserWindow().addEventListener('error', event => reportPreviewError('runtime-error', event.message))
+  WebHost.getBrowserWindow().addEventListener(
     'unhandledrejection',
     event => reportPreviewError('runtime-error', String(event.reason)),
   )
@@ -22,7 +22,7 @@ export function reportPreviewError(kind: 'runtime-error' | 'build-error', messag
     if (previewState()) {
       postPreviewMessage({ type: 'tao.preview-reload' })
     } else {
-      WebHost.browserWindow().location.reload()
+      WebHost.getBrowserWindow().location.reload()
     }
   })
   postPreviewMessage({ type: 'tao.preview-error', kind, message, revision })
@@ -53,7 +53,7 @@ export function reportPreviewEvent(type: 'tao.preview-applied' | 'tao.update-don
   if (type === 'tao.preview-applied') {
     clearPreviewError()
   }
-  WebHost.browserWindow().parent.postMessage({
+  WebHost.getBrowserWindow().parent.postMessage({
     type,
     sessionId: state.sessionId,
     frameId: state.frameId,
@@ -95,8 +95,8 @@ function previewState(): PreviewState | undefined {
   if (!WebHost.hasWindow()) {
     return undefined
   }
-  const host = WebHost.browserWindow() as WebHost.Window & { __taoPreview?: PreviewState }
-  if (!host.parent || host.parent === WebHost.browserWindow()) {
+  const host = WebHost.getBrowserWindow() as WebHost.Window & { __taoPreview?: PreviewState }
+  if (!host.parent || host.parent === WebHost.getBrowserWindow()) {
     return undefined
   }
   if (host.__taoPreview) {
@@ -126,7 +126,7 @@ function previewState(): PreviewState | undefined {
 function postPreviewMessage(message: object): void {
   const state = previewState()
   if (state) {
-    WebHost.browserWindow().parent.postMessage(
+    WebHost.getBrowserWindow().parent.postMessage(
       { ...message, sessionId: state.sessionId, frameId: state.frameId, bootId: state.bootId },
       state.parentOrigin,
     )

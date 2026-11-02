@@ -2,8 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, Try } from '@shared'
-import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
-import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import { Env, Files, FileSystem, Path, Platform, Storage, Text } from '@shared/os'
 import { valid } from './bridges/Bridge_semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
@@ -237,14 +236,14 @@ async function replaceRequirements(
     grouped.set(occurrence.path, [...(grouped.get(occurrence.path) ?? []), occurrence])
   }
   for (const [path, values] of grouped) {
-    let bytes = new WebHost.TextEncoder().encode(values[0]!.source)
+    let bytes = Text.encodeUtf8(values[0]!.source)
     for (const item of values.sort((left, right) => right.start - left.start)) {
-      const replacement = new WebHost.TextEncoder().encode(
+      const replacement = Text.encodeUtf8(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )
       bytes = joinBytes(bytes.slice(0, item.start), replacement, bytes.slice(item.end))
     }
-    await FileSystem.writeFile(path, new WebHost.TextDecoder().decode(bytes))
+    await FileSystem.writeFile(path, Text.decodeUtf8(bytes))
   }
 }
 

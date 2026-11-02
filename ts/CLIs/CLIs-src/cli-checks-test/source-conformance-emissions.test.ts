@@ -13,6 +13,13 @@ Tests.test('source conformance > requires generated imports to remain source-own
     'const code = S`const fs = require("node:fs")`',
     'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission.ts',
   )).toEqual([])
+  Tests.expect(findEmissionIssues('const code = S`export * from "react"`', 'ts/app.ts')).toEqual([
+    'emitted source: external module "react" belongs in ts/7-runtime/runtime-src/client/Bridge_react',
+  ])
+  Tests.expect(findEmissionIssues(
+    'const code = S`export * from "react"`',
+    'ts/7-runtime/runtime-src/client/Bridge_react/Bridge_react.ts',
+  )).toEqual([])
 })
 
 Tests.test('source conformance > limits isolated external probes to exact source specifiers', () => {

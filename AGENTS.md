@@ -88,10 +88,11 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Use `Switch(...)` or `Switch.*` from `@shared` for switch dispatch; never use native `switch` statements.
   - Keep import declarations on one formatted line. Keep short named imports; when a named list would wrap, prefer one namespace import and qualify values and types through it. Prefer module namespaces over exported aggregate objects or defaults created only for this style; generated and whole-file third-party source are outside this rule.
   - Multiline strings use indented `S` templates with aligned closing backticks.
-  - Builtins/platform globals belong in `ts/shared/shared-src/os/`, accessed via `@shared/os`; portable clocks/timers belong in universal `Time`.
+  - Builtins/platform globals belong in `ts/shared/shared-src/os/`, normally accessed via `@shared/os`. Bootstrap, browser and editor entry points may import target-safe bridge leaves directly to avoid loading the OS barrel's unrelated host dependencies. Portable clocks/timers belong in universal `Time`.
   - Function bodies: at most 45 physical interior lines, including comments and blanks.
   - Handwritten TypeScript files: 250-line soft limit, 350-line hard limit; generated and whole-file third-party sources are excluded. Mark imported whole files with `@third-party` source provenance.
-  - Never name handwritten files `index.ts`. Name directory entrypoints after their parent folder, such as `incremental-review/incremental-review.ts`.
+  - Never name handwritten files `index.ts`.
+  - Named TypeScript modules use a sibling `<Name>.ts` import/export facade and `<Name>/` implementation folder. Keep independently exposed sub-APIs behind their own facade, such as `<Name>/external.ts` with `<Name>/external/`; do not force those APIs into the parent facade. External bridges instead use `Bridge_<package>.ts` or a source-specific `Bridge_<package>/Bridge_<package>.ts` entry point, with related adapters inside that bridge folder.
   - Object functions with only a returned expression use expression-bodied arrow properties: `Name: name => value`. Other object functions use method syntax; retain methods when arrows would change `this`, `arguments`, `super` or generator behavior.
 - Review:
   - Name functions, methods and callable variables or parameters with verbs or verb phrases, such as `resolveModuleIndex`. Retain noun names only for a clear convention or contract, such as same-named type constructors, React components, property getters or required external API names.

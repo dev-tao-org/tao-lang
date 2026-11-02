@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, ExternalErrors, Try } from '@shared'
 import { Platform, Terminal, Text } from '@shared/os'
 import { IO } from './cli-kit'
 
@@ -10,7 +10,7 @@ async function fatalError(error: unknown): Promise<void> {
   const status = commandFailure ? error.result.status : undefined
   await Try(async () => {
     printError(error)
-    IO.summary(`Failed: ${Errors.fromUnknown(error).message.split('\n')[0]!.slice(0, 240)}`)
+    IO.summary(`Failed: ${ExternalErrors.fromUnknown(error).message.split('\n')[0]!.slice(0, 240)}`)
     await IO.finish('failed')
   }, {
     catch: () => writeFallbackError(error),

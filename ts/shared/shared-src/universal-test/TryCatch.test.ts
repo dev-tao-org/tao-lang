@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, ExternalErrors, Try } from '@shared'
 import { Tests } from '@shared/os'
 
 Tests.test('Try > recovers and finalizes even when a thrown object cannot be inspected', async () => {
@@ -96,7 +96,7 @@ Tests.test('Try > normalizes unknown failures and preserves structured error ide
       return true
     })
   }
-  const original = Errors.fromUnknown(new Error('structured failure'))
+  const original = ExternalErrors.fromUnknown(new Error('structured failure'))
   Tests.throws(() =>
     Try(() => {
       throw original
@@ -197,7 +197,7 @@ Tests.test('Try > awaits callback, recovery and cleanup in order before resolvin
 
 Tests.test('Try > normalizes asynchronous body and catch failures', async () => {
   const original = new Error('async body')
-  const replacement = Errors.fromUnknown(new Error('async handler'))
+  const replacement = ExternalErrors.fromUnknown(new Error('async handler'))
   await Tests.rejects(
     Try(async () => {
       throw original

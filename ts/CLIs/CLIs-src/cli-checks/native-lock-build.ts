@@ -3,6 +3,7 @@ import { Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
 import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
+import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
 
@@ -64,9 +65,9 @@ async function readInputs(): Promise<NativeInputs> {
     sourceNames.map(name => FileSystem.readFile(Path.join(sourceRoot, name), 'utf8')),
   )
   const builderSource = await readBuilderSources()
-  const nodeMetadataCommand =
-    'node -p JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})'
-  const node = JSON.parse(await Platform.capture(nodeMetadataCommand)) as NativeInputs['node']
+  const node = JSON.parse(
+    await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
+  ) as NativeInputs['node']
   const [addon, nodeGyp, include] = await Promise.all([
     NodeAddonApi.readMetadata(sharedRoot),
     NodeGyp.readMetadata(sharedRoot),
@@ -100,6 +101,7 @@ async function readBuilderSources(): Promise<string[]> {
   const paths = [
     import.meta.filename,
     Repo.resolvePath('ts/shared/shared-src/os/PackageResources.ts'),
+    Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission.ts'),
     Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-addon-api.ts'),
     Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-gyp.ts'),
   ]

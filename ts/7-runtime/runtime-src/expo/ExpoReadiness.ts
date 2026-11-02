@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, ExternalErrors, Time, Try } from '@shared'
 import { Http } from '@shared/os'
 
 /** waitForExpoReady polls a local server while bounding each request by its remaining deadline. */
@@ -43,7 +43,7 @@ async function requestBeforeDeadline(
   const cancelled = new Promise<never>((_resolve, reject) => {
     abort = () => {
       controller.abort()
-      reject(Errors.fromUnknown(new Error('Expo startup interrupted.')))
+      reject(ExternalErrors.fromUnknown(new Error('Expo startup interrupted.')))
     }
   })
   signal?.addEventListener('abort', abort, { once: true })
@@ -54,7 +54,7 @@ async function requestBeforeDeadline(
   const timeout = new Promise<never>((_resolve, reject) => {
     cancelTimer = Time.schedule(remainingMs, () => {
       controller.abort()
-      reject(Errors.fromUnknown(new Error('Expo readiness request exceeded its deadline.')))
+      reject(ExternalErrors.fromUnknown(new Error('Expo readiness request exceeded its deadline.')))
     })
   })
   return await Try(

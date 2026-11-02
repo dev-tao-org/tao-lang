@@ -1,18 +1,24 @@
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { type SourceBridgeContext, sourceBridgeOwnerIssue } from './source-bridge-owners'
 
+/** SourceLoaderAliases tracks actual loader bindings without conflating shadowed names. */
+export type SourceLoaderAliases = {
+  checker: TypeScript.TypeChecker
+  symbols: Set<TypeScript.Symbol>
+}
+
 /** sourceBridgeIssue rejects external module references outside their exact package bridge. */
 export function sourceBridgeIssue(
   node: TypeScript.Node,
   filename: string,
   context: SourceBridgeContext,
-  loaderAliases: ReadonlySet<string>,
+  loaderAliases: SourceLoaderAliases,
   excludedSource: boolean,
 ): string | undefined {
   if (excludedSource) {
     return
   }
-  const specifier = externalModuleSpecifier(node, loaderAliases)
+  const specifier = sourceModuleSpecifier(node, loaderAliases)
   if (specifier === undefined) {
     return
   }
@@ -23,8 +29,11 @@ export function sourceBridgeIssue(
 }
 
 /** sourceBridgeLoaderAliases finds local aliases of supported literal module loaders once per file. */
-export function sourceBridgeLoaderAliases(file: TypeScript.SourceFile): Set<string> {
-  const aliases = new Set(['require'])
+export function sourceBridgeLoaderAliases(
+  file: TypeScript.SourceFile,
+  checker = createBindingChecker(file),
+): SourceLoaderAliases {
+  const aliases: SourceLoaderAliases = { checker, symbols: new Set() }
   let changed = true
   while (changed) {
     changed = false
@@ -33,9 +42,11 @@ export function sourceBridgeLoaderAliases(file: TypeScript.SourceFile): Set<stri
         TypeScript.isVariableDeclaration(node) && TypeScript.isIdentifier(node.name)
         && isLoaderAlias(node.initializer, aliases)
       ) {
-        const previousSize = aliases.size
-        aliases.add(node.name.text)
-        changed ||= aliases.size !== previousSize
+        const symbol = checker.getSymbolAtLocation(node.name)
+        if (symbol !== undefined && !aliases.symbols.has(symbol)) {
+          aliases.symbols.add(symbol)
+          changed = true
+        }
       }
       TypeScript.forEachChild(node, visit)
     }
@@ -44,15 +55,8 @@ export function sourceBridgeLoaderAliases(file: TypeScript.SourceFile): Set<stri
   return aliases
 }
 
-function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string, specifier: string): boolean {
-  return specifier === 'node:fs/promises' && isDynamicImportCall(node) && [
-    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
-    'ts/shared/shared-src/os/Storage-test/LeaseFailures.test.ts',
-    'ts/shared/shared-src/os/SessionLock-test/PointerDiagnostics.test.ts',
-  ].includes(filename.replaceAll('\\', '/'))
-}
-
-function externalModuleSpecifier(node: TypeScript.Node, loaderAliases: ReadonlySet<string>): string | undefined {
+/** sourceModuleSpecifier reads literal imports, re-exports, type imports and supported module-loader calls. */
+export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: SourceLoaderAliases): string | undefined {
   if (!TypeScript.isStringLiteralLike(node) && !TypeScript.isNoSubstitutionTemplateLiteral(node)) {
     return
   }
@@ -77,12 +81,38 @@ function externalModuleSpecifier(node: TypeScript.Node, loaderAliases: ReadonlyS
   }
 }
 
-function isModuleLoadingCall(expression: TypeScript.Expression, loaderAliases: ReadonlySet<string>): boolean {
+function createBindingChecker(file: TypeScript.SourceFile): TypeScript.TypeChecker {
+  const options: TypeScript.CompilerOptions = { noLib: true, noResolve: true }
+  const host = TypeScript.createCompilerHost(options)
+  host.getSourceFile = filename => filename === file.fileName ? file : undefined
+  return TypeScript.createProgram([file.fileName], options, host).getTypeChecker()
+}
+
+function isLoaderBinding(identifier: TypeScript.Identifier, aliases: SourceLoaderAliases): boolean {
+  const symbol = aliases.checker.getSymbolAtLocation(identifier)
+  if (symbol !== undefined && aliases.symbols.has(symbol)) {
+    return true
+  }
+  const locallyDeclared = symbol?.declarations?.some(declaration =>
+    declaration.getSourceFile() === identifier.getSourceFile()
+  )
+  return identifier.text === 'require' && !locallyDeclared
+}
+
+function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string, specifier: string): boolean {
+  return specifier === 'node:fs/promises' && isDynamicImportCall(node) && [
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'ts/shared/shared-src/os/Storage-test/LeaseFailures.test.ts',
+    'ts/shared/shared-src/os/SessionLock-test/PointerDiagnostics.test.ts',
+  ].includes(filename.replaceAll('\\', '/'))
+}
+
+function isModuleLoadingCall(expression: TypeScript.Expression, loaderAliases: SourceLoaderAliases): boolean {
   if (expression.kind === TypeScript.SyntaxKind.ImportKeyword) {
     return true
   }
   if (TypeScript.isIdentifier(expression)) {
-    return loaderAliases.has(expression.text)
+    return isLoaderBinding(expression, loaderAliases)
   }
   if (TypeScript.isCallExpression(expression)) {
     return isLoaderFactory(expression.expression)
@@ -101,15 +131,15 @@ function isDynamicImportCall(node: TypeScript.Node): boolean {
     && node.parent.expression.kind === TypeScript.SyntaxKind.ImportKeyword
 }
 
-function isLoaderAlias(initializer: TypeScript.Expression | undefined, aliases: ReadonlySet<string>): boolean {
+function isLoaderAlias(initializer: TypeScript.Expression | undefined, aliases: SourceLoaderAliases): boolean {
   if (initializer === undefined) {
     return false
   }
   if (TypeScript.isIdentifier(initializer)) {
-    return aliases.has(initializer.text) || initializer.text === 'createRequire'
+    return isLoaderBinding(initializer, aliases) || initializer.text === 'createRequire'
   }
   if (TypeScript.isPropertyAccessExpression(initializer)) {
-    return TypeScript.isIdentifier(initializer.expression) && aliases.has(initializer.expression.text)
+    return TypeScript.isIdentifier(initializer.expression) && isLoaderBinding(initializer.expression, aliases)
         && initializer.name.text === 'resolve'
       || TypeScript.isIdentifier(initializer.expression) && initializer.expression.text === 'Platform'
         && initializer.name.text === 'loadModule'

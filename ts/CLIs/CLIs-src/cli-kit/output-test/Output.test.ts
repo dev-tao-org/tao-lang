@@ -1,5 +1,4 @@
 import { Tests, Text } from '@shared/os'
-import * as WebHost from '../../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { createOutput, formatChannelCompletion } from '../output/Output'
 import { createProcessOutput, encodeOutputMessage, type OutputMessage } from '../output/ProcessOutput'
 import { displayStatus, elapsed, wrappedTail } from '../output/tui/Display'
@@ -37,8 +36,7 @@ Tests.test('subprocess output retains framed severity across byte fragments with
   const messages: OutputMessage[] = []
   const pipe = createProcessOutput(text => raw.push(text), event => messages.push(event))
   const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '€ warning\n' })
-  const encoder = new WebHost.TextEncoder()
-  const bytes = encoder.encode('normal stderr\n' + frame + '\u001einvalid\ntrailing')
+  const bytes = Text.encodeUtf8('normal stderr\n' + frame + '\u001einvalid\ntrailing')
   for (const byte of bytes) {
     pipe.write(new Uint8Array([byte]))
   }

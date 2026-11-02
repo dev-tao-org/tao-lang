@@ -5,7 +5,7 @@ import { IO } from '../cli-kit/cli-kit'
 import { sourceBridgeEmissionIssues } from './source-bridge-emissions'
 import { platformGlobalIssue } from './source-bridge-globals'
 import { createSourceBridgeContext } from './source-bridge-owners'
-import { sourceBridgeIssue, sourceBridgeLoaderAliases } from './source-bridges'
+import * as Bridges from './source-bridges'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { nestedConditionalIssue } from './source-conformance-conditional'
 import { ExportedApiChecker } from './source-conformance-exports'
@@ -14,6 +14,7 @@ import * as ConformanceLayout from './source-conformance-layout'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
+import * as Facades from './source-facades'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
@@ -24,13 +25,14 @@ export async function checkSourceConformance(root: string): Promise<void> {
   const bridgeContext = createSourceBridgeContext(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const facadeContext = Facades.createSourceFacadeContext(root, sources, program.getCompilerOptions())
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)
     const { error } = sourceSizeDiagnostics(relative, file.text)
     issues.push(
       ...error ? [error] : [],
-      ...new SourceConformanceChecker(relative, file, checker, bridgeContext).check(),
+      ...new SourceConformanceChecker(relative, file, checker, bridgeContext, facadeContext).check(),
     )
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
@@ -42,7 +44,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
 class SourceConformanceChecker {
   private readonly source: string
   private readonly excludedSource: boolean
-  private readonly loaderAliases: ReadonlySet<string>
+  private readonly loaderAliases: Bridges.SourceLoaderAliases
   private readonly issues: string[] = []
   private readonly publicDocs = new Set<number>()
   private readonly comments = new Map<number, TypeScript.CommentRange>()
@@ -53,10 +55,11 @@ class SourceConformanceChecker {
     private readonly file: TypeScript.SourceFile,
     private readonly checker: TypeScript.TypeChecker,
     private readonly bridgeContext: ReturnType<typeof createSourceBridgeContext>,
+    private readonly facadeContext: Facades.SourceFacadeContext,
   ) {
     this.source = file.text
     this.excludedSource = isExcludedSource(filename, this.source)
-    this.loaderAliases = sourceBridgeLoaderAliases(file)
+    this.loaderAliases = Bridges.sourceBridgeLoaderAliases(file, checker)
     this.api = new ExportedApiChecker(
       this.source,
       this.file,
@@ -95,7 +98,7 @@ class SourceConformanceChecker {
 
   private checkExternalBoundaries(node: TypeScript.Node): void {
     this.reportIssue(node, platformGlobalIssue(node, this.filename, this.checker, this.excludedSource))
-    const bridgeIssue = sourceBridgeIssue(
+    const bridgeIssue = Bridges.sourceBridgeIssue(
       node,
       this.filename,
       this.bridgeContext,
@@ -103,6 +106,9 @@ class SourceConformanceChecker {
       this.excludedSource,
     )
     this.reportIssue(node, bridgeIssue)
+    if (!this.excludedSource) {
+      this.reportIssue(node, Facades.sourceFacadeIssue(node, this.facadeContext, this.loaderAliases))
+    }
     if (!this.excludedSource) {
       for (const issue of sourceBridgeEmissionIssues(node, this.filename, this.bridgeContext)) {
         this.report(node.getStart(this.file), issue)
@@ -123,6 +129,9 @@ class SourceConformanceChecker {
     }
     if (TypeScript.isSourceFile(node)) {
       this.api.checkScope(node)
+      if (!this.excludedSource) {
+        this.reportIssue(node, Facades.sourceFacadeLayoutIssue(node, this.facadeContext))
+      }
     }
     if (TypeScript.isModuleBlock(node) && this.api.publicNamespaces.has(node.parent)) {
       this.api.checkScope(node, isAmbientNamespace(node))

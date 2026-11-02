@@ -15,16 +15,14 @@ export function platformGlobalIssue(
   if (globalName === undefined || isLocalValue(node, checker)) {
     return
   }
-  const owner = globalOwner(globalName)
+  const owner = getGlobalOwnerPath(globalName)
   if (owner === undefined) {
     return `platform global "${globalName}" has no registered bridge owner`
   }
-  if (filename.replaceAll('\\', '/') !== owner.path) {
-    return `platform global "${globalName}" belongs in ${owner.path}`
+  if (filename.replaceAll('\\', '/') !== owner) {
+    return `platform global "${globalName}" belongs in ${owner}`
   }
 }
-
-type GlobalOwner = { path: string }
 
 const browserGlobalNames = new Set([
   'crypto',
@@ -72,18 +70,18 @@ const browserGlobalNames = new Set([
 
 const platformGlobals = new Set(['process', 'Bun', 'Buffer', 'Date', ...browserGlobalNames])
 
-function globalOwner(name: string): GlobalOwner | undefined {
+function getGlobalOwnerPath(name: string): string | undefined {
   if (name === 'process' || name === 'Buffer') {
-    return { path: 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts' }
+    return 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts'
   }
   if (name === 'Bun') {
-    return { path: 'ts/shared/shared-src/os/bridges/Bridge_bun/Bridge_bun.ts' }
+    return 'ts/shared/shared-src/os/bridges/Bridge_bun/Bridge_bun.ts'
   }
   if (name === 'Date') {
-    return { path: 'ts/shared/shared-src/universal/Time.ts' }
+    return 'ts/shared/shared-src/universal/Time.ts'
   }
   if (browserGlobalNames.has(name)) {
-    return { path: 'ts/shared/shared-src/os/bridges/Bridge_browser/Bridge_browser.ts' }
+    return 'ts/shared/shared-src/os/bridges/Bridge_browser/Bridge_browser.ts'
   }
 }
 
@@ -127,10 +125,15 @@ function isGlobalThisAccess(node: TypeScript.PropertyAccessExpression | TypeScri
 }
 
 function isLocalValue(node: TypeScript.Node, checker?: TypeScript.TypeChecker): boolean {
+  if (TypeScript.isPropertyAccessExpression(node) || TypeScript.isElementAccessExpression(node)) {
+    return isLocalValue(node.expression, checker)
+  }
   if (!TypeScript.isIdentifier(node)) {
     return false
   }
-  const symbol = checker?.getSymbolAtLocation(node)
+  const symbol = TypeScript.isShorthandPropertyAssignment(node.parent)
+    ? checker?.getShorthandAssignmentValueSymbol(node.parent)
+    : checker?.getSymbolAtLocation(node)
   return symbol?.declarations?.some(declaration => declaration.getSourceFile() === node.getSourceFile()) ?? false
 }
 
@@ -178,11 +181,14 @@ function isUniversalTimeAccess(node: TypeScript.Node, filename: string): boolean
 
 function isWallClockAccess(node: TypeScript.Identifier): boolean {
   const parent = node.parent
-  if (TypeScript.isPropertyAccessExpression(parent) && parent.expression === node) {
-    return parent.name.text === 'now'
+  if (
+    (TypeScript.isPropertyAccessExpression(parent) || TypeScript.isElementAccessExpression(parent))
+    && parent.expression === node
+  ) {
+    return accessedMemberName(parent) === 'now'
   }
   if (TypeScript.isNewExpression(parent) && parent.expression === node) {
-    return parent.arguments?.length === 0
+    return (parent.arguments?.length ?? 0) === 0
   }
   return TypeScript.isCallExpression(parent) && parent.expression === node && parent.arguments.length === 0
 }

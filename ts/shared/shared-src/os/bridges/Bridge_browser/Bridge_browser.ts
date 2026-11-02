@@ -5,7 +5,7 @@ export const crypto = globalThis.crypto
 export const performance = globalThis.performance
 
 /** fetch exposes the standard web host fetch API. */
-export const fetch = globalThis.fetch
+export const fetch = globalThis.fetch.bind(globalThis)
 
 /** WebSocket exposes the standard web host WebSocket API. */
 export const WebSocket = globalThis.WebSocket
@@ -105,8 +105,8 @@ export function hasWindow(): boolean {
   return typeof window !== 'undefined'
 }
 
-/** browserWindow accesses the active browser window. */
-export function browserWindow(): BrowserGlobalWindow {
+/** getBrowserWindow accesses the active browser window. */
+export function getBrowserWindow(): BrowserGlobalWindow {
   return window
 }
 
@@ -115,8 +115,8 @@ export function hasDocument(): boolean {
   return typeof document !== 'undefined'
 }
 
-/** browserDocument accesses the active browser document. */
-export function browserDocument(): Document {
+/** getBrowserDocument accesses the active browser document. */
+export function getBrowserDocument(): Document {
   return document
 }
 

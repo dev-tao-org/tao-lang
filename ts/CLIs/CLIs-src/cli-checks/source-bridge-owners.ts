@@ -8,8 +8,8 @@ export type SourceBridgeContext = { root: string; packageNames: ReadonlySet<stri
 export function createSourceBridgeContext(root: string): SourceBridgeContext {
   return {
     root,
-    packageNames: workspacePackageNames(root),
-    pathAliases: configuredPathAliases(root),
+    packageNames: collectWorkspacePackageNames(root),
+    pathAliases: readConfiguredPathAliases(root),
   }
 }
 
@@ -80,7 +80,7 @@ function isInternalSpecifier(specifier: string, context: SourceBridgeContext): b
     || context.pathAliases.some(alias => matchesPathAlias(specifier, alias))
 }
 
-function workspacePackageNames(root: string): Set<string> {
+function collectWorkspacePackageNames(root: string): Set<string> {
   const packageFiles = TypeScript.sys.readDirectory(
     Path.join(root, 'ts'),
     ['.json'],
@@ -101,7 +101,7 @@ function workspacePackageNames(root: string): Set<string> {
   return packageNames
 }
 
-function configuredPathAliases(root: string): string[] {
+function readConfiguredPathAliases(root: string): string[] {
   const configPath = Path.join(root, 'ts/tsconfig.base.json')
   const source = TypeScript.sys.readFile(configPath)
   if (source === undefined) {

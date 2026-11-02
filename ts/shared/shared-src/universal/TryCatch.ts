@@ -1,4 +1,5 @@
 import * as Errors from './Errors'
+import * as ExternalErrors from './Errors/external'
 
 /** Try normalizes failures, allows recovery, and finalizes once with the original callback failure.
  *  Synchronous stages return synchronously; promise-like stages are awaited. Finalizer failures override
@@ -77,7 +78,7 @@ function capture(action: () => unknown): PendingOutcome {
 }
 
 function failure(thrown: unknown): Outcome {
-  return { ok: false, thrown, error: Errors.fromUnknown(thrown) }
+  return { ok: false, thrown, error: ExternalErrors.fromUnknown(thrown) }
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {

@@ -11,13 +11,13 @@ export function sourceBridgeEmissionIssues(
   if (!TypeScript.isTaggedTemplateExpression(node)) {
     return []
   }
-  const source = templateSource(node.template)
-  if (!/\b(?:import|require|createRequire)\b/u.test(source)) {
+  const source = renderTemplateSource(node.template)
+  if (!/\b(?:import|export|require|createRequire)\b/u.test(source)) {
     return []
   }
   const file = TypeScript.createSourceFile('emission.tsx', source, TypeScript.ScriptTarget.Latest, true)
   const aliases = sourceBridgeLoaderAliases(file)
-  const emittedContext = { ...context, pathAliases: [...context.pathAliases, '@runtime'] }
+  const emittedContext = createEmissionBridgeContext(context)
   const issues: string[] = []
   const visit = (child: TypeScript.Node): void => {
     if (isExplicitHostProbe(child, filename)) {
@@ -33,7 +33,11 @@ export function sourceBridgeEmissionIssues(
   return issues
 }
 
-function templateSource(template: TypeScript.TemplateLiteral): string {
+function createEmissionBridgeContext(context: SourceBridgeContext): SourceBridgeContext {
+  return { ...context, pathAliases: [...context.pathAliases, '@runtime'] }
+}
+
+function renderTemplateSource(template: TypeScript.TemplateLiteral): string {
   if (TypeScript.isNoSubstitutionTemplateLiteral(template)) {
     return template.text
   }
