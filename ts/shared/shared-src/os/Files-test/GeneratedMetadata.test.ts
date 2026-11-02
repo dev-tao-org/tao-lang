@@ -1,5 +1,6 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
 Tests.test('read-only metadata handles concurrent creators without accepting conflicting contents', async () => {
   const root = Artifacts.resolvePath('tmp', `metadata-race-${Platform.randomUUID()}`)
@@ -13,8 +14,8 @@ Tests.test('read-only metadata handles concurrent creators without accepting con
 })
 
 async function raceCreator(path: string, winningContent: string): Promise<string> {
-  const filesUrl = new URL('../Files.ts', import.meta.url).href
-  const tryUrl = new URL('../../universal/universal.ts', import.meta.url).href
+  const filesUrl = new WebHost.URL('../Files.ts', import.meta.url).href
+  const tryUrl = new WebHost.URL('../../universal/universal.ts', import.meta.url).href
   const script = S`
     import { mock } from 'bun:test';
     import { Try } from ${JSON.stringify(tryUrl)};

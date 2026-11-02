@@ -1,5 +1,6 @@
-import { Errors, S } from '@shared'
+import { Errors } from '@shared'
 import { FileSystem, Path } from '@shared/os'
+import { consumerMetroConfiguration, createConsumerBootstrap } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
 
@@ -35,16 +36,6 @@ export async function createConsumerHost(options: ConsumerHostOptions): Promise<
     'tsconfig.json': serializeConsumerTypeScript(),
   }, modules)
   return options.directory
-}
-
-function createConsumerBootstrap(entry: string): string {
-  const modulePath = entry.replaceAll('\\', '/')
-  const specifier = modulePath.startsWith('.') ? modulePath : './' + modulePath
-  return S`
-    import { registerRootComponent } from 'expo';
-    import App from ${JSON.stringify(specifier)};
-    registerRootComponent(App);
-  `
 }
 
 function serializeConsumerManifest(options: ConsumerHostOptions): string {
@@ -94,28 +85,3 @@ function serializeConsumerTypeScript(): string {
     2,
   )
 }
-
-const consumerMetroConfiguration = S`
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { getDefaultConfig } = require('expo/metro-config');
-  const consumer = require('./tao-consumer.json');
-  const config = getDefaultConfig(__dirname);
-  const modules = path.join(__dirname, 'node_modules');
-  function dependencyRoot(name) {
-    let directory = fs.realpathSync(path.join(modules, name));
-    let root = directory;
-    while (path.dirname(directory) !== directory) {
-      if (path.basename(directory) === 'node_modules') root = directory;
-      directory = path.dirname(directory);
-    }
-    return root;
-  }
-  config.watchFolders = [...new Set([consumer.packageDirectory, ...consumer.packages.map(dependencyRoot)])];
-  config.resolver.nodeModulesPaths = [modules];
-  config.resolver.resolveRequest = (context, name, platform) => {
-    const peer = ['react', 'react-dom', 'react-native', 'react-native-web'].find(id => name === id || name.startsWith(id + '/'));
-    return context.resolveRequest(context, peer ? path.join(modules, name) : name, platform);
-  };
-  module.exports = config;
-`

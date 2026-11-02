@@ -1,5 +1,5 @@
 import { CarriageReturnCharacter, NewlineCharacter, Regxs } from '@shared'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** getSingleLineCallChanges collapses fitting multiline simple calls and if headers. */
 export function getSingleLineCallChanges(file: TypeScript.SourceFile): TypeScript.TextChange[] {

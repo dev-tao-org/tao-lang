@@ -1,6 +1,9 @@
 import { runNonInteractiveCommand } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
+import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
+import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
 
@@ -61,14 +64,12 @@ async function readInputs(): Promise<NativeInputs> {
   const sourceContents = await Promise.all(
     sourceNames.map(name => FileSystem.readFile(Path.join(sourceRoot, name), 'utf8')),
   )
-  const builderSource = await FileSystem.readFile(import.meta.filename, 'utf8')
-  const nodeMetadataCommand =
-    'node -p JSON.stringify({version:process.version,executable:process.execPath,architecture:process.arch,platform:process.platform})'
-  const node = parseNativeNodeMetadata(await Platform.capture(nodeMetadataCommand))
+  const builderSource = await readBuilderSources()
+  const node = parseNativeNodeMetadata(await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }))
   const [addon, nodeGyp, include] = await Promise.all([
-    packageMetadata('node-addon-api'),
-    packageMetadata('node-gyp'),
-    addonIncludeDirectory(),
+    NodeAddonApi.readMetadata(sharedRoot),
+    NodeGyp.readMetadata(sharedRoot),
+    NodeAddonApi.readIncludeDirectory(sharedRoot),
   ])
   const nodeRoot = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS')).root
   const nodeVersionHeader = Path.join(nodeRoot, 'include/node/node_version.h')
@@ -94,26 +95,9 @@ async function readInputs(): Promise<NativeInputs> {
   return { identity, node, includeDirectory: Path.resolve(sharedRoot, include), sourceContents }
 }
 
-async function packageMetadata(
-  packageName: string,
-): Promise<{ root: string; version: string }> {
-  const root = FileSystem.resolvePackageDirectory(packageName, sharedRoot)
-  if (!root) {
-    Errors.ThrowHostEnvironment(`Cannot locate the installed package ${packageName}.`)
-  }
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(root, 'package.json'), 'utf8')) as {
-    name?: string
-    version?: string
-  }
-  if (manifest.name !== packageName || !manifest.version) {
-    Errors.ThrowHostEnvironment(`Installed package metadata is invalid for ${packageName}.`)
-  }
-  return { root, version: manifest.version }
-}
-
 type NativeBuildIdentityInputs = {
   sources: string[]
-  builderSource: string
+  builderSource: string[]
   node: NativeInputs['node']
   nodeVersionHeader: string
   nodeAddonApi: string
@@ -133,8 +117,15 @@ function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {
   return JSON.parse(contents) as NativeInputs['node']
 }
 
-async function addonIncludeDirectory(): Promise<string> {
-  return await Platform.capture('node -p require("node-addon-api").include_dir', { cwd: sharedRoot })
+async function readBuilderSources(): Promise<string[]> {
+  const paths = [
+    import.meta.filename,
+    Repo.resolvePath('ts/shared/shared-src/os/PackageResources.ts'),
+    Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission.ts'),
+    Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-addon-api.ts'),
+    Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-gyp.ts'),
+  ]
+  return await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
 }
 
 async function toolchainEnvironment(): Promise<unknown> {

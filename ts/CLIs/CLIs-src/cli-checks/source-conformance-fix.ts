@@ -1,6 +1,6 @@
 import { Range, Source } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { analyzeConstantOrder } from './source-conformance-constant-order'

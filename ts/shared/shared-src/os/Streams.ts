@@ -1,8 +1,9 @@
 import { Try } from '../universal/TryCatch'
-import * as Node from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 
 /** ByteStream represents runtime output delivered as byte chunks. */
-export type ByteStream = ReadableStream<Uint8Array>
+export type ByteStream = WebHost.ReadableStream<Uint8Array>
 
 /** createPassThrough creates a Node stream fixture through the owned stream boundary. */
 export function createPassThrough(): Node.nodeStream.PassThrough {
@@ -12,7 +13,7 @@ export function createPassThrough(): Node.nodeStream.PassThrough {
 type StreamChunk = string | Uint8Array
 /** createDecoder preserves UTF-8 characters split across streamed process chunks. */
 export function createDecoder(): (chunk: StreamChunk) => string {
-  const decoder = new TextDecoder()
+  const decoder = new WebHost.TextDecoder()
   return chunk => typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true })
 }
 

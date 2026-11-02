@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import { Tests } from '@shared/os'
+import * as ExternalErrors from '../../../shared/shared-src/universal/Errors/external'
 import { createCommandRunners } from '../cli-kit/CommandInteraction'
 import { createPromptLifecycle } from '../cli-kit/output/PromptLifecycle'
 
@@ -15,7 +16,7 @@ Tests.test('interactive command execution hands off the terminal and restores it
     },
     reportResumeFailure() {},
   })
-  const failure = Errors.fromUnknown(new Error('command failed'))
+  const failure = ExternalErrors.fromUnknown(new Error('command failed'))
   const runners = createCommandRunners({
     isInteractive: () => true,
     prompt: lifecycle.run,

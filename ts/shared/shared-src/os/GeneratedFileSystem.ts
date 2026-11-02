@@ -1,8 +1,10 @@
-import { createFsFromVolume, type IFs, Volume } from 'memfs'
 import * as Objects from '../universal/Objects'
 import { Errors, NullCharacter, Time } from '../universal/universal'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { createFsFromVolume, type IFs, Volume } from './bridges/Bridge_memfs'
+import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import { installGeneratedReaders } from './GeneratedFileReaders'
-import * as Node from './NodeBuiltins'
 
 /** GeneratedSourceFiles maps generated paths to the source text stored in each file. */
 export type GeneratedSourceFiles = Readonly<Record<string, string>>
@@ -127,12 +129,12 @@ function normalizePathInput(value: unknown): unknown {
   if (isNativeURL(value)) {
     return Node.fileURLToPath(value)
   }
-  if (Buffer.isBuffer(value)) {
+  if (NodeBuffer.isBuffer(value)) {
     return value.toString()
   }
   return value
 }
 
-function isNativeURL(value: unknown): value is URL {
-  return value instanceof URL
+function isNativeURL(value: unknown): value is WebHost.URL {
+  return value instanceof WebHost.URL
 }

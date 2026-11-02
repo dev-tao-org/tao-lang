@@ -1,13 +1,13 @@
 import * as Artifacts from './Artifacts'
+import { type BunTestModule, loadTestApi } from './bridges/Bridge_bun/Bridge_bun'
+import { AsyncLocalStorage } from './bridges/Bridge_node/Bridge_node'
 import Env from './Env'
 import * as FileSystem from './FileSystem'
-import { AsyncLocalStorage, createRequire } from './NodeBuiltins'
-import type { BunTestModule } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as Repo from './Repo'
 
-export { rejects, throws } from './NodeBuiltins'
+export { rejects, throws } from './bridges/Bridge_node/Bridge_node'
 
 /** readFixture reads an authored fixture at an explicit repository-relative path. */
 export function readFixture(path: string): Promise<string> {
@@ -53,16 +53,15 @@ function resolveEnvironmentScopes(): EnvironmentScopes {
   return scopes
 }
 
-const load = createRequire(import.meta.url)
 type TestsModule = BunTestModule
 type TestApiName = 'describe' | 'expect' | 'test'
 
 function testApi<Name extends TestApiName>(name: Name): TestsModule[Name] {
   return new Proxy<(...args: unknown[]) => unknown>(function(...args: unknown[]) {
-    return invokeTestApi(name, load('bun:test')[name], undefined, args)
+    return invokeTestApi(name, loadTestApi()[name], undefined, args)
   }, {
     get(_target, property) {
-      const api = load('bun:test')[name]
+      const api = loadTestApi()[name]
       const value = Reflect.get(api, property, api)
       return typeof value === 'function' ? (...args: unknown[]) => invokeTestApi(name, value, api, args) : value
     },

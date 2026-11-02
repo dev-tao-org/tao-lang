@@ -1,5 +1,6 @@
 import { Http, Streams, Terminal, Tests } from '@shared/os'
 import { ControlCCharacter } from '../../universal/Characters'
+import { Buffer as NodeBuffer } from '../bridges/Bridge_node/Bridge_node'
 
 const ConfirmationCancelledRegx = /Confirmation cancelled/
 
@@ -17,12 +18,12 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
     const stop = Terminal.listenForKeys(key => keys.push(key), input)
     Tests.expect(input.isRaw).toBe(true)
     Tests.expect(input.isPaused()).toBe(false)
-    input.emit('data', Buffer.from('wq' + ControlCCharacter))
+    input.emit('data', NodeBuffer.from('wq' + ControlCCharacter))
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     stop()
     Tests.expect(input.isRaw).toBe(initiallyRaw)
     Tests.expect(input.isPaused()).toBe(true)
-    input.emit('data', Buffer.from('w'))
+    input.emit('data', NodeBuffer.from('w'))
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     input.resume()
     stop()

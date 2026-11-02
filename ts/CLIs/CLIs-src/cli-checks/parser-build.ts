@@ -1,6 +1,7 @@
 import { runNonInteractiveCommand } from '@cli-kit'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
 import { writeSemanticAst } from './semantic-ast'
@@ -96,7 +97,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
     lock: Platform.hashText(await FileSystem.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
     node: parseParserNodeMetadata(
-      await Platform.capture('node -p JSON.stringify({version:process.version,executable:process.execPath})'),
+      await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
     ),
     environment: await collectEnvironmentInputs(),
   }

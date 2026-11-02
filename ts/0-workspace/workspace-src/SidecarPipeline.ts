@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Lists, Regxs, Try } from '@shared'
+import { Text } from '@shared/os'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
 import * as Paths from './modules/Paths'
@@ -223,7 +224,7 @@ async function collectFileClosure(
     if (!isTypeScriptSource(path)) {
       continue
     }
-    const source = new TextDecoder().decode(contents)
+    const source = Text.decodeUtf8(contents)
     for (const specifier of collectModuleSpecifiers(source)) {
       if (!specifier.startsWith('.')) {
         continue

@@ -1,6 +1,6 @@
 import { joinTextLines, S } from '@shared'
 import { Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { arrayMultilineStringIssue } from '../cli-checks/source-conformance-array-strings'
 import { multilineStringIssue } from '../cli-checks/source-conformance-layout'
 

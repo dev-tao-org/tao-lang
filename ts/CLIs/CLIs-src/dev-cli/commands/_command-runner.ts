@@ -36,7 +36,7 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
 /** execute parses and executes the registered commands for one CLI invocation. */
 export async function execute(name = 'dev'): Promise<void> {
   // Setup can register and invoke its action before Commander has been installed.
-  const { Command } = await import('commander')
+  const { Command } = await import('../../cli-kit/bridges/Bridge_commander')
   const parser = new Command().name(name).configureOutput({
     writeOut(text) {
       IO.print(text.replace(Regxs.TrailingNewlineRegx, ''))

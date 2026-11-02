@@ -1,4 +1,4 @@
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** objectLiteralKeysIssue requires string keys to be quoted consistently within an object literal. */
 export function objectLiteralKeysIssue(node: TypeScript.Node): string | undefined {

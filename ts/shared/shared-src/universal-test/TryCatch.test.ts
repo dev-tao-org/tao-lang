@@ -1,5 +1,6 @@
 import { Errors, Try } from '@shared'
 import { Tests } from '@shared/os'
+import * as ExternalErrors from '../universal/Errors/external'
 
 Tests.test('Try > recovers and finalizes even when a thrown object cannot be inspected', async () => {
   const revoked = Proxy.revocable({}, {})
@@ -45,7 +46,7 @@ Tests.test('Try > preserves synchronous values', () => {
   Tests.expect(result).toBe(value)
   Tests.expect(recovered).toBe(42)
   const failure = Errors.createHostEnvironmentError('synchronous failure')
-  const recoveredFailure: Errors.TaoError = Try(() => Errors.Throw(failure), { catch: Errors.fromUnknown })
+  const recoveredFailure: Errors.TaoError = Try(() => Errors.Throw(failure), { catch: ExternalErrors.fromUnknown })
   Tests.expect(recoveredFailure).toBe(failure)
 })
 
@@ -106,7 +107,7 @@ Tests.test('Try > normalizes unknown failures and preserves structured error ide
       return true
     })
   }
-  const original = Errors.fromUnknown(new Error('structured failure'))
+  const original = ExternalErrors.fromUnknown(new Error('structured failure'))
   Tests.throws(() =>
     Try(() => {
       throw original
@@ -207,7 +208,7 @@ Tests.test('Try > awaits callback, recovery and cleanup in order before resolvin
 
 Tests.test('Try > normalizes asynchronous body and catch failures', async () => {
   const original = new Error('async body')
-  const replacement = Errors.fromUnknown(new Error('async handler'))
+  const replacement = ExternalErrors.fromUnknown(new Error('async handler'))
   await Tests.rejects(
     Try(async () => {
       throw original

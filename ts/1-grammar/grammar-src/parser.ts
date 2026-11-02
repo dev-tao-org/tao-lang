@@ -1,6 +1,6 @@
 import { type TimingEntry, Timings } from '@shared'
 import { Platform, Repo } from '@shared/os'
-import NativeParser from 'tree-sitter'
+import NativeParser from './bridges/Bridge_tree-sitter'
 
 /** ParsedTree retains the native concrete syntax tree produced from one source snapshot. */
 export type ParsedTree = NativeParser.Tree

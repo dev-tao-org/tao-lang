@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import { Tests } from '@shared/os'
+import * as ExternalErrors from '../../../../shared/shared-src/universal/Errors/external'
 import type { TimingRun } from '../timing/TimingRun'
 import { runTimingSession, type TimingSessionIO } from '../timing/TimingSession'
 
@@ -69,7 +70,7 @@ function createSessionFixture(failAt?: SessionFailurePoint, failCleanup = false)
   const events: string[] = []
   const sockets: SessionSocketPath[] = []
   const messages: string[] = []
-  const failure = Errors.fromUnknown(new Error('fixture failed'))
+  const failure = ExternalErrors.fromUnknown(new Error('fixture failed'))
   const io: TimingSessionIO = {
     createSocket: () => '/private/tmp/owned.sock',
     async connect(options) {

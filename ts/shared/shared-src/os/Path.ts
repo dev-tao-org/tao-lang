@@ -1,5 +1,5 @@
+import { homedir, nativePath as NativePath } from './bridges/Bridge_node/Bridge_node'
 import Env from './Env'
-import { homedir, nativePath as NativePath } from './NodeBuiltins'
 
 export {
   basename,
@@ -13,8 +13,8 @@ export {
   resolve,
   sep,
   win32,
-} from './NodeBuiltins'
-export { fileURLToPath, pathToFileURL } from './NodeBuiltins'
+} from './bridges/Bridge_node/Bridge_node'
+export { fileURLToPath, pathToFileURL } from './bridges/Bridge_node/Bridge_node'
 
 /** home resolves optional segments below the host home; taoDev and tao select its Tao directories. */
 export const home = Object.assign(resolveHome, { taoDev: resolveTaoDevHome, tao: resolveTaoHome })

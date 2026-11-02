@@ -1,11 +1,13 @@
 import { Errors, Time, Try } from '../universal/universal'
-import { dirname, mkdirSync, readFileSync, rmSync, writeFileSync } from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
+import { dirname, mkdirSync, readFileSync, rmSync, writeFileSync } from './bridges/Bridge_node/Bridge_node'
 
 /** withBuildLock serializes preparation of shared generated output across processes.
  *  Unreleased locks retain their owner identity for explicit recovery after a bounded wait. */
 export async function withBuildLock<Value>(path: string, operation: () => Promise<Value>): Promise<Value> {
   mkdirSync(dirname(path), { recursive: true })
-  const owner = `${process.pid}:${crypto.randomUUID()}`
+  const owner = `${hostProcess.pid}:${WebHost.crypto.randomUUID()}`
   const deadline = Time.nowMs() + 120_000
   while (!acquire(path, owner)) {
     if (Time.nowMs() >= deadline) {

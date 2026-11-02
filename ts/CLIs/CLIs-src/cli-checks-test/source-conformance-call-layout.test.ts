@@ -1,6 +1,6 @@
 import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { checkSourceConformance } from '../cli-checks/source-conformance'
 import { getSingleLineCallChanges } from '../cli-checks/source-conformance-call-layout'
 import { fixSourceConformance } from '../cli-checks/source-conformance-fix'

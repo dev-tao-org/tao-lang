@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../managed-modules/ManagedModuleTypes'
 import * as PackageMetadata from '../managed-modules/ManagedPackageMetadata'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'

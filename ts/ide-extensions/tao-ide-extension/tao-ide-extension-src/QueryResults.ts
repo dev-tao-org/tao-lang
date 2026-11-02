@@ -1,5 +1,5 @@
 import * as Shared from '@shared'
-import { type Node, type Query } from 'web-tree-sitter'
+import { type Node, type Query } from './Bridge_web-tree-sitter'
 
 /** Token is a syntax query capture mapped to an editor source range. */
 export interface Token {

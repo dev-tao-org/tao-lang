@@ -37,9 +37,9 @@ Tests.test('subprocess output retains framed severity across byte fragments with
   const messages: OutputMessage[] = []
   const pipe = createProcessOutput(text => raw.push(text), event => messages.push(event))
   const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '\u20AC warning' + NewlineCharacter })
-  const encoder = new TextEncoder()
+  const encode = Text.encodeUtf8
   const source = joinTextLines('normal stderr', frame + (RecordSeparatorCharacter + 'invalid'), 'trailing')
-  const bytes = encoder.encode(source)
+  const bytes = encode(source)
   for (const byte of bytes) {
     pipe.write(new Uint8Array([byte]))
   }

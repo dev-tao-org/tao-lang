@@ -1,16 +1,19 @@
 import * as Characters from '../universal/Characters'
 import { ControlCCharacter, Errors, Try } from '../universal/universal'
-import { createInterface, emitKeypressEvents, type Readable, type ReadLineOptions, StringDecoder } from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import { Buffer as NodeBuffer, hostProcess } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
+import { emitKeypressEvents, type Readable, StringDecoder } from './bridges/Bridge_node/Bridge_node'
 
 /** stdout exposes the developer output stream. */
-export const stdout = process.stdout
+export const stdout = hostProcess.stdout
 
 /** stderr exposes the diagnostic output stream. */
-export const stderr = process.stderr
+export const stderr = hostProcess.stderr
 
 /** isInteractive reports whether stdin and stdout are attached to a terminal. */
 export function isInteractive(): boolean {
-  return stdout.isTTY === true && process.stdin.isTTY === true
+  return stdout.isTTY === true && hostProcess.stdin.isTTY === true
 }
 
 /** writeLine writes human-readable text plus a newline to stdout. */
@@ -20,7 +23,7 @@ export function writeLine(message = ''): void {
 
 type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
 /** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
-export function listenForKeys(receive: (key: string) => void, input: KeyInput = process.stdin): () => void {
+export function listenForKeys(receive: (key: string) => void, input: KeyInput = hostProcess.stdin): () => void {
   if (!input.isTTY) {
     return () => {}
   }
@@ -89,7 +92,7 @@ export async function askConfirm(
 
 /** askSecret reads hidden input, submitting bracketed pastes as one value including embedded newlines. */
 export async function askSecret(prompt: string): Promise<string> {
-  const input = process.stdin
+  const input = hostProcess.stdin
   if (!input.isTTY) {
     Errors.ThrowUserInput('Secret entry requires an interactive terminal.')
   }
@@ -130,31 +133,31 @@ type RejectSecret = (error: Error) => void
 
 type ConfirmationTerminal = {
   isInteractive(): boolean
-  open(): { question(message: string, options: { signal?: AbortSignal }): Promise<string>; close(): void }
+  open(): { question(message: string, options: { signal?: WebHost.AbortSignal }): Promise<string>; close(): void }
   write(message: string): void
 }
 
 const confirmationTerminal: ConfirmationTerminal = {
   isInteractive,
-  open: () => createInterface(confirmReadlineOptions()),
+  open: () => Node.createInterface(confirmReadlineOptions()),
   write(message) {
     stderr.write(message)
   },
 }
 
-function confirmReadlineOptions(): ReadLineOptions {
+function confirmReadlineOptions(): Node.ReadLineOptions {
   return {
-    input: process.stdin,
+    input: hostProcess.stdin,
     output: stderr,
   }
 }
 
-function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: Buffer) => void {
-  const state: SecretInput = { decoder: new StringDecoder('utf8'), value: '', pending: '', pasting: false }
+function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: NodeBuffer) => void {
+  const state: SecretInput = { decoder: new Node.StringDecoder('utf8'), value: '', pending: '', pasting: false }
   return chunk => readSecretChunk(state, chunk, resolve, reject)
 }
 
-function readSecretChunk(state: SecretInput, chunk: Buffer, resolve: ResolveSecret, reject: RejectSecret): void {
+function readSecretChunk(state: SecretInput, chunk: NodeBuffer, resolve: ResolveSecret, reject: RejectSecret): void {
   state.pending += state.decoder.write(chunk)
   while (state.pending) {
     const marker = state.pasting ? (Characters.EscapeCharacter + '[201~') : (Characters.EscapeCharacter + '[200~')

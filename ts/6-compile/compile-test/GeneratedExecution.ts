@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
-import TypeScript from 'typescript'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import type { CompiledFiles } from '../compile-src/ModulesCompiler'
 
 /** executeGeneratedFiles loads an emitted module map with an injected runtime boundary. */

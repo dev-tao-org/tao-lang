@@ -1,19 +1,25 @@
+import * as ExternalErrors from '../universal/Errors/external'
 import { Errors, Regxs, Time, Try } from '../universal/universal'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import Env from './Env'
-import * as Node from './NodeBuiltins'
 
 type SpawnOptions<
-  In extends Bun.SpawnOptions.Writable,
-  Out extends Bun.SpawnOptions.Readable,
-  Err extends Bun.SpawnOptions.Readable,
-> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[]; addEnv?: EnvironmentOverrides }
+  In extends BunHost.SpawnOptions.Writable,
+  Out extends BunHost.SpawnOptions.Readable,
+  Err extends BunHost.SpawnOptions.Readable,
+> = BunHost.SpawnOptions.SpawnOptions<In, Out, Err> & {
+  variadicArgs?: readonly string[]
+  addEnv?: EnvironmentOverrides
+}
 type SpawnCommand = string | readonly string[]
 type SpawnOutputOption = 'stdout' | 'stderr' | 'stdio'
 type NativeSpawnOption = SpawnOutputOption | 'env'
 type NamedSpawnOptions<
-  In extends Bun.SpawnOptions.Writable,
-  Out extends Bun.SpawnOptions.Readable,
-  Err extends Bun.SpawnOptions.Readable,
+  In extends BunHost.SpawnOptions.Writable,
+  Out extends BunHost.SpawnOptions.Readable,
+  Err extends BunHost.SpawnOptions.Readable,
 > = Omit<SpawnOptions<In, Out, Err>, NativeSpawnOption> & {
   env?: never
   stdout?: never
@@ -22,14 +28,14 @@ type NamedSpawnOptions<
 }
 
 /** ChildProcessInput describes supported standard-input sources for owned subprocesses. */
-export type ChildProcessInput = Bun.SpawnOptions.Writable
+export type ChildProcessInput = BunHost.SpawnOptions.Writable
 /** ChildProcess identifies an owned process handled by command supervision. */
-export type ChildProcess = Bun.Subprocess
+export type ChildProcess = BunHost.Subprocess
 /** PipedChildProcess owns captured output streams for one subprocess. */
-export type PipedChildProcess<In extends ChildProcessInput = 'ignore'> = Bun.Subprocess<In, 'pipe', 'pipe'>
+export type PipedChildProcess<In extends ChildProcessInput = 'ignore'> = BunHost.Subprocess<In, 'pipe', 'pipe'>
 
 /** spawnPiped starts a supervised child with both output streams piped to its owner. */
-export function spawnPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnPiped<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'pipe', 'pipe'> = {},
 ): PipedChildProcess<In> {
@@ -37,42 +43,42 @@ export function spawnPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'
 }
 
 /** spawnStderrPiped starts a supervised child with standard error piped to its owner. */
-export function spawnStderrPiped<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnStderrPiped<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'ignore', 'pipe'> = {},
-): Bun.Subprocess<In, 'ignore', 'pipe'> {
+): BunHost.Subprocess<In, 'ignore', 'pipe'> {
   return spawn(command, { ...options, stdout: 'ignore', stderr: 'pipe' })
 }
 
 /** spawnInherited starts a supervised child with both output streams inherited. */
-export function spawnInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnInherited<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'inherit', 'inherit'> = {},
-): Bun.Subprocess<In, 'inherit', 'inherit'> {
+): BunHost.Subprocess<In, 'inherit', 'inherit'> {
   return spawn(command, { ...options, stdout: 'inherit', stderr: 'inherit' })
 }
 
 /** spawnStderrInherited starts a supervised child with standard error inherited. */
-export function spawnStderrInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnStderrInherited<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'ignore', 'inherit'> = {},
-): Bun.Subprocess<In, 'ignore', 'inherit'> {
+): BunHost.Subprocess<In, 'ignore', 'inherit'> {
   return spawn(command, { ...options, stdout: 'ignore', stderr: 'inherit' })
 }
 
 /** spawnStdoutInherited starts a supervised child with standard output inherited. */
-export function spawnStdoutInherited<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnStdoutInherited<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'inherit', 'ignore'> = {},
-): Bun.Subprocess<In, 'inherit', 'ignore'> {
+): BunHost.Subprocess<In, 'inherit', 'ignore'> {
   return spawn(command, { ...options, stdout: 'inherit', stderr: 'ignore' })
 }
 
 /** spawnSilent starts a supervised child with both output streams ignored. */
-export function spawnSilent<const In extends Bun.SpawnOptions.Writable = 'ignore'>(
+export function spawnSilent<const In extends BunHost.SpawnOptions.Writable = 'ignore'>(
   command: SpawnCommand,
   options: NamedSpawnOptions<In, 'ignore', 'ignore'> = {},
-): Bun.Subprocess<In, 'ignore', 'ignore'> {
+): BunHost.Subprocess<In, 'ignore', 'ignore'> {
   return spawn(command, { ...options, stdout: 'ignore', stderr: 'ignore' })
 }
 
@@ -159,14 +165,14 @@ function isDeadlineTermination(error: Error, result: CommandResult): boolean {
 }
 
 /** terminate stops an owned child and waits for its process to exit. */
-export async function terminate(child: Bun.Subprocess): Promise<void> {
+export async function terminate(child: BunHost.Subprocess): Promise<void> {
   child.kill('SIGKILL')
   await child.exited
 }
 
 /** readText consumes a child output stream without exposing the runtime reader. */
-export async function readText(stream: ReadableStream<Uint8Array>): Promise<string> {
-  return new Response(stream).text()
+export async function readText(stream: WebHost.ReadableStream<Uint8Array>): Promise<string> {
+  return new WebHost.Response(stream).text()
 }
 
 type CommandInvocationField = 'command' | 'args' | 'cwd'
@@ -223,7 +229,7 @@ async function failCommandIo(
 
 type CommandTimeout = number | undefined
 
-function startCommandTimeout(child: Bun.Subprocess, timeoutMs: CommandTimeout): () => void {
+function startCommandTimeout(child: BunHost.Subprocess, timeoutMs: CommandTimeout): () => void {
   if (timeoutMs === undefined) {
     return () => undefined
   }
@@ -241,7 +247,7 @@ function throwCommandFailure(
   error: unknown,
   result: CommandResult = createCommandResult(invocation, null, null, '', ''),
 ): never {
-  const cause = Errors.isNativeError(error) ? error : Errors.fromUnknown(error)
+  const cause = Errors.isNativeError(error) ? error : ExternalErrors.fromUnknown(error)
   Errors.ThrowCommandExecution({ ...result, error: cause })
 }
 
@@ -285,14 +291,14 @@ function resolveCommandArguments(command: SpawnCommand, variadicArgs: readonly s
 }
 
 function spawn<
-  const In extends Bun.SpawnOptions.Writable = 'ignore',
-  const Out extends Bun.SpawnOptions.Readable = 'pipe',
-  const Err extends Bun.SpawnOptions.Readable = 'inherit',
->(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
+  const In extends BunHost.SpawnOptions.Writable = 'ignore',
+  const Out extends BunHost.SpawnOptions.Readable = 'pipe',
+  const Err extends BunHost.SpawnOptions.Readable = 'inherit',
+>(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): BunHost.Subprocess<In, Out, Err> {
   const { variadicArgs = [], addEnv, ...spawnOptions } = options
   const environment = resolveSpawnEnvironment({ addEnv, stderr: spawnOptions.stderr })
   spawnOptions.env = environment
-  return Bun.spawn<In, Out, Err>(resolveCommandArguments(command, variadicArgs), spawnOptions)
+  return BunHost.getRuntime().spawn<In, Out, Err>(resolveCommandArguments(command, variadicArgs), spawnOptions)
 }
 
 type TerminalColorOptions = { stderr?: unknown; addEnv?: EnvironmentOverrides }
@@ -310,5 +316,5 @@ function preserveTerminalColors(options: TerminalColorOptions, environment: Proc
   if (explicitPreference || options.stderr !== 'pipe') {
     return false
   }
-  return process.stderr.isTTY && process.stderr.hasColors()
+  return Node.hostProcess.stderr.isTTY && Node.hostProcess.stderr.hasColors()
 }

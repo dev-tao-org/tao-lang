@@ -1,5 +1,5 @@
 import { Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import * as ObjectKeys from '../cli-checks/source-conformance-object-keys'
 
 Tests.test('object keys > quotes named properties, methods, accessors, and shorthand consistently', () => {

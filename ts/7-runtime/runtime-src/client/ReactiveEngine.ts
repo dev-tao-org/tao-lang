@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
-import Preact from './Bridge-Preact'
-import React from './Bridge-React'
+import Preact from './Bridge_preact-signals-core'
+import React from './Bridge_react/Bridge_react'
 import { runSynchronousReactiveBatch } from './ReactiveBatch'
 import { decodeReactiveValue, encodeReactiveValue } from './ReactiveValues'
 import type { ReactiveValue } from './ReactiveValues'
@@ -263,8 +263,9 @@ function flushDelivery(state: EngineState): void {
       Preact.batch(() => {
         for (const deliver of current) {
           Try(deliver, {
-            catch(error) {
-              failure ??= Errors.fromUnknown(error)
+            catch: () => undefined,
+            finally(_thrown, error) {
+              failure ??= error
             },
           })
         }

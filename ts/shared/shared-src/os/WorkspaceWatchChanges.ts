@@ -1,5 +1,5 @@
 import { Time, Try } from '../universal/universal'
-import { stat } from './NodeBuiltins'
+import { stat } from './bridges/Bridge_node/Bridge_node'
 
 type WatchStats = { mtimeMs: number; ctimeMs: number; size: number; ino: number }
 /** watchStamp identifies a filesystem observation without reading source contents. */

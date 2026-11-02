@@ -1,11 +1,11 @@
 import { Tests } from '@shared/os'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { AppDeclaration } from '../runtime-src/client/App'
-import React from '../runtime-src/client/Bridge-React'
+import React from '../runtime-src/client/Bridge_react/Bridge_react'
 import { ForeignView } from '../runtime-src/client/ForeignView'
 import { Name } from '../runtime-src/client/Scope'
 import type { ViewComponentProps } from '../runtime-src/client/View'
 import * as View from '../runtime-src/client/View'
+import { renderToStaticMarkup } from './bridges/Bridge_react-dom'
 
 const neverReady = new Promise<never>(() => {})
 

@@ -1,5 +1,5 @@
-import type React from '@runtime/client/Bridge-React'
-import { Box, Text } from 'ink'
+import type React from '@runtime/client/Bridge_react/Bridge_react'
+import { Ink } from '../../bridges/Bridge_ink'
 import { formatCommands, type OutputSnapshot } from '../Output'
 import { Columns } from './Columns'
 import { displayStatus, elapsed, wrappedTail } from './Display'
@@ -18,13 +18,13 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
   const channelRows = Math.max(0, height - rootLines.length - 4 - footerRows)
   const status = displayStatus(snapshot.main.status)
   return (
-    <Box flexDirection="column" width={width}>
-      <Text color={status.color} wrap="truncate">
+    <Ink.Box flexDirection="column" width={width}>
+      <Ink.Text color={status.color} wrap="truncate">
         {`${status.mark} ${snapshot.main.title}  ${elapsed(snapshot.main, now)}`}
-      </Text>
-      {rootLines.map((line, index) => <Text key={index} wrap="truncate">{line || ' '}</Text>)}
+      </Ink.Text>
+      {rootLines.map((line, index) => <Ink.Text key={index} wrap="truncate">{line || ' '}</Ink.Text>)}
       <Columns channels={snapshot.channels} now={now} rows={channelRows} width={width} />
-      {snapshot.commands.length > 0 && <Text>{formatCommands(snapshot.commands, true)}</Text>}
-    </Box>
+      {snapshot.commands.length > 0 && <Ink.Text>{formatCommands(snapshot.commands, true)}</Ink.Text>}
+    </Ink.Box>
   )
 }

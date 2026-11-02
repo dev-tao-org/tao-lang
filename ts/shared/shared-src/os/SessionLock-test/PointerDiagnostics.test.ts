@@ -1,15 +1,16 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
 Tests.test('production session acquisition gives setup guidance for malformed and outdated pointers', async () => {
   const root = Artifacts.resolvePath('tmp', `lock-pointer-errors-${Platform.randomUUID()}`)
   await Try(async () => {
     await FileSystem.mkdir(root)
-    const artifactsUrl = new URL('../Artifacts.ts', import.meta.url).href
-    const lockUrl = new URL('../SessionLock.ts', import.meta.url).href
+    const artifactsUrl = new WebHost.URL('../Artifacts.ts', import.meta.url).href
+    const lockUrl = new WebHost.URL('../SessionLock.ts', import.meta.url).href
     const script = S`
       import { mock } from 'bun:test';
-      import { Try } from ${JSON.stringify(new URL('../../universal/universal.ts', import.meta.url).href)};
+      import { Try } from ${JSON.stringify(new WebHost.URL('../../universal/universal.ts', import.meta.url).href)};
       const fs = await import('node:fs/promises');
       const artifacts = await import(${JSON.stringify(artifactsUrl)});
       const resolvePath = artifacts.resolvePath;

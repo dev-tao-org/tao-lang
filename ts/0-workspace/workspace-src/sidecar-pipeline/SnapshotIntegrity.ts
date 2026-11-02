@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { NewlineCharacter, S, Try } from '@shared'
+import { Text } from '@shared/os'
 import { FileSystem, Path } from '@shared/os'
 import { createForeignViewContractSource, ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
 import type { SidecarGroup } from './Snapshots'
@@ -207,7 +208,7 @@ function collectExpectedSnapshotDirectories(expectedFiles: ReadonlyMap<string, U
 }
 
 function encodeSnapshotText(value: string): Uint8Array {
-  return new TextEncoder().encode(value)
+  return Text.encodeUtf8(value)
 }
 
 function isSymbolicLink(path: string): boolean {

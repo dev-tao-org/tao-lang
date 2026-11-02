@@ -1,6 +1,6 @@
 import { NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type * as ManagedModuleTypes from '../sidecars/managed-modules/ManagedModuleTypes'

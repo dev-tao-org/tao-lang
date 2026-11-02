@@ -1,7 +1,11 @@
 import { IO, runNonInteractiveCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
+import { joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
+import { readLicense } from '../../../../4-fix/fix-src/lib/formatter/Bridge_dprint-formatter/Bridge_dprint-formatter-resources'
+import * as JavaScriptGrammar from '../../../../ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-javascript'
+import * as TypeScriptGrammar from '../../../../ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-typescript'
+import * as WebTreeSitter from '../../../../ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_web-tree-sitter'
 import { prepareParser } from '../../cli-checks/parser-build'
 
 /** buildExtension packages the current Tao grammar and editor adapter into one standalone VSIX. */
@@ -73,11 +77,11 @@ async function validateRelocatedPackage(): Promise<void> {
 async function copyAssets(): Promise<void> {
   const modulesDirectory = Path.join(sourceRoot, 'node_modules')
   await FileSystem.cp(
-    Path.join(modulesDirectory, 'web-tree-sitter/web-tree-sitter.wasm'),
+    WebTreeSitter.resolveWasmResource(modulesDirectory),
     Path.join(packageRoot, 'runtime/web-tree-sitter.wasm'),
   )
   await FileSystem.cp(
-    Path.join(modulesDirectory, 'tree-sitter-typescript/tree-sitter-tsx.wasm'),
+    TypeScriptGrammar.resolveResources(modulesDirectory).grammar,
     Path.join(packageRoot, 'grammars/tree-sitter-tsx.wasm'),
   )
   await FileSystem.mkdir(Path.join(packageRoot, 'queries'))
@@ -94,14 +98,14 @@ async function copyAssets(): Promise<void> {
   )
   await copyLanguageIcons()
   const formatterNotice = await copyFormatter()
-  const notices = await Promise.all(
-    ['web-tree-sitter', 'tree-sitter-typescript'].map(async name =>
-      `${name}${NewlineCharacter}${NewlineCharacter}${await FileSystem.readFile(
-        Path.join(modulesDirectory, name, 'LICENSE'),
-        'utf8',
-      )}`
+  const notices = await Promise.all([
+    FileSystem.readFile(WebTreeSitter.resolveLicenseResource(modulesDirectory), 'utf8').then(text =>
+      joinTextLines('web-tree-sitter', '', text)
     ),
-  )
+    FileSystem.readFile(TypeScriptGrammar.resolveResources(modulesDirectory).license, 'utf8').then(text =>
+      joinTextLines('tree-sitter-typescript', '', text)
+    ),
+  ])
   await FileSystem.writeFile(
     Path.join(packageRoot, 'THIRD_PARTY_LICENSES.txt'),
     [...notices, formatterNotice].join(NewlineCharacter + NewlineCharacter),
@@ -111,11 +115,7 @@ async function copyAssets(): Promise<void> {
 async function copyFormatter(): Promise<string> {
   const bytes = await FormatterResources.typeScriptFormatterBytes()
   await FileSystem.writeFile(Path.join(packageRoot, 'runtime/typescript-formatter.wasm'), bytes)
-  const formatterPackage = FileSystem.resolvePackageDirectory('@dprint/formatter', Repo.resolvePath('ts/4-fix'))
-  if (!formatterPackage) {
-    Errors.ThrowHostEnvironment('Cannot locate the installed @dprint/formatter package for extension licensing.')
-  }
-  const wrapperLicense = await FileSystem.readFile(Path.join(formatterPackage, 'LICENSE'), 'utf8')
+  const wrapperLicense = await readLicense(Repo.resolvePath('ts/4-fix'))
   return joinTextLines(
     '@dprint/formatter',
     '',
@@ -135,14 +135,10 @@ async function copyLanguageIcons(): Promise<void> {
 }
 
 async function writeTsxQueries(modulesDirectory: string): Promise<void> {
-  const typescriptDirectory = FileSystem.realpathSync(Path.join(modulesDirectory, 'tree-sitter-typescript'))
-  const javascriptDirectory = Path.join(Path.dirname(typescriptDirectory), 'tree-sitter-javascript')
-  const paths = [
-    Path.join(javascriptDirectory, 'queries/highlights.scm'),
-    Path.join(javascriptDirectory, 'queries/highlights-jsx.scm'),
-    Path.join(typescriptDirectory, 'queries/highlights.scm'),
-  ]
+  const typescript = TypeScriptGrammar.resolveResources(modulesDirectory)
+  const javascript = JavaScriptGrammar.resolveResources(typescript.directory)
+  const paths = [...javascript.queries, typescript.query]
   const queries = await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
   await FileSystem.writeFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), queries.join(NewlineCharacter))
-  await FileSystem.cp(Path.join(javascriptDirectory, 'LICENSE'), Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
+  await FileSystem.cp(javascript.license, Path.join(packageRoot, 'JAVASCRIPT_LICENSE.txt'))
 }

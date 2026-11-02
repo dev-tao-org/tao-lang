@@ -1,4 +1,5 @@
 import * as Errors from './Errors'
+import * as ExternalErrors from './Errors/external'
 
 type TryOptions<Recovery = never, Final = void> = {
   catch?: (thrown: unknown) => Recovery
@@ -84,7 +85,7 @@ function capture(action: () => unknown): PendingOutcome {
 }
 
 function failure(thrown: unknown): Outcome {
-  return { ok: false, thrown, error: Errors.fromUnknown(thrown) }
+  return { ok: false, thrown, error: ExternalErrors.fromUnknown(thrown) }
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {

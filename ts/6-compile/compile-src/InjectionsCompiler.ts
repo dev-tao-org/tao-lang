@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
-import ts from 'typescript'
+import { TypeScript as ts } from '../../shared/shared-src/bridges/Bridge_typescript'
 import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'

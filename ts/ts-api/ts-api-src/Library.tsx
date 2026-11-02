@@ -1,4 +1,4 @@
-import React from '@runtime/client/Bridge-React'
+import React from '@runtime/client/Bridge_react/Bridge_react'
 import type { View } from '@runtime/client/View'
 import { Errors } from '@shared'
 

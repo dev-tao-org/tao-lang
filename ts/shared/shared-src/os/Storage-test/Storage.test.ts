@@ -1,5 +1,7 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
+import { hostProcess } from '../bridges/Bridge_node/Bridge_node'
 import { resolveStorage } from '../Storage'
 
 const { join } = Path
@@ -30,12 +32,12 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
     await writeFile(join(cache, 'entry'), 'cache data')
     await writeFile(join(outside, 'keep'), 'durable data')
     await symlink(outside, join(cache, 'external-link'))
-    const moduleUrl = new URL('../Storage.ts', import.meta.url).href
+    const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
     const script = `const storage = await import(${
       JSON.stringify(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
     const environment = { TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
-    const child = Platform.spawnPiped(process.execPath, {
+    const child = Platform.spawnPiped(hostProcess.execPath, {
       variadicArgs: ['-e', script],
       addEnv: environment,
     })
@@ -58,7 +60,7 @@ Tests.test('cache leases reclaim crashed probes while protecting a live consumer
     await mkdir(root)
     await runStorageScript(root, `await storage.acquireCacheLease('crashed');`)
     Tests.expect((await readdir(join(root, 'support/leases'))).length).toBe(1)
-    const moduleUrl = new URL('../Storage.ts', import.meta.url).href
+    const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
     const childScript = S`
       const storage = await import(${JSON.stringify(moduleUrl)});
       process.stdout.write(JSON.stringify(await storage.cleanSharedCache()));
@@ -87,8 +89,8 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
   await Try(async () => {
     await mkdir(root)
     const path = join(root, 'StorageIsolation.test.ts')
-    const testsUrl = new URL('../Tests.ts', import.meta.url).href
-    const storageUrl = new URL('../Storage.ts', import.meta.url).href
+    const testsUrl = new WebHost.URL('../Tests.ts', import.meta.url).href
+    const storageUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
     const result = join(root, 'roots.json')
     await writeFile(
       path,
@@ -122,9 +124,9 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
 })
 
 async function runStorageScript(root: string, source: string): Promise<string> {
-  const moduleUrl = new URL('../Storage.ts', import.meta.url).href
+  const moduleUrl = new WebHost.URL('../Storage.ts', import.meta.url).href
   const environment = { TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
-  const child = Platform.spawnPiped(process.execPath, {
+  const child = Platform.spawnPiped(hostProcess.execPath, {
     variadicArgs: ['-e', `const storage = await import(${JSON.stringify(moduleUrl)}); ${source}`],
     addEnv: environment,
   })

@@ -1,11 +1,12 @@
 import * as Styles from '../../universal/Styles'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
 /** showPreviewError retains a visible diagnostic and explicit manual recovery action. */
 export function showPreviewError(message: string, onReload: () => void): void {
-  if (typeof document === 'undefined') {
+  if (!WebHost.hasDocument()) {
     return
   }
-  const panel = document.getElementById('tao-preview-error') ?? createErrorPanel()
+  const panel = WebHost.getBrowserDocument().getElementById('tao-preview-error') ?? createErrorPanel()
   const text = panel.querySelector('pre')!
   panel.querySelector('button')!.onclick = onReload
   text.textContent = message
@@ -14,14 +15,14 @@ export function showPreviewError(message: string, onReload: () => void): void {
 
 /** clearPreviewError hides the current error after a real corrected commit. */
 export function clearPreviewError(): void {
-  const panel = typeof document === 'undefined' ? null : document.getElementById('tao-preview-error')
+  const panel = !WebHost.hasDocument() ? null : WebHost.getBrowserDocument().getElementById('tao-preview-error')
   if (panel) {
     panel.hidden = true
   }
 }
 
-function createErrorPanel(): HTMLElement {
-  const panel = document.createElement('aside')
+function createErrorPanel(): WebHost.HTMLElement {
+  const panel = WebHost.getBrowserDocument().createElement('aside')
   panel.id = 'tao-preview-error'
   panel.setAttribute('role', 'alert')
   panel.style.cssText = Styles.declarations({
@@ -35,11 +36,11 @@ function createErrorPanel(): HTMLElement {
     'font': '14px system-ui',
     'border': '1px solid #b66',
   })
-  const text = document.createElement('pre')
+  const text = WebHost.getBrowserDocument().createElement('pre')
   text.style.cssText = Styles.declarations({ 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' })
-  const reload = document.createElement('button')
+  const reload = WebHost.getBrowserDocument().createElement('button')
   reload.textContent = 'Reload'
   panel.append(text, reload)
-  ;(document.body ?? document.documentElement).append(panel)
+  ;(WebHost.getBrowserDocument().body ?? WebHost.getBrowserDocument().documentElement).append(panel)
   return panel
 }

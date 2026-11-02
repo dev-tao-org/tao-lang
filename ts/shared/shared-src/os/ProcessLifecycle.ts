@@ -1,19 +1,22 @@
 import { Time, Try } from '../universal/universal'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
 
 /** waitForTermination resolves on a shutdown signal or explicit cancellation and removes its listeners. */
-export function waitForTermination(signal?: AbortSignal): Promise<void> {
+export function waitForTermination(signal?: WebHost.AbortSignal): Promise<void> {
   if (signal?.aborted) {
     return Promise.resolve()
   }
   return new Promise(resolve => {
     const finish = () => {
-      process.off('SIGINT', finish)
-      process.off('SIGTERM', finish)
+      hostProcess.off('SIGINT', finish)
+      hostProcess.off('SIGTERM', finish)
       signal?.removeEventListener('abort', finish)
       resolve()
     }
-    process.once('SIGINT', finish)
-    process.once('SIGTERM', finish)
+    hostProcess.once('SIGINT', finish)
+    hostProcess.once('SIGTERM', finish)
     signal?.addEventListener('abort', finish, { once: true })
   })
 }
@@ -23,19 +26,19 @@ type TerminationSignal = 'SIGINT' | 'SIGTERM'
 export function onTermination(handler: (signal: TerminationSignal) => void): () => void {
   const interrupt = () => handler('SIGINT')
   const terminate = () => handler('SIGTERM')
-  process.on('SIGINT', interrupt)
-  process.on('SIGTERM', terminate)
+  hostProcess.on('SIGINT', interrupt)
+  hostProcess.on('SIGTERM', terminate)
   return () => {
-    process.off('SIGINT', interrupt)
-    process.off('SIGTERM', terminate)
+    hostProcess.off('SIGINT', interrupt)
+    hostProcess.off('SIGTERM', terminate)
   }
 }
 
 /** ManagedProcess is an Expo-like child with piped output streams. */
-export type ManagedProcess = Bun.Subprocess<'ignore', 'pipe', 'pipe'>
+export type ManagedProcess = BunHost.Subprocess<'ignore', 'pipe', 'pipe'>
 
 /** stopProcess asks a managed child to stop, then force-stops it after a bounded grace period. */
-export async function stopProcess(child: Bun.Subprocess, graceMs = 3000): Promise<void> {
+export async function stopProcess(child: BunHost.Subprocess, graceMs = 3000): Promise<void> {
   if (child.exitCode !== null) {
     return
   }
@@ -60,7 +63,7 @@ export async function captureProcessOutput(
 }
 
 type ProcessOutputName = 'stdout' | 'stderr'
-type ProcessOutputStream = ReadableStream<Uint8Array> | null
+type ProcessOutputStream = WebHost.ReadableStream<Uint8Array> | null
 type OutputListener = (stream: ProcessOutputName, text: string) => void
 
 async function readOutput(
@@ -72,7 +75,7 @@ async function readOutput(
     return ''
   }
   const reader = stream.getReader()
-  const decoder = new TextDecoder()
+  const decoder = new WebHost.TextDecoder()
   let output = ''
   while (true) {
     const chunk = await reader.read()

@@ -1,5 +1,5 @@
 import { NewlineCharacter, Switch } from '@shared'
-import wrapAnsi from 'wrap-ansi'
+import wrapAnsi from '../../bridges/Bridge_wrap-ansi'
 import type { ChannelState } from '../Output'
 
 type DisplayStatus = { mark: string; color: DisplayColor }

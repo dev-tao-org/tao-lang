@@ -1,5 +1,5 @@
-import { createFromBuffer } from '@dprint/formatter'
 import { CarriageReturnCharacter, NewlineCharacter, Timings, Try } from '@shared'
+import { createFromBuffer } from './Bridge_dprint-formatter/Bridge_dprint-formatter'
 
 /** EmbeddedFormatter formats a native function body or preserves it by returning undefined. */
 export type EmbeddedFormatter = (source: string, options: EmbeddedOptions) => string | undefined

@@ -15,6 +15,10 @@ export default {
     '6-compile': createPackageWorkspace([]),
     '7-runtime': createPackageWorkspace([
       'runtime-src/client/TR.ts',
+      // Generated app entries and automatic JSX lowering consume these source contracts.
+      'runtime-src/client/Bridge_react/jsx-runtime.ts',
+      'runtime-src/client/Bridge_react/jsx-dev-runtime.ts',
+      'runtime-src/bridges/Bridge_expo/Bridge_expo.ts',
       'runtime-src/client/TaoRuntimeAPI.ts',
       'runtime-src/client/HMRClient.ts',
       'runtime-src/expo/Metro/MetroPreload.ts',

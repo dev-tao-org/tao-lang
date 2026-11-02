@@ -1,5 +1,5 @@
 import { Path } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 type ModuleSpecifierNode = TypeScript.Node | undefined
 

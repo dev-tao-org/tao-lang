@@ -1,5 +1,4 @@
 import { RuntimeSourceDirectories, RuntimeSourceFiles } from '@runtime/RuntimeResources'
-import { Regxs } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 
 /** RuntimeSourcePaths maps packaged resource paths to their authored source paths. */
@@ -28,21 +27,12 @@ async function addDirectorySources(
   resourceDirectory: string,
   sourceRoot: string,
 ): Promise<void> {
-  const sourcePaths = await FileSystem.listSourceFiles(sourceRoot)
+  const sourcePaths = await FileSystem.listProductionSourceFiles(sourceRoot)
   for (const sourcePath of sourcePaths) {
-    if (isRuntimeTestSource(sourceRoot, sourcePath)) {
-      continue
-    }
     const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
     const resourcePath = Path.posix.join(resourceDirectory, relativePath)
     resources[resourcePath] = sourcePath
   }
-}
-
-function isRuntimeTestSource(sourceRoot: string, sourcePath: string): boolean {
-  const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
-  return relativePath.split('/').some(segment => segment.endsWith('-test'))
-    || Regxs.TestSourceSuffix.test(relativePath)
 }
 
 function sortResources(resources: RuntimeSourcePaths): RuntimeSourcePaths {

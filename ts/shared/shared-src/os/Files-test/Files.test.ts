@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Time, Try } from '@shared'
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { findProjectMarker, findProjects, walk, withWritableFile, writeReadOnly } from '../Files'
 
@@ -116,7 +116,7 @@ Tests.test('withWritableFile serializes concurrent callbacks for one canonical p
       await file.write('second')
       active--
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await Time.sleep(0)
     Tests.expect(maximum).toBe(1)
     finishFirst()
     await Promise.all([first, second])

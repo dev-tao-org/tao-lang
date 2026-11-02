@@ -1,7 +1,7 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
 import { readRuntimeSources } from '../../../CLIs/CLIs-src/cli-checks/runtime-sources'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
 import * as Runtime from '../../runtime-src/Runtime'
@@ -295,7 +295,7 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
 const appSource = S`
   import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@runtime'
   import Tao from '@tao/runtime-api'
-  import React from '@runtime/client/Bridge-React'
+  import React from '@runtime/client/Bridge_react/Bridge_react'
   import type { ViewComponentProps } from '@runtime'
 
   function RootView(props: ViewComponentProps) {

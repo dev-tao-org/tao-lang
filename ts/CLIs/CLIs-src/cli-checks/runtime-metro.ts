@@ -8,11 +8,12 @@ export async function metroBuildInputs(): Promise<string[]> {
     'ts/7-runtime/runtime-src/expo/Expo',
     'ts/7-runtime/runtime-src/expo/Metro',
     'ts/shared/shared-src/os',
+    'ts/shared/shared-src/bridges',
+    'ts/7-runtime/runtime-src/bridges',
   ]
   const groups = await Promise.all(directories.map(async directory => {
     const root = Repo.resolvePath(directory)
-    const names = await FileSystem.readdir(root)
-    return names.filter(name => name.endsWith('.ts')).map(name => Path.join(root, name))
+    return await FileSystem.listProductionSourceFiles(root)
   }))
   const patchRoot = Repo.resolvePath('ts/patches')
   const patches = (await FileSystem.readdir(patchRoot)).map(name => Path.join(patchRoot, name))

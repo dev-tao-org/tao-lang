@@ -1,5 +1,6 @@
 import { Errors, Lists, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
+import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
 
@@ -74,40 +75,12 @@ function serializeExpoTypeScriptConfig(): string {
   return JSON.stringify(expoTypeScriptConfig, null, 2)
 }
 
-const metroConfiguration = S`
-  const path = require('node:path');
-  const fs = require('node:fs');
-  const { getDefaultConfig } = require('expo/metro-config');
-  const config = getDefaultConfig(__dirname);
-  const tao = require('./tao-resolution.json');
-  if (process.env.TAO_METRO_PRELOAD) {
-    config.server.enhanceMiddleware = require(process.env.TAO_METRO_PRELOAD).enhanceMiddleware;
-    config.maxWorkers = 1;
-    config.resolver.useWatchman = false;
-  }
-  config.resolver.platforms = ['web', 'native'];
-  config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime')), ...tao.watchFolders];
-  config.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules')];
-  config.resolver.resolveRequest = (context, name, platform) => {
-    const singleton = tao.singletonPackages.find(id => name === id || name.startsWith(id + '/'));
-    if (singleton) return context.resolveRequest(context, path.join(__dirname, 'node_modules', name), platform);
-    if (name.startsWith('@runtime/client/')) return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime', name.slice('@runtime/client/'.length)), platform);
-    if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
-    if (name === '@tao/runtime-api') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TaoRuntimeAPI.ts'), platform);
-    if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
-    if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'), platform);
-    if (name === '@expo/metro/metro-runtime/modules/HMRClient') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/HMRClient.ts'), platform);
-    if (name === 'tao:metro-hmr-client') return context.resolveRequest(context, '@expo/metro/metro-runtime/modules/HMRClient', platform);
-    return context.resolveRequest(context, name, platform);
-  };
-  module.exports = config;
-`
-
 const expoTypeScriptConfig = {
   extends: 'expo/tsconfig.base',
   compilerOptions: {
     baseUrl: '.',
     strict: true,
+    jsxImportSource: '@runtime/client/Bridge_react',
     preserveSymlinks: true,
     paths: {
       '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
@@ -120,9 +93,9 @@ const expoTypeScriptConfig = {
 }
 
 const expoEntry = S`
-  import { registerRootComponent } from 'expo';
-  import React from '@runtime/client/Bridge-React';
-  import ReactNative from '@runtime/client/Bridge-ReactNative';
+  import { registerRootComponent } from './src/_gen_runtime/runtime/Bridge_expo';
+  import React from '@runtime/client/Bridge_react/Bridge_react';
+  import ReactNative from '@runtime/client/Bridge_react-native';
   import { DefaultAppearance } from './src/_gen_runtime/runtime/Appearance';
   import App from './src/App';
   function TaoApplication() {

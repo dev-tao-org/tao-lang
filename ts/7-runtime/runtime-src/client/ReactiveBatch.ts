@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import Preact from './Bridge-Preact'
+import Preact from './Bridge_preact-signals-core'
 
 /** runSynchronousReactiveBatch settles authored writes and rejects asynchronous batch callbacks. */
 export function runSynchronousReactiveBatch<T>(perform: () => T): T {

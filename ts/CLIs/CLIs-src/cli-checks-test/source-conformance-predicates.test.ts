@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { predicateOperatorIssue } from '../cli-checks/source-conformance-predicates'
 
 Tests.test('predicate operators require a named boolean or narrowing owner', () => {

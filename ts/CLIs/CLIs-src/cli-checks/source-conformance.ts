@@ -1,7 +1,11 @@
 import { Errors, NewlineCharacter, Regxs, Time } from '@shared'
 import { Path } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
+import { sourceBridgeEmissionIssues } from './source-bridge-emissions'
+import { platformGlobalIssue } from './source-bridge-globals'
+import { createSourceBridgeContext, type SourceBridgeContext } from './source-bridge-owners'
+import * as Bridges from './source-bridges'
 import { hasValidDocLayout, isAmbientNamespace } from './source-conformance-api'
 import { arrayMultilineStringIssue } from './source-conformance-array-strings'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
@@ -13,12 +17,12 @@ import * as ConformanceLayout from './source-conformance-layout'
 import * as ConformanceNaming from './source-conformance-naming'
 import { objectCopyIssue, objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
-import { platformAccessIssue } from './source-conformance-platform'
 import { predicateOperatorIssue } from './source-conformance-predicates'
 import { conformanceSources, createConformanceProgram } from './source-conformance-program'
 import { concreteReturnTypeIssue, ownLineNullishIssue } from './source-conformance-result-contracts'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
+import * as Facades from './source-facades'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
@@ -26,8 +30,10 @@ export async function checkSourceConformance(root: string): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
   const sources = await conformanceSources(root)
+  const bridgeContext = createSourceBridgeContext(root)
   const program = createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
+  const facadeContext = Facades.createSourceFacadeContext(root, sources, program.getCompilerOptions())
   const constantOrder = analyzeConstantOrder(program)
   const typeOrder = analyzeSignatureTypeOrder(program)
   for (const filename of sources) {
@@ -52,7 +58,10 @@ export async function checkSourceConformance(root: string): Promise<void> {
         issues.push(`${relative}:${line}: put a single-consumer signature type before its owning function`)
       }
     }
-    issues.push(...error ? [error] : [], ...new SourceConformanceChecker(relative, file, checker).check())
+    issues.push(
+      ...error ? [error] : [],
+      ...new SourceConformanceChecker(relative, file, checker, bridgeContext, facadeContext).check(),
+    )
   }
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
@@ -68,14 +77,18 @@ class SourceConformanceChecker {
   private readonly issues: string[] = []
   private readonly publicDocs = new Set<number>()
   private readonly comments = new Map<number, TypeScript.CommentRange>()
+  private readonly loaderAliases: Bridges.SourceLoaderAliases
   private readonly api: ExportedApiChecker
 
   constructor(
     private readonly filename: string,
     private readonly file: TypeScript.SourceFile,
     private readonly checker: TypeScript.TypeChecker,
+    private readonly bridgeContext: SourceBridgeContext,
+    private readonly facadeContext: Facades.SourceFacadeContext,
   ) {
     this.source = file.text
+    this.loaderAliases = Bridges.sourceBridgeLoaderAliases(file, checker)
     this.excluded = isExcludedSource(filename, this.source)
     this.api = new ExportedApiChecker(
       this.source,
@@ -122,18 +135,39 @@ class SourceConformanceChecker {
     this.reportIssue(node, nestedConditionalIssue(node))
     this.reportIssue(node, selectedFunctionCallIssue(node))
     this.reportIssue(node, complexSignatureTypeIssue(node))
-    this.reportIssue(node, platformAccessIssue(node, this.filename))
+    this.checkExternalBoundaries(node)
+    this.checkStructure(node)
     if (!this.excluded) {
       this.reportIssue(node, ConformanceNaming.booleanExpressionIssue(node))
       this.reportIssue(node, ConformanceNaming.unnamedUnionIssue(node))
       this.reportIssue(node, ConformanceNaming.namedRegexIssue(node))
     }
+  }
+
+  private checkExternalBoundaries(node: TypeScript.Node): void {
+    this.reportIssue(node, platformGlobalIssue(node, this.filename, this.checker, this.excluded))
+    this.reportIssue(
+      node,
+      Bridges.sourceBridgeIssue(node, this.filename, this.bridgeContext, this.loaderAliases, this.excluded),
+    )
+    if (!this.excluded) {
+      this.reportIssue(node, Facades.sourceFacadeIssue(node, this.facadeContext, this.loaderAliases))
+      for (const issue of sourceBridgeEmissionIssues(node, this.filename, this.bridgeContext)) {
+        this.reportIssue(node, issue)
+      }
+    }
+  }
+
+  private checkStructure(node: TypeScript.Node): void {
     const body = ConformanceLayout.functionBody(node)
     if (body) {
       this.checkFunctionBody(body)
     }
     if (TypeScript.isSourceFile(node)) {
       this.api.checkScope(node)
+      if (!this.excluded) {
+        this.reportIssue(node, Facades.sourceFacadeLayoutIssue(node, this.facadeContext))
+      }
     }
     if (TypeScript.isModuleBlock(node) && this.api.publicNamespaces.has(node.parent)) {
       this.api.checkScope(node, isAmbientNamespace(node))

@@ -1,5 +1,6 @@
 import { Errors, EscapeCharacter, NewlineCharacter, Try } from '@shared'
 import { Platform, Terminal, Text } from '@shared/os'
+import * as ExternalErrors from '../../../shared/shared-src/universal/Errors/external'
 import { IO } from './cli-kit'
 
 Platform.onUncaughtException(fatalError)
@@ -10,7 +11,7 @@ async function fatalError(error: unknown): Promise<void> {
   const status = commandFailure ? error.result.status : undefined
   await Try(async () => {
     printError(error)
-    IO.summary(`Failed: ${Errors.fromUnknown(error).message.split(NewlineCharacter)[0]!.slice(0, 240)}`)
+    IO.summary(`Failed: ${ExternalErrors.fromUnknown(error).message.split(NewlineCharacter)[0]!.slice(0, 240)}`)
     await IO.finish('failed')
   }, {
     catch: () => writeFallbackError(error),

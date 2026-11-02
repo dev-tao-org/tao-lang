@@ -1,6 +1,6 @@
 import { IO, resolveCallerPath } from '@cli-kit'
 import { Platform, Repo } from '@shared/os'
-import { Command } from 'commander'
+import { Command } from '../../cli-kit/bridges/Bridge_commander'
 import { receiveSnapshot } from './Checkout'
 import { copyRemote, discoverHosts, executeRemote, type RemoteExecution } from './Remote'
 import { runMeasurements } from './Runner'

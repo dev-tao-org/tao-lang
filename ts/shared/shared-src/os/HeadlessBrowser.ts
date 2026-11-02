@@ -1,9 +1,9 @@
 import { Errors, Time, Try } from '@shared'
-import type { Browser, Page } from 'playwright'
+import type { Browser, Page } from './bridges/Bridge_playwright'
 import Env from './Env'
 import * as Platform from './Platform'
 
-export type { Browser, FrameLocator, Page } from 'playwright'
+export type { Browser, FrameLocator, Page } from './bridges/Bridge_playwright'
 
 /** HeadlessBrowserSession is the Playwright browser handle owned by one headless operation. */
 export type HeadlessBrowserSession = Browser
@@ -26,7 +26,7 @@ export async function launch(
   if (Platform.systemInfo().os === 'Darwin') {
     await Platform.requireHostProcessAccess(`Run ./agent unsandboxed ${operation}; Chrome was not launched.`)
   }
-  const { chromium } = await import('playwright')
+  const { chromium } = await import('./bridges/Bridge_playwright')
   return await chromium.launch({
     headless: true,
     channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome',

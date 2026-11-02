@@ -1,6 +1,6 @@
 import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { fixSourceConformance } from '../cli-checks/source-conformance-fix'
 import { unnamedUnionIssue } from '../cli-checks/source-conformance-naming'
 

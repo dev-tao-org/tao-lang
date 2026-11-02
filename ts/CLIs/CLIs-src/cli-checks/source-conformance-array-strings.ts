@@ -1,5 +1,5 @@
 import { NewlineCharacter } from '@shared'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** arrayMultilineStringIssue requires newline-joined array literals to use the shared line helper. */
 export function arrayMultilineStringIssue(node: TypeScript.Node): string | undefined {

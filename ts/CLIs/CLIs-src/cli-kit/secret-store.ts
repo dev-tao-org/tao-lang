@@ -1,6 +1,6 @@
 import { Errors, joinTextLines, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Text } from '@shared/os'
-import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { assertUniqueSecretStoreKeys } from './secret-store-jsonc'
 
 /** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
@@ -57,11 +57,11 @@ export function encodeStoreKey(key: SecretStore['storeKey']): OptionalEncodedSec
 
 /** parseSecretStore parses JSONC and rejects shapes that could silently lose a secret. */
 export function parseSecretStore(text: string): SecretStore {
-  const parsed = parseConfigFileTextToJson('secrets.jsonc', text)
+  const parsed = TypeScript.parseConfigFileTextToJson('secrets.jsonc', text)
   if (parsed.error !== undefined) {
     Errors.ThrowUserInput(
       `The secret store is not valid JSONC: ${
-        flattenDiagnosticMessageText(parsed.error.messageText, NewlineCharacter)
+        TypeScript.flattenDiagnosticMessageText(parsed.error.messageText, NewlineCharacter)
       }`,
     )
   }

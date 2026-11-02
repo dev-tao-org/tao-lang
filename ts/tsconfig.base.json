@@ -33,6 +33,7 @@
       "@tao/ts-api": ["./ts-api/ts-api-src/ts-api.ts"],
       "@workspace/*": ["./0-workspace/workspace-src/*"],
       "@stdlib/*": ["./stdlib/stdlib-src/*"]
-    }
+    },
+    "jsxImportSource": "@runtime/client/Bridge_react"
   }
 }

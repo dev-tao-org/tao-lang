@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import React from './Bridge-React'
+import React from './Bridge_react/Bridge_react'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
 

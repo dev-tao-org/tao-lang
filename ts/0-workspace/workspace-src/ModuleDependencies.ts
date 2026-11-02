@@ -2,8 +2,9 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
+import { Text } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
-import { valid } from 'semver'
+import { valid } from './bridges/Bridge_semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
 import { findNamedPackageDirectories, listRecursiveSourceFiles } from './modules/Catalog'
@@ -270,14 +271,14 @@ async function replaceRequirements(
     grouped.set(occurrence.path, [...(grouped.get(occurrence.path) ?? []), occurrence])
   }
   for (const [path, values] of grouped) {
-    let bytes = new TextEncoder().encode(values[0]!.source)
+    let bytes = Text.encodeUtf8(values[0]!.source)
     for (const item of values.sort((left, right) => Source.compareByRange(right, left))) {
-      const replacement = new TextEncoder().encode(
+      const replacement = Text.encodeUtf8(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )
       bytes = joinBytes(bytes.slice(0, item.range.start), replacement, bytes.slice(item.range.end))
     }
-    await FileSystem.writeFile(path, new TextDecoder().decode(bytes))
+    await FileSystem.writeFile(path, Text.decodeUtf8(bytes))
   }
 }
 

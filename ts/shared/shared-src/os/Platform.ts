@@ -1,5 +1,8 @@
 import { Errors, Try } from '../universal/universal'
-import * as Node from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 import * as Processes from './Processes'
 
 export {
@@ -31,7 +34,7 @@ export function temporaryDirectory(): string {
 
 /** runtimeVersion returns the active Bun runtime version. */
 export function runtimeVersion(): string {
-  return Bun.version
+  return BunHost.getRuntime().version
 }
 
 /** loadModule loads a known runtime module, including native Node-API addons. */
@@ -55,29 +58,29 @@ export function isPlatformImport(specifier: string): boolean {
 }
 
 /** argv contains the current CLI invocation arguments. */
-export const argv = process.argv
+export const argv = hostProcess.argv
 
 /** pid identifies the current process. */
-export const pid = process.pid
+export const pid = hostProcess.pid
 
 /** onUncaughtException installs a process-wide exception listener. */
 export function onUncaughtException(handler: (error: unknown) => void): void {
-  process.on('uncaughtException', handler)
+  hostProcess.on('uncaughtException', handler)
 }
 
 /** onUnhandledRejection installs a process-wide rejected-promise listener. */
 export function onUnhandledRejection(handler: (error: unknown) => void): void {
-  process.on('unhandledRejection', handler)
+  hostProcess.on('unhandledRejection', handler)
 }
 
 /** exit terminates the current process with the supplied status. */
 export function exit(status: number): never {
-  process.exit(status)
+  return hostProcess.exit(status)
 }
 
 /** randomUUID creates a random identifier for owned artifacts. */
 export function randomUUID(): string {
-  return crypto.randomUUID()
+  return WebHost.crypto.randomUUID()
 }
 
 /** isMain reports whether the caller is the program entrypoint. */

@@ -1,6 +1,6 @@
 import { Errors, Regxs } from '../universal/universal'
+import { sep } from './bridges/Bridge_node/Bridge_node'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
-import { sep } from './NodeBuiltins'
 
 /** installGeneratedReaders routes reads and descriptors without native or synthetic generated watchers. */
 export function installGeneratedReaders(options: GeneratedReaderOptions): () => void {

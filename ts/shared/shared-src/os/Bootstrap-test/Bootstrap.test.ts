@@ -1,5 +1,6 @@
 import { joinTextLines, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
 const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FileSystem
 const { delimiter, join } = Path
@@ -9,7 +10,9 @@ type FailureStage = 'install' | 'run'
 Tests.test('bootstrap imports independently and forwards setup output and flags', async () => {
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-bootstrap-'))
   await Try(async () => {
-    const result = await runBootstrap(root, 0)
+    const sourceDirectory = Path.pathToFileURL(join(root, 'source checkout #%') + Path.sep)
+    await copyBootstrapSources(new WebHost.URL('../', import.meta.url), Path.fileURLToPath(sourceDirectory))
+    const result = await runBootstrap(root, 0, 'install', sourceDirectory)
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.stdout).toContain('install-output')
     Tests.expect(result.stderr).toContain('install-error')
@@ -48,14 +51,12 @@ async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: FailureStage = 'install',
+  sourceDirectory = new WebHost.URL('../', import.meta.url),
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
-  const universal = join(root, 'universal')
   const bin = join(root, 'bin')
-  await mkdirs(ts, universal, bin)
-  await copyFile(new URL('../Bootstrap.ts', import.meta.url), join(ts, 'Bootstrap.ts'))
-  await copyFile(new URL('../NodeBuiltins.ts', import.meta.url), join(ts, 'NodeBuiltins.ts'))
-  await copyFile(new URL('../../universal/Characters.ts', import.meta.url), join(universal, 'Characters.ts'))
+  await mkdirs(ts, bin)
+  await copyBootstrapSources(sourceDirectory, ts)
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
@@ -76,6 +77,18 @@ async function runBootstrap(
     Platform.readText(child.stderr),
   ])
   return { status, stdout, stderr }
+}
+
+async function copyBootstrapSources(sourceDirectory: WebHost.URL, target: string): Promise<void> {
+  await FileSystem.mkdir(target)
+  const universal = join(target, '../universal')
+  await FileSystem.mkdir(universal)
+  await copyFile(new WebHost.URL('../../universal/Characters.ts', import.meta.url), join(universal, 'Characters.ts'))
+  await copyFile(new WebHost.URL('Bootstrap.ts', sourceDirectory), join(target, 'Bootstrap.ts'))
+  await FileSystem.cp(new WebHost.URL('Bootstrap', sourceDirectory), join(target, 'Bootstrap'), { recursive: true })
+  await FileSystem.cp(new WebHost.URL('bridges/Bridge_node', sourceDirectory), join(target, 'bridges/Bridge_node'), {
+    recursive: true,
+  })
 }
 
 async function writeStub(bin: string, failureStatus: number, failureStage: FailureStage): Promise<void> {

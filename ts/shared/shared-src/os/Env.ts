@@ -1,5 +1,6 @@
 import * as Errors from '../universal/Errors'
 import * as Objects from '../universal/Objects'
+import { hostProcess } from './bridges/Bridge_node/Bridge_node'
 
 type EnvironmentValue = string | undefined
 type ProcessEnvironment = Record<string, EnvironmentValue>
@@ -41,7 +42,7 @@ class Env {
 }
 
 /** env provides live environment reads and detached clones without changing the current process. */
-const env = new Env(process)
+const env = new Env(hostProcess)
 
 function applyOverrides(environment: Readonly<ProcessEnvironment>, overrides: ProcessEnvironment): ProcessEnvironment {
   const result = Objects.copy(environment)

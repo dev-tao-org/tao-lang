@@ -1,5 +1,7 @@
 import { Try } from '../universal/universal'
-import * as Native from './NodeBuiltins'
+import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
+import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
+import * as Native from './bridges/Bridge_node/Bridge_node'
 
 export {
   appendFileSync,
@@ -15,8 +17,8 @@ export {
   rmSync,
   statSync,
   writeFileSync,
-} from './NodeBuiltins'
-export { nativeFileSystem } from './NodeBuiltins'
+} from './bridges/Bridge_node/Bridge_node'
+export { nativeFileSystem } from './bridges/Bridge_node/Bridge_node'
 export {
   access,
   chmod,
@@ -36,8 +38,8 @@ export {
   stat,
   symlink,
   writeFile,
-} from './NodeBuiltins'
-export { nativeFileSystemPromises } from './NodeBuiltins'
+} from './bridges/Bridge_node/Bridge_node'
+export { nativeFileSystemPromises } from './bridges/Bridge_node/Bridge_node'
 
 /** mkdir creates a directory and any missing parents. */
 export async function mkdir(path: string): Promise<string | undefined> {
@@ -118,23 +120,35 @@ export async function replaceDirectoryLink(target: string, path: string): Promis
 }
 
 /** File represents a runtime-backed file used for subprocess input. */
-export type File = Bun.BunFile
+export type File = BunHost.BunFile
 
 /** file opens a lazy runtime file handle. */
 export function file(path: string): File {
-  return Bun.file(path)
+  return BunHost.getRuntime().file(path)
 }
 
-type WritableTarget = string | URL | File
+type WritableTarget = string | WebHost.URL | File
 type WritableData = string | Uint8Array
 /** write writes text or bytes to a file or runtime file handle. */
 export function write(path: WritableTarget, data: WritableData): Promise<number> {
-  return Bun.write(path, data)
+  return BunHost.getRuntime().write(path, data)
 }
 
 /** listSourceFiles lists TypeScript sources while excluding installed dependencies.
  *  Load the compiler lazily so fresh setup can import OS APIs before dependencies are installed. */
 export async function listSourceFiles(root: string): Promise<string[]> {
-  const { sys } = await import('typescript')
-  return sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**', '**/_gen_*/**'])
+  const { TypeScript } = await import('../bridges/Bridge_typescript')
+  return TypeScript.sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**', '**/_gen_*/**'])
+}
+
+/** listProductionSourceFiles excludes sibling test folders and test entries from shipped source inputs. */
+export async function listProductionSourceFiles(root: string): Promise<string[]> {
+  const paths = await listSourceFiles(root)
+  return paths.filter(path => !isTestSourcePath(root, path))
+}
+
+const TestSourceSuffixRegx = /\.test\.[cm]?tsx?$/
+function isTestSourcePath(root: string, path: string): boolean {
+  const relative = Native.relative(root, path).replaceAll('\\', '/')
+  return relative.split('/').some(segment => segment.endsWith('-test')) || TestSourceSuffixRegx.test(relative)
 }

@@ -1,4 +1,4 @@
-import React from './Bridge-React'
+import React from './Bridge_react/Bridge_react'
 import { previewOptions, reportRenderError } from './Preview'
 import { ProvideRuntimeObserver, ViewRenderArguments, ViewRenderExpression } from './View'
 import type { AppOptions, RuntimeObserver } from './View'

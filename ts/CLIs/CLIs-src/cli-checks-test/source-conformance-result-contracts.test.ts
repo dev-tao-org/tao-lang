@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import { Tests } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { concreteReturnTypeIssue, ownLineNullishIssue } from '../cli-checks/source-conformance-result-contracts'
 
 Tests.test('result contract conformance > names concrete return types and preserves generic substitution', () => {

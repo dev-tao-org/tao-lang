@@ -1,8 +1,9 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
+import * as Node from './bridges/Bridge_node/Bridge_node'
+import type { Dirent } from './bridges/Bridge_node/Bridge_node'
+import { dirname, join, posix, readdir, win32 } from './bridges/Bridge_node/Bridge_node'
 import Env from './Env'
 import * as FileSystem from './FileSystem'
-import type { Dirent } from './NodeBuiltins'
-import { dirname, join, lstat, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
@@ -19,19 +20,22 @@ export function resolveStorage(
   home: string,
   environment: Record<string, EnvironmentValue>,
 ): StorageRoots {
-  const pathApi = platform === 'windows' ? win32 : posix
+  const pathApi = platform === 'windows' ? Node.win32 : Node.posix
   const bases = Switch<StoragePlatform, StorageRoots>(platform, {
     macos: () => ({
-      cache: posix.join(home, 'Library', 'Caches'),
-      support: posix.join(home, 'Library', 'Application Support'),
+      cache: Node.posix.join(home, 'Library', 'Caches'),
+      support: Node.posix.join(home, 'Library', 'Application Support'),
     }),
     windows() {
-      const localAppData = environment.LOCALAPPDATA || win32.join(home, 'AppData', 'Local')
-      return { cache: win32.join(localAppData, 'Tao', 'Cache'), support: win32.join(localAppData, 'Tao', 'Support') }
+      const localAppData = environment.LOCALAPPDATA || Node.win32.join(home, 'AppData', 'Local')
+      return {
+        cache: Node.win32.join(localAppData, 'Tao', 'Cache'),
+        support: Node.win32.join(localAppData, 'Tao', 'Support'),
+      }
     },
     linux: () => ({
-      cache: xdgPath(environment.XDG_CACHE_HOME, posix.join(home, '.cache')),
-      support: xdgPath(environment.XDG_DATA_HOME, posix.join(home, '.local', 'share')),
+      cache: xdgPath(environment.XDG_CACHE_HOME, Node.posix.join(home, '.cache')),
+      support: xdgPath(environment.XDG_DATA_HOME, Node.posix.join(home, '.local', 'share')),
     }),
   })
   const suffix = platform === 'windows' ? [] : ['Tao']
@@ -144,7 +148,7 @@ function xdgPath(value: EnvironmentValue, fallback: string): string {
 }
 
 function resolveBelow(root: string, segments: readonly string[]): string {
-  const result = resolve(root, ...segments)
+  const result = Node.resolve(root, ...segments)
   if (!Path.isWithin(root, result)) {
     Errors.ThrowUserInput(`Storage path escapes its configured root: ${result}`)
   }
@@ -198,7 +202,7 @@ async function releaseCacheLease(path: string, lock: SessionLock.SessionLock): P
 
 async function removeLeaseProbe(path: string, report?: (reason: string) => void): Promise<boolean> {
   return await Try(async () => {
-    await rm(path, { force: true })
+    await Node.rm(path, { force: true })
     return true
   }, { catch: error => blockedProbe(error, path, report) ? false : Errors.Throw(error) })
 }
@@ -276,21 +280,21 @@ function handleLeaseDirectoryFailure(
 
 async function existingDirectory(path: string): Promise<string | undefined> {
   return await Try(async () => {
-    const info = await lstat(path)
+    const info = await Node.lstat(path)
     if (!info.isDirectory() && !info.isSymbolicLink()) {
       Errors.ThrowHostEnvironment(`Configured cache root is not a directory: ${path}`)
     }
-    return await realpath(path)
+    return await Node.realpath(path)
   }, { catch: error => isMissing(error) ? undefined : Errors.Throw(error) })
 }
 
 async function removeCacheEntries(root: string): Promise<void> {
-  const entries = await readdir(root, { withFileTypes: true })
+  const entries = await Node.readdir(root, { withFileTypes: true })
   for (const entry of entries) {
     if (entry.name === 'native-locks') {
       continue
     }
-    await rm(join(root, entry.name), { recursive: true, force: true })
+    await Node.rm(Node.join(root, entry.name), { recursive: true, force: true })
   }
 }
 

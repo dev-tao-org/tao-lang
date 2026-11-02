@@ -1,6 +1,6 @@
 import { Range } from '@shared'
 import { Tests } from '@shared/os'
-import type * as vscode from 'vscode'
+import type { vscode } from '../../bridges/Bridge_vscode'
 import { formattingProvider } from '../tao-ide-extension-src/Formatting'
 
 Tests.test('editor formatting returns range edits and discards results for a changed document version', async () => {
