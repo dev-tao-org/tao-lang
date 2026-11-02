@@ -16,11 +16,11 @@ const GitFingerprintFailureScript = joinTextLines(
 )
 
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
-  const environment = { ...Env.snapshot(), TERMINAL_OUTPUT: undefined }
+  const addEnv = { TERMINAL_OUTPUT: undefined }
   const child = Platform.spawnPiped(Repo.resolvePath('agent'), {
     variadicArgs: ['test', 'CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
     cwd: Repo.getWorkspaceRoot(),
-    env: environment,
+    addEnv,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
@@ -106,8 +106,7 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
       'utf8',
     )
     await FileSystem.chmod(git, 0o755)
-    const environment = {
-      ...Env.snapshot(),
+    const addEnv = {
       PATH: `${bin}:${Env.get('PATH') ?? ''}`,
       TAO_DEVENV: '1',
       DEVENV_ROOT: repository,
@@ -119,7 +118,7 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
         Path.join(repository, 'agent'),
         Path.join(repository, '.config/cli-environment.sh'),
       ],
-      env: environment,
+      addEnv,
       cwd: repository,
     })
     const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
@@ -129,8 +128,7 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
 })
 
 Tests.test('fatal CLI errors remain visible when the configured log path is unwritable', async () => {
-  const environment = {
-    ...Env.snapshot(),
+  const addEnv = {
     OUTPUT_LOG_FILE: 'ts',
     TERMINAL_OUTPUT: '1',
     TERMINAL_UI: '0',
@@ -138,7 +136,7 @@ Tests.test('fatal CLI errors remain visible when the configured log path is unwr
   const child = Platform.spawnPiped(Repo.resolvePath('agent'), {
     variadicArgs: ['unrecognized-command'],
     cwd: Repo.getWorkspaceRoot(),
-    env: environment,
+    addEnv,
   })
   const [status, stderr] = await Promise.all([child.exited, Platform.readText(child.stderr)])
   Tests.expect(status).toBe(1)

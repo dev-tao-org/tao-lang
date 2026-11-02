@@ -1,4 +1,4 @@
-import { Objects, S, Try } from '@shared'
+import { S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { resolveStorage } from '../Storage'
 
@@ -34,10 +34,10 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
     const script = `const storage = await import(${
       JSON.stringify(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
-    const environment = { ...process.env, TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
+    const environment = { TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
     const child = Platform.spawnPiped(process.execPath, {
       variadicArgs: ['-e', script],
-      env: environment,
+      addEnv: environment,
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
@@ -82,7 +82,7 @@ Tests.test('cache leases reclaim crashed probes while protecting a live consumer
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('direct test invocations isolate Tao storage without a test-plan worker', async () => {
+Tests.test('direct test invocations scope Tao storage without changing the real process environment', async () => {
   const root = Artifacts.resolvePath('tmp', `direct-test-storage-${Platform.randomUUID()}`)
   await Try(async () => {
     await mkdir(root)
@@ -96,17 +96,18 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
         import * as Tests from ${JSON.stringify(testsUrl)};
         import * as Storage from ${JSON.stringify(storageUrl)};
         import { writeFile } from 'node:fs/promises';
-        Tests.test('isolated roots', () => writeFile(${
+        Tests.test('isolated roots', () => {
+          Tests.expect(process.env.TAO_CACHE_DIR).toBeUndefined();
+          Tests.expect(process.env.TAO_SUPPORT_DIR).toBeUndefined();
+          return writeFile(${
         JSON.stringify(result)
-      }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()])));
+      }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()]));
+        });
       `,
     )
-    const env = Objects.copy(process.env)
-    delete env.TAO_CACHE_DIR
-    delete env.TAO_SUPPORT_DIR
-    const child = Platform.spawnPiped(process.execPath, {
+    const child = Platform.spawnPiped('bun', {
       variadicArgs: ['test', path],
-      env,
+      addEnv: { TAO_CACHE_DIR: undefined, TAO_SUPPORT_DIR: undefined },
     })
     const [status, , stderr] = await Promise.all([
       child.exited,
@@ -116,16 +117,16 @@ Tests.test('direct test invocations isolate Tao storage without a test-plan work
     Tests.expect({ status, failed: stderr.includes('(fail)') }).toEqual({ status: 0, failed: false })
     const roots = JSON.parse(await readFile(result, 'utf8')) as string[]
     Tests.expect(roots.length).toBe(2)
-    Tests.expect(roots.every(path => path.startsWith(Artifacts.resolvePath('tmp/test-storage')))).toBe(true)
+    Tests.expect(roots.every(path => Path.isWithin(Artifacts.resolvePath('tmp/test-storage'), path))).toBe(true)
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 })
 
 async function runStorageScript(root: string, source: string): Promise<string> {
   const moduleUrl = new URL('../Storage.ts', import.meta.url).href
-  const environment = { ...process.env, TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
+  const environment = { TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
   const child = Platform.spawnPiped(process.execPath, {
     variadicArgs: ['-e', `const storage = await import(${JSON.stringify(moduleUrl)}); ${source}`],
-    env: environment,
+    addEnv: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

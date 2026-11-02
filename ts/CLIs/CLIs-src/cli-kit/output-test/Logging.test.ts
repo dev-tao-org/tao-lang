@@ -1,4 +1,4 @@
-import { Env, FileSystem, Platform, Repo, Tests } from '@shared/os'
+import { FileSystem, Platform, Repo, Tests } from '@shared/os'
 import { outputFixturePath } from './OutputFixture'
 
 const LogPathRegx = /Logs: (.+\.log)/
@@ -71,8 +71,7 @@ Tests.test('IO retries renderer creation after prompt cleanup fails', async () =
 })
 
 async function runFixture(mode: string, terminalOutput?: string) {
-  const environment = {
-    ...Env.snapshot(),
+  const addEnv = {
     TERMINAL_OUTPUT: terminalOutput,
     TERMINAL_UI: '0',
     CLI_OUTPUT_EVENTS: undefined,
@@ -80,7 +79,7 @@ async function runFixture(mode: string, terminalOutput?: string) {
   const child = Platform.spawnPiped('bun run', {
     variadicArgs: [outputFixturePath, mode],
     cwd: Repo.getWorkspaceRoot(),
-    env: environment,
+    addEnv,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

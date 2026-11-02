@@ -128,7 +128,7 @@ async function runActivationHook(fixture: RuntimeFixture, activeRoot: string): P
       '_tao_dev_direnv_hook() { print -r -- stale >> "$TAO_TEST_HOOK_LOG"; }; source "$TAO_TEST_RUNTIME"; _tao_dev_direnv_hook; print -r -- "TAO_ACTIVE:${TAO_TEST_ACTIVE-unset}"; print -r -- "DIRENV_DIR:$DIRENV_DIR"',
     ],
     cwd: fixture.root,
-    env: environment,
+    addEnv: environment,
   })
   const [status, stdout] = await Promise.all([
     child.exited,

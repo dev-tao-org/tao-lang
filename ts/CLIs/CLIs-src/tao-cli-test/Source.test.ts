@@ -1,5 +1,5 @@
 import { S, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { initializeProject } from '@workspace/projects/Projects'
 
 Tests.test('tao fmt and fix resolve source paths from the caller directory', async () => {
@@ -11,8 +11,7 @@ Tests.test('tao fmt and fix resolve source paths from the caller directory', asy
     for (const command of ['fmt', 'fix']) {
       for (const cwd of [Repo.getWorkspaceRoot(), directory]) {
         await FileSystem.writeFile(path, 'view Main{render Missing}')
-        const environment = {
-          ...Env.snapshot(),
+        const addEnv = {
           TAO_CLI_CWD: undefined,
           TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
           TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
@@ -20,7 +19,7 @@ Tests.test('tao fmt and fix resolve source paths from the caller directory', asy
         const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
           variadicArgs: [command, Path.relative(cwd, path)],
           cwd,
-          env: environment,
+          addEnv,
         })
         const [status, stdout, stderr] = await Promise.all([
           child.exited,
@@ -68,8 +67,7 @@ Tests.test('cold project compilation requests preparation without installing run
         view Greeting { render Text("Hi") }
       `,
     )
-    const environment = {
-      ...Env.snapshot(),
+    const addEnv = {
       TAO_CLI_CWD: undefined,
       TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
       TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
@@ -77,7 +75,7 @@ Tests.test('cold project compilation requests preparation without installing run
     const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
       variadicArgs: ['compile', 'Main.tao'],
       cwd: directory,
-      env: environment,
+      addEnv,
       stdin: 'ignore',
     })
     const [status, stdout, stderr] = await Promise.all([
