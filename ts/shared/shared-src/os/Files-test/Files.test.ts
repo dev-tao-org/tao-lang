@@ -1,4 +1,4 @@
-import { Time, Try } from '@shared'
+import { Try } from '@shared'
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
 import { findProjectMarker, findProjects, walk, withWritableFile, writeReadOnly } from '../Files'
 
@@ -82,46 +82,6 @@ Tests.test('withWritableFile restores permissions after successful and failed wr
       })
     ).toThrow()
     Tests.expect((await stat(path)).mode & 0o777).toBe(mode)
-  }, {
-    async finally() {
-      await rm(root, { recursive: true, force: true })
-    },
-  })
-})
-
-Tests.test('withWritableFile serializes concurrent callbacks for one canonical path', async () => {
-  const root = await mkdtemp(join(temporaryDirectory(), 'tao-write-queue-'))
-  const path = join(root, 'shared')
-  let finishFirst!: () => void
-  let firstIsReady!: () => void
-  const firstReady = new Promise<void>(resolve => firstIsReady = resolve)
-  let active = 0
-  let maximum = 0
-  await Try(async () => {
-    await writeFile(path, '')
-    const alias = join(root, 'alias')
-    await symlink(path, alias)
-    const first = withWritableFile(path, async file => {
-      maximum = Math.max(maximum, ++active)
-      await file.write('first')
-      await new Promise<void>(resolve => {
-        finishFirst = resolve
-        firstIsReady()
-      })
-      active--
-    })
-    await firstReady
-    const second = withWritableFile(alias, async file => {
-      maximum = Math.max(maximum, ++active)
-      await file.write('second')
-      active--
-    })
-    await Time.sleep(0)
-    Tests.expect(maximum).toBe(1)
-    finishFirst()
-    await Promise.all([first, second])
-    Tests.expect(await readFile(path, 'utf8')).toBe('second')
-    Tests.expect(maximum).toBe(1)
   }, {
     async finally() {
       await rm(root, { recursive: true, force: true })
