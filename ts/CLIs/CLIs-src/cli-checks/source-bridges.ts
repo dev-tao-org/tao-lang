@@ -57,20 +57,21 @@ export function sourceBridgeLoaderAliases(
   return aliases
 }
 
-/** sourceModuleSpecifier reads literal imports, re-exports, type imports and supported module-loader calls. */
+/** sourceModuleSpecifier reads literal module targets and statically known platform template families. */
 export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: SourceLoaderAliases): string | undefined {
-  if (!TypeScript.isStringLiteralLike(node) && !TypeScript.isNoSubstitutionTemplateLiteral(node)) {
+  const specifier = readKnownModuleTarget(node)
+  if (specifier === undefined) {
     return
   }
   const parent = node.parent
   if (isModuleDeclarationSpecifier(parent, node)) {
-    return node.text
+    return specifier
   }
   if (TypeScript.isExternalModuleReference(parent) && parent.expression === node) {
-    return node.text
+    return specifier
   }
   if (TypeScript.isLiteralTypeNode(parent) && TypeScript.isImportTypeNode(parent.parent)) {
-    return node.text
+    return specifier
   }
   if (!TypeScript.isCallExpression(parent) || parent.arguments[0] !== node) {
     return
@@ -78,13 +79,31 @@ export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: Sour
   if (
     isModuleLoadingCall(parent.expression, loaderAliases) || isPlatformLoadModuleCall(parent.expression, loaderAliases)
   ) {
-    return node.text
+    return specifier
   }
 }
 
 type OptionalLoaderExpression = TypeScript.Expression | undefined
 
 type NamedLoaderAlias = TypeScript.VariableDeclaration & { name: TypeScript.Identifier }
+
+const NodeModuleFamily = 'node'
+const BunModuleFamily = 'bun'
+
+function readKnownModuleTarget(node: TypeScript.Node): string | undefined {
+  if (TypeScript.isStringLiteralLike(node)) {
+    return node.text
+  }
+  if (!TypeScript.isTemplateExpression(node)) {
+    return
+  }
+  if (node.head.text.startsWith(`${NodeModuleFamily}:`)) {
+    return NodeModuleFamily
+  }
+  if (node.head.text.startsWith(`${BunModuleFamily}:`)) {
+    return BunModuleFamily
+  }
+}
 
 function isModuleDeclarationSpecifier(parent: TypeScript.Node, node: TypeScript.Node): boolean {
   return (TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent))

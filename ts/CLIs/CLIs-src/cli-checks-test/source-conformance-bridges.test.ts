@@ -95,6 +95,29 @@ Tests.test('source conformance > retains only the three exact builtin mock fixtu
   )
 })
 
+Tests.test('source conformance > enforces known template module families without guessing dynamic targets', () => {
+  expectBridgeIssue(
+    'const module = import(`node:${name}`)',
+    'ts/app.ts',
+    'external module "node" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+  expectBridgeIssue(
+    'const module = require(`bun:${name}`)',
+    'ts/app.ts',
+    'external module "bun" belongs in ts/shared/shared-src/os/bridges/Bridge_bun',
+  )
+  expectBridgeIssue('import(`node:${name}`)', 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts')
+  expectBridgeIssue('require(`bun:${name}`)', 'ts/shared/shared-src/os/bridges/Bridge_bun/Bridge_bun.ts')
+  expectBridgeIssue('function inspect(require: any) { require(`node:${name}`) }', 'ts/app.ts')
+  expectBridgeIssue('inspect(`node:${name}`)', 'ts/app.ts')
+  expectBridgeIssue('import(`${family}:${name}`)', 'ts/app.ts')
+  expectBridgeIssue(
+    'import(`node:fs/promises${suffix}`)',
+    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
+    'external module "node" belongs in ts/shared/shared-src/os/bridges/Bridge_node',
+  )
+})
+
 Tests.test('source conformance > recognizes literal calls through loader aliases', () => {
   const sources = [
     "const load = require; load('node:fs')",
