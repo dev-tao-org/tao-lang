@@ -44,7 +44,7 @@ export function isDiscoverableProjectDirectory(path: string, home = Path.home())
   if (!Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())) {
     return false
   }
-  const isHome = canonicalPath(path) === canonicalPath(home)
+  const isHome = resolveCanonicalPath(path) === resolveCanonicalPath(home)
   const legacyHome = isHome && !FileSystem.existsSync(Path.join(tao, 'store', 'project.json'))
   return !legacyHome
 }
@@ -110,9 +110,10 @@ export function getImportRelation(
   return 'same-project'
 }
 
-const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])
-
-function canonicalPath(path: string): string {
+/** resolveCanonicalPath shares existing filesystem identity while retaining absent virtual paths. */
+export function resolveCanonicalPath(path: string): string {
   const absolute = Path.resolve(path)
   return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
 }
+
+const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])

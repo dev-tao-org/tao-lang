@@ -1,5 +1,6 @@
 import { Timings } from '@shared'
 import { Document, type DocumentSnapshot, IsDocument } from '../Document'
+import { resolveCanonicalPath } from '../modules/Paths'
 import type { UpdateResult } from '../Workspace'
 import * as Compilation from './FileManagerCompilation'
 
@@ -17,11 +18,11 @@ export const snapshotFileManagerInput = Timings.createTopLevelTimer(
     source: SourceUpdateInput,
     startedAtMs: number,
   ): Compilation.FileManagerInput => {
-    const path = IsDocument(source) ? source.path : context.entryPath ?? '<memory>'
+    const path = IsDocument(source) ? resolveCanonicalPath(source.path) : context.entryPath ?? '<memory>'
     const document = IsDocument(source) ? source : context.documents.get(path) ?? new Document(path)
     context.documents.set(path, document)
     const snapshot: DocumentSnapshot = IsDocument(source) ? source.snapshot() : document.replaceSource(source)
-    return { kind: 'source', ...snapshot, startedAtMs, timings }
+    return { kind: 'source', ...snapshot, path, startedAtMs, timings }
   },
 )
 

@@ -1,7 +1,7 @@
 import { Errors, Time, Try } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
 import { Document } from '../Document'
-import { findNearestProjectRoot } from '../modules/Paths'
+import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
 import type { UpdateResult } from '../Workspace'
 import * as FileManagerCompilation from './FileManagerCompilation'
 import * as FileManagerInputs from './FileManagerInputs'
@@ -31,7 +31,7 @@ export class FileManager {
   private processing?: Promise<void>
 
   constructor(private readonly options: FileManagerCompilation.FileManagerOptions) {
-    this.workspaceRoot = options.directory ? Path.resolve(options.directory) : undefined
+    this.workspaceRoot = options.directory ? resolveCanonicalPath(options.directory) : undefined
     this.pipelineDirectories = new FileManagerCompilation.PipelineWatchDirectories(options)
   }
 
@@ -43,7 +43,7 @@ export class FileManager {
 
   /** getDocument returns the manager-owned document for a previously observed path. */
   getDocument(path: string): Document | undefined {
-    return this.documents.get(path)
+    return this.documents.get(path) ?? this.documents.get(resolveCanonicalPath(path))
   }
 
   /** openFile selects a contained entry and waits for the latest initial workspace compile. */
@@ -280,7 +280,8 @@ export class FileManager {
   }
 
   private resolveEntry(path: string): string {
-    return Path.isAbsolute(path) ? Path.resolve(path) : Path.resolve(this.workspaceRoot ?? '.', path)
+    const absolute = Path.isAbsolute(path) ? path : Path.resolve(this.workspaceRoot ?? '.', path)
+    return resolveCanonicalPath(absolute)
   }
 
   private shouldRefresh(change: WorkspaceWatch.WorkspaceChange): boolean {

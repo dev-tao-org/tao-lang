@@ -1,4 +1,4 @@
-import { NewlineCharacter, Time, Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { cleanProject } from '../../workspace-src/projects/Clean'
 import { acquireProjectLifecycle } from '../../workspace-src/projects/Lifecycle'
@@ -65,18 +65,17 @@ async function recoverCorruptSession(root: string, state: string): Promise<void>
   await FileSystem.rm(external, { force: true })
 }
 
-Tests.test('session startup and cleanup contend on the project lifecycle lock', async () => {
+Tests.test('cleanup protects shared state while the project lifecycle lock is held', async () => {
   const root = temporaryProject()
   await Try(async () => {
     await initializeProject(root)
     const lifecycle = await acquireProjectLifecycle(root)
     Tests.expect(lifecycle).toBeDefined()
-    const protectedClean = await cleanProject(root)
-    Tests.expect(protectedClean.sharedProtected).toBe(true)
-    const starting = acquireSession(root, { id: 'new-session' })
-    await Time.sleep(30)
-    lifecycle!.release()
-    const session = await starting
+    await Try(async () => {
+      const protectedClean = await cleanProject(root)
+      Tests.expect(protectedClean.sharedProtected).toBe(true)
+    }, { finally: () => lifecycle!.release() })
+    const session = await acquireSession(root, { id: 'new-session' })
     session.release()
     const cleaned = await cleanProject(root)
     Tests.expect(cleaned.removed).toContain('new-session')

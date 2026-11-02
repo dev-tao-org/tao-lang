@@ -15,6 +15,7 @@ import { prepareBuildTypeScript } from './BuildTypeScript'
 import type { Document } from './Document'
 import { type CompileRequest, FileManager } from './file-manager/FileManager'
 import { loadModules } from './modules/Loader'
+import { resolveCanonicalPath } from './modules/Paths'
 import { publishBuild } from './WorkspaceBuild'
 import type { WorkspaceOptions, WorkspacePreparation } from './WorkspaceOptions'
 
@@ -121,7 +122,7 @@ class WorkspaceSession {
 
   constructor(private readonly options: WorkspaceOptions) {
     const directory = options.directory ?? options.project?.directory
-    this.directory = directory ? Path.resolve(directory) : undefined
+    this.directory = directory ? resolveCanonicalPath(directory) : undefined
     this.output = createOutputPaths(options)
     this.files = new FileManager({
       directory: this.directory,
@@ -231,7 +232,7 @@ class WorkspaceSession {
       },
       this.parser,
     )
-    const program = request.timings.run(LinkModules, Path.resolve(request.path ?? '<memory>'), sources)
+    const program = request.timings.run(LinkModules, sources[0]!.path, sources)
     const prepared = await request.timings.run(
       PrepareDependencies,
       this.options.beforeCompile,

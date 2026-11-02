@@ -100,6 +100,32 @@ Tests.test('resolves a named package recursively and reports its import ownershi
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('a markerless aliased source root retains its configured directory boundary', async () => {
+  const root = await createProject()
+  const alias = root + '-alias'
+  await Try(async () => {
+    await FileSystem.rm(Path.join(root, '.tao'), { recursive: true, force: true })
+    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    const source = `use ../Outside Outside${NewlineCharacter}${app('Main')}`
+    await writeSources(Path.join(root, 'nested/Main.tao'), source)
+    await FileSystem.symlink(root, alias, 'dir')
+    const sources = await loadModules(
+      parseEntry(Path.join(alias, 'nested/Main.tao'), source),
+      { directory: alias },
+      createParser(),
+    )
+    Tests.expect(sources.map(module => module.path)).toEqual([
+      Path.join(root, 'nested/Main.tao'),
+      Path.join(root, 'Outside.tao'),
+    ])
+  }, {
+    async finally() {
+      await FileSystem.rm(alias, { force: true })
+      await FileSystem.rm(root, { recursive: true, force: true })
+    },
+  })
+})
+
 Tests.test('loads standard library modules from an ordinary aliased Tao project', async () => {
   const root = await createProject()
   await Try(async () => {
@@ -133,6 +159,20 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
         { directory: root },
         createParser(),
       ),
+      NamedPackageBoundaryErrorRegx,
+    )
+  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('relative imports cannot leave a named module for the unnamed project module', async () => {
+  const root = await createProject()
+  await Try(async () => {
+    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    const entry = Path.join(root, '@cards', 'Card.tao')
+    const source = `use ../Outside Outside${NewlineCharacter}${view('Card')}`
+    await writeSources(entry, source)
+    await Tests.rejects(
+      loadModules(parseEntry(entry, source), { directory: root }, createParser()),
       NamedPackageBoundaryErrorRegx,
     )
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })

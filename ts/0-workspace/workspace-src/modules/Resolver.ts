@@ -130,12 +130,7 @@ function requireRelativeModuleWithinPackage(
   projectRoot: string,
 ): void {
   const sourcePackage = Paths.findNamedPackageRoot(importer, projectRoot)
-  if (
-    files.some(path =>
-      Paths.findNamedPackageRoot(path, projectRoot) !== sourcePackage
-      && Paths.findNamedPackageRoot(path, projectRoot) !== undefined
-    )
-  ) {
+  if (files.some(path => Paths.findNamedPackageRoot(path, projectRoot) !== sourcePackage)) {
     Errors.ThrowUserInput(`Relative module ${specifier} crosses a named package boundary.`)
   }
 }

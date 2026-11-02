@@ -1,11 +1,11 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import type { Parser } from '@grammar/parser'
-import { Errors, Timings, Try } from '@shared'
+import { Errors, Timings } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import { listDirectSourceFiles } from './Catalog'
-import { findNearestProjectRoot, resolveRealPathInsideProject, within } from './Paths'
+import * as Paths from './Paths'
 import { loadRequirementModules } from './Requirements'
 import { importTargets, type ModuleResolutionContext, resolveBareTargets } from './Resolver'
 
@@ -17,7 +17,8 @@ export type ModuleLoadOptions = {
   includeModuleRequirements?: boolean
 }
 
-/** loadModules discovers and parses the source graph reachable from one parsed entry. */
+/** loadModules discovers and parses the source graph reachable from one parsed entry.
+ *  Successful results are nonempty, with the canonical entry module first. */
 export const loadModules = Timings.createTopLevelTimer(function(
   timings,
   entry: { path: string; document: AST.Document },
@@ -60,7 +61,7 @@ const loadGraph = Timings.measure(
   'modules.load',
   async function(timings, request: LoadRequest): Promise<SourceModule[]> {
     const { entry, options } = request
-    const entryPath = resolveEntryPath(entry.path)
+    const entryPath = Paths.resolveCanonicalPath(entry.path)
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
     while (state.pending.length > 0) {
@@ -70,19 +71,14 @@ const loadGraph = Timings.measure(
   },
 )
 
-function resolveEntryPath(path: string): string {
-  const absolutePath = Path.resolve(path)
-  return Try.WithDefault(absolutePath, () => FileSystem.realpathSync(absolutePath))
-}
-
 function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string): string {
   const entryDirectory = Path.dirname(entryPath)
-  const absoluteConfiguredDirectory = configuredDirectory && Path.resolve(configuredDirectory)
-  const projectRoot = findNearestProjectRoot(entryDirectory)
+  const absoluteConfiguredDirectory = configuredDirectory && Paths.resolveCanonicalPath(configuredDirectory)
+  const projectRoot = Paths.findNearestProjectRoot(entryDirectory)
   if (projectRoot !== undefined) {
     return projectRoot
   }
-  if (absoluteConfiguredDirectory && within(absoluteConfiguredDirectory, entryPath)) {
+  if (absoluteConfiguredDirectory && Paths.within(absoluteConfiguredDirectory, entryPath)) {
     return absoluteConfiguredDirectory
   }
   return entryDirectory
@@ -212,12 +208,12 @@ async function resolvePhysicalSourcePath(
   projectRoot: string,
 ): Promise<string | undefined> {
   if (sourcePath === entryPath && !await FileSystem.exists(sourcePath)) {
-    if (within(projectRoot, sourcePath)) {
+    if (Paths.within(projectRoot, sourcePath)) {
       return sourcePath
     }
     return undefined
   }
-  return resolveRealPathInsideProject(sourcePath, projectRoot)
+  return Paths.resolveRealPathInsideProject(sourcePath, projectRoot)
 }
 
 function createModuleResolutionContext(state: LoadState, projectRoot: string): ModuleResolutionContext {

@@ -6,9 +6,11 @@ import { Errors, S } from '@shared'
 import { Artifacts, Bundle, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
+import { createProjectDependencyOptions } from './dependencies/Options'
 import { loadModules } from './modules/Loader'
 import { findNearestProjectRoot } from './modules/Paths'
 import { isNpmPackageName } from './NpmPackageName'
+import { ProjectDependencies } from './ProjectDependencies'
 
 /** LibraryPackageRequest selects the authored entry and isolated output package. */
 export type LibraryPackageRequest = { entry: string; out: string; name: string; target?: string }
@@ -23,9 +25,14 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   if (!document) {
     Errors.ThrowUserInput(`Invalid Tao library syntax: ${entry}.`)
   }
+  const dependencies = new ProjectDependencies(root, await createProjectDependencyOptions(root))
+  await dependencies.refresh()
   const modules = await loadModules({ path: entry, document }, {
     directory: root,
-    resolveProject: async (_importer, alias) => alias === 'tao' ? { root: await Stdlib.projectDirectory() } : undefined,
+    resolveProject: async (importer, alias) =>
+      alias === 'tao'
+        ? { root: await Stdlib.projectDirectory() }
+        : await dependencies.resolveProject(importer, alias),
   }, parser)
   const ownSources = new Set(modules.filter(module => isOwnProjectSource(root, module.path)).map(module => module.path))
   const library = compileLibrary(linkModules(entry, modules), ownSources, request.target)
