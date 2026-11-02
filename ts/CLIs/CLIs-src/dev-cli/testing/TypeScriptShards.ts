@@ -79,7 +79,7 @@ async function runShard(
         cwd: Repo.resolvePath('ts'),
         output,
         signal,
-        env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+        addEnv: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
       }),
     slowSeconds,
     output,

@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { createProjectDependencyOptions } from '@workspace/dependencies/Options'
 import { prepareDependencies } from '@workspace/dependencies/Store'
 import { initializeProject } from '@workspace/projects/Projects'
@@ -28,8 +28,7 @@ Tests.test('tao test resolves default folders and relative files from the caller
     const dependencies = await createProjectDependencyOptions(directory)
     await prepareDependencies(directory, await dependencies.readRequirements(directory), dependencies)
     for (const args of [[], ['Journey.tao']]) {
-      const environment = {
-        ...Env.snapshot(),
+      const addEnv = {
         TAO_CLI_CWD: undefined,
         TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
         TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
@@ -37,7 +36,7 @@ Tests.test('tao test resolves default folders and relative files from the caller
       const child = Platform.spawnPiped(Repo.resolvePath('tao'), {
         variadicArgs: ['test', ...args],
         cwd: directory,
-        env: environment,
+        addEnv,
       })
       const [status, stdout, stderr] = await Promise.all([
         child.exited,

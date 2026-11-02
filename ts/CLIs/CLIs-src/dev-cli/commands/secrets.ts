@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
@@ -306,9 +306,5 @@ async function runIdentityTool(command: string, options: { variadicArgs?: readon
 }
 
 function secretsIdentityPath(): string {
-  const homeDirectory = Env.get('HOME')
-  if (homeDirectory === undefined) {
-    Errors.ThrowHostEnvironment('Cannot locate the home directory for the secrets identity.')
-  }
-  return Path.join(homeDirectory, '.config/tao/secrets-identity.txt')
+  return Path.home('.config', 'tao', 'secrets-identity.txt')
 }

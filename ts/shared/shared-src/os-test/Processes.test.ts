@@ -3,21 +3,22 @@ import { Env, Path, Platform, Repo, Tests } from '@shared/os'
 
 const ProbeSource = S`
   const input = await Bun.stdin.text();
-  process.stdout.write([process.cwd(), process.env.TAO_PROCESS_PROBE, process.argv[1], input].join('|'));
+  process.stdout.write([process.cwd(), process.env.TAO_PROCESS_PROBE, process.env.PATH, process.env.TAO_PROCESS_UNSET === undefined, process.argv[1], input].join('|'));
 `
 
 Tests.test('command execution preserves argument boundaries, environment, cwd and stdin', async () => {
   const cwd = Repo.getWorkspaceRoot()
-  const env = { ...Env.snapshot(), TAO_PROCESS_PROBE: 'present' }
-  const options = { variadicArgs: ['-e', ProbeSource, 'with spaces'], cwd, env, stdin: 'payload' }
-  const asynchronous = await Platform.run('bun', options)
-  const synchronous = Platform.runSync('bun', options)
+  const addEnv = { TAO_PROCESS_PROBE: 'present', TAO_PROCESS_UNSET: undefined }
+  const options = { variadicArgs: ['-e', ProbeSource, 'with spaces'], cwd, addEnv, stdin: 'payload' }
+  const command = ['bun']
+  const asynchronous = await Platform.run(command, options)
+  const synchronous = Platform.runSync(command, options)
   for (const result of [asynchronous, synchronous]) {
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.signal).toBe(null)
     Tests.expect(result.cwd).toBe(cwd)
     Tests.expect(result.args).toEqual(options.variadicArgs)
-    Tests.expect(result.stdout).toBe(`${cwd}|present|with spaces|payload`)
+    Tests.expect(result.stdout).toBe(`${cwd}|present|${Env.get('PATH') ?? ''}|true|with spaces|payload`)
     Tests.expect(result.stderr).toBe('')
   }
 })

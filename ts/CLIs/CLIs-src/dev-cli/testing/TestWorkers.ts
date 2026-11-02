@@ -184,7 +184,7 @@ async function runTaoWorker(
       cwd: Repo.getWorkspaceRoot(),
       output: channel,
       signal,
-      env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+      addEnv: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
     }), {
     catch(error) {
       commandFailure = String(error)

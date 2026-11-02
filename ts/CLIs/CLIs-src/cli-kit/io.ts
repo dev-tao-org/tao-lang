@@ -39,6 +39,7 @@ export type IOConfiguration = {
   logDirectory?: LogDirectory
   forwardEvents?: boolean
   passthrough?: boolean
+  childEnvironment?: CommandEnvironment
 }
 
 /** configuredCommandOutput captures child streams whenever a channel or dashboard owns their display. */
@@ -46,6 +47,7 @@ export function configuredCommandOutput(channel?: Output.OutputChannel): Configu
   const selected = channel ?? output.main
   return {
     captureCommands: !configuration.passthrough,
+    addEnv: configuration.childEnvironment,
     mirrorCommandStderr: configuration.stderr === 'both',
     stdoutPipe: selected.stdout,
     stderrPipe: selected.stderr,
@@ -57,12 +59,16 @@ export function configuredCommandOutput(channel?: Output.OutputChannel): Configu
 /** ConfiguredCommandOutput exposes the active child-output pipes and routing policy. */
 export type ConfiguredCommandOutput = {
   captureCommands: boolean
+  addEnv?: CommandEnvironment
   mirrorCommandStderr: boolean
   stdoutPipe(text: Output.OutputText): void
   stderrPipe(text: Output.OutputText): void
   progressPipe(message: string): void
   receive(message: Output.OutputEventMessage): void
 }
+
+type EnvironmentValue = string | undefined
+type CommandEnvironment = Readonly<Record<string, EnvironmentValue>>
 
 /** renderOutput installs the sole terminal renderer for this process. */
 export function renderOutput(renderer: Output.OutputRenderer): void {

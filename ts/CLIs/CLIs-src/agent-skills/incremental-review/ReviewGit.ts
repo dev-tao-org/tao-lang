@@ -1,13 +1,13 @@
 import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
-import { Env, FileSystem, Path, Platform } from '@shared/os'
+import { FileSystem, Path, Platform } from '@shared/os'
 
 type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
-  const environment = { ...Env.snapshot(), GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
+  const addEnv = { GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
   const result = await Platform.runIgnoreStatus(['git', '--literal-pathspecs', ...args], {
     cwd: root,
-    env: environment,
+    addEnv,
     stdin: options.input,
   })
   if (result.status !== 0 || result.signal !== null) {

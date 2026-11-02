@@ -1,28 +1,58 @@
 import * as Errors from '../universal/Errors'
 import * as Objects from '../universal/Objects'
 
-/** get reads a variable from the current process environment. */
-export function get(key: string): string | undefined {
-  return process.env[key]
-}
-
-/** require reads a variable and fails when the host environment does not define it. */
-export function require(name: string): string {
-  return get(name) ?? Errors.ThrowHostEnvironment(`Missing environment variable: ${name}`)
-}
-
 type EnvironmentValue = string | undefined
-/** snapshot copies the current environment for a child with explicit local overrides. */
-export function snapshot(): Record<string, EnvironmentValue> {
-  return Objects.copy(process.env)
+type ProcessEnvironment = Record<string, EnvironmentValue>
+type ProcessLike = { env: ProcessEnvironment }
+type EnvironmentKeyValuePair = [key: string, value: EnvironmentValue]
+
+class Env {
+  constructor(private readonly process: ProcessLike) {}
+
+  // Read a variable from the current process environment.
+  get(key: string): string | undefined {
+    return this.process.env[key]
+  }
+
+  // Require a variable to be defined by the host environment.
+  require(name: string): string {
+    return this.get(name) ?? Errors.ThrowHostEnvironment(`Missing environment variable: ${name}`)
+  }
+
+  // Compare a variable with an expected value.
+  is(key: string, value: string): boolean {
+    return this.get(key) === value
+  }
+
+  // Return a readonly copy of the complete environment.
+  values(): Readonly<ProcessEnvironment> {
+    return Objects.copy(this.process.env)
+  }
+
+  // Read requested keys in their supplied order, including missing values.
+  KeyValuePairs(names: readonly string[] = Object.keys(this.process.env)): EnvironmentKeyValuePair[] {
+    return names.map(name => [name, this.process.env[name]])
+  }
+
+  // Create an independent environment with the supplied overrides.
+  clone(overrides: ProcessEnvironment = {}): Env {
+    return new Env({ env: applyOverrides(this.process.env, overrides) })
+  }
 }
 
-/** set updates a variable in the current process environment. */
-export function set(key: string, value: string): void {
-  process.env[key] = value
+/** env provides live environment reads and detached clones without changing the current process. */
+const env = new Env(process)
+
+function applyOverrides(environment: Readonly<ProcessEnvironment>, overrides: ProcessEnvironment): ProcessEnvironment {
+  const result = Objects.copy(environment)
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) {
+      delete result[key]
+    } else {
+      result[key] = value
+    }
+  }
+  return result
 }
 
-/** is checks whether an environment variable equals the supplied value. */
-export function is(key: string, value: string): boolean {
-  return get(key) === value
-}
+export default env

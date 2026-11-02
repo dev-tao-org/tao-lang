@@ -1,5 +1,5 @@
 import { joinTextLines, S, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
+import { Artifacts, Env, FileSystem, Path, Platform, Tests } from '@shared/os'
 
 const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FileSystem
 const { delimiter, join } = Path
@@ -61,14 +61,14 @@ async function runBootstrap(
     + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const environment = {
-    ...process.env,
-    PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
+    PATH: `${bin}${delimiter}${Env.get('PATH') ?? ''}`,
     TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
   }
-  const child = Platform.spawnPiped(process.execPath, {
+  // Keep the running interpreter distinct from the fake installer selected by the child PATH.
+  const child = Platform.spawnPiped(Platform.argv[0], {
     variadicArgs: ['-e', script],
     cwd: ts,
-    env: environment,
+    addEnv: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

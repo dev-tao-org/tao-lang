@@ -3,7 +3,7 @@ import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
+import { FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import * as LockFile from './dependencies/LockFile'
 import { createProjectDependencyOptions } from './dependencies/Options'
@@ -126,8 +126,8 @@ export async function buildManagedModulesInput(
 
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
 export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
-  const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const result = await Platform.runIgnoreStatus([command, ...args], { cwd, env: environment })
+  const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+  const result = await Platform.runIgnoreStatus([command, ...args], { cwd, addEnv })
   return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 

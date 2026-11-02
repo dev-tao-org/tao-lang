@@ -2,7 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { Errors, Lists, NewlineCharacter, Regxs, Try } from '@shared'
-import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
@@ -123,10 +123,10 @@ async function containsApp(path: string): Promise<boolean> {
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
-  const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+  const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
   const result = await Platform.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
     cwd,
-    env: environment,
+    addEnv,
   })
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)

@@ -1,5 +1,5 @@
 import { Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { satisfies } from 'semver'
 import TypeScript from 'typescript'
 import { initializeProject } from '../projects/Projects'
@@ -80,8 +80,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     // Clear both spellings because subprocess tools use different proxy-variable casing.
-    const env = {
-      ...Env.snapshot(),
+    const addEnv = {
       HOME: root,
       USERPROFILE: root,
       BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
@@ -95,7 +94,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    const child = Platform.spawnPiped([command, ...args, '--registry', registry], { cwd, env })
+    const child = Platform.spawnPiped([command, ...args, '--registry', registry], { cwd, addEnv })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
       Platform.readText(child.stdout),

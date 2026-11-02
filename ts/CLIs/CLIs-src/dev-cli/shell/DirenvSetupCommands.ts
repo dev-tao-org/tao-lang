@@ -8,7 +8,7 @@ export type CommandResult = Pick<Platform.AsyncCommandResult, CommandResultField
 export type RunOptions = {
   args?: readonly string[]
   cwd?: string
-  env?: Record<string, EnvironmentValue>
+  addEnv?: Record<string, EnvironmentValue>
   stdin?: string
   timeoutMs?: number
 }
@@ -20,7 +20,7 @@ async function runCapturedCommand(command: string, options: RunOptions = {}): Pr
   const result = await Platform.runIgnoreStatus(command, {
     variadicArgs: options.args,
     cwd: options.cwd,
-    env: options.env,
+    addEnv: options.addEnv,
     stdin: options.stdin,
     timeoutMs: options.timeoutMs,
   })

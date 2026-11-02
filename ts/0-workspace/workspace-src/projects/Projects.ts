@@ -47,7 +47,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
 /** discoverProject resolves an initialized Tao project from a file or directory path. */
 export async function discoverProject(
   path: string,
-  homeDirectory = Platform.homeDirectory(),
+  homeDirectory = Path.home(),
 ): Promise<ProjectLayout | undefined> {
   let current = canonicalExistingPath(path)
   if (!isDirectory(current)) {

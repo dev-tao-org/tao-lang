@@ -1,5 +1,5 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
-import * as Env from './Env'
+import Env from './Env'
 import * as FileSystem from './FileSystem'
 import type { Dirent } from './NodeBuiltins'
 import { dirname, join, lstat, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
@@ -114,7 +114,7 @@ function resolveStorageRoots(): StorageRoots {
   if (!current) {
     Errors.ThrowHostEnvironment(`Tao storage locations are not defined for this operating system: ${system}`)
   }
-  return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
+  return resolveStorage(current, Path.home(), Env.values())
 }
 
 function resolveStoragePlatform(system: string): StoragePlatform | undefined {

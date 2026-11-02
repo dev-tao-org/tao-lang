@@ -106,13 +106,12 @@ async function runFailureScript(root: string, body: string): Promise<string> {
     ${body}
   `
   const environment = {
-    ...process.env,
     TAO_CACHE_DIR: Path.join(root, 'cache'),
     TAO_SUPPORT_DIR: Path.join(root, 'support'),
   }
-  const child = Platform.spawnPiped(Platform.argv[0]!, {
+  const child = Platform.spawnPiped('bun', {
     variadicArgs: ['-e', script],
-    env: environment,
+    addEnv: environment,
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,

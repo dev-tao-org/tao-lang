@@ -1,5 +1,4 @@
 import { Addr, Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
-import { Env } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
@@ -102,8 +101,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       return { status: 0, stdout: `${Platform.runtimeVersion()}${NewlineCharacter}`, stderr: '' }
     }
     const registryArguments = ['--registry', registry]
-    const environment = {
-      ...Env.snapshot(),
+    const addEnv = {
       HOME: root,
       USERPROFILE: root,
       BUN_INSTALL_CACHE_DIR: Path.join(root, 'bun-cache'),
@@ -117,7 +115,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    const child = Platform.spawnPiped([command, ...args, ...registryArguments], { cwd, env: environment })
+    const child = Platform.spawnPiped([command, ...args, ...registryArguments], { cwd, addEnv })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
       Platform.readText(child.stdout),

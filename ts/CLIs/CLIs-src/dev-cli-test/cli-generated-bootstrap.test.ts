@@ -147,8 +147,7 @@ async function runLauncher(
   args: readonly string[],
   extraEnvironment: Record<string, string> = {},
 ): Promise<LauncherResult> {
-  const environment = {
-    ...Env.snapshot(),
+  const addEnv = {
     PATH: `${Path.join(root, 'bin')}:${Env.get('PATH') ?? ''}`,
     BOOTSTRAP_LOG: Path.join(root, 'calls'),
     DEVENV_ROOT: root,
@@ -159,7 +158,7 @@ async function runLauncher(
   const child = Platform.spawnPiped(Path.join(root, launcher), {
     variadicArgs: args,
     cwd: root,
-    env: environment,
+    addEnv,
   })
   const [stdout, stderr, status] = await Promise.all([
     Platform.readText(child.stdout),

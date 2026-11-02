@@ -70,7 +70,7 @@ const buildParserNative = Timings.measured('parser.native-build', async function
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
-    env: options.environment,
+    addEnv: options.environment,
   })
 })
 

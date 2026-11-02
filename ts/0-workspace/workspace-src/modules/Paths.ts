@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FileSystem, Path } from '@shared/os'
 
 /** within identifies paths whose normalized relative path stays inside a root. */
 export function within(root: string, path: string): boolean {
@@ -19,7 +19,7 @@ export function isExcludedName(name: string): boolean {
 /** findNearestProjectRoot finds the closest ancestor containing a .tao directory. */
 export function findNearestProjectRoot(
   directory: string,
-  homeDirectory = Platform.homeDirectory(),
+  homeDirectory = Path.home(),
 ): string | undefined {
   const absolute = Path.resolve(directory)
   let current = Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
@@ -39,7 +39,7 @@ export function findNearestProjectRoot(
 }
 
 /** isDiscoverableProjectDirectory excludes legacy home cache directories from project boundaries. */
-export function isDiscoverableProjectDirectory(path: string, home = Platform.homeDirectory()): boolean {
+export function isDiscoverableProjectDirectory(path: string, home = Path.home()): boolean {
   const tao = Path.join(path, '.tao')
   if (!Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())) {
     return false

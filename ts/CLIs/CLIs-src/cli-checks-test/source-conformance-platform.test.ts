@@ -40,6 +40,17 @@ Tests.test('platform conformance > routes builtin module references through one 
 
 type PlatformIssue = string | undefined
 
+Tests.test('platform conformance > centralizes process environment access even inside the OS package', () => {
+  const message = 'process environment access belongs in Env; use readonly values or subprocess addEnv overrides'
+  for (const source of ['process.env.HOME', 'process["env"]["HOME"]', 'globalThis.process.env.HOME']) {
+    Tests.expect(findPlatformIssue(source, 'ts/shared/shared-src/os/Other.ts')).toBe(message)
+    Tests.expect(findPlatformIssue(source, 'ts/shared/shared-src/os/Env.ts')).toBeUndefined()
+  }
+  Tests.expect(findPlatformIssue('Env.get("HOME")', 'ts/shared/shared-src/os/Other.ts')).toBeUndefined()
+  Tests.expect(findPlatformIssue('const text = "process.env.HOME"', 'ts/shared/shared-src/os/Other.ts'))
+    .toBeUndefined()
+})
+
 function findPlatformIssue(source: string, filename: string): string | undefined {
   const file = TypeScript.createSourceFile(filename, source, TypeScript.ScriptTarget.Latest, true)
   let issue: PlatformIssue

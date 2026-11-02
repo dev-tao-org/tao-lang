@@ -24,11 +24,6 @@ export {
   terminate,
 } from './Processes'
 
-/** homeDirectory returns the current user's platform home directory. */
-export function homeDirectory(): string {
-  return Node.homedir()
-}
-
 /** temporaryDirectory returns the host's temporary-file directory. */
 export function temporaryDirectory(): string {
   return Node.tmpdir()

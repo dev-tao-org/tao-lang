@@ -2,7 +2,7 @@ import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
 import { NewlineCharacter, S, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
 import type { SidecarCommandResult } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -45,8 +45,7 @@ export async function executeTypeScript(
   args: readonly string[],
   cwd: string,
 ): Promise<SidecarCommandResult> {
-  const env = Env.snapshot()
-  const child = Platform.spawnPiped([command, ...args], { cwd, env })
+  const child = Platform.spawnPiped([command, ...args], { cwd })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),

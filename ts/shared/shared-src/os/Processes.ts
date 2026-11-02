@@ -1,18 +1,25 @@
 import { Errors, Regxs, Time, Try } from '../universal/universal'
+import Env from './Env'
 import * as Node from './NodeBuiltins'
 
 type SpawnOptions<
   In extends Bun.SpawnOptions.Writable,
   Out extends Bun.SpawnOptions.Readable,
   Err extends Bun.SpawnOptions.Readable,
-> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[] }
+> = Bun.SpawnOptions.SpawnOptions<In, Out, Err> & { variadicArgs?: readonly string[]; addEnv?: EnvironmentOverrides }
 type SpawnCommand = string | readonly string[]
 type SpawnOutputOption = 'stdout' | 'stderr' | 'stdio'
+type NativeSpawnOption = SpawnOutputOption | 'env'
 type NamedSpawnOptions<
   In extends Bun.SpawnOptions.Writable,
   Out extends Bun.SpawnOptions.Readable,
   Err extends Bun.SpawnOptions.Readable,
-> = Omit<SpawnOptions<In, Out, Err>, SpawnOutputOption> & { stdout?: never; stderr?: never; stdio?: never }
+> = Omit<SpawnOptions<In, Out, Err>, NativeSpawnOption> & {
+  env?: never
+  stdout?: never
+  stderr?: never
+  stdio?: never
+}
 
 /** ChildProcessInput describes supported standard-input sources for owned subprocesses. */
 export type ChildProcessInput = Bun.SpawnOptions.Writable
@@ -73,6 +80,7 @@ type CommandStatus = number | null
 type ProcessSignal = string | null
 type EnvironmentValue = string | undefined
 type ProcessEnvironment = Record<string, EnvironmentValue>
+type EnvironmentOverrides = Readonly<ProcessEnvironment>
 type ProcessInput = string | Uint8Array
 
 /** CommandResult records the command and its complete, untrimmed process outcome. */
@@ -89,11 +97,11 @@ export type CommandResult<Status extends CommandStatus = CommandStatus> = {
 export type CompletedCommandResult = CommandResult<0>
 /** AsyncCommandResult records the numeric exit status returned by an asynchronous child. */
 export type AsyncCommandResult = CommandResult<number>
-/** RunOptions configures arguments, environment, input bytes and a termination deadline. */
+/** RunOptions configures arguments, environment additions, input bytes and a termination deadline. */
 export type RunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
-  env?: ProcessEnvironment
+  addEnv?: EnvironmentOverrides
   stdin?: ProcessInput
   timeoutMs?: number
 }
@@ -247,13 +255,13 @@ function createInvocation(command: SpawnCommand, options: RunOptions): CommandIn
 
 function createCommandSpawnOptions(options: RunOptions) {
   const stdin: CommandInputMode = options.stdin === undefined ? 'ignore' : 'pipe'
-  return { cwd: options.cwd, env: options.env, stdin }
+  return { cwd: options.cwd, addEnv: options.addEnv, stdin }
 }
 
 function createCommandSyncOptions(options: RunOptions) {
   return {
     cwd: options.cwd,
-    env: options.env,
+    env: resolveSpawnEnvironment({ addEnv: options.addEnv, stderr: 'pipe' }),
     encoding: 'utf8' as const,
     input: options.stdin,
     timeout: options.timeoutMs,
@@ -281,22 +289,23 @@ function spawn<
   const Out extends Bun.SpawnOptions.Readable = 'pipe',
   const Err extends Bun.SpawnOptions.Readable = 'inherit',
 >(command: SpawnCommand, options: SpawnOptions<In, Out, Err> = {}): Bun.Subprocess<In, Out, Err> {
-  const { variadicArgs = [], ...spawnOptions } = options
-  const environment = resolveSpawnEnvironment(spawnOptions)
-  if (environment) {
-    spawnOptions.env = environment
-  }
+  const { variadicArgs = [], addEnv, ...spawnOptions } = options
+  const environment = resolveSpawnEnvironment({ addEnv, stderr: spawnOptions.stderr })
+  spawnOptions.env = environment
   return Bun.spawn<In, Out, Err>(resolveCommandArguments(command, variadicArgs), spawnOptions)
 }
 
-type TerminalColorOptions = { stderr?: unknown; env?: ProcessEnvironment }
+type TerminalColorOptions = { stderr?: unknown; addEnv?: EnvironmentOverrides }
 
-function resolveSpawnEnvironment(options: TerminalColorOptions): ProcessEnvironment | undefined {
-  return preserveTerminalColors(options) ? { ...(options.env ?? process.env), FORCE_COLOR: '1' } : undefined
+function resolveSpawnEnvironment(options: TerminalColorOptions): ProcessEnvironment {
+  const environment = Env.clone(options.addEnv).values()
+  if (preserveTerminalColors(options, environment)) {
+    return { ...environment, FORCE_COLOR: '1' }
+  }
+  return environment
 }
 
-function preserveTerminalColors(options: TerminalColorOptions): boolean {
-  const environment = options.env ?? process.env
+function preserveTerminalColors(options: TerminalColorOptions, environment: ProcessEnvironment): boolean {
   const explicitPreference = environment.NO_COLOR !== undefined || environment.FORCE_COLOR !== undefined
   if (explicitPreference || options.stderr !== 'pipe') {
     return false

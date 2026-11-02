@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import * as Env from '../../../../shared/shared-src/os/Env'
+import Env from '../../../../shared/shared-src/os/Env'
 import * as FileSystem from '../../../../shared/shared-src/os/FileSystem'
 import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
 import { parseGeneratedRevision } from '../GeneratedRevision'

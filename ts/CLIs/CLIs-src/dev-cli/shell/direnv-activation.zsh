@@ -1,8 +1,9 @@
 # Sourced from interactive zsh startup after the user's own configuration.
 [[ -o interactive ]] || return 0
-[[ -x "$HOME/.tao-dev/shell/direnv/bin/direnv" ]] || return 0
 
-typeset -g _tao_dev_direnv="$HOME/.tao-dev/shell/direnv/bin/direnv"
+typeset -g _tao_dev_home="$HOME/.tao-dev"
+[[ -x "$_tao_dev_home/shell/direnv/bin/direnv" ]] || return 0
+typeset -g _tao_dev_direnv="$_tao_dev_home/shell/direnv/bin/direnv"
 typeset -gA _tao_dev_allowed
 typeset -g _tao_dev_completed_root
 typeset -g _tao_dev_disabled_root
@@ -15,7 +16,7 @@ _tao_dev_trusted_root() {
   common=$(command git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
   common=${common:A}
   id=$(print -r -- "$common" | command git hash-object --stdin 2>/dev/null) || return 1
-  record="$HOME/.tao-dev/shell/repositories/$id"
+  record="$_tao_dev_home/shell/repositories/$id"
   [[ -f "$record/common-dir" && -f "$record/choice" ]] || return 1
   [[ "$(<"$record/common-dir")" == "$common" && "$(<"$record/choice")" == "$expected_choice" ]] || return 1
   while IFS= read -r -d '' field; do
@@ -55,7 +56,7 @@ _tao_dev_unload_from_parent() {
 }
 
 _tao_dev_create_envrc() {
-  local root=$1 template="$HOME/.tao-dev/shell/envrc"
+  local root=$1 template="$_tao_dev_home/shell/envrc"
   [[ ! -e "$root/.envrc" && ! -L "$root/.envrc" && -f "$template" ]] || return 0
   [[ -f "$root/devenv.nix" && -f "$root/devenv.yaml" ]] || return 0
   command git -C "$root" ls-files --error-unmatch -- .envrc >/dev/null 2>&1 && return 0
@@ -102,7 +103,7 @@ _tao_dev_direnv_hook() {
     # Setup generates these files. Entering a checkout must never invoke its CLI
     # bootstrap, which can install dependencies in a fresh or stale worktree.
     completion="$root/.artifacts/cache/dev-shell/completion.zsh"
-    [[ -r "$completion" ]] || completion="$HOME/.tao-dev/shell/completion.zsh"
+    [[ -r "$completion" ]] || completion="$_tao_dev_home/shell/completion.zsh"
     if [[ -r "$completion" ]]; then
       if ! (( $+functions[compdef] )); then
         autoload -Uz compinit

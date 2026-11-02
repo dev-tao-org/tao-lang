@@ -12,11 +12,11 @@ export async function createExpoSession(
 ): Promise<ExpoSession> {
   const port = unusedPort()
   const publication = await prepareExpoPublication(application, options.generated)
-  const environment = { ...expoEnvironment(application.directory), ...publication.environment }
+  const addEnv = { ...expoEnvironment(application.directory), ...publication.environment }
   const child = Platform.spawnPiped('expo', {
     variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
     cwd: application.directory,
-    env: environment,
+    addEnv,
   })
   const url = Addr.localhostUrl(port)
   const output = Lifecycle.captureProcessOutput(child, options.onOutput)
@@ -58,7 +58,6 @@ export type ExpoOptions = {
 type OptionalEnvironmentValue = string | undefined
 function expoEnvironment(directory: string): Record<string, OptionalEnvironmentValue> {
   return {
-    ...Env.snapshot(),
     PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
     BROWSER: 'none',
     CI: 'false',
