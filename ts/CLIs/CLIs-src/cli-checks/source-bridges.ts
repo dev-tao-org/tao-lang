@@ -63,10 +63,7 @@ export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: Sour
     return
   }
   const parent = node.parent
-  if (
-    (TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent))
-    && parent.moduleSpecifier === node
-  ) {
+  if (isModuleDeclarationSpecifier(parent, node)) {
     return node.text
   }
   if (TypeScript.isExternalModuleReference(parent) && parent.expression === node) {
@@ -86,6 +83,11 @@ export function sourceModuleSpecifier(node: TypeScript.Node, loaderAliases: Sour
 }
 
 type NamedLoaderAlias = TypeScript.VariableDeclaration & { name: TypeScript.Identifier }
+
+function isModuleDeclarationSpecifier(parent: TypeScript.Node, node: TypeScript.Node): boolean {
+  return (TypeScript.isImportDeclaration(parent) || TypeScript.isExportDeclaration(parent))
+    && parent.moduleSpecifier === node
+}
 
 function isLoaderAliasDeclaration(node: TypeScript.Node, aliases: SourceLoaderAliases): node is NamedLoaderAlias {
   return TypeScript.isVariableDeclaration(node) && TypeScript.isIdentifier(node.name)
@@ -184,6 +186,11 @@ function isKnownLoaderOperation(
     ? aliases.checker.getAliasedSymbol(reference)
     : reference
   if (
+    name === 'createRequire' && symbol?.declarations?.some(declaration => isNodeModuleDestructure(declaration, aliases))
+  ) {
+    return true
+  }
+  if (
     symbol?.declarations?.some(declaration =>
       declaration.getSourceFile().fileName.replaceAll('\\', '/').endsWith(owner)
     )
@@ -191,6 +198,31 @@ function isKnownLoaderOperation(
     return true
   }
   return aliases.synthetic && symbol?.declarations === undefined && isUnboundLoaderReference(expression, aliases)
+}
+
+function isNodeModuleDestructure(declaration: TypeScript.Declaration, aliases: SourceLoaderAliases): boolean {
+  if (!TypeScript.isBindingElement(declaration) || !TypeScript.isObjectBindingPattern(declaration.parent)) {
+    return false
+  }
+  const property = declaration.propertyName ?? declaration.name
+  const variable = declaration.parent.parent
+  return TypeScript.isIdentifier(property) && property.text === 'createRequire'
+    && TypeScript.isVariableDeclaration(variable) && isLiteralNodeModuleLoad(variable.initializer, aliases)
+}
+
+function isLiteralNodeModuleLoad(
+  initializer: TypeScript.Expression | undefined,
+  aliases: SourceLoaderAliases,
+): boolean {
+  if (
+    initializer === undefined || !TypeScript.isCallExpression(initializer)
+    || !TypeScript.isIdentifier(initializer.expression)
+  ) {
+    return false
+  }
+  const specifier = initializer.arguments[0]
+  const name = specifier === undefined ? undefined : sourceModuleSpecifier(specifier, aliases)
+  return isLoaderBinding(initializer.expression, aliases) && (name === 'node:module' || name === 'module')
 }
 
 function isUnboundLoaderReference(expression: TypeScript.Expression, aliases: SourceLoaderAliases): boolean {

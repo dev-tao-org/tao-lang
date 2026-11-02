@@ -22,6 +22,15 @@ Tests.test('source conformance > requires generated imports to remain source-own
   )).toEqual([])
 })
 
+Tests.test('source conformance > follows createRequire destructured from a literal Node module import', () => {
+  const source =
+    'const code = S`const { createRequire } = require("node:module"); const load = createRequire("/tmp/app/package.json"); load("react")`'
+  Tests.expect(findEmissionIssues(source, 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission.ts'))
+    .toEqual([
+      'emitted source: external module "react" belongs in ts/7-runtime/runtime-src/client/Bridge_react',
+    ])
+})
+
 Tests.test('source conformance > limits isolated external probes to exact source specifiers', () => {
   const fixture = 'ts/shared/shared-src/os/GeneratedFileSystem-test/GeneratedFileSystem.test.ts'
   Tests.expect(findEmissionIssues('const code = S`require("node:fs")`', fixture)).toEqual([])

@@ -95,17 +95,28 @@ function getGlobalOwnerPath(name: string): string | undefined {
 }
 
 function referencedGlobalName(node: TypeScript.Node): string | undefined {
-  if (TypeScript.isIdentifier(node) && platformGlobals.has(node.text) && !isPropertyName(node)) {
+  if (isRegisteredGlobalIdentifier(node)) {
     if (node.text !== 'Date' || isWallClockAccess(node)) {
       return node.text
     }
   }
   if (TypeScript.isPropertyAccessExpression(node) || TypeScript.isElementAccessExpression(node)) {
     const member = accessedMemberName(node)
-    if (member !== undefined && platformGlobals.has(member) && isGlobalThisAccess(node)) {
+    if (isRegisteredGlobalMember(node, member)) {
       return member !== 'Date' || isWallClockAccess(node) ? member : undefined
     }
   }
+}
+
+function isRegisteredGlobalIdentifier(node: TypeScript.Node): node is TypeScript.Identifier {
+  return TypeScript.isIdentifier(node) && platformGlobals.has(node.text) && !isPropertyName(node)
+}
+
+function isRegisteredGlobalMember(
+  node: TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression,
+  member: string | undefined,
+): member is string {
+  return member !== undefined && platformGlobals.has(member) && isGlobalThisAccess(node)
 }
 
 function accessedMemberName(
