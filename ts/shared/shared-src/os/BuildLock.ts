@@ -1,6 +1,5 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import { Errors, Time, Try } from '../universal/universal'
+import { dirname, mkdirSync, readFileSync, rmSync, writeFileSync } from './NodeBuiltins'
 
 /** withBuildLock serializes preparation of shared generated output across processes.
  *  Unreleased locks retain their owner identity for explicit recovery after a bounded wait. */
@@ -49,5 +48,9 @@ function readOwner(path: string): string | undefined {
 }
 
 function errorCode(error: unknown): unknown {
-  return typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined
+  return isErrorWithCode(error) ? error.code : undefined
+}
+
+function isErrorWithCode(error: unknown): error is { code: unknown } {
+  return typeof error === 'object' && error !== null && 'code' in error
 }

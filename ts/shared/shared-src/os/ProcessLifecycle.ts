@@ -1,28 +1,46 @@
 import { Time, Try } from '../universal/universal'
 
-/** waitForTermination resolves once the process receives an interactive shutdown signal. */
-export function waitForTermination(): Promise<void> {
+/** waitForTermination resolves on a shutdown signal or explicit cancellation and removes its listeners. */
+export function waitForTermination(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.resolve()
+  }
   return new Promise(resolve => {
     const finish = () => {
       process.off('SIGINT', finish)
       process.off('SIGTERM', finish)
+      signal?.removeEventListener('abort', finish)
       resolve()
     }
     process.once('SIGINT', finish)
     process.once('SIGTERM', finish)
+    signal?.addEventListener('abort', finish, { once: true })
   })
+}
+
+type TerminationSignal = 'SIGINT' | 'SIGTERM'
+/** onTermination registers a cooperative shutdown handler and returns its listener cleanup. */
+export function onTermination(handler: (signal: TerminationSignal) => void): () => void {
+  const interrupt = () => handler('SIGINT')
+  const terminate = () => handler('SIGTERM')
+  process.on('SIGINT', interrupt)
+  process.on('SIGTERM', terminate)
+  return () => {
+    process.off('SIGINT', interrupt)
+    process.off('SIGTERM', terminate)
+  }
 }
 
 /** ManagedProcess is an Expo-like child with piped output streams. */
 export type ManagedProcess = Bun.Subprocess<'ignore', 'pipe', 'pipe'>
 
 /** stopProcess asks a managed child to stop, then force-stops it after a bounded grace period. */
-export async function stopProcess(child: ManagedProcess): Promise<void> {
+export async function stopProcess(child: Bun.Subprocess, graceMs = 3000): Promise<void> {
   if (child.exitCode !== null) {
     return
   }
   child.kill('SIGINT')
-  const cancel = Time.schedule(3000, () => child.exitCode === null && child.kill('SIGKILL'))
+  const cancel = Time.schedule(graceMs, () => child.exitCode === null && child.kill('SIGKILL'))
   await Try(() => child.exited, { finally: cancel })
 }
 
@@ -32,7 +50,7 @@ export type ProcessOutput = { stdout: string; stderr: string }
 /** captureProcessOutput drains both pipes, buffers their contents, and streams chunks to a listener. */
 export async function captureProcessOutput(
   child: ManagedProcess,
-  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void,
+  onOutput?: OutputListener,
 ): Promise<ProcessOutput> {
   const [stdout, stderr] = await Promise.all([
     readOutput(child.stdout, 'stdout', onOutput),
@@ -41,10 +59,14 @@ export async function captureProcessOutput(
   return { stdout, stderr }
 }
 
+type ProcessOutputName = 'stdout' | 'stderr'
+type ProcessOutputStream = ReadableStream<Uint8Array> | null
+type OutputListener = (stream: ProcessOutputName, text: string) => void
+
 async function readOutput(
-  stream: ReadableStream<Uint8Array> | null,
-  name: 'stdout' | 'stderr',
-  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void,
+  stream: ProcessOutputStream,
+  name: ProcessOutputName,
+  onOutput?: OutputListener,
 ): Promise<string> {
   if (!stream) {
     return ''

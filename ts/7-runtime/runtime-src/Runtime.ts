@@ -1,35 +1,98 @@
-import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
-import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo'
+import { Errors, Regxs, Try } from '@shared'
+import { FileSystem, Path, Storage } from '@shared/os'
+import { createExpoSession, type ExpoOptions, type ExpoSession } from './expo/Expo/Expo'
+import type { GeneratedRevision, PublicationOutcome } from './expo/PreviewProtocol'
+import * as RuntimeDependencyPolicy from './expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from './expo/Scaffold'
-import { prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
+import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from './expo/Toolchain'
+
+/** RuntimePackageVersions maps package names to their pinned install specifications. */
+export type RuntimePackageVersions = Record<string, string>
+
+type RuntimePreparationOption = 'resourcesDirectory' | 'toolchainCacheDirectory' | 'install' | 'onProgress'
+/** prepareRuntime installs the pinned bundled runtime toolchain into the supplied cache. */
+export async function prepareRuntime(
+  options: Pick<RuntimeCreateOptions, RuntimePreparationOption> = {},
+): Promise<string> {
+  const resources = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
+  return await prepareToolchain(
+    Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory()),
+    resources,
+    options.install,
+    options.onProgress,
+  )
+}
+
+type RuntimeCacheOption = 'resourcesDirectory' | 'toolchainCacheDirectory'
+/** preparedRuntime returns the bundled runtime toolchain only when it is already cached. */
+export async function preparedRuntime(
+  options: Pick<RuntimeCreateOptions, RuntimeCacheOption> = {},
+): Promise<string | undefined> {
+  return await findPreparedToolchain(
+    Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory()),
+    Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory()),
+  )
+}
 
 /** create prepares an Expo application from the compiled runtime resources. */
 export async function create(options: RuntimeCreateOptions): Promise<RuntimeApplication> {
   const directory = Path.resolve(options.directory)
   const resourcesPath = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
+  options.onProgress?.('Reading and validating runtime resources…')
   const resourcesDirectory = FileSystem.realpathSync(resourcesPath)
   const resources = await readRuntimeResources(resourcesDirectory)
+  options.onProgress?.('Runtime resources ready.')
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
-  await FileSystem.mkdir(directory, { recursive: true })
-  const dependencyDirectory = await prepareToolchain(cacheDirectory, resourcesDirectory, options.install)
+  await FileSystem.mkdir(directory)
+  const dependencyDirectory = options.dependencyDirectory ?? await prepareToolchain(
+    cacheDirectory,
+    resourcesDirectory,
+    options.install,
+    options.onProgress,
+  )
+  options.onProgress?.('Scaffolding Expo runtime application…')
   await writeExpoApplication(
     directory,
     resourcesDirectory,
     resources.dependencies,
     resources.devDependencies,
     resources.sourceFiles,
+    { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages },
   )
-  return await applicationWithToolchain(directory, dependencyDirectory)
+  options.onProgress?.('Expo runtime application scaffolded.')
+  const application = await applicationWithToolchain(directory, dependencyDirectory)
+  return attachMetroPreload(application, resourcesDirectory)
 }
 
 /** start starts the prepared Expo application and waits for its first response. */
-export async function start(application: RuntimeApplication, options?: ExpoOptions): Promise<ExpoSession> {
-  return await createExpoSession(application, options)
+export async function start(
+  application: RuntimeApplication,
+  options?: ExpoOptions,
+  onProgress?: (message: string) => void,
+): Promise<ExpoSession> {
+  onProgress?.('Starting Expo server and waiting for readiness…')
+  const initial = application.generated ?? {
+    revision: 'initial',
+    sequence: 0,
+    files: { 'App.tsx': await FileSystem.readFile(application.appPath, 'utf8') },
+  }
+  const expoOptions = createGeneratedExpoOptions(application, initial, options)
+  const pending = createExpoSession(application, expoOptions)
+  application.publishGenerated = async revision => (await pending).publish(revision)
+  const session = await pending
+  onProgress?.('Expo server is ready.')
+  return session
 }
 
 /** RuntimeApplication identifies the generated Expo runtime directory and compiled Tao app entry. */
-export type RuntimeApplication = { directory: string; appPath: string }
+export type RuntimeApplication = {
+  directory: string
+  appPath: string
+  metroPreloadPath?: string
+  generated?: GeneratedRevision
+  publicationSequence?: number
+  publishGenerated?(revision: GeneratedRevision): Promise<PublicationOutcome>
+}
 
 /** RuntimeCreateOptions selects generated resources and an isolated dependency cache. */
 export type RuntimeCreateOptions = {
@@ -37,25 +100,86 @@ export type RuntimeCreateOptions = {
   resourcesDirectory?: string
   toolchainCacheDirectory?: string
   install?: RuntimeInstaller
+  onProgress?: (message: string) => void
+  dependencyDirectory?: string
+  watchFolders?: readonly string[]
+  singletonPackages?: readonly string[]
 }
 
-export type { ExpoOptions, ExpoSession } from './expo/Expo'
+export type { ExpoOptions, ExpoSession } from './expo/Expo/Expo'
+export type { RuntimeInstaller } from './expo/Toolchain'
+
+/** runtimeTypeScriptPaths resolves authored API aliases to the immutable packaged runtime sources. */
+export function runtimeTypeScriptPaths(): Record<string, string[]> {
+  const resourceDirectory = Path.resolve(FileSystem.realpathSync(defaultResourcesDirectory()))
+  const apiPath = Path.join(resourceDirectory, 'runtime/TaoRuntimeAPI.ts')
+  const sharedPath = Path.join(resourceDirectory, 'shared/shared.ts')
+  for (const path of [apiPath, sharedPath]) {
+    if (!FileSystem.existsSync(path)) {
+      Errors.ThrowUserInput(`Compiled runtime resource is missing: ${path}`)
+    }
+  }
+  const runtimeClientPath = Path.join(resourceDirectory, 'runtime/*')
+  return { '@runtime/client/*': [runtimeClientPath], '@tao/runtime-api': [apiPath], '@shared': [sharedPath] }
+}
+
+/** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
+export function runtimeDependencies(): Promise<RuntimePackageVersions> {
+  return pinnedDependencies ??= readPinnedDependencies()
+}
+
+/** runtimeDependencyPolicy supplies exact Metro patches for independently installed project dependencies. */
+export function runtimeDependencyPolicy(): Promise<RuntimeDependencyPolicy.RuntimeDependencyPolicy> {
+  return RuntimeDependencyPolicy.readRuntimeDependencyPolicy(defaultResourcesDirectory())
+}
+
+let pinnedDependencies: OptionalPinnedDependencies
+
+function attachMetroPreload(application: RuntimeApplication, resourcesDirectory: string): RuntimeApplication {
+  const metroPreloadPath = Path.join(resourcesDirectory, 'metro/MetroPreload.cjs')
+  return { ...application, metroPreloadPath }
+}
+
+type OptionalExpoOptions = ExpoOptions | undefined
+function createGeneratedExpoOptions(
+  application: RuntimeApplication,
+  initial: GeneratedRevision,
+  options: OptionalExpoOptions,
+): ExpoOptions {
+  return { ...options, generated: { initial, preloadPath: application.metroPreloadPath } }
+}
+
+async function readPinnedDependencies(): Promise<RuntimePackageVersions> {
+  const directory = defaultResourcesDirectory()
+  const resources = await readRuntimeResources(directory)
+  const lock = RuntimeDependencyPolicy.parseRuntimeDependencyLock(
+    await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
+    Path.join(directory, 'bun.lock'),
+  )
+  const types = lock.packages['@types/react']?.[0].slice('@types/react@'.length)
+  if (types === undefined) {
+    Errors.ThrowShouldNeverHappen('The runtime lock does not pin React contract types.')
+  }
+  return { ...resources.dependencies, '@types/react': types }
+}
 
 type RuntimeResources = {
   identity: string
-  dependencies: Record<string, string>
-  devDependencies: Record<string, string>
+  dependencies: RuntimePackageVersions
+  devDependencies: RuntimePackageVersions
   sourceFiles: string[]
 }
+
+type OptionalPinnedDependencies = Promise<RuntimePackageVersions> | undefined
+
 type RuntimeMetadata = Omit<RuntimeResources, 'devDependencies'> & {
   version: 2
-  devDependencies?: Record<string, string>
+  devDependencies?: RuntimePackageVersions
 }
-
 async function readRuntimeResources(directory: string): Promise<RuntimeResources> {
   const metadataPath = Path.join(directory, 'runtime.json')
   const metadata = await Try(
-    async () => JSON.parse(await FileSystem.readFile(metadataPath, 'utf8')) as unknown,
+    async () => parseRuntimeMetadata(await FileSystem.readFile(metadataPath, 'utf8')),
     {
       catch(error) {
         Errors.ThrowUserInput(`Compiled runtime resources are unavailable: ${metadataPath}`, { cause: error })
@@ -78,15 +202,32 @@ async function readRuntimeResources(directory: string): Promise<RuntimeResources
   }
 }
 
+function parseRuntimeMetadata(contents: string): unknown {
+  return JSON.parse(contents)
+}
+
 function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {
   if (typeof value !== 'object' || value === null) {
     return false
   }
   const metadata = value as Partial<RuntimeMetadata>
-  return metadata.version === 2 && isSafeIdentity(metadata.identity)
-    && isDependencies(metadata.dependencies)
-    && (metadata.devDependencies === undefined || isDependencies(metadata.devDependencies))
+  return hasValidMetadataIdentity(metadata) && hasValidDependencyMetadata(metadata)
     && isSourceFiles(metadata.sourceFiles)
+}
+
+function hasValidMetadataIdentity(metadata: Partial<RuntimeMetadata>): boolean {
+  return hasSupportedMetadataVersion(metadata) && isSafeIdentity(metadata.identity)
+}
+
+function hasSupportedMetadataVersion(metadata: Partial<RuntimeMetadata>): boolean {
+  return metadata.version === 2
+}
+
+function hasValidDependencyMetadata(metadata: Partial<RuntimeMetadata>): boolean {
+  if (!isDependencies(metadata.dependencies)) {
+    return false
+  }
+  return metadata.devDependencies === undefined || isDependencies(metadata.devDependencies)
 }
 
 function isSourceFiles(value: unknown): value is string[] {
@@ -94,18 +235,53 @@ function isSourceFiles(value: unknown): value is string[] {
 }
 
 function isSafeSourcePath(file: unknown): file is string {
-  return typeof file === 'string' && file.length > 0
-    && !file.startsWith('/') && !file.includes('\\')
-    && !file.split('/').some(segment => segment === '.' || segment === '..')
+  if (!isValidSourcePathText(file)) {
+    return false
+  }
+  return !file.split('/').some(isUnsafeSourcePathSegment)
+}
+
+function isValidSourcePathText(file: unknown): file is string {
+  return typeof file === 'string' && isNonemptyRelativeSourcePath(file)
+}
+
+function isNonemptyRelativeSourcePath(file: string): boolean {
+  return file.length > 0 && !file.startsWith('/') && !file.includes('\\')
+}
+
+function isUnsafeSourcePathSegment(segment: string): boolean {
+  return segment === '.' || segment === '..'
 }
 
 function isSafeIdentity(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9._-]+$/.test(value) && value !== '.' && value !== '..'
+  return typeof value === 'string' && isValidIdentity(value)
 }
 
-function isDependencies(value: unknown): value is Record<string, string> {
-  return typeof value === 'object' && value !== null
-    && Object.values(value).every(dependency => typeof dependency === 'string')
+function isValidIdentity(value: string): boolean {
+  return isAllowedIdentity(value) && isNonTraversalIdentity(value)
+}
+
+function isAllowedIdentity(value: string): boolean {
+  return Regxs.RuntimeNameRegx.test(value)
+}
+
+function isNonTraversalIdentity(value: string): boolean {
+  return !isTraversalIdentity(value)
+}
+
+function isTraversalIdentity(value: string): boolean {
+  return value === '.' || value === '..'
+}
+
+function isDependencies(value: unknown): value is RuntimePackageVersions {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return Object.values(value).every(isStringDependency)
+}
+
+function isStringDependency(value: unknown): value is string {
+  return typeof value === 'string'
 }
 
 async function applicationWithToolchain(
@@ -138,5 +314,5 @@ function defaultResourcesDirectory(): string {
 }
 
 function defaultToolchainCacheDirectory(): string {
-  return Path.join(Platform.homeDirectory(), '.tao/toolchains')
+  return Storage.resolveCacheDirectory('toolchains')
 }

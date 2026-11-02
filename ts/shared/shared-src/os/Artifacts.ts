@@ -1,13 +1,11 @@
-import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
-import { Errors, Time, Try } from '../universal/universal'
+import { Errors, Lists, Time, Try } from '../universal/universal'
 import * as FileSystem from './FileSystem'
+import { lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFile, writeFileSync } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Repo from './Repo'
 
-export { appendFileSync, mkdirSync } from 'node:fs'
-export { mkdtemp, rename as move } from 'node:fs/promises'
-export { file, mkdir, realpathSync, rm, write } from './FileSystem'
+export { createExclusiveDirectory, file, mkdir, mkdirs, realpathSync, rm, write } from './FileSystem'
+export { appendFileSync, mkdirSync, mkdtemp, move } from './NodeBuiltins'
 
 /** writePrivate creates a new owner-only artifact without a window of public readability. */
 export function writePrivate(path: string, data: string): Promise<void> {
@@ -55,11 +53,13 @@ export async function cleanPartial(): Promise<number> {
 export function expiredTemporaryArtifacts(runs: readonly TemporaryRun[], now: number): string[] {
   const retained = runs.filter(run => !isExpiredRun(run, now)).flatMap(run => run.artifacts)
   const expired = runs.filter(run => isExpiredRun(run, now)).flatMap(run => run.artifacts)
-  return [...new Set(expired)].filter(path => !retained.some(kept => pathsOverlap(path, kept)))
+  return Lists.unique(expired).filter(path => !retained.some(kept => pathsOverlap(path, kept)))
 }
 
-type TemporaryRun = { status: 'running' | 'succeeded' | 'failed'; completedAt?: number; artifacts: string[] }
-let activeRun: { path: string; record: TemporaryRun } | undefined
+type TemporaryRunStatus = 'running' | 'succeeded' | 'failed'
+type TemporaryRun = { status: TemporaryRunStatus; completedAt?: number; artifacts: string[] }
+type ActiveTemporaryRun = { path: string; record: TemporaryRun } | undefined
+let activeRun: ActiveTemporaryRun
 const retentionMs = 24 * 60 * 60 * 1000
 
 function registerTemporary(absolute: string): void {
@@ -115,7 +115,7 @@ function acquireCleanupLock(): () => void {
       return true
     }, {
       catch(error) {
-        if (error instanceof Error && (error as Error & { code?: string }).code === 'EEXIST') {
+        if (Errors.isNativeError(error) && (error as Error & { code?: string }).code === 'EEXIST') {
           return false
         }
         Errors.Throw(error)
@@ -148,8 +148,12 @@ function writeTemporaryRun(): void {
     return
   }
   const temporary = activeRun.path + '.tmp'
-  writeFileSync(temporary, JSON.stringify(activeRun.record))
+  writeFileSync(temporary, serializeTemporaryRun(activeRun.record))
   renameSync(temporary, activeRun.path)
+}
+
+function serializeTemporaryRun(record: TemporaryRun): string {
+  return JSON.stringify(record)
 }
 
 async function readTemporaryRuns(directory: string): Promise<{ path: string; record: TemporaryRun }[]> {
@@ -159,13 +163,17 @@ async function readTemporaryRuns(directory: string): Promise<{ path: string; rec
       continue
     }
     const path = Path.join(directory, entry.name)
-    const record: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    const record: unknown = parseTemporaryRun(readFileSync(path, 'utf8'))
     if (!isTemporaryRun(record)) {
       Errors.ThrowHostEnvironment(`Invalid artifact cleanup record: ${path}`)
     }
     receipts.push({ path, record })
   }
   return receipts
+}
+
+function parseTemporaryRun(contents: string): unknown {
+  return JSON.parse(contents)
 }
 
 function isTemporaryRun(value: unknown): value is TemporaryRun {
