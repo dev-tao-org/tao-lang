@@ -13,7 +13,7 @@ export function createGeneratedPaths(program: LinkedProgram): GeneratedModulePat
   )
   const outputs = new Set<string>()
   for (const path of paths.values()) {
-    const stem = path.replace(TypeScriptFileExtensionRegx, '')
+    const stem = path.replace(Regxs.TypeScriptFileExtensionRegx, '')
     if (outputs.has(stem)) {
       Errors.ThrowUserInput(`Generated source paths collide: ${path}.`)
     }
@@ -34,7 +34,7 @@ export function compileModuleImport(from: string, to: string): string {
 
 /** resolveViewsPath names the component-only category of an input file. */
 export function resolveViewsPath(main: string): string {
-  return main.replace(TypeScriptFileExtensionRegx, '.views.tsx')
+  return main.replace(Regxs.TypeScriptFileExtensionRegx, '.views.tsx')
 }
 
 function resolveGeneratedModulePath(entry: string, source: string): string {
@@ -62,5 +62,3 @@ function escapeCategoryStem(stem: string, source: string): string {
     ? `${stem}.source-${Platform.hashText(source).slice(0, 8)}`
     : stem
 }
-
-const TypeScriptFileExtensionRegx = /\.ts$/

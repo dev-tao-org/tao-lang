@@ -10,6 +10,12 @@ export const TaoSourceExtensionRegx = /\.tao$/
 /** TypeScriptSourceExtensionRegx matches a TypeScript source suffix. */
 export const TypeScriptSourceExtensionRegx = /\.tsx?$/
 
+/** TypeScriptFileExtensionRegx matches generated .ts output files. */
+export const TypeScriptFileExtensionRegx = /\.ts$/
+
+/** WindowsAbsolutePathRegx matches drive-rooted Windows paths. */
+export const WindowsAbsolutePathRegx = /^[A-Za-z]:[\\\\/]/u
+
 /** TypeScriptModuleExtensionRegx matches a TypeScript module suffix. */
 export const TypeScriptModuleExtensionRegx = /\.(?:tsx?|mts|cts)$/
 

@@ -36,3 +36,6 @@ export const SafeCommandTokenRegx = /^[\w./:=@+-]+$/
 
 /** RuntimeNameRegx validates a single generated runtime name. */
 export const RuntimeNameRegx = /^[A-Za-z0-9._-]+$/
+
+/** PackageAliasPrefixRegx matches a package alias before its module separator. */
+export const PackageAliasPrefixRegx = /^[A-Za-z0-9_-]+@/

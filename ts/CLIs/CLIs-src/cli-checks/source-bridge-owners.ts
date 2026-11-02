@@ -1,3 +1,4 @@
+import { Regxs } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
@@ -34,8 +35,6 @@ export function sourceBridgeOwnerIssue(
 type OptionalPathAliases = Record<string, unknown> | undefined
 
 type BridgeOwner = { packageName: string; path: string; folder?: boolean }
-
-const WindowsAbsolutePathRegx = /^[A-Za-z]:[\\\\/]/u
 
 const bridgeOwners: BridgeOwner[] = [
   { packageName: 'typescript', path: 'ts/shared/shared-src/bridges/Bridge_typescript.ts' },
@@ -79,7 +78,8 @@ const bridgeOwners: BridgeOwner[] = [
 ]
 
 function isInternalSpecifier(specifier: string, context: SourceBridgeContext): boolean {
-  const filePath = specifier.startsWith('.') || specifier.startsWith('/') || WindowsAbsolutePathRegx.test(specifier)
+  const filePath = specifier.startsWith('.') || specifier.startsWith('/')
+    || Regxs.WindowsAbsolutePathRegx.test(specifier)
   const localPackage = specifier.startsWith('tao:') || context.packageNames.has(packageRoot(specifier))
   return filePath || localPackage || context.pathAliases.some(alias => matchesPathAlias(specifier, alias))
 }

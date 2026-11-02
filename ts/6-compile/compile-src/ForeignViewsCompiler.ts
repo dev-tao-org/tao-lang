@@ -7,11 +7,14 @@ import { compileIdentifier, emitStringLiteral } from './codegen-util'
 /** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
 export type ForeignViewPathResolver = (modulePath: string, authoredPath: string) => string
 
+/** ForeignViewNamesByModuleMemberKey maps semantic foreign-view keys to generated import identifiers. */
+export type ForeignViewNamesByModuleMemberKey = ReadonlyMap<string, string>
+
 /** compileForeignViews resolves and imports every foreign view in a linked program. */
 export function compileForeignViews(
   program: LinkedProgram,
   resolvePath?: ForeignViewPathResolver,
-): { imports: string; names: ReadonlyMap<string, string> } {
+): { imports: string; names: ForeignViewNamesByModuleMemberKey } {
   const declarations = collectForeignViewDeclarations(program)
   const resolvedViews = resolveForeignViewPaths(declarations, resolvePath)
   const views = resolvedViews.sort(compareForeignViews)
@@ -68,7 +71,7 @@ function compareForeignViews(left: ResolvedForeignView, right: ResolvedForeignVi
 
 function compileForeignViewImports(
   views: readonly ResolvedForeignView[],
-): { imports: string; names: ReadonlyMap<string, string> } {
+): { imports: string; names: ForeignViewNamesByModuleMemberKey } {
   const names = new Map<string, string>()
   const imports: string[] = []
   views.forEach((item, index) => {

@@ -1,8 +1,11 @@
 import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { isTextExpression } from './ValuesCompiler'
 
+/** ModuleTextBindingsBySourcePath maps authored module paths to their text-valued declarations. */
+export type ModuleTextBindingsBySourcePath = ReadonlyMap<string, ReadonlySet<string>>
+
 /** buildModuleTextBindings classifies linked values once in their global initialization order. */
-export function buildModuleTextBindings(program: LinkedProgram): ReadonlyMap<string, ReadonlySet<string>> {
+export function buildModuleTextBindings(program: LinkedProgram): ModuleTextBindingsBySourcePath {
   const bindings = new Map(
     program.modules.map(module => [module.path, new Map(module.bindings.map(binding => [binding.name, binding]))]),
   )
@@ -26,10 +29,12 @@ export function buildModuleTextBindings(program: LinkedProgram): ReadonlyMap<str
   )
 }
 
+type TextClassificationsByModuleMemberKey = ReadonlyMap<string, boolean>
+
 function collectInheritedTextNames(
   module: LinkedModule,
-  ownNames: ReadonlyMap<string, ReadonlySet<string>>,
-  declarations: ReadonlyMap<string, boolean>,
+  ownNames: ModuleTextBindingsBySourcePath,
+  declarations: TextClassificationsByModuleMemberKey,
 ): Set<string> {
   const names = new Set(ownNames.get(module.path))
   for (const binding of module.bindings) {

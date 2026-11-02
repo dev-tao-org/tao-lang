@@ -1,3 +1,4 @@
+import { Regxs } from '@shared'
 import { Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import * as Bridges from './source-bridges'
@@ -11,7 +12,6 @@ export type SourceFacadeContext = {
   resolution: TypeScript.ModuleResolutionCache
 }
 
-const TypeScriptSuffixRegx = /\.tsx?$/u
 /** createSourceFacadeContext discovers sibling Name.ts and Name/ implementation boundaries.
  *  Namespace/default module exports and exact configured entry points publish independently importable sub-APIs. */
 export function createSourceFacadeContext(
@@ -23,7 +23,7 @@ export function createSourceFacadeContext(
   const directories = collectSourceDirectories(files, root)
   const facades = new Map<string, ModuleFacade>()
   for (const filename of files) {
-    const directory = filename.replace(TypeScriptSuffixRegx, '')
+    const directory = filename.replace(Regxs.TypeScriptSourceExtensionRegx, '')
     if (directories.has(directory)) {
       facades.set(filename, { filename, directory })
     }

@@ -1,4 +1,4 @@
-import { Try } from '../universal/universal'
+import { Regxs, Try } from '../universal/universal'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
 import * as Native from './bridges/Bridge_node/Bridge_node'
@@ -147,8 +147,7 @@ export async function listProductionSourceFiles(root: string): Promise<string[]>
   return paths.filter(path => !isTestSourcePath(root, path))
 }
 
-const TestSourceSuffixRegx = /\.test\.[cm]?tsx?$/
 function isTestSourcePath(root: string, path: string): boolean {
   const relative = Native.relative(root, path).replaceAll('\\', '/')
-  return relative.split('/').some(segment => segment.endsWith('-test')) || TestSourceSuffixRegx.test(relative)
+  return relative.split('/').some(segment => segment.endsWith('-test')) || Regxs.TestSourceSuffix.test(relative)
 }

@@ -2,6 +2,7 @@ import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
+import { writeLock } from './ManagedModuleFixtures'
 
 const ManagedModuleRepairRequiredErrorRegx = /needs repair/
 const MarkerOwnershipProofRequiredErrorRegx = /cannot prove that the generated metadata belongs.*Preserve this marker/
@@ -68,20 +69,7 @@ function createExecutor(dependencies: Record<string, string>): BunExecutor {
     if (args.includes('--frozen-lockfile')) {
       return { status: 0, stdout: '', stderr: '' }
     }
-    const packages = Object.fromEntries(
-      Object.entries(dependencies).map(([name, version]) => [
-        name,
-        [`${name}@${version}`, '', {}, `sha512-${name}`],
-      ]),
-    )
-    await FileSystem.writeFile(
-      Path.join(cwd, 'bun.lock'),
-      JSON.stringify({
-        lockfileVersion: 1,
-        workspaces: { '': { dependencies } },
-        packages,
-      }),
-    )
+    await writeLock(cwd, dependencies)
     for (const [name, version] of Object.entries(dependencies)) {
       const directory = Path.join(cwd, 'node_modules', name)
       await FileSystem.mkdir(directory)

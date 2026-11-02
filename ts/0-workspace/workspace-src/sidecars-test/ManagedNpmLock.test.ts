@@ -2,6 +2,7 @@ import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, readManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
+import { writeLock } from './ManagedModuleFixtures'
 
 const ManagedNpmLockSuffixRegx = /\.lock$/
 const MissingDurableLockErrorRegx = /durable lock is missing/
@@ -136,20 +137,7 @@ function executor(dependency: [string, string]): BunExecutor {
 
 async function writeGraph(root: string, dependency: [string, string]): Promise<void> {
   const dependencies = { react: '19.1.0', [dependency[0]]: dependency[1] }
-  const packages = Object.fromEntries(
-    Object.entries(dependencies).map(([name, version]) => [
-      name,
-      [`${name}@${version}`, '', {}, `sha512-${name}`],
-    ]),
-  )
-  await FileSystem.writeFile(
-    Path.join(root, 'bun.lock'),
-    JSON.stringify({
-      lockfileVersion: 1,
-      workspaces: { '': { dependencies } },
-      packages,
-    }),
-  )
+  await writeLock(root, dependencies)
   await writePackages(root, dependencies)
 }
 

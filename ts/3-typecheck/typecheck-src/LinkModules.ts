@@ -6,12 +6,16 @@ import * as Modules from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
 export function linkModules(entry: string, sources: readonly Modules.SourceModule[]): Modules.LinkedProgram {
-  const modules = new Map(sources.map(source => [source.path, source]))
+  const modules: SourceModulesByPath = new Map(sources.map(source => [source.path, source]))
   if (!modules.has(entry)) {
     Errors.ThrowUserInput(`Entry module is unavailable: ${entry}`)
   }
-  const bindings = new Map(sources.map(source => [source.path, [] as Modules.ModuleBinding[]]))
-  const ownNames = new Map(sources.map(source => [source.path, collectOwnDeclarationNames(source)]))
+  const bindings: ModuleBindingsBySourcePath = new Map(
+    sources.map(source => [source.path, [] as Modules.ModuleBinding[]]),
+  )
+  const ownNames: OwnDeclarationNamesBySourcePath = new Map(
+    sources.map(source => [source.path, collectOwnDeclarationNames(source)]),
+  )
 
   for (const source of sources) {
     const sourceBindings = bindings.get(source.path)!
@@ -32,6 +36,11 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
   return { entry, modules: linkedModules, definitions: orderDefinitions(linkedModules) }
 }
 
+type SourceModulesByPath = ReadonlyMap<string, Modules.SourceModule>
+type ModuleBindingsBySourcePath = ReadonlyMap<string, Modules.ModuleBinding[]>
+type OwnDeclarationNamesBySourcePath = ReadonlyMap<string, ReadonlySet<string>>
+type ImplicitBindingCandidatesByLocalName = Map<string, Modules.ModuleBinding[]>
+
 function collectOwnDeclarationNames(source: Modules.SourceModule): Set<string> {
   return new Set(AST.GetValueDeclarations(source.document).map(declaration => declaration.name.value))
 }
@@ -49,12 +58,12 @@ function assertUniqueOwnDeclarations(source: Modules.SourceModule): void {
 
 function addImplicitSiblingBindings(
   source: Modules.SourceModule,
-  modules: ReadonlyMap<string, Modules.SourceModule>,
+  modules: SourceModulesByPath,
   bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   references: ReadonlySet<string>,
 ): void {
-  const candidates = new Map<string, Modules.ModuleBinding[]>()
+  const candidates: ImplicitBindingCandidatesByLocalName = new Map()
   const localNames = new Set(bindings.map(binding => binding.name))
   for (const siblingPath of source.siblings) {
     const sibling = modules.get(siblingPath)
@@ -97,7 +106,7 @@ function isImplicitlyVisible(declaration: AST.ValueDeclaration): boolean {
 
 function addExplicitBindings(
   source: Modules.SourceModule,
-  modules: ReadonlyMap<string, Modules.SourceModule>,
+  modules: SourceModulesByPath,
   bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
 ): void {
@@ -176,7 +185,7 @@ function createNamedImportKey(imported: AST.NamedImport): string {
 function addNamedBinding(
   importer: Modules.SourceModule,
   targets: Modules.SourceModule['imports'][number]['targets'],
-  modules: ReadonlyMap<string, Modules.SourceModule>,
+  modules: SourceModulesByPath,
   imported: AST.NamedImport,
   bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,

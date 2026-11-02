@@ -206,10 +206,8 @@ function rankSource(source: string): number {
   return 2
 }
 
-const PackageAliasPrefixRegx = /^[A-Za-z0-9_-]+@/
-
 function isExternalProjectAlias(source: string): boolean {
-  return source.startsWith('@') || PackageAliasPrefixRegx.test(source)
+  return source.startsWith('@') || Shared.Regxs.PackageAliasPrefixRegx.test(source)
 }
 
 function compareText(left: string, right: string): number {

@@ -1,8 +1,8 @@
+import { Regxs } from '@shared'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import type { SourceBridgeContext } from './source-bridge-owners'
 import { sourceBridgeIssue, sourceBridgeLoaderAliases } from './source-bridges'
 
-const EmittedModuleSyntaxRegx = /\b(?:import|export|require|createRequire)\b/u
 /** sourceBridgeEmissionIssues checks literal imports in handwritten tagged source templates. */
 export function sourceBridgeEmissionIssues(
   node: TypeScript.Node,
@@ -13,7 +13,7 @@ export function sourceBridgeEmissionIssues(
     return []
   }
   const source = renderTemplateSource(node.template)
-  if (!EmittedModuleSyntaxRegx.test(source)) {
+  if (!Regxs.EmittedModuleSyntaxRegx.test(source)) {
     return []
   }
   const file = TypeScript.createSourceFile('emission.tsx', source, TypeScript.ScriptTarget.Latest, true)

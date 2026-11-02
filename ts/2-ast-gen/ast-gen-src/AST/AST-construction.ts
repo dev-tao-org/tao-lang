@@ -227,10 +227,10 @@ function validateBlockStatements(
   }
 }
 
-const BlockTypeSuffixRegx = /Block$/
-const LowercaseUppercaseBoundaryRegx = /([a-z])([A-Z])/g
 function getBlockName(name: keyof typeof Generated.CstBlockStatementKinds): string {
-  return name.replace(BlockTypeSuffixRegx, '').replace(LowercaseUppercaseBoundaryRegx, '$1 $2').toLowerCase()
+  return name.replace(Shared.Regxs.BlockTypeSuffixRegx, '')
+    .replace(Shared.Regxs.LowercaseUppercaseBoundaryRegx, '$1 $2')
+    .toLowerCase()
 }
 
 function makeBlock(cst: CST.SyntaxNode, statements: readonly Generated.Node[]): Generated.Block {

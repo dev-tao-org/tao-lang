@@ -3,6 +3,7 @@ export {
   DocDescription,
   DocLinePrefix,
   DocOpeningLine,
+  EmittedModuleSyntaxRegx,
   ExternalSourcePath,
   ExternalSourceProvenance,
   GeneratedSourceSuffix,
@@ -40,3 +41,6 @@ const ExternalSourcePath = /(?:^|\/)(?:node_modules|_gen_[^/]*|generated|vendor|
 const GeneratedSourceSuffix = /\.generated\.(?:ts|tsx|mts|cts)$/u
 /** ExternalSourceProvenance matches generated or third-party provenance markers. */
 const ExternalSourceProvenance = /@(?:generated|third-party)\b/u
+
+/** EmittedModuleSyntaxRegx matches module-loading syntax in emitted source templates. */
+const EmittedModuleSyntaxRegx = /\b(?:import|export|require|createRequire)\b/u

@@ -4,11 +4,11 @@ import { Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
 import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from './codegen-util'
 import * as DeclarationCompiler from './DeclarationCompiler'
-import { compileForeignViews, type ForeignViewPathResolver } from './ForeignViewsCompiler'
+import * as ForeignViewsCompiler from './ForeignViewsCompiler'
 import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from './GeneratedPaths'
 import type { GeneratedModulePaths } from './GeneratedPaths'
 import { compileModuleInitialization } from './ModuleInitialization'
-import { buildModuleTextBindings } from './ModuleTextBindings'
+import { buildModuleTextBindings, type ModuleTextBindingsBySourcePath } from './ModuleTextBindings'
 import * as RuntimeEmitter from './RuntimeEmitter'
 
 export type { ForeignViewPathResolver } from './ForeignViewsCompiler'
@@ -22,7 +22,7 @@ export function compileProgram(
   program: LinkedProgram,
   revision: string,
   appName?: string,
-  resolveForeignViewPath?: ForeignViewPathResolver,
+  resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): CompiledFiles {
   const selected = selectApp(program, appName)
   const sources = compileModuleSources(program, resolveForeignViewPath)
@@ -36,7 +36,7 @@ type CompiledModuleSources = { files: CompiledFiles; paths: GeneratedModulePaths
 /** compileModuleSources emits shared declaration bodies and derives their output paths once per compilation. */
 export function compileModuleSources(
   program: LinkedProgram,
-  resolveForeignViewPath?: ForeignViewPathResolver,
+  resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): CompiledModuleSources {
   const paths = createGeneratedPaths(program)
   const textBindings = buildModuleTextBindings(program)
@@ -61,11 +61,11 @@ function compileSource(
   module: LinkedModule,
   program: LinkedProgram,
   paths: GeneratedModulePaths,
-  textBindings: ReadonlyMap<string, ReadonlySet<string>>,
-  resolveForeignViewPath?: ForeignViewPathResolver,
+  textBindings: ModuleTextBindingsBySourcePath,
+  resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): GeneratedSource {
   const sourceProgram = selectSourceProgram(program, module)
-  const foreign = compileForeignViews(sourceProgram, resolveForeignViewPath)
+  const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, resolveForeignViewPath)
   const context = createModuleCompilationContext(module, textBindings, foreign.names)
   const declarations = AST.GetDeclarations(module.document).map(node => ({
     node,
@@ -93,8 +93,8 @@ function selectSourceProgram(program: LinkedProgram, module: LinkedModule): Link
 
 function createModuleCompilationContext(
   module: LinkedModule,
-  textBindings: ReadonlyMap<string, ReadonlySet<string>>,
-  foreignNames: ReadonlyMap<string, string>,
+  textBindings: ModuleTextBindingsBySourcePath,
+  foreignNames: ForeignViewsCompiler.ForeignViewNamesByModuleMemberKey,
 ): DeclarationCompiler.DeclarationContext {
   return {
     scope: '_Scope',

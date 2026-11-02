@@ -15,11 +15,14 @@ export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefini
 
 type DependencyDeclaration = AST.LetDeclaration | AST.AppDeclaration
 type DependencyDefinition = { source: string; declaration: DependencyDeclaration }
+type DependencyDefinitionsByModuleMemberKey = ReadonlyMap<string, DependencyDefinition>
+type LinkedModulesBySourcePath = ReadonlyMap<string, LinkedModule>
+type ModuleKnownNamesBySourcePath = ReadonlyMap<string, ReadonlySet<string>>
 type DefinitionOrderState = {
   definitions: readonly DependencyDefinition[]
-  definitionsByKey: ReadonlyMap<string, DependencyDefinition>
-  modulesByPath: ReadonlyMap<string, LinkedModule>
-  knownNamesByPath: ReadonlyMap<string, ReadonlySet<string>>
+  definitionsByKey: DependencyDefinitionsByModuleMemberKey
+  modulesByPath: LinkedModulesBySourcePath
+  knownNamesByPath: ModuleKnownNamesBySourcePath
   orderedDefinitions: LinkedDefinition[]
   visiting: Set<string>
   visited: Set<string>
@@ -96,7 +99,7 @@ function collectDependencyDefinitions(modules: readonly LinkedModule[]): Depende
 function collectDefinitionDependencies(
   item: DependencyDefinition,
   module: LinkedModule,
-  definitions: ReadonlyMap<string, DependencyDefinition>,
+  definitions: DependencyDefinitionsByModuleMemberKey,
   knownNames: ReadonlySet<string>,
 ): ModuleBinding[] {
   const value = AST.IsAppDeclaration(item.declaration)

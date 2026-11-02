@@ -2,6 +2,7 @@ import { NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor } from '../sidecars/managed-modules/ManagedModuleTypes'
+import { writeLock } from './ManagedModuleFixtures'
 
 const IncompatibleNativeSingletonVersionsErrorRegx = /incompatible singleton native-fixture.*1\.0\.0.*2\.0\.0/
 
@@ -44,23 +45,6 @@ const nativeGraphExecutor: BunExecutor = async (_command, args, directory) => {
   await writeNativePackage(Path.join(directory, 'node_modules', 'wrapper-a', 'node_modules'), '1.0.0')
   await writeNativePackage(Path.join(directory, 'node_modules', 'wrapper-b', 'node_modules'), '2.0.0')
   return { status: 0, stdout: '', stderr: '' }
-}
-
-async function writeLock(root: string, dependencies: Record<string, string>): Promise<void> {
-  const packages = Object.fromEntries(
-    Object.entries(dependencies).map(([name, version]) => [
-      name,
-      [`${name}@${version}`, '', {}, `sha512-${name}`],
-    ]),
-  )
-  await FileSystem.writeFile(
-    Path.join(root, 'bun.lock'),
-    JSON.stringify({
-      lockfileVersion: 1,
-      workspaces: { '': { dependencies } },
-      packages,
-    }),
-  )
 }
 
 async function writePackage(
