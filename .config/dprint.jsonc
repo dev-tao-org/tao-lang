@@ -21,6 +21,7 @@
   "typescript": {
     "semiColons": "asi",
     "quoteStyle": "preferSingle",
+    "quoteProps": "preserve",
     "trailingCommas": "onlyMultiLine",
     "preferHanging": false,
     "importDeclaration.sortTypeOnlyImports": "none", // "first"?

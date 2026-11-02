@@ -1,0 +1,12 @@
+diff --git a/src/HmrServer.js b/src/HmrServer.js
+--- a/src/HmrServer.js
++++ b/src/HmrServer.js
+@@ -166,7 +166,7 @@ class HmrServer {
+             latestChangeEvent,
+           );
+         },
+-        50,
++        0,
+       );
+       const unlisten = this._bundler
+         .getDeltaBundler()

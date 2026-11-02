@@ -11,12 +11,16 @@
     "@tao/grammar": "workspace:*",
     "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
-    "@tao/typecheck": "workspace:*"
+    "@tao/stdlib": "workspace:*",
+    "@tao/typecheck": "workspace:*",
+    "semver": "7.8.5",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@dprint/json": "0.23.0",
     "@dprint/markdown": "0.23.2",
     "@dprint/typescript": "0.96.1",
-    "@types/bun": "1.4.0"
+    "@types/bun": "1.4.0",
+    "@types/semver": "7.7.1"
   }
 }
