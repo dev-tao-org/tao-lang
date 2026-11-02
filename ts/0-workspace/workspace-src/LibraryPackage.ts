@@ -29,6 +29,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   await dependencies.refresh()
   const modules = await loadModules({ path: entry, document }, {
     directory: root,
+    observeProjectSources: (owner, sources) => dependencies.observeProjectSources(owner, sources),
     resolveProject: async (importer, alias) =>
       alias === 'tao'
         ? { root: await Stdlib.projectDirectory() }
