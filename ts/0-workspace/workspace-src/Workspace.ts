@@ -318,12 +318,12 @@ function createOutputPaths(
 ): WorkspaceOutputPaths | undefined {
   if (options.outputDirectory) {
     const directory = Path.resolve(options.outputDirectory)
-    return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'runtime') }
+    return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'expo') }
   }
   if (options.project) {
     return {
       buildDirectory: options.project.buildDirectory,
-      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/runtime'),
+      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/expo'),
     }
   }
   return undefined

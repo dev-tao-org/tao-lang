@@ -8,7 +8,7 @@ import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
 import { findNamedPackageDirectories, listRecursiveSourceFiles } from './modules/Catalog'
 import { isNpmPackageName } from './NpmPackageName'
-import { acquireSession } from './projects/Sessions'
+import { acquireSession, type ProjectSession } from './projects/Sessions'
 
 /** AddModuleNpmDependencyResult identifies the exact package pin written to a Tao module. */
 export type AddModuleNpmDependencyResult = {
@@ -89,7 +89,7 @@ type DependencySessionId = string | undefined
 export async function withDependencySession<T>(
   projectRoot: string,
   sessionId: DependencySessionId,
-  action: () => Promise<T>,
+  action: (session: ProjectSession) => Promise<T>,
   acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
@@ -100,7 +100,7 @@ export async function withDependencySession<T>(
       return Errors.Throw(error)
     },
   })
-  return await Try(action, {
+  return await Try(() => action(session), {
     finally: () => Try(releaseLease, { finally: () => session.release() }),
   })
 }

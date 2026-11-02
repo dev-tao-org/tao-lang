@@ -1,0 +1,48 @@
+import * as AST from '@ast-gen/AST'
+import { transform } from '@ast-gen/Transform'
+import { createParser } from '@grammar/parser'
+import { Errors } from '@shared'
+import { FileSystem, Path } from '@shared/os'
+import { readTypeScriptProjectPackage } from './TypeScriptProjectPackage'
+
+/** CompileTarget identifies one selected declaration and its configured package output when applicable. */
+export type CompileTarget = {
+  kind: CompileTargetKind
+  entry: string
+  target?: string
+  out?: string
+  name?: string
+}
+
+type CompileTargetKind = 'app' | 'library'
+
+/** resolveCompileTarget resolves an explicit entry or a package-configured declaration by name. */
+export async function resolveCompileTarget(directory: string, argument?: string): Promise<CompileTarget> {
+  const explicit = argument ? Path.resolve(directory, argument) : undefined
+  const isEntry = explicit !== undefined && FileSystem.existsSync(explicit)
+  const configuration = isEntry ? { entry: explicit } : await requireCompileConfiguration(directory)
+  const entry = Path.resolve(directory, configuration.entry)
+  const selected = isEntry ? undefined : argument
+  const document = transform(createParser().parse(await FileSystem.readFile(entry, 'utf8')))
+    ?? Errors.ThrowUserInput(`Invalid Tao source: ${entry}.`)
+  const declarations = AST.GetDeclarations(document).filter(node =>
+    node.kind === 'AppDeclaration' || node.kind === 'TypeScriptLibraryDeclaration'
+  )
+  const matches = declarations.filter(node => selected === undefined || node.name.value === selected)
+  if (matches.length !== 1) {
+    Errors.ThrowUserInput(`Select one Tao app or ts-library in ${entry}; found ${matches.length} matching targets.`)
+  }
+  const declaration = matches[0]!
+  return {
+    kind: declaration.kind === 'TypeScriptLibraryDeclaration' ? 'library' : 'app',
+    entry,
+    target: declaration.name.value,
+    out: configuration.out ? Path.resolve(directory, configuration.out) : undefined,
+    name: configuration.name,
+  }
+}
+
+async function requireCompileConfiguration(directory: string) {
+  const manifest = await readTypeScriptProjectPackage(directory)
+  return manifest.compile ?? Errors.ThrowUserInput('Configure tao.compile in the authored package.json.')
+}

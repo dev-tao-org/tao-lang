@@ -1,6 +1,7 @@
 import { Errors, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { RuntimePackageVersions } from '../Runtime'
+import { writeGeneratedHost } from './GeneratedHost'
 
 /** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
@@ -11,26 +12,23 @@ export async function writeExpoApplication(
   sourceFiles: string[],
   options: ExpoScaffoldOptions = {},
 ): Promise<void> {
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'package.json'),
-    serializeExpoPackageManifest(dependencies, devDependencies),
-  )
-  await FileSystem.writeIfChanged(Path.join(directory, 'Application.ts'), expoEntry)
-  await FileSystem.writeIfChanged(Path.join(directory, 'metro.config.js'), metroConfiguration)
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'tao-resolution.json'),
-    serializeTaoResolution(options),
-  )
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'app.json'),
-    serializeExpoAppManifest(),
-  )
-  await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), serializeExpoTypeScriptConfig())
+  await writeGeneratedHost(directory, {
+    'package.json': serializeExpoPackageManifest(dependencies, devDependencies),
+    'Application.ts': expoEntry,
+    'metro.config.js': metroConfiguration,
+    'tao-resolution.json': serializeTaoResolution(options),
+    'app.json': serializeExpoAppManifest(),
+    'tsconfig.json': serializeExpoTypeScriptConfig(),
+  }, options.dependencyDirectory)
   await FileSystem.mkdir(Path.join(directory, 'src'))
   await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
 }
 
-type ExpoScaffoldOptions = { watchFolders?: readonly string[]; singletonPackages?: readonly string[] }
+type ExpoScaffoldOptions = {
+  watchFolders?: readonly string[]
+  singletonPackages?: readonly string[]
+  dependencyDirectory?: string
+}
 function serializeExpoPackageManifest(
   dependencies: RuntimePackageVersions,
   devDependencies: RuntimePackageVersions,
@@ -42,7 +40,7 @@ function serializeExpoPackageManifest(
       main: 'Application.ts',
       dependencies,
       devDependencies,
-      scripts: { web: 'expo start --web --no-dev' },
+      scripts: { start: 'expo start', web: 'expo start --web --no-dev' },
     },
     null,
     2,
@@ -62,7 +60,7 @@ function serializeTaoResolution(options: ExpoScaffoldOptions): string {
 }
 
 function serializeExpoAppManifest(): string {
-  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2)
+  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } }, null, 2)
 }
 
 function serializeExpoTypeScriptConfig(): string {

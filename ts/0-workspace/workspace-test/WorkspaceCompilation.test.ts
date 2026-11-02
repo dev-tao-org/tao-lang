@@ -44,7 +44,7 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
   await Try(async () => {
     Tests.expect((await workspace.openFile('Hello World.tao')).status).toBe('published')
     Tests.expect(await FileSystem.readdir(directory)).toEqual(['Hello World.tao'])
-    Tests.expect(workspace.runtime?.directory).toBe(Path.join(outputDirectory, 'runtime'))
+    Tests.expect(workspace.runtime?.directory).toBe(Path.join(outputDirectory, 'expo'))
     Tests.expect(await FileSystem.exists(Path.join(workspace.runtime!.directory, 'Application.ts'))).toBe(true)
     Tests.expect(await FileSystem.exists(Path.join(workspace.runtime!.directory, 'index.ts'))).toBe(false)
     Tests.expect(await FileSystem.readFile(Path.join(workspace.runtime!.directory, 'package.json'), 'utf8'))

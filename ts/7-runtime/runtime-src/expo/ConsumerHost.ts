@@ -1,0 +1,121 @@
+import { Errors, S } from '@shared'
+import { FileSystem, Path } from '@shared/os'
+import type { RuntimePackageVersions } from '../Runtime'
+import { writeGeneratedHost } from './GeneratedHost'
+
+/** ConsumerHostOptions describes one generated Expo host borrowing an authored package's sole dependency install. */
+export type ConsumerHostOptions = {
+  directory: string
+  packageDirectory: string
+  entry: string
+  name: string
+  dependencies: RuntimePackageVersions
+  devDependencies: RuntimePackageVersions
+}
+
+/** createConsumerHost writes generated Expo files beside a link to the authored package's dependencies. */
+export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
+  const modules = Path.join(options.packageDirectory, 'node_modules')
+  if (!FileSystem.existsSync(Path.join(modules, 'expo'))) {
+    return Errors.ThrowUserInput(
+      `Install the authored package dependencies before running: ${options.packageDirectory}.`,
+    )
+  }
+  const entry = Path.resolve(options.packageDirectory, options.entry)
+  if (!Path.isWithin(options.packageDirectory, entry) || !FileSystem.existsSync(entry)) {
+    return Errors.ThrowUserInput(`tao.run.entry must name an existing component inside ${options.packageDirectory}.`)
+  }
+  const bootstrap = createConsumerBootstrap(Path.relative(options.directory, entry))
+  await writeGeneratedHost(options.directory, {
+    'Application.ts': bootstrap,
+    'package.json': serializeConsumerManifest(options),
+    'app.json': serializeConsumerApp(options.name),
+    'metro.config.js': consumerMetroConfiguration,
+    'tao-consumer.json': serializeConsumerResolution(options),
+    'tsconfig.json': serializeConsumerTypeScript(),
+  }, modules)
+  return options.directory
+}
+
+function createConsumerBootstrap(entry: string): string {
+  const modulePath = entry.replaceAll('\\', '/')
+  const specifier = modulePath.startsWith('.') ? modulePath : './' + modulePath
+  return S`
+    import { registerRootComponent } from 'expo';
+    import App from ${JSON.stringify(specifier)};
+    registerRootComponent(App);
+  `
+}
+
+function serializeConsumerManifest(options: ConsumerHostOptions): string {
+  return JSON.stringify(
+    {
+      name: 'tao-consumer-host',
+      private: true,
+      main: 'Application.ts',
+      scripts: { start: 'expo start' },
+      dependencies: resolveHostDependencies(options.dependencies, options.packageDirectory),
+      devDependencies: resolveHostDependencies(options.devDependencies, options.packageDirectory),
+    },
+    null,
+    2,
+  )
+}
+
+function resolveHostDependencies(versions: RuntimePackageVersions, directory: string): RuntimePackageVersions {
+  return Object.fromEntries(
+    Object.entries(versions).map(([name, version]) => {
+      const local = version.startsWith('file:') || version.startsWith('link:')
+      const specification = local ? 'file:' + Path.resolve(directory, version.slice(5)) : version
+      return [name, specification]
+    }),
+  )
+}
+
+function serializeConsumerApp(name: string): string {
+  return JSON.stringify({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } }, null, 2)
+}
+
+function serializeConsumerResolution(options: ConsumerHostOptions): string {
+  return JSON.stringify(
+    {
+      packageDirectory: options.packageDirectory,
+      packages: Object.keys(options.dependencies),
+    },
+    null,
+    2,
+  )
+}
+
+function serializeConsumerTypeScript(): string {
+  return JSON.stringify(
+    { extends: 'expo/tsconfig.base', compilerOptions: { noEmit: true }, include: ['Application.ts'] },
+    null,
+    2,
+  )
+}
+
+const consumerMetroConfiguration = S`
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { getDefaultConfig } = require('expo/metro-config');
+  const consumer = require('./tao-consumer.json');
+  const config = getDefaultConfig(__dirname);
+  const modules = path.join(__dirname, 'node_modules');
+  function dependencyRoot(name) {
+    let directory = fs.realpathSync(path.join(modules, name));
+    let root = directory;
+    while (path.dirname(directory) !== directory) {
+      if (path.basename(directory) === 'node_modules') root = directory;
+      directory = path.dirname(directory);
+    }
+    return root;
+  }
+  config.watchFolders = [...new Set([consumer.packageDirectory, ...consumer.packages.map(dependencyRoot)])];
+  config.resolver.nodeModulesPaths = [modules];
+  config.resolver.resolveRequest = (context, name, platform) => {
+    const peer = ['react', 'react-dom', 'react-native', 'react-native-web'].find(id => name === id || name.startsWith(id + '/'));
+    return context.resolveRequest(context, peer ? path.join(modules, name) : name, platform);
+  };
+  module.exports = config;
+`

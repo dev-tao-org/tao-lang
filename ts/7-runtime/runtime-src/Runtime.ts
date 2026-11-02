@@ -57,10 +57,10 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
     resources.dependencies,
     resources.devDependencies,
     resources.sourceFiles,
-    { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages },
+    { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages, dependencyDirectory },
   )
   options.onProgress?.('Expo runtime application scaffolded.')
-  const application = await applicationWithToolchain(directory, dependencyDirectory)
+  const application = runtimeApplication(directory)
   return attachMetroPreload(application, resourcesDirectory)
 }
 
@@ -280,27 +280,6 @@ function isDependencies(value: unknown): value is RuntimePackageVersions {
 
 function isStringDependency(value: unknown): value is string {
   return typeof value === 'string'
-}
-
-async function applicationWithToolchain(
-  directory: string,
-  dependencyDirectory: string,
-): Promise<RuntimeApplication> {
-  const link = Path.join(directory, 'node_modules')
-  const currentLink = await Try.WithDefault(undefined, () => FileSystem.lstatSync(link))
-  if (!currentLink) {
-    await FileSystem.symlink(dependencyDirectory, link, 'dir')
-    return runtimeApplication(directory)
-  }
-  if (!currentLink.isSymbolicLink()) {
-    Errors.ThrowUserInput(`Generated Expo dependency path points elsewhere: ${link}`)
-  }
-  const existingPath = await Try.WithDefault(undefined, () => FileSystem.realpathSync(link))
-  if (existingPath === FileSystem.realpathSync(dependencyDirectory)) {
-    return runtimeApplication(directory)
-  }
-  await FileSystem.replaceDirectoryLink(dependencyDirectory, link)
-  return runtimeApplication(directory)
 }
 
 function runtimeApplication(directory: string): RuntimeApplication {

@@ -1,0 +1,6 @@
+use Text from tao@ui
+
+public
+view Unselected {
+  render Text("Unselected public view")
+}

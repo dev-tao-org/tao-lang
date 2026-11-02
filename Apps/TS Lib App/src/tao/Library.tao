@@ -1,0 +1,38 @@
+use Col, Text from tao@ui
+use package ./cards as Cards
+
+ts-library Demo {
+  publish { Greeting, Panel, Cards as cards, }
+}
+
+public
+view Greeting(First text, Second text) {
+  render Col {
+    Text(First)
+    PrivateGreeting
+    Text(Second)
+  }
+
+  view PrivateGreeting {
+    render inject ```ts
+      const count = Tao.useWritable(() => 0)
+      const value = Tao.useValue(count)
+      return (
+        <Tao.Pressable onPress={() => count.update(value + 1)}>
+          <Tao.Text>{'Nested private Tao helper ' + value}</Tao.Text>
+        </Tao.Pressable>
+      )
+    ```
+  }
+}
+
+public
+view Panel {
+  render inject Children @@children ```ts
+    return <Tao.View>{Children}</Tao.View>
+  ```
+}
+
+view Hidden {
+  render Text("Unpublished")
+}
