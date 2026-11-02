@@ -1,7 +1,20 @@
-import { Errors, S, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Text } from '@shared/os'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { assertUniqueSecretStoreKeys } from './secret-store-jsonc'
+
+/** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
+export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): Promise<string> {
+  const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join(NewlineCharacter)), {
+    catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
+  })).trim()
+  if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
+    Errors.ThrowUserInput(
+      'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
+    )
+  }
+  return secretKey
+}
 
 /** Cipher defines the age operations used by the Tao-owned secrets workflow. */
 export type Cipher = {
@@ -26,12 +39,30 @@ export type SecretStore = {
   secrets: Readonly<Record<string, SecretEntry>>
 }
 
+/** encodeSecretRecipients retains recipient order for concurrent-change detection. */
+export function encodeSecretRecipients(recipients: SecretStore['recipients']): string {
+  return JSON.stringify(recipients)
+}
+
+type OptionalSecretEntry = SecretEntry | undefined
+/** encodeSecretEntry retains optional absence and field order for concurrent-change detection. */
+export function encodeSecretEntry(entry: OptionalSecretEntry): OptionalEncodedSecret {
+  return JSON.stringify(entry)
+}
+
+/** encodeStoreKey retains optional absence and wrapped-key order for concurrent-change detection. */
+export function encodeStoreKey(key: SecretStore['storeKey']): OptionalEncodedSecret {
+  return JSON.stringify(key)
+}
+
 /** parseSecretStore parses JSONC and rejects shapes that could silently lose a secret. */
 export function parseSecretStore(text: string): SecretStore {
   const parsed = parseConfigFileTextToJson('secrets.jsonc', text)
   if (parsed.error !== undefined) {
     Errors.ThrowUserInput(
-      `The secret store is not valid JSONC: ${flattenDiagnosticMessageText(parsed.error.messageText, '\n')}`,
+      `The secret store is not valid JSONC: ${
+        flattenDiagnosticMessageText(parsed.error.messageText, NewlineCharacter)
+      }`,
     )
   }
   assertUniqueSecretStoreKeys(text)
@@ -67,13 +98,6 @@ export function parseSecretStore(text: string): SecretStore {
   }
 }
 
-/** isStoreKeyArmor distinguishes software X25519 value armor from device-recipient armor. */
-export function isStoreKeyArmor(armor: string): boolean {
-  const body = armor.split('\n').filter(line => !line.startsWith('-----')).join('')
-  const header = Text.decodeBase64Ascii(body).split('\n--- ')[0] ?? ''
-  return header.split('\n').some(line => line.startsWith('-> X25519 '))
-}
-
 /** formatSecretStore writes sorted two-space JSON beneath the stable explanatory header. */
 export function formatSecretStore(store: SecretStore, header = secretStoreHeader): string {
   const secrets: Record<string, SecretEntry> = {}
@@ -86,7 +110,7 @@ export function formatSecretStore(store: SecretStore, header = secretStoreHeader
       value: entry.value,
     }
   }
-  return `${header ? header + '\n' : ''}${
+  return `${header ? header + NewlineCharacter : ''}${
     JSON.stringify(
       {
         recipients: store.recipients,
@@ -96,7 +120,7 @@ export function formatSecretStore(store: SecretStore, header = secretStoreHeader
       undefined,
       2,
     )
-  }\n`
+  }${NewlineCharacter}`
 }
 
 /** withSecret adds or replaces one value while retaining its original addedAt timestamp. */
@@ -114,27 +138,12 @@ export function withSecret(
       ...store.secrets,
       [name]: {
         addedAt: existing?.addedAt || stamp,
-        value: armor.trimEnd().split('\n'),
-        ...(options.note === undefined ? existing?.note === undefined ? {} : { note: existing.note } : {
-          note: options.note,
-        }),
+        value: armor.trimEnd().split(NewlineCharacter),
+        ...resolveSecretNote(options.note, existing?.note),
         ...(existing === undefined ? {} : { updatedAt: stamp }),
       },
     },
   }
-}
-
-/** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */
-export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): Promise<string> {
-  const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join('\n')), {
-    catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
-  })).trim()
-  if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
-    Errors.ThrowUserInput(
-      'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
-    )
-  }
-  return secretKey
 }
 
 /** decryptSecretValues rejects machine-encrypted legacy entries before unwrapping or decrypting any value. */
@@ -148,7 +157,7 @@ export async function decryptSecretValues(
   }
   const unkeyed = names.filter(name =>
     store.storeKey === undefined
-    || !isStoreKeyArmor(store.secrets[name]!.value.join('\n'))
+    || !isStoreKeyArmor(store.secrets[name]!.value.join(NewlineCharacter))
   )
   if (unkeyed.length > 0) {
     Errors.ThrowUserInput(
@@ -161,7 +170,7 @@ export async function decryptSecretValues(
   const secretKey = await unlockSecretStoreKey(cipher, storeKey)
   const values = new Map<string, string>()
   for (const name of names) {
-    const value = await Try(() => cipher.decryptWithKey(store.secrets[name]!.value.join('\n'), secretKey), {
+    const value = await Try(() => cipher.decryptWithKey(store.secrets[name]!.value.join(NewlineCharacter), secretKey), {
       catch: () =>
         Errors.ThrowUserInput(
           `${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`,
@@ -174,7 +183,7 @@ export async function decryptSecretValues(
 
 /** requireSecretName validates that a secret can become an environment variable. */
 export function requireSecretName(name: string): string {
-  if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+  if (!Regxs.EnvironmentVariableNameRegx.test(name)) {
     Errors.ThrowUserInput(
       `'${name}' is not a usable secret name. Use capitals, digits and underscores, such as ANTHROPIC_API_KEY.`,
     )
@@ -185,9 +194,32 @@ export function requireSecretName(name: string): string {
 /** renderSecretEnvFile formats decrypted values as a generated environment file. */
 export function renderSecretEnvFile(values: ReadonlyMap<string, string>, generatedAt: Date): string {
   const lines = [...values.keys()].sort().map(name => `${requireSecretName(name)}=${JSON.stringify(values.get(name)!)}`)
-  return `# Generated by \`./dev secrets\` at ${generatedAt.toISOString()}. Do not edit.\n# tao-secret-format: json-v1\n${
-    lines.join('\n')
-  }\n`
+  return joinTextLines(
+    `# Generated by \`./dev secrets\` at ${generatedAt.toISOString()}. Do not edit.`,
+    '# tao-secret-format: json-v1',
+    lines.join(NewlineCharacter),
+    '',
+  )
+}
+
+function isStoreKeyArmor(armor: string): boolean {
+  const body = armor.split(NewlineCharacter).filter(line => !line.startsWith('-----')).join('')
+  const header = Text.decodeBase64Ascii(body).split(NewlineCharacter + '--- ')[0] ?? ''
+  return header.split(NewlineCharacter).some(line => line.startsWith('-> X25519 '))
+}
+
+type OptionalSecretNote = string | undefined
+
+type OptionalEncodedSecret = string | undefined
+
+function resolveSecretNote(note: OptionalSecretNote, existingNote: OptionalSecretNote): { note?: string } {
+  if (note !== undefined) {
+    return { note }
+  }
+  if (existingNote !== undefined) {
+    return { note: existingNote }
+  }
+  return {}
 }
 
 type SecretEntry = {
@@ -217,8 +249,13 @@ function parseStoreKey(value: unknown): StoreKey {
 }
 
 function isStoreKeyShape(value: unknown): value is StoreKey {
-  return isRecord(value) && typeof value.recipient === 'string' && isStringArray(value.wrappedFor)
-    && isStringArray(value.wrappedKey) && value.wrappedKey.length > 0
+  if (!isRecord(value)) {
+    return false
+  }
+  const hasRecipient = typeof value.recipient === 'string'
+  const hasWrappedRecipients = isStringArray(value.wrappedFor)
+  const hasWrappedKey = isStringArray(value.wrappedKey) && value.wrappedKey.length > 0
+  return hasRecipient && hasWrappedRecipients && hasWrappedKey
 }
 
 function isStringArray(value: unknown): value is string[] {

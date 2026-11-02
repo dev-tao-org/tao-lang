@@ -1,19 +1,8 @@
 import { IO } from '@cli-kit'
-import { Errors, Time, Try } from '@shared'
-import { Artifacts, Env, FileSystem, Path, Platform, Repo, Terminal } from '@shared/os'
+import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
+import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
-import {
-  type Cipher,
-  decryptSecretValues,
-  formatSecretStore,
-  parseSecretStore,
-  renderSecretEnvFile,
-  requireSecretName,
-  type SecretStore,
-  type StoreKey,
-  unlockSecretStoreKey,
-  withSecret,
-} from '../../cli-kit/secret-store'
+import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
 
 /** secretsCommand manages the committed encrypted store and its generated local environment file. */
@@ -30,7 +19,7 @@ const envPath = Repo.resolvePath('.env.secrets')
 const lockPath = Artifacts.resolvePath('cache', 'secrets', 'locks', 'store-lock')
 
 type SecretsEnvironment = {
-  cipher: Cipher
+  cipher: SecretStoreModule2.Cipher
   promptSecret: (prompt: string) => Promise<string>
   now: () => Date
 }
@@ -59,19 +48,25 @@ function liveEnvironment(): SecretsEnvironment {
     cipher: createAgeCipher(secretsIdentityPath(), './dev secrets setup'),
     now: Time.date,
     async promptSecret(prompt) {
-      const value = await Terminal.askSecret(prompt)
+      const value = await IO.askSecret(prompt)
       if (value === value.trim()) {
         return value
       }
       IO.warn('The value has surrounding whitespace.')
-      const answer = await Terminal.askSecret('Remove surrounding whitespace before storing? [Y/n]: ')
-      return /^n(o)?$/i.test(answer.trim()) ? value : value.trim()
+      const answer = await IO.askSecret('Remove surrounding whitespace before storing? [Y/n]: ')
+      return Regxs.NegativeConfirmationRegx.test(answer.trim()) ? value : value.trim()
     },
   }
 }
 
-async function addSecret(name: string, note: string | undefined, environment: SecretsEnvironment): Promise<void> {
-  requireSecretName(name)
+type OptionalSecretDescription = string | undefined
+
+async function addSecret(
+  name: string,
+  note: OptionalSecretDescription,
+  environment: SecretsEnvironment,
+): Promise<void> {
+  SecretStoreModule2.requireSecretName(name)
   const original = await readStore()
   if (original.recipients.length === 0) {
     Errors.ThrowUserInput('The secret store lists no recipients. Run ./dev secrets setup first.')
@@ -80,7 +75,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
     ? await createStoreKey(environment.cipher, original.recipients)
     : original.storeKey
   if (original.storeKey !== undefined) {
-    await unlockSecretStoreKey(environment.cipher, original.storeKey)
+    await SecretStoreModule2.unlockSecretStoreKey(environment.cipher, original.storeKey)
   }
   IO.print(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.`)
   const value = await environment.promptSecret(`Value for ${name}:`)
@@ -95,7 +90,7 @@ async function addSecret(name: string, note: string | undefined, environment: Se
         'The recipients, store key, or selected secret changed while adding. Run the command again.',
       )
     }
-    const updated = withSecret({ ...current, storeKey: current.storeKey ?? key }, name, armor, {
+    const updated = SecretStoreModule2.withSecret({ ...current, storeKey: current.storeKey ?? key }, name, armor, {
       now: environment.now(),
       ...(note === undefined ? {} : { note }),
     })
@@ -105,13 +100,22 @@ async function addSecret(name: string, note: string | undefined, environment: Se
   IO.print('Run ./dev secrets to write it into .env.secrets.')
 }
 
-function hasConflictingSecretChange(original: SecretStore, current: SecretStore, name: string): boolean {
-  return JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
-    || JSON.stringify(current.secrets[name]) !== JSON.stringify(original.secrets[name])
+function hasConflictingSecretChange(
+  original: SecretStoreModule2.SecretStore,
+  current: SecretStoreModule2.SecretStore,
+  name: string,
+): boolean {
+  return SecretStoreModule2.encodeSecretRecipients(current.recipients)
+      !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
+    || SecretStoreModule2.encodeSecretEntry(current.secrets[name])
+      !== SecretStoreModule2.encodeSecretEntry(original.secrets[name])
     || current.storeKey?.recipient !== original.storeKey?.recipient
 }
 
-async function createStoreKey(cipher: Cipher, recipients: readonly string[]): Promise<StoreKey> {
+async function createStoreKey(
+  cipher: SecretStoreModule2.Cipher,
+  recipients: readonly string[],
+): Promise<SecretStoreModule2.StoreKey> {
   const key = await cipher.generateKey()
   return {
     recipient: key.recipient,
@@ -128,8 +132,8 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
     return
   }
   const storeKey = original.storeKey!
-  const { values, secretKey } = await decryptSecretValues(original, environment.cipher)
-  await writeGeneratedEnv(renderSecretEnvFile(values, environment.now()))
+  const { values, secretKey } = await SecretStoreModule2.decryptSecretValues(original, environment.cipher)
+  await writeGeneratedEnv(SecretStoreModule2.renderSecretEnvFile(values, environment.now()))
   IO.print(`Wrote ${values.size} ${values.size === 1 ? 'secret' : 'secrets'} to .env.secrets.`)
   const ungranted = original.recipients.filter(recipient => !storeKey.wrappedFor.includes(recipient))
   if (ungranted.length > 0) {
@@ -139,7 +143,7 @@ async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
 
 async function writeGeneratedEnv(contents: string): Promise<void> {
   const directory = Artifacts.resolvePath('cache', 'secrets')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const temporaryDirectory = await Artifacts.mkdtemp(Path.join(directory, 'env-'))
   const temporary = Path.join(temporaryDirectory, 'secrets.env')
   await Try(async () => {
@@ -150,14 +154,19 @@ async function writeGeneratedEnv(contents: string): Promise<void> {
   })
 }
 
-async function grantStoreKey(original: SecretStore, secretKey: string, cipher: Cipher): Promise<void> {
+async function grantStoreKey(
+  original: SecretStoreModule2.SecretStore,
+  secretKey: string,
+  cipher: SecretStoreModule2.Cipher,
+): Promise<void> {
   const storeKey = original.storeKey!
   const wrappedKey = armorLines(await cipher.encrypt(secretKey, original.recipients))
   await withStoreMutation(async () => {
     const current = await readStore()
     if (
-      JSON.stringify(current.recipients) !== JSON.stringify(original.recipients)
-      || JSON.stringify(current.storeKey) !== JSON.stringify(storeKey)
+      SecretStoreModule2.encodeSecretRecipients(current.recipients)
+        !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
+      || SecretStoreModule2.encodeStoreKey(current.storeKey) !== SecretStoreModule2.encodeStoreKey(storeKey)
     ) {
       IO.warn('Recipients changed while decrypting; run secrets again to grant the current recipients access.')
       return
@@ -167,7 +176,7 @@ async function grantStoreKey(original: SecretStore, secretKey: string, cipher: C
 }
 
 function armorLines(armor: string): string[] {
-  return armor.trimEnd().split('\n')
+  return armor.trimEnd().split(NewlineCharacter)
 }
 
 async function listSecrets(): Promise<void> {
@@ -190,7 +199,7 @@ async function setupSecrets(): Promise<void> {
     Errors.ThrowUserInput('Secure Enclave secrets setup requires macOS with age-plugin-se.')
   }
   const identityPath = secretsIdentityPath()
-  await FileSystem.mkdir(Path.dirname(identityPath), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(identityPath))
   const existed = FileSystem.existsSync(identityPath)
   if (!existed) {
     await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', {
@@ -207,29 +216,33 @@ async function setupSecrets(): Promise<void> {
     await writeStore({ ...store, recipients: [...store.recipients, recipient] })
     return true
   })
-  IO.print(
-    added
-      ? existed
-        ? "Recorded this machine's existing Secure Enclave identity as a secrets recipient."
-        : 'Created a Secure Enclave identity and recorded this machine as a secrets recipient.'
-      : 'This machine is already a secrets recipient.',
-  )
+  IO.print(buildRecipientIdentityMessage(added, existed))
 }
 
-async function readStore(): Promise<SecretStore> {
+function buildRecipientIdentityMessage(added: boolean, existed: boolean): string {
+  if (!added) {
+    return 'This machine is already a secrets recipient.'
+  }
+  if (existed) {
+    return "Recorded this machine's existing Secure Enclave identity as a secrets recipient."
+  }
+  return 'Created a Secure Enclave identity and recorded this machine as a secrets recipient.'
+}
+
+async function readStore(): Promise<SecretStoreModule2.SecretStore> {
   if (!FileSystem.existsSync(storePath)) {
     return { recipients: [], secrets: {} }
   }
-  return parseSecretStore(await FileSystem.file(storePath).text())
+  return SecretStoreModule2.parseSecretStore(await FileSystem.file(storePath).text())
 }
 
-async function writeStore(store: SecretStore): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(storePath), { recursive: true })
+async function writeStore(store: SecretStoreModule2.SecretStore): Promise<void> {
+  await FileSystem.mkdir(Path.dirname(storePath))
   const directory = Artifacts.resolvePath('cache', 'secrets')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
   await Try(async () => {
-    await Artifacts.write(temporary, formatSecretStore(store))
+    await Artifacts.write(temporary, SecretStoreModule2.formatSecretStore(store))
     await Artifacts.move(temporary, storePath)
   }, {
     finally: () => Artifacts.rm(temporary, { force: true }),
@@ -237,11 +250,11 @@ async function writeStore(store: SecretStore): Promise<void> {
 }
 
 async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Value> {
-  await Artifacts.mkdir(Path.dirname(lockPath), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(lockPath))
   const deadline = Time.nowMs() + 30_000
   while (true) {
     const acquired = await Try(async () => {
-      await Artifacts.mkdir(lockPath)
+      await Artifacts.createExclusiveDirectory(lockPath)
       return true
     }, {
       catch(error) {
@@ -264,13 +277,16 @@ async function withStoreMutation<Value>(work: () => Promise<Value>): Promise<Val
 }
 
 function isAlreadyExists(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'EEXIST'
 }
 
 async function recipientOfIdentity(): Promise<string> {
   const identityPath = secretsIdentityPath()
   const contents = await FileSystem.file(identityPath).text()
-  const recorded = /^#\s*public key:\s*(\S+)\s*$/m.exec(contents)?.[1]
+  const recorded = Regxs.PublicKeyCommentRegx.exec(contents)?.[1]
   if (recorded !== undefined) {
     return recorded
   }
@@ -282,27 +298,13 @@ async function recipientOfIdentity(): Promise<string> {
 }
 
 async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
-  const child = Platform.spawn(command, {
-    variadicArgs: options.variadicArgs,
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [status, stdout] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${status}).`)
+  const result = await Platform.runIgnoreStatus(command, { variadicArgs: options.variadicArgs })
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${result.status}).`)
   }
-  return stdout
+  return result.stdout
 }
 
 function secretsIdentityPath(): string {
-  const homeDirectory = Env.get('HOME')
-  if (homeDirectory === undefined) {
-    Errors.ThrowHostEnvironment('Cannot locate the home directory for the secrets identity.')
-  }
-  return Path.join(homeDirectory, '.config/tao/secrets-identity.txt')
+  return Path.home('.config', 'tao', 'secrets-identity.txt')
 }

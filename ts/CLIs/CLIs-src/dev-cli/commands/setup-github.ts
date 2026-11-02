@@ -65,27 +65,11 @@ async function verifyOrigin(): Promise<void> {
   ) {
     await runCommand(command, { cwd, stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit' })
   }
-  const remote = Platform.spawn('git remote get-url origin', { cwd, stdout: 'pipe', stderr: 'pipe' })
-  const [code, url, stderr] = await Promise.all([
-    remote.exited,
-    Platform.readText(remote.stdout),
-    Platform.readText(remote.stderr),
-  ])
-  if (code === 0 && stderr.trim()) {
-    IO.warn(stderr.trimEnd())
+  const remote = await Platform.run('git remote get-url origin', { cwd })
+  if (remote.stderr.trim()) {
+    IO.warn(remote.stderr.trimEnd())
   }
-  if (code !== 0) {
-    Errors.ThrowCommandExecution({
-      command: 'git',
-      args: ['remote', 'get-url', 'origin'],
-      cwd,
-      status: code,
-      signal: remote.signalCode,
-      stdout: url,
-      stderr,
-    })
-  }
-  IO.print(`GitHub HTTPS authentication is ready for ${url.trim()}.`)
+  IO.print(`GitHub HTTPS authentication is ready for ${remote.stdout.trim()}.`)
 }
 
 function commandFailedWith(error: unknown, status: number): boolean {

@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "commitPins": {},
+  "roots": {
+    "tao": "bundled:tao@bundled"
+  },
+  "sources": {
+    "bundled:tao": {
+      "identity": "bundled:tao",
+      "provider": "bundled",
+      "identifier": "tao",
+      "version": "bundled",
+      "requirements": []
+    }
+  }
+}

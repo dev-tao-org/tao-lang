@@ -1,5 +1,8 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/stdlib.tsbuildinfo" },
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/stdlib.tsbuildinfo",
+    "resolveJsonModule": true
+  },
   "include": ["stdlib-src/**/*", "stdlib-test/**/*"]
 }

@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "commitPins": {},
+  "roots": {
+    "tao": "bundled:tao@bundled"
+  },
+  "sources": {
+    "bundled:tao": {
+      "identity": "bundled:tao",
+      "provider": "bundled",
+      "identifier": "tao",
+      "version": "bundled",
+      "requirements": []
+    }
+  },
+  "npmGraphs": {
+    "Kitchen Sink/Kitchen Sink.tao": {
+      "fingerprint": "52b25a2b36dc4a0e93055a0d53e44c1a591eb7ddf8c7bbb2fd5356482e149634",
+      "lockPath": ".tao/store/npm/52b25a2b36dc4a0e93055a0d53e44c1a591eb7ddf8c7bbb2fd5356482e149634.lock",
+      "lockHash": "ebff2becbec6856af53b63a1877e1f3f72f7ab0e525d6bb06e39efd608cd76c5"
+    }
+  }
+}
