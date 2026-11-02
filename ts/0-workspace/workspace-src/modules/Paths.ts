@@ -110,10 +110,29 @@ export function getImportRelation(
   return 'same-project'
 }
 
-/** resolveCanonicalPath shares existing filesystem identity while retaining absent virtual paths. */
+/** resolveCanonicalPath preserves an absent suffix below its canonical existing ancestor.
+ *  Other filesystem failures retain the absolute lexical path for the owning operation to diagnose. */
 export function resolveCanonicalPath(path: string): string {
   const absolute = Path.resolve(path)
-  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
+  return Try(() => FileSystem.realpathSync(absolute), {
+    catch: error => isAbsentPath(error) ? resolveAbsentPath(absolute) : absolute,
+  })
 }
 
 const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])
+const AbsentPathErrorCode = 'ENOENT'
+
+function isAbsentPath(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === AbsentPathErrorCode
+}
+
+function resolveAbsentPath(path: string): string {
+  const parent = Path.dirname(path)
+  if (parent === path) {
+    return path
+  }
+  return Path.join(resolveCanonicalPath(parent), Path.basename(path))
+}

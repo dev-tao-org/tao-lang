@@ -1,7 +1,7 @@
 import { Lists, Regxs, Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
 import { Document } from '../Document'
-import { findNearestProjectRoot } from '../modules/Paths'
+import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
 import { isSetupRequired } from '../SetupRequired'
 import type { UpdateResult } from '../Workspace'
 
@@ -12,8 +12,13 @@ export class PipelineWatchDirectories {
   private authored: string[] = []
   private files: string[] = []
   private snapshots: string[] = []
+  private readonly outputDirectory: WorkspaceRoot
 
-  constructor(private readonly options: Pick<FileManagerOptions, PipelineWatchDirectoryOption>) {}
+  constructor(private readonly options: Pick<FileManagerOptions, PipelineWatchDirectoryOption>) {
+    this.outputDirectory = options.outputDirectory === undefined
+      ? undefined
+      : resolveCanonicalPath(options.outputDirectory)
+  }
 
   update(
     root: WorkspaceRoot,
@@ -56,13 +61,13 @@ export class PipelineWatchDirectories {
 
   ignored(): string[] {
     return collectUniquePaths([
-      ...this.options.outputDirectory ? [this.options.outputDirectory] : [],
+      ...this.outputDirectory ? [this.outputDirectory] : [],
       ...this.snapshots,
     ])
   }
 
   ignores(path: string): boolean {
-    return (this.options.outputDirectory !== undefined && Path.isWithin(this.options.outputDirectory, path))
+    return (this.outputDirectory !== undefined && Path.isWithin(this.outputDirectory, path))
       || this.snapshots.some(directory => Path.isWithin(directory, path))
   }
 }

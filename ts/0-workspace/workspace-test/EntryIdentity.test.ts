@@ -1,8 +1,10 @@
 import { Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
+import { Artifacts, FileSystem, Path, Platform, Repo, Tests, WorkspaceWatch } from '@shared/os'
+import { FileManager } from '../workspace-src/file-manager/FileManager'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 import { createWorkspace, Document } from '../workspace-src/Workspace'
+import { createUpdateResult } from './WatchFixture'
 
 Tests.test('file compilation and document updates link an aliased entry with its canonical sources', async () => {
   const root = Artifacts.resolvePath('tmp', `entry-identity-${Platform.randomUUID()}`)
@@ -44,6 +46,52 @@ Tests.test('managed preview accepts an aliased entry inside its canonical discov
   }, {
     async finally() {
       await workspace.dispose()
+      await FileSystem.rm(alias, { force: true })
+      await FileSystem.rm(root, { recursive: true, force: true })
+    },
+  })
+})
+
+type OptionalWatchChangeHandler = ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
+
+Tests.test('aliased output exclusions retain canonical identity before generated directories exist', async () => {
+  const root = Artifacts.resolvePath('tmp', `output-identity-${Platform.randomUUID()}`)
+  const alias = root + '-alias'
+  await FileSystem.mkdir(root)
+  await FileSystem.writeFile(Path.join(root, 'Main.tao'), 'source')
+  await FileSystem.symlink(root, alias, 'dir')
+  let notify: OptionalWatchChangeHandler
+  let ignored: readonly string[] = []
+  let scheduled = 0
+  const output = Path.join(root, 'generated/deeper')
+  const manager = new FileManager({
+    directory: alias,
+    outputDirectory: Path.join(alias, 'generated/deeper'),
+    async watch(directory, onChange, _error, exclusions) {
+      Tests.expect(directory).toBe(root)
+      notify = onChange
+      ignored = exclusions ?? []
+      return { async dispose() {} }
+    },
+    schedule() {
+      scheduled++
+      return () => {}
+    },
+    compile: async () => createUpdateResult('published'),
+  })
+  await Try(async () => {
+    await manager.openFile('Main.tao')
+    Tests.expect(await FileSystem.exists(output)).toBe(false)
+    for (const path of [Path.join(output, 'build/App.tsx'), Path.join(output, 'state.json'), output]) {
+      notify!({ path, kind: path === output ? 'addDir' : 'change', observedAtMs: 0 })
+    }
+    Tests.expect(scheduled).toBe(0)
+    Tests.expect(ignored).toEqual([output])
+    notify!({ path: Path.join(root, 'Main.tao'), kind: 'change', observedAtMs: 0 })
+    Tests.expect(scheduled).toBe(1)
+  }, {
+    async finally() {
+      await manager.dispose()
       await FileSystem.rm(alias, { force: true })
       await FileSystem.rm(root, { recursive: true, force: true })
     },

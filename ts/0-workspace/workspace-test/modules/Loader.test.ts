@@ -149,6 +149,30 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('an absent virtual entry under a markerless alias retains its configured source boundary', async () => {
+  const root = await createProject()
+  const alias = root + '-alias'
+  await Try(async () => {
+    await FileSystem.rm(Path.join(root, '.tao'), { recursive: true, force: true })
+    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    await FileSystem.mkdir(Path.join(root, 'nested'))
+    await FileSystem.symlink(root, alias, 'dir')
+    const entry = Path.join(alias, 'nested/New.tao')
+    const source = `use ../Outside Outside${NewlineCharacter}${app('Main')}`
+    const sources = await loadModules(parseEntry(entry, source), { directory: alias }, createParser())
+    Tests.expect(sources.map(module => module.path)).toEqual([
+      Path.join(root, 'nested/New.tao'),
+      Path.join(root, 'Outside.tao'),
+    ])
+    Tests.expect(await FileSystem.exists(entry)).toBe(false)
+  }, {
+    async finally() {
+      await FileSystem.rm(alias, { force: true })
+      await FileSystem.rm(root, { recursive: true, force: true })
+    },
+  })
+})
+
 Tests.test('a local @tao folder follows ordinary named-module boundaries', async () => {
   const root = await createProject()
   await Try(async () => {
