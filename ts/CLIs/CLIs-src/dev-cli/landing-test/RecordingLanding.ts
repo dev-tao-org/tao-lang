@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, S, TabCharacter } from '@shared'
 import { Platform } from '@shared/os'
 import { type LandingIO } from '../landing/LandingIO'
 
@@ -14,7 +14,7 @@ export function recordingLanding() {
     async read(path) {
       const content = files.get(path)
       if (content === undefined) {
-        Errors.ThrowUnexpected(`Missing recording file: ${path}`)
+        Errors.ThrowShouldNeverHappen(`Missing recording file: ${path}`)
       }
       return content
     },
@@ -32,9 +32,34 @@ const archive = 'b'.repeat(40)
 const tree = 'c'.repeat(40)
 const branch = 'feat/landing'
 const pending = `.artifacts/notes/preview-history/${source}`
-const fixture = 'App Hello\n'
+const fixture = 'App Hello' + NewlineCharacter
 
-function initialState() {
+type RecordingLandingState = {
+  dirty: string
+  storageDirty: string
+  integrated: boolean
+  implementation: boolean
+  prOpen: boolean
+  merged: boolean
+  fail: string
+  remoteHead: string
+  localArchivePaths: string
+  archiveBase: string
+  localHead: string
+  advanceHeadOn: string
+  localArchiveHead: string
+  advanceArchiveOn: string
+  pinnedArchive: string
+  userStagedPaths: string
+  committedUserPaths: string
+  pointerPending: boolean
+  pointerParents: string
+  pointerPaths: string
+  crossRepository: boolean
+  integrationChanges: boolean
+}
+
+function initialState(): RecordingLandingState {
   return {
     dirty: '',
     storageDirty: '',
@@ -62,9 +87,19 @@ function initialState() {
 }
 
 function initialFiles(): Map<string, string> {
-  const report = JSON.stringify({ version: 1, commit: source, samples: [1] }) + '\n'
+  const report = JSON.stringify({ version: 1, commit: source, samples: [1] }) + NewlineCharacter
   return new Map([
-    [`.artifacts/merge/${branch}.msg`, `Land tooling\n\n- Archive ${archive} source ${source}\n`],
+    [
+      `.artifacts/merge/${branch}.msg`,
+      joinTextLines(
+        S`
+          Land tooling
+
+          - Archive ${archive} source ${source}
+        `,
+        '',
+      ),
+    ],
     [`${pending}/report.json`, report],
     [
       `${pending}/record.json`,
@@ -73,7 +108,7 @@ function initialFiles(): Map<string, string> {
         status: 'passed',
         sourceCommit: source,
         sourceTree: tree,
-        fixture: { path: 'Apps/Tests/Hello World.tao', sha256: Platform.hashText(fixture) },
+        fixture: { path: 'ts/perf/perf-fixtures/Performance/Performance.tao', sha256: Platform.hashText(fixture) },
         reportSha256: Platform.hashText(report),
       }),
     ],
@@ -84,7 +119,7 @@ function commandReply(
   command: string,
   args: readonly string[],
   directory: string,
-  state: ReturnType<typeof initialState>,
+  state: RecordingLandingState,
   calls: string[],
 ): string {
   const storage = directory.endsWith('/.storage')
@@ -108,26 +143,26 @@ function commandReply(
   return gitReply(args, state, storage)
 }
 
-function gitReply(args: readonly string[], state: ReturnType<typeof initialState>, storage: boolean): string {
+function gitReply(args: readonly string[], state: RecordingLandingState, storage: boolean): string {
   applyGitChanges(args, state, storage)
   const exact: Record<string, string> = {
     'branch --show-current': branch,
-    'submodule status -- .storage': ` ${archive} .storage\n`,
+    'submodule status -- .storage': ` ${archive} .storage${NewlineCharacter}`,
     'rev-parse HEAD': storage ? state.localArchiveHead : state.localHead,
     [`rev-parse ${source}^{tree}`]: tree,
     'rev-parse FETCH_HEAD': archive,
-    'ls-remote --symref origin HEAD': 'ref: refs/heads/main\tHEAD\n',
+    'ls-remote --symref origin HEAD': 'ref: refs/heads/main' + TabCharacter + 'HEAD' + NewlineCharacter,
   }
   const prefixes: Record<string, string> = {
-    status: storage ? state.storageDirty : state.dirty || state.userStagedPaths,
+    'status': storage ? state.storageDirty : state.dirty || state.userStagedPaths,
     'merge-base': state.archiveBase,
-    log: storage ? state.localArchivePaths : 'd'.repeat(40),
+    'log': storage ? state.localArchivePaths : 'd'.repeat(40),
     'rev-list': source,
     'diff-tree': state.implementation ? 'ts/source.ts' : 'AGENTS.md',
-    show: args.includes('--format=%P') ? state.pointerParents : fixture,
-    'ls-remote': `${archive}\trefs/heads/main\n`,
-    'ls-files': `160000 ${state.pinnedArchive} 0\t.storage`,
-    'ls-tree': `160000 commit ${state.pinnedArchive}\t.storage`,
+    'show': args.includes('--format=%P') ? state.pointerParents : fixture,
+    'ls-remote': `${archive}${TabCharacter}refs/heads/main${NewlineCharacter}`,
+    'ls-files': `160000 ${state.pinnedArchive} 0${TabCharacter}.storage`,
+    'ls-tree': `160000 commit ${state.pinnedArchive}${TabCharacter}.storage`,
   }
   const words = args.join(' ')
   if (!storage && args[0] === 'diff' && args.includes('--cached')) {
@@ -143,10 +178,10 @@ function gitReply(args: readonly string[], state: ReturnType<typeof initialState
   if (['worktree', 'fetch', 'merge', 'push', 'add', 'commit', 'submodule', 'diff', 'update-index'].includes(args[0])) {
     return ''
   }
-  Errors.ThrowUnexpected(`Unrecognized recording Git command: ${words}`)
+  Errors.ThrowShouldNeverHappen(`Unrecognized recording Git command: ${words}`)
 }
 
-function applyGitChanges(args: readonly string[], state: ReturnType<typeof initialState>, storage: boolean): void {
+function applyGitChanges(args: readonly string[], state: RecordingLandingState, storage: boolean): void {
   if (args.join(' ') === 'merge --no-edit refs/remotes/origin/main') {
     state.integrated = state.integrationChanges
     if (state.integrated) {
@@ -164,7 +199,7 @@ function applyGitChanges(args: readonly string[], state: ReturnType<typeof initi
   }
 }
 
-function githubReply(command: string, args: readonly string[], state: ReturnType<typeof initialState>): string {
+function githubReply(command: string, args: readonly string[], state: RecordingLandingState): string {
   if (command === 'gh api') {
     return '{"status":"ahead"}'
   }
