@@ -11,16 +11,18 @@
       "Allow starting, querying, and stopping local development servers and previews bound to loopback addresses, and allow reading their pages, logs, and network activity in a browser or preview tool.",
       "Allow repository browser-smoke commands inside the active sandbox; any host escape still requires review.",
       "Allow the developer-approved ./agent unsandboxed performance preview operation for isolated headless local preview proof.",
+      "Allow ./agent unsandboxed performance modules for isolated headless module-refresh architecture comparisons; it does not publish or land.",
       "Allow ./agent unsandboxed performance record to capture commit-linked preview timings into local storage or pending notes; it does not push or land.",
+      "Allow ./agent unsandboxed push <remote> <branch> with optional --source <branch>. This guarded command permits non-main branch pushes and rejects main, force, deletion and bulk pushes.",
       "Allow read-only ./agent unsandboxed landed. ./agent unsandboxed merge-main integrates origin/main locally; ./agent unsandboxed land publishes archives and lands only with the developer's explicit landing authorization.",
-      "Allow ./agent unsandboxed install-ide-extension to replace devtao.tao and remove the accidental tao.tao-language installation in Cursor and VS Code."
+      "Allow ./agent unsandboxed install-ide-extension to install devtao.tao and devtao.dev-tao-org and remove the accidental tao.tao-language installation in Cursor and VS Code."
     ],
     "block_instructions": [
       "Require review for commands that delete or substantially overwrite user or repository data.",
-      "Require review for actions that transmit secrets, credentials, tokens, private keys, private repository contents, or other sensitive local data to external services.",
-      "Require review for publishing, deployment, package publication, git push, force push, remote branch mutation, or other externally visible mutations.",
+      "Require review for actions that transmit secrets, credentials, tokens, private keys, private repository contents, or other sensitive local data to external services, except repository contents sent to configured remotes through ./agent unsandboxed push.",
+      "Require review for publishing, deployment, package publication, raw git push, force push, remote branch mutation, or other externally visible mutations, except non-main pushes through ./agent unsandboxed push.",
       "Require review for reading or writing .env files, ~/.ssh, ~/.aws, or other credential stores.",
-      "Require review before pushing main, force pushing, or renaming a remote branch, even when the merge that produced them was approved."
+      "Do not push main directly. Force pushing, deleting or renaming a remote branch requires separate developer authorization."
     ]
   }
 }

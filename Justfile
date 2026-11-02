@@ -52,7 +52,7 @@ clean-full:
 # Dev loop
 ##########
 
-# Run tests in the new TypeScript workspace
+# Run TypeScript tests and all Tao app tests
 [group('Dev')]
 test target="":
     ./dev test {{ quote(target) }}
@@ -91,7 +91,7 @@ my-branch name='':
 # Dev environment services
 ##########################
 
-# Compile the existing Hello World app and keep its two browser previews running
+# Compile the Preview app and keep its two browser previews running
 [group('Dev')]
 dev:
     ./dev dev
@@ -101,7 +101,7 @@ dev:
 performance:
     ./dev performance preview
 
-# Build the Tao extension once and install it into Cursor and VS Code
+# Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]
 install-ide-extension:
     ./dev install-ide-extension

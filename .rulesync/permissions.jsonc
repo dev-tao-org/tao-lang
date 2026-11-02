@@ -1,10 +1,7 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/permissions-schema.json",
-  // Canonical agent permission rules for this repository. `./agent setup` renders them into
-  // .claude/settings.json (via rulesync) plus .codex/config.toml and .codex/rules/tao.rules
-  // (via tao-agent-cli's CodexConfigGenerator). Edit this file, never the generated ones.
-  // Git metadata paths are checkout-specific: setup installs exact common/worktree directory
-  // grants in the machine-local Codex user profile, never in the tracked project config.
+  // Retained implementation permission inputs, including its named host-command policy.
+  // New-workspace permissions are maintained natively; do not regenerate them from this legacy file.
   "permission": {
     "bash": {
       // `--force` breaks a lock this session did not necessarily take, on the strength of a dead
@@ -110,6 +107,8 @@
     // file every agent sandbox protects, such as `.gitmodules`. The SessionStart hook already runs
     // the same entry outside the sandbox; this reaches it mid-session.
     "setup",
+    // Retained reference defaults include Studio's host launch proof.
+    "verify", "test", "check",
     "land", "finalize", "merge-main", "merge-recover", "landed", "capabilities", "open-pr", "merge-pr", "fix-agent-config", "verify-full", "diagnose-verification",
     // The landing route's pieces, reachable by hand when `open-pr --auto-merge` is not the shape
     // needed: the host-only complement, cancelling a Verify run a local gate has decided, pushing
