@@ -1,10 +1,42 @@
 import { Artifacts, Platform, Tests } from '@shared/os'
+import { Command } from '../../cli-kit/bridges/Bridge_commander'
+import timingSetupController from '../commands/timing-setup-controller'
+import timingSetupRunner from '../commands/timing-setup-runner'
+import { describeTimingSetup, type TimingSetupCommandOptions } from '../timing/TimingCommandOptions'
 import { connectTiming, disconnectTiming, type TimingConnectionIO } from '../timing/TimingConnection'
 import { readTimingJobPath, readTimingReport, type TimingReport } from '../timing/TimingReport'
 import { runTiming, type TimingRunIO } from '../timing/TimingRun'
 import { setupTiming, type TimingSetupIO } from '../timing/TimingSetup'
 
 const MissingTimingBaselineRegx = /\n\nTiming deviation: NOT ASSESSED — no previous comparable report on this runner\.$/
+
+Tests.test('both timing setup registrations preserve parsed browser choices and dry-run behavior', async () => {
+  const registrations = [
+    { command: timingSetupController, role: 'controller' as const, hostname: 'tao-controller' },
+    { command: timingSetupRunner, role: 'runner' as const, hostname: 'tao-timing' },
+  ]
+  for (const { command, role, hostname } of registrations) {
+    for (const args of [[], ['--no-browser'], ['--dry-run', '--no-browser']]) {
+      const fixture = createSetupFixture()
+      const parser = new Command().name(command.name)
+      for (const option of command.options ?? []) {
+        parser.option(option.flags, option.description)
+      }
+      parser.action(async () => {
+        const options = parser.opts<TimingSetupCommandOptions>()
+        await setupTiming(describeTimingSetup(role, options), fixture.io)
+      })
+      await parser.parseAsync(args, { from: 'user' })
+      if (args.includes('--dry-run')) {
+        Tests.expect(fixture.commands).toEqual([])
+      } else {
+        const browserArgs = args.length > 0 ? ['--no-browser'] : []
+        Tests.expect(fixture.commands.find(record => record.name === 'netbird up')?.args)
+          .toEqual(['--hostname', hostname, ...browserArgs])
+      }
+    }
+  }
+})
 
 Tests.test('timing setup previews without mutation and retains its pinned package before installing a root service', async () => {
   const fixture = createSetupFixture()

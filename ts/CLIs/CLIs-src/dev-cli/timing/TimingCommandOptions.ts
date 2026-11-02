@@ -12,6 +12,12 @@ export type TimingCommandOptions = {
   dryRun?: boolean
 }
 
+/** TimingSetupCommandOptions records Commander's positive browser key for its negated option. */
+export type TimingSetupCommandOptions = {
+  dryRun?: boolean
+  browser?: boolean
+}
+
 /** timingArguments selects the same explicit host and candidate for reusable and one-shot runs. */
 export const timingArguments = [
   { name: 'host', required: true, description: 'Existing SSH alias or user@hostname.' },
@@ -54,6 +60,6 @@ export function describeTimingReport(
 }
 
 /** describeTimingSetup combines the command's network role with setup flags. */
-export function describeTimingSetup(role: TimingSetup['role'], options: Omit<TimingSetup, 'role'>): TimingSetup {
-  return { role, ...options }
+export function describeTimingSetup(role: TimingSetup['role'], options: TimingSetupCommandOptions): TimingSetup {
+  return { role, dryRun: options.dryRun, noBrowser: options.browser === false }
 }

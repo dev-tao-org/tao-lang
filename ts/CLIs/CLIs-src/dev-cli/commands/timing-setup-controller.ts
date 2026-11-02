@@ -1,4 +1,4 @@
-import { describeTimingSetup } from '../timing/TimingCommandOptions'
+import { describeTimingSetup, type TimingSetupCommandOptions } from '../timing/TimingCommandOptions'
 import { setupTiming } from '../timing/TimingSetup'
 import { registerCommand } from './_command-runner'
 
@@ -10,7 +10,7 @@ export default registerCommand({
     { flags: '--dry-run', description: 'Print the setup plan without changing the machine.' },
     { flags: '--no-browser', description: 'Print the NetBird sign-in URL instead of opening a browser.' },
   ],
-  async action(options: { dryRun?: boolean; noBrowser?: boolean }) {
+  async action(options: TimingSetupCommandOptions) {
     const request = describeTimingSetup('controller', options)
     await setupTiming(request)
   },
