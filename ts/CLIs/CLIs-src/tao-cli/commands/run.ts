@@ -1,5 +1,7 @@
 import { IO, resolveCallerPath, runForegroundCommand } from '@cli-kit'
+import { HeadlessExpoEnvironment } from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
 import { Errors, Try } from '@shared'
+import { Terminal } from '@shared/os'
 import { resolveCompileTarget } from '@workspace/CompileTarget'
 import { withConsumerProject } from '@workspace/ConsumerProject'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
@@ -40,8 +42,10 @@ export default registerCommand({
 
 async function startExpo(directory: string, options: RunCommandOptions): Promise<void> {
   const args = ['--localhost', ...options.web ? ['--web'] : [], ...options.port ? ['--port', options.port] : []]
+  const headless = !Terminal.isInteractive()
+  const addEnv = headless ? HeadlessExpoEnvironment : undefined
   IO.print('Expo host: ' + directory)
-  await runForegroundCommand('bun run start', { variadicArgs: args, cwd: directory })
+  await runForegroundCommand('bun run start', { variadicArgs: args, cwd: directory, addEnv })
 }
 
 function requireRunPort(port?: string): void {

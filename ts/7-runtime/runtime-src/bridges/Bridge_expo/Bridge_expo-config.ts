@@ -2,6 +2,9 @@ import { S } from '@shared'
 import { metroImports } from '../../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { hmrResolution } from '../Bridge_expo-metro/Bridge_expo-metro'
 
+/** HeadlessExpoEnvironment disables native DevTools preparation for automated Expo hosts. */
+export const HeadlessExpoEnvironment = { EXPO_UNSTABLE_HEADLESS: '1' } as const
+
 /** metroConfiguration configures Expo's Metro graph using source-owned host imports. */
 export const metroConfiguration = S`
   ${metroImports}

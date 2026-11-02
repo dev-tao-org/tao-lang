@@ -1,5 +1,6 @@
 import { Addr, Errors, NewlineCharacter, Try } from '@shared'
 import { Env, Http, Lifecycle, Path, Platform } from '@shared/os'
+import { HeadlessExpoEnvironment } from '../../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimeApplication } from '../../Runtime'
 import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
 import { type ExpoGeneratedOptions, prepareExpoPublication } from './ExpoPublication'
@@ -58,10 +59,10 @@ export type ExpoOptions = {
 type OptionalEnvironmentValue = string | undefined
 function expoEnvironment(directory: string): Record<string, OptionalEnvironmentValue> {
   return {
+    ...HeadlessExpoEnvironment,
     PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),
     BROWSER: 'none',
     CI: 'false',
-    EXPO_UNSTABLE_HEADLESS: '1',
     EXPO_OFFLINE: '1',
     EXPO_NO_TELEMETRY: '1',
     EXPO_NO_TYPESCRIPT_SETUP: '1',
