@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 export {
@@ -27,7 +27,7 @@ async function readOptionalFile(path: string): Promise<string> {
 async function writeFileAtomically(path: string, content: string): Promise<void> {
   const staged = `${path}.${Platform.randomUUID()}.tmp`
   await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(path), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(path))
     await FileSystem.writeFile(staged, content, 'utf8')
     await FileSystem.rename(staged, path)
   }, {
@@ -46,7 +46,7 @@ function resolveZshrcTarget(zshrc: string): string {
 /** mergeActivationSourceLine retains one canonical Tao activation line among unrelated settings. */
 function mergeActivationSourceLine(existing: string): string {
   let sourced = false
-  const normalized = existing.split('\n').flatMap(line => {
+  const normalized = existing.split(NewlineCharacter).flatMap(line => {
     const trimmed = line.trim()
     if (trimmed !== activationSourceLine && !LEGACY_SOURCE_LINES.has(trimmed)) {
       return [line]
@@ -56,10 +56,14 @@ function mergeActivationSourceLine(existing: string): string {
     }
     sourced = true
     return [trimmed === activationSourceLine ? line : activationSourceLine]
-  }).join('\n')
-  return sourced
-    ? normalized
-    : `${normalized}${normalized && !normalized.endsWith('\n') ? '\n' : ''}${activationSourceLine}\n`
+  }).join(NewlineCharacter)
+  if (sourced) {
+    return normalized
+  }
+  if (!normalized || normalized.endsWith(NewlineCharacter)) {
+    return `${normalized}${activationSourceLine}${NewlineCharacter}`
+  }
+  return `${normalized}${NewlineCharacter}${activationSourceLine}${NewlineCharacter}`
 }
 
 /** realPathIfPresent resolves a path when it exists and returns an empty string otherwise. */

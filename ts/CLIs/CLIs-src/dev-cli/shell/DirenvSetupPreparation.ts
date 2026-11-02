@@ -1,13 +1,14 @@
-import { Try } from '@shared'
+import { Errors, NewlineCharacter, NullCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
 
 export { prepareDevelopmentShell }
 
+type OptionalPrepareRequest = boolean | undefined
 /** prepareDevelopmentShell optionally pre-evaluates the configured checkout's devenv shell. */
 async function prepareDevelopmentShell(
-  prepare: boolean | undefined,
+  prepare: OptionalPrepareRequest,
   environment: SetupEnvironment,
 ): Promise<void> {
   if (!prepare) {
@@ -20,7 +21,9 @@ async function prepareDevelopmentShell(
   }, {
     catch(cause) {
       environment.write(
-        `Development shell preparation was unavailable; directory entry will retry normally.\n${errorMessage(cause)}`,
+        `Development shell preparation was unavailable; directory entry will retry normally.${NewlineCharacter}${
+          errorMessage(cause)
+        }`,
       )
     },
   })
@@ -44,16 +47,16 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
     args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
     cwd: root,
   })
-  if (git.exitCode !== 0) {
+  if (git.status !== 0) {
     return false
   }
   const common = FileSystem.realpathSync(git.stdout.trim())
   const hash = await environment.run('git', {
     args: ['hash-object', '--stdin'],
     cwd: root,
-    stdin: `${common}\n`,
+    stdin: `${common}${NewlineCharacter}`,
   })
-  if (hash.exitCode !== 0 || !/^[a-f0-9]{40,64}$/.test(hash.stdout.trim())) {
+  if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
     return false
   }
   const record = Path.resolve(home, '.tao-dev/shell/repositories', hash.stdout.trim())
@@ -63,7 +66,8 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   return await isRegisteredWorktree(root, canonicalRoot, environment)
 }
 
-function isAlreadyInDevenv(env: Readonly<Record<string, string | undefined>>, root: string): boolean {
+type EnvironmentValue = string | undefined
+function isAlreadyInDevenv(env: Readonly<Record<string, EnvironmentValue>>, root: string): boolean {
   const devenvRoot = env['DEVENV_ROOT']
   return env['TAO_DEVENV'] === '1' && devenvRoot !== undefined
     && FileSystem.realpathSync(devenvRoot) === root
@@ -72,7 +76,7 @@ function isAlreadyInDevenv(env: Readonly<Record<string, string | undefined>>, ro
 async function isEnabledForCommonDirectory(record: string, common: string): Promise<boolean> {
   const choice = await readOptionalFile(Path.resolve(record, 'choice'))
   const recordedCommon = await readOptionalFile(Path.resolve(record, 'common-dir'))
-  return choice === 'enabled\n' && recordedCommon === `${common}\n`
+  return choice === ('enabled' + NewlineCharacter) && recordedCommon === `${common}${NewlineCharacter}`
 }
 
 async function isRegisteredWorktree(
@@ -84,8 +88,8 @@ async function isRegisteredWorktree(
     args: ['worktree', 'list', '--porcelain', '-z'],
     cwd: root,
   })
-  return worktrees.exitCode === 0
-    && worktrees.stdout.split('\0').includes(`worktree ${canonicalRoot}`)
+  return worktrees.status === 0
+    && worktrees.stdout.split(NullCharacter).includes(`worktree ${canonicalRoot}`)
 }
 
 async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<void> {
@@ -98,13 +102,13 @@ async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<voi
     env: { ...env, DEVENV_TUI: 'false' },
     timeoutMs: 60_000,
   })
-  if (prepared.exitCode !== 0) {
+  if (prepared.status !== 0) {
     write(
-      `Development shell preparation was unavailable (exit ${prepared.exitCode}); directory entry will retry normally.\n${prepared.stderr.trim()}`,
+      `Development shell preparation was unavailable (exit ${prepared.status}); directory entry will retry normally.${NewlineCharacter}${prepared.stderr.trim()}`,
     )
   }
 }
 
 function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
+  return Errors.isNativeError(cause) ? cause.message : String(cause)
 }
