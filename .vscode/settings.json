@@ -1,4 +1,5 @@
 {
+  "explorer.sortOrder": "type",
   "json.schemaDownload.enable": true,
   // Match the pinned TypeScript compiler used by the new workspace checks.
   "typescript.tsdk": "ts/CLIs/node_modules/typescript/lib",
