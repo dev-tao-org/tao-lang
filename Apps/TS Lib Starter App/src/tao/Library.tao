@@ -1,0 +1,10 @@
+use Text from tao@ui
+
+ts-library Demo {
+  publish { Greeting, }
+}
+
+public
+view Greeting(Name text) {
+  render Text(Name)
+}

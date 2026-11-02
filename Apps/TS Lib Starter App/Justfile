@@ -1,0 +1,13 @@
+TAO := env_var_or_default('TAO', 'tao')
+
+help:
+  @just --list
+
+compile:
+  "{{TAO}}" compile Demo --package src/ts
+
+run:
+  "{{TAO}}" run --package src/ts --web
+
+check: compile
+  cd src/ts && bun run check

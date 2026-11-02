@@ -25,6 +25,7 @@ Success: the CLI and editor agree on errors, and ordinary edits avoid a full-wor
 
 - [ ] Implement view state, event handlers and actions.
 - [ ] Settle remaining questions in [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md) before implementing the relevant data behavior.
+- [ ] After the human-review branch merges, implement `draft <DataDef>` for detached, uncreated data, with the TypeScript form `Draft(DataDef): Draft<DataDef>`. Keep live entity parameters distinct from drafts unless their declared contract explicitly accepts drafts.
 - [ ] Implement [Live Previews](../Specification/Live%20Previews.md), including named previews, supplied environment settings and initial-state overrides.
 - [ ] Extend [Tests](../Specification/Tests.md) to render individual views with supplied inputs and state.
 - [ ] Build a realistic interactive app whose previews and tests exercise the same runtime behavior.
@@ -33,6 +34,7 @@ Success: developers can explore and test an interactive view in named scenarios 
 
 ## Goal Misc
 
+- [ ] Extend the comma-separated entry syntax implemented for `ts-library` publish lists to structurally equivalent lists in Tao grammar. Identify equivalent forms when implementing; exclude design blocks from this change.
 - [ ] Complete the [bounded reactive-engine strategy spike](Compiler%20and%20Reactive%20Runtime%20Plan.md#11-bounded-reactive-engine-strategy-spike): compare existing experiments, choose one production approach and remove losing options; coordinate timing with human review before implementation.
 - [ ] Complete interactive Cursor/VS Code extension acceptance.
 - [ ] Verify Hello World on headless iOS Simulator and Android Emulator.
