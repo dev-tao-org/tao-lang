@@ -1,4 +1,4 @@
-import { IO, runCommand } from '@cli-kit'
+import { IO, runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Time, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
 import { isValidEditCount } from '../../../../perf/perf-src/PreviewMeasurement'
@@ -91,7 +91,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
     { directory: Path.join(options.repo, '.artifacts/logs/dev'), label: 'command' },
   ]
   return await runWithEvidence(directory, sources, async () => {
-    await runCommand('./dev performance preview', {
+    await runNonInteractiveCommand('./dev performance preview', {
       variadicArgs: ['--fixture', fixture],
       cwd: options.repo,
       env: { TAO_PREVIEW_EDIT_COUNT: String(options.edits), TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },

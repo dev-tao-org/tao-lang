@@ -1,4 +1,4 @@
-import { IO, runCommand, runSteps } from '@cli-kit'
+import { IO, runNonInteractiveCommand, runSteps } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
@@ -15,11 +15,14 @@ export default registerCommand({
     const cwd = Repo.resolvePath('.config/local-instantdb')
     await runSteps(
       () =>
-        runCommand('docker compose --project-name tao-local-instantdb --file docker-compose.yml up --detach --wait', {
-          cwd,
-        }),
+        runNonInteractiveCommand(
+          'docker compose --project-name tao-local-instantdb --file docker-compose.yml up --detach --wait',
+          {
+            cwd,
+          },
+        ),
       () =>
-        runCommand(
+        runNonInteractiveCommand(
           'docker compose --project-name tao-local-instantdb --file docker-compose.yml exec -T postgres psql --set ON_ERROR_STOP=1 --username instant --dbname instant --set app_id=9faf89c0-c15c-49b4-bf3f-3b5b2cd9a19f --file /dev/stdin',
           {
             cwd,

@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Try } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { receiveSnapshot } from '../performance-investigation/Checkout'
@@ -69,7 +69,7 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
 }
 
 async function receiveWithLineEndingConfiguration(bundle: string, manifest: string, clone: string): Promise<void> {
-  await runCommand('./agent skill-script', {
+  await runNonInteractiveCommand('./agent skill-script', {
     variadicArgs: [
       'agents/skills/performance-investigation/scripts/performance.ts',
       '--',

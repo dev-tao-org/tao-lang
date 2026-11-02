@@ -2,7 +2,7 @@ import { IO, resolveCallerPath } from '@cli-kit'
 import { Platform, Repo } from '@shared/os'
 import { Command } from 'commander'
 import { receiveSnapshot } from './Checkout'
-import { copyRemote, discoverHosts, executeRemote } from './Remote'
+import { copyRemote, discoverHosts, executeRemote, type RemoteExecution } from './Remote'
 import { runMeasurements } from './Runner'
 import { createSnapshot } from './Snapshot'
 import { summarizeJob } from './Summary'
@@ -21,6 +21,7 @@ export async function main(): Promise<void> {
 
 type ReceiveOptions = { bundle: string; manifest: string; directory: string; ref?: string }
 type RunOptions = { repo: string; fixture: string; samples: string; edits: string }
+type RemoteCommandOptions = { cwd: string; detach?: string; controlPath?: string }
 
 function registerSnapshotCommands(command: Command): void {
   command.command('snapshot').description('Export saved source and history without changing the real index.')
@@ -52,8 +53,10 @@ function registerRemoteCommands(command: Command): void {
     .argument('<args...>', 'Remote executable and literal arguments, after --.')
     .requiredOption('--cwd <path>', 'Absolute directory on the runner.')
     .option('--detach <log>', 'Start a disconnect-resistant job with output at this absolute runner path.')
-    .action(async (host: string, args: string[], options: { cwd: string; detach?: string }) => {
-      await executeRemote(host, args, options.cwd, options.detach)
+    .option('--control-path <path>', 'Reuse an existing SSH control socket.')
+    .action(async (host: string, args: string[], options: RemoteCommandOptions) => {
+      const request = describeRemoteExecution(options)
+      await executeRemote(host, args, request)
     })
   command.command('copy').description('Transfer a file using existing OpenSSH/SFTP access.')
     .argument('<host>').argument('<source>').argument('<destination>')
@@ -61,6 +64,10 @@ function registerRemoteCommands(command: Command): void {
     .action(async (host: string, source: string, destination: string, options: { download?: boolean }) => {
       await copyRemote(host, source, destination, options.download ?? false)
     })
+}
+
+function describeRemoteExecution(options: RemoteCommandOptions): RemoteExecution {
+  return { directory: options.cwd, log: options.detach, controlPath: options.controlPath }
 }
 
 function registerMeasurementCommands(command: Command): void {

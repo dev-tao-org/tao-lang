@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { planTestExecution, type TestExecutionOptions } from '../dev-cli/testing/TestPlan'
@@ -79,7 +79,7 @@ export async function workspaceTypes(): Promise<void> {
     return sourceFiles.length > 0 ? project : undefined
   }))
   const projects = discoveredProjects.filter((project): project is string => project !== undefined)
-  await runCommand('tsc --build', {
+  await runNonInteractiveCommand('tsc --build', {
     variadicArgs: projects.map(project => `${project}/tsconfig.json`),
     cwd: Repo.resolvePath('ts'),
   })
@@ -100,7 +100,7 @@ export async function workspaceShellSyntax(): Promise<void> {
       '.cursor/worktree-setup.sh',
     ]
   ) {
-    await runCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })
+    await runNonInteractiveCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })
   }
 }
 
@@ -116,8 +116,10 @@ export async function workspaceConformance(): Promise<void> {
 export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
-  await runCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
-  await runCommand('knip --config scripts/knip.ts --no-progress --production', { cwd: Repo.resolvePath('ts') })
+  await runNonInteractiveCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
+  await runNonInteractiveCommand('knip --config scripts/knip.ts --no-progress --production', {
+    cwd: Repo.resolvePath('ts'),
+  })
 }
 
 /** workspaceTests prepares shared assets once and runs the selected suites with bounded workers. */
@@ -146,10 +148,13 @@ export async function workspaceTests(
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: 'fmt' | 'check'): Promise<void> {
   await assertNewWorkspaceTree()
-  await runCommand(`dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`, {
-    cwd: Repo.getWorkspaceRoot(),
-  })
-  await runCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
+  await runNonInteractiveCommand(
+    `dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`,
+    {
+      cwd: Repo.getWorkspaceRoot(),
+    },
+  )
+  await runNonInteractiveCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
     cwd: Repo.getWorkspaceRoot(),
   })
 }

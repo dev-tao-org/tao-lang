@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
@@ -12,7 +12,7 @@ export default registerCommand({
     if (service !== 'local-instantdb') {
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
-    await runCommand('docker compose --project-name tao-local-instantdb --file docker-compose.yml down', {
+    await runNonInteractiveCommand('docker compose --project-name tao-local-instantdb --file docker-compose.yml down', {
       cwd: Repo.resolvePath('.config/local-instantdb'),
     })
   },

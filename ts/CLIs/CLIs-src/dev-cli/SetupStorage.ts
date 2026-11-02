@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Platform, Repo } from '@shared/os'
 
 /** StorageSetupIO isolates storage inspection and initialization during checkout setup. */
@@ -18,7 +18,7 @@ function storageSetupIO(): StorageSetupIO {
   return {
     status: () => Platform.capture('git submodule status -- .storage', { cwd }),
     async initialize() {
-      await runCommand('git submodule update --init --checkout -- .storage', { cwd })
+      await runNonInteractiveCommand('git submodule update --init --checkout -- .storage', { cwd })
     },
   }
 }

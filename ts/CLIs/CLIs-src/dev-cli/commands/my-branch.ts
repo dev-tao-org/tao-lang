@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Env, Platform, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
@@ -15,7 +15,7 @@ export default registerCommand({
   async action(name: string = '') {
     const cwd = Repo.getWorkspaceRoot()
     const branch = await resolveDeveloperBranch(name, cwd)
-    await runCommand('git switch', { variadicArgs: [branch], cwd })
+    await runNonInteractiveCommand('git switch', { variadicArgs: [branch], cwd })
   },
 })
 

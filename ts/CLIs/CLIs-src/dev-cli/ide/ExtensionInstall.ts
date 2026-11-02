@@ -1,10 +1,10 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Platform } from '@shared/os'
 
 /** installExtensions installs both built VSIX files into Cursor and VS Code without opening editor windows. */
 export async function installExtensions(
   vsixs: readonly string[],
-  run = runCommand,
+  run = runNonInteractiveCommand,
   capture = Platform.capture,
 ): Promise<void> {
   for (const editor of ['cursor', 'code']) {

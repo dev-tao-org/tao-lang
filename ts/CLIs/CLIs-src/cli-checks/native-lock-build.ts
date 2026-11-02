@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NativeLockPublication from './NativeLockPublication'
@@ -161,7 +161,7 @@ function quoteGypPath(path: string): string {
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {
   const options = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS'))
-  await runCommand('node-gyp rebuild --loglevel=warn --directory', {
+  await runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [staging, ...options.headers],
     cwd: sharedRoot,
     env: options.environment,

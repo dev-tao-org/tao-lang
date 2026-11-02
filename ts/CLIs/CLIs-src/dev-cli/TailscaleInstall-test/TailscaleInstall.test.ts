@@ -46,6 +46,9 @@ function createInstallerIO(commands: string[]): NonNullable<Parameters<typeof in
         )
       }
     },
+    async executeInteractive(command) {
+      commands.push(String(command))
+    },
     print() {},
     progress() {},
   }

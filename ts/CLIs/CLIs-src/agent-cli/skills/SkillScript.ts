@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 
@@ -13,7 +13,7 @@ export async function runSkillScript(
     Errors.ThrowUserInput('The repository workspace root is unavailable.')
   }
   const script = resolveSkillScript(entryPath, root)
-  await runCommand('bun run', {
+  await runNonInteractiveCommand('bun run', {
     variadicArgs: [script, ...args],
     cwd: root,
   })

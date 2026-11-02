@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
@@ -25,7 +25,7 @@ export async function receiveSnapshot(
     Errors.ThrowUserInput('Select a full immutable commit SHA from the snapshot history.')
   }
   await FileSystem.mkdir(Path.dirname(directory), { recursive: true })
-  await runCommand('git clone --no-checkout', { variadicArgs: ['--', bundle, directory] })
+  await runNonInteractiveCommand('git clone --no-checkout', { variadicArgs: ['--', bundle, directory] })
   if (await resolveCommit(directory, commit) !== commit) {
     Errors.ThrowUserInput('The transferred bundle does not contain the requested checkpoint.')
   }

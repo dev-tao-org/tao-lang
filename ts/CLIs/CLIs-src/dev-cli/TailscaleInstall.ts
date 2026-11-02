@@ -1,4 +1,4 @@
-import { IO, runCommand } from '@cli-kit'
+import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
 import { Errors } from '@shared'
 import { FileSystem, Http, Path, Platform, Storage, Terminal } from '@shared/os'
 
@@ -37,7 +37,7 @@ export async function installTailscale(dryRun: boolean, io: InstallIO = createSy
   io.progress('Verifying the macOS installer signature…')
   await io.execute('pkgutil --check-signature', { variadicArgs: [path] })
   io.progress('Installing Tailscale; macOS may request your administrator password…')
-  await io.execute('sudo installer', { variadicArgs: ['-pkg', path, '-target', '/'] })
+  await io.executeInteractive('sudo installer', { variadicArgs: ['-pkg', path, '-target', '/'] })
   io.print('Tailscale installed.')
   printNextSteps(io.print)
 }
@@ -47,7 +47,8 @@ type InstallIO = {
   interactive: boolean
   exists: (path: string) => Promise<boolean>
   readIndex: () => Promise<string>
-  execute: typeof runCommand
+  execute: typeof runNonInteractiveCommand
+  executeInteractive: typeof runInteractiveCommand
   print: (message: string) => void
   progress: (message: string) => void
 }
@@ -67,7 +68,8 @@ function createSystemInstallIO(): InstallIO {
       }
       return await response.text()
     },
-    execute: runCommand,
+    execute: runNonInteractiveCommand,
+    executeInteractive: runInteractiveCommand,
     print: IO.print,
     progress: IO.progress,
   }

@@ -1,16 +1,36 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
-import { runCommand } from './cli-kit'
+import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
-export async function runHostCommand(argv: readonly string[]): Promise<void> {
+export async function runHostCommand(
+  argv: readonly string[],
+  execution: HostCommandExecution = liveExecution,
+): Promise<void> {
   const cwd = Repo.getWorkspaceRoot()
   const prefixes = await readHostCommandPrefixes()
   const route = resolveHostCommand(argv, prefixes)
-  await Platform.requireHostProcessAccess(
+  await execution.requireAccess(
     'Invoke this operation through ./agent unsandboxed in a host-enabled harness.',
   )
-  await runCommand(route.command, { variadicArgs: route.variadicArgs, cwd })
+  const execute = requiresHostTerminal(argv) ? execution.interactive : execution.noninteractive
+  await execute(route.command, { variadicArgs: route.variadicArgs, cwd })
+}
+
+type HostCommandExecution = {
+  requireAccess: typeof Platform.requireHostProcessAccess
+  interactive: typeof runInteractiveCommand
+  noninteractive: typeof runNonInteractiveCommand
+}
+
+const liveExecution: HostCommandExecution = {
+  requireAccess: Platform.requireHostProcessAccess,
+  interactive: runInteractiveCommand,
+  noninteractive: runNonInteractiveCommand,
+}
+
+function requiresHostTerminal(argv: readonly string[]): boolean {
+  return argv[0] === 'secrets' && argv[1] === 'add'
 }
 
 type HostCommandRoute = { command: string; variadicArgs: readonly string[] }

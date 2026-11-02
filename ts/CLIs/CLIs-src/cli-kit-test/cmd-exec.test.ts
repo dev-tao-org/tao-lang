@@ -1,6 +1,6 @@
 import { S } from '@shared'
-import { Http, Repo, Tests } from '@shared/os'
-import { runCommand, runSteps } from '../cli-kit/cli-kit'
+import { Artifacts, FileSystem, Http, Platform, Repo, Tests } from '@shared/os'
+import { runNonInteractiveCommand, runSteps } from '../cli-kit/cli-kit'
 import { createOutput } from '../cli-kit/output/Output'
 
 Tests.test('awaits variadic void steps in order and stops at the original thrown failure', async () => {
@@ -44,7 +44,7 @@ Tests.test('command cancellation drains cooperative cleanup and cannot report a 
     await stopped
     Terminal.stderr.write('cleanup complete\\n')
   `
-  await Tests.expect(runCommand('bun', {
+  await Tests.expect(runNonInteractiveCommand('bun', {
     variadicArgs: ['-e', child],
     cwd: Repo.resolvePath('ts'),
     output: output.channel('fixture'),
@@ -52,5 +52,20 @@ Tests.test('command cancellation drains cooperative cleanup and cannot report a 
   })).rejects.toThrow('interrupted')
   Tests.expect(captured.join('')).toBe('ready\ncleanup complete\n')
   Tests.expect(output.snapshot().channels[0]?.status).toBe('failed')
+  await output.finish()
+})
+
+Tests.test('batch commands read explicitly supplied files without acquiring terminal input', async () => {
+  const path = Artifacts.resolvePath('tmp', 'command-input-' + Platform.randomUUID() + '.txt')
+  Artifacts.trackTemporary(path)
+  await FileSystem.writeFile(path, 'explicit command input\n')
+  const captured: string[] = []
+  const output = createOutput(event => {
+    if (event.stream === 'stdout') {
+      captured.push(event.text)
+    }
+  })
+  await runNonInteractiveCommand('cat', { stdin: FileSystem.file(path), output: output.channel('fixture') })
+  Tests.expect(captured.join('')).toBe('explicit command input\n')
   await output.finish()
 })
