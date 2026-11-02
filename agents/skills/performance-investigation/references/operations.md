@@ -15,8 +15,8 @@ resolve from the original CLI caller's directory.
 ```sh
 PERF snapshot
 PERF snapshot --repo /Users/ro/code/tao --ref FULL_COMMIT_SHA
-PERF receive --bundle /Users/ro/Timing/inbox/snapshot.bundle --manifest /Users/ro/Timing/inbox/snapshot.json --directory /Users/ro/Timing/current
-PERF receive --bundle /Users/ro/Timing/inbox/snapshot.bundle --manifest /Users/ro/Timing/inbox/snapshot.json --directory /Users/ro/Timing/baseline --ref FULL_BASELINE_SHA
+PERF receive --bundle /Users/ro/.tao-dev/timing/transfers/snapshot.bundle --manifest /Users/ro/.tao-dev/timing/transfers/snapshot.json --directory /Users/ro/.tao-dev/timing/checkouts/current
+PERF receive --bundle /Users/ro/.tao-dev/timing/transfers/snapshot.bundle --manifest /Users/ro/.tao-dev/timing/transfers/snapshot.json --directory /Users/ro/.tao-dev/timing/checkouts/baseline --ref FULL_BASELINE_SHA
 ```
 
 `snapshot` writes a bundle and manifest under the controller checkout's
@@ -42,18 +42,19 @@ the runner refuses dirty implementation inputs. No dependency/tool versions are 
 
 ## Existing SSH infrastructure
 
-For the agreed macOS Tailscale setup, a human can run `just tailscale-install` on both Macs.
-It installs the official standalone app and prints the native sign-in, VPN and Remote Login steps;
-`just tailscale-install --dry-run` only resolves the package. Existing apps are retained. Installation
-does not itself establish an authenticated SSH connection.
+For local Wi-Fi, initialize storage with `just timing-home` on both Macs and use the runner's
+existing Remote Login account. `just timing-connect HOST` authenticates a reusable socket under
+`~/.tao-dev/ssh`; its path can be supplied to `ssh --control-path` below. Optional private networking
+is described in the [remote workflow](../../../../Docs/Dev%20Env/Performance/Remote%20timing%20workflow.md).
+Network installation does not itself establish an authenticated SSH connection.
 
 ```sh
 PERF hosts
 PERF ssh tao-bench --cwd /Users/ro -- uname -a
-PERF ssh tao-bench --cwd /Users/ro -- mkdir -p /Users/ro/Timing/inbox
-PERF copy tao-bench /absolute/controller/snapshot.bundle /Users/ro/Timing/inbox/snapshot.bundle
-PERF copy tao-bench /absolute/controller/snapshot.json /Users/ro/Timing/inbox/snapshot.json
-PERF copy tao-bench /Users/ro/Timing/job.log /absolute/controller/job.log --download
+PERF ssh tao-bench --cwd /Users/ro -- mkdir -p /Users/ro/.tao-dev/timing/transfers
+PERF copy tao-bench /absolute/controller/snapshot.bundle /Users/ro/.tao-dev/timing/transfers/snapshot.bundle
+PERF copy tao-bench /absolute/controller/snapshot.json /Users/ro/.tao-dev/timing/transfers/snapshot.json
+PERF copy tao-bench /Users/ro/.tao-dev/timing/transfers/job.log /absolute/controller/job.log --download
 ```
 
 `hosts` lists literal aliases from the current user's top-level SSH config and the available
@@ -80,10 +81,10 @@ setup, transfer that submodule's reachable Git history too. For example, when th
 
 ```sh
 git -C .storage bundle create /absolute/controller/storage.bundle HEAD
-PERF copy tao-bench /absolute/controller/storage.bundle /Users/ro/Timing/inbox/storage.bundle
-PERF ssh tao-bench --cwd /Users/ro/Timing -- git clone /Users/ro/Timing/inbox/storage.bundle /Users/ro/Timing/current/.storage
-PERF ssh tao-bench --cwd /Users/ro/Timing/current -- git submodule init -- .storage
-PERF ssh tao-bench --cwd /Users/ro/Timing/current/.storage -- git checkout --detach FULL_PINNED_STORAGE_SHA
+PERF copy tao-bench /absolute/controller/storage.bundle /Users/ro/.tao-dev/timing/transfers/storage.bundle
+PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts -- git clone /Users/ro/.tao-dev/timing/transfers/storage.bundle /Users/ro/.tao-dev/timing/checkouts/current/.storage
+PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts/current -- git submodule init -- .storage
+PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts/current/.storage -- git checkout --detach FULL_PINNED_STORAGE_SHA
 ```
 
 Verify the full pin against the snapshot manifest, and retain the submodule bundle checksum with
@@ -101,10 +102,10 @@ USB-C helps only when the ports/cable establish a Thunderbolt network interface.
 ## Measure, detach and collect
 
 ```sh
-PERF run --repo /Users/ro/Timing/baseline --fixture /Users/ro/Timing/canonical.tao
-PERF run --repo /Users/ro/Timing/current --fixture /Users/ro/Timing/canonical.tao --samples 5 --edits 24
+PERF run --repo /Users/ro/.tao-dev/timing/checkouts/baseline --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao
+PERF run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao --samples 5 --edits 24
 PERF summarize /absolute/job-one /absolute/job-two
-PERF ssh tao-bench --cwd /Users/ro/Timing/tooling --detach /Users/ro/Timing/job.log -- ./agent skill-script agents/skills/performance-investigation/scripts/performance.ts -- run --repo /Users/ro/Timing/current --fixture /Users/ro/Timing/canonical.tao
+PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts/tooling --detach /Users/ro/.tao-dev/timing/transfers/job.log -- ./agent skill-script agents/skills/performance-investigation/scripts/performance.ts -- run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao
 ```
 
 The default is one session per job so the skill can balance checkpoint order across rounds.

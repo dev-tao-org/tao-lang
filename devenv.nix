@@ -44,7 +44,7 @@ in
     pkgs.ripgrep
     pkgs.cocoapods
     pkgs.direnv
-  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se ]
+  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.age-plugin-se pkgs.netbird ]
     ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.stdenv.cc ];
 
   env.TAO_DEVENV = "1";
