@@ -103,7 +103,7 @@ function createModuleCompilationContext(
     moduleIdentity: Platform.hashText(module.path).slice(0, 12),
     textBindings: textBindings.get(module.path) ?? new Set(),
     moduleBindings: module.bindings,
-    resolveForeignComponent: node => foreignNames.get(createModuleMemberKey(module.path, node.start)),
+    resolveForeignComponent: node => foreignNames.get(createModuleMemberKey(module.path, node.range.start)),
   }
 }
 

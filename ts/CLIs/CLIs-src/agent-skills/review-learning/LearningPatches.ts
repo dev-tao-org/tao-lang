@@ -1,4 +1,4 @@
-import { Errors, Lists, Objects } from '@shared'
+import { Errors, Lists, Objects, Source } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import type { ReviewSession } from '../incremental-review/ReviewTypes'
@@ -109,19 +109,19 @@ function hasChangedSnapshot(
 }
 
 function buildOutput(proposal: Proposal, file: string, original: string): string {
-  const edits = proposal.edits.filter(edit => edit.file === file).sort((left, right) => left.start - right.start)
+  const edits = proposal.edits.filter(edit => edit.file === file).sort(Source.compareByRange)
   let previousEnd = -1
   let previousStart = -1
   for (const edit of edits) {
     if (hasInvalidEdit(edit, original, previousStart, previousEnd)) {
       Errors.ThrowUserInput(`Overlapping or stale original spans: ${file}`)
     }
-    previousEnd = edit.end - 1
-    previousStart = edit.start
+    previousEnd = edit.range.end - 1
+    previousStart = edit.range.start
   }
   let result = original
   for (const edit of edits.toReversed()) {
-    result = result.slice(0, edit.start) + edit.replacement + result.slice(edit.end)
+    result = Source.replace(result, edit, edit.replacement)
   }
   return result
 }
@@ -132,9 +132,9 @@ function hasInvalidEdit(
   previousStart: number,
   previousEnd: number,
 ): boolean {
-  const overlapsPriorEdit = edit.start === previousStart || edit.start <= previousEnd
-  const exceedsOriginal = edit.end > original.length
-  const expectedTextChanged = original.slice(edit.start, edit.end) !== edit.expected
+  const overlapsPriorEdit = edit.range.start === previousStart || edit.range.start <= previousEnd
+  const exceedsOriginal = edit.range.end > original.length
+  const expectedTextChanged = Source.slice(original, edit) !== edit.expected
   return overlapsPriorEdit || exceedsOriginal || expectedTextChanged
 }
 

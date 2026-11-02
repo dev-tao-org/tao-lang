@@ -70,7 +70,16 @@ Tests.test('IO retries renderer creation after prompt cleanup fails', async () =
   Tests.expect(stdout).toContain('dispose 1,prompt 1,create 1,prompt 2,create 2')
 })
 
-async function runFixture(mode: string, terminalOutput?: string) {
+Tests.test('batch commands cannot consume parent input under captured or delegated output', async () => {
+  for (const mode of ['command-eof', 'command-eof-delegate']) {
+    const result = await runFixture(mode, '1', 'parent input must remain private\n')
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(result.stdout).toContain('command completed')
+    Tests.expect(result.stdout + result.stderr).not.toContain('parent input must remain private')
+  }
+})
+
+async function runFixture(mode: string, terminalOutput?: string, input = '') {
   const addEnv = {
     TERMINAL_OUTPUT: terminalOutput,
     TERMINAL_UI: '0',
@@ -80,7 +89,10 @@ async function runFixture(mode: string, terminalOutput?: string) {
     variadicArgs: [outputFixturePath, mode],
     cwd: Repo.getWorkspaceRoot(),
     addEnv,
+    stdin: 'pipe',
   })
+  child.stdin.write(input)
+  child.stdin.end()
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
     Platform.readText(child.stdout),

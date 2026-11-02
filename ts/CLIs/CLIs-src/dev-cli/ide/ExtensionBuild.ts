@@ -1,4 +1,4 @@
-import { IO, runCommand } from '@cli-kit'
+import { IO, runNonInteractiveCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
 import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
@@ -11,7 +11,7 @@ export async function buildExtension(): Promise<string> {
     'vscode',
   ])
   await validateRelocatedPackage()
-  await runCommand('vsce package --no-dependencies --allow-missing-repository --out', {
+  await runNonInteractiveCommand('vsce package --no-dependencies --allow-missing-repository --out', {
     variadicArgs: [vsixPath],
     cwd: packageRoot,
   })
@@ -23,7 +23,7 @@ export async function buildExtension(): Promise<string> {
 export async function prepareExtensionAssets(): Promise<void> {
   await prepareParser()
   await FileSystem.mkdirs(Path.join(packageRoot, 'grammars'), Path.join(packageRoot, 'runtime'))
-  await runCommand('tree-sitter build --wasm --output', {
+  await runNonInteractiveCommand('tree-sitter build --wasm --output', {
     variadicArgs: [
       Path.join(packageRoot, 'grammars/tree-sitter-tao.wasm'),
       Repo.resolvePath('ts/1-grammar/_gen_parser'),

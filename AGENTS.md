@@ -128,7 +128,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - Keep workspace manifests and TypeScript configs under `ts/` or `.x-tao-old-v1/`; propose new folder structures before creating them.
   - CLI commands use Commander, `commands/<command-name>.ts`, top-level registration imports and `export default registerCommand({ name, description, arguments, action })`. Inline actions unless too long; the agent CLI reuses dev commands.
   - Invoke managed tools by name (`bun`, `tsc`, etc.) through the environment PATH instead of embedding runtime, store or dependency-bin paths.
-  - Prefer space-separated strings for `runCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
+  - Prefer space-separated strings for `runInteractiveCommand` and `runNonInteractiveCommand`, appending forwarded arguments through `variadicArgs` as the first options field; use command arrays only when needed to preserve spaces in the base command's arguments.
   - Expose static validation through `check`; keep its individual type, comment and style checks internal.
   - The global CLI fatal handler prints uncaught failures and uses the command error status when present, otherwise 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
   - Output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve error output for flows near process exit; prefer throwing failures or warning otherwise.

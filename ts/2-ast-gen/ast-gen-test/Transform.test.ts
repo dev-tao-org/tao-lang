@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, NewlineCharacter, S, Timings } from '@shared'
+import * as Shared from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../../1-grammar/grammar-src/parser'
 import { transform } from '../ast-gen-src/Transform'
@@ -9,33 +9,28 @@ const PerformanceAppDeclarationRegx = /app Performance[\s\S]*?\n}/
 
 Tests.test(
   'an app becomes semantic declarations and names with source origins',
-  Timings.createTopLevelTimer(async timings => {
+  Shared.Timings.createTopLevelTimer(async timings => {
     const source = await readAppDeclaration()
 
     const tree = createParser().parse(source)
     const result = timings.run(transform, tree)
     Tests.expect(result?.root).toStrictEqual({
       kind: 'File',
-      start: 0,
-      end: 34,
+      range: Shared.Range(0, 34),
       block: {
         kind: 'Block',
-        start: 0,
-        end: 34,
+        range: Shared.Range(0, 34),
         statements: [{
           kind: 'AppDeclaration',
-          start: 0,
-          end: 34,
-          name: { kind: 'Name', start: 4, end: 15, value: 'Performance' },
+          range: Shared.Range(0, 34),
+          name: { kind: 'Name', range: Shared.Range(4, 15), value: 'Performance' },
           block: {
             kind: 'Block',
-            start: 16,
-            end: 34,
+            range: Shared.Range(16, 34),
             statements: [{
               kind: 'RootDeclaration',
-              start: 20,
-              end: 32,
-              view: { kind: 'Name', start: 25, end: 32, value: 'Preview' },
+              range: Shared.Range(20, 32),
+              view: { kind: 'Name', range: Shared.Range(25, 32), value: 'Preview' },
             }],
           },
           visibility: undefined,
@@ -45,11 +40,11 @@ Tests.test(
     const { root } = result!
     const app = root.block.statements[0]!
     if (!AST.IsAppDeclaration(app)) {
-      Errors.ThrowShouldNeverHappen('Expected app')
+      Shared.Errors.ThrowShouldNeverHappen('Expected app')
     }
     const second = transform(tree)
     Tests.expect(second?.root).not.toBe(root)
-    Tests.expect(second?.root.block.statements[0]?.start).toBe(app.start)
+    Tests.expect(second?.root.block.statements[0]?.range.start).toBe(app.range.start)
     Tests.expect(timings.samples.map(sample => [sample.name, sample.status])).toEqual([
       ['transformer.transform', 'succeeded'],
     ])
@@ -70,7 +65,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
   const view = result?.root.block.statements.find(AST.IsViewDeclaration)
   Tests.expect(view).toMatchObject({
     kind: 'ViewDeclaration',
-    start: source.indexOf('view Preview'),
+    range: { start: source.indexOf('view Preview') },
     name: { kind: 'Name', value: 'Preview' },
     parameters: [],
     body: {
@@ -104,7 +99,7 @@ async function readAppDeclaration(): Promise<string> {
 }
 
 Tests.test('module statements and declaration visibility become semantic nodes', () => {
-  const source = S`
+  const source = Shared.S`
     use Name, Other as Alias from ./views/common
     use Standalone
     use all from tao@ui
@@ -135,12 +130,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
     all: false,
     imports: [{ target: { value: 'Standalone' } }],
   })
-  Tests.expect(result?.root.block.statements[2]).toMatchObject({ kind: 'UseStatement', all: true })
-  Tests.expect(result?.root.block.statements[3]).toMatchObject({
-    kind: 'UsePackageStatement',
-    from: { value: 'tao@ui' },
-    alias: { value: 'UI' },
-  })
+  assertPackageImport(result?.root.block.statements[2], result?.root.block.statements[3])
   Tests.expect(result?.root.block.statements[4]).toMatchObject({
     kind: 'AppDeclaration',
     visibility: 'file',
@@ -148,11 +138,22 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   })
   Tests.expect(result?.root.block.statements[5]).toMatchObject({ kind: 'ViewDeclaration', visibility: 'folder' })
   Tests.expect(result?.root.block.statements[6]).toMatchObject({ kind: 'LetDeclaration', visibility: 'public' })
-  Tests.expect(result?.root.block.statements[0]).toMatchObject({ start: 0, end: source.indexOf(NewlineCharacter) })
+  Tests.expect(result?.root.block.statements[0]).toMatchObject({
+    range: { start: 0, end: source.indexOf(Shared.NewlineCharacter) },
+  })
 })
 
+function assertPackageImport(all?: AST.Node, packageImport?: AST.Node): void {
+  Tests.expect(all).toMatchObject({ kind: 'UseStatement', all: true })
+  Tests.expect(packageImport).toMatchObject({
+    kind: 'UsePackageStatement',
+    from: { value: 'tao@ui' },
+    alias: { value: 'UI' },
+  })
+}
+
 Tests.test('requirements and foreign views retain authored fields and source ranges', () => {
-  const source = S`
+  const source = Shared.S`
     requires github:acme/widgets version v1.2.0 as widgets
     requires file:../widgets
     requires npm:date-fns version 4.1.0
@@ -183,7 +184,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
   Tests.expect(result?.root.block.statements[5]).toMatchObject({
     body: { kind: 'ForeignView', path: { value: './FormattedDate.tsx' } },
   })
-  Tests.expect(result?.root.block.statements.map(node => source.slice(node.start, node.end))).toEqual([
+  Tests.expect(result?.root.block.statements.map(node => Shared.Source.slice(source, node.range))).toEqual([
     'requires github:acme/widgets version v1.2.0 as widgets',
     'requires file:../widgets',
     'requires npm:date-fns version 4.1.0',

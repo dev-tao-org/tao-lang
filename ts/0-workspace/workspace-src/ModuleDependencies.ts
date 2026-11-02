@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Lists, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
@@ -105,7 +105,7 @@ export async function withDependencySession<T>(
   })
 }
 
-type NpmRequirementOccurrence = { path: string; source: string; start: number; end: number; alias?: string }
+type NpmRequirementOccurrence = { path: string; source: string; range: Range; alias?: string }
 
 async function findAppSources(sources: string[]): Promise<string[]> {
   const candidates = await Promise.all(sources.map(findAppSource))
@@ -254,8 +254,7 @@ function collectNpmRequirementSpans(
     return [{
       path,
       source,
-      start: declaration.start,
-      end: declaration.end,
+      range: declaration.range,
       ...aliasFields,
     }]
   })
@@ -272,11 +271,11 @@ async function replaceRequirements(
   }
   for (const [path, values] of grouped) {
     let bytes = new TextEncoder().encode(values[0]!.source)
-    for (const item of values.sort((left, right) => right.start - left.start)) {
+    for (const item of values.sort((left, right) => Source.compareByRange(right, left))) {
       const replacement = new TextEncoder().encode(
         `requires npm:${packageName} version ${version}${item.alias ? ` as ${item.alias}` : ''}`,
       )
-      bytes = joinBytes(bytes.slice(0, item.start), replacement, bytes.slice(item.end))
+      bytes = joinBytes(bytes.slice(0, item.range.start), replacement, bytes.slice(item.range.end))
     }
     await FileSystem.writeFile(path, new TextDecoder().decode(bytes))
   }

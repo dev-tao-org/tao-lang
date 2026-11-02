@@ -1,4 +1,4 @@
-import { NewlineCharacter, Regxs } from '@shared'
+import { Range, Regxs, Source } from '@shared'
 import * as TypeScript from 'typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
@@ -59,7 +59,7 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
   }
   const lines = layout.split(Regxs.OptionalCarriageNewline)
   const opening =
-    file.text.slice(file.text.lastIndexOf(NewlineCharacter, node.getStart(file)) + 1, node.getStart(file)).match(
+    Source.slice(file.text, Source.lineStartBefore(file.text, node.getStart(file)), node.getStart(file)).match(
       Regxs.LeadingHorizontalWhitespaceRegx,
     )![0]
   const closing = lines[lines.length - 1]
@@ -120,14 +120,18 @@ function isBraceOnlyLine(
   last: number,
 ): boolean {
   if (index === first && index === last) {
-    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, body.getEnd() - 1)
   }
   const lineStart = lineStarts[index]
   const lineEnd = lineStarts[index + 1] ?? source.length
   if (index === first) {
-    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, lineEnd)
   }
-  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
+  return index === last && isBlankSpan(source, lineStart, body.getEnd() - 1)
+}
+
+function isBlankSpan(source: string, start: number, end: number): boolean {
+  return Source.slice(source, start, end).trim() === ''
 }
 
 function isRuntimeString(node: TypeScript.Node): node is RuntimeString {
@@ -136,8 +140,14 @@ function isRuntimeString(node: TypeScript.Node): node is RuntimeString {
 }
 
 function isSTemplate(node: TypeScript.Node): boolean {
-  return TypeScript.isTaggedTemplateExpression(node.parent) && TypeScript.isIdentifier(node.parent.tag)
-    && node.parent.tag.text === 'S'
+  return TypeScript.isTaggedTemplateExpression(node.parent) && isStringTemplateTag(node.parent.tag)
+}
+
+function isStringTemplateTag(tag: TypeScript.LeftHandSideExpression): boolean {
+  if (TypeScript.isIdentifier(tag)) {
+    return tag.text === 'S'
+  }
+  return TypeScript.isPropertyAccessExpression(tag) && tag.name.text === 'S'
 }
 
 function invalidSLayout(lines: string[], opening: string, closing: string): boolean {
@@ -153,19 +163,29 @@ function stringLayout(
   if (!TypeScript.isTemplateExpression(node)) {
     return layout
   }
-  const ranges: { start: number; end: number }[] = []
+  const ranges: Range[] = []
   let previous: InterpolationStart = node.head
   for (const span of node.templateSpans) {
-    ranges.push({
-      start: previous.end - 2 - node.getStart(file),
-      end: span.literal.getStart(file) + 1 - node.getStart(file),
-    })
+    const rangeStart = templateInterpolationStart(previous, node.getStart(file))
+    const rangeEnd = templateInterpolationEnd(span.literal.getStart(file), node.getStart(file))
+    ranges.push(Range(rangeStart, rangeEnd))
     if (TypeScript.isTemplateMiddle(span.literal)) {
       previous = span.literal
     }
   }
   for (const range of ranges.reverse()) {
-    layout = layout.slice(0, range.start) + 'x' + layout.slice(range.end)
+    layout = Source.replace(layout, range, 'x')
   }
   return layout
+}
+
+function templateInterpolationStart(
+  previous: InterpolationStart,
+  templateStart: number,
+): number {
+  return previous.end - 2 - templateStart
+}
+
+function templateInterpolationEnd(literalStart: number, templateStart: number): number {
+  return literalStart + 1 - templateStart
 }

@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { Platform, Repo } from '@shared/os'
 
@@ -46,7 +46,7 @@ function createPushIO(): PushIO {
   const cwd = Repo.getWorkspaceRoot()
   return {
     capture: args => Platform.capture('git', { variadicArgs: args, cwd }),
-    run: args => runCommand('git', { variadicArgs: args, cwd }),
+    run: args => runNonInteractiveCommand('git', { variadicArgs: args, cwd }),
   }
 }
 

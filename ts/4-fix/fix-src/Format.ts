@@ -1,11 +1,11 @@
 import type { Tree } from '@cst'
-import { Timings } from '@shared'
+import { Range, Timings } from '@shared'
 import { Formatting } from './format/Formatting'
 import { Layout } from './format/Layout'
 import { createFormattingPlan } from './lib/formatter/Formatter'
 import { layout, type LayoutOptions } from './lib/layout/Layout'
 import type { LayoutPlan } from './lib/layout/Plan'
-import { applyEdits, type SourceEdit, type SourceRange } from './Source'
+import { applyEdits, type SourceEdit } from './Source'
 
 export type { SourceEdit } from './Source'
 
@@ -17,7 +17,7 @@ export type FormatResult = {
   status: FormatStatus
   text: string
   edits: readonly SourceEdit[]
-  skipped: readonly SourceRange[]
+  skipped: readonly Range[]
 }
 
 /** format proposes whitespace edits for one parsed Tao source without file access or mutation. */
@@ -37,7 +37,7 @@ const formatSource = Timings.measure('formatter.format', function(
   options: LayoutOptions,
 ): FormatResult {
   if (input.tree.rootNode.type !== 'SourceFile') {
-    return { status: 'invalid', text: input.source, edits: [], skipped: [{ start: 0, end: input.source.length }] }
+    return { status: 'invalid', text: input.source, edits: [], skipped: [Range(0, input.source.length)] }
   }
   const plan = createFormattingPlan(input.source, input.tree, Formatting, Layout, timings)
   const edits = layout(plan, options, timings)

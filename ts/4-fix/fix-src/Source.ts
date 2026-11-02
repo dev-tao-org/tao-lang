@@ -1,10 +1,7 @@
-import { Errors } from '@shared'
+import { Errors, Range, Source } from '@shared'
 
-/** SourceRange identifies a UTF-16 interval in one immutable source snapshot. */
-export type SourceRange = { start: number; end: number }
-
-/** SourceEdit replaces one source interval without retaining CST nodes. */
-export type SourceEdit = SourceRange & { text: string }
+/** SourceEdit replaces one UTF-16 source interval without retaining CST nodes. */
+export type SourceEdit = { range: Range; text: string }
 
 /** applyEdits applies ordered, nonoverlapping edits without changing their source snapshot. */
 export function applyEdits(source: string, edits: readonly SourceEdit[]): string {
@@ -14,13 +11,13 @@ export function applyEdits(source: string, edits: readonly SourceEdit[]): string
     if (isInvalidEdit(edit, offset, source.length)) {
       Errors.ThrowShouldNeverHappen('Source edits overlap or leave their snapshot.')
     }
-    parts.push(source.slice(offset, edit.start), edit.text)
-    offset = edit.end
+    parts.push(Source.slice(source, offset, edit.range.start), edit.text)
+    offset = edit.range.end
   }
-  parts.push(source.slice(offset))
+  parts.push(Source.slice(source, offset, source.length))
   return parts.join('')
 }
 
 function isInvalidEdit(edit: SourceEdit, offset: number, sourceLength: number): boolean {
-  return edit.start < offset || edit.end < edit.start || edit.end > sourceLength
+  return edit.range.start < offset || edit.range.end < edit.range.start || edit.range.end > sourceLength
 }

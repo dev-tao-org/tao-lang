@@ -44,6 +44,12 @@ export async function mkdir(path: string): Promise<string | undefined> {
   return await Native.mkdir(path, { recursive: true })
 }
 
+const PrivateDirectoryMode = 0o700
+/** mkdirPrivate creates missing directories with owner-only access, preserving existing directory permissions. */
+export async function mkdirPrivate(path: string): Promise<string | undefined> {
+  return await Native.mkdir(path, { recursive: true, mode: PrivateDirectoryMode })
+}
+
 /** mkdirs creates each directory and its missing parents in argument order. */
 export async function mkdirs(...paths: string[]): Promise<void> {
   for (const path of paths) {

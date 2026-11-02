@@ -1,6 +1,6 @@
 import { format, type FormatResult } from '@fix/Format'
 import type { LayoutOptions } from '@fix/lib/layout/Layout'
-import { Errors, Time, Try } from '@shared'
+import * as Shared from '@shared'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from 'web-tree-sitter'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
@@ -62,7 +62,7 @@ export async function createWasmDocumentSession(
     document,
     createDocument() {
       if (disposed) {
-        Errors.ThrowShouldNeverHappen('Cannot create a document from a disposed parser')
+        Shared.Errors.ThrowShouldNeverHappen('Cannot create a document from a disposed parser')
       }
       const session = createDocumentSession({ taoParser, tsxParser, taoQuery, tsxQuery, measure })
       return trackedDocument(session, documents)
@@ -99,26 +99,27 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
   return {
     format(options) {
       if (disposed || !taoTree) {
-        Errors.ThrowShouldNeverHappen('Cannot format an unavailable Tao document session')
+        Shared.Errors.ThrowShouldNeverHappen('Cannot format an unavailable Tao document session')
       }
       return format({ source, tree: taoTree }, options)
     },
     update(nextSource) {
       if (disposed) {
-        Errors.ThrowShouldNeverHappen('Cannot update a disposed Tao document session')
+        Shared.Errors.ThrowShouldNeverHappen('Cannot update a disposed Tao document session')
       }
       const previousTree = taoTree
       taoTree = undefined
       if (previousTree) {
         editTreeForSource(previousTree, source, nextSource)
       }
-      taoTree = Try(() => measure(options, 'tao.parse', () => options.taoParser.parse(nextSource, previousTree)), {
-        finally() {
-          previousTree?.delete()
-        },
-      }) ?? undefined
+      taoTree =
+        Shared.Try(() => measure(options, 'tao.parse', () => options.taoParser.parse(nextSource, previousTree)), {
+          finally() {
+            previousTree?.delete()
+          },
+        }) ?? undefined
       if (!taoTree) {
-        Errors.ThrowShouldNeverHappen('Tao parsing was cancelled unexpectedly')
+        Shared.Errors.ThrowShouldNeverHappen('Tao parsing was cancelled unexpectedly')
       }
       source = nextSource
       return collectResults(options, taoTree, source)
@@ -173,12 +174,12 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
     if (bodyEnd < bodyStart) {
       continue
     }
-    const embedded = source.slice(bodyStart, bodyEnd)
+    const embedded = Shared.Source.slice(source, bodyStart, bodyEnd)
     const tsxTree = measure(options, 'tsx.parse', () => options.tsxParser.parse(embedded))
     if (!tsxTree) {
       continue
     }
-    Try(() => {
+    Shared.Try(() => {
       tokens.push(...QueryResults.collectTokens(options.tsxQuery, tsxTree.rootNode, bodyStart, measureQuery(options)))
       diagnostics.push(...QueryResults.collectDiagnostics(tsxTree.rootNode, bodyStart))
     }, {
@@ -194,9 +195,9 @@ function measure<T>(options: SessionOptions, phase: MeasurementPhase, operation:
   if (!options.measure) {
     return operation()
   }
-  const start = Time.nowMs()
+  const start = Shared.Time.nowMs()
   const result = operation()
-  options.measure(phase, Time.nowMs() - start)
+  options.measure(phase, Shared.Time.nowMs() - start)
   return result
 }
 

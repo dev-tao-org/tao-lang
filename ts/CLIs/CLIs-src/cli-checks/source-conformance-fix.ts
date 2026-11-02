@@ -1,3 +1,4 @@
+import { Range, Source } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as TypeScript from 'typescript'
 import { IO } from '../cli-kit/cli-kit'
@@ -36,7 +37,7 @@ export async function fixSourceConformance(
     }
     let text = file.text
     for (const edit of edits.sort((first, second) => second.span.start - first.span.start)) {
-      text = text.slice(0, edit.span.start) + edit.newText + text.slice(edit.span.start + edit.span.length)
+      text = Source.replace(text, Range(edit.span.start, edit.span.start + edit.span.length), edit.newText)
     }
     await FileSystem.write(filename, text)
     changed++

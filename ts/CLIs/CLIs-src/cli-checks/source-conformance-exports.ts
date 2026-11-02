@@ -1,3 +1,4 @@
+import { Source } from '@shared'
 import * as TypeScript from 'typescript'
 import * as SourceConformanceApi from './source-conformance-api'
 
@@ -168,7 +169,7 @@ export class ExportedApiChecker {
   private checkDocs(group: SourceConformanceApi.ApiGroup): void {
     const valid = this.allowDocs(group.nodes).some(range =>
       SourceConformanceApi.hasDescription(
-        SourceConformanceApi.normalizeDoc(this.source.slice(range.pos + 3, range.end - 2)),
+        SourceConformanceApi.normalizeDoc(Source.slice(this.source, range.pos + 3, range.end - 2)),
         group.name,
       )
     )

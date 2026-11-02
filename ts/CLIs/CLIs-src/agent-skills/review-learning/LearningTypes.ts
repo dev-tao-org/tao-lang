@@ -1,3 +1,5 @@
+import { Range } from '@shared'
+
 /** Correction retains human evidence separately from candidate detection. */
 export type Correction = {
   id: string
@@ -23,7 +25,7 @@ export type QueryRule = {
 }
 
 /** Finding marks a candidate needing contextual judgment before correction. */
-export type Finding = { file: string; start: number; end: number; line: number; message: string }
+export type Finding = { file: string; line: number; message: string; range: Range }
 
 /** Scan freezes scope membership, content and configuration for reproducible coverage. */
 export type Scan = {
@@ -44,7 +46,7 @@ export type Proposal = {
   scan: string
   analysis: string
   protectedFiles?: string[]
-  edits: LearningEdit[]
+  edits: ProposalEdit[]
   state?: ProposalState
   outputs?: Record<string, { before: string; after: string; done: boolean }>
 }
@@ -82,5 +84,5 @@ export type LearningSnapshot = Pick<Scan, LearningSnapshotFields>
 type CorrectionAuthority = 'explicit' | 'existing' | 'inferred'
 type QueryKind = 'call-name' | 'call-symbol' | 'function-length' | 'returned-method'
 type ProposalState = 'pending' | 'applying' | 'applied'
-type LearningEdit = { file: string; start: number; end: number; expected: string; replacement: string }
 type LearningSnapshotFields = 'files' | 'inputs' | 'configs'
+type ProposalEdit = { file: string; expected: string; replacement: string; range: Range }

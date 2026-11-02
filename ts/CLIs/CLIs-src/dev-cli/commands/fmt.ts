@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
@@ -26,9 +26,12 @@ export default registerCommand({
       if (isFile && path.endsWith('.tao')) {
         await updateTaoSource(absolute, 'format')
       } else if (isFile && Path.basename(absolute) === 'Justfile') {
-        await runCommand('just --fmt --justfile', { variadicArgs: [absolute], cwd: Repo.getWorkspaceRoot() })
+        await runNonInteractiveCommand('just --fmt --justfile', {
+          variadicArgs: [absolute],
+          cwd: Repo.getWorkspaceRoot(),
+        })
       } else {
-        await runCommand(
+        await runNonInteractiveCommand(
           'dprint fmt --config .dprint.jsonc --incremental=false --excludes .x-tao-old-v1/** --',
           { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() },
         )

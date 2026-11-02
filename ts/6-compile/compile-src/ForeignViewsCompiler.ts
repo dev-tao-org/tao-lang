@@ -73,7 +73,7 @@ function compileForeignViewImports(
   const imports: string[] = []
   views.forEach((item, index) => {
     const alias = createForeignViewAlias(index)
-    const key = createModuleMemberKey(item.modulePath, item.view.start)
+    const key = createModuleMemberKey(item.modulePath, item.view.range.start)
     names.set(key, alias)
     imports.push(`import { ${compileIdentifier(item.view)} as ${alias} } from ${emitStringLiteral(item.path)};`)
   })

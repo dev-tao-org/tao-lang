@@ -1,6 +1,6 @@
 import type { SyntaxNode } from '@cst'
 import { createParser } from '@grammar/parser'
-import { S, Timings } from '@shared'
+import { Range, S, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { format } from '../fix-src/Format'
 import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './SyntaxFixture'
@@ -93,7 +93,7 @@ Tests.test('formatting protects unfinished declarations while formatting complet
   Tests.expect(formatSource(result.text)).toBe(result.text)
   const invalid = 'public view Root {'
   Tests.expect(format({ source: invalid, tree: parser.parse(invalid) }))
-    .toEqual({ status: 'invalid', text: invalid, edits: [], skipped: [{ start: 0, end: invalid.length }] })
+    .toEqual({ status: 'invalid', text: invalid, edits: [], skipped: [Range(0, invalid.length)] })
 })
 
 function formatSource(source: string, width?: number): string {

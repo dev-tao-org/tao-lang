@@ -1,4 +1,4 @@
-import { IO, type OutputChannel, runCommand } from '@cli-kit'
+import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
 import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { discoverProject } from '@workspace/projects/Projects'
@@ -172,7 +172,7 @@ async function runTaoWorker(
   channel.start()
   let commandFailure: OptionalCommandFailure
   await Try(() =>
-    runCommand('bun run', {
+    runNonInteractiveCommand('bun run', {
       variadicArgs: [
         Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),
         '--report',

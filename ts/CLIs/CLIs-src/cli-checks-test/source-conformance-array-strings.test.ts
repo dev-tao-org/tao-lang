@@ -78,6 +78,13 @@ Tests.test('multiline strings > preserves delimiters, literal escapes, tags and 
     }second\`
   `
   Tests.expect(issuesFor(expressionOnly, multilineStringIssue)).toEqual([])
+  const namespaced = S`
+    const text = Shared.S\`
+      first
+      second
+    \`
+  `
+  Tests.expect(issuesFor(namespaced, multilineStringIssue)).toEqual([])
 })
 
 Tests.test('multiline strings > retains independent expected bytes while checking test inputs', () => {

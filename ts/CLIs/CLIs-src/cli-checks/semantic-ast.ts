@@ -162,15 +162,15 @@ function renderSemanticAst(model: SemanticAstModel): string {
   const source = S`
     // @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.
     import type * as CST from '@cst'
+    import type { Range } from '@shared'
     import { Construct } from '../ast-gen-src/AST/AST-construction'
-    export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly start: number; readonly end: number } & Readonly<Fields>
+    export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly range: Readonly<Range> } & Readonly<Fields>
     export type Visibility = ${model.visibility}
     export type RequirementProvider = ${model.providers}
     export type Name = Semantic<'Name', { value: string }>
     export interface Block<Statement extends Node = Node> {
       readonly kind: 'Block'
-      readonly start: number
-      readonly end: number
+      readonly range: Readonly<Range>
       readonly statements: readonly Statement[]
     }
     ${model.declarations}

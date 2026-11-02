@@ -1,7 +1,7 @@
 import '../fatal-errors'
 import { Errors, EscapeCharacter, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Platform, Repo, Terminal } from '@shared/os'
-import { runCommand } from '../cmd-exec'
+import { runNonInteractiveCommand } from '../cmd-exec'
 import { IO, renderOutput } from '../io'
 import { configureCLIOutput } from '../output/Configuration'
 import type { OutputRenderer } from '../output/Output'
@@ -15,6 +15,13 @@ if (Platform.isMain(import.meta)) {
 
 async function runFixture(): Promise<void> {
   const mode = Platform.argv[2]
+  if (mode === 'command-eof' || mode === 'command-eof-delegate') {
+    await configureCLIOutput('dev', { delegate: mode === 'command-eof-delegate' })
+    await runNonInteractiveCommand('cat')
+    Terminal.stdout.write('command completed\n')
+    await IO.finish()
+    return
+  }
   if (mode === 'prompt-lifecycle') {
     await runPromptLifecycleFixture()
     return
@@ -25,7 +32,7 @@ async function runFixture(): Promise<void> {
   }
   if (mode === 'delegate') {
     await configureCLIOutput('agent', { delegate: true })
-    await runCommand('bun run', { variadicArgs: [outputFixturePath, 'dev-child'] })
+    await runNonInteractiveCommand('bun run', { variadicArgs: [outputFixturePath, 'dev-child'] })
     await IO.finish()
     return
   }
@@ -34,7 +41,7 @@ async function runFixture(): Promise<void> {
   IO.channel({ title: 'tool' }).stderr('ordinary tool stderr' + NewlineCharacter)
   IO.warn(joinTextLines(EscapeCharacter + '[33mfixture warning' + EscapeCharacter + '[0m', '  at /tmp/fixture.ts:12'))
   if (mode === 'parent' || mode === 'failed') {
-    await runCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
+    await runNonInteractiveCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
   }
   if (mode === 'failed') {
     Errors.ThrowShouldNeverHappen('fixture failure')

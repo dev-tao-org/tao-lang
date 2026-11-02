@@ -1,4 +1,4 @@
-import { S, Timings } from '@shared'
+import { S, Source, Timings } from '@shared'
 import { Tests } from '@shared/os'
 import { createParser } from '../grammar-src/parser'
 
@@ -34,7 +34,7 @@ Tests.test(
     const text = tree.rootNode.descendantsOfType('TextLiteral')[0]
     Tests.expect(text.text).toBe('"Hello World"')
     Tests.expect(text.startPosition).toEqual({ row: 8, column: 9 })
-    Tests.expect(source.slice(text.startIndex, text.endIndex)).toBe('"Hello World"')
+    Tests.expect(Source.slice(source, text)).toBe('"Hello World"')
   }),
 )
 

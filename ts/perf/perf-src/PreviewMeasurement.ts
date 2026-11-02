@@ -124,6 +124,22 @@ export type MeasurementDescription = PreviewMeasurement & {
   extraFileDefinition: string
 }
 
+/** MeasurementSample identifies first-edit, first-cycle or warm session evidence. */
+export type MeasurementSample = 'first-edit' | 'first-cycle' | 'warm'
+
+/** classifyMeasurementSample distinguishes the first edit, remaining first cycle and warm edits. */
+export function classifyMeasurementSample(index: number): MeasurementSample {
+  if (index === 0) {
+    return 'first-edit'
+  }
+  return index < 4 ? 'first-cycle' : 'warm'
+}
+
+/** isValidEditCount requires complete four-edit preview cycles. */
+export function isValidEditCount(count: number): boolean {
+  return Number.isInteger(count) && count >= 4 && count % 4 === 0
+}
+
 function appendViews(source: string, start: number, count: number): string {
   const declarations = Array.from({ length: count }, (_, index) => createViewDeclaration(start + index))
   return declarations.length
@@ -152,10 +168,6 @@ function createViewDeclaration(index: number): string {
 function readCount(name: string, fallback: number): number {
   const value = Env.get(name)
   return value === undefined ? fallback : Number(value)
-}
-
-function isValidEditCount(count: number): boolean {
-  return Number.isInteger(count) && count >= 4 && count % 4 === 0
 }
 
 function createCycle(cycle: number): PreviewScenario[] {

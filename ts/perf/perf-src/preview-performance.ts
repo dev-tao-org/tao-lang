@@ -56,15 +56,8 @@ type PreviewFrameTimings = { clickToHmrMs: number; hmrToAppliedMs: number; click
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
-  const fixture = PreviewMeasurement.createMeasurementFiles(options.initialSource, owned.measurement)
-  const source = fixture.entry
+  const { source, sourcePath } = await prepareMeasurementSource(options, owned.measurement)
   const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
-  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
-  await FileSystem.mkdir(Path.dirname(sourcePath))
-  for (const file of fixture.extraFiles) {
-    await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
-  }
-  await FileSystem.writeFile(sourcePath, source, 'utf8')
   requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await Runtime.start(options.workspace.runtime!)
   owned.harness = await createPreviewHarness({
@@ -97,9 +90,21 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     }))
   )
   const results = await runScenarios(page, scenarios.map(scenario => scenario.name), owned.measurement)
-  await waitForReloadReports(owned)
-  const path = await writeReport(options.project, owned, results)
+  await waitForReloadReports(owned, results)
+  const fixtureSha256 = Platform.hashText(options.initialSource)
+  const path = await writeReport(options.project, owned, results, fixtureSha256)
   return { path, sessionId: owned.sessionId, results, reloads: owned.reloads, startupMs: owned.startupMs }
+}
+
+async function prepareMeasurementSource(options: PreviewOptions, measurement: PreviewMeasurement.PreviewMeasurement) {
+  const fixture = PreviewMeasurement.createMeasurementFiles(options.initialSource, measurement)
+  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
+  await FileSystem.mkdir(Path.dirname(sourcePath))
+  for (const file of fixture.extraFiles) {
+    await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
+  }
+  await FileSystem.writeFile(sourcePath, fixture.entry, 'utf8')
+  return { source: fixture.entry, sourcePath }
 }
 
 async function runScenarios(
@@ -160,7 +165,12 @@ async function waitForFrameText(
   }
 }
 
-async function writeReport(project: Project, owned: Resources, results: PreviewResult[]): Promise<string> {
+async function writeReport(
+  project: Project,
+  owned: Resources,
+  results: PreviewResult[],
+  fixtureSha256: string,
+): Promise<string> {
   const directory = Artifacts.resolvePath('logs/performance')
   await Artifacts.mkdir(directory)
   const path = Path.join(directory, `preview-${owned.sessionId}.json`)
@@ -171,6 +181,8 @@ async function writeReport(project: Project, owned: Resources, results: PreviewR
     commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
     modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
+    runtime: Platform.runtimeVersion(),
+    fixtureSha256,
     browser: await owned.browser!.version(),
     generatedProject: project.directory,
     startupMs: owned.startupMs,
@@ -197,6 +209,8 @@ type PreviewPerformanceReport = {
   commit: string
   modified: boolean
   system: Platform.SystemInformation
+  runtime: string
+  fixtureSha256: string
   browser: string
   generatedProject: string
   startupMs: Resources['startupMs']
@@ -227,9 +241,9 @@ function requirePublished(result: UpdateResult): void {
   }
 }
 
-async function waitForReloadReports(owned: Resources): Promise<void> {
+async function waitForReloadReports(owned: Resources, results: readonly PreviewResult[]): Promise<void> {
   const deadline = Time.nowMs() + 5000
-  while (owned.reloads.length < owned.measurement.editCount) {
+  while (results.some(result => !owned.reloads.some(timing => timing.revision === result.revision))) {
     if (Time.nowMs() >= deadline) {
       Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
     }
@@ -237,20 +251,8 @@ async function waitForReloadReports(owned: Resources): Promise<void> {
   }
 }
 
-type SampleKind = 'first-edit' | 'first-cycle' | 'warm'
-
-function classifySample(index: number): SampleKind {
-  if (index === 0) {
-    return 'first-edit'
-  }
-  if (index < 4) {
-    return 'first-cycle'
-  }
-  return 'warm'
-}
-
 type PreviewPerformanceResult = PreviewResult & {
-  sample: SampleKind
+  sample: PreviewMeasurement.MeasurementSample
   parentClickToLastAppliedMs: number
 }
 
@@ -260,5 +262,5 @@ function describeResult(result: PreviewResult, index: number, frameCount: number
     Errors.ThrowShouldNeverHappen(`Measurement ${result.revision} did not collect its complete React receipt quorum.`)
   }
   const parentClickToLastAppliedMs = Math.max(...frames.map(frame => frame.clickToAppliedMs))
-  return { ...result, sample: classifySample(index), parentClickToLastAppliedMs }
+  return { ...result, sample: PreviewMeasurement.classifyMeasurementSample(index), parentClickToLastAppliedMs }
 }

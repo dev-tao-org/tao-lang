@@ -1,9 +1,9 @@
 import type { SyntaxNode, Tree } from '@cst'
-import { CarriageReturnCharacter, Errors, NewlineCharacter } from '@shared'
-import type { SourceRange } from '../../Source'
+import * as Shared from '@shared'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
-export type Boundary = SourceRange & {
+export type Boundary = {
+  range: Shared.Range
   spaces: number
   explicitSpace?: number
   lines: number
@@ -30,16 +30,16 @@ export type LayoutPlan = {
   gaps: Boundary[]
   bounds: Map<string, { first: number; last: number }>
   groups: ListGroup[]
-  skipped: SourceRange[]
+  skipped: Shared.Range[]
 }
 
 /** createPlan collects tokens once, protecting incomplete declarations and their adjoining gaps. */
 export function createPlan(source: string, tree: Tree): LayoutPlan {
   const plan: LayoutPlan = {
     source,
-    newline: source.includes(CarriageReturnCharacter + NewlineCharacter)
-      ? (CarriageReturnCharacter + NewlineCharacter)
-      : NewlineCharacter,
+    newline: source.includes(Shared.CarriageReturnCharacter + Shared.NewlineCharacter)
+      ? Shared.CarriageReturnCharacter + Shared.NewlineCharacter
+      : Shared.NewlineCharacter,
     tokens: [],
     gaps: [],
     bounds: new Map(),
@@ -51,7 +51,7 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
   for (const [index, node] of tree.rootNode.namedChildren.entries()) {
     valid[index] = isCompleteNode(node)
     if (!valid[index]) {
-      plan.skipped.push({ start: node.startIndex, end: node.endIndex })
+      plan.skipped.push(Shared.Source.from(node))
     }
     collect(plan, node, index, owners, valid[index]!)
   }
@@ -76,7 +76,7 @@ export function spaceAt(plan: LayoutPlan, index: number, spaces: number): void {
     return
   }
   if (gap.explicitSpace !== undefined && gap.explicitSpace !== spaces) {
-    Errors.ThrowShouldNeverHappen(`Conflicting spacing rules at ${gap.start}.`)
+    Shared.Errors.ThrowShouldNeverHappen(`Conflicting spacing rules at ${gap.range.start}.`)
   }
   gap.spaces = spaces
   if (gap.explicitLines === undefined) {
@@ -92,7 +92,7 @@ export function linesAt(plan: LayoutPlan, index: number, lines: number): void {
     return
   }
   if (gap.explicitLines !== undefined && gap.explicitLines !== lines) {
-    Errors.ThrowShouldNeverHappen(`Conflicting layout rules at ${gap.start}.`)
+    Shared.Errors.ThrowShouldNeverHappen(`Conflicting layout rules at ${gap.range.start}.`)
   }
   gap.lines = lines
   gap.explicitLines = lines
@@ -118,13 +118,12 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
   for (let index = 0; index <= plan.tokens.length; index++) {
     const start = plan.tokens[index - 1]?.endIndex ?? 0
     const end = plan.tokens[index]?.startIndex ?? plan.source.length
-    const original = plan.source.slice(start, end)
+    const original = Shared.Source.slice(plan.source, start, end)
     const left = owners[index - 1]
     const right = owners[index]
     const interior = hasCompleteNeighbors(left, right, valid)
     plan.gaps.push({
-      start,
-      end,
+      range: Shared.Range(start, end),
       spaces: index === 0 || index === plan.tokens.length ? 0 : 1,
       lines: Math.min(2, (original.match(NewlineCharacterGlobalRegx) ?? []).length),
       indent: 0,

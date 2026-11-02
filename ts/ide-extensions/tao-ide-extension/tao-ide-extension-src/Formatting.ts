@@ -16,7 +16,7 @@ export function formattingProvider(
       }
       return edits.map(edit =>
         editor.TextEdit.replace(
-          new editor.Range(document.positionAt(edit.start), document.positionAt(edit.end)),
+          new editor.Range(document.positionAt(edit.range.start), document.positionAt(edit.range.end)),
           edit.text,
         )
       )

@@ -27,3 +27,5 @@ export const RecordSeparatorCharacter = '\u001e'
 
 /** DeleteCharacter identifies the delete control character. */
 export const DeleteCharacter = '\u007f'
+/** NewlineCharacterCode identifies an LF in UTF-16 source scans. */
+export const NewlineCharacterCode = NewlineCharacter.charCodeAt(0)

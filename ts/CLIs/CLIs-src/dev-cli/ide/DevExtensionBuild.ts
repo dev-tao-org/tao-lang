@@ -1,4 +1,4 @@
-import { IO, runCommand } from '@cli-kit'
+import { IO, runNonInteractiveCommand } from '@cli-kit'
 import { Bundle, FileSystem, Path, Repo } from '@shared/os'
 
 /** buildDevExtension packages repository review commands as a separate developer extension. */
@@ -16,7 +16,7 @@ export async function buildDevExtension(): Promise<string> {
   )
   await FileSystem.cp(Path.join(source, 'README.md'), Path.join(output, 'README.md'))
   await FileSystem.cp(Repo.resolvePath('LICENSE'), Path.join(output, 'LICENSE'))
-  await runCommand('vsce package --no-dependencies --allow-missing-repository --out', {
+  await runNonInteractiveCommand('vsce package --no-dependencies --allow-missing-repository --out', {
     variadicArgs: [vsix],
     cwd: output,
   })

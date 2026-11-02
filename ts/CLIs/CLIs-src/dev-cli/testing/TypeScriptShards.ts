@@ -1,4 +1,4 @@
-import { IO, type OutputChannel, runCommand } from '@cli-kit'
+import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
@@ -74,7 +74,7 @@ async function runShard(
   assertTestRunActive(signal)
   await withTestTimings(
     reportPath =>
-      runCommand(`bun test --parallel=${workers}`, {
+      runNonInteractiveCommand(`bun test --parallel=${workers}`, {
         variadicArgs: [...args, ...reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []],
         cwd: Repo.resolvePath('ts'),
         output,

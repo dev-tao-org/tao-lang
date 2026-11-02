@@ -1,4 +1,4 @@
-import { runCommand } from '@cli-kit'
+import { runNonInteractiveCommand } from '@cli-kit'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { writeCSTTypes } from './cst-types'
@@ -57,7 +57,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
 }
 
 const generateParser = Timings.measured('parser.generate', async function(): Promise<void> {
-  await runCommand('tree-sitter generate --abi 15 --output', {
+  await runNonInteractiveCommand('tree-sitter generate --abi 15 --output', {
     variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
     cwd: grammarRoot,
   })
@@ -67,7 +67,7 @@ const buildParserNative = Timings.measured('parser.native-build', async function
   inputs: ParserBuildInputs,
 ): Promise<void> {
   const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
-  await runCommand('node-gyp rebuild --loglevel=warn --directory', {
+  await runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
     addEnv: options.environment,

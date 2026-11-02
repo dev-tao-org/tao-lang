@@ -1,4 +1,4 @@
-import { NewlineCharacter, Regxs } from '@shared'
+import { Regxs, Source } from '@shared'
 import * as TypeScript from 'typescript'
 
 export {
@@ -125,11 +125,11 @@ function hasDescription(text: string, name?: string): boolean {
 
 /** hasValidDocLayout checks the repository JSDoc opening, continuation, and closing layout. */
 function hasValidDocLayout(source: string, range: TypeScript.CommentRange): boolean {
-  const lines = source.slice(range.pos, range.end).split(Regxs.LineBreak)
+  const lines = Source.slice(source, range.pos, range.end).split(Regxs.LineBreak)
   if (lines.length === 1) {
     return true
   }
-  const indentation = source.slice(source.lastIndexOf(NewlineCharacter, range.pos) + 1, range.pos).match(
+  const indentation = Source.slice(source, Source.lineStartBefore(source, range.pos), range.pos).match(
     Regxs.LeadingHorizontalWhitespaceRegx,
   )![0]
   const prefix = indentation + ' *  '

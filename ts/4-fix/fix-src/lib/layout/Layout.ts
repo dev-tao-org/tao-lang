@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { NewlineCharacter, Timings } from '@shared'
+import * as Shared from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
@@ -8,11 +8,11 @@ import type { Boundary, LayoutPlan, ListGroup } from './Plan'
 export type LayoutOptions = { width?: number; indent?: number; typescript?: EmbeddedFormatter }
 
 /** layout resolves breakable lists and emits only changed whitespace boundaries. */
-export function layout(plan: LayoutPlan, options: LayoutOptions, timings: Timings): SourceEdit[] {
+export function layout(plan: LayoutPlan, options: LayoutOptions, timings: Shared.Timings): SourceEdit[] {
   return timings.run(emitLayout, plan, options)
 }
 
-const emitLayout = Timings.measure('formatter.layout', function(
+const emitLayout = Shared.Timings.measure('formatter.layout', function(
   timings,
   plan: LayoutPlan,
   options: LayoutOptions,
@@ -30,20 +30,20 @@ const emitLayout = Timings.measure('formatter.layout', function(
       // This gap establishes the group's starting column; breaking changes only later gaps.
       breakList(plan, group)
     }
-    if (gap.editable && whitespace !== plan.source.slice(gap.start, gap.end)) {
-      edits.push({ start: gap.start, end: gap.end, text: whitespace })
+    if (gap.editable && whitespace !== Shared.Source.slice(plan.source, gap)) {
+      edits.push({ range: gap.range, text: whitespace })
     }
     const token = plan.tokens[index]
     const text = formatToken(plan, index, options, timings)
     if (token && text !== token.text) {
-      edits.push({ start: token.startIndex, end: token.endIndex, text })
+      edits.push({ range: Shared.Source.from(token), text })
     }
     column = advanceColumn(column, text)
   }
   return edits
 })
 
-function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, timings: Timings): string {
+function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, timings: Shared.Timings): string {
   const token = plan.tokens[index]
   if (!token) {
     return ''
@@ -59,14 +59,14 @@ function formatToken(plan: LayoutPlan, index: number, options: LayoutOptions, ti
     newline: plan.newline,
   })
   if (body === undefined) {
-    plan.skipped.push({ start: token.startIndex, end: token.endIndex })
+    plan.skipped.push(Shared.Source.from(token))
     return token.text
   }
   return '```ts' + plan.newline + body.trimEnd()
     + plan.newline + ' '.repeat(level * (options.indent ?? 2)) + '```'
 }
 
-const formatEmbedded = Timings.measured('formatter.typescript', function(
+const formatEmbedded = Shared.Timings.measured('formatter.typescript', function(
   formatter: EmbeddedFormatter,
   body: string,
   options: Parameters<EmbeddedFormatter>[1],
@@ -107,7 +107,7 @@ function breakList(plan: LayoutPlan, group: ListGroup): void {
 
 function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
   if (!gap.editable) {
-    return plan.source.slice(gap.start, gap.end)
+    return Shared.Source.slice(plan.source, gap)
   }
   return gap.lines > 0
     ? plan.newline.repeat(gap.lines) + ' '.repeat(gap.indent * indent)
@@ -116,6 +116,6 @@ function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
 
 function advanceColumn(column: number, text: string): number {
   // After a newline, only the final line contributes; count Unicode code points, not UTF-16 units.
-  const newline = text.lastIndexOf(NewlineCharacter)
+  const newline = text.lastIndexOf(Shared.NewlineCharacter)
   return newline < 0 ? column + [...text].length : [...text.slice(newline + 1)].length
 }

@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen/AST'
+import { Range } from '@shared'
 import { Tests } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import * as ProjectPipeline from '../workspace-src/ProjectPipeline'
@@ -128,13 +129,13 @@ function program(source: string, requirement: string): LinkedProgram {
 }
 
 function projectDocument(source: string, requirement: string): AST.Document {
-  const sourceRange = { start: 0, end: source.length }
+  const range = Range(0, source.length)
   return {
     root: {
-      ...sourceRange,
+      range,
       kind: 'File',
       block: {
-        ...sourceRange,
+        range,
         kind: 'Block',
         statements: [projectView(source), projectRequirement(requirement)],
       },
@@ -143,20 +144,20 @@ function projectDocument(source: string, requirement: string): AST.Document {
 }
 
 function projectView(source: string): AST.ViewDeclaration {
-  const sourceRange = { start: 0, end: source.length }
+  const range = Range(0, source.length)
   return {
-    ...sourceRange,
+    range,
     kind: 'ViewDeclaration',
-    name: { kind: 'Name', start: 0, end: 0, value: 'Main' },
+    name: { kind: 'Name', range: Range(), value: 'Main' },
     visibility: undefined,
     parameters: [],
     body: {
-      ...sourceRange,
+      range,
       kind: 'Block',
       statements: [{
-        ...sourceRange,
+        range,
         kind: 'RenderInjectStatement',
-        injection: { kind: 'Injection', start: 0, end: 0, captures: [], code: '' },
+        injection: { kind: 'Injection', range: Range(), captures: [], code: '' },
       }],
     },
   }
@@ -165,8 +166,7 @@ function projectView(source: string): AST.ViewDeclaration {
 function projectRequirement(version: string): AST.RequiresDeclaration {
   return {
     kind: 'RequiresDeclaration',
-    start: 0,
-    end: 0,
+    range: Range(),
     provider: 'npm',
     identifier: 'dep',
     version,
