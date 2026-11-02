@@ -199,7 +199,7 @@ function assertReadOnly(flags: unknown): void {
 }
 
 function invoke(owner: GeneratedSnapshot, name: string, ...args: unknown[]): unknown {
-  const operation = (owner as unknown as FileOperations)[name]
+  const operation: unknown = Reflect.get(owner, name)
   if (typeof operation !== 'function') {
     unsupported(name)
   }

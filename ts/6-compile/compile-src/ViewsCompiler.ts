@@ -1,20 +1,32 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Switch } from '@shared'
-import { listMap } from './codegen-util'
+import { Errors, NewlineCharacter, Switch } from '@shared'
+import type { ModuleBinding } from '@typecheck/Modules'
+import * as CodegenUtil from './codegen-util'
+import type { DeclarationCompilation } from './DeclarationCompiler'
 import { compileInjection } from './InjectionsCompiler'
 import * as RuntimeEmitter from './RuntimeEmitter'
-import { collectTextBindings, compileExpression, compileLetDeclaration, isTextParameter } from './ValuesCompiler'
+import * as ValuesCompiler from './ValuesCompiler'
+import { createViewReferences, shadowReferences } from './ViewReferences'
 
 /** ViewCompilationContext provides module-owned names and resolved foreign implementations. */
 export type ViewCompilationContext = {
   scope: string
   moduleIdentity: string
   textBindings: ReadonlySet<string>
-  foreignComponent: string | undefined
+  foreignComponent: OptionalForeignComponent
+  scopeType: string
+  ownerPath?: readonly string[]
+  componentPrefix?: string
+  resolveForeignComponent?(node: AST.ViewDeclaration): string | undefined
+  moduleBindings: readonly ModuleBinding[]
+  shadowedNames?: ReadonlySet<string>
 }
 
 /** compileViewDeclaration registers a named Tao component or a resolved foreign implementation. */
-export function compileViewDeclaration(node: AST.ViewDeclaration, context: ViewCompilationContext): string {
+export function compileViewDeclaration(
+  node: AST.ViewDeclaration,
+  context: ViewCompilationContext,
+): DeclarationCompilation {
   return Switch.kind(node.body, {
     Block: block => compileTaoView(node, block, context),
     ForeignView: () => compileForeignView(node, context),
@@ -22,79 +34,160 @@ export function compileViewDeclaration(node: AST.ViewDeclaration, context: ViewC
 }
 
 type RenderCompilation = { result: string; components: string }
+const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
-function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): string {
-  if (!node.parameters.every(isTextParameter)) {
+function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
+  if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
     Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
-    ?? Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
-  return RuntimeEmitter.emitForeignView(node, context.scope, component)
+  if (component === undefined) {
+    Errors.ThrowShouldNeverHappen(`Missing compiled import for foreign view ${node.name.value}.`)
+  }
+  return { initialization: RuntimeEmitter.emitForeignView(node, context.scope, component), components: '' }
 }
 
 function compileTaoView(
   node: AST.ViewDeclaration,
   block: AST.ViewDeclarationBlock,
   context: ViewCompilationContext,
-): string {
+): DeclarationCompilation {
   const definitions = block.statements.filter(AST.IsLetDeclaration)
+  const children = block.statements.filter(AST.IsViewDeclaration)
   const render = block.statements.find(isRenderStatement)
-    ?? Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
-  const names = createComponentNames(node, context)
-  const bindings = collectTextBindings(definitions, context.textBindings, node.parameters)
-  const statements = definitions.map(definition => compileLetDeclaration(definition, names.scope)).join('\n')
-  const compiled = compileViewRenderStatement(render, bindings, names)
-  const needsScope = definitions.length > 0 || render.kind === 'RenderViewExpressionStatement'
-  const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, needsScope)
-  const registration = RuntimeEmitter.emitViewDeclaration(node, context.scope, names.view)
-  return [compiled.components, component, registration].filter(Boolean).join('\n')
+  if (render === undefined) {
+    Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
+  }
+  const inheritedText = new Set(context.textBindings)
+  for (const child of children) {
+    inheritedText.delete(child.name.value)
+  }
+  const bindings = ValuesCompiler.collectTextBindings(definitions, inheritedText, node.parameters)
+  const names = createComponentNames(node, context, definitions, children, bindings)
+  const shadowed = new Set([
+    ...context.shadowedNames ?? [],
+    ...node.parameters.map(item => item.name.value),
+    ...definitions.map(item => item.name.value),
+    ...children.map(item => item.name.value),
+  ])
+  const references = createViewReferences(context.moduleBindings, shadowed)
+  const nestedContext = createNestedOwnerContext(context, shadowed)
+  const nested = compileNestedViews(node, children, nestedContext, names, bindings)
+  const valuesCode = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope))
+    .join(
+      NewlineCharacter,
+    )
+  const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
+  const statements = CodegenUtil.joinCodeLines(
+    references.initialize(),
+    ...nested.map(child => child.initialization),
+    valuesCode,
+  )
+  const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, true)
+  const registration = RuntimeEmitter.emitViewDeclaration(
+    node,
+    context.scope,
+    `${context.componentPrefix ?? ''}${names.view}`,
+  )
+  const components = CodegenUtil.joinCodeLines(...nested.map(child => child.components), compiled.components, component)
+  return { components, initialization: registration }
+}
+
+function createNestedOwnerContext(
+  context: ViewCompilationContext,
+  shadowedNames: ReadonlySet<string>,
+): ViewCompilationContext {
+  return { ...context, shadowedNames }
 }
 
 function isRenderStatement(node: AST.ViewDeclarationStatement): node is AST.ViewRenderStatement {
-  return node.kind !== 'LetDeclaration'
+  return AST.IsViewRenderStatement(node)
+}
+
+function compileNestedViews(
+  owner: AST.ViewDeclaration,
+  children: readonly AST.ViewDeclaration[],
+  context: ViewCompilationContext,
+  names: RuntimeEmitter.ComponentNames,
+  bindings: ReadonlySet<string>,
+): DeclarationCompilation[] {
+  return children.map(child =>
+    compileViewDeclaration(child, createChildViewContext(owner, child, context, names, bindings))
+  )
+}
+
+function createChildViewContext(
+  owner: AST.ViewDeclaration,
+  child: AST.ViewDeclaration,
+  context: ViewCompilationContext,
+  names: RuntimeEmitter.ComponentNames,
+  textBindings: ReadonlySet<string>,
+): ViewCompilationContext {
+  const ownerPath = [...context.ownerPath ?? [], owner.name.value]
+  const foreignComponent = context.resolveForeignComponent?.(child)
+  return {
+    ...context,
+    scope: names.scope,
+    scopeType: names.scopeType,
+    ownerPath,
+    textBindings,
+    componentPrefix: '',
+    foreignComponent,
+  }
 }
 
 function compileViewRenderStatement(
   node: AST.ViewRenderStatement,
   bindings: ReadonlySet<string>,
   names: RuntimeEmitter.ComponentNames,
+  scope: CodegenUtil.ScopeCode,
 ): RenderCompilation {
   return Switch.kind(node, {
-    RenderViewExpressionStatement: statement => ({
-      result: compileViewRenderExpression(statement.expression, names.scope),
-      components: '',
-    }),
+    RenderViewExpressionStatement: statement =>
+      RenderCompilation(
+        compileViewRenderExpression(statement.expression, scope),
+        '',
+      ),
     RenderInjectStatement(statement) {
-      const injection = compileInjection(statement.injection, bindings, names)
-      return { result: injection.invocation, components: injection.hookDeclaration }
+      const injection = compileInjection(statement.injection, bindings, names, scope)
+      return RenderCompilation(injection.invocation, injection.hookDeclaration)
     },
   })
 }
 
-function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: string): string {
-  const argumentsCode = listMap(node.arguments, argument => compileExpression(argument, scope))
-  const children = compileViewRenderBlock(node.block, scope)
-  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, children)
+function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: CodegenUtil.ScopeCode): string {
+  const argumentsCode = CodegenUtil.listMap(
+    node.arguments,
+    argument => ValuesCompiler.compileExpression(argument, scope),
+  )
+  const childrenCode = compileViewRenderBlock(node.block, scope)
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
-function compileViewRenderBlock(block: AST.ViewRenderBlock | undefined, scope: string): string {
+type OptionalViewRenderBlock = AST.ViewRenderBlock | undefined
+function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUtil.ScopeCode): string {
   if (!block) {
     return '[]'
   }
+  const blockScope = shadowReferences(scope, block.statements.filter(AST.IsLetDeclaration))
   if (block.statements.every(isViewRenderExpression)) {
-    return listMap(block.statements, child => compileViewRenderExpression(child, scope))
+    return CodegenUtil.listMap(block.statements, child => compileViewRenderExpression(child, scope))
   }
-  const statements = block.statements.map(statement => compileBlockStatement(statement, scope)).join('\n')
+  const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join(
+    NewlineCharacter,
+  )
   return RuntimeEmitter.emitViewRenderBlock(scope, statements)
 }
+
+type OptionalForeignComponent = string | undefined
 
 function isViewRenderExpression(node: AST.ViewRenderBlockStatement): node is AST.ViewRenderExpression {
   return node.kind === 'ViewRenderExpression'
 }
 
-function compileBlockStatement(node: AST.ViewRenderBlockStatement, scope: string): string {
+function compileBlockStatement(node: AST.ViewRenderBlockStatement, scope: CodegenUtil.ScopeCode): string {
   return Switch.kind(node, {
-    LetDeclaration: declaration => compileLetDeclaration(declaration, scope),
+    LetDeclaration: declaration => ValuesCompiler.compileLetDeclaration(declaration, scope),
     ViewRenderExpression: expression => `_Children.push(${compileViewRenderExpression(expression, scope)});`,
   })
 }
@@ -102,13 +195,42 @@ function compileBlockStatement(node: AST.ViewRenderBlockStatement, scope: string
 function createComponentNames(
   node: AST.ViewDeclaration,
   context: ViewCompilationContext,
+  definitions: readonly AST.LetDeclaration[],
+  children: readonly AST.ViewDeclaration[],
+  bindings: ReadonlySet<string>,
 ): RuntimeEmitter.ComponentNames {
-  const identity = `${context.moduleIdentity}_${node.name.value}`
+  const path = [...context.ownerPath ?? [], node.name.value].join('$')
+  const identity = `${path}_${context.moduleIdentity}`
   return {
-    view: `TaoView${identity}`,
+    view: `TaoView_${identity}`,
     useInjection: `useTaoInjection${identity}`,
     props: '_Props',
     render: '_Render',
     scope: '_Scope',
+    scopeType: createScopeType(node, context.scopeType, definitions, children, bindings),
   }
+}
+
+function createScopeType(
+  node: AST.ViewDeclaration,
+  inherited: string,
+  definitions: readonly AST.LetDeclaration[],
+  children: readonly AST.ViewDeclaration[],
+  bindings: ReadonlySet<string>,
+): string {
+  const values = [...node.parameters, ...definitions].map(value => ({
+    name: value.name.value,
+    type: bindings.has(value.name.value) ? 'string' : 'unknown',
+  }))
+  const properties = [...values, ...children.map(child => ({ name: child.name.value, type: 'TR.View' }))]
+  if (properties.length === 0) {
+    return inherited
+  }
+  const keys = properties.map(property => CodegenUtil.emitStringLiteral(property.name)).join(' | ')
+  const members = properties.map(property =>
+    `readonly ${CodegenUtil.emitStringLiteral(property.name)}: ${property.type}`
+  ).join(
+    '; ',
+  )
+  return `Omit<${inherited}, ${keys}> & { ${members} }`
 }

@@ -1,6 +1,6 @@
 import { formatTimings, IO } from '@cli-kit'
 import * as Runtime from '@runtime/Runtime'
-import { ControlCCharacter, Errors, Try } from '@shared'
+import { ControlCCharacter, Errors, NewlineCharacter, Try } from '@shared'
 import { Browser, FileSystem, Http, Lifecycle, Platform, Repo, Terminal } from '@shared/os'
 import { execute, type WorkflowUI, type WorkflowWorkspace } from '@workspace/Workflow'
 import type { UpdateResult, WorkspaceSession } from '@workspace/Workspace'
@@ -171,7 +171,7 @@ async function stopDevSession(state: DevSession): Promise<void> {
 }
 
 function reportSourceUpdate(result: UpdateResult): void {
-  IO.print(`Compile ${result.revision}:\n  ${formatTimings(result.timings)}`)
+  IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${formatTimings(result.timings)}`)
   if (result.status === 'failed') {
     IO.warn(`Preview source compilation failed: ${result.error}`)
     IO.warn('The last good app remains available.')
@@ -240,6 +240,6 @@ async function cleanup(options: CleanupOptions): Promise<void> {
 function printExpoOutput(output: Lifecycle.ProcessOutput): void {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   if (messages.length) {
-    IO.printToStdErr('Expo diagnostics:\n' + messages.join('\n'))
+    IO.printToStdErr(('Expo diagnostics:' + NewlineCharacter) + messages.join(NewlineCharacter))
   }
 }

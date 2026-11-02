@@ -1,4 +1,4 @@
-import { Lists, Switch } from '@shared'
+import { joinTextLines, Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -133,19 +133,19 @@ function generateDeclarations(nodes: NodeMetadata[], metadata: SemanticMetadata)
     `export type File = Semantic<'File', { block: DeclarationBlock }>`,
     ...nodes.filter(node => semanticName(node.type, metadata) !== 'Name' && node.type !== 'Block')
       .map(node => generateNodeType(node, metadata)),
-  ].join('\n\n')
+  ].join(NewlineCharacter.repeat(2))
 }
 
 function generateSemanticTypes(nodes: NodeMetadata[], metadata: SemanticMetadata) {
   const blockStatementUnions = Object.values(metadata.blocks).filter(block => block.statementUnion).map(block =>
     `export type ${block.statementUnion} = ${resolveMembers(block.members, nodes, metadata).join(' | ')}`
-  ).join('\n')
+  ).join(NewlineCharacter)
   const blocks = Object.entries(metadata.blocks).map(([name, block]) =>
     `export type ${name} = Block<${block.statementUnion ?? resolveMembers(block.members, nodes, metadata).join(' | ')}>`
-  ).join('\n')
+  ).join(NewlineCharacter)
   const unions = Object.entries(metadata.unions).map(([name, members]) =>
     `export type ${name} = ${resolveMembers(members, nodes, metadata).join(' | ')}`
-  ).join('\n')
+  ).join(NewlineCharacter)
   return { blockStatementUnions, blocks, unions }
 }
 
@@ -159,34 +159,42 @@ function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata): 
 }
 
 function renderSemanticAst(model: SemanticAstModel): string {
-  return `// @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.\n`
-    + `import type * as CST from '@cst'\nimport { Construct } from '../ast-gen-src/AST/AST-construction'\n`
-    + `export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly start: number; readonly end: number } & Readonly<Fields>\n`
-    + `export type Visibility = ${model.visibility}\nexport type RequirementProvider = ${model.providers}\n`
-    + `export type Name = Semantic<'Name', { value: string }>\n`
-    + `export interface Block<Statement extends Node = Node> {\n`
-    + `  readonly kind: 'Block'\n  readonly start: number\n  readonly end: number\n`
-    + `  readonly statements: readonly Statement[]\n}\n`
-    + `${model.declarations}\n`
-    + `export type Declaration = ${model.declarationMembers.join(' | ')}\n`
-    + `export type Expression = ${model.expressionMembers.join(' | ')}\n`
-    + `export type ViewRenderStatement = ${model.renderMembers.join(' | ')}\n`
-    + `${model.unions}\n`
-    + `${model.blockStatementUnions}\n`
-    + `export type ViewDeclarationImplementation = ViewDeclarationBlock | ForeignView\n`
-    + `${model.blocks}\n`
-    + `export type Node = ${model.semanticKinds.join(' | ')}\n`
-    + `export const SemanticKinds = ${model.generatedRules} as const\n`
-    + `export const CstConstructorKinds = ${model.constructorKinds} as const\n`
-    + `export const CstFieldLayouts = ${model.fieldLayouts} as const\n`
-    + `export const CstBlockStatementKinds = ${emitBlockKinds(model.blockKinds)} as const\n`
-    + `export type OfKind<Kind extends Node['kind']> = Extract<Node, { readonly kind: Kind }>\n`
-    + `export function IsKind<Kind extends Node['kind']>(node: Node, kind: Kind | readonly Kind[]): node is OfKind<Kind> {\n`
-    + `  return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)\n`
-    + `}\n`
-    + `\n${model.constructors}\n`
-    + `export type Document = { readonly root: File }\n`
-    + ``
+  const source = S`
+    // @generated from Tree-sitter node-types.json, grammar.json and semantic-ast-metadata.json.
+    import type * as CST from '@cst'
+    import { Construct } from '../ast-gen-src/AST/AST-construction'
+    export type Semantic<Kind extends string, Fields> = { readonly kind: Kind; readonly start: number; readonly end: number } & Readonly<Fields>
+    export type Visibility = ${model.visibility}
+    export type RequirementProvider = ${model.providers}
+    export type Name = Semantic<'Name', { value: string }>
+    export interface Block<Statement extends Node = Node> {
+      readonly kind: 'Block'
+      readonly start: number
+      readonly end: number
+      readonly statements: readonly Statement[]
+    }
+    ${model.declarations}
+    export type Declaration = ${model.declarationMembers.join(' | ')}
+    export type Expression = ${model.expressionMembers.join(' | ')}
+    export type ViewRenderStatement = ${model.renderMembers.join(' | ')}
+    ${model.unions}
+    ${model.blockStatementUnions}
+    export type ViewDeclarationImplementation = ViewDeclarationBlock | ForeignView
+    ${model.blocks}
+    export type Node = ${model.semanticKinds.join(' | ')}
+    export const SemanticKinds = ${model.generatedRules} as const
+    export const CstConstructorKinds = ${model.constructorKinds} as const
+    export const CstFieldLayouts = ${model.fieldLayouts} as const
+    export const CstBlockStatementKinds = ${emitBlockKinds(model.blockKinds)} as const
+    export type OfKind<Kind extends Node['kind']> = Extract<Node, { readonly kind: Kind }>
+    export function IsKind<Kind extends Node['kind']>(node: Node, kind: Kind | readonly Kind[]): node is OfKind<Kind> {
+      return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
+    }
+
+    ${model.constructors}
+    export type Document = { readonly root: File }
+  `
+  return joinTextLines(source, '')
 }
 
 function generateConstructorKinds(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
@@ -219,7 +227,7 @@ function generateFieldLayouts(nodes: NodeMetadata[], metadata: SemanticMetadata)
 function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): string {
   const kind = semanticName(node.type, metadata)
   const fields = node.fields ?? {}
-  const allFields = { ...fields }
+  const allFields = Objects.copy(fields)
   const overrides = metadata.fieldTypeOverrides[kind] ?? {}
   for (const field of Object.keys(overrides)) {
     if (!allFields[field]) {
@@ -241,9 +249,11 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
   if (['ImportPath', 'RenderTag', 'TextLiteral', 'ContextReference'].includes(kind)) {
     generatedFields.push('  value: string')
   }
-  return `export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {\n${
-    Lists.unique(generatedFields).join(';\n')
-  }\n}>`
+  return S`
+    export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {
+    ${Lists.unique(generatedFields).join(`;${NewlineCharacter}`)}
+    }>
+  `
 }
 
 function overrideOmitsOptionality(override?: string): boolean {
@@ -307,7 +317,7 @@ function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata)
         emitSemanticStringLiteral(kind)
       }) }`
   )
-  return entries.join('\n')
+  return entries.join(NewlineCharacter)
 }
 
 function subtypeNames(nodes: NodeMetadata[], name: string): string[] {

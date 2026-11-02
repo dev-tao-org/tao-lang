@@ -1,16 +1,16 @@
 import * as AST from '@ast-gen/AST'
-import { Errors } from '@shared'
+import { Errors, Switch } from '@shared'
 import { orderDefinitions } from './LinkModuleDefinitions'
 import { assertUniqueLocalBindings, collectReferencedNames } from './LinkModuleValidation'
-import { deriveNamespaceFromPath, type LinkedProgram, ModuleBinding, type SourceModule } from './Modules'
+import * as Modules from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
-export function linkModules(entry: string, sources: readonly SourceModule[]): LinkedProgram {
+export function linkModules(entry: string, sources: readonly Modules.SourceModule[]): Modules.LinkedProgram {
   const modules = new Map(sources.map(source => [source.path, source]))
   if (!modules.has(entry)) {
     Errors.ThrowUserInput(`Entry module is unavailable: ${entry}`)
   }
-  const bindings = new Map(sources.map(source => [source.path, [] as ModuleBinding[]]))
+  const bindings = new Map(sources.map(source => [source.path, [] as Modules.ModuleBinding[]]))
   const ownNames = new Map(sources.map(source => [source.path, collectOwnDeclarationNames(source)]))
 
   for (const source of sources) {
@@ -31,11 +31,11 @@ export function linkModules(entry: string, sources: readonly SourceModule[]): Li
   return { entry, modules: linkedModules, definitions: orderDefinitions(linkedModules) }
 }
 
-function collectOwnDeclarationNames(source: SourceModule): Set<string> {
+function collectOwnDeclarationNames(source: Modules.SourceModule): Set<string> {
   return new Set(AST.GetValueDeclarations(source.document).map(declaration => declaration.name.value))
 }
 
-function assertUniqueOwnDeclarations(source: SourceModule): void {
+function assertUniqueOwnDeclarations(source: Modules.SourceModule): void {
   const names = new Set<string>()
   for (const declaration of AST.GetValueDeclarations(source.document)) {
     const name = declaration.name.value
@@ -47,13 +47,13 @@ function assertUniqueOwnDeclarations(source: SourceModule): void {
 }
 
 function addImplicitSiblingBindings(
-  source: SourceModule,
-  modules: ReadonlyMap<string, SourceModule>,
-  bindings: ModuleBinding[],
+  source: Modules.SourceModule,
+  modules: ReadonlyMap<string, Modules.SourceModule>,
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   references: ReadonlySet<string>,
 ): void {
-  const candidates = new Map<string, ModuleBinding[]>()
+  const candidates = new Map<string, Modules.ModuleBinding[]>()
   const localNames = new Set(bindings.map(binding => binding.name))
   for (const siblingPath of source.siblings) {
     const sibling = modules.get(siblingPath)
@@ -65,7 +65,7 @@ function addImplicitSiblingBindings(
         continue
       }
       const name = declaration.name.value
-      const candidate = ModuleBinding(name, sibling.path, name)
+      const candidate = Modules.ModuleBinding(name, sibling.path, name)
       candidates.set(name, [...candidates.get(name) ?? [], candidate])
     }
   }
@@ -95,9 +95,9 @@ function isImplicitlyVisible(declaration: AST.ValueDeclaration): boolean {
 }
 
 function addExplicitBindings(
-  source: SourceModule,
-  modules: ReadonlyMap<string, SourceModule>,
-  bindings: ModuleBinding[],
+  source: Modules.SourceModule,
+  modules: ReadonlyMap<string, Modules.SourceModule>,
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
 ): void {
   const seenImports = new Set<string>()
@@ -146,21 +146,25 @@ function addExplicitBindings(
 }
 
 function resolvePackageNamespace(statement: AST.UsePackageStatement): string {
-  const namespace = statement.alias?.value ?? deriveNamespaceFromPath(statement.from.value)
+  const namespace = statement.alias?.value ?? Modules.deriveNamespaceFromPath(statement.from.value)
   if (!namespace) {
     Errors.ThrowUserInput(`Cannot derive a namespace from package path ${statement.from.value}.`)
   }
   return namespace
 }
 
-function createImportStatementKey(statement: AST.UseStatement | AST.UsePackageStatement): string {
-  if (AST.IsUsePackageStatement(statement)) {
-    // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
-    return `package:${statement.from.value}:${statement.alias?.value ?? ''}`
-  }
-  const names = statement.imports.map(createNamedImportKey).join(',')
-  // ex: use Foo as Bar from X -> use:Foo:Bar:X
-  return `use:${statement.all ? 'all' : names}:${statement.from?.value ?? ''}`
+function createImportStatementKey(statement: Modules.ImportStatement): string {
+  return Switch.kind(statement, {
+    UsePackageStatement(packageImport) {
+      // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
+      return `package:${packageImport.from.value}:${packageImport.alias?.value ?? ''}`
+    },
+    UseStatement(namedImport) {
+      const names = namedImport.imports.map(createNamedImportKey).join(',')
+      // ex: use Foo as Bar from X -> use:Foo:Bar:X
+      return `use:${namedImport.all ? 'all' : names}:${namedImport.from?.value ?? ''}`
+    },
+  })
 }
 
 function createNamedImportKey(imported: AST.NamedImport): string {
@@ -169,11 +173,11 @@ function createNamedImportKey(imported: AST.NamedImport): string {
 }
 
 function addNamedBinding(
-  importer: SourceModule,
-  targets: SourceModule['imports'][number]['targets'],
-  modules: ReadonlyMap<string, SourceModule>,
+  importer: Modules.SourceModule,
+  targets: Modules.SourceModule['imports'][number]['targets'],
+  modules: ReadonlyMap<string, Modules.SourceModule>,
   imported: AST.NamedImport,
-  bindings: ModuleBinding[],
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   seenImports: Set<string>,
 ): void {
@@ -199,7 +203,7 @@ function addNamedBinding(
   const localName = imported.alias?.value ?? targetName
   addBinding(
     importer,
-    ModuleBinding(localName, matchedTarget.path, targetName),
+    Modules.ModuleBinding(localName, matchedTarget.path, targetName),
     bindings,
     ownNames,
     seenImports,
@@ -207,11 +211,11 @@ function addNamedBinding(
 }
 
 function addWildcardBindings(
-  importer: SourceModule,
-  targetModule: SourceModule,
+  importer: Modules.SourceModule,
+  targetModule: Modules.SourceModule,
   targetPath: string,
-  relation: SourceModule['imports'][number]['targets'][number]['relation'],
-  bindings: ModuleBinding[],
+  relation: Modules.SourceModule['imports'][number]['targets'][number]['relation'],
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   seenImports: Set<string>,
 ): void {
@@ -221,7 +225,7 @@ function addWildcardBindings(
     }
     addBinding(
       importer,
-      ModuleBinding(declaration.name.value, targetPath, declaration.name.value),
+      Modules.ModuleBinding(declaration.name.value, targetPath, declaration.name.value),
       bindings,
       ownNames,
       seenImports,
@@ -231,12 +235,12 @@ function addWildcardBindings(
 }
 
 function addPackageBindings(
-  importer: SourceModule,
-  targetModule: SourceModule,
+  importer: Modules.SourceModule,
+  targetModule: Modules.SourceModule,
   targetPath: string,
-  relation: SourceModule['imports'][number]['targets'][number]['relation'],
+  relation: Modules.SourceModule['imports'][number]['targets'][number]['relation'],
   namespace: string,
-  bindings: ModuleBinding[],
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   seenImports: Set<string>,
 ): void {
@@ -244,7 +248,7 @@ function addPackageBindings(
     if (isVisible(declaration, relation)) {
       addBinding(
         importer,
-        ModuleBinding(`${namespace}.${declaration.name.value}`, targetPath, declaration.name.value),
+        Modules.ModuleBinding(`${namespace}.${declaration.name.value}`, targetPath, declaration.name.value),
         bindings,
         ownNames,
         seenImports,
@@ -255,9 +259,9 @@ function addPackageBindings(
 }
 
 function addBinding(
-  importer: SourceModule,
-  binding: ModuleBinding,
-  bindings: ModuleBinding[],
+  importer: Modules.SourceModule,
+  binding: Modules.ModuleBinding,
+  bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   seenImports: Set<string>,
   kind = 'named',
@@ -274,8 +278,8 @@ function addBinding(
 }
 
 function assertUniqueBindings(
-  source: SourceModule,
-  sourceBindings: readonly ModuleBinding[],
+  source: Modules.SourceModule,
+  sourceBindings: readonly Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
 ): void {
   const names = new Set<string>()
@@ -295,7 +299,7 @@ function assertUniqueBindings(
 
 function isVisible(
   declaration: AST.ValueDeclaration,
-  relation: SourceModule['imports'][number]['targets'][number]['relation'],
+  relation: Modules.SourceModule['imports'][number]['targets'][number]['relation'],
 ): boolean {
   if (relation === 'same-file') {
     return true
@@ -306,7 +310,7 @@ function isVisible(
 
 const visibleRelations: Record<
   AST.Visibility,
-  readonly SourceModule['imports'][number]['targets'][number]['relation'][]
+  readonly Modules.SourceModule['imports'][number]['targets'][number]['relation'][]
 > = {
   file: [],
   folder: ['same-directory'],
@@ -315,6 +319,6 @@ const visibleRelations: Record<
   public: ['same-directory', 'same-package', 'same-project', 'public'],
 }
 
-function declaresValue(source: SourceModule, name: string): boolean {
+function declaresValue(source: Modules.SourceModule, name: string): boolean {
   return AST.GetValueDeclarations(source.document).some(declaration => declaration.name.value === name)
 }

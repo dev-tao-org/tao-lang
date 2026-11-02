@@ -1,5 +1,5 @@
 import type { SyntaxNode, Tree } from '@cst'
-import { Errors } from '@shared'
+import { CarriageReturnCharacter, Errors, NewlineCharacter } from '@shared'
 import type { SourceRange } from '../../Source'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
@@ -37,7 +37,9 @@ export type LayoutPlan = {
 export function createPlan(source: string, tree: Tree): LayoutPlan {
   const plan: LayoutPlan = {
     source,
-    newline: source.includes('\r\n') ? '\r\n' : '\n',
+    newline: source.includes(CarriageReturnCharacter + NewlineCharacter)
+      ? (CarriageReturnCharacter + NewlineCharacter)
+      : NewlineCharacter,
     tokens: [],
     gaps: [],
     bounds: new Map(),
@@ -109,6 +111,9 @@ function collect(plan: LayoutPlan, node: SyntaxNode, owner: number, owners: numb
   plan.bounds.set(createNodeKey(node), { first, last: plan.tokens.length - 1 })
 }
 
+const NewlineCharacterGlobalRegx = /\n/g
+const WhitespaceOnlyRegx = /^\s*$/
+
 function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly boolean[], whole: boolean): void {
   for (let index = 0; index <= plan.tokens.length; index++) {
     const start = plan.tokens[index - 1]?.endIndex ?? 0
@@ -121,16 +126,18 @@ function buildGaps(plan: LayoutPlan, owners: readonly number[], valid: readonly 
       start,
       end,
       spaces: index === 0 || index === plan.tokens.length ? 0 : 1,
-      lines: Math.min(2, (original.match(/\n/g) ?? []).length),
+      lines: Math.min(2, (original.match(NewlineCharacterGlobalRegx) ?? []).length),
       indent: 0,
-      editable: /^\s*$/.test(original) && Boolean(interior || whole),
+      editable: WhitespaceOnlyRegx.test(original) && Boolean(interior || whole),
     })
   }
 }
 
+type TokenOwner = number | undefined
+
 function hasCompleteNeighbors(
-  left: number | undefined,
-  right: number | undefined,
+  left: TokenOwner,
+  right: TokenOwner,
   valid: readonly boolean[],
 ): boolean {
   return left !== undefined && right !== undefined && Boolean(valid[left] && valid[right])

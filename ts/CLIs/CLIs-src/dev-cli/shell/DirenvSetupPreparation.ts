@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, NullCharacter, Regxs, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { Env, FileSystem, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
 
@@ -30,14 +30,12 @@ async function prepareDevelopmentShell(
 }
 
 async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<boolean> {
-  const { env } = environment
-  const home = env['HOME']
-  if (!home || !FileSystem.existsSync(Path.resolve(home, '.tao-dev/shell/repositories'))) {
+  if (!FileSystem.existsSync(Path.home.taoDev('shell', 'repositories'))) {
     return false
   }
   const root = environment.root()
   const canonicalRoot = FileSystem.realpathSync(root)
-  if (isAlreadyInDevenv(env, canonicalRoot)) {
+  if (isAlreadyInDevenv(canonicalRoot)) {
     return false
   }
   if (!FileSystem.existsSync(Path.resolve(root, 'devenv.nix'))) {
@@ -59,17 +57,16 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   if (hash.status !== 0 || !Regxs.LowercaseHashRangeRegx.test(hash.stdout.trim())) {
     return false
   }
-  const record = Path.resolve(home, '.tao-dev/shell/repositories', hash.stdout.trim())
+  const record = Path.home.taoDev('shell', 'repositories', hash.stdout.trim())
   if (!await isEnabledForCommonDirectory(record, common)) {
     return false
   }
   return await isRegisteredWorktree(root, canonicalRoot, environment)
 }
 
-type EnvironmentValue = string | undefined
-function isAlreadyInDevenv(env: Readonly<Record<string, EnvironmentValue>>, root: string): boolean {
-  const devenvRoot = env['DEVENV_ROOT']
-  return env['TAO_DEVENV'] === '1' && devenvRoot !== undefined
+function isAlreadyInDevenv(root: string): boolean {
+  const devenvRoot = Env.get('DEVENV_ROOT')
+  return Env.get('TAO_DEVENV') === '1' && devenvRoot !== undefined
     && FileSystem.realpathSync(devenvRoot) === root
 }
 
@@ -93,13 +90,13 @@ async function isRegisteredWorktree(
 }
 
 async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<void> {
-  const { env, run, write } = environment
+  const { run, write } = environment
   const root = environment.root()
   write('Preparing this checkout’s development shell for automatic directory entry...')
   const prepared = await run('devenv', {
     args: ['shell', '--no-tui', '--', 'true'],
     cwd: root,
-    env: { ...env, DEVENV_TUI: 'false' },
+    addEnv: { DEVENV_TUI: 'false' },
     timeoutMs: 60_000,
   })
   if (prepared.status !== 0) {

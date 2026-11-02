@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FileSystem, Path } from '@shared/os'
 
 /** within identifies paths whose normalized relative path stays inside a root. */
 export function within(root: string, path: string): boolean {
@@ -13,13 +13,13 @@ export function isExcludedPath(path: string, boundary: string): boolean {
 
 /** isExcludedName filters directories that are not authored Tao source. */
 export function isExcludedName(name: string): boolean {
-  return name.startsWith('.') || name.startsWith('_gen') || name === 'output' || name === 'dist' || name === 'build'
+  return name.startsWith('.') || name.startsWith('_gen') || ExcludedBuildDirectoryNames.has(name)
 }
 
 /** findNearestProjectRoot finds the closest ancestor containing a .tao directory. */
 export function findNearestProjectRoot(
   directory: string,
-  homeDirectory = Platform.homeDirectory(),
+  homeDirectory = Path.home(),
 ): string | undefined {
   const absolute = Path.resolve(directory)
   let current = Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
@@ -39,7 +39,7 @@ export function findNearestProjectRoot(
 }
 
 /** isDiscoverableProjectDirectory excludes legacy home cache directories from project boundaries. */
-export function isDiscoverableProjectDirectory(path: string, home = Platform.homeDirectory()): boolean {
+export function isDiscoverableProjectDirectory(path: string, home = Path.home()): boolean {
   const tao = Path.join(path, '.tao')
   if (!Try.WithDefault(false, () => FileSystem.lstatSync(tao).isDirectory())) {
     return false
@@ -87,12 +87,13 @@ export function findNamedPackageRoot(path: string, projectRoot: string): string 
   return undefined
 }
 
+type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project'
 /** getImportRelation records the nearest source ownership boundary crossed by an import. */
 export function getImportRelation(
   importer: string,
   target: string,
   projectRoot: string,
-): 'same-file' | 'same-directory' | 'same-package' | 'same-project' {
+): ImportRelation {
   if (Path.resolve(importer) === Path.resolve(target)) {
     return 'same-file'
   }
@@ -104,8 +105,11 @@ export function getImportRelation(
   if (importerPackage !== targetPackage) {
     return 'same-project'
   }
+
   return 'same-directory'
 }
+
+const ExcludedBuildDirectoryNames = new Set(['output', 'dist', 'build'])
 
 function canonicalPath(path: string): string {
   const absolute = Path.resolve(path)

@@ -5,7 +5,7 @@ import { deriveNamespaceFromPath } from './Modules'
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
   severity: 'warning'
-  code: 'unused-import' | 'unused-declaration'
+  code: UsageWarningCode
   message: string
   start: number
   end: number
@@ -16,7 +16,9 @@ export const unusedWarnings = Timings.createTopLevelTimer(function(timings, docu
   return timings.run(analyzeUsage, document)
 })
 
-type Binding = { name: AST.Name; kind: 'local' | 'import' | 'namespace'; report: boolean; used: boolean }
+type UsageWarningCode = 'unused-import' | 'unused-declaration'
+type BindingKind = 'local' | 'import' | 'namespace'
+type Binding = { name: AST.Name; kind: BindingKind; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
 const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Document): UsageWarning[] {
@@ -84,18 +86,15 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
       declare(scope, child.name)
     }
     for (const statement of statements) {
-      if (AST.IsLetDeclaration(statement)) {
-        visitLet(statement, scope)
-        declare(scope, statement.name)
-      } else if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-        visitRender(statement.expression, scope)
-      } else if (AST.IsKind(statement, 'RenderInjectStatement')) {
-        visitInjection(statement.injection, scope)
-      } else if (AST.IsViewDeclaration(statement)) {
-        visitView(statement, scope)
-      } else {
-        // The view block grammar and semantic constructor constrain its statements.
-      }
+      Switch.kind(statement, {
+        LetDeclaration(definition) {
+          visitLet(definition, scope)
+          declare(scope, definition.name)
+        },
+        RenderViewExpressionStatement: render => visitRender(render.expression, scope),
+        RenderInjectStatement: render => visitInjection(render.injection, scope),
+        ViewDeclaration: view => visitView(view, scope),
+      })
     }
   }
 }
@@ -120,12 +119,13 @@ function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   if (statements.length > 0) {
     const childrenScope = createChildScope(scope)
     for (const child of statements) {
-      if (AST.IsLetDeclaration(child)) {
-        visitLet(child, childrenScope)
-        declare(childrenScope, child.name)
-      } else {
-        visitRender(child, childrenScope)
-      }
+      Switch.kind(child, {
+        LetDeclaration(definition) {
+          visitLet(definition, childrenScope)
+          declare(childrenScope, definition.name)
+        },
+        ViewRenderExpression: render => visitRender(render, childrenScope),
+      })
     }
   }
 }

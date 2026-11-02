@@ -1,5 +1,6 @@
 import * as CST from '@cst'
 import type { SyntaxNode, Tree } from '@cst'
+import { NewlineCharacter } from '@shared'
 import type { SourceRange } from '../../Source'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
@@ -8,28 +9,41 @@ export type StatementSlice = SourceRange & { node: SyntaxNode; commented: boolea
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
 export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
   const slices: StatementSlice[] = []
-  let leading: number | undefined
+  let leadingCommentStart: LeadingCommentStart
   for (const node of tree.rootNode.namedChildren) {
     const previous = slices.at(-1)
     if (CST.IsComment(node)) {
-      if (previous && !source.slice(previous.end, node.startIndex).includes('\n')) {
+      // Same-line comments move with the preceding statement; other comments lead the next one.
+      if (isSameLineTrailingComment(source, previous, node)) {
         previous.end = node.endIndex
         previous.commented = true
       } else {
-        leading ??= node.startIndex
+        leadingCommentStart ??= node.startIndex
       }
       continue
     }
+    // This statement consumes pending leading comments and retains comments nested inside it.
     slices.push({
-      start: leading ?? node.startIndex,
+      start: leadingCommentStart ?? node.startIndex,
       end: node.endIndex,
       node,
-      commented: leading !== undefined || containsComment(node),
+      commented: leadingCommentStart !== undefined || containsComment(node),
     })
-    leading = undefined
+    leadingCommentStart = undefined
   }
   return slices
 }
+
+type PreviousStatementSlice = StatementSlice | undefined
+function isSameLineTrailingComment(
+  source: string,
+  previous: PreviousStatementSlice,
+  comment: SyntaxNode,
+): previous is StatementSlice {
+  return previous !== undefined && !source.slice(previous.end, comment.startIndex).includes(NewlineCharacter)
+}
+
+type LeadingCommentStart = number | undefined
 
 function containsComment(node: SyntaxNode): boolean {
   return CST.IsComment(node) || node.namedChildren.some(containsComment)

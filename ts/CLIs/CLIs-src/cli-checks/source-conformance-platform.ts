@@ -3,6 +3,9 @@ import * as TypeScript from 'typescript'
 
 /** platformAccessIssue reports runtime-specific references outside the OS abstraction. */
 export function platformAccessIssue(node: TypeScript.Node, filename: string): string | undefined {
+  if (isProcessEnvironmentAccess(node) && filename.replaceAll('\\', '/') !== 'ts/shared/shared-src/os/Env.ts') {
+    return 'process environment access belongs in Env; use readonly values or subprocess addEnv overrides'
+  }
   if (isBuiltinReference(node)) {
     if (isOwnedBuiltinReference(node, filename)) {
       return
@@ -18,6 +21,18 @@ export function platformAccessIssue(node: TypeScript.Node, filename: string): st
 }
 
 type MemberAccess = TypeScript.PropertyAccessExpression | TypeScript.ElementAccessExpression
+
+function isProcessEnvironmentAccess(node: TypeScript.Node): boolean {
+  if (!TypeScript.isPropertyAccessExpression(node) && !TypeScript.isElementAccessExpression(node)) {
+    return false
+  }
+  if (memberName(node) !== 'env') {
+    return false
+  }
+  const receiver = node.expression
+  const directProcess = TypeScript.isIdentifier(receiver) && receiver.text === 'process'
+  return directProcess || isGlobalMember(receiver, 'process')
+}
 
 function isOwnedBuiltinReference(node: TypeScript.Node, filename: string): boolean {
   const normalizedFilename = filename.replaceAll('\\', '/')

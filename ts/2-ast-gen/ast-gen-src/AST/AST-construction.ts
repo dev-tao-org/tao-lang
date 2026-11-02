@@ -7,7 +7,7 @@ export * from '../../_gen_AST/AST-generated'
 /** Construct creates a semantic node from its generated Tree-sitter constructor entry. */
 export function Construct<Kind extends Generated.Node['kind']>(
   cst: CST.SyntaxNode,
-  kind: Kind | readonly Kind[],
+  kind: KindSelection<Kind>,
 ): Generated.OfKind<Kind> {
   const result = constructNode(cst)
   if (!Generated.IsKind(result, kind)) {
@@ -15,6 +15,10 @@ export function Construct<Kind extends Generated.Node['kind']>(
   }
   return result as Generated.OfKind<Kind>
 }
+
+type KindSelection<Kind> = Kind | readonly Kind[]
+type GeneratedNodeField = 'kind' | 'start' | 'end'
+type OptionalVisibility = Generated.Visibility | undefined
 
 type CstKind = keyof typeof Generated.CstConstructorKinds
 type ChildField = { multiple: boolean; required: boolean; types: readonly string[] }
@@ -223,8 +227,10 @@ function validateBlockStatements(
   }
 }
 
+const BlockTypeSuffixRegx = /Block$/
+const LowercaseUppercaseBoundaryRegx = /([a-z])([A-Z])/g
 function getBlockName(name: keyof typeof Generated.CstBlockStatementKinds): string {
-  return name.replace(/Block$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+  return name.replace(BlockTypeSuffixRegx, '').replace(LowercaseUppercaseBoundaryRegx, '$1 $2').toLowerCase()
 }
 
 function makeBlock(cst: CST.SyntaxNode, statements: readonly Generated.Node[]): Generated.Block {
@@ -261,7 +267,7 @@ function constructImportPath(cst: CST.SyntaxNode): Generated.ImportPath {
 function constructFieldNode<Kind extends Generated.Node['kind']>(
   cst: CST.SyntaxNode,
   field: string,
-  kind: Kind | readonly Kind[],
+  kind: KindSelection<Kind>,
 ): Generated.OfKind<Kind> {
   return Construct(CST.RequiredField(cst, field), kind)
 }
@@ -269,7 +275,7 @@ function constructFieldNode<Kind extends Generated.Node['kind']>(
 function constructOptionalField<Kind extends Generated.Node['kind']>(
   cst: CST.SyntaxNode,
   field: string,
-  kind: Kind | readonly Kind[],
+  kind: KindSelection<Kind>,
 ): Generated.OfKind<Kind> | undefined {
   const child = cst.childForFieldName(field)
   return child ? Construct(child, kind) : undefined
@@ -278,20 +284,20 @@ function constructOptionalField<Kind extends Generated.Node['kind']>(
 function constructFieldList<Kind extends Generated.Node['kind']>(
   cst: CST.SyntaxNode,
   field: string,
-  kind: Kind | readonly Kind[],
+  kind: KindSelection<Kind>,
 ): Generated.OfKind<Kind>[] {
   return constructChildren(cst.childrenForFieldName(field), kind)
 }
 
 function constructChildren<Kind extends Generated.Node['kind']>(
   children: readonly CST.SyntaxNode[],
-  kind: Kind | readonly Kind[],
+  kind: KindSelection<Kind>,
 ): Generated.OfKind<Kind>[] {
   return children.map(child => Construct(child, kind))
 }
 
 function constructOptionalVisibility(cst: CST.SyntaxNode): Generated.Visibility | undefined {
-  return cst.childForFieldName('visibility')?.text as Generated.Visibility | undefined
+  return cst.childForFieldName('visibility')?.text as OptionalVisibility
 }
 
 function getSourceRange(cst: CST.SyntaxNode): { start: number; end: number } {
@@ -301,7 +307,7 @@ function getSourceRange(cst: CST.SyntaxNode): { start: number; end: number } {
 function makeNode<Kind extends Generated.Node['kind']>(
   cst: CST.SyntaxNode,
   kind: Kind,
-  fields: Omit<Generated.OfKind<Kind>, 'kind' | 'start' | 'end'>,
+  fields: Omit<Generated.OfKind<Kind>, GeneratedNodeField>,
 ): Generated.OfKind<Kind> {
   return { ...fields, kind, ...getSourceRange(cst) } as Generated.OfKind<Kind>
 }

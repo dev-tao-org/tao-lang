@@ -1,11 +1,11 @@
 import type { compile, CompileOptions } from '@compile/Compile'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Timings, Try } from '@shared'
+import { Errors, joinTextLines, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
-import { openProjectWorkspace } from '../ProjectWorkspace'
-import { createWorkspace } from '../Workspace'
+import { openProjectWorkspace, type ProjectWorkspaceOptions } from '../ProjectWorkspace'
+import { createWorkspace, type WorkspaceSession } from '../Workspace'
 import type { TestBrowser } from './AppTests'
 import type { TestDriver, TestProgress } from './RunTests'
 
@@ -31,6 +31,8 @@ export async function createAppTestDriver(
   }
 }
 
+type TestWorkspace = WorkspaceSession
+
 type DriverContext = {
   path: string
   source: string
@@ -41,7 +43,7 @@ type DriverContext = {
 }
 
 type Session = {
-  workspace?: ReturnType<typeof createWorkspace> | Awaited<ReturnType<typeof openProjectWorkspace>>
+  workspace?: TestWorkspace
   expo?: Runtime.ExpoSession
   browser?: TestBrowser
 }
@@ -113,7 +115,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   if (await discoverProject(path)) {
     return await openTestProject(path, app, { runtimeOptions, compile })
   }
-  await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'), { recursive: true })
+  await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'))
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
   Artifacts.trackTemporary(directory)
   return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
@@ -126,7 +128,7 @@ function selectCompilationApp(options: CompileOptions, app: string): CompileOpti
 async function openTestProject(
   path: string,
   app: string,
-  options: Parameters<typeof openProjectWorkspace>[1],
+  options: ProjectWorkspaceOptions,
 ) {
   const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}`).slice(0, 16)}`
   for (let slot = 0; slot < 16; slot++) {
@@ -147,7 +149,7 @@ async function openTestProject(
   return Errors.ThrowHostEnvironment(`All app-test sessions are active for ${path}; retry after a run finishes.`)
 }
 
-function selectTestSession(options: Parameters<typeof openProjectWorkspace>[1], id: string) {
+function selectTestSession(options: ProjectWorkspaceOptions, id: string) {
   return { ...options, id }
 }
 
@@ -172,7 +174,7 @@ async function retainExpoOutput(state: Session): Promise<void> {
     const output = await state.expo.output()
     await FileSystem.writeFile(
       Path.join(state.workspace.runtime.directory, 'expo.log'),
-      [output.stdout, output.stderr].join('\n'),
+      joinTextLines(output.stdout, output.stderr),
     )
   }
 }

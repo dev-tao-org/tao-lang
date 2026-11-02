@@ -4,19 +4,26 @@ import { assertNewWorkspacePath, assertNewWorkspaceTree, workspaceFormat } from 
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
 
+type FixCommandOptions = { exclude?: string[] }
+
 /** fixCommand applies the available new-workspace fixes. */
 export default registerCommand({
   name: 'fix',
   description:
     'Fix and format named Tao source files, or fix TypeScript style and format the repository when no paths are given.',
   arguments: [{ name: 'paths', description: 'Repository-relative Tao source files.', variadic: true }],
-  async action(paths: string[]) {
+  options: [{ flags: '--exclude <paths...>', description: 'Leave these paths unchanged during repository fixes.' }],
+  async action(paths: string[], options: FixCommandOptions = {}) {
     if (paths.length === 0) {
       await assertNewWorkspaceTree()
       const { fixSourceConformance } = await import('../../cli-checks/source-conformance-fix')
-      await fixSourceConformance()
-      await workspaceFormat('fmt')
+      const excludedFiles = options.exclude ?? []
+      await fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
+      await workspaceFormat('fmt', excludedFiles)
       return
+    }
+    if (options.exclude?.length) {
+      Errors.ThrowUserInput('--exclude applies to repository fixes without named Tao source files.')
     }
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)

@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs, TabCharacter } from '@shared'
 import { FileSystem, Platform } from '@shared/os'
 import type { GitSourceAdapter } from './Types'
 
@@ -15,7 +15,7 @@ async function resolveGitHubCommit(repository: string, version: string): Promise
   const refs = refNames(version)
   const output = await Platform.capture('git ls-remote', { variadicArgs: [repository, ...refs] })
   // ex: X\trefs/tags/v1\n -> [[X, refs/tags/v1]]
-  const records = output.split('\n').filter(Boolean).map(line => line.split('\t'))
+  const records = output.split(NewlineCharacter).filter(Boolean).map(line => line.split(TabCharacter))
   const commit = refs.map(ref => records.find(record => record[1] === ref)?.[0]).find(Boolean)
   return validateCommit(commit, repository, version)
 }
@@ -24,7 +24,7 @@ async function fetchGitHubCommit(repository: string, commit: string, destination
   if (!isCommit(commit)) {
     Errors.ThrowUserInput(`Invalid immutable Git commit ID ${commit}.`)
   }
-  await FileSystem.mkdir(destination, { recursive: true })
+  await FileSystem.mkdir(destination)
   await Platform.capture('git', { variadicArgs: ['init', '--quiet', destination] })
   await Platform.capture('git', {
     variadicArgs: ['-C', destination, 'fetch', '--quiet', '--depth=1', repository, commit],

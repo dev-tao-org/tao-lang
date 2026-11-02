@@ -9,7 +9,8 @@ export const Formatting = {
     fm.oneSpaceAfter('root')
   },
   ViewDeclaration(fm) {
-    fm.oneSpaceAfter('view').noSpaceBeforeProperty('parameters')
+    fm.oneSpaceAfter('view')
+    fm.noSpaceBeforeProperty('parameters')
   },
   Block(fm) {
     fm.oneSpaceBefore('{')
@@ -18,7 +19,8 @@ export const Formatting = {
     fm.noSpaceBeforeProperty('argumentList')
   },
   LetDeclaration(fm) {
-    fm.oneSpaceAfter('let').oneSpaceAround('=', 'is')
+    fm.oneSpaceAfter('let')
+    fm.oneSpaceAround('=', 'is')
   },
   RenderInjectStatement(fm) {
     fm.oneSpaceAfter('render')
@@ -42,16 +44,24 @@ export const Formatting = {
     fm.commaSpacedList()
   },
   Injection(fm) {
-    fm.oneSpaceAfter('inject').commaSpacedList().oneSpaceBeforeProperty('code').preserveProperty('code')
+    fm.oneSpaceAfter('inject')
+    fm.commaSpacedList()
+    fm.oneSpaceBeforeProperty('code')
+    fm.preserveProperty('code')
   },
   UseStatement(fm) {
-    fm.oneSpaceAfter('use').oneSpaceAround('from').commaSpacedList()
+    fm.oneSpaceAfter('use')
+    fm.oneSpaceAround('from')
+    fm.commaSpacedList()
   },
   UsePackageStatement(fm) {
-    fm.oneSpaceAfter('use', 'package').oneSpaceAround('as')
+    fm.oneSpaceAfter('use', 'package')
+    fm.oneSpaceAround('as')
   },
   RequiresDeclaration(fm) {
-    fm.oneSpaceAfter('requires').noSpaceAround(':').oneSpaceAround('version', 'as')
+    fm.oneSpaceAfter('requires')
+    fm.noSpaceAround(':')
+    fm.oneSpaceAround('version', 'as')
   },
   NamedImport(fm) {
     fm.oneSpaceAround('as')
@@ -60,7 +70,8 @@ export const Formatting = {
     fm.oneSpaceAfter('tests')
   },
   TestDeclaration(fm) {
-    fm.noSpaceBefore('(').commaSpacedList()
+    fm.noSpaceBefore('(')
+    fm.commaSpacedList()
   },
   RunStatement(fm) {
     fm.oneSpaceAfter('run')
@@ -69,7 +80,8 @@ export const Formatting = {
     fm.oneSpaceAfter('press')
   },
   TypeStatement(fm) {
-    fm.oneSpaceAfter('type').oneSpaceAround('into')
+    fm.oneSpaceAfter('type')
+    fm.oneSpaceAround('into')
   },
   ExpectStatement(fm) {
     fm.oneSpaceAfter('expect')
@@ -78,7 +90,8 @@ export const Formatting = {
     fm.oneSpaceAfter('text')
   },
   InputExpectation(fm) {
-    fm.oneSpaceAround('input').oneSpaceAfter('value')
+    fm.oneSpaceAround('input')
+    fm.oneSpaceAfter('value')
   },
   InputValueExpectation(fm) {
     fm.oneSpaceAfter('input', 'value')

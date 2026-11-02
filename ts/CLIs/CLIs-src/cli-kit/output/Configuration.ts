@@ -20,11 +20,9 @@ export async function configureCLIOutput(
     logFile: Env.get('OUTPUT_LOG_FILE'),
     forwardEvents: Env.is('CLI_OUTPUT_EVENTS', '1'),
     passthrough: options.delegate,
+    childEnvironment: createDelegatedChildEnvironment(options.delegate, resolved),
   })
-  if (options.delegate) {
-    Env.set('TERMINAL_OUTPUT', resolved.routing.stdout === 'terminal' ? '1' : '0')
-    Env.set('TERMINAL_UI', resolved.ui ? '1' : '0')
-  } else if (resolved.ui && !Env.is('CLI_OUTPUT_EVENTS', '1')) {
+  if (!options.delegate && resolved.ui && !Env.is('CLI_OUTPUT_EVENTS', '1')) {
     const { createTUI } = await import('./tui/TUI')
     const factory = async () => createTUI()
     IO.setPromptRenderer(factory)
@@ -38,6 +36,22 @@ type OutputEnvironment = {
   ui?: string
   terminalOutput?: string
   tty: boolean
+}
+
+type ResolvedOutputConfiguration = { ui: boolean; routing: IOConfiguration }
+type OptionalDelegate = boolean | undefined
+
+function createDelegatedChildEnvironment(
+  delegate: OptionalDelegate,
+  resolved: ResolvedOutputConfiguration,
+): IOConfiguration['childEnvironment'] {
+  if (!delegate) {
+    return undefined
+  }
+  return {
+    TERMINAL_OUTPUT: resolved.routing.stdout === 'terminal' ? '1' : '0',
+    TERMINAL_UI: resolved.ui ? '1' : '0',
+  }
 }
 
 function resolveOutputConfiguration(entrypoint: CLIEntrypoint, environment: OutputEnvironment) {

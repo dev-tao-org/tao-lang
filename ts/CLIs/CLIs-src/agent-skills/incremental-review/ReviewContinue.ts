@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, Objects, Regxs } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { git, head, writeJson } from './ReviewGit'
 import * as ReviewSessionModule2 from './ReviewSession'
@@ -23,7 +23,7 @@ export async function continueReview(
     await ReviewSessionModule2.requireCleanReviewed(previous)
     const reviewedHead = await head(previous.reviewedRoot)
     const session = await ReviewSessionModule2.prepareReview(root, previous.base, previous.baseCommit, branch, worktree)
-    session.accepted = { ...previous.accepted }
+    session.accepted = Objects.copy(previous.accepted)
     session.recheck = [...previous.recheck]
     session.notes = [...previous.notes]
     session.continuation = {

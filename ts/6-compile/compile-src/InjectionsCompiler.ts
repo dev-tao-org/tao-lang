@@ -1,5 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { Errors, Switch } from '@shared'
+import ts from 'typescript'
+import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
 
@@ -8,8 +10,9 @@ export function compileInjection(
   node: AST.Injection,
   bindings: ReadonlySet<string>,
   names: RuntimeEmitter.ComponentNames,
+  scope: ScopeCode,
 ): RuntimeEmitter.InjectionCompilation {
-  const captures = node.captures.map(capture => compileCapture(capture, bindings, names))
+  const captures = node.captures.map(capture => compileCapture(capture, bindings, names, scope))
   return RuntimeEmitter.emitInjectionCustomHook(node, names, captures)
 }
 
@@ -17,17 +20,18 @@ function compileCapture(
   node: AST.Capture,
   bindings: ReadonlySet<string>,
   names: RuntimeEmitter.ComponentNames,
+  scope: ScopeCode,
 ): RuntimeEmitter.InjectionCapture {
   assertCaptureName(node.name.value)
   return Switch.kind(node.value, {
     Name(name) {
       const text = isTextExpression(name, reference => bindings.has(reference.value))
-      const value = RuntimeEmitter.emitName(name, `${names.render}.scope`) + (text ? ' as string' : '')
-      return { node, type: text ? 'text' : 'unknown', value }
+      const value = RuntimeEmitter.emitName(name, scope) + (text ? ' as string' : '')
+      return RuntimeEmitter.InjectionCapture(node, text ? 'text' : 'unknown', value)
     },
     ContextReference: reference =>
       reference.value === 'children'
-        ? { node, type: 'children', value: `${names.render}.children` }
+        ? RuntimeEmitter.InjectionCapture(node, 'children', `${names.render}.children`)
         : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
   })
 }
@@ -38,52 +42,16 @@ function assertCaptureName(name: string): void {
   }
 }
 
-const reservedCaptureNames = new Set([
-  'arguments',
-  'await',
-  'break',
-  'case',
-  'catch',
-  'class',
-  'const',
-  'continue',
-  'debugger',
-  'default',
-  'delete',
-  'do',
-  'else',
-  'enum',
-  'eval',
-  'export',
-  'extends',
-  'false',
-  'finally',
-  'for',
-  'function',
-  'if',
-  'implements',
-  'import',
-  'in',
-  'instanceof',
-  'interface',
-  'let',
-  'new',
-  'null',
-  'package',
-  'private',
-  'protected',
-  'public',
-  'return',
-  'static',
-  'super',
-  'switch',
-  'this',
-  'throw',
-  'try',
-  'typeof',
-  'var',
-  'void',
-  'while',
-  'with',
-  'yield',
-])
+function createReservedCaptureNames(): ReadonlySet<string> {
+  // Await is reserved in modules; eval and arguments are forbidden strict-mode bindings.
+  const names = new Set(['await', 'eval', 'arguments'])
+  for (let kind = ts.SyntaxKind.FirstReservedWord; kind <= ts.SyntaxKind.LastFutureReservedWord; kind++) {
+    const keyword = ts.tokenToString(kind)
+    if (keyword) {
+      names.add(keyword)
+    }
+  }
+  return names
+}
+
+const reservedCaptureNames = createReservedCaptureNames()

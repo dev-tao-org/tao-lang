@@ -1,10 +1,9 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { runtimeDependencies } from '@runtime/Runtime'
 import * as Runtime from '@runtime/Runtime'
 import { Errors, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
+import { FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import * as LockFile from './dependencies/LockFile'
 import { createProjectDependencyOptions } from './dependencies/Options'
@@ -18,14 +17,14 @@ import { ProjectDependencies } from './ProjectDependencies'
 import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
-import * as ManagedModules from './sidecars/ManagedModules'
+import * as ManagedModules from './sidecars/managed-modules/ManagedModules'
 
 /** PreparationOptions supplies explicit updates and local dependency-fixture adapters. */
 export type PreparationOptions = {
   update?: string[]
   repair?: boolean
   executor?: ManagedModules.BunExecutor
-  runtimePins?: Record<string, string>
+  runtimePins?: Runtime.RuntimePackageVersions
   runtimeInstaller?: Runtime.RuntimeInstaller
   dependencyOptions?: DependencyStoreOptions
 }
@@ -42,7 +41,9 @@ export async function prepareProject(
   options: PreparationOptions = {},
 ): Promise<void> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  }
   await ensureProjectMetadata(project.root)
   const lifecycle = await Lifecycle.acquireProjectLifecycle(project.root)
   if (!lifecycle) {
@@ -50,7 +51,9 @@ export async function prepareProject(
   }
   return await Try(async () => {
     const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
-      ?? Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
+    if (!lock) {
+      Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
+    }
     return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
   }, { finally: lifecycle.release })
 }
@@ -61,25 +64,16 @@ export async function inspectProjectPreparation(
   options: ProjectPreparationInspectionOptions = {},
 ): Promise<void> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
-  const input = await loadProjectManagedInput(entry, options)
-  if (
-    options.moduleRoot
-    && !input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(options.moduleRoot!))
-  ) {
-    Errors.ThrowUserInput(`Module ${options.moduleRoot} has no reachable managed npm or sidecar profile.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
+  const input = await loadProjectManagedInput(entry, options)
+  requireReachableManagedModule(input, options.moduleRoot)
   if (!input) {
     if (options.runtime === false) {
       return
     }
-    if (
-      !await Runtime.preparedRuntime({
-        toolchainCacheDirectory: Path.join(project.root, '.tao/cache/runtime-toolchains'),
-      })
-    ) {
-      requireSetup('The app runtime needs setup.')
-    }
+    await requirePreparedRuntime(project.root)
     return
   }
   await ManagedModules.readManagedModules(input)
@@ -89,11 +83,12 @@ export async function inspectProjectPreparation(
   }
 }
 
+type SourceModuleField = 'path' | 'document'
 /** buildManagedModulesInput derives an app installation from reachable module-owned npm declarations. */
 export async function buildManagedModulesInput(
   root: string,
   sources: readonly Pick<SourceModule, SourceModuleField>[],
-  runtimePins?: Record<string, string>,
+  runtimePins?: Runtime.RuntimePackageVersions,
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const modules = new Map<string, ManagedModules.ManagedModulesInput['modules'][number]>()
   const needed = new Set<string>()
@@ -123,7 +118,7 @@ export async function buildManagedModulesInput(
     directory: root,
     modules: [...modules.values()].filter(module => needed.has(module.directory)),
     target: 'web',
-    runtimePins: runtimePins ?? await runtimeDependencies(),
+    runtimePins: runtimePins ?? await Runtime.runtimeDependencies(),
     runtimePolicy: runtimePins ? undefined : await Runtime.runtimeDependencyPolicy(),
     bunVersion: Platform.runtimeVersion(),
   }
@@ -131,22 +126,33 @@ export async function buildManagedModulesInput(
 
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
 export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
-  const child = Platform.spawn([command, ...args], {
-    cwd,
-    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  return { status, stdout, stderr }
+  const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+  const result = await Platform.runIgnoreStatus([command, ...args], { cwd, addEnv })
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
 type ProjectPreparationOption = 'runtimePins' | 'dependencyOptions'
-type SourceModuleField = 'path' | 'document'
+
+type OptionalManagedInput = ManagedModules.ManagedModulesInput | undefined
+type RequestedModuleRoot = string | undefined
+
+function requireReachableManagedModule(input: OptionalManagedInput, moduleRoot: RequestedModuleRoot): void {
+  if (!moduleRoot) {
+    return
+  }
+  const reachable = input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(moduleRoot))
+  if (!reachable) {
+    Errors.ThrowUserInput(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
+  }
+}
+
+async function requirePreparedRuntime(projectRoot: string): Promise<void> {
+  const toolchainCacheDirectory = Path.join(projectRoot, '.tao/cache/runtime-toolchains')
+  const prepared = await Runtime.preparedRuntime({ toolchainCacheDirectory })
+  if (!prepared) {
+    requireSetup('The app runtime needs setup.')
+  }
+}
 
 // loadProjectManagedInput reads the reachable locked graph without downloading dependencies.
 async function loadProjectManagedInput(
@@ -154,7 +160,9 @@ async function loadProjectManagedInput(
   options: Pick<PreparationOptions, ProjectPreparationOption> = {},
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+  }
   const dependencies = new ProjectDependencies(
     project.root,
     options.dependencyOptions ?? await createProjectDependencyOptions(project.root),
@@ -201,7 +209,9 @@ async function prepareEntrySources(
   services: DependencyStoreOptions,
 ): Promise<SourceModule[]> {
   const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
-    ?? Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
+  if (!lock) {
+    Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
+  }
   const resolutions = new Map<string, Promise<{ root: string }>>()
   const resolvedPins = new Map<string, string>()
   return await Try(() =>
@@ -209,7 +219,10 @@ async function prepareEntrySources(
       resolveProject(importer, alias) {
         const owner = findNearestProjectRoot(Path.dirname(importer)) ?? root
         const key = `${owner}:${alias}`
-        const resolved = resolutions.get(key) ?? prepareSourceDependency(root, owner, alias, services, resolvedPins)
+        let resolved = resolutions.get(key)
+        if (resolved === undefined) {
+          resolved = prepareSourceDependency(root, owner, alias, services, resolvedPins)
+        }
         resolutions.set(key, resolved)
         return resolved
       },
@@ -223,7 +236,9 @@ async function loadEntry(
 ): Promise<SourceModule[]> {
   const parser = createParser()
   const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')))
-    ?? Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
+  if (document === undefined) {
+    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
+  }
   return await loadModules(
     { path: entry, document },
     {

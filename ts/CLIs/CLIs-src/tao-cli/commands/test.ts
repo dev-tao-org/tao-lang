@@ -5,6 +5,7 @@ import { findTaoTestFiles } from '../../dev-cli/testing/TaoTests'
 import type { TestExecutionOptions } from '../../dev-cli/testing/TestPlan'
 import { withProjectSessions } from '../ProjectCommand'
 
+type TaoTestCommandOptions = TestExecutionOptions & { session?: string }
 /** taoTestCommand runs Tao app journeys on the default headless target. */
 export default registerCommand({
   name: 'test',
@@ -31,5 +32,3 @@ export default registerCommand({
     }, options.session)
   },
 })
-
-type TaoTestCommandOptions = TestExecutionOptions & { session?: string }

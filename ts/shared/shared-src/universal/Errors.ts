@@ -1,3 +1,4 @@
+import { NewlineCharacter } from './Characters'
 import * as IdentifiersRegxs from './Regxs/IdentifiersRegxs'
 
 /** TaoError declares errors expected by Tao command and library code. */
@@ -188,7 +189,7 @@ function errorDetails(error: unknown, stacks: string[], seen: WeakSet<Error>): u
   if (fields.messageForUser === error.message) {
     delete fields.messageForUser
   }
-  const frames = stack?.split('\n').slice(1).join('\n')
+  const frames = stack?.split(NewlineCharacter).slice(1).join(NewlineCharacter)
   if (frames) {
     stacks.push(frames)
   }

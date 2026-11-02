@@ -1,6 +1,6 @@
 import { Errors, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
-import { findNearestProjectRoot } from '../modules/Paths'
+import { findNearestProjectRoot } from '../../modules/Paths'
 
 /** withManagedModuleLock serializes publication and cleanup for one live module directory. */
 export async function withManagedModuleLock<Value>(
@@ -15,7 +15,7 @@ export async function withManagedModuleLock<Value>(
     )
   }
   const lockDirectory = Path.join(ownerRoot, '.tao', 'locks')
-  await FileSystem.mkdir(lockDirectory, { recursive: true })
+  await FileSystem.mkdir(lockDirectory)
   const lockPath = Path.join(lockDirectory, `module-${Platform.hashText(canonicalDirectory)}.lock`)
   const lock = await SessionLock.acquire(lockPath)
   if (!lock) {

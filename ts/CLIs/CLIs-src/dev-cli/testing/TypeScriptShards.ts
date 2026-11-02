@@ -1,5 +1,5 @@
 import { IO, type OutputChannel, runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
 import { assertTestRunActive, runWorkerBatch, type TestPlan, type TestRunSignal } from './TestPlan'
@@ -43,7 +43,7 @@ export async function runTypeScriptTests(
   assertTestRunActive(signal)
   const failures = results.filter((failure): failure is string => failure !== undefined)
   if (failures.length > 0) {
-    Errors.ThrowUserInput(`TypeScript shards failed:\n${failures.join('\n')}`)
+    Errors.ThrowUserInput(`TypeScript shards failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
 }
 
@@ -79,7 +79,7 @@ async function runShard(
         cwd: Repo.resolvePath('ts'),
         output,
         signal,
-        env: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+        addEnv: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
       }),
     slowSeconds,
     output,

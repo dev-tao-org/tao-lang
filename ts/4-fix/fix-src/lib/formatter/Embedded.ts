@@ -1,5 +1,5 @@
 import { createFromBuffer } from '@dprint/formatter'
-import { Timings, Try } from '@shared'
+import { CarriageReturnCharacter, NewlineCharacter, Timings, Try } from '@shared'
 
 /** EmbeddedFormatter formats a native function body or preserves it by returning undefined. */
 export type EmbeddedFormatter = (source: string, options: EmbeddedOptions) => string | undefined
@@ -13,7 +13,7 @@ type EmbeddedOptions = { indent: number; level: number; width: number; newline: 
 
 const initialize = Timings.measured('formatter.typescript.initialize', function(bytes: Uint8Array) {
   const formatter = createFromBuffer(Uint8Array.from(bytes))
-  formatter.setConfig({}, { semiColons: 'asi', quoteStyle: 'preferSingle', 'jsx.quoteStyle': 'preferDouble' })
+  formatter.setConfig({}, { 'semiColons': 'asi', 'quoteStyle': 'preferSingle', 'jsx.quoteStyle': 'preferDouble' })
   const format: EmbeddedFormatter = (source, options) =>
     Try.WithDefault(undefined, () =>
       formatter.formatText({
@@ -23,7 +23,7 @@ const initialize = Timings.measured('formatter.typescript.initialize', function(
           indentWidth: options.indent,
           lineWidth: options.width,
           fileIndentLevel: options.level,
-          newLineKind: options.newline === '\r\n' ? 'crlf' : 'lf',
+          newLineKind: options.newline === (CarriageReturnCharacter + NewlineCharacter) ? 'crlf' : 'lf',
         },
       }))
   return Object.assign(format, { license: formatter.getLicenseText() })

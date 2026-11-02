@@ -1,4 +1,4 @@
-import { Switch } from '@shared'
+import { NewlineCharacter, Switch } from '@shared'
 import wrapAnsi from 'wrap-ansi'
 import type { ChannelState } from '../Output'
 
@@ -31,7 +31,9 @@ export function wrappedTail(lines: readonly string[], width: number, limit: numb
   if (limit <= 0) {
     return []
   }
-  return lines.flatMap(line => wrapAnsi(line, width, { hard: true, trim: false, wordWrap: false }).split('\n')).slice(
+  return lines.flatMap(line =>
+    wrapAnsi(line, width, { hard: true, trim: false, wordWrap: false }).split(NewlineCharacter)
+  ).slice(
     -limit,
   )
 }

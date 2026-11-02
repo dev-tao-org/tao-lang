@@ -5,6 +5,7 @@ import { runTaoTests } from '../testing/TaoTests'
 import { planTestExecution, type TestExecutionOptions } from '../testing/TestPlan'
 import { registerCommand } from './_command-runner'
 
+type TestCommandOptions = TestExecutionOptions & { slow?: string }
 /** testCommand runs TypeScript and Tao app tests, retaining scoped selections. */
 export default registerCommand({
   name: 'test',
@@ -44,9 +45,9 @@ export default registerCommand({
   },
 })
 
-type TestCommandOptions = TestExecutionOptions & { slow?: string }
+type OptionalTestTarget = string | undefined
 
-function resolveTestArguments(workspaceTarget: string | undefined, target: string | undefined): string[] {
+function resolveTestArguments(workspaceTarget: OptionalTestTarget, target: OptionalTestTarget): string[] {
   if (workspaceTarget) {
     return [workspaceTarget]
   }
@@ -56,7 +57,7 @@ function resolveTestArguments(workspaceTarget: string | undefined, target: strin
   return []
 }
 
-function workspaceTestTarget(target: string | undefined): string | undefined {
+function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
   if (!target) {
     return undefined
   }

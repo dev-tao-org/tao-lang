@@ -1,6 +1,5 @@
 import { Errors } from '@shared'
-import { cloneElement, createContext, createElement, isValidElement, useContext } from 'react'
-import type { ComponentType, ReactElement, ReactNode } from 'react'
+import React from './Bridge-React'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
 
@@ -8,9 +7,9 @@ import type { Scope as RuntimeScope } from './Scope'
 export type View = {
   readonly name: string
   readonly parameters: readonly string[]
-  readonly render: ComponentType<ViewComponentProps>
+  readonly render: React.ComponentType<ViewComponentProps>
   readonly scope: RuntimeScope
-  readonly foreignComponent?: ComponentType<never>
+  readonly foreignComponent?: React.ComponentType<never>
   readonly [viewMarker]: true
 }
 
@@ -18,7 +17,7 @@ export type View = {
 export type ViewComponentProps = {
   readonly view: View
   readonly scope: RuntimeScope
-  readonly children: readonly ReactNode[]
+  readonly children: readonly React.ReactNode[]
   readonly testID?: string
   readonly observer?: RuntimeObserver
 }
@@ -29,7 +28,7 @@ export type ViewRenderContext = ViewComponentProps & { readonly startedAt?: numb
 /** ViewRenderArguments holds positional values, ordered children and an optional native tag. */
 export type ViewRenderArguments = {
   readonly values: readonly unknown[]
-  readonly children: readonly ReactNode[]
+  readonly children: readonly React.ReactNode[]
   readonly testID?: string
 }
 
@@ -37,12 +36,12 @@ export type ViewRenderArguments = {
 export type AppOptions = {
   onApplied?(revision: string): void
   observer?: RuntimeObserver
-  fallback?: ReactNode
+  fallback?: React.ReactNode
 }
 
 /** RuntimeTiming describes one measured runtime phase. */
 export type RuntimeTiming = {
-  phase: 'bind' | 'render' | 'render-to-applied'
+  phase: ViewRenderPhase
   durationMs: number
 }
 
@@ -56,7 +55,7 @@ export type RuntimeObserver = {
 export function ViewDeclaration(
   name: string,
   parameters: readonly string[],
-  render: ComponentType<ViewComponentProps>,
+  render: React.ComponentType<ViewComponentProps>,
   scope: RuntimeScope = Scope(),
 ): View {
   return { name, parameters: [...parameters], render, scope, [viewMarker]: true }
@@ -65,11 +64,11 @@ export function ViewDeclaration(
 /** ViewRenderArguments packages positional values, children and an optional test identifier. */
 export function ViewRenderArguments(
   values: readonly unknown[] = [],
-  inputChildren: readonly ReactNode[] = [],
+  inputChildren: readonly React.ReactNode[] = [],
   testID?: string,
 ): ViewRenderArguments {
   const children = inputChildren.map((child, index) =>
-    isValidElement(child) ? cloneElement(child, { key: child.key ?? index }) : child
+    React.isValidElement(child) ? React.cloneElement(child, { key: child.key ?? index }) : child
   )
   return { values, testID, children }
 }
@@ -79,8 +78,8 @@ export function ViewRenderExpression(
   candidate: unknown,
   args: ViewRenderArguments,
   observer?: RuntimeObserver,
-): ReactElement {
-  const body = createElement(ViewBody, { candidate, args, key: args.testID })
+): React.ReactElement {
+  const body = React.createElement(ViewBody, { candidate, args, key: args.testID })
   return observer ? ProvideRuntimeObserver(observer, body) : body
 }
 
@@ -91,36 +90,40 @@ export function beginViewRender(props: ViewComponentProps): ViewRenderContext {
 }
 
 /** finishViewRender reports this component's time and tags its returned native root. */
-export function finishViewRender(context: ViewRenderContext, result: ReactNode): ReactNode {
+export function finishViewRender(context: ViewRenderContext, result: React.ReactNode): React.ReactNode {
   observe(context.observer, 'render', context.startedAt)
   return applyTestID(result, context.testID)
 }
 
 /** ProvideRuntimeObserver sets the timing observer for a runtime subtree. */
-export function ProvideRuntimeObserver(observer: RuntimeObserver | undefined, children: ReactNode): ReactElement {
-  return createElement(RuntimeObserverContext.Provider, { value: observer }, children)
+export function ProvideRuntimeObserver(
+  observer: OptionalRuntimeObserver,
+  children: React.ReactNode,
+): React.ReactElement {
+  return React.createElement(RuntimeObserverContext.Provider, { value: observer }, children)
 }
 
 const viewMarker: unique symbol = Symbol('TaoView')
-const RuntimeObserverContext = createContext<RuntimeObserver | undefined>(undefined)
+const RuntimeObserverContext = React.createContext<OptionalRuntimeObserver>(undefined)
 
 type ViewBodyProps = { candidate: unknown; args: ViewRenderArguments; testID?: string }
 
-function ViewBody({ candidate, args, testID }: ViewBodyProps): ReactElement {
+function ViewBody({ candidate, args, testID }: ViewBodyProps): React.ReactElement {
   const view = requireView(candidate)
-  const observer = useContext(RuntimeObserverContext)
+  const observer = React.useContext(RuntimeObserverContext)
   const bindingStartedAt = observer?.now()
   const scope = bindValues(view, args)
   observe(observer, 'bind', bindingStartedAt)
   const componentProps = { view, scope, children: args.children, testID: args.testID ?? testID, observer }
-  return createElement(view.render, componentProps)
+  return React.createElement(view.render, componentProps)
 }
 
-function applyTestID(result: ReactNode, testID: string | undefined): ReactNode {
-  if (testID === undefined || !isValidElement(result)) {
+type OptionalTestID = string | undefined
+function applyTestID(result: React.ReactNode, testID: OptionalTestID): React.ReactNode {
+  if (testID === undefined || !React.isValidElement(result)) {
     return result
   }
-  return cloneElement(result as ReactElement<{ testID?: string }>, { testID })
+  return React.cloneElement(result as React.ReactElement<{ testID?: string }>, { testID })
 }
 
 function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
@@ -146,13 +149,17 @@ function isView(value: unknown): value is View {
   return typeof value === 'object' && value !== null && viewMarker in value
 }
 
+type OptionalRenderStartTime = number | undefined
 function observe(
-  observer: RuntimeObserver | undefined,
+  observer: OptionalRuntimeObserver,
   phase: RuntimeTiming['phase'],
-  startedAt: number | undefined,
+  startedAt: OptionalRenderStartTime,
 ): void {
   if (!observer || startedAt === undefined) {
     return
   }
   observer.onTiming({ phase, durationMs: observer.now() - startedAt })
 }
+
+type ViewRenderPhase = 'bind' | 'render' | 'render-to-applied'
+type OptionalRuntimeObserver = RuntimeObserver | undefined

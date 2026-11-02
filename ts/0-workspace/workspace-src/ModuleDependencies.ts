@@ -1,8 +1,8 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Try } from '@shared'
-import { Env, Files, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { Errors, Lists, NewlineCharacter, Regxs, Try } from '@shared'
+import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from 'semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
@@ -18,6 +18,7 @@ export type AddModuleNpmDependencyResult = {
   version: string
 }
 
+type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
 /** addModuleNpmDependency writes an exact npm pin into one project-owned named module. */
 export async function addModuleNpmDependency(
   projectRoot: string,
@@ -43,8 +44,7 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
     return path
   }
   const sources = (await Files.walk(projectRoot)).filter(path => path.endsWith('.tao'))
-  const apps = (await Promise.all(sources.map(async path => await containsApp(path) ? path : undefined)))
-    .filter((path): path is string => path !== undefined)
+  const apps = await findAppSources(sources)
   if (apps.length === 1) {
     return apps[0]!
   }
@@ -81,13 +81,14 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
       work.push(`sidecar:${path}`)
     }
   }
-  return [...new Set(work)].sort()
+  return Lists.unique(work).sort()
 }
 
+type DependencySessionId = string | undefined
 /** withDependencySession holds the standard CLI project lock for one dependency command. */
 export async function withDependencySession<T>(
   projectRoot: string,
-  sessionId: string | undefined,
+  sessionId: DependencySessionId,
   action: () => Promise<T>,
   acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
@@ -104,31 +105,42 @@ export async function withDependencySession<T>(
   })
 }
 
-type NpmVersionExecutor = (packageName: string, cwd: string) => Promise<string>
 type NpmRequirementOccurrence = { path: string; source: string; start: number; end: number; alias?: string }
+
+async function findAppSources(sources: string[]): Promise<string[]> {
+  const candidates = await Promise.all(sources.map(findAppSource))
+  return candidates.filter((path): path is string => path !== undefined)
+}
+
+async function findAppSource(path: string): Promise<string | undefined> {
+  return await containsApp(path) ? path : undefined
+}
+
+async function containsApp(path: string): Promise<boolean> {
+  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')))
+  return document ? AST.HasAppDeclarations(document) : false
+}
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
-  const child = Platform.spawn(['bun', 'info', packageName, 'version', '--json'], {
+  const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+  const result = await Platform.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
     cwd,
-    env: { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    addEnv,
   })
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    Platform.readText(child.stdout),
-    Platform.readText(child.stderr),
-  ])
-  if (status !== 0) {
-    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${stderr.trim()}`)
+  if (result.status !== 0 || result.signal !== null) {
+    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
   }
-  const value = Try.WithDefault(undefined, () => JSON.parse(stdout.trim()) as unknown)
+  const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(result.stdout.trim()))
   const version = resolveNpmVersionValue(value)
   if (!version) {
     Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)
   }
   return version
+}
+
+function parseNpmVersionResponse(contents: string): unknown {
+  return JSON.parse(contents) as unknown
 }
 
 function resolveNpmVersionValue(value: unknown): string | undefined {
@@ -142,11 +154,15 @@ function resolveNpmVersionValue(value: unknown): string | undefined {
 }
 
 function isNpmVersionRecord(value: unknown): value is { version: string } {
-  return typeof value === 'object' && value !== null && 'version' in value && typeof value.version === 'string'
+  return typeof value === 'object' && value !== null && hasStringVersion(value)
+}
+
+function hasStringVersion(value: object): value is { version: string } {
+  return 'version' in value && typeof value.version === 'string'
 }
 
 async function resolveModule(projectRoot: string, moduleName: string): Promise<string> {
-  if (!/^@[A-Za-z0-9][A-Za-z0-9._-]*$/.test(moduleName)) {
+  if (!Regxs.ModuleNameRegx.test(moduleName)) {
     Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
   const matches = await findNamedPackageDirectories(projectRoot, moduleName)
@@ -186,10 +202,8 @@ async function writeRequirement(
   version: string,
 ): Promise<string> {
   const files = await listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot)
-  const occurrences = (await Promise.all(files.map(async path => ({
-    path,
-    source: await FileSystem.readFile(path, 'utf8'),
-  })))).flatMap(file => collectNpmRequirementSpans(file.path, file.source, packageName))
+  const sourceFiles = await readModuleSources(files)
+  const occurrences = findNpmRequirementOccurrences(sourceFiles, packageName)
   if (occurrences.length > 0) {
     await replaceRequirements(occurrences, packageName, version)
     return occurrences[0]!.path
@@ -198,9 +212,29 @@ async function writeRequirement(
   const existing = await Try.WithDefault('', () => FileSystem.readFile(sourcePath, 'utf8'))
   await FileSystem.writeFile(
     sourcePath,
-    `${existing}${existing && !existing.endsWith('\n') ? '\n' : ''}requires npm:${packageName} version ${version}\n`,
+    `${existing}${
+      existing && !existing.endsWith(NewlineCharacter) ? NewlineCharacter : ''
+    }requires npm:${packageName} version ${version}${NewlineCharacter}`,
   )
   return sourcePath
+}
+
+type ModuleSourceFile = { path: string; source: string }
+
+async function readModuleSources(paths: string[]): Promise<ModuleSourceFile[]> {
+  return await Promise.all(paths.map(readModuleSource))
+}
+
+async function readModuleSource(path: string): Promise<ModuleSourceFile> {
+  const source = await FileSystem.readFile(path, 'utf8')
+  return { path, source }
+}
+
+function findNpmRequirementOccurrences(
+  sourceFiles: ModuleSourceFile[],
+  packageName: string,
+): NpmRequirementOccurrence[] {
+  return sourceFiles.flatMap(file => collectNpmRequirementSpans(file.path, file.source, packageName))
 }
 
 function collectNpmRequirementSpans(
@@ -216,12 +250,13 @@ function collectNpmRequirementSpans(
     if (!isNpmRequirement(declaration) || declaration.identifier !== packageName) {
       return []
     }
+    const aliasFields = declaration.alias ? { alias: declaration.alias.value } : {}
     return [{
       path,
       source,
       start: declaration.start,
       end: declaration.end,
-      ...(declaration.alias ? { alias: declaration.alias.value } : {}),
+      ...aliasFields,
     }]
   })
 }
@@ -260,11 +295,6 @@ function joinBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
 async function sourceIsInsideProject(path: string, projectRoot: string): Promise<boolean> {
   return Path.isWithin(projectRoot, path)
     && path.endsWith('.tao') && await FileSystem.exists(path)
-}
-
-async function containsApp(path: string): Promise<boolean> {
-  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')))
-  return document ? AST.HasAppDeclarations(document) : false
 }
 
 const parser = createParser()

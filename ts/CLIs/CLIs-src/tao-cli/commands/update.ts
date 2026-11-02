@@ -8,6 +8,8 @@ import { discoverProject } from '@workspace/projects/Projects'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { confirmDependencyWork } from '../DependencyPrompts'
 
+type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
+type OptionalDependencyAlias = string | undefined
 /** taoUpdateCommand refreshes selected source pins while retaining unrelated lock entries. */
 export default registerCommand({
   name: 'update',
@@ -21,7 +23,9 @@ export default registerCommand({
   async action(alias: OptionalDependencyAlias, options: UpdateCommandOptions = {}) {
     const target = resolveCallerPath(options.entry ?? '.')
     const project = await discoverProject(target)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    }
     const requirements = await readProjectRequirements(project.root)
     const aliases = requirements.map(requirement => requirement.alias ?? defaultAlias(requirement))
     const update = alias ? [alias] : aliases
@@ -40,9 +44,6 @@ export default registerCommand({
     })
   },
 })
-
-type UpdateCommandOptions = { entry?: string; yes?: boolean; session?: string }
-type OptionalDependencyAlias = string | undefined
 
 function defaultAlias(requirement: { provider: string; identifier: string }): string {
   return requirement.provider === 'github'

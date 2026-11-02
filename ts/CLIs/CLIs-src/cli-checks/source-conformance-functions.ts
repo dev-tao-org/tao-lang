@@ -128,7 +128,9 @@ function hasSensitiveBinding(node: TypeScript.Node): boolean {
   return TypeScript.isMetaProperty(node) && node.keywordToken === TypeScript.SyntaxKind.NewKeyword
 }
 
-function isNonArrowFunction(node: TypeScript.Node): boolean {
+type NonArrowFunction = TypeScript.FunctionDeclaration | TypeScript.FunctionExpression | TypeScript.MethodDeclaration
+
+function isNonArrowFunction(node: TypeScript.Node): node is NonArrowFunction {
   return TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
     || TypeScript.isMethodDeclaration(node)
 }

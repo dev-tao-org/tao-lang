@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
 import { updateTaoSource } from '../source/TaoSource'
@@ -20,7 +20,7 @@ export default registerCommand({
       const absolute = Repo.resolvePath(path)
       Check.assertNewWorkspacePath(absolute)
       const isFile = FileSystem.existsSync(absolute) && FileSystem.statSync(absolute).isFile()
-      if (!isFile && !/[*?\[{]/.test(path)) {
+      if (!isFile && !Regxs.CliGlobTokenRegx.test(path)) {
         Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)
       }
       if (isFile && path.endsWith('.tao')) {

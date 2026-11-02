@@ -1,8 +1,8 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { satisfies, valid, validRange } from 'semver'
 import TypeScript from 'typescript'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 import * as ManagedTypes from './ManagedModuleTypes'
 import * as PackageMetadata from './ManagedPackageMetadata'
 
@@ -69,19 +69,19 @@ export function graphContentsMatch(
   if (parsed.error) {
     return false
   }
-  if (!parsed.config || typeof parsed.config !== 'object' || Array.isArray(parsed.config)) {
+  if (!PackageMetadata.isLockMetadata(parsed.config)) {
     return false
   }
-  const lock = parsed.config as Record<string, unknown>
-  const workspaces = lock.workspaces && typeof lock.workspaces === 'object'
-    ? lock.workspaces as Record<string, unknown>
+  const lock = parsed.config
+  const workspaces = PackageMetadata.isMetadataObject(lock.workspaces)
+    ? lock.workspaces
     : undefined
   const root = workspaces?.['']
-  const dependencies = root && typeof root === 'object' && 'dependencies' in root
+  const dependencies = PackageMetadata.hasPackageDependencies(root)
     ? PackageMetadata.readStringEntries(root.dependencies)
     : {}
-  const packages = lock.packages && typeof lock.packages === 'object'
-    ? lock.packages as Record<string, unknown>
+  const packages = PackageMetadata.isMetadataObject(lock.packages)
+    ? lock.packages
     : undefined
   if (!workspaces || !packages) {
     return false
@@ -92,7 +92,7 @@ export function graphContentsMatch(
   return actualNames.length === expectedNames.length
     && actualNames.every((name, index) => name === expectedNames[index])
     && Object.entries(expectedRequirements).every(([name, expected]) => {
-      const identity = packageIdentity(packages[name])
+      const identity = PackageMetadata.readLockedPackageIdentity(packages[name])
       return dependencies[name] === expected && identity === `${name}@${expected}`
     })
 }
@@ -104,12 +104,7 @@ export async function auditInstalledGraph(
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
 ): Promise<void> {
   const packages = await installedPackages(profile, collectAllRequirements(requirements, input.runtimePins))
-  const singletons = new Set([
-    ...defaultSingletonPackages,
-    ...input.singletonPackages ?? [],
-    ...Object.keys(input.runtimePins),
-    ...packages.filter(item => item.native).map(item => item.name),
-  ])
+  const singletons = collectSingletonPackageNames(input, packages)
   for (const name of singletons) {
     validateSingleton(name, packages, input.runtimePins[name])
   }
@@ -118,12 +113,12 @@ export async function auditInstalledGraph(
 /** listNativePackageNames lists graph packages with React Native codegen or native build files. */
 export async function listNativePackageNames(profile: string): Promise<string[]> {
   const manifest = await PackageMetadata.readPackageMetadata(Path.join(profile, 'package.json'))
-  return [
-    ...new Set(
-      (await installedPackages(profile, PackageMetadata.readStringEntries(manifest.dependencies)))
-        .filter(item => item.native).map(item => item.name),
-    ),
-  ].sort()
+  const dependencies = PackageMetadata.readStringEntries(manifest.dependencies)
+  const packages = await installedPackages(profile, dependencies)
+  const nativePackages = packages.filter(item => item.native)
+  const nativePackageNames = nativePackages.map(item => item.name)
+  const uniqueNativePackageNames = Lists.unique(nativePackageNames)
+  return uniqueNativePackageNames.sort()
 }
 
 type DependencyVersionRange = string | undefined
@@ -139,6 +134,16 @@ type InstalledPackage = {
 
 type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string> }
 
+function collectSingletonPackageNames(
+  input: ManagedTypes.ManagedModulesInput,
+  packages: readonly InstalledPackage[],
+): string[] {
+  const declaredSingletons = input.singletonPackages ?? []
+  const runtimePackageNames = Object.keys(input.runtimePins)
+  const nativePackageNames = packages.filter(item => item.native).map(item => item.name)
+  return Lists.unique(defaultSingletonPackages, declaredSingletons, runtimePackageNames, nativePackageNames)
+}
+
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {
     Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
@@ -149,10 +154,6 @@ function requireExactVersion(name: string, version: string, origin: string): voi
   if (valid(version) !== version) {
     Errors.ThrowUserInput(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
   }
-}
-
-function packageIdentity(value: unknown): string | undefined {
-  return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined
 }
 
 function addVersion(
@@ -234,15 +235,15 @@ async function findPackageDirectory(
 }
 
 function validateInstalledMetadata(
-  metadata: Record<string, unknown>,
+  metadata: PackageMetadata.ManagedMetadataFields,
   directory: string,
   name: string,
   expectedName: string,
   range: DependencyVersionRange,
   peer: boolean,
   from: string,
-): void {
-  if (typeof metadata.name !== 'string' || typeof metadata.version !== 'string') {
+): asserts metadata is PackageMetadata.InstalledPackageMetadata {
+  if (!PackageMetadata.hasPackageIdentity(metadata)) {
     Errors.ThrowUserInput(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
@@ -259,11 +260,14 @@ function validateInstalledMetadata(
   validateRange(name, metadata.version, range, peer)
 }
 
-async function installedPackage(directory: string, metadata: Record<string, unknown>): Promise<InstalledPackage> {
+async function installedPackage(
+  directory: string,
+  metadata: PackageMetadata.InstalledPackageMetadata,
+): Promise<InstalledPackage> {
   return {
     directory,
-    name: metadata.name as string,
-    version: metadata.version as string,
+    name: metadata.name,
+    version: metadata.version,
     native: await isNativePackage(directory, metadata),
   }
 }
@@ -271,17 +275,25 @@ async function installedPackage(directory: string, metadata: Record<string, unkn
 async function loadPackageDependencies(
   graph: InstalledPackageGraph,
   directory: string,
-  metadata: Record<string, unknown>,
+  metadata: PackageMetadata.ManagedMetadataFields,
 ): Promise<void> {
   const optionalDependencies = PackageMetadata.readStringEntries(metadata.optionalDependencies)
-  const dependencies = { ...PackageMetadata.readStringEntries(metadata.dependencies), ...optionalDependencies }
+  const dependencies = collectPackageDependencies(metadata, optionalDependencies)
   for (const [name, range] of Object.entries(dependencies)) {
-    await loadPackage(graph, name, directory, range, name in optionalDependencies)
+    await loadPackage(graph, name, directory, range, PackageMetadata.isOptionalDependency(name, optionalDependencies))
   }
   const optionalPeers = PackageMetadata.readOptionalPeerNames(metadata.peerDependenciesMeta)
   for (const [name, range] of Object.entries(PackageMetadata.readStringEntries(metadata.peerDependencies))) {
     await loadPackage(graph, name, directory, range, optionalPeers.has(name), true)
   }
+}
+
+function collectPackageDependencies(
+  metadata: PackageMetadata.ManagedMetadataFields,
+  optionalDependencies: ManagedTypes.ManagedPackageVersionMap,
+): ManagedTypes.ManagedPackageVersionMap {
+  const requiredDependencies = PackageMetadata.readStringEntries(metadata.dependencies)
+  return { ...requiredDependencies, ...optionalDependencies }
 }
 
 function validateRange(name: string, actual: string, range: DependencyVersionRange, peer: boolean): void {
@@ -315,14 +327,14 @@ function parseNpmAlias(
   return { name: targetName, range: targetRange }
 }
 
-async function isNativePackage(directory: string, metadata: Record<string, unknown>): Promise<boolean> {
+async function isNativePackage(directory: string, metadata: PackageMetadata.ManagedMetadataFields): Promise<boolean> {
   if (hasNativePackageMetadata(metadata)) {
     return true
   }
   return await hasNativePackageMarker(directory)
 }
 
-function hasNativePackageMetadata(metadata: Record<string, unknown>): boolean {
+function hasNativePackageMetadata(metadata: PackageMetadata.ManagedMetadataFields): boolean {
   return metadata.codegenConfig !== undefined || metadata['react-native'] !== undefined
 }
 

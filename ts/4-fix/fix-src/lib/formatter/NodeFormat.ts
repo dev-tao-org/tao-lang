@@ -1,6 +1,9 @@
 import * as CST from '@cst'
 import type { Field, NodeType, SyntaxNode, Token } from '@cst'
+import { NewlineCharacter } from '@shared'
 import { createNodeKey, type LayoutPlan, spaceAt } from '../layout/Plan'
+
+type SelectedPropertyNode = SyntaxNode | null
 
 /** NodeContext supplies source-anchored selections shared by both handler tables. */
 export class NodeContext<Kind extends NodeType> {
@@ -11,7 +14,7 @@ export class NodeContext<Kind extends NodeType> {
   ) {}
 
   isMultiline(): boolean {
-    return this.node.text.includes('\n')
+    return this.node.text.includes(NewlineCharacter)
   }
 
   hasComments(): boolean {
@@ -19,7 +22,7 @@ export class NodeContext<Kind extends NodeType> {
     return this.plan.tokens.slice(range.first, range.last + 1).some(node => CST.IsComment(node))
   }
 
-  protected property(name: Field<Kind>): SyntaxNode | null {
+  protected property(name: Field<Kind>): SelectedPropertyNode {
     return this.node.childForFieldName(name)
   }
 
@@ -32,51 +35,54 @@ export class NodeContext<Kind extends NodeType> {
   }
 }
 
-/** NodeFormat declares horizontal spacing and opaque source regions for one typed CST rule. */
+type SpaceSide = 'before' | 'after'
+
+/** NodeFormat declares horizontal spacing and opaque source regions through independent commands. */
 export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
-  oneSpaceBefore(...tokens: Token<Kind>[]): this {
-    return this.spaces(tokens, 'before', 1)
+  oneSpaceBefore(...tokens: Token<Kind>[]): void {
+    this.spaces(tokens, 'before', 1)
   }
 
-  oneSpaceAfter(...tokens: Token<Kind>[]): this {
-    return this.spaces(tokens, 'after', 1)
+  oneSpaceAfter(...tokens: Token<Kind>[]): void {
+    this.spaces(tokens, 'after', 1)
   }
 
-  oneSpaceAround(...tokens: Token<Kind>[]): this {
-    return this.oneSpaceBefore(...tokens).oneSpaceAfter(...tokens)
+  oneSpaceAround(...tokens: Token<Kind>[]): void {
+    this.oneSpaceBefore(...tokens)
+    this.oneSpaceAfter(...tokens)
   }
 
-  noSpaceBefore(...tokens: Token<Kind>[]): this {
-    return this.spaces(tokens, 'before', 0)
+  noSpaceBefore(...tokens: Token<Kind>[]): void {
+    this.spaces(tokens, 'before', 0)
   }
 
-  noSpaceAfter(...tokens: Token<Kind>[]): this {
-    return this.spaces(tokens, 'after', 0)
+  noSpaceAfter(...tokens: Token<Kind>[]): void {
+    this.spaces(tokens, 'after', 0)
   }
 
-  noSpaceAround(...tokens: Token<Kind>[]): this {
-    return this.noSpaceBefore(...tokens).noSpaceAfter(...tokens)
+  noSpaceAround(...tokens: Token<Kind>[]): void {
+    this.noSpaceBefore(...tokens)
+    this.noSpaceAfter(...tokens)
   }
 
-  oneSpaceBeforeProperty(...properties: Field<Kind>[]): this {
-    return this.propertySpaces(properties, 1)
+  oneSpaceBeforeProperty(...properties: Field<Kind>[]): void {
+    this.propertySpaces(properties, 1)
   }
 
-  noSpaceBeforeProperty(...properties: Field<Kind>[]): this {
-    return this.propertySpaces(properties, 0)
+  noSpaceBeforeProperty(...properties: Field<Kind>[]): void {
+    this.propertySpaces(properties, 0)
   }
 
-  private propertySpaces(properties: readonly Field<Kind>[], count: number): this {
+  private propertySpaces(properties: readonly Field<Kind>[], count: number): void {
     for (const name of properties) {
       const node = this.property(name)
       if (node) {
         spaceAt(this.plan, this.range(node).first, count)
       }
     }
-    return this
   }
 
-  preserveProperty(...properties: Field<Kind>[]): this {
+  preserveProperty(...properties: Field<Kind>[]): void {
     for (const name of properties) {
       const node = this.property(name)
       if (node) {
@@ -86,10 +92,9 @@ export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
         }
       }
     }
-    return this
   }
 
-  commaSpacedList(): this {
+  commaSpacedList(): void {
     for (const node of this.node.children) {
       const { first, last } = this.range(node)
       if (node.type === ',' || node.type === ')') {
@@ -99,16 +104,14 @@ export class NodeFormat<Kind extends NodeType> extends NodeContext<Kind> {
         spaceAt(this.plan, last + 1, node.type === ',' ? 1 : 0)
       }
     }
-    return this
   }
 
-  private spaces(tokens: readonly Token<Kind>[], side: 'before' | 'after', count: number): this {
+  private spaces(tokens: readonly Token<Kind>[], side: SpaceSide, count: number): void {
     for (const token of tokens) {
       for (const node of this.tokens(token)) {
         const range = this.range(node)
         spaceAt(this.plan, side === 'before' ? range.first : range.last + 1, count)
       }
     }
-    return this
   }
 }

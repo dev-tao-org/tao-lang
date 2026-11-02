@@ -6,6 +6,8 @@ import { execute } from '@workspace/Workflow'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { workflowUI } from '../WorkflowUI'
 
+type SetupCommandOptions = { yes?: boolean; repair?: boolean; session?: string }
+type OptionalSetupEntry = string | undefined
 /** taoSetupCommand installs dependencies reachable from one entry after consent. */
 export default registerCommand({
   name: 'setup',
@@ -19,7 +21,9 @@ export default registerCommand({
   async action(entry: OptionalSetupEntry, options: SetupCommandOptions = {}) {
     const target = resolveCallerPath(entry ?? '.')
     const project = await discoverProject(target)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
+    }
     const selected = await findPreparationEntry(project.root, entry ? target : undefined)
     await withDependencySession(project.root, options.session, async () => {
       IO.print(`Setting up dependencies for ${selected}`)
@@ -30,6 +34,3 @@ export default registerCommand({
     })
   },
 })
-
-type SetupCommandOptions = { yes?: boolean; repair?: boolean; session?: string }
-type OptionalSetupEntry = string | undefined

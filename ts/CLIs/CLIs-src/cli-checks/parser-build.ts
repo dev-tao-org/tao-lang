@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Timings } from '@shared'
+import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
@@ -70,7 +70,7 @@ const buildParserNative = Timings.measured('parser.native-build', async function
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
-    env: options.environment,
+    addEnv: options.environment,
   })
 })
 
@@ -105,7 +105,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
 async function collectEnvironmentInputs(): Promise<string> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
   const sources = await Promise.all(paths.map(path => FileSystem.file(Repo.resolvePath(path)).text()))
-  return Platform.hashText(sources.join('\n'))
+  return Platform.hashText(sources.join(NewlineCharacter))
 }
 
 function encodeParserBuildInputs(inputs: ParserBuildInputs): string {

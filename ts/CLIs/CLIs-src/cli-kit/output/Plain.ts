@@ -1,3 +1,4 @@
+import { NewlineCharacter } from '@shared'
 import { Terminal } from '@shared/os'
 import type { ChannelState, OutputEvent } from './Output'
 
@@ -12,13 +13,13 @@ export function createPlainOutput(print = printTerminal) {
       }
       const streams = fragments.get(event.channel) ?? new Map<OutputEvent['stream'], string>()
       fragments.set(event.channel, streams)
-      const lines = ((streams.get(event.stream) ?? '') + event.text).split('\n')
+      const lines = ((streams.get(event.stream) ?? '') + event.text).split(NewlineCharacter)
       const partial = lines.pop() ?? ''
       for (const line of lines) {
-        print(event.stream, `[${event.channel.title}] ${line}\n`)
+        print(event.stream, `[${event.channel.title}] ${line}${NewlineCharacter}`)
       }
       if (partial.length > 16000) {
-        print(event.stream, `[${event.channel.title}] ${partial}\n`)
+        print(event.stream, `[${event.channel.title}] ${partial}${NewlineCharacter}`)
         streams.delete(event.stream)
       } else {
         streams.set(event.stream, partial)
@@ -28,7 +29,7 @@ export function createPlainOutput(print = printTerminal) {
       for (const [channel, streams] of fragments) {
         for (const [stream, text] of streams) {
           if (text) {
-            print(stream, `[${channel.title}] ${text}\n`)
+            print(stream, `[${channel.title}] ${text}${NewlineCharacter}`)
           }
         }
       }

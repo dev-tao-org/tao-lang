@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 /** HistoryRecord retains measured source identity independently from later archive commits. */
@@ -92,7 +92,7 @@ function parseHistoryRecord(source: string): HistoryRecord {
 }
 
 function serializeHistoryRecord(record: HistoryRecord): string {
-  return JSON.stringify(record, null, 2) + '\n'
+  return JSON.stringify(record, null, 2) + NewlineCharacter
 }
 
 function parsePreviewReport(source: string): unknown {

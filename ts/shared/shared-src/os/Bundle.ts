@@ -1,3 +1,4 @@
+import { NewlineCharacter } from '../universal/Characters'
 import { Errors, S } from '../universal/universal'
 import { capture } from './Platform'
 
@@ -14,7 +15,7 @@ export async function bundleNode(entrypoint: string, outdir: string, external: s
     define: { 'import.meta.url': '__taoImportMetaUrl' },
   })
   if (!result.success) {
-    Errors.ThrowUserInput(`Bundling failed: ${result.logs.map(log => log.message).join('\n')}`)
+    Errors.ThrowUserInput(`Bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
   }
 }
 

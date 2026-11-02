@@ -1,3 +1,4 @@
+import { CarriageReturnCharacter, NewlineCharacter } from '@shared'
 import * as TypeScript from 'typescript'
 import { isExcludedSource } from './source-size'
 
@@ -177,7 +178,7 @@ function collectChanges(candidates: SignatureCandidates): SignatureTypeOrder {
     const file = declaration.getSourceFile()
     const edits = changes.get(file) ?? []
     edits.push({ span: { start, length: declaration.end - start }, newText: '' })
-    const text = file.text.slice(start, declaration.end) + '\n'
+    const text = file.text.slice(start, declaration.end) + NewlineCharacter
     const fileInsertions = insertions.get(file) ?? new Map<number, TypeScript.TextChange>()
     const existing = fileInsertions.get(insertion)
     if (existing) {
@@ -197,10 +198,12 @@ function collectChanges(candidates: SignatureCandidates): SignatureTypeOrder {
 function movableStart(node: TypeScript.Node): number | undefined {
   const file = node.getSourceFile()
   const trivia = file.text.slice(node.getFullStart(), node.getStart(file))
-  const sameLine = trivia.slice(0, trivia.indexOf('\n') + 1)
+  const sameLine = trivia.slice(0, trivia.indexOf(NewlineCharacter) + 1)
   const trailing = file.text.slice(
     node.end,
-    file.text.indexOf('\n', node.end) < 0 ? file.text.length : file.text.indexOf('\n', node.end),
+    file.text.indexOf(NewlineCharacter, node.end) < 0
+      ? file.text.length
+      : file.text.indexOf(NewlineCharacter, node.end),
   )
   const directive = trivia.includes('@ts-') || trivia.includes('eslint') || trivia.includes('prettier')
   const leadingComment = sameLine.includes('//') || sameLine.includes('/*')
@@ -209,7 +212,10 @@ function movableStart(node: TypeScript.Node): number | undefined {
     return undefined
   }
   let start = node.getFullStart()
-  while (start < node.getStart(file) && (file.text[start] === '\n' || file.text[start] === '\r')) {
+  while (
+    start < node.getStart(file)
+    && (file.text[start] === NewlineCharacter || file.text[start] === CarriageReturnCharacter)
+  ) {
     start++
   }
   return start

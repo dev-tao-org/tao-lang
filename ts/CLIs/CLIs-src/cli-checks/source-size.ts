@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 
 /** sourceSizeDiagnostics enforces the hard line limit on handwritten TypeScript. */
@@ -6,7 +6,7 @@ export function sourceSizeDiagnostics(filename: string, source: string): { error
   if (isExcludedSource(filename, source)) {
     return {}
   }
-  const lines = source === '' ? 0 : source.split('\n').length - Number(source.endsWith('\n'))
+  const lines = source === '' ? 0 : source.split(NewlineCharacter).length - Number(source.endsWith(NewlineCharacter))
   if (lines > 350) {
     return { error: `${filename}: handwritten TypeScript files must contain at most 350 lines; found ${lines}` }
   }

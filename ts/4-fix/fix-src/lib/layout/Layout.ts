@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import { Timings } from '@shared'
+import { NewlineCharacter, Timings } from '@shared'
 import type { SourceEdit } from '../../Source'
 import type { EmbeddedFormatter } from '../formatter/Embedded'
 import type { Boundary, LayoutPlan, ListGroup } from './Plan'
@@ -19,14 +19,15 @@ const emitLayout = Timings.measure('formatter.layout', function(
 ): SourceEdit[] {
   const edits: SourceEdit[] = []
   const groups = new Map(plan.groups.map(group => [group.first, group]))
-  const widths = flatWidths(plan)
+  const widths = collectFlatWidths(plan)
   let column = 0
   for (let index = 0; index < plan.gaps.length; index++) {
     const gap = plan.gaps[index]!
     const whitespace = resolveGap(plan, gap, options.indent ?? 2)
-    column = advance(column, whitespace)
+    column = advanceColumn(column, whitespace)
     const group = groups.get(index)
     if (group && shouldBreak(plan, group, widths, column, options.width ?? 120)) {
+      // This gap establishes the group's starting column; breaking changes only later gaps.
       breakList(plan, group)
     }
     if (gap.editable && whitespace !== plan.source.slice(gap.start, gap.end)) {
@@ -37,7 +38,7 @@ const emitLayout = Timings.measure('formatter.layout', function(
     if (token && text !== token.text) {
       edits.push({ start: token.startIndex, end: token.endIndex, text })
     }
-    column = advance(column, text)
+    column = advanceColumn(column, text)
   }
   return edits
 })
@@ -73,9 +74,10 @@ const formatEmbedded = Timings.measured('formatter.typescript', function(
   return formatter(body, options)
 })
 
-function flatWidths(plan: LayoutPlan): number[] {
+function collectFlatWidths(plan: LayoutPlan): number[] {
   const widths = [0]
   for (const [index, token] of plan.tokens.entries()) {
+    // Cumulative widths include each token and its following gap for constant-time group widths.
     widths.push(widths[index]! + [...token.text].length + plan.gaps[index + 1]!.spaces)
   }
   return widths
@@ -88,11 +90,13 @@ function shouldBreak(
   column: number,
   width: number,
 ): boolean {
-  const flat = widths[group.last + 1]! - widths[group.first]! - plan.gaps[group.last + 1]!.spaces
-  return group.preserve || column + flat > width
+  // Exclude the gap after the group so only the group's own flat width is measured.
+  const flatWidth = widths[group.last + 1]! - widths[group.first]! - plan.gaps[group.last + 1]!.spaces
+  return group.preserve || column + flatWidth > width
 }
 
 function breakList(plan: LayoutPlan, group: ListGroup): void {
+  // Break positions and indentation ranges differ: delimiters need not share the item's indent.
   for (const index of group.breaks) {
     plan.gaps[index]!.lines = 1
   }
@@ -110,7 +114,8 @@ function resolveGap(plan: LayoutPlan, gap: Boundary, indent: number): string {
     : ' '.repeat(gap.spaces)
 }
 
-function advance(column: number, text: string): number {
-  const newline = text.lastIndexOf('\n')
+function advanceColumn(column: number, text: string): number {
+  // After a newline, only the final line contributes; count Unicode code points, not UTF-16 units.
+  const newline = text.lastIndexOf(NewlineCharacter)
   return newline < 0 ? column + [...text].length : [...text.slice(newline + 1)].length
 }

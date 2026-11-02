@@ -100,7 +100,9 @@ function resolveBundledSource(
     Errors.Throw('Expected bundled dependency.')
   }
   const root = options.bundledProjects?.[requirement.identifier]
-    ?? preparationNeeded(`Bundled project ${requirement.identifier} is unavailable; prepare dependencies, then retry.`)
+  if (root === undefined) {
+    preparationNeeded(`Bundled project ${requirement.identifier} is unavailable; prepare dependencies, then retry.`)
+  }
   const location = Path.resolve(root)
   requireProjectRoot(location, `Bundled project ${requirement.identifier}`)
   return {
@@ -157,7 +159,7 @@ async function materializeGitHubCache(
   if (await FileSystem.exists(cacheLocation)) {
     return
   }
-  await FileSystem.mkdir(Path.dirname(cacheLocation), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(cacheLocation))
   const pending = `${cacheLocation}.${Platform.randomUUID()}.pending`
   await Try(async () => {
     await options.git.fetchCommit(repository, commit, pending)

@@ -1,13 +1,12 @@
 import { Errors } from '@shared'
-import { createElement } from 'react'
-import type { ComponentType, ReactNode } from 'react'
+import React from './Bridge-React'
 import { Name, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
 import { beginViewRender, finishViewRender, ViewDeclaration } from './View'
 import type { View, ViewComponentProps } from './View'
 
 /** ForeignViewComponent is a named React component exposed through Tao's view contract. */
-export type ForeignViewComponent = ComponentType<never>
+export type ForeignViewComponent = React.ComponentType<never>
 
 /** ForeignView adapts one stable external component to Tao's positional view contract. */
 export function ForeignView(
@@ -20,7 +19,7 @@ export function ForeignView(
   return { ...descriptor, foreignComponent: component }
 }
 
-function ForeignViewBody(props: ViewComponentProps): ReactNode {
+function ForeignViewBody(props: ViewComponentProps): React.ReactNode {
   const context = beginViewRender(props)
   const component = context.view.foreignComponent
   if (!component) {
@@ -30,7 +29,7 @@ function ForeignViewBody(props: ViewComponentProps): ReactNode {
     context.view.parameters.map(parameter => [parameter, Name(context.scope, parameter)]),
   )
   const testIDProps = context.testID === undefined ? {} : { testID: context.testID }
-  const element = createElement(component as ComponentType<Record<string, unknown>>, {
+  const element = React.createElement(component as React.ComponentType<Record<string, unknown>>, {
     ...valueProps,
     ...testIDProps,
   }, ...context.children)

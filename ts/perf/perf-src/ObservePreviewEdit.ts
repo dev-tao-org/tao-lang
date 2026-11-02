@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Time } from '@shared'
 import type { Document } from '@workspace/Document'
 import type { CompiledEvent } from '@workspace/file-manager/FileManager'
 import type { UpdateResult } from '@workspace/Workspace'
@@ -68,5 +68,5 @@ function matchesFreshCompletion(
 }
 
 function createEditFailure(message: string): Errors.TaoError {
-  return Try(() => Errors.ThrowHostEnvironment(message), { catch: error => Errors.fromUnknown(error) })
+  return Errors.createHostEnvironmentError(message)
 }

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { requireFeatureBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
 import { requireSourceHead } from './SourceIdentity'
@@ -92,9 +92,9 @@ type PullRequest = {
 
 async function reviewedPullRequest(io: LandingIO, branch: string, message: string) {
   const existing = await listPullRequests(io, branch, 'open')
-  const title = message.split('\n')[0]
+  const title = message.split(NewlineCharacter)[0]
   const bodyPath = `.artifacts/merge/${branch}.body`
-  await io.write(bodyPath, message.split('\n').slice(2).join('\n'))
+  await io.write(bodyPath, message.split(NewlineCharacter).slice(2).join(NewlineCharacter))
   if (existing.length > 1) {
     Errors.ThrowUserInput('More than one open pull request matches this branch.')
   }

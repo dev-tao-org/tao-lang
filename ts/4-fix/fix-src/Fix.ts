@@ -1,7 +1,7 @@
 import type * as AST from '@ast-gen/AST'
 import type { Tree } from '@cst'
 import { Errors, Timings } from '@shared'
-import { organizeImports } from './fix/Imports'
+import { organizeImports } from './fix/FixImports'
 import { applyEdits, type SourceEdit } from './Source'
 
 /** FixInput pairs complete source syntax with its unmodified semantic AST. */

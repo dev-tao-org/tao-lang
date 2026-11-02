@@ -1,10 +1,12 @@
 import { Errors } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import { requireSetup } from '../../SetupRequired'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from '../managed-modules/ManagedModuleTypes'
 import { type ManagedProfileMetadata, optionalText, validateProfileMetadata, writeReadOnly } from './ManagedNpmState'
 
 type InstallHostValue = string | number
+const installPolicyVersion = 1
+
 /** installHostIdentity returns the host and policy identity stored with generated node_modules. */
 export function installHostIdentity(input: ManagedModulesInput): Record<string, InstallHostValue> {
   const host = input.hostIdentity ?? Platform.systemInfo()
@@ -80,5 +82,3 @@ function hostMatches(metadata: ManagedProfileMetadata, input: ManagedModulesInpu
 function serializeInstallHost(identity: unknown): string | undefined {
   return JSON.stringify(identity)
 }
-
-const installPolicyVersion = 1

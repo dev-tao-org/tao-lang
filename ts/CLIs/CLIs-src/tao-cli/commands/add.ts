@@ -1,11 +1,11 @@
 import { IO, resolveCallerPath } from '@cli-kit'
 import { Errors } from '@shared'
-import { Terminal } from '@shared/os'
 import { addModuleNpmDependency, withDependencySession } from '@workspace/ModuleDependencies'
 import { prepareProject } from '@workspace/ProjectPreparation'
 import { discoverProject } from '@workspace/projects/Projects'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 
+type AddCommandOptions = { npm?: string; yes?: boolean; session?: string }
 /** taoAddCommand adds an exact npm requirement to a project-owned local module. */
 export default registerCommand({
   name: 'add',
@@ -22,15 +22,15 @@ export default registerCommand({
     }
     const caller = resolveCallerPath('.')
     const project = await discoverProject(caller)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    }
     await withDependencySession(project.root, options.session, async () => {
       if (
-        !options.yes && !await IO.prompt(() =>
-          Terminal.askConfirm({
-            message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
-            defaultValue: false,
-          })
-        )
+        !options.yes && !await IO.askConfirm({
+          message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
+          defaultValue: false,
+        })
       ) {
         Errors.ThrowUserInput('Dependency addition was declined; rerun with --yes to proceed non-interactively.')
       }
@@ -40,5 +40,3 @@ export default registerCommand({
     })
   },
 })
-
-type AddCommandOptions = { npm?: string; yes?: boolean; session?: string }

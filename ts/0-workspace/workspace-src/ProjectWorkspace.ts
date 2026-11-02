@@ -5,18 +5,30 @@ import { ProjectDependencies } from './ProjectDependencies'
 import { createProjectPipeline, type ProjectPipelineResult, type ProjectPipelineServices } from './ProjectPipeline'
 import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
-import { createWorkspace, type WorkspaceOptions } from './Workspace'
+import { createWorkspace, type WorkspaceOptions, type WorkspaceSession } from './Workspace'
+import type { WorkspacePreparation } from './WorkspaceOptions'
 
+/** ProjectWorkspaceOptions configures a managed project workspace and its session lifetime. */
+export type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & SessionOptions & {
+  pipelineServices?: ProjectPipelineServices
+  acquireLease?: typeof Storage.acquireCacheLease
+}
 /** openProjectWorkspace acquires a project session before opening its independent generated workspace. */
 export async function openProjectWorkspace(
   entry: string,
-  options: OpenProjectWorkspaceOptions = {},
-) {
+  options: ProjectWorkspaceOptions = {},
+): Promise<WorkspaceSession> {
   const project = await discoverProject(entry)
-    ?? Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
+  if (!project) {
+    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
+  }
   const session = await acquireSession(project.root, options)
   const releaseCache = await Try(
-    () => (options.acquireLease ?? Storage.acquireCacheLease)(`${project.root}:${session.id}`),
+    () => {
+      const acquireLease = options.acquireLease ?? Storage.acquireCacheLease
+      const identity = `${project.root}:${session.id}`
+      return acquireLease(identity)
+    },
     {
       catch(error) {
         session.release()
@@ -37,21 +49,21 @@ export async function openProjectWorkspace(
   })
 }
 
-type ProjectWorkspaceOptions = Omit<WorkspaceOptions, 'directory' | 'outputDirectory' | 'project'> & {
+type ProjectWorkspaceOption = 'directory' | 'outputDirectory' | 'project'
+type ManagedWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & {
   pipelineServices?: ProjectPipelineServices
 }
 
-type OpenProjectWorkspaceOptions = ProjectWorkspaceOptions & SessionOptions & {
-  acquireLease?: typeof Storage.acquireCacheLease
-}
+type WorkspaceReleaseResult = void | Promise<void>
+type WorkspaceRelease = () => WorkspaceReleaseResult
 
 function managedWorkspace(
   root: string,
   output: string,
   dependencies: ProjectDependencies,
-  options: ProjectWorkspaceOptions,
-  release: () => void | Promise<void>,
-) {
+  options: ManagedWorkspaceOptions,
+  release: WorkspaceRelease,
+): WorkspaceSession {
   const workspaceOptions = createManagedWorkspaceOptions(root, output, dependencies, options)
   const workspace = createWorkspace(workspaceOptions)
   const dispose = workspace.dispose.bind(workspace)
@@ -63,7 +75,7 @@ function createManagedWorkspaceOptions(
   root: string,
   output: string,
   dependencies: ProjectDependencies,
-  options: ProjectWorkspaceOptions,
+  options: ManagedWorkspaceOptions,
 ): WorkspaceOptions {
   const runtimeOptions = createProjectRuntimeOptions(root, options)
   const pipeline = createProjectPipeline(root, output, runtimeOptions, options.pipelineServices)
@@ -84,7 +96,7 @@ function createManagedWorkspaceOptions(
   }
 }
 
-function createProjectRuntimeOptions(root: string, options: ProjectWorkspaceOptions) {
+function createProjectRuntimeOptions(root: string, options: ManagedWorkspaceOptions) {
   return {
     toolchainCacheDirectory: Path.join(root, '.tao/cache/runtime-toolchains'),
     ...options.runtimeOptions,
@@ -94,7 +106,7 @@ function createProjectRuntimeOptions(root: string, options: ProjectWorkspaceOpti
 function mergeProjectPreparation(
   dependencies: ProjectDependencies,
   managed: ProjectPipelineResult,
-  custom: Awaited<ReturnType<NonNullable<WorkspaceOptions['beforeCompile']>>> | undefined,
+  custom?: WorkspacePreparation,
 ) {
   return {
     ...managed,

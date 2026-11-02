@@ -1,4 +1,4 @@
-import { Lists } from '@shared'
+import { joinTextLines, Lists, S } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -13,12 +13,13 @@ export async function writeCSTTypes(directory: string): Promise<void> {
     const tokens = union([...directTokens, ...aliasedTokensForNode])
     return `  ${emitCstStringLiteral(node.type)}: { fields: ${fields}; tokens: ${tokens} }`
   })
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'CST.ts'),
-    `// @generated from Tree-sitter node-types.json and grammar.json.\nexport interface NodeTypes {\n${
-      members.join('\n')
-    }\n}\n`,
-  )
+  const source = S`
+    // @generated from Tree-sitter node-types.json and grammar.json.
+    export interface NodeTypes {
+    ${joinTextLines(...members)}
+    }
+  `
+  await FileSystem.writeIfChanged(Path.join(directory, 'CST.ts'), joinTextLines(source, ''))
 }
 
 type Rule = GrammarTraversal.GrammarRule & { name?: string; named?: boolean; content?: Rule; members?: Rule[] }

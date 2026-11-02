@@ -1,9 +1,9 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import TypeScript from 'typescript'
-import type { ManagedModulesInput, ManagedRuntimePolicy } from './ManagedModuleTypes'
+import type { ManagedModulesInput, ManagedRuntimePolicy } from '../managed-modules/ManagedModuleTypes'
+import * as PackageMetadata from '../managed-modules/ManagedPackageMetadata'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'
-import * as PackageMetadata from './ManagedPackageMetadata'
 
 type RuntimePolicyInput = ManagedRuntimePolicy | undefined
 type ManagedRuntimePolicyMap =
@@ -48,7 +48,7 @@ export async function ensureManagedPatches(
   for (const [path, content] of listManagedPatches(input.runtimePolicy)) {
     const destination = Path.join(profile, path)
     validateManagedProfilePath(input.directory, destination)
-    await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(destination))
     await ensureOwnedFile(destination, content, repair)
   }
 }
@@ -90,12 +90,16 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
       )
     }
   }
-  const policy = {
-    patchedDependencies: undefined,
-    overrides: undefined,
-    ...describeManagedResolutionPolicy(input.runtimePolicy),
-  }
-  return `${JSON.stringify({ ...lock, ...policy }, null, 2)}\n`
+  const repairedLock = applyManagedLockPolicy(lock, input.runtimePolicy)
+  return `${JSON.stringify(repairedLock, null, 2)}${NewlineCharacter}`
+}
+
+function applyManagedLockPolicy(
+  lock: PackageMetadata.ManagedMetadataFields,
+  runtimePolicy: RuntimePolicyInput,
+): PackageMetadata.ManagedMetadataFields {
+  const policy = describeManagedResolutionPolicy(runtimePolicy)
+  return { ...lock, patchedDependencies: undefined, overrides: undefined, ...policy }
 }
 
 function listManagedPatches(policy: RuntimePolicyInput): [string, string][] {

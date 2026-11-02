@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { S } from '@shared'
+import { S, Switch } from '@shared'
 import type { ModuleBinding } from '@typecheck/Modules'
 import * as CodegenUtil from './codegen-util'
 
@@ -10,17 +10,28 @@ export type ComponentNames = {
   props: string
   render: string
   scope: string
+  scopeType: string
 }
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
-export type InjectionCapture = { node: AST.Capture; type: 'text' | 'children' | 'unknown'; value: string }
+export type InjectionCapture = { node: AST.Capture; type: InjectionCaptureType; value: string }
+
+/** InjectionCapture creates the typed fields for one compiled hook capture. */
+export const InjectionCapture = (
+  node: AST.Capture,
+  type: InjectionCapture['type'],
+  value: string,
+): InjectionCapture => ({ node, type, value })
 
 /** InjectionCompilation pairs authored custom-hook code with its call inside the owning view component. */
 export type InjectionCompilation = { hookDeclaration: string; invocation: string }
 
 /** emitRuntimeImports supplies the private generated boundary and the authored Tao API. */
 export function emitRuntimeImports(): string {
-  return "import * as TR from '@runtime';\nimport Tao from '@tao/runtime-api';"
+  return S`
+    import * as TR from '@runtime';
+    import Tao from '@tao/runtime-api';
+  `
 }
 
 /** emitModuleApplied registers the generated revision with preview instrumentation. */
@@ -29,8 +40,8 @@ export function emitModuleApplied(revision: string): string {
 }
 
 /** emitScope creates one module's lexical binding record. */
-export function emitScope(scope: string): string {
-  return `const ${scope} = TR.Scope();`
+export function emitScope(scope: string, scopeType: string): string {
+  return `const ${scope} = TR.Scope() as ${scopeType};`
 }
 
 /** emitLetDeclaration defines a compiled value under its authored name. */
@@ -73,26 +84,41 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
   )
 }
 
+type EmittableName = AST.Name | ModuleBinding
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
-export function emitName(node: AST.Name | ModuleBinding, scope: string): string {
-  return `TR.Name(${scope}, ${CodegenUtil.compileReferenceName(node)})`
+export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): string {
+  const name = CodegenUtil.isModuleBinding(node) ? node.target : node.value
+  const reference = typeof scope === 'string' ? undefined : scope.resolveReference(name)
+  return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
+
+type InjectionCaptureType = 'text' | 'children' | 'unknown'
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
   node: AST.ViewRenderExpression,
-  scope: string,
+  scope: CodegenUtil.ScopeCode,
   argumentsCode: string,
   children: string,
 ): string {
   const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
   const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
-  return `TR.ViewRenderExpression(${emitName(node.target, scope)}, ${argumentsValue})`
+  return S`
+    TR.ViewRenderExpression(
+      ${emitName(node.target, scope)},
+      ${argumentsValue}
+    )
+  `
 }
 
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */
-export function emitViewRenderBlock(scope: string, statements: string): string {
-  return `TR.ViewRenderBlock(${scope}, (${scope}, _Children) => {\n${statements}\n})`
+export function emitViewRenderBlock(scope: CodegenUtil.ScopeCode, statements: string): string {
+  const value = CodegenUtil.getScopeValue(scope)
+  return S`
+    TR.ViewRenderBlock(${value}, (${value}, _Children) => {
+      ${statements}
+    })
+  `
 }
 
 /** emitViewComponent gives a Tao view a recognizable React component and render lifetime. */
@@ -124,12 +150,16 @@ export function emitInjectionCustomHook(
 }
 
 function emitCaptureParameter(capture: InjectionCapture): string {
-  const type = capture.type === 'children'
-    ? "TR.ViewComponentProps['children']"
-    : capture.type === 'text'
-    ? 'string'
-    : 'unknown'
+  const type = getCaptureParameterType(capture)
   return `${CodegenUtil.compileIdentifier(capture.node)}: ${type}`
+}
+
+function getCaptureParameterType(capture: InjectionCapture): string {
+  return Switch.property(capture, 'type', {
+    children: () => "TR.ViewComponentProps['children']",
+    text: () => 'string',
+    unknown: () => 'unknown',
+  })
 }
 
 function emitRenderingComponent(
@@ -139,9 +169,9 @@ function emitRenderingComponent(
   result: string,
   needsScope: boolean,
 ): string {
-  const scope = needsScope ? `const ${names.scope} = ${names.render}.scope;` : ''
+  const scope = needsScope ? `const ${names.scope} = ${names.render}.scope as ${names.scopeType};` : ''
   return S`
-    function ${component}(${names.props}: TR.ViewComponentProps) {
+    export function ${component}(${names.props}: TR.ViewComponentProps) {
       const ${names.render} = TR.beginViewRender(${names.props});
       ${scope}
       ${statements}

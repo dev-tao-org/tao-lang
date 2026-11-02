@@ -1,16 +1,15 @@
 import { Errors, NullCharacter, Regxs } from '@shared'
-import { Path } from '@shared/os'
-import { type LandingIO } from './LandingIO'
+import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords } from './PreviewRecords'
 
 /** requireOwnedStorageChanges permits retry files only when each byte matches a validated current-branch record. */
 export async function requireOwnedStorageChanges(io: LandingIO): Promise<void> {
-  const status = await io.command('git', [
+  const status = await git(io, [
     'status',
     '--porcelain=v1',
     '-z',
     '--untracked-files=all',
-  ], Path.join(io.root, '.storage'))
+  ], { storage: true, trim: false })
   if (!status) {
     return
   }

@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords, type PreviewRecord } from './PreviewRecords'
 import { pinArchive, requireSourceHead } from './SourceIdentity'
@@ -18,20 +18,20 @@ export async function publishPreviewArchive(
   }
   const records = await pendingPreviewRecords(io)
   const remote = await archiveRemote(io)
-  await git(io, ['fetch', 'origin', remote], true)
+  await git(io, ['fetch', 'origin', remote], { storage: true })
   await reconcileArchive(io, remote, records)
   await copyRecords(io, records)
   const paths = records.flatMap(record => [`${record.directory}/record.json`, `${record.directory}/report.json`])
   if (paths.length) {
-    await git(io, ['add', '--', ...paths], true)
+    await git(io, ['add', '--', ...paths], { storage: true })
   }
-  if (await git(io, ['diff', '--cached', '--name-only'], true)) {
-    await git(io, ['commit', '-m', 'Retain preview performance measurements', '--', ...paths], true)
+  if (await git(io, ['diff', '--cached', '--name-only'], { storage: true })) {
+    await git(io, ['commit', '-m', 'Retain preview performance measurements', '--', ...paths], { storage: true })
   }
-  const commit = await git(io, ['rev-parse', 'HEAD'], true)
+  const commit = await git(io, ['rev-parse', 'HEAD'], { storage: true })
   await requireSourceHead(io, verifiedHead)
-  await git(io, ['push', 'origin', `${commit}:${remote}`], true)
-  const advertised = await git(io, ['ls-remote', '--exit-code', 'origin', remote], true)
+  await git(io, ['push', 'origin', `${commit}:${remote}`], { storage: true })
+  const advertised = await git(io, ['ls-remote', '--exit-code', 'origin', remote], { storage: true })
   if (advertised.split(Regxs.SingleWhitespaceRegx)[0] !== commit) {
     Errors.ThrowHostEnvironment('Archive remote changed after publication; rerun land to reconcile it safely.')
   }
@@ -40,7 +40,7 @@ export async function publishPreviewArchive(
 }
 
 async function archiveRemote(io: LandingIO): Promise<string> {
-  const advertisement = await git(io, ['ls-remote', '--symref', 'origin', 'HEAD'], true)
+  const advertisement = await git(io, ['ls-remote', '--symref', 'origin', 'HEAD'], { storage: true })
   const remote = Regxs.GitRefHeadRegx.exec(advertisement)?.[1]
   if (!remote) {
     Errors.ThrowHostEnvironment('The storage remote did not advertise its default branch.')
@@ -50,19 +50,22 @@ async function archiveRemote(io: LandingIO): Promise<string> {
 
 async function reconcileArchive(io: LandingIO, remote: string, records: PreviewRecord[]): Promise<void> {
   await requireOwnedStorageChanges(io)
-  const tip = await git(io, ['rev-parse', 'FETCH_HEAD'], true)
-  const head = await git(io, ['rev-parse', 'HEAD'], true)
-  const base = await git(io, ['merge-base', head, tip], true)
+  const tip = await git(io, ['rev-parse', 'FETCH_HEAD'], { storage: true })
+  const head = await git(io, ['rev-parse', 'HEAD'], { storage: true })
+  const base = await git(io, ['merge-base', head, tip], { storage: true })
   if (base === head) {
     if (head !== tip) {
-      await git(io, ['merge', '--ff-only', tip], true)
+      await git(io, ['merge', '--ff-only', tip], { storage: true })
     }
     return
   }
   if (base !== tip) {
     Errors.ThrowUserInput('Storage history diverged; resolve it without rewriting history before retrying land.')
   }
-  const local = (await git(io, ['log', '--format=', '--name-only', `${tip}..HEAD`], true)).split('\n').filter(Boolean)
+  const local = (await git(io, ['log', '--format=', '--name-only', `${tip}..HEAD`], { storage: true })).split(
+    NewlineCharacter,
+  )
+    .filter(Boolean)
   const allowed = new Set(
     records.flatMap(record => [`${record.directory}/record.json`, `${record.directory}/report.json`]),
   )

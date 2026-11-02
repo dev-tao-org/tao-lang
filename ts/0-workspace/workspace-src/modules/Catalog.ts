@@ -75,9 +75,16 @@ export async function findNamedPackageDirectories(projectRoot: string, name: str
 
 /** isImportableFile confirms an existing Tao file stays within its real project boundary. */
 export async function isImportableFile(path: string, boundary: string): Promise<boolean> {
-  return path.endsWith('.tao') && !isExcludedPath(path, boundary) && await FileSystem.exists(path)
-    && Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
-    && resolveRealPathInsideProject(path, boundary) !== undefined
+  if (!path.endsWith('.tao') || isExcludedPath(path, boundary)) {
+    return false
+  }
+  if (!await FileSystem.exists(path)) {
+    return false
+  }
+  if (!Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())) {
+    return false
+  }
+  return resolveRealPathInsideProject(path, boundary) !== undefined
 }
 
 function isSourceEntry(name: string, isFile: boolean): boolean {
@@ -94,9 +101,13 @@ function isSearchDirectory(name: string, isDirectory: boolean): boolean {
 
 // isSafeDirectory confirms a directory stays within its real project boundary.
 async function isSafeDirectory(path: string, boundary: string): Promise<boolean> {
-  return !isExcludedPath(path, boundary) && await FileSystem.exists(path)
-    && Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())
-    && resolveRealPathInsideProject(path, boundary) !== undefined
+  if (isExcludedPath(path, boundary) || !await FileSystem.exists(path)) {
+    return false
+  }
+  if (!Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())) {
+    return false
+  }
+  return resolveRealPathInsideProject(path, boundary) !== undefined
 }
 
 type SourceDirectoryEntry = { name: string; isFile(): boolean; isDirectory(): boolean }

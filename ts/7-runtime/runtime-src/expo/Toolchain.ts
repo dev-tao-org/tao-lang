@@ -1,5 +1,5 @@
-import { Errors, NullCharacter, Try } from '@shared'
-import { BuildLock, Env, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { NullCharacter, Try } from '@shared'
+import { BuildLock, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
@@ -58,27 +58,11 @@ export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> 
 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
-    const environment = { ...Env.snapshot(), BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-    const child = Platform.spawnPiped(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
+    const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
+    await Platform.run(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
       cwd: cacheDirectory,
-      env: environment,
+      addEnv,
     })
-    const [status, stdout, stderr] = await Promise.all([
-      child.exited,
-      Platform.readText(child.stdout),
-      Platform.readText(child.stderr),
-    ])
-    if (status !== 0) {
-      Errors.ThrowCommandExecution({
-        command: 'bun',
-        args: ['install', '--frozen-lockfile', '--ignore-scripts'],
-        cwd: cacheDirectory,
-        status,
-        signal: null,
-        stdout,
-        stderr,
-      })
-    }
   },
 }
 

@@ -1,8 +1,15 @@
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
-import { deriveProjectLayout } from './Projects'
+import { deriveProjectLayout, type ProjectLayout } from './Projects'
 
+/** ProjectSession holds a stable lock for the lifetime of its generated session state. */
+export type ProjectSession = {
+  id: string
+  directory: string
+  lockPath: string
+  release(): void
+}
 /** acquireSession opens a named or internal CLI/Studio project session. */
 export async function acquireSession(
   projectRoot: string,
@@ -30,21 +37,15 @@ export async function acquireSession(
   })
 }
 
-/** ProjectSession holds a stable lock for the lifetime of its generated session state. */
-export type ProjectSession = {
-  id: string
-  directory: string
-  lockPath: string
-  release(): void
-}
-
 /** SessionOptions selects a public session ID or an internal CLI/Studio session. */
-export type SessionOptions = { id?: string; kind?: 'cli' | 'studio' }
+export type SessionOptions = { id?: string; kind?: SessionKind }
 
 /** isProjectSessionId accepts public and internal project session directory names. */
 export function isProjectSessionId(id: string): boolean {
   return id === '.cli' || id === '.studio' || isUserSessionId(id)
 }
+
+type SessionKind = 'cli' | 'studio'
 
 function validateSessionId(id: string): void {
   if (!isUserSessionId(id)) {
@@ -53,13 +54,14 @@ function validateSessionId(id: string): void {
 }
 
 function isUserSessionId(id: string): boolean {
-  return /^[a-z0-9][a-z0-9_-]*$/.test(id)
+  return Regxs.SessionIdRegx.test(id)
 }
 
-function createInternalSessionId(kind: 'cli' | 'studio'): string {
+function createInternalSessionId(kind: SessionKind): string {
   return kind === 'cli' ? '.cli' : '.studio'
 }
 
+const SessionMarker = '{"format":1}' + NewlineCharacter
 async function ensureSessionState(directory: string): Promise<void> {
   const marker = Path.join(directory, '.tao-session.json')
   const markerContents = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
@@ -74,23 +76,30 @@ async function ensureSessionState(directory: string): Promise<void> {
   await FileSystem.writeFile(marker, SessionMarker)
 }
 
-const SessionMarker = '{"format":1}\n'
-
-async function acquireSessionLock(layout: ReturnType<typeof deriveProjectLayout>, id: string) {
-  await Lifecycle.ensureProjectDirectory(layout.cacheDirectory)
-  await Lifecycle.ensureProjectDirectory(layout.sessionsDirectory)
-  await Lifecycle.ensureProjectDirectory(layout.sessionLocksDirectory)
+async function acquireSessionLock(layout: ProjectLayout, id: string): Promise<SessionLock.SessionLock> {
+  await Lifecycle.ensureProjectDirectories(
+    layout.cacheDirectory,
+    layout.sessionsDirectory,
+    layout.sessionLocksDirectory,
+  )
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
   if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
     Errors.ThrowUserInput(`Project session lock is not a regular file: ${lockPath}`)
   }
-  return await SessionLock.acquire(lockPath)
-    ?? Errors.ThrowUserInput(`Project session is already active: ${id}`)
+  const lock = await SessionLock.acquire(lockPath)
+  if (lock === undefined) {
+    Errors.ThrowUserInput(`Project session is already active: ${id}`)
+  }
+  return lock
 }
 
-async function prepareSession(id: string, layout: ReturnType<typeof deriveProjectLayout>, lock: SessionHandle) {
+async function prepareSession(
+  id: string,
+  layout: ProjectLayout,
+  lock: SessionLock.SessionLock,
+): Promise<ProjectSession> {
   const directory = Path.join(layout.sessionsDirectory, id)
-  await Lifecycle.ensureProjectDirectory(directory)
+  await Lifecycle.ensureProjectDirectories(directory)
   await ensureSessionState(directory)
   await clearPreviousSidecarSnapshots(directory)
   return { id, directory, lockPath: Path.join(layout.sessionLocksDirectory, `${id}.lock`), release: lock.release }
@@ -106,5 +115,3 @@ async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
   }
   await FileSystem.rm(snapshots, { recursive: true, force: true })
 }
-
-type SessionHandle = NonNullable<Awaited<ReturnType<typeof SessionLock.acquire>>>

@@ -1,8 +1,9 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import { graphContentsMatch, validateGraphContents } from './ManagedModuleGraph'
-import type { ManagedModulesInput, NormalizedManagedRequirement } from './ManagedModuleTypes'
+import type { ManagedGraphReference } from '../../dependencies/Types'
+import { requireSetup } from '../../SetupRequired'
+import { graphContentsMatch, validateGraphContents } from '../managed-modules/ManagedModuleGraph'
+import type { ManagedModulesInput, NormalizedManagedRequirement } from '../managed-modules/ManagedModuleTypes'
 import { managedLockPolicyMatches, repairManagedLockPolicy } from './ManagedNpmPolicy'
 import { type ManagedProfileMetadata, optionalJson, optionalText } from './ManagedNpmState'
 
@@ -62,7 +63,7 @@ export async function loadDurableLock(
   if (lock === undefined) {
     lock = await recoverManagedLock(input, requirements, graphFingerprint, repair)
     if (lock !== undefined) {
-      hash = `${Platform.hashText(lock)}\n`
+      hash = `${Platform.hashText(lock)}${NewlineCharacter}`
     }
   }
   validateDurableLock(lock, hash, graphFingerprint)
@@ -74,7 +75,10 @@ function validateDurableLock(
   hash: ManagedLockContents,
   fingerprint: string,
 ): void {
-  if ((lock === undefined) !== (hash === undefined) || lock !== undefined && hash !== `${Platform.hashText(lock)}\n`) {
+  if (
+    (lock === undefined) !== (hash === undefined)
+    || lock !== undefined && hash !== `${Platform.hashText(lock)}${NewlineCharacter}`
+  ) {
     Errors.ThrowUserInput(
       `Managed npm durable lock is changed or incomplete for ${fingerprint}; restore it and its SHA-256 file from version control.`,
     )
@@ -96,7 +100,7 @@ async function recoverManagedLock(
 
 async function readReferencedLock(
   input: ManagedModulesInput,
-  reference: NonNullable<ManagedModulesInput['previousGraphReference']>,
+  reference: ManagedGraphReference,
   requirements: readonly NormalizedManagedRequirement[],
   graphFingerprint: string,
   repair: boolean,

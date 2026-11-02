@@ -56,6 +56,16 @@ export async function readPackageMetadata(path: string): Promise<ManagedMetadata
   })
 }
 
+/** hasPackageDependencies identifies metadata carrying a dependency field without validating its contents. */
+export function hasPackageDependencies(value: unknown): value is ManagedMetadataFields {
+  return isMetadataObject(value) && 'dependencies' in value
+}
+
+/** isOptionalDependency checks optional dependency membership, including inherited declarations. */
+export function isOptionalDependency(name: string, optionalDependencies: ManagedPackageVersionMap): boolean {
+  return name in optionalDependencies
+}
+
 function isOptionalPeerMetadata(value: unknown): boolean {
   if (!isMetadataObject(value)) {
     return false

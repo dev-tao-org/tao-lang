@@ -1,9 +1,9 @@
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { requireSetup } from '../SetupRequired'
-import * as Graph from './ManagedModuleGraph'
-import * as Metadata from './ManagedModuleMetadata'
-import type * as Types from './ManagedModuleTypes'
+import { requireSetup } from '../../SetupRequired'
+import * as Graph from '../managed-modules/ManagedModuleGraph'
+import * as Metadata from '../managed-modules/ManagedModuleMetadata'
+import type * as Types from '../managed-modules/ManagedModuleTypes'
 import * as Host from './ManagedNpmHost'
 import * as Identity from './ManagedNpmIdentity'
 import * as Lock from './ManagedNpmLock'
@@ -87,8 +87,7 @@ async function prepareProfile(
   const durableLock = Identity.resolveManagedDurableLockPath(input, graphFingerprint)
   const durableHash = Identity.resolveManagedDurableLockHashPath(input, graphFingerprint)
   State.validateManagedProfilePath(input.directory, profile)
-  await FileSystem.mkdir(profile, { recursive: true })
-  await FileSystem.mkdir(Path.dirname(durableLock), { recursive: true })
+  await FileSystem.mkdirs(profile, Path.dirname(durableLock))
   const storedLock = await Lock.loadDurableLock(input, normalized, graphFingerprint, durableLock, durableHash, repair)
   await State.claimManagedProfile(
     profile,
@@ -220,7 +219,7 @@ async function persistProfile(
     await State.writeReadOnly(durableLock, lock)
     await State.writeReadOnly(
       Identity.resolveManagedDurableLockHashPath(input, graphFingerprint),
-      `${Platform.hashText(lock)}\n`,
+      `${Platform.hashText(lock)}${NewlineCharacter}`,
     )
   }
   const nativePackages = await Graph.listNativePackageNames(profile)
@@ -235,8 +234,8 @@ async function persistProfile(
   await FileSystem.chmod(lockfile, 0o444)
 }
 
-function serializeProfileMetadata(metadata: ReturnType<typeof createProfileMetadata>): string {
-  return `${JSON.stringify(metadata, null, 2)}\n`
+function serializeProfileMetadata(metadata: State.ManagedProfileMetadata): string {
+  return `${JSON.stringify(metadata, null, 2)}${NewlineCharacter}`
 }
 
 function createProfileMetadata(

@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isDiscoverableProjectDirectory } from '../modules/Paths'
 
@@ -18,13 +18,13 @@ export async function initializeProject(path: string): Promise<ProjectLayout> {
     Errors.ThrowUserInput(`A Tao project is already initialized at ${root}`)
   }
   await rejectNestedProject(root)
-  await FileSystem.mkdir(root, { recursive: true })
+  await FileSystem.mkdir(root)
   const nested = await Files.findProjectMarker(root)
   if (nested) {
     Errors.ThrowUserInput(`Cannot initialize a Tao project containing another project at ${Path.dirname(nested)}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdir(tao, { recursive: true })
+  await FileSystem.mkdir(tao)
   return await ensureProjectMetadata(root)
 }
 
@@ -35,13 +35,11 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
     Errors.ThrowUserInput(`No initialized Tao project exists at ${root}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdir(Path.join(tao, 'cache'), { recursive: true })
-  await FileSystem.mkdir(Path.join(tao, 'locks', 'sessions'), { recursive: true })
-  await FileSystem.mkdir(Path.join(tao, 'store'), { recursive: true })
+  await FileSystem.mkdirs(Path.join(tao, 'cache'), Path.join(tao, 'locks', 'sessions'), Path.join(tao, 'store'))
   await ensureProjectIdentity(Path.join(tao, 'store', 'project.json'))
   const ignore = Path.join(tao, '.gitignore')
   if (!await FileSystem.exists(ignore)) {
-    await FileSystem.writeFile(ignore, 'cache/\nlocks/\n')
+    await FileSystem.writeFile(ignore, joinTextLines('cache/', 'locks/', ''))
   }
   return deriveProjectLayout(root)
 }
@@ -49,7 +47,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
 /** discoverProject resolves an initialized Tao project from a file or directory path. */
 export async function discoverProject(
   path: string,
-  homeDirectory = Platform.homeDirectory(),
+  homeDirectory = Path.home(),
 ): Promise<ProjectLayout | undefined> {
   let current = canonicalExistingPath(path)
   if (!isDirectory(current)) {
@@ -109,7 +107,9 @@ function canonicalProjectTarget(path: string): string {
     current = parent
   }
   const physical = Try.WithDefault(undefined, () => FileSystem.realpathSync(current))
-    ?? Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+  if (physical === undefined) {
+    Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+  }
   return missing.reduce((directory, name) => Path.join(directory, name), physical)
 }
 
@@ -131,6 +131,10 @@ function isProjectDirectory(path: string): boolean {
 
 async function ensureProjectIdentity(path: string): Promise<void> {
   if (!await FileSystem.exists(path)) {
-    await FileSystem.writeFile(path, JSON.stringify({ version: 1, id: Platform.randomUUID() }, null, 2) + '\n')
+    await FileSystem.writeFile(path, serializeProjectIdentity(Platform.randomUUID()))
   }
+}
+
+function serializeProjectIdentity(id: string): string {
+  return `${JSON.stringify({ version: 1, id }, null, 2)}${NewlineCharacter}`
 }

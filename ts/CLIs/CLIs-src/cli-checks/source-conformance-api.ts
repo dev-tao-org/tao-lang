@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 
 export {
@@ -49,8 +49,10 @@ function isPrivateApiMember(node: TypeScript.Node): boolean {
   return hasPrivateName(node)
 }
 
+type ApiMember = TypeScript.TypeElement | TypeScript.ClassElement | TypeScript.ParameterDeclaration
+
 /** isApiMember identifies signature members which may carry public docs. */
-function isApiMember(node: TypeScript.Node): boolean {
+function isApiMember(node: TypeScript.Node): node is ApiMember {
   return TypeScript.isTypeElement(node) || TypeScript.isClassElement(node) || TypeScript.isParameter(node)
 }
 
@@ -127,8 +129,9 @@ function hasValidDocLayout(source: string, range: TypeScript.CommentRange): bool
   if (lines.length === 1) {
     return true
   }
-  const indentation =
-    source.slice(source.lastIndexOf('\n', range.pos) + 1, range.pos).match(Regxs.LeadingHorizontalWhitespaceRegx)![0]
+  const indentation = source.slice(source.lastIndexOf(NewlineCharacter, range.pos) + 1, range.pos).match(
+    Regxs.LeadingHorizontalWhitespaceRegx,
+  )![0]
   const prefix = indentation + ' *  '
   return Regxs.DocOpeningLine.test(lines[0]) && Regxs.DocClosingLine.test(lines[lines.length - 1])
     && lines.slice(1).every(line => line.startsWith(prefix) && Regxs.NonWhitespaceStart.test(line.slice(prefix.length)))
@@ -144,12 +147,19 @@ function hasPrivateName(node: TypeScript.Node): boolean {
   return false
 }
 
-function isPublicShapeExpression(node: TypeScript.Node): boolean {
+type PublicShapeExpression =
+  | TypeScript.ObjectLiteralExpression
+  | TypeScript.ArrowFunction
+  | TypeScript.FunctionExpression
+
+function isPublicShapeExpression(node: TypeScript.Node): node is PublicShapeExpression {
   return TypeScript.isObjectLiteralExpression(node) || TypeScript.isArrowFunction(node)
     || TypeScript.isFunctionExpression(node)
 }
 
-function isImplementationContainer(node: TypeScript.Node): boolean {
+type ImplementationContainer = TypeScript.Block | TypeScript.ModuleBlock | TypeScript.ClassStaticBlockDeclaration
+
+function isImplementationContainer(node: TypeScript.Node): node is ImplementationContainer {
   return TypeScript.isBlock(node) || TypeScript.isModuleBlock(node)
     || TypeScript.isClassStaticBlockDeclaration(node)
 }

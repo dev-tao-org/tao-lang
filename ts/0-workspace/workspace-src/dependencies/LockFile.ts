@@ -1,7 +1,7 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
-import type { DependencyLock, LockedSource, ManagedGraphReference } from './Types'
+import type * as Types from './Types'
 
 /** resolveDependencyLockPath locates the project's durable source dependency graph. */
 export function resolveDependencyLockPath(projectRoot: string): string {
@@ -9,7 +9,7 @@ export function resolveDependencyLockPath(projectRoot: string): string {
 }
 
 /** readDependencyLock reads a validated lock file without resolving or fetching sources. */
-export async function readDependencyLock(path: string): Promise<DependencyLock | undefined> {
+export async function readDependencyLock(path: string): Promise<Types.DependencyLock | undefined> {
   if (!await FileSystem.exists(path)) {
     if (await FileSystem.exists(Path.join(Path.dirname(path), 'dependencies.initialized'))) {
       Errors.ThrowUserInput(`Dependency lock ${path} is missing; restore the exact durable lock from version control.`)
@@ -17,7 +17,7 @@ export async function readDependencyLock(path: string): Promise<DependencyLock |
     return undefined
   }
   const parsed = await Try(
-    async () => JSON.parse(await FileSystem.readFile(path, 'utf8')) as unknown,
+    () => parseDependencyLockFile(path),
     {
       catch: () =>
         Errors.ThrowUserInput(
@@ -38,30 +38,26 @@ export async function readDependencyLock(path: string): Promise<DependencyLock |
   return parsed
 }
 
+type OptionalDependencyLock = Types.DependencyLock | undefined
 /** materializeLocations turns project-relative lock paths into current machine paths. */
 export function materializeLocations(
   lock: OptionalDependencyLock,
   projectRoot: string,
-  bundledProjects?: Readonly<Record<string, string>>,
-): DependencyLock | undefined {
+  bundledProjects?: Types.BundledProjectDirectories,
+): Types.DependencyLock | undefined {
   return lock ? { ...lock, sources: materializeSources(lock.sources, projectRoot, bundledProjects) } : undefined
 }
 
 /** materializeSources resolves each relative source location against its project root. */
 export function materializeSources(
-  sources: Record<string, LockedSource>,
+  sources: Types.DependencySources,
   projectRoot: string,
-  bundledProjects?: Readonly<Record<string, string>>,
-): Record<string, LockedSource> {
+  bundledProjects?: Types.BundledProjectDirectories,
+): Types.DependencySources {
   return Object.fromEntries(
     Object.entries(sources).map(([identity, source]) => [
       identity,
-      {
-        ...source,
-        location: source.provider === 'bundled'
-          ? requiredBundledLocation(source.identifier, bundledProjects)
-          : Path.resolve(projectRoot, source.location),
-      },
+      materializeSource(source, projectRoot, bundledProjects),
     ]),
   )
 }
@@ -82,7 +78,7 @@ export async function readFileSourceRoots(projectRoot: string): Promise<string[]
         )
       ),
   )
-  return [...new Set(roots)]
+  return Lists.unique(roots)
 }
 
 /** pruneUnreferencedManagedLocks removes only locks absent from source locks and retained profiles. */
@@ -114,13 +110,17 @@ export async function pruneUnreferencedManagedLocks(projectRoot: string): Promis
 }
 
 /** writeDependencyLock atomically replaces the lock file with stable formatted JSON. */
-export async function writeDependencyLock(path: string, lock: DependencyLock, projectRoot: string): Promise<void> {
-  const contents = JSON.stringify(relativizeLocations(lock, projectRoot), null, 2) + '\n'
+export async function writeDependencyLock(
+  path: string,
+  lock: Types.DependencyLock,
+  projectRoot: string,
+): Promise<void> {
+  const contents = serializeDependencyLock(lock, projectRoot)
   const temporary = `${path}.${Platform.randomUUID()}.tmp`
   await Try(async () => {
     await FileSystem.writeFile(temporary, contents)
     await FileSystem.rename(temporary, path)
-    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), '1\n')
+    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), `1${NewlineCharacter}`)
   }, { finally: () => FileSystem.rm(temporary, { force: true }) })
 }
 
@@ -131,42 +131,50 @@ export async function recordManagedGraphReference(
   fingerprint: string,
   durableLockPath: string,
   lockHash: string,
-): Promise<DependencyLock> {
+): Promise<Types.DependencyLock> {
   validateGraphReference(graphKey, fingerprint, lockHash)
   const lockPath = resolveDependencyLockPath(projectRoot)
-  const lock = await readDependencyLock(lockPath)
-    ?? { version: 2, roots: {}, sources: {}, commitPins: {} }
+  const storedLock = await readDependencyLock(lockPath)
+  const lock: Types.DependencyLock = storedLock === undefined
+    ? { version: 2, roots: {}, sources: {}, commitPins: {} }
+    : storedLock
   const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
-  const reference: ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
-  const updated: DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
-  await FileSystem.mkdir(Path.dirname(lockPath), { recursive: true })
+  const reference: Types.ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
+  const updated: Types.DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
+  await FileSystem.mkdir(Path.dirname(lockPath))
   await writeDependencyLock(lockPath, updated, projectRoot)
   return updated
 }
 
-type SerializedDependencyLock = Omit<DependencyLock, 'sources'> & {
+type SerializedDependencyLock = Omit<Types.DependencyLock, 'sources'> & {
   sources: Record<string, SerializedLockedSource>
 }
 
-type SerializedLockedSource = LockedSource | Omit<LockedSource, 'location'>
-type OptionalDependencyLock = DependencyLock | undefined
-type BundledProjects = Readonly<Record<string, string>> | undefined
+type SerializedLockedSource = Types.LockedSource | Omit<Types.LockedSource, 'location'>
 
-function relativizeLocations(lock: DependencyLock, projectRoot: string): SerializedDependencyLock {
+type BundledProjects = Types.BundledProjectDirectories | undefined
+
+function relativizeLocations(lock: Types.DependencyLock, projectRoot: string): SerializedDependencyLock {
   return {
     ...lock,
     sources: Object.fromEntries(
       Object.entries(lock.sources).map(([identity, source]) => [
         identity,
-        source.provider === 'bundled'
-          ? omitLocation(source)
-          : { ...source, location: serializedLocation(source.location, projectRoot) },
+        relativizeSource(source, projectRoot),
       ]),
     ),
   }
 }
 
-function omitLocation(source: LockedSource): Omit<LockedSource, 'location'> {
+function relativizeSource(source: Types.LockedSource, projectRoot: string): SerializedLockedSource {
+  if (source.provider === 'bundled') {
+    return omitLocation(source)
+  }
+  const location = serializedLocation(source.location, projectRoot)
+  return { ...source, location }
+}
+
+function omitLocation(source: Types.LockedSource): Omit<Types.LockedSource, 'location'> {
   const { location: _location, ...portable } = source
   return portable
 }
@@ -177,8 +185,12 @@ function serializedLocation(location: string, projectRoot: string): string {
     : location.replaceAll('\\', '/')
 }
 
-async function pruneMissingGraphReferences(lock: DependencyLock, projectRoot: string): Promise<DependencyLock> {
-  const npmGraphs = { ...lock.npmGraphs }
+async function pruneMissingGraphReferences(
+  lock: Types.DependencyLock,
+  projectRoot: string,
+): Promise<Types.DependencyLock> {
+  const existingGraphs: NonNullable<Types.DependencyLock['npmGraphs']> = lock.npmGraphs ?? {}
+  const npmGraphs = Objects.copy(existingGraphs)
   let changed = false
   for (const key of Object.keys(npmGraphs)) {
     if (!isOwnedSourceKey(key)) {
@@ -211,15 +223,61 @@ async function retainedProfileIdentities(directory: string): Promise<Set<string>
     const metadataPath = Path.join(root, '.tao-managed.json')
     const metadata = await Try.WithDefault(
       undefined,
-      async () => JSON.parse(await FileSystem.readFile(metadataPath, 'utf8')) as Record<string, unknown>,
+      () => parseRetainedProfileMetadata(metadataPath),
     )
-    const identity = typeof metadata?.graphFingerprint === 'string' ? metadata.graphFingerprint : undefined
+    const identity = readRetainedGraphFingerprint(metadata)
     if (!identity) {
       return undefined
     }
     identities.add(identity)
   }
   return identities
+}
+
+function materializeSource(
+  source: Types.LockedSource,
+  projectRoot: string,
+  bundledProjects: BundledProjects,
+): Types.LockedSource {
+  const location = materializeSourceLocation(source, projectRoot, bundledProjects)
+  return { ...source, location }
+}
+
+function materializeSourceLocation(
+  source: Types.LockedSource,
+  projectRoot: string,
+  bundledProjects: BundledProjects,
+): string {
+  if (source.provider === 'bundled') {
+    return requiredBundledLocation(source.identifier, bundledProjects)
+  }
+  return Path.resolve(projectRoot, source.location)
+}
+
+async function parseDependencyLockFile(path: string): Promise<unknown> {
+  const contents = await FileSystem.readFile(path, 'utf8')
+  return JSON.parse(contents) as unknown
+}
+
+function serializeDependencyLock(lock: Types.DependencyLock, projectRoot: string): string {
+  const portableLock = relativizeLocations(lock, projectRoot)
+  return JSON.stringify(portableLock, null, 2) + NewlineCharacter
+}
+
+async function parseRetainedProfileMetadata(path: string): Promise<unknown> {
+  const contents = await FileSystem.readFile(path, 'utf8')
+  return JSON.parse(contents) as unknown
+}
+
+function readRetainedGraphFingerprint(metadata: unknown): string | undefined {
+  const fingerprint = hasRetainedGraphFingerprint(metadata)
+    ? metadata.graphFingerprint
+    : undefined
+  return typeof fingerprint === 'string' ? fingerprint : undefined
+}
+
+function hasRetainedGraphFingerprint(metadata: unknown): metadata is { graphFingerprint: unknown } {
+  return metadata !== null && typeof metadata === 'object' && 'graphFingerprint' in metadata
 }
 
 function isRegularFile(path: string): boolean {

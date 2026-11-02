@@ -1,5 +1,5 @@
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Env, FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
+import { FileSystem, Lifecycle, Platform, Streams } from '@shared/os'
 import { type ConfiguredCommandOutput, configuredCommandOutput } from './io'
 import type { OutputChannel } from './output/Output'
 import { createProcessOutput } from './output/ProcessOutput'
@@ -56,13 +56,13 @@ type ProcessSignal = string | null
 type ChildSpawnOptions<In extends Platform.ChildProcessInput> = {
   variadicArgs?: readonly string[]
   cwd?: string
-  env?: Record<string, EnvironmentValue>
+  addEnv?: Record<string, EnvironmentValue>
   stdin?: In
 }
 type RunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
-  env?: Record<string, EnvironmentValue>
+  addEnv?: Record<string, EnvironmentValue>
   stdin?: FileSystem.File
   stdout?: InheritedStreamMode
   stderr?: InheritedStreamMode
@@ -77,8 +77,8 @@ async function runLoggedCommand(
   output: ConfiguredCommandOutput,
 ): Promise<void> {
   const environment = {
-    ...Env.snapshot(),
-    ...options.env,
+    ...output.addEnv,
+    ...options.addEnv,
     TERMINAL_UI: '0',
     TERMINAL_OUTPUT: '1',
     OUTPUT_LOG_FILE: undefined,
@@ -87,7 +87,7 @@ async function runLoggedCommand(
   const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
-    env: environment,
+    addEnv: environment,
     stdin: options.stdin ?? (options.output ? 'ignore' : 'inherit'),
   }
   const stdout = options.stdout === 'ignore' ? 'ignore' : 'pipe'
@@ -153,12 +153,13 @@ function commandStderr(
 }
 
 async function runInheritedCommand(command: Command, options: RunOptions): Promise<void> {
-  const environment = { ...Env.snapshot(), ...options.env }
+  const output = configuredCommandOutput(options.output)
+  const environment = { ...output.addEnv, ...options.addEnv }
   const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
     stdin: options.stdin ?? 'inherit',
-    env: environment,
+    addEnv: environment,
   }
   const stdout = options.stdout === 'ignore' ? 'ignore' : 'inherit'
   const stderr = options.stderr ?? 'inherit'

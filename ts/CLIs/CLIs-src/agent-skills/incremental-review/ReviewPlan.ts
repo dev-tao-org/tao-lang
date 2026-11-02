@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Regxs, Try } from '@shared'
+import { Errors, NullCharacter, Regxs, TabCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { assertOwnedSession, requireCleanReviewed, requireIdleSession } from './ReviewSession'
@@ -98,7 +98,7 @@ export async function validateSelection(session: ReviewSession, selection: Revie
 
 /** replaceEntries transfers literal object/mode entries, including deletions, between private indices. */
 export async function replaceEntries(root: string, index: string, revision: string, files: string[]): Promise<void> {
-  const removals = files.map(path => `0 ${GitRemovalObjectId}\t${path}${NullCharacter}`).join('')
+  const removals = files.map(path => `0 ${GitRemovalObjectId}${TabCharacter}${path}${NullCharacter}`).join('')
   const entries = await ReviewGit.readGitPathEntries(root, revision, files)
   await ReviewGit.git(root, ['update-index', '-z', '--index-info'], { index, input: removals + entries })
 }

@@ -1,6 +1,8 @@
 import { Errors, Switch, Time, Try } from '../universal/universal'
-import * as Env from './Env'
-import { dirname, join, lstat, mkdir, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
+import Env from './Env'
+import * as FileSystem from './FileSystem'
+import type { Dirent } from './NodeBuiltins'
+import { dirname, join, lstat, posix, readdir, realpath, resolve, rm, win32 } from './NodeBuiltins'
 import * as Path from './Path'
 import * as Platform from './Platform'
 import * as SessionLock from './SessionLock'
@@ -15,7 +17,7 @@ export type StoragePlatform = 'macos' | 'linux' | 'windows'
 export function resolveStorage(
   platform: StoragePlatform,
   home: string,
-  environment: Record<string, string | undefined>,
+  environment: Record<string, EnvironmentValue>,
 ): StorageRoots {
   const pathApi = platform === 'windows' ? win32 : posix
   const bases = Switch<StoragePlatform, StorageRoots>(platform, {
@@ -52,7 +54,7 @@ export function resolveSupportDirectory(...segments: string[]): string {
 /** withCacheMutation serializes shared-cache writers and cleanup across threads and processes. */
 export async function withCacheMutation<Value>(operation: () => Promise<Value>): Promise<Value> {
   const path = resolveSupportDirectory('locks', 'cache-mutation.lock')
-  await mkdir(dirname(path), { recursive: true })
+  await FileSystem.mkdir(dirname(path))
   const releaseLocal = await acquireLocalMutation()
   return await Try(async () => {
     const lock = await acquireMutationLock(path)
@@ -63,7 +65,7 @@ export async function withCacheMutation<Value>(operation: () => Promise<Value>):
 /** acquireCacheLease holds a removable lease probe; its lifecycle is serialized by the stable cache-mutation lock. */
 export async function acquireCacheLease(identity: string): Promise<() => void | Promise<void>> {
   const path = resolveSupportDirectory('leases', `${Platform.hashText(identity)}.lock`)
-  await mkdir(dirname(path), { recursive: true })
+  await FileSystem.mkdir(dirname(path))
   let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
     await hasBusyLease(resolveSupportDirectory('leases'))
@@ -74,7 +76,7 @@ export async function acquireCacheLease(identity: string): Promise<() => void | 
     activeLeases.add(path)
     releaseLease = () => releaseCacheLease(path, lock)
   })
-  let release: Promise<void> | undefined
+  let release: PendingLeaseRelease
   return () => release ??= releaseLease()
 }
 
@@ -102,40 +104,42 @@ export async function cleanSharedCache(report?: (reason: string) => void): Promi
   })
 }
 
+type EnvironmentValue = string | undefined
+type PendingLeaseRelease = Promise<void> | undefined
+type StoragePathApi = typeof posix | typeof win32
+
 function resolveStorageRoots(): StorageRoots {
   const system = Platform.systemInfo().os
   const current = resolveStoragePlatform(system)
   if (!current) {
     Errors.ThrowHostEnvironment(`Tao storage locations are not defined for this operating system: ${system}`)
   }
-  return resolveStorage(current, Platform.homeDirectory(), Env.snapshot())
+  return resolveStorage(current, Path.home(), Env.values())
 }
 
 function resolveStoragePlatform(system: string): StoragePlatform | undefined {
-  if (system === 'Darwin') {
-    return 'macos'
+  if (!Platform.isSupportedHostSystem(system)) {
+    return undefined
   }
-  if (system === 'Windows_NT') {
-    return 'windows'
-  }
-  if (system === 'Linux') {
-    return 'linux'
-  }
-  return undefined
+  return Switch<Platform.HostSystem, StoragePlatform>(system, {
+    Darwin: () => 'macos',
+    Windows_NT: () => 'windows',
+    Linux: () => 'linux',
+  })
 }
 
 function resolveOverride(
-  override: string | undefined,
+  override: EnvironmentValue,
   base: string,
   suffix: string[],
   home: string,
-  pathApi: typeof posix | typeof win32,
+  pathApi: StoragePathApi,
 ): string {
   const selected = override?.trim() || pathApi.join(base, ...suffix)
   return pathApi.isAbsolute(selected) ? pathApi.resolve(selected) : pathApi.resolve(home, selected)
 }
 
-function xdgPath(value: string | undefined, fallback: string): string {
+function xdgPath(value: EnvironmentValue, fallback: string): string {
   return value && posix.isAbsolute(value) ? posix.resolve(value) : fallback
 }
 
@@ -211,41 +215,49 @@ function blockedProbe(error: unknown, path: string, report?: (reason: string) =>
 }
 
 function isUnavailableProbe(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error
-    && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && ['EPERM', 'EACCES', 'EBUSY'].includes(String(error.code))
 }
 
 async function hasBusyLease(directory: string, report?: (reason: string) => void): Promise<boolean> {
-  const entries = await Try(async () => await readdir(directory, { withFileTypes: true }), {
-    catch: error => handleLeaseDirectoryFailure(error, directory, report),
-  })
+  const entries = await readLeaseDirectory(directory, report)
   if (!entries) {
     return true
   }
   let busy = false
   for (const entry of entries.filter(item => item.name.endsWith('.lock'))) {
-    if (!entry.isFile()) {
-      report?.(`Unexpected lease entry at ${join(directory, entry.name)}. Inspect it before retrying tao clean --wipe.`)
-      busy = true
-      continue
-    }
-    const path = join(directory, entry.name)
-    const lock = await Try(() => SessionLock.acquire(path), {
-      catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
-    })
-    if (!lock) {
-      report?.(
-        `Shared cache lease could not be cleared: ${path}. Close its owner or resolve the access issue above before retrying.`,
-      )
-      busy = true
-      continue
-    }
-    lock.release()
-    if (!await removeLeaseProbe(path, report)) {
-      busy = true
-    }
+    const entryIsBusy = await checkLeaseEntry(directory, entry, report)
+    // Check every probe even after finding a busy one, so stale probes still get cleaned up.
+    busy = entryIsBusy || busy
   }
   return busy
+}
+
+async function readLeaseDirectory(directory: string, report?: (reason: string) => void): Promise<Dirent[] | undefined> {
+  return await Try(() => readdir(directory, { withFileTypes: true }), {
+    catch: error => handleLeaseDirectoryFailure(error, directory, report),
+  })
+}
+
+async function checkLeaseEntry(directory: string, entry: Dirent, report?: (reason: string) => void): Promise<boolean> {
+  const path = join(directory, entry.name)
+  if (!entry.isFile()) {
+    report?.(`Unexpected lease entry at ${path}. Inspect it before retrying tao clean --wipe.`)
+    return true
+  }
+  const lock = await Try(() => SessionLock.acquire(path), {
+    catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
+  })
+  if (!lock) {
+    report?.(
+      `Shared cache lease could not be cleared: ${path}. Close its owner or resolve the access issue above before retrying.`,
+    )
+    return true
+  }
+  lock.release()
+  return !await removeLeaseProbe(path, report)
 }
 
 function handleLeaseDirectoryFailure(
@@ -283,7 +295,10 @@ async function removeCacheEntries(root: string): Promise<void> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
 }
 
 const activeLeases = new Set<string>()

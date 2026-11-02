@@ -1,12 +1,12 @@
 import * as AST from '@ast-gen/AST'
 import * as Runtime from '@runtime/Runtime'
-import { Errors } from '@shared'
+import { Errors, Lists } from '@shared'
 import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
 import { requireSetup } from './SetupRequired'
 import * as SidecarPipeline from './SidecarPipeline'
-import * as ManagedModules from './sidecars/ManagedModules'
+import * as ManagedModules from './sidecars/managed-modules/ManagedModules'
 
 /** ProjectPipelineResult exposes validated foreign-view routing and dynamic source watches. */
 export type ProjectPipelineResult = {
@@ -160,7 +160,9 @@ class PipelineSession implements ProjectPipeline {
   }
 }
 
-function describeNativeRebuildRequirement(profile: ManagedModules.PreparedManagedModules | undefined): string {
+type OptionalManagedProfile = ManagedModules.PreparedManagedModules | undefined
+
+function describeNativeRebuildRequirement(profile: OptionalManagedProfile): string {
   const nativePackageCount = profile?.nativePackages.length ?? 0
   if (nativePackageCount > 0) {
     return ' A native rebuild is also required.'
@@ -244,17 +246,15 @@ function configureRuntimeDependencies(
   sessionDirectory: string,
 ): void {
   options.dependencyDirectory = Path.join(managed.packageDirectory, 'node_modules')
-  options.watchFolders = [
-    ...new Set([
-      ...baseWatchFolders,
-      managed.packageDirectory,
-      Path.join(sessionDirectory, 'foreign-views'),
-    ]),
-  ]
-  options.singletonPackages = [
-    ...new Set([
-      ...Object.keys(input.runtimePins),
-      ...managed.nativePackages,
-    ]),
-  ]
+  options.watchFolders = collectRuntimeWatchFolders(baseWatchFolders, managed.packageDirectory, sessionDirectory)
+  options.singletonPackages = Lists.unique(Object.keys(input.runtimePins), managed.nativePackages)
+}
+
+function collectRuntimeWatchFolders(
+  baseWatchFolders: readonly string[],
+  packageDirectory: string,
+  sessionDirectory: string,
+): string[] {
+  const foreignViewsDirectory = Path.join(sessionDirectory, 'foreign-views')
+  return Lists.unique(baseWatchFolders, [packageDirectory, foreignViewsDirectory])
 }

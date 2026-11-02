@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import type { Browser, Page } from 'playwright'
-import * as Env from './Env'
+import Env from './Env'
 import * as Platform from './Platform'
 
 export type { Browser, FrameLocator, Page } from 'playwright'

@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
 import ProjectMetadata from './.tao/store/project.json' with { type: 'json' }
@@ -23,7 +23,7 @@ const embeddedFiles = {
 }
 
 function serializeEmbeddedProjectMetadata(metadata: typeof ProjectMetadata): string {
-  return `${JSON.stringify(metadata, null, 2)}\n`
+  return `${JSON.stringify(metadata, null, 2)}${NewlineCharacter}`
 }
 
 async function resolveDefaultProjectDirectory(): Promise<string> {
@@ -61,7 +61,7 @@ async function materializeProject(cacheRoot: string, resources: StdlibResourceFi
   await FileSystem.mkdir(staging)
   await Try(async () => {
     await writeResources(staging, entries)
-    await FileSystem.writeFile(Path.join(staging, '.ready'), `${fingerprint}\n`)
+    await FileSystem.writeFile(Path.join(staging, '.ready'), `${fingerprint}${NewlineCharacter}`)
     await replaceIncompleteRoot(root, cacheRoot)
     await FileSystem.rename(staging, root)
   }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })

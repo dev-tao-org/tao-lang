@@ -105,8 +105,8 @@ async function runExtension(): Promise<void> {
 async function runPreview(initialSource?: string) {
   await prepareRuntime()
   const { createProject } = await import('@workspace/Workspace')
-  const { previewPerformance } = await import('../../../../perf/perf-src/preview-performance')
-  const { describeReloadScenario } = await import('../../../../perf/perf-src/ReloadTimings')
+  const { previewPerformance } = await import('@perf/preview-performance')
+  const { describeReloadScenario } = await import('@perf/ReloadTimings')
   const project = await createProject()
   const dependencies = await createProjectDependencyOptions(project.directory)
   await prepareDependencies(project.directory, await dependencies.readRequirements(project.directory), dependencies)

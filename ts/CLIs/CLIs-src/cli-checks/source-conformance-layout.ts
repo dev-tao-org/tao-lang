@@ -1,4 +1,4 @@
-import { Regxs } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import * as TypeScript from 'typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
@@ -40,6 +40,8 @@ export function singleLineImportIssue(
     : 'import declarations must fit on one line; use a namespace import for long lists'
 }
 
+const MultilineStringMessage = 'multiline strings must use S from @shared'
+
 /** multilineStringIssue reports multiline runtime literals that violate S layout. */
 export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.SourceFile): string | undefined {
   if (!isRuntimeString(node)) {
@@ -47,15 +49,19 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
   }
   const layout = stringLayout(node, file)
   if (!Regxs.NewlineCharacter.test(layout)) {
+    if (hasEscapedMultilineText(node) && !isIndependentTestExpectation(node, file)) {
+      return MultilineStringMessage
+    }
     return
   }
   if (!isSTemplate(node)) {
-    return 'multiline strings must use S from @shared'
+    return MultilineStringMessage
   }
   const lines = layout.split(Regxs.OptionalCarriageNewline)
-  const opening = file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(
-    Regxs.LeadingHorizontalWhitespaceRegx,
-  )![0]
+  const opening =
+    file.text.slice(file.text.lastIndexOf(NewlineCharacter, node.getStart(file)) + 1, node.getStart(file)).match(
+      Regxs.LeadingHorizontalWhitespaceRegx,
+    )![0]
   const closing = lines[lines.length - 1]
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
@@ -64,6 +70,46 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
 
 type RuntimeString = TypeScript.StringLiteralLike | TypeScript.TemplateExpression
 type InterpolationStart = TypeScript.TemplateHead | TypeScript.TemplateMiddle
+
+function hasEscapedMultilineText(node: RuntimeString): boolean {
+  if (TypeScript.isTaggedTemplateExpression(node.parent)) {
+    return false
+  }
+  const text = cookedStringText(node)
+  if (!Regxs.NewlineCharacter.test(text)) {
+    return false
+  }
+  return text.split(Regxs.OptionalCarriageNewline).filter(line => line.trim()).length > 1
+}
+
+function cookedStringText(node: RuntimeString): string {
+  if (TypeScript.isTemplateExpression(node)) {
+    return node.head.text + node.templateSpans.map(span => span.literal.text).join('')
+  }
+  return node.text
+}
+
+const ExpectedValueMatchers = new Set(['toBe', 'toEqual', 'toStrictEqual', 'toContain', 'toMatchObject', 'toEndWith'])
+
+function isIndependentTestExpectation(node: RuntimeString, file: TypeScript.SourceFile): boolean {
+  const testFile = file.fileName.endsWith('.test.ts') || file.fileName.endsWith('.test.tsx')
+  if (!testFile) {
+    return false
+  }
+  let value: TypeScript.Node = node
+  while (value.parent && !TypeScript.isCallExpression(value.parent)) {
+    if (TypeScript.isFunctionLike(value.parent)) {
+      return false
+    }
+    value = value.parent
+  }
+  const call = value.parent
+  if (!call || !TypeScript.isCallExpression(call) || !call.arguments.some(argument => argument === value)) {
+    return false
+  }
+  return TypeScript.isPropertyAccessExpression(call.expression)
+    && ExpectedValueMatchers.has(call.expression.name.text)
+}
 
 function isBraceOnlyLine(
   body: TypeScript.Block,

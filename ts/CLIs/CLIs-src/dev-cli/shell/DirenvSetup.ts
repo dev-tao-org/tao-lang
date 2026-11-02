@@ -12,15 +12,12 @@ const ACTIVATION_SOURCE = 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'
 /** SetupEnvironment injects shell and process dependencies for direnv setup. */
 type SetupEnvironment = {
   confirm: typeof IO.askConfirm
-  env: Readonly<Record<string, EnvironmentValue>>
   interactive: () => boolean
   resolveDirenvPackage?: (profileClient: string) => string | undefined
   root: () => string
   run: (command: string, options?: RunOptions) => Promise<CommandResult>
   write: (message: string) => void
 }
-
-type EnvironmentValue = string | undefined
 
 /** runDirenvSetup offers optional zsh activation through pinned direnv for this Git identity. */
 async function runDirenvSetup(
@@ -37,7 +34,6 @@ async function runDirenvSetup(
 function liveEnvironment(): SetupEnvironment {
   return {
     confirm: IO.askConfirm,
-    env: Env.snapshot(),
     interactive: Terminal.isInteractive,
     root: Repo.getWorkspaceRoot,
     run: runCapturedCommand,
@@ -46,7 +42,7 @@ function liveEnvironment(): SetupEnvironment {
 }
 
 function isSetupDisabled(environment: SetupEnvironment): boolean {
-  return environment.env['TAO_DEV_SHELL_SETUP'] === '0' || !environment.interactive()
+  return Env.get('TAO_DEV_SHELL_SETUP') === '0' || !environment.interactive()
 }
 
 const SETUP_PROMPT = "Auto-load Tao's dev environment in zsh when you enter this repo (and its worktrees)?"
@@ -54,21 +50,19 @@ async function completeDirenvSetup(
   options: { configure?: boolean },
   environment: SetupEnvironment,
 ): Promise<number> {
-  const { env, write } = environment
-  if (Path.basename(env['SHELL'] ?? '') !== 'zsh') {
+  const { write } = environment
+  if (Path.basename(Env.get('SHELL') ?? '') !== 'zsh') {
     write('Automatic development shell activation currently supports zsh. Shell configuration was left unchanged.')
     return 0
   }
   const root = environment.root()
-  const home = requireHome(env)
-  rejectLineBreaks(root, home, env['ZDOTDIR'] ?? '')
+  const zshrc = resolveZshrcPath(root)
   const { commonDirectory, identity } = await resolveGitIdentity(root, environment)
-  const shellRoot = Path.resolve(home, '.tao-dev/shell')
-  const choicePath = Path.resolve(shellRoot, 'repositories', identity, 'choice')
+  const shellRoot = Path.home.taoDev('shell')
+  const choicePath = Path.home.taoDev('shell', 'repositories', identity, 'choice')
   if (await hasStoredChoice(options, choicePath)) {
     return 0
   }
-  const zshrc = Path.resolve(env['ZDOTDIR'] || home, '.zshrc')
   const accepted = await environment.confirm({ defaultValue: false, message: SETUP_PROMPT })
   await FileSystem.mkdir(shellRoot)
   if (await hasStoredChoice(options, choicePath)) {
@@ -101,6 +95,13 @@ async function completeDirenvSetup(
   return 0
 }
 
+function resolveZshrcPath(root: string): string {
+  const home = Path.home()
+  const zdotdir = Env.get('ZDOTDIR')
+  rejectLineBreaks(root, home, zdotdir ?? '')
+  return zdotdir ? Path.resolve(zdotdir, '.zshrc') : Path.home('.zshrc')
+}
+
 async function revokeDirenvAllowance(root: string, environment: SetupEnvironment): Promise<void> {
   const denied = await environment.run('direnv', { args: ['deny', root], cwd: root })
   if (denied.status !== 0) {
@@ -113,14 +114,6 @@ async function revokeDirenvAllowance(root: string, environment: SetupEnvironment
 async function refreshInstalledActivation(root: string, shellRoot: string): Promise<void> {
   const source = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
   await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
-}
-
-function requireHome(env: Readonly<Record<string, EnvironmentValue>>): string {
-  const home = env['HOME']
-  if (!home) {
-    Errors.ThrowHostEnvironment('Shell setup needs HOME to locate developer shell configuration.')
-  }
-  return home
 }
 
 async function hasStoredChoice(

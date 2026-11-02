@@ -1,5 +1,6 @@
 import '../../cli-kit/fatal-errors'
 import { configureCLIOutput, IO } from '@cli-kit'
+import { NewlineCharacter } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import { prepareNativeLocks } from '../../cli-checks/native-lock-build'
 import { prepareParser } from '../../cli-checks/parser-build'
@@ -25,7 +26,7 @@ async function ensureShellCompletionCache(): Promise<void> {
   await FileSystem.mkdir(cache)
   await FileSystem.writeFile(
     completion,
-    '# Tao dev shell completion is generated during ./agent setup.\n',
+    '# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter,
     'utf8',
   )
 }

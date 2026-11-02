@@ -69,7 +69,7 @@ function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string
 }
 
 function serializeExpoAppManifest(): string {
-  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2)
+  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } }, null, 2)
 }
 
 function serializeExpoTypeScriptConfig(): string {

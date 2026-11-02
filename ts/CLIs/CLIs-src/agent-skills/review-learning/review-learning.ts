@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Objects } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { applyLearningProposal, findScan, preflightProposal } from './LearningPatches'
 import { runCandidateScan } from './LearningQueries'
@@ -70,7 +70,7 @@ async function executeCommand(
     const files = requirePaths(state.root, options.get('files') ?? [], 'files')
     const scan = await runCandidateScan(state.root, correction, files)
     state.scans.push(scan)
-    return { ...scan }
+    return Objects.copy(scan)
   }
   if (command === 'propose') {
     const proposal = validateProposal(state.root, await readLearningInput(required(options, 'input')))

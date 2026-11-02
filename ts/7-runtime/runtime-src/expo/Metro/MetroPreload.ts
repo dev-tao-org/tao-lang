@@ -1,5 +1,5 @@
-import { Errors, Try } from '@shared'
-import * as Env from '../../../../shared/shared-src/os/Env'
+import { Try } from '@shared'
+import Env from '../../../../shared/shared-src/os/Env'
 import * as FileSystem from '../../../../shared/shared-src/os/FileSystem'
 import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
 import { parseGeneratedRevision } from '../GeneratedRevision'
@@ -38,16 +38,12 @@ export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): M
   }
 }
 
-const sessionId = requireEnvironment('TAO_METRO_SESSION')
-const token = requireEnvironment('TAO_METRO_TOKEN')
+const sessionId = Env.require('TAO_METRO_SESSION')
+const token = Env.require('TAO_METRO_TOKEN')
 const initial = parseGeneratedRevision(
-  FileSystem.readFileSync(requireEnvironment('TAO_METRO_SEED'), 'utf8'),
+  FileSystem.readFileSync(Env.require('TAO_METRO_SEED'), 'utf8'),
 ) as GeneratedRevision
 const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory(), sessionId, initial })
-
-function requireEnvironment(name: string): string {
-  return Env.get(name) ?? Errors.ThrowHostEnvironment(`Missing Metro preload setting: ${name}`)
-}
 
 function respond(response: MetroPlatform.OutgoingResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' })

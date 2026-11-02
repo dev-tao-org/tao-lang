@@ -1,4 +1,4 @@
-import { Errors, Lists } from '@shared'
+import { Errors, Lists, Objects } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import type { ReviewSession } from '../incremental-review/ReviewTypes'
@@ -81,8 +81,8 @@ async function applyLockedProposal(state: LearningState, proposal: Proposal, pro
 
 async function assertFreshScan(root: string, scan: Scan, proposal: Proposal): Promise<void> {
   const current = await LearningStore.snapshotScope(root, scan.correction)
-  const expected = { ...scan.files }
-  const inputs = { ...scan.inputs }
+  const expected = Objects.copy(scan.files)
+  const inputs = Objects.copy(scan.inputs)
   for (const [file, output] of Object.entries(proposal.outputs ?? {})) {
     const currentHash = current.files[file]
     const afterHash = Platform.hashText(output.after)

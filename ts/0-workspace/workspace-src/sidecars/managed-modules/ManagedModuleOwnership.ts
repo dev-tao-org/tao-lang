@@ -1,6 +1,6 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 
 type SerializedModuleOwner = string | undefined
 type PreviousModuleOwner = ManagedModuleOwner | undefined
@@ -51,7 +51,7 @@ export async function linkModulePackages(
 ): Promise<void> {
   await validateModuleLinks(directory, profile, packages, previousOwner)
   const localModules = Path.join(directory, 'node_modules')
-  await FileSystem.mkdir(localModules, { recursive: true })
+  await FileSystem.mkdir(localModules)
   for (const name of previousOwner?.packages ?? []) {
     if (!packages.includes(name)) {
       await removeOwnedLink(localModules, name, previousOwner!.profile)
@@ -73,7 +73,7 @@ export async function validateModuleLinks(
   if (isSymbolicLink(localModules)) {
     Errors.ThrowUserInput(`Module resolution directory is already owned: ${localModules}`)
   }
-  for (const name of new Set([...packages, ...previousOwner?.packages ?? []])) {
+  for (const name of Lists.unique(packages, previousOwner?.packages ?? [])) {
     const link = Path.join(localModules, name)
     if (Path.dirname(link) !== localModules && isSymbolicLink(Path.dirname(link))) {
       Errors.ThrowUserInput(`Module resolution path is not owned by the current or prior profile: ${link}`)
@@ -141,21 +141,25 @@ function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
   return isManagedModuleOwner(owner) ? owner : undefined
 }
 
-type ParsedModuleOwnerFields = { profile?: unknown; packages?: unknown } | null | undefined
+type ParsedModuleOwnerFields = Record<string, unknown>
 
 function isManagedModuleOwner(value: unknown): value is ManagedModuleOwner {
-  const owner = value as ParsedModuleOwnerFields
-  if (!owner) {
+  if (!isParsedModuleOwnerFields(value)) {
     return false
   }
-  if (typeof owner.profile !== 'string' || !Array.isArray(owner.packages)) {
+  if (typeof value.profile !== 'string' || !Array.isArray(value.packages)) {
     return false
   }
-  return owner.packages.every(isPackageName)
+  return value.packages.every(isPackageName)
 }
 
-function parseManagedModuleOwner(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+function parseManagedModuleOwner(contents: string): ParsedModuleOwnerFields | undefined {
+  const value: unknown = JSON.parse(contents)
+  return isParsedModuleOwnerFields(value) ? value : undefined
+}
+
+function isParsedModuleOwnerFields(value: unknown): value is ParsedModuleOwnerFields {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isPackageName(name: unknown): name is string {
@@ -214,7 +218,7 @@ async function linkPackage(
 ): Promise<void> {
   const link = Path.join(localModules, name)
   const target = Path.join(profile, 'node_modules', name)
-  await FileSystem.mkdir(Path.dirname(link), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(link))
   if (!isSymbolicLink(link) && !FileSystem.existsSync(link)) {
     await FileSystem.symlink(target, link, 'dir')
     return

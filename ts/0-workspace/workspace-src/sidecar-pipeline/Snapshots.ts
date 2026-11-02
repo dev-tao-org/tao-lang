@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Try } from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
@@ -40,23 +40,31 @@ export function snapshotModuleDirectory(snapshotRoot: string, moduleRoot: string
   return Path.join(snapshotRoot, 'modules', Platform.hashText(moduleRoot).slice(0, 16))
 }
 
-/** cachedSnapshotMatches confirms the exact immutable snapshot inventory against captured inputs. */
-export async function cachedSnapshotMatches(
-  snapshotRoot: string,
+/** findCachedSnapshot selects an exact or recovered snapshot whose complete inputs still match. */
+export async function findCachedSnapshot(
+  requestedRoot: string,
+  groups: readonly SidecarGroup[],
   fingerprint: string,
   nodeModulesDirectory: string,
-  groups: readonly SidecarGroup[],
   defaultsPath: string,
-): Promise<boolean> {
-  return await SnapshotIntegrity.cachedSnapshotMatches({
-    snapshotRoot,
-    fingerprint,
-    nodeModulesDirectory,
-    groups,
-    defaultsPath,
-    moduleDirectories: groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot)),
-  })
+): Promise<string | undefined> {
+  if (await cachedSnapshotMatches(requestedRoot, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
+    return requestedRoot
+  }
+  const parent = Path.dirname(requestedRoot)
+  const recoveryPrefix = `${Path.basename(requestedRoot)}.recovered`
+  const siblings = await Try.WithDefault<Promise<string[]>, string[]>([], () => FileSystem.readdir(parent))
+  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
+    .map(name => Path.join(parent, name))
+  for (const candidate of candidates) {
+    if (await cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {
+      return candidate
+    }
+  }
+  return undefined
 }
+
+const DefaultSnapshotLimit = 128
 
 /** buildSnapshot validates inputs in staging before publishing an immutable snapshot. */
 export async function buildSnapshot(
@@ -66,9 +74,9 @@ export async function buildSnapshot(
   fingerprint: string,
   nodeModulesDirectory: string,
   defaultsPath: string,
-  snapshotLimit = defaultSnapshotLimit,
+  snapshotLimit = DefaultSnapshotLimit,
 ): Promise<string> {
-  await FileSystem.mkdir(Path.dirname(snapshotRoot), { recursive: true })
+  await FileSystem.mkdir(Path.dirname(snapshotRoot))
   const recoveryRoot = `${snapshotRoot}.recovered`
   const publishedRoot = resolvePublishedSnapshotRoot(snapshotRoot, recoveryRoot)
   await enforceSnapshotLimit(Path.dirname(snapshotRoot), snapshotLimit)
@@ -89,6 +97,23 @@ export async function buildSnapshot(
     },
   )
   return publishedRoot
+}
+
+async function cachedSnapshotMatches(
+  snapshotRoot: string,
+  fingerprint: string,
+  nodeModulesDirectory: string,
+  groups: readonly SidecarGroup[],
+  defaultsPath: string,
+): Promise<boolean> {
+  return await SnapshotIntegrity.cachedSnapshotMatches({
+    snapshotRoot,
+    fingerprint,
+    nodeModulesDirectory,
+    groups,
+    defaultsPath,
+    moduleDirectories: groups.map(group => snapshotModuleDirectory(snapshotRoot, group.moduleRoot)),
+  })
 }
 
 async function enforceSnapshotLimit(snapshotDirectory: string, maximum: number): Promise<void> {
@@ -139,7 +164,7 @@ type SnapshotStageInput = {
   defaultsPath: string
 }
 async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
-  await FileSystem.mkdir(input.stagingRoot, { recursive: true })
+  await FileSystem.mkdir(input.stagingRoot)
   for (const group of input.groups) {
     await stageModule(input.options, group, input.stagingRoot, input.nodeModulesDirectory, input.defaultsPath)
   }
@@ -151,7 +176,7 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
 }
 
 function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}\n`
+  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {
@@ -163,8 +188,6 @@ function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string
   }
   return recoveryRoot
 }
-
-const defaultSnapshotLimit = 128
 
 type ForeignViewInput = {
   module: LinkedProgram['modules'][number]
@@ -180,7 +203,7 @@ async function stageModule(
   defaultsPath: string,
 ): Promise<void> {
   const destination = snapshotModuleDirectory(stagingRoot, group.moduleRoot)
-  await FileSystem.mkdir(destination, { recursive: true })
+  await FileSystem.mkdir(destination)
   await writeModuleMetadata(destination, defaultsPath)
   await FileSystem.symlink(nodeModulesDirectory, Path.join(destination, 'node_modules'), 'dir')
   await copyModuleFiles(group, destination)
@@ -188,7 +211,10 @@ async function stageModule(
 }
 
 async function writeModuleMetadata(destination: string, defaultsPath: string): Promise<void> {
-  await FileSystem.writeFile(Path.join(destination, 'package.json'), '{"private":true,"type":"module"}\n')
+  await FileSystem.writeFile(
+    Path.join(destination, 'package.json'),
+    '{"private":true,"type":"module"}' + NewlineCharacter,
+  )
   await FileSystem.writeFile(
     Path.join(destination, 'tsconfig.json'),
     SnapshotIntegrity.createTypeScriptConfigContent(defaultsPath),
@@ -199,7 +225,7 @@ async function writeModuleMetadata(destination: string, defaultsPath: string): P
 async function copyModuleFiles(group: SidecarGroup, destination: string): Promise<void> {
   for (const [source, contents] of group.files) {
     const target = Path.join(destination, Path.relative(group.moduleRoot, source))
-    await FileSystem.mkdir(Path.dirname(target), { recursive: true })
+    await FileSystem.mkdir(Path.dirname(target))
     await FileSystem.writeFile(target, contents)
   }
 }

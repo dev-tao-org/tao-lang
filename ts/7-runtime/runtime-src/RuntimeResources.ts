@@ -1,27 +1,11 @@
-/** RuntimeSourceResources maps readable app sources to their portable resource paths. */
-export const RuntimeSourceResources = {
-  'runtime/TR.ts': 'ts/7-runtime/runtime-src/TR.ts',
-  'runtime/TaoRuntimeAPI.ts': 'ts/7-runtime/runtime-src/TaoRuntimeAPI.ts',
-  'runtime/ReactiveEngine.ts': 'ts/7-runtime/runtime-src/ReactiveEngine.ts',
-  'runtime/ReactiveValues.ts': 'ts/7-runtime/runtime-src/ReactiveValues.ts',
-  'runtime/App.ts': 'ts/7-runtime/runtime-src/App.ts',
-  'runtime/Appearance.ts': 'ts/7-runtime/runtime-src/Appearance.ts',
-  'runtime/Preview.ts': 'ts/7-runtime/runtime-src/Preview.ts',
-  'runtime/View.ts': 'ts/7-runtime/runtime-src/View.ts',
-  'runtime/ForeignView.ts': 'ts/7-runtime/runtime-src/ForeignView.ts',
-  'runtime/Scope.ts': 'ts/7-runtime/runtime-src/Scope.ts',
-  'runtime/HMRClient.ts': 'ts/7-runtime/runtime-src/HMRClient.ts',
-  'runtime/MetroClient.d.ts': 'ts/7-runtime/runtime-src/MetroClient.d.ts',
+/** RuntimeSourceDirectories declares portable source folders and their resource destinations. */
+export const RuntimeSourceDirectories = {
+  'runtime': 'ts/7-runtime/runtime-src/client',
+  'shared/universal': 'ts/shared/shared-src/universal',
+  'shared/os/preview': 'ts/shared/shared-src/os/preview',
+} as const
+
+/** RuntimeSourceFiles declares individual portable source files outside those folders. */
+export const RuntimeSourceFiles = {
   'shared/shared.ts': 'ts/shared/shared-src/shared.ts',
-  'shared/universal/universal.ts': 'ts/shared/shared-src/universal/universal.ts',
-  'shared/universal/Characters.ts': 'ts/shared/shared-src/universal/Characters.ts',
-  'shared/universal/Errors.ts': 'ts/shared/shared-src/universal/Errors.ts',
-  'shared/universal/S.ts': 'ts/shared/shared-src/universal/S.ts',
-  'shared/universal/SourcePosition.ts': 'ts/shared/shared-src/universal/SourcePosition.ts',
-  'shared/universal/Switch_TypeSafe.ts': 'ts/shared/shared-src/universal/Switch_TypeSafe.ts',
-  'shared/universal/Time.ts': 'ts/shared/shared-src/universal/Time.ts',
-  'shared/universal/Timings.ts': 'ts/shared/shared-src/universal/Timings.ts',
-  'shared/universal/TryCatch.ts': 'ts/shared/shared-src/universal/TryCatch.ts',
-  'shared/os/PreviewPlatform.ts': 'ts/shared/shared-src/os/PreviewPlatform.ts',
-  'shared/os/PreviewErrors.ts': 'ts/shared/shared-src/os/PreviewErrors.ts',
 } as const

@@ -1,4 +1,4 @@
-import { Errors, S } from '@shared'
+import { Errors, NewlineCharacter, S } from '@shared'
 import { Env, type HeadlessBrowser } from '@shared/os'
 import { performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 
@@ -54,8 +54,10 @@ export function createMeasurementFiles(source: string, settings: PreviewMeasurem
   if (fileCount === 0) {
     return { entry: appendViews(source, 0, settings.extraViews), extraFiles: [] }
   }
-  const imports = Array.from({ length: fileCount }, (_, index) => `use package ./LoadViews${index}`).join('\n')
-  const entry = appendViews(`${imports}\n${source}`, 0, 0)
+  const imports = Array.from({ length: fileCount }, (_, index) => `use package ./LoadViews${index}`).join(
+    NewlineCharacter,
+  )
+  const entry = appendViews(`${imports}${NewlineCharacter}${source}`, 0, 0)
   const baseCount = Math.floor(settings.extraViews / fileCount)
   const remainder = settings.extraViews % fileCount
   const extraFiles = Array.from({ length: fileCount }, (_, index) => {
@@ -124,7 +126,9 @@ export type MeasurementDescription = PreviewMeasurement & {
 
 function appendViews(source: string, start: number, count: number): string {
   const declarations = Array.from({ length: count }, (_, index) => createViewDeclaration(start + index))
-  return declarations.length ? source + '\n' + declarations.join('\n\n') + '\n' : source
+  return declarations.length
+    ? source + NewlineCharacter + declarations.join(NewlineCharacter + NewlineCharacter) + NewlineCharacter
+    : source
 }
 
 function createViewModule(start: number, count: number): string {
@@ -161,7 +165,14 @@ function createCycle(cycle: number): PreviewScenario[] {
     { name: `text-${cycle}`, apply: source => source.replace('Hello World', label) },
     {
       name: `add-text-${cycle}`,
-      apply: source => source.replace(`Text("${label}")`, `Text("${label}")\n    Text("${detail}")`),
+      apply: source =>
+        source.replace(
+          `Text("${label}")`,
+          S`
+            Text("${label}")
+                Text("${detail}")
+          `,
+        ),
     },
     { name: `row-${cycle}`, apply: source => source.replace('render Col {', 'render Row {') },
     { name: `reset-${cycle}`, apply: (_source, canonical) => canonical },

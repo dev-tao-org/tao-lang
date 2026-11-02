@@ -1,5 +1,5 @@
 import { runCommand } from '@cli-kit'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NativeLockPublication from './NativeLockPublication'
 import { nodeGypOptions } from './NodeGyp'
@@ -140,11 +140,11 @@ async function addonIncludeDirectory(): Promise<string> {
 async function toolchainEnvironment(): Promise<unknown> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
   const sources = await Promise.all(paths.map(path => FileSystem.readFile(Repo.resolvePath(path), 'utf8')))
-  const environment = Env.snapshot()
   return {
-    sources: Platform.hashText(sources.join('\n')),
-    variables: Object.fromEntries(['CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'SDKROOT', 'GYP_MSVS_VERSION']
-      .map(name => [name, environment[name]])),
+    sources: Platform.hashText(sources.join(NewlineCharacter)),
+    variables: Object.fromEntries(
+      Env.KeyValuePairs(['CC', 'CXX', 'CFLAGS', 'CXXFLAGS', 'SDKROOT', 'GYP_MSVS_VERSION']),
+    ),
   }
 }
 
@@ -186,6 +186,6 @@ async function buildStagedAddon(staging: string, node: NativeInputs['node']): Pr
   await runCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [staging, ...options.headers],
     cwd: sharedRoot,
-    env: options.environment,
+    addEnv: options.environment,
   })
 }

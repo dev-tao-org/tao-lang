@@ -105,8 +105,7 @@ function hasConflictingSecretChange(
   current: SecretStoreModule2.SecretStore,
   name: string,
 ): boolean {
-  return SecretStoreModule2.encodeSecretRecipients(current.recipients)
-      !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
+  return haveSecretRecipientsChanged(original, current)
     || SecretStoreModule2.encodeSecretEntry(current.secrets[name])
       !== SecretStoreModule2.encodeSecretEntry(original.secrets[name])
     || current.storeKey?.recipient !== original.storeKey?.recipient
@@ -163,16 +162,34 @@ async function grantStoreKey(
   const wrappedKey = armorLines(await cipher.encrypt(secretKey, original.recipients))
   await withStoreMutation(async () => {
     const current = await readStore()
-    if (
-      SecretStoreModule2.encodeSecretRecipients(current.recipients)
-        !== SecretStoreModule2.encodeSecretRecipients(original.recipients)
-      || SecretStoreModule2.encodeStoreKey(current.storeKey) !== SecretStoreModule2.encodeStoreKey(storeKey)
-    ) {
+    if (hasConflictingGrantChange(original, current, storeKey)) {
       IO.warn('Recipients changed while decrypting; run secrets again to grant the current recipients access.')
       return
     }
     await writeStore({ ...current, storeKey: { ...storeKey, wrappedFor: [...current.recipients], wrappedKey } })
   })
+}
+
+function hasConflictingGrantChange(
+  original: SecretStoreModule2.SecretStore,
+  current: SecretStoreModule2.SecretStore,
+  expectedStoreKey: SecretStoreModule2.StoreKey,
+): boolean {
+  if (haveSecretRecipientsChanged(original, current)) {
+    return true
+  }
+  const currentKey = SecretStoreModule2.encodeStoreKey(current.storeKey)
+  const expectedKey = SecretStoreModule2.encodeStoreKey(expectedStoreKey)
+  return currentKey !== expectedKey
+}
+
+function haveSecretRecipientsChanged(
+  original: SecretStoreModule2.SecretStore,
+  current: SecretStoreModule2.SecretStore,
+): boolean {
+  const currentRecipients = SecretStoreModule2.encodeSecretRecipients(current.recipients)
+  const originalRecipients = SecretStoreModule2.encodeSecretRecipients(original.recipients)
+  return currentRecipients !== originalRecipients
 }
 
 function armorLines(armor: string): string[] {

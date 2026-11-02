@@ -144,12 +144,14 @@ function xmlAttributes(token: string): XmlAttributes {
   return attributes
 }
 
+const MaximumUnicodeCodePoint = 0x10FFFF
+
 function decodeXml(text: string): string {
   const entities: XmlEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
   return text.replace(Regxs.XmlEntity, (entity, name: string) => {
     if (name.startsWith('#')) {
       const code = name[1].toLowerCase() === 'x' ? parseInt(name.slice(2), 16) : Number(name.slice(1))
-      return code <= 0x10FFFF ? String.fromCodePoint(code) : entity
+      return code <= MaximumUnicodeCodePoint ? String.fromCodePoint(code) : entity
     }
     return entities[name] ?? entity
   })

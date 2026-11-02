@@ -1,10 +1,23 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
-import { isNpmPackageName } from '../NpmPackageName'
+import { isNpmPackageName } from '../../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
 
-type ModuleMetadataFields = Record<string, unknown>
-type MaybeModuleMetadata = ModuleMetadataFields | null | undefined
+type ModuleMetadataFields = {
+  profile?: unknown
+  packages?: unknown
+  files?: unknown
+  generatedHashes?: unknown
+  fingerprint?: unknown
+  lockHash?: unknown
+}
+type ValidModuleMetadataFields = ModuleMetadataFields & {
+  profile: string
+  packages: string[]
+  files: string[]
+}
+type ProfiledModuleMetadataFields = ModuleMetadataFields & { profile: string }
+type MaybeModuleMetadata = ModuleMetadataFields | undefined
 
 /** cleanManagedModuleMetadata removes recorded metadata owned by this consumer project. */
 export async function cleanManagedModuleMetadata(
@@ -13,12 +26,7 @@ export async function cleanManagedModuleMetadata(
 ): Promise<string[]> {
   const warnings: string[] = []
   const roots = [projectRoot, ...externalModuleRoots]
-  const markers = [
-    ...new Set(
-      (await Promise.all(roots.map((root, index) => walkRoot(root, index > 0))))
-        .flat().filter(path => Path.basename(path) === '.tao-managed-module.json'),
-    ),
-  ]
+  const markers = await findManagedModuleMarkers(roots)
   for (const marker of markers) {
     const warning = await cleanModuleMarker(projectRoot, marker)
     if (warning) {
@@ -26,6 +34,12 @@ export async function cleanManagedModuleMetadata(
     }
   }
   return warnings
+}
+
+async function findManagedModuleMarkers(roots: readonly string[]): Promise<string[]> {
+  const rootResults = await Promise.all(roots.map((root, index) => walkRoot(root, index > 0)))
+  const markerPaths = rootResults.flat().filter(path => Path.basename(path) === '.tao-managed-module.json')
+  return Lists.unique(markerPaths)
 }
 
 async function walkRoot(root: string, optional: boolean): Promise<string[]> {
@@ -52,7 +66,7 @@ async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Prom
     return `Skipped uncertain managed module metadata at ${marker}: marker is malformed or incomplete; inspect and repair it before removing module files.`
   }
   const moduleDirectory = Path.dirname(marker)
-  const profile = typeof metadata.profile === 'string' ? Path.resolve(metadata.profile) : ''
+  const profile = Path.resolve(metadata.profile)
   const profileRoots = [
     Path.join(projectRoot, '.tao'),
     Path.join(projectRoot, '.tao', 'cache'),
@@ -75,35 +89,28 @@ async function cleanOwnedModuleMarker(projectRoot: string, marker: string): Prom
   return undefined
 }
 
-async function readModuleMetadata(marker: string): Promise<ModuleMetadataFields | undefined> {
+async function readModuleMetadata(marker: string): Promise<ValidModuleMetadataFields | undefined> {
   const metadata = await Try.WithDefault(
     undefined,
     async () => parseManagedModuleMetadata(await FileSystem.readFile(marker, 'utf8')),
   )
-  const profileMetadata = metadata as MaybeModuleMetadata
-  const packages = profileMetadata?.packages
-  const files = profileMetadata?.files
-  const hashes = profileMetadata?.generatedHashes
-  if (!hasValidModuleMetadata(marker, profileMetadata, packages, files, hashes)) {
+  if (!hasValidModuleMetadata(marker, metadata)) {
     return undefined
   }
-  return profileMetadata
+  return metadata
 }
 
 function hasValidModuleMetadata(
   marker: string,
   metadata: MaybeModuleMetadata,
-  packages: unknown,
-  files: unknown,
-  hashes: unknown,
-): metadata is ModuleMetadataFields {
+): metadata is ValidModuleMetadataFields {
   return hasModuleProfile(metadata)
-    && hasValidPackageNames(packages)
-    && hasValidModuleFiles(marker, files, hashes)
+    && hasValidPackageNames(metadata.packages)
+    && hasValidModuleFiles(marker, metadata.files, metadata.generatedHashes)
 }
 
-function hasModuleProfile(metadata: MaybeModuleMetadata): metadata is ModuleMetadataFields {
-  return metadata !== undefined && metadata !== null && typeof metadata.profile === 'string'
+function hasModuleProfile(metadata: MaybeModuleMetadata): metadata is ProfiledModuleMetadataFields {
+  return metadata !== undefined && typeof metadata.profile === 'string'
 }
 
 function hasValidPackageNames(packages: unknown): packages is string[] {
@@ -155,26 +162,31 @@ async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
     undefined,
     async () => parseManagedModuleMetadata(await FileSystem.readFile(marker, 'utf8')),
   )
-  const profileMetadata = metadata as MaybeModuleMetadata
-  return profileMetadata?.fingerprint === Path.basename(profile) && typeof profileMetadata.lockHash === 'string'
+  return metadata?.fingerprint === Path.basename(profile) && typeof metadata.lockHash === 'string'
 }
 
-function parseManagedModuleMetadata(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+function parseManagedModuleMetadata(contents: string): ModuleMetadataFields {
+  const value: unknown = Try(() => JSON.parse(contents))
+  if (!isModuleMetadataFields(value)) {
+    Errors.ThrowUserInput('Managed module metadata must be a JSON object.')
+  }
+  return value
+}
+
+function isModuleMetadataFields(value: unknown): value is ModuleMetadataFields {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 async function cleanModuleFiles(
   marker: string,
-  metadata: ModuleMetadataFields,
+  metadata: ValidModuleMetadataFields,
 ): Promise<boolean> {
   let complete = true
-  const generatedHashes = isGeneratedFileHashFields(metadata.generatedHashes)
-    ? metadata.generatedHashes
-    : {}
-  for (const path of metadata.files as string[]) {
+  const generatedHashes = isGeneratedFileHashFields(metadata.generatedHashes) ? metadata.generatedHashes : {}
+  for (const path of metadata.files) {
     if (await FileSystem.exists(path) && !FileSystem.lstatSync(path).isSymbolicLink()) {
       const current = await FileSystem.readFile(path, 'utf8')
-      if (typeof generatedHashes[path] !== 'string' || generatedHashes[path] !== Platform.hashText(current)) {
+      if (isGeneratedFileHashMismatch(generatedHashes, path, current)) {
         complete = false
         continue
       }
@@ -190,20 +202,24 @@ async function cleanModuleFiles(
   return true
 }
 
+function isGeneratedFileHashMismatch(hashes: GeneratedFileHashFields, path: string, contents: string): boolean {
+  return typeof hashes[path] !== 'string' || hashes[path] !== Platform.hashText(contents)
+}
+
 function isManagedModuleFile(moduleDirectory: string, path: string): boolean {
   return Path.resolve(Path.dirname(path)) === Path.resolve(moduleDirectory)
     && ['package.json', 'tsconfig.json'].includes(Path.basename(path))
 }
 
 async function cleanModuleLinks(moduleDirectory: string, profile: string, value: unknown): Promise<void> {
-  if (!Array.isArray(value) || value.some(name => typeof name !== 'string' || !isNpmPackageName(name))) {
+  if (!hasValidPackageNames(value)) {
     Errors.ThrowUserInput(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
   }
   const localModules = Path.join(moduleDirectory, 'node_modules')
   if (isSymbolicLink(localModules)) {
     return
   }
-  for (const name of value as string[]) {
+  for (const name of value) {
     const link = Path.join(moduleDirectory, 'node_modules', name)
     const target = Path.join(profile, 'node_modules', name)
     if (Path.dirname(link) !== localModules && isSymbolicLink(Path.dirname(link))) {
@@ -220,7 +236,7 @@ async function removeEmptyParents(directory: string, root: string): Promise<void
   if (Path.resolve(directory) === Path.resolve(root) || !Path.isWithin(root, directory)) {
     return
   }
-  if ((await FileSystem.readdir(directory)).length === 0) {
+  if (await FileSystem.isEmptyDir(directory)) {
     await FileSystem.rm(directory, { recursive: true, force: true })
     await removeEmptyParents(Path.dirname(directory), root)
   }

@@ -53,8 +53,7 @@ export class FileManager {
     this.selectWorkspaceRoot(entry)
     const generation = ++this.entryGeneration
     const observation = this.observationGeneration
-    this.refreshTimer?.()
-    this.refreshTimer = undefined
+    this.cancelRefreshTimer()
     this.resolveRefresh(FileManagerCompilation.createSupersededResult(this.sequence))
     this.entryPath = entry
     await this.ensureWatcher()
@@ -112,8 +111,7 @@ export class FileManager {
     this.disposed = true
     this.entryGeneration++
     this.observationGeneration++
-    this.refreshTimer?.()
-    this.refreshTimer = undefined
+    this.cancelRefreshTimer()
     this.resolveRefresh(FileManagerCompilation.createSupersededResult(this.sequence))
     this.resolveSuperseded(this.current)
     this.resolveSuperseded(this.queued)
@@ -158,7 +156,7 @@ export class FileManager {
     this.resolveRefresh(FileManagerCompilation.createSupersededResult(this.sequence))
     const refresh = FileManagerCompilation.createRefresh()
     this.refresh = refresh
-    this.refreshTimer?.()
+    this.cancelRefreshTimer()
     const path = this.entryPath!
     const generation = this.entryGeneration
     const observation = this.observationGeneration
@@ -169,6 +167,11 @@ export class FileManager {
       void this.enqueue({ kind: 'disk', path, startedAtMs: change.observedAtMs }, generation, observation)
         .then(refresh.settle)
     })
+  }
+
+  private cancelRefreshTimer(): void {
+    this.refreshTimer?.()
+    this.refreshTimer = undefined
   }
 
   private async ensureWatcher(): Promise<void> {
@@ -253,7 +256,7 @@ export class FileManager {
       this.options.read,
       () => this.isCurrent(request),
     )
-    if ('status' in loaded) {
+    if (FileManagerCompilation.isUpdateResult(loaded)) {
       if (loaded.status === 'failed' && request.input.kind === 'disk' && this.isCurrent(request)) {
         this.options.onSourceError?.(loaded.error)
       }

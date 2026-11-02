@@ -1,4 +1,4 @@
-import { Time } from '@shared'
+import { NewlineCharacter, Time } from '@shared'
 import { Artifacts, Path, Platform, Repo, Terminal } from '@shared/os'
 import type { OutputEvent } from './Output'
 
@@ -18,7 +18,7 @@ export function createFileOutput(options: { logDirectory?: LogDirectory; logFile
       opened = true
       Artifacts.mkdirSync(Path.dirname(path), { recursive: true })
       Artifacts.trackTemporary(path)
-      const announcement = `Logs: ${Path.relative(Repo.getWorkspaceRoot(), path)}\n`
+      const announcement = `Logs: ${Path.relative(Repo.getWorkspaceRoot(), path)}${NewlineCharacter}`
       Artifacts.appendFileSync(path, announcement)
       Terminal.stderr.write(announcement)
     }

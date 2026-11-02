@@ -1,5 +1,5 @@
 import { IO, resolveCallerPath } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { findNamedPackageDirectories, listRecursiveSourceFiles } from '@workspace/modules/Catalog'
 import { executeManagedTool } from '@workspace/ProjectPreparation'
 import { discoverProject } from '@workspace/projects/Projects'
@@ -20,7 +20,9 @@ export default registerCommand({
   async action(moduleName: string, options: { session?: string; yes?: boolean } = {}) {
     const caller = resolveCallerPath('.')
     const project = await discoverProject(caller)
-      ?? Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    if (!project) {
+      Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+    }
     const moduleRoot = await resolveModuleRoot(project.root, moduleName)
     const entry = await findModuleEntry(moduleRoot, project.root)
     await withProjectSessions([moduleRoot, entry], async () => {
@@ -31,7 +33,7 @@ export default registerCommand({
 })
 
 async function resolveModuleRoot(projectRoot: string, moduleName: string): Promise<string> {
-  if (!/^@[A-Za-z0-9][A-Za-z0-9._-]*$/.test(moduleName)) {
+  if (!Regxs.ModuleNameRegx.test(moduleName)) {
     Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
   const matches = await findNamedPackageDirectories(projectRoot, moduleName)
@@ -55,5 +57,5 @@ async function findModuleEntry(moduleRoot: string, projectRoot: string): Promise
 }
 
 function getPathDepth(path: string): number {
-  return path.split(/[\\/]/).length
+  return path.split(Regxs.PathSeparatorRegx).length
 }

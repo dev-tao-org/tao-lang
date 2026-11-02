@@ -1,9 +1,9 @@
-import { Errors, Try } from '@shared'
+import { Errors, Lists, Try } from '@shared'
 import { FileSystem, Path, SessionLock } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
-import { cleanManagedModuleMetadata } from '../sidecars/ManagedModules'
+import { cleanManagedModuleMetadata } from '../sidecars/managed-modules/ManagedModules'
 import * as Lifecycle from './Lifecycle'
-import { deriveProjectLayout } from './Projects'
+import { deriveProjectLayout, type ProjectLayout } from './Projects'
 import { isProjectSessionId } from './Sessions'
 
 /** CleanResult reports removed project cache, active sessions, and retained shared project cache. */
@@ -22,7 +22,7 @@ export async function cleanProject(root: string): Promise<CleanResult> {
   return await Try(() => cleanProjectUnderLifecycle(layout), { finally: lifecycle.release })
 }
 
-async function cleanProjectUnderLifecycle(layout: ReturnType<typeof deriveProjectLayout>): Promise<CleanResult> {
+async function cleanProjectUnderLifecycle(layout: ProjectLayout): Promise<CleanResult> {
   const removed: string[] = []
   const skippedActive: string[] = []
   const warnings: string[] = []
@@ -45,7 +45,7 @@ async function cleanProjectUnderLifecycle(layout: ReturnType<typeof deriveProjec
 }
 
 async function cleanInactiveSessions(
-  layout: ReturnType<typeof deriveProjectLayout>,
+  layout: ProjectLayout,
   removed: string[],
 ): Promise<string[]> {
   const sessions = await listDirectoryNames(layout.sessionsDirectory)
@@ -53,7 +53,7 @@ async function cleanInactiveSessions(
     .filter(name => name.endsWith('.lock'))
     .map(name => name.slice(0, -'.lock'.length))
   const skipped: string[] = []
-  for (const id of [...new Set([...sessions, ...locks])].sort()) {
+  for (const id of Lists.unique(sessions, locks).sort()) {
     if (isProjectSessionId(id) && await cleanSession(layout, id, removed)) {
       skipped.push(id)
     }
@@ -62,16 +62,13 @@ async function cleanInactiveSessions(
 }
 
 async function cleanSession(
-  layout: ReturnType<typeof deriveProjectLayout>,
+  layout: ProjectLayout,
   id: string,
   removed: string[],
 ): Promise<boolean> {
   const sessionPath = Path.join(layout.sessionsDirectory, id)
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
-  if (
-    Lifecycle.pathExists(sessionPath) && !Lifecycle.isRealDirectory(sessionPath)
-    || Lifecycle.pathExists(lockPath) && !isRegularFile(lockPath)
-  ) {
+  if (isUnsafeSessionDirectory(sessionPath) || isUnsafeLockFile(lockPath)) {
     return true
   }
   const lock = await SessionLock.acquire(lockPath)
@@ -89,6 +86,14 @@ async function cleanSession(
 
 function createEmptyCleanResult(): CleanResult {
   return { removed: [], skippedActive: [], sharedProtected: false, warnings: [] }
+}
+
+function isUnsafeSessionDirectory(path: string): boolean {
+  return Lifecycle.pathExists(path) && !Lifecycle.isRealDirectory(path)
+}
+
+function isUnsafeLockFile(path: string): boolean {
+  return Lifecycle.pathExists(path) && !isRegularFile(path)
 }
 
 async function cleanProjectCache(cache: string, removed: string[]): Promise<void> {
@@ -113,7 +118,7 @@ async function ensureLockDirectory(path: string): Promise<boolean> {
   if (Lifecycle.pathExists(parent) && !Lifecycle.isRealDirectory(parent)) {
     return false
   }
-  await FileSystem.mkdir(path, { recursive: true })
+  await FileSystem.mkdir(path)
   return Lifecycle.isRealDirectory(path)
 }
 
@@ -134,5 +139,8 @@ async function listDirectoryNames(path: string): Promise<string[]> {
 }
 
 function isMissing(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  return 'code' in error && error.code === 'ENOENT'
 }
