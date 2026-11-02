@@ -80,6 +80,29 @@ Tests.test('requirements and import source markers receive keyword highlights', 
   }, { finally: runtime.dispose })
 })
 
+Tests.test('TypeScript library declarations highlight their keyword, name and published members', async () => {
+  const runtime = await loadRuntime()
+  Shared.Try(() => {
+    const source = Shared.S`
+      ts-library Demo {
+        publish { Greeting, Cards as cards, }
+      }
+    `
+    const result = runtime.document.update(source)
+    Tests.expect(result.diagnostics).toEqual([])
+    const tokens = result.tokens.map(token => ({ kind: token.kind, text: Shared.Source.slice(source, token) }))
+    Tests.expect(tokens).toEqual([
+      { kind: 'keyword', text: 'ts-library' },
+      { kind: 'type', text: 'Demo' },
+      { kind: 'keyword', text: 'publish' },
+      { kind: 'type', text: 'Greeting' },
+      { kind: 'type', text: 'Cards' },
+      { kind: 'keyword', text: 'as' },
+      { kind: 'type', text: 'cards' },
+    ])
+  }, { finally: runtime.dispose })
+})
+
 Tests.test('incremental malformed edits recover without affecting another open document', async () => {
   const runtime = await loadRuntime()
   Shared.Try(() => {
