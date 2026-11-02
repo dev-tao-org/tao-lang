@@ -35,7 +35,7 @@ export function createForeignViewContractSource(input: ForeignViewContractSource
   const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
   const foreignViewName = input.name
-  const resolvedImportPath = JSON.stringify(importPath.startsWith('.') ? importPath : `./${importPath}`)
+  const resolvedImportPath = JSON.stringify(Path.toRelativeModuleSpecifier(importPath))
   return joinTextLines(
     S`
       import type * as React from 'react'

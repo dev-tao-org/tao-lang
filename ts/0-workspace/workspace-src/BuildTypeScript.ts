@@ -9,7 +9,7 @@ export async function prepareBuildTypeScript(buildDirectory: string, runtime: Ru
   const runtimeConfig = Path.relative(buildDirectory, Path.join(runtime.directory, 'tsconfig.json'))
     .replaceAll('\\', '/')
   const configuration = {
-    extends: runtimeConfig.startsWith('.') ? runtimeConfig : `./${runtimeConfig}`,
+    extends: Path.toRelativeModuleSpecifier(runtimeConfig),
     include: ['./**/*.ts', './**/*.tsx'],
   }
   await FileSystem.writeIfChanged(

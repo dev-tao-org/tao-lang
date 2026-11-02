@@ -1,5 +1,6 @@
 import { NewlineCharacter } from '@shared'
 import { FileSystem, Path, Platform, Tests } from '@shared/os'
+import * as TypeScript from 'typescript'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type * as ManagedModuleTypes from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -13,6 +14,22 @@ const PeerDependencyIncompatibilityErrorRegx = /peer incompatibility/
 const ExactDependencyVersionRequiredErrorRegx = /exact version/
 const IncompatibleReactVersionErrorRegx = /incompatible singleton react.*19\.1\.0.*19\.0\.0/
 const ManagedNpmLockSuffixRegx = /\.lock$/
+
+Tests.test('root module TypeScript config resolves hidden-directory defaults', async () =>
+  await Fixtures.withManagedFixture(async fixture => {
+    const input = {
+      ...fixture.input,
+      modules: [{ directory: fixture.directory, requirements: fixture.input.modules[0]!.requirements }],
+    }
+    await FileSystem.writeFile(Path.join(fixture.directory, 'Example.ts'), 'export const example = 1')
+    await ManagedModules.prepareManagedModules(input, fixture.executor)
+    const configPath = Path.join(fixture.directory, 'tsconfig.json')
+    const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
+    Tests.expect(config.error).toBeUndefined()
+    const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, fixture.directory)
+    Tests.expect(parsed.errors).toEqual([])
+    Tests.expect(parsed.options.strict).toBe(true)
+  }))
 
 Tests.test('prepares a deterministic isolated Bun graph and reads it only for matching declarations', async () =>
   await Fixtures.withManagedFixture(async fixture => {

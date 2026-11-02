@@ -120,8 +120,7 @@ function resolveTypeScriptDefaultsPath(projectRoot: string): string {
 }
 
 function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
-  const relative = Path.relative(moduleDirectory, defaultsPath).replaceAll('\\', '/')
-  const extendsPath = relative.startsWith('.') ? relative : `./${relative}`
+  const extendsPath = Path.toRelativeModuleSpecifier(Path.relative(moduleDirectory, defaultsPath))
   return `${
     JSON.stringify(
       {

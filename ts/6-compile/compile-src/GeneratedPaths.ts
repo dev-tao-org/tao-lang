@@ -26,7 +26,7 @@ export function compileModuleImport(from: string, to: string): string {
     Regxs.TypeScriptSourceExtensionRegx,
     '',
   )
-  return emitStringLiteral(relative.startsWith('.') ? relative : `./${relative}`)
+  return emitStringLiteral(Path.toRelativeModuleSpecifier(relative))
 }
 
 /** resolveViewsPath names the component-only category of an input file. */

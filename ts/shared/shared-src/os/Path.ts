@@ -19,6 +19,15 @@ export { fileURLToPath, pathToFileURL } from './NodeBuiltins'
 /** home resolves optional segments below the host home; taoDev and tao select its Tao directories. */
 export const home = Object.assign(resolveHome, { taoDev: resolveTaoDevHome, tao: resolveTaoHome })
 
+/** toRelativeModuleSpecifier makes a relative path portable and explicit for module/config resolution. */
+export function toRelativeModuleSpecifier(path: string): string {
+  const normalized = path.replaceAll('\\', '/')
+  if (normalized.startsWith('./') || normalized.startsWith('../')) {
+    return normalized
+  }
+  return `./${normalized}`
+}
+
 /** isWithin checks lexical containment after resolving paths with the selected platform rules. */
 export function isWithin(root: string, path: string, platform = NativePath): boolean {
   const relative = platform.relative(platform.resolve(root), platform.resolve(path))
