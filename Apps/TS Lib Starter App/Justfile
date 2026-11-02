@@ -1,4 +1,4 @@
-TAO := env_var_or_default('TAO', 'tao')
+TAO := env_var_or_default('TAO', justfile_directory() / '../../tao')
 
 help:
   @just --list
