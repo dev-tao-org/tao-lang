@@ -1,6 +1,7 @@
-import { NullCharacter, Try } from '@shared'
+import { Try } from '@shared'
 import { BuildLock, FileSystem, Path, Platform, Storage } from '@shared/os'
-import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
+import { readRuntimePatches } from './RuntimePatches'
+import * as ToolchainIdentity from './ToolchainIdentity'
 
 /** prepareToolchain installs pinned Expo dependencies once for this resource manifest and platform. */
 export async function prepareToolchain(
@@ -8,10 +9,9 @@ export async function prepareToolchain(
   resourcesDirectory: string,
   installer: RuntimeInstaller = managedInstaller,
   onProgress?: (message: string) => void,
-  identityInputs?: ToolchainIdentityInputs,
 ): Promise<string> {
   onProgress?.('Resolving runtime toolchain cache identity…')
-  const toolchainKey = await toolchainIdentity(resourcesDirectory, identityInputs)
+  const toolchainKey = await resolveToolchainKey(resourcesDirectory)
   const target = Path.join(cacheDirectory, toolchainKey)
   await BuildLock.withBuildLock(Path.join(cacheDirectory, `${toolchainKey}.lock`), async () => {
     await FileSystem.mkdir(target)
@@ -43,9 +43,8 @@ export async function prepareToolchain(
 export async function findPreparedToolchain(
   cacheDirectory: string,
   resourcesDirectory: string,
-  identityInputs?: ToolchainIdentityInputs,
 ): Promise<string | undefined> {
-  const key = await toolchainIdentity(resourcesDirectory, identityInputs)
+  const key = await resolveToolchainKey(resourcesDirectory)
   const target = Path.join(cacheDirectory, key)
   const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(Path.join(target, '.ready'), 'utf8'))
   return ready === key && await FileSystem.exists(Path.join(target, 'node_modules'))
@@ -66,31 +65,21 @@ const managedInstaller: RuntimeInstaller = {
   },
 }
 
-type ToolchainIdentityInputs = { runtimeVersion: string; os: string; architecture: string }
+async function resolveToolchainKey(resourcesDirectory: string): Promise<string> {
+  const identity = await readToolchainIdentity(resourcesDirectory)
+  return ToolchainIdentity.calculateToolchainKey(identity)
+}
 
-const toolchainCachePolicy = 'bun-frozen-ignore-scripts-v1'
-
-async function toolchainIdentity(
-  resourcesDirectory: string,
-  identityInputs?: ToolchainIdentityInputs,
-): Promise<string> {
+async function readToolchainIdentity(resourcesDirectory: string): Promise<ToolchainIdentity.ToolchainIdentity> {
   const [manifest, lockfile] = await Promise.all([
     FileSystem.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
     FileSystem.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
   ])
   const platform = Platform.systemInfo()
-  const runtimeVersion = identityInputs?.runtimeVersion ?? Platform.runtimeVersion()
-  const os = identityInputs?.os ?? platform.os
-  const architecture = identityInputs?.architecture ?? platform.architecture
+  const runtimeVersion = Platform.runtimeVersion()
+  const { os, architecture } = platform
   const { patches } = await readRuntimePatches(resourcesDirectory)
-  const patchIdentity = serializeRuntimePatchIdentity(patches)
-  const identity = [manifest, lockfile, patchIdentity, runtimeVersion, os, architecture, toolchainCachePolicy]
-    .join(NullCharacter)
-  return Platform.hashText(identity)
-}
-
-function serializeRuntimePatchIdentity(patches: RuntimePatches['patches']): string {
-  return JSON.stringify(patches)
+  return { manifest, lockfile, patches, runtimeVersion, os, architecture }
 }
 
 async function copyToolchainPatches(source: string, target: string): Promise<void> {

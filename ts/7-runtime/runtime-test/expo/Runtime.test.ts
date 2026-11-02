@@ -3,7 +3,8 @@ import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { readRuntimeSources } from '../../../CLIs/CLIs-src/cli-checks/runtime-sources'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { writeExpoApplication } from '../../runtime-src/expo/Scaffold'
-import { findPreparedToolchain, prepareToolchain } from '../../runtime-src/expo/Toolchain'
+import * as Toolchain from '../../runtime-src/expo/Toolchain'
+import * as ToolchainIdentity from '../../runtime-src/expo/ToolchainIdentity'
 import * as Runtime from '../../runtime-src/Runtime'
 
 Tests.test('web preview scaffold excludes native platforms that trigger Expo Xcode probes', async () => {
@@ -55,29 +56,23 @@ Tests.test('runtime preparation installs a cold pinned cache and reuses it', asy
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('runtime toolchain cache identity includes runtime version and reuses matching inputs', async () => {
-  const root = Artifacts.resolvePath('tmp', `runtime-toolchain-identity-${Platform.randomUUID()}`)
-  await Try(async () => {
-    const resources = Path.join(root, 'resources')
-    const cache = Path.join(root, 'cache')
-    await writeResources(resources, { expo: '57.0.30' }, 'identity')
-    let installs = 0
-    const installer = {
-      async install(directory: string) {
-        installs++
-        await FileSystem.mkdir(Path.join(directory, 'node_modules'))
-      },
-    }
-    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
-    await prepareToolchain(cache, resources, installer, undefined, inputs)
-    await prepareToolchain(cache, resources, installer, undefined, inputs)
-    Tests.expect(installs).toBe(1)
-    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeDefined()
-    const changedInputs = { ...inputs, runtimeVersion: '1.5.0' }
-    Tests.expect(await findPreparedToolchain(cache, resources, changedInputs)).toBeUndefined()
-    await prepareToolchain(cache, resources, installer, undefined, changedInputs)
-    Tests.expect(installs).toBe(2)
-  }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
+Tests.test('runtime toolchain identity preserves cache bytes and distinguishes execution platforms', () => {
+  const identity: ToolchainIdentity.ToolchainIdentity = {
+    manifest: 'manifest',
+    lockfile: 'lock',
+    patches: { 'patches/x.patch': 'patch' },
+    runtimeVersion: '1.4.2',
+    os: 'darwin',
+    architecture: 'arm64',
+  }
+  const expected = Platform.hashText(
+    'manifest\u0000lock\u0000{"patches/x.patch":"patch"}\u00001.4.2\u0000darwin\u0000arm64\u0000bun-frozen-ignore-scripts-v1',
+  )
+  const key = ToolchainIdentity.calculateToolchainKey(identity)
+  Tests.expect(key).toBe(expected)
+  Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, runtimeVersion: '1.5.0' })).not.toBe(key)
+  Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, os: 'linux' })).not.toBe(key)
+  Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, architecture: 'x64' })).not.toBe(key)
 })
 
 Tests.test('runtime toolchain copies dependency patches and invalidates the cache when patch bytes change', async () => {
@@ -103,14 +98,13 @@ Tests.test('runtime toolchain copies dependency patches and invalidates the cach
         await FileSystem.mkdir(Path.join(directory, 'node_modules'))
       },
     }
-    const inputs = { runtimeVersion: '1.4.2', os: 'darwin', architecture: 'arm64' }
-    const first = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    const first = await Toolchain.prepareToolchain(cache, resources, installer)
     Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(first), patchPath), 'utf8')).toBe('patch bytes A')
     Tests.expect(installs).toBe(1)
 
     await FileSystem.writeFile(Path.join(resources, patchPath), 'patch bytes B')
-    Tests.expect(await findPreparedToolchain(cache, resources, inputs)).toBeUndefined()
-    const second = await prepareToolchain(cache, resources, installer, undefined, inputs)
+    Tests.expect(await Toolchain.findPreparedToolchain(cache, resources)).toBeUndefined()
+    const second = await Toolchain.prepareToolchain(cache, resources, installer)
     Tests.expect(await FileSystem.readFile(Path.join(Path.dirname(second), patchPath), 'utf8')).toBe('patch bytes B')
     Tests.expect(second).not.toBe(first)
     Tests.expect(installs).toBe(2)
