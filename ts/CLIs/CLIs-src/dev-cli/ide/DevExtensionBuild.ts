@@ -1,4 +1,5 @@
 import { IO, runNonInteractiveCommand } from '@cli-kit'
+import { Json } from '@shared'
 import { Bundle, FileSystem, Path, Repo } from '@shared/os'
 
 /** buildDevExtension packages repository review commands as a separate developer extension. */
@@ -27,18 +28,14 @@ export async function buildDevExtension(): Promise<string> {
 type DevExtensionManifest = Record<string, unknown>
 
 function formatPublishedDevManifest(contents: string): string {
-  const manifest = JSON.parse(contents) as DevExtensionManifest
+  const manifest = Json.Parse(contents) as DevExtensionManifest
   delete manifest.private
   delete manifest.devDependencies
-  return JSON.stringify(
-    {
-      ...manifest,
-      name: 'dev-tao-org',
-      publisher: 'devtao',
-      type: 'commonjs',
-      main: './dist/extension.js',
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    ...manifest,
+    name: 'dev-tao-org',
+    publisher: 'devtao',
+    type: 'commonjs',
+    main: './dist/extension.js',
+  })
 }

@@ -1,4 +1,4 @@
-import { Addr, Errors, joinTextLines, NewlineCharacter, S, Try } from '@shared'
+import { Addr, Errors, joinTextLines, Json, NewlineCharacter, S, Try } from '@shared'
 import { Files, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
@@ -185,7 +185,7 @@ async function verifyCompiledSidecar(
   Tests.expect(FileSystem.resolveModule('react', Path.join(ui, '@ui'))).toContain('node_modules/react')
   const importPath = GeneratedForeignViewImportRegx.exec(published[0]!)
   Tests.expect(importPath).not.toBeNull()
-  const modulePath = JSON.parse(importPath![1]!) as string
+  const modulePath = Json.Parse(importPath![1]!) as string
   const module = Platform.loadModule<{ Widget(props: { Value: string }): unknown }>(modulePath)
   Tests.expect(module.Widget({ Value: 'acceptance' })).toBe('label:acceptance')
 }

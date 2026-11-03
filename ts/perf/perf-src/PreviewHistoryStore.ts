@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 /** HistoryRecord retains measured source identity independently from later archive commits. */
@@ -88,15 +88,15 @@ export function validatePreviewReport(report: string, sourceCommit: string): voi
 }
 
 function parseHistoryRecord(source: string): HistoryRecord {
-  return JSON.parse(source) as HistoryRecord
+  return Json.Parse(source) as HistoryRecord
 }
 
 function serializeHistoryRecord(record: HistoryRecord): string {
-  return JSON.stringify(record, null, 2) + NewlineCharacter
+  return Json.PrintIndented(record) + NewlineCharacter
 }
 
 function parsePreviewReport(source: string): unknown {
-  return JSON.parse(source)
+  return Json.Parse(source)
 }
 
 type FixtureIdentity = { path: string; sha256: string }

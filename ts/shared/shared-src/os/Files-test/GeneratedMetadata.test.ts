@@ -1,4 +1,4 @@
-import { joinTextLines, S, Try } from '@shared'
+import { joinTextLines, Json, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
@@ -43,7 +43,7 @@ function createSerializationBoundaryScript(paths: SerializationPaths): string {
     const fs = await import('node:fs/promises');
     const resolveRealpath = fs.realpath;
     const readStat = fs.stat;
-    const paths = ${JSON.stringify(paths)};
+    const paths = ${Json.Print(paths)};
     const lookups = new Map();
     let acknowledgeLookups, acknowledgeFence;
     const lookupsReady = new Promise(resolve => acknowledgeLookups = resolve);
@@ -70,7 +70,7 @@ function createSerializationBoundaryScript(paths: SerializationPaths): string {
 function createSerializationProofScript(): string {
   const filesUrl = new WebHost.URL('../Files.ts', import.meta.url).href
   return S`
-    const { withWritableFile } = await import(${JSON.stringify(filesUrl)});
+    const { withWritableFile } = await import(${Json.Print(filesUrl)});
     let acknowledgeFirst, finishFirst;
     const firstReady = new Promise(resolve => acknowledgeFirst = resolve);
     const firstRelease = new Promise(resolve => finishFirst = resolve);
@@ -98,18 +98,18 @@ async function raceCreator(path: string, winningContent: string): Promise<string
   const tryUrl = new WebHost.URL('../../universal/universal.ts', import.meta.url).href
   const script = S`
     import { mock } from 'bun:test';
-    import { Try } from ${JSON.stringify(tryUrl)};
+    import { Try } from ${Json.Print(tryUrl)};
     const fs = await import('node:fs/promises');
     const write = fs.writeFile;
     mock.module('node:fs/promises', () => ({ ...fs,
       async writeFile(path, contents, options) {
-        if (options?.flag === 'wx') await write(path, ${JSON.stringify(winningContent)}, options);
+        if (options?.flag === 'wx') await write(path, ${Json.Print(winningContent)}, options);
         return write(path, contents, options);
       }
     }));
-    const { writeReadOnly } = await import(${JSON.stringify(filesUrl)});
+    const { writeReadOnly } = await import(${Json.Print(filesUrl)});
     const result = await Try(async () => {
-      await writeReadOnly(${JSON.stringify(path)}, 'expected');
+      await writeReadOnly(${Json.Print(path)}, 'expected');
       return 'ok';
     }, { catch: error => error.message });
     process.stdout.write(result);

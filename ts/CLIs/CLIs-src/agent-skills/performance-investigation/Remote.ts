@@ -1,5 +1,5 @@
 import { IO, resolveCallerPath, runNonInteractiveCommand } from '@cli-kit'
-import { Errors, NullCharacter, Regxs, S, Try } from '@shared'
+import { Errors, Json, NullCharacter, Regxs, S, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
@@ -50,9 +50,9 @@ export async function discoverHosts(): Promise<DiscoveredHosts> {
     .flatMap(match => match[1].split(Regxs.SshConfigAliasesWhitespaceRegx))
     .filter(alias => Regxs.SshAliasRegx.test(alias))
   const tailscale = await Try(() => Platform.capture('tailscale status --json'), {
-    catch: error => JSON.stringify({ Error: String(error) }),
+    catch: error => Json.Print({ Error: String(error) }),
   })
-  return { sshAliases: [...new Set(aliases)], sshConfig: config, tailscale: JSON.parse(tailscale) as unknown }
+  return { sshAliases: [...new Set(aliases)], sshConfig: config, tailscale: Json.Parse(tailscale) as unknown }
 }
 
 /** requireHost rejects SSH options and shell expressions where a host is expected. */

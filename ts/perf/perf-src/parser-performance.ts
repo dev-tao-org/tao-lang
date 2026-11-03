@@ -1,5 +1,5 @@
 import type { Parser } from '@grammar/parser'
-import { Errors, Timings, type TimingSample } from '@shared'
+import { Errors, Json, Timings, type TimingSample } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 import type { ParserFixture } from './parser-fixtures'
@@ -87,12 +87,12 @@ type ParserPerformanceReport = {
 type ParserPerformanceDefinitions = { cold: string; warm: string; rebuild: string; transformer: string }
 
 function serializeParserPerformanceReport(report: ParserPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 async function createParserFixtureFingerprint(): Promise<string> {
   const fixtures = await parserFixtures()
-  return Platform.hashText(JSON.stringify(fixtures))
+  return Platform.hashText(Json.Print(fixtures))
 }
 
 async function coldSamples(): Promise<Sample[]> {
@@ -111,7 +111,7 @@ const sampleColdParser = Timings.createTopLevelTimer(async function(timings, sam
 })
 
 function parseColdParserSamples(output: string): TimingSample[] {
-  return JSON.parse(output) as TimingSample[]
+  return Json.Parse(output) as TimingSample[]
 }
 
 const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {

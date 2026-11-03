@@ -1,4 +1,4 @@
-import { NewlineCharacter, Time } from '@shared'
+import { Json, NewlineCharacter, Time } from '@shared'
 import { Artifacts, FileSystem, Http, Path, Platform, Tests } from '@shared/os'
 import type { ExpoSession } from '../../Expo/Expo'
 import type { GeneratedRevision } from '../../PreviewProtocol'
@@ -9,8 +9,8 @@ export function verifyCoupledUpdates(groups: readonly (readonly MetroUpdate[])[]
   for (const messages of groups) {
     for (const revision of revisions) {
       const update = messages.find(message => message.type === 'update' && message.tao?.revision === revision)
-      Tests.expect(JSON.stringify(update)).toContain(`APP_${revision}`)
-      Tests.expect(JSON.stringify(update)).toContain(`HELPER_${revision}`)
+      Tests.expect(Json.Print(update)).toContain(`APP_${revision}`)
+      Tests.expect(Json.Print(update)).toContain(`HELPER_${revision}`)
     }
   }
 }
@@ -51,14 +51,14 @@ export async function verifyMetroBurst(
   }
   const path = Artifacts.resolvePath('notes/radical-preview', `metro-burst-${Platform.randomUUID()}.json`)
   await FileSystem.mkdir(Path.dirname(path))
-  await FileSystem.writeFile(path, JSON.stringify(report, null, 2))
+  await FileSystem.writeFile(path, Json.PrintIndented(report))
 }
 
 function createLargerNamespace(): Record<string, string> {
   const names = Array.from({ length: 64 }, (_, index) => index)
   const files = Object.fromEntries(names.map(index => [
     `large/part${index}.ts`,
-    `export const value${index} = ${JSON.stringify(`LARGE_GRAPH_${index}:${'x'.repeat(1024)}`)};`,
+    `export const value${index} = ${Json.Print(`LARGE_GRAPH_${index}:${'x'.repeat(1024)}`)};`,
   ]))
   const imports = names.map(index => `import { value${index} } from './large/part${index}';`).join(NewlineCharacter)
   const values = names.map(index => `value${index}`).join(', ')

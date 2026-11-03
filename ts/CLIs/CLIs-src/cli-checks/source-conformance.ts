@@ -13,6 +13,7 @@ import { nestedConditionalIssue, selectedFunctionCallIssue } from './source-conf
 import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { ExportedApiChecker } from './source-conformance-exports'
 import { objectFunctionStyleIssue } from './source-conformance-functions'
+import { rawJsonIssue } from './source-conformance-json'
 import * as ConformanceLayout from './source-conformance-layout'
 import * as ConformanceNaming from './source-conformance-naming'
 import { objectCopyIssue, objectLiteralKeysIssue } from './source-conformance-object-keys'
@@ -123,6 +124,7 @@ class SourceConformanceChecker {
       this.reportIssue(node, objectLiteralKeysIssue(node))
       this.reportIssue(node, objectCopyIssue(node, this.filename))
       this.reportIssue(node, predicateOperatorIssue(node))
+      this.reportIssue(node, rawJsonIssue(node, this.filename, this.checker))
     }
     if (TypeScript.isImportDeclaration(node) && !this.excluded) {
       const importIssue = ConformanceLayout.singleLineImportIssue(node, this.file)

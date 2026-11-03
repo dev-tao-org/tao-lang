@@ -1,5 +1,5 @@
 import type { RuntimeApplication } from '@runtime/Runtime'
-import { Timings, Try } from '@shared'
+import { Json, Timings, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { readRuntimeSources } from '../../CLIs/CLIs-src/cli-checks/runtime-sources'
 import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
@@ -212,7 +212,7 @@ async function writeResources(directory: string): Promise<void> {
   const sourceFiles = Object.keys(runtimeSources)
   await FileSystem.writeFile(
     Path.join(directory, 'runtime.json'),
-    JSON.stringify({
+    Json.Print({
       version: 2,
       identity: 'fixture',
       dependencies: { expo: '57.0.30' },
@@ -221,7 +221,7 @@ async function writeResources(directory: string): Promise<void> {
   )
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ dependencies: { expo: '57.0.30' } }),
+    Json.Print({ dependencies: { expo: '57.0.30' } }),
   )
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), 'fixture lock')
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {

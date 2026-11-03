@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { NewlineCharacter, S, Try } from '@shared'
+import { Json, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedModule, LinkedProgram } from '@typecheck/Modules'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
@@ -72,7 +72,7 @@ async function createFixture(): Promise<Fixture> {
   await FileSystem.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'))
   await FileSystem.writeFile(
     Path.join(projectDirectory, '.tao', 'cache', 'sidecars', 'typescript-defaults.json'),
-    JSON.stringify({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
+    Json.Print({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
   )
   await FileSystem.mkdirs(moduleRoot, nodeModulesDirectory, Path.join(nodeModulesDirectory, '@types', 'react'))
   await FileSystem.writeFile(

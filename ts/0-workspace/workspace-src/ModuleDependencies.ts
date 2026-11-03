@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen/AST'
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
+import { Errors, Json, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Text } from '@shared/os'
 import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
 import { valid } from './bridges/Bridge_semver'
@@ -141,7 +141,7 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
 }
 
 function parseNpmVersionResponse(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+  return Json.Parse(contents) as unknown
 }
 
 function resolveNpmVersionValue(value: unknown): string | undefined {

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, Lists, Regxs, Try } from '@shared'
+import { Errors, Json, Lists, Regxs, Try } from '@shared'
 import { Text } from '@shared/os'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
@@ -313,7 +313,7 @@ function fingerprintFor(
       parameters: view.declaration.parameters.map(parameter => [parameter.name.value, parameter.type.value]),
     }))
   )
-  return Platform.hashText(JSON.stringify({
+  return Platform.hashText(Json.Print({
     target: options.target,
     dependencyFingerprint: options.dependencyFingerprint,
     nodeModulesDirectory,

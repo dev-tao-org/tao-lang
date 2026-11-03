@@ -1,4 +1,4 @@
-import { Errors, Lists, Time, Try } from '@shared'
+import { Errors, Json, Lists, Time, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { createWasmDocumentSession } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/core'
 import { semanticTokenRanges } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/SemanticTokens'
@@ -72,7 +72,7 @@ type ExtensionPerformanceReport = {
 }
 
 function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 type ExtensionPerformanceSummary = {

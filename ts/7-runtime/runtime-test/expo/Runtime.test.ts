@@ -1,4 +1,4 @@
-import { NewlineCharacter, S, Try } from '@shared'
+import { Json, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { readRuntimeSources } from '../../../CLIs/CLIs-src/cli-checks/runtime-sources'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
@@ -12,7 +12,7 @@ Tests.test('web preview scaffold excludes native platforms that trigger Expo Xco
   Artifacts.trackTemporary(directory)
   await FileSystem.mkdir(directory)
   await writeExpoApplication(directory, directory, {}, {}, [])
-  const app = JSON.parse(await FileSystem.readFile(Path.join(directory, 'app.json'), 'utf8'))
+  const app = Json.Parse(await FileSystem.readFile(Path.join(directory, 'app.json'), 'utf8')) as ExpoAppFixture
   Tests.expect(app.expo.platforms).toEqual(['web'])
 })
 
@@ -84,7 +84,7 @@ Tests.test('runtime toolchain copies dependency patches and invalidates the cach
     await writeResources(resources, { expo: '57.0.30' }, 'patches')
     await FileSystem.writeFile(
       Path.join(resources, 'package.json'),
-      JSON.stringify({
+      Json.Print({
         dependencies: { expo: '57.0.30' },
         patchedDependencies: { 'expo@57.0.30': patchPath },
       }),
@@ -202,7 +202,7 @@ async function verifyCreatedApplications(
   resourcesA: string,
   resourcesB: string,
 ): Promise<void> {
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(first.directory, 'package.json'), 'utf8')) as {
+  const manifest = Json.Parse(await FileSystem.readFile(Path.join(first.directory, 'package.json'), 'utf8')) as {
     dependencies: Record<string, string>
     devDependencies: Record<string, string>
   }
@@ -256,14 +256,14 @@ async function writeResources(directory: string, dependencies: Record<string, st
   const runtimeSources = await readRuntimeSources()
   await FileSystem.writeFile(
     Path.join(directory, 'runtime.json'),
-    JSON.stringify({
+    Json.Print({
       version: 2,
       identity: 'relocated-test',
       dependencies,
       sourceFiles: Object.keys(runtimeSources),
     }),
   )
-  await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ dependencies }))
+  await FileSystem.writeFile(Path.join(directory, 'package.json'), Json.Print({ dependencies }))
   await FileSystem.writeFile(Path.join(directory, 'bun.lock'), `fixture lock ${label}`)
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {
     const source = await FileSystem.readFile(Repo.resolvePath(sourcePath), 'utf8')
@@ -302,3 +302,6 @@ const appSource = S`
     return AppDeclaration(Root, 'runtime-check')
   }
 `
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ExpoAppFixture = { expo: Record<string, unknown> }

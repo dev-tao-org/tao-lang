@@ -1,5 +1,5 @@
 import { IO, runNonInteractiveCommand } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs } from '@shared'
 import { DevelopmentStorage, FileSystem, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
 import type { MeasurementJob } from '../../agent-skills/performance-investigation/Runner'
@@ -35,7 +35,7 @@ export async function presentTimingReport(
   const history = await readTimingHistory(report, directory)
   const path = Path.join(directory, Path.posix.basename(report.directory) + '.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(report, null, 2) + NewlineCharacter)
+  await FileSystem.writeFile(pending, Json.PrintIndented(report) + NewlineCharacter)
   await FileSystem.rename(pending, path)
   print([
     formatTimingReport(report),
@@ -59,7 +59,7 @@ export async function readTimingReport(
   requireJobPath(job, request.tooling)
   const args = createTimingHelperArguments('summarize', [job])
   const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const reports = JSON.parse(text) as TimingReport[]
+  const reports = Json.Parse(text) as TimingReport[]
   if (!Array.isArray(reports) || reports.length !== 1 || reports[0]?.directory !== job) {
     Errors.ThrowHostEnvironment('The runner did not return the requested timing report.')
   }
@@ -131,7 +131,7 @@ async function readJobProvenance(
 ): Promise<TimingReport> {
   const args = ['/bin/cat', Path.posix.join(summary.directory, JobFileName)]
   const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const job = JSON.parse(text) as MeasurementJob
+  const job = Json.Parse(text) as MeasurementJob
   if (!matchesSummarizedJob(job, summary)) {
     Errors.ThrowHostEnvironment('The runner job identity no longer matches its timing summary.')
   }

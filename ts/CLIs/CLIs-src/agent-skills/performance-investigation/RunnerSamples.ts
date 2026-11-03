@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Json, Time, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { createSampleName, JobFileName } from './JobFiles'
 import type { MeasurementJob } from './Runner'
@@ -35,6 +35,6 @@ export async function collectSamples(
 async function writeJob(directory: string, job: MeasurementJob): Promise<void> {
   const path = Path.join(directory, JobFileName)
   const pending = `${path}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(job, null, 2) + '\n')
+  await FileSystem.writeFile(pending, Json.PrintIndented(job) + '\n')
   await FileSystem.rename(pending, path)
 }

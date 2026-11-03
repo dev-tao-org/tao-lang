@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 
 /** RuntimePatches carries exact patch identities and their relocatable source files. */
@@ -26,7 +26,7 @@ export async function readRuntimePatches(directory: string): Promise<RuntimePatc
 type RuntimePackageManifest = { patchedDependencies?: PatchedDependencyPaths }
 
 async function readRuntimePackageManifest(path: string): Promise<RuntimePackageManifest> {
-  const parsed: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
+  const parsed: unknown = Json.Parse(await FileSystem.readFile(path, 'utf8'))
   if (!isRuntimePackageManifest(parsed)) {
     Errors.ThrowUserInput(`Runtime package manifest ${path} must be an object with string patch paths.`)
   }

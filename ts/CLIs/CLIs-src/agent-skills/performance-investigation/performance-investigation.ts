@@ -1,4 +1,5 @@
 import { IO, resolveCallerPath } from '@cli-kit'
+import { Json } from '@shared'
 import { Platform, Repo } from '@shared/os'
 import { Command } from '../../cli-kit/bridges/Bridge_commander'
 import { receiveSnapshot } from './Checkout'
@@ -95,5 +96,5 @@ function registerMeasurementCommands(command: Command): void {
 }
 
 function printResult(value: unknown): void {
-  IO.print(JSON.stringify(value, null, 2))
+  IO.print(Json.PrintIndented(value))
 }

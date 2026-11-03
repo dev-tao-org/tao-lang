@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { SourceModule } from '@typecheck/Modules'
 import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
@@ -102,11 +102,11 @@ type ObservedSourceField = 'path' | 'document'
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
   const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort()
-  return JSON.stringify(serializedRequirements)
+  return Json.Print(serializedRequirements)
 }
 
 function serializeDependencyRequirement(requirement: DependencyRequirement): string {
-  return JSON.stringify(requirement)
+  return Json.Print(requirement)
 }
 
 function requireEditableDependencyDeclarations(lock: DependencyLock, owner: string): void {

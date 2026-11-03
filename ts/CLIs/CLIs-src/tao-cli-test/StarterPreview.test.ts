@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, Time, Try } from '@shared'
+import { Errors, joinTextLines, Json, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, HeadlessBrowser, Http, Path, Platform, Repo, Tests } from '@shared/os'
 import { linkStandaloneLibraryDependencies } from '../../../0-workspace/workspace-test/StandaloneLibrary'
 
@@ -28,7 +28,7 @@ Tests.test('library initializer emits a typechecked consumer that renders compil
     await page.screenshot({ path: Path.join(root, 'rendered.png') })
     await FileSystem.writeFile(
       Path.join(root, 'render-receipt.json'),
-      JSON.stringify({ status: 'passed', url: host.url }, null, 2),
+      Json.PrintIndented({ status: 'passed', url: host.url }),
     )
   }, {
     async finally() {

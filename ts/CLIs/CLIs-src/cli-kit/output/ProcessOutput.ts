@@ -1,4 +1,4 @@
-import { NewlineCharacter, RecordSeparatorCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, RecordSeparatorCharacter, Try } from '@shared'
 import { Streams } from '@shared/os'
 import type { OutputEvent } from './Output'
 
@@ -8,7 +8,7 @@ export type OutputMessage = Pick<OutputEvent, OutputMessageFields>
 /** encodeOutputMessage frames a Tao event without interpreting arbitrary tool output as diagnostics. */
 export function encodeOutputMessage(event: OutputMessage): string {
   return RecordSeparatorCharacter
-    + JSON.stringify({ stream: event.stream, level: event.level, text: event.text, summary: event.summary })
+    + Json.Print({ stream: event.stream, level: event.level, text: event.text, summary: event.summary })
     + NewlineCharacter
 }
 
@@ -53,7 +53,7 @@ export function createProcessOutput(raw: (text: string) => void, receive: (messa
 type OutputMessageFields = 'stream' | 'level' | 'text' | 'summary'
 
 function decodeOutputFrame(frame: string): unknown {
-  return Try.WithDefault(undefined, () => JSON.parse(frame.slice(1)) as unknown)
+  return Try.WithDefault(undefined, () => Json.Parse(frame.slice(1)) as unknown)
 }
 
 function isOutputMessage(value: unknown): value is OutputMessage {

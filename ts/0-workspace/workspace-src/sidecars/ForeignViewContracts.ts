@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, NewlineCharacter, Regxs, S, Try } from '@shared'
+import { Errors, joinTextLines, Json, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Files, FileSystem, Path } from '@shared/os'
 import type { SidecarCommandResult } from './managed-modules/ManagedModuleTypes'
 
@@ -35,7 +35,7 @@ export function createForeignViewContractSource(input: ForeignViewContractSource
   const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
   const foreignViewName = input.name
-  const resolvedImportPath = JSON.stringify(Path.toRelativeModuleSpecifier(importPath))
+  const resolvedImportPath = Json.Print(Path.toRelativeModuleSpecifier(importPath))
   return joinTextLines(
     S`
       import type * as React from 'react'

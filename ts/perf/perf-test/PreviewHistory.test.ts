@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { recordPreviewPerformance } from '../perf-src/PreviewHistory'
 
@@ -11,7 +11,9 @@ Tests.test('commit recording captures exact committed fixture once and retains r
     Tests.expect(fixture.sources).toEqual([source])
     Tests.expect(first.directory).toBe(Path.join(fixture.root, '.artifacts/notes/preview-history', commit))
     Tests.expect(await FileSystem.readFile(Path.join(first.directory, 'report.json'), 'utf8')).toBe(report)
-    const record = JSON.parse(await FileSystem.readFile(Path.join(first.directory, 'record.json'), 'utf8'))
+    const record = Json.Parse(
+      await FileSystem.readFile(Path.join(first.directory, 'record.json'), 'utf8'),
+    ) as PreviewHistoryMetadataFixture
     Tests.expect(record).toMatchObject({
       sourceCommit: commit,
       sourceTree: tree,
@@ -21,10 +23,10 @@ Tests.test('commit recording captures exact committed fixture once and retains r
     })
     await FileSystem.writeFile(Path.join(first.directory, 'report.json'), '{}')
     await Tests.expect(fixture.record()).rejects.toThrow('checksum differs')
-    const wrongReport = JSON.stringify({ version: 1, commit: 'c'.repeat(40) })
+    const wrongReport = Json.Print({ version: 1, commit: 'c'.repeat(40) })
     await FileSystem.writeFile(Path.join(first.directory, 'report.json'), wrongReport)
     record.reportSha256 = Platform.hashText(wrongReport)
-    await FileSystem.writeFile(Path.join(first.directory, 'record.json'), JSON.stringify(record))
+    await FileSystem.writeFile(Path.join(first.directory, 'record.json'), Json.Print(record))
     await Tests.expect(fixture.record()).rejects.toThrow('does not identify the measured source commit')
     Tests.expect(fixture.sources).toHaveLength(1)
   })
@@ -47,7 +49,9 @@ Tests.test('dirty implementation inputs prevent measurement and retain a failure
     await Tests.expect(fixture.record()).rejects.toThrow('Commit benchmark implementation inputs')
     Tests.expect(fixture.sources).toEqual([])
     const path = Path.join(fixture.root, '.artifacts/notes/preview-history', commit, 'record.json')
-    Tests.expect(JSON.parse(await FileSystem.readFile(path, 'utf8'))).toMatchObject({ status: 'failed' })
+    Tests.expect(Json.Parse(await FileSystem.readFile(path, 'utf8')) as PreviewHistoryMetadataFixture).toMatchObject({
+      status: 'failed',
+    })
   })
 })
 
@@ -58,14 +62,16 @@ Tests.test('a changed HEAD during capture cannot produce a successful record', a
       return { path: fixture.reportPath }
     })).rejects.toThrow('HEAD and inputs must stay unchanged')
     const path = Path.join(fixture.root, '.artifacts/notes/preview-history', commit, 'record.json')
-    Tests.expect(JSON.parse(await FileSystem.readFile(path, 'utf8'))).toMatchObject({ status: 'failed' })
+    Tests.expect(Json.Parse(await FileSystem.readFile(path, 'utf8')) as PreviewHistoryMetadataFixture).toMatchObject({
+      status: 'failed',
+    })
   })
 })
 
 const commit = 'a'.repeat(40)
 const tree = 'b'.repeat(40)
 const source = '  app Example { root RootView }' + NewlineCharacter
-const report = JSON.stringify({ version: 1, commit, modified: true }) + NewlineCharacter
+const report = Json.Print({ version: 1, commit, modified: true }) + NewlineCharacter
 
 type PreviewHistoryFixture = {
   root: string
@@ -127,3 +133,6 @@ function createFixture(root: string) {
     return Errors.ThrowShouldNeverHappen('Unexpected Git operation: ' + operation)
   }
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type PreviewHistoryMetadataFixture = Record<string, unknown>

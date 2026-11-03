@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Json, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 
 /** NativeLockPointer identifies the immutable addon installation for one build identity. */
@@ -42,7 +42,7 @@ export async function writeNativeLockPointer(root: string, pointer: NativeLockPo
   const path = Path.join(root, 'current.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FileSystem.writeFile(pending, JSON.stringify(pointer))
+    await FileSystem.writeFile(pending, Json.Print(pointer))
     await FileSystem.rename(pending, path)
   }, { finally: () => FileSystem.rm(pending, { force: true }) })
 }
@@ -58,7 +58,7 @@ async function readPointer(root: string): Promise<PointerRead> {
   if (contents === undefined) {
     return { kind: 'missing' }
   }
-  const value = Try.WithDefault(undefined, () => JSON.parse(contents) as unknown)
+  const value = Try.WithDefault(undefined, () => Json.Parse(contents) as unknown)
   if (typeof value !== 'object' || value === null) {
     return { kind: 'invalid' }
   }

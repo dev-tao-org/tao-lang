@@ -1,3 +1,4 @@
+import * as Json from '../Json'
 import * as IdentifiersRegxs from '../Regxs/IdentifiersRegxs'
 import { BaseTaoError, isTaoError } from './Base'
 
@@ -88,5 +89,5 @@ function formatCommandForError(command: string, args: readonly string[]): string
 
 // Quote a command word that a reader could not paste back as written.
 function formatCommandPart(value: string): string {
-  return IdentifiersRegxs.SafeCommandTokenRegx.test(value) ? value : JSON.stringify(value)
+  return IdentifiersRegxs.SafeCommandTokenRegx.test(value) ? value : Json.Print(value)
 }

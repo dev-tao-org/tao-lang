@@ -1,4 +1,4 @@
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Json, Lists, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
@@ -166,7 +166,7 @@ async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
 }
 
 function parseManagedModuleMetadata(contents: string): ModuleMetadataFields {
-  const value: unknown = Try(() => JSON.parse(contents))
+  const value: unknown = Try(() => Json.Parse(contents))
   if (!isModuleMetadataFields(value)) {
     Errors.ThrowUserInput('Managed module metadata must be a JSON object.')
   }

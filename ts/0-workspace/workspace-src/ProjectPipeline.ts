@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen/AST'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Lists } from '@shared'
+import { Errors, Json, Lists } from '@shared'
 import { Path } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
@@ -173,7 +173,7 @@ function describeNativeRebuildRequirement(profile: OptionalManagedProfile): stri
 // createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
 // Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
 function createDeclarationKey(program: LinkedProgram): string {
-  return JSON.stringify(program.modules.map(describeModuleDeclarationFingerprint))
+  return Json.Print(program.modules.map(describeModuleDeclarationFingerprint))
 }
 
 function describeModuleDeclarationFingerprint(module: LinkedProgram['modules'][number]) {
@@ -201,7 +201,7 @@ function serializeDeclarationFingerprint(declaration: AST.Declaration): unknown[
 }
 
 function createManagedGraphKey(input: ManagedModules.ManagedModulesInput): string {
-  return JSON.stringify({
+  return Json.Print({
     modules: input.modules.map(module => ({
       directory: module.directory,
       requirements: module.requirements.map(({ name, version }) => ({ name, version }))
@@ -215,7 +215,7 @@ function createManagedGraphKey(input: ManagedModules.ManagedModulesInput): strin
 }
 
 function createEmptyManagedGraphKey(): string {
-  return JSON.stringify({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
+  return Json.Print({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
 }
 
 function createPipelineResult(sidecars: SidecarPipeline.PreparedSidecars): ProjectPipelineResult {

@@ -1,4 +1,4 @@
-import { S, Try } from '@shared'
+import { Json, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { auditInstalledGraph, collectAllRequirements } from '../sidecars/managed-modules/ManagedModuleGraph'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -113,5 +113,5 @@ async function writePackage(
 ): Promise<void> {
   const directory = Path.join(profile, 'node_modules', installName)
   await FileSystem.mkdir(directory)
-  await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
+  await FileSystem.writeFile(Path.join(directory, 'package.json'), Json.Print({ name, version, dependencies }))
 }

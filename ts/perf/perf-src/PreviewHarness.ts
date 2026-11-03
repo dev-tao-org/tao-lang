@@ -1,5 +1,5 @@
 import { DefaultAppearance } from '@runtime/client/Appearance'
-import { Addr, Errors, joinTextLines, NewlineCharacter, S, Styles, Try } from '@shared'
+import { Addr, Errors, joinTextLines, Json, NewlineCharacter, S, Styles, Try } from '@shared'
 import { Artifacts, Browser, FileSystem, Http, Path, Repo } from '@shared/os'
 import type * as Workspace from '@workspace/Workspace'
 import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
@@ -237,7 +237,7 @@ function sendEvent(
 }
 
 function encodeEvent(encoder: WebHost.TextEncoder, name: string, data: object): Uint8Array {
-  const message = joinTextLines(`event: ${name}`, `data: ${JSON.stringify(data)}`, '', '')
+  const message = joinTextLines(`event: ${name}`, `data: ${Json.Print(data)}`, '', '')
   return encoder.encode(message)
 }
 
@@ -313,5 +313,5 @@ function createPreviewPageStyles(columns: string): string {
 }
 
 function serializePreviewScenariosMetadata(scenarios: readonly string[]): string {
-  return JSON.stringify(scenarios)
+  return Json.Print(scenarios)
 }

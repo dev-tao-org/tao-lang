@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Artifacts, Platform, Tests } from '@shared/os'
 import { Command } from '../../cli-kit/bridges/Bridge_commander'
 import timingSetupController from '../commands/timing-setup-controller'
@@ -127,7 +128,7 @@ Tests.test('timing remote jobs retain literal paths and reject invalid workloads
   Artifacts.trackTemporary(reportsDirectory)
   const execute: TimingSetupIO['execute'] = async (name, options) => {
     commands.push({ name, args: [...options?.variadicArgs ?? []] })
-    const responses = [`Performance job: ${report.directory}\n`, JSON.stringify([report]), createJobResponse(report)]
+    const responses = [`Performance job: ${report.directory}\n`, Json.Print([report]), createJobResponse(report)]
     const response = responses[commands.length - 1]
     options?.output?.stdout(response)
   }
@@ -159,7 +160,7 @@ Tests.test('timing remote jobs retain literal paths and reject invalid workloads
 Tests.test('retained timing reports select one exact job and never launch another measurement', async () => {
   const report = createTimingReportFixture('/Users/ro/Timing')
   const commands: RecordedCommand[] = []
-  const responses = ['11111111-2222-3333-4444-555555555555\n', JSON.stringify([report]), createJobResponse(report)]
+  const responses = ['11111111-2222-3333-4444-555555555555\n', Json.Print([report]), createJobResponse(report)]
   const execute: TimingSetupIO['execute'] = async (name, options) => {
     commands.push({ name, args: [...options?.variadicArgs ?? []] })
     options?.output?.stdout(responses.shift()!)
@@ -207,7 +208,7 @@ function createTimingReportFixture(tooling: string): TimingReport {
 }
 
 function createJobResponse(report: TimingReport): string {
-  return JSON.stringify({ ...report, status: 'passed' })
+  return Json.Print({ ...report, status: 'passed' })
 }
 
 function createConnectionFixture() {

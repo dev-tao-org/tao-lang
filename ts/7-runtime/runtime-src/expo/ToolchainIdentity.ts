@@ -1,4 +1,4 @@
-import { NullCharacter } from '@shared'
+import { Json, NullCharacter } from '@shared'
 import { Platform } from '@shared/os'
 import type { RuntimePatches } from './RuntimePatches'
 
@@ -24,5 +24,5 @@ export function calculateToolchainKey(identity: ToolchainIdentity): string {
 }
 
 function serializeRuntimePatchIdentity(patches: RuntimePatches['patches']): string {
-  return JSON.stringify(patches)
+  return Json.Print(patches)
 }

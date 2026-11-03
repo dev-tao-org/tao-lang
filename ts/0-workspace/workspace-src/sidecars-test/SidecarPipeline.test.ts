@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { joinTextLines, NewlineCharacter, S } from '@shared'
+import { joinTextLines, Json, NewlineCharacter, S } from '@shared'
 import { FileSystem, Path, Repo, Tests } from '@shared/os'
 import { prepareSidecarPipeline } from '../SidecarPipeline'
 import { ensureTypeScriptDefaults } from '../sidecars/managed-modules/ManagedModuleMetadata'
@@ -292,10 +292,15 @@ Tests.test('managed snapshots type-check authored views through the packaged Tao
     })
     const sidecar = prepared.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx')
     const snapshotDirectory = Path.dirname(sidecar)
-    const snapshotConfig = JSON.parse(await FileSystem.readFile(Path.join(snapshotDirectory, 'tsconfig.json'), 'utf8'))
-    const defaults = JSON.parse(await FileSystem.readFile(defaultsPath, 'utf8'))
+    const snapshotConfig = Json.Parse(
+      await FileSystem.readFile(Path.join(snapshotDirectory, 'tsconfig.json'), 'utf8'),
+    ) as SidecarTypeScriptFixture
+    const defaults = Json.Parse(await FileSystem.readFile(defaultsPath, 'utf8')) as SidecarTypeScriptFixture
     Tests.expect(await FileSystem.readFile(sidecar, 'utf8')).toContain("from '@tao/runtime-api'")
     Tests.expect(snapshotConfig.compilerOptions.baseUrl).toBe('.')
     Tests.expect(defaults.compilerOptions.paths['@tao/runtime-api'][0]).toContain('/runtime/TaoRuntimeAPI.ts')
     Tests.expect(defaults.compilerOptions.paths['@shared'][0]).toContain('/shared/shared.ts')
   }))
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type SidecarTypeScriptFixture = { compilerOptions: { baseUrl: string; paths: Record<string, string[]> } }

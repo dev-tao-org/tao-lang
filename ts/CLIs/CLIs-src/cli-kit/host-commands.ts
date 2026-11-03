@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Json, Regxs, Try } from '@shared'
 import { FileSystem, Platform, Repo } from '@shared/os'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
@@ -74,7 +74,7 @@ type Prefix = { text: string; tokens: string[] }
 async function readHostCommandPrefixes(): Promise<unknown> {
   const path = Repo.resolvePath(allowlistPath)
   const source = await FileSystem.file(path).text()
-  return Try(() => JSON.parse(source) as unknown, {
+  return Try(() => Json.Parse(source) as unknown, {
     catch() {
       Errors.ThrowUserInput(`The ${allowlistPath} file must contain a valid JSON array of command prefixes.`)
     },
@@ -104,7 +104,7 @@ function validatedPrefixes(value: unknown): Prefix[] {
 }
 
 function encodePrefixIdentity(tokens: readonly string[]): string {
-  return JSON.stringify(tokens)
+  return Json.Print(tokens)
 }
 
 function isValidPrefix(prefix: unknown): prefix is string {

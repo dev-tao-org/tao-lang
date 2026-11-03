@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, Json, Regxs } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { JobFileName, requireSampleName } from './JobFiles'
 import { type PreviewReport, requireReport } from './ReportContract'
@@ -29,7 +29,7 @@ type MeasurementGroupSummary = {
 
 /** summarizeJob retains independent-session medians and conditions without issuing an automatic significance verdict. */
 export async function summarizeJob(directory: string): Promise<MeasurementSummary> {
-  const job = JSON.parse(await FileSystem.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
+  const job = Json.Parse(await FileSystem.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
   if (!isCompleteJob(job)) {
     Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
   }
@@ -38,7 +38,7 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
     Errors.ThrowUserInput('Duplicate session identities cannot count as independent measurements.')
   }
   const conditions = reports.map(report =>
-    JSON.stringify({
+    Json.Print({
       system: report.system,
       runtime: report.runtime,
       browser: report.browser,
@@ -57,7 +57,7 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
     tree: job.tree,
     fixtureSha256: job.fixtureSha256,
     settings: job.settings,
-    conditions: JSON.parse(conditions[0]) as MeasurementConditions,
+    conditions: Json.Parse(conditions[0]) as MeasurementConditions,
     groups: summaries,
     interpretation: 'Run medians are independent session units. Edit counts are not independent process counts.',
   }
@@ -75,7 +75,7 @@ function isCompleteJob(job: MeasurementJob): boolean {
 
 async function readReport(directory: string, name: string, job: MeasurementJob): Promise<PreviewReport> {
   requireSampleName(name)
-  const report = JSON.parse(await FileSystem.readFile(Path.join(directory, name), 'utf8')) as PreviewReport
+  const report = Json.Parse(await FileSystem.readFile(Path.join(directory, name), 'utf8')) as PreviewReport
   requireReport(report, job)
   return report
 }

@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, NewlineCharacter, Range, S } from '@shared'
+import { Errors, joinTextLines, Json, NewlineCharacter, Range, S } from '@shared'
 import { FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import type * as LearningTypes from '../review-learning/LearningTypes'
 import { runLearning } from '../review-learning/review-learning'
@@ -89,17 +89,17 @@ test('invalidates edits and config changes and rejects overlapping or escaping e
   await expect(runLearning(['apply', '--repo', root, '--proposal', 'change'])).rejects.toThrow('stale')
   await FileSystem.rm(Path.join(root, 'tsconfig.json'))
   const input = Path.join(root, 'proposal.json')
-  const proposal = JSON.parse(await FileSystem.readFile(input, 'utf8'))
+  const proposal = Json.Parse(await FileSystem.readFile(input, 'utf8')) as LearningFixtureRecord
   proposal.id = 'overlap'
   proposal.edits.push(proposal.edits[0])
-  await FileSystem.writeFile(input, JSON.stringify(proposal))
+  await FileSystem.writeFile(input, Json.Print(proposal))
   await expect(runLearning(['propose', '--repo', root, '--input', input])).rejects.toThrow('Overlapping')
   proposal.edits = [{ ...proposal.edits[0], file: '../outside.ts' }]
-  await FileSystem.writeFile(input, JSON.stringify(proposal))
+  await FileSystem.writeFile(input, Json.Print(proposal))
   await expect(runLearning(['propose', '--repo', root, '--input', input])).rejects.toThrow('Unsafe')
   await FileSystem.symlink(Path.join(root, 'source.ts'), Path.join(root, 'linked.ts'))
   proposal.edits[0].file = 'linked.ts'
-  await FileSystem.writeFile(input, JSON.stringify(proposal))
+  await FileSystem.writeFile(input, Json.Print(proposal))
   await expect(runLearning(['propose', '--repo', root, '--input', input])).rejects.toThrow('Symbolic')
 })
 
@@ -117,7 +117,7 @@ test('protects checkpointed review groups and marks accepted paths pending witho
   const accepted = { 'source.ts': 'accepted-tree-entry' }
   await FileSystem.writeFile(
     Path.join(directory, 'session.json'),
-    JSON.stringify({
+    Json.Print({
       version: 1,
       id: 'fixture',
       root,
@@ -132,7 +132,9 @@ test('protects checkpointed review groups and marks accepted paths pending witho
   await FileSystem.writeFile(Path.join(root, '.git/index'), 'user staging')
   await FileSystem.writeFile(Path.join(root, '.git/refs/heads/approved'), 'accepted commit')
   await runLearning(['apply', '--repo', root, '--proposal', 'change'])
-  const session = JSON.parse(await FileSystem.readFile(Path.join(directory, 'session.json'), 'utf8'))
+  const session = Json.Parse(
+    await FileSystem.readFile(Path.join(directory, 'session.json'), 'utf8'),
+  ) as LearningFixtureRecord
   expect(session.accepted).toEqual(accepted)
   expect(session.recheck).toEqual(['source.ts'])
   expect(await FileSystem.readFile(Path.join(root, '.git/index'), 'utf8')).toBe('user staging')
@@ -154,11 +156,11 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
   }
   await FileSystem.writeFile(
     input,
-    JSON.stringify({ id: 'batch', scan: scan.id, analysis: 'Both equivalent cases checked.', edits }),
+    Json.Print({ id: 'batch', scan: scan.id, analysis: 'Both equivalent cases checked.', edits }),
   )
   await runLearning(['propose', '--repo', root, '--input', input])
   const statePath = Path.join(root, '.artifacts/notes/review-learning/state.json')
-  const state = JSON.parse(await FileSystem.readFile(statePath, 'utf8')) as LearningTypes.LearningState
+  const state = Json.Parse(await FileSystem.readFile(statePath, 'utf8')) as LearningTypes.LearningState
   const proposal = state.proposals[0]!
   proposal.state = 'applying'
   proposal.outputs = {}
@@ -166,7 +168,7 @@ test('recovers interrupted multi-file output and refuses foreign edits without r
     const before = await FileSystem.readFile(Path.join(root, edit.file), 'utf8')
     proposal.outputs[edit.file] = { before, after: before.replace('1', '2'), done: edit.file === 'source.ts' }
   }
-  await FileSystem.writeFile(statePath, JSON.stringify(state))
+  await FileSystem.writeFile(statePath, Json.Print(state))
   await FileSystem.writeFile(Path.join(root, 'source.ts'), proposal.outputs['source.ts']!.after)
   await FileSystem.writeFile(Path.join(root, 'second.ts'), '// user changed this' + NewlineCharacter)
   await expect(runLearning(['recover', '--repo', root, '--proposal', 'batch'])).rejects.toThrow('stale')
@@ -218,7 +220,7 @@ async function capture(
   const input = Path.join(root, 'capture.json')
   await FileSystem.writeFile(
     input,
-    JSON.stringify({
+    Json.Print({
       id,
       authority,
       authoritySource,
@@ -239,7 +241,7 @@ async function propose(root: string, scan: string, id: string): Promise<void> {
   const start = source.indexOf('1')
   await FileSystem.writeFile(
     input,
-    JSON.stringify({
+    Json.Print({
       id,
       scan,
       analysis: 'Equivalent numeric correction within the explicit scope.',
@@ -247,4 +249,18 @@ async function propose(root: string, scan: string, id: string): Promise<void> {
     }),
   )
   await runLearning(['propose', '--repo', root, '--input', input])
+}
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type LearningFixtureRecord = {
+  id: string
+  accepted: unknown
+  recheck: unknown
+  analysis: string
+  edits: LearningTypes.Proposal['edits']
+  queryVersion: unknown
+  inputs: unknown
+  selected: unknown
+  complete: boolean
+  files: unknown
 }

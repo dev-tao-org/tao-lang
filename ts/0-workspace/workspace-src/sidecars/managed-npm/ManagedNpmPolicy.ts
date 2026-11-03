@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Sort } from '@shared'
+import { Errors, Json, NewlineCharacter, Sort } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../managed-modules/ManagedModuleTypes'
@@ -80,7 +80,7 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
     }
   }
   const repairedLock = applyManagedLockPolicy(lock, input.runtimePolicy)
-  return `${JSON.stringify(repairedLock, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented(repairedLock)}${NewlineCharacter}`
 }
 
 function applyManagedLockPolicy(
@@ -141,7 +141,7 @@ function recordsMatch(value: unknown, expected: ManagedRuntimePolicyMap): boolea
 }
 
 function serializeSortedManagedPolicyRecord(record: ManagedRuntimePolicyMap): string {
-  return JSON.stringify(sortRecord(record))
+  return Json.Print(sortRecord(record))
 }
 
 function isRecordValue(value: unknown): value is ManagedRuntimePolicyMap {

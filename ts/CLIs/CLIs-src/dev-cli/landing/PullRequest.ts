@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter } from '@shared'
+import { Errors, Json, NewlineCharacter } from '@shared'
 import { requireFeatureBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
 import { requireSourceHead } from './SourceIdentity'
@@ -142,9 +142,9 @@ type NullableMergeCommit = { oid: string } | null
 type CommitComparison = { status?: string }
 
 function parseCommitComparison(contents: string): CommitComparison {
-  return JSON.parse(contents) as CommitComparison
+  return Json.Parse(contents) as CommitComparison
 }
 
 function parsePullRequests(contents: string): PullRequest[] {
-  return JSON.parse(contents) as PullRequest[]
+  return Json.Parse(contents) as PullRequest[]
 }

@@ -1,5 +1,5 @@
 import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
-import { Errors, Switch, Time, Try } from '@shared'
+import { Errors, Json, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
 import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
 
@@ -57,7 +57,7 @@ type ReactivityPerformanceDefinitions = {
 }
 
 function serializeReactivityPerformanceReport(report: ReactivityPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'create-dispose'

@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { assertDoctorReady, type DoctorReport, doctorReport } from '../../cli-checks/doctor'
 import { registerCommand } from './_command-runner'
 
@@ -36,5 +36,5 @@ export default registerCommand({
 type DoctorOutput = DoctorReport | DoctorReport['fingerprint']
 
 function formatDoctorOutput(report: DoctorOutput): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }

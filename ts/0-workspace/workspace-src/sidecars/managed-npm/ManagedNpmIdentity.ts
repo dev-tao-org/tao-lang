@@ -1,4 +1,4 @@
-import { NewlineCharacter, NullCharacter, Sort } from '@shared'
+import { Json, NewlineCharacter, NullCharacter, Sort } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from '../managed-modules/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../managed-modules/ManagedModuleMetadata'
@@ -26,7 +26,7 @@ export function calculateManagedGraphFingerprint(
   normalized: readonly ManagedModuleTypes.NormalizedManagedRequirement[],
 ): string {
   const requirements = collectAllRequirements(normalized, input.runtimePins)
-  return Platform.hashText(JSON.stringify({
+  return Platform.hashText(Json.Print({
     requirements: Object.fromEntries(Sort.Strings(Object.keys(requirements)).map(key => [key, requirements[key]])),
     target: input.target,
     runtimePins: Object.fromEntries(
@@ -43,7 +43,7 @@ export function calculateManagedProfileFingerprint(
   input: ManagedModuleTypes.ManagedModulesInput,
   graphFingerprint: string,
 ): string {
-  return Platform.hashText(JSON.stringify({
+  return Platform.hashText(Json.Print({
     graphFingerprint,
     bunVersion: input.bunVersion,
     installHost: installHostIdentity(input),

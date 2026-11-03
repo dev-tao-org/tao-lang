@@ -1,14 +1,14 @@
-import { Errors, NullCharacter, Try } from '@shared'
+import { Errors, Json, NullCharacter, Try } from '@shared'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** parseGeneratedRevision reads untrusted JSON for the existing revision owner to validate. */
 export function parseGeneratedRevision(contents: string): unknown {
-  return JSON.parse(contents)
+  return Json.Parse(contents)
 }
 
 /** serializeGeneratedRevision encodes a complete revision for the Metro publication protocol. */
 export function serializeGeneratedRevision(revision: GeneratedRevision): string {
-  return JSON.stringify(revision)
+  return Json.Print(revision)
 }
 
 /** createRevisionOwner retains one active and only the latest pending complete generated revision.

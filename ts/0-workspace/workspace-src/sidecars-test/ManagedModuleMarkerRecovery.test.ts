@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -18,7 +18,9 @@ Tests.test('repairs a corrupt marker only with generated file and profile link p
     await makeCorrupt(marker)
     await Tests.rejects(ManagedModules.prepareManagedModules(input, executor), ManagedModuleRepairRequiredErrorRegx)
     await ManagedModules.repairManagedModuleFiles(input, executor)
-    Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).profile).toContain('.tao/cache/managed-modules')
+    Tests.expect((Json.Parse(await FileSystem.readFile(marker, 'utf8')) as ManagedMarkerFixture).profile).toContain(
+      '.tao/cache/managed-modules',
+    )
     const manifest = Path.join(moduleDirectory, 'package.json')
     await FileSystem.chmod(manifest, 0o644)
     await FileSystem.writeFile(manifest, '{"authored":true}' + NewlineCharacter)
@@ -73,7 +75,7 @@ function createExecutor(dependencies: Record<string, string>): BunExecutor {
     for (const [name, version] of Object.entries(dependencies)) {
       const directory = Path.join(cwd, 'node_modules', name)
       await FileSystem.mkdir(directory)
-      await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version }))
+      await FileSystem.writeFile(Path.join(directory, 'package.json'), Json.Print({ name, version }))
       await FileSystem.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
     }
     return { status: 0, stdout: '', stderr: '' }
@@ -92,3 +94,6 @@ async function withDirectory(action: (root: string) => Promise<void>): Promise<v
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ManagedMarkerFixture = { profile: string }

@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, readManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -145,7 +145,7 @@ async function writePackages(root: string, dependencies: Record<string, string>)
   for (const [name, version] of Object.entries(dependencies)) {
     const packageDirectory = Path.join(root, 'node_modules', name)
     await FileSystem.mkdir(packageDirectory)
-    await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), JSON.stringify({ name, version }))
+    await FileSystem.writeFile(Path.join(packageDirectory, 'package.json'), Json.Print({ name, version }))
   }
 }
 

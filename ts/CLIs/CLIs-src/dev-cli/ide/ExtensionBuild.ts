@@ -1,6 +1,6 @@
 import { IO, runNonInteractiveCommand } from '@cli-kit'
 import { createTypeScriptFormatter } from '@fix/lib/formatter/Embedded'
-import { joinTextLines, NewlineCharacter, Try } from '@shared'
+import { joinTextLines, Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, Bundle, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { readLicense } from '../../../../4-fix/fix-src/lib/formatter/Bridge_dprint-formatter/Bridge_dprint-formatter-resources'
 import * as JavaScriptGrammar from '../../../../ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-javascript'
@@ -42,22 +42,18 @@ export async function prepareExtensionAssets(): Promise<void> {
 type ExtensionManifest = Record<string, unknown> & { files: string[] }
 
 function formatPublishedExtensionManifest(contents: string): string {
-  const manifest = JSON.parse(contents) as ExtensionManifest
+  const manifest = Json.Parse(contents) as ExtensionManifest
   delete manifest.dependencies
   delete manifest.devDependencies
   delete manifest.private
-  return JSON.stringify(
-    {
-      ...manifest,
-      name: 'tao',
-      publisher: 'devtao',
-      type: 'commonjs',
-      main: './dist/extension.js',
-      files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    ...manifest,
+    name: 'tao',
+    publisher: 'devtao',
+    type: 'commonjs',
+    main: './dist/extension.js',
+    files: [...manifest.files, 'LICENSE', 'THIRD_PARTY_LICENSES.txt', 'JAVASCRIPT_LICENSE.txt'],
+  })
 }
 
 const sourceRoot = Repo.resolvePath('ts/ide-extensions/tao-ide-extension')

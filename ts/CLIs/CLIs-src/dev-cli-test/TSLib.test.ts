@@ -1,4 +1,4 @@
-import { S } from '@shared'
+import { Json, S } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo, Tests } from '@shared/os'
 import { resolveCompileTarget } from '@workspace/CompileTarget'
 import { initializeProject } from '@workspace/projects/Projects'
@@ -65,7 +65,7 @@ Tests.test('unified compile rejects unknown and ambiguous targets and still comp
   await FileSystem.writeFile(entry, source)
   await FileSystem.writeFile(
     Path.join(root, 'package.json'),
-    JSON.stringify({ name: 'compile-target-fixture', tao: { compile: { entry: 'Main.tao' } } }),
+    Json.Print({ name: 'compile-target-fixture', tao: { compile: { entry: 'Main.tao' } } }),
   )
   await Tests.expect(resolveCompileTarget(root)).rejects.toThrow('found 2 matching targets')
   await Tests.expect(resolveCompileTarget(root, 'Missing')).rejects.toThrow('found 0 matching targets')

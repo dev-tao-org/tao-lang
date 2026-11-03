@@ -1,5 +1,5 @@
 import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { DevelopmentStorage, FileSystem, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 
@@ -62,7 +62,7 @@ export async function disconnectTiming(options: TimingConnection, io = createCon
 
 /** resolveTimingSocket isolates reusable connections by the exact selected host. */
 export function resolveTimingSocket(host: string, sessionId?: string): string {
-  const identity = sessionId ? JSON.stringify({ host, sessionId }) : host
+  const identity = sessionId ? Json.Print({ host, sessionId }) : host
   const name = 's-' + Platform.hashText(identity).slice(0, 16)
   const socket = DevelopmentStorage.resolveDirectory('ssh', name)
   if (socket.length > 100) {

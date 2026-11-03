@@ -1,4 +1,4 @@
-import { Errors, Timings, Try } from '@shared'
+import { Errors, Json, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
@@ -129,11 +129,11 @@ type RuntimePackage = {
 type RuntimeWorkspace = { patchedDependencies?: RuntimeLock.RuntimePatchPaths }
 
 function createRuntimeBuildIdentity(inputs: RuntimeBuildInputs): string {
-  return Platform.hashText(JSON.stringify(inputs))
+  return Platform.hashText(Json.Print(inputs))
 }
 
 function formatRuntimeManifest(manifest: RuntimeLock.RuntimeManifest): string {
-  return JSON.stringify(manifest, null, 2)
+  return Json.PrintIndented(manifest)
 }
 
 function formatRuntimeMetadata(
@@ -141,23 +141,19 @@ function formatRuntimeMetadata(
   manifest: RuntimeLock.RuntimeManifest,
   sources: RuntimeSourcePaths,
 ): string {
-  return JSON.stringify(
-    {
-      version: 2,
-      identity,
-      dependencies: manifest.dependencies,
-      devDependencies: manifest.devDependencies,
-      sourceFiles: Object.keys(sources),
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    version: 2,
+    identity,
+    dependencies: manifest.dependencies,
+    devDependencies: manifest.devDependencies,
+    sourceFiles: Object.keys(sources),
+  })
 }
 
 function parseRuntimePackage(contents: string): RuntimePackage {
-  return JSON.parse(contents) as RuntimePackage
+  return Json.Parse(contents) as RuntimePackage
 }
 
 function parseRuntimeWorkspace(contents: string): RuntimeWorkspace {
-  return JSON.parse(contents) as RuntimeWorkspace
+  return Json.Parse(contents) as RuntimeWorkspace
 }
