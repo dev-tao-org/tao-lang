@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import { Errors } from '@shared'
+import { Errors, Json, Sort } from '@shared'
 import { FS, Path } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
@@ -102,7 +101,7 @@ type ObservedSourceField = 'path' | 'document'
 
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
-  const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort()
+  const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort(Sort.CompareStrings)
   return Json.Print(serializedRequirements)
 }
 

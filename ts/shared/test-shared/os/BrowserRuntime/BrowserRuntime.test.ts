@@ -5,8 +5,8 @@ import { TypeScript } from '../../../shared-src/bridges/Bridge_typescript'
 
 Tests.test('browser runtime > standalone ES modules preserve the native fetch receiver', async () => {
   const [bridge, runtime] = await Promise.all([
-    readBrowserModule('../bridges/Bridge_browser/Bridge_browser.ts'),
-    readBrowserModule('../BrowserRuntime.ts'),
+    readBrowserModule('bridges/Bridge_browser/Bridge_browser.ts'),
+    readBrowserModule('BrowserRuntime.ts'),
   ])
   const browser = await HeadlessBrowser.launch('test BrowserRuntime.test.ts', { handleSignals: false })
   await Try(async () => {
@@ -23,7 +23,7 @@ Tests.test('browser runtime > standalone ES modules preserve the native fetch re
 })
 
 async function readBrowserModule(relative: string): Promise<string> {
-  const directory = Path.dirname(Path.fileURLToPath(import.meta.url))
+  const directory = Path.resolve(Path.dirname(Path.fileURLToPath(import.meta.url)), '../../../shared-src/os')
   const source = await FS.readFile(Path.resolve(directory, relative), 'utf8')
   return TypeScript.transpileModule(source, {
     compilerOptions: { target: TypeScript.ScriptTarget.ESNext, module: TypeScript.ModuleKind.ESNext },

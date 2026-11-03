@@ -99,7 +99,7 @@
         "./shared/shared-src/os/BrowserRuntime.ts"
       ],
       "@shared-tests": [
-        "./shared/test-shared/os/Tests/Tests.test-utils.ts"
+        "./shared/test-shared/Shared.test-utils.ts"
       ],
       "@shared/preview": [
         "./shared/shared-src/Preview.ts"

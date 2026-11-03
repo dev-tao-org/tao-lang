@@ -8,13 +8,13 @@ Tests.test('sidecar import closure includes TypeScript module forms and ignores 
     import {
       type Foo,
       bar,
-    } from '../sidecar-pipeline/helper'
-    export * from '../sidecar-pipeline/re-export'
-    const lazy = import('../sidecar-pipeline/lazy')
+    } from './helper'
+    export * from './re-export'
+    const lazy = import('./lazy')
     const common = require('./common')
-    const ordinary = "import value from '../sidecar-pipeline/string-false-positive'"
-    const template = \`import('../sidecar-pipeline/template-false-positive')\`
-    // import real from '../sidecar-pipeline/comment-false-positive'
+    const ordinary = "import value from './string-false-positive'"
+    const template = \`import('./template-false-positive')\`
+    // import real from './comment-false-positive'
   `
   Tests.expect(collectModuleSpecifiers(source)).toEqual([
     './helper',

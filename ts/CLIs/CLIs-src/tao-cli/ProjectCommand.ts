@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Sort } from '@shared'
 import { FS, Path, Storage } from '@shared/os'
 import * as Workspace from '@workspace'
 
@@ -26,7 +26,7 @@ async function findOwningProjectRoots(paths: readonly string[]): Promise<string[
   if (roots.size === 0) {
     Errors.ThrowUserInput('A project-scoped command requires at least one path.')
   }
-  return [...roots].sort()
+  return [...roots].sort(Sort.CompareStrings)
 }
 
 function validateProjectPath(path: string, projectRoot: string): void {

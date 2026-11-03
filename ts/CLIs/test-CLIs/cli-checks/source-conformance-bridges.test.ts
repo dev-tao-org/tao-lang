@@ -27,7 +27,7 @@ Tests.test('source conformance > assigns external module references to exact bri
   expectBridgeIssue("import { x } from '@shared'", 'ts/app.ts')
   expectBridgeIssue("import { x } from '@cli-kit'", 'ts/app.ts')
   expectBridgeIssue("import { x } from '@cst'", 'ts/app.ts')
-  expectBridgeIssue("import { x } from '@grammar/parser'", 'ts/app.ts')
+  expectBridgeIssue("import { x } from '@grammar'", 'ts/app.ts')
   expectBridgeIssue("import Tao from '@tao/runtime-api'", 'ts/app.ts')
   expectBridgeIssue("import { x } from '@tao/runtime/Runtime'", 'ts/app.ts')
   expectBridgeIssue(

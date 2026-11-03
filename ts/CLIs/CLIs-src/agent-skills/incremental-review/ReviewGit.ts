@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
+import { Errors, Json, Lists, NewlineCharacter, NullCharacter, Sort, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { Processes } from '@shared/os'
 
@@ -91,7 +90,7 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: Rev
   const files = [
     ...Lists.unique((output + previous).split(NullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
   ]
-    .sort()
+    .sort(Sort.CompareStrings)
   if (!files.length) {
     Errors.ThrowUserInput('The literal selection contains no tracked or unignored files.')
   }

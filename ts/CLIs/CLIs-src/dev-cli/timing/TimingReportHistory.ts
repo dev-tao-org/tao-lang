@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import { Regxs, Try } from '@shared'
+import { Json, Regxs, Sort, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 import type { TimingReport } from './TimingReport'
 
@@ -183,5 +182,5 @@ function encodeConditions(value: TimingReport['conditions']): string {
 }
 
 function encodeGroupNames(report: TimingReport): string {
-  return Json.Print(report.groups.map(group => group.name).sort())
+  return Json.Print(report.groups.map(group => group.name).sort(Sort.CompareStrings))
 }

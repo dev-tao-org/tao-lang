@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
+import { Sort } from '@shared'
 import { Json } from '@shared'
 import { Processes } from '@shared/os'
 
@@ -84,7 +85,7 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
       work.push(`sidecar:${path}`)
     }
   }
-  return Lists.unique(work).sort()
+  return Lists.unique(work).sort(Sort.CompareStrings)
 }
 
 type DependencySessionId = string | undefined

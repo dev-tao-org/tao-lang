@@ -1,11 +1,11 @@
-import { Regxs } from '@shared'
+import { Regxs, Sort } from '@shared'
 import { Path } from '@shared/os'
 
 /** planTypeScriptShards separates install/build, refresh and remaining tests within one process budget. */
 export function planTypeScriptShards(files: readonly string[], workers: number): string[][] {
   const shardCount = Math.min(3, workers, files.length)
   const shards: string[][] = Array.from({ length: shardCount }, () => [])
-  for (const file of [...files].sort()) {
+  for (const file of [...files].sort(Sort.CompareStrings)) {
     const index = chooseShard(file) % shards.length
     shards[index]!.push(file)
   }

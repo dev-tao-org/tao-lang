@@ -1,13 +1,13 @@
-import { type BunTestModule, loadTestApi } from '../../../shared-src/os/bridges/Bridge_bun/Bridge_bun'
-import { AsyncLocalStorage } from '../../../shared-src/os/bridges/Bridge_node/Bridge_node'
-import Env from '../../../shared-src/os/Env'
-import * as FS from '../../../shared-src/os/FS'
-import * as Path from '../../../shared-src/os/Path'
-import * as Platform from '../../../shared-src/os/Platform'
-import * as Repo from '../../../shared-src/os/Repo'
-import * as Artifacts from '../../../shared-src/os/Storage/Artifacts'
+import { type BunTestModule, loadTestApi } from '../shared-src/os/bridges/Bridge_bun/Bridge_bun'
+import { AsyncLocalStorage } from '../shared-src/os/bridges/Bridge_node/Bridge_node'
+import Env from '../shared-src/os/Env'
+import * as FS from '../shared-src/os/FS'
+import * as Path from '../shared-src/os/Path'
+import * as Platform from '../shared-src/os/Platform'
+import * as Repo from '../shared-src/os/Repo'
+import * as Artifacts from '../shared-src/os/Storage/Artifacts'
 
-export { rejects, throws } from '../../../shared-src/os/bridges/Bridge_node/Bridge_node'
+export { rejects, throws } from '../shared-src/os/bridges/Bridge_node/Bridge_node'
 
 /** readFixture reads an authored fixture at an explicit repository-relative path. */
 export function readFixture(path: string): Promise<string> {

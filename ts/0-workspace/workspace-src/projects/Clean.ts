@@ -1,4 +1,4 @@
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Lists, Sort, Try } from '@shared'
 import { FS, Path, SessionLock } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
 import { cleanManagedModuleMetadata } from '../sidecars/ManagedModule/ManagedModules'
@@ -53,7 +53,7 @@ async function cleanInactiveSessions(
     .filter(name => name.endsWith('.lock'))
     .map(name => name.slice(0, -'.lock'.length))
   const skipped: string[] = []
-  for (const id of Lists.unique(sessions, locks).sort()) {
+  for (const id of Lists.unique(sessions, locks).sort(Sort.CompareStrings)) {
     if (isProjectSessionId(id) && await cleanSession(layout, id, removed)) {
       skipped.push(id)
     }

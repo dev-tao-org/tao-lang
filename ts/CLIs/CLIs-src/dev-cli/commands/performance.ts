@@ -2,7 +2,6 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as Runtime from '@runtime'
 import { Errors, Timings } from '@shared'
-import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 
@@ -141,7 +140,7 @@ async function runPreview(initialSource?: string) {
       id: 'performance',
       runtimeOptions,
     }),
-    initialSource: initialSource ?? await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    initialSource: initialSource ?? await Perf.readPerformanceFixture(),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
   for (const { scenario, timing } of Perf.describePreviewOutput(result)) {

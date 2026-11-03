@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 
-import { Errors } from '@shared'
+import { Errors, Sort } from '@shared'
 import { FS, Path } from '@shared/os'
 import { deriveDefaultSourceAlias } from './Sources'
 import type { DependencyRequirement } from './Types'
@@ -11,7 +11,7 @@ export async function readProjectRequirements(projectRoot: string): Promise<Depe
   const paths = (await FS.readdir(projectRoot, { withFileTypes: true }))
     .filter(entry => entry.isFile() && entry.name.endsWith('.tao'))
     .map(entry => Path.join(projectRoot, entry.name))
-    .sort()
+    .sort(Sort.CompareStrings)
   const requirements = (await Promise.all(paths.map(async path => {
     return readRequirementsFromSource(await FS.readFile(path, 'utf8'), path)
   }))).flat()

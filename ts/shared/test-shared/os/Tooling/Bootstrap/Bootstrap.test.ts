@@ -16,7 +16,10 @@ Tests.test('bootstrap imports independently and forwards setup output and flags'
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-bootstrap-'))
   await Try(async () => {
     const sourceDirectory = Path.pathToFileURL(join(root, 'source checkout #%') + Path.sep)
-    await copyBootstrapSources(new WebHost.URL('../', import.meta.url), Path.fileURLToPath(sourceDirectory))
+    await copyBootstrapSources(
+      new WebHost.URL('../../../../shared-src/os/', import.meta.url),
+      Path.fileURLToPath(sourceDirectory),
+    )
     const result = await runBootstrap(root, 0, 'install', sourceDirectory)
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.stdout).toContain('install-output')
@@ -56,7 +59,7 @@ async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: FailureStage = 'install',
-  sourceDirectory = new WebHost.URL('../', import.meta.url),
+  sourceDirectory = new WebHost.URL('../../../../shared-src/os/', import.meta.url),
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
@@ -64,7 +67,7 @@ async function runBootstrap(
   await copyBootstrapSources(sourceDirectory, ts)
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
-    + `const bootstrap=await import(${Json.Print(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
+    + `const bootstrap=await import(${Json.Print(Path.pathToFileURL(join(ts, 'Tooling/Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const environment = {
     PATH: `${bin}${delimiter}${Env.get('PATH') ?? ''}`,
@@ -85,15 +88,21 @@ async function runBootstrap(
 }
 
 async function copyBootstrapSources(sourceDirectory: WebHost.URL, target: string): Promise<void> {
-  await FS.mkdir(target)
+  await FS.mkdirs(target, join(target, 'Tooling'), join(target, 'Process'))
   const universal = join(target, '../universal')
   await FS.mkdir(universal)
   await copyFile(
     new WebHost.URL('../../../../shared-src/universal/Characters.ts', import.meta.url),
     join(universal, 'Characters.ts'),
   )
-  await copyFile(new WebHost.URL('Bootstrap.ts', sourceDirectory), join(target, 'Bootstrap.ts'))
-  await FS.cp(new WebHost.URL('Bootstrap', sourceDirectory), join(target, 'Bootstrap'), { recursive: true })
+  await copyFile(new WebHost.URL('Tooling/Bootstrap.ts', sourceDirectory), join(target, 'Tooling/Bootstrap.ts'))
+  await FS.cp(new WebHost.URL('Tooling/Bootstrap', sourceDirectory), join(target, 'Tooling/Bootstrap'), {
+    recursive: true,
+  })
+  await copyFile(
+    new WebHost.URL('Process/Process-Current.ts', sourceDirectory),
+    join(target, 'Process/Process-Current.ts'),
+  )
   await FS.cp(new WebHost.URL('bridges/Bridge_node', sourceDirectory), join(target, 'bridges/Bridge_node'), {
     recursive: true,
   })

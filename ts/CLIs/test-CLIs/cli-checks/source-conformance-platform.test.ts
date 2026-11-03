@@ -6,7 +6,7 @@ import { createFixtureProgram } from './SourceConformance.test-fixtures'
 
 Tests.test('platform conformance > restricts raw globals to platform bridge owners', () => {
   Tests.expect(findPlatformIssue('process.cwd()', 'ts/app.ts')).toBe(
-    'platform global "process" belongs in ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts',
+    'platform global "process" belongs in ts/shared/shared-src/os/Process/Process-Current.ts',
   )
   Tests.expect(findPlatformIssue('Bun.version', 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts')).toBe(
     'platform global "Bun" belongs in ts/shared/shared-src/os/bridges/Bridge_bun/Bridge_bun.ts',
@@ -66,7 +66,7 @@ Tests.test('platform conformance > follows shorthand values and respects shadowe
   Tests.expect(issues).toEqual([
     {
       source: 'process',
-      issue: 'platform global "process" belongs in ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts',
+      issue: 'platform global "process" belongs in ts/shared/shared-src/os/Process/Process-Current.ts',
     },
   ])
 })

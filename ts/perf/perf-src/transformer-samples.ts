@@ -1,7 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Errors, Timings, type TimingSample } from '@shared'
-import * as Tests from '@shared-tests'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 import * as Workspace from '@workspace'
@@ -9,11 +8,12 @@ import * as Workspace from '@workspace'
 import { Repo } from '@shared/os'
 
 import * as Compile from '@compile'
+import { readPerformanceFixture } from './parser-fixtures'
 
 /** transformerSamples measures minimal benchmark parsing, transformation and code generation.
  *  Record 100 warm samples after 20 warmups; no publication or preview is measured here. */
 export async function transformerSamples(): Promise<TransformerSample[]> {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await readPerformanceFixture()
   const parser = Grammar.createParser()
   const samples: TransformerSample[] = []
   for (let index = 0; index < 120; index++) {

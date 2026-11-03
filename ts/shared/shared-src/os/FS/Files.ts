@@ -1,4 +1,4 @@
-import { Errors, Try } from '../../universal/universal'
+import { Errors, Sort, Try } from '../../universal/universal'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
 import * as FS from '../FS'
 
@@ -62,7 +62,7 @@ export async function findProjectMarker(root: string): Promise<string | undefine
 /** findProjects discovers project roots from empty .tao markers without entering project caches. */
 export async function findProjects(root: string): Promise<string[]> {
   const canonical = await Native.realpath(root)
-  return [...await findProjectRoots(canonical)].sort()
+  return [...await findProjectRoots(canonical)].sort(Sort.CompareStrings)
 }
 
 /** skipDirectory identifies Tao's standard excluded directory names and optional workspace boundary. */

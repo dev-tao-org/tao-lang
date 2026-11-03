@@ -7,7 +7,7 @@ import type * as Expo from '@runtime/expo'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
-import { Errors, Lists, Time, Timings, type TimingSample } from '@shared'
+import { Errors, Lists, Sort, Time, Timings, type TimingSample } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
 
 import { prepareBuildTypeScript } from '../BuildTypeScript'
@@ -259,7 +259,7 @@ class WorkspaceSession {
   }
 
   private acceptSnapshots(directories: readonly string[]): void {
-    const next = [...directories].sort()
+    const next = [...directories].sort(Sort.CompareStrings)
     const unchanged = next.length === this.snapshotDirectories.length
       && next.every((path, index) => path === this.snapshotDirectories[index])
     if (this.application?.publishGenerated && !unchanged) {

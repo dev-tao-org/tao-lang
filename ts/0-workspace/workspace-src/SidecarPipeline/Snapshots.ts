@@ -1,6 +1,5 @@
 import * as AST from '@ast-gen'
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Sort, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 
@@ -56,7 +55,7 @@ export async function findCachedSnapshot(
   const parent = Path.dirname(requestedRoot)
   const recoveryPrefix = `${Path.basename(requestedRoot)}.recovered`
   const siblings = await Try.WithDefault<Promise<string[]>, string[]>([], () => FS.readdir(parent))
-  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort()
+  const candidates = siblings.filter(name => name.startsWith(recoveryPrefix)).sort(Sort.CompareStrings)
     .map(name => Path.join(parent, name))
   for (const candidate of candidates) {
     if (await cachedSnapshotMatches(candidate, fingerprint, nodeModulesDirectory, groups, defaultsPath)) {

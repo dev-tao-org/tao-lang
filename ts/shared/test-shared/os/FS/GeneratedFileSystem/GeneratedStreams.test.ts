@@ -1,3 +1,4 @@
+import * as Tests from '@shared-tests'
 import * as FS from '../../../../shared-src/os/FS'
 import * as Path from '../../../../shared-src/os/Path'
 import * as Platform from '../../../../shared-src/os/Platform'
@@ -6,7 +7,6 @@ import * as Repo from '../../../../shared-src/os/Repo'
 import * as Artifacts from '../../../../shared-src/os/Storage/Artifacts'
 import * as Bundle from '../../../../shared-src/os/Tooling/Bundle'
 import { S, Try } from '../../../../shared-src/universal/universal'
-import * as Tests from '../../Tests/Tests.test-utils'
 
 Tests.test('generated and disk streams retain native pipe behavior through pinned graceful-fs constructors', async () => {
   const directory = Artifacts.resolvePath('tmp/generated-streams', Platform.randomUUID())

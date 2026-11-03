@@ -1,6 +1,6 @@
 import { deriveCompilerPaths } from '../CLIs/CLIs-src/cli-checks/PackageApis'
 import { FS, Path, Repo } from '../shared/shared-src/os'
-import { Regxs } from '../shared/shared-src/shared'
+import { Regxs, Sort } from '../shared/shared-src/shared'
 
 /** knipConfiguration checks package workspaces while recognizing imported command registrations. */
 export default {
@@ -94,5 +94,5 @@ async function listSkillEntries(): Promise<string[]> {
       entries.push(`CLIs-src/agent-skills/${name}/${name}.ts`)
     }
   }
-  return entries.sort()
+  return entries.sort(Sort.CompareStrings)
 }

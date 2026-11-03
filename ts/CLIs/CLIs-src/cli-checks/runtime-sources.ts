@@ -1,4 +1,5 @@
 import * as Runtime from '@runtime'
+import { Sort } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 
 /** RuntimeSourcePaths maps packaged resource paths to their authored source paths. */
@@ -37,7 +38,7 @@ async function addDirectorySources(
 
 function sortResources(resources: RuntimeSourcePaths): RuntimeSourcePaths {
   const sortedResources: RuntimeSourcePaths = {}
-  for (const resourcePath of Object.keys(resources).sort()) {
+  for (const resourcePath of Object.keys(resources).sort(Sort.CompareStrings)) {
     sortedResources[resourcePath] = resources[resourcePath]!
   }
   return sortedResources

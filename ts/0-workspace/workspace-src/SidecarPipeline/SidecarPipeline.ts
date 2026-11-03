@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import { Json } from '@shared'
-import { Errors, Lists, Regxs, Try } from '@shared'
+import { Errors, Lists, Regxs, Sort, Try } from '@shared'
 import { Text } from '@shared/os'
 import { FS, Path, Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
@@ -73,7 +73,9 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
       const key = Typecheck.createModuleMemberKey(absoluteModulePath, resolvedAuthoredPath)
       return pathMap.get(key) ?? Errors.ThrowUserInput(`Foreign view path was not validated: ${authoredPath}`)
     },
-    watchDirectories: Lists.unique(groups.flatMap(group => [...group.files.keys()].map(Path.dirname))).sort(),
+    watchDirectories: Lists.unique(groups.flatMap(group => [...group.files.keys()].map(Path.dirname))).sort(
+      Sort.CompareStrings,
+    ),
     watchFiles,
     snapshotDirectories: [snapshotRoot, ...snapshotDirectories],
   }
@@ -125,7 +127,7 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Co
     async () => {
       await collectProgramSidecarViews(options, canonicalConsumerDirectory, groups, watchFiles)
       const sortedGroups = [...groups.values()].sort(compareSidecarModuleRoots)
-      const sortedWatchFiles = [...watchFiles].sort()
+      const sortedWatchFiles = [...watchFiles].sort(Sort.CompareStrings)
       return {
         groups: sortedGroups,
         watchFiles: sortedWatchFiles,
@@ -133,7 +135,7 @@ async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<Co
     },
     {
       async catch(error) {
-        await options.onWatchFiles?.([...watchFiles].sort())
+        await options.onWatchFiles?.([...watchFiles].sort(Sort.CompareStrings))
         Errors.Throw(error)
       },
     },

@@ -70,9 +70,11 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
 
 function requirePackageTestRoot(directory: string): void {
   const packageName = Path.basename(directory).replace(Regxs.PackageOrderPrefixRegx, '')
-  const testRoot = Path.join(directory, `test-${packageName}`) + Path.sep
+  const testRoot = Path.join(directory, `test-${packageName}`).replaceAll('\\', '/') + '/'
   const files = TypeScript.sys.readDirectory(directory, ['.ts', '.tsx'], ['**/node_modules/**', '**/.tao/**'])
-  const outside = files.find(filename => filename.endsWith('.test.ts') && !filename.startsWith(testRoot))
+  const outside = files.find(filename =>
+    filename.endsWith('.test.ts') && !filename.replaceAll('\\', '/').startsWith(testRoot)
+  )
   if (outside !== undefined) {
     Errors.ThrowUserInput(`Package tests belong in the central ${testRoot} root: ${outside}`)
   }

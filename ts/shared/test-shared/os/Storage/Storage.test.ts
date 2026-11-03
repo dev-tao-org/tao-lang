@@ -91,7 +91,7 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
   await Try(async () => {
     await mkdir(root)
     const path = join(root, 'StorageIsolation.test.ts')
-    const testsUrl = new WebHost.URL('../Tests/Tests.test-utils.ts', import.meta.url).href
+    const testsUrl = new WebHost.URL('../../Shared.test-utils.ts', import.meta.url).href
     const storageUrl = new WebHost.URL('../../../shared-src/os/Storage.ts', import.meta.url).href
     const result = join(root, 'roots.json')
     await writeFile(

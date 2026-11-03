@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Sort, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
@@ -126,7 +126,7 @@ async function createStoreKey(
 
 async function decryptSecrets(environment: SecretsEnvironment): Promise<void> {
   const original = await readStore()
-  const names = Object.keys(original.secrets).sort()
+  const names = Object.keys(original.secrets).sort(Sort.CompareStrings)
   if (names.length === 0) {
     IO.print('No secrets are stored yet. Add one with ./dev secrets add <KEY>.')
     return
@@ -199,7 +199,7 @@ function armorLines(armor: string): string[] {
 
 async function listSecrets(): Promise<void> {
   const store = await readStore()
-  const names = Object.keys(store.secrets).sort()
+  const names = Object.keys(store.secrets).sort(Sort.CompareStrings)
   if (names.length === 0) {
     IO.print('No secrets are stored yet.')
     return

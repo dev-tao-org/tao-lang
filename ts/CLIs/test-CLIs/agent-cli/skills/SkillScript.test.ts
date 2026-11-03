@@ -138,7 +138,7 @@ async function addSkill(root: string): Promise<string> {
     Shared.joinTextLines(
       S`
             import { Try } from '@shared'
-            import { FS, Platform } from '@shared/os'
+            import { FS, Process } from '@shared/os'
             export async function main() { await FS.writeFile(${capture}, JSON.stringify({ args: Process.argv.slice(2), aliasResolved: typeof Try === 'function' })) }
       `,
       '',

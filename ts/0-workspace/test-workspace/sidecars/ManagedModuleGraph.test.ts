@@ -59,7 +59,7 @@ Tests.test('accepts mixed-case npm package names in managed requirements', () =>
   ])).toEqual({ '@scope/JSONStream': '1.3.5', 'JSONStream': '1.3.5' })
 })
 
-Tests.test('orders canonical npm requirements by code point', () => {
+Tests.test('orders canonical npm requirements by ordinal string order', () => {
   const requirements = ManagedModuleGraph.collectAllRequirements([
     { directory: '', name: 'alpha', version: '1.0.0', origin: 'Lowercase.tao' },
     { directory: '', name: 'Alpha', version: '1.0.0', origin: 'Uppercase.tao' },

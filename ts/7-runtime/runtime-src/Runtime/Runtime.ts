@@ -290,7 +290,7 @@ function runtimeApplication(directory: string): RuntimeApplication {
 }
 
 function defaultResourcesDirectory(): string {
-  return Path.resolve(Path.dirname(Path.fileURLToPath(import.meta.url)), '../_gen_runtime')
+  return Path.resolve(Path.dirname(Path.fileURLToPath(import.meta.url)), '../../_gen_runtime')
 }
 
 function defaultToolchainCacheDirectory(): string {

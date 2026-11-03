@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 
-import { describePreviewOutput } from '../../../../perf-src/Preview/PreviewOutput'
+import { describePreviewOutput } from '../../perf-src/Preview/PreviewOutput'
 
 Tests.test('preview output matches revisions despite duplicate or unmatched watcher publications', () => {
   const timing = { saveToHmrMs: 10, saveToAppliedMs: 20, pipeline: [] }
