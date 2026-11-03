@@ -11,18 +11,6 @@ export type CompilerPaths = Record<string, string[]>
 type ManifestPublicApis = Record<string, { alias: string; namespace: string; entities?: string[] }>
 type PackageApiManifest = { exports: Record<string, string>; tao: { publicApi: ManifestPublicApis } }
 
-// Read exact entrypoints without traversing fixture packages.
-function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
-  return readPackageManifestFiles(root).flatMap(filename => readManifestApis(filename))
-}
-
-function readPackageManifestFiles(root: string): string[] {
-  return TypeScript.sys.readDirectory(Path.join(root, 'ts'), ['.json'], ['**/node_modules/**'], [
-    '*/package.json',
-    'ide-extensions/*/package.json',
-  ])
-}
-
 /** deriveCompilerPaths derives aliases relative to a chosen configuration directory. */
 export function deriveCompilerPaths(directory: string, apis = readPackageApis()): CompilerPaths {
   const paths: CompilerPaths = {}
@@ -39,10 +27,6 @@ export function synchronizePackageApis(root = Repo.getWorkspaceRoot()): void {
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile).config
   config.compilerOptions.paths = deriveCompilerPaths(Path.dirname(configPath), readPackageApis(root))
   FS.writeFileSync(configPath, `${serializeCompilerConfig(config)}\n`)
-}
-
-function serializeCompilerConfig(config: unknown): string {
-  return Json.PrintIndented(config)
 }
 
 /** assertPackageApis checks manifest ownership, exact files and the generated compiler alias snapshot. */
@@ -69,6 +53,60 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   }
 }
 
+// Own the namespace and primary entities published by an exact package entrypoint.
+type PackageImportRule = { namespace: string; entities?: readonly string[] }
+/** PackageImportRules maps public import aliases to their canonical access rules. */
+export type PackageImportRules = ReadonlyMap<string, PackageImportRule>
+
+/** readPackageImportRules derives canonical operation-family access from manifests. */
+export function readPackageImportRules(root: string): PackageImportRules {
+  return new Map(readPackageApis(root).map(api => [api.alias, { namespace: api.namespace, entities: api.entities }]))
+}
+
+/** packageNamespaceIssue checks canonical namespaces and qualified operation-family imports. */
+export function packageNamespaceIssue(
+  node: TypeScript.Node,
+  namespaces: PackageImportRules,
+): string | undefined {
+  if (!TypeScript.isImportDeclaration(node)) {
+    return dynamicNamespaceIssue(node, namespaces)
+  }
+  if (!TypeScript.isStringLiteral(node.moduleSpecifier)) {
+    return
+  }
+  const rule = namespaces.get(node.moduleSpecifier.text)
+  const canonical = rule?.namespace
+  const bindings = node.importClause?.namedBindings
+  if (canonical === undefined || bindings === undefined) {
+    return
+  }
+  if (TypeScript.isNamespaceImport(bindings)) {
+    return bindings.name.text === canonical ? undefined : `use canonical namespace ${canonical}`
+  }
+  const operation = bindings.elements.find(element =>
+    !isPrimaryEntity((element.propertyName ?? element.name).text, rule!)
+  )
+  if (operation) {
+    return `import operations through import * as ${canonical}; retain narrow imports for primary entities and types`
+  }
+}
+
+// Read exact entrypoints without traversing fixture packages.
+function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
+  return readPackageManifestFiles(root).flatMap(filename => readManifestApis(filename))
+}
+
+function readPackageManifestFiles(root: string): string[] {
+  return TypeScript.sys.readDirectory(Path.join(root, 'ts'), ['.json'], ['**/node_modules/**'], [
+    '*/package.json',
+    'ide-extensions/*/package.json',
+  ])
+}
+
+function serializeCompilerConfig(config: unknown): string {
+  return Json.PrintIndented(config)
+}
+
 function readManifestApis(filename: string): PackageApi[] {
   const source = FS.readFileSync(filename, 'utf8')
   const parsed = TypeScript.parseConfigFileTextToJson(filename, source)
@@ -77,6 +115,7 @@ function readManifestApis(filename: string): PackageApi[] {
   }
   const manifest = parsed.config as Partial<PackageApiManifest>
   const entries = manifest.tao?.publicApi
+  requireExportMetadata(filename, manifest.exports, entries)
   if (entries === undefined) {
     return []
   }
@@ -90,6 +129,20 @@ function readManifestApis(filename: string): PackageApi[] {
       filename: Path.resolve(Path.dirname(filename), target),
     }
   })
+}
+
+type OptionalManifestPublicApis = ManifestPublicApis | undefined
+
+function requireExportMetadata(
+  filename: string,
+  exports: Partial<PackageApiManifest>['exports'],
+  entries: OptionalManifestPublicApis,
+): void {
+  for (const key of Object.keys(exports ?? {})) {
+    if (!Object.hasOwn(entries ?? {}, key)) {
+      Errors.ThrowUserInput(`Every export requires public API metadata: ${filename} ${key}`)
+    }
+  }
 }
 
 function requirePublicApiMetadata(
@@ -130,44 +183,6 @@ function haveEqualCompilerPaths(actual: CompilerPaths, expected: CompilerPaths):
   const keys = Object.keys(expected)
   return Object.keys(actual).length === keys.length
     && keys.every(key => actual[key]?.length === expected[key].length && actual[key][0] === expected[key][0])
-}
-
-// Own the namespace and primary entities published by an exact package entrypoint.
-type PackageImportRule = { namespace: string; entities?: readonly string[] }
-/** PackageImportRules maps public import aliases to their canonical access rules. */
-export type PackageImportRules = ReadonlyMap<string, PackageImportRule>
-
-/** readPackageImportRules derives canonical operation-family access from manifests. */
-export function readPackageImportRules(root: string): PackageImportRules {
-  return new Map(readPackageApis(root).map(api => [api.alias, { namespace: api.namespace, entities: api.entities }]))
-}
-
-/** packageNamespaceIssue checks canonical namespaces and qualified operation-family imports. */
-export function packageNamespaceIssue(
-  node: TypeScript.Node,
-  namespaces: PackageImportRules,
-): string | undefined {
-  if (!TypeScript.isImportDeclaration(node)) {
-    return dynamicNamespaceIssue(node, namespaces)
-  }
-  if (!TypeScript.isStringLiteral(node.moduleSpecifier)) {
-    return
-  }
-  const rule = namespaces.get(node.moduleSpecifier.text)
-  const canonical = rule?.namespace
-  const bindings = node.importClause?.namedBindings
-  if (canonical === undefined || bindings === undefined) {
-    return
-  }
-  if (TypeScript.isNamespaceImport(bindings)) {
-    return bindings.name.text === canonical ? undefined : `use canonical namespace ${canonical}`
-  }
-  const operation = bindings.elements.find(element =>
-    !isPrimaryEntity((element.propertyName ?? element.name).text, rule!)
-  )
-  if (operation) {
-    return `import operations through import * as ${canonical}; retain narrow imports for primary entities and types`
-  }
 }
 
 function dynamicNamespaceIssue(node: TypeScript.Node, namespaces: PackageImportRules): string | undefined {

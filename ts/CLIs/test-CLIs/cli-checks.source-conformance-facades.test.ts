@@ -35,6 +35,38 @@ Tests.test('source conformance > requires sibling facade files to contain only i
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
+Tests.test('source conformance > enforces manifest namespaces through the integrated source walk', async () => {
+  const root = await createFixture()
+  await Try(async () => {
+    const manifest = {
+      tao: { publicApi: { '.': { alias: '@fixture', namespace: 'Fixture' } } },
+      exports: {
+        '.': './fixture-src/Feature.ts',
+      },
+    }
+    await FS.write(Path.join(root, 'ts/fixture/package.json'), Json.Print(manifest))
+    const config = {
+      compilerOptions: {
+        strict: true,
+        paths: {
+          '@fixture': ['./fixture/fixture-src/Feature.ts'],
+        },
+      },
+    }
+    await FS.write(Path.join(root, 'ts/tsconfig.base.json'), Json.Print(config))
+    await writeConsumer(root, "import * as Wrong from '@fixture'; void Wrong")
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow('use canonical namespace Fixture')
+    await writeConsumer(root, "const Wrong = await import('@fixture'); void Wrong")
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
+      'bind dynamic public imports to canonical namespace Fixture',
+    )
+    await writeConsumer(root, "import * as Fixture from '@fixture'; void Fixture")
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+    await writeConsumer(root, "const Fixture = await import('@fixture'); void Fixture")
+    await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
 async function createFixture(): Promise<string> {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-facade-'))
   const files = {

@@ -7,6 +7,7 @@ import { layout, type LayoutOptions } from '../lib/layout/Layout'
 import type { LayoutPlan } from '../lib/layout/Plan'
 import { applyEdits, type SourceEdit } from '../Source'
 
+export type { LayoutOptions } from '../lib/layout/Layout'
 export type { SourceEdit } from '../Source'
 
 /** FormatInput pairs source text with the CST parsed from that exact immutable snapshot. */
@@ -58,5 +59,3 @@ function resolveFormatStatus(
   }
   return 'partial'
 }
-
-export type { LayoutOptions } from '../lib/layout/Layout'

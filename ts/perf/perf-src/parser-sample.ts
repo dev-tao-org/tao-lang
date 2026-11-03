@@ -3,11 +3,14 @@ import { Errors, Json, Timings, type TimingSample } from '@shared'
 import { Platform } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 
-const loadParserModule = Timings.measured('parser.module-load', () => import('@grammar'))
+const loadParserModule = Timings.measured('parser.module-load', async () => {
+  const Grammar = await import('@grammar')
+  return Grammar
+})
 
 const main = Timings.createTopLevelTimer(async function(timings) {
-  const { createParser } = await timings.run(loadParserModule)
-  const parser = timings.run(createParser)
+  const Grammar = await timings.run(loadParserModule)
+  const parser = timings.run(Grammar.createParser)
   const source = (await parserFixtures())[0]!.source
   const tree = timings.run(parser.parse, source)
   if (tree.rootNode.hasError || tree.rootNode.text !== source) {

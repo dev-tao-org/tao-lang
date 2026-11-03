@@ -21,6 +21,17 @@ Tests.test('public APIs derive exact aliases from manifests and reject drift and
     Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('exact file exports')
     await writeApiFixture(root, './example-src/Absent.ts', '@example')
     Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('existing file')
+    await writeApiFixture(root, './example-src/Example.ts', '@example')
+    const manifestPath = Path.join(root, 'ts/example/package.json')
+    const extraExport = {
+      exports: { '.': './example-src/Example.ts', './*': './example-src/*' },
+      tao: {
+        publicApi: { '.': { alias: '@example', namespace: 'Example' } },
+        testInputs: ['./test-example/input-fixtures'],
+      },
+    }
+    await FS.write(manifestPath, serializeApiFixture(extraExport))
+    Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('Every export requires public API metadata')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

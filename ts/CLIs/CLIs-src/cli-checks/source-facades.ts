@@ -51,13 +51,13 @@ export function sourceFacadeIssue(
   context: SourceFacadeContext,
   loaderAliases: Bridges.SourceLoaderAliases,
 ): string | undefined {
-  const specifier = Bridges.sourceModuleSpecifier(node, loaderAliases)
-  if (specifier === undefined) {
-    return
-  }
   const issue = PackageApis.packageNamespaceIssue(node, context.namespaces)
   if (issue !== undefined) {
     return issue
+  }
+  const specifier = Bridges.sourceModuleSpecifier(node, loaderAliases)
+  if (specifier === undefined) {
+    return
   }
   const importer = normalizePath(node.getSourceFile().fileName)
   const resolved = TypeScript.resolveModuleName(
