@@ -55,7 +55,7 @@ Implementation baseline: `8240f24f733c12a84c1832a870d5b0b60e8ab95f`. No code rev
 The PoC compiles real Tao module/view bodies through shared app/library initialization, with the runtime-only `ts/ts-api` bridge. Unified `tao compile` now emits library JS, precise declarations and explicit package paths. The isolated consumer resolves emitted package files through ordinary imports without repository TypeScript paths or consumer aliases. Grammar, aliases, module publication lists, text props, React children and instance isolation are implemented; the future data/action/design contracts above remain deferred.
 
 - Demo compile: from `Apps/TS Lib App`, run `../../tao compile Demo --package src/ts` or `just compile`.
-- Browser/type proof: `./agent unsandboxed test ts/ts-api/test-ts-api/LibraryBrowser.test.ts`.
+- Browser/type proof: `./agent unsandboxed test ts/ts-api/test-ts-api/TsApi.LibraryBrowser.test.ts`.
 - Final full verification after the compiler path-sharing change passed: 504 TypeScript tests, six authored Tao headless journeys, zero errors. Native behavior is not verified.
 - Final warm preview comparison (eight samples each) measured median/p95 58.70/66.70 ms against baseline 53.85/63.40 ms. The residual observed +4.85 ms median is not performance parity; compiler-phase medians were 0.321/0.305 ms. Baseline primary results were complete, but its existing CLI summary printer failed on an extra secondary reload. Attribution remains uncertain in this small sample.
 - Source drafting preceded an executable failing journey while setup was blocked; the first executable package proof was green. This deviates from journey-first red/green TDD.
