@@ -76,7 +76,7 @@ establish neither a causal regression nor a blanket performance pass; they are n
 distributions. Earlier apparently faster results did not repeat and are retained as historical
 evidence rather than promoted to a speedup claim.
 
-The exact 251-file evidence packet is committed locally in the storage repository as
+The exact 251-file evidence packet is published in the storage repository as
 `09b1631878f428d6eac377eb4f4b121bc9487e2a`. Its
 [corrected inventory](../../.storage/evidence/2e22943e554f972fe1a968ef0b541ff1898435e6/deferred-repository/inventory.json)
 and retained
@@ -85,10 +85,12 @@ map original paths, archived paths and SHA-256 hashes, including 30 source-linke
 raw comparisons, verification logs, casing receipts and move conservation. Three intermediate runtime-resource
 captures remain honestly failed; they were fixed in subsequent source, not rewritten as passes.
 
-Remote publication of this packet is pending explicit payload/destination approval after automatic
-approval review rejected it. The source gitlink deliberately remains at the already published
-`a09bbdd82a194db1d2d67f6c08527066f237f657`; fresh clones will not contain the new packet until it is
-published and pinned. Keep the source worktrees and local archive branch until that receipt exists.
+The developer explicitly approved this payload and destination. Publication to
+`tao-dev-org/tao-lang-storage`, branch `backup/feat/review-deferred-evidence`, is remotely confirmed
+at the exact archive commit above. All 251 files match the committed bytes and inventory hashes.
+Source commit `a305631c51e91b98cefcbaa1c856dbdefab86dd7` pins that archive; fresh clones can retrieve
+the packet through the gitlink. The earlier automatic publication rejection is resolved. Retain
+the working branches and worktrees for the remaining review and separately authorized landing.
 
 The new migration has not received independent review or human acceptance. The earlier reviewed
 checkpoint was `af3b2059bf762b801877a44789570007e767f0f1`; its acceptance does not extend to this
