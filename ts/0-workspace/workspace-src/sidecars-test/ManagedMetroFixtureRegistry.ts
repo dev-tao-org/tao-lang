@@ -1,4 +1,4 @@
-import { Addr, Errors } from '@shared'
+import { Addr, Errors, Json } from '@shared'
 import { FileSystem, Http, Path, Platform, Repo } from '@shared/os'
 
 /** FixtureRegistry exposes the test registry URL and its cleanup operation. */
@@ -37,7 +37,9 @@ async function packageArtifacts(root: string): Promise<Map<string, PackageArtifa
     await FileSystem.mkdir(Path.dirname(directory))
     await FileSystem.cp(Path.join(fixtures, name), directory, { recursive: true })
     await FileSystem.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
-    const manifest = JSON.parse(await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'))
+    const manifest = Json.Parse(
+      await FileSystem.readFile(Path.join(directory, 'package.json'), 'utf8'),
+    ) as RegistryFixtureManifest
     const archive = Path.join(root, 'registry', `${name}.tgz`)
     await Platform.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
     const bytes = await FileSystem.readFile(archive)
@@ -75,3 +77,6 @@ type PackageArtifact = {
   version: string
   dependencies?: Record<string, string>
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type RegistryFixtureManifest = { dependencies?: Record<string, string>; name: string; version: string }

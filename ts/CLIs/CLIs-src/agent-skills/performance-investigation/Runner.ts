@@ -1,5 +1,5 @@
 import { IO, runNonInteractiveCommand } from '@cli-kit'
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, Json, Regxs, Time, Try } from '@shared'
 import { Env, FileSystem, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
 import { isValidEditCount } from '../../../../perf/perf-src/PreviewMeasurement'
 import { runWithEvidence } from './Evidence'
@@ -115,7 +115,7 @@ async function acceptPreviewReport(job: MeasurementJob, commit: string, reports:
     Errors.ThrowUserInput('Expected one new raw preview report; inspect the candidate performance logs.')
   }
   const path = Path.join(reports, created[0])
-  const report = JSON.parse(await FileSystem.readFile(path, 'utf8')) as PreviewReport
+  const report = Json.Parse(await FileSystem.readFile(path, 'utf8')) as PreviewReport
   requireReport(report, job)
   return path
 }

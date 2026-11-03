@@ -1,4 +1,4 @@
-import { NewlineCharacter, S, Try } from '@shared'
+import { Json, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { createWorkspace, type UpdateResult, type WorkspaceSession } from '../workspace-src/Workspace'
 import { createWatchFixture, type WatchFixture } from './WatchFixture'
@@ -89,7 +89,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 function card(value: string): string {
   return S`
     use tao@ui Text
-    project view Card { render Text(${JSON.stringify(value)}) }
+    project view Card { render Text(${Json.Print(value)}) }
   `
 }
 

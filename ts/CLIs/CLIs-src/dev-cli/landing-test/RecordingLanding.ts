@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, NewlineCharacter, S, TabCharacter } from '@shared'
+import { Errors, joinTextLines, Json, NewlineCharacter, S, TabCharacter } from '@shared'
 import { Platform } from '@shared/os'
 import { type LandingIO } from '../landing/LandingIO'
 
@@ -87,7 +87,7 @@ function initialState(): RecordingLandingState {
 }
 
 function initialFiles(): Map<string, string> {
-  const report = JSON.stringify({ version: 1, commit: source, samples: [1] }) + NewlineCharacter
+  const report = Json.Print({ version: 1, commit: source, samples: [1] }) + NewlineCharacter
   return new Map([
     [
       `.artifacts/merge/${branch}.msg`,
@@ -103,7 +103,7 @@ function initialFiles(): Map<string, string> {
     [`${pending}/report.json`, report],
     [
       `${pending}/record.json`,
-      JSON.stringify({
+      Json.Print({
         version: 1,
         status: 'passed',
         sourceCommit: source,
@@ -216,7 +216,7 @@ function githubReply(command: string, args: readonly string[], state: RecordingL
   if (merged ? !state.merged : !state.prOpen || state.merged) {
     return '[]'
   }
-  return JSON.stringify([{
+  return Json.Print([{
     url: 'https://github.com/example/tao/pull/1',
     headRefName: branch,
     headRefOid: state.remoteHead,

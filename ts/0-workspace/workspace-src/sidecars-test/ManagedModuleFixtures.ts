@@ -1,4 +1,4 @@
-import { joinTextLines, NewlineCharacter, S, Try } from '@shared'
+import { joinTextLines, Json, NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
 
@@ -45,7 +45,7 @@ export async function writeLock(root: string, dependencies: Record<string, strin
   )
   await FileSystem.writeFile(
     Path.join(root, 'bun.lock'),
-    JSON.stringify({
+    Json.Print({
       lockfileVersion: 1,
       workspaces: { '': { dependencies } },
       packages,
@@ -65,7 +65,7 @@ export async function writePackage(
   await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ name, version, peerDependencies, dependencies }),
+    Json.Print({ name, version, peerDependencies, dependencies }),
   )
   await FileSystem.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
 }

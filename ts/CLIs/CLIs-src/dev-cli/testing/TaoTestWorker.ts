@@ -1,5 +1,5 @@
 import { configureCLIOutput, IO } from '@cli-kit'
-import { Errors, Try } from '@shared'
+import { Errors, Json, Try } from '@shared'
 import { FileSystem, Http, Lifecycle, Platform } from '@shared/os'
 import type { TaoWorkerReport } from './TestPlan'
 import { runTaoTestFiles } from './TestWorkers'
@@ -29,7 +29,7 @@ if (Platform.isMain(import.meta)) {
 }
 
 function encodeTaoWorkerReport(report: TaoWorkerReport): string {
-  return JSON.stringify(report)
+  return Json.Print(report)
 }
 
 function workerArguments(args: readonly string[]): { reportPath: string; paths: string[] } {

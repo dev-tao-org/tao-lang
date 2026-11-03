@@ -3,7 +3,7 @@ import { fix } from '@fix/Fix'
 import { format } from '@fix/Format'
 import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
 import { createParser } from '@grammar/parser'
-import { Errors, joinTextLines, NewlineCharacter, S, Timings, type TimingSample } from '@shared'
+import { Errors, joinTextLines, Json, NewlineCharacter, S, Timings, type TimingSample } from '@shared'
 import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
 import { unusedWarnings } from '@typecheck/Usage'
 import { type ParserSampleSummary, summarizeSamples } from './parser-performance'
@@ -70,7 +70,7 @@ type FormatterPerformanceReport = {
 type FormatterFixtureReport = { scenario: string; hash: string }
 
 function serializeFormatterPerformanceReport(report: FormatterPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {

@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs } from '@shared'
 import { type PublishedPreviewArchive, publishPreviewArchive } from './Archive'
 import { integrateMain, requireClean, requireCleanBranch } from './Integration'
 import { git, type LandingIO } from './LandingIO'
@@ -82,5 +82,5 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
 type LandingRecord = LandingProof & { archive?: PublishedPreviewArchive }
 
 function formatLandingRecord(record: LandingRecord): string {
-  return JSON.stringify(record, null, 2) + NewlineCharacter
+  return Json.PrintIndented(record) + NewlineCharacter
 }

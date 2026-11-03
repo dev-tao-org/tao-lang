@@ -1,4 +1,4 @@
-import { Regxs, Try } from '@shared'
+import { Json, Regxs, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import type { TimingReport } from './TimingReport'
 
@@ -18,7 +18,7 @@ export async function readTimingHistory(current: TimingReport, directory: string
     const path = Path.join(directory, name)
     const value: unknown = await Try.WithDefault(
       undefined,
-      async () => JSON.parse(await FileSystem.readFile(path, 'utf8')),
+      async () => Json.Parse(await FileSystem.readFile(path, 'utf8')),
     )
     if (!isValidTimingReport(value)) {
       history.unusable++
@@ -33,7 +33,7 @@ export async function readTimingHistory(current: TimingReport, directory: string
   return history
 }
 
-/** isValidTimingReport rejects missing provenance and incomplete or nonfinite saved measurements. */
+/** isValidTimingReport rejects missing provenance, invalid JSON conditions and incomplete or nonfinite measurements. */
 export function isValidTimingReport(value: unknown): value is TimingReport {
   if (!value || typeof value !== 'object') {
     return false
@@ -85,8 +85,18 @@ function hasComparableConditions(value: unknown): boolean {
   if (!value || typeof value !== 'object') {
     return false
   }
+  if (!hasCanonicalConditionData(value)) {
+    return false
+  }
   const conditions = value as Record<string, unknown>
   return hasNamedRuntime(conditions) && hasNamedBrowserAndConditionObjects(conditions) && hasFrameSizes(conditions)
+}
+
+function hasCanonicalConditionData(value: object): boolean {
+  return Try.WithDefault(false, () => {
+    Json.Canonical(value)
+    return true
+  })
 }
 
 function hasNamedRuntime(conditions: Record<string, unknown>): boolean {
@@ -167,21 +177,10 @@ function hasMatchingConditionsAndGroups(current: TimingReport, candidate: Timing
     && encodeGroupNames(candidate) === encodeGroupNames(current)
 }
 
-function encodeConditions(value: unknown): string {
-  return JSON.stringify(canonicalizeConditions(value))
-}
-
-function canonicalizeConditions(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalizeConditions)
-  }
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    return Object.fromEntries(Object.keys(record).sort().map(key => [key, canonicalizeConditions(record[key])]))
-  }
-  return value
+function encodeConditions(value: TimingReport['conditions']): string {
+  return Json.Canonical(value)
 }
 
 function encodeGroupNames(report: TimingReport): string {
-  return JSON.stringify(report.groups.map(group => group.name).sort())
+  return Json.Print(report.groups.map(group => group.name).sort())
 }

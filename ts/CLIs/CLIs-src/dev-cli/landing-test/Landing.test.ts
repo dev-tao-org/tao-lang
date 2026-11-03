@@ -1,4 +1,4 @@
-import { joinTextLines, NullCharacter, S } from '@shared'
+import { joinTextLines, Json, NullCharacter, S } from '@shared'
 import { Platform, Tests } from '@shared/os'
 import { publishPreviewArchive } from '../landing/Archive'
 import { integrateMain } from '../landing/Integration'
@@ -46,14 +46,14 @@ Tests.test('dirty authored and ignored-storage work stop before any fetch or pub
 Tests.test('archived fixture provenance uses its measured commit path and still rejects a changed checksum', async () => {
   const f = recordingLanding()
   const path = `${f.pending}/record.json`
-  const record = JSON.parse(f.files.get(path)!)
+  const record = Json.Parse(f.files.get(path)!) as LandingEvidenceFixture
   record.fixture.path = 'Apps/Tests/Hello World.tao'
-  f.files.set(path, JSON.stringify(record))
+  f.files.set(path, Json.Print(record))
   const records = await pendingPreviewRecords(f.io)
   Tests.expect(records.map(record => record.source)).toEqual([f.source])
   Tests.expect(f.calls).toContain(`git show ${f.source}:Apps/Tests/Hello World.tao`)
   record.fixture.sha256 = 'corrupted'
-  f.files.set(path, JSON.stringify(record))
+  f.files.set(path, Json.Print(record))
   await Tests.rejects(pendingPreviewRecords(f.io), IncompleteLandingEvidenceRegx)
 })
 
@@ -272,12 +272,15 @@ Tests.test('a fork with the same branch name does not prove this repository bran
 Tests.test('raw reports need the measured source identity even when their updated checksums are valid', async () => {
   for (const raw of [{ version: 1, commit: 'f'.repeat(40) }, { version: 1 }]) {
     const f = recordingLanding()
-    const report = JSON.stringify(raw)
-    const metadata = JSON.parse(f.files.get(`${f.pending}/record.json`)!)
+    const report = Json.Print(raw)
+    const metadata = Json.Parse(f.files.get(`${f.pending}/record.json`)!) as LandingEvidenceFixture
     metadata.reportSha256 = Platform.hashText(report)
-    f.files.set(`${f.pending}/record.json`, JSON.stringify(metadata))
+    f.files.set(`${f.pending}/record.json`, Json.Print(metadata))
     f.files.set(`${f.pending}/report.json`, report)
     await Tests.rejects(pendingPreviewRecords(f.io))
     Tests.expect(f.calls.some(call => call.includes('push'))).toBe(false)
   }
 })
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type LandingEvidenceFixture = { fixture: { path: string; sha256: string }; reportSha256: string }

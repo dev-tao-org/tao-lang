@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -143,7 +143,9 @@ async function assertProfileTransition(root: string): Promise<void> {
     ManagedModuleRepairRequiredErrorRegx,
   )
   await ManagedModules.repairManagedModuleFiles(initial, createExecutor({ 'react': '19.1.0', 'date-fns': '4.1.0' }))
-  Tests.expect(JSON.parse(await FileSystem.readFile(marker, 'utf8')).generatedHashes).toBeDefined()
+  Tests.expect(
+    (Json.Parse(await FileSystem.readFile(marker, 'utf8')) as ManagedTransitionFixtureRecord).generatedHashes,
+  ).toBeDefined()
 
   const link = Path.join(moduleDirectory, 'node_modules', 'date-fns')
   const priorLink = FileSystem.realpathSync(link)
@@ -197,10 +199,10 @@ async function assertDanglingLinkRepair(root: string): Promise<void> {
 }
 
 async function damageCurrentOwnershipMarker(marker: string): Promise<void> {
-  const contents = JSON.parse(await FileSystem.readFile(marker, 'utf8'))
+  const contents = Json.Parse(await FileSystem.readFile(marker, 'utf8')) as ManagedTransitionFixtureRecord
   delete contents.generatedHashes
   await FileSystem.chmod(marker, 0o644)
-  await FileSystem.writeFile(marker, `${JSON.stringify(contents, null, 2)}${NewlineCharacter}`)
+  await FileSystem.writeFile(marker, `${Json.PrintIndented(contents)}${NewlineCharacter}`)
 }
 
 async function assertConsumerConflict(root: string): Promise<void> {
@@ -268,9 +270,15 @@ async function assertConcurrentConsumerRace(root: string): Promise<void> {
 }
 
 async function assertConsistentPublishedOwner(sharedModule: string): Promise<void> {
-  const owner = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, '.tao-managed-module.json'), 'utf8'))
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8'))
-  const profileManifest = JSON.parse(await FileSystem.readFile(Path.join(owner.profile, 'package.json'), 'utf8'))
+  const owner = Json.Parse(
+    await FileSystem.readFile(Path.join(sharedModule, '.tao-managed-module.json'), 'utf8'),
+  ) as ManagedTransitionFixtureRecord
+  const manifest = Json.Parse(
+    await FileSystem.readFile(Path.join(sharedModule, 'package.json'), 'utf8'),
+  ) as ManagedTransitionFixtureRecord
+  const profileManifest = Json.Parse(
+    await FileSystem.readFile(Path.join(owner.profile, 'package.json'), 'utf8'),
+  ) as ManagedTransitionFixtureRecord
   Tests.expect(manifest.dependencies).toEqual(profileManifest.dependencies)
   Tests.expect(FileSystem.realpathSync(Path.join(sharedModule, 'node_modules', 'react'))).toBe(
     FileSystem.realpathSync(Path.join(owner.profile, 'node_modules', 'react')),
@@ -306,7 +314,7 @@ function createExecutor(dependencies: Record<string, string>): BunExecutor {
 async function writePackage(root: string, name: string, version: string): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
   await FileSystem.mkdir(directory)
-  await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version }))
+  await FileSystem.writeFile(Path.join(directory, 'package.json'), Json.Print({ name, version }))
   await FileSystem.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
 }
 
@@ -316,4 +324,12 @@ async function withDirectory(prefix: string, action: (root: string) => Promise<v
   await Try(() => action(root), {
     finally: () => FileSystem.rm(root, { recursive: true, force: true }),
   })
+}
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ManagedTransitionFixtureRecord = {
+  profile: string
+  generatedHashes: unknown
+  dependencies: unknown
+  packageHash: unknown
 }

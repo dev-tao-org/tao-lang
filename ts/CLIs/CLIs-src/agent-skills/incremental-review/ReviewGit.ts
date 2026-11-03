@@ -1,4 +1,4 @@
-import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
+import { Errors, Json, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 
 type GitOptions = { index?: string; input?: GitInput }
@@ -150,13 +150,13 @@ export async function assertSupportedTransforms(root: string, files: string[], i
 
 /** readJson reads retained workflow state without interpreting it as instructions. */
 export async function readJson<Value>(path: string): Promise<Value> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as Value
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as Value
 }
 
 /** writeJson atomically replaces retained state. */
 export async function writeJson(path: string, value: unknown): Promise<void> {
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(value, null, 2) + NewlineCharacter)
+  await FileSystem.writeFile(pending, Json.PrintIndented(value) + NewlineCharacter)
   await FileSystem.rename(pending, path)
 }
 

@@ -1,4 +1,4 @@
-import { Errors, Lists, S, Try } from '@shared'
+import { Errors, Json, Lists, S, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
@@ -34,30 +34,22 @@ function serializeExpoPackageManifest(
   dependencies: RuntimePackageVersions,
   devDependencies: RuntimePackageVersions,
 ): string {
-  return JSON.stringify(
-    {
-      name: 'tao-preview',
-      private: true,
-      main: 'Application.ts',
-      dependencies,
-      devDependencies,
-      scripts: { start: 'expo start', web: 'expo start --web --no-dev' },
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    name: 'tao-preview',
+    private: true,
+    main: 'Application.ts',
+    dependencies,
+    devDependencies,
+    scripts: { start: 'expo start', web: 'expo start --web --no-dev' },
+  })
 }
 
 function serializeTaoResolution(options: ExpoScaffoldOptions): string {
   const singletonPackages = resolveSingletonPackages(options)
-  return JSON.stringify(
-    {
-      watchFolders: options.watchFolders ?? [],
-      singletonPackages,
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    watchFolders: options.watchFolders ?? [],
+    singletonPackages,
+  })
 }
 
 function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string[] {
@@ -68,11 +60,11 @@ function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string
 }
 
 function serializeExpoAppManifest(): string {
-  return JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } }, null, 2)
+  return Json.PrintIndented({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
 }
 
 function serializeExpoTypeScriptConfig(): string {
-  return JSON.stringify(expoTypeScriptConfig, null, 2)
+  return Json.PrintIndented(expoTypeScriptConfig)
 }
 
 const expoTypeScriptConfig = {

@@ -1,5 +1,5 @@
 import { runNonInteractiveCommand } from '@cli-kit'
-import { NewlineCharacter, Regxs, Try } from '@shared'
+import { Json, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
 import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
@@ -110,11 +110,11 @@ type NativeBuildIdentityInputs = {
 }
 
 function createNativeBuildIdentity(inputs: NativeBuildIdentityInputs): string {
-  return Platform.hashText(JSON.stringify(inputs))
+  return Platform.hashText(Json.Print(inputs))
 }
 
 function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {
-  return JSON.parse(contents) as NativeInputs['node']
+  return Json.Parse(contents) as NativeInputs['node']
 }
 
 async function readBuilderSources(): Promise<string[]> {

@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from '../managed-modules/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../managed-modules/ManagedModuleMetadata'
@@ -122,17 +122,13 @@ export function createManagedProfileManifest(
   runtimePolicy?: ManagedTypes.ManagedRuntimePolicy,
 ): string {
   return `${
-    JSON.stringify(
-      {
-        name: 'tao-managed-app',
-        private: true,
-        type: 'module',
-        dependencies: collectAllRequirements(requirements, runtimePins),
-        ...describeManagedResolutionPolicy(runtimePolicy),
-      },
-      null,
-      2,
-    )
+    Json.PrintIndented({
+      name: 'tao-managed-app',
+      private: true,
+      type: 'module',
+      dependencies: collectAllRequirements(requirements, runtimePins),
+      ...describeManagedResolutionPolicy(runtimePolicy),
+    })
   }${NewlineCharacter}`
 }
 
@@ -259,14 +255,14 @@ function sameStringRecord(
 }
 
 function parseManagedProfileMetadata(contents: string): MaybeManagedProfileMetadata {
-  const value: unknown = JSON.parse(contents)
+  const value: unknown = Json.Parse(contents)
   return isObjectRecord(value) ? value : undefined
 }
 
 function sameManagedPackageVersions(left: unknown, right: ManagedTypes.ManagedRuntimePins): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
+  return Json.Print(left) === Json.Print(right)
 }
 
 function sameSerializedSingletonPackages(left: unknown, right: readonly string[]): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
+  return Json.Print(left) === Json.Print(right)
 }

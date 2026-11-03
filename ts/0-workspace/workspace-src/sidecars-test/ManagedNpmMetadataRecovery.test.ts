@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules, repairManagedModuleFiles } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -27,10 +27,10 @@ async function assertVerifiedRepair(input: ManagedModulesInput, baseExecutor: Bu
   const durableLock = Path.join(input.directory, '.tao', 'store', 'npm', `${prepared.graphFingerprint}.lock`)
   const originalLock = await FileSystem.readFile(durableLock, 'utf8')
   const originalMetadata = await FileSystem.readFile(metadata, 'utf8')
-  const foreign = JSON.parse(originalMetadata)
+  const foreign = Json.Parse(originalMetadata) as ManagedNpmFixtureMetadata
   foreign.fingerprint = 'f'.repeat(64)
   await FileSystem.chmod(metadata, 0o644)
-  await FileSystem.writeFile(metadata, JSON.stringify(foreign))
+  await FileSystem.writeFile(metadata, Json.Print(foreign))
   await Tests.rejects(repairManagedModuleFiles(input, baseExecutor), ManagedModuleAlreadyOwnedErrorRegx)
   await FileSystem.writeFile(metadata, originalMetadata)
   let frozenInstalls = 0
@@ -40,7 +40,7 @@ async function assertVerifiedRepair(input: ManagedModulesInput, baseExecutor: Bu
     }
     return await baseExecutor(command, args, cwd)
   }
-  for (const contents of ['{}', JSON.stringify({ fingerprint: prepared.fingerprint }), '{ invalid json']) {
+  for (const contents of ['{}', Json.Print({ fingerprint: prepared.fingerprint }), '{ invalid json']) {
     await FileSystem.chmod(metadata, 0o644)
     await FileSystem.writeFile(metadata, contents)
     await repairManagedModuleFiles(input, executor)
@@ -60,7 +60,7 @@ const fixtureExecutor: BunExecutor = async (_command, args, cwd) => {
     const packages = { react: ['react@19.1.0', '', {}, 'sha512-react'] }
     await FileSystem.writeFile(
       lock,
-      JSON.stringify({ lockfileVersion: 1, workspaces: { '': { dependencies } }, packages }),
+      Json.Print({ lockfileVersion: 1, workspaces: { '': { dependencies } }, packages }),
     )
   }
   const react = Path.join(cwd, 'node_modules', 'react')
@@ -68,3 +68,6 @@ const fixtureExecutor: BunExecutor = async (_command, args, cwd) => {
   await FileSystem.writeFile(Path.join(react, 'package.json'), '{"name":"react","version":"19.1.0"}')
   return { status: 0, stdout: '', stderr: '' }
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ManagedNpmFixtureMetadata = Record<string, unknown>

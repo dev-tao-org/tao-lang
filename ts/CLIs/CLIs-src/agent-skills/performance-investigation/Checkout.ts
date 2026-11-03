@@ -1,5 +1,5 @@
 import { runNonInteractiveCommand } from '@cli-kit'
-import { Errors, Regxs } from '@shared'
+import { Errors, Json, Regxs } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
 import type { PerformanceSnapshot } from './Snapshot'
@@ -15,7 +15,7 @@ export async function receiveSnapshot(
   if (await FileSystem.exists(directory)) {
     Errors.ThrowUserInput('Snapshot destination already exists; select a new runner directory.')
   }
-  const snapshot = JSON.parse(await FileSystem.readFile(manifest, 'utf8')) as PerformanceSnapshot
+  const snapshot = Json.Parse(await FileSystem.readFile(manifest, 'utf8')) as PerformanceSnapshot
   const actualHash = Platform.hashBytes(await FileSystem.readFile(bundle), 'sha256')
   if (snapshot.version !== 1 || snapshot.bundleSha256 !== actualHash) {
     Errors.ThrowUserInput('Snapshot bundle checksum or manifest schema differs; transfer it again.')

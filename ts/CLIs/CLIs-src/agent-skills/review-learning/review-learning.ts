@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Objects } from '@shared'
+import { Errors, Json, Objects } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { applyLearningProposal, findScan, preflightProposal } from './LearningPatches'
 import { runCandidateScan } from './LearningQueries'
@@ -41,7 +41,7 @@ type Options = Map<string, string[]>
 type OptionalOptionName = string | undefined
 
 function formatLearningResult(result: ReviewLearningCommandResult): string {
-  return JSON.stringify(result, null, 2)
+  return Json.PrintIndented(result)
 }
 
 async function executeCommand(

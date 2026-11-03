@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen/AST'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import type { LinkedProgram } from '@typecheck/Modules'
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
@@ -176,7 +176,7 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
 }
 
 function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {

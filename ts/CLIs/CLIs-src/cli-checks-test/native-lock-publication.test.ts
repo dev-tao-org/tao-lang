@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Json, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Tests } from '@shared/os'
 import * as NativeLockPublication from '../cli-checks/NativeLockPublication'
 
@@ -11,7 +11,7 @@ Tests.test('repairs a partial active native-lock version without changing its pu
     await FileSystem.mkdirs(Path.join(active, 'build/Release'), Path.join(staging, 'build/Release'))
     await FileSystem.writeFile(Path.join(active, 'active-addon.marker'), 'keep')
     await FileSystem.writeFile(Path.join(staging, 'build/Release/tao_os_locks.node'), 'rebuilt')
-    await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity, directory: identity }))
+    await FileSystem.writeFile(Path.join(root, 'current.json'), Json.Print({ identity, directory: identity }))
     await NativeLockPublication.publishNativeLockVersion(root, staging, identity)
 
     const pointer = await NativeLockPublication.readNativeLockPointerForSetup(root)
@@ -39,7 +39,7 @@ Tests.test('setup discards native-lock pointers that escape the version cache', 
   await Try(async () => {
     await FileSystem.writeFile(
       Path.join(root, 'current.json'),
-      JSON.stringify({ identity: 'a'.repeat(64), directory: '../outside' }),
+      Json.Print({ identity: 'a'.repeat(64), directory: '../outside' }),
     )
     Tests.expect(await NativeLockPublication.readNativeLockPointerForSetup(root)).toBeUndefined()
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
@@ -48,7 +48,7 @@ Tests.test('setup discards native-lock pointers that escape the version cache', 
 Tests.test('setup discards invalid native-lock pointer shapes', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/native-lock-pointer-old-'))
   await Try(async () => {
-    await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity: 'a'.repeat(64) }))
+    await FileSystem.writeFile(Path.join(root, 'current.json'), Json.Print({ identity: 'a'.repeat(64) }))
     Tests.expect(await NativeLockPublication.readNativeLockPointerForSetup(root)).toBeUndefined()
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })
@@ -58,7 +58,7 @@ Tests.test('retains the current native-lock pointer directory', async () => {
   const identity = 'b'.repeat(64)
   const directory = `${identity}-12345678-1234-1234-1234-123456789abc`
   await Try(async () => {
-    await FileSystem.writeFile(Path.join(root, 'current.json'), JSON.stringify({ identity, directory }))
+    await FileSystem.writeFile(Path.join(root, 'current.json'), Json.Print({ identity, directory }))
     Tests.expect(await NativeLockPublication.readNativeLockPointerForSetup(root)).toEqual({ identity, directory })
   }, { finally: () => FileSystem.rm(root, { recursive: true, force: true }) })
 })

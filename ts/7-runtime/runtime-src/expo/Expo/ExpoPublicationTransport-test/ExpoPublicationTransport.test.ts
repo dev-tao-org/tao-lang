@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Http, Tests } from '@shared/os'
 import { createPublicationTransport } from '../ExpoPublicationTransport'
 
@@ -26,7 +27,7 @@ Tests.test('disposing an Expo session settles an outstanding publication indepen
 Tests.test('older publication responses cannot regress a newer served identity', async () => {
   const responses = new Map<string, (response: Http.HttpResponse) => void>()
   const request: typeof Http.request = async (_url, init) => {
-    const revision = JSON.parse(String(init?.body)) as { revision: string }
+    const revision = Json.Parse(String(init?.body)) as { revision: string }
     return await new Promise(resolve => responses.set(revision.revision, resolve))
   }
   const transport = createPublicationTransport('session', 'token', 'A', request)

@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, Objects, S, Time, Try } from '@shared'
+import { Errors, joinTextLines, Json, Objects, S, Time, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Http, MetroPlatform, Path, Platform, Repo, Tests } from '@shared/os'
 import * as Runtime from '../../../Runtime'
 import type { ExpoSession } from '../../Expo/Expo'
@@ -53,9 +53,9 @@ async function verifyOverlapAndRepair(session: ExpoSession, publishBeforeAdmissi
   await waitFor(async () => (await readStatus(session.url)).held === true)
   const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
   const messages: MetroSocketMessage[] = []
-  socket.addEventListener('message', event => messages.push(JSON.parse(String(event.data))))
+  socket.addEventListener('message', event => messages.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)
-  socket.send(JSON.stringify({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
+  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
   let published = false
   const pending = session.publish(createRevision('B', 1)).then(outcome => {
     published = true
@@ -117,9 +117,9 @@ async function verifyMultipleGroups(
   Tests.expect((await Http.request(bundleUrl)).ok).toBe(true)
   const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
   const secondary: typeof primary = []
-  socket.addEventListener('message', event => secondary.push(JSON.parse(String(event.data))))
+  socket.addEventListener('message', event => secondary.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)
-  socket.send(JSON.stringify({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
+  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
   await waitFor(async () => secondary.some(message => message.type === 'bundle-registered'))
   await Http.request(`${session.url}/__tao_test/arm`)
   let firstDone = false

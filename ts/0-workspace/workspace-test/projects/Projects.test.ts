@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { cleanProject } from '../../workspace-src/projects/Clean'
 import { acquireProjectLifecycle } from '../../workspace-src/projects/Lifecycle'
@@ -197,7 +197,7 @@ Tests.test('project cleaning removes generated cache and retains durable store a
     const externalLink = Path.join(layout.cacheDirectory, 'external')
     await FileSystem.mkdirs(Path.dirname(store), Path.dirname(generated), external)
     await FileSystem.writeFile(store, '{}')
-    await FileSystem.writeFile(dependencyLock, JSON.stringify({ version: 2, roots: {}, sources: {}, commitPins: {} }))
+    await FileSystem.writeFile(dependencyLock, Json.Print({ version: 2, roots: {}, sources: {}, commitPins: {} }))
     await FileSystem.writeFile(generated, 'generated')
     await FileSystem.writeFile(externalFile, 'keep')
     await FileSystem.symlink(external, externalLink)
@@ -271,7 +271,7 @@ async function createManagedFileDependency(root: string, dependency: string): Pr
   await FileSystem.mkdirs(Path.join(dependency, '.tao'), module, profile)
   await FileSystem.writeFile(
     Path.join(profile, '.tao-managed.json'),
-    JSON.stringify({ fingerprint: 'fixture', lockHash: 'fixture' }),
+    Json.Print({ fingerprint: 'fixture', lockHash: 'fixture' }),
   )
   for (const [path, contents] of files) {
     await FileSystem.writeFile(path, contents)
@@ -289,7 +289,7 @@ async function writeModuleOwnership(
 ): Promise<void> {
   await FileSystem.writeFile(
     Path.join(module, '.tao-managed-module.json'),
-    JSON.stringify({
+    Json.Print({
       files: files.map(([path]) => path),
       generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
       packages: [],
@@ -301,7 +301,7 @@ async function writeModuleOwnership(
 async function writeDependencyLock(taoDirectory: string, root: string, dependency: string): Promise<void> {
   await FileSystem.writeFile(
     Path.join(taoDirectory, 'store', 'dependencies.lock.json'),
-    JSON.stringify({
+    Json.Print({
       version: 2,
       roots: { dependency: 'dependency@1.0.0' },
       commitPins: {},

@@ -1,4 +1,4 @@
-import { S } from '@shared'
+import { Json, S } from '@shared'
 import { metroImports } from '../../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { hmrResolution } from '../Bridge_expo-metro/Bridge_expo-metro'
 
@@ -39,7 +39,7 @@ export function createConsumerBootstrap(entry: string): string {
   const specifier = modulePath.startsWith('.') ? modulePath : './' + modulePath
   return S`
     import { registerRootComponent } from 'expo';
-    import App from ${JSON.stringify(specifier)};
+    import App from ${Json.Print(specifier)};
     registerRootComponent(App);
   `
 }

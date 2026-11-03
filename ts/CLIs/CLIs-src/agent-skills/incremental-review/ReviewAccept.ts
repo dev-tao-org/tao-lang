@@ -1,4 +1,4 @@
-import { Errors, joinTextLines, Try } from '@shared'
+import { Errors, joinTextLines, Json, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
@@ -71,7 +71,7 @@ function reviewedMessage(selection: ReviewSelection, sourceCommit: string): stri
     `Source: ${sourceCommit}`,
     `Approval: ${selection.proposal}`,
     `Kind: ${selection.kind}`,
-    ...selection.files.map(path => `Path: ${JSON.stringify(path)}`),
+    ...selection.files.map(path => `Path: ${Json.Print(path)}`),
   )
 }
 
@@ -227,7 +227,7 @@ async function recordPhase(
 }
 
 function encodeIndexLockToken(session: ReviewSession, journal: ReviewJournal): string {
-  return JSON.stringify({ session: session.id, proposal: journal.selection.proposal })
+  return Json.Print({ session: session.id, proposal: journal.selection.proposal })
 }
 
 function resolveJournalPath(session: ReviewSession): string {

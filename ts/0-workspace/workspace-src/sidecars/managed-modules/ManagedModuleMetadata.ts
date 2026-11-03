@@ -1,5 +1,5 @@
 import { runtimeTypeScriptPaths } from '@runtime/Runtime'
-import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
+import { Errors, joinTextLines, Json, NewlineCharacter, Try } from '@shared'
 import { Files, FileSystem, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
@@ -122,15 +122,11 @@ function resolveTypeScriptDefaultsPath(projectRoot: string): string {
 function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
   const extendsPath = Path.toRelativeModuleSpecifier(Path.relative(moduleDirectory, defaultsPath))
   return `${
-    JSON.stringify(
-      {
-        extends: extendsPath,
-        compilerOptions: { baseUrl: '.' },
-        include: ['**/*.ts', '**/*.tsx'],
-      },
-      null,
-      2,
-    )
+    Json.PrintIndented({
+      extends: extendsPath,
+      compilerOptions: { baseUrl: '.' },
+      include: ['**/*.ts', '**/*.tsx'],
+    })
   }${NewlineCharacter}`
 }
 
@@ -224,7 +220,7 @@ async function repairModuleFiles(
 }
 
 function createModuleManifest(dependencies: ManagedTypes.ManagedPackageVersionMap): string {
-  return `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ private: true, type: 'module', dependencies })}${NewlineCharacter}`
 }
 
 function cannotReplaceModuleFile(
@@ -241,17 +237,13 @@ function createModuleOwnerMarker(
   profile: string,
 ): string {
   return `${
-    JSON.stringify(
-      {
-        files: files.map(([path]) => path),
-        generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
-        packages: requirements.map(({ name }) => name),
-        profile,
-        ignoreBlock: createModuleIgnoreBlock(),
-      },
-      null,
-      2,
-    )
+    Json.PrintIndented({
+      files: files.map(([path]) => path),
+      generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
+      packages: requirements.map(({ name }) => name),
+      profile,
+      ignoreBlock: createModuleIgnoreBlock(),
+    })
   }${NewlineCharacter}`
 }
 
@@ -318,31 +310,27 @@ function rejectSymlink(path: string): void {
 
 function createTypeScriptDefaults(): string {
   return `${
-    JSON.stringify(
-      {
-        compilerOptions: {
-          moduleResolution: 'Bundler',
-          module: 'ESNext',
-          target: 'ES2022',
-          strict: true,
-          noEmit: true,
-          jsx: 'react-jsx',
-          skipLibCheck: true,
-          resolveJsonModule: true,
-          allowImportingTsExtensions: true,
-          lib: ['ES2022', 'DOM'],
-          paths: {
-            ...runtimeTypeScriptPaths(),
-            'react': ['node_modules/@types/react'],
-            'react/*': ['node_modules/@types/react/*'],
-            'react-native': ['node_modules/react-native'],
-            'react-native/*': ['node_modules/react-native/*'],
-            '@preact/signals-core': ['node_modules/@preact/signals-core'],
-          },
+    Json.PrintIndented({
+      compilerOptions: {
+        moduleResolution: 'Bundler',
+        module: 'ESNext',
+        target: 'ES2022',
+        strict: true,
+        noEmit: true,
+        jsx: 'react-jsx',
+        skipLibCheck: true,
+        resolveJsonModule: true,
+        allowImportingTsExtensions: true,
+        lib: ['ES2022', 'DOM'],
+        paths: {
+          ...runtimeTypeScriptPaths(),
+          'react': ['node_modules/@types/react'],
+          'react/*': ['node_modules/@types/react/*'],
+          'react-native': ['node_modules/react-native'],
+          'react-native/*': ['node_modules/react-native/*'],
+          '@preact/signals-core': ['node_modules/@preact/signals-core'],
         },
       },
-      null,
-      2,
-    )
+    })
   }${NewlineCharacter}`
 }

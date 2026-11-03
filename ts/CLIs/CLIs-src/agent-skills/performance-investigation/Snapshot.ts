@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, NullCharacter, Time, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, NullCharacter, Time, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
 import * as SourceTree from './SourceTree'
@@ -49,7 +49,7 @@ export async function createSnapshot(root: string, ref?: string): Promise<Perfor
     const snapshot = await describeSnapshot(root, context)
     await FileSystem.writeFile(
       Path.join(directory, 'snapshot.json'),
-      JSON.stringify(snapshot, null, 2) + NewlineCharacter,
+      Json.PrintIndented(snapshot) + NewlineCharacter,
     )
     return snapshot
   }, {

@@ -1,11 +1,11 @@
-import { Errors, Regxs } from '@shared'
+import { Errors, Json, Regxs } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { safeSourcePath } from './LearningStore'
 import type { Correction, Proposal } from './LearningTypes'
 
 /** readLearningInput reads a JSON data file without evaluating code. */
 export async function readLearningInput(input: string): Promise<unknown> {
-  return JSON.parse(await FileSystem.readFile(Path.resolve(input), 'utf8'))
+  return Json.Parse(await FileSystem.readFile(Path.resolve(input), 'utf8'))
 }
 
 /** validateCorrection validates the closed query schema and preserves authority evidence. */

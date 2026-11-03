@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
 import { initializeProject } from '../workspace-src/projects/Projects'
 
@@ -14,7 +14,7 @@ export async function createStandaloneLibraryFixture(): Promise<string> {
   await FileSystem.mkdir(packageDirectory)
   await FileSystem.writeFile(
     Path.join(packageDirectory, '.tao-test-source.json'),
-    JSON.stringify({
+    Json.Print({
       kind: 'tao-isolated-consumer-fixture',
       packageDirectory: FileSystem.realpathSync(packageDirectory),
     }),

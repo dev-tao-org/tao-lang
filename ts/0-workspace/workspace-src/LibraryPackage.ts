@@ -2,7 +2,7 @@ import { transform } from '@ast-gen/Transform'
 import { compileLibrary } from '@compile/LibraryCompiler'
 import type { PublishedView } from '@compile/LibraryPublications'
 import { createParser } from '@grammar/parser'
-import { Errors, S } from '@shared'
+import { Errors, Json, S } from '@shared'
 import { Artifacts, Bundle, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
@@ -73,23 +73,19 @@ async function writeGeneratedSources(directory: string, files: Readonly<Record<s
 }
 
 function serializeLibraryBuildConfiguration(): string {
-  return JSON.stringify(
-    {
-      compilerOptions: {
-        jsx: 'react-jsx',
-        paths: {
-          '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
-          '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
-          '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
-          '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
-          '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
-          '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
-        },
+  return Json.PrintIndented({
+    compilerOptions: {
+      jsx: 'react-jsx',
+      paths: {
+        '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
+        '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
+        '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
+        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
+        '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
+        '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
       },
     },
-    null,
-    2,
-  )
+  })
 }
 
 async function writeLibraryPackage(output: string, name: string, views: readonly PublishedView[]): Promise<void> {
@@ -111,18 +107,14 @@ async function writeLibraryPackage(output: string, name: string, views: readonly
 type LibraryPackageExports = Record<string, { types: string; default: string }>
 
 function serializeLibraryPackage(name: string, exports: LibraryPackageExports): string {
-  return JSON.stringify(
-    {
-      name,
-      version: '0.0.0',
-      type: 'module',
-      exports,
-      peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
-      dependencies: { '@preact/signals-core': '1.14.4' },
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    name,
+    version: '0.0.0',
+    type: 'module',
+    exports,
+    peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
+    dependencies: { '@preact/signals-core': '1.14.4' },
+  })
 }
 
 function compileViewDeclaration(view: PublishedView): string {

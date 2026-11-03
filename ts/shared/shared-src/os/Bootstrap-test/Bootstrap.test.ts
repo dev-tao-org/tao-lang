@@ -1,4 +1,4 @@
-import { joinTextLines, S, Try } from '@shared'
+import { joinTextLines, Json, S, Try } from '@shared'
 import { Artifacts, Env, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
@@ -59,7 +59,7 @@ async function runBootstrap(
   await copyBootstrapSources(sourceDirectory, ts)
   await writeStub(bin, failureStatus, failureStage)
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
-    + `const bootstrap=await import(${JSON.stringify(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
+    + `const bootstrap=await import(${Json.Print(Path.pathToFileURL(join(ts, 'Bootstrap.ts')).href)});`
     + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const environment = {
     PATH: `${bin}${delimiter}${Env.get('PATH') ?? ''}`,

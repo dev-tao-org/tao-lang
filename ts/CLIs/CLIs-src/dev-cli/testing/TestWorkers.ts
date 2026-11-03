@@ -1,5 +1,5 @@
 import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
-import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
+import { Errors, EscapeCharacter, Json, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
 import { discoverProject } from '@workspace/projects/Projects'
 import { execute } from '@workspace/Workflow'
@@ -203,7 +203,7 @@ async function readTaoWorkerReport(
   commandFailure: OptionalCommandFailure,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   return await Try(async () => {
-    const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
+    const value: unknown = Json.Parse(await FileSystem.readFile(path, 'utf8'))
     if (!isTaoWorkerReport(value)) {
       Errors.ThrowHostEnvironment(`Tao worker wrote an invalid result report: ${path}`)
     }

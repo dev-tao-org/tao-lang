@@ -1,4 +1,4 @@
-import { Errors, Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
+import { Errors, Json, Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type * as Types from './Types'
@@ -256,17 +256,17 @@ function materializeSourceLocation(
 
 async function parseDependencyLockFile(path: string): Promise<unknown> {
   const contents = await FileSystem.readFile(path, 'utf8')
-  return JSON.parse(contents) as unknown
+  return Json.Parse(contents) as unknown
 }
 
 function serializeDependencyLock(lock: Types.DependencyLock, projectRoot: string): string {
   const portableLock = relativizeLocations(lock, projectRoot)
-  return JSON.stringify(portableLock, null, 2) + NewlineCharacter
+  return Json.PrintIndented(portableLock) + NewlineCharacter
 }
 
 async function parseRetainedProfileMetadata(path: string): Promise<unknown> {
   const contents = await FileSystem.readFile(path, 'utf8')
-  return JSON.parse(contents) as unknown
+  return Json.Parse(contents) as unknown
 }
 
 function readRetainedGraphFingerprint(metadata: unknown): string | undefined {

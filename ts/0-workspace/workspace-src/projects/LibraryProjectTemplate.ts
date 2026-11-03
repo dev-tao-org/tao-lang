@@ -1,4 +1,4 @@
-import { S } from '@shared'
+import { Json, S } from '@shared'
 
 type LibraryProjectFile = { path: string; contents: string }
 
@@ -79,55 +79,47 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
 ]
 
 function serializeLibraryProjectManifest(): string {
-  return JSON.stringify(
-    {
-      name: 'tao-library-consumer',
-      private: true,
-      type: 'module',
-      scripts: { check: 'tsc --project tsconfig.json' },
-      tao: {
-        compile: {
-          entry: '../tao/Library.tao',
-          out: '../../.tao/cache/libraries/Demo',
-          name: '@example/tao-library',
-        },
-        run: { entry: 'Consumer.tsx', name: 'Tao Library Consumer' },
+  return Json.PrintIndented({
+    name: 'tao-library-consumer',
+    private: true,
+    type: 'module',
+    scripts: { check: 'tsc --project tsconfig.json' },
+    tao: {
+      compile: {
+        entry: '../tao/Library.tao',
+        out: '../../.tao/cache/libraries/Demo',
+        name: '@example/tao-library',
       },
-      dependencies: {
-        '@example/tao-library': 'file:../../.tao/cache/libraries/Demo',
-        '@expo/metro-runtime': '57.0.17',
-        'expo': '57.0.30',
-        'react-dom': '19.2.3',
-        'react': '19.2.3',
-        'react-native': '0.86.3',
-        'react-native-web': '0.21.0',
-      },
-      devDependencies: { '@types/react': '~19.2.0', 'typescript': '5.9.3' },
+      run: { entry: 'Consumer.tsx', name: 'Tao Library Consumer' },
     },
-    null,
-    2,
-  ) + '\n'
+    dependencies: {
+      '@example/tao-library': 'file:../../.tao/cache/libraries/Demo',
+      '@expo/metro-runtime': '57.0.17',
+      'expo': '57.0.30',
+      'react-dom': '19.2.3',
+      'react': '19.2.3',
+      'react-native': '0.86.3',
+      'react-native-web': '0.21.0',
+    },
+    devDependencies: { '@types/react': '~19.2.0', 'typescript': '5.9.3' },
+  }) + '\n'
 }
 
 function serializeLibraryProjectTypeScript(): string {
-  return JSON.stringify(
-    {
-      extends: 'expo/tsconfig.base',
-      compilerOptions: {
-        strict: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        target: 'ESNext',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        preserveSymlinks: true,
-        allowSyntheticDefaultImports: true,
-        skipLibCheck: true,
-        types: ['react'],
-      },
-      include: ['*.tsx'],
+  return Json.PrintIndented({
+    extends: 'expo/tsconfig.base',
+    compilerOptions: {
+      strict: true,
+      noEmit: true,
+      jsx: 'react-jsx',
+      target: 'ESNext',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      preserveSymlinks: true,
+      allowSyntheticDefaultImports: true,
+      skipLibCheck: true,
+      types: ['react'],
     },
-    null,
-    2,
-  ) + '\n'
+    include: ['*.tsx'],
+  }) + '\n'
 }

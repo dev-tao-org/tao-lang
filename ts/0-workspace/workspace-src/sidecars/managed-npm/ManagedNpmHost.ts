@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
 import type { ManagedModulesInput, NormalizedManagedRequirement } from '../managed-modules/ManagedModuleTypes'
@@ -80,5 +80,5 @@ function hostMatches(metadata: ManagedProfileMetadata, input: ManagedModulesInpu
 }
 
 function serializeInstallHost(identity: unknown): string | undefined {
-  return JSON.stringify(identity)
+  return Json.Print(identity)
 }

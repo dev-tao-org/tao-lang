@@ -1,4 +1,4 @@
-import { joinTextLines, Lists, S } from '@shared'
+import { joinTextLines, Json, Lists, S } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -27,11 +27,11 @@ type CstGrammar = { rules: Record<string, Rule> }
 type CstNode = { type: string; named: boolean; fields?: Record<string, unknown> }
 
 async function readCstGrammar(path: string): Promise<CstGrammar> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstGrammar
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as CstGrammar
 }
 
 async function readCstNodes(path: string): Promise<CstNode[]> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstNode[]
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as CstNode[]
 }
 
 function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] {
@@ -63,5 +63,5 @@ function union(values: readonly string[]): string {
 }
 
 function emitCstStringLiteral(value: string): string {
-  return JSON.stringify(value)
+  return Json.Print(value)
 }

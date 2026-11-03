@@ -1,6 +1,6 @@
 import { transform } from '@ast-gen/Transform'
 import { createParser } from '@grammar/parser'
-import { Errors, NewlineCharacter } from '@shared'
+import { Errors, Json, NewlineCharacter } from '@shared'
 import { FileSystem, FormatterResources, Path, Repo, Tests } from '@shared/os'
 import { fix } from '../fix-src/Fix'
 import { format } from '../fix-src/Format'
@@ -48,7 +48,7 @@ async function listTaoFiles(relative: string): Promise<string[]> {
 }
 
 function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
-  return JSON.stringify(value, (key, item) => {
+  return Json.Print(value, (key, item) => {
     if (key === 'start' || key === 'end') {
       return undefined
     }

@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, Json, Regxs, Time, Try } from '@shared'
 import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
@@ -270,7 +270,7 @@ type ModuleRefreshPerformanceSummary = {
 }[]
 
 function serializeModuleRefreshPerformanceReport(report: ModuleRefreshPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 async function disposeLayouts(owned: Resources): Promise<void> {

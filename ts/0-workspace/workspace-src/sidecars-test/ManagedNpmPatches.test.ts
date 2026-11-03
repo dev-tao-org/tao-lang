@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import * as ManagedModules from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor, ManagedModulesInput } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -40,7 +40,7 @@ Tests.test('removing runtime policy preserves durable package resolutions throug
       previousGraphReference: { fingerprint: original.graphFingerprint, lockPath, lockHash: Platform.hashText(source) },
     }
     const repaired = await ManagedModules.repairManagedModuleFiles(removed, createExecutor(invocations))
-    const lock = JSON.parse(await FileSystem.readFile(repaired.lockfile, 'utf8'))
+    const lock = Json.Parse(await FileSystem.readFile(repaired.lockfile, 'utf8')) as ManagedPatchFixtureRecord
     Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
     Tests.expect(lock.packages).toEqual({ fixture: ['fixture@1.0.0', '', {}, 'sha512-fixture'] })
     Tests.expect(lock).not.toHaveProperty('patchedDependencies')
@@ -82,7 +82,9 @@ async function assertPolicyRepair(directory: string): Promise<void> {
   Tests.expect(repaired.graphFingerprint).not.toBe(first.graphFingerprint)
   Tests.expect(invocations.at(-1)).toContain('--frozen-lockfile')
   const lock = await FileSystem.readFile(repaired.lockfile, 'utf8')
-  Tests.expect(JSON.parse(lock).packages).toEqual(JSON.parse(source).packages)
+  Tests.expect((Json.Parse(lock) as ManagedPatchFixtureRecord).packages).toEqual(
+    (Json.Parse(source) as ManagedPatchFixtureRecord).packages,
+  )
   Tests.expect(await FileSystem.readFile(sourcePath, 'utf8')).toBe(source)
   const incompatible = createInput(directory)
   incompatible.runtimePolicy!.overrides.fixture = '2.0.0'
@@ -99,7 +101,9 @@ async function assertPatchedProfile(directory: string): Promise<void> {
   const input = createInput(directory)
   const invocations: string[][] = []
   const first = await ManagedModules.prepareManagedModules(input, createExecutor(invocations))
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(first.packageDirectory, 'package.json'), 'utf8'))
+  const manifest = Json.Parse(
+    await FileSystem.readFile(Path.join(first.packageDirectory, 'package.json'), 'utf8'),
+  ) as ManagedPatchFixtureRecord
   Tests.expect(manifest.patchedDependencies).toEqual({ 'fixture@1.0.0': 'patches/fixture.patch' })
   Tests.expect(manifest.overrides).toEqual({ fixture: '1.0.0' })
   const durablePath = Path.join(directory, '.tao/store/npm', `${first.graphFingerprint}.lock`)
@@ -143,14 +147,16 @@ function createExecutor(invocations: string[][]): BunExecutor {
       return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     invocations.push([...args])
-    const manifest = JSON.parse(await FileSystem.readFile(Path.join(cwd, 'package.json'), 'utf8'))
+    const manifest = Json.Parse(
+      await FileSystem.readFile(Path.join(cwd, 'package.json'), 'utf8'),
+    ) as ManagedPatchFixtureRecord
     if (manifest.patchedDependencies) {
       Tests.expect(await FileSystem.exists(Path.join(cwd, 'patches/fixture.patch'))).toBe(true)
     }
     if (!args.includes('--frozen-lockfile')) {
       await FileSystem.writeFile(
         Path.join(cwd, 'bun.lock'),
-        JSON.stringify({
+        Json.Print({
           workspaces: { '': { dependencies: manifest.dependencies } },
           packages: { fixture: ['fixture@1.0.0', '', {}, 'sha512-fixture'] },
           patchedDependencies: manifest.patchedDependencies,
@@ -164,3 +170,6 @@ function createExecutor(invocations: string[][]): BunExecutor {
     return { status: 0, stdout: '', stderr: '' }
   }
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ManagedPatchFixtureRecord = Record<string, unknown>

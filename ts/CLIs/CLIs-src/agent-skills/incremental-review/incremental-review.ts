@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Lists } from '@shared'
+import { Errors, Json, Lists } from '@shared'
 import { FileSystem, Path, Platform, Repo } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { continueReview } from './ReviewContinue'
@@ -66,7 +66,7 @@ type OptionalPath = string | undefined
 type ReviewNoteResult = { notes: string[]; recheck: string[] }
 
 function formatReviewResult(result: IncrementalReviewResult): string {
-  return JSON.stringify(result, null, 2)
+  return Json.PrintIndented(result)
 }
 
 async function runSessionCommand(

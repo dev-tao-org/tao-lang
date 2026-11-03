@@ -1,4 +1,4 @@
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareManagedModules } from '../sidecars/managed-modules/ManagedModules'
 import type { BunExecutor } from '../sidecars/managed-modules/ManagedModuleTypes'
@@ -55,7 +55,7 @@ async function writePackage(
 ): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
   await FileSystem.mkdir(directory)
-  await FileSystem.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
+  await FileSystem.writeFile(Path.join(directory, 'package.json'), Json.Print({ name, version, dependencies }))
 }
 
 async function writeNativePackage(root: string, version: string): Promise<void> {
@@ -63,7 +63,7 @@ async function writeNativePackage(root: string, version: string): Promise<void> 
   await FileSystem.mkdir(directory)
   await FileSystem.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
+    Json.Print({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
   )
 }
 

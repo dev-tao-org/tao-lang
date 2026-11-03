@@ -1,4 +1,4 @@
-import { joinTextLines, Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
+import { joinTextLines, Json, Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
 import { FileSystem, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
@@ -55,15 +55,15 @@ type SemanticAstModel = {
 }
 
 async function readNodeMetadata(path: string): Promise<NodeMetadata[]> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as NodeMetadata[]
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as NodeMetadata[]
 }
 
 async function readGrammarMetadata(path: string): Promise<GrammarMetadata> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as GrammarMetadata
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as GrammarMetadata
 }
 
 async function readSemanticMetadata(path: string): Promise<SemanticMetadata> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as SemanticMetadata
+  return Json.Parse(await FileSystem.readFile(path, 'utf8')) as SemanticMetadata
 }
 
 const omittedRules = new Set([
@@ -201,7 +201,7 @@ function generateConstructorKinds(nodes: NodeMetadata[], metadata: SemanticMetad
   const kinds = nodes.filter(node => node.named && !node.subtypes)
     .filter(node => !omittedRules.has(node.type) || ['Identifier', 'QualifiedName', 'SourceFile'].includes(node.type))
     .map(node => [node.type, node.type === 'SourceFile' ? 'File' : semanticName(node.type, metadata)])
-  return JSON.stringify(Object.fromEntries(kinds))
+  return Json.Print(Object.fromEntries(kinds))
 }
 
 function generateFieldLayouts(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
@@ -221,7 +221,7 @@ function generateFieldLayouts(nodes: NodeMetadata[], metadata: SemanticMetadata)
       return [node.type, Object.fromEntries(fields)]
     }),
   )
-  return JSON.stringify(layouts)
+  return Json.Print(layouts)
 }
 
 function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): string {
@@ -329,13 +329,13 @@ function tokenUnion(rule: OptionalGrammarRule): string {
 }
 
 function emitSemanticKinds(kinds: readonly string[]): string {
-  return JSON.stringify(kinds)
+  return Json.Print(kinds)
 }
 
 function emitBlockKinds(kinds: SemanticBlockKinds): string {
-  return JSON.stringify(kinds)
+  return Json.Print(kinds)
 }
 
 function emitSemanticStringLiteral(value: string): string {
-  return JSON.stringify(value)
+  return Json.Print(value)
 }

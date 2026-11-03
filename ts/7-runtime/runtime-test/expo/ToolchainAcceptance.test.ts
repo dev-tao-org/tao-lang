@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Json, Try } from '@shared'
 import { Artifacts, FileSystem, Path, Platform, Tests } from '@shared/os'
 import { prepareRuntime } from '../../../CLIs/CLIs-src/cli-checks/runtime-build'
 import { prepareToolchain } from '../../runtime-src/expo/Toolchain'
@@ -21,7 +21,7 @@ Tests.test(
 )
 
 async function verifyPatchCopies(resources: string, packageDirectory: string): Promise<void> {
-  const manifest = JSON.parse(await FileSystem.readFile(Path.join(resources, 'package.json'), 'utf8')) as {
+  const manifest = Json.Parse(await FileSystem.readFile(Path.join(resources, 'package.json'), 'utf8')) as {
     patchedDependencies: Record<string, string>
   }
   const patchPaths = Object.values(manifest.patchedDependencies).sort()
