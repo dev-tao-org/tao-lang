@@ -91,7 +91,6 @@ let tui = false
 let suspendedTui = false
 type ActiveOutputRenderer = Output.OutputRenderer | undefined
 let activeRenderer: ActiveOutputRenderer
-let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
 let warningDetails: string[] = []
 let output = Output.createOutput(writeOutput)
@@ -161,7 +160,6 @@ function configureOutput(options: IOConfiguration): void {
     Errors.ThrowShouldNeverHappen('Cannot reconfigure output while a TUI is active.')
   }
   configuration = options
-  lastMainOutput = ''
   diagnostics = { warn: 0, error: 0 }
   warningDetails = []
   plainOutput = createPlainOutput()
@@ -179,9 +177,6 @@ function announceLog(message: string): void {
 }
 
 function writeOutput(event: Output.OutputEvent): void {
-  if (event.main && event.stream === 'stdout') {
-    lastMainOutput = event.text
-  }
   const mode = configuration[event.stream] ?? 'terminal'
   if (configuration.passthrough) {
     plainOutput.write(event)
@@ -245,36 +240,55 @@ function isQuiet(): boolean {
 
 async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
   const wasTui = tui
+  if (wasTui) {
+    writeChannelCompletions()
+    writeCompletionNotices(status)
+  }
   output.main.finish(status)
   await output.finish()
   tui = false
   suspendedTui = false
   activeRenderer = undefined
-  plainOutput.finish()
   if (wasTui) {
-    const snapshot = output.snapshot()
-    for (const state of snapshot.channels) {
-      Terminal.stderr.write(`[${state.title}] ${Output.formatChannelCompletion(state)}${NewlineCharacter}`)
-      if (state.status === 'failed') {
-        Terminal.stderr.write(state.lines.slice(-12).join(NewlineCharacter) + NewlineCharacter)
-      }
+    // The final pane snapshots already include partial lines buffered by plain presentation.
+    plainOutput = createPlainOutput()
+  } else {
+    plainOutput.finish()
+    writeCompletionNotices(status)
+  }
+}
+
+function writeChannelCompletions(): void {
+  for (const state of output.snapshot().channels) {
+    output.main.progress('[' + state.title + '] ' + Output.formatChannelCompletion(state))
+  }
+}
+
+function writeCompletionNotices(status: OutputStatus): void {
+  if (configuration.forwardEvents || configuration.passthrough) {
+    return
+  }
+  const hasDiagnostics = diagnostics.warn > 0 || diagnostics.error > 0
+  if (!isQuiet() && !hasDiagnostics) {
+    return
+  }
+  const notice = formatCompletionNotice(status)
+  if (tui) {
+    for (const warning of warningDetails) {
+      output.main.progress(warning)
     }
-    const summary = lastMainOutput || snapshot.main.lines.filter(Boolean).at(-1)
-    if (summary) {
-      Terminal.stderr.write(summary.endsWith(NewlineCharacter) ? summary : summary + NewlineCharacter)
+    output.main.progress(notice)
+  } else {
+    Terminal.stderr.write(notice + NewlineCharacter)
+    for (const warning of warningDetails) {
+      Terminal.stderr.write(warning + NewlineCharacter)
     }
   }
-  if (!configuration.forwardEvents && !configuration.passthrough) {
-    const notices = `${diagnostics.warn} warning(s), ${diagnostics.error} error(s)`
-    if (isQuiet() || diagnostics.warn || diagnostics.error) {
-      Terminal.stderr.write(
-        `${status === 'passed' ? 'Completed' : 'Failed'}: ${notices}. Logs: ${
-          Path.relative(Repo.getWorkspaceRoot(), writeFileOutput.path)
-        }${NewlineCharacter}`,
-      )
-      for (const warning of warningDetails) {
-        Terminal.stderr.write(warning + NewlineCharacter)
-      }
-    }
-  }
+}
+
+function formatCompletionNotice(status: OutputStatus): string {
+  const verdict = status === 'passed' ? 'Completed' : 'Failed'
+  const notices = diagnostics.warn + ' warning(s), ' + diagnostics.error + ' error(s)'
+  const logPath = Path.relative(Repo.getWorkspaceRoot(), writeFileOutput.path)
+  return verdict + ': ' + notices + '. Logs: ' + logPath
 }

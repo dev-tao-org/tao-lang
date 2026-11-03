@@ -4,7 +4,7 @@ import { outputFixturePath } from './OutputFixture'
 
 const LogPathRegx = /Logs: (.+?\.log)/
 
-Tests.test('dashboard prompts retain concurrent setup and subprocess output inside Ink panes and hide secret pastes', async () => {
+Tests.test('dashboard prompts and failure completion retain all output in Ink panes and hide secret pastes', async () => {
   const result = await Platform.runIgnoreStatus(['bun', 'run', outputFixturePath, 'pane-interactive'], {
     cwd: Repo.getWorkspaceRoot(),
     addEnv: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', CLI_OUTPUT_EVENTS: undefined },
@@ -21,6 +21,9 @@ Tests.test('dashboard prompts retain concurrent setup and subprocess output insi
       '[Y/n]',
       'Answer yes or no.',
       'Fixture hidden token:',
+      'fixture completion warning',
+      'fixture worker failure',
+      'Failed: 1 warning(s), 1 error(s)',
     ]
   ) {
     const matching = visible.split(NewlineCharacter).filter(line => line.includes(message))
@@ -29,9 +32,7 @@ Tests.test('dashboard prompts retain concurrent setup and subprocess output insi
   }
   Tests.expect(visible).not.toContain('private')
   Tests.expect(visible).not.toContain('value')
-  Tests.expect(result.stderr).not.toContain('Logs:')
-  Tests.expect(result.stderr).not.toContain('shard stdout')
-  Tests.expect(result.stderr).not.toContain('shard stderr')
+  Tests.expect(result.stderr).toBe('')
   const logPath = LogPathRegx.exec(visible)?.[1]?.trim()
   Tests.expect(logPath).toBeDefined()
   const log = await FileSystem.readFile(Repo.resolvePath(logPath!), 'utf8')
