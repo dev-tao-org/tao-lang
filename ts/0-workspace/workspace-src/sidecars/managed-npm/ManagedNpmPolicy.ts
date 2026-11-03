@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter } from '@shared'
+import { Errors, NewlineCharacter, Sort } from '@shared'
 import { FileSystem, Path, Platform } from '@shared/os'
 import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../managed-modules/ManagedModuleTypes'
@@ -10,17 +10,6 @@ type ManagedRuntimePolicyMap =
   | ManagedRuntimePolicy['patchedDependencies']
   | ManagedRuntimePolicy['overrides']
   | ManagedRuntimePolicy['patches']
-
-/** compareCodePointStrings sorts domain keys without locale-dependent ordering. */
-export function compareCodePointStrings(left: string, right: string): number {
-  if (left < right) {
-    return -1
-  }
-  if (left > right) {
-    return 1
-  }
-  return 0
-}
 
 /** describeManagedResolutionPolicy returns stable graph inputs without installation-only patch bytes. */
 export function describeManagedResolutionPolicy(
@@ -104,7 +93,7 @@ function applyManagedLockPolicy(
 
 function listManagedPatches(policy: RuntimePolicyInput): [string, string][] {
   const patches: [string, string][] = []
-  for (const path of Object.values(policy?.patchedDependencies ?? {}).sort()) {
+  for (const path of Sort.Strings(Object.values(policy?.patchedDependencies ?? {}))) {
     if (!isManagedPatchPath(path)) {
       Errors.ThrowUserInput(`Unsupported managed runtime patch path: ${path}`)
     }
@@ -140,7 +129,7 @@ function isSafePatchPathSegment(part: string): boolean {
 }
 
 function sortRecord(record: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(record).sort(([left], [right]) => compareCodePointStrings(left, right)))
+  return Object.fromEntries(Object.entries(record).sort(Sort.By(([key]) => key, Sort.CompareStrings)))
 }
 
 function recordsMatch(value: unknown, expected: ManagedRuntimePolicyMap): boolean {
