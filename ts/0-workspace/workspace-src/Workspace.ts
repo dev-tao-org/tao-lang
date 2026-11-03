@@ -5,7 +5,7 @@ import type { CompiledFiles } from '@compile/ModulesCompiler'
 import { createParser, type Parser } from '@grammar/parser'
 import type { PublicationOutcome } from '@runtime/expo/PreviewProtocol'
 import * as Runtime from '@runtime/Runtime'
-import { Errors, Lists, Time, Timings, type TimingSample } from '@shared'
+import { Errors, Lists, Sort, Time, Timings, type TimingSample } from '@shared'
 import { Path, WorkspaceWatch } from '@shared/os'
 import * as Stdlib from '@stdlib/Stdlib'
 import { linkModules } from '@typecheck/LinkModules'
@@ -260,7 +260,7 @@ class WorkspaceSession {
   }
 
   private acceptSnapshots(directories: readonly string[]): void {
-    const next = [...directories].sort()
+    const next = [...directories].sort(Sort.CompareStrings)
     const unchanged = next.length === this.snapshotDirectories.length
       && next.every((path, index) => path === this.snapshotDirectories[index])
     if (this.application?.publishGenerated && !unchanged) {

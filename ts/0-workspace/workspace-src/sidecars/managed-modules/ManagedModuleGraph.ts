@@ -1,4 +1,4 @@
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Lists, Sort, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
 import { satisfies, valid, validRange } from '../../bridges/Bridge_semver'
@@ -32,7 +32,7 @@ export function collectAllRequirements(
     }
   }
   return Object.fromEntries(
-    [...versions.keys()].sort().map(name => [name, [...versions.get(name)!.keys()][0]!]),
+    [...versions.keys()].sort(Sort.CompareStrings).map(name => [name, [...versions.get(name)!.keys()][0]!]),
   )
 }
 
@@ -87,8 +87,8 @@ export function graphContentsMatch(
     return false
   }
   const expectedRequirements = collectAllRequirements(requirements, runtimePins)
-  const actualNames = Object.keys(dependencies).sort()
-  const expectedNames = Object.keys(expectedRequirements).sort()
+  const actualNames = Object.keys(dependencies).sort(Sort.CompareStrings)
+  const expectedNames = Object.keys(expectedRequirements).sort(Sort.CompareStrings)
   return actualNames.length === expectedNames.length
     && actualNames.every((name, index) => name === expectedNames[index])
     && Object.entries(expectedRequirements).every(([name, expected]) => {
@@ -118,7 +118,7 @@ export async function listNativePackageNames(profile: string): Promise<string[]>
   const nativePackages = packages.filter(item => item.native)
   const nativePackageNames = nativePackages.map(item => item.name)
   const uniqueNativePackageNames = Lists.unique(nativePackageNames)
-  return uniqueNativePackageNames.sort()
+  return uniqueNativePackageNames.sort(Sort.CompareStrings)
 }
 
 type DependencyVersionRange = string | undefined

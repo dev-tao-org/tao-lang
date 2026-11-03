@@ -1,4 +1,4 @@
-import { Errors, Json, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs, Sort, Try } from '@shared'
 import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
@@ -127,13 +127,13 @@ async function readLearningState(path: string): Promise<LearningState> {
 async function collectSources(root: string): Promise<string[]> {
   const result: string[] = []
   await walkFiles(root, '', result, file => Regxs.TypeScriptSourceFileRegx.test(file))
-  return result.sort()
+  return result.sort(Sort.CompareStrings)
 }
 
 async function collectConfigs(root: string): Promise<string[]> {
   const result: string[] = []
   await walkFiles(root, '', result, file => Regxs.ReviewConfigurationFileNameRegx.test(file))
-  return result.sort()
+  return result.sort(Sort.CompareStrings)
 }
 
 async function walkFiles(

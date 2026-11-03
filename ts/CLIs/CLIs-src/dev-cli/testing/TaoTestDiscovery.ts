@@ -1,4 +1,5 @@
 import { createParser } from '@grammar/parser'
+import { Sort } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 
 /** findTaoTestFiles discovers authored test suites, excluding hidden and dependency folders. */
@@ -23,5 +24,5 @@ export async function findTaoTestFiles(path: string, parser = createParser()): P
       // Non-Tao files cannot contain authored Tao test suites.
     }
   }
-  return paths.sort()
+  return paths.sort(Sort.CompareStrings)
 }

@@ -1,4 +1,4 @@
-import { Lists, Regxs, Time, Timings, Try } from '@shared'
+import { Lists, Regxs, Sort, Time, Timings, Try } from '@shared'
 import { FileSystem, Path, WorkspaceWatch } from '@shared/os'
 import { Document } from '../Document'
 import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
@@ -308,7 +308,7 @@ function resolveAttemptedFileProject(path: string): string[] {
 }
 
 function collectUniquePaths(paths: readonly string[]): string[] {
-  return Lists.unique(paths.map(path => Path.resolve(path))).sort()
+  return Lists.unique(paths.map(path => Path.resolve(path))).sort(Sort.CompareStrings)
 }
 
 function haveSamePaths(left: readonly string[], right: readonly string[]): boolean {

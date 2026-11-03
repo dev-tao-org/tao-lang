@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Sort, Try } from '@shared'
 import { FileSystem, Path } from '@shared/os'
 import { isExcludedName, isExcludedPath, resolveRealPathInsideProject, within } from './Paths'
 
@@ -16,7 +16,7 @@ export async function listDirectSourceFiles(directory: string, boundary: string)
       files.push(path)
     }
   }
-  return files.sort()
+  return files.sort(Sort.CompareStrings)
 }
 
 /** listRecursiveSourceFiles walks one named package while respecting nested project roots. */
@@ -44,7 +44,7 @@ export async function listRecursiveSourceFiles(
       // Other file types, nested packages and project boundaries are outside this package's sources.
     }
   }
-  return files.sort()
+  return files.sort(Sort.CompareStrings)
 }
 
 /** findNamedPackageDirectories discovers local packages with an exact authored directory name. */
@@ -70,7 +70,7 @@ export async function findNamedPackageDirectories(projectRoot: string, name: str
   if (await isSafeDirectory(projectRoot, projectRoot)) {
     await visit(projectRoot)
   }
-  return found.sort()
+  return found.sort(Sort.CompareStrings)
 }
 
 /** isImportableFile confirms an existing Tao file stays within its real project boundary. */

@@ -1,4 +1,4 @@
-import { Lists, Try } from '@shared'
+import { Lists, Sort, Try } from '@shared'
 import { vscode } from '../../bridges/Bridge_vscode'
 import { chooseDiffBase, diffArguments, type OptionalBranchName } from './DiffReview'
 
@@ -43,7 +43,7 @@ async function reviewFile(context: vscode.ExtensionContext, force: boolean): Pro
   const branches = Lists.unique(
     (await repository.getBranches({ remote: true }))
       .map(branch => branch.name).filter((name): name is string => Boolean(name)),
-  ).sort()
+  ).sort(Sort.CompareStrings)
   const base = await chooseDiffBase(
     repository.rootUri.toString(),
     repository.state.HEAD?.name,

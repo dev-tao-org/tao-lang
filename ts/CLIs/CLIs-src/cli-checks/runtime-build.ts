@@ -1,4 +1,4 @@
-import { Errors, Json, Timings, Try } from '@shared'
+import { Errors, Json, Sort, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
@@ -57,7 +57,7 @@ async function readInputs(): Promise<RuntimeBuildInputs> {
     Path.fileURLToPath(import.meta.url),
     Repo.resolvePath('ts/bun.lock'),
     ...await metroBuildInputs(),
-  ].sort()
+  ].sort(Sort.CompareStrings)
   const sources = await Promise.all(paths.map(async path => [path, await FileSystem.readFile(path, 'utf8')] as const))
   return { sources: Object.fromEntries(sources), runtimeSources }
 }

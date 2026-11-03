@@ -1,4 +1,4 @@
-import { Errors, Lists, Regxs, Time, Try } from '@shared'
+import { Errors, Lists, Regxs, Sort, Time, Try } from '@shared'
 import { Path } from '@shared/os'
 import type { FSWatcher } from './bridges/Bridge_chokidar'
 import type { Stats } from './bridges/Bridge_node/Bridge_node'
@@ -147,7 +147,7 @@ function withinDirectory(root: string, path: string): boolean {
 }
 
 function collectUniquePaths(paths: readonly string[]): string[] {
-  return Lists.unique(paths.map(path => Path.resolve(path))).sort()
+  return Lists.unique(paths.map(path => Path.resolve(path))).sort(Sort.CompareStrings)
 }
 
 function ignoredName(name: string): boolean {

@@ -186,14 +186,15 @@ function renderGroups(groups: ReadonlyMap<string, Group>): string[] {
     if (group.text) {
       return group.text
     }
-    const namesCode = group.form === 'all' ? 'all' : [...group.names].sort().join(', ')
+    const namesCode = group.form === 'all' ? 'all' : [...group.names].sort(Shared.Sort.CompareStrings).join(', ')
     return `use ${group.source ? `${group.source} ` : ''}${namesCode}`
   })
 }
 
 function compareGroups(left: Group, right: Group): number {
   return rankSource(left.source) - rankSource(right.source)
-    || compareText(left.source, right.source) || compareText(left.form, right.form)
+    || Shared.Sort.CompareStrings(left.source, right.source)
+    || Shared.Sort.CompareStrings(left.form, right.form)
 }
 
 function rankSource(source: string): number {
@@ -208,14 +209,4 @@ function rankSource(source: string): number {
 
 function isExternalProjectAlias(source: string): boolean {
   return source.startsWith('@') || Shared.Regxs.PackageAliasPrefixRegx.test(source)
-}
-
-function compareText(left: string, right: string): number {
-  if (left < right) {
-    return -1
-  }
-  if (left > right) {
-    return 1
-  }
-  return 0
 }
