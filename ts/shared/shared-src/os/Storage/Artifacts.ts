@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Lists, Time, Try } from '../../universal/universal'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as Process from '../Process'
@@ -156,7 +157,7 @@ function writeTemporaryRun(): void {
 }
 
 function serializeTemporaryRun(record: TemporaryRun): string {
-  return JSON.stringify(record)
+  return Json.Print(record)
 }
 
 async function readTemporaryRuns(directory: string): Promise<{ path: string; record: TemporaryRun }[]> {
@@ -176,7 +177,7 @@ async function readTemporaryRuns(directory: string): Promise<{ path: string; rec
 }
 
 function parseTemporaryRun(contents: string): unknown {
-  return JSON.parse(contents)
+  return Json.Parse(contents)
 }
 
 function isTemporaryRun(value: unknown): value is TemporaryRun {

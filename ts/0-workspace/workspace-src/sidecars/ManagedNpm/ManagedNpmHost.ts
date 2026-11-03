@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
@@ -80,5 +81,5 @@ function hostMatches(metadata: ManagedProfileMetadata, input: ManagedModulesInpu
 }
 
 function serializeInstallHost(identity: unknown): string | undefined {
-  return JSON.stringify(identity)
+  return Json.Print(identity)
 }

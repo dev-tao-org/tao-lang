@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Shared from '@shared'
 import { FS, Path, Platform } from '@shared/os'
@@ -72,7 +73,7 @@ function reviewedMessage(selection: ReviewSelection, sourceCommit: string): stri
     `Source: ${sourceCommit}`,
     `Approval: ${selection.proposal}`,
     `Kind: ${selection.kind}`,
-    ...selection.files.map(path => `Path: ${JSON.stringify(path)}`),
+    ...selection.files.map(path => `Path: ${Json.Print(path)}`),
   )
 }
 
@@ -228,7 +229,7 @@ async function recordPhase(
 }
 
 function encodeIndexLockToken(session: ReviewSession, journal: ReviewJournal): string {
-  return JSON.stringify({ session: session.id, proposal: journal.selection.proposal })
+  return Json.Print({ session: session.id, proposal: journal.selection.proposal })
 }
 
 function resolveJournalPath(session: ReviewSession): string {

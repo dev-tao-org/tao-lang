@@ -2,8 +2,8 @@ import * as AST from '@ast-gen'
 import { Range } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { linkModules } from '../typecheck-src/Typecheck/LinkModules'
-import type { ImportStatement, SourceModule } from '../typecheck-src/Typecheck/Modules'
+import { linkModules } from '../typecheck-src/Typecheck'
+import type { ImportStatement, SourceModule } from '../typecheck-src/Typecheck'
 import * as Fixtures from './LinkModules.test-fixtures'
 
 Tests.test('named aliases, public wildcards and folder siblings become local bindings', () => {

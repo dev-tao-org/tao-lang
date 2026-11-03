@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -157,7 +158,7 @@ Tests.test('prepare refuses to replace a malformed durable lock', async () => {
     const options = Fixtures.createGitDependencyFixtureOptions(root, commits, calls)
     const pinned = await Store.prepareDependencies(root, [Fixtures.createGithubRequirement('example/one')], options)
     pinned.commitPins = {}
-    const damaged = JSON.stringify(pinned)
+    const damaged = Json.Print(pinned)
     await FS.writeFile(lockPath, damaged)
     commits.set('example/one:main', 'b'.repeat(40))
     const priorCalls = calls.length
@@ -175,7 +176,7 @@ Tests.test('dependency lock preparation rejects v1 without guessing per-ref comm
   const path = Path.join(root, '.tao', 'store', 'dependencies.lock.json')
   await Try(async () => {
     await FS.mkdir(Path.dirname(path))
-    await FS.writeFile(path, JSON.stringify({ version: 1, roots: {}, sources: {} }))
+    await FS.writeFile(path, Json.Print({ version: 1, roots: {}, sources: {} }))
     await Tests.rejects(LockFile.readDependencyLock(path), UnsupportedDependencyLockVersionErrorRegx)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
@@ -240,7 +241,7 @@ Tests.test('bundled sources require ordinary project marker metadata', async () 
     await Store.prepareDependencies(root, [requirement], options)
     const portableLock = await FS.readFile(Path.join(root, '.tao', 'store', 'dependencies.lock.json'), 'utf8')
     Tests.expect(portableLock).not.toContain(bundledRoot)
-    Tests.expect(JSON.parse(portableLock).sources['bundled:tao'].location).toBeUndefined()
+    Tests.expect((Json.Parse(portableLock) as DependencyLockFixture).sources['bundled:tao'].location).toBeUndefined()
     const replacement = Path.join(root, 'new-bundle')
     await FS.mkdir(Path.join(replacement, '.tao'))
     const nextOptions = { ...options, bundledProjects: { tao: replacement } }
@@ -280,12 +281,12 @@ Tests.test('prunes only npm locks without source graph or retained profile refer
     }
     await FS.writeFile(
       Path.join(profiles, 'retained-install', '.tao-managed.json'),
-      JSON.stringify({ graphFingerprint: 'retained' }),
+      Json.Print({ graphFingerprint: 'retained' }),
     )
     await FS.mkdir(Path.join(profiles, 'legacy-install'))
     await FS.writeFile(
       Path.join(profiles, 'legacy-install', '.tao-managed.json'),
-      JSON.stringify({ fingerprint: 'legacy-retained', graphFingerprint: 'different-graph' }),
+      Json.Print({ fingerprint: 'legacy-retained', graphFingerprint: 'different-graph' }),
     )
     await LockFile.recordManagedGraphReference(root, 'Main.tao', 'a'.repeat(64), referenced, 'b'.repeat(64))
     await LockFile.pruneUnreferencedManagedLocks(root)
@@ -319,3 +320,6 @@ async function verifyPinnedUpdates(root: string, requirements: DependencyRequire
     `fetch:${'3'.repeat(40)}`,
   ])
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type DependencyLockFixture = { sources: Record<string, { location?: unknown }> }

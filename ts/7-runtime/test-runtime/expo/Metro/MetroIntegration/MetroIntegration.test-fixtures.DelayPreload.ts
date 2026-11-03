@@ -1,9 +1,9 @@
-import { S } from '@shared'
+import { Json, S } from '@shared'
 
 /** delayPreload creates test-only Metro barriers and can inject a premature publication result. */
 export function delayPreload(preloadPath: string, publishBeforeAdmission = false): string {
   return S`
-    const production = require(${JSON.stringify(preloadPath)});
+    const production = require(${Json.Print(preloadPath)});
     const fs = require('node:fs');
     const path = require('node:path');
     const { createRequire } = require('node:module');

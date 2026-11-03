@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Addr } from '@shared'
 import { FS, Http, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -43,7 +44,9 @@ async function createPackageArtifacts(root: string): Promise<Map<string, Package
     await FS.mkdir(Path.dirname(directory))
     await FS.cp(Path.join(fixtures, name), directory, { recursive: true })
     await FS.rename(Path.join(directory, 'index-js.fixture'), Path.join(directory, 'index.js'))
-    const manifest = JSON.parse(await FS.readFile(Path.join(directory, 'package.json'), 'utf8'))
+    const manifest = Json.Parse(
+      await FS.readFile(Path.join(directory, 'package.json'), 'utf8'),
+    ) as RegistryFixtureManifest
     const archive = Path.join(root, 'registry', `${name}.tgz`)
     await Processes.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
     const bytes = await FS.readFile(archive)
@@ -87,3 +90,6 @@ function resolveFixtureVersion(name: string, reactVersion: string): string {
   }
   return '1.0.0'
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type RegistryFixtureManifest = { dependencies?: Record<string, string>; name: string; version: string }

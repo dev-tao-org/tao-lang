@@ -1,5 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import { FS, Http, Platform, Process } from '@shared/os'
 import type { TaoWorkerReport } from './TestPlan'
@@ -30,7 +31,7 @@ if (Platform.isMain(import.meta)) {
 }
 
 function encodeTaoWorkerReport(report: TaoWorkerReport): string {
-  return JSON.stringify(report)
+  return Json.Print(report)
 }
 
 function workerArguments(args: readonly string[]): { reportPath: string; paths: string[] } {

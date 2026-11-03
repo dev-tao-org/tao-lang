@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Runtime from '@runtime'
+import { Json } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Lists } from '@shared'
@@ -178,7 +179,7 @@ function describeNativeRebuildRequirement(profile: OptionalManagedProfile): stri
 // createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
 // Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
 function createDeclarationKey(program: Typecheck.LinkedProgram): string {
-  return JSON.stringify(program.modules.map(describeModuleDeclarationFingerprint))
+  return Json.Print(program.modules.map(describeModuleDeclarationFingerprint))
 }
 
 function describeModuleDeclarationFingerprint(module: Typecheck.LinkedProgram['modules'][number]) {
@@ -206,7 +207,7 @@ function serializeDeclarationFingerprint(declaration: AST.Declaration): unknown[
 }
 
 function createManagedGraphKey(input: ManagedModules.ManagedModulesInput): string {
-  return JSON.stringify({
+  return Json.Print({
     modules: input.modules.map(module => ({
       directory: module.directory,
       requirements: module.requirements.map(({ name, version }) => ({ name, version }))
@@ -220,7 +221,7 @@ function createManagedGraphKey(input: ManagedModules.ManagedModulesInput): strin
 }
 
 function createEmptyManagedGraphKey(): string {
-  return JSON.stringify({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
+  return Json.Print({ modules: [], target: 'web', runtimePins: {}, bunVersion: '' })
 }
 
 function createPipelineResult(sidecars: SidecarPipeline.PreparedSidecars): ProjectPipelineResult {

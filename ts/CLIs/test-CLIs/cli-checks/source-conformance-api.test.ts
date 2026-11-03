@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
@@ -58,7 +59,7 @@ Tests.test('source conformance > resolves imported member types before recommend
   await Try(async () => {
     await FS.write(
       Path.join(root, 'ts/tsconfig.base.json'),
-      JSON.stringify({
+      Json.Print({
         compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } },
       }),
     )
@@ -112,7 +113,7 @@ async function withTemporaryWorkspace(name: string, run: (root: string) => Promi
 async function writeImportFixture(root: string): Promise<void> {
   await FS.write(
     Path.join(root, 'ts/tsconfig.base.json'),
-    JSON.stringify({ compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } } }),
+    Json.Print({ compilerOptions: { strict: true, paths: { '@model': ['./model.ts'] } } }),
   )
   await FS.write(Path.join(root, 'ts/model.ts'), ImportedTokenSource)
   await FS.write(Path.join(root, 'ts/generated/imports.ts'), GeneratedImportSource)

@@ -1,18 +1,12 @@
+import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Platform } from '@shared/os'
 import { Command } from '../../../CLIs-src/cli-kit/bridges/Bridge_commander'
 import timingSetupController from '../../../CLIs-src/dev-cli/commands/timing-setup-controller'
 import timingSetupRunner from '../../../CLIs-src/dev-cli/commands/timing-setup-runner'
-import {
-  describeTimingSetup,
-  type TimingSetupCommandOptions,
-} from '../../../CLIs-src/dev-cli/timing/TimingCommandOptions'
-import {
-  connectTiming,
-  disconnectTiming,
-  type TimingConnectionIO,
-} from '../../../CLIs-src/dev-cli/timing/TimingConnection'
-import { readTimingJobPath, readTimingReport, type TimingReport } from '../../../CLIs-src/dev-cli/timing/TimingReport'
+import * as TimingCommandOptions from '../../../CLIs-src/dev-cli/timing/TimingCommandOptions'
+import * as TimingConnection from '../../../CLIs-src/dev-cli/timing/TimingConnection'
+import * as TimingReport from '../../../CLIs-src/dev-cli/timing/TimingReport'
 import { runTiming, type TimingRunIO } from '../../../CLIs-src/dev-cli/timing/TimingRun'
 import { setupTiming, type TimingSetupIO } from '../../../CLIs-src/dev-cli/timing/TimingSetup'
 
@@ -31,8 +25,8 @@ Tests.test('both timing setup registrations preserve parsed browser choices and 
         parser.option(option.flags, option.description)
       }
       parser.action(async () => {
-        const options = parser.opts<TimingSetupCommandOptions>()
-        await setupTiming(describeTimingSetup(role, options), fixture.io)
+        const options = parser.opts<TimingCommandOptions.TimingSetupCommandOptions>()
+        await setupTiming(TimingCommandOptions.describeTimingSetup(role, options), fixture.io)
       })
       await parser.parseAsync(args, { from: 'user' })
       if (args.includes('--dry-run')) {
@@ -79,7 +73,7 @@ Tests.test('timing setup previews without mutation and retains its pinned packag
 
 Tests.test('timing connection returns locally and reuses an authenticated socket without opening another master', async () => {
   const { commands, phases, io } = createConnectionFixture()
-  await connectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
+  await TimingConnection.connectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
   Tests.expect(phases).toEqual(['interactive', 'noninteractive'])
   Tests.expect(commands.length).toBe(2)
   Tests.expect(commands[0].name).toContain('ssh -fN')
@@ -98,7 +92,7 @@ Tests.test('timing connection returns locally and reuses an authenticated socket
   ])
   commands.length = 0
   io.exists = async () => true
-  await connectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
+  await TimingConnection.connectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
   Tests.expect(commands.map(command => command.name)).toEqual(['ssh -O check'])
   Tests.expect(commands[0].args).toEqual([
     '-S',
@@ -106,7 +100,7 @@ Tests.test('timing connection returns locally and reuses an authenticated socket
     '--',
     'ro@fixture.netbird.cloud',
   ])
-  await disconnectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
+  await TimingConnection.disconnectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
   Tests.expect(commands.at(-1)?.name).toBe('ssh -O exit')
   Tests.expect(commands.at(-1)?.args).toEqual([
     '-S',
@@ -116,7 +110,7 @@ Tests.test('timing connection returns locally and reuses an authenticated socket
   ])
   const count = commands.length
   io.exists = async () => false
-  await disconnectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
+  await TimingConnection.disconnectTiming({ host: 'ro@fixture.netbird.cloud' }, io)
   Tests.expect(commands.length).toBe(count)
 })
 
@@ -135,7 +129,7 @@ Tests.test('timing remote jobs retain literal paths and reject invalid workloads
   Artifacts.trackTemporary(reportsDirectory)
   const execute: TimingSetupIO['execute'] = async (name, options) => {
     commands.push({ name, args: [...options?.variadicArgs ?? []] })
-    const responses = [`Performance job: ${report.directory}\n`, JSON.stringify([report]), createJobResponse(report)]
+    const responses = [`Performance job: ${report.directory}\n`, Json.Print([report]), createJobResponse(report)]
     const response = responses[commands.length - 1]
     options?.output?.stdout(response)
   }
@@ -167,25 +161,25 @@ Tests.test('timing remote jobs retain literal paths and reject invalid workloads
 Tests.test('retained timing reports select one exact job and never launch another measurement', async () => {
   const report = createTimingReportFixture('/Users/ro/Timing')
   const commands: RecordedCommand[] = []
-  const responses = ['11111111-2222-3333-4444-555555555555\n', JSON.stringify([report]), createJobResponse(report)]
+  const responses = ['11111111-2222-3333-4444-555555555555\n', Json.Print([report]), createJobResponse(report)]
   const execute: TimingSetupIO['execute'] = async (name, options) => {
     commands.push({ name, args: [...options?.variadicArgs ?? []] })
     options?.output?.stdout(responses.shift()!)
   }
   const request = { host: 'ro@fixture.local', tooling: '/Users/ro/Timing' }
-  const collected = await readTimingReport(request, '/private/tmp/fixture.sock', execute)
+  const collected = await TimingReport.readTimingReport(request, '/private/tmp/fixture.sock', execute)
   Tests.expect(collected).toEqual(report)
   Tests.expect(commands[0].args.at(-1)).toContain("'/bin/ls' '-1t'")
   Tests.expect(commands[1].args.at(-1)).toContain("'summarize'")
   Tests.expect(commands.every(command => !command.args.at(-1)?.includes("'run'"))).toBe(true)
-  Tests.expect(() => readTimingJobPath('', request.tooling)).toThrow('one timing job identity')
-  Tests.expect(() => readTimingJobPath('Performance job: /outside/jobs/fixture\n', request.tooling))
+  Tests.expect(() => TimingReport.readTimingJobPath('', request.tooling)).toThrow('one timing job identity')
+  Tests.expect(() => TimingReport.readTimingJobPath('Performance job: /outside/jobs/fixture\n', request.tooling))
     .toThrow('inside this tooling checkout')
 })
 
 type RecordedCommand = { name: unknown; args: string[] }
 
-function createTimingReportFixture(tooling: string): TimingReport {
+function createTimingReportFixture(tooling: string): TimingReport.TimingReport {
   return {
     runner: 'ro@fixture.local',
     startedAt: '2026-11-01T10:00:00.000Z',
@@ -214,14 +208,14 @@ function createTimingReportFixture(tooling: string): TimingReport {
   }
 }
 
-function createJobResponse(report: TimingReport): string {
-  return JSON.stringify({ ...report, status: 'passed' })
+function createJobResponse(report: TimingReport.TimingReport): string {
+  return Json.Print({ ...report, status: 'passed' })
 }
 
 function createConnectionFixture() {
   const commands: RecordedCommand[] = []
   const phases: string[] = []
-  const io: TimingConnectionIO = {
+  const io: TimingConnection.TimingConnectionIO = {
     interactive: true,
     async execute(name, options) {
       phases.push('noninteractive')

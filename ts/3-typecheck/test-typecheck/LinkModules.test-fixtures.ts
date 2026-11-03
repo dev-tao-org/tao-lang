@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import { Range } from '@shared'
-import type { SourceModule } from '../typecheck-src/Typecheck/Modules'
+import type { SourceModule } from '../typecheck-src/Typecheck'
 
 /** createSource builds a linked-module fixture with explicit path and siblings. */
 export function createSource(

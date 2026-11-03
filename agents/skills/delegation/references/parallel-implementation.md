@@ -2,10 +2,10 @@
 
 Divide one outcome between agents that write at the same time, and put the pieces back together,
 once `delegation`'s own rules have said to delegate at all. Use when two or more substantial
-workstreams can proceed concurrently without sharing mutable seams. This assumes agents writing into
-your worktree, where ownership is what keeps them safe; a fan-out the Developer will run from printed briefs is
-the other case, where each agent takes a worktree of its own and there is no integration owner, and
-`delegation` says what changes.
+workstreams can proceed concurrently without sharing mutable seams. Each agent works in a separate
+worktree on a fresh feature branch from the parent's committed baseline. Name one integration owner
+and give every worker exclusive concept or path ownership to limit merge conflicts. A fan-out the
+Developer will run from printed briefs follows the same isolation rule; `delegation` owns its setup.
 
 ## Build the execution graph
 

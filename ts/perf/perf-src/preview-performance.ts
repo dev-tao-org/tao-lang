@@ -1,4 +1,5 @@
 import * as Runtime from '@runtime'
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -232,7 +233,7 @@ type PreviewPerformanceDefinitions = {
 }
 
 function serializePreviewPerformanceReport(report: PreviewPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 function requirePublished(result: Workspace.UpdateResult): void {

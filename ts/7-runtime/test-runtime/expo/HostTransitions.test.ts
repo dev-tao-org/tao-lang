@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { createConsumerHost } from '../../runtime-src/expo/ConsumerHost'
@@ -27,7 +28,7 @@ Tests.test('generated Expo host rejects array ownership records before removing 
   const sentinel = Path.join(host, '0')
   await FS.writeFile(sentinel, 'sentinel')
   for (const ownership of [[], { files: ['sentinel'] }]) {
-    const source = JSON.stringify(ownership)
+    const source = Json.Print(ownership)
     await FS.writeFile(Path.join(host, 'tao-host.json'), source)
     await Tests.expect(writeGeneratedHost(host, {})).rejects.toThrow('Invalid generated Expo host')
     Tests.expect(await FS.readFile(sentinel, 'utf8')).toBe('sentinel')
@@ -58,7 +59,9 @@ Tests.test('generated Expo host switches app and consumer packages while preserv
   Tests.expect(await FS.readFile(Path.join(host, 'metro.config.js'), 'utf8')).toContain('tao-resolution.json')
   Tests.expect(FS.existsSync(Path.join(host, 'tao-consumer.json'))).toBe(false)
   Tests.expect(await FS.readFile(sentinel, 'utf8')).toBe('preserve')
-  Tests.expect(JSON.parse(await FS.readFile(Path.join(host, 'app.json'), 'utf8')).expo.platforms).toEqual([
+  Tests.expect(
+    (Json.Parse(await FS.readFile(Path.join(host, 'app.json'), 'utf8')) as ExpoHostFixture).expo.platforms,
+  ).toEqual([
     'web',
   ])
   await verifyUnrelatedHostPaths(first, sentinel)
@@ -108,3 +111,6 @@ async function createConsumerPackage(root: string, name: string) {
     devDependencies: {},
   }
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ExpoHostFixture = { expo: { platforms: string[] } }

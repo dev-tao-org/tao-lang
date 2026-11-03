@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
@@ -29,6 +29,18 @@ export function deriveCompilerPaths(directory: string, apis = readPackageApis())
   return paths
 }
 
+/** synchronizePackageApis updates the compiler alias snapshot from package-owned public APIs. */
+export function synchronizePackageApis(root = Repo.getWorkspaceRoot()): void {
+  const configPath = Path.join(root, 'ts/tsconfig.base.json')
+  const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile).config
+  config.compilerOptions.paths = deriveCompilerPaths(Path.dirname(configPath), readPackageApis(root))
+  FS.writeFileSync(configPath, `${serializeCompilerConfig(config)}\n`)
+}
+
+function serializeCompilerConfig(config: unknown): string {
+  return Json.PrintIndented(config)
+}
+
 /** assertPackageApis checks manifest ownership, exact files and the generated compiler alias snapshot. */
 export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   const apis = readPackageApis(root)
@@ -45,7 +57,7 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   const expected = deriveCompilerPaths(Path.dirname(configPath), apis)
   if (!haveEqualCompilerPaths(config.compilerOptions.paths, expected)) {
     Errors.ThrowUserInput(
-      'TypeScript paths must match manifest-owned exact public APIs. Regenerate the alias snapshot.',
+      'TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.',
     )
   }
 }

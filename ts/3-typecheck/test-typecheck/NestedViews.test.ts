@@ -3,7 +3,7 @@ import { Range } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { collectReferencedNames } from '../typecheck-src/LinkModuleValidation'
-import { linkModules } from '../typecheck-src/Typecheck/LinkModules'
+import { linkModules } from '../typecheck-src/Typecheck'
 import * as Fixtures from './LinkModules.test-fixtures'
 
 Tests.test('nested views resolve their sibling group through descendants', () => {

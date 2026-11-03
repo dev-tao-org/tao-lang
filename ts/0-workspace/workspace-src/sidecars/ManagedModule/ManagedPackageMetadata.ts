@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import { FS } from '@shared/os'
 import type { ManagedPackageVersionMap } from './ManagedModuleTypes'
@@ -50,7 +51,7 @@ export function readOptionalPeerNames(value: unknown): Set<string> {
 
 /** readPackageMetadata reads a package manifest or reports managed npm state failure. */
 export async function readPackageMetadata(path: string): Promise<ManagedMetadataFields> {
-  return await Try(async () => JSON.parse(await FS.readFile(path, 'utf8')) as ManagedMetadataFields, {
+  return await Try(async () => Json.Parse(await FS.readFile(path, 'utf8')) as ManagedMetadataFields, {
     catch: () =>
       Errors.ThrowUserInput(`Managed npm state is missing or invalid at ${path}; repair with: tao setup --repair.`),
   })

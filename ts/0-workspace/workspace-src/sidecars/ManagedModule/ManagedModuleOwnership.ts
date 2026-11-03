@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Lists, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
@@ -132,7 +133,7 @@ type GeneratedModuleDependencyFields = Record<string, unknown>
 type GeneratedModuleManifest = { dependencies?: GeneratedModuleDependencyFields }
 
 function parseGeneratedModulePackageNames(contents: string): string[] {
-  const manifest = JSON.parse(contents) as GeneratedModuleManifest
+  const manifest = Json.Parse(contents) as GeneratedModuleManifest
   return Object.keys(manifest.dependencies ?? {})
 }
 
@@ -154,7 +155,7 @@ function isManagedModuleOwner(value: unknown): value is ManagedModuleOwner {
 }
 
 function parseManagedModuleOwner(contents: string): ParsedModuleOwnerFields | undefined {
-  const value: unknown = JSON.parse(contents)
+  const value: unknown = Json.Parse(contents)
   return isParsedModuleOwnerFields(value) ? value : undefined
 }
 

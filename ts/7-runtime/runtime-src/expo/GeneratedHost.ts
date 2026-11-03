@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
@@ -95,7 +96,7 @@ async function readHostOwnership(path: string): Promise<GeneratedHostOwnership |
 }
 
 function parseHostOwnership(source: string): GeneratedHostOwnership {
-  const value: unknown = JSON.parse(source)
+  const value: unknown = Json.Parse(source)
   if (!isOwnershipRecord(value)) {
     return Errors.ThrowUserInput('Invalid generated Expo host ownership record.')
   }
@@ -123,5 +124,5 @@ function isOwnershipRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function serializeHostOwnership(files: GeneratedHostFiles, dependencies?: string): string {
-  return JSON.stringify({ files, dependencies }, null, 2)
+  return Json.PrintIndented({ files, dependencies })
 }

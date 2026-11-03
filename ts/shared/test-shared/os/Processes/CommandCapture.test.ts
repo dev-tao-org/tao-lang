@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -12,10 +13,10 @@ Tests.test('a command deadline bounds inherited capture after its immediate chil
   await FS.mkdir(root)
   let descendantPid: OptionalDescendantPid
   const source = `await Bun.write(${
-    JSON.stringify(receipt)
+    Json.Print(receipt)
   }, String(process.pid)); process.stdout.write('partial output'); process.stderr.write('partial diagnostic'); setTimeout(() => process.exit(0), 3000)`
   const parentSource = `Bun.spawn([process.execPath, '-e', ${
-    JSON.stringify(source)
+    Json.Print(source)
   }], { stdin: 'ignore', stdout: 'inherit', stderr: 'inherit' }); process.exit(0)`
   const command = [Process.argv[0]!, '-e', parentSource]
   const observed = Processes.runIgnoreStatus(command, { timeoutMs: 100 }).then(

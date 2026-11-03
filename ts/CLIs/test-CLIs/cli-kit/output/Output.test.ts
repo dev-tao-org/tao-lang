@@ -3,11 +3,7 @@ import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Text } from '@shared/os'
 import { createOutput, formatChannelCompletion } from '../../../CLIs-src/cli-kit/output/Output'
-import {
-  createProcessOutput,
-  encodeOutputMessage,
-  type OutputMessage,
-} from '../../../CLIs-src/cli-kit/output/ProcessOutput'
+import * as ProcessOutput from '../../../CLIs-src/cli-kit/output/ProcessOutput'
 import { displayStatus, elapsed, wrappedTail } from '../../../CLIs-src/cli-kit/output/tui/Display'
 
 Tests.test('output preserves streamed UTF-8 and raw sink text while keeping visible lines plain', async () => {
@@ -40,9 +36,13 @@ Tests.test('output snapshots retain only the bounded tail of each channel', asyn
 
 Tests.test('subprocess output retains framed severity across byte fragments without classifying raw stderr', () => {
   const raw: string[] = []
-  const messages: OutputMessage[] = []
-  const pipe = createProcessOutput(text => raw.push(text), event => messages.push(event))
-  const frame = encodeOutputMessage({ stream: 'stdout', level: 'warn', text: '\u20AC warning' + NewlineCharacter })
+  const messages: ProcessOutput.OutputMessage[] = []
+  const pipe = ProcessOutput.createProcessOutput(text => raw.push(text), event => messages.push(event))
+  const frame = ProcessOutput.encodeOutputMessage({
+    stream: 'stdout',
+    level: 'warn',
+    text: '\u20AC warning' + NewlineCharacter,
+  })
   const encode = Text.encodeUtf8
   const source = Shared.joinTextLines('normal stderr', frame + (RecordSeparatorCharacter + 'invalid'), 'trailing')
   const bytes = encode(source)

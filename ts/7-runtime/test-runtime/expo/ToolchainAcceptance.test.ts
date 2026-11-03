@@ -1,4 +1,5 @@
 import * as RuntimeTooling from '@cli-kit/runtime-tooling'
+import { Json } from '@shared'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -22,7 +23,7 @@ Tests.test(
 )
 
 async function verifyPatchCopies(resources: string, packageDirectory: string): Promise<void> {
-  const manifest = JSON.parse(await FS.readFile(Path.join(resources, 'package.json'), 'utf8')) as {
+  const manifest = Json.Parse(await FS.readFile(Path.join(resources, 'package.json'), 'utf8')) as {
     patchedDependencies: Record<string, string>
   }
   const patchPaths = Object.values(manifest.patchedDependencies).sort()

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FS, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
@@ -23,7 +24,7 @@ const embeddedFiles = {
 }
 
 function serializeEmbeddedProjectMetadata(metadata: typeof ProjectMetadata): string {
-  return `${JSON.stringify(metadata, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented(metadata)}${NewlineCharacter}`
 }
 
 async function resolveDefaultProjectDirectory(): Promise<string> {
@@ -69,7 +70,7 @@ async function materializeProject(cacheRoot: string, resources: StdlibResourceFi
 }
 
 function serializeStdlibResourceEntries(entries: StdlibResourceEntries): string {
-  return JSON.stringify(entries)
+  return Json.Print(entries)
 }
 
 function validateResources(entries: StdlibResourceEntries): void {

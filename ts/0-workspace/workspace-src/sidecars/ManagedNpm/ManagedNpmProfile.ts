@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
@@ -235,7 +236,7 @@ async function persistProfile(
 }
 
 function serializeProfileMetadata(metadata: State.ManagedProfileMetadata): string {
-  return `${JSON.stringify(metadata, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented(metadata)}${NewlineCharacter}`
 }
 
 function createProfileMetadata(

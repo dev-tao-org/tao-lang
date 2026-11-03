@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
@@ -10,7 +11,7 @@ Tests.test('runs an installed skill script with exact argv values', async () => 
     const entry = await addSkill(root)
     const args = ['has spaces', '', 'λ', '$HOME', '$(touch nope)', '--flag', '--']
     await runSkillScript(entry, args, root)
-    Tests.expect(JSON.parse(await FS.readFile(Path.join(root, 'captured.json'), 'utf8'))).toEqual({
+    Tests.expect(Json.Parse(await FS.readFile(Path.join(root, 'captured.json'), 'utf8'))).toEqual({
       args,
       aliasResolved: true,
     })
@@ -116,11 +117,11 @@ async function addSkill(root: string): Promise<string> {
     ),
   )
   const entry = Path.join(scripts, 'run.ts')
-  const capture = JSON.stringify(Path.join(root, 'captured.json'))
+  const capture = Json.Print(Path.join(root, 'captured.json'))
   await FS.mkdir(Path.join(root, 'ts'))
   await FS.writeFile(
     Path.join(root, 'ts/tsconfig.json'),
-    JSON.stringify({ extends: Repo.resolvePath('ts/tsconfig.base.json') }),
+    Json.Print({ extends: Repo.resolvePath('ts/tsconfig.base.json') }),
   )
   await FS.writeFile(
     entry,

@@ -1,5 +1,6 @@
 import type * as Runtime from '@runtime'
 import type * as Expo from '@runtime/expo'
+import { Json } from '@shared'
 
 import { Errors, NewlineCharacter, Objects, Timings, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
@@ -148,7 +149,7 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: Runtime.Ru
 }
 
 function serializePublishedBuildConfiguration(extendsPath: string): string {
-  return `${JSON.stringify({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] })}${NewlineCharacter}`
 }
 
 async function writeSnapshotFiles(

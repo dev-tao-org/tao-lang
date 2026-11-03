@@ -1,4 +1,5 @@
 import * as Client from '@runtime/client'
+import { Json } from '@shared'
 
 import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
@@ -59,7 +60,7 @@ type ReactivityPerformanceDefinitions = {
 }
 
 function serializeReactivityPerformanceReport(report: ReactivityPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'create-dispose'

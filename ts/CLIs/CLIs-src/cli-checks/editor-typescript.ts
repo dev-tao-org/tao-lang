@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -39,5 +40,17 @@ function sdkVersion(sdk: string): string {
   if (!FS.existsSync(Path.join(directory, 'tsserver.js'))) {
     Errors.ThrowUserInput(`Editor TypeScript SDK is missing: ${sdk}. Run ./agent setup or correct the SDK path.`)
   }
-  return JSON.parse(FS.readFileSync(Path.join(directory, '../package.json'), 'utf8')).version
+  return parseSdkVersion(FS.readFileSync(Path.join(directory, '../package.json'), 'utf8'))
+}
+
+function parseSdkVersion(source: string): string {
+  const manifest = Json.Parse(source)
+  if (!manifest || typeof manifest !== 'object') {
+    Errors.ThrowUserInput('Editor TypeScript package manifest must contain a version string.')
+  }
+  const version = (manifest as Record<string, unknown>).version
+  if (typeof version !== 'string') {
+    Errors.ThrowUserInput('Editor TypeScript package manifest must contain a version string.')
+  }
+  return version
 }

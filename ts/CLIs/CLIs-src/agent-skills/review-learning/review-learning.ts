@@ -1,4 +1,5 @@
 import { IO } from '@cli-kit'
+import { Json } from '@shared'
 import { Errors, Objects } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { Process } from '@shared/os'
@@ -42,7 +43,7 @@ type Options = Map<string, string[]>
 type OptionalOptionName = string | undefined
 
 function formatLearningResult(result: ReviewLearningCommandResult): string {
-  return JSON.stringify(result, null, 2)
+  return Json.PrintIndented(result)
 }
 
 async function executeCommand(

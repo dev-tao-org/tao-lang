@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
 import * as Shared from '@shared'
 import { Files, FS, Path } from '@shared/os'
@@ -36,7 +37,7 @@ export function createForeignViewContractSource(input: ForeignViewContractSource
   const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
   const foreignViewName = input.name
-  const resolvedImportPath = JSON.stringify(Path.toRelativeModuleSpecifier(importPath))
+  const resolvedImportPath = Json.Print(Path.toRelativeModuleSpecifier(importPath))
   return Shared.joinTextLines(
     S`
       import type * as React from 'react'

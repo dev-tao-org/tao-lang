@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -146,7 +147,7 @@ async function writePackages(root: string, dependencies: Record<string, string>)
   for (const [name, version] of Object.entries(dependencies)) {
     const packageDirectory = Path.join(root, 'node_modules', name)
     await FS.mkdir(packageDirectory)
-    await FS.writeFile(Path.join(packageDirectory, 'package.json'), JSON.stringify({ name, version }))
+    await FS.writeFile(Path.join(packageDirectory, 'package.json'), Json.Print({ name, version }))
   }
 }
 

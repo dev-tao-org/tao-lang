@@ -1,5 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 import { Repo } from '@shared/os'
 import { Process } from '@shared/os'
 import { Command } from '../../cli-kit/bridges/Bridge_commander'
@@ -97,5 +98,5 @@ function registerMeasurementCommands(command: Command): void {
 }
 
 function printResult(value: unknown): void {
-  IO.print(JSON.stringify(value, null, 2))
+  IO.print(Json.PrintIndented(value))
 }

@@ -1,4 +1,4 @@
-import { NewlineCharacter, NullCharacter } from '@shared'
+import { Json, NewlineCharacter, NullCharacter, Sort } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from '../ManagedModule/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../ManagedModule/ManagedModuleMetadata'
@@ -6,7 +6,7 @@ import * as ManagedModuleTypes from '../ManagedModule/ManagedModuleTypes'
 import { installHostIdentity } from './ManagedNpmHost'
 import * as ManagedNpmPolicy from './ManagedNpmPolicy'
 
-/** normalizeManagedRequirements sorts declaration inputs with locale-independent code-point order. */
+/** normalizeManagedRequirements sorts declaration inputs by ordinal UTF-16 code-unit order. */
 export function normalizeManagedRequirements(
   input: ManagedModuleTypes.ManagedModulesInput,
 ): ManagedModuleTypes.NormalizedManagedRequirement[] {
@@ -17,11 +17,7 @@ export function normalizeManagedRequirements(
       version: requirement.version,
       origin: requirement.origin,
     }))
-  ).sort((left, right) => {
-    const leftKey = createRequirementOrderKey(left)
-    const rightKey = createRequirementOrderKey(right)
-    return ManagedNpmPolicy.compareCodePointStrings(leftKey, rightKey)
-  })
+  ).sort(Sort.By(createRequirementOrderKey, Sort.CompareStrings))
 }
 
 /** calculateManagedGraphFingerprint hashes the canonical graph and policy inputs. */
@@ -30,11 +26,13 @@ export function calculateManagedGraphFingerprint(
   normalized: readonly ManagedModuleTypes.NormalizedManagedRequirement[],
 ): string {
   const requirements = collectAllRequirements(normalized, input.runtimePins)
-  return Platform.hashText(JSON.stringify({
-    requirements: Object.fromEntries(Object.keys(requirements).sort().map(key => [key, requirements[key]])),
+  return Platform.hashText(Json.Print({
+    requirements: Object.fromEntries(Sort.Strings(Object.keys(requirements)).map(key => [key, requirements[key]])),
     target: input.target,
-    runtimePins: Object.fromEntries(Object.keys(input.runtimePins).sort().map(key => [key, input.runtimePins[key]])),
-    singletonPackages: [...input.singletonPackages ?? defaultSingletonPackages].sort(),
+    runtimePins: Object.fromEntries(
+      Sort.Strings(Object.keys(input.runtimePins)).map(key => [key, input.runtimePins[key]]),
+    ),
+    singletonPackages: Sort.Strings(input.singletonPackages ?? defaultSingletonPackages),
     policyRegistryVersion: 1,
     runtimePolicy: ManagedNpmPolicy.describeManagedResolutionPolicy(input.runtimePolicy),
   }))
@@ -45,7 +43,7 @@ export function calculateManagedProfileFingerprint(
   input: ManagedModuleTypes.ManagedModulesInput,
   graphFingerprint: string,
 ): string {
-  return Platform.hashText(JSON.stringify({
+  return Platform.hashText(Json.Print({
     graphFingerprint,
     bunVersion: input.bunVersion,
     installHost: installHostIdentity(input),

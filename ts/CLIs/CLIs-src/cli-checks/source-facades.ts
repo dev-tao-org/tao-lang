@@ -193,7 +193,7 @@ function isLiteralModuleSpecifier(node: OptionalModuleSpecifier): node is TypeSc
 }
 
 function mayAccessImplementation(importer: string, owner: ModuleFacade): boolean {
-  // Exact sibling test folders belong to this module; arbitrary test files do not bypass its boundary.
+  // Mirrored central test folders belong to this module; unrelated tests use its facade.
   const testDirectory = centralTestDirectory(owner.directory)
   return importer === owner.filename || isInside(importer, owner.directory) || isInside(importer, testDirectory)
 }
@@ -242,7 +242,7 @@ function isPrivatePackageImport(importer: string, target: string, context: Sourc
 function sourcePackageDirectory(filename: string, root: string): string | undefined {
   const relative = normalizePath(Path.relative(Path.join(root, 'ts'), filename))
   const segments = relative.split('/')
-  if (segments[0] === '..' || segments.length < 3) {
+  if (segments[0] === '..' || segments.length < 3 || segments.includes('node_modules')) {
     return
   }
   return segments[0] === 'ide-extensions' ? segments.slice(0, 2).join('/') : segments[0]
@@ -256,6 +256,7 @@ function isPlatformToolBoundary(filename: string, root: string): boolean {
     'ts/shared/shared-src/os/preview/PreviewErrors.ts',
     'ts/shared/shared-src/os/Tooling/Bootstrap.ts',
     'ts/shared/shared-src/os/Process/Process-Current.ts',
+    'ts/ide-extensions/bridges/Bridge_vscode.ts',
     'ts/4-fix/fix-src/lib/formatter/Bridge_dprint-formatter/Bridge_dprint-formatter-resources.ts',
     'ts/ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-javascript.ts',
     'ts/ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-typescript.ts',

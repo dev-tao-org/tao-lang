@@ -1,13 +1,7 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform } from '@shared/os'
-import {
-  findProjectMarker,
-  findProjects,
-  walk,
-  withWritableFile,
-  writeReadOnly,
-} from '../../../../shared-src/os/FS/Files'
+import * as Files from '../../../../shared-src/os/FS/Files'
 
 const { join, relative } = Path
 const { mkdir, mkdirs, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } = FS
@@ -25,11 +19,12 @@ Tests.test('walk skips dependency and VCS trees and does not follow directory sy
     await writeFile(join(outside, 'outside'), '')
     await symlink(outside, join(root, 'linked'))
     const canonical = await realpath(root)
-    Tests.expect((await walk(root)).map(path => relative(canonical, path))).toEqual(['src/visible'])
-    Tests.expect((await walk(root, { taoBoundary: false })).map(path => relative(canonical, path)).sort()).toEqual([
-      '.tao/boundary',
-      'src/visible',
-    ])
+    Tests.expect((await Files.walk(root)).map(path => relative(canonical, path))).toEqual(['src/visible'])
+    Tests.expect((await Files.walk(root, { taoBoundary: false })).map(path => relative(canonical, path)).sort())
+      .toEqual([
+        '.tao/boundary',
+        'src/visible',
+      ])
   }, {
     async finally() {
       await rm(root, { recursive: true, force: true })
@@ -43,7 +38,7 @@ Tests.test('findProjectMarker sees empty nested boundaries and ignores excluded 
   await Try(async () => {
     await mkdirs(join(root, 'node_modules', '.tao'), join(root, 'src', '.tao'))
     const canonical = await realpath(root)
-    Tests.expect(await findProjectMarker(root)).toBe(join(canonical, 'src', '.tao'))
+    Tests.expect(await Files.findProjectMarker(root)).toBe(join(canonical, 'src', '.tao'))
   }, {
     async finally() {
       await rm(root, { recursive: true, force: true })
@@ -57,11 +52,11 @@ Tests.test('findProjects stops at empty project markers instead of traversing th
   await Try(async () => {
     await mkdirs(join(root, 'App', '.tao', 'cache', 'nested', '.tao'), join(root, 'Other', 'src', '.tao'))
     await mkdir(join(root, 'node_modules', 'Ignored', '.tao'))
-    Tests.expect(await findProjects(root)).toEqual([
+    Tests.expect(await Files.findProjects(root)).toEqual([
       join(canonical, 'App'),
       join(canonical, 'Other', 'src'),
     ])
-    Tests.expect(await findProjects(join(root, 'App'))).toEqual([join(canonical, 'App')])
+    Tests.expect(await Files.findProjects(join(root, 'App'))).toEqual([join(canonical, 'App')])
   }, {
     async finally() {
       await rm(root, { recursive: true, force: true })
@@ -75,15 +70,15 @@ Tests.test('withWritableFile restores permissions after successful and failed wr
   await Try(async () => {
     await writeFile(path, 'before', { mode: 0o400 })
     const mode = (await stat(path)).mode & 0o777
-    await withWritableFile(path, async file => file.write('after'))
-    await withWritableFile(path, async file => {
+    await Files.withWritableFile(path, async file => file.write('after'))
+    await Files.withWritableFile(path, async file => {
       await file.write('first version')
       await file.write('final')
     })
     Tests.expect(await readFile(path, 'utf8')).toBe('final')
     Tests.expect((await stat(path)).mode & 0o777).toBe(mode)
     await Tests.expect(() =>
-      withWritableFile(path, async file => {
+      Files.withWritableFile(path, async file => {
         await file.write('failed')
         throw new Error('failure')
       })
@@ -100,14 +95,14 @@ Tests.test('generated metadata is read-only and refuses dangling symlink destina
   const root = await mkdtemp(join(temporaryDirectory(), 'tao-generated-'))
   await Try(async () => {
     const path = join(root, 'metadata')
-    await writeReadOnly(path, 'initial')
-    await writeReadOnly(path, 'updated')
+    await Files.writeReadOnly(path, 'initial')
+    await Files.writeReadOnly(path, 'updated')
     Tests.expect(await readFile(path, 'utf8')).toBe('updated')
     Tests.expect((await stat(path)).mode & 0o222).toBe(0)
     const missing = join(root, 'missing')
     const link = join(root, 'link')
     await symlink(missing, link)
-    await Tests.expect(() => writeReadOnly(link, 'unsafe')).toThrow('regular file')
+    await Tests.expect(() => Files.writeReadOnly(link, 'unsafe')).toThrow('regular file')
     await Tests.expect(() => stat(missing)).toThrow()
   }, { finally: () => rm(root, { recursive: true, force: true }) })
 })

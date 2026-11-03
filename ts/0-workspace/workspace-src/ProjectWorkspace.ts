@@ -6,7 +6,7 @@ import { createProjectPipeline, type ProjectPipelineResult, type ProjectPipeline
 import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
 import { createWorkspace, type WorkspaceOptions, type WorkspaceSession } from './Workspace'
-import type { WorkspacePreparation } from './Workspace/WorkspaceOptions'
+import type { WorkspacePreparation } from './Workspace'
 
 /** ProjectWorkspaceOptions configures a managed project workspace and its session lifetime. */
 export type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & SessionOptions & {

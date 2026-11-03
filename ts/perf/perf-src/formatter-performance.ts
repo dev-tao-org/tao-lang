@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import * as Fix from '@fix'
 import * as Embedded from '@fix/embedded'
 import * as Grammar from '@grammar'
+import { Json } from '@shared'
 import { Processes } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
@@ -73,7 +74,7 @@ type FormatterPerformanceReport = {
 type FormatterFixtureReport = { scenario: string; hash: string }
 
 function serializeFormatterPerformanceReport(report: FormatterPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: Embedded.EmbeddedFormatter) {

@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
+import { Json } from '@shared'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
@@ -74,23 +75,19 @@ async function writeGeneratedSources(directory: string, files: Readonly<Record<s
 }
 
 function serializeLibraryBuildConfiguration(): string {
-  return JSON.stringify(
-    {
-      compilerOptions: {
-        jsx: 'react-jsx',
-        paths: {
-          '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
-          '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
-          '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
-          '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
-          '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
-          '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
-        },
+  return Json.PrintIndented({
+    compilerOptions: {
+      jsx: 'react-jsx',
+      paths: {
+        '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
+        '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
+        '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
+        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
+        '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
+        '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
       },
     },
-    null,
-    2,
-  )
+  })
 }
 
 async function writeLibraryPackage(
@@ -116,18 +113,14 @@ async function writeLibraryPackage(
 type LibraryPackageExports = Record<string, { types: string; default: string }>
 
 function serializeLibraryPackage(name: string, exports: LibraryPackageExports): string {
-  return JSON.stringify(
-    {
-      name,
-      version: '0.0.0',
-      type: 'module',
-      exports,
-      peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
-      dependencies: { '@preact/signals-core': '1.14.4' },
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    name,
+    version: '0.0.0',
+    type: 'module',
+    exports,
+    peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
+    dependencies: { '@preact/signals-core': '1.14.4' },
+  })
 }
 
 function compileViewDeclaration(view: Compile.PublishedView): string {

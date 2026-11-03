@@ -1,9 +1,10 @@
+import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { runtimeLock } from '../../CLIs-src/cli-checks/runtime-lock'
 
 Tests.test('runtime packaging replaces workspace roots while preserving locked registry resolutions', () => {
-  const source = JSON.stringify({
+  const source = Json.Print({
     lockfileVersion: 3,
     configVersion: 1,
     workspaces: { '': { name: 'workspace' }, '7-runtime': { name: '@tao/runtime' } },
@@ -16,12 +17,12 @@ Tests.test('runtime packaging replaces workspace roots while preserving locked r
       '@types/react-dom': ['@types/react-dom@19.2.0', '', {}, 'types-react-dom-integrity'],
     },
   })
-  const packaged = JSON.parse(runtimeLock(source, {
+  const packaged = Json.Parse(runtimeLock(source, {
     name: 'tao-expo-toolchain',
     private: true,
     dependencies: { expo: '57.0.30', react: '19.2.3' },
     devDependencies: { '@types/react': '~19.2.0', '@types/react-dom': '~19.2.0' },
-  }))
+  })) as PackagedLockFixture
   Tests.expect(packaged.workspaces).toEqual({
     '': {
       name: 'tao-expo-toolchain',
@@ -39,7 +40,7 @@ Tests.test('runtime packaging replaces workspace roots while preserving locked r
 })
 
 Tests.test('runtime packaging keeps registry resolutions and their patched dependency hashes', () => {
-  const source = JSON.stringify({
+  const source = Json.Print({
     lockfileVersion: 3,
     configVersion: 1,
     workspaces: { '': { name: 'workspace' } },
@@ -53,7 +54,7 @@ Tests.test('runtime packaging keeps registry resolutions and their patched depen
     },
   })
 
-  const packaged = JSON.parse(runtimeLock(source, {
+  const packaged = Json.Parse(runtimeLock(source, {
     name: 'tao-expo-toolchain',
     private: true,
     dependencies: { 'metro-fixture': '1.0.0' },
@@ -61,7 +62,7 @@ Tests.test('runtime packaging keeps registry resolutions and their patched depen
       'metro-fixture@1.0.0': 'patches/metro-fixture.patch',
       'metro-helper@2.0.0': 'patches/metro-helper.patch',
     },
-  }))
+  })) as PackagedLockFixture
 
   Tests.expect(packaged.packages).toEqual({
     'metro-fixture': ['metro-fixture@1.0.0', '', { dependencies: { 'metro-helper': '^2.0.0' } }, 'metro-integrity'],
@@ -72,3 +73,6 @@ Tests.test('runtime packaging keeps registry resolutions and their patched depen
     'metro-helper@2.0.0': 'helper-patch-hash',
   })
 })
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type PackagedLockFixture = Record<string, unknown>

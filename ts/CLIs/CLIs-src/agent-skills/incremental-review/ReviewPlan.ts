@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NullCharacter, Regxs, TabCharacter, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
@@ -106,7 +107,7 @@ export async function replaceEntries(root: string, index: string, revision: stri
 const GitRemovalObjectId = '0'.repeat(40)
 
 function encodeReviewSelection(selection: ReviewSelection): string {
-  return JSON.stringify(selection)
+  return Json.Print(selection)
 }
 
 async function wholeCandidates(

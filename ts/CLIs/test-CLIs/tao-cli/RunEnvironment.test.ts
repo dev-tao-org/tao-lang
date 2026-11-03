@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
@@ -38,7 +39,7 @@ async function writeRecordingConsumer(directory: string, receipt: string): Promi
       ci: process.env.CI,
       args: process.argv.slice(2),
     };
-    await Bun.write(${JSON.stringify(receipt)}, JSON.stringify(launch));
+    await Bun.write(${Json.Print(receipt)}, JSON.stringify(launch));
   `
   await FS.writeFile(Path.join(directory, 'node_modules/.bin/expo'), recorder, { mode: 0o755 })
 }
@@ -46,5 +47,5 @@ async function writeRecordingConsumer(directory: string, receipt: string): Promi
 type ExpoLaunchReceipt = { headless: string; ci: string; args: string[] }
 
 function parseExpoLaunchReceipt(source: string): ExpoLaunchReceipt {
-  return JSON.parse(source) as ExpoLaunchReceipt
+  return Json.Parse(source) as ExpoLaunchReceipt
 }

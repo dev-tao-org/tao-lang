@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import type * as Typecheck from '@typecheck'
@@ -102,11 +103,11 @@ type ObservedSourceField = 'path' | 'document'
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
   const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort()
-  return JSON.stringify(serializedRequirements)
+  return Json.Print(serializedRequirements)
 }
 
 function serializeDependencyRequirement(requirement: DependencyRequirement): string {
-  return JSON.stringify(requirement)
+  return Json.Print(requirement)
 }
 
 function requireEditableDependencyDeclarations(lock: DependencyLock, owner: string): void {

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '../../universal/universal'
 import * as FS from '../FS'
 import * as Path from '../Path'
@@ -10,7 +11,7 @@ export async function readPackageMetadata(packageName: string, fromDirectory: st
   if (!root) {
     Errors.ThrowHostEnvironment(`Cannot locate the installed package ${packageName}.`)
   }
-  const manifest = JSON.parse(await FS.readFile(Path.join(root, 'package.json'), 'utf8')) as {
+  const manifest = Json.Parse(await FS.readFile(Path.join(root, 'package.json'), 'utf8')) as {
     name?: string
     version?: string
   }

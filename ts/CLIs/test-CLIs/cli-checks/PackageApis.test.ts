@@ -1,4 +1,4 @@
-import { Try } from '@shared'
+import { Json, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
@@ -14,6 +14,8 @@ Tests.test('public APIs derive exact aliases from manifests and reject drift and
     Tests.expect(PackageApis.readPackageImportRules(root).get('@example')?.namespace).toBe('Example')
     await FS.write(Path.join(root, 'ts/tsconfig.base.json'), '{"compilerOptions":{"paths":{}}}')
     Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('paths must match')
+    PackageApis.synchronizePackageApis(root)
+    Tests.expect(() => PackageApis.assertPackageApis(root)).not.toThrow()
     await writeApiFixture(root, './example-src/*', '@example/*')
     Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('exact file exports')
     await writeApiFixture(root, './example-src/Absent.ts', '@example')
@@ -42,7 +44,11 @@ async function writeApiFixture(root: string, target: string, alias: string): Pro
     exports: { '.': target },
     tao: { publicApi: { '.': { alias, namespace: 'Example' } } },
   }
-  await FS.write(Path.join(root, 'ts/example/package.json'), JSON.stringify(manifest))
+  await FS.write(Path.join(root, 'ts/example/package.json'), serializeApiFixture(manifest))
   const paths = { [alias]: ['./example/example-src/Example.ts'] }
-  await FS.write(Path.join(root, 'ts/tsconfig.base.json'), JSON.stringify({ compilerOptions: { paths } }))
+  await FS.write(Path.join(root, 'ts/tsconfig.base.json'), serializeApiFixture({ compilerOptions: { paths } }))
+}
+
+function serializeApiFixture(value: unknown): string {
+  return Json.Print(value)
 }

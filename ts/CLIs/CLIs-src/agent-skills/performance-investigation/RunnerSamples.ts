@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 import { createSampleName, JobFileName } from './JobFiles'
@@ -35,6 +36,6 @@ export async function collectSamples(
 async function writeJob(directory: string, job: MeasurementJob): Promise<void> {
   const path = Path.join(directory, JobFileName)
   const pending = `${path}.pending`
-  await FS.writeFile(pending, JSON.stringify(job, null, 2) + '\n')
+  await FS.writeFile(pending, Json.PrintIndented(job) + '\n')
   await FS.rename(pending, path)
 }

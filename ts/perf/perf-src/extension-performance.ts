@@ -1,4 +1,5 @@
 import * as IDE from '@ide'
+import { Json } from '@shared'
 import { Errors, Lists, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 
@@ -76,7 +77,7 @@ type ExtensionPerformanceReport = {
 }
 
 function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 type ExtensionPerformanceSummary = {

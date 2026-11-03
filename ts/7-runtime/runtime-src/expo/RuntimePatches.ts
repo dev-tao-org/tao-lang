@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 
@@ -26,7 +27,7 @@ export async function readRuntimePatches(directory: string): Promise<RuntimePatc
 type RuntimePackageManifest = { patchedDependencies?: PatchedDependencyPaths }
 
 async function readRuntimePackageManifest(path: string): Promise<RuntimePackageManifest> {
-  const parsed: unknown = JSON.parse(await FS.readFile(path, 'utf8'))
+  const parsed: unknown = Json.Parse(await FS.readFile(path, 'utf8'))
   if (!isRuntimePackageManifest(parsed)) {
     Errors.ThrowUserInput(`Runtime package manifest ${path} must be an object with string patch paths.`)
   }

@@ -44,7 +44,7 @@ export default registerCommand({
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
-      const { recordPreviewPerformance } = await import('../../../../perf/perf-src/Preview/PreviewHistory')
+      const { recordPreviewPerformance } = await import('@perf')
       const record = await recordPreviewPerformance(runPreview)
       IO.print(`${record.reused ? 'Existing' : 'Recorded'} commit performance: ${record.directory}`)
       return
@@ -56,7 +56,7 @@ export default registerCommand({
       await runPreview(source)
       return
     }
-    const { parserPerformance } = await import('../../../../perf/perf-src/parser-performance')
+    const { parserPerformance } = await import('@perf')
     const { path, summary } = await parserPerformance(timings.samples)
     for (const phase of summary) {
       IO.print(
@@ -69,7 +69,7 @@ export default registerCommand({
 
 async function runModules(): Promise<void> {
   await prepareRuntime()
-  const { moduleRefreshPerformance } = await import('../../../../perf/perf-src/module-refresh-performance')
+  const { moduleRefreshPerformance } = await import('@perf')
   const { path, summary } = await moduleRefreshPerformance()
   for (const result of summary) {
     IO.print(`${result.layout}: median ${result.medianMs.toFixed(1)} ms, p95 ${result.p95Ms.toFixed(1)} ms`)
@@ -78,7 +78,7 @@ async function runModules(): Promise<void> {
 }
 
 async function runReactivity(): Promise<void> {
-  const { reactivityPerformance } = await import('../../../../perf/perf-src/reactivity-performance')
+  const { reactivityPerformance } = await import('@perf')
   const { path, summary } = await reactivityPerformance()
   for (const result of summary) {
     IO.print(`${result.candidate}/${result.scenario}: median ${result.medianMs.toFixed(3)} ms per 1000 operations`)
@@ -88,7 +88,7 @@ async function runReactivity(): Promise<void> {
 
 async function runFormatter(): Promise<void> {
   await prepareParser()
-  const { formatterPerformance } = await import('../../../../perf/perf-src/formatter-performance')
+  const { formatterPerformance } = await import('@perf')
   const { path, summary } = await formatterPerformance()
   for (const phase of summary) {
     IO.print(
@@ -101,7 +101,7 @@ async function runFormatter(): Promise<void> {
 async function runExtension(): Promise<void> {
   const { prepareExtensionAssets } = await import('../ide/ExtensionBuild')
   await prepareExtensionAssets()
-  const { extensionPerformance } = await import('../../../../perf/perf-src/extension-performance')
+  const { extensionPerformance } = await import('@perf')
   const { path, summary } = await extensionPerformance()
   for (const phase of summary) {
     IO.print(

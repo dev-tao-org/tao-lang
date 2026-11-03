@@ -1,4 +1,5 @@
 import type * as Runtime from '@runtime'
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
@@ -24,7 +25,7 @@ export async function prepareBuildTypeScript(
 
 type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
-  return `${JSON.stringify(configuration, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented(configuration)}${NewlineCharacter}`
 }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {

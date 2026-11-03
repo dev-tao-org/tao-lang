@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -14,19 +15,19 @@ Tests.test('production session acquisition gives setup guidance for malformed an
     const script = S`
       import { mock } from 'bun:test';
       import { Try } from ${
-      JSON.stringify(new WebHost.URL('../../../../shared-src/universal/universal.ts', import.meta.url).href)
+      Json.Print(new WebHost.URL('../../../../shared-src/universal/universal.ts', import.meta.url).href)
     };
       const fs = await import('node:fs/promises');
-      const artifacts = await import(${JSON.stringify(artifactsUrl)});
+      const artifacts = await import(${Json.Print(artifactsUrl)});
       const resolvePath = artifacts.resolvePath;
-      mock.module(${JSON.stringify(artifactsUrl)}, () => ({ ...artifacts,
-        resolvePath: (...parts) => parts[0] === 'cache/native-locks' ? ${JSON.stringify(root)} : resolvePath(...parts)
+      mock.module(${Json.Print(artifactsUrl)}, () => ({ ...artifacts,
+        resolvePath: (...parts) => parts[0] === 'cache/native-locks' ? ${Json.Print(root)} : resolvePath(...parts)
       }));
-      const locks = await import(${JSON.stringify(lockUrl)});
+      const locks = await import(${Json.Print(lockUrl)});
       const failures = [];
       for (const contents of ['{', '{}', JSON.stringify({identity:'a'.repeat(64)}), JSON.stringify({identity:'a'.repeat(64),directory:'../outside'})]) {
-        await fs.writeFile(${JSON.stringify(Path.join(root, 'current.json'))}, contents);
-        await Try(() => locks.acquire(${JSON.stringify(Path.join(root, 'session.lock'))}), {
+        await fs.writeFile(${Json.Print(Path.join(root, 'current.json'))}, contents);
+        await Try(() => locks.acquire(${Json.Print(Path.join(root, 'session.lock'))}), {
           catch: error => failures.push({name:error.name,message:error.message})
         });
       }
@@ -39,7 +40,7 @@ Tests.test('production session acquisition gives setup guidance for malformed an
       Processes.readText(child.stderr),
     ])
     Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
-    const failures = JSON.parse(stdout) as Array<{ name: string; message: string }>
+    const failures = Json.Parse(stdout) as Array<{ name: string; message: string }>
     Tests.expect(failures).toHaveLength(4)
     Tests.expect(
       failures.every(error => error.name === 'HostEnvironmentError' && error.message.includes('./agent setup')),

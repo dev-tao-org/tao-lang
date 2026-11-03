@@ -1,15 +1,16 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FS, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
 /** encodeLearningSnapshot retains insertion order in the complete scan identity. */
 export function encodeLearningSnapshot(snapshot: LearningSnapshot): string {
-  return JSON.stringify(snapshot)
+  return Json.Print(snapshot)
 }
 
 /** haveDifferentLearningFileHashes compares captured hashes while retaining path insertion order. */
 export function haveDifferentLearningFileHashes(left: LearningFileHashes, right: LearningFileHashes): boolean {
-  return JSON.stringify(left) !== JSON.stringify(right)
+  return Json.Print(left) !== Json.Print(right)
 }
 
 /** withLearningState serializes retained state writes within the authorized checkout. */
@@ -41,7 +42,7 @@ export async function withLearningState<Value>(
 export async function saveLearningState(state: LearningState): Promise<void> {
   const path = Path.join(state.root, '.artifacts/notes/review-learning/state.json')
   const temporary = `${path}.${Platform.randomUUID()}.pending`
-  await FS.writeFile(temporary, JSON.stringify(state, null, 2) + NewlineCharacter, { flag: 'wx' })
+  await FS.writeFile(temporary, Json.PrintIndented(state) + NewlineCharacter, { flag: 'wx' })
   await FS.rename(temporary, path)
 }
 
@@ -121,7 +122,7 @@ function isRootScope(scope: string): boolean {
 }
 
 async function readLearningState(path: string): Promise<LearningState> {
-  return JSON.parse(await FS.readFile(path, 'utf8')) as LearningState
+  return Json.Parse(await FS.readFile(path, 'utf8')) as LearningState
 }
 
 async function collectSources(root: string): Promise<string[]> {

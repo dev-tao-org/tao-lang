@@ -1,4 +1,5 @@
 import * as Runtime from '@runtime'
+import { Json } from '@shared'
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -271,7 +272,7 @@ type ModuleRefreshPerformanceSummary = {
 }[]
 
 function serializeModuleRefreshPerformanceReport(report: ModuleRefreshPerformanceReport): string {
-  return JSON.stringify(report, null, 2)
+  return Json.PrintIndented(report)
 }
 
 async function disposeLayouts(owned: Resources): Promise<void> {

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -198,7 +199,7 @@ Tests.test('project cleaning removes generated cache and retains durable store a
     const externalLink = Path.join(layout.cacheDirectory, 'external')
     await FS.mkdirs(Path.dirname(store), Path.dirname(generated), external)
     await FS.writeFile(store, '{}')
-    await FS.writeFile(dependencyLock, JSON.stringify({ version: 2, roots: {}, sources: {}, commitPins: {} }))
+    await FS.writeFile(dependencyLock, Json.Print({ version: 2, roots: {}, sources: {}, commitPins: {} }))
     await FS.writeFile(generated, 'generated')
     await FS.writeFile(externalFile, 'keep')
     await FS.symlink(external, externalLink)
@@ -272,7 +273,7 @@ async function createManagedFileDependency(root: string, dependency: string): Pr
   await FS.mkdirs(Path.join(dependency, '.tao'), module, profile)
   await FS.writeFile(
     Path.join(profile, '.tao-managed.json'),
-    JSON.stringify({ fingerprint: 'fixture', lockHash: 'fixture' }),
+    Json.Print({ fingerprint: 'fixture', lockHash: 'fixture' }),
   )
   for (const [path, contents] of files) {
     await FS.writeFile(path, contents)
@@ -290,7 +291,7 @@ async function writeModuleOwnership(
 ): Promise<void> {
   await FS.writeFile(
     Path.join(module, '.tao-managed-module.json'),
-    JSON.stringify({
+    Json.Print({
       files: files.map(([path]) => path),
       generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
       packages: [],
@@ -302,7 +303,7 @@ async function writeModuleOwnership(
 async function writeDependencyLock(taoDirectory: string, root: string, dependency: string): Promise<void> {
   await FS.writeFile(
     Path.join(taoDirectory, 'store', 'dependencies.lock.json'),
-    JSON.stringify({
+    Json.Print({
       version: 2,
       roots: { dependency: 'dependency@1.0.0' },
       commitPins: {},

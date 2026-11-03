@@ -2,10 +2,7 @@ import { S } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
-import {
-  concreteReturnTypeIssue,
-  ownLineNullishIssue,
-} from '../../CLIs-src/cli-checks/source-conformance-result-contracts'
+import * as SourceConformanceResultContracts from '../../CLIs-src/cli-checks/source-conformance-result-contracts'
 
 Tests.test('result contract conformance > names concrete return types and preserves generic substitution', () => {
   const source = S`
@@ -46,7 +43,7 @@ function semanticIssuesFor(source: string): number[] {
   const { file, checker } = createSemanticFixture(source)
   const issues: number[] = []
   const visit = (node: TypeScript.Node): void => {
-    if (concreteReturnTypeIssue(node, checker)) {
+    if (SourceConformanceResultContracts.concreteReturnTypeIssue(node, checker)) {
       issues.push(lineOf(node, file))
     }
     TypeScript.forEachChild(node, visit)
@@ -59,7 +56,7 @@ function nullishIssuesFor(source: string): number[] {
   const file = TypeScript.createSourceFile('/result-contracts.ts', source, TypeScript.ScriptTarget.Latest, true)
   const issues: number[] = []
   const visit = (node: TypeScript.Node): void => {
-    if (ownLineNullishIssue(node, file)) {
+    if (SourceConformanceResultContracts.ownLineNullishIssue(node, file)) {
       issues.push(lineOf(node, file))
     }
     TypeScript.forEachChild(node, visit)

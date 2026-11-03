@@ -1,4 +1,5 @@
 import type * as Runtime from '@runtime'
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 
@@ -28,7 +29,7 @@ export async function readTypeScriptProjectPackage(directory: string): Promise<T
 }
 
 function parseTypeScriptProjectPackage(source: string, directory: string): TypeScriptProjectPackage {
-  const value: unknown = JSON.parse(source)
+  const value: unknown = Json.Parse(source)
   const manifest = requirePackageRecord(value, 'package.json')
   const name = requireString(manifest.name, 'package.json name')
   const tao = manifest.tao === undefined ? {} : requirePackageRecord(manifest.tao, 'tao')

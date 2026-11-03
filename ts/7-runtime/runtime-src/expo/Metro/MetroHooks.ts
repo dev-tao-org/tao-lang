@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as MetroPlatform from '@shared/os/metro'
 import * as ExpoCli from '../../bridges/Bridge_expo-cli/Bridge_expo-cli'
@@ -150,17 +151,17 @@ function wrapSend(send: Send, options: MetroHookOptions): Send {
 }
 
 function decorateHmrPayload(message: string, options: MetroHookOptions): string {
-  const payload = JSON.parse(message) as HmrPayload
+  const payload = Json.Parse(message) as HmrPayload
   const current = options.current()
   payload.tao = { sessionId: options.sessionId, revision: current.revision, sequence: current.sequence }
   if (payload.type === 'error') {
-    options.reportError(JSON.stringify(payload.body))
+    options.reportError(Json.Print(payload.body))
   }
-  return JSON.stringify(payload)
+  return Json.Print(payload)
 }
 
 function serializeInternalHmrError(error: unknown): string {
-  return JSON.stringify({ type: 'error', body: { type: 'InternalError', message: String(error) } })
+  return Json.Print({ type: 'error', body: { type: 'InternalError', message: String(error) } })
 }
 
 function wrapChangeListeners(prototype: MetroPrototype, options: MetroHookOptions): void {

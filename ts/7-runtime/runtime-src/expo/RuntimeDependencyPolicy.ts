@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
@@ -7,7 +8,7 @@ export type RuntimeDependencyLock = Record<string, unknown> & { packages: Record
 
 /** parseRuntimeDependencyLock validates package identities in a bun.lock JSON document. */
 export function parseRuntimeDependencyLock(contents: string, path: string): RuntimeDependencyLock {
-  const parsed: unknown = JSON.parse(contents)
+  const parsed: unknown = Json.Parse(contents)
   if (!isRuntimeDependencyLock(parsed)) {
     Errors.ThrowUserInput(`Runtime dependency lock ${path} must contain package records with string identities.`)
   }

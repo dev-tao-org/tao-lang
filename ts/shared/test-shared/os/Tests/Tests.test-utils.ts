@@ -92,6 +92,7 @@ type OptionalTestStorageRoot = string | undefined
 let testStorageRoot: OptionalTestStorageRoot
 
 function withTestStorage<Value>(action: () => Value): Value {
+  FS.mkdirSync(Artifacts.resolvePath('tmp'), { recursive: true })
   const cache = Env.get('TAO_CACHE_DIR')
   const support = Env.get('TAO_SUPPORT_DIR')
   if (cache && support) {

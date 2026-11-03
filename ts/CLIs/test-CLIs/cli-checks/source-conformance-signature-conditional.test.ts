@@ -2,10 +2,7 @@ import { S } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
-import {
-  nestedConditionalIssue,
-  selectedFunctionCallIssue,
-} from '../../CLIs-src/cli-checks/source-conformance-conditional'
+import * as SourceConformanceConditional from '../../CLIs-src/cli-checks/source-conformance-conditional'
 import { complexSignatureTypeIssue } from '../../CLIs-src/cli-checks/source-conformance-signatures'
 
 Tests.test('source conformance > requires aliases for complex signature contracts', () => {
@@ -36,7 +33,7 @@ Tests.test('source conformance > rejects nested ternaries through wrappers but k
     value ? () => flag ? 1 : 2 : () => 3
     value ? 1 : flag ? 2 : 3
   `
-  Tests.expect(issuesFor(source, nestedConditionalIssue)).toEqual([3, 4, 6])
+  Tests.expect(issuesFor(source, SourceConformanceConditional.nestedConditionalIssue)).toEqual([3, 4, 6])
 })
 
 Tests.test('source conformance > names selected callees without rejecting fallback arguments or ordinary calls', () => {
@@ -55,7 +52,7 @@ Tests.test('source conformance > names selected callees without rejecting fallba
     run(first ?? second)
     ({ run: second }).run()
   `
-  Tests.expect(issuesFor(source, selectedFunctionCallIssue)).toEqual([5, 6, 7, 8, 9])
+  Tests.expect(issuesFor(source, SourceConformanceConditional.selectedFunctionCallIssue)).toEqual([5, 6, 7, 8, 9])
 })
 
 function issuesFor(source: string, issueFor: (node: TypeScript.Node) => string | undefined): number[] {

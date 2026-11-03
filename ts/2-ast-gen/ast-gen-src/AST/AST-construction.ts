@@ -1,4 +1,5 @@
 import * as CST from '@cst'
+import { Json } from '@shared'
 import * as Shared from '@shared'
 import * as Generated from '../../_gen_AST/AST-generated'
 
@@ -249,7 +250,7 @@ function constructName(cst: CST.SyntaxNode): Generated.Name {
 }
 
 function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
-  return makeNode(cst, 'TextLiteral', { value: JSON.parse(cst.text) as string })
+  return makeNode(cst, 'TextLiteral', { value: Json.Parse(cst.text) as string })
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {

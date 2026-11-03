@@ -1,9 +1,9 @@
 import { IO } from '@cli-kit'
-import { Errors, Timings, type TimingSample } from '@shared'
+import { Errors, Json, Timings, type TimingSample } from '@shared'
 import { Platform } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 
-const loadParserModule = Timings.measured('parser.module-load', () => import('../../1-grammar/grammar-src/parser'))
+const loadParserModule = Timings.measured('parser.module-load', () => import('@grammar'))
 
 const main = Timings.createTopLevelTimer(async function(timings) {
   const { createParser } = await timings.run(loadParserModule)
@@ -17,7 +17,7 @@ const main = Timings.createTopLevelTimer(async function(timings) {
 })
 
 function serializeParserTimingSamples(samples: readonly TimingSample[]): string {
-  return JSON.stringify(samples)
+  return Json.Print(samples)
 }
 
 if (Platform.isMain(import.meta)) {

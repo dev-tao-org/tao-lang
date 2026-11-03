@@ -33,6 +33,8 @@
         "namespace": "Shared",
         "entities": [
           "Errors",
+          "Json",
+          "Sort",
           "Lists",
           "Addr",
           "Objects",

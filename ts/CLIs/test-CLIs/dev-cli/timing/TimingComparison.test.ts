@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { presentTimingReport, type TimingReport } from '../../../CLIs-src/dev-cli/timing/TimingReport'
@@ -26,6 +27,9 @@ Tests.test('timing reports select the previous comparable measurement and never 
   await saveReport(directory, diagnostic)
   await saveReport(directory, createReport('future', '12', 900))
   await FS.writeFile(Path.join(directory, 'invalid.json'), '{')
+  const overflow = Json.Print(createReport('overflow', '10:55', 900))
+    .replace('"system":{}', '"system":{"overflow":1e400}')
+  await FS.writeFile(Path.join(directory, 'overflow.json'), overflow)
   const current = createReport('current', '11', 25)
   const printed: string[] = []
   const print = (message: string) => printed.push(message)
@@ -34,7 +38,7 @@ Tests.test('timing reports select the previous comparable measurement and never 
   Tests.expect(printed[0]).toBe(printed[1])
   Tests.expect(printed[0]).toContain('Baseline: baseline · 2026-11-01T10:00:00.000Z')
   Tests.expect(printed[0]).toContain('warm/text: +5.00 ms (+25.0%); session ranges overlap')
-  Tests.expect(printed[0]).toContain('Skipped 1 saved report(s) lacking valid provenance or measurements.')
+  Tests.expect(printed[0]).toContain('Skipped 2 saved report(s) lacking valid provenance or measurements.')
   Tests.expect(printed[0]).toContain(
     'Machine drift control: measured source tree is unchanged; any detected shift requires confirmation.',
   )
@@ -145,5 +149,5 @@ function createConditions(): TimingReport['conditions'] {
 
 async function saveReport(directory: string, report: TimingReport): Promise<void> {
   const path = Path.join(directory, Path.basename(report.directory) + '.json')
-  await FS.writeFile(path, JSON.stringify(report))
+  await FS.writeFile(path, Json.Print(report))
 }

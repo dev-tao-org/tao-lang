@@ -20,6 +20,9 @@
       "@workspace/testing": [
         "./0-workspace/workspace-src/testing/WorkspaceTests.ts"
       ],
+      "@workspace-tests": [
+        "./0-workspace/test-workspace/Workspace.test-utils.ts"
+      ],
       "@grammar": [
         "./1-grammar/grammar-src/Grammar.ts"
       ],
@@ -37,6 +40,9 @@
       ],
       "@fix": [
         "./4-fix/fix-src/Fix.ts"
+      ],
+      "@fix/format": [
+        "./4-fix/fix-src/Fix/Format.ts"
       ],
       "@check": [
         "./5-check/check-src/Check.ts"
@@ -74,6 +80,12 @@
       "@cli-kit": [
         "./CLIs/CLIs-src/cli-kit/cli-kit.ts"
       ],
+      "@cli-kit/runtime-tooling": [
+        "./CLIs/CLIs-src/cli-checks/RuntimeTooling.ts"
+      ],
+      "@perf": [
+        "./perf/perf-src/Perf.ts"
+      ],
       "@shared": [
         "./shared/shared-src/shared.ts"
       ],
@@ -86,17 +98,8 @@
       "@shared/os/browser": [
         "./shared/shared-src/os/BrowserRuntime.ts"
       ],
-      "@stdlib": [
-        "./stdlib/stdlib-src/Stdlib.ts"
-      ],
-      "@tao/ts-api": [
-        "./ts-api/ts-api-src/ts-api.ts"
-      ],
       "@shared-tests": [
         "./shared/test-shared/os/Tests/Tests.test-utils.ts"
-      ],
-      "@workspace-tests": [
-        "./0-workspace/test-workspace/Workspace.test-utils.ts"
       ],
       "@shared/preview": [
         "./shared/shared-src/Preview.ts"
@@ -107,14 +110,11 @@
       "@shared/os/metro": [
         "./shared/shared-src/os/MetroPlatform.ts"
       ],
-      "@fix/format": [
-        "./4-fix/fix-src/Fix/Format.ts"
+      "@stdlib": [
+        "./stdlib/stdlib-src/Stdlib.ts"
       ],
-      "@perf": [
-        "./perf/perf-src/Perf.ts"
-      ],
-      "@cli-kit/runtime-tooling": [
-        "./CLIs/CLIs-src/cli-checks/RuntimeTooling.ts"
+      "@tao/ts-api": [
+        "./ts-api/ts-api-src/ts-api.ts"
       ],
       "@ide": [
         "./ide-extensions/tao-ide-extension/tao-ide-extension-src/Editor.ts"

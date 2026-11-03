@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
@@ -33,6 +34,6 @@ Tests.test('compiled Tao library emits explicit own-project public component pat
 })
 
 function readPackageManifest(source: string): { exports: Record<string, unknown> } {
-  const manifest = JSON.parse(source) as { exports?: Record<string, unknown> }
+  const manifest = Json.Parse(source) as { exports?: Record<string, unknown> }
   return manifest.exports ? { exports: manifest.exports } : Errors.ThrowShouldNeverHappen('Package exports missing.')
 }

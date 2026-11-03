@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 
 import { S, Source } from '@shared'
 
-import { unusedWarnings } from '../typecheck-src/Typecheck/Usage'
+import { unusedWarnings } from '../typecheck-src/Typecheck'
 
 Tests.test('unused warnings follow lexical bindings, captures and namespace uses without treating exports as unused', () => {
   const source = S`

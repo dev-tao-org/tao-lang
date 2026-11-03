@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
@@ -28,7 +29,7 @@ Tests.test('runtime source directories include production additions and exclude 
     Tests.expect(Object.values(sources).some(path => path.includes('/Bridge_expo-host'))).toBe(false)
 
     const resources = await prepareRuntime()
-    const metadata = JSON.parse(await FS.readFile(Path.join(resources, 'runtime.json'), 'utf8')) as {
+    const metadata = Json.Parse(await FS.readFile(Path.join(resources, 'runtime.json'), 'utf8')) as {
       sourceFiles: string[]
     }
     Tests.expect(metadata.sourceFiles).toContain('runtime/TR.ts')

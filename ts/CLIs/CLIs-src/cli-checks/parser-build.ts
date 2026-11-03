@@ -1,4 +1,5 @@
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -111,11 +112,11 @@ async function collectEnvironmentInputs(): Promise<string> {
 }
 
 function encodeParserBuildInputs(inputs: ParserBuildInputs): string {
-  return JSON.stringify(inputs)
+  return Json.Print(inputs)
 }
 
 function parseParserNodeMetadata(contents: string): ParserNodeMetadata {
-  return JSON.parse(contents) as ParserNodeMetadata
+  return Json.Parse(contents) as ParserNodeMetadata
 }
 
 async function writeBuildTimings(timings: Timings): Promise<void> {
@@ -127,5 +128,5 @@ async function writeBuildTimings(timings: Timings): Promise<void> {
 }
 
 function formatParserBuildTimings(timings: Timings): string {
-  return JSON.stringify({ version: 1, samples: timings.samples }, null, 2)
+  return Json.PrintIndented({ version: 1, samples: timings.samples })
 }

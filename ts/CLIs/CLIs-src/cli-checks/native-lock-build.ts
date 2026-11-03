@@ -1,4 +1,5 @@
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 import { NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -111,11 +112,11 @@ type NativeBuildIdentityInputs = {
 }
 
 function createNativeBuildIdentity(inputs: NativeBuildIdentityInputs): string {
-  return Platform.hashText(JSON.stringify(inputs))
+  return Platform.hashText(Json.Print(inputs))
 }
 
 function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {
-  return JSON.parse(contents) as NativeInputs['node']
+  return Json.Parse(contents) as NativeInputs['node']
 }
 
 async function readBuilderSources(): Promise<string[]> {

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import type { Browser, Page } from '../bridges/Bridge_playwright'
 import Env from '../Env'
@@ -85,5 +86,5 @@ async function expectInput(page: Page, tag: string, value: string): Promise<void
     }
     await Time.sleep(Math.min(25, Math.max(0, deadline - Time.nowMs())))
   }
-  Errors.ThrowUserInput(`Expected #${tag} input value ${JSON.stringify(value)}, received ${JSON.stringify(actual)}.`)
+  Errors.ThrowUserInput(`Expected #${tag} input value ${Json.Print(value)}, received ${Json.Print(actual)}.`)
 }

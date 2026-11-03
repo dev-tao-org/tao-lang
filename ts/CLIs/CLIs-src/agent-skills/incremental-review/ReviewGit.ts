@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { Processes } from '@shared/os'
@@ -151,13 +152,13 @@ export async function assertSupportedTransforms(root: string, files: string[], i
 
 /** readJson reads retained workflow state without interpreting it as instructions. */
 export async function readJson<Value>(path: string): Promise<Value> {
-  return JSON.parse(await FS.readFile(path, 'utf8')) as Value
+  return Json.Parse(await FS.readFile(path, 'utf8')) as Value
 }
 
 /** writeJson atomically replaces retained state. */
 export async function writeJson(path: string, value: unknown): Promise<void> {
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FS.writeFile(pending, JSON.stringify(value, null, 2) + NewlineCharacter)
+  await FS.writeFile(pending, Json.PrintIndented(value) + NewlineCharacter)
   await FS.rename(pending, path)
 }
 

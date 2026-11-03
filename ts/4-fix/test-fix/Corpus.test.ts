@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
+import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { Errors, NewlineCharacter } from '@shared'
@@ -50,7 +51,7 @@ async function listTaoFiles(relative: string): Promise<string[]> {
 }
 
 function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
-  return JSON.stringify(value, (key, item) => {
+  return Json.Print(value, (key, item) => {
     if (key === 'start' || key === 'end') {
       return undefined
     }

@@ -2,7 +2,6 @@
   "extends": "../tsconfig.base.json",
   "include": [
     "shared-src/**/*",
-    "test-shared/**/*",
     "test-shared/**/*"
   ],
   "compilerOptions": {

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import * as Shared from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
@@ -137,5 +138,5 @@ async function ensureProjectIdentity(path: string): Promise<void> {
 }
 
 function serializeProjectIdentity(id: string): string {
-  return `${JSON.stringify({ version: 1, id }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ version: 1, id })}${NewlineCharacter}`
 }

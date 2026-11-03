@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
@@ -37,7 +38,7 @@ Tests.test('source conformance > requires sibling facade files to contain only i
 async function createFixture(): Promise<string> {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-facade-'))
   const files = {
-    'ts/tsconfig.base.json': JSON.stringify({
+    'ts/tsconfig.base.json': Json.Print({
       compilerOptions: { strict: true, paths: { '@feature/*': ['./fixture/fixture-src/Feature/*'] } },
     }),
     'ts/Feature.ts':

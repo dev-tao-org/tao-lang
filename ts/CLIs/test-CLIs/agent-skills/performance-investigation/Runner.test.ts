@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
@@ -19,7 +20,9 @@ Tests.test('measurement failure retains completed samples and records a failed j
       }
       return report
     })).rejects.toThrow('Fixture measurement failed')
-    const saved = JSON.parse(await FS.readFile(Path.join(directory, 'job.json'), 'utf8'))
+    const saved = Json.Parse(
+      await FS.readFile(Path.join(directory, 'job.json'), 'utf8'),
+    ) as MeasurementFixtureRecord
     Tests.expect(saved.status).toBe('failed')
     Tests.expect(saved.samples).toEqual(['sample-1.json'])
     Tests.expect(saved.finishedAt).toBeString()
@@ -35,7 +38,7 @@ Tests.test('summaries keep warm edits grouped by independent session and reject 
     const report = Path.join(directory, 'raw.json')
     await collectSamples(directory, job, async () => {
       calls++
-      await FS.writeFile(report, JSON.stringify(createReport(job, calls)))
+      await FS.writeFile(report, Json.Print(createReport(job, calls)))
       return report
     })
     const summary = await summarizeJob(directory)
@@ -54,9 +57,9 @@ Tests.test('summaries keep warm edits grouped by independent session and reject 
     const duplicate = await FS.readFile(Path.join(directory, 'sample-1.json'), 'utf8')
     await FS.writeFile(path, duplicate)
     await Tests.expect(summarizeJob(directory)).rejects.toThrow('Duplicate session')
-    const truncated = JSON.parse(duplicate)
+    const truncated = Json.Parse(duplicate) as MeasurementFixtureRecord
     truncated.results.pop()
-    await FS.writeFile(path, JSON.stringify(truncated))
+    await FS.writeFile(path, Json.Print(truncated))
     await Tests.expect(summarizeJob(directory)).rejects.toThrow('workload is incomplete')
   })
 })
@@ -134,3 +137,6 @@ async function withDirectory(action: (directory: string) => Promise<void>): Prom
   await FS.mkdir(directory)
   await Try(() => action(directory), { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type MeasurementFixtureRecord = { status: string; samples: string[]; finishedAt: string; results: unknown[] }

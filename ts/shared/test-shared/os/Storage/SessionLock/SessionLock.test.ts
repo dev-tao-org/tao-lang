@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -50,14 +51,14 @@ Tests.test('session locks are released by the kernel when their owning process e
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-session-lock-child-'))
   const path = join(root, 'session.lock')
   const output = Artifacts.resolvePath('cache/native-locks')
-  const pointer = JSON.parse(await readFile(join(output, 'current.json'), 'utf8')) as {
+  const pointer = Json.Parse(await readFile(join(output, 'current.json'), 'utf8')) as {
     identity: string
     directory: string
   }
   const addon = join(output, pointer.directory, 'build/Release/tao_os_locks.node')
   await Try(async () => {
     const script = `const lock = require(${
-      JSON.stringify(addon)
+      Json.Print(addon)
     }).acquire(process.argv[1]); if (!lock) process.exit(3); process.stdout.write('locked'); process.exit(0)`
     const child = Processes.spawnPiped(Process.execPath, { variadicArgs: ['-e', script, path] })
     const [status, stdout] = await Promise.all([child.exited, Processes.readText(child.stdout)])

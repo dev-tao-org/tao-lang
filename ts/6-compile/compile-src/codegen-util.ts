@@ -1,4 +1,5 @@
 import type * as AST from '@ast-gen'
+import { Json } from '@shared'
 import { NewlineCharacter, S } from '@shared'
 import type * as Typecheck from '@typecheck'
 
@@ -28,7 +29,7 @@ export function getScopeValue(scope: ScopeCode): string {
 
 /** emitStringLiteral escapes an external string for a generated JavaScript literal. */
 export function emitStringLiteral(value: string): string {
-  return JSON.stringify(value)
+  return Json.Print(value)
 }
 
 type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag

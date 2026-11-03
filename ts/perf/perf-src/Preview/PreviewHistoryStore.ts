@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 
@@ -88,15 +89,15 @@ export function validatePreviewReport(report: string, sourceCommit: string): voi
 }
 
 function parseHistoryRecord(source: string): HistoryRecord {
-  return JSON.parse(source) as HistoryRecord
+  return Json.Parse(source) as HistoryRecord
 }
 
 function serializeHistoryRecord(record: HistoryRecord): string {
-  return JSON.stringify(record, null, 2) + NewlineCharacter
+  return Json.PrintIndented(record) + NewlineCharacter
 }
 
 function parsePreviewReport(source: string): unknown {
-  return JSON.parse(source)
+  return Json.Parse(source)
 }
 
 type FixtureIdentity = { path: string; sha256: string }

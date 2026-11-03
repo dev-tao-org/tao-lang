@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Json } from '@shared'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** runtimeLock retains resolved workspace package versions for the standalone Expo toolchain. */
@@ -11,23 +11,19 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
   const packages = Object.fromEntries(
     Object.entries(lock.packages).filter(([, resolution]) => !resolution[0].includes('@workspace:')),
   )
-  return JSON.stringify(
-    {
-      lockfileVersion: lock.lockfileVersion,
-      configVersion: lock.configVersion,
-      workspaces: {
-        '': {
-          name: manifest.name,
-          dependencies: manifest.dependencies,
-          ...(manifest.devDependencies ? { devDependencies: manifest.devDependencies } : {}),
-        },
+  return Json.PrintIndented({
+    lockfileVersion: lock.lockfileVersion,
+    configVersion: lock.configVersion,
+    workspaces: {
+      '': {
+        name: manifest.name,
+        dependencies: manifest.dependencies,
+        ...(manifest.devDependencies ? { devDependencies: manifest.devDependencies } : {}),
       },
-      packages,
-      ...(lock.patchedDependencies ? { patchedDependencies: lock.patchedDependencies } : {}),
     },
-    null,
-    2,
-  )
+    packages,
+    ...(lock.patchedDependencies ? { patchedDependencies: lock.patchedDependencies } : {}),
+  })
 }
 
 /** RuntimeManifest pins the external dependencies consumed by one built Expo runtime. */

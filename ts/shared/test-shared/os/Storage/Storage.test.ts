@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -37,7 +38,7 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
     await symlink(outside, join(cache, 'external-link'))
     const moduleUrl = new WebHost.URL('../../../shared-src/os/Storage.ts', import.meta.url).href
     const script = `const storage = await import(${
-      JSON.stringify(moduleUrl)
+      Json.Print(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
     const environment = { TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
     const child = Processes.spawnPiped(Process.execPath, {
@@ -50,7 +51,7 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
       Processes.readText(child.stderr),
     ])
     Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
-    Tests.expect(JSON.parse(stdout)).toEqual([false, true])
+    Tests.expect(Json.Parse(stdout)).toEqual([false, true])
     Tests.expect(await readFile(join(outside, 'keep'), 'utf8')).toBe('durable data')
     Tests.expect(await readdir(cache)).toEqual([])
     Tests.expect(await readdir(join(support, 'leases'))).toEqual([])
@@ -65,14 +66,12 @@ Tests.test('cache leases reclaim crashed probes while protecting a live consumer
     Tests.expect((await readdir(join(root, 'support/leases'))).length).toBe(1)
     const moduleUrl = new WebHost.URL('../../../shared-src/os/Storage.ts', import.meta.url).href
     const childScript = S`
-      const storage = await import(${JSON.stringify(moduleUrl)});
+      const storage = await import(${Json.Print(moduleUrl)});
       process.stdout.write(JSON.stringify(await storage.cleanSharedCache()));
     `
     const probe = S`
       const release = await storage.acquireCacheLease('live');
-      const child = Bun.spawn([process.execPath, '-e', ${
-      JSON.stringify(childScript)
-    }], { stdout: 'pipe', stderr: 'pipe' });
+      const child = Bun.spawn([process.execPath, '-e', ${Json.Print(childScript)}], { stdout: 'pipe', stderr: 'pipe' });
       const status = await child.exited;
       const clean = await new Response(child.stdout).text();
       await release();
@@ -98,14 +97,14 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
     await writeFile(
       path,
       S`
-        import * as Tests from ${JSON.stringify(testsUrl)};
-        import * as Storage from ${JSON.stringify(storageUrl)};
+        import * as Tests from ${Json.Print(testsUrl)};
+        import * as Storage from ${Json.Print(storageUrl)};
         import { writeFile } from 'node:fs/promises';
         Tests.test('isolated roots', () => {
           Tests.expect(process.env.TAO_CACHE_DIR).toBeUndefined();
           Tests.expect(process.env.TAO_SUPPORT_DIR).toBeUndefined();
           return writeFile(${
-        JSON.stringify(result)
+        Json.Print(result)
       }, JSON.stringify([Storage.resolveCacheDirectory(), Storage.resolveSupportDirectory()]));
         });
       `,
@@ -120,7 +119,7 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
       Processes.readText(child.stderr),
     ])
     Tests.expect({ status, failed: stderr.includes('(fail)') }).toEqual({ status: 0, failed: false })
-    const roots = JSON.parse(await readFile(result, 'utf8')) as string[]
+    const roots = Json.Parse(await readFile(result, 'utf8')) as string[]
     Tests.expect(roots.length).toBe(2)
     Tests.expect(roots.every(path => Path.isWithin(Artifacts.resolvePath('tmp/test-storage'), path))).toBe(true)
   }, { finally: () => rm(root, { recursive: true, force: true }) })
@@ -130,7 +129,7 @@ async function runStorageScript(root: string, source: string): Promise<string> {
   const moduleUrl = new WebHost.URL('../../../shared-src/os/Storage.ts', import.meta.url).href
   const environment = { TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
   const child = Processes.spawnPiped(Process.execPath, {
-    variadicArgs: ['-e', `const storage = await import(${JSON.stringify(moduleUrl)}); ${source}`],
+    variadicArgs: ['-e', `const storage = await import(${Json.Print(moduleUrl)}); ${source}`],
     addEnv: environment,
   })
   const [status, stdout, stderr] = await Promise.all([

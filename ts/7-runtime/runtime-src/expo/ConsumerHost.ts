@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { consumerMetroConfiguration, createConsumerBootstrap } from '../bridges/Bridge_expo/Bridge_expo-config'
@@ -39,18 +40,14 @@ export async function createConsumerHost(options: ConsumerHostOptions): Promise<
 }
 
 function serializeConsumerManifest(options: ConsumerHostOptions): string {
-  return JSON.stringify(
-    {
-      name: 'tao-consumer-host',
-      private: true,
-      main: 'Application.ts',
-      scripts: { start: 'expo start' },
-      dependencies: resolveHostDependencies(options.dependencies, options.packageDirectory),
-      devDependencies: resolveHostDependencies(options.devDependencies, options.packageDirectory),
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    name: 'tao-consumer-host',
+    private: true,
+    main: 'Application.ts',
+    scripts: { start: 'expo start' },
+    dependencies: resolveHostDependencies(options.dependencies, options.packageDirectory),
+    devDependencies: resolveHostDependencies(options.devDependencies, options.packageDirectory),
+  })
 }
 
 function resolveHostDependencies(versions: RuntimePackageVersions, directory: string): RuntimePackageVersions {
@@ -64,24 +61,20 @@ function resolveHostDependencies(versions: RuntimePackageVersions, directory: st
 }
 
 function serializeConsumerApp(name: string): string {
-  return JSON.stringify({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } }, null, 2)
+  return Json.PrintIndented({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } })
 }
 
 function serializeConsumerResolution(options: ConsumerHostOptions): string {
-  return JSON.stringify(
-    {
-      packageDirectory: options.packageDirectory,
-      packages: Object.keys(options.dependencies),
-    },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    packageDirectory: options.packageDirectory,
+    packages: Object.keys(options.dependencies),
+  })
 }
 
 function serializeConsumerTypeScript(): string {
-  return JSON.stringify(
-    { extends: 'expo/tsconfig.base', compilerOptions: { noEmit: true }, include: ['Application.ts'] },
-    null,
-    2,
-  )
+  return Json.PrintIndented({
+    extends: 'expo/tsconfig.base',
+    compilerOptions: { noEmit: true },
+    include: ['Application.ts'],
+  })
 }

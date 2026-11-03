@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -90,7 +91,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 function card(value: string): string {
   return S`
     use tao@ui Text
-    project view Card { render Text(${JSON.stringify(value)}) }
+    project view Card { render Text(${Json.Print(value)}) }
   `
 }
 

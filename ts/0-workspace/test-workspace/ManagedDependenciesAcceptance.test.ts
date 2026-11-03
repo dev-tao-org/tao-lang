@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Addr, Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
@@ -188,7 +189,7 @@ async function verifyCompiledSidecar(
   Tests.expect(FS.resolveModule('react', Path.join(ui, '@ui'))).toContain('node_modules/react')
   const importPath = GeneratedForeignViewImportRegx.exec(published[0]!)
   Tests.expect(importPath).not.toBeNull()
-  const modulePath = JSON.parse(importPath![1]!) as string
+  const modulePath = Json.Parse(importPath![1]!) as string
   const module = Platform.loadModule<{ Widget(props: { Value: string }): unknown }>(modulePath)
   Tests.expect(module.Widget({ Value: 'acceptance' })).toBe('label:acceptance')
 }

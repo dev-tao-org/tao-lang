@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Regxs, Try } from '../../universal/universal'
 import * as FS from '../FS'
 import * as Path from '../Path'
@@ -72,7 +73,7 @@ async function readLockPointer(root: string, path: string): Promise<LockPointer>
 }
 
 function parseLockPointer(path: string, contents: string): unknown {
-  return Try(() => JSON.parse(contents), { catch: () => throwInvalidPointer(path) })
+  return Try(() => Json.Parse(contents), { catch: () => throwInvalidPointer(path) })
 }
 
 function isLockPointerRecord(value: unknown): value is { identity: unknown; directory: unknown } {

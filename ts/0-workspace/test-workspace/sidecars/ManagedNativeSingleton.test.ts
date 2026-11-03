@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -56,7 +57,7 @@ async function writePackage(
 ): Promise<void> {
   const directory = Path.join(root, 'node_modules', name)
   await FS.mkdir(directory)
-  await FS.writeFile(Path.join(directory, 'package.json'), JSON.stringify({ name, version, dependencies }))
+  await FS.writeFile(Path.join(directory, 'package.json'), Json.Print({ name, version, dependencies }))
 }
 
 async function writeNativePackage(root: string, version: string): Promise<void> {
@@ -64,7 +65,7 @@ async function writeNativePackage(root: string, version: string): Promise<void> 
   await FS.mkdir(directory)
   await FS.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
+    Json.Print({ name: 'native-fixture', version, codegenConfig: { name: 'Fixture' } }),
   )
 }
 

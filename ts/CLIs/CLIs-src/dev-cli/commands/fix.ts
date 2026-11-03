@@ -1,6 +1,7 @@
 import { Errors } from '@shared'
 import { FS, Repo } from '@shared/os'
 import { assertNewWorkspacePath, assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
+import { synchronizePackageApis } from '../../cli-checks/PackageApis'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
 
@@ -16,6 +17,7 @@ export default registerCommand({
   async action(paths: string[], options: FixCommandOptions = {}) {
     if (paths.length === 0) {
       await assertNewWorkspaceTree()
+      synchronizePackageApis()
       const { fixSourceConformance } = await import('../../cli-checks/source-conformance-fix')
       const excludedFiles = options.exclude ?? []
       await fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })

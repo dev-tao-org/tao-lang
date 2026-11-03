@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
@@ -54,7 +55,7 @@ export async function installFixturePackage(
   await FS.mkdir(directory)
   await FS.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }, null, 2),
+    Json.PrintIndented({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }),
   )
   const installed = await createBunExecutor(root, registry)('bun', ['install', '--no-progress'], directory)
   if (installed.status !== 0) {
@@ -114,13 +115,15 @@ async function recordProfileInstall(
   await FS.mkdir(nodeModules)
   const lock = await readLock(Path.join(options.runtimeResources, 'bun.lock'))
   const fixtureLock = await readLock(Path.join(Path.dirname(options.fixtureModules), 'bun.lock'))
-  const manifest = JSON.parse(await FS.readFile(Path.join(directory, 'package.json'), 'utf8'))
+  const manifest = Json.Parse(
+    await FS.readFile(Path.join(directory, 'package.json'), 'utf8'),
+  ) as MetroFixtureManifest
   lock.workspaces[''].dependencies = manifest.dependencies
   lock.patchedDependencies = manifest.patchedDependencies
   lock.overrides = manifest.overrides
   Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
-  await FS.writeFile(Path.join(directory, 'bun.lock'), `${JSON.stringify(lock, null, 2)}${NewlineCharacter}`)
+  await FS.writeFile(Path.join(directory, 'bun.lock'), `${Json.PrintIndented(lock)}${NewlineCharacter}`)
 }
 
 async function materializeLockGraph(
@@ -273,7 +276,7 @@ function resolveWrapperPath(wrappers: string, key: string): string {
 }
 
 async function TryJson(path: string): Promise<Record<string, unknown> | undefined> {
-  return await Try(async () => JSON.parse(await FS.readFile(path, 'utf8')) as Record<string, unknown>, {
+  return await Try(async () => Json.Parse(await FS.readFile(path, 'utf8')) as Record<string, unknown>, {
     catch: () => undefined,
   })
 }
@@ -300,4 +303,13 @@ type LockFile = {
   packages: Record<string, unknown>
   patchedDependencies?: Record<string, string>
   overrides?: Record<string, string>
+}
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type MetroFixtureManifest = {
+  patchedDependencies: Record<string, string>
+  overrides: Record<string, string>
+  dependencies: Record<string, string>
+  name: string
+  version: string
 }

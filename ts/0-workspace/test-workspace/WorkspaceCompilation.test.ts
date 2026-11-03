@@ -1,5 +1,6 @@
 import * as RuntimeTooling from '@cli-kit/runtime-tooling'
 import type * as Runtime from '@runtime'
+import { Json } from '@shared'
 import { Timings, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
@@ -213,7 +214,7 @@ async function writeResources(directory: string): Promise<void> {
   const sourceFiles = Object.keys(runtimeSources)
   await FS.writeFile(
     Path.join(directory, 'runtime.json'),
-    JSON.stringify({
+    Json.Print({
       version: 2,
       identity: 'fixture',
       dependencies: { expo: '57.0.30' },
@@ -222,7 +223,7 @@ async function writeResources(directory: string): Promise<void> {
   )
   await FS.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ dependencies: { expo: '57.0.30' } }),
+    Json.Print({ dependencies: { expo: '57.0.30' } }),
   )
   await FS.writeFile(Path.join(directory, 'bun.lock'), 'fixture lock')
   for (const [resource, sourcePath] of Object.entries(runtimeSources)) {

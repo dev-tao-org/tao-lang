@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as Perf from '@perf'
+import { Json } from '@shared'
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Env, FS, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
 import { runWithEvidence } from './Evidence'
@@ -116,7 +117,7 @@ async function acceptPreviewReport(job: MeasurementJob, commit: string, reports:
     Errors.ThrowUserInput('Expected one new raw preview report; inspect the candidate performance logs.')
   }
   const path = Path.join(reports, created[0])
-  const report = JSON.parse(await FS.readFile(path, 'utf8')) as PreviewReport
+  const report = Json.Parse(await FS.readFile(path, 'utf8')) as PreviewReport
   requireReport(report, job)
   return path
 }

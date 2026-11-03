@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
+import { Json } from '@shared'
 import { Processes } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 
@@ -74,7 +75,7 @@ async function createFixture(): Promise<Fixture> {
   await FS.mkdir(Path.join(projectDirectory, '.tao', 'cache', 'sidecars'))
   await FS.writeFile(
     Path.join(projectDirectory, '.tao', 'cache', 'sidecars', 'typescript-defaults.json'),
-    JSON.stringify({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
+    Json.Print({ compilerOptions: { strict: true, noEmit: true, jsx: 'react-jsx' } }),
   )
   await FS.mkdirs(moduleRoot, nodeModulesDirectory, Path.join(nodeModulesDirectory, '@types', 'react'))
   await FS.writeFile(

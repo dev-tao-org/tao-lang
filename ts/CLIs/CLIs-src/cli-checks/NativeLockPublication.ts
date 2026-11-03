@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import { FS, Path, Platform, SessionLock } from '@shared/os'
 
@@ -42,7 +43,7 @@ export async function writeNativeLockPointer(root: string, pointer: NativeLockPo
   const path = Path.join(root, 'current.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FS.writeFile(pending, JSON.stringify(pointer))
+    await FS.writeFile(pending, Json.Print(pointer))
     await FS.rename(pending, path)
   }, { finally: () => FS.rm(pending, { force: true }) })
 }
@@ -58,7 +59,7 @@ async function readPointer(root: string): Promise<PointerRead> {
   if (contents === undefined) {
     return { kind: 'missing' }
   }
-  const value = Try.WithDefault(undefined, () => JSON.parse(contents) as unknown)
+  const value = Try.WithDefault(undefined, () => Json.Parse(contents) as unknown)
   if (typeof value !== 'object' || value === null) {
     return { kind: 'invalid' }
   }

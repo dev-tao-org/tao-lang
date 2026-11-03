@@ -1,5 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 
 import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
 import { Artifacts, FS, HeadlessBrowser, Http, Path, Platform, Process, Repo } from '@shared/os'
@@ -205,7 +206,7 @@ async function readTaoWorkerReport(
   commandFailure: OptionalCommandFailure,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   return await Try(async () => {
-    const value: unknown = JSON.parse(await FS.readFile(path, 'utf8'))
+    const value: unknown = Json.Parse(await FS.readFile(path, 'utf8'))
     if (!isTaoWorkerReport(value)) {
       Errors.ThrowHostEnvironment(`Tao worker wrote an invalid result report: ${path}`)
     }

@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Regxs, Try } from '@shared'
 import { FS, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from '../expo/Expo/Expo'
@@ -203,7 +204,7 @@ async function readRuntimeResources(directory: string): Promise<RuntimeResources
 }
 
 function parseRuntimeMetadata(contents: string): unknown {
-  return JSON.parse(contents)
+  return Json.Parse(contents)
 }
 
 function isRuntimeMetadata(value: unknown): value is RuntimeMetadata {

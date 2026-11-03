@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
+import { Json } from '@shared'
 import { Processes } from '@shared/os'
 
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
@@ -142,7 +143,7 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
 }
 
 function parseNpmVersionResponse(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+  return Json.Parse(contents) as unknown
 }
 
 function resolveNpmVersionValue(value: unknown): string | undefined {

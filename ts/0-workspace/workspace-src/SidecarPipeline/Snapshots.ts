@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen'
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import type * as Typecheck from '@typecheck'
@@ -177,7 +178,7 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
 }
 
 function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {

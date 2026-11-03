@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen'
+import { Json } from '@shared'
 import { NewlineCharacter, S, Try } from '@shared'
 import { Text } from '@shared/os'
 import { FS, Path } from '@shared/os'
@@ -45,15 +46,11 @@ export async function cachedSnapshotMatches(input: CacheValidationInput): Promis
 /** createTypeScriptConfigContent returns the generated module configuration bytes. */
 export function createTypeScriptConfigContent(defaultsPath: string): string {
   return `${
-    JSON.stringify(
-      {
-        extends: FS.realpathSync(defaultsPath),
-        compilerOptions: { baseUrl: '.' },
-        include: ['**/*.ts', '**/*.tsx', '.tao-*.contract.ts', 'tao-assets.d.ts'],
-      },
-      null,
-      2,
-    )
+    Json.PrintIndented({
+      extends: FS.realpathSync(defaultsPath),
+      compilerOptions: { baseUrl: '.' },
+      include: ['**/*.ts', '**/*.tsx', '.tao-*.contract.ts', 'tao-assets.d.ts'],
+    })
   }${NewlineCharacter}`
 }
 
@@ -70,11 +67,11 @@ type SnapshotMarker = { fingerprint?: string; nodeModulesDirectory?: string }
 type OptionalSnapshotMarker = SnapshotMarker | undefined
 
 function parseSidecarSnapshotMarker(contents: string): unknown {
-  return JSON.parse(contents) as unknown
+  return Json.Parse(contents) as unknown
 }
 
 function serializeExpectedSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${JSON.stringify({ fingerprint, nodeModulesDirectory }, null, 2)}${NewlineCharacter}`
+  return `${Json.PrintIndented({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
 }
 
 function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, Uint8Array> {

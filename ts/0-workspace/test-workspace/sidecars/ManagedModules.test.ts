@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
@@ -49,15 +50,15 @@ async function assertProfileRepair(fixture: Fixtures.ManagedFixture, fingerprint
   await FS.writeFile(manifest, '{}')
   await Tests.rejects(ManagedModules.readManagedModules(fixture.input), ManagedModuleManifestDriftErrorRegx)
   const metadataPath = Path.join(profile, '.tao-managed.json')
-  const metadata = JSON.parse(await FS.readFile(metadataPath, 'utf8'))
+  const metadata = Json.Parse(await FS.readFile(metadataPath, 'utf8')) as ManagedModuleFixtureRecord
   const currentRequirements = metadata.requirements
   metadata.requirements = [['Modules', 'date-fns', '4.1.0']]
   await FS.chmod(metadataPath, 0o644)
-  await FS.writeFile(metadataPath, `${JSON.stringify(metadata)}${NewlineCharacter}`)
+  await FS.writeFile(metadataPath, `${Json.Print(metadata)}${NewlineCharacter}`)
   await Tests.rejects(ManagedModules.readManagedModules(fixture.input), ManagedModuleDependenciesChangedErrorRegx)
   metadata.requirements = currentRequirements
   metadata.target = 'tampered'
-  await FS.writeFile(metadataPath, `${JSON.stringify(metadata)}${NewlineCharacter}`)
+  await FS.writeFile(metadataPath, `${Json.Print(metadata)}${NewlineCharacter}`)
   await Tests.rejects(ManagedModules.readManagedModules(fixture.input), ManagedModuleDependenciesChangedErrorRegx)
   const repaired = await ManagedModules.repairManagedModuleFiles(fixture.input, fixture.executor)
   Tests.expect(repaired.fingerprint).toBe(fingerprint)
@@ -81,7 +82,9 @@ async function assertPrepared(fixture: Fixtures.ManagedFixture): Promise<Managed
   const prepared = await ManagedModules.prepareManagedModules(fixture.input, fixture.executor)
   Tests.expect(prepared.fingerprint).toBe((await ManagedModules.readManagedModules(fixture.input)).fingerprint)
   Tests.expect(await FS.exists(Path.join(fixture.moduleDirectory, 'node_modules', 'date-fns'))).toBe(true)
-  const dependencies = JSON.parse(await FS.readFile(Path.join(fixture.moduleDirectory, 'package.json'), 'utf8'))
+  const dependencies = (Json.Parse(
+    await FS.readFile(Path.join(fixture.moduleDirectory, 'package.json'), 'utf8'),
+  ) as ManagedModuleFixtureRecord)
     .dependencies
   Tests.expect(dependencies).toEqual({ 'react': '19.1.0', 'date-fns': '4.1.0' })
   return prepared
@@ -163,7 +166,7 @@ async function assertForeignView(directory: string): Promise<void> {
 }
 
 function foreignViewTsconfig(): string {
-  return JSON.stringify({
+  return Json.Print({
     compilerOptions: { strict: true, noEmit: true, moduleResolution: 'Bundler', module: 'ESNext' },
     include: ['**/*.ts'],
   })
@@ -255,3 +258,6 @@ const singletonExecutor: ManagedModuleTypes.BunExecutor = async (_command, args,
   await Fixtures.writePackage(Path.join(cwd, 'node_modules', 'wrapper-a'), 'react', '19.0.0')
   return { status: 0, stdout: '', stderr: '' }
 }
+
+// Authored fixture output is inspected and deliberately damaged by these tests.
+type ManagedModuleFixtureRecord = Record<string, unknown>

@@ -1,4 +1,5 @@
 import { IO } from '@cli-kit'
+import { Json } from '@shared'
 import { Errors, Lists } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { Process } from '@shared/os'
@@ -67,7 +68,7 @@ type OptionalPath = string | undefined
 type ReviewNoteResult = { notes: string[]; recheck: string[] }
 
 function formatReviewResult(result: IncrementalReviewResult): string {
-  return JSON.stringify(result, null, 2)
+  return Json.PrintIndented(result)
 }
 
 async function runSessionCommand(

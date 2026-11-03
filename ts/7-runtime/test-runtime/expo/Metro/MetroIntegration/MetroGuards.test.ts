@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
@@ -40,13 +41,13 @@ function versionPreload(production: string): string {
     Module._load = function(name, ...args) {
       return name === 'metro/package.json' ? { version: '999.0.0' } : load.call(this, name, ...args);
     };
-    module.exports = require(${JSON.stringify(production)});
+    module.exports = require(${Json.Print(production)});
   `
 }
 
 function workerPreload(production: string): string {
   return S`
-    const production = require(${JSON.stringify(production)});
+    const production = require(${Json.Print(production)});
     exports.enhanceMiddleware = (middleware, metro) => {
       metro._config.maxWorkers = 2;
       return production.enhanceMiddleware(middleware, metro);

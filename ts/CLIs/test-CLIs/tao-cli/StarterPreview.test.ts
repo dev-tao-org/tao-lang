@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
@@ -31,7 +32,7 @@ Tests.test('library initializer emits a typechecked consumer that renders compil
     await page.screenshot({ path: Path.join(root, 'rendered.png') })
     await FS.writeFile(
       Path.join(root, 'render-receipt.json'),
-      JSON.stringify({ status: 'passed', url: host.url }, null, 2),
+      Json.PrintIndented({ status: 'passed', url: host.url }),
     )
   }, {
     async finally() {

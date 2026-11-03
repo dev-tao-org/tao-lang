@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Try } from '@shared'
 import * as MetroPlatform from '@shared/os/metro'
 
@@ -46,5 +47,5 @@ const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory()
 
 function respond(response: MetroPlatform.OutgoingResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
-  response.end(JSON.stringify(value))
+  response.end(Json.Print(value))
 }

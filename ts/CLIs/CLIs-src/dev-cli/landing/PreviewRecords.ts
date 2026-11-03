@@ -1,4 +1,5 @@
 import * as Perf from '@perf'
+import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
 import { git, type LandingIO } from './LandingIO'
@@ -95,5 +96,5 @@ function validMetadata(record: RecordMetadata, source: string, tree: string, rep
 }
 
 function parseRecordMetadata(contents: string): RecordMetadata {
-  return JSON.parse(contents) as RecordMetadata
+  return Json.Parse(contents) as RecordMetadata
 }

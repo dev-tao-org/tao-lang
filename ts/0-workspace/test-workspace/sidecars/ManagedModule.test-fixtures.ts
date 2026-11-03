@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
@@ -47,7 +48,7 @@ export async function writeLock(root: string, dependencies: Record<string, strin
   )
   await FS.writeFile(
     Path.join(root, 'bun.lock'),
-    JSON.stringify({
+    Json.Print({
       lockfileVersion: 1,
       workspaces: { '': { dependencies } },
       packages,
@@ -67,7 +68,7 @@ export async function writePackage(
   await FS.mkdir(directory)
   await FS.writeFile(
     Path.join(directory, 'package.json'),
-    JSON.stringify({ name, version, peerDependencies, dependencies }),
+    Json.Print({ name, version, peerDependencies, dependencies }),
   )
   await FS.writeFile(Path.join(directory, 'index.js'), 'module.exports = {}')
 }

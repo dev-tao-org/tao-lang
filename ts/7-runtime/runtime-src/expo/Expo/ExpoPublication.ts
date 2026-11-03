@@ -1,3 +1,4 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
 import { Env, FS, Path, Platform } from '@shared/os'
 import { serializeGeneratedRevision, snapshotRevision } from '../GeneratedRevision'
@@ -33,7 +34,7 @@ export async function prepareExpoPublication(
     ...transport,
     sessionId,
     environment: {
-      NODE_OPTIONS: `--require ${JSON.stringify(preloadPath)} ${Env.get('NODE_OPTIONS') ?? ''}`.trim(),
+      NODE_OPTIONS: `--require ${Json.Print(preloadPath)} ${Env.get('NODE_OPTIONS') ?? ''}`.trim(),
       TAO_METRO_PRELOAD: preloadPath,
       TAO_METRO_SESSION: sessionId,
       TAO_METRO_TOKEN: token,

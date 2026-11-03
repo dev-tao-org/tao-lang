@@ -1,4 +1,5 @@
 import * as Client from '@runtime/client'
+import { Json } from '@shared'
 import { Addr, Errors, NewlineCharacter, S, Styles, Try } from '@shared'
 import * as Shared from '@shared'
 import { Artifacts, Browser, FS, Http, Path, Repo } from '@shared/os'
@@ -239,7 +240,7 @@ function sendEvent(
 }
 
 function encodeEvent(encoder: WebHost.TextEncoder, name: string, data: object): Uint8Array {
-  const message = Shared.joinTextLines(`event: ${name}`, `data: ${JSON.stringify(data)}`, '', '')
+  const message = Shared.joinTextLines(`event: ${name}`, `data: ${Json.Print(data)}`, '', '')
   return encoder.encode(message)
 }
 
@@ -315,5 +316,5 @@ function createPreviewPageStyles(columns: string): string {
 }
 
 function serializePreviewScenariosMetadata(scenarios: readonly string[]): string {
-  return JSON.stringify(scenarios)
+  return Json.Print(scenarios)
 }

@@ -1,4 +1,5 @@
 import * as CLIKit from '@cli-kit'
+import { Json } from '@shared'
 import { Errors, Regxs } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
@@ -15,7 +16,7 @@ export async function receiveSnapshot(
   if (await FS.exists(directory)) {
     Errors.ThrowUserInput('Snapshot destination already exists; select a new runner directory.')
   }
-  const snapshot = JSON.parse(await FS.readFile(manifest, 'utf8')) as PerformanceSnapshot
+  const snapshot = Json.Parse(await FS.readFile(manifest, 'utf8')) as PerformanceSnapshot
   const actualHash = Platform.hashBytes(await FS.readFile(bundle), 'sha256')
   if (snapshot.version !== 1 || snapshot.bundleSha256 !== actualHash) {
     Errors.ThrowUserInput('Snapshot bundle checksum or manifest schema differs; transfer it again.')

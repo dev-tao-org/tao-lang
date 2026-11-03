@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import { Errors } from '@shared'
-import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, ModuleBinding } from './Typecheck/Modules'
+import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, ModuleBinding } from './Typecheck'
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
 export function orderDefinitions(modules: readonly LinkedModule[]): LinkedDefinition[] {
