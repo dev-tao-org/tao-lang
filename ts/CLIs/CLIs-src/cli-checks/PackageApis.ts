@@ -1,4 +1,4 @@
-import { Errors, Json } from '@shared'
+import { Errors, Json, Regxs } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
@@ -12,11 +12,14 @@ type PackageApiManifest = { exports: Record<string, string>; tao: { publicApi: M
 
 // Read exact entrypoints without traversing fixture packages.
 function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
-  const manifestFiles = TypeScript.sys.readDirectory(Path.join(root, 'ts'), ['.json'], ['**/node_modules/**'], [
+  return readPackageManifestFiles(root).flatMap(filename => readManifestApis(filename))
+}
+
+function readPackageManifestFiles(root: string): string[] {
+  return TypeScript.sys.readDirectory(Path.join(root, 'ts'), ['.json'], ['**/node_modules/**'], [
     '*/package.json',
     'ide-extensions/*/package.json',
   ])
-  return manifestFiles.flatMap(filename => readManifestApis(filename))
 }
 
 /** deriveCompilerPaths derives aliases relative to a chosen configuration directory. */
@@ -43,6 +46,9 @@ function serializeCompilerConfig(config: unknown): string {
 
 /** assertPackageApis checks manifest ownership, exact files and the generated compiler alias snapshot. */
 export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
+  for (const manifest of readPackageManifestFiles(root)) {
+    requirePackageTestRoot(Path.dirname(manifest))
+  }
   const apis = readPackageApis(root)
   const aliases = new Set<string>()
   for (const api of apis) {
@@ -59,6 +65,16 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
     Errors.ThrowUserInput(
       'TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.',
     )
+  }
+}
+
+function requirePackageTestRoot(directory: string): void {
+  const packageName = Path.basename(directory).replace(Regxs.PackageOrderPrefixRegx, '')
+  const testRoot = Path.join(directory, `test-${packageName}`) + Path.sep
+  const files = TypeScript.sys.readDirectory(directory, ['.ts', '.tsx'], ['**/node_modules/**', '**/.tao/**'])
+  const outside = files.find(filename => filename.endsWith('.test.ts') && !filename.startsWith(testRoot))
+  if (outside !== undefined) {
+    Errors.ThrowUserInput(`Package tests belong in the central ${testRoot} root: ${outside}`)
   }
 }
 
@@ -91,12 +107,26 @@ function requirePublicApiMetadata(
   target: unknown,
   metadata: { alias: string; namespace: string },
 ): asserts target is string {
-  const exactTarget = typeof target === 'string' && target.startsWith('./') && !target.includes('*')
-  const validMetadata = typeof metadata.alias === 'string' && typeof metadata.namespace === 'string'
-  const wildcardApi = key.includes('*') || metadata.alias.includes('*')
+  const exactTarget = isExactPackageTarget(target)
+  const validMetadata = isCanonicalApiMetadata(metadata)
+  const wildcardApi = key.includes('*') || (validMetadata && metadata.alias.includes('*'))
   if (!exactTarget || !validMetadata || wildcardApi) {
     Errors.ThrowUserInput(`Public APIs require exact file exports and canonical namespace metadata: ${filename} ${key}`)
   }
+}
+
+function isExactPackageTarget(target: unknown): boolean {
+  if (typeof target !== 'string' || !target.startsWith('./')) {
+    return false
+  }
+  return !target.includes('*') && !target.includes('../')
+}
+
+function isCanonicalApiMetadata(metadata: { alias: string; namespace: string }): boolean {
+  if (metadata === null || typeof metadata !== 'object') {
+    return false
+  }
+  return typeof metadata.alias === 'string' && typeof metadata.namespace === 'string'
 }
 
 function requirePublicApiFile(api: PackageApi): void {

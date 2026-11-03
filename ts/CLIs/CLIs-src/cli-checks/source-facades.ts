@@ -74,7 +74,7 @@ export function sourceFacadeIssue(
     return
   }
   const filename = normalizePath(target)
-  if (isPrivatePackageImport(importer, filename, context)) {
+  if (isPrivatePackageImport(importer, filename, specifier, context)) {
     return 'cross-package imports must use an exact manifest-owned public entrypoint'
   }
   if (isPublicEntry(filename, context)) {
@@ -230,13 +230,18 @@ function centralTestDirectory(directory: string): string {
   return segments.join('/')
 }
 
-function isPrivatePackageImport(importer: string, target: string, context: SourceFacadeContext): boolean {
+function isPrivatePackageImport(
+  importer: string,
+  target: string,
+  specifier: string,
+  context: SourceFacadeContext,
+): boolean {
   const sourcePackage = sourcePackageDirectory(importer, context.root)
   const targetPackage = sourcePackageDirectory(target, context.root)
   if (sourcePackage === undefined || targetPackage === undefined || sourcePackage === targetPackage) {
     return false
   }
-  return !context.publicEntries.has(target) && !isPlatformToolBoundary(target, context.root)
+  return !context.namespaces.has(specifier) && !isPlatformToolBoundary(target, context.root)
 }
 
 function sourcePackageDirectory(filename: string, root: string): string | undefined {
