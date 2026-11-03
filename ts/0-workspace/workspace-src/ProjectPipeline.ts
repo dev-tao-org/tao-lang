@@ -1,12 +1,14 @@
-import * as AST from '@ast-gen/AST'
-import * as Runtime from '@runtime/Runtime'
+import * as AST from '@ast-gen'
+import * as Runtime from '@runtime'
+import type * as Typecheck from '@typecheck'
+
 import { Errors, Lists } from '@shared'
 import { Path } from '@shared/os'
-import type { LinkedProgram } from '@typecheck/Modules'
+
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
 import { requireSetup } from './SetupRequired'
 import * as SidecarPipeline from './SidecarPipeline'
-import * as ManagedModules from './sidecars/managed-modules/ManagedModules'
+import * as ManagedModules from './sidecars/ManagedModule/ManagedModules'
 
 /** ProjectPipelineResult exposes validated foreign-view routing and dynamic source watches. */
 export type ProjectPipelineResult = {
@@ -28,14 +30,17 @@ export type ProjectRuntimeOptions = {
 /** ProjectPipeline validates one prepared dependency graph for the life of a preview session. */
 export type ProjectPipeline = {
   beforeCompile(
-    program: LinkedProgram,
+    program: Typecheck.LinkedProgram,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ): Promise<ProjectPipelineResult>
 }
 
 /** ProjectPipelineServices isolates prepared graph reads for focused lifecycle tests. */
 export type ProjectPipelineServices = {
-  buildManagedInput(root: string, program: LinkedProgram): Promise<ManagedModules.ManagedModulesInput | undefined>
+  buildManagedInput(
+    root: string,
+    program: Typecheck.LinkedProgram,
+  ): Promise<ManagedModules.ManagedModulesInput | undefined>
   readManaged(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.PreparedManagedModules>
   inspectGeneratedFiles(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.GeneratedModuleFileDrift[]>
   prepareSidecars(options: SidecarPipeline.SidecarPipelineOptions): Promise<SidecarPipeline.PreparedSidecars>
@@ -77,7 +82,7 @@ class PipelineSession implements ProjectPipeline {
   }
 
   async beforeCompile(
-    program: LinkedProgram,
+    program: Typecheck.LinkedProgram,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ): Promise<ProjectPipelineResult> {
     const declarationKey = createDeclarationKey(program)
@@ -136,7 +141,7 @@ class PipelineSession implements ProjectPipeline {
   }
 
   private async prepareSidecars(
-    program: LinkedProgram,
+    program: Typecheck.LinkedProgram,
     managed: ManagedModules.PreparedManagedModules,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ) {
@@ -172,11 +177,11 @@ function describeNativeRebuildRequirement(profile: OptionalManagedProfile): stri
 
 // createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
 // Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
-function createDeclarationKey(program: LinkedProgram): string {
+function createDeclarationKey(program: Typecheck.LinkedProgram): string {
   return JSON.stringify(program.modules.map(describeModuleDeclarationFingerprint))
 }
 
-function describeModuleDeclarationFingerprint(module: LinkedProgram['modules'][number]) {
+function describeModuleDeclarationFingerprint(module: Typecheck.LinkedProgram['modules'][number]) {
   return {
     path: module.path,
     declarations: AST.GetDeclarations(module.document).flatMap(serializeDeclarationFingerprint),

@@ -9,5 +9,16 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./ast-gen-src/ASTGen.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@ast-gen",
+        "namespace": "AST"
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
-import { Errors, joinTextLines, NewlineCharacter, Try } from '@shared'
-import { Files, FileSystem, Path, Platform } from '@shared/os'
+import { Errors, NewlineCharacter, Try } from '@shared'
+import * as Shared from '@shared'
+import { Files, FS, Path, Platform } from '@shared/os'
 import { isDiscoverableProjectDirectory } from '../modules/Paths'
 
 /** ProjectLayout describes durable project metadata and generated state locations. */
@@ -18,13 +19,13 @@ export async function initializeProject(path: string): Promise<ProjectLayout> {
     Errors.ThrowUserInput(`A Tao project is already initialized at ${root}`)
   }
   await rejectNestedProject(root)
-  await FileSystem.mkdir(root)
+  await FS.mkdir(root)
   const nested = await Files.findProjectMarker(root)
   if (nested) {
     Errors.ThrowUserInput(`Cannot initialize a Tao project containing another project at ${Path.dirname(nested)}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdir(tao)
+  await FS.mkdir(tao)
   return await ensureProjectMetadata(root)
 }
 
@@ -35,11 +36,11 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
     Errors.ThrowUserInput(`No initialized Tao project exists at ${root}`)
   }
   const tao = Path.join(root, '.tao')
-  await FileSystem.mkdirs(Path.join(tao, 'cache'), Path.join(tao, 'locks', 'sessions'), Path.join(tao, 'store'))
+  await FS.mkdirs(Path.join(tao, 'cache'), Path.join(tao, 'locks', 'sessions'), Path.join(tao, 'store'))
   await ensureProjectIdentity(Path.join(tao, 'store', 'project.json'))
   const ignore = Path.join(tao, '.gitignore')
-  if (!await FileSystem.exists(ignore)) {
-    await FileSystem.writeFile(ignore, joinTextLines('cache/', 'locks/', ''))
+  if (!await FS.exists(ignore)) {
+    await FS.writeFile(ignore, Shared.joinTextLines('cache/', 'locks/', ''))
   }
   return deriveProjectLayout(root)
 }
@@ -57,7 +58,7 @@ export async function discoverProject(
     if (isDiscoverableProjectDirectory(current, homeDirectory)) {
       return deriveProjectLayout(current)
     }
-    if (await FileSystem.exists(Path.join(current, '.git'))) {
+    if (await FS.exists(Path.join(current, '.git'))) {
       return undefined
     }
     const parent = Path.dirname(current)
@@ -82,7 +83,7 @@ export function deriveProjectLayout(root: string): ProjectLayout {
 
 function canonicalExistingPath(path: string): string {
   const absolute = Path.resolve(path)
-  return Try.WithDefault(absolute, () => FileSystem.realpathSync(absolute))
+  return Try.WithDefault(absolute, () => FS.realpathSync(absolute))
 }
 
 async function rejectNestedProject(root: string): Promise<void> {
@@ -106,7 +107,7 @@ function canonicalProjectTarget(path: string): string {
     missing.unshift(Path.basename(current))
     current = parent
   }
-  const physical = Try.WithDefault(undefined, () => FileSystem.realpathSync(current))
+  const physical = Try.WithDefault(undefined, () => FS.realpathSync(current))
   if (physical === undefined) {
     Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
   }
@@ -118,20 +119,20 @@ function isProjectAncestor(path: string): boolean {
 }
 
 function hasPathEntry(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path) !== undefined)
+  return Try.WithDefault(false, () => FS.lstatSync(path) !== undefined)
 }
 
 function isDirectory(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isDirectory())
 }
 
 function isProjectDirectory(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(Path.join(path, '.tao')).isDirectory())
+  return Try.WithDefault(false, () => FS.lstatSync(Path.join(path, '.tao')).isDirectory())
 }
 
 async function ensureProjectIdentity(path: string): Promise<void> {
-  if (!await FileSystem.exists(path)) {
-    await FileSystem.writeFile(path, serializeProjectIdentity(Platform.randomUUID()))
+  if (!await FS.exists(path)) {
+    await FS.writeFile(path, serializeProjectIdentity(Platform.randomUUID()))
   }
 }
 

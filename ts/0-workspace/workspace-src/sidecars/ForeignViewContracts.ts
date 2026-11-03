@@ -1,6 +1,7 @@
-import { Errors, joinTextLines, NewlineCharacter, Regxs, S, Try } from '@shared'
-import { Files, FileSystem, Path } from '@shared/os'
-import type { SidecarCommandResult } from './managed-modules/ManagedModuleTypes'
+import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
+import * as Shared from '@shared'
+import { Files, FS, Path } from '@shared/os'
+import type { SidecarCommandResult } from './ManagedModule/ManagedModuleTypes'
 
 type ForeignViewParameterTypes = Record<string, string>
 
@@ -36,7 +37,7 @@ export function createForeignViewContractSource(input: ForeignViewContractSource
   const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
   const foreignViewName = input.name
   const resolvedImportPath = JSON.stringify(Path.toRelativeModuleSpecifier(importPath))
-  return joinTextLines(
+  return Shared.joinTextLines(
     S`
       import type * as React from 'react'
       import { ${foreignViewName} as TaoForeignView } from ${resolvedImportPath}
@@ -95,8 +96,8 @@ export async function checkForeignViewContract(
 
 async function writeOwnedContract(path: string, contents: string): Promise<void> {
   const marker = `${path}.tao-managed`
-  const ownership = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
-  if (await FileSystem.exists(path) && ownership !== ForeignViewContractOwnership) {
+  const ownership = await Try.WithDefault(undefined, () => FS.readFile(marker, 'utf8'))
+  if (await FS.exists(path) && ownership !== ForeignViewContractOwnership) {
     Errors.ThrowUserInput(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {

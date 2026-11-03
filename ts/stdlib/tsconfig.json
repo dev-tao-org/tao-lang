@@ -4,5 +4,8 @@
     "tsBuildInfoFile": "../../.artifacts/cache/typescript/stdlib.tsbuildinfo",
     "resolveJsonModule": true
   },
-  "include": ["stdlib-src/**/*", "stdlib-test/**/*"]
+  "include": [
+    "stdlib-src/**/*",
+    "test-stdlib/**/*"
+  ]
 }

@@ -1,8 +1,8 @@
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 /** resolveResources locates the installed TSX parser, queries and license. */
 export function resolveResources(modulesDirectory: string) {
-  const directory = FileSystem.realpathSync(Path.join(modulesDirectory, 'tree-sitter-typescript'))
+  const directory = FS.realpathSync(Path.join(modulesDirectory, 'tree-sitter-typescript'))
   return {
     directory,
     grammar: Path.join(directory, 'tree-sitter-tsx.wasm'),

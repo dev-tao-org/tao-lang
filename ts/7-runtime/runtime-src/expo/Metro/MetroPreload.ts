@@ -1,7 +1,6 @@
 import { Try } from '@shared'
-import Env from '../../../../shared/shared-src/os/Env'
-import * as FileSystem from '../../../../shared/shared-src/os/FileSystem'
-import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '@shared/os/metro'
+
 import { parseGeneratedRevision } from '../GeneratedRevision'
 import type { GeneratedRevision } from '../PreviewProtocol'
 import { createMetroAdapter, type MetroServer } from './MetroAdapter'
@@ -38,10 +37,10 @@ export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): M
   }
 }
 
-const sessionId = Env.require('TAO_METRO_SESSION')
-const token = Env.require('TAO_METRO_TOKEN')
+const sessionId = MetroPlatform.Env.require('TAO_METRO_SESSION')
+const token = MetroPlatform.Env.require('TAO_METRO_TOKEN')
 const initial = parseGeneratedRevision(
-  FileSystem.readFileSync(Env.require('TAO_METRO_SEED'), 'utf8'),
+  MetroPlatform.FS.readFileSync(MetroPlatform.Env.require('TAO_METRO_SEED'), 'utf8'),
 ) as GeneratedRevision
 const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory(), sessionId, initial })
 

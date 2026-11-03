@@ -1,8 +1,8 @@
-import { IO, resolveCallerPath } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
-import { findPreparationEntry, withDependencySession } from '@workspace/ModuleDependencies'
-import { discoverProject } from '@workspace/projects/Projects'
-import { execute } from '@workspace/Workflow'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { workflowUI } from '../WorkflowUI'
 
@@ -19,15 +19,15 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
   async action(entry: OptionalSetupEntry, options: SetupCommandOptions = {}) {
-    const target = resolveCallerPath(entry ?? '.')
-    const project = await discoverProject(target)
+    const target = CLIKit.resolveCallerPath(entry ?? '.')
+    const project = await Workspace.discoverProject(target)
     if (!project) {
       Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
     }
-    const selected = await findPreparationEntry(project.root, entry ? target : undefined)
-    await withDependencySession(project.root, options.session, async () => {
+    const selected = await Workspace.findPreparationEntry(project.root, entry ? target : undefined)
+    await Workspace.withDependencySession(project.root, options.session, async () => {
       IO.print(`Setting up dependencies for ${selected}`)
-      await execute(
+      await Workspace.execute(
         { kind: 'setup', entry: selected, preparation: { repair: options.repair } },
         workflowUI(options.yes),
       )

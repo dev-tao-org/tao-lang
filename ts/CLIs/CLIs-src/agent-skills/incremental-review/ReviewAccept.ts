@@ -1,5 +1,6 @@
-import { Errors, joinTextLines, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { Errors, Try } from '@shared'
+import * as Shared from '@shared'
+import { FS, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
 import { assertOwnedSession, assertReviewedSnapshot, saveSession } from './ReviewSession'
@@ -33,7 +34,7 @@ async function prepareJournal(session: ReviewSession, selection: ReviewSelection
   const index = await ReviewGit.resolveGitIndexPath(session.root)
   const originalIndexHash = await ReviewGit.indexHash(index)
   const reconciledIndex = Path.join(session.directory, `${Platform.randomUUID()}.reconciled.index`)
-  await FileSystem.cp(index, reconciledIndex)
+  await FS.cp(index, reconciledIndex)
   if (
     await ReviewGit.readGitPathEntries(session.root, selection.indexTree, selection.files)
       !== await ReviewGit.readGitPathEntries(session.root, selection.reconciledIndexTree, selection.files)
@@ -65,7 +66,7 @@ async function prepareJournal(session: ReviewSession, selection: ReviewSelection
 
 function reviewedMessage(selection: ReviewSelection, sourceCommit: string): string {
   const action = selection.kind === 'reopen' ? 'reopen' : 'accept'
-  return joinTextLines(
+  return Shared.joinTextLines(
     `Review: ${action} ${selection.files.length} path(s)`,
     '',
     `Source: ${sourceCommit}`,
@@ -76,7 +77,7 @@ function reviewedMessage(selection: ReviewSelection, sourceCommit: string): stri
 }
 
 async function requireFinishedJournal(session: ReviewSession): Promise<void> {
-  if (await FileSystem.exists(resolveJournalPath(session))) {
+  if (await FS.exists(resolveJournalPath(session))) {
     const journal = await ReviewGit.readJson<ReviewJournal>(resolveJournalPath(session))
     if (journal.phase !== 'complete') {
       Errors.ThrowUserInput('An interrupted acceptance is pending. Run recover before accepting another selection.')
@@ -118,7 +119,7 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal): Pr
     await installIndex(sourceIndex, lock, journal)
     await recordPhase(session, journal, 'index')
     await finishReviewed(session, journal)
-  }, { finally: () => FileSystem.rm(lock, { force: true }) })
+  }, { finally: () => FS.rm(lock, { force: true }) })
   for (const path of journal.selection.files) {
     if (journal.selection.kind === 'reopen') {
       delete session.accepted[path]
@@ -175,8 +176,8 @@ async function requireExpectedIndex(path: string, journal: ReviewJournal): Promi
 async function installIndex(path: string, lock: string, journal: ReviewJournal): Promise<void> {
   if (await ReviewGit.indexHash(path) !== journal.reconciledIndexHash) {
     const pending = `${lock}.${Platform.randomUUID()}.pending`
-    await FileSystem.cp(journal.reconciledIndex, pending)
-    await FileSystem.rename(pending, path)
+    await FS.cp(journal.reconciledIndex, pending)
+    await FS.rename(pending, path)
   }
 }
 
@@ -204,13 +205,13 @@ async function finishReviewed(session: ReviewSession, journal: ReviewJournal): P
 
 async function acquireIndexLock(path: string, session: ReviewSession, journal: ReviewJournal): Promise<void> {
   const token = encodeIndexLockToken(session, journal)
-  if (await FileSystem.exists(path)) {
-    if (await FileSystem.readFile(path, 'utf8') !== token) {
+  if (await FS.exists(path)) {
+    if (await FS.readFile(path, 'utf8') !== token) {
       Errors.ThrowUserInput('A foreign Git index lock exists; recovery will not remove it.')
     }
-    await FileSystem.rm(path)
+    await FS.rm(path)
   }
-  await FileSystem.writeFile(path, token, { flag: 'wx' })
+  await FS.writeFile(path, token, { flag: 'wx' })
 }
 
 async function recordPhase(
@@ -220,7 +221,7 @@ async function recordPhase(
 ): Promise<void> {
   journal.phase = phase
   if (phase === 'complete') {
-    await FileSystem.mkdir(Path.join(session.directory, 'receipts'))
+    await FS.mkdir(Path.join(session.directory, 'receipts'))
     await ReviewGit.writeJson(Path.join(session.directory, 'receipts', `${journal.selection.proposal}.json`), journal)
   }
   await ReviewGit.writeJson(resolveJournalPath(session), journal)

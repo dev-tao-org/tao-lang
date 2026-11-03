@@ -12,5 +12,26 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.0"
+  },
+  "exports": {
+    "./embedded": "./fix-src/lib/formatter/Embedded.ts",
+    ".": "./fix-src/Fix.ts",
+    "./format": "./fix-src/Fix/Format.ts"
+  },
+  "tao": {
+    "publicApi": {
+      "./embedded": {
+        "alias": "@fix/embedded",
+        "namespace": "Embedded"
+      },
+      ".": {
+        "alias": "@fix",
+        "namespace": "Fix"
+      },
+      "./format": {
+        "alias": "@fix/format",
+        "namespace": "Format"
+      }
+    }
   }
 }

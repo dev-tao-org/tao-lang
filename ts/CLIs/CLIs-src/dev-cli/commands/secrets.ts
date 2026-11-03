@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
@@ -216,14 +217,14 @@ async function setupSecrets(): Promise<void> {
     Errors.ThrowUserInput('Secure Enclave secrets setup requires macOS with age-plugin-se.')
   }
   const identityPath = secretsIdentityPath()
-  await FileSystem.mkdir(Path.dirname(identityPath))
-  const existed = FileSystem.existsSync(identityPath)
+  await FS.mkdir(Path.dirname(identityPath))
+  const existed = FS.existsSync(identityPath)
   if (!existed) {
     await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', {
       variadicArgs: [identityPath],
     })
   }
-  await FileSystem.chmod(identityPath, 0o600)
+  await FS.chmod(identityPath, 0o600)
   const recipient = await recipientOfIdentity()
   const added = await withStoreMutation(async () => {
     const store = await readStore()
@@ -247,14 +248,14 @@ function buildRecipientIdentityMessage(added: boolean, existed: boolean): string
 }
 
 async function readStore(): Promise<SecretStoreModule2.SecretStore> {
-  if (!FileSystem.existsSync(storePath)) {
+  if (!FS.existsSync(storePath)) {
     return { recipients: [], secrets: {} }
   }
-  return SecretStoreModule2.parseSecretStore(await FileSystem.file(storePath).text())
+  return SecretStoreModule2.parseSecretStore(await FS.file(storePath).text())
 }
 
 async function writeStore(store: SecretStoreModule2.SecretStore): Promise<void> {
-  await FileSystem.mkdir(Path.dirname(storePath))
+  await FS.mkdir(Path.dirname(storePath))
   const directory = Artifacts.resolvePath('cache', 'secrets')
   await Artifacts.mkdir(directory)
   const temporary = Path.join(directory, `${Platform.randomUUID()}.tmp`)
@@ -302,7 +303,7 @@ function isAlreadyExists(error: unknown): boolean {
 
 async function recipientOfIdentity(): Promise<string> {
   const identityPath = secretsIdentityPath()
-  const contents = await FileSystem.file(identityPath).text()
+  const contents = await FS.file(identityPath).text()
   const recorded = Regxs.PublicKeyCommentRegx.exec(contents)?.[1]
   if (recorded !== undefined) {
     return recorded
@@ -315,7 +316,7 @@ async function recipientOfIdentity(): Promise<string> {
 }
 
 async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
-  const result = await Platform.runIgnoreStatus(command, { variadicArgs: options.variadicArgs })
+  const result = await Processes.runIgnoreStatus(command, { variadicArgs: options.variadicArgs })
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${result.status}).`)
   }

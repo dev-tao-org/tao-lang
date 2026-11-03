@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import type { LinkedProgram } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
 import { emitStringLiteral } from './codegen-util'
 import { compileModuleImport } from './GeneratedPaths'
 import type { GeneratedModulePaths } from './GeneratedPaths'
@@ -14,7 +14,7 @@ export type ModuleInitialization = {
 
 /** compileModuleInitialization preserves app and library alias, declaration and value initialization order. */
 export function compileModuleInitialization(
-  program: LinkedProgram,
+  program: Typecheck.LinkedProgram,
   bootstrap: string,
   paths: GeneratedModulePaths,
 ): ModuleInitialization {

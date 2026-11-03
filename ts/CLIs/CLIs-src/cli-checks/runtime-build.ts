@@ -1,5 +1,5 @@
 import { Errors, Timings, Try } from '@shared'
-import { Artifacts, BuildLock, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, BuildLock, FS, Path, Platform, Repo } from '@shared/os'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
 import { readRuntimeSources, type RuntimeSourceContents, type RuntimeSourcePaths } from './runtime-sources'
@@ -14,7 +14,7 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
     const patches = Object.keys(inputs.sources).filter(path => Path.dirname(path) === patchRoot)
       .map(path => Path.join('patches', Path.basename(path)))
     const requiredFiles = [...resourceFiles, ...Object.keys(inputs.runtimeSources), ...patches]
-    if (!requiredFiles.every(file => FileSystem.existsSync(Path.join(directory, file)))) {
+    if (!requiredFiles.every(file => FS.existsSync(Path.join(directory, file)))) {
       await timings.run(buildResources, directory, identity, inputs)
     }
     await publishResources(directory)
@@ -33,8 +33,8 @@ async function writeRuntimeSources(
       Errors.ThrowShouldNeverHappen(`Runtime source was not captured: ${sourcePath}`)
     }
     const target = Path.join(directory, resource)
-    await FileSystem.mkdir(Path.dirname(target))
-    await FileSystem.writeFile(target, source)
+    await FS.mkdir(Path.dirname(target))
+    await FS.writeFile(target, source)
   }
 }
 
@@ -51,14 +51,14 @@ async function readInputs(): Promise<RuntimeBuildInputs> {
   const runtimeSources = await readRuntimeSources()
   const paths = [
     ...Object.values(runtimeSources),
-    Repo.resolvePath('ts/7-runtime/runtime-src/RuntimeResources.ts'),
+    Repo.resolvePath('ts/7-runtime/runtime-src/Runtime/RuntimeResources.ts'),
     Repo.resolvePath('ts/7-runtime/package.json'),
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-lock.ts'),
     Path.fileURLToPath(import.meta.url),
     Repo.resolvePath('ts/bun.lock'),
     ...await metroBuildInputs(),
   ].sort()
-  const sources = await Promise.all(paths.map(async path => [path, await FileSystem.readFile(path, 'utf8')] as const))
+  const sources = await Promise.all(paths.map(async path => [path, await FS.readFile(path, 'utf8')] as const))
   return { sources: Object.fromEntries(sources), runtimeSources }
 }
 
@@ -69,25 +69,25 @@ const buildResources = Timings.measured('runtime.build', async function(
 ) {
   const stage = `${directory}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FileSystem.mkdir(stage)
+    await FS.mkdir(stage)
     await writeRuntimeSources(stage, inputs.sources, inputs.runtimeSources)
     await writeMetroResources(stage, inputs.sources)
     const manifest = runtimeManifest(inputs.sources)
-    await FileSystem.writeFile(Path.join(stage, 'package.json'), formatRuntimeManifest(manifest))
-    await FileSystem.writeFile(
+    await FS.writeFile(Path.join(stage, 'package.json'), formatRuntimeManifest(manifest))
+    await FS.writeFile(
       Path.join(stage, 'bun.lock'),
       RuntimeLock.runtimeLock(inputs.sources[Repo.resolvePath('ts/bun.lock')]!, manifest),
     )
-    await FileSystem.writeFile(
+    await FS.writeFile(
       Path.join(stage, 'runtime.json'),
       formatRuntimeMetadata(identity, manifest, inputs.runtimeSources),
     )
-    await FileSystem.mkdir(Path.dirname(directory))
-    await FileSystem.rm(directory, { recursive: true, force: true })
-    await FileSystem.rename(stage, directory)
+    await FS.mkdir(Path.dirname(directory))
+    await FS.rm(directory, { recursive: true, force: true })
+    await FS.rename(stage, directory)
   }, {
     async finally() {
-      await FileSystem.rm(stage, { recursive: true, force: true })
+      await FS.rm(stage, { recursive: true, force: true })
     },
   })
 })
@@ -115,10 +115,10 @@ function runtimeManifest(sources: RuntimeSourceContents): RuntimeLock.RuntimeMan
 
 async function publishResources(directory: string): Promise<void> {
   const target = Path.join(packageRoot, '_gen_runtime')
-  if (Try.WithDefault(undefined, () => FileSystem.realpathSync(target)) === directory) {
+  if (Try.WithDefault(undefined, () => FS.realpathSync(target)) === directory) {
     return
   }
-  await FileSystem.replaceDirectoryLink(directory, target)
+  await FS.replaceDirectoryLink(directory, target)
 }
 
 type RuntimeBuildInputs = { sources: RuntimeSourceContents; runtimeSources: RuntimeSourcePaths }

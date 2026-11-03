@@ -1,5 +1,6 @@
-import { runNonInteractiveCommand } from '@cli-kit'
-import { Platform, Repo } from '@shared/os'
+import * as CLIKit from '@cli-kit'
+import { Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 
 /** StorageSetupIO isolates storage inspection and initialization during checkout setup. */
 export type StorageSetupIO = {
@@ -16,9 +17,9 @@ export async function setupStorage(io: StorageSetupIO = storageSetupIO()): Promi
 function storageSetupIO(): StorageSetupIO {
   const cwd = Repo.getWorkspaceRoot()
   return {
-    status: () => Platform.capture('git submodule status -- .storage', { cwd }),
+    status: () => Processes.capture('git submodule status -- .storage', { cwd }),
     async initialize() {
-      await runNonInteractiveCommand('git submodule update --init --checkout -- .storage', { cwd })
+      await CLIKit.runNonInteractiveCommand('git submodule update --init --checkout -- .storage', { cwd })
     },
   }
 }

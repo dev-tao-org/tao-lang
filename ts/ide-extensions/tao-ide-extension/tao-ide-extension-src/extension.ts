@@ -1,4 +1,4 @@
-import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
+import * as Embedded from '@fix/embedded'
 import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { vscode } from '../../bridges/Bridge_vscode'
 import { createWasmDocumentSession, type DocumentSession, type WasmDocumentSession } from './core'
@@ -103,7 +103,7 @@ function createFormatting(
     if (native) {
       formatter ??= vscode.workspace.fs.readFile(
         vscode.Uri.joinPath(context.extensionUri, 'runtime/typescript-formatter.wasm'),
-      ).then(bytes => createTypeScriptFormatter(bytes))
+      ).then(bytes => Embedded.createTypeScriptFormatter(bytes))
     }
     const typescript = native ? await formatter : undefined
     refreshDocument(document, parser, diagnostics, sessions)
@@ -111,7 +111,7 @@ function createFormatting(
   }
 }
 
-type OptionalEmbeddedFormatter = PromiseLike<EmbeddedFormatter> | undefined
+type OptionalEmbeddedFormatter = PromiseLike<Embedded.EmbeddedFormatter> | undefined
 
 function refreshDocument(
   document: vscode.TextDocument,

@@ -1,19 +1,19 @@
 import { Errors, NewlineCharacter } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** conformanceSources lists current implementation and agent-script sources for checking and fixing. */
 export async function conformanceSources(root: string): Promise<string[]> {
   return [
-    ...await FileSystem.listSourceFiles(root + '/ts'),
-    ...(await FileSystem.listSourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
+    ...await FS.listSourceFiles(root + '/ts'),
+    ...(await FS.listSourceFiles(root + '/agents/skills')).filter(path => path.includes('/scripts/')),
   ]
 }
 
 /** createConformanceProgram loads workspace types once for syntax and type-aware source rules. */
 export function createConformanceProgram(root: string, files: string[]): TypeScript.Program {
   const configPath = Path.join(root, 'ts/tsconfig.base.json')
-  const options = FileSystem.existsSync(configPath) ? compilerOptions(configPath) : { strict: true, noEmit: true }
+  const options = FS.existsSync(configPath) ? compilerOptions(configPath) : { strict: true, noEmit: true }
   return TypeScript.createProgram(files, options)
 }
 

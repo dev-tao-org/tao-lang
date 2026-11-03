@@ -1,12 +1,12 @@
 import { Errors, Lists, NullCharacter, Try } from '@shared'
-import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
+import { FS, Path, Platform, SessionLock } from '@shared/os'
 import { assertSupportedTransforms, git, head, readJson, snapshot, tree, writeJson } from './ReviewGit'
 import type { ReviewJournal, ReviewSession, ReviewStatus } from './ReviewTypes'
 
 /** withReviewLock serializes operations without leaving stale locks after interruption. */
 export async function withReviewLock<Value>(root: string, action: () => Promise<Value>): Promise<Value> {
   const directory = sessionDirectory(root)
-  await FileSystem.mkdir(directory)
+  await FS.mkdir(directory)
   const lock = await SessionLock.acquire(Path.join(directory, 'operation.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another incremental review operation owns this session.')
@@ -23,7 +23,7 @@ export async function startReview(
 ): Promise<ReviewSession> {
   const directory = sessionDirectory(root)
   const statePath = Path.join(directory, 'session.json')
-  if (await FileSystem.exists(statePath)) {
+  if (await FS.exists(statePath)) {
     const existing = await loadSession(root)
     const existingSessionDiffers = existing.reviewedBranch !== branch || existing.base !== base
     const requestedWorktreeDiffers = Boolean(worktree && existing.reviewedRoot !== Path.resolve(worktree))
@@ -48,7 +48,7 @@ export async function prepareReview(
   worktree?: string,
 ): Promise<ReviewSession> {
   const directory = sessionDirectory(root)
-  if (await FileSystem.exists(Path.join(directory, 'session.json'))) {
+  if (await FS.exists(Path.join(directory, 'session.json'))) {
     Errors.ThrowUserInput('A review session already exists in the destination checkout.')
   }
   const sourceBranch = (await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
@@ -59,7 +59,7 @@ export async function prepareReview(
     Errors.ThrowUserInput(`Approved-content branch already exists: ${branch}`)
   }
   const reviewedRoot = Path.resolve(worktree ?? Path.join(directory, 'reviewed'))
-  if (await FileSystem.exists(reviewedRoot)) {
+  if (await FS.exists(reviewedRoot)) {
     Errors.ThrowUserInput(`Reviewed worktree destination already exists: ${reviewedRoot}`)
   }
   return {
@@ -88,7 +88,7 @@ export async function createReview(session: ReviewSession, acceptedCommit: strin
 /** loadSession verifies that retained state belongs to this implementation checkout. */
 export async function loadSession(root: string): Promise<ReviewSession> {
   const path = Path.join(sessionDirectory(root), 'session.json')
-  if (!await FileSystem.exists(path)) {
+  if (!await FS.exists(path)) {
     Errors.ThrowUserInput(
       'No incremental review session exists. Run start --base main --branch feat/<topic>-incremental-review-approved first.',
     )
@@ -126,7 +126,7 @@ export async function renameReviewBranch(session: ReviewSession, branch: string)
 /** requireIdleSession refuses to replace a transaction interrupted between source and reviewed updates. */
 export async function requireIdleSession(session: ReviewSession): Promise<void> {
   const path = Path.join(session.directory, 'journal.json')
-  if (await FileSystem.exists(path) && (await readJson<ReviewJournal>(path)).phase !== 'complete') {
+  if (await FS.exists(path) && (await readJson<ReviewJournal>(path)).phase !== 'complete') {
     Errors.ThrowUserInput('An interrupted acceptance is pending. Run recover before planning another selection.')
   }
 }
@@ -169,7 +169,7 @@ export async function reviewStatus(session: ReviewSession): Promise<ReviewStatus
   const pending = await git(session.root, ['diff', '--name-status', '--no-renames', reviewedHead, diskTree])
   const recheck = await changedAcceptedPaths(session, diskTree)
   const journalPath = Path.join(session.directory, 'journal.json')
-  const journal = await FileSystem.exists(journalPath) ? await readJson<ReviewJournal>(journalPath) : undefined
+  const journal = await FS.exists(journalPath) ? await readJson<ReviewJournal>(journalPath) : undefined
   return {
     sourceBranch: session.sourceBranch,
     sourceHead,

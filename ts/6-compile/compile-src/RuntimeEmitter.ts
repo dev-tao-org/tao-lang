@@ -1,6 +1,7 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { S, Switch } from '@shared'
-import type { ModuleBinding } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
+
 import * as CodegenUtil from './codegen-util'
 
 /** ComponentNames identifies stable components and collision-safe locals for one authored view. */
@@ -50,7 +51,7 @@ export function emitLetDeclaration(node: AST.LetDeclaration, scope: string, valu
 }
 
 /** emitModuleBinding installs a linked import without eagerly resolving module cycles. */
-export function emitModuleBinding(node: ModuleBinding, scope: string, targetScope: string): string {
+export function emitModuleBinding(node: Typecheck.ModuleBinding, scope: string, targetScope: string): string {
   return emitAliasBinding(node, scope, emitName(node, targetScope))
 }
 
@@ -84,7 +85,7 @@ export function emitForeignView(node: AST.ViewDeclaration, scope: string, compon
   )
 }
 
-type EmittableName = AST.Name | ModuleBinding
+type EmittableName = AST.Name | Typecheck.ModuleBinding
 /** emitName resolves a semantic reference or linked binding in its lexical scope. */
 export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): string {
   const name = CodegenUtil.isModuleBinding(node) ? node.target : node.value

@@ -1,7 +1,7 @@
 import { Errors, Lists, Try } from '@shared'
-import { FileSystem, Path, SessionLock } from '@shared/os'
+import { FS, Path, SessionLock } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
-import { cleanManagedModuleMetadata } from '../sidecars/managed-modules/ManagedModules'
+import { cleanManagedModuleMetadata } from '../sidecars/ManagedModule/ManagedModules'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout, type ProjectLayout } from './Projects'
 import { isProjectSessionId } from './Sessions'
@@ -77,7 +77,7 @@ async function cleanSession(
   }
   await Try(async () => {
     if (Lifecycle.isRealDirectory(sessionPath)) {
-      await FileSystem.rm(sessionPath, { recursive: true, force: true })
+      await FS.rm(sessionPath, { recursive: true, force: true })
       removed.push(id)
     }
   }, { finally: lock.release })
@@ -104,13 +104,13 @@ async function cleanProjectCache(cache: string, removed: string[]): Promise<void
     if (name === 'sessions') {
       continue
     }
-    await FileSystem.rm(Path.join(cache, name), { recursive: true, force: true })
+    await FS.rm(Path.join(cache, name), { recursive: true, force: true })
     removed.push(name)
   }
 }
 
 function isRegularFile(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isFile())
 }
 
 async function ensureLockDirectory(path: string): Promise<boolean> {
@@ -118,7 +118,7 @@ async function ensureLockDirectory(path: string): Promise<boolean> {
   if (Lifecycle.pathExists(parent) && !Lifecycle.isRealDirectory(parent)) {
     return false
   }
-  await FileSystem.mkdir(path)
+  await FS.mkdir(path)
   return Lifecycle.isRealDirectory(path)
 }
 
@@ -133,7 +133,7 @@ async function listDirectoryNames(path: string): Promise<string[]> {
   if (!Lifecycle.isRealDirectory(path)) {
     return []
   }
-  return await Try(() => FileSystem.readdir(path), {
+  return await Try(() => FS.readdir(path), {
     catch: error => isMissing(error) ? [] : Errors.Throw(error),
   })
 }

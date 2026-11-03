@@ -1,4 +1,4 @@
-import type { SyntaxNode, Tree } from '@cst'
+import type * as CST from '@cst'
 import * as Shared from '@shared'
 
 /** Boundary records independent horizontal spacing and vertical layout constraints. */
@@ -26,7 +26,7 @@ export type ListGroup = {
 export type LayoutPlan = {
   source: string
   newline: string
-  tokens: SyntaxNode[]
+  tokens: CST.SyntaxNode[]
   gaps: Boundary[]
   bounds: Map<string, { first: number; last: number }>
   groups: ListGroup[]
@@ -34,7 +34,7 @@ export type LayoutPlan = {
 }
 
 /** createPlan collects tokens once, protecting incomplete declarations and their adjoining gaps. */
-export function createPlan(source: string, tree: Tree): LayoutPlan {
+export function createPlan(source: string, tree: CST.Tree): LayoutPlan {
   const plan: LayoutPlan = {
     source,
     newline: source.includes(Shared.CarriageReturnCharacter + Shared.NewlineCharacter)
@@ -60,12 +60,12 @@ export function createPlan(source: string, tree: Tree): LayoutPlan {
 }
 
 /** isCompleteNode identifies CST nodes safe for formatting rules and editable layout gaps. */
-export function isCompleteNode(node: SyntaxNode): boolean {
+export function isCompleteNode(node: CST.SyntaxNode): boolean {
   return !node.hasError && !node.isMissing && node.type !== 'ERROR'
 }
 
 /** createNodeKey identifies the range and kind of a CST node within its owning snapshot. */
-export function createNodeKey(node: SyntaxNode): string {
+export function createNodeKey(node: CST.SyntaxNode): string {
   return `${node.type}:${node.startIndex}:${node.endIndex}`
 }
 
@@ -98,7 +98,7 @@ export function linesAt(plan: LayoutPlan, index: number, lines: number): void {
   gap.explicitLines = lines
 }
 
-function collect(plan: LayoutPlan, node: SyntaxNode, owner: number, owners: number[], valid: boolean): void {
+function collect(plan: LayoutPlan, node: CST.SyntaxNode, owner: number, owners: number[], valid: boolean): void {
   const first = plan.tokens.length
   if (valid && node.children.length > 0) {
     for (const child of node.children) {

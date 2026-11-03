@@ -4,7 +4,7 @@ import { inspectProjectPreparation, type PreparationOptions, prepareProject } fr
 import { discoverProject } from './projects/Projects'
 import { openProjectWorkspace, type ProjectWorkspaceOptions } from './ProjectWorkspace'
 import { isSetupRequired, requireSetup } from './SetupRequired'
-import type { BunExecutor } from './sidecars/managed-modules/ManagedModules'
+import type { BunExecutor } from './sidecars/ManagedModule/ManagedModules'
 import { runAppTests, type TestBrowser } from './testing/AppTests'
 import type { TestProgress, TestResult } from './testing/RunTests'
 import { runSidecarTests } from './testing/SidecarTests'

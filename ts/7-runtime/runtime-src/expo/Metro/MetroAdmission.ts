@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '@shared/os/metro'
 
 /** createMetroAdmission owns revision changes across all admitted Metro readers and scheduled HMR work.
  *  A change listener must reserve synchronously before its debounce; nested reads retain that lease.

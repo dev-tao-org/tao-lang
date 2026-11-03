@@ -1,6 +1,7 @@
-import { runNonInteractiveCommand } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { NewlineCharacter, Regxs, Try } from '@shared'
-import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
 import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
@@ -50,22 +51,22 @@ async function buildNativeLocks(): Promise<void> {
     async pointer => await canReusePointer(inputs.identity, pointer),
     async () => {
       const staging = Artifacts.resolvePath('cache', `.native-locks-${Platform.randomUUID()}`)
-      await FileSystem.mkdir(outputRoot)
+      await FS.mkdir(outputRoot)
       await Try(async () => {
         await writeSources(staging, inputs)
         await buildStagedAddon(staging, inputs.node)
         await NativeLockPublication.publishNativeLockVersion(outputRoot, staging, inputs.identity)
-      }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })
+      }, { finally: () => FS.rm(staging, { recursive: true, force: true }) })
     },
   )
 }
 
 async function readInputs(): Promise<NativeInputs> {
   const sourceContents = await Promise.all(
-    sourceNames.map(name => FileSystem.readFile(Path.join(sourceRoot, name), 'utf8')),
+    sourceNames.map(name => FS.readFile(Path.join(sourceRoot, name), 'utf8')),
   )
   const builderSource = await readBuilderSources()
-  const node = parseNativeNodeMetadata(await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }))
+  const node = parseNativeNodeMetadata(await Processes.capture('node -p', { variadicArgs: [nodeMetadataProbe] }))
   const [addon, nodeGyp, include] = await Promise.all([
     NodeAddonApi.readMetadata(sharedRoot),
     NodeGyp.readMetadata(sharedRoot),
@@ -73,10 +74,10 @@ async function readInputs(): Promise<NativeInputs> {
   ])
   const nodeRoot = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS')).root
   const nodeVersionHeader = Path.join(nodeRoot, 'include/node/node_version.h')
-  const headerHash = await FileSystem.exists(nodeVersionHeader)
-    ? Platform.hashText(await FileSystem.readFile(nodeVersionHeader, 'utf8'))
+  const headerHash = await FS.exists(nodeVersionHeader)
+    ? Platform.hashText(await FS.readFile(nodeVersionHeader, 'utf8'))
     : 'node-gyp-managed-headers'
-  const lockHash = Platform.hashText(await FileSystem.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'))
+  const lockHash = Platform.hashText(await FS.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'))
   const environment = await toolchainEnvironment()
   const system = Platform.systemInfo()
   const identity = createNativeBuildIdentity({
@@ -120,17 +121,17 @@ function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {
 async function readBuilderSources(): Promise<string[]> {
   const paths = [
     import.meta.filename,
-    Repo.resolvePath('ts/shared/shared-src/os/PackageResources.ts'),
+    Repo.resolvePath('ts/shared/shared-src/os/Tooling/PackageResources.ts'),
     Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission.ts'),
     Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-addon-api.ts'),
     Repo.resolvePath('ts/shared/shared-src/os/bridges/Bridge_node-gyp.ts'),
   ]
-  return await Promise.all(paths.map(path => FileSystem.readFile(path, 'utf8')))
+  return await Promise.all(paths.map(path => FS.readFile(path, 'utf8')))
 }
 
 async function toolchainEnvironment(): Promise<unknown> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
-  const sources = await Promise.all(paths.map(path => FileSystem.readFile(Repo.resolvePath(path), 'utf8')))
+  const sources = await Promise.all(paths.map(path => FS.readFile(Repo.resolvePath(path), 'utf8')))
   return {
     sources: Platform.hashText(sources.join(NewlineCharacter)),
     variables: Object.fromEntries(
@@ -152,20 +153,20 @@ async function canReusePointer(
 
 async function canReuse(identity: string, binary: string, versionRoot: string): Promise<boolean> {
   const stamp = Path.join(versionRoot, 'inputs.json')
-  if (!await FileSystem.exists(binary)) {
+  if (!await FS.exists(binary)) {
     return false
   }
-  if (!await FileSystem.exists(stamp)) {
+  if (!await FS.exists(stamp)) {
     return false
   }
-  return await FileSystem.readFile(stamp, 'utf8') === identity
+  return await FS.readFile(stamp, 'utf8') === identity
 }
 
 async function writeSources(staging: string, inputs: NativeInputs): Promise<void> {
-  await FileSystem.mkdir(staging)
+  await FS.mkdir(staging)
   const gyp = inputs.sourceContents[0]!.replace(Regxs.NativeIncludeDirective, quoteGypPath(inputs.includeDirectory))
-  await FileSystem.writeFile(Path.join(staging, sourceNames[0]!), gyp)
-  await FileSystem.writeFile(Path.join(staging, sourceNames[1]!), inputs.sourceContents[1]!)
+  await FS.writeFile(Path.join(staging, sourceNames[0]!), gyp)
+  await FS.writeFile(Path.join(staging, sourceNames[1]!), inputs.sourceContents[1]!)
 }
 
 function quoteGypPath(path: string): string {
@@ -174,7 +175,7 @@ function quoteGypPath(path: string): string {
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {
   const options = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS'))
-  await runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
+  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [staging, ...options.headers],
     cwd: sharedRoot,
     addEnv: options.environment,

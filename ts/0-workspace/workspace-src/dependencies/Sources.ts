@@ -1,5 +1,5 @@
 import { Errors, Regxs, Switch, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
 /** deriveDefaultSourceAlias chooses an import alias from the source identifier. */
@@ -47,13 +47,13 @@ function preparationNeeded(message: string): never {
 
 function canonicalFileSource(parent: string, identifier: string): string {
   const path = Path.isAbsolute(identifier) ? identifier : Path.resolve(parent, identifier)
-  return Try.WithDefault(path, () => FileSystem.realpathSync(path))
+  return Try.WithDefault(path, () => FS.realpathSync(path))
 }
 
 function requireProjectRoot(location: string, label: string): void {
   const marker = Path.join(location, '.tao')
-  const valid = Try.WithDefault(false, () => FileSystem.lstatSync(location).isDirectory())
-    && Try.WithDefault(false, () => FileSystem.lstatSync(marker).isDirectory())
+  const valid = Try.WithDefault(false, () => FS.lstatSync(location).isDirectory())
+    && Try.WithDefault(false, () => FS.lstatSync(marker).isDirectory())
   if (!valid) {
     preparationNeeded(`${label} must point to a Tao project root containing .tao/.`)
   }
@@ -76,7 +76,7 @@ async function fileSource(
     Errors.Throw('Expected file dependency.')
   }
   const sourcePath = Path.resolve(parent, requirement.identifier)
-  if (!await FileSystem.exists(sourcePath)) {
+  if (!await FS.exists(sourcePath)) {
     preparationNeeded(`File dependency ${requirement.identifier} was not found from ${parent}.`)
   }
   const location = canonicalFileSource(parent, sourcePath)
@@ -156,15 +156,15 @@ async function materializeGitHubCache(
   cacheLocation: string,
   options: DependencyStoreOptions,
 ): Promise<void> {
-  if (await FileSystem.exists(cacheLocation)) {
+  if (await FS.exists(cacheLocation)) {
     return
   }
-  await FileSystem.mkdir(Path.dirname(cacheLocation))
+  await FS.mkdir(Path.dirname(cacheLocation))
   const pending = `${cacheLocation}.${Platform.randomUUID()}.pending`
   await Try(async () => {
     await options.git.fetchCommit(repository, commit, pending)
-    await FileSystem.rename(pending, cacheLocation)
-  }, { finally: () => FileSystem.rm(pending, { recursive: true, force: true }) })
+    await FS.rename(pending, cacheLocation)
+  }, { finally: () => FS.rm(pending, { recursive: true, force: true }) })
 }
 
 async function githubProjectLocation(
@@ -185,7 +185,7 @@ async function githubProjectLocation(
   if (subdirectory && !Path.isWithin(cacheLocation, location)) {
     preparationNeeded(`GitHub source ${identity} has an invalid project subdirectory.`)
   }
-  if (!await FileSystem.exists(location)) {
+  if (!await FS.exists(location)) {
     preparationNeeded(`GitHub source ${identity} has no project at ${subdirectory}.`)
   }
   return location

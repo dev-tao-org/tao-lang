@@ -11,7 +11,7 @@ export function platformGlobalIssue(
   if (isOwnedEnvironmentReference(node, filename)) {
     return
   }
-  if (filename.replaceAll('\\\\', '/') !== 'ts/shared/shared-src/os/Env.ts' && isProcessEnvironmentAccess(node)) {
+  if (!isEnvironmentOwner(filename) && isProcessEnvironmentAccess(node)) {
     return 'process environment access belongs in Env; use readonly values or subprocess addEnv overrides'
   }
   if (shouldSkipPlatformReference(node, filename, checker, excludedSource)) {
@@ -90,7 +90,10 @@ function shouldSkipPlatformReference(
 }
 
 function getGlobalOwnerPath(name: string): string | undefined {
-  if (name === 'process' || name === 'Buffer') {
+  if (name === 'process') {
+    return 'ts/shared/shared-src/os/Process/Process-Current.ts'
+  }
+  if (name === 'Buffer') {
     return 'ts/shared/shared-src/os/bridges/Bridge_node/Bridge_node.ts'
   }
   if (name === 'Bun') {
@@ -263,4 +266,9 @@ function isOwnedEnvironmentReference(node: TypeScript.Node, filename: string): b
     }
   }
   return false
+}
+
+function isEnvironmentOwner(filename: string): boolean {
+  return filename === 'ts/shared/shared-src/os/Env.ts'
+    || filename === 'ts/shared/shared-src/os/Process/Process-Current.ts'
 }

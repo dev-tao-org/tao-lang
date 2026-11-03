@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import type { FileSystem } from '@shared/os'
+import type { FS } from '@shared/os'
 import type { OutputChannel } from './output/Output'
 
 /** Command identifies an executable with optional space-separated arguments or explicit argv. */
@@ -13,7 +13,7 @@ export type CommandRunOptions = {
   variadicArgs?: readonly string[]
   cwd?: string
   addEnv?: Record<string, EnvironmentValue>
-  stdin?: FileSystem.File
+  stdin?: FS.File
   stdout?: InheritedOutputMode
   stderr?: InheritedOutputMode
   output?: OutputChannel

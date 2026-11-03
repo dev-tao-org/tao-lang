@@ -1,6 +1,7 @@
-import * as Runtime from '@runtime/Runtime'
+import * as Runtime from '@runtime'
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Artifacts, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
 /** moduleRefreshPerformance compares generated component module groupings through real Metro refreshes. */
@@ -61,7 +62,7 @@ const reportDefinitions = {
 }
 async function measureLayouts(owned: Resources) {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance modules; Chrome was not launched.')
+    await Processes.requireHostProcessAccess('Run ./agent unsandboxed performance modules; Chrome was not launched.')
   }
   await prepareLayouts(owned)
   const samples = await runAlternatingSamples(owned.layouts)
@@ -73,7 +74,7 @@ async function prepareLayouts(owned: Resources): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `module-refresh-${owned.sessionId}`)
   owned.root = root
   const dependencyDirectory = Repo.resolvePath('ts/7-runtime/node_modules')
-  await FileSystem.mkdir(root)
+  await FS.mkdir(root)
   for (const name of layouts) {
     const fixture = ModuleRefreshFixtureModule2.createModuleRefreshFixture(name)
     const application = await Runtime.create({
@@ -234,8 +235,8 @@ async function writeReport(owned: Resources, samples: RefreshSample[]): Promise<
   const report: ModuleRefreshPerformanceReport = {
     version: 2,
     sessionId: owned.sessionId,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     browser: await owned.browser!.version(),
     pageErrors: owned.pageErrors,
@@ -278,7 +279,7 @@ async function disposeLayouts(owned: Resources): Promise<void> {
   for (const expo of owned.expos.toReversed()) {
     await Try(async () => await expo.dispose(), { catch: () => undefined })
   }
-  await Try(async () => owned.root && FileSystem.rm(owned.root, { recursive: true, force: true }), {
+  await Try(async () => owned.root && FS.rm(owned.root, { recursive: true, force: true }), {
     catch: () => undefined,
   })
 }

@@ -1,6 +1,7 @@
 import { Regxs } from '@shared'
 import { Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import * as PackageApis from './PackageApis'
 import * as Bridges from './source-bridges'
 
 /** SourceFacadeContext caches named module boundaries and module resolution for one check. */
@@ -10,6 +11,7 @@ export type SourceFacadeContext = {
   publicEntries: ReadonlySet<string>
   options: TypeScript.CompilerOptions
   resolution: TypeScript.ModuleResolutionCache
+  namespaces: PackageApis.PackageImportRules
 }
 
 /** createSourceFacadeContext discovers sibling Name.ts and Name/ implementation boundaries.
@@ -39,6 +41,7 @@ export function createSourceFacadeContext(
     publicEntries,
     options,
     resolution,
+    namespaces: PackageApis.readPackageImportRules(root),
   }
 }
 
@@ -51,6 +54,12 @@ export function sourceFacadeIssue(
   const specifier = Bridges.sourceModuleSpecifier(node, loaderAliases)
   if (specifier === undefined) {
     return
+  }
+  if (TypeScript.isImportDeclaration(node)) {
+    const issue = PackageApis.packageNamespaceIssue(node, context.namespaces)
+    if (issue !== undefined) {
+      return issue
+    }
   }
   const importer = normalizePath(node.getSourceFile().fileName)
   const resolved = TypeScript.resolveModuleName(
@@ -65,6 +74,9 @@ export function sourceFacadeIssue(
     return
   }
   const filename = normalizePath(target)
+  if (isPrivatePackageImport(importer, filename, context)) {
+    return 'cross-package imports must use an exact manifest-owned public entrypoint'
+  }
   if (isPublicEntry(filename, context)) {
     return
   }
@@ -96,7 +108,7 @@ type ModuleFacade = { filename: string; directory: string }
 type PublicNamespaceExport = TypeScript.ExportDeclaration & { moduleSpecifier: TypeScript.StringLiteral }
 
 // Platform/package bridges are independently consumed entry points; importing os.ts would eagerly load unrelated hosts.
-const independentSubtrees = ['ts/shared/shared-src/os/bridges']
+const independentSubtrees = ['ts/shared/shared-src/os/bridges', 'ts/shared/shared-src/os/Process/Process-Current.ts']
 
 function collectSourceDirectories(files: readonly string[], root: string): Set<string> {
   const directories = new Set<string>()
@@ -130,7 +142,10 @@ function isPublicEntry(filename: string, context: SourceFacadeContext): boolean 
   if (context.facades.has(filename) || context.publicEntries.has(filename)) {
     return true
   }
-  return independentSubtrees.some(directory => isInside(filename, normalizePath(Path.join(context.root, directory))))
+  return independentSubtrees.some(directory => {
+    const entry = normalizePath(Path.join(context.root, directory))
+    return filename === entry || isInside(filename, entry)
+  })
 }
 
 function collectNamespacePublicEntries(
@@ -179,8 +194,8 @@ function isLiteralModuleSpecifier(node: OptionalModuleSpecifier): node is TypeSc
 
 function mayAccessImplementation(importer: string, owner: ModuleFacade): boolean {
   // Exact sibling test folders belong to this module; arbitrary test files do not bypass its boundary.
-  return importer === owner.filename || isInside(importer, owner.directory)
-    || isInside(importer, owner.directory + '-test')
+  const testDirectory = centralTestDirectory(owner.directory)
+  return importer === owner.filename || isInside(importer, owner.directory) || isInside(importer, testDirectory)
 }
 
 function findNearestFacade(filename: string, context: SourceFacadeContext): ModuleFacade | undefined {
@@ -204,4 +219,47 @@ function isInside(filename: string, directory: string): boolean {
 
 function normalizePath(filename: string): string {
   return filename.replaceAll('\\', '/')
+}
+
+function centralTestDirectory(directory: string): string {
+  const segments = directory.split('/')
+  const sourceIndex = segments.findIndex(segment => segment.endsWith('-src'))
+  if (sourceIndex >= 0) {
+    segments[sourceIndex] = 'test-' + segments[sourceIndex].slice(0, -4)
+  }
+  return segments.join('/')
+}
+
+function isPrivatePackageImport(importer: string, target: string, context: SourceFacadeContext): boolean {
+  const sourcePackage = sourcePackageDirectory(importer, context.root)
+  const targetPackage = sourcePackageDirectory(target, context.root)
+  if (sourcePackage === undefined || targetPackage === undefined || sourcePackage === targetPackage) {
+    return false
+  }
+  return !context.publicEntries.has(target) && !isPlatformToolBoundary(target, context.root)
+}
+
+function sourcePackageDirectory(filename: string, root: string): string | undefined {
+  const relative = normalizePath(Path.relative(Path.join(root, 'ts'), filename))
+  const segments = relative.split('/')
+  if (segments[0] === '..' || segments.length < 3) {
+    return
+  }
+  return segments[0] === 'ide-extensions' ? segments.slice(0, 2).join('/') : segments[0]
+}
+
+function isPlatformToolBoundary(filename: string, root: string): boolean {
+  const relative = normalizePath(Path.relative(root, filename))
+  const explicitFiles = [
+    'ts/shared/shared-src/bridges/Bridge_typescript.ts',
+    'ts/shared/shared-src/os/MetroPlatform.ts',
+    'ts/shared/shared-src/os/preview/PreviewErrors.ts',
+    'ts/shared/shared-src/os/Tooling/Bootstrap.ts',
+    'ts/shared/shared-src/os/Process/Process-Current.ts',
+    'ts/4-fix/fix-src/lib/formatter/Bridge_dprint-formatter/Bridge_dprint-formatter-resources.ts',
+    'ts/ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-javascript.ts',
+    'ts/ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_tree-sitter-typescript.ts',
+    'ts/ide-extensions/tao-ide-extension/tao-ide-extension-src/Bridge_web-tree-sitter.ts',
+  ]
+  return explicitFiles.includes(relative) || relative.startsWith('ts/shared/shared-src/os/bridges/')
 }

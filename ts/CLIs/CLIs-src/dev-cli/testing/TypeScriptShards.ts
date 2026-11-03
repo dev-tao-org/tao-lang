@@ -1,6 +1,8 @@
-import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+
 import { Errors, NewlineCharacter, Try } from '@shared'
-import { FileSystem, Repo } from '@shared/os'
+import { FS, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
 import { assertTestRunActive, runWorkerBatch, type TestPlan, type TestRunSignal } from './TestPlan'
 import { planTypeScriptShards } from './TypeScriptShardPlan'
@@ -8,7 +10,7 @@ import { planTypeScriptShards } from './TypeScriptShardPlan'
 /** TestWorkerEnvironment carries isolated cache and support paths into test subprocesses. */
 export type TestWorkerEnvironment = Record<string, string>
 
-type OptionalOutputChannel = OutputChannel | undefined
+type OptionalOutputChannel = CLIKit.OutputChannel | undefined
 /** runTypeScriptTests executes disjoint full-suite shards or preserves Bun's focused selection semantics. */
 export async function runTypeScriptTests(
   plan: TestPlan,
@@ -51,7 +53,7 @@ async function selectShards(args: readonly string[], workers: number): Promise<r
   if (!isFullSuiteSelection(args) || workers < 3) {
     return [args]
   }
-  const sources = await FileSystem.listSourceFiles(Repo.resolvePath('ts'))
+  const sources = await FS.listSourceFiles(Repo.resolvePath('ts'))
   const files = sources.filter(path => path.endsWith('.test.ts'))
   if (files.length === 0) {
     Errors.ThrowHostEnvironment('No TypeScript test files found.')
@@ -66,7 +68,7 @@ function isFullSuiteSelection(args: readonly string[]): boolean {
 async function runShard(
   args: readonly string[],
   workers: number,
-  output: OutputChannel,
+  output: CLIKit.OutputChannel,
   slowSeconds: OptionalSlowSeconds,
   signal: TestRunSignal,
   workerEnvironment: TestWorkerEnvironment,
@@ -74,7 +76,7 @@ async function runShard(
   assertTestRunActive(signal)
   await withTestTimings(
     reportPath =>
-      runNonInteractiveCommand(`bun test --parallel=${workers}`, {
+      CLIKit.runNonInteractiveCommand(`bun test --parallel=${workers}`, {
         variadicArgs: [...args, ...reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []],
         cwd: Repo.resolvePath('ts'),
         output,

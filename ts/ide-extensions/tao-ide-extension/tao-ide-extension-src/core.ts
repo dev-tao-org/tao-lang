@@ -1,5 +1,5 @@
-import { format, type FormatResult } from '@fix/Format'
-import type { LayoutOptions } from '@fix/lib/layout/Layout'
+import * as Format from '@fix/format'
+
 import * as Shared from '@shared'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from './Bridge_web-tree-sitter'
 import * as QueryResults from './QueryResults'
@@ -9,7 +9,7 @@ import { editTreeForSource } from './SourceEdit'
 /** DocumentSession owns one incrementally updated Tao tree for one document. */
 export interface DocumentSession {
   update(source: string): DocumentResult
-  format(options?: LayoutOptions): FormatResult
+  format(options?: Format.LayoutOptions): Format.FormatResult
   dispose(): void
 }
 
@@ -101,7 +101,7 @@ function createDocumentSession(options: SessionOptions): DocumentSession {
       if (disposed || !taoTree) {
         Shared.Errors.ThrowShouldNeverHappen('Cannot format an unavailable Tao document session')
       }
-      return format({ source, tree: taoTree }, options)
+      return Format.format({ source, tree: taoTree }, options)
     },
     update(nextSource) {
       if (disposed) {

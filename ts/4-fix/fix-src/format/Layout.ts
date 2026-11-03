@@ -1,5 +1,5 @@
 import * as CST from '@cst'
-import type { SyntaxNode } from '@cst'
+
 import type { LayoutHandlers } from '../lib/formatter/Formatter'
 
 /** Layout defines Tao line boundaries, indentation and preserved list wrapping. */
@@ -56,13 +56,13 @@ export const Layout = {
   },
 } satisfies LayoutHandlers
 
-function isDeclarationBoundary(previous: PreviousSyntaxNode, node: SyntaxNode): previous is SyntaxNode {
+function isDeclarationBoundary(previous: PreviousSyntaxNode, node: CST.SyntaxNode): previous is CST.SyntaxNode {
   return previous !== undefined && !CST.IsComment(node) && !CST.IsComment(previous)
 }
 
-type PreviousSyntaxNode = SyntaxNode | undefined
+type PreviousSyntaxNode = CST.SyntaxNode | undefined
 
-function isImport(node: SyntaxNode): boolean {
+function isImport(node: CST.SyntaxNode): boolean {
   return node.type === 'UseStatement' || node.type === 'UsePackageStatement'
     || node.type === 'RequiresDeclaration'
 }

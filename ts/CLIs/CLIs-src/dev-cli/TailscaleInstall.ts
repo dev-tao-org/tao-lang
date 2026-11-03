@@ -1,6 +1,7 @@
-import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { FileSystem, Http, Path, Platform, Storage, Terminal } from '@shared/os'
+import { FS, Http, Path, Platform, Storage, Terminal } from '@shared/os'
 
 /** installTailscale installs the official standalone macOS package without replacing an existing app variant. */
 export async function installTailscale(dryRun: boolean, io: InstallIO = createSystemInstallIO()): Promise<void> {
@@ -28,7 +29,7 @@ export async function installTailscale(dryRun: boolean, io: InstallIO = createSy
     )
   }
   const directory = Storage.resolveCacheDirectory('downloads', 'tailscale', Platform.randomUUID())
-  await FileSystem.mkdir(directory)
+  await FS.mkdir(directory)
   const path = Path.join(directory, packageName)
   io.progress('Downloading Tailscale from its official stable package server…')
   await io.execute('curl --fail --location --proto =https --tlsv1.2', {
@@ -47,8 +48,8 @@ type InstallIO = {
   interactive: boolean
   exists: (path: string) => Promise<boolean>
   readIndex: () => Promise<string>
-  execute: typeof runNonInteractiveCommand
-  executeInteractive: typeof runInteractiveCommand
+  execute: typeof CLIKit.runNonInteractiveCommand
+  executeInteractive: typeof CLIKit.runInteractiveCommand
   print: (message: string) => void
   progress: (message: string) => void
 }
@@ -60,7 +61,7 @@ function createSystemInstallIO(): InstallIO {
   return {
     platform: Platform.systemInfo().os,
     interactive: Terminal.isInteractive(),
-    exists: FileSystem.exists,
+    exists: FS.exists,
     async readIndex() {
       const response = await Http.request(PackageIndex)
       if (!response.ok) {
@@ -68,8 +69,8 @@ function createSystemInstallIO(): InstallIO {
       }
       return await response.text()
     },
-    execute: runNonInteractiveCommand,
-    executeInteractive: runInteractiveCommand,
+    execute: CLIKit.runNonInteractiveCommand,
+    executeInteractive: CLIKit.runInteractiveCommand,
     print: IO.print,
     progress: IO.progress,
   }

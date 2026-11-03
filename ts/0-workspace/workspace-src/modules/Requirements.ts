@@ -1,6 +1,7 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Path } from '@shared/os'
-import type { SourceModule } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
+
 import { validateRequirementPlacement } from '../dependencies/Requirements'
 import { isNpmRequirement } from '../ModuleRequirements'
 import { listRecursiveSourceFiles } from './Catalog'
@@ -10,13 +11,13 @@ import { findNamedPackageRoot, findNearestProjectRoot } from './Paths'
  *  Only reached modules are inventoried. Parsed documents share this build's exact read snapshots;
  *  missing files and incomplete declarations remain authoritative failures before setup or publication. */
 export async function loadRequirementModules(
-  sources: readonly SourceModule[],
+  sources: readonly Typecheck.SourceModule[],
   root: string,
   readDocument: (path: string) => Promise<AST.Document>,
-): Promise<SourceModule[]> {
+): Promise<Typecheck.SourceModule[]> {
   const modules = new Map<string, string>()
   const known = new Set(sources.map(source => source.path))
-  const metadata: SourceModule[] = []
+  const metadata: Typecheck.SourceModule[] = []
   for (const source of sources) {
     const owner = findNearestProjectRoot(Path.dirname(source.path)) ?? root
     modules.set(findNamedPackageRoot(source.path, owner) ?? owner, owner)

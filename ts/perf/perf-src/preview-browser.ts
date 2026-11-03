@@ -1,11 +1,11 @@
 import { Time } from '@shared'
-import * as Browser from '@shared/os/browser'
+import * as BrowserRuntime from '@shared/os/browser'
+import * as Preview from '@shared/preview'
+
 import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
-import { PreviewRecovery } from '../../shared/shared-src/os/PreviewRecovery'
-import type { PreviewOutcome } from '../../shared/shared-src/universal/PreviewOutcomeTracker'
-import * as PreviewBrowserJson from './PreviewBrowserJson'
-import { PreviewReceipts, type ReceiptPair } from './PreviewReceipts'
-import { isPreviewSignal, type PreviewSignal } from './PreviewSignal'
+import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
+import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
+import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
@@ -17,7 +17,7 @@ type PreviewResult = {
   clickTimestampMs: number
   timings: unknown[]
   stages?: unknown
-  outcome?: PreviewOutcome
+  outcome?: Preview.PreviewOutcome
   frames: Record<string, {
     clickToHmrMs: number
     hmrToAppliedMs: number
@@ -29,31 +29,35 @@ type PreviewResult = {
   }>
 }
 
-const sessionId = Browser.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
+const sessionId = BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
 const previewOrigin =
-  new WebHost.URL(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
+  new WebHost.URL(BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
 const frames = new Map(['left', 'right'].flatMap(id => {
-  const frame = Browser.querySelector<HTMLIFrameElement>(`#${id}`)
+  const frame = BrowserRuntime.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []
 }))
 const receipts = new PreviewReceipts<SignalReceipt>()
-const previewTimeoutMs = Number(Browser.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content)
+const previewTimeoutMs = Number(
+  BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content,
+)
 const recoveries = new Map(
-  [...frames].map(([frameId, frame]) => [frameId, new PreviewRecovery(frame, sessionId, frameId, previewTimeoutMs)]),
+  [...frames].map((
+    [frameId, frame],
+  ) => [frameId, new Preview.PreviewRecovery(frame, sessionId, frameId, previewTimeoutMs)]),
 )
 const expected = new Set<string>()
-const terminalOutcomes = new Map<string, PreviewOutcome>()
+const terminalOutcomes = new Map<string, Preview.PreviewOutcome>()
 const pendingSignals: MessageEvent[] = []
 const scenarios = PreviewBrowserJson.parsePreviewScenarios(
-  Browser.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
+  BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
 const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
   status: 'ready',
   results: [],
 }
-Browser.setPageState(result)
-const events = Browser.eventStream('/events')
+BrowserRuntime.setPageState(result)
+const events = BrowserRuntime.eventStream('/events')
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
@@ -89,8 +93,8 @@ events.addEventListener('baseline', event => {
   }
 })
 
-Browser.onMessage(receiveSignal)
-Browser.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () => {
+BrowserRuntime.onMessage(receiveSignal)
+BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () => {
   if (result.status !== 'ready' || scenarioIndex >= scenarios.length) {
     return
   }
@@ -123,7 +127,7 @@ function receiveSignal(event: MessageEvent): void {
     return
   }
   const frame = frames.get(signal.frameId)
-  if (!frame || event.source !== Browser.frameWindow(frame)) {
+  if (!frame || event.source !== BrowserRuntime.frameWindow(frame)) {
     return
   }
   const milestone = signal.type === 'tao.preview-applied' ? 'applied' : 'hmr'
@@ -138,14 +142,14 @@ function isFrameMessage(event: MessageEvent): boolean {
     return false
   }
   const frame = frames.get(identity.frameId)
-  if (!frame || event.source !== Browser.frameWindow(frame)) {
+  if (!frame || event.source !== BrowserRuntime.frameWindow(frame)) {
     return false
   }
   return typeof identity.bootId === 'string' && !!recoveries.get(identity.frameId)?.matchesInstance(identity.bootId)
 }
 
 function relaySignal(signal: PreviewSignal): void {
-  void Browser.requestJson('/receipt', {
+  void BrowserRuntime.requestJson('/receipt', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: PreviewBrowserJson.serializePreviewReceipt(signal),
@@ -153,7 +157,9 @@ function relaySignal(signal: PreviewSignal): void {
 }
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
-  const update = await Browser.requestJson<{ status: string; revision: string; timings: unknown[]; stages?: unknown }>(
+  const update = await BrowserRuntime.requestJson<
+    { status: string; revision: string; timings: unknown[]; stages?: unknown }
+  >(
     '/edit',
     {
       method: 'POST',
@@ -184,7 +190,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
 }
 
 function refreshRunButton(): void {
-  const runButton = Browser.querySelector<HTMLButtonElement>('#run')!
+  const runButton = BrowserRuntime.querySelector<HTMLButtonElement>('#run')!
   const complete = scenarioIndex >= scenarios.length
   runButton.disabled = complete || result.status === 'running'
   runButton.textContent = resolveRunButtonLabel(complete, result.status, scenarioIndex, scenarios)
@@ -251,5 +257,5 @@ function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<Signal
 }
 
 function setStatus(status: string): void {
-  Browser.setStatus(status)
+  BrowserRuntime.setStatus(status)
 }

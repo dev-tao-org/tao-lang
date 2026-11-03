@@ -1,5 +1,5 @@
 import { NewlineCharacter, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 
 export {
   activationSourceLine,
@@ -20,25 +20,25 @@ const activationSourceLine =
 
 /** readOptionalFile reads UTF-8 content or returns an empty string when the path is missing. */
 async function readOptionalFile(path: string): Promise<string> {
-  return FileSystem.existsSync(path) ? await FileSystem.readFile(path, 'utf8') : ''
+  return FS.existsSync(path) ? await FS.readFile(path, 'utf8') : ''
 }
 
 /** writeFileAtomically replaces a file through a uniquely named sibling temporary file. */
 async function writeFileAtomically(path: string, content: string): Promise<void> {
   const staged = `${path}.${Platform.randomUUID()}.tmp`
   await Try(async () => {
-    await FileSystem.mkdir(Path.dirname(path))
-    await FileSystem.writeFile(staged, content, 'utf8')
-    await FileSystem.rename(staged, path)
+    await FS.mkdir(Path.dirname(path))
+    await FS.writeFile(staged, content, 'utf8')
+    await FS.rename(staged, path)
   }, {
-    finally: () => FileSystem.rm(staged, { force: true }),
+    finally: () => FS.rm(staged, { force: true }),
   })
 }
 
 /** resolveZshrcTarget resolves an existing zsh configuration path through its symlink. */
 function resolveZshrcTarget(zshrc: string): string {
-  if (FileSystem.existsSync(zshrc) || isSymbolicLink(zshrc)) {
-    return FileSystem.realpathSync(zshrc)
+  if (FS.existsSync(zshrc) || isSymbolicLink(zshrc)) {
+    return FS.realpathSync(zshrc)
   }
   return zshrc
 }
@@ -68,9 +68,9 @@ function mergeActivationSourceLine(existing: string): string {
 
 /** realPathIfPresent resolves a path when it exists and returns an empty string otherwise. */
 async function realPathIfPresent(path: string): Promise<string> {
-  return await Try.WithDefault('', () => FileSystem.realpathSync(path))
+  return await Try.WithDefault('', () => FS.realpathSync(path))
 }
 
 function isSymbolicLink(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isSymbolicLink())
 }

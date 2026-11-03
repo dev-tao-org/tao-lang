@@ -1,4 +1,4 @@
-import { configureCLIOutput } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Platform } from '@shared/os'
 import '../cli-kit/fatal-errors'
 import './commands/agent-config'
@@ -41,6 +41,6 @@ import './commands/verify'
 import { execute } from './commands/_command-runner'
 
 if (Platform.isMain(import.meta)) {
-  await configureCLIOutput('dev')
+  await CLIKit.configureCLIOutput('dev')
   await execute()
 }

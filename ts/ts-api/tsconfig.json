@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/ts-api.tsbuildinfo" },
-  "include": ["ts-api-src/**/*", "ts-api-test/**/*"]
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/ts-api.tsbuildinfo"
+  },
+  "include": [
+    "ts-api-src/**/*",
+    "test-ts-api/**/*"
+  ]
 }

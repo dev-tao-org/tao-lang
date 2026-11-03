@@ -1,5 +1,6 @@
-import { joinTextLines, Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { Lists, NewlineCharacter, Objects, S, Switch } from '@shared'
+import * as Shared from '@shared'
+import { FS, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
 /** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata. */
@@ -10,8 +11,8 @@ export async function writeSemanticAst(directory: string): Promise<void> {
   const metadata = await readSemanticMetadata(Repo.resolvePath('ts/1-grammar/grammar-src/semantic-ast-metadata.json'))
   const source = generateSemanticAst(nodes, grammar, metadata)
   const output = Repo.resolvePath('ts/2-ast-gen/_gen_AST/AST-generated.ts')
-  await FileSystem.mkdir(Path.dirname(output))
-  await FileSystem.writeIfChanged(output, source)
+  await FS.mkdir(Path.dirname(output))
+  await FS.writeIfChanged(output, source)
 }
 
 type NodeMetadata = {
@@ -55,15 +56,15 @@ type SemanticAstModel = {
 }
 
 async function readNodeMetadata(path: string): Promise<NodeMetadata[]> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as NodeMetadata[]
+  return JSON.parse(await FS.readFile(path, 'utf8')) as NodeMetadata[]
 }
 
 async function readGrammarMetadata(path: string): Promise<GrammarMetadata> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as GrammarMetadata
+  return JSON.parse(await FS.readFile(path, 'utf8')) as GrammarMetadata
 }
 
 async function readSemanticMetadata(path: string): Promise<SemanticMetadata> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as SemanticMetadata
+  return JSON.parse(await FS.readFile(path, 'utf8')) as SemanticMetadata
 }
 
 const omittedRules = new Set([
@@ -194,7 +195,7 @@ function renderSemanticAst(model: SemanticAstModel): string {
     ${model.constructors}
     export type Document = { readonly root: File }
   `
-  return joinTextLines(source, '')
+  return Shared.joinTextLines(source, '')
 }
 
 function generateConstructorKinds(nodes: NodeMetadata[], metadata: SemanticMetadata): string {

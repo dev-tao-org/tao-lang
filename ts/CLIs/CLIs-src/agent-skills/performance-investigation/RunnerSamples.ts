@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { createSampleName, JobFileName } from './JobFiles'
 import type { MeasurementJob } from './Runner'
 
@@ -14,7 +14,7 @@ export async function collectSamples(
     for (let index = 0; index < job.settings.samples; index++) {
       const source = await measure()
       const name = createSampleName(index)
-      await FileSystem.copyFile(source, Path.join(directory, name))
+      await FS.copyFile(source, Path.join(directory, name))
       job.samples.push(name)
       await writeJob(directory, job)
     }
@@ -35,6 +35,6 @@ export async function collectSamples(
 async function writeJob(directory: string, job: MeasurementJob): Promise<void> {
   const path = Path.join(directory, JobFileName)
   const pending = `${path}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(job, null, 2) + '\n')
-  await FileSystem.rename(pending, path)
+  await FS.writeFile(pending, JSON.stringify(job, null, 2) + '\n')
+  await FS.rename(pending, path)
 }

@@ -1,6 +1,7 @@
-import { runNonInteractiveCommand } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { NewlineCharacter, Timings } from '@shared'
-import { Artifacts, BuildLock, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
@@ -38,27 +39,27 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
     'build/Release/tree_sitter_tao_binding.node',
   ]
   const stampPath = Path.join(outputRoot, 'inputs.json')
-  const current = FileSystem.existsSync(stampPath) && await FileSystem.file(stampPath).text() === stamp
+  const current = FS.existsSync(stampPath) && await FS.file(stampPath).text() === stamp
   if (canReuseParser(force, current, outputs)) {
     await writeCSTTypes(outputRoot)
     await writeSemanticAst(outputRoot)
     return
   }
-  await FileSystem.mkdir(outputRoot)
-  await FileSystem.rm(stampPath, { force: true })
+  await FS.mkdir(outputRoot)
+  await FS.rm(stampPath, { force: true })
   for (const filename of ['binding.gyp', 'binding.cc']) {
-    await FileSystem.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
+    await FS.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
   await timings.run(generateParser)
   await writeCSTTypes(outputRoot)
   await writeSemanticAst(outputRoot)
   await timings.run(buildParserNative, inputs)
-  await FileSystem.write(stampPath, stamp)
+  await FS.write(stampPath, stamp)
   await writeBuildTimings(timings)
 }
 
 const generateParser = Timings.measured('parser.generate', async function(): Promise<void> {
-  await runNonInteractiveCommand('tree-sitter generate --abi 15 --output', {
+  await CLIKit.runNonInteractiveCommand('tree-sitter generate --abi 15 --output', {
     variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
     cwd: grammarRoot,
   })
@@ -68,7 +69,7 @@ const buildParserNative = Timings.measured('parser.native-build', async function
   inputs: ParserBuildInputs,
 ): Promise<void> {
   const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
-  await runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
+  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
     variadicArgs: [outputRoot, ...options.headers],
     cwd: Repo.resolvePath('ts'),
     addEnv: options.environment,
@@ -76,7 +77,7 @@ const buildParserNative = Timings.measured('parser.native-build', async function
 })
 
 function canReuseParser(force: boolean, current: boolean, outputs: readonly string[]): boolean {
-  return !force && current && outputs.every(path => FileSystem.existsSync(Path.join(outputRoot, path)))
+  return !force && current && outputs.every(path => FS.existsSync(Path.join(outputRoot, path)))
 }
 
 async function readInputs(): Promise<ParserBuildInputs> {
@@ -90,14 +91,14 @@ async function readInputs(): Promise<ParserBuildInputs> {
       'binding.cc',
     ]
   ) {
-    sources[filename] = await FileSystem.file(Path.join(grammarRoot, filename)).text()
+    sources[filename] = await FS.file(Path.join(grammarRoot, filename)).text()
   }
   return {
     sources,
-    lock: Platform.hashText(await FileSystem.file(Repo.resolvePath('ts/bun.lock')).text()),
+    lock: Platform.hashText(await FS.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
     node: parseParserNodeMetadata(
-      await Platform.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
+      await Processes.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
     ),
     environment: await collectEnvironmentInputs(),
   }
@@ -105,7 +106,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
 
 async function collectEnvironmentInputs(): Promise<string> {
   const paths = ['devenv.lock', 'devenv.nix', '.config/nix/toolchain-packages.nix']
-  const sources = await Promise.all(paths.map(path => FileSystem.file(Repo.resolvePath(path)).text()))
+  const sources = await Promise.all(paths.map(path => FS.file(Repo.resolvePath(path)).text()))
   return Platform.hashText(sources.join(NewlineCharacter))
 }
 

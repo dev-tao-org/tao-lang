@@ -1,5 +1,5 @@
 import { Errors, Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type * as Types from './Types'
 
@@ -10,8 +10,8 @@ export function resolveDependencyLockPath(projectRoot: string): string {
 
 /** readDependencyLock reads a validated lock file without resolving or fetching sources. */
 export async function readDependencyLock(path: string): Promise<Types.DependencyLock | undefined> {
-  if (!await FileSystem.exists(path)) {
-    if (await FileSystem.exists(Path.join(Path.dirname(path), 'dependencies.initialized'))) {
+  if (!await FS.exists(path)) {
+    if (await FS.exists(Path.join(Path.dirname(path), 'dependencies.initialized'))) {
       Errors.ThrowUserInput(`Dependency lock ${path} is missing; restore the exact durable lock from version control.`)
     }
     return undefined
@@ -74,7 +74,7 @@ export async function readFileSourceRoots(projectRoot: string): Promise<string[]
       .map(async source =>
         Try.WithDefault(
           Path.resolve(projectRoot, source.location),
-          () => FileSystem.realpathSync(Path.resolve(projectRoot, source.location)),
+          () => FS.realpathSync(Path.resolve(projectRoot, source.location)),
         )
       ),
   )
@@ -85,7 +85,7 @@ export async function readFileSourceRoots(projectRoot: string): Promise<string[]
 export async function pruneUnreferencedManagedLocks(projectRoot: string): Promise<void> {
   const npmDirectory = Path.join(projectRoot, '.tao', 'store', 'npm')
   const profileDirectory = Path.join(projectRoot, '.tao', 'cache', 'managed-modules')
-  if (!await FileSystem.exists(npmDirectory)) {
+  if (!await FS.exists(npmDirectory)) {
     return
   }
   const profiles = await retainedProfileIdentities(profileDirectory)
@@ -95,7 +95,7 @@ export async function pruneUnreferencedManagedLocks(projectRoot: string): Promis
   const lock = await readDependencyLock(resolveDependencyLockPath(projectRoot))
   const currentLock = lock ? await pruneMissingGraphReferences(lock, projectRoot) : undefined
   const referencedPaths = new Set(Object.values(currentLock?.npmGraphs ?? {}).map(reference => reference.lockPath))
-  for (const filename of await FileSystem.readdir(npmDirectory)) {
+  for (const filename of await FS.readdir(npmDirectory)) {
     if (!filename.endsWith('.lock') || profiles.has(filename.slice(0, -5))) {
       continue
     }
@@ -104,8 +104,8 @@ export async function pruneUnreferencedManagedLocks(projectRoot: string): Promis
     if (referencedPaths.has(relative) || !isRegularFile(path)) {
       continue
     }
-    await FileSystem.rm(path, { force: true })
-    await FileSystem.rm(path.replace(Regxs.LockFileExtensionRegx, '.sha256'), { force: true })
+    await FS.rm(path, { force: true })
+    await FS.rm(path.replace(Regxs.LockFileExtensionRegx, '.sha256'), { force: true })
   }
 }
 
@@ -118,10 +118,10 @@ export async function writeDependencyLock(
   const contents = serializeDependencyLock(lock, projectRoot)
   const temporary = `${path}.${Platform.randomUUID()}.tmp`
   await Try(async () => {
-    await FileSystem.writeFile(temporary, contents)
-    await FileSystem.rename(temporary, path)
-    await FileSystem.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), `1${NewlineCharacter}`)
-  }, { finally: () => FileSystem.rm(temporary, { force: true }) })
+    await FS.writeFile(temporary, contents)
+    await FS.rename(temporary, path)
+    await FS.writeFile(Path.join(Path.dirname(path), 'dependencies.initialized'), `1${NewlineCharacter}`)
+  }, { finally: () => FS.rm(temporary, { force: true }) })
 }
 
 /** recordManagedGraphReference atomically records an exact npm graph lock reference. */
@@ -141,7 +141,7 @@ export async function recordManagedGraphReference(
   const relativeLockPath = relativizeProjectPath(projectRoot, durableLockPath)
   const reference: Types.ManagedGraphReference = { fingerprint, lockPath: relativeLockPath, lockHash }
   const updated: Types.DependencyLock = { ...lock, npmGraphs: { ...lock.npmGraphs, [graphKey]: reference } }
-  await FileSystem.mkdir(Path.dirname(lockPath))
+  await FS.mkdir(Path.dirname(lockPath))
   await writeDependencyLock(lockPath, updated, projectRoot)
   return updated
 }
@@ -197,7 +197,7 @@ async function pruneMissingGraphReferences(
       continue
     }
     const sourcePath = Path.resolve(projectRoot, key)
-    if (Path.isWithin(projectRoot, sourcePath) && !await FileSystem.exists(sourcePath)) {
+    if (Path.isWithin(projectRoot, sourcePath) && !await FS.exists(sourcePath)) {
       delete npmGraphs[key]
       changed = true
     }
@@ -211,13 +211,13 @@ async function pruneMissingGraphReferences(
 }
 
 async function retainedProfileIdentities(directory: string): Promise<Set<string> | undefined> {
-  if (!await FileSystem.exists(directory)) {
+  if (!await FS.exists(directory)) {
     return new Set()
   }
   const identities = new Set<string>()
-  for (const profile of await FileSystem.readdir(directory)) {
+  for (const profile of await FS.readdir(directory)) {
     const root = Path.join(directory, profile)
-    if (await FileSystem.exists(Path.join(root, '.tao-managed-building'))) {
+    if (await FS.exists(Path.join(root, '.tao-managed-building'))) {
       return undefined
     }
     const metadataPath = Path.join(root, '.tao-managed.json')
@@ -255,7 +255,7 @@ function materializeSourceLocation(
 }
 
 async function parseDependencyLockFile(path: string): Promise<unknown> {
-  const contents = await FileSystem.readFile(path, 'utf8')
+  const contents = await FS.readFile(path, 'utf8')
   return JSON.parse(contents) as unknown
 }
 
@@ -265,7 +265,7 @@ function serializeDependencyLock(lock: Types.DependencyLock, projectRoot: string
 }
 
 async function parseRetainedProfileMetadata(path: string): Promise<unknown> {
-  const contents = await FileSystem.readFile(path, 'utf8')
+  const contents = await FS.readFile(path, 'utf8')
   return JSON.parse(contents) as unknown
 }
 
@@ -281,7 +281,7 @@ function hasRetainedGraphFingerprint(metadata: unknown): metadata is { graphFing
 }
 
 function isRegularFile(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isFile())
 }
 
 function validateGraphReference(key: string, fingerprint: string, hash: string): void {

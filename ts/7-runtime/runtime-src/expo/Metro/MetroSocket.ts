@@ -1,4 +1,4 @@
-import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '@shared/os/metro'
 
 /** limitHmrSocketQueue expires only the lagging HMR instance instead of dropping dependent deltas.
  *  One arbitrarily large message may enter an empty queue; further queued payloads obey the cap. */

@@ -1,7 +1,6 @@
 import { Errors } from '@shared'
-import { FileSystem, Path, Storage } from '@shared/os'
-import { withDependencySession } from '@workspace/ModuleDependencies'
-import { discoverProject } from '@workspace/projects/Projects'
+import { FS, Path, Storage } from '@shared/os'
+import * as Workspace from '@workspace'
 
 /** withProjectSessions runs a mutation while holding stable sessions for every owning project. */
 export async function withProjectSessions<Value>(
@@ -17,7 +16,7 @@ export async function withProjectSessions<Value>(
 async function findOwningProjectRoots(paths: readonly string[]): Promise<string[]> {
   const roots = new Set<string>()
   for (const path of paths) {
-    const project = await discoverProject(path)
+    const project = await Workspace.discoverProject(path)
     if (!project) {
       Errors.ThrowUserInput(`No Tao project owns ${path}. Run tao init <path>.`)
     }
@@ -31,11 +30,11 @@ async function findOwningProjectRoots(paths: readonly string[]): Promise<string[
 }
 
 function validateProjectPath(path: string, projectRoot: string): void {
-  if (!FileSystem.existsSync(path)) {
+  if (!FS.existsSync(path)) {
     return
   }
-  const root = FileSystem.realpathSync(projectRoot)
-  const physical = FileSystem.realpathSync(path)
+  const root = FS.realpathSync(projectRoot)
+  const physical = FS.realpathSync(path)
   if (!Path.isWithin(root, physical)) {
     Errors.ThrowUserInput(`Project command path escapes its Tao project: ${path}`)
   }
@@ -52,7 +51,7 @@ function acquireProjectSessions<Value>(
   if (!root) {
     return action()
   }
-  return withDependencySession(
+  return Workspace.withDependencySession(
     root,
     sessionId,
     () => acquireProjectSessions(remaining, sessionId, acquireLease, action),

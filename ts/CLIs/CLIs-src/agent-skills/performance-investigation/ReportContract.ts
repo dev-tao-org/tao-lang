@@ -1,5 +1,5 @@
+import * as Perf from '@perf'
 import { Errors } from '@shared'
-import * as PreviewMeasurement from '../../../../perf/perf-src/PreviewMeasurement'
 import type { MeasurementJob } from './Runner'
 
 /** PreviewReport describes the complete raw workload required for a comparable independent session. */
@@ -13,14 +13,14 @@ export type PreviewReport = {
   runtime: string
   fixtureSha256: string
   system: unknown
-  measurement: PreviewMeasurement.PreviewMeasurement
+  measurement: Perf.PreviewMeasurement
   frameSizes: PreviewFrameSize[]
   results: PreviewReportResult[]
 }
 
 type PreviewFrameSize = { width: number; height: number }
 type PreviewReportResult = { scenario: string; sample: string; parentClickToLastAppliedMs: number }
-type PreviewFrameCount = PreviewMeasurement.PreviewFrameCount
+type PreviewFrameCount = Perf.PreviewFrameCount
 
 /** requireReport verifies source, workload completeness and measurement conditions before accepting timings. */
 export function requireReport(report: PreviewReport, job: MeasurementJob): void {
@@ -50,7 +50,7 @@ function hasExpectedIdentity(report: PreviewReport, job: MeasurementJob): boolea
 }
 
 function hasExpectedWorkload(report: PreviewReport, job: MeasurementJob): boolean {
-  const settings = PreviewMeasurement.readPreviewMeasurement({
+  const settings = Perf.readPreviewMeasurement({
     editCount: job.settings.edits,
     frameCount: Number(job.environment.TAO_PREVIEW_FRAME_COUNT ?? '2') as PreviewFrameCount,
     extraViews: Number(job.environment.TAO_PREVIEW_EXTRA_VIEWS ?? '0'),
@@ -59,14 +59,14 @@ function hasExpectedWorkload(report: PreviewReport, job: MeasurementJob): boolea
   if (!hasExpectedSettings(report, settings) || !Array.isArray(report.results)) {
     return false
   }
-  const scenarios = PreviewMeasurement.createMeasurementScenarios(settings)
+  const scenarios = Perf.createMeasurementScenarios(settings)
   if (report.results.length !== scenarios.length) {
     return false
   }
   return report.results.every((result, index) => hasExpectedScenarioResult(result, index, scenarios[index].name))
 }
 
-function hasExpectedSettings(report: PreviewReport, settings: PreviewMeasurement.PreviewMeasurement): boolean {
+function hasExpectedSettings(report: PreviewReport, settings: Perf.PreviewMeasurement): boolean {
   if (!report.measurement || !Array.isArray(report.frameSizes)) {
     return false
   }
@@ -91,7 +91,7 @@ function hasExpectedScenarioResult(
   scenario: string,
 ): boolean {
   return result.scenario === scenario
-    && result.sample === PreviewMeasurement.classifyMeasurementSample(index)
+    && result.sample === Perf.classifyMeasurementSample(index)
 }
 
 function hasMeasuredSize(size: PreviewFrameSize): boolean {

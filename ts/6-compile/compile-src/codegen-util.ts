@@ -1,6 +1,6 @@
-import type * as AST from '@ast-gen/AST'
+import type * as AST from '@ast-gen'
 import { NewlineCharacter, S } from '@shared'
-import type { ModuleBinding } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
 
 /** NamedValue identifies a named AST declaration, parameter, capture or linked module binding. */
 export type NamedValue = NamedDeclarationValue | NamedBindingValue
@@ -42,14 +42,14 @@ export function compileName(node: NamedValue): string {
   return emitStringLiteral(typeof node.name === 'string' ? node.name : node.name.value)
 }
 
-type ReferencedName = AST.Name | ModuleBinding
+type ReferencedName = AST.Name | Typecheck.ModuleBinding
 /** compileReferenceName quotes the referenced name or linked binding's target. */
 export function compileReferenceName(node: ReferencedName): string {
   return isModuleBinding(node) ? emitStringLiteral(node.target) : emitLiteral(node)
 }
 
 /** isModuleBinding narrows a source name or linked binding by its target field. */
-export function isModuleBinding(node: ReferencedName): node is ModuleBinding {
+export function isModuleBinding(node: ReferencedName): node is Typecheck.ModuleBinding {
   return 'target' in node
 }
 
@@ -72,7 +72,7 @@ export function listMap<T>(values: readonly T[], compile: (value: T) => string):
 
 type DeclarationNameNode = AST.ValueDeclaration | AST.Parameter | AST.Capture
 type NamedDeclarationValue = Pick<DeclarationNameNode, 'name'>
-type NamedBindingValue = Pick<ModuleBinding, 'name'>
+type NamedBindingValue = Pick<Typecheck.ModuleBinding, 'name'>
 type OptionalCodePart = string | undefined
 
 type ViewNameNode = AST.ViewDeclaration | AST.Capture

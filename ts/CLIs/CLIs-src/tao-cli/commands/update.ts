@@ -1,10 +1,9 @@
-import { IO, resolveCallerPath } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { Path } from '@shared/os'
-import { readProjectRequirements } from '@workspace/dependencies/Requirements'
-import { findPreparationEntry, listDependencyWork, withDependencySession } from '@workspace/ModuleDependencies'
-import { prepareProject } from '@workspace/ProjectPreparation'
-import { discoverProject } from '@workspace/projects/Projects'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { confirmDependencyWork } from '../DependencyPrompts'
 
@@ -21,12 +20,12 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
   async action(alias: OptionalDependencyAlias, options: UpdateCommandOptions = {}) {
-    const target = resolveCallerPath(options.entry ?? '.')
-    const project = await discoverProject(target)
+    const target = CLIKit.resolveCallerPath(options.entry ?? '.')
+    const project = await Workspace.discoverProject(target)
     if (!project) {
       Errors.ThrowUserInput(`No Tao project was found from ${target}. Run tao init <path>.`)
     }
-    const requirements = await readProjectRequirements(project.root)
+    const requirements = await Workspace.readProjectRequirements(project.root)
     const aliases = requirements.map(requirement => requirement.alias ?? defaultAlias(requirement))
     const update = alias ? [alias] : aliases
     if (alias && !aliases.includes(alias)) {
@@ -35,12 +34,12 @@ export default registerCommand({
     if (update.length === 0) {
       Errors.ThrowUserInput(`No direct source dependencies are declared in ${project.root}.`)
     }
-    const selected = await findPreparationEntry(project.root, options.entry ? target : undefined)
-    await withDependencySession(project.root, options.session, async () => {
-      const work = await listDependencyWork(project.root)
+    const selected = await Workspace.findPreparationEntry(project.root, options.entry ? target : undefined)
+    await Workspace.withDependencySession(project.root, options.session, async () => {
+      const work = await Workspace.listDependencyWork(project.root)
       await confirmDependencyWork([`update ${update.join(', ')}`, ...work], options.yes === true)
       IO.print(`Updating source dependencies: ${update.join(', ')}`)
-      await prepareProject(selected, { update })
+      await Workspace.prepareProject(selected, { update })
     })
   },
 })

@@ -1,11 +1,11 @@
-import { createModuleMemberKey, type LinkedModule, type LinkedProgram } from '@typecheck/Modules'
+import * as Typecheck from '@typecheck'
 import { isTextExpression } from './ValuesCompiler'
 
 /** ModuleTextBindingsBySourcePath maps authored module paths to their text-valued declarations. */
 export type ModuleTextBindingsBySourcePath = ReadonlyMap<string, ReadonlySet<string>>
 
 /** buildModuleTextBindings classifies linked values once in their global initialization order. */
-export function buildModuleTextBindings(program: LinkedProgram): ModuleTextBindingsBySourcePath {
+export function buildModuleTextBindings(program: Typecheck.LinkedProgram): ModuleTextBindingsBySourcePath {
   const bindings = new Map(
     program.modules.map(module => [module.path, new Map(module.bindings.map(binding => [binding.name, binding]))]),
   )
@@ -15,11 +15,11 @@ export function buildModuleTextBindings(program: LinkedProgram): ModuleTextBindi
     const isText = isTextExpression(definition.declaration.value, name => {
       const binding = bindings.get(definition.source)?.get(name.value)
       return declarations.get(
-        createModuleMemberKey(binding?.source ?? definition.source, binding?.target ?? name.value),
+        Typecheck.createModuleMemberKey(binding?.source ?? definition.source, binding?.target ?? name.value),
       )
         === true
     })
-    declarations.set(createModuleMemberKey(definition.source, definition.declaration.name.value), isText)
+    declarations.set(Typecheck.createModuleMemberKey(definition.source, definition.declaration.name.value), isText)
     if (isText) {
       ownNames.get(definition.source)?.add(definition.declaration.name.value)
     }
@@ -32,13 +32,13 @@ export function buildModuleTextBindings(program: LinkedProgram): ModuleTextBindi
 type TextClassificationsByModuleMemberKey = ReadonlyMap<string, boolean>
 
 function collectInheritedTextNames(
-  module: LinkedModule,
+  module: Typecheck.LinkedModule,
   ownNames: ModuleTextBindingsBySourcePath,
   declarations: TextClassificationsByModuleMemberKey,
 ): Set<string> {
   const names = new Set(ownNames.get(module.path))
   for (const binding of module.bindings) {
-    if (declarations.get(createModuleMemberKey(binding.source, binding.target))) {
+    if (declarations.get(Typecheck.createModuleMemberKey(binding.source, binding.target))) {
       names.add(binding.name)
     }
   }

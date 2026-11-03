@@ -1,4 +1,4 @@
-import { resolveCallerPath } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { runTaoTests } from '../../dev-cli/testing/TaoTests'
 import { findTaoTestFiles } from '../../dev-cli/testing/TaoTests'
@@ -25,7 +25,7 @@ export default registerCommand({
     description: 'Use a named project session lock.',
   }],
   async action(target: string, options: TaoTestCommandOptions = {}) {
-    const path = resolveCallerPath(target)
+    const path = CLIKit.resolveCallerPath(target)
     const tests = await findTaoTestFiles(path)
     await withProjectSessions(tests.length > 0 ? tests : [path], async () => {
       await runTaoTests(path, options)

@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
+import { FS, Path, Platform, SessionLock } from '@shared/os'
 
 /** NativeLockPointer identifies the immutable addon installation for one build identity. */
 export type NativeLockPointer = { identity: string; directory: string }
@@ -27,12 +27,12 @@ export function nativeLockVersionRoot(root: string, pointer: NativeLockPointer):
 export async function publishNativeLockVersion(root: string, staging: string, identity: string): Promise<void> {
   let directory = identity
   let versionRoot = nativeLockVersionRoot(root, { identity, directory })
-  if (await FileSystem.exists(versionRoot)) {
+  if (await FS.exists(versionRoot)) {
     directory = `${identity}-${Platform.randomUUID()}`
     versionRoot = nativeLockVersionRoot(root, { identity, directory })
   }
-  await FileSystem.writeFile(Path.join(staging, 'inputs.json'), identity)
-  await FileSystem.rename(staging, versionRoot)
+  await FS.writeFile(Path.join(staging, 'inputs.json'), identity)
+  await FS.rename(staging, versionRoot)
   await writeNativeLockPointer(root, { identity, directory })
 }
 
@@ -42,9 +42,9 @@ export async function writeNativeLockPointer(root: string, pointer: NativeLockPo
   const path = Path.join(root, 'current.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
   await Try(async () => {
-    await FileSystem.writeFile(pending, JSON.stringify(pointer))
-    await FileSystem.rename(pending, path)
-  }, { finally: () => FileSystem.rm(pending, { force: true }) })
+    await FS.writeFile(pending, JSON.stringify(pointer))
+    await FS.rename(pending, path)
+  }, { finally: () => FS.rm(pending, { force: true }) })
 }
 
 type UnavailablePointerKind = 'missing' | 'invalid'
@@ -52,7 +52,7 @@ type PointerRead = { kind: UnavailablePointerKind } | { kind: 'valid'; pointer: 
 
 async function readPointer(root: string): Promise<PointerRead> {
   const path = Path.join(root, 'current.json')
-  const contents = await Try(() => FileSystem.readFile(path, 'utf8'), {
+  const contents = await Try(() => FS.readFile(path, 'utf8'), {
     catch: error => isMissing(error) ? undefined : Errors.Throw(error),
   })
   if (contents === undefined) {

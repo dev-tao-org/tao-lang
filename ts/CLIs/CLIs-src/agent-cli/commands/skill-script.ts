@@ -1,4 +1,4 @@
-import { resolveCallerPath } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { runSkillScript } from '../skills/SkillScript'
 
@@ -15,6 +15,6 @@ export default registerCommand({
   allowUnknownOptions: true,
   async action(args: string[]) {
     const [entryPath, ...scriptArgs] = args
-    await runSkillScript(resolveCallerPath(entryPath), scriptArgs)
+    await runSkillScript(CLIKit.resolveCallerPath(entryPath), scriptArgs)
   },
 })

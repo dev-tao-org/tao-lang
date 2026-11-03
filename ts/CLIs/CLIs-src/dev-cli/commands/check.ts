@@ -1,4 +1,4 @@
-import { runSteps } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import * as Check from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
 import doctor from './doctor'
@@ -9,7 +9,7 @@ export default registerCommand({
   description: 'Check setup, types, source conformance, dead exports and formatting without running tests.',
   async action() {
     // App/IDE/runtime checks await their new implementations.
-    await runSteps(
+    await CLIKit.runSteps(
       () => doctor.action([]),
       () => Check.workspaceTypes(),
       () => Check.workspaceShellSyntax(),

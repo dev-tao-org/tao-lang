@@ -1,4 +1,5 @@
-import { IO, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Platform } from '@shared/os'
 import { connectTiming, disconnectTiming, resolveTimingSocket } from './TimingConnection'
@@ -52,7 +53,7 @@ function createSessionIO(): TimingSessionIO {
 }
 
 function describeSessionRunIO(summary: (message: string) => void) {
-  return { execute: runNonInteractiveCommand, print: IO.print, summary, resolveSocket: resolveTimingSocket }
+  return { execute: CLIKit.runNonInteractiveCommand, print: IO.print, summary, resolveSocket: resolveTimingSocket }
 }
 
 function withSessionSocket(options: TimingRun, controlPath: string): TimingRun {

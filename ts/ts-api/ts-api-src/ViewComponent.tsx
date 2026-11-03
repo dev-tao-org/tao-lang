@@ -1,5 +1,5 @@
+import * as Client from '@runtime/client'
 import React from '@runtime/client/Bridge_react/Bridge_react'
-import { ViewRenderArguments, ViewRenderExpression } from '@runtime/client/View'
 import { Errors } from '@shared'
 import type { Library } from './Library'
 
@@ -20,6 +20,6 @@ export function createViewComponent<Props extends ViewProps>(
     }
     const values = parameters.map(parameter => props[parameter])
     const children = React.Children.toArray(props.children)
-    return ViewRenderExpression(view, ViewRenderArguments(values, children))
+    return Client.ViewRenderExpression(view, Client.ViewRenderArguments(values, children))
   }
 }

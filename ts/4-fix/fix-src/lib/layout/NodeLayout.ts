@@ -1,22 +1,22 @@
 import * as CST from '@cst'
-import type { Field, NodeType, SyntaxNode, Token } from '@cst'
+
 import * as Shared from '@shared'
 import { NodeContext } from '../formatter/NodeFormat'
 import { linesAt } from './Plan'
 
-type CommaListTail<Kind extends NodeType> = Token<Kind> | Field<Kind>
+type CommaListTail<Kind extends CST.NodeType> = CST.Token<Kind> | CST.Field<Kind>
 
 /** NodeLayout declares vertical boundaries and breakable groups through independent commands. */
-export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
-  blankLineBefore(node: SyntaxNode): void {
+export class NodeLayout<Kind extends CST.NodeType> extends NodeContext<Kind> {
+  blankLineBefore(node: CST.SyntaxNode): void {
     linesAt(this.plan, this.range(node).first, 2)
   }
 
-  lineBefore(node: SyntaxNode): void {
+  lineBefore(node: CST.SyntaxNode): void {
     linesAt(this.plan, this.range(node).first, 1)
   }
 
-  newLineBefore(...tokens: Token<Kind>[]): void {
+  newLineBefore(...tokens: CST.Token<Kind>[]): void {
     for (const token of tokens) {
       for (const node of this.tokens(token)) {
         linesAt(this.plan, this.range(node).first, 1)
@@ -24,7 +24,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 
-  newLineAfter(...tokens: Token<Kind>[]): void {
+  newLineAfter(...tokens: CST.Token<Kind>[]): void {
     for (const token of tokens) {
       for (const node of this.tokens(token)) {
         linesAt(this.plan, this.range(node).last + 1, 1)
@@ -32,7 +32,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 
-  onOwnLineProperty(...properties: Field<Kind>[]): void {
+  onOwnLineProperty(...properties: CST.Field<Kind>[]): void {
     for (const name of properties) {
       const node = this.property(name)
       if (node) {
@@ -45,7 +45,7 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
     }
   }
 
-  lineSeparated(items: readonly SyntaxNode[]): void {
+  lineSeparated(items: readonly CST.SyntaxNode[]): void {
     for (const node of items.slice(1)) {
       const first = this.range(node).first
       linesAt(this.plan, first, Math.max(1, this.plan.gaps[first]!.lines))
@@ -112,6 +112,6 @@ export class NodeLayout<Kind extends NodeType> extends NodeContext<Kind> {
   }
 }
 
-function isBlockItem(node: SyntaxNode, open: SyntaxNode, close: SyntaxNode): boolean {
+function isBlockItem(node: CST.SyntaxNode, open: CST.SyntaxNode, close: CST.SyntaxNode): boolean {
   return node.startIndex >= open.endIndex && node.endIndex <= close.startIndex && !CST.IsComment(node)
 }

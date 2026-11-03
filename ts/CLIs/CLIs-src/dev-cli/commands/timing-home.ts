@@ -1,4 +1,4 @@
-import { resolveCallerPath } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { initializeTimingHome, type TimingHome } from '../timing/TimingHome'
 import { registerCommand } from './_command-runner'
 
@@ -22,5 +22,5 @@ function resolveHomeOptions(options: TimingHome): TimingHome {
   if (options.importReports === undefined) {
     return options
   }
-  return { ...options, importReports: resolveCallerPath(options.importReports) }
+  return { ...options, importReports: CLIKit.resolveCallerPath(options.importReports) }
 }

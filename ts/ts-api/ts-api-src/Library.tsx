@@ -1,5 +1,5 @@
+import { View } from '@runtime/client'
 import React from '@runtime/client/Bridge_react/Bridge_react'
-import type { View } from '@runtime/client/View'
 import { Errors } from '@shared'
 
 /** LibraryViews maps published paths to their initialized Tao views. */

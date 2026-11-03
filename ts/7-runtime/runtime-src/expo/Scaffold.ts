@@ -1,5 +1,5 @@
 import { Errors, Lists, S, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
@@ -21,7 +21,7 @@ export async function writeExpoApplication(
     'app.json': serializeExpoAppManifest(),
     'tsconfig.json': serializeExpoTypeScriptConfig(),
   }, options.dependencyDirectory)
-  await FileSystem.mkdir(Path.join(directory, 'src'))
+  await FS.mkdir(Path.join(directory, 'src'))
   await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
 }
 
@@ -106,27 +106,27 @@ const expoEntry = S`
 
 async function linkRuntimeSources(directory: string, resourcesDirectory: string, sourceFiles: string[]): Promise<void> {
   const target = Path.join(directory, 'src/_gen_runtime')
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(target))
+  const current = await Try.WithDefault(undefined, () => FS.lstatSync(target))
   if (current?.isSymbolicLink()) {
-    const existingPath = await Try.WithDefault(undefined, () => FileSystem.realpathSync(target))
+    const existingPath = await Try.WithDefault(undefined, () => FS.realpathSync(target))
     if (existingPath === resourcesDirectory) {
       return
     }
-    await FileSystem.replaceDirectoryLink(resourcesDirectory, target)
+    await FS.replaceDirectoryLink(resourcesDirectory, target)
     return
   }
   if (current?.isDirectory()) {
     await removeOwnedSourceCopies(target, sourceFiles)
-    if (!await FileSystem.isEmptyDir(target)) {
+    if (!await FS.isEmptyDir(target)) {
       Errors.ThrowUserInput(`Generated runtime source path contains user files: ${target}`)
     }
-    await FileSystem.rmdir(target)
+    await FS.rmdir(target)
   } else if (current) {
     Errors.ThrowUserInput(`Generated runtime source path is not a directory: ${target}`)
   } else {
     // A missing target needs no cleanup before creating the runtime source link.
   }
-  await FileSystem.symlink(resourcesDirectory, target, 'dir')
+  await FS.symlink(resourcesDirectory, target, 'dir')
 }
 
 async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): Promise<void> {
@@ -135,20 +135,20 @@ async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): P
     .sort((left, right) => left.length - right.length)
   await assertUnlinkedDirectories(directories)
   for (const file of oldSources) {
-    await FileSystem.rm(Path.join(target, file), { force: true })
+    await FS.rm(Path.join(target, file), { force: true })
   }
   for (const directory of directories.toReversed()) {
-    const directoryIsEmpty = await Try.WithDefault(true, () => FileSystem.isEmptyDir(directory))
-    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    const directoryIsEmpty = await Try.WithDefault(true, () => FS.isEmptyDir(directory))
+    const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (current?.isDirectory() && directoryIsEmpty) {
-      await FileSystem.rmdir(directory)
+      await FS.rmdir(directory)
     }
   }
 }
 
 async function assertUnlinkedDirectories(directories: readonly string[]): Promise<void> {
   for (const directory of directories) {
-    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (current?.isSymbolicLink()) {
       Errors.ThrowUserInput(`Generated runtime source path contains a linked directory: ${directory}`)
     }

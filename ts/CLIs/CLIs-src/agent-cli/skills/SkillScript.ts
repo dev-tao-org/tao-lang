@@ -1,6 +1,6 @@
-import { runNonInteractiveCommand } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Regxs, Try } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
 
 /** runSkillScript validates and runs an entry script owned by an installed skill. */
 export async function runSkillScript(
@@ -8,12 +8,12 @@ export async function runSkillScript(
   args: readonly string[],
   workspaceRoot = Repo.getWorkspaceRoot(),
 ): Promise<void> {
-  const root = Try.WithDefault(undefined, () => FileSystem.realpathSync(workspaceRoot))
+  const root = Try.WithDefault(undefined, () => FS.realpathSync(workspaceRoot))
   if (!root) {
     Errors.ThrowUserInput('The repository workspace root is unavailable.')
   }
   const script = resolveSkillScript(entryPath, root)
-  await runNonInteractiveCommand('bun run', {
+  await CLIKit.runNonInteractiveCommand('bun run', {
     variadicArgs: [script, ...args],
     cwd: root,
   })
@@ -62,16 +62,16 @@ function requireSkillScriptInsideOwnedScripts(
 }
 
 function canonicalDirectory(path: string): string {
-  const canonical = Try.WithDefault(undefined, () => FileSystem.realpathSync(path))
-  if (!canonical || !Try.WithDefault(false, () => FileSystem.statSync(canonical).isDirectory())) {
+  const canonical = Try.WithDefault(undefined, () => FS.realpathSync(path))
+  if (!canonical || !Try.WithDefault(false, () => FS.statSync(canonical).isDirectory())) {
     Errors.ThrowUserInput(`Expected a directory: ${path}`)
   }
   return canonical
 }
 
 function canonicalFile(path: string): string {
-  const canonical = Try.WithDefault(undefined, () => FileSystem.realpathSync(path))
-  if (!canonical || !Try.WithDefault(false, () => FileSystem.statSync(canonical).isFile())) {
+  const canonical = Try.WithDefault(undefined, () => FS.realpathSync(path))
+  if (!canonical || !Try.WithDefault(false, () => FS.statSync(canonical).isFile())) {
     Errors.ThrowUserInput(`Expected a TypeScript file: ${path}`)
   }
   return canonical
@@ -82,7 +82,7 @@ function validateSkillMarker(skillRoot: string, skillName: string): void {
   if (!Path.isWithin(skillRoot, marker)) {
     Errors.ThrowUserInput('The skill marker resolves outside the skill directory.')
   }
-  const contents = FileSystem.readFileSync(marker, 'utf8')
+  const contents = FS.readFileSync(marker, 'utf8')
   const frontmatter = Regxs.SkillFrontmatterBlockRegx.exec(contents)?.[1]
   const name = frontmatter === undefined ? undefined : Regxs.SkillFrontmatterNameRegx.exec(frontmatter)?.[1]
   if (name !== skillName) {

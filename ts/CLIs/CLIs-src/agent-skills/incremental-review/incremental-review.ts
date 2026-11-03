@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, Lists } from '@shared'
-import { FileSystem, Path, Platform, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
+import { Process } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
@@ -10,7 +11,7 @@ import type { IncrementalReviewResult, ReviewSelection, ReviewSession } from './
 
 /** main prints the incremental-review result for the skill's thin entry script. */
 export async function main(): Promise<void> {
-  IO.print(formatReviewResult(await runReview(Platform.argv.slice(2))))
+  IO.print(formatReviewResult(await runReview(Process.argv.slice(2))))
 }
 
 /** runReview executes the incremental-review protocol against one explicit implementation checkout. */
@@ -138,7 +139,7 @@ async function runSelectionCommand(
   const selection = await resolveSelection(selectionFile, session, options, source, reviewed)
   if (command === 'plan') {
     const out = Path.resolve(required(options, 'out'))
-    if (await FileSystem.exists(out)) {
+    if (await FS.exists(out)) {
       Errors.ThrowUserInput(`Proposal destination already exists: ${out}`)
     }
     await writeJson(out, selection)

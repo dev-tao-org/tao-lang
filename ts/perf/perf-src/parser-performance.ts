@@ -1,6 +1,7 @@
-import type { Parser } from '@grammar/parser'
+import type * as Grammar from '@grammar'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 import type { ParserFixture } from './parser-fixtures'
 import { transformerSamples } from './transformer-samples'
@@ -19,11 +20,11 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   Artifacts.trackTemporary(path)
   const report: ParserPerformanceReport = {
     version: 1,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
-    bun: await Platform.capture('bun --version'),
-    node: await Platform.capture('node --version'),
+    bun: await Processes.capture('bun --version'),
+    node: await Processes.capture('node --version'),
     fixtureHash: await createParserFixtureFingerprint(),
     definitions: {
       cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
@@ -115,7 +116,7 @@ function parseColdParserSamples(output: string): TimingSample[] {
 }
 
 const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {
-  return await Platform.capture('bun run', {
+  return await Processes.capture('bun run', {
     variadicArgs: [Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')],
     cwd: Repo.resolvePath('ts'),
   })
@@ -136,7 +137,7 @@ async function warmSamples(): Promise<Sample[]> {
 const sampleWarmParser = Timings.createTopLevelTimer(
   function(
     timings,
-    parser: Parser,
+    parser: Grammar.Parser,
     fixture: ParserFixture,
     index: number,
     samples: Sample[],

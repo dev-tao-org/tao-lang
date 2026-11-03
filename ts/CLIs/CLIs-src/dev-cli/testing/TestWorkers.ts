@@ -1,8 +1,10 @@
-import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+
 import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
-import { Artifacts, FileSystem, HeadlessBrowser, Http, Lifecycle, Path, Platform, Repo } from '@shared/os'
-import { discoverProject } from '@workspace/projects/Projects'
-import { execute } from '@workspace/Workflow'
+import { Artifacts, FS, HeadlessBrowser, Http, Path, Platform, Process, Repo } from '@shared/os'
+import * as Workspace from '@workspace'
+
 import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { findTaoTestFiles } from './TaoTestDiscovery'
 import * as TestPlanModule2 from './TestPlan'
@@ -17,7 +19,7 @@ export async function runTestPlan(
   options: TestWorkerOptions,
 ): Promise<void> {
   const controller = Http.createAbortController()
-  const stop = Lifecycle.onTermination(() => controller.abort())
+  const stop = Process.onTermination(() => controller.abort())
   const workerEnvironment = testWorkerEnvironment()
   await Try(() => executeTestPlan(options, controller.signal, workerEnvironment), { finally: stop })
 }
@@ -34,7 +36,7 @@ export async function runTaoTestFiles(
     let passed = 0
     let failed = 0
     for (
-      const result of await execute({
+      const result of await Workspace.execute({
         kind: 'app-tests',
         entry: file,
         openBrowser: HeadlessBrowser.openTestBrowser,
@@ -74,7 +76,7 @@ async function executeTestPlan(
   const startedAtMs = Time.nowMs()
   const plan = TestPlanModule2.planTestExecution(options)
   const typeScriptChannel = plan.typescript ? IO.channel({ title: 'TypeScript tests' }) : undefined
-  const taoChannels: OutputChannel[] = []
+  const taoChannels: CLIKit.OutputChannel[] = []
   const operations = {
     typescript: () => runTypeScriptTests(plan, typeScriptChannel, options.slowSeconds, signal, workerEnvironment),
     tao: () => runTaoTests(plan, taoChannels, signal, workerEnvironment, options.yes),
@@ -100,7 +102,7 @@ async function executeTestPlan(
 
 async function runTaoTests(
   plan: TestPlanModule2.TestPlan,
-  channels: OutputChannel[],
+  channels: CLIKit.OutputChannel[],
   signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: TestWorkerEnvironment,
   yes?: boolean,
@@ -120,7 +122,7 @@ async function runTaoTests(
 
 async function executeTaoTests(
   plan: TestPlanModule2.TestPlan,
-  channels: OutputChannel[],
+  channels: CLIKit.OutputChannel[],
   signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: TestWorkerEnvironment,
   yes?: boolean,
@@ -134,8 +136,8 @@ async function executeTaoTests(
     Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
   }
   for (const entry of files) {
-    if (await discoverProject(entry)) {
-      await execute({ kind: 'setup', entry, for: 'app-tests' }, workflowUI(yes, signal))
+    if (await Workspace.discoverProject(entry)) {
+      await Workspace.execute({ kind: 'setup', entry, for: 'app-tests' }, workflowUI(yes, signal))
     }
   }
   channels.push(...Array.from(
@@ -164,7 +166,7 @@ async function executeTaoTests(
 
 async function runTaoWorker(
   worker: TestPlanModule2.TaoWorkerPlan,
-  channel: OutputChannel,
+  channel: CLIKit.OutputChannel,
   signal: TestPlanModule2.TestRunSignal,
   workerEnvironment: TestWorkerEnvironment,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
@@ -172,7 +174,7 @@ async function runTaoWorker(
   channel.start()
   let commandFailure: OptionalCommandFailure
   await Try(() =>
-    runNonInteractiveCommand('bun run', {
+    CLIKit.runNonInteractiveCommand('bun run', {
       variadicArgs: [
         Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),
         '--report',
@@ -203,7 +205,7 @@ async function readTaoWorkerReport(
   commandFailure: OptionalCommandFailure,
 ): Promise<TestPlanModule2.TaoWorkerReport> {
   return await Try(async () => {
-    const value: unknown = JSON.parse(await FileSystem.readFile(path, 'utf8'))
+    const value: unknown = JSON.parse(await FS.readFile(path, 'utf8'))
     if (!isTaoWorkerReport(value)) {
       Errors.ThrowHostEnvironment(`Tao worker wrote an invalid result report: ${path}`)
     }
@@ -219,7 +221,7 @@ async function readTaoWorkerReport(
         commandFailure ? `; worker command: ${commandFailure}` : ''
       }`,
     }),
-    finally: () => FileSystem.rm(path, { force: true }),
+    finally: () => FS.rm(path, { force: true }),
   })
 }
 

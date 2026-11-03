@@ -1,8 +1,9 @@
-import { IO, resolveCallerPath } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
 import { Storage } from '@shared/os'
-import { cleanProject } from '@workspace/projects/Clean'
-import { discoverProject } from '@workspace/projects/Projects'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 
 /** taoCleanCommand removes generated state for the current Tao project. */
@@ -12,11 +13,11 @@ export default registerCommand({
   arguments: [{ name: 'path', defaultValue: '.', description: 'Project directory or file.' }],
   options: [{ flags: '--wipe', description: 'Also remove the shared Tao cache when no consumers are active.' }],
   async action(path: string, options: { wipe?: boolean } = {}) {
-    const project = await discoverProject(resolveCallerPath(path))
+    const project = await Workspace.discoverProject(CLIKit.resolveCallerPath(path))
     if (!project) {
-      Errors.ThrowUserInput(`No Tao project was found from ${resolveCallerPath(path)}.`)
+      Errors.ThrowUserInput(`No Tao project was found from ${CLIKit.resolveCallerPath(path)}.`)
     }
-    const result = await cleanProject(project.root)
+    const result = await Workspace.cleanProject(project.root)
     for (const warning of result.warnings) {
       IO.warn(warning)
     }

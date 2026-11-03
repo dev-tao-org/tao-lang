@@ -1,4 +1,4 @@
-import { Bundle, FileSystem, Path, Repo } from '@shared/os'
+import { Bundle, FS, Path, Repo } from '@shared/os'
 import type { RuntimeSourceContents } from './runtime-sources'
 
 /** metroBuildInputs fingerprints the preload sources and dependency patches shipped with the runtime. */
@@ -13,10 +13,10 @@ export async function metroBuildInputs(): Promise<string[]> {
   ]
   const groups = await Promise.all(directories.map(async directory => {
     const root = Repo.resolvePath(directory)
-    return await FileSystem.listProductionSourceFiles(root)
+    return await FS.listProductionSourceFiles(root)
   }))
   const patchRoot = Repo.resolvePath('ts/patches')
-  const patches = (await FileSystem.readdir(patchRoot)).map(name => Path.join(patchRoot, name))
+  const patches = (await FS.readdir(patchRoot)).map(name => Path.join(patchRoot, name))
   return [...groups.flat(), ...patches, Repo.resolvePath('ts/package.json'), Path.fileURLToPath(import.meta.url)]
 }
 
@@ -24,13 +24,13 @@ export async function metroBuildInputs(): Promise<string[]> {
 export async function writeMetroResources(directory: string, sources: RuntimeSourceContents): Promise<void> {
   const target = Path.join(directory, 'metro')
   await Bundle.bundleNode(Repo.resolvePath('ts/7-runtime/runtime-src/expo/Metro/MetroPreload.ts'), target, [])
-  await FileSystem.rename(Path.join(target, 'MetroPreload.js'), Path.join(target, 'MetroPreload.cjs'))
+  await FS.rename(Path.join(target, 'MetroPreload.js'), Path.join(target, 'MetroPreload.cjs'))
   const prefix = Repo.resolvePath('ts/patches')
   for (const [source, content] of Object.entries(sources)) {
     if (Path.dirname(source) === prefix) {
       const output = Path.join(directory, 'patches', Path.basename(source))
-      await FileSystem.mkdir(Path.dirname(output))
-      await FileSystem.writeFile(output, content)
+      await FS.mkdir(Path.dirname(output))
+      await FS.writeFile(output, content)
     }
   }
 }

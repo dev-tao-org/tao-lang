@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { FileSystem, Path, SessionLock } from '@shared/os'
+import { FS, Path, SessionLock } from '@shared/os'
 import { deriveProjectLayout } from './Projects'
 
 /** acquireProjectLifecycle serializes session startup with project cleanup. */
@@ -11,7 +11,7 @@ export async function acquireProjectLifecycle(
   requireRealDirectory(layout.taoDirectory, 'Tao project metadata')
   const locksRoot = Path.join(layout.taoDirectory, 'locks')
   ensureDirectoryParent(layout.taoDirectory, locksRoot)
-  await FileSystem.mkdir(locksRoot)
+  await FS.mkdir(locksRoot)
   requireRealDirectory(locksRoot, 'project lock directory')
   const lockPath = Path.join(locksRoot, 'lifecycle.lock')
   ensureRegularLockPath(lockPath)
@@ -27,24 +27,24 @@ export async function ensureProjectDirectories(...paths: readonly string[]): Pro
 
 /** isRealDirectory reports a real directory without following a symlink. */
 export function isRealDirectory(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isDirectory())
 }
 
 /** pathExists checks a path entry without following symbolic links. */
 export function pathExists(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path) !== undefined)
+  return Try.WithDefault(false, () => FS.lstatSync(path) !== undefined)
 }
 
 /** isRegularFile reports a non-symlink regular file. */
 export function isRegularFile(path: string): boolean {
-  return Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())
+  return Try.WithDefault(false, () => FS.lstatSync(path).isFile())
 }
 
 async function ensureProjectDirectory(path: string): Promise<void> {
   if (pathExists(path) && !isRealDirectory(path)) {
     Errors.ThrowUserInput(`Project state directory is not a real directory: ${path}`)
   }
-  await FileSystem.mkdir(path)
+  await FS.mkdir(path)
   requireRealDirectory(path, 'project state directory')
 }
 

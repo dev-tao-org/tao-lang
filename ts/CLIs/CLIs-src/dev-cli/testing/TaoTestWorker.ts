@@ -1,16 +1,17 @@
-import { configureCLIOutput, IO } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
-import { FileSystem, Http, Lifecycle, Platform } from '@shared/os'
+import { FS, Http, Platform, Process } from '@shared/os'
 import type { TaoWorkerReport } from './TestPlan'
 import { runTaoTestFiles } from './TestWorkers'
 
 if (Platform.isMain(import.meta)) {
-  await configureCLIOutput('agent')
+  await CLIKit.configureCLIOutput('agent')
   await Try(async () => {
-    const { reportPath, paths } = workerArguments(Platform.argv.slice(2))
+    const { reportPath, paths } = workerArguments(Process.argv.slice(2))
     const controller = Http.createAbortController()
     const report: TaoWorkerReport = { passed: 0, failed: 0 }
-    const unregisterTermination = Lifecycle.onTermination(() => controller.abort())
+    const unregisterTermination = Process.onTermination(() => controller.abort())
     await Try(async () => {
       await Try(async () => Object.assign(report, await runTaoTestFiles(paths, controller.signal)), {
         catch(error) {
@@ -20,7 +21,7 @@ if (Platform.isMain(import.meta)) {
     }, {
       async finally() {
         unregisterTermination()
-        await FileSystem.writeFile(reportPath, encodeTaoWorkerReport(report))
+        await FS.writeFile(reportPath, encodeTaoWorkerReport(report))
       },
     })
   }, {

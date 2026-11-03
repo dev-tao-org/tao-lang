@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 /** EvidenceSource names a directory containing command logs or raw preview reports. */
 export type EvidenceSource = { directory: string; label: string }
@@ -17,7 +17,7 @@ export async function runWithEvidence<Value>(
         const created = (await listFiles(source.directory)).filter(name => !before[index].includes(name))
         for (const name of created) {
           const target = Path.join(directory, `failed-${source.label}-${name}`)
-          await FileSystem.copyFile(Path.join(source.directory, name), target)
+          await FS.copyFile(Path.join(source.directory, name), target)
         }
       }
       Errors.Throw(error)
@@ -26,9 +26,9 @@ export async function runWithEvidence<Value>(
 }
 
 async function listFiles(directory: string): Promise<string[]> {
-  if (!await FileSystem.exists(directory)) {
+  if (!await FS.exists(directory)) {
     return []
   }
-  const entries = await FileSystem.readdir(directory, { withFileTypes: true })
+  const entries = await FS.readdir(directory, { withFileTypes: true })
   return entries.filter(entry => entry.isFile()).map(entry => entry.name)
 }

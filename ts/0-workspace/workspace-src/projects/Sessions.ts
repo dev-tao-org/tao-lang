@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
-import { FileSystem, Path, SessionLock } from '@shared/os'
+import { FS, Path, SessionLock } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout, type ProjectLayout } from './Projects'
 
@@ -64,16 +64,16 @@ function createInternalSessionId(kind: SessionKind): string {
 const SessionMarker = '{"format":1}' + NewlineCharacter
 async function ensureSessionState(directory: string): Promise<void> {
   const marker = Path.join(directory, '.tao-session.json')
-  const markerContents = await Try.WithDefault(undefined, () => FileSystem.readFile(marker, 'utf8'))
+  const markerContents = await Try.WithDefault(undefined, () => FS.readFile(marker, 'utf8'))
   if (markerContents === SessionMarker) {
     return
   }
-  for (const name of await FileSystem.readdir(directory)) {
+  for (const name of await FS.readdir(directory)) {
     const path = Path.join(directory, name)
-    const symbolicLink = Try.WithDefault(false, () => FileSystem.lstatSync(path).isSymbolicLink())
-    await FileSystem.rm(path, { recursive: !symbolicLink, force: true })
+    const symbolicLink = Try.WithDefault(false, () => FS.lstatSync(path).isSymbolicLink())
+    await FS.rm(path, { recursive: !symbolicLink, force: true })
   }
-  await FileSystem.writeFile(marker, SessionMarker)
+  await FS.writeFile(marker, SessionMarker)
 }
 
 async function acquireSessionLock(layout: ProjectLayout, id: string): Promise<SessionLock.SessionLock> {
@@ -113,5 +113,5 @@ async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
   if (!Lifecycle.isRealDirectory(snapshots)) {
     Errors.ThrowUserInput(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
   }
-  await FileSystem.rm(snapshots, { recursive: true, force: true })
+  await FS.rm(snapshots, { recursive: true, force: true })
 }

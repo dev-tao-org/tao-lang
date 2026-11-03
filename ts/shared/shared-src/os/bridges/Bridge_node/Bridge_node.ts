@@ -33,7 +33,4 @@ export { StringDecoder } from 'node:string_decoder'
 export { fileURLToPath, pathToFileURL } from 'node:url'
 export { format, inspect as inspectValue, stripVTControlCharacters } from 'node:util'
 
-/** hostProcess exposes the Node-compatible process boundary. */
-export const hostProcess = process
-
 export * from './Bridge_node-fs/Bridge_node-fs'

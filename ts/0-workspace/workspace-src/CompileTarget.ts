@@ -1,8 +1,8 @@
-import * as AST from '@ast-gen/AST'
-import { transform } from '@ast-gen/Transform'
-import { createParser } from '@grammar/parser'
+import * as AST from '@ast-gen'
+import * as Grammar from '@grammar'
+
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { readTypeScriptProjectPackage } from './TypeScriptProjectPackage'
 
 /** CompileTarget identifies one selected declaration and its configured package output when applicable. */
@@ -19,11 +19,11 @@ type CompileTargetKind = 'app' | 'library'
 /** resolveCompileTarget resolves an explicit entry or a package-configured declaration by name. */
 export async function resolveCompileTarget(directory: string, argument?: string): Promise<CompileTarget> {
   const explicit = argument ? Path.resolve(directory, argument) : undefined
-  const isEntry = explicit !== undefined && FileSystem.existsSync(explicit)
+  const isEntry = explicit !== undefined && FS.existsSync(explicit)
   const configuration = isEntry ? { entry: explicit } : await requireCompileConfiguration(directory)
   const entry = Path.resolve(directory, configuration.entry)
   const selected = isEntry ? undefined : argument
-  const document = transform(createParser().parse(await FileSystem.readFile(entry, 'utf8')))
+  const document = AST.transform(Grammar.createParser().parse(await FS.readFile(entry, 'utf8')))
   if (!document) {
     Errors.ThrowUserInput(`Invalid Tao source: ${entry}.`)
   }

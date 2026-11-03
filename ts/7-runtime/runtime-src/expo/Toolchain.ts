@@ -1,5 +1,6 @@
 import { Try } from '@shared'
-import { BuildLock, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { BuildLock, FS, Path, Platform, Storage } from '@shared/os'
+import { Processes } from '@shared/os'
 import { readRuntimePatches } from './RuntimePatches'
 import * as ToolchainIdentity from './ToolchainIdentity'
 
@@ -14,25 +15,25 @@ export async function prepareToolchain(
   const toolchainKey = await resolveToolchainKey(resourcesDirectory)
   const target = Path.join(cacheDirectory, toolchainKey)
   await BuildLock.withBuildLock(Path.join(cacheDirectory, `${toolchainKey}.lock`), async () => {
-    await FileSystem.mkdir(target)
-    await FileSystem.writeIfChanged(
+    await FS.mkdir(target)
+    await FS.writeIfChanged(
       Path.join(target, 'package.json'),
-      await FileSystem.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
+      await FS.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
     )
-    await FileSystem.writeIfChanged(
+    await FS.writeIfChanged(
       Path.join(target, 'bun.lock'),
-      await FileSystem.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
+      await FS.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
     )
     await copyToolchainPatches(resourcesDirectory, target)
     const readyPath = Path.join(target, '.ready')
-    const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(readyPath, 'utf8'))
-    const hasDependencies = await FileSystem.exists(Path.join(target, 'node_modules'))
+    const ready = await Try.WithDefault(undefined, () => FS.readFile(readyPath, 'utf8'))
+    const hasDependencies = await FS.exists(Path.join(target, 'node_modules'))
     if (ready === toolchainKey && hasDependencies) {
       onProgress?.('Runtime toolchain cache hit.')
     } else {
       onProgress?.('Installing cached Expo runtime dependencies…')
       await installer.install(target)
-      await FileSystem.writeFile(readyPath, toolchainKey)
+      await FS.writeFile(readyPath, toolchainKey)
       onProgress?.('Expo runtime dependencies installed.')
     }
   })
@@ -46,8 +47,8 @@ export async function findPreparedToolchain(
 ): Promise<string | undefined> {
   const key = await resolveToolchainKey(resourcesDirectory)
   const target = Path.join(cacheDirectory, key)
-  const ready = await Try.WithDefault(undefined, () => FileSystem.readFile(Path.join(target, '.ready'), 'utf8'))
-  return ready === key && await FileSystem.exists(Path.join(target, 'node_modules'))
+  const ready = await Try.WithDefault(undefined, () => FS.readFile(Path.join(target, '.ready'), 'utf8'))
+  return ready === key && await FS.exists(Path.join(target, 'node_modules'))
     ? Path.join(target, 'node_modules')
     : undefined
 }
@@ -58,7 +59,7 @@ export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
     const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-    await Platform.run(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
+    await Processes.run(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
       cwd: cacheDirectory,
       addEnv,
     })
@@ -72,8 +73,8 @@ async function resolveToolchainKey(resourcesDirectory: string): Promise<string> 
 
 async function readToolchainIdentity(resourcesDirectory: string): Promise<ToolchainIdentity.ToolchainIdentity> {
   const [manifest, lockfile] = await Promise.all([
-    FileSystem.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
-    FileSystem.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
+    FS.readFile(Path.join(resourcesDirectory, 'package.json'), 'utf8'),
+    FS.readFile(Path.join(resourcesDirectory, 'bun.lock'), 'utf8'),
   ])
   const platform = Platform.systemInfo()
   const runtimeVersion = Platform.runtimeVersion()
@@ -86,7 +87,7 @@ async function copyToolchainPatches(source: string, target: string): Promise<voi
   const { patches } = await readRuntimePatches(source)
   for (const [path, content] of Object.entries(patches)) {
     const destination = Path.join(target, path)
-    await FileSystem.mkdir(Path.dirname(destination))
-    await FileSystem.writeIfChanged(destination, content)
+    await FS.mkdir(Path.dirname(destination))
+    await FS.writeIfChanged(destination, content)
   }
 }

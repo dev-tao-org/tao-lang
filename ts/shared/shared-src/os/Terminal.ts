@@ -1,19 +1,20 @@
 import * as Characters from '../universal/Characters'
 import { ControlCCharacter, Errors, Try } from '../universal/universal'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
-import { Buffer as NodeBuffer, hostProcess } from './bridges/Bridge_node/Bridge_node'
+import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
 import * as Node from './bridges/Bridge_node/Bridge_node'
 import { emitKeypressEvents, type Readable, StringDecoder } from './bridges/Bridge_node/Bridge_node'
+import * as Process from './Process'
 
 /** stdout exposes the developer output stream. */
-export const stdout = hostProcess.stdout
+export const stdout = Process.stdout
 
 /** stderr exposes the diagnostic output stream. */
-export const stderr = hostProcess.stderr
+export const stderr = Process.stderr
 
 /** isInteractive reports whether stdin and stdout are attached to a terminal. */
 export function isInteractive(): boolean {
-  return stdout.isTTY === true && hostProcess.stdin.isTTY === true
+  return stdout.isTTY === true && Process.stdin.isTTY === true
 }
 
 /** writeLine writes human-readable text plus a newline to stdout. */
@@ -23,7 +24,7 @@ export function writeLine(message = ''): void {
 
 type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
 /** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
-export function listenForKeys(receive: (key: string) => void, input: KeyInput = hostProcess.stdin): () => void {
+export function listenForKeys(receive: (key: string) => void, input: KeyInput = Process.stdin): () => void {
   if (!input.isTTY) {
     return () => {}
   }
@@ -92,7 +93,7 @@ export async function askConfirm(
 
 /** askSecret reads hidden input, submitting bracketed pastes as one value including embedded newlines. */
 export async function askSecret(prompt: string): Promise<string> {
-  const input = hostProcess.stdin
+  const input = Process.stdin
   if (!input.isTTY) {
     Errors.ThrowUserInput('Secret entry requires an interactive terminal.')
   }
@@ -147,7 +148,7 @@ const confirmationTerminal: ConfirmationTerminal = {
 
 function confirmReadlineOptions(): Node.ReadLineOptions {
   return {
-    input: hostProcess.stdin,
+    input: Process.stdin,
     output: stderr,
   }
 }

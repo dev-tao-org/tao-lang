@@ -1,10 +1,11 @@
 import { Errors, EscapeCharacter, NewlineCharacter, Try } from '@shared'
-import { Platform, Terminal, Text } from '@shared/os'
-import * as ExternalErrors from '../../../shared/shared-src/universal/Errors/external'
+import * as ExternalErrors from '@shared/errors/external'
+import { Terminal, Text } from '@shared/os'
+import { Process } from '@shared/os'
 import { IO } from './cli-kit'
 
-Platform.onUncaughtException(fatalError)
-Platform.onUnhandledRejection(fatalError)
+Process.onUncaughtException(fatalError)
+Process.onUnhandledRejection(fatalError)
 
 async function fatalError(error: unknown): Promise<void> {
   const commandFailure = Errors.isCommandExecutionError(error)
@@ -16,7 +17,7 @@ async function fatalError(error: unknown): Promise<void> {
   }, {
     catch: () => writeFallbackError(error),
     finally() {
-      Platform.exit(status || 1)
+      Process.exit(status || 1)
     },
   })
 }

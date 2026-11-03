@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { Files, FileSystem, Path } from '@shared/os'
+import { Files, FS, Path } from '@shared/os'
 import { libraryProjectFiles } from './LibraryProjectTemplate'
 import { initializeProject, type ProjectLayout } from './Projects'
 
@@ -10,15 +10,15 @@ export async function initializeLibraryProject(path: string): Promise<ProjectLay
   const project = await initializeProject(root)
   for (const file of libraryProjectFiles) {
     const destination = Path.join(root, file.path)
-    await FileSystem.mkdir(Path.dirname(destination))
-    await FileSystem.nativeFileSystemPromises.writeFile(destination, file.contents, { flag: 'wx' })
+    await FS.mkdir(Path.dirname(destination))
+    await FS.nativeFileSystemPromises.writeFile(destination, file.contents, { flag: 'wx' })
   }
   return project
 }
 
 async function resolveExistingDirectory(path: string): Promise<string> {
   const absolute = Path.resolve(path)
-  const info = await Try(() => FileSystem.lstat(absolute), {
+  const info = await Try(() => FS.lstat(absolute), {
     catch(error) {
       if (isMissingPath(error)) {
         Errors.ThrowUserInput(`A Tao library project target must be an existing directory: ${absolute}`)
@@ -29,7 +29,7 @@ async function resolveExistingDirectory(path: string): Promise<string> {
   if (!info.isDirectory()) {
     Errors.ThrowUserInput(`A Tao library project target must be an existing directory: ${absolute}`)
   }
-  return await FileSystem.realpath(absolute)
+  return await FS.realpath(absolute)
 }
 
 async function preflightLibraryProject(root: string): Promise<void> {
@@ -53,7 +53,7 @@ async function preflightLibraryProject(root: string): Promise<void> {
 }
 
 async function hasPathEntry(path: string): Promise<boolean> {
-  const entry = await Try(() => FileSystem.lstat(path), {
+  const entry = await Try(() => FS.lstat(path), {
     catch(error) {
       if (isMissingPath(error)) {
         return undefined
@@ -67,7 +67,7 @@ async function hasPathEntry(path: string): Promise<boolean> {
 async function requireDirectories(root: string, relativeDirectories: string[]): Promise<void> {
   for (const relative of relativeDirectories) {
     const path = Path.join(root, relative)
-    if (await hasPathEntry(path) && !FileSystem.lstatSync(path).isDirectory()) {
+    if (await hasPathEntry(path) && !FS.lstatSync(path).isDirectory()) {
       Errors.ThrowUserInput(`Tao library scaffolding requires a directory at ${path}`)
     }
   }

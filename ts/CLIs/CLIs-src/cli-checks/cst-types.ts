@@ -1,5 +1,6 @@
-import { joinTextLines, Lists, S } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { Lists, S } from '@shared'
+import * as Shared from '@shared'
+import { FS, Path } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
 /** writeCSTTypes derives field names and directly owned tokens from the generated grammar. */
@@ -16,10 +17,10 @@ export async function writeCSTTypes(directory: string): Promise<void> {
   const source = S`
     // @generated from Tree-sitter node-types.json and grammar.json.
     export interface NodeTypes {
-    ${joinTextLines(...members)}
+    ${Shared.joinTextLines(...members)}
     }
   `
-  await FileSystem.writeIfChanged(Path.join(directory, 'CST.ts'), joinTextLines(source, ''))
+  await FS.writeIfChanged(Path.join(directory, 'CST.ts'), Shared.joinTextLines(source, ''))
 }
 
 type Rule = GrammarTraversal.GrammarRule & { name?: string; named?: boolean; content?: Rule; members?: Rule[] }
@@ -27,11 +28,11 @@ type CstGrammar = { rules: Record<string, Rule> }
 type CstNode = { type: string; named: boolean; fields?: Record<string, unknown> }
 
 async function readCstGrammar(path: string): Promise<CstGrammar> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstGrammar
+  return JSON.parse(await FS.readFile(path, 'utf8')) as CstGrammar
 }
 
 async function readCstNodes(path: string): Promise<CstNode[]> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as CstNode[]
+  return JSON.parse(await FS.readFile(path, 'utf8')) as CstNode[]
 }
 
 function aliasedTokens(rules: Record<string, Rule>, nodeType: string): string[] {

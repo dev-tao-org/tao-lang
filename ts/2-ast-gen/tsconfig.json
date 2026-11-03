@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/2-ast-gen.tsbuildinfo" },
-  "include": ["ast-gen-src/**/*", "ast-gen-test/**/*"]
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/2-ast-gen.tsbuildinfo"
+  },
+  "include": [
+    "ast-gen-src/**/*",
+    "test-ast-gen/**/*"
+  ]
 }

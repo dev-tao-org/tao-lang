@@ -14,26 +14,113 @@
     "checkJs": true,
     "skipLibCheck": true,
     "paths": {
-      "@cli-kit": ["./CLIs/CLIs-src/cli-kit/cli-kit.ts"],
-      "@perf/preview-performance": ["./perf/perf-src/preview-performance.ts"],
-      "@perf/ReloadTimings": ["./perf/perf-src/ReloadTimings.ts"],
-      "@cst": ["./1-grammar/grammar-src/CST.ts"],
-      "@shared": ["./shared/shared-src/shared.ts"],
-      "@shared/os": ["./shared/shared-src/os.ts"],
-      "@shared/os/browser": ["./shared/shared-src/os/BrowserRuntime.ts"],
-      "@shared/os/preview": ["./shared/shared-src/os/preview/PreviewPlatform.ts"],
-      "@grammar/*": ["./1-grammar/grammar-src/*"],
-      "@ast-gen/*": ["./2-ast-gen/ast-gen-src/*"],
-      "@typecheck/*": ["./3-typecheck/typecheck-src/*"],
-      "@fix/*": ["./4-fix/fix-src/*"],
-      "@check/*": ["./5-check/check-src/*"],
-      "@compile/*": ["./6-compile/compile-src/*"],
-      "@runtime/*": ["./7-runtime/runtime-src/*"],
-      "@tao/runtime-api": ["./7-runtime/runtime-src/client/TaoRuntimeAPI.ts"],
-      "@tao/ts-api": ["./ts-api/ts-api-src/ts-api.ts"],
-      "@workspace/*": ["./0-workspace/workspace-src/*"],
-      "@stdlib/*": ["./stdlib/stdlib-src/*"]
+      "@workspace": [
+        "./0-workspace/workspace-src/Workspace.ts"
+      ],
+      "@workspace/testing": [
+        "./0-workspace/workspace-src/testing/WorkspaceTests.ts"
+      ],
+      "@grammar": [
+        "./1-grammar/grammar-src/Grammar.ts"
+      ],
+      "@cst": [
+        "./1-grammar/grammar-src/CST.ts"
+      ],
+      "@ast-gen": [
+        "./2-ast-gen/ast-gen-src/ASTGen.ts"
+      ],
+      "@typecheck": [
+        "./3-typecheck/typecheck-src/Typecheck.ts"
+      ],
+      "@fix/embedded": [
+        "./4-fix/fix-src/lib/formatter/Embedded.ts"
+      ],
+      "@fix": [
+        "./4-fix/fix-src/Fix.ts"
+      ],
+      "@check": [
+        "./5-check/check-src/Check.ts"
+      ],
+      "@compile": [
+        "./6-compile/compile-src/Compile.ts"
+      ],
+      "@runtime": [
+        "./7-runtime/runtime-src/Runtime.ts"
+      ],
+      "@runtime/client/Bridge_react/Bridge_react": [
+        "./7-runtime/runtime-src/client/Bridge_react/Bridge_react.ts"
+      ],
+      "@runtime/client/Bridge_react-native": [
+        "./7-runtime/runtime-src/client/Bridge_react-native.ts"
+      ],
+      "@runtime/bridges/Bridge_expo/Bridge_expo-config": [
+        "./7-runtime/runtime-src/bridges/Bridge_expo/Bridge_expo-config.ts"
+      ],
+      "@runtime/client/Bridge_react/jsx-runtime": [
+        "./7-runtime/runtime-src/client/Bridge_react/jsx-runtime.ts"
+      ],
+      "@runtime/client/Bridge_react/jsx-dev-runtime": [
+        "./7-runtime/runtime-src/client/Bridge_react/jsx-dev-runtime.ts"
+      ],
+      "@runtime/expo": [
+        "./7-runtime/runtime-src/expo/ExpoHost.ts"
+      ],
+      "@runtime/client": [
+        "./7-runtime/runtime-src/client/Client.ts"
+      ],
+      "@tao/runtime-api": [
+        "./7-runtime/runtime-src/client/TaoRuntimeAPI.ts"
+      ],
+      "@cli-kit": [
+        "./CLIs/CLIs-src/cli-kit/cli-kit.ts"
+      ],
+      "@shared": [
+        "./shared/shared-src/shared.ts"
+      ],
+      "@shared/os": [
+        "./shared/shared-src/os.ts"
+      ],
+      "@shared/os/preview": [
+        "./shared/shared-src/os/preview/PreviewPlatform.ts"
+      ],
+      "@shared/os/browser": [
+        "./shared/shared-src/os/BrowserRuntime.ts"
+      ],
+      "@stdlib": [
+        "./stdlib/stdlib-src/Stdlib.ts"
+      ],
+      "@tao/ts-api": [
+        "./ts-api/ts-api-src/ts-api.ts"
+      ],
+      "@shared-tests": [
+        "./shared/test-shared/os/Tests/Tests.test-utils.ts"
+      ],
+      "@workspace-tests": [
+        "./0-workspace/test-workspace/Workspace.test-utils.ts"
+      ],
+      "@shared/preview": [
+        "./shared/shared-src/Preview.ts"
+      ],
+      "@shared/errors/external": [
+        "./shared/shared-src/universal/Errors/external.ts"
+      ],
+      "@shared/os/metro": [
+        "./shared/shared-src/os/MetroPlatform.ts"
+      ],
+      "@fix/format": [
+        "./4-fix/fix-src/Fix/Format.ts"
+      ],
+      "@perf": [
+        "./perf/perf-src/Perf.ts"
+      ],
+      "@cli-kit/runtime-tooling": [
+        "./CLIs/CLIs-src/cli-checks/RuntimeTooling.ts"
+      ],
+      "@ide": [
+        "./ide-extensions/tao-ide-extension/tao-ide-extension-src/Editor.ts"
+      ]
     },
     "jsxImportSource": "@runtime/client/Bridge_react"
-  }
+  },
+  "compileOnSave": false
 }

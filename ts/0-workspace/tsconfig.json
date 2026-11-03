@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/0-workspace.tsbuildinfo" },
-  "include": ["workspace-src/**/*", "workspace-test/**/*"]
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/0-workspace.tsbuildinfo"
+  },
+  "include": [
+    "workspace-src/**/*",
+    "test-workspace/**/*"
+  ]
 }

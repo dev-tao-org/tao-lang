@@ -1,6 +1,7 @@
-import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
-import { DevelopmentStorage, FileSystem, Path, Platform, Terminal } from '@shared/os'
+import { DevelopmentStorage, FS, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 
 /** TimingConnection selects an existing SSH endpoint and optional connection preview. */
@@ -9,9 +10,9 @@ export type TimingConnection = { host: string; dryRun?: boolean; controlPath?: s
 /** TimingConnectionIO isolates authentication and existing connection checks from test fixtures. */
 export type TimingConnectionIO = {
   interactive: boolean
-  execute: typeof runNonInteractiveCommand
-  executeInteractive: typeof runInteractiveCommand
-  exists: typeof FileSystem.exists
+  execute: typeof CLIKit.runNonInteractiveCommand
+  executeInteractive: typeof CLIKit.runInteractiveCommand
+  exists: typeof FS.exists
   mkdir: (directory: string) => Promise<void>
   print: (message: string) => void
   resolveSocket: (host: string) => string
@@ -74,11 +75,11 @@ export function resolveTimingSocket(host: string, sessionId?: string): string {
 function createConnectionIO(): TimingConnectionIO {
   return {
     interactive: Terminal.isInteractive(),
-    execute: runNonInteractiveCommand,
-    executeInteractive: runInteractiveCommand,
-    exists: FileSystem.exists,
+    execute: CLIKit.runNonInteractiveCommand,
+    executeInteractive: CLIKit.runInteractiveCommand,
+    exists: FS.exists,
     async mkdir(directory) {
-      await FileSystem.mkdirPrivate(directory)
+      await FS.mkdirPrivate(directory)
     },
     print: IO.print,
     resolveSocket: resolveTimingSocket,

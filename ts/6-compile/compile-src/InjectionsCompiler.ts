@@ -1,4 +1,4 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
 import { TypeScript as ts } from '../../shared/shared-src/bridges/Bridge_typescript'
 import type { ScopeCode } from './codegen-util'

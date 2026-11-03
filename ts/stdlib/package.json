@@ -3,6 +3,21 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "dependencies": { "@tao/shared": "workspace:*" },
-  "devDependencies": { "@types/bun": "1.4.0" }
+  "dependencies": {
+    "@tao/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./stdlib-src/Stdlib.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@stdlib",
+        "namespace": "Stdlib"
+      }
+    }
+  }
 }

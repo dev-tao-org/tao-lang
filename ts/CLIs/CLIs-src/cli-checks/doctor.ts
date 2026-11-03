@@ -1,5 +1,6 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
-import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
+import { Artifacts, FS, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 
 /** DoctorReport contains environment diagnostics and the host fingerprint. */
 export type DoctorReport = {
@@ -118,7 +119,7 @@ async function readSnapshot(): Promise<DoctorSnapshot> {
 
 async function probeTool(tool: string): Promise<{ output?: string; failure?: string }> {
   return await Try(async () => ({
-    output: await Platform.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
+    output: await Processes.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
   }), {
     catch(error) {
       const failure = Errors.isCommandExecutionError(error)
@@ -170,7 +171,7 @@ async function readChecks(snapshot: DoctorSnapshot): Promise<Check[]> {
 
 function workspaceChecks(): Check[] {
   return ['package.json', 'bun.lock', 'node_modules'].map(name => {
-    const present = FileSystem.existsSync(Repo.resolvePath('ts', name))
+    const present = FS.existsSync(Repo.resolvePath('ts', name))
     return {
       name: 'workspace ' + name,
       status: present ? 'pass' : 'fail',
@@ -194,7 +195,7 @@ async function artifactChecks(): Promise<Check[]> {
 async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
   return Try.WithDefault(
     undefined,
-    () => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
+    () => Processes.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
   )
 }
 

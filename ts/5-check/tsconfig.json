@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/5-check.tsbuildinfo" },
-  "include": ["check-src/**/*", "check-test/**/*"]
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/5-check.tsbuildinfo"
+  },
+  "include": [
+    "check-src/**/*",
+    "test-check/**/*"
+  ]
 }

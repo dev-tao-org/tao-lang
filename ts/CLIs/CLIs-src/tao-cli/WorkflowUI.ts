@@ -1,10 +1,10 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { Terminal } from '@shared/os'
-import type { WorkflowUI } from '@workspace/Workflow'
+import type * as Workspace from '@workspace'
 
 /** workflowUI binds explicit CLI authorization and cancellation to one workflow invocation. */
-export function workflowUI(yes = false, signal?: AbortSignal): WorkflowUI {
+export function workflowUI(yes = false, signal?: AbortSignal): Workspace.WorkflowUI {
   return {
     cancelled: () => signal?.aborted === true,
     async confirm({ entry, message }) {

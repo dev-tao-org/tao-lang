@@ -1,7 +1,8 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
-import { createModuleMemberKey, type LinkedProgram } from '@typecheck/Modules'
+import * as Typecheck from '@typecheck'
+
 import { compileIdentifier, emitStringLiteral } from './codegen-util'
 
 /** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
@@ -12,7 +13,7 @@ export type ForeignViewNamesByModuleMemberKey = ReadonlyMap<string, string>
 
 /** compileForeignViews resolves and imports every foreign view in a linked program. */
 export function compileForeignViews(
-  program: LinkedProgram,
+  program: Typecheck.LinkedProgram,
   resolvePath?: ForeignViewPathResolver,
 ): { imports: string; names: ForeignViewNamesByModuleMemberKey } {
   const declarations = collectForeignViewDeclarations(program)
@@ -32,7 +33,7 @@ type OptionalForeignViewPathResolver = ForeignViewPathResolver | undefined
 
 type ResolvedForeignView = ForeignViewDeclaration & { path: string }
 
-function collectForeignViewDeclarations(program: LinkedProgram): ForeignViewDeclaration[] {
+function collectForeignViewDeclarations(program: Typecheck.LinkedProgram): ForeignViewDeclaration[] {
   const foreignViews: ForeignViewDeclaration[] = []
   for (const module of program.modules) {
     for (const view of AST.GetAllViewDeclarations(module.document)) {
@@ -76,7 +77,7 @@ function compileForeignViewImports(
   const imports: string[] = []
   views.forEach((item, index) => {
     const alias = createForeignViewAlias(index)
-    const key = createModuleMemberKey(item.modulePath, item.view.range.start)
+    const key = Typecheck.createModuleMemberKey(item.modulePath, item.view.range.start)
     names.set(key, alias)
     imports.push(`import { ${compileIdentifier(item.view)} as ${alias} } from ${emitStringLiteral(item.path)};`)
   })

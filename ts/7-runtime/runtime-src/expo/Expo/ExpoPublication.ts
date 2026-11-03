@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { Env, FileSystem, Path, Platform } from '@shared/os'
+import { Env, FS, Path, Platform } from '@shared/os'
 import { serializeGeneratedRevision, snapshotRevision } from '../GeneratedRevision'
 import type { GeneratedRevision } from '../PreviewProtocol'
 import { createPublicationTransport, type PublicationTransport } from './ExpoPublicationTransport'
@@ -24,11 +24,11 @@ export async function prepareExpoPublication(
   if (preloadPath === undefined || preloadPath === null) {
     Errors.ThrowHostEnvironment('Metro preload resources are missing. Rebuild the Tao runtime.')
   }
-  if (!FileSystem.existsSync(preloadPath)) {
+  if (!FS.existsSync(preloadPath)) {
     Errors.ThrowHostEnvironment(`Metro preload is missing: ${preloadPath}`)
   }
   const seed = Path.join(application.directory, '.tao-metro-seed.json')
-  await FileSystem.writeFile(seed, serializeGeneratedRevision(initial), { mode: 0o600 })
+  await FS.writeFile(seed, serializeGeneratedRevision(initial), { mode: 0o600 })
   return {
     ...transport,
     sessionId,

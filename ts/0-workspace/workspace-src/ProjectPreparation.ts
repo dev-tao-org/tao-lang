@@ -1,10 +1,12 @@
-import * as AST from '@ast-gen/AST'
-import { transform } from '@ast-gen/Transform'
-import { createParser } from '@grammar/parser'
-import * as Runtime from '@runtime/Runtime'
+import * as AST from '@ast-gen'
+import * as Grammar from '@grammar'
+import * as Runtime from '@runtime'
+import { Processes } from '@shared/os'
+import type * as Typecheck from '@typecheck'
+
 import { Errors, Try } from '@shared'
-import { FileSystem, Path, Platform, SessionLock, Storage } from '@shared/os'
-import type { SourceModule } from '@typecheck/Modules'
+import { FS, Path, Platform, SessionLock, Storage } from '@shared/os'
+
 import * as LockFile from './dependencies/LockFile'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { validateRequirementPlacement } from './dependencies/Requirements'
@@ -17,7 +19,7 @@ import { ProjectDependencies } from './ProjectDependencies'
 import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
 import { requireSetup } from './SetupRequired'
-import * as ManagedModules from './sidecars/managed-modules/ManagedModules'
+import * as ManagedModules from './sidecars/ManagedModule/ManagedModules'
 
 /** PreparationOptions supplies explicit updates and local dependency-fixture adapters. */
 export type PreparationOptions = {
@@ -87,7 +89,7 @@ type SourceModuleField = 'path' | 'document'
 /** buildManagedModulesInput derives an app installation from reachable module-owned npm declarations. */
 export async function buildManagedModulesInput(
   root: string,
-  sources: readonly Pick<SourceModule, SourceModuleField>[],
+  sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[],
   runtimePins?: Runtime.RuntimePackageVersions,
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const modules = new Map<string, ManagedModules.ManagedModulesInput['modules'][number]>()
@@ -127,7 +129,7 @@ export async function buildManagedModulesInput(
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
 export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const result = await Platform.runIgnoreStatus([command, ...args], { cwd, addEnv })
+  const result = await Processes.runIgnoreStatus([command, ...args], { cwd, addEnv })
   return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
@@ -198,7 +200,7 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
     ? await ManagedModules.repairManagedModuleFiles(input, executor)
     : await ManagedModules.prepareManagedModules(input, executor)
   const durableLockPath = Path.join(root, '.tao/store/npm', `${prepared.graphFingerprint}.lock`)
-  const lockHash = Platform.hashText(await FileSystem.readFile(prepared.lockfile, 'utf8'))
+  const lockHash = Platform.hashText(await FS.readFile(prepared.lockfile, 'utf8'))
   await LockFile.recordManagedGraphReference(root, graphKey, prepared.graphFingerprint, durableLockPath, lockHash)
   await LockFile.pruneUnreferencedManagedLocks(root)
 }
@@ -207,7 +209,7 @@ async function prepareEntrySources(
   entry: string,
   root: string,
   services: DependencyStoreOptions,
-): Promise<SourceModule[]> {
+): Promise<Typecheck.SourceModule[]> {
   const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
@@ -233,9 +235,9 @@ async function loadEntry(
   entry: string,
   root: string,
   dependencies: Pick<ProjectDependencies, 'resolveProject'>,
-): Promise<SourceModule[]> {
-  const parser = createParser()
-  const document = transform(parser.parse(await FileSystem.readFile(entry, 'utf8')))
+): Promise<Typecheck.SourceModule[]> {
+  const parser = Grammar.createParser()
+  const document = AST.transform(parser.parse(await FS.readFile(entry, 'utf8')))
   if (document === undefined) {
     Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
   }

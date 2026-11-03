@@ -1,4 +1,4 @@
-import { readPackageMetadata } from '../PackageResources'
+import { readPackageMetadata } from '../Tooling/PackageResources'
 
 /** readMetadata reads the exact native addon builder package identity. */
 export function readMetadata(directory: string) {

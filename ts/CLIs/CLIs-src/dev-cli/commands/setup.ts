@@ -1,4 +1,4 @@
-import { runNonInteractiveCommand } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { registerCommand } from './_command-runner'
 
 /** setupCommand installs the TypeScript development workspace dependencies. */
@@ -8,9 +8,9 @@ export default registerCommand({
   arguments: [{ name: 'args', description: 'Bun install arguments.', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    await runNonInteractiveCommand('bun install', { variadicArgs: args })
+    await CLIKit.runNonInteractiveCommand('bun install', { variadicArgs: args })
     // A new process resolves dependencies from the completed installation.
-    await runNonInteractiveCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts', {
+    await CLIKit.runNonInteractiveCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts', {
       structuredOutput: true,
     })
   },

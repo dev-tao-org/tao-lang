@@ -1,18 +1,21 @@
-import type { RuntimeApplication } from '@runtime/Runtime'
+import type * as Runtime from '@runtime'
 import { Errors, NewlineCharacter, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
  *  Call once when preparing the runtime, outside ordinary source refreshes. */
-export async function prepareBuildTypeScript(buildDirectory: string, runtime: RuntimeApplication): Promise<void> {
-  await FileSystem.mkdir(buildDirectory)
+export async function prepareBuildTypeScript(
+  buildDirectory: string,
+  runtime: Runtime.RuntimeApplication,
+): Promise<void> {
+  await FS.mkdir(buildDirectory)
   const runtimeConfig = Path.relative(buildDirectory, Path.join(runtime.directory, 'tsconfig.json'))
     .replaceAll('\\', '/')
   const configuration = {
     extends: Path.toRelativeModuleSpecifier(runtimeConfig),
     include: ['./**/*.ts', './**/*.tsx'],
   }
-  await FileSystem.writeIfChanged(
+  await FS.writeIfChanged(
     Path.join(buildDirectory, 'tsconfig.json'),
     serializeBuildTypeScriptConfiguration(configuration),
   )
@@ -27,10 +30,10 @@ function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptCon
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {
   const link = Path.join(buildDirectory, 'node_modules')
   const target = Path.join(runtimeDirectory, 'node_modules')
-  const existing = Try.WithDefault(undefined, () => FileSystem.lstatSync(link))
+  const existing = Try.WithDefault(undefined, () => FS.lstatSync(link))
   if (existing && !existing.isSymbolicLink()) {
     Errors.ThrowUserInput(`Generated build dependency path is not a symbolic link: ${link}`)
   }
   const relativeTarget = Path.relative(buildDirectory, target)
-  await FileSystem.replaceDirectoryLink(relativeTarget, link)
+  await FS.replaceDirectoryLink(relativeTarget, link)
 }

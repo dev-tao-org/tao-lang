@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, NullCharacter, Regxs, Try } from '@shared'
-import { Env, FileSystem, Path } from '@shared/os'
+import { Env, FS, Path } from '@shared/os'
 import type { SetupEnvironment } from './DirenvSetup'
 import { readOptionalFile } from './DirenvSetupFiles'
 
@@ -30,15 +30,15 @@ async function prepareDevelopmentShell(
 }
 
 async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<boolean> {
-  if (!FileSystem.existsSync(Path.home.taoDev('shell', 'repositories'))) {
+  if (!FS.existsSync(Path.home.taoDev('shell', 'repositories'))) {
     return false
   }
   const root = environment.root()
-  const canonicalRoot = FileSystem.realpathSync(root)
+  const canonicalRoot = FS.realpathSync(root)
   if (isAlreadyInDevenv(canonicalRoot)) {
     return false
   }
-  if (!FileSystem.existsSync(Path.resolve(root, 'devenv.nix'))) {
+  if (!FS.existsSync(Path.resolve(root, 'devenv.nix'))) {
     return false
   }
   const git = await environment.run('git', {
@@ -48,7 +48,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   if (git.status !== 0) {
     return false
   }
-  const common = FileSystem.realpathSync(git.stdout.trim())
+  const common = FS.realpathSync(git.stdout.trim())
   const hash = await environment.run('git', {
     args: ['hash-object', '--stdin'],
     cwd: root,
@@ -67,7 +67,7 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
 function isAlreadyInDevenv(root: string): boolean {
   const devenvRoot = Env.get('DEVENV_ROOT')
   return Env.get('TAO_DEVENV') === '1' && devenvRoot !== undefined
-    && FileSystem.realpathSync(devenvRoot) === root
+    && FS.realpathSync(devenvRoot) === root
 }
 
 async function isEnabledForCommonDirectory(record: string, common: string): Promise<boolean> {

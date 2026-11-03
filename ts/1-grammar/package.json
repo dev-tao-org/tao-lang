@@ -12,5 +12,21 @@
     "node-addon-api": "8.5.0",
     "node-gyp": "12.1.0",
     "tree-sitter-cli": "0.26.13"
+  },
+  "exports": {
+    ".": "./grammar-src/Grammar.ts",
+    "./cst": "./grammar-src/CST.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@grammar",
+        "namespace": "Grammar"
+      },
+      "./cst": {
+        "alias": "@cst",
+        "namespace": "CST"
+      }
+    }
   }
 }

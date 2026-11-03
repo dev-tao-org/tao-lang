@@ -1,5 +1,5 @@
-import { RuntimeSourceDirectories, RuntimeSourceFiles } from '@runtime/RuntimeResources'
-import { FileSystem, Path, Repo } from '@shared/os'
+import * as Runtime from '@runtime'
+import { FS, Path, Repo } from '@shared/os'
 
 /** RuntimeSourcePaths maps packaged resource paths to their authored source paths. */
 export type RuntimeSourcePaths = Record<string, string>
@@ -9,8 +9,8 @@ export type RuntimeSourceContents = Record<string, string>
 
 /** readRuntimeSources maps declared portable directories and files to their resource paths. */
 export async function readRuntimeSources(
-  directories: Readonly<RuntimeSourcePaths> = RuntimeSourceDirectories,
-  files: Readonly<RuntimeSourcePaths> = RuntimeSourceFiles,
+  directories: Readonly<RuntimeSourcePaths> = Runtime.RuntimeSourceDirectories,
+  files: Readonly<RuntimeSourcePaths> = Runtime.RuntimeSourceFiles,
 ): Promise<RuntimeSourcePaths> {
   const resources: RuntimeSourcePaths = {}
   for (const [resourceDirectory, sourceDirectory] of Object.entries(directories)) {
@@ -27,7 +27,7 @@ async function addDirectorySources(
   resourceDirectory: string,
   sourceRoot: string,
 ): Promise<void> {
-  const sourcePaths = await FileSystem.listProductionSourceFiles(sourceRoot)
+  const sourcePaths = await FS.listProductionSourceFiles(sourceRoot)
   for (const sourcePath of sourcePaths) {
     const relativePath = Path.relative(sourceRoot, sourcePath).replaceAll('\\', '/')
     const resourcePath = Path.posix.join(resourceDirectory, relativePath)

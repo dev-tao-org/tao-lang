@@ -1,9 +1,10 @@
-import { IO, resolveCallerPath, runForegroundCommand } from '@cli-kit'
-import { HeadlessExpoEnvironment } from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as BridgeExpoConfig from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
 import { Errors, Try } from '@shared'
 import { Terminal } from '@shared/os'
-import { resolveCompileTarget } from '@workspace/CompileTarget'
-import { withConsumerProject } from '@workspace/ConsumerProject'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { prepareCompiledApplication } from '../CompileApplication'
 
@@ -24,14 +25,14 @@ export default registerCommand({
   async action(entry?: string, options: RunCommandOptions = {}) {
     requireRunPort(options.port)
     if (!entry) {
-      const directory = resolveCallerPath(options.package ?? '.')
-      await withConsumerProject(directory, options.session, host => startExpo(host, options))
+      const directory = CLIKit.resolveCallerPath(options.package ?? '.')
+      await Workspace.withConsumerProject(directory, options.session, host => startExpo(host, options))
       return
     }
     if (options.package) {
       Errors.ThrowUserInput('Use --package for a React consumer, or provide a Tao app entry file.')
     }
-    const target = await resolveCompileTarget(resolveCallerPath('.'), entry)
+    const target = await Workspace.resolveCompileTarget(CLIKit.resolveCallerPath('.'), entry)
     if (target.kind !== 'app') {
       Errors.ThrowUserInput('Run a TypeScript library through its React consumer package with --package.')
     }
@@ -43,9 +44,9 @@ export default registerCommand({
 async function startExpo(directory: string, options: RunCommandOptions): Promise<void> {
   const args = ['--localhost', ...options.web ? ['--web'] : [], ...options.port ? ['--port', options.port] : []]
   const headless = !Terminal.isInteractive()
-  const addEnv = headless ? HeadlessExpoEnvironment : undefined
+  const addEnv = headless ? BridgeExpoConfig.HeadlessExpoEnvironment : undefined
   IO.print('Expo host: ' + directory)
-  await runForegroundCommand('bun run start', { variadicArgs: args, cwd: directory, addEnv })
+  await CLIKit.runForegroundCommand('bun run start', { variadicArgs: args, cwd: directory, addEnv })
 }
 
 function requireRunPort(port?: string): void {

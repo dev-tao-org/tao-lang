@@ -1,5 +1,5 @@
 import { Range, Source } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
@@ -39,7 +39,7 @@ export async function fixSourceConformance(
     for (const edit of edits.sort((first, second) => second.span.start - first.span.start)) {
       text = Source.replace(text, Range(edit.span.start, edit.span.start + edit.span.length), edit.newText)
     }
-    await FileSystem.write(filename, text)
+    await FS.write(filename, text)
     changed++
   }
   IO.print(`Fixed source conformance: ${changed} file(s)`)

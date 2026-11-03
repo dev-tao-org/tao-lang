@@ -135,9 +135,9 @@ function isLoaderBinding(identifier: TypeScript.Identifier, aliases: SourceLoade
 
 function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string, specifier: string): boolean {
   return specifier === 'node:fs/promises' && isDynamicImportCall(node) && [
-    'ts/shared/shared-src/os/Files-test/GeneratedMetadata.test.ts',
-    'ts/shared/shared-src/os/Storage-test/LeaseFailures.test.ts',
-    'ts/shared/shared-src/os/SessionLock-test/PointerDiagnostics.test.ts',
+    'ts/shared/test-shared/os/FS/Files/GeneratedMetadata.test.ts',
+    'ts/shared/test-shared/os/Storage/LeaseFailures.test.ts',
+    'ts/shared/test-shared/os/Storage/SessionLock/PointerDiagnostics.test.ts',
   ].includes(filename.replaceAll('\\', '/'))
 }
 

@@ -1,6 +1,6 @@
-import { runNonInteractiveCommand } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { FileSystem, Path, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
@@ -19,19 +19,19 @@ export default registerCommand({
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
       Check.assertNewWorkspacePath(absolute)
-      const isFile = FileSystem.existsSync(absolute) && FileSystem.statSync(absolute).isFile()
+      const isFile = FS.existsSync(absolute) && FS.statSync(absolute).isFile()
       if (!isFile && !Regxs.CliGlobTokenRegx.test(path)) {
         Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)
       }
       if (isFile && path.endsWith('.tao')) {
         await updateTaoSource(absolute, 'format')
       } else if (isFile && Path.basename(absolute) === 'Justfile') {
-        await runNonInteractiveCommand('just --fmt --justfile', {
+        await CLIKit.runNonInteractiveCommand('just --fmt --justfile', {
           variadicArgs: [absolute],
           cwd: Repo.getWorkspaceRoot(),
         })
       } else {
-        await runNonInteractiveCommand(
+        await CLIKit.runNonInteractiveCommand(
           'dprint fmt --config .dprint.jsonc --incremental=false --excludes .x-tao-old-v1/** --',
           { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() },
         )

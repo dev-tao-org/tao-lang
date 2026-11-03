@@ -1,6 +1,8 @@
-import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
-import { Platform, Repo } from '@shared/os'
+import { Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */
@@ -19,13 +21,16 @@ const cwd = Repo.getWorkspaceRoot()
 
 async function configureHttpsRewrites(): Promise<void> {
   for (const key of ['url.git@github.com:.insteadOf', 'url.ssh://git@github.com/.insteadOf']) {
-    await Try(() => runNonInteractiveCommand(`git config --global --unset-all ${key}`, { cwd, stderr: 'ignore' }), {
-      catch(error) {
-        if (!commandFailedWith(error, 5)) {
-          Errors.Throw(error)
-        }
+    await Try(
+      () => CLIKit.runNonInteractiveCommand(`git config --global --unset-all ${key}`, { cwd, stderr: 'ignore' }),
+      {
+        catch(error) {
+          if (!commandFailedWith(error, 5)) {
+            Errors.Throw(error)
+          }
+        },
       },
-    })
+    )
   }
   for (
     const command of [
@@ -33,13 +38,17 @@ async function configureHttpsRewrites(): Promise<void> {
       'git config --global --add url.https://github.com/.insteadOf ssh://git@github.com/',
     ]
   ) {
-    await runNonInteractiveCommand(command, { cwd })
+    await CLIKit.runNonInteractiveCommand(command, { cwd })
   }
 }
 
 async function authenticateGithub(): Promise<void> {
   const authenticated = await Try(async () => {
-    await runNonInteractiveCommand('gh auth status --hostname github.com', { cwd, stdout: 'ignore', stderr: 'ignore' })
+    await CLIKit.runNonInteractiveCommand('gh auth status --hostname github.com', {
+      cwd,
+      stdout: 'ignore',
+      stderr: 'ignore',
+    })
     return true
   }, {
     catch(error) {
@@ -50,7 +59,7 @@ async function authenticateGithub(): Promise<void> {
     },
   })
   if (!authenticated) {
-    await runInteractiveCommand('gh auth login --hostname github.com --git-protocol https --web', { cwd })
+    await CLIKit.runInteractiveCommand('gh auth login --hostname github.com --git-protocol https --web', { cwd })
   }
 }
 
@@ -63,12 +72,12 @@ async function verifyOrigin(): Promise<void> {
       'git ls-remote --exit-code origin refs/heads/main',
     ]
   ) {
-    await runNonInteractiveCommand(command, {
+    await CLIKit.runNonInteractiveCommand(command, {
       cwd,
       stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit',
     })
   }
-  const remote = await Platform.run('git remote get-url origin', { cwd })
+  const remote = await Processes.run('git remote get-url origin', { cwd })
   if (remote.stderr.trim()) {
     IO.warn(remote.stderr.trimEnd())
   }

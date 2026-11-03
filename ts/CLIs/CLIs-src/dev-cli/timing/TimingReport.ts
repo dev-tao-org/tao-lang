@@ -1,6 +1,7 @@
-import { IO, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs } from '@shared'
-import { DevelopmentStorage, FileSystem, Path, Platform } from '@shared/os'
+import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
 import type { MeasurementJob } from '../../agent-skills/performance-investigation/Runner'
 import type { MeasurementSummary } from '../../agent-skills/performance-investigation/Summary'
@@ -31,12 +32,12 @@ export async function presentTimingReport(
   print: (message: string) => void = IO.summary,
   directory = DevelopmentStorage.resolveDirectory('timing', 'reports'),
 ): Promise<void> {
-  await FileSystem.mkdir(directory)
+  await FS.mkdir(directory)
   const history = await readTimingHistory(report, directory)
   const path = Path.join(directory, Path.posix.basename(report.directory) + '.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(report, null, 2) + NewlineCharacter)
-  await FileSystem.rename(pending, path)
+  await FS.writeFile(pending, JSON.stringify(report, null, 2) + NewlineCharacter)
+  await FS.rename(pending, path)
   print([
     formatTimingReport(report),
     `Saved summary: ${path}`,
@@ -49,7 +50,7 @@ export async function presentTimingReport(
 export async function readTimingReport(
   request: TimingReportRequest,
   controlPath: string,
-  execute = runNonInteractiveCommand,
+  execute = CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
   if (!Path.posix.isAbsolute(request.tooling)) {
     Errors.ThrowUserInput('Use an absolute runner tooling checkout path.')
@@ -108,7 +109,7 @@ function formatTimingReport(report: TimingReport): string {
 
 async function readLatestJob(
   remote: Omit<TimingRemoteRequest, 'args'>,
-  execute: typeof runNonInteractiveCommand,
+  execute: typeof CLIKit.runNonInteractiveCommand,
 ): Promise<string> {
   const jobs = Path.posix.join(remote.directory, JobsDirectory)
   const args = ['/bin/ls', '-1t', jobs]
@@ -127,7 +128,7 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
 async function readJobProvenance(
   remote: Omit<TimingRemoteRequest, 'args'>,
   summary: TimingReport,
-  execute: typeof runNonInteractiveCommand,
+  execute: typeof CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
   const args = ['/bin/cat', Path.posix.join(summary.directory, JobFileName)]
   const text = await readTimingRemote(withTimingArguments(remote, args), execute)

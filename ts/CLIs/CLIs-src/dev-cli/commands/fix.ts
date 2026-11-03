@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { FileSystem, Repo } from '@shared/os'
+import { FS, Repo } from '@shared/os'
 import { assertNewWorkspacePath, assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
@@ -28,7 +28,7 @@ export default registerCommand({
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
       assertNewWorkspacePath(absolute)
-      if (!path.endsWith('.tao') || !FileSystem.statSync(absolute).isFile()) {
+      if (!path.endsWith('.tao') || !FS.statSync(absolute).isFile()) {
         Errors.ThrowUserInput(`Fixing requires a Tao source file: ${path}`)
       }
       await updateTaoSource(absolute, 'fix')

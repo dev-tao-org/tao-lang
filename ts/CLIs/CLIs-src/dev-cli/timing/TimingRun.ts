@@ -1,7 +1,8 @@
-import { IO, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as Perf from '@perf'
 import { Errors, S } from '@shared'
 import { Path } from '@shared/os'
-import { isValidEditCount } from '../../../../perf/perf-src/PreviewMeasurement'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { resolveTimingSocket, type TimingConnectionIO } from './TimingConnection'
 import { readTimingRemote } from './TimingRemote'
@@ -74,11 +75,16 @@ export function requireTimingRun(options: TimingRun): void {
 }
 
 function hasValidWorkload(options: TimingRun): boolean {
-  return Number.isInteger(options.samples) && options.samples >= 1 && isValidEditCount(options.edits)
+  return Number.isInteger(options.samples) && options.samples >= 1 && Perf.isValidEditCount(options.edits)
 }
 
 function createRunIO(): TimingRunIO {
-  return { execute: runNonInteractiveCommand, print: IO.print, summary: IO.summary, resolveSocket: resolveTimingSocket }
+  return {
+    execute: CLIKit.runNonInteractiveCommand,
+    print: IO.print,
+    summary: IO.summary,
+    resolveSocket: resolveTimingSocket,
+  }
 }
 
 function createRunnerArguments(options: TimingRun, fixture: string): string[] {

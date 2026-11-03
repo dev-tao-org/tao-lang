@@ -1,9 +1,9 @@
-import { Platform } from '@shared/os'
+import { Processes } from '@shared/os'
 
 type GitOptions = { env?: Record<string, string>; input?: string }
 /** captureGit runs literal Git arguments without refreshing the developer's index. */
 export async function captureGit(root: string, args: readonly string[], options: GitOptions = {}): Promise<string> {
-  const result = await Platform.run('git --literal-pathspecs', {
+  const result = await Processes.run('git --literal-pathspecs', {
     variadicArgs: args,
     cwd: root,
     addEnv: createGitEnvironment(options.env),

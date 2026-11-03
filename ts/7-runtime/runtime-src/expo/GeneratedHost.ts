@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 type GeneratedHostFiles = Record<string, string>
 type GeneratedHostOwnership = { files: GeneratedHostFiles; dependencies?: string }
@@ -22,25 +22,25 @@ export async function writeGeneratedHost(
   await requireOwnedDependencyLink(directory, ownership?.dependencies)
   for (const name of names) {
     if (files[name] === undefined) {
-      await FileSystem.rm(Path.join(directory, name), { force: true })
+      await FS.rm(Path.join(directory, name), { force: true })
     } else {
-      await FileSystem.writeIfChanged(Path.join(directory, name), files[name]!)
+      await FS.writeIfChanged(Path.join(directory, name), files[name]!)
     }
   }
   const nextDependencies = dependencies === undefined ? ownership?.dependencies : Path.relative(directory, dependencies)
   if (nextDependencies) {
-    await FileSystem.replaceDirectoryLink(
+    await FS.replaceDirectoryLink(
       nextDependencies,
       Path.join(directory, 'node_modules'),
     )
   }
-  await FileSystem.writeIfChanged(ownershipPath, serializeHostOwnership(files, nextDependencies))
+  await FS.writeIfChanged(ownershipPath, serializeHostOwnership(files, nextDependencies))
 }
 
 async function requireHostDirectory(directory: string): Promise<void> {
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstat(directory))
+  const current = await Try.WithDefault(undefined, () => FS.lstat(directory))
   if (!current) {
-    await FileSystem.mkdir(directory)
+    await FS.mkdir(directory)
     return
   }
   if (!current.isDirectory()) {
@@ -52,7 +52,7 @@ async function requireHostDirectory(directory: string): Promise<void> {
 
 async function requireOwnedHostFile(directory: string, name: string, expected?: string): Promise<void> {
   const path = Path.join(directory, name)
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstat(path))
+  const current = await Try.WithDefault(undefined, () => FS.lstat(path))
   if (!current) {
     return
   }
@@ -61,7 +61,7 @@ async function requireOwnedHostFile(directory: string, name: string, expected?: 
       `Generated Expo host contains unrelated file: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
     )
   }
-  if (await FileSystem.readFile(path, 'utf8') !== expected) {
+  if (await FS.readFile(path, 'utf8') !== expected) {
     Errors.ThrowUserInput(
       `Generated Expo host contains modified file: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
     )
@@ -70,11 +70,11 @@ async function requireOwnedHostFile(directory: string, name: string, expected?: 
 
 async function requireOwnedDependencyLink(directory: string, expected?: string): Promise<void> {
   const path = Path.join(directory, 'node_modules')
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstat(path))
+  const current = await Try.WithDefault(undefined, () => FS.lstat(path))
   if (!current) {
     return
   }
-  const target = current.isSymbolicLink() ? Path.resolve(directory, await FileSystem.readlink(path)) : undefined
+  const target = current.isSymbolicLink() ? Path.resolve(directory, await FS.readlink(path)) : undefined
   if (!expected || target !== Path.resolve(directory, expected)) {
     Errors.ThrowUserInput(
       `Generated Expo host contains unrelated dependency path: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
@@ -83,14 +83,14 @@ async function requireOwnedDependencyLink(directory: string, expected?: string):
 }
 
 async function readHostOwnership(path: string): Promise<GeneratedHostOwnership | undefined> {
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstat(path))
+  const current = await Try.WithDefault(undefined, () => FS.lstat(path))
   if (!current) {
     return undefined
   }
   if (!current.isFile()) {
     return Errors.ThrowUserInput(`Generated Expo host contains unrelated ownership path: ${path}.`)
   }
-  const source = await FileSystem.readFile(path, 'utf8')
+  const source = await FS.readFile(path, 'utf8')
   return parseHostOwnership(source)
 }
 

@@ -1,4 +1,4 @@
-import { FileSystem, Path, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
 import { parseSlowTestSeconds } from '../../cli-checks/slow-tests'
 import { runTaoTests } from '../testing/TaoTests'
@@ -63,13 +63,13 @@ function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
   }
   const path = resolveTestTargetPath(target)
   Check.assertNewWorkspacePath(path)
-  const canonical = FileSystem.existsSync(path) ? FileSystem.realpathSync(path) : path
-  const root = FileSystem.realpathSync(Repo.getWorkspaceRoot())
-  const workspace = FileSystem.realpathSync(Repo.resolvePath('ts'))
+  const canonical = FS.existsSync(path) ? FS.realpathSync(path) : path
+  const root = FS.realpathSync(Repo.getWorkspaceRoot())
+  const workspace = FS.realpathSync(Repo.resolvePath('ts'))
   if (canonical === root) {
     return workspace
   }
-  if (FileSystem.existsSync(path) || Path.isAbsolute(target)) {
+  if (FS.existsSync(path) || Path.isAbsolute(target)) {
     Check.assertNewWorkspacePath(path, workspace)
     return canonical
   }
@@ -78,7 +78,7 @@ function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
 
 function resolveTestTargetPath(target: string): string {
   const workspacePath = Path.resolve(Repo.resolvePath('ts'), target)
-  const useWorkspacePath = Path.isAbsolute(target) || FileSystem.existsSync(workspacePath)
+  const useWorkspacePath = Path.isAbsolute(target) || FS.existsSync(workspacePath)
   if (useWorkspacePath) {
     return workspacePath
   }

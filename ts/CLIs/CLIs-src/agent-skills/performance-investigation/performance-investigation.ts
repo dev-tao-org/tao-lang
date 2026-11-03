@@ -1,5 +1,7 @@
-import { IO, resolveCallerPath } from '@cli-kit'
-import { Platform, Repo } from '@shared/os'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import { Repo } from '@shared/os'
+import { Process } from '@shared/os'
 import { Command } from '../../cli-kit/bridges/Bridge_commander'
 import { receiveSnapshot } from './Checkout'
 import { copyRemote, discoverHosts, executeRemote, type RemoteExecution } from './Remote'
@@ -16,7 +18,7 @@ export async function main(): Promise<void> {
   registerSnapshotCommands(command)
   registerRemoteCommands(command)
   registerMeasurementCommands(command)
-  await command.parseAsync(Platform.argv)
+  await command.parseAsync(Process.argv)
 }
 
 type ReceiveOptions = { bundle: string; manifest: string; directory: string; ref?: string }
@@ -29,7 +31,7 @@ function registerSnapshotCommands(command: Command): void {
     .option('--repo <path>', 'Controller checkout.', Repo.getWorkspaceRoot())
     .option('--ref <revision>', 'Export this committed checkpoint instead of saved working source.')
     .action(async (options: { repo: string; ref?: string }) => {
-      printResult(await createSnapshot(resolveCallerPath(options.repo), options.ref))
+      printResult(await createSnapshot(CLIKit.resolveCallerPath(options.repo), options.ref))
     })
   command.command('receive').description('Verify a transferred bundle and clone a checkpoint into a new directory.')
     .requiredOption('--bundle <path>', 'Transferred snapshot.bundle.')
@@ -38,9 +40,9 @@ function registerSnapshotCommands(command: Command): void {
     .option('--ref <sha>', 'Full checkpoint SHA; defaults to the captured snapshot.')
     .action(async (options: ReceiveOptions) => {
       await receiveSnapshot(
-        resolveCallerPath(options.bundle),
-        resolveCallerPath(options.manifest),
-        resolveCallerPath(options.directory),
+        CLIKit.resolveCallerPath(options.bundle),
+        CLIKit.resolveCallerPath(options.manifest),
+        CLIKit.resolveCallerPath(options.directory),
         options.ref,
       )
     })
@@ -80,8 +82,8 @@ function registerMeasurementCommands(command: Command): void {
     .option('--edits <count>', 'Edits per session; warm samples exclude the first four.', '24')
     .action(async (options: RunOptions) => {
       const directory = await runMeasurements({
-        repo: resolveCallerPath(options.repo),
-        fixture: resolveCallerPath(options.fixture),
+        repo: CLIKit.resolveCallerPath(options.repo),
+        fixture: CLIKit.resolveCallerPath(options.fixture),
         samples: Number(options.samples),
         edits: Number(options.edits),
       })
@@ -90,7 +92,7 @@ function registerMeasurementCommands(command: Command): void {
   command.command('summarize').description('Summarize independent run medians and retain raw job evidence.')
     .argument('<directories...>', 'Completed job directories.')
     .action(async (directories: string[]) => {
-      printResult(await Promise.all(directories.map(directory => summarizeJob(resolveCallerPath(directory)))))
+      printResult(await Promise.all(directories.map(directory => summarizeJob(CLIKit.resolveCallerPath(directory)))))
     })
 }
 

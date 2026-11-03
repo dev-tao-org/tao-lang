@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
-import { Artifacts, Files, FileSystem, Repo } from '@shared/os'
-import { cleanProject } from '@workspace/projects/Clean'
+import { Artifacts, Files, FS, Repo } from '@shared/os'
+import * as Workspace from '@workspace'
 import { registerCommand } from './_command-runner'
 
 /** cleanCommand removes dependencies, all artifacts, or only expired successful temporary output. */
@@ -30,10 +30,10 @@ export default registerCommand({
     if (projectCleanup.protected > 0) {
       IO.print('Preserved project cache while session ownership was uncertain.')
     }
-    await FileSystem.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
-    await FileSystem.rm(Repo.resolvePath('ts/2-ast-gen/_gen_AST'), { recursive: true, force: true })
-    await FileSystem.rm(Repo.resolvePath('ts/7-runtime/_gen_runtime'), { recursive: true, force: true })
-    await FileSystem.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
+    await FS.rm(Repo.resolvePath('ts/1-grammar/_gen_parser'), { recursive: true, force: true })
+    await FS.rm(Repo.resolvePath('ts/2-ast-gen/_gen_AST'), { recursive: true, force: true })
+    await FS.rm(Repo.resolvePath('ts/7-runtime/_gen_runtime'), { recursive: true, force: true })
+    await FS.rm(Repo.resolvePath('ts/node_modules'), { recursive: true, force: true })
     if (args.includes('--full')) {
       await Artifacts.rm(Artifacts.resolvePath(), { recursive: true, force: true })
     }
@@ -52,7 +52,7 @@ async function cleanAppProjects(): Promise<CleanAppProjectsResult> {
   let protectedCount = 0
   const active: string[] = []
   for (const root of roots) {
-    const result = await cleanProject(root)
+    const result = await Workspace.cleanProject(root)
     for (const warning of result.warnings) {
       IO.warn(warning)
     }

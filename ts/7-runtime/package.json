@@ -19,5 +19,60 @@
     "@types/bun": "1.4.0",
     "@types/react": "~19.2.0",
     "@types/react-dom": "~19.2.0"
+  },
+  "exports": {
+    ".": "./runtime-src/Runtime.ts",
+    "./client/Bridge_react/Bridge_react": "./runtime-src/client/Bridge_react/Bridge_react.ts",
+    "./client/Bridge_react-native": "./runtime-src/client/Bridge_react-native.ts",
+    "./bridges/Bridge_expo/Bridge_expo-config": "./runtime-src/bridges/Bridge_expo/Bridge_expo-config.ts",
+    "./client/Bridge_react/jsx-runtime": "./runtime-src/client/Bridge_react/jsx-runtime.ts",
+    "./client/Bridge_react/jsx-dev-runtime": "./runtime-src/client/Bridge_react/jsx-dev-runtime.ts",
+    "./expo": "./runtime-src/expo/ExpoHost.ts",
+    "./client": "./runtime-src/client/Client.ts",
+    "./runtime-api": "./runtime-src/client/TaoRuntimeAPI.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@runtime",
+        "namespace": "Runtime"
+      },
+      "./client/Bridge_react/Bridge_react": {
+        "alias": "@runtime/client/Bridge_react/Bridge_react",
+        "namespace": "BridgeReact"
+      },
+      "./client/Bridge_react-native": {
+        "alias": "@runtime/client/Bridge_react-native",
+        "namespace": "BridgeReactNative"
+      },
+      "./bridges/Bridge_expo/Bridge_expo-config": {
+        "alias": "@runtime/bridges/Bridge_expo/Bridge_expo-config",
+        "namespace": "BridgeExpoConfig"
+      },
+      "./client/Bridge_react/jsx-runtime": {
+        "alias": "@runtime/client/Bridge_react/jsx-runtime",
+        "namespace": "JsxRuntime"
+      },
+      "./client/Bridge_react/jsx-dev-runtime": {
+        "alias": "@runtime/client/Bridge_react/jsx-dev-runtime",
+        "namespace": "JsxDevRuntime"
+      },
+      "./expo": {
+        "alias": "@runtime/expo",
+        "namespace": "Expo"
+      },
+      "./client": {
+        "alias": "@runtime/client",
+        "namespace": "Client",
+        "entities": [
+          "Scope",
+          "View"
+        ]
+      },
+      "./runtime-api": {
+        "alias": "@tao/runtime-api",
+        "namespace": "RuntimeAPI"
+      }
+    }
   }
 }

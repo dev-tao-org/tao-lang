@@ -1,7 +1,9 @@
-import type { compile, CompileOptions } from '@compile/Compile'
-import * as Runtime from '@runtime/Runtime'
-import { Errors, joinTextLines, Timings, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
+import type * as Compile from '@compile'
+import * as Runtime from '@runtime'
+
+import { Errors, Timings, Try } from '@shared'
+import * as Shared from '@shared'
+import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
 import { openProjectWorkspace, type ProjectWorkspaceOptions } from '../ProjectWorkspace'
@@ -14,7 +16,7 @@ export async function createAppTestDriver(
   path: string,
   source: string,
   openBrowser: () => Promise<TestBrowser>,
-  compileApp: typeof compile,
+  compileApp: typeof Compile.compile,
   onProgress?: TestProgress,
   signal?: AbortSignal,
 ): Promise<TestDriver> {
@@ -37,7 +39,7 @@ type DriverContext = {
   path: string
   source: string
   openBrowser: () => Promise<TestBrowser>
-  compileApp: typeof compile
+  compileApp: typeof Compile.compile
   onProgress?: TestProgress
   signal?: AbortSignal
 }
@@ -95,12 +97,12 @@ async function disposeAppTestSession(state: Session, context: DriverContext, abo
   context.onProgress?.('Cleanup complete.')
 }
 
-async function createTestWorkspace(path: string, app: string, compileApp: typeof compile) {
+async function createTestWorkspace(path: string, app: string, compileApp: typeof Compile.compile) {
   const runtimeOptions = {
     toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains'),
     install: {
       async install(directory: string) {
-        await FileSystem.symlink(
+        await FS.symlink(
           Repo.resolvePath('ts/7-runtime/node_modules'),
           Path.join(directory, 'node_modules'),
           'dir',
@@ -121,7 +123,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
   return createWorkspace({ outputDirectory: directory, runtimeOptions, compile })
 }
 
-function selectCompilationApp(options: CompileOptions, app: string): CompileOptions {
+function selectCompilationApp(options: Compile.CompileOptions, app: string): Compile.CompileOptions {
   return { ...options, app }
 }
 
@@ -172,9 +174,9 @@ async function disposeWorkspaceSession(state: Session): Promise<void> {
 async function retainExpoOutput(state: Session): Promise<void> {
   if (state.expo && state.workspace?.runtime) {
     const output = await state.expo.output()
-    await FileSystem.writeFile(
+    await FS.writeFile(
       Path.join(state.workspace.runtime.directory, 'expo.log'),
-      joinTextLines(output.stdout, output.stderr),
+      Shared.joinTextLines(output.stdout, output.stderr),
     )
   }
 }

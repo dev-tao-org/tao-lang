@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
+import * as ExternalErrors from '@shared/errors/external'
 import { Http } from '@shared/os'
-import * as ExternalErrors from '../../../../shared/shared-src/universal/Errors/external'
 
 /** waitForExpoReady polls a local server while bounding each request by its remaining deadline. */
 export async function waitForExpoReady(

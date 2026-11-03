@@ -1,12 +1,12 @@
-import { formatTimings, IO } from '@cli-kit'
-import * as Runtime from '@runtime/Runtime'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as Runtime from '@runtime'
 import { ControlCCharacter, Errors, NewlineCharacter, Try } from '@shared'
-import { Browser, FileSystem, Http, Lifecycle, Platform, Repo, Terminal } from '@shared/os'
-import { execute, type WorkflowUI, type WorkflowWorkspace } from '@workspace/Workflow'
-import type { UpdateResult, WorkspaceSession } from '@workspace/Workspace'
-import { createPreviewHarness, type PreviewHarness } from '../../../../perf/perf-src/PreviewHarness'
-import { previewScenarios } from '../../../../perf/perf-src/PreviewScenarios'
-import type { ReloadTiming } from '../../../../perf/perf-src/ReloadTimings'
+import { Browser, FS, Http, Platform, Process, Processes, Repo, Terminal } from '@shared/os'
+import * as Workspace from '@workspace'
+
+import * as Perf from '@perf'
+
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { registerCommand } from './_command-runner'
@@ -25,16 +25,16 @@ async function runDevSession(yes?: boolean): Promise<void> {
   await prepareRuntime()
   const entry = Repo.resolvePath('Apps/Dev/Preview/Preview.tao')
   const state: DevSession = { stopped: false, controller: Http.createAbortController() }
-  const stop = Lifecycle.onTermination(() => requestDevExit(state))
+  const stop = Process.onTermination(() => requestDevExit(state))
   const ui = workflowUI(yes, state.controller.signal)
   const options = devWorkspaceOptions(state, entry, ui)
   await Try(async () => {
-    state.workspace = await execute({ kind: 'preview', entry, options }, ui)
+    state.workspace = await Workspace.execute({ kind: 'preview', entry, options }, ui)
     await startDevRuntime(state)
     IO.print('Edit Apps/Dev/Preview/Preview.tao to refresh both previews.')
     startDevActions(state)
     if (!state.stopped) {
-      await Lifecycle.waitForTermination(state.controller.signal)
+      await Process.waitForTermination(state.controller.signal)
     }
   }, {
     async finally() {
@@ -49,14 +49,14 @@ async function runDevSession(yes?: boolean): Promise<void> {
 
 type DevWorkspaceOptions = {
   kind: 'studio'
-  onSourceUpdate(result: UpdateResult): void
+  onSourceUpdate(result: Workspace.UpdateResult): void
   onSourceError(error: unknown): void
 }
 
-function devWorkspaceOptions(state: DevSession, entry: string, ui: WorkflowUI): DevWorkspaceOptions {
+function devWorkspaceOptions(state: DevSession, entry: string, ui: Workspace.WorkflowUI): DevWorkspaceOptions {
   const options = {
     kind: 'studio',
-    onSourceUpdate(result: UpdateResult) {
+    onSourceUpdate(result: Workspace.UpdateResult) {
       reportSourceUpdate(result)
       const canRecoverSetup = result.status === 'failed' && result.setupRequired && state.workspace
       if (canRecoverSetup && !state.recovery) {
@@ -72,12 +72,12 @@ async function restartDevSession(
   state: DevSession,
   entry: string,
   options: DevWorkspaceOptions,
-  ui: WorkflowUI,
+  ui: Workspace.WorkflowUI,
   reason: string,
 ): Promise<void> {
   state.stopKeys?.()
   await Try(async () => {
-    state.workspace = await execute({
+    state.workspace = await Workspace.execute({
       kind: 'preview',
       entry,
       options,
@@ -97,9 +97,9 @@ type DevSession = {
   stopped: boolean
   controller: Http.HttpAbortController
   stopKeys?: () => void
-  workspace?: WorkflowWorkspace
+  workspace?: Workspace.WorkflowWorkspace
   expo?: Runtime.ExpoSession
-  preview?: PreviewHarness
+  preview?: Perf.PreviewHarness
   recovery?: Promise<void>
 }
 
@@ -113,12 +113,12 @@ async function startDevRuntime(state: DevSession): Promise<void> {
     Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
   }
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
-  state.preview = await createPreviewHarness({
+  state.preview = await Perf.createPreviewHarness({
     workspace,
     previewUrl: state.expo.url,
     sessionId: Platform.randomUUID(),
-    canonicalSource: await FileSystem.readFile(entryPath, 'utf8'),
-    scenarios: previewScenarios,
+    canonicalSource: await FS.readFile(entryPath, 'utf8'),
+    scenarios: Perf.previewScenarios,
     onReload: reportReload,
   })
   IO.print('Tao preview is running at ' + state.preview.url)
@@ -170,8 +170,8 @@ async function stopDevSession(state: DevSession): Promise<void> {
   }
 }
 
-function reportSourceUpdate(result: UpdateResult): void {
-  IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${formatTimings(result.timings)}`)
+function reportSourceUpdate(result: Workspace.UpdateResult): void {
+  IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${CLIKit.formatTimings(result.timings)}`)
   if (result.status === 'failed') {
     IO.warn(`Preview source compilation failed: ${result.error}`)
     IO.warn('The last good app remains available.')
@@ -187,14 +187,14 @@ function reportSourceError(error: unknown): void {
 }
 
 type ExpoOutputStream = 'stdout' | 'stderr'
-type OptionalPreview = PreviewHarness | undefined
+type OptionalPreview = Perf.PreviewHarness | undefined
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 
 function reportExpoOutput(stream: ExpoOutputStream, text: string): void {
   IO.progress(`[expo ${stream}] ${text.trimEnd().replace('Starting project at ', 'Starting Expo runtime at ')}`)
 }
 
-function reportReload(timing: ReloadTiming): void {
+function reportReload(timing: Perf.ReloadTiming): void {
   IO.print(
     `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`,
   )
@@ -218,7 +218,7 @@ function reportReload(timing: ReloadTiming): void {
 
 type CleanupOptions = {
   preview: OptionalPreview
-  workspace: WorkspaceSession
+  workspace: Workspace.WorkspaceSession
   expo: OptionalExpoSession
   reportFailure: boolean
 }
@@ -237,7 +237,7 @@ async function cleanup(options: CleanupOptions): Promise<void> {
   })
 }
 
-function printExpoOutput(output: Lifecycle.ProcessOutput): void {
+function printExpoOutput(output: Processes.ProcessOutput): void {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   if (messages.length) {
     IO.printToStdErr(('Expo diagnostics:' + NewlineCharacter) + messages.join(NewlineCharacter))

@@ -1,5 +1,5 @@
 import { Regxs, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import type { TimingReport } from './TimingReport'
 
 /** TimingHistory identifies the previous comparable measurement and unusable saved evidence. */
@@ -11,14 +11,14 @@ export const MinimumComparisonSessions = 5
 /** readTimingHistory selects an earlier completed job by measurement time, never by collection time. */
 export async function readTimingHistory(current: TimingReport, directory: string): Promise<TimingHistory> {
   const history: TimingHistory = { unusable: 0 }
-  for (const name of await FileSystem.readdir(directory)) {
+  for (const name of await FS.readdir(directory)) {
     if (!name.endsWith('.json')) {
       continue
     }
     const path = Path.join(directory, name)
     const value: unknown = await Try.WithDefault(
       undefined,
-      async () => JSON.parse(await FileSystem.readFile(path, 'utf8')),
+      async () => JSON.parse(await FS.readFile(path, 'utf8')),
     )
     if (!isValidTimingReport(value)) {
       history.unusable++

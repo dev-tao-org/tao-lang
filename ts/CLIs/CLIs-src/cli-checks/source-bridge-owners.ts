@@ -52,7 +52,7 @@ const bridgeOwners: BridgeOwner[] = [
   { packageName: 'react', path: 'ts/7-runtime/runtime-src/client/Bridge_react', folder: true },
   { packageName: 'react-native', path: 'ts/7-runtime/runtime-src/client/Bridge_react-native.ts' },
   { packageName: '@preact/signals-core', path: 'ts/7-runtime/runtime-src/client/Bridge_preact-signals-core.ts' },
-  { packageName: 'react-dom', path: 'ts/7-runtime/runtime-test/bridges/Bridge_react-dom.ts' },
+  { packageName: 'react-dom', path: 'ts/7-runtime/test-runtime/bridges/Bridge_react-dom.ts' },
   { packageName: 'ink', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_ink.ts' },
   { packageName: 'wrap-ansi', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_wrap-ansi.ts' },
   { packageName: 'commander', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_commander.ts' },

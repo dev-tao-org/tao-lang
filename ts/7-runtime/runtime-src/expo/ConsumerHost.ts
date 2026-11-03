@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { consumerMetroConfiguration, createConsumerBootstrap } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
@@ -17,13 +17,13 @@ export type ConsumerHostOptions = {
 /** createConsumerHost writes generated Expo files beside a link to the authored package's dependencies. */
 export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
   const modules = Path.join(options.packageDirectory, 'node_modules')
-  if (!FileSystem.existsSync(Path.join(modules, 'expo'))) {
+  if (!FS.existsSync(Path.join(modules, 'expo'))) {
     return Errors.ThrowUserInput(
       `Install the authored package dependencies before running: ${options.packageDirectory}.`,
     )
   }
   const entry = Path.resolve(options.packageDirectory, options.entry)
-  if (!Path.isWithin(options.packageDirectory, entry) || !FileSystem.existsSync(entry)) {
+  if (!Path.isWithin(options.packageDirectory, entry) || !FS.existsSync(entry)) {
     return Errors.ThrowUserInput(`tao.run.entry must name an existing component inside ${options.packageDirectory}.`)
   }
   const bootstrap = createConsumerBootstrap(Path.relative(options.directory, entry))

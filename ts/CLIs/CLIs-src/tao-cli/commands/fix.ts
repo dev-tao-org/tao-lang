@@ -1,4 +1,4 @@
-import { resolveCallerPath } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { updateTaoSource } from '../../dev-cli/source/TaoSource'
 import { withProjectSessions } from '../ProjectCommand'
@@ -10,7 +10,7 @@ export default registerCommand({
   arguments: [{ name: 'paths', required: true, variadic: true, description: 'Tao source files.' }],
   options: [{ flags: '--session <id>', description: 'Use a named project session lock.' }],
   async action(paths: string[], options: { session?: string } = {}) {
-    const resolved = paths.map(resolveCallerPath)
+    const resolved = paths.map(CLIKit.resolveCallerPath)
     await withProjectSessions(resolved, async () => {
       for (const path of resolved) {
         await updateTaoSource(path, 'fix')

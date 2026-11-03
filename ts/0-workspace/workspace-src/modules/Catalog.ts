@@ -1,5 +1,5 @@
 import { Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { isExcludedName, isExcludedPath, resolveRealPathInsideProject, within } from './Paths'
 
 /** listDirectSourceFiles returns importable Tao files without descending into child directories. */
@@ -60,7 +60,7 @@ export async function findNamedPackageDirectories(projectRoot: string, name: str
         if (await isSafeDirectory(path, projectRoot)) {
           found.push(path)
         }
-      } else if (!await FileSystem.exists(Path.join(path, '.tao'))) {
+      } else if (!await FS.exists(Path.join(path, '.tao'))) {
         await visit(path)
       } else {
         // Nested projects own their packages and are not searched from this project.
@@ -78,10 +78,10 @@ export async function isImportableFile(path: string, boundary: string): Promise<
   if (!path.endsWith('.tao') || isExcludedPath(path, boundary)) {
     return false
   }
-  if (!await FileSystem.exists(path)) {
+  if (!await FS.exists(path)) {
     return false
   }
-  if (!Try.WithDefault(false, () => FileSystem.lstatSync(path).isFile())) {
+  if (!Try.WithDefault(false, () => FS.lstatSync(path).isFile())) {
     return false
   }
   return resolveRealPathInsideProject(path, boundary) !== undefined
@@ -92,7 +92,7 @@ function isSourceEntry(name: string, isFile: boolean): boolean {
 }
 
 async function canDescendPackage(name: string, isDirectory: boolean, path: string): Promise<boolean> {
-  return isDirectory && !name.startsWith('@') && !await FileSystem.exists(Path.join(path, '.tao'))
+  return isDirectory && !name.startsWith('@') && !await FS.exists(Path.join(path, '.tao'))
 }
 
 function isSearchDirectory(name: string, isDirectory: boolean): boolean {
@@ -101,10 +101,10 @@ function isSearchDirectory(name: string, isDirectory: boolean): boolean {
 
 // isSafeDirectory confirms a directory stays within its real project boundary.
 async function isSafeDirectory(path: string, boundary: string): Promise<boolean> {
-  if (isExcludedPath(path, boundary) || !await FileSystem.exists(path)) {
+  if (isExcludedPath(path, boundary) || !await FS.exists(path)) {
     return false
   }
-  if (!Try.WithDefault(false, () => FileSystem.lstatSync(path).isDirectory())) {
+  if (!Try.WithDefault(false, () => FS.lstatSync(path).isDirectory())) {
     return false
   }
   return resolveRealPathInsideProject(path, boundary) !== undefined
@@ -116,5 +116,5 @@ async function readDirectoryEntries(
   path: string,
 ): Promise<SourceDirectoryEntry[]> {
   const fallback: SourceDirectoryEntry[] = []
-  return await Try.WithDefault(fallback, () => FileSystem.readdir(path, { withFileTypes: true }))
+  return await Try.WithDefault(fallback, () => FS.readdir(path, { withFileTypes: true }))
 }

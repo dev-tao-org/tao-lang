@@ -1,4 +1,4 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Errors, Source, Switch, Time, Try } from '@shared'
 
 /** TestDriver runs one isolated app journey against a platform's visible UI. */

@@ -1,20 +1,20 @@
 import * as CST from '@cst'
-import type { NodeType, SyntaxNode, Tree } from '@cst'
+
 import { Timings } from '@shared'
 import { NodeLayout } from '../layout/NodeLayout'
 import { createPlan, isCompleteNode, type LayoutPlan } from '../layout/Plan'
 import { NodeFormat } from './NodeFormat'
 
 /** FormattingHandlers checks each rule's property and token selectors against generated CST types. */
-export type FormattingHandlers = { [Kind in NodeType]?: (fm: NodeFormat<Kind>) => void }
+export type FormattingHandlers = { [Kind in CST.NodeType]?: (fm: NodeFormat<Kind>) => void }
 
 /** LayoutHandlers checks each node's vertical layout handler against its generated CST rule. */
-export type LayoutHandlers = { [Kind in NodeType]?: (lm: NodeLayout<Kind>) => void }
+export type LayoutHandlers = { [Kind in CST.NodeType]?: (lm: NodeLayout<Kind>) => void }
 
 /** createFormattingPlan collects both rule tables during one traversal of complete declarations. */
 export function createFormattingPlan(
   source: string,
-  tree: Tree,
+  tree: CST.Tree,
   formatting: FormattingHandlers,
   layout: LayoutHandlers,
   timings: Timings,
@@ -22,15 +22,15 @@ export function createFormattingPlan(
   return timings.run(collectRules, source, tree, formatting, layout)
 }
 
-type ParentSyntaxNode = SyntaxNode | undefined
-type FormattingRule = (fm: NodeFormat<NodeType>) => void
-type LayoutRule = (lm: NodeLayout<NodeType>) => void
+type ParentSyntaxNode = CST.SyntaxNode | undefined
+type FormattingRule = (fm: NodeFormat<CST.NodeType>) => void
+type LayoutRule = (lm: NodeLayout<CST.NodeType>) => void
 type OptionalFormattingRule = FormattingRule | undefined
 type OptionalLayoutRule = LayoutRule | undefined
 
 const collectRules = Timings.measured('formatter.rules', function(
   source: string,
-  tree: Tree,
+  tree: CST.Tree,
   formatting: FormattingHandlers,
   layout: LayoutHandlers,
 ): LayoutPlan {
@@ -49,13 +49,13 @@ const collectRules = Timings.measured('formatter.rules', function(
 })
 
 function visit(
-  node: SyntaxNode,
+  node: CST.SyntaxNode,
   parent: ParentSyntaxNode,
   plan: LayoutPlan,
   formatting: FormattingHandlers,
   layout: LayoutHandlers,
 ): void {
-  const kind = node.type as NodeType
+  const kind = node.type as CST.NodeType
   const formatRule = formatting[kind] as OptionalFormattingRule
   const layoutRule = layout[kind] as OptionalLayoutRule
   formatRule?.(new NodeFormat(node, plan, parent))

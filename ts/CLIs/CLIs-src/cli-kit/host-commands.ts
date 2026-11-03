@@ -1,5 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
-import { FileSystem, Platform, Repo } from '@shared/os'
+import { FS, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
@@ -18,13 +19,13 @@ export async function runHostCommand(
 }
 
 type HostCommandExecution = {
-  requireAccess: typeof Platform.requireHostProcessAccess
+  requireAccess: typeof Processes.requireHostProcessAccess
   executeInteractive: typeof runInteractiveCommand
   executeNonInteractive: typeof runNonInteractiveCommand
 }
 
 const liveExecution: HostCommandExecution = {
-  requireAccess: Platform.requireHostProcessAccess,
+  requireAccess: Processes.requireHostProcessAccess,
   executeInteractive: runInteractiveCommand,
   executeNonInteractive: runNonInteractiveCommand,
 }
@@ -73,7 +74,7 @@ type Prefix = { text: string; tokens: string[] }
 
 async function readHostCommandPrefixes(): Promise<unknown> {
   const path = Repo.resolvePath(allowlistPath)
-  const source = await FileSystem.file(path).text()
+  const source = await FS.file(path).text()
   return Try(() => JSON.parse(source) as unknown, {
     catch() {
       Errors.ThrowUserInput(`The ${allowlistPath} file must contain a valid JSON array of command prefixes.`)

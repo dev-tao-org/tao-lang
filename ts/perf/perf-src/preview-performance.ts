@@ -1,17 +1,18 @@
-import * as Runtime from '@runtime/Runtime'
+import * as Runtime from '@runtime'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
-import { Artifacts, type BrowserRuntime, FileSystem, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import type * as Workspace from '@workspace/Workspace'
-import type { Project, UpdateResult } from '@workspace/Workspace'
-import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
-import * as PreviewMeasurement from './PreviewMeasurement'
+import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
+import type * as Workspace from '@workspace'
+
+import { createPreviewHarness, type PreviewHarness } from './Preview/PreviewHarness'
+import * as PreviewMeasurement from './Preview/PreviewMeasurement'
 import type { ReloadTiming } from './ReloadTimings'
 
 /** previewPerformance measures source edits through two isolated headless Expo web previews.
  *  macOS requires host process access before any browser starts; no screenshots are captured. */
 export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
+    await Processes.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
   const measurement = PreviewMeasurement.readPreviewMeasurement(options.measurement)
   const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
@@ -25,7 +26,7 @@ export async function previewPerformance(options: PreviewOptions) {
 /** PreviewOptions supplies a compile session, generated app, and canonical starting Tao source. */
 export type PreviewOptions = {
   workspace: Workspace.WorkspaceSession
-  project: Project
+  project: Workspace.Project
   initialSource: string
   measurement?: Partial<PreviewMeasurement.PreviewMeasurement>
 }
@@ -99,11 +100,11 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
 async function prepareMeasurementSource(options: PreviewOptions, measurement: PreviewMeasurement.PreviewMeasurement) {
   const fixture = PreviewMeasurement.createMeasurementFiles(options.initialSource, measurement)
   const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
-  await FileSystem.mkdir(Path.dirname(sourcePath))
+  await FS.mkdir(Path.dirname(sourcePath))
   for (const file of fixture.extraFiles) {
-    await FileSystem.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
+    await FS.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
   }
-  await FileSystem.writeFile(sourcePath, fixture.entry, 'utf8')
+  await FS.writeFile(sourcePath, fixture.entry, 'utf8')
   return { source: fixture.entry, sourcePath }
 }
 
@@ -166,7 +167,7 @@ async function waitForFrameText(
 }
 
 async function writeReport(
-  project: Project,
+  project: Workspace.Project,
   owned: Resources,
   results: PreviewResult[],
   fixtureSha256: string,
@@ -178,8 +179,8 @@ async function writeReport(
   const report: PreviewPerformanceReport = {
     version: 1,
     sessionId: owned.sessionId,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     runtime: Platform.runtimeVersion(),
     fixtureSha256,
@@ -234,7 +235,7 @@ function serializePreviewPerformanceReport(report: PreviewPerformanceReport): st
   return JSON.stringify(report, null, 2)
 }
 
-function requirePublished(result: UpdateResult): void {
+function requirePublished(result: Workspace.UpdateResult): void {
   if (result.status !== 'published') {
     const detail = result.status === 'failed' ? ` ${result.error}` : ''
     Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.${detail}`)

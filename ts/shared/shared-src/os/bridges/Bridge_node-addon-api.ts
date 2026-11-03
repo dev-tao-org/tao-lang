@@ -1,5 +1,5 @@
-import { readPackageMetadata } from '../PackageResources'
-import { capture } from '../Platform'
+import { capture } from '../Processes'
+import { readPackageMetadata } from '../Tooling/PackageResources'
 
 /** readMetadata reads the installed Node addon headers' package identity. */
 export function readMetadata(directory: string) {

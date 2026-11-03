@@ -1,4 +1,5 @@
-import { FileSystem, Path, Repo } from '../shared/shared-src/os'
+import { deriveCompilerPaths } from '../CLIs/CLIs-src/cli-checks/PackageApis'
+import { FS, Path, Repo } from '../shared/shared-src/os'
 import { Regxs } from '../shared/shared-src/shared'
 
 /** knipConfiguration checks package workspaces while recognizing imported command registrations. */
@@ -36,7 +37,7 @@ export default {
       'perf-src/parser-sample.ts',
       'perf-src/parser-performance.ts',
       'perf-src/preview-performance.ts',
-      'perf-src/PreviewHarness.ts',
+      'perf-src/Preview/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
     ]),
     'shared': createPackageWorkspace([]),
@@ -51,23 +52,8 @@ export default {
 function createPackageWorkspace(entry: string[]) {
   return {
     entry: [...entry.map(pattern => `${pattern}!`), '**/*.test.ts'],
-    project: ['**/*.{ts,tsx}!', '!**/*-test/**!', '!**/*.test.ts!'],
-    paths: {
-      '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
-      '@cst': ['../1-grammar/grammar-src/CST.ts'],
-      '@shared': ['../shared/shared-src/shared.ts'],
-      '@shared/os': ['../shared/shared-src/os.ts'],
-      '@shared/os/preview': ['../shared/shared-src/os/preview/PreviewPlatform.ts'],
-      '@grammar/*': ['../1-grammar/grammar-src/*'],
-      '@ast-gen/*': ['../2-ast-gen/ast-gen-src/*'],
-      '@typecheck/*': ['../3-typecheck/typecheck-src/*'],
-      '@fix/*': ['../4-fix/fix-src/*'],
-      '@check/*': ['../5-check/check-src/*'],
-      '@compile/*': ['../6-compile/compile-src/*'],
-      '@runtime/*': ['../7-runtime/runtime-src/*'],
-      '@workspace/*': ['../0-workspace/workspace-src/*'],
-      '@stdlib/*': ['../stdlib/stdlib-src/*'],
-    },
+    project: ['**/*.{ts,tsx}!', '!**/test-*/**!', '!**/*.test.ts!'],
+    paths: deriveCompilerPaths(Repo.resolvePath('ts/package')),
   }
 }
 
@@ -90,7 +76,7 @@ function listCLIEntries(): string[] {
 }
 
 function listCommandEntries(registry: string): string[] {
-  const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
+  const source = FS.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
   return [...source.matchAll(Regxs.CommandRegistrationImportRegx)]
     .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
 }
@@ -98,13 +84,13 @@ function listCommandEntries(registry: string): string[] {
 async function listSkillEntries(): Promise<string[]> {
   const root = Repo.resolvePath('ts/CLIs/CLIs-src/agent-skills')
   const entries: string[] = []
-  for (const folder of await FileSystem.readdir(root, { withFileTypes: true })) {
+  for (const folder of await FS.readdir(root, { withFileTypes: true })) {
     if (!folder.isDirectory()) {
       continue
     }
     const name = folder.name
     const path = Path.join(root, name, `${name}.ts`)
-    if (FileSystem.existsSync(path) && FileSystem.statSync(path).isFile()) {
+    if (FS.existsSync(path) && FS.statSync(path).isFile()) {
       entries.push(`CLIs-src/agent-skills/${name}/${name}.ts`)
     }
   }

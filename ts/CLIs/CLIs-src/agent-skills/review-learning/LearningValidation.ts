@@ -1,11 +1,11 @@
 import { Errors, Regxs } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { safeSourcePath } from './LearningStore'
 import type { Correction, Proposal } from './LearningTypes'
 
 /** readLearningInput reads a JSON data file without evaluating code. */
 export async function readLearningInput(input: string): Promise<unknown> {
-  return JSON.parse(await FileSystem.readFile(Path.resolve(input), 'utf8'))
+  return JSON.parse(await FS.readFile(Path.resolve(input), 'utf8'))
 }
 
 /** validateCorrection validates the closed query schema and preserves authority evidence. */
@@ -95,7 +95,7 @@ export function validateCorrectionAuthority(root: string, correction: Correction
   requireText(source.file, 'authoritySource.file')
   requireText(source.quote, 'authoritySource.quote')
   const file = safeSourcePath(root, source.file as string)
-  const text = FileSystem.readFileSync(Path.join(root, file), 'utf8')
+  const text = FS.readFileSync(Path.join(root, file), 'utf8')
   if (!text.includes(source.quote as string)) {
     Errors.ThrowUserInput('Existing authority quote must appear in the cited project source.')
   }

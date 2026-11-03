@@ -1,7 +1,7 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Errors } from '@shared'
 import { valid } from './bridges/Bridge_semver'
-import type { ManagedModuleRequirement } from './sidecars/managed-modules/ManagedModules'
+import type { ManagedModuleRequirement } from './sidecars/ManagedModule/ManagedModules'
 
 /** collectModuleRequirements reads exact npm declarations from a parsed reachable source. */
 export function collectModuleRequirements(document: AST.Document, path: string): ManagedModuleRequirement[] {

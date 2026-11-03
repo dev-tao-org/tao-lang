@@ -1,5 +1,5 @@
 import { Errors, Objects, Regxs } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { git, head, writeJson } from './ReviewGit'
 import * as ReviewSessionModule2 from './ReviewSession'
 import type { ReviewSession } from './ReviewTypes'
@@ -48,12 +48,12 @@ async function requireSameRepository(root: string, previousRoot: string): Promis
 
 async function requireEmptyHistory(session: ReviewSession): Promise<void> {
   const parent = Path.dirname(session.directory)
-  for (const entry of await FileSystem.readdir(parent)) {
+  for (const entry of await FS.readdir(parent)) {
     if (entry !== 'active') {
       Errors.ThrowUserInput(`Destination review history already exists: ${Path.join(parent, entry)}`)
     }
   }
-  const active = (await FileSystem.readdir(session.directory)).filter(entry => entry !== 'operation.lock')
+  const active = (await FS.readdir(session.directory)).filter(entry => entry !== 'operation.lock')
   if (active.length) {
     Errors.ThrowUserInput('Destination review state already exists; preserve it before continuing.')
   }
@@ -61,7 +61,7 @@ async function requireEmptyHistory(session: ReviewSession): Promise<void> {
 
 async function retainHistory(previous: ReviewSession, session: ReviewSession): Promise<void> {
   const evidence = Path.join(session.directory, 'evidence/previous')
-  await FileSystem.mkdir(evidence)
+  await FS.mkdir(evidence)
   await writeJson(Path.join(evidence, 'session.json'), previous)
   await copyHistoricalFiles(Path.dirname(previous.directory), Path.dirname(session.directory), false)
   for (const directory of ['receipts', 'plans', 'evidence']) {
@@ -70,15 +70,15 @@ async function retainHistory(previous: ReviewSession, session: ReviewSession): P
 }
 
 async function copyHistoricalFiles(source: string, destination: string, descend = true): Promise<void> {
-  if (!await FileSystem.exists(source)) {
+  if (!await FS.exists(source)) {
     return
   }
-  for (const entry of await FileSystem.readdir(source, { withFileTypes: true })) {
+  for (const entry of await FS.readdir(source, { withFileTypes: true })) {
     const path = Path.join(source, entry.name)
     const target = Path.join(destination, entry.name)
     if (isHistoricalText(entry)) {
-      await FileSystem.mkdir(destination)
-      await FileSystem.writeFile(target, await FileSystem.readFile(path))
+      await FS.mkdir(destination)
+      await FS.writeFile(target, await FS.readFile(path))
     } else if (descend && isHistoricalDirectory(entry)) {
       await copyHistoricalFiles(path, target)
     } else {

@@ -1,5 +1,5 @@
 import { Errors, NullCharacter, Regxs, TabCharacter, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { assertOwnedSession, requireCleanReviewed, requireIdleSession } from './ReviewSession'
 import type { ReviewSelection, ReviewSession } from './ReviewTypes'
@@ -167,7 +167,7 @@ async function partialCandidates(
 async function patchedTree(session: ReviewSession, base: string, path?: string): Promise<string> {
   const index = await ReviewGit.privateIndex(session.root, session.directory, base)
   if (path) {
-    const patch = await FileSystem.readFile(path, 'utf8')
+    const patch = await FS.readFile(path, 'utf8')
     if (!patch.trim()) {
       Errors.ThrowUserInput(`Patch is empty: ${path}`)
     }
@@ -218,10 +218,10 @@ async function freezeSelection(
 ): Promise<ReviewSelection> {
   const proposal = Platform.randomUUID()
   const selection: ReviewSelection = { version: 1, proposal, session: session.id, ...content }
-  await FileSystem.mkdir(Path.join(session.directory, 'plans'))
+  await FS.mkdir(Path.join(session.directory, 'plans'))
   const proposalPath = Path.join(session.directory, 'plans', `${proposal}.json`)
   await ReviewGit.writeJson(proposalPath, selection)
-  await FileSystem.chmod(proposalPath, 0o444)
+  await FS.chmod(proposalPath, 0o444)
   return selection
 }
 

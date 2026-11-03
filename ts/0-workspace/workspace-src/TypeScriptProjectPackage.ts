@@ -1,13 +1,13 @@
-import type { RuntimePackageVersions } from '@runtime/Runtime'
+import type * as Runtime from '@runtime'
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 /** TypeScriptProjectPackage retains authored dependency and Tao configuration at its package directory. */
 export type TypeScriptProjectPackage = {
   directory: string
   name: string
-  dependencies: RuntimePackageVersions
-  devDependencies: RuntimePackageVersions
+  dependencies: Runtime.RuntimePackageVersions
+  devDependencies: Runtime.RuntimePackageVersions
   compile?: PackageCompileConfiguration
   run?: PackageRunConfiguration
 }
@@ -21,10 +21,10 @@ type PackageRecord = Record<string, unknown>
 export async function readTypeScriptProjectPackage(directory: string): Promise<TypeScriptProjectPackage> {
   const root = Path.resolve(directory)
   const path = Path.join(root, 'package.json')
-  if (!FileSystem.existsSync(path)) {
+  if (!FS.existsSync(path)) {
     return Errors.ThrowUserInput(`No package.json at ${root}; select the authored TypeScript package with --package.`)
   }
-  return parseTypeScriptProjectPackage(await FileSystem.readFile(path, 'utf8'), root)
+  return parseTypeScriptProjectPackage(await FS.readFile(path, 'utf8'), root)
 }
 
 function parseTypeScriptProjectPackage(source: string, directory: string): TypeScriptProjectPackage {
@@ -66,7 +66,7 @@ function requirePackageRecord(value: unknown, field: string): PackageRecord {
   return value as PackageRecord
 }
 
-function readPackageVersions(value: unknown): RuntimePackageVersions {
+function readPackageVersions(value: unknown): Runtime.RuntimePackageVersions {
   if (value === undefined) {
     return {}
   }

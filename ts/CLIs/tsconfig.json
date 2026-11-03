@@ -1,5 +1,11 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../.artifacts/cache/typescript/CLIs.tsbuildinfo" },
-  "include": ["CLIs-src/**/*", "../../agents/skills/*/scripts/**/*.ts"]
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/CLIs.tsbuildinfo"
+  },
+  "include": [
+    "CLIs-src/**/*",
+    "../../agents/skills/*/scripts/**/*.ts",
+    "test-CLIs/**/*"
+  ]
 }

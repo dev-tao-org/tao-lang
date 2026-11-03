@@ -1,5 +1,6 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
+import { Process } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 type OptionalReportPath = string | undefined
@@ -58,7 +59,7 @@ function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
 
 async function prepareTestReport(): Promise<string | undefined> {
   return Try(async () => {
-    const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Platform.pid}-${Platform.randomUUID()}.xml`)
+    const path = Artifacts.resolvePath('logs', 'test', `${Time.now()}-${Process.pid}-${Platform.randomUUID()}.xml`)
     await Artifacts.mkdir(Path.dirname(path))
     Artifacts.trackTemporary(path)
     await Artifacts.write(path, '')

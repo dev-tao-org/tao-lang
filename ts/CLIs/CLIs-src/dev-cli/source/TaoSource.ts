@@ -1,12 +1,13 @@
-import { transform } from '@ast-gen/Transform'
+import * as AST from '@ast-gen'
 import { IO } from '@cli-kit'
-import { fix } from '@fix/Fix'
-import { format, type FormatInput, type FormatResult } from '@fix/Format'
-import type { EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
-import { createParser, type ParsedTree, type Parser } from '@grammar/parser'
+import * as Fix from '@fix'
+import type * as Embedded from '@fix/embedded'
+import * as Grammar from '@grammar'
+import * as Typecheck from '@typecheck'
+
 import { Errors, Timings } from '@shared'
-import { FileSystem } from '@shared/os'
-import { unusedWarnings } from '@typecheck/Usage'
+import { FS } from '@shared/os'
+
 import { prepareParser } from '../../cli-checks/parser-build'
 import { embeddedFormatting } from './EmbeddedFormatting'
 
@@ -19,12 +20,12 @@ export const updateTaoSource = Timings.createTopLevelTimer(async function(
   warn: (message: string) => void = IO.warn,
 ): Promise<void> {
   await timings.run(prepareParser)
-  const parser = timings.run(createParser)
+  const parser = timings.run(Grammar.createParser)
   const input = await readSourceSnapshot(path, parser, timings)
   const prepared = mode === 'fix' ? applySourceFixes(path, input, parser, timings) : input
   const typescript = await resolveEmbeddedFormatter(prepared.source, timings)
-  const result = timings.run(format, prepared, { typescript })
-  await FileSystem.writeIfChanged(path, result.text)
+  const result = timings.run(Fix.format, prepared, { typescript })
+  await FS.writeIfChanged(path, result.text)
   if (mode === 'fix') {
     printUsageWarnings(path, timings.run(parser.parse, result.text), timings, warn)
   }
@@ -33,20 +34,25 @@ export const updateTaoSource = Timings.createTopLevelTimer(async function(
 })
 
 type SourceUpdateMode = 'format' | 'fix'
-type SourceParser = Parser
+type SourceParser = Grammar.Parser
 
-async function readSourceSnapshot(path: string, parser: SourceParser, timings: Timings): Promise<FormatInput> {
-  const source = await FileSystem.readFile(path, 'utf8')
+async function readSourceSnapshot(path: string, parser: SourceParser, timings: Timings): Promise<Fix.FormatInput> {
+  const source = await FS.readFile(path, 'utf8')
   const tree = timings.run(parser.parse, source)
   return { source, tree }
 }
 
-function applySourceFixes(path: string, input: FormatInput, parser: SourceParser, timings: Timings): FormatInput {
-  const ast = timings.run(transform, input.tree)
+function applySourceFixes(
+  path: string,
+  input: Fix.FormatInput,
+  parser: SourceParser,
+  timings: Timings,
+): Fix.FormatInput {
+  const ast = timings.run(AST.transform, input.tree)
   if (!ast) {
     Errors.ThrowUserInput(`Fixing requires a complete Tao document: ${path}`)
   }
-  const result = timings.run(fix, { source: input.source, tree: input.tree, ast })
+  const result = timings.run(Fix.fix, { source: input.source, tree: input.tree, ast })
   if (result.text === input.source) {
     return input
   }
@@ -55,11 +61,14 @@ function applySourceFixes(path: string, input: FormatInput, parser: SourceParser
   return { source: result.text, tree }
 }
 
-async function resolveEmbeddedFormatter(source: string, timings: Timings): Promise<EmbeddedFormatter | undefined> {
+async function resolveEmbeddedFormatter(
+  source: string,
+  timings: Timings,
+): Promise<Embedded.EmbeddedFormatter | undefined> {
   return source.includes('```ts') ? await timings.run(embeddedFormatting) : undefined
 }
 
-function describeSourceUpdate(path: string, mode: SourceUpdateMode, result: FormatResult): string {
+function describeSourceUpdate(path: string, mode: SourceUpdateMode, result: Fix.FormatResult): string {
   const actionLabel = mode === 'fix' ? 'Fixed' : 'Formatted'
   const skippedNotice = result.skipped.length ? ' (incomplete syntax skipped)' : ''
   return `${actionLabel} ${path}${skippedNotice}`
@@ -67,12 +76,12 @@ function describeSourceUpdate(path: string, mode: SourceUpdateMode, result: Form
 
 function printUsageWarnings(
   path: string,
-  tree: ParsedTree,
+  tree: Grammar.ParsedTree,
   timings: Timings,
   warn: (message: string) => void,
 ): void {
-  const ast = timings.run(transform, tree)!
-  for (const warning of timings.run(unusedWarnings, ast)) {
+  const ast = timings.run(AST.transform, tree)!
+  for (const warning of timings.run(Typecheck.unusedWarnings, ast)) {
     const { row, column } = tree.rootNode.descendantForIndex(warning.range.start).startPosition
     warn(`${path}:${row + 1}:${column + 1} [${warning.code}] ${warning.message}`)
   }

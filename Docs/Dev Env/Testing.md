@@ -8,7 +8,7 @@ invocation, optionally selecting a test file or directory:
 
 ```sh
 ./dev test --slow 0.25
-./dev test CLIs/CLIs-src/cli-checks-test/slow-tests.test.ts --slow 0.25
+./dev test CLIs/test-CLIs/cli-checks/slow-tests.test.ts --slow 0.25
 ```
 
 `./agent test` accepts the same option. The default is 0.075 seconds; only cases strictly above the

@@ -1,4 +1,4 @@
-import type * as AST from '@ast-gen/AST'
+import type * as AST from '@ast-gen'
 import { Switch } from '@shared'
 import { emitAppBinding } from './RuntimeEmitter'
 import { compileLetDeclaration } from './ValuesCompiler'

@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, NullCharacter, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { captureGit } from './Git'
 
 /** TreeEntry retains Git's source type, content identity and literal path. */
@@ -59,10 +59,10 @@ export async function assertMaterializedTree(root: string, entries: TreeEntry[])
   const hashes = await readRegularFileHashes(root, entries)
   for (const entry of entries.filter(entry => entry.mode !== GitlinkMode)) {
     const path = Path.join(root, entry.path)
-    const stat = await FileSystem.lstat(path)
+    const stat = await FS.lstat(path)
     const symbolic = entry.mode === SymlinkMode
     const hash = symbolic
-      ? await captureGit(root, ['hash-object', '--stdin'], { input: await FileSystem.readlink(path) })
+      ? await captureGit(root, ['hash-object', '--stdin'], { input: await FS.readlink(path) })
       : hashes.get(entry.path)!
     const matchingType = stat.isSymbolicLink() === symbolic && hasExpectedMode(entry, stat.mode)
     if (hash.trim() !== entry.hash || !matchingType) {

@@ -1,4 +1,4 @@
-import { createReactiveEngine } from '@runtime/client/ReactiveEngine'
+import * as Client from '@runtime/client'
 import { JavaScriptHeap } from '@shared/os'
 
 /** ReactiveHeapCandidate identifies the graph policy retained for heap sampling. */
@@ -83,7 +83,7 @@ function createRetainedGraphs(candidate: ReactiveHeapCandidate): () => void {
 }
 
 function createRetainedGraph(candidate: ReactiveHeapCandidate): () => void {
-  const engine = createReactiveEngine({ strategy: candidate.strategy })
+  const engine = Client.createReactiveEngine({ strategy: candidate.strategy })
   const source = engine.createWritable(1)
   const intermediate = engine.createComputed(() => source.jsValue() * 2)
   const result = engine.createComputed(() => intermediate.jsValue() + 1)

@@ -1,7 +1,7 @@
 import type { TimingSample } from '@shared'
-import type { Publication } from '@workspace/Workspace'
-import { PreviewReceipts } from './PreviewReceipts'
-import type { PreviewSignalType } from './PreviewSignal'
+import type * as Workspace from '@workspace'
+import { PreviewReceipts } from './Preview/PreviewReceipts'
+import type { PreviewSignalType } from './Preview/PreviewSignal'
 
 /** ReloadTiming measures one source update through both previews' refresh milestones. */
 export type ReloadTiming = {
@@ -39,7 +39,7 @@ export class ReloadTimings {
     this.receipts.clear()
   }
 
-  published(publication: Publication): void {
+  published(publication: Workspace.Publication): void {
     if (publication.revision === this.revision) {
       this.publication = publication
       this.reportIfComplete()
@@ -97,7 +97,7 @@ type Signal = {
   timestampMs: number
 }
 type PreviewFrameSide = 'left' | 'right'
-type OptionalPublication = Publication | undefined
+type OptionalPublication = Workspace.Publication | undefined
 
 function isSignal(value: unknown): value is Signal {
   if (typeof value !== 'object' || value === null) {

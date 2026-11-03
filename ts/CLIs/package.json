@@ -22,5 +22,24 @@
     "rulesync": "16.18.0",
     "@types/bun": "1.4.0",
     "@types/react": "~19.2.0"
+  },
+  "exports": {
+    ".": "./CLIs-src/cli-kit/cli-kit.ts",
+    "./runtime-tooling": "./CLIs-src/cli-checks/RuntimeTooling.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@cli-kit",
+        "namespace": "CLIKit",
+        "entities": [
+          "IO"
+        ]
+      },
+      "./runtime-tooling": {
+        "alias": "@cli-kit/runtime-tooling",
+        "namespace": "RuntimeTooling"
+      }
+    }
   }
 }

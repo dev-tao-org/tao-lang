@@ -1,6 +1,8 @@
-import { createReactiveEngine, type ReactiveEngine, type ReactiveEngineOptions } from '@runtime/client/ReactiveEngine'
+import * as Client from '@runtime/client'
+
 import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */
@@ -13,8 +15,8 @@ export async function reactivityPerformance() {
   await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'))
   const report: ReactivityPerformanceReport = {
     version: 2,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     definitions: {
       samples: 'Two unrecorded warmups, then seven alternating samples of 1000 operations per case.',
@@ -64,7 +66,7 @@ type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'crea
 type ScenarioOperation = (index: number) => void
 type Candidate = {
   name: string
-  strategy: NonNullable<ReactiveEngineOptions['strategy']>
+  strategy: NonNullable<Client.ReactiveEngineOptions['strategy']>
   deferred: boolean
   retainIntermediate?: boolean
 }
@@ -119,7 +121,7 @@ function measureScenario(candidate: Candidate, scenario: Scenario): Sample {
     return measureConstruction(candidate)
   }
   const pending: (() => void)[] = []
-  const engine = createReactiveEngine({
+  const engine = Client.createReactiveEngine({
     strategy: candidate.strategy,
     scheduleDelivery: candidate.deferred ? deliver => pending.push(deliver) : undefined,
   })
@@ -127,7 +129,7 @@ function measureScenario(candidate: Candidate, scenario: Scenario): Sample {
 }
 
 function measureEngine(
-  engine: ReactiveEngine,
+  engine: Client.ReactiveEngine,
   candidate: Candidate,
   scenario: Scenario,
   pending: (() => void)[],
@@ -167,7 +169,7 @@ function measureEngine(
   }
 }
 
-function createExpressionChain(engine: ReactiveEngine, initial: number, countEvaluation: () => void) {
+function createExpressionChain(engine: Client.ReactiveEngine, initial: number, countEvaluation: () => void) {
   const source = engine.createWritable(initial)
   const intermediate = engine.createComputed(() => {
     countEvaluation()
@@ -184,7 +186,7 @@ function measureConstruction(candidate: Candidate): Sample {
   let evaluations = 0
   const startedAt = Time.nowMs()
   for (let index = 0; index < operations; index++) {
-    const engine = createReactiveEngine({ strategy: candidate.strategy })
+    const engine = Client.createReactiveEngine({ strategy: candidate.strategy })
     Try(() => {
       const { result } = createExpressionChain(engine, index, () => evaluations++)
       if (result.jsValue() !== index * 2 + 1) {
@@ -205,7 +207,7 @@ function measureConstruction(candidate: Candidate): Sample {
 }
 
 function executeScenario(
-  engine: ReactiveEngine,
+  engine: Client.ReactiveEngine,
   scenario: Scenario,
   update: (value: number) => void,
   read: () => number,

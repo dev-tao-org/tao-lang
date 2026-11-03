@@ -1,11 +1,12 @@
-import { formatTimings, IO, resolveCallerPath } from '@cli-kit'
-import * as Runtime from '@runtime/Runtime'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as Runtime from '@runtime'
 import { Errors, Timings } from '@shared'
-import { Artifacts, FileSystem, Path, Repo, Tests } from '@shared/os'
-import { createProjectDependencyOptions } from '@workspace/dependencies/Options'
-import { prepareDependencies } from '@workspace/dependencies/Store'
-import { openProjectWorkspace } from '@workspace/ProjectWorkspace'
-import { describePreviewOutput } from '../../../../perf/perf-src/PreviewOutput'
+import * as Tests from '@shared-tests'
+import { Artifacts, FS, Path, Repo } from '@shared/os'
+import * as Workspace from '@workspace'
+
+import * as Perf from '@perf'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
@@ -43,14 +44,14 @@ export default registerCommand({
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
-      const { recordPreviewPerformance } = await import('../../../../perf/perf-src/PreviewHistory')
+      const { recordPreviewPerformance } = await import('../../../../perf/perf-src/Preview/PreviewHistory')
       const record = await recordPreviewPerformance(runPreview)
       IO.print(`${record.reused ? 'Existing' : 'Recorded'} commit performance: ${record.directory}`)
       return
     }
     if (target === 'preview') {
       const source = options.fixture
-        ? await FileSystem.readFile(resolveCallerPath(options.fixture), 'utf8')
+        ? await FS.readFile(CLIKit.resolveCallerPath(options.fixture), 'utf8')
         : undefined
       await runPreview(source)
       return
@@ -112,17 +113,21 @@ async function runExtension(): Promise<void> {
 
 async function runPreview(initialSource?: string) {
   await prepareRuntime()
-  const { createProject } = await import('@workspace/Workspace')
-  const { previewPerformance } = await import('@perf/preview-performance')
+  const { createProject } = await import('@workspace')
+  const { previewPerformance } = await import('@perf')
   const project = await createProject()
-  const dependencies = await createProjectDependencyOptions(project.directory)
-  await prepareDependencies(project.directory, await dependencies.readRequirements(project.directory), dependencies)
+  const dependencies = await Workspace.createProjectDependencyOptions(project.directory)
+  await Workspace.prepareDependencies(
+    project.directory,
+    await dependencies.readRequirements(project.directory),
+    dependencies,
+  )
   const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
   await Runtime.prepareRuntime({
     ...runtimeOptions,
     install: {
       async install(directory) {
-        await FileSystem.symlink(
+        await FS.symlink(
           Repo.resolvePath('ts/7-runtime/node_modules'),
           Path.join(directory, 'node_modules'),
           'dir',
@@ -132,14 +137,14 @@ async function runPreview(initialSource?: string) {
   })
   const result = await previewPerformance({
     project,
-    workspace: await openProjectWorkspace(project.directory, {
+    workspace: await Workspace.openProjectWorkspace(project.directory, {
       id: 'performance',
       runtimeOptions,
     }),
     initialSource: initialSource ?? await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
   })
   IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
-  for (const { scenario, timing } of describePreviewOutput(result)) {
+  for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
     if (!timing) {
       IO.warn(`${scenario}: no matching watcher timing; browser samples remain in the raw report.`)
       continue
@@ -148,7 +153,7 @@ async function runPreview(initialSource?: string) {
       `${scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
         + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
     )
-    IO.print('  ' + formatTimings(timing.pipeline))
+    IO.print('  ' + CLIKit.formatTimings(timing.pipeline))
   }
   IO.print('Preview performance report: ' + result.path)
   return result

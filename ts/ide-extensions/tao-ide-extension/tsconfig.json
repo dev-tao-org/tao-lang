@@ -3,7 +3,13 @@
   "compilerOptions": {
     "tsBuildInfoFile": "../../../.artifacts/cache/typescript/tao-ide-extension.tsbuildinfo",
     "noEmit": true,
-    "types": ["bun", "vscode"]
+    "types": [
+      "bun",
+      "vscode"
+    ]
   },
-  "include": ["tao-ide-extension-src/**/*.ts", "tao-ide-extension-test/**/*.ts"]
+  "include": [
+    "tao-ide-extension-src/**/*.ts",
+    "test-tao-ide-extension/**/*.ts"
+  ]
 }

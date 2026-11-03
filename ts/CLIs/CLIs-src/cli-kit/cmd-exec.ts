@@ -1,5 +1,5 @@
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Lifecycle, Platform, Streams, Terminal } from '@shared/os'
+import { Process, Processes, Streams, Terminal } from '@shared/os'
 import * as CommandInteraction from './CommandInteraction'
 import { type ConfiguredCommandOutput, configuredCommandOutput, IO } from './io'
 import { createProcessOutput } from './output/ProcessOutput'
@@ -77,9 +77,9 @@ export async function runForegroundCommand(
 ): Promise<void> {
   await IO.prompt(async () => {
     const spawnOptions = createForegroundOptions(options)
-    const child = Platform.spawnInherited(command, spawnOptions)
+    const child = Processes.spawnInherited(command, spawnOptions)
     let stopping: ChildShutdown
-    const stop = Lifecycle.onTermination(() => stopping ??= Lifecycle.stopProcess(child, 10_000))
+    const stop = Process.onTermination(() => stopping ??= Processes.stopProcess(child, 10_000))
     await Try(async () => {
       const status = await child.exited
       if (!stopping) {
@@ -109,7 +109,7 @@ type InheritedStreamMode = 'inherit' | 'ignore'
 type CapturedStreamMode = 'ignore' | 'pipe'
 type ChildShutdown = Promise<void> | undefined
 type ProcessSignal = string | null
-type ChildSpawnOptions<In extends Platform.ChildProcessInput> = {
+type ChildSpawnOptions<In extends Processes.ChildProcessInput> = {
   variadicArgs?: readonly string[]
   cwd?: string
   addEnv?: Record<string, EnvironmentValue>
@@ -139,7 +139,7 @@ async function runLoggedCommand(
     OUTPUT_LOG_FILE: undefined,
     CLI_OUTPUT_EVENTS: options.structuredOutput ? '1' : undefined,
   }
-  const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
+  const spawnOptions: ChildSpawnOptions<Processes.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
     addEnv: environment,
@@ -158,30 +158,30 @@ async function runLoggedCommand(
     shutdown.assertCompleted()
   }, {
     async catch(error) {
-      await Lifecycle.stopProcess(child, 10_000)
+      await Processes.stopProcess(child, 10_000)
       Errors.Throw(error)
     },
     finally: () => shutdown.dispose(),
   })
 }
 
-function spawnLoggedCommand<In extends Platform.ChildProcessInput>(
+function spawnLoggedCommand<In extends Processes.ChildProcessInput>(
   command: CommandInteraction.Command,
   options: ChildSpawnOptions<In>,
   stdout: CapturedStreamMode,
 ) {
   if (stdout === 'ignore') {
-    return Platform.spawnStderrPiped(command, options)
+    return Processes.spawnStderrPiped(command, options)
   }
-  return Platform.spawnPiped(command, options)
+  return Processes.spawnPiped(command, options)
 }
 
-function manageShutdown(child: Platform.ChildProcess, signal?: AbortSignal) {
+function manageShutdown(child: Processes.ChildProcess, signal?: AbortSignal) {
   let stopping: ChildShutdown
   const stop = () => {
-    stopping ??= Lifecycle.stopProcess(child, 10_000)
+    stopping ??= Processes.stopProcess(child, 10_000)
   }
-  const unsubscribe = Lifecycle.onTermination(stop)
+  const unsubscribe = Process.onTermination(stop)
   signal?.addEventListener('abort', stop, { once: true })
   if (signal?.aborted) {
     stop()
@@ -214,7 +214,7 @@ async function runInheritedCommand(
 ): Promise<void> {
   const output = configuredCommandOutput(options.output)
   const environment = { ...output.addEnv, ...options.addEnv }
-  const spawnOptions: ChildSpawnOptions<Platform.ChildProcessInput> = {
+  const spawnOptions: ChildSpawnOptions<Processes.ChildProcessInput> = {
     variadicArgs: options.variadicArgs,
     cwd: options.cwd,
     stdin: mode === 'interactive' ? 'inherit' : options.stdin ?? 'ignore',
@@ -230,7 +230,7 @@ async function runInheritedCommand(
   }, { finally: () => shutdown.dispose() })
 }
 
-function spawnInheritedCommand<In extends Platform.ChildProcessInput>(
+function spawnInheritedCommand<In extends Processes.ChildProcessInput>(
   command: CommandInteraction.Command,
   options: ChildSpawnOptions<In>,
   stdout: InheritedStreamMode,
@@ -238,14 +238,14 @@ function spawnInheritedCommand<In extends Platform.ChildProcessInput>(
 ) {
   if (stdout === 'inherit') {
     if (stderr === 'inherit') {
-      return Platform.spawnInherited(command, options)
+      return Processes.spawnInherited(command, options)
     }
-    return Platform.spawnStdoutInherited(command, options)
+    return Processes.spawnStdoutInherited(command, options)
   }
   if (stderr === 'inherit') {
-    return Platform.spawnStderrInherited(command, options)
+    return Processes.spawnStderrInherited(command, options)
   }
-  return Platform.spawnSilent(command, options)
+  return Processes.spawnSilent(command, options)
 }
 
 function requireCommandSuccess(

@@ -21,6 +21,102 @@
     "./os": "./shared-src/os.ts",
     "./os/browser": "./shared-src/os/BrowserRuntime.ts",
     "./os/preview": "./shared-src/os/preview/PreviewPlatform.ts",
-    "./universal": "./shared-src/universal/universal.ts"
+    "./tests": "./test-shared/os/Tests/Tests.test-utils.ts",
+    "./preview": "./shared-src/Preview.ts",
+    "./errors/external": "./shared-src/universal/Errors/external.ts",
+    "./os/metro": "./shared-src/os/MetroPlatform.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@shared",
+        "namespace": "Shared",
+        "entities": [
+          "Errors",
+          "Lists",
+          "Addr",
+          "Objects",
+          "Regxs",
+          "Range",
+          "Source",
+          "Styles",
+          "Switch",
+          "Time",
+          "NullCharacter",
+          "ControlCCharacter",
+          "ControlDCharacter",
+          "BackspaceCharacter",
+          "TabCharacter",
+          "NewlineCharacter",
+          "CarriageReturnCharacter",
+          "EscapeCharacter",
+          "RecordSeparatorCharacter",
+          "DeleteCharacter",
+          "NewlineCharacterCode",
+          "S",
+          "TimingSample",
+          "TimingEntry",
+          "Timings",
+          "Try"
+        ]
+      },
+      "./os": {
+        "alias": "@shared/os",
+        "namespace": "OS",
+        "entities": [
+          "BrowserRuntime",
+          "Browser",
+          "HeadlessBrowser",
+          "Env",
+          "FS",
+          "Files",
+          "GeneratedFileSystem",
+          "WorkspaceWatch",
+          "JavaScriptHeap",
+          "MetroPlatform",
+          "Http",
+          "Path",
+          "Platform",
+          "PreviewPlatform",
+          "Process",
+          "Processes",
+          "Repo",
+          "Storage",
+          "Artifacts",
+          "BuildLock",
+          "DevelopmentStorage",
+          "SessionLock",
+          "Streams",
+          "Terminal",
+          "Text",
+          "Bundle",
+          "FormatterResources"
+        ]
+      },
+      "./os/preview": {
+        "alias": "@shared/os/preview",
+        "namespace": "PreviewPlatform"
+      },
+      "./os/browser": {
+        "alias": "@shared/os/browser",
+        "namespace": "BrowserRuntime"
+      },
+      "./tests": {
+        "alias": "@shared-tests",
+        "namespace": "Tests"
+      },
+      "./preview": {
+        "alias": "@shared/preview",
+        "namespace": "Preview"
+      },
+      "./errors/external": {
+        "alias": "@shared/errors/external",
+        "namespace": "ExternalErrors"
+      },
+      "./os/metro": {
+        "alias": "@shared/os/metro",
+        "namespace": "MetroPlatform"
+      }
+    }
   }
 }

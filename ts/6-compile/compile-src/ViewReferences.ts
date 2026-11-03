@@ -1,6 +1,7 @@
-import type * as AST from '@ast-gen/AST'
+import type * as AST from '@ast-gen'
 import { NewlineCharacter } from '@shared'
-import type { ModuleBinding } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
+
 import { emitStringLiteral, type ScopeCode } from './codegen-util'
 
 /** ViewReferences collects only used imported bindings and preserves their original TypeScript symbols. */
@@ -11,11 +12,11 @@ export type ViewReferences = {
 
 /** createViewReferences projects imports lazily while local and ancestor bindings keep lexical lookup. */
 export function createViewReferences(
-  bindings: readonly ModuleBinding[],
+  bindings: readonly Typecheck.ModuleBinding[],
   shadowed: ReadonlySet<string>,
 ): ViewReferences {
   const imports = new Map(bindings.map(binding => [binding.name, binding]))
-  const used = new Map<string, ModuleBinding>()
+  const used = new Map<string, Typecheck.ModuleBinding>()
   const scope = {
     value: '_Scope',
     resolveReference(name: string) {
@@ -47,6 +48,6 @@ export function shadowReferences(scope: ScopeCode, definitions: readonly AST.Let
   return { value: scope.value, resolveReference: name => names.has(name) ? undefined : scope.resolveReference(name) }
 }
 
-function createProjectionName(binding: ModuleBinding): string {
+function createProjectionName(binding: Typecheck.ModuleBinding): string {
   return `_Imported_${binding.name.replaceAll('.', '$')}`
 }

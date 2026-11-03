@@ -1,7 +1,8 @@
 import { Errors } from '../universal/universal'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
-import { Buffer as NodeBuffer, hostProcess } from './bridges/Bridge_node/Bridge_node'
+import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
 import { AsyncLocalStorage, type IncomingRequest } from './bridges/Bridge_node/Bridge_node'
+import * as Process from './Process'
 
 /** createOperationContext retains one admitted Metro operation through asynchronous work. */
 export function createOperationContext<Value>(): OperationContext<Value> {
@@ -17,7 +18,7 @@ export type OperationContext<Value> = {
 
 /** currentDirectory returns the dedicated Metro process working directory. */
 export function currentDirectory(): string {
-  return hostProcess.cwd()
+  return Process.cwd()
 }
 
 /** messageByteLength measures the immutable serialized websocket payload before queue admission. */
@@ -60,3 +61,8 @@ export async function readRequestText(request: IncomingRequest, limit: number): 
   }
   return NodeBuffer.concat(chunks).toString('utf8')
 }
+
+export { default as Env } from './Env'
+export * as FS from './FS'
+export * as GeneratedFileSystem from './FS/GeneratedFileSystem'
+export * as Path from './Path'

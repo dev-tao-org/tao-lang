@@ -1,6 +1,6 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
-import type { SourceModule } from './Modules'
+import type { SourceModule } from './Typecheck/Modules'
 
 /** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
 export function assertUniqueLocalBindings(source: SourceModule): void {

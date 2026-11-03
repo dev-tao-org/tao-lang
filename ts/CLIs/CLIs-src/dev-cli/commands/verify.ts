@@ -1,4 +1,4 @@
-import { runSteps } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { workspaceTests } from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
 import check from './check'
@@ -16,7 +16,7 @@ export default registerCommand({
   options: [{ flags: '--yes', description: 'Authorize required app dependency setup.' }],
   async action(paths: string[], options: { yes?: boolean } = {}) {
     // Native app journeys await their testing implementation.
-    await runSteps(
+    await CLIKit.runSteps(
       () => fmt.action(paths),
       () => check.action(),
       () => workspaceTests([], undefined, { yes: options.yes }),

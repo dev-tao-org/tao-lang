@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
-import * as Stdlib from '@stdlib/Stdlib'
+import * as Stdlib from '@stdlib'
 import { gitSourceAdapter } from './Git'
 import { readProjectRequirements } from './Requirements'
 import { deriveDefaultSourceAlias } from './Sources'

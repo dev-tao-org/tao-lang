@@ -1,4 +1,4 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Switch } from '@shared'
 import { emitLiteral, getScopeValue, type ScopeCode } from './codegen-util'
 import { emitLetDeclaration, emitName } from './RuntimeEmitter'

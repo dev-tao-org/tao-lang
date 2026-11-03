@@ -1,12 +1,12 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import * as CST from '@cst'
-import type { Tree } from '@cst'
+
 import * as Shared from '@shared'
 import { collectStatementSlices, type StatementSlice } from '../lib/fixer/StatementSlices'
 import type { SourceEdit } from '../Source'
 
 /** organizeImports collects imports while keeping aliases, comments and unresolved names intact. */
-export function organizeImports(source: string, tree: Tree, ast: AST.Document): SourceEdit[] {
+export function organizeImports(source: string, tree: CST.Tree, ast: AST.Document): SourceEdit[] {
   const imports = AST.GetImportStatements(ast)
   if (imports.length === 0) {
     return []

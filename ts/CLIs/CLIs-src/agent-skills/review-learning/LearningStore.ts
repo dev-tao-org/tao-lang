@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
-import { FileSystem, Path, Platform, SessionLock } from '@shared/os'
+import { FS, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
 /** encodeLearningSnapshot retains insertion order in the complete scan identity. */
@@ -25,7 +25,7 @@ export async function withLearningState<Value>(
   }
   return await Try(async () => {
     const path = Path.join(directory, 'state.json')
-    const state: LearningState = await FileSystem.exists(path)
+    const state: LearningState = await FS.exists(path)
       ? await readLearningState(path)
       : { version: 1, root, corrections: [], scans: [], proposals: [], protectedFiles: [], events: [] }
     if (state.version !== 1 || state.root !== root) {
@@ -41,8 +41,8 @@ export async function withLearningState<Value>(
 export async function saveLearningState(state: LearningState): Promise<void> {
   const path = Path.join(state.root, '.artifacts/notes/review-learning/state.json')
   const temporary = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(temporary, JSON.stringify(state, null, 2) + NewlineCharacter, { flag: 'wx' })
-  await FileSystem.rename(temporary, path)
+  await FS.writeFile(temporary, JSON.stringify(state, null, 2) + NewlineCharacter, { flag: 'wx' })
+  await FS.rename(temporary, path)
 }
 
 /** safeSourcePath confines source operations to real project files without links or generated content. */
@@ -55,7 +55,7 @@ export function safeSourcePath(root: string, input: string, allowRoot = false): 
   let current = root
   for (const segment of relative.split('/').filter(Boolean)) {
     current = Path.join(current, segment)
-    if (FileSystem.existsSync(current) && FileSystem.lstatSync(current).isSymbolicLink()) {
+    if (FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()) {
       Errors.ThrowUserInput(`Symbolic links are outside review learning scope: ${input}`)
     }
   }
@@ -97,16 +97,16 @@ export async function ensureProjectMetadataDirectory(root: string, directory: st
   let current = root
   for (const segment of relative.replaceAll('\\', '/').split('/')) {
     current = Path.join(current, segment)
-    if (FileSystem.existsSync(current) && FileSystem.lstatSync(current).isSymbolicLink()) {
+    if (FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()) {
       Errors.ThrowUserInput('Review learning metadata directories must not be symbolic links.')
     }
-    await FileSystem.mkdir(current)
+    await FS.mkdir(current)
   }
 }
 
 async function hashFile(root: string, file: string): Promise<string> {
   safeSourcePath(root, file)
-  return Platform.hashText(await FileSystem.readFile(Path.join(root, file), 'utf8'))
+  return Platform.hashText(await FS.readFile(Path.join(root, file), 'utf8'))
 }
 
 function isUnsafeSourcePath(relative: string, allowRoot: boolean): boolean {
@@ -121,7 +121,7 @@ function isRootScope(scope: string): boolean {
 }
 
 async function readLearningState(path: string): Promise<LearningState> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as LearningState
+  return JSON.parse(await FS.readFile(path, 'utf8')) as LearningState
 }
 
 async function collectSources(root: string): Promise<string[]> {
@@ -142,7 +142,7 @@ async function walkFiles(
   output: string[],
   matches: (file: string) => boolean,
 ): Promise<void> {
-  for (const entry of await FileSystem.readdir(Path.join(root, directory), { withFileTypes: true })) {
+  for (const entry of await FS.readdir(Path.join(root, directory), { withFileTypes: true })) {
     const file = directory ? `${directory}/${entry.name}` : entry.name
     if (isExcluded(file) || entry.isSymbolicLink()) {
       continue
@@ -150,7 +150,7 @@ async function walkFiles(
     if (entry.isDirectory()) {
       await walkFiles(root, file, output, matches)
     } else if (entry.isFile() && matches(file)) {
-      const text = await FileSystem.readFile(Path.join(root, file), 'utf8')
+      const text = await FS.readFile(Path.join(root, file), 'utf8')
       if (!Regxs.ReviewGeneratedMarkerRegx.test(text.slice(0, 1000))) {
         output.push(file)
       }

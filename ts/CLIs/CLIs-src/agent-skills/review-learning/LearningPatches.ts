@@ -1,5 +1,5 @@
 import { Errors, Lists, Objects, Source } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 import { loadSession, requireIdleSession, saveSession, withReviewLock } from '../incremental-review/ReviewSession'
 import type { ReviewSession } from '../incremental-review/ReviewTypes'
 import * as LearningStore from './LearningStore'
@@ -24,7 +24,7 @@ export async function preflightProposal(
     if (LearningStore.isInScope(file, protectedScope)) {
       Errors.ThrowUserInput(`Protected active review file: ${file}`)
     }
-    const content = proposal.outputs?.[file]?.before ?? await FileSystem.readFile(Path.join(state.root, file), 'utf8')
+    const content = proposal.outputs?.[file]?.before ?? await FS.readFile(Path.join(state.root, file), 'utf8')
     buildOutput(proposal, file, content)
   }
 }
@@ -36,7 +36,7 @@ export async function applyLearningProposal(
   protectedFiles: string[],
 ): Promise<void> {
   const path = Path.join(state.root, '.artifacts/notes/incremental-review/active/session.json')
-  if (await FileSystem.exists(path)) {
+  if (await FS.exists(path)) {
     await LearningStore.ensureProjectMetadataDirectory(state.root, Path.dirname(path))
     await withReviewLock(state.root, () => applyLockedProposal(state, proposal, protectedFiles))
   } else {
@@ -65,7 +65,7 @@ async function applyLockedProposal(state: LearningState, proposal: Proposal, pro
   for (const [file, output] of Object.entries(proposal.outputs!)) {
     const path = Path.join(state.root, file)
     LearningStore.safeSourcePath(state.root, file)
-    const content = await FileSystem.readFile(path, 'utf8')
+    const content = await FS.readFile(path, 'utf8')
     if (content !== output.before && content !== output.after) {
       Errors.ThrowUserInput(`Foreign edits conflict with interrupted proposal: ${file}`)
     }
@@ -144,21 +144,21 @@ async function retainOutputs(root: string, proposal: Proposal): Promise<void> {
   }
   proposal.outputs = {}
   for (const file of new Set(proposal.edits.map(edit => edit.file))) {
-    const before = await FileSystem.readFile(Path.join(root, file), 'utf8')
+    const before = await FS.readFile(Path.join(root, file), 'utf8')
     proposal.outputs[file] = { before, after: buildOutput(proposal, file, before), done: false }
   }
 }
 
 async function replaceSource(path: string, content: string): Promise<void> {
   const temporary = `${path}.${Platform.randomUUID()}.review-learning-pending`
-  const mode = FileSystem.statSync(path).mode
-  await FileSystem.writeFile(temporary, content, { flag: 'wx', mode })
-  await FileSystem.rename(temporary, path)
+  const mode = FS.statSync(path).mode
+  await FS.writeFile(temporary, content, { flag: 'wx', mode })
+  await FS.rename(temporary, path)
 }
 
 async function markAcceptedPending(root: string, files: string[]): Promise<void> {
   const path = Path.join(root, '.artifacts/notes/incremental-review/active/session.json')
-  if (!await FileSystem.exists(path)) {
+  if (!await FS.exists(path)) {
     return
   }
   const session = await loadSession(root)

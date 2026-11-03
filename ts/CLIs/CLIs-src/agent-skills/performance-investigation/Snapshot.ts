@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, NullCharacter, Time, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
 import * as SourceTree from './SourceTree'
 
@@ -20,7 +20,7 @@ export type PerformanceSnapshot = {
 /** createSnapshot exports saved bytes and history through a disposable index and private object store. */
 export async function createSnapshot(root: string, ref?: string): Promise<PerformanceSnapshot> {
   const directory = Path.join(root, '.artifacts/notes/performance-investigation/snapshots', Platform.randomUUID())
-  await FileSystem.mkdir(directory)
+  await FS.mkdir(directory)
   const before = await readControllerState(root)
   const sourceHead = before.head
   const scratch = Path.join(directory, 'scratch.git')
@@ -47,15 +47,15 @@ export async function createSnapshot(root: string, ref?: string): Promise<Perfor
     await captureGit(scratch, ['bundle', 'create', bundle, 'HEAD', 'refs/heads/performance-snapshot'], { env })
     const context = { sourceHead, commit, tree, bundle, before, env, savedSource: !ref }
     const snapshot = await describeSnapshot(root, context)
-    await FileSystem.writeFile(
+    await FS.writeFile(
       Path.join(directory, 'snapshot.json'),
       JSON.stringify(snapshot, null, 2) + NewlineCharacter,
     )
     return snapshot
   }, {
     async finally() {
-      await FileSystem.rm(scratch, { recursive: true, force: true })
-      await FileSystem.rm(env.GIT_INDEX_FILE, { force: true })
+      await FS.rm(scratch, { recursive: true, force: true })
+      await FS.rm(env.GIT_INDEX_FILE, { force: true })
       await assertControllerUnchanged(root, before)
     },
   })
@@ -104,7 +104,7 @@ async function selectSavedFiles(root: string, base: string): Promise<string[]> {
     .split(NullCharacter).filter(Boolean)
   const current = (await captureGit(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard']))
     .split(NullCharacter).filter(Boolean)
-  const saved = current.filter(path => Try.WithDefault(false, () => !!FileSystem.lstatSync(Path.join(root, path))))
+  const saved = current.filter(path => Try.WithDefault(false, () => !!FS.lstatSync(Path.join(root, path))))
   return [...new Set([...tracked, ...saved])].filter(path => !path.startsWith('.artifacts/'))
 }
 
@@ -146,7 +146,7 @@ async function describeSnapshot(root: string, context: SnapshotContext): Promise
     dirty: context.savedSource && context.tree !== headTree,
     status: context.before.status,
     bundle: context.bundle,
-    bundleSha256: Platform.hashBytes(await FileSystem.readFile(context.bundle), 'sha256'),
+    bundleSha256: Platform.hashBytes(await FS.readFile(context.bundle), 'sha256'),
     submodules: entries.split(NewlineCharacter).filter(line => line.startsWith('160000 ')),
   }
 }
@@ -162,7 +162,7 @@ async function readControllerState(root: string): Promise<ControllerState> {
 }
 
 async function hashExistingIndex(path: string): Promise<string | undefined> {
-  return await FileSystem.exists(path) ? Platform.hashBytes(await FileSystem.readFile(path), 'sha256') : undefined
+  return await FS.exists(path) ? Platform.hashBytes(await FS.readFile(path), 'sha256') : undefined
 }
 
 async function assertControllerUnchanged(root: string, before: ControllerState): Promise<void> {

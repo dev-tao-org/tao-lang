@@ -1,25 +1,28 @@
-import { transform } from '@ast-gen/Transform'
-import { fix } from '@fix/Fix'
-import { format } from '@fix/Format'
-import { createTypeScriptFormatter, type EmbeddedFormatter } from '@fix/lib/formatter/Embedded'
-import { createParser } from '@grammar/parser'
-import { Errors, joinTextLines, NewlineCharacter, S, Timings, type TimingSample } from '@shared'
-import { Artifacts, FileSystem, FormatterResources, Path, Platform, Repo } from '@shared/os'
-import { unusedWarnings } from '@typecheck/Usage'
+import * as AST from '@ast-gen'
+import * as Fix from '@fix'
+import * as Embedded from '@fix/embedded'
+import * as Grammar from '@grammar'
+import { Processes } from '@shared/os'
+import * as Typecheck from '@typecheck'
+
+import { Errors, NewlineCharacter, S, Timings, type TimingSample } from '@shared'
+import * as Shared from '@shared'
+import { Artifacts, FormatterResources, FS, Path, Platform, Repo } from '@shared/os'
+
 import { type ParserSampleSummary, summarizeSamples } from './parser-performance'
 
 /** formatterPerformance measures snapshot formatting and import fixes separately from parsing. */
 export const formatterPerformance = Timings.createTopLevelTimer(async function(initialization) {
   const bytes = await FormatterResources.typeScriptFormatterBytes()
-  const typescript = initialization.run(createTypeScriptFormatter, bytes)
+  const typescript = initialization.run(Embedded.createTypeScriptFormatter, bytes)
   const fixtures = [
     {
       scenario: 'kitchen-sink',
-      source: await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8'),
+      source: await FS.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8'),
     },
     {
       scenario: '500-views',
-      source: joinTextLines(
+      source: Shared.joinTextLines(
         S`
           use tao@ui Text
           use tao@ui Col
@@ -38,8 +41,8 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
   Artifacts.trackTemporary(path)
   const report: FormatterPerformanceReport = {
     version: 1,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     initialization: initialization.samples,
     wasmBytes: bytes.byteLength,
@@ -73,9 +76,9 @@ function serializeFormatterPerformanceReport(report: FormatterPerformanceReport)
   return JSON.stringify(report, null, 2)
 }
 
-function sampleFixture(fixture: { source: string; scenario: string }, typescript: EmbeddedFormatter) {
-  const tree = createParser().parse(fixture.source)
-  const ast = transform(tree) ?? Errors.ThrowShouldNeverHappen('Formatter performance fixture has invalid syntax.')
+function sampleFixture(fixture: { source: string; scenario: string }, typescript: Embedded.EmbeddedFormatter) {
+  const tree = Grammar.createParser().parse(fixture.source)
+  const ast = AST.transform(tree) ?? Errors.ThrowShouldNeverHappen('Formatter performance fixture has invalid syntax.')
   const samples: FormatterSample[] = []
   for (let index = 0; index < 120; index++) {
     sampleFormatting(fixture, typescript, tree, ast, index, samples)
@@ -87,15 +90,15 @@ const sampleFormatting = Timings.createTopLevelTimer(
   function(
     timings,
     fixture: { source: string; scenario: string },
-    typescript: EmbeddedFormatter,
-    tree: Parameters<typeof format>[0]['tree'],
-    ast: Parameters<typeof fix>[0]['ast'],
+    typescript: Embedded.EmbeddedFormatter,
+    tree: Parameters<typeof Fix.format>[0]['tree'],
+    ast: Parameters<typeof Fix.fix>[0]['ast'],
     index: number,
     samples: FormatterSample[],
   ) {
-    timings.run(format, { source: fixture.source, tree }, { typescript })
-    timings.run(fix, { source: fixture.source, tree, ast })
-    timings.run(unusedWarnings, ast)
+    timings.run(Fix.format, { source: fixture.source, tree }, { typescript })
+    timings.run(Fix.fix, { source: fixture.source, tree, ast })
+    timings.run(Typecheck.unusedWarnings, ast)
     if (index >= 20) {
       samples.push(...timings.samples.map(sample => ({ ...sample, scenario: fixture.scenario })))
     }

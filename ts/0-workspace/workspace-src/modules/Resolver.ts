@@ -1,6 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
-import type { SourceModule } from '@typecheck/Modules'
+import { FS, Path } from '@shared/os'
+import type * as Typecheck from '@typecheck'
 import * as Catalog from './Catalog'
 import type { ModuleLoadOptions } from './Loader'
 import * as Paths from './Paths'
@@ -29,7 +29,7 @@ export async function resolveBareTargets(
 /** ModuleTarget identifies one discovered source and its visibility relation to the importer. */
 export type ModuleTarget = {
   path: string
-  relation: SourceModule['imports'][number]['targets'][number]['relation']
+  relation: Typecheck.SourceModule['imports'][number]['targets'][number]['relation']
   source?: string
   projectRoot?: string
 }
@@ -88,7 +88,7 @@ async function resolveProjectModuleTargets(
   if (!Paths.within(packageRoot, targetDirectory)) {
     Errors.ThrowUserInput(`Project module path escapes ${imported.module}.`)
   }
-  if (!await FileSystem.exists(targetDirectory)) {
+  if (!await FS.exists(targetDirectory)) {
     Errors.ThrowUserInput(`Project module ${specifier} was not found.`)
   }
   const files = imported.parts.length === 0
@@ -116,7 +116,7 @@ async function relativeTargets(
     if (!Paths.resolveRealPathInsideProject(target, context.projectRoot)) {
       Errors.ThrowUserInput(`Module ${specifier} leaves the owning Tao project.`)
     }
-    if (!Try.WithDefault(false, () => FileSystem.statSync(target).isDirectory())) {
+    if (!Try.WithDefault(false, () => FS.statSync(target).isDirectory())) {
       Errors.ThrowUserInput(`Module path ${specifier} does not identify a Tao file or directory.`)
     }
   }
@@ -140,7 +140,7 @@ async function requireRelativeTargetExists(
   specifier: string,
   importer: string,
 ): Promise<void> {
-  if (!await FileSystem.exists(target)) {
+  if (!await FS.exists(target)) {
     Errors.ThrowUserInput(`Cannot resolve module ${specifier} from ${importer}.`)
   }
 }
@@ -174,7 +174,7 @@ async function resolveNamedTargets(
   const files = parts.length === 0
     ? await Catalog.listRecursiveSourceFiles(targetDirectory, packageRoot, context.projectRoot)
     : await Catalog.listDirectSourceFiles(targetDirectory, context.projectRoot)
-  if (parts.length > 0 && !await FileSystem.exists(targetDirectory)) {
+  if (parts.length > 0 && !await FS.exists(targetDirectory)) {
     Errors.ThrowUserInput(`Package directory ${name}/${parts.join('/')} was not found.`)
   }
   return files.map(path => ({

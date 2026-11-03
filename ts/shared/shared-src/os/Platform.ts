@@ -1,31 +1,7 @@
-import { Errors, Try } from '../universal/universal'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from './bridges/Bridge_bun/Bridge_bun'
-import { hostProcess } from './bridges/Bridge_node/Bridge_node'
-import * as Node from './bridges/Bridge_node/Bridge_node'
-import * as Processes from './Processes'
 
-export {
-  type AsyncCommandResult,
-  type ChildProcess,
-  type ChildProcessInput,
-  type CommandResult,
-  type CompletedCommandResult,
-  type PipedChildProcess,
-  readText,
-  run,
-  runIgnoreStatus,
-  runIgnoreStatusSync,
-  type RunOptions,
-  runSync,
-  spawnInherited,
-  spawnPiped,
-  spawnSilent,
-  spawnStderrInherited,
-  spawnStderrPiped,
-  spawnStdoutInherited,
-  terminate,
-} from './Processes'
+import * as Node from './bridges/Bridge_node/Bridge_node'
 
 /** temporaryDirectory returns the host's temporary-file directory. */
 export function temporaryDirectory(): string {
@@ -57,27 +33,6 @@ export function isPlatformImport(specifier: string): boolean {
   return specifier === 'bun' || specifier.startsWith('bun:') || Node.isBuiltin(specifier)
 }
 
-/** argv contains the current CLI invocation arguments. */
-export const argv = hostProcess.argv
-
-/** pid identifies the current process. */
-export const pid = hostProcess.pid
-
-/** onUncaughtException installs a process-wide exception listener. */
-export function onUncaughtException(handler: (error: unknown) => void): void {
-  hostProcess.on('uncaughtException', handler)
-}
-
-/** onUnhandledRejection installs a process-wide rejected-promise listener. */
-export function onUnhandledRejection(handler: (error: unknown) => void): void {
-  hostProcess.on('unhandledRejection', handler)
-}
-
-/** exit terminates the current process with the supplied status. */
-export function exit(status: number): never {
-  return hostProcess.exit(status)
-}
-
 /** randomUUID creates a random identifier for owned artifacts. */
 export function randomUUID(): string {
   return WebHost.crypto.randomUUID()
@@ -104,36 +59,4 @@ export type HostSystem = 'Darwin' | 'Windows_NT' | 'Linux'
 /** isSupportedHostSystem narrows an operating-system name before host-specific dispatch. */
 export function isSupportedHostSystem(system: string): system is HostSystem {
   return system === 'Darwin' || system === 'Windows_NT' || system === 'Linux'
-}
-
-type CaptureOptions = Processes.RunOptions & { trim?: boolean }
-
-/** capture reads command output and throws when the command fails; trim:false preserves exact text. */
-export async function capture(
-  command: string,
-  options: CaptureOptions = {},
-): Promise<string> {
-  const result = await Processes.run(command, options)
-  return options.trim === false ? result.stdout : result.stdout.trim()
-}
-
-/** requireHostProcessAccess rejects restricted execution before starting host-dependent tools.
- *  Process inspection is a conservative prerequisite, not proof of every desktop permission. */
-export async function requireHostProcessAccess(
-  hint: string,
-  inspect = () => capture('ps -axo pid=,ppid='),
-): Promise<void> {
-  const processes = await Try(inspect, {
-    catch(error) {
-      Errors.ThrowHostEnvironment(`Host process access is unavailable. ${hint}`, { cause: error })
-    },
-  })
-  if (!processes) {
-    Errors.ThrowHostEnvironment(`Host process inspection returned no processes. ${hint}`)
-  }
-}
-
-/** captureSync reads a synchronous tool probe without requiring the Bun runtime. */
-export function captureSync(command: string, options: { variadicArgs?: readonly string[]; cwd?: string } = {}): string {
-  return Processes.runSync(command, options).stdout
 }

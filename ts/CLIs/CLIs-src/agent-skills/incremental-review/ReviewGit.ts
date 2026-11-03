@@ -1,11 +1,12 @@
 import { Errors, Lists, NewlineCharacter, NullCharacter, Try } from '@shared'
-import { FileSystem, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
+import { Processes } from '@shared/os'
 
 type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
   const addEnv = { GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
-  const result = await Platform.runIgnoreStatus(['git', '--literal-pathspecs', ...args], {
+  const result = await Processes.runIgnoreStatus(['git', '--literal-pathspecs', ...args], {
     cwd: root,
     addEnv,
     stdin: options.input,
@@ -61,7 +62,7 @@ function isSnapshotCandidate(root: string, tracked: string[], path: string): boo
   if (tracked.includes(path)) {
     return true
   }
-  return Try.WithDefault(false, () => Boolean(FileSystem.lstatSync(Path.join(root, path))))
+  return Try.WithDefault(false, () => Boolean(FS.lstatSync(Path.join(root, path))))
 }
 
 /** resolveGitIndexPath locates this checkout's real Git index. */
@@ -71,7 +72,7 @@ export async function resolveGitIndexPath(root: string): Promise<string> {
 
 /** indexHash detects byte-level changes to a real or prepared index. */
 export async function indexHash(path: string): Promise<string> {
-  return Platform.hashBytes(await FileSystem.readFile(path), 'sha256')
+  return Platform.hashBytes(await FS.readFile(path), 'sha256')
 }
 
 type ReviewedRevisions = string | string[]
@@ -150,14 +151,14 @@ export async function assertSupportedTransforms(root: string, files: string[], i
 
 /** readJson reads retained workflow state without interpreting it as instructions. */
 export async function readJson<Value>(path: string): Promise<Value> {
-  return JSON.parse(await FileSystem.readFile(path, 'utf8')) as Value
+  return JSON.parse(await FS.readFile(path, 'utf8')) as Value
 }
 
 /** writeJson atomically replaces retained state. */
 export async function writeJson(path: string, value: unknown): Promise<void> {
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FileSystem.writeFile(pending, JSON.stringify(value, null, 2) + NewlineCharacter)
-  await FileSystem.rename(pending, path)
+  await FS.writeFile(pending, JSON.stringify(value, null, 2) + NewlineCharacter)
+  await FS.rename(pending, path)
 }
 
 type GitInput = string | Uint8Array
@@ -176,7 +177,7 @@ function safePath(root: string, input: string): string {
 function assertNoParentLink(root: string, path: string): void {
   let directory = Path.dirname(Path.join(root, path))
   while (directory !== root) {
-    const stat = Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    const stat = Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (stat?.isSymbolicLink()) {
       Errors.ThrowUserInput(`Selection traverses a symlink: ${path}`)
     }

@@ -1,7 +1,8 @@
-import { IO, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as Perf from '@perf'
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Env, FileSystem, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
-import { isValidEditCount } from '../../../../perf/perf-src/PreviewMeasurement'
+import { Env, FS, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
 import { runWithEvidence } from './Evidence'
 import { captureGit, resolveCommit } from './Git'
 import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFiles'
@@ -36,7 +37,7 @@ export type MeasurementJob = {
 export async function runMeasurements(options: RunnerOptions): Promise<string> {
   requireRunnerOptions(options)
   const path = Storage.resolveSupportDirectory('locks', TimingLockName)
-  await FileSystem.mkdir(Path.dirname(path))
+  await FS.mkdir(Path.dirname(path))
   const lock = await SessionLock.acquire(path)
   if (!lock) {
     Errors.ThrowHostEnvironment(
@@ -44,12 +45,12 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
     )
   }
   return await Try(async () => {
-    const fixture = await FileSystem.readFile(options.fixture, 'utf8')
+    const fixture = await FS.readFile(options.fixture, 'utf8')
     const job = await describeJob(options, fixture)
     const directory = Repo.resolvePath(JobsDirectory, Platform.randomUUID())
-    await FileSystem.mkdir(directory)
+    await FS.mkdir(directory)
     const fixturePath = Path.join(directory, 'fixture.tao')
-    await FileSystem.writeFile(fixturePath, fixture)
+    await FS.writeFile(fixturePath, fixture)
     IO.print(`Performance job: ${directory}`)
     await collectSamples(directory, job, () => measurePreview(job, fixturePath, directory))
     return directory
@@ -83,7 +84,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
   const options = job.settings
   await requireCleanSource(options.repo)
   const commit = await resolveCommit(options.repo, 'HEAD')
-  const fixtureSha256 = Platform.hashText(await FileSystem.readFile(fixture, 'utf8'))
+  const fixtureSha256 = Platform.hashText(await FS.readFile(fixture, 'utf8'))
   if (commit !== job.commit || fixtureSha256 !== job.fixtureSha256) {
     Errors.ThrowUserInput('Job source or canonical fixture changed between sessions.')
   }
@@ -95,7 +96,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
     { directory: Path.join(options.repo, '.artifacts/logs/dev'), label: 'command' },
   ]
   return await runWithEvidence(directory, sources, async () => {
-    await runNonInteractiveCommand('./dev performance preview', {
+    await CLIKit.runNonInteractiveCommand('./dev performance preview', {
       variadicArgs: ['--fixture', fixture],
       cwd: options.repo,
       addEnv: { TAO_PREVIEW_EDIT_COUNT: String(options.edits), TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
@@ -115,14 +116,14 @@ async function acceptPreviewReport(job: MeasurementJob, commit: string, reports:
     Errors.ThrowUserInput('Expected one new raw preview report; inspect the candidate performance logs.')
   }
   const path = Path.join(reports, created[0])
-  const report = JSON.parse(await FileSystem.readFile(path, 'utf8')) as PreviewReport
+  const report = JSON.parse(await FS.readFile(path, 'utf8')) as PreviewReport
   requireReport(report, job)
   return path
 }
 
 async function listPreviewReports(directory: string): Promise<string[]> {
-  return await FileSystem.exists(directory)
-    ? (await FileSystem.readdir(directory)).filter(name => Regxs.PreviewReportFilenameRegx.test(name))
+  return await FS.exists(directory)
+    ? (await FS.readdir(directory)).filter(name => Regxs.PreviewReportFilenameRegx.test(name))
     : []
 }
 
@@ -139,7 +140,7 @@ function requireRunnerOptions(options: RunnerOptions): void {
   if (!Number.isInteger(options.samples) || options.samples < 1) {
     Errors.ThrowUserInput('Sample count must be a positive integer.')
   }
-  if (!isValidEditCount(options.edits)) {
+  if (!Perf.isValidEditCount(options.edits)) {
     Errors.ThrowUserInput('Edit count must be a positive multiple of four.')
   }
 }

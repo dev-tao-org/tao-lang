@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
-import type { SourceModule } from '@typecheck/Modules'
+import { FS, Path } from '@shared/os'
+import type * as Typecheck from '@typecheck'
 import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
 import { collectSourceRequirements, validateSourceRequirements } from './dependencies/Requirements'
 import { createSourceIdentity, deriveDefaultSourceAlias } from './dependencies/Sources'
@@ -9,7 +9,7 @@ import type { DependencyLock, DependencyRequirement, DependencyStoreOptions } fr
 import { findNearestProjectRoot } from './modules/Paths'
 import { requireSetup } from './SetupRequired'
 
-type ObservedSource = Pick<SourceModule, ObservedSourceField>
+type ObservedSource = Pick<Typecheck.SourceModule, ObservedSourceField>
 
 /** ProjectDependencies resolves reachable locked aliases and observes declarations through the parsed graph. */
 export class ProjectDependencies {
@@ -78,7 +78,7 @@ export class ProjectDependencies {
     ) {
       requireSetup(`Dependency ${alias} needs setup.`)
     }
-    if (!await FileSystem.exists(source.location)) {
+    if (!await FS.exists(source.location)) {
       requireSetup(`Locked source ${source.identifier}@${source.commit} is missing; setup restores its exact pin.`)
     }
     this.used.add(source.identity)

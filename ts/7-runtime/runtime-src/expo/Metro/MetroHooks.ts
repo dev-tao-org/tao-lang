@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import * as MetroPlatform from '../../../../shared/shared-src/os/MetroPlatform'
+import * as MetroPlatform from '@shared/os/metro'
 import * as ExpoCli from '../../bridges/Bridge_expo-cli/Bridge_expo-cli'
 import * as ExpoFileMap from '../../bridges/Bridge_expo-metro-file-map'
 import * as ExpoMetro from '../../bridges/Bridge_expo-metro/Bridge_expo-metro'

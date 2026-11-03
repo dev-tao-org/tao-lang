@@ -1,21 +1,25 @@
+import * as IDE from '@ide'
 import { Errors, Lists, Time, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform, Repo } from '@shared/os'
-import { createWasmDocumentSession } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/core'
-import { semanticTokenRanges } from '../../ide-extensions/tao-ide-extension/tao-ide-extension-src/SemanticTokens'
+import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
+
+import { Processes } from '@shared/os'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {
   const root = Repo.resolvePath('.artifacts/ide-extension/package')
   const assets = {
-    taoGrammar: await FileSystem.readFile(Path.join(root, 'grammars/tree-sitter-tao.wasm')),
-    tsxGrammar: await FileSystem.readFile(Path.join(root, 'grammars/tree-sitter-tsx.wasm')),
-    taoQuery: await FileSystem.readFile(Path.join(root, 'queries/tao-highlights.scm'), 'utf8'),
-    tsxQuery: await FileSystem.readFile(Path.join(root, 'queries/tsx-highlights.scm'), 'utf8'),
+    taoGrammar: await FS.readFile(Path.join(root, 'grammars/tree-sitter-tao.wasm')),
+    tsxGrammar: await FS.readFile(Path.join(root, 'grammars/tree-sitter-tsx.wasm')),
+    taoQuery: await FS.readFile(Path.join(root, 'queries/tao-highlights.scm'), 'utf8'),
+    tsxQuery: await FS.readFile(Path.join(root, 'queries/tsx-highlights.scm'), 'utf8'),
   }
-  const fixture = await FileSystem.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
+  const fixture = await FS.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
   let current: Sample[] = []
   const samples: Sample[] = []
-  const session = await createWasmDocumentSession(assets, (phase, durationMs) => current.push({ phase, durationMs }))
+  const session = await IDE.createWasmDocumentSession(
+    assets,
+    (phase, durationMs) => current.push({ phase, durationMs }),
+  )
   await Try(async () => {
     session.document.update(fixture)
     for (let index = 0; index < 120; index++) {
@@ -25,7 +29,7 @@ export async function extensionPerformance() {
       const result = session.document.update(source)
       current.push({ phase: 'editor.update', durationMs: Time.nowMs() - start })
       const rangesStarted = Time.nowMs()
-      semanticTokenRanges(result.tokens)
+      IDE.semanticTokenRanges(result.tokens)
       current.push({ phase: 'editor.token-ranges', durationMs: Time.nowMs() - rangesStarted })
       if (result.diagnostics.length > 0 || result.tokens.length === 0) {
         Errors.ThrowShouldNeverHappen('Extension performance fixture did not produce valid highlighted syntax.')
@@ -47,8 +51,8 @@ async function writeReport(fixture: string, samples: Sample[]) {
   Artifacts.trackTemporary(path)
   const report: ExtensionPerformanceReport = {
     version: 1,
-    commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     definition:
       'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
     fixtureHash: Platform.hashText(fixture),

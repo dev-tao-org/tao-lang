@@ -1,5 +1,5 @@
 import { Regxs } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 
 /** NodeGypOptions contains the resolved Node root, optional local headers, and safe child environment. */
 export type NodeGypOptions = {
@@ -13,7 +13,7 @@ export function nodeGypOptions(executable: string, inheritedOptions: InheritedNo
   const root = Path.dirname(Path.dirname(executable))
   return {
     root,
-    headers: FileSystem.existsSync(Path.join(root, 'include/node/node.h')) ? ['--nodedir', root] : [],
+    headers: FS.existsSync(Path.join(root, 'include/node/node.h')) ? ['--nodedir', root] : [],
     environment: { NODE_OPTIONS: withNodeGypWarning(inheritedOptions) },
   }
 }

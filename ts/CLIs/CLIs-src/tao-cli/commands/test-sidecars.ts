@@ -1,9 +1,8 @@
-import { IO, resolveCallerPath } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { findNamedPackageDirectories, listRecursiveSourceFiles } from '@workspace/modules/Catalog'
-import { executeManagedTool } from '@workspace/ProjectPreparation'
-import { discoverProject } from '@workspace/projects/Projects'
-import { execute } from '@workspace/Workflow'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { withProjectSessions } from '../ProjectCommand'
 import { workflowUI } from '../WorkflowUI'
@@ -18,8 +17,8 @@ export default registerCommand({
     { flags: '--yes', description: 'Authorize required dependency setup.' },
   ],
   async action(moduleName: string, options: { session?: string; yes?: boolean } = {}) {
-    const caller = resolveCallerPath('.')
-    const project = await discoverProject(caller)
+    const caller = CLIKit.resolveCallerPath('.')
+    const project = await Workspace.discoverProject(caller)
     if (!project) {
       Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
     }
@@ -27,7 +26,10 @@ export default registerCommand({
     const entry = await findModuleEntry(moduleRoot, project.root)
     await withProjectSessions([moduleRoot, entry], async () => {
       IO.print(`Running Bun sidecar tests for ${moduleName}`)
-      await execute({ kind: 'sidecar-tests', entry, moduleRoot, executor: executeManagedTool }, workflowUI(options.yes))
+      await Workspace.execute(
+        { kind: 'sidecar-tests', entry, moduleRoot, executor: Workspace.executeManagedTool },
+        workflowUI(options.yes),
+      )
     }, options.session)
   },
 })
@@ -36,7 +38,7 @@ async function resolveModuleRoot(projectRoot: string, moduleName: string): Promi
   if (!Regxs.ModuleNameRegx.test(moduleName)) {
     Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
-  const matches = await findNamedPackageDirectories(projectRoot, moduleName)
+  const matches = await Workspace.findNamedPackageDirectories(projectRoot, moduleName)
   if (matches.length !== 1) {
     Errors.ThrowUserInput(
       matches.length === 0
@@ -48,7 +50,7 @@ async function resolveModuleRoot(projectRoot: string, moduleName: string): Promi
 }
 
 async function findModuleEntry(moduleRoot: string, projectRoot: string): Promise<string> {
-  const files = (await listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot))
+  const files = (await Workspace.listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot))
     .sort((left, right) => getPathDepth(left) - getPathDepth(right) || left.localeCompare(right))
   if (files.length === 0) {
     Errors.ThrowUserInput(`Module ${moduleRoot} contains no Tao source entry.`)

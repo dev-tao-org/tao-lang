@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, Objects } from '@shared'
-import { FileSystem, Path, Platform, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
+import { Process } from '@shared/os'
 import { applyLearningProposal, findScan, preflightProposal } from './LearningPatches'
 import { runCandidateScan } from './LearningQueries'
 import { safeSourcePath, withLearningState } from './LearningStore'
@@ -9,7 +10,7 @@ import { readLearningInput, requireId, requirePaths, validateCorrection, validat
 
 /** main prints the review-learning skill result without changing Git state. */
 export async function main(): Promise<void> {
-  IO.print(formatLearningResult(await runLearning(Platform.argv.slice(2))))
+  IO.print(formatLearningResult(await runLearning(Process.argv.slice(2))))
 }
 
 /** runLearning executes correction capture, candidate scans and the guarded patch queue. */
@@ -31,7 +32,7 @@ export async function runLearning(args: string[]): Promise<ReviewLearningCommand
   }
   const options = parseOptions(args.slice(1))
   const root = Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot())
-  if (FileSystem.realpathSync(root) !== root) {
+  if (FS.realpathSync(root) !== root) {
     Errors.ThrowUserInput('Use a real checkout path without symbolic links.')
   }
   return await withLearningState(root, state => executeCommand(command, options, state))

@@ -1,12 +1,12 @@
 import * as CST from '@cst'
-import type { SyntaxNode, Tree } from '@cst'
+
 import * as Shared from '@shared'
 
 /** StatementSlice owns a statement and its leading or same-line trailing comments. */
-export type StatementSlice = { range: Shared.Range; node: SyntaxNode; commented: boolean }
+export type StatementSlice = { range: Shared.Range; node: CST.SyntaxNode; commented: boolean }
 
 /** collectStatementSlices attaches comments before source statements are moved or replaced. */
-export function collectStatementSlices(source: string, tree: Tree): StatementSlice[] {
+export function collectStatementSlices(source: string, tree: CST.Tree): StatementSlice[] {
   const slices: StatementSlice[] = []
   let leadingCommentStart: LeadingCommentStart
   for (const node of tree.rootNode.namedChildren) {
@@ -36,7 +36,7 @@ type PreviousStatementSlice = StatementSlice | undefined
 function isSameLineTrailingComment(
   source: string,
   previous: PreviousStatementSlice,
-  comment: SyntaxNode,
+  comment: CST.SyntaxNode,
 ): previous is StatementSlice {
   return previous !== undefined
     && !Shared.Source.slice(source, previous.range.end, comment.startIndex).includes(Shared.NewlineCharacter)
@@ -44,6 +44,6 @@ function isSameLineTrailingComment(
 
 type LeadingCommentStart = number | undefined
 
-function containsComment(node: SyntaxNode): boolean {
+function containsComment(node: CST.SyntaxNode): boolean {
   return CST.IsComment(node) || node.namedChildren.some(containsComment)
 }

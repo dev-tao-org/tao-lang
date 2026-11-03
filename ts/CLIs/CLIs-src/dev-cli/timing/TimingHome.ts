@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter } from '@shared'
-import { DevelopmentStorage, FileSystem, Path, Platform } from '@shared/os'
+import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 
 /** TimingHome selects an explicit report import or a side-effect-free storage preview. */
 export type TimingHome = { importReports?: string; dryRun?: boolean }
@@ -20,7 +20,7 @@ export async function initializeTimingHome(
     return
   }
   for (const path of directories) {
-    await FileSystem.mkdirPrivate(path)
+    await FS.mkdirPrivate(path)
   }
   const reports = Path.join(directory, 'timing', 'reports')
   if (options.importReports) {
@@ -35,19 +35,19 @@ const ReportExtension = '.json'
 
 async function importTimingReports(source: string, destination: string): Promise<number> {
   let count = 0
-  for (const name of await FileSystem.readdir(source)) {
+  for (const name of await FS.readdir(source)) {
     if (!name.endsWith(ReportExtension)) {
       continue
     }
     const from = Path.join(source, name)
-    if (!(await FileSystem.lstat(from)).isFile()) {
+    if (!(await FS.lstat(from)).isFile()) {
       Errors.ThrowUserInput(`Import only regular report files: ${from}`)
     }
     const to = Path.join(destination, name)
-    if (await FileSystem.exists(to)) {
+    if (await FS.exists(to)) {
       await requireMatchingReport(from, to)
     } else {
-      await FileSystem.copyFile(from, to, FileSystem.constants.COPYFILE_EXCL)
+      await FS.copyFile(from, to, FS.constants.COPYFILE_EXCL)
       count++
     }
   }
@@ -56,8 +56,8 @@ async function importTimingReports(source: string, destination: string): Promise
 
 const ReportDigestAlgorithm = 'sha256'
 async function requireMatchingReport(source: string, destination: string): Promise<void> {
-  const sourceHash = Platform.hashBytes(await FileSystem.readFile(source), ReportDigestAlgorithm)
-  const destinationHash = Platform.hashBytes(await FileSystem.readFile(destination), ReportDigestAlgorithm)
+  const sourceHash = Platform.hashBytes(await FS.readFile(source), ReportDigestAlgorithm)
+  const destinationHash = Platform.hashBytes(await FS.readFile(destination), ReportDigestAlgorithm)
   if (sourceHash !== destinationHash) {
     Errors.ThrowUserInput(`A different report already exists at ${destination}; resolve the conflict before importing.`)
   }

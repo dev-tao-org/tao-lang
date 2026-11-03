@@ -1,6 +1,7 @@
-import { IO, resolveCallerPath } from '@cli-kit'
-import { initializeLibraryProject } from '@workspace/projects/InitializeLibrary'
-import { initializeProject } from '@workspace/projects/Projects'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+import * as Workspace from '@workspace'
+
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 
 type InitCommandOptions = { library?: boolean }
@@ -12,12 +13,12 @@ export default registerCommand({
   arguments: [{ name: 'path', required: true, description: 'Project directory.' }],
   options: [{ flags: '--library', description: 'Scaffold a Tao TypeScript library and React consumer.' }],
   async action(path: string, options: InitCommandOptions = {}) {
-    const target = resolveCallerPath(path)
+    const target = CLIKit.resolveCallerPath(path)
     if (options.library) {
-      const project = await initializeLibraryProject(target)
+      const project = await Workspace.initializeLibraryProject(target)
       IO.print(`Initialized Tao library project: ${project.root}`)
     } else {
-      const project = await initializeProject(target)
+      const project = await Workspace.initializeProject(target)
       IO.print(`Initialized Tao project: ${project.root}`)
     }
   },

@@ -84,7 +84,7 @@ Source: [live previews](Live%20Previews.md); Canvas and content-placement entrie
 - **View state (WIP)**: A proposed view-local value retained across rerenders, with persistence and identity rules still being defined.
   - **Data draft (WIP)**: A detached editable data value saved through explicit create or update, with related-item, conflict and dirty-baseline behavior still open.
 
-Sources: [local state and data drafts](Local%20State%20and%20Data%20Drafts.md), [current entry-source updates](../../ts/0-workspace/workspace-src/file-manager/FileManager.ts); general file working copies and `.tao/local/` are proposals.
+Sources: [local state and data drafts](Local%20State%20and%20Data%20Drafts.md), [current entry-source updates](../../ts/0-workspace/workspace-src/FileManager/FileManager.ts); general file working copies and `.tao/local/` are proposals.
 
 ## Legacy
 

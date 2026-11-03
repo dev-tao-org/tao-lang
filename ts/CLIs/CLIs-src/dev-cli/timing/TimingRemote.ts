@@ -1,4 +1,6 @@
-import { IO, type OutputChannel, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
+
 import { Streams } from '@shared/os'
 import { executeRemote } from '../../agent-skills/performance-investigation/Remote'
 
@@ -8,12 +10,12 @@ export type TimingRemoteRequest = { host: string; directory: string; controlPath
 /** readTimingRemote retains runner stdout while preserving ordinary command logs and SSH supervision. */
 export async function readTimingRemote(
   request: TimingRemoteRequest,
-  execute = runNonInteractiveCommand,
+  execute = CLIKit.runNonInteractiveCommand,
   channel = IO.channel({ title: 'Timing runner' }),
 ): Promise<string> {
   let text = ''
   const decode = Streams.createDecoder()
-  const output: OutputChannel = {
+  const output: CLIKit.OutputChannel = {
     ...channel,
     stdout(chunk) {
       text += decode(chunk)
@@ -37,8 +39,8 @@ export async function readTimingRemote(
   return text
 }
 
-type CommandOptions = Parameters<typeof runNonInteractiveCommand>[1]
+type CommandOptions = Parameters<typeof CLIKit.runNonInteractiveCommand>[1]
 
-function withTimingOutput(options: CommandOptions, output: OutputChannel): CommandOptions {
+function withTimingOutput(options: CommandOptions, output: CLIKit.OutputChannel): CommandOptions {
   return { ...options, output }
 }

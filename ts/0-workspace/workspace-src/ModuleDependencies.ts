@@ -1,9 +1,10 @@
-import * as AST from '@ast-gen/AST'
-import { transform } from '@ast-gen/Transform'
-import { createParser } from '@grammar/parser'
+import * as AST from '@ast-gen'
+import * as Grammar from '@grammar'
+import { Processes } from '@shared/os'
+
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Text } from '@shared/os'
-import { Files, FileSystem, Path, Platform, Storage } from '@shared/os'
+import { Files, FS, Path, Storage } from '@shared/os'
 import { valid } from './bridges/Bridge_semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
@@ -68,8 +69,8 @@ export async function listDependencyWork(projectRoot: string): Promise<string[]>
     ),
   ]
   for (const path of (await Files.walk(projectRoot)).filter(candidate => candidate.endsWith('.tao'))) {
-    const source = await FileSystem.readFile(path, 'utf8')
-    const document = transform(parser.parse(source))
+    const source = await FS.readFile(path, 'utf8')
+    const document = AST.transform(parser.parse(source))
     if (!document) {
       continue
     }
@@ -118,14 +119,14 @@ async function findAppSource(path: string): Promise<string | undefined> {
 }
 
 async function containsApp(path: string): Promise<boolean> {
-  const document = transform(parser.parse(await FileSystem.readFile(path, 'utf8')))
+  const document = AST.transform(parser.parse(await FS.readFile(path, 'utf8')))
   return document ? AST.HasAppDeclarations(document) : false
 }
 
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const result = await Platform.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
+  const result = await Processes.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
     cwd,
     addEnv,
   })
@@ -210,8 +211,8 @@ async function writeRequirement(
     return occurrences[0]!.path
   }
   const sourcePath = Path.join(moduleRoot, 'Dependencies.tao')
-  const existing = await Try.WithDefault('', () => FileSystem.readFile(sourcePath, 'utf8'))
-  await FileSystem.writeFile(
+  const existing = await Try.WithDefault('', () => FS.readFile(sourcePath, 'utf8'))
+  await FS.writeFile(
     sourcePath,
     `${existing}${
       existing && !existing.endsWith(NewlineCharacter) ? NewlineCharacter : ''
@@ -227,7 +228,7 @@ async function readModuleSources(paths: string[]): Promise<ModuleSourceFile[]> {
 }
 
 async function readModuleSource(path: string): Promise<ModuleSourceFile> {
-  const source = await FileSystem.readFile(path, 'utf8')
+  const source = await FS.readFile(path, 'utf8')
   return { path, source }
 }
 
@@ -243,7 +244,7 @@ function collectNpmRequirementSpans(
   source: string,
   packageName: string,
 ): NpmRequirementOccurrence[] {
-  const document = transform(parser.parse(source))
+  const document = AST.transform(parser.parse(source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
   }
@@ -278,7 +279,7 @@ async function replaceRequirements(
       )
       bytes = joinBytes(bytes.slice(0, item.range.start), replacement, bytes.slice(item.range.end))
     }
-    await FileSystem.writeFile(path, Text.decodeUtf8(bytes))
+    await FS.writeFile(path, Text.decodeUtf8(bytes))
   }
 }
 
@@ -294,7 +295,7 @@ function joinBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
 
 async function sourceIsInsideProject(path: string, projectRoot: string): Promise<boolean> {
   return Path.isWithin(projectRoot, path)
-    && path.endsWith('.tao') && await FileSystem.exists(path)
+    && path.endsWith('.tao') && await FS.exists(path)
 }
 
-const parser = createParser()
+const parser = Grammar.createParser()

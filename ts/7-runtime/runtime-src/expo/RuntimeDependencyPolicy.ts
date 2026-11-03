@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
 /** RuntimeDependencyLock carries package identities and lockfile records from bun.lock. */
@@ -38,7 +38,7 @@ export async function readRuntimeDependencyPolicy(directory: string): Promise<Ru
     }
   }
   const lock = parseRuntimeDependencyLock(
-    await FileSystem.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
+    await FS.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
     Path.join(directory, 'bun.lock'),
   )
   const wrapper = lock.packages['@expo/metro']?.[0]

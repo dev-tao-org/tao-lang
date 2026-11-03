@@ -1,6 +1,7 @@
-import * as AST from '@ast-gen/AST'
+import * as AST from '@ast-gen'
 import { Errors, NewlineCharacter, Switch } from '@shared'
-import type { ModuleBinding } from '@typecheck/Modules'
+import type * as Typecheck from '@typecheck'
+
 import * as CodegenUtil from './codegen-util'
 import type { DeclarationCompilation } from './DeclarationCompiler'
 import { compileInjection } from './InjectionsCompiler'
@@ -18,7 +19,7 @@ export type ViewCompilationContext = {
   ownerPath?: readonly string[]
   componentPrefix?: string
   resolveForeignComponent?(node: AST.ViewDeclaration): string | undefined
-  moduleBindings: readonly ModuleBinding[]
+  moduleBindings: readonly Typecheck.ModuleBinding[]
   shadowedNames?: ReadonlySet<string>
 }
 

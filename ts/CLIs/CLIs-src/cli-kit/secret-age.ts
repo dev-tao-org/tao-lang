@@ -1,5 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
-import { Artifacts, FileSystem, Path, Platform } from '@shared/os'
+import { Artifacts, FS, Path } from '@shared/os'
+import { Processes } from '@shared/os'
 import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
 
@@ -25,7 +26,7 @@ async function encrypt(plaintext: string, recipients: readonly string[]): Promis
 }
 
 async function decryptStoreKey(identityPath: string, setupCommand: string, armor: string): Promise<string> {
-  if (!FileSystem.existsSync(identityPath)) {
+  if (!FS.existsSync(identityPath)) {
     Errors.ThrowHostEnvironment(
       'No secrets identity at ' + identityPath + '. Run ' + setupCommand + ' on this machine.',
     )
@@ -69,7 +70,7 @@ async function run(
   command: string,
   options: { variadicArgs?: readonly string[]; stdin?: string } = {},
 ): Promise<string> {
-  const result = await Platform.runIgnoreStatus(command, {
+  const result = await Processes.runIgnoreStatus(command, {
     variadicArgs: options.variadicArgs,
     stdin: options.stdin,
   })

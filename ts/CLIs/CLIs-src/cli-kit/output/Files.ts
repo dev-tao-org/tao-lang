@@ -1,5 +1,6 @@
 import { NewlineCharacter, Time } from '@shared'
-import { Artifacts, Path, Platform, Repo, Terminal } from '@shared/os'
+import { Artifacts, Path, Repo, Terminal } from '@shared/os'
+import { Process } from '@shared/os'
 import type { OutputEvent } from './Output'
 
 type LogDirectory = 'agent' | 'dev'
@@ -8,7 +9,7 @@ export function createFileOutput(options: { logDirectory?: LogDirectory; logFile
   const path = options.logFile ? Repo.resolvePath(options.logFile) : Artifacts.resolvePath(
     'logs',
     options.logDirectory ?? 'dev',
-    `${Time.date().toISOString().replaceAll(':', '-')}-${Platform.pid}.log`,
+    `${Time.date().toISOString().replaceAll(':', '-')}-${Process.pid}.log`,
   )
   let opened = false
   return Object.assign(write, { path })

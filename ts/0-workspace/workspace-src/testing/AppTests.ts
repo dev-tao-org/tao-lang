@@ -1,8 +1,9 @@
-import { transform } from '@ast-gen/Transform'
-import { compile } from '@compile/Compile'
-import { createParser } from '@grammar/parser'
+import * as AST from '@ast-gen'
+import * as Compile from '@compile'
+import * as Grammar from '@grammar'
+
 import { Errors } from '@shared'
-import { FileSystem, type HeadlessBrowser } from '@shared/os'
+import { FS, type HeadlessBrowser } from '@shared/os'
 import { createAppTestDriver } from './AppTestDriver'
 import { runTests, type TestProgress, type TestResult } from './RunTests'
 
@@ -16,11 +17,11 @@ export async function runAppTests(
   onProgress?: TestProgress,
   signal?: AbortSignal,
 ): Promise<TestResult[]> {
-  const source = await FileSystem.readFile(path, 'utf8')
-  const document = transform(createParser().parse(source))
+  const source = await FS.readFile(path, 'utf8')
+  const document = AST.transform(Grammar.createParser().parse(source))
   if (document === undefined) {
     Errors.ThrowUserInput(`Invalid Tao test source: ${path}`)
   }
-  const createDriver = () => createAppTestDriver(path, source, openBrowser, compile, onProgress, signal)
+  const createDriver = () => createAppTestDriver(path, source, openBrowser, Compile.compile, onProgress, signal)
   return await runTests(document, { path, source, onProgress, signal, createDriver })
 }

@@ -10,5 +10,16 @@
   "devDependencies": {
     "@tao/grammar": "workspace:*",
     "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./typecheck-src/Typecheck.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@typecheck",
+        "namespace": "Typecheck"
+      }
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { Errors, Lists, NewlineCharacter, Try } from '@shared'
-import * as GeneratedFileSystem from '../../../../shared/shared-src/os/GeneratedFileSystem'
-import * as Path from '../../../../shared/shared-src/os/Path'
+import * as MetroPlatform from '@shared/os/metro'
+
 import { assertMetroNotLoaded } from '../../bridges/Bridge_metro'
 import { createRevisionOwner, type RevisionOwner, type RevisionResult, snapshotRevision } from '../GeneratedRevision'
 import type { GeneratedRevision, GeneratedSourceFiles } from '../PreviewProtocol'
@@ -15,7 +15,10 @@ export type MetroAdapter = { owner: RevisionOwner; attach(metro: MetroServer): v
 export function createMetroAdapter(options: MetroAdapterOptions): MetroAdapter {
   assertMetroNotLoaded(options.directory)
   const initial = snapshotRevision(options.initial)
-  const fileSystem = GeneratedFileSystem.installGeneratedFileSystem(Path.join(options.directory, 'src'), initial.files)
+  const fileSystem = MetroPlatform.GeneratedFileSystem.installGeneratedFileSystem(
+    MetroPlatform.Path.join(options.directory, 'src'),
+    initial.files,
+  )
   const admission = createMetroAdmission()
   const state: AdapterState = { current: initial, errors: [], poisoned: false, fileSystem, admission, options }
   const owner = createRevisionOwner(options.sessionId, initial, revision => commitRevision(state, revision))
@@ -56,7 +59,7 @@ type AdapterState = {
   current: GeneratedRevision
   errors: string[]
   poisoned: boolean
-  fileSystem: GeneratedFileSystem.GeneratedFileSystem
+  fileSystem: MetroPlatform.GeneratedFileSystem.GeneratedFileSystem
   admission: MetroAdmission
   options: MetroAdapterOptions
   metro?: MetroServer
@@ -139,7 +142,10 @@ function resolveChangedPaths(
 
 function createChanges(state: AdapterState, root: string, paths: string[]): ExternalChange[] {
   return paths.map(path => {
-    const relativePath = Path.relative(root, Path.join(state.options.directory, 'src', path)).replaceAll('\\', '/')
+    const relativePath = MetroPlatform.Path.relative(
+      root,
+      MetroPlatform.Path.join(state.options.directory, 'src', path),
+    ).replaceAll('\\', '/')
     return Object.hasOwn(state.current.files, path)
       ? { event: 'touch', root, relativePath, metadata: state.fileSystem.metadata(path) }
       : { event: 'delete', root, relativePath }

@@ -1,19 +1,19 @@
-import * as AST from '@ast-gen/AST'
-import { transform } from '@ast-gen/Transform'
-import { createParser } from '@grammar/parser'
+import * as AST from '@ast-gen'
+import * as Grammar from '@grammar'
+
 import { Errors } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { deriveDefaultSourceAlias } from './Sources'
 import type { DependencyRequirement } from './Types'
 
 /** readProjectRequirements extracts cached direct project source requirements. */
 export async function readProjectRequirements(projectRoot: string): Promise<DependencyRequirement[]> {
-  const paths = (await FileSystem.readdir(projectRoot, { withFileTypes: true }))
+  const paths = (await FS.readdir(projectRoot, { withFileTypes: true }))
     .filter(entry => entry.isFile() && entry.name.endsWith('.tao'))
     .map(entry => Path.join(projectRoot, entry.name))
     .sort()
   const requirements = (await Promise.all(paths.map(async path => {
-    return readRequirementsFromSource(await FileSystem.readFile(path, 'utf8'), path)
+    return readRequirementsFromSource(await FS.readFile(path, 'utf8'), path)
   }))).flat()
   validateSourceRequirements(requirements)
   return requirements
@@ -60,7 +60,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   if (cached?.source === source) {
     return cached.requirements
   }
-  const document = transform(parser.parse(source))
+  const document = AST.transform(parser.parse(source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot read requirements from invalid Tao source: ${path}.`)
   }
@@ -78,7 +78,7 @@ function isSourceRequirement(
 }
 
 function requirementFromDeclaration(
-  declaration: Extract<import('@ast-gen/AST').Declaration, { kind: 'RequiresDeclaration' }>,
+  declaration: Extract<import('@ast-gen').Declaration, { kind: 'RequiresDeclaration' }>,
   path: string,
 ): DependencyRequirement {
   const provider = declaration.provider
@@ -102,5 +102,5 @@ function getDefaultVersion(provider: Exclude<DependencyRequirement['provider'], 
   return provider === 'file' ? 'live' : 'bundled'
 }
 
-const parser = createParser()
+const parser = Grammar.createParser()
 const parsedFiles = new Map<string, { source: string; requirements: DependencyRequirement[] }>()

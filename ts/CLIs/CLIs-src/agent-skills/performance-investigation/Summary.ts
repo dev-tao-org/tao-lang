@@ -1,5 +1,5 @@
 import { Errors, Regxs } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { FS, Path } from '@shared/os'
 import { JobFileName, requireSampleName } from './JobFiles'
 import { type PreviewReport, requireReport } from './ReportContract'
 import type { MeasurementJob } from './Runner'
@@ -29,7 +29,7 @@ type MeasurementGroupSummary = {
 
 /** summarizeJob retains independent-session medians and conditions without issuing an automatic significance verdict. */
 export async function summarizeJob(directory: string): Promise<MeasurementSummary> {
-  const job = JSON.parse(await FileSystem.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
+  const job = JSON.parse(await FS.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
   if (!isCompleteJob(job)) {
     Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
   }
@@ -75,7 +75,7 @@ function isCompleteJob(job: MeasurementJob): boolean {
 
 async function readReport(directory: string, name: string, job: MeasurementJob): Promise<PreviewReport> {
   requireSampleName(name)
-  const report = JSON.parse(await FileSystem.readFile(Path.join(directory, name), 'utf8')) as PreviewReport
+  const report = JSON.parse(await FS.readFile(Path.join(directory, name), 'utf8')) as PreviewReport
   requireReport(report, job)
   return report
 }

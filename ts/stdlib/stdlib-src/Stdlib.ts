@@ -1,5 +1,5 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
-import { FileSystem, Path, Platform, Storage } from '@shared/os'
+import { FS, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
 import ProjectMetadata from './.tao/store/project.json' with { type: 'json' }
 import UI from './@ui/Views.tao' with { type: 'text' }
@@ -41,16 +41,16 @@ async function locateProject(
 }
 
 function findLiveProjectRoot(candidate: CandidateProjectDirectory): string | undefined {
-  if (!candidate || !FileSystem.existsSync(Path.join(candidate, '.tao', 'store', 'project.json'))) {
+  if (!candidate || !FS.existsSync(Path.join(candidate, '.tao', 'store', 'project.json'))) {
     return undefined
   }
-  return Try.WithDefault(undefined, () => FileSystem.realpathSync(candidate))
+  return Try.WithDefault(undefined, () => FS.realpathSync(candidate))
 }
 
 async function materializeProject(cacheRoot: string, resources: StdlibResourceFiles): Promise<string> {
   const entries = Object.entries(resources).sort(([left], [right]) => left.localeCompare(right))
   validateResources(entries)
-  await FileSystem.mkdir(cacheRoot)
+  await FS.mkdir(cacheRoot)
   const fingerprint = Platform.hashText(serializeStdlibResourceEntries(entries))
   const root = Path.resolve(cacheRoot, `project-${fingerprint}`)
   const marker = Path.join(root, '.ready')
@@ -58,13 +58,13 @@ async function materializeProject(cacheRoot: string, resources: StdlibResourceFi
     return root
   }
   const staging = `${root}.${Platform.randomUUID()}.pending`
-  await FileSystem.mkdir(staging)
+  await FS.mkdir(staging)
   await Try(async () => {
     await writeResources(staging, entries)
-    await FileSystem.writeFile(Path.join(staging, '.ready'), `${fingerprint}${NewlineCharacter}`)
+    await FS.writeFile(Path.join(staging, '.ready'), `${fingerprint}${NewlineCharacter}`)
     await replaceIncompleteRoot(root, cacheRoot)
-    await FileSystem.rename(staging, root)
-  }, { finally: () => FileSystem.rm(staging, { recursive: true, force: true }) })
+    await FS.rename(staging, root)
+  }, { finally: () => FS.rm(staging, { recursive: true, force: true }) })
   return root
 }
 
@@ -90,15 +90,15 @@ async function isReadyProject(
   cacheRoot: string,
   entries: StdlibResourceEntries,
 ): Promise<boolean> {
-  if (!await FileSystem.exists(root)) {
+  if (!await FS.exists(root)) {
     return false
   }
   assertContainedPath(root, cacheRoot)
-  if (!await FileSystem.exists(marker)) {
+  if (!await FS.exists(marker)) {
     return false
   }
   assertContainedPath(marker, root)
-  if ((await FileSystem.readFile(marker, 'utf8')).trim() !== fingerprint) {
+  if ((await FS.readFile(marker, 'utf8')).trim() !== fingerprint) {
     return false
   }
   return await resourcesMatch(root, entries)
@@ -107,11 +107,11 @@ async function isReadyProject(
 async function resourcesMatch(root: string, entries: StdlibResourceEntries): Promise<boolean> {
   for (const [relative, contents] of entries) {
     const path = Path.resolve(root, ...relative.split('/'))
-    if (!await FileSystem.exists(path)) {
+    if (!await FS.exists(path)) {
       return false
     }
     assertContainedPath(path, root)
-    if (await FileSystem.readFile(path, 'utf8') !== contents) {
+    if (await FS.readFile(path, 'utf8') !== contents) {
       return false
     }
   }
@@ -122,23 +122,23 @@ async function writeResources(staging: string, entries: StdlibResourceEntries): 
   for (const [relative, contents] of entries) {
     const target = Path.resolve(staging, ...relative.split('/'))
     const parent = Path.dirname(target)
-    await FileSystem.mkdir(parent)
+    await FS.mkdir(parent)
     assertContainedPath(parent, staging)
-    await FileSystem.writeFile(target, contents)
+    await FS.writeFile(target, contents)
   }
 }
 
 async function replaceIncompleteRoot(root: string, cacheRoot: string): Promise<void> {
-  if (!await FileSystem.exists(root)) {
+  if (!await FS.exists(root)) {
     return
   }
   assertContainedPath(root, cacheRoot)
-  await FileSystem.rm(root, { recursive: true, force: true })
+  await FS.rm(root, { recursive: true, force: true })
 }
 
 function assertContainedPath(path: string, parent: string): void {
-  const resolvedParent = Try.WithDefault(undefined, () => FileSystem.realpathSync(parent))
-  const canonicalPath = Try.WithDefault(undefined, () => FileSystem.realpathSync(path))
+  const resolvedParent = Try.WithDefault(undefined, () => FS.realpathSync(parent))
+  const canonicalPath = Try.WithDefault(undefined, () => FS.realpathSync(path))
   if (!resolvedParent || !canonicalPath || !Path.isWithin(resolvedParent, canonicalPath)) {
     Errors.ThrowUserInput(`Stdlib project cache path escapes its cache root: ${path}`)
   }

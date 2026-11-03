@@ -1,4 +1,4 @@
-import { createConsumerHost } from '@runtime/expo/ConsumerHost'
+import * as Expo from '@runtime/expo'
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
 import { resolveCompileTarget } from './CompileTarget'
@@ -24,7 +24,7 @@ export async function withConsumerProject(
   await withDependencySession(project.root, sessionId, async session => {
     await compileConsumerLibrary(manifest)
     const directory = Path.join(session.directory, 'expo')
-    await createConsumerHost(createHostOptions(manifest, directory))
+    await Expo.createConsumerHost(createHostOptions(manifest, directory))
     await run(directory)
   })
 }

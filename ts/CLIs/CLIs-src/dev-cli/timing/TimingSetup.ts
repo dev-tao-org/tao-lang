@@ -1,6 +1,8 @@
-import { IO, runInteractiveCommand, runNonInteractiveCommand } from '@cli-kit'
+import { IO } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
-import { FileSystem, Path, Platform, Storage, Terminal } from '@shared/os'
+import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
+import { Processes } from '@shared/os'
 
 type TimingSetupRole = 'controller' | 'runner'
 
@@ -11,11 +13,11 @@ export type TimingSetup = { role: TimingSetupRole; dryRun?: boolean; noBrowser?:
 export type TimingSetupIO = {
   platform: string
   interactive: boolean
-  capture: typeof Platform.capture
+  capture: typeof Processes.capture
   resolveExecutable: () => Promise<string>
-  execute: typeof runNonInteractiveCommand
-  executeInteractive: typeof runInteractiveCommand
-  exists: typeof FileSystem.exists
+  execute: typeof CLIKit.runNonInteractiveCommand
+  executeInteractive: typeof CLIKit.runInteractiveCommand
+  exists: typeof FS.exists
   mkdir: (path: string) => Promise<void>
   print: (message: string) => void
   packageRoot: string
@@ -67,13 +69,13 @@ function createSetupIO(): TimingSetupIO {
   return {
     platform: Platform.systemInfo().os,
     interactive: Terminal.isInteractive(),
-    capture: Platform.capture,
-    resolveExecutable: async () => await FileSystem.realpath(await Platform.capture('which netbird')),
-    execute: runNonInteractiveCommand,
-    executeInteractive: runInteractiveCommand,
-    exists: FileSystem.exists,
+    capture: Processes.capture,
+    resolveExecutable: async () => await FS.realpath(await Processes.capture('which netbird')),
+    execute: CLIKit.runNonInteractiveCommand,
+    executeInteractive: CLIKit.runInteractiveCommand,
+    exists: FS.exists,
     async mkdir(path) {
-      await FileSystem.mkdir(path)
+      await FS.mkdir(path)
     },
     print: IO.print,
     packageRoot: Storage.resolveSupportDirectory('timing', 'netbird-package'),

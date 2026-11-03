@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
-import { Env, FileSystem, Path, Repo, Terminal } from '@shared/os'
+import { Env, FS, Path, Repo, Terminal } from '@shared/os'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
 import { prepareDevelopmentShell } from './DirenvSetupPreparation'
@@ -64,7 +64,7 @@ async function completeDirenvSetup(
     return 0
   }
   const accepted = await environment.confirm({ defaultValue: false, message: SETUP_PROMPT })
-  await FileSystem.mkdir(shellRoot)
+  await FS.mkdir(shellRoot)
   if (await hasStoredChoice(options, choicePath)) {
     return 0
   }
@@ -112,7 +112,7 @@ async function revokeDirenvAllowance(root: string, environment: SetupEnvironment
 }
 
 async function refreshInstalledActivation(root: string, shellRoot: string): Promise<void> {
-  const source = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
+  const source = await FS.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
   await DirenvSetupFiles.writeFileAtomically(Path.resolve(shellRoot, 'activation.zsh'), source)
 }
 
@@ -140,7 +140,7 @@ async function resolveGitIdentity(
   }
   const commonPath = git.stdout.replace(Regxs.TrailingNewlineRegx, '')
   rejectLineBreaks(commonPath)
-  const commonDirectory = FileSystem.realpathSync(commonPath)
+  const commonDirectory = FS.realpathSync(commonPath)
   rejectLineBreaks(commonDirectory)
   const hash = await environment.run('git', {
     args: ['hash-object', '--stdin'],
@@ -185,11 +185,11 @@ async function installActivation(
       }`,
     )
   }
-  const runtime = await FileSystem.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
-  const envrc = await FileSystem.readFile(Path.resolve(root, '.envrc'), 'utf8')
+  const runtime = await FS.readFile(Path.resolve(root, ACTIVATION_SOURCE), 'utf8')
+  const envrc = await FS.readFile(Path.resolve(root, '.envrc'), 'utf8')
   const completionPath = Path.resolve(root, '.artifacts/cache/dev-shell/completion.zsh')
-  const completion = FileSystem.existsSync(completionPath)
-    ? await FileSystem.readFile(completionPath, 'utf8')
+  const completion = FS.existsSync(completionPath)
+    ? await FS.readFile(completionPath, 'utf8')
     : ('# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter)
   const rooted = await environment.run('nix-store', {
     args: ['--realise', output, '--add-root', Path.resolve(shellRoot, 'direnv'), '--indirect'],
@@ -211,7 +211,7 @@ async function updateZshrcSource(zshrc: string): Promise<void> {
     const existing = await DirenvSetupFiles.readOptionalFile(target)
     const updated = DirenvSetupFiles.mergeActivationSourceLine(existing)
     if (updated !== existing) {
-      await FileSystem.writeFile(target, updated, 'utf8')
+      await FS.writeFile(target, updated, 'utf8')
     }
   }, {
     catch(cause) {

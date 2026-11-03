@@ -1,9 +1,10 @@
-import * as AST from '@ast-gen/AST'
-import { transform } from '@ast-gen/Transform'
-import type { Parser } from '@grammar/parser'
+import * as AST from '@ast-gen'
+import type * as Grammar from '@grammar'
+import type * as Typecheck from '@typecheck'
+
 import { Errors, Timings } from '@shared'
-import { FileSystem, Path } from '@shared/os'
-import type { SourceModule } from '@typecheck/Modules'
+import { FS, Path } from '@shared/os'
+
 import { listDirectSourceFiles } from './Catalog'
 import * as Paths from './Paths'
 import { loadRequirementModules } from './Requirements'
@@ -13,7 +14,7 @@ import { importTargets, type ModuleResolutionContext, resolveBareTargets } from 
 export type ModuleLoadOptions = {
   directory?: string
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
-  observeProjectSources?: (root: string, sources: readonly Pick<SourceModule, SourceModuleField>[]) => void
+  observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
 }
 
@@ -23,8 +24,8 @@ export const loadModules = Timings.createTopLevelTimer(function(
   timings,
   entry: { path: string; document: AST.Document },
   options: ModuleLoadOptions,
-  parser: Parser,
-): Promise<SourceModule[]> {
+  parser: Grammar.Parser,
+): Promise<Typecheck.SourceModule[]> {
   return timings.run(loadGraph, { entry, options, parser })
 })
 
@@ -34,13 +35,13 @@ type SourceModuleField = 'path' | 'document'
 type LoadRequest = {
   entry: { path: string; document: AST.Document }
   options: ModuleLoadOptions
-  parser: Parser
+  parser: Grammar.Parser
 }
 
 type LoadState = LoadRequest & {
   entryPath: string
   projectRoot: string
-  sources: Map<string, SourceModule>
+  sources: Map<string, Typecheck.SourceModule>
   projectRoots: Map<string, string>
   pending: string[]
   observedRoots: Set<string>
@@ -52,14 +53,14 @@ type PhysicalSourcePath = string | undefined
 
 type Discovery = {
   sources: Map<string, DiscoveredSourceText>
-  imports: SourceModule['imports'][number][]
+  imports: Typecheck.SourceModule['imports'][number][]
   siblings: string[]
   projectRoots: Map<string, string>
 }
 
 const loadGraph = Timings.measure(
   'modules.load',
-  async function(timings, request: LoadRequest): Promise<SourceModule[]> {
+  async function(timings, request: LoadRequest): Promise<Typecheck.SourceModule[]> {
     const { entry, options } = request
     const entryPath = Paths.resolveCanonicalPath(entry.path)
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
@@ -128,7 +129,7 @@ function createLoadState(request: LoadRequest, entryPath: string, projectRoot: s
   }
 }
 
-async function completedGraph(state: LoadState, timings: Timings): Promise<SourceModule[]> {
+async function completedGraph(state: LoadState, timings: Timings): Promise<Typecheck.SourceModule[]> {
   const sources = [...state.sources.values()]
   return state.options.includeModuleRequirements
     ? [
@@ -144,7 +145,7 @@ async function completedGraph(state: LoadState, timings: Timings): Promise<Sourc
 
 const discover = Timings.measure(
   'modules.discover',
-  async function(timings, state: LoadState, source: SourceModule): Promise<Discovery> {
+  async function(timings, state: LoadState, source: Typecheck.SourceModule): Promise<Discovery> {
     const found: Discovery = { sources: new Map(), imports: [], siblings: [], projectRoots: new Map() }
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     await observeProject(state, projectRoot, timings)
@@ -157,7 +158,7 @@ const discover = Timings.measure(
 
 async function discoverSiblings(
   state: LoadState,
-  source: SourceModule,
+  source: Typecheck.SourceModule,
   physical: PhysicalSourcePath,
   projectRoot: string,
   discovery: Discovery,
@@ -176,7 +177,7 @@ async function discoverSiblings(
 
 async function discoverImports(
   state: LoadState,
-  source: SourceModule,
+  source: Typecheck.SourceModule,
   physical: PhysicalSourcePath,
   projectRoot: string,
   discovery: Discovery,
@@ -207,7 +208,7 @@ async function resolvePhysicalSourcePath(
   entryPath: string,
   projectRoot: string,
 ): Promise<string | undefined> {
-  if (sourcePath === entryPath && !await FileSystem.exists(sourcePath)) {
+  if (sourcePath === entryPath && !await FS.exists(sourcePath)) {
     if (Paths.within(projectRoot, sourcePath)) {
       return sourcePath
     }
@@ -234,11 +235,11 @@ async function observeProject(state: LoadState, root: string, timings: Timings):
 
 async function readDocument(
   path: string,
-  parser: Parser,
+  parser: Grammar.Parser,
   documents: Map<string, AST.Document>,
   timings: Timings,
 ): Promise<AST.Document> {
-  const document = documents.get(path) ?? parseDocument(await FileSystem.readFile(path, 'utf8'), path, parser, timings)
+  const document = documents.get(path) ?? parseDocument(await FS.readFile(path, 'utf8'), path, parser, timings)
   documents.set(path, document)
   return document
 }
@@ -246,16 +247,16 @@ async function readDocument(
 function parseDocument(
   source: string,
   path: string,
-  parser: Parser,
+  parser: Grammar.Parser,
   timings: Timings,
 ): AST.Document {
-  const document = timings.run(transform, timings.run(parser.parse, source))
+  const document = timings.run(AST.transform, timings.run(parser.parse, source))
   if (!document) {
     Errors.ThrowUserInput(`Cannot load Tao module with invalid syntax: ${path}.`)
   }
   return document
 }
 
-function sourceModule(path: string, document: AST.Document): SourceModule {
+function sourceModule(path: string, document: AST.Document): Typecheck.SourceModule {
   return { path, document, imports: [], siblings: [] }
 }

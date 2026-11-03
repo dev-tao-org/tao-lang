@@ -1,4 +1,4 @@
-import { Tests } from '@shared/os'
+import * as Tests from '@shared-tests'
 
 /** parserFixtures reads the canonical app and derives the ordered full-parse measurement edits. */
 export async function parserFixtures(): Promise<ParserFixture[]> {

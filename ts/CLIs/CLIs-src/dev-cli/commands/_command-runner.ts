@@ -1,7 +1,7 @@
+import { Process } from '@shared/os'
 import '../../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
 import { Regxs } from '@shared'
-import { Platform } from '@shared/os'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
 export type CommandDefinition<Args extends unknown[] = []> = {
@@ -61,7 +61,7 @@ export async function execute(name = 'dev'): Promise<void> {
       await definition.action(...positional, ...options)
     })
   }
-  await parser.parseAsync(Platform.argv)
+  await parser.parseAsync(Process.argv)
   await IO.finish()
 }
 

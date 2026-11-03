@@ -16,5 +16,19 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./perf-src/Perf.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@perf",
+        "namespace": "Perf",
+        "entities": [
+          "ReloadTimings"
+        ]
+      }
+    }
   }
 }
