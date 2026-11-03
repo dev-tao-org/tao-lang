@@ -26,11 +26,12 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
   const preferredChannelRows = Math.max(1, workerRowCount * (Panels.PaneFrameRows + PreferredWorkerLogRows))
   const gap = height > preferredChannelRows + footerRows + Panels.PaneFrameRows ? 1 : 0
   const rootBudget = Math.max(0, height - preferredChannelRows - footerRows - gap - Panels.PaneFrameRows)
-  const completionBudget = resolveCompletionContentRows(snapshot, height - footerRows - rootRows - gap)
+  const rootSource = resolveRootSource(snapshot)
+  const availableRootRows = height - footerRows - rootRows - gap
+  const completionBudget = resolveCompletionContentRows(snapshot, rootSource, width, availableRootRows)
   const rootRowLimit = snapshot.main.status === 'running' || snapshot.main.status === 'idle'
     ? Math.max(promptRows, Math.min(MaximumRootLogRows, rootBudget))
     : Math.max(promptRows, completionBudget)
-  const rootSource = snapshot.prompt ? [...snapshot.main.lines, snapshot.prompt] : snapshot.main.lines
   const rootLines = wrappedTail(rootSource, Panels.paneContentWidth(width), rootRowLimit)
   const channelRows = Math.max(0, height - rootLines.length - rootRows - gap - footerRows)
   return (
@@ -51,10 +52,31 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
   )
 }
 
-function resolveCompletionContentRows(snapshot: OutputSnapshot, availableRows: number): number {
+function resolveCompletionContentRows(
+  snapshot: OutputSnapshot,
+  lines: readonly string[],
+  width: number,
+  availableRows: number,
+): number {
   // Finished workers need only a status row; leave the root tail room for the final verdict and recovery details.
-  const workerRows = Math.min(Math.max(1, snapshot.channels.length), Math.max(0, availableRows - 1))
+  const noticeRows = wrappedTail([lines.at(-1) ?? ''], Panels.paneContentWidth(width), availableRows).length
+  const workerRows = Math.min(Math.max(1, snapshot.channels.length), Math.max(0, availableRows - noticeRows))
   return Math.max(0, availableRows - workerRows)
+}
+
+function resolveRootSource(snapshot: OutputSnapshot): readonly string[] {
+  if (snapshot.prompt) {
+    return [...snapshot.main.lines, snapshot.prompt]
+  }
+  if (snapshot.main.status === 'running' || snapshot.main.status === 'idle') {
+    return snapshot.main.lines
+  }
+  // A newline leaves a pending empty row for the next write; completion has no next write.
+  let end = snapshot.main.lines.length
+  while (end > 0 && snapshot.main.lines[end - 1] === '') {
+    end--
+  }
+  return snapshot.main.lines.slice(0, end)
 }
 
 function resolveRootFrameRows(snapshot: OutputSnapshot, availableRows: number): number {

@@ -36,6 +36,7 @@ Tests.test('dashboard prompts and failure completion retain all output in Ink pa
   Tests.expect(result.stderr).toBe('')
   const logPath = LogPathRegx.exec(visible)?.[1]?.trim()
   Tests.expect(logPath).toBeDefined()
+  expectFinalRecoveryNotice(visible, logPath!)
   const log = await FS.readFile(Repo.resolvePath(logPath!), 'utf8')
   Tests.expect(log).toContain('[info stdout] [TypeScript shard 2] shard stdout ')
   Tests.expect(log).toContain('[info stderr] [TypeScript shard 2] shard stderr completed')
@@ -43,3 +44,14 @@ Tests.test('dashboard prompts and failure completion retain all output in Ink pa
   Tests.expect(log).not.toContain('private')
   Tests.expect(log).not.toContain('value')
 })
+
+function expectFinalRecoveryNotice(visible: string, logPath: string): void {
+  const finalFrame = visible.split('FINAL' + NewlineCharacter)[1]!
+  const lines = finalFrame.split(NewlineCharacter)
+  Tests.expect(lines.length).toBeLessThanOrEqual(12)
+  Tests.expect(lines.every(line => line.length <= 80)).toBe(true)
+  const contentLines = lines.filter(line => line.startsWith('│'))
+  const contents = contentLines.map(line => line.slice(1, -1).trim()).join('')
+  Tests.expect(contents).toContain('Failed: 1 warning(s), 1 error(s). Logs:')
+  Tests.expect(contents).toContain(logPath)
+}

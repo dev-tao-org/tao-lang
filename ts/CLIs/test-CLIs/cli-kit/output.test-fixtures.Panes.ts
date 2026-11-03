@@ -11,7 +11,7 @@ import { OutputView } from '../../CLIs-src/cli-kit/output/tui/View'
 
 /** runPaneFixture exercises public dashboard prompts while a captured child writes both streams. */
 export async function runPaneFixture(): Promise<void> {
-  let latest: OutputSnapshot
+  let latest!: OutputSnapshot
   const frames: string[] = []
   const input = createPaneInput(redraw)
   let questions = 0
@@ -42,14 +42,27 @@ export async function runPaneFixture(): Promise<void> {
   await exercisePanePrompts(input)
   await requirePaneCancellation(cancellation.signal)
   recordCompletionFailure()
+  prepareCrowdedPaneFixture()
   IO.summary('pane input completed')
   await IO.finish('failed')
-  Terminal.stdout.write('PANES' + NewlineCharacter + frames.join(NewlineCharacter))
+  const finalFrame = renderFrame(latest, 80, 12)
+  Terminal.stdout.write(Shared.joinTextLines('PANES', ...frames, 'FINAL', finalFrame))
 
   function redraw(): void {
     const snapshot = { ...latest, prompt: input.message() }
-    frames.push(Ink.renderToString(React.createElement(OutputView, { snapshot, now: 0, width: 100, height: 24 })))
+    frames.push(renderFrame(snapshot, 100, 24))
   }
+}
+
+function prepareCrowdedPaneFixture(): void {
+  IO.setCommands([{ key: 'q', label: 'quit' }])
+  for (let index = 0; index < 5; index++) {
+    IO.channel({ title: `Fixture worker ${index}` }).finish('passed')
+  }
+}
+
+function renderFrame(snapshot: OutputSnapshot, width: number, height: number): string {
+  return Ink.renderToString(React.createElement(OutputView, { snapshot, now: 0, width, height }))
 }
 
 async function exercisePanePrompts(input: PaneInput): Promise<void> {
