@@ -17,7 +17,7 @@ Tests.test('bootstrap imports independently and forwards setup output and flags'
   await Try(async () => {
     const sourceDirectory = Path.pathToFileURL(join(root, 'source checkout #%') + Path.sep)
     await copyBootstrapSources(
-      new WebHost.URL('../../../shared-src/os', import.meta.url),
+      new WebHost.URL('../../../shared-src/os/', import.meta.url),
       Path.fileURLToPath(sourceDirectory),
     )
     const result = await runBootstrap(root, 0, 'install', sourceDirectory)
@@ -59,7 +59,7 @@ async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: FailureStage = 'install',
-  sourceDirectory = new WebHost.URL('../../../shared-src/os', import.meta.url),
+  sourceDirectory = new WebHost.URL('../../../shared-src/os/', import.meta.url),
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
