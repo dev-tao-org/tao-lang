@@ -55,11 +55,9 @@ export function sourceFacadeIssue(
   if (specifier === undefined) {
     return
   }
-  if (TypeScript.isImportDeclaration(node)) {
-    const issue = PackageApis.packageNamespaceIssue(node, context.namespaces)
-    if (issue !== undefined) {
-      return issue
-    }
+  const issue = PackageApis.packageNamespaceIssue(node, context.namespaces)
+  if (issue !== undefined) {
+    return issue
   }
   const importer = normalizePath(node.getSourceFile().fileName)
   const resolved = TypeScript.resolveModuleName(
@@ -194,8 +192,17 @@ function isLiteralModuleSpecifier(node: OptionalModuleSpecifier): node is TypeSc
 
 function mayAccessImplementation(importer: string, owner: ModuleFacade): boolean {
   // Mirrored central test folders belong to this module; unrelated tests use its facade.
-  const testDirectory = centralTestDirectory(owner.directory)
-  return importer === owner.filename || isInside(importer, owner.directory) || isInside(importer, testDirectory)
+  const testOwner = centralTestDirectory(owner.directory)
+  return importer === owner.filename || isInside(importer, owner.directory) || isMirroredTestOwner(importer, testOwner)
+}
+
+function isMirroredTestOwner(importer: string, testOwner: string): boolean {
+  if (!importer.startsWith(testOwner + '.')) {
+    return false
+  }
+  const suffix = importer.slice(testOwner.length)
+  const testModule = suffix.endsWith('.test.ts') || suffix.includes('.test-utils') || suffix.includes('.test-fixtures')
+  return !suffix.includes('/') && testModule
 }
 
 function findNearestFacade(filename: string, context: SourceFacadeContext): ModuleFacade | undefined {

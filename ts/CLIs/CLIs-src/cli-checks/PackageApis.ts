@@ -1,6 +1,7 @@
-import { Errors, Json, Regxs } from '@shared'
+import { Errors, Json } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import * as PackageTests from './PackageTests'
 
 /** PackageApi describes one manifest-owned exact public file and its canonical import name. */
 export type PackageApi = { alias: string; namespace: string; filename: string; entities?: readonly string[] }
@@ -47,7 +48,7 @@ function serializeCompilerConfig(config: unknown): string {
 /** assertPackageApis checks manifest ownership, exact files and the generated compiler alias snapshot. */
 export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   for (const manifest of readPackageManifestFiles(root)) {
-    requirePackageTestRoot(Path.dirname(manifest))
+    PackageTests.assertPackageTests(manifest)
   }
   const apis = readPackageApis(root)
   const aliases = new Set<string>()
@@ -65,18 +66,6 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
     Errors.ThrowUserInput(
       'TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.',
     )
-  }
-}
-
-function requirePackageTestRoot(directory: string): void {
-  const packageName = Path.basename(directory).replace(Regxs.PackageOrderPrefixRegx, '')
-  const testRoot = Path.join(directory, `test-${packageName}`).replaceAll('\\', '/') + '/'
-  const files = TypeScript.sys.readDirectory(directory, ['.ts', '.tsx'], ['**/node_modules/**', '**/.tao/**'])
-  const outside = files.find(filename =>
-    filename.endsWith('.test.ts') && !filename.replaceAll('\\', '/').startsWith(testRoot)
-  )
-  if (outside !== undefined) {
-    Errors.ThrowUserInput(`Package tests belong in the central ${testRoot} root: ${outside}`)
   }
 }
 
@@ -155,9 +144,12 @@ export function readPackageImportRules(root: string): PackageImportRules {
 
 /** packageNamespaceIssue checks canonical namespaces and qualified operation-family imports. */
 export function packageNamespaceIssue(
-  node: TypeScript.ImportDeclaration,
+  node: TypeScript.Node,
   namespaces: PackageImportRules,
 ): string | undefined {
+  if (!TypeScript.isImportDeclaration(node)) {
+    return dynamicNamespaceIssue(node, namespaces)
+  }
   if (!TypeScript.isStringLiteral(node.moduleSpecifier)) {
     return
   }
@@ -176,6 +168,28 @@ export function packageNamespaceIssue(
   if (operation) {
     return `import operations through import * as ${canonical}; retain narrow imports for primary entities and types`
   }
+}
+
+function dynamicNamespaceIssue(node: TypeScript.Node, namespaces: PackageImportRules): string | undefined {
+  if (!TypeScript.isCallExpression(node) || node.expression.kind !== TypeScript.SyntaxKind.ImportKeyword) {
+    return
+  }
+  const specifier = node.arguments[0]
+  if (specifier === undefined || !TypeScript.isStringLiteral(specifier)) {
+    return
+  }
+  const canonical = namespaces.get(specifier.text)?.namespace
+  if (canonical === undefined) {
+    return
+  }
+  const awaited = node.parent
+  const declaration = TypeScript.isAwaitExpression(awaited) ? awaited.parent : undefined
+  if (declaration !== undefined && TypeScript.isVariableDeclaration(declaration)) {
+    if (TypeScript.isIdentifier(declaration.name) && declaration.name.text === canonical) {
+      return
+    }
+  }
+  return `bind dynamic public imports to canonical namespace ${canonical}`
 }
 
 function isPrimaryEntity(name: string, rule: PackageImportRule): boolean {

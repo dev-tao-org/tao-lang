@@ -64,9 +64,9 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
     'react',
     'react-native',
   ]],
-  ['ts/0-workspace/test-workspace/sidecars/ManagedMetro.test-fixtures.Acceptance.ts', ['tao-fixture-label']],
-  ['ts/0-workspace/test-workspace/ManagedDependenciesAcceptance.test.ts', ['tao-fixture-label']],
-  ['ts/7-runtime/test-runtime/expo/Metro/MetroIntegration/MetroIntegration.test-fixtures.DelayPreload.ts', [
+  ['ts/0-workspace/test-workspace/sidecars.test-fixtures.ManagedMetro.Acceptance.ts', ['tao-fixture-label']],
+  ['ts/0-workspace/test-workspace/Workspace.ManagedDependenciesAcceptance.test.ts', ['tao-fixture-label']],
+  ['ts/7-runtime/test-runtime/expo/Metro.test-fixtures.Integration.DelayPreload.ts', [
     'node:fs',
     'node:module',
     'node:path',
@@ -74,15 +74,15 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
     '@expo/cli/package.json',
     '@expo/metro/metro/Bundler',
   ]],
-  ['ts/7-runtime/test-runtime/expo/Metro/MetroIntegration/MetroGuards.test.ts', ['node:module']],
-  ['ts/shared/test-shared/os/Storage/Storage.test.ts', ['node:fs/promises']],
-  ['ts/shared/test-shared/os/FS/GeneratedFileSystem/GeneratedFileSystem.test.ts', [
+  ['ts/7-runtime/test-runtime/expo/Metro.Guards.test.ts', ['node:module']],
+  ['ts/shared/test-shared/os/Storage.Core.test.ts', ['node:fs/promises']],
+  ['ts/shared/test-shared/os/FS.GeneratedFileSystem.test.ts', [
     'node:assert/strict',
     'node:fs',
     'node:fs/promises',
     'node:path',
   ]],
-  ['ts/shared/test-shared/os/FS/GeneratedFileSystem/GeneratedStreams.test.ts', [
+  ['ts/shared/test-shared/os/FS.GeneratedFileSystem.GeneratedStreams.test.ts', [
     'node:assert/strict',
     'node:fs',
     'node:fs/promises',
@@ -103,8 +103,8 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
     '@expo/metro/metro/Bundler',
   ]],
   ['ts/7-runtime/runtime-src/expo/MetroIntegration-test/MetroGuards.test.ts', ['node:module']],
-  ['ts/CLIs/test-CLIs/cli-checks/source-conformance-api.test.ts', ['@model']],
-  ['ts/shared/test-shared/os/FS/Files/GeneratedMetadata.test.ts', ['bun:test']],
-  ['ts/shared/test-shared/os/Storage/LeaseFailures.test.ts', ['bun:test']],
-  ['ts/shared/test-shared/os/Storage/SessionLock/PointerDiagnostics.test.ts', ['bun:test']],
+  ['ts/CLIs/test-CLIs/cli-checks.source-conformance-api.test.ts', ['@model']],
+  ['ts/shared/test-shared/os/FS.Files.GeneratedMetadata.test.ts', ['bun:test']],
+  ['ts/shared/test-shared/os/Storage.LeaseFailures.test.ts', ['bun:test']],
+  ['ts/shared/test-shared/os/Storage.SessionLock.PointerDiagnostics.test.ts', ['bun:test']],
 ])

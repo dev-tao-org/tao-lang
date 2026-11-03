@@ -4,7 +4,7 @@ import { Range, S, Timings } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { format } from '../fix-src/Fix/Format'
-import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './Format.test-fixtures.Syntax'
+import { formattedSyntaxFixture, syntaxFixture, syntaxKinds } from './format.test-fixtures.Syntax'
 
 const concreteSyntaxKinds = Object.keys(syntaxKinds)
   .filter(kind => !kind.startsWith('_'))

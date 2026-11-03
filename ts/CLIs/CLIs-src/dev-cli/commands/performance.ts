@@ -3,9 +3,6 @@ import * as CLIKit from '@cli-kit'
 import * as Runtime from '@runtime'
 import { Errors, Timings } from '@shared'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
-import * as Workspace from '@workspace'
-
-import * as Perf from '@perf'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
@@ -43,8 +40,8 @@ export default registerCommand({
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
-      const { recordPreviewPerformance } = await import('@perf')
-      const record = await recordPreviewPerformance(runPreview)
+      const Perf = await import('@perf')
+      const record = await Perf.recordPreviewPerformance(runPreview)
       IO.print(`${record.reused ? 'Existing' : 'Recorded'} commit performance: ${record.directory}`)
       return
     }
@@ -55,8 +52,8 @@ export default registerCommand({
       await runPreview(source)
       return
     }
-    const { parserPerformance } = await import('@perf')
-    const { path, summary } = await parserPerformance(timings.samples)
+    const Perf = await import('@perf')
+    const { path, summary } = await Perf.parserPerformance(timings.samples)
     for (const phase of summary) {
       IO.print(
         `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -68,8 +65,8 @@ export default registerCommand({
 
 async function runModules(): Promise<void> {
   await prepareRuntime()
-  const { moduleRefreshPerformance } = await import('@perf')
-  const { path, summary } = await moduleRefreshPerformance()
+  const Perf = await import('@perf')
+  const { path, summary } = await Perf.moduleRefreshPerformance()
   for (const result of summary) {
     IO.print(`${result.layout}: median ${result.medianMs.toFixed(1)} ms, p95 ${result.p95Ms.toFixed(1)} ms`)
   }
@@ -77,8 +74,8 @@ async function runModules(): Promise<void> {
 }
 
 async function runReactivity(): Promise<void> {
-  const { reactivityPerformance } = await import('@perf')
-  const { path, summary } = await reactivityPerformance()
+  const Perf = await import('@perf')
+  const { path, summary } = await Perf.reactivityPerformance()
   for (const result of summary) {
     IO.print(`${result.candidate}/${result.scenario}: median ${result.medianMs.toFixed(3)} ms per 1000 operations`)
   }
@@ -87,8 +84,8 @@ async function runReactivity(): Promise<void> {
 
 async function runFormatter(): Promise<void> {
   await prepareParser()
-  const { formatterPerformance } = await import('@perf')
-  const { path, summary } = await formatterPerformance()
+  const Perf = await import('@perf')
+  const { path, summary } = await Perf.formatterPerformance()
   for (const phase of summary) {
     IO.print(
       `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -100,8 +97,8 @@ async function runFormatter(): Promise<void> {
 async function runExtension(): Promise<void> {
   const { prepareExtensionAssets } = await import('../ide/ExtensionBuild')
   await prepareExtensionAssets()
-  const { extensionPerformance } = await import('@perf')
-  const { path, summary } = await extensionPerformance()
+  const Perf = await import('@perf')
+  const { path, summary } = await Perf.extensionPerformance()
   for (const phase of summary) {
     IO.print(
       `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -112,9 +109,9 @@ async function runExtension(): Promise<void> {
 
 async function runPreview(initialSource?: string) {
   await prepareRuntime()
-  const { createProject } = await import('@workspace')
-  const { previewPerformance } = await import('@perf')
-  const project = await createProject()
+  const Workspace = await import('@workspace')
+  const Perf = await import('@perf')
+  const project = await Workspace.createProject()
   const dependencies = await Workspace.createProjectDependencyOptions(project.directory)
   await Workspace.prepareDependencies(
     project.directory,
@@ -134,7 +131,7 @@ async function runPreview(initialSource?: string) {
       },
     },
   })
-  const result = await previewPerformance({
+  const result = await Perf.previewPerformance({
     project,
     workspace: await Workspace.openProjectWorkspace(project.directory, {
       id: 'performance',

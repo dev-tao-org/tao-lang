@@ -29,6 +29,7 @@
     "./tests": "./test-workspace/Workspace.test-utils.ts"
   },
   "tao": {
+    "testInputs": ["./test-workspace/managed-fixtures"],
     "publicApi": {
       ".": {
         "alias": "@workspace",

@@ -7,7 +7,7 @@ import { isSetupRequired, requireSetup } from './SetupRequired'
 import type { BunExecutor } from './sidecars/ManagedModule/ManagedModules'
 import { runAppTests, type TestBrowser } from './testing/AppTests'
 import type { TestProgress, TestResult } from './testing/RunTests'
-import { runSidecarTests } from './testing/SidecarTests'
+import { runSidecarTests } from './testing/WorkspaceTests'
 import type { UpdateResult, WorkspaceSession } from './Workspace'
 
 /** WorkflowUI supplies consent and cancellation for exactly one caller's workflow. */

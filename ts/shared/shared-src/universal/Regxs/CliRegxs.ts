@@ -47,11 +47,11 @@ export const NixDirenvExecutableRegx = /^(\/nix\/store\/[a-z0-9]{32}-[^/]+)\/bin
 export const LineBreakRegx = /[\r\n]/
 
 /** ManagedTestShardRegx matches tests assigned to the managed acceptance shard. */
-export const ManagedTestShardRegx = /^(ManagedMetroAcceptance|ToolchainAcceptance)\.test\.ts$/
+export const ManagedTestShardRegx = /^(sidecars\.ManagedMetroAcceptance|expo\.ToolchainAcceptance)\.test\.ts$/
 
 /** LargeTestShardRegx matches integration tests assigned to the large shard. */
 export const LargeTestShardRegx =
-  /^(ReactOwnership|CompilerRefreshAcceptance|NestedRefresh|PreviewRecovery|MetroIntegration|MetroGuards|SidecarPipeline)\.test\.ts$/
+  /^(client\.ReactOwnership|Workspace\.(CompilerRefreshAcceptance|NestedRefresh)|Preview\.Recovery|Metro\.(Integration|Guards)|SidecarPipeline\.Core)\.test\.ts$/
 
 /** NegativeConfirmationRegx recognizes a negative yes/no response. */
 export const NegativeConfirmationRegx = /^n(o)?$/i

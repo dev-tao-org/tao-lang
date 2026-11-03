@@ -124,8 +124,8 @@ const runParserProcess = Timings.measured('parser.process-wall', async function(
 })
 
 async function warmSamples(): Promise<Sample[]> {
-  const { createParser } = await import('@grammar')
-  const parser = createParser()
+  const Grammar = await import('@grammar')
+  const parser = Grammar.createParser()
   const samples: Sample[] = []
   for (const fixture of await parserFixtures()) {
     for (let index = 0; index < 120; index++) {
