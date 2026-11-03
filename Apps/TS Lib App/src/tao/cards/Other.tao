@@ -1,6 +1,6 @@
 use tao@ui Text
 
-public
+project
 view Unselected {
   render Text("Unselected public view")
 }
