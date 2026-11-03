@@ -12,6 +12,7 @@ Tao is a programming language for building apps.
 
 These are your rules of usage:
 
+- Create every new agent or chat in its own worktree on a fresh `feat/*` branch based on the current branch's committed HEAD, unless the developer explicitly selects another starting point. Never silently use the project's default branch or a shared checkout. Use an isolation-capable tool; `agent-coordinator` owns session setup and the Git workflow below owns uncommitted-baseline handling.
 - By default, interpret questions and perform planning, implementation, investigation, and validation against the new implementation outside `.x-tao-old-v1/`. Use the old implementation only for purposes explicitly authorized by applicable rules or instructions, or specifically requested by the developer.
 - Agents can use trivial shell commands: `cd, ls, pwd, mkdir, rm, cp, mv, git`, etc
 - ALL non-trivial agent commands MUST use `./agent`: `./agent <CMD> <subcommands> <args> <option flags>`
