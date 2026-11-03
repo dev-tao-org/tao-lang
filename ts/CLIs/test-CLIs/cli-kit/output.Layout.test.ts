@@ -122,4 +122,27 @@ Tests.test('active prompt text stays in the root pane within crowded and single-
   Tests.expect(promptLine).toEndWith('│')
   Tests.expect(rendered.trimEnd()).toEndWith('Commands: quit')
   Tests.expect(renderView(snapshot, 80, 1)).toBe('Set up dependencies and continue? [Y/n]')
+  for (const height of [3, 4]) {
+    const compact = renderView(snapshot, 80, height)
+    Tests.expect(compact).toContain('[Y/n]')
+    Tests.expect(compact.split(NewlineCharacter).length).toBeLessThanOrEqual(height)
+  }
+})
+
+Tests.test('completed crowded dashboards retain the failure notice and log path inside the root pane', () => {
+  const snapshot = workerSnapshot()
+  snapshot.main.status = 'failed'
+  snapshot.main.lines = ['Tests: 1 failed', 'Warning: dependency setup failed', 'Failed. See test.log']
+  snapshot.channels = snapshot.channels.map(channel => ({ ...channel, status: 'passed' }))
+  const rendered = renderView(snapshot, 80, 24)
+  const lines = rendered.split(NewlineCharacter)
+  Tests.expect(lines.length).toBeLessThanOrEqual(24)
+  for (const notice of snapshot.main.lines) {
+    const line = lines.find(line => line.includes(notice))!
+    Tests.expect(line).toStartWith('│')
+    Tests.expect(line).toEndWith('│')
+  }
+  for (const channel of snapshot.channels) {
+    Tests.expect(rendered).toContain(channel.title)
+  }
 })

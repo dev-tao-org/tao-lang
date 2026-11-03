@@ -20,13 +20,16 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
   const footerLimit = snapshot.prompt ? Math.max(0, height - 1) : height
   const footerLines = snapshot.commands.length > 0 ? wrappedTail([commands], width, footerLimit) : []
   const footerRows = footerLines.length
-  const rootRows = Math.min(Panels.PaneFrameRows, Math.max(0, height - footerRows))
+  const rootRows = resolveRootFrameRows(snapshot, Math.max(0, height - footerRows))
   const workerRowCount = Panels.channelRowCount(snapshot.channels.length, width)
   const promptRows = snapshot.prompt ? Math.min(2, Math.max(0, height - footerRows - rootRows)) : 0
   const preferredChannelRows = Math.max(1, workerRowCount * (Panels.PaneFrameRows + PreferredWorkerLogRows))
   const gap = height > preferredChannelRows + footerRows + Panels.PaneFrameRows ? 1 : 0
   const rootBudget = Math.max(0, height - preferredChannelRows - footerRows - gap - Panels.PaneFrameRows)
-  const rootRowLimit = Math.max(promptRows, Math.min(MaximumRootLogRows, rootBudget))
+  const completionBudget = resolveCompletionContentRows(snapshot, height - footerRows - rootRows - gap)
+  const rootRowLimit = snapshot.main.status === 'running' || snapshot.main.status === 'idle'
+    ? Math.max(promptRows, Math.min(MaximumRootLogRows, rootBudget))
+    : Math.max(promptRows, completionBudget)
   const rootSource = snapshot.prompt ? [...snapshot.main.lines, snapshot.prompt] : snapshot.main.lines
   const rootLines = wrappedTail(rootSource, Panels.paneContentWidth(width), rootRowLimit)
   const channelRows = Math.max(0, height - rootLines.length - rootRows - gap - footerRows)
@@ -46,6 +49,20 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
       {footerLines.map((line, index) => <Ink.Text key={index} wrap="truncate">{line}</Ink.Text>)}
     </Ink.Box>
   )
+}
+
+function resolveCompletionContentRows(snapshot: OutputSnapshot, availableRows: number): number {
+  // Finished workers need only a status row; leave the root tail room for the final verdict and recovery details.
+  const workerRows = Math.min(Math.max(1, snapshot.channels.length), Math.max(0, availableRows - 1))
+  return Math.max(0, availableRows - workerRows)
+}
+
+function resolveRootFrameRows(snapshot: OutputSnapshot, availableRows: number): number {
+  // A frame with only borders and a title would hide the prompt while still accepting input.
+  if (snapshot.prompt && availableRows <= Panels.PaneFrameRows) {
+    return Math.min(1, availableRows)
+  }
+  return Math.min(Panels.PaneFrameRows, availableRows)
 }
 
 type RootPaneProps = {
