@@ -18,10 +18,18 @@ export type OutputSnapshot = {
   main: ChannelState
   channels: readonly ChannelState[]
   commands: readonly OutputCommand[]
+  prompt?: string
 }
 
 /** OutputRenderer updates a terminal view and releases its resources when the command ends. */
-export type OutputRenderer = { update(snapshot: OutputSnapshot): void; dispose(): Promise<void> }
+export type OutputRenderer = {
+  update(snapshot: OutputSnapshot): void
+  dispose(): Promise<void>
+  readInput?(request: OutputInputRequest): Promise<string>
+}
+
+/** OutputInputRequest describes pane-owned input; secret values never enter output events. */
+export type OutputInputRequest = { message: string; secret?: boolean; signal?: AbortSignal }
 
 /** OutputEvent retains the channel and original text for independent file and terminal sinks. */
 export type OutputEvent = {

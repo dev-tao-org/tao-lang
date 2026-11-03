@@ -108,3 +108,17 @@ function renderView(snapshot: OutputSnapshot, width: number, height: number): st
   const view = React.createElement(OutputView, { snapshot, now: 12_000, width, height })
   return Text.stripAnsi(Ink.renderToString(view))
 }
+
+Tests.test('active prompt text stays in the root pane within crowded and single-row terminal budgets', () => {
+  const snapshot = workerSnapshot()
+  snapshot.prompt = 'Set up dependencies and continue? [Y/n] '
+  const rendered = renderView(snapshot, 80, 12)
+  const lines = rendered.split(NewlineCharacter)
+  Tests.expect(lines.length).toBeLessThanOrEqual(12)
+  Tests.expect(lines.every(line => line.length <= 80)).toBe(true)
+  const promptLine = lines.find(line => line.includes('[Y/n]'))!
+  Tests.expect(promptLine).toStartWith('│')
+  Tests.expect(promptLine).toEndWith('│')
+  Tests.expect(rendered.trimEnd()).toEndWith('Commands: quit')
+  Tests.expect(renderView(snapshot, 80, 1)).toBe('Set up dependencies and continue? [Y/n]')
+})

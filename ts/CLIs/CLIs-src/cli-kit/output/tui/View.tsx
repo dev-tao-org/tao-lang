@@ -17,19 +17,29 @@ const PreferredWorkerLogRows = 2
 export function OutputView(props: OutputViewProps): React.JSX.Element {
   const { snapshot, now, width, height } = props
   const commands = formatCommands(snapshot.commands, true)
-  const footerLines = snapshot.commands.length > 0 ? wrappedTail([commands], width, height) : []
+  const footerLimit = snapshot.prompt ? Math.max(0, height - 1) : height
+  const footerLines = snapshot.commands.length > 0 ? wrappedTail([commands], width, footerLimit) : []
   const footerRows = footerLines.length
   const rootRows = Math.min(Panels.PaneFrameRows, Math.max(0, height - footerRows))
   const workerRowCount = Panels.channelRowCount(snapshot.channels.length, width)
+  const promptRows = snapshot.prompt ? Math.min(2, Math.max(0, height - footerRows - rootRows)) : 0
   const preferredChannelRows = Math.max(1, workerRowCount * (Panels.PaneFrameRows + PreferredWorkerLogRows))
   const gap = height > preferredChannelRows + footerRows + Panels.PaneFrameRows ? 1 : 0
   const rootBudget = Math.max(0, height - preferredChannelRows - footerRows - gap - Panels.PaneFrameRows)
-  const rootRowLimit = Math.min(MaximumRootLogRows, rootBudget)
-  const rootLines = wrappedTail(snapshot.main.lines, Panels.paneContentWidth(width), rootRowLimit)
+  const rootRowLimit = Math.max(promptRows, Math.min(MaximumRootLogRows, rootBudget))
+  const rootSource = snapshot.prompt ? [...snapshot.main.lines, snapshot.prompt] : snapshot.main.lines
+  const rootLines = wrappedTail(rootSource, Panels.paneContentWidth(width), rootRowLimit)
   const channelRows = Math.max(0, height - rootLines.length - rootRows - gap - footerRows)
   return (
     <Ink.Box flexDirection="column" width={width}>
-      <RootPane channel={snapshot.main} lines={rootLines} now={now} rows={rootRows} width={width} />
+      <RootPane
+        channel={snapshot.main}
+        lines={rootLines}
+        now={now}
+        rows={rootRows}
+        width={width}
+        prompt={snapshot.prompt}
+      />
       <Ink.Box marginTop={gap}>
         <Panels.Columns channels={snapshot.channels} now={now} rows={channelRows} width={width} />
       </Ink.Box>
@@ -39,6 +49,7 @@ export function OutputView(props: OutputViewProps): React.JSX.Element {
 }
 
 type RootPaneProps = {
+  prompt?: string
   channel: OutputSnapshot['main']
   lines: readonly string[]
   now: number
@@ -51,7 +62,9 @@ function RootPane(props: RootPaneProps): React.JSX.Element | null {
     return null
   }
   if (props.rows < Panels.PaneFrameRows) {
-    return <Panels.ChannelSummary channel={props.channel} now={props.now} width={props.width} />
+    return props.prompt
+      ? <Ink.Text wrap="truncate">{props.prompt}</Ink.Text>
+      : <Panels.ChannelSummary channel={props.channel} now={props.now} width={props.width} />
   }
   return <Panels.ChannelPane channel={props.channel} lines={props.lines} now={props.now} width={props.width} />
 }

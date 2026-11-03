@@ -111,3 +111,14 @@ async function runFixture(mode: string, terminalOutput?: string, input = '') {
   ])
   return { status, stdout, stderr }
 }
+
+Tests.test('native prompt suspension keeps concurrent setup and shard output owned by restored panes', async () => {
+  const result = await runFixture('pane-routing', '1')
+  Tests.expect(result.status).toBe(0)
+  Tests.expect(result.stdout.startsWith('RESTORED PANES: ')).toBe(true)
+  Tests.expect(result.stdout).toContain('Managed npm declarations changed')
+  Tests.expect(result.stdout).toContain('worker partial completed')
+  Tests.expect(result.stdout).toContain('worker stderr')
+  Tests.expect(result.stdout).toContain('Set up dependencies and continue?')
+  Tests.expect(result.stderr).not.toContain('[TypeScript shard 2] worker')
+})
