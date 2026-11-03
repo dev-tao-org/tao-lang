@@ -3,13 +3,16 @@ import { Switch, Time } from '@shared'
 import { Terminal } from '@shared/os'
 import { Ink } from '../../bridges/Bridge_ink'
 import type { OutputRenderer, OutputSnapshot } from '../Output'
+import { createPaneInput } from './PromptInput'
 import { OutputView } from './View'
 
 /** createTUI creates the Ink renderer on the diagnostic terminal. */
 export function createTUI(): OutputRenderer {
   let latest = emptySnapshot()
   let now = Time.nowMs()
-  const instance = Ink.render(<TUI snapshot={latest} now={now} />, {
+  const input = createPaneInput(redraw)
+  let disposed = false
+  const instance = Ink.render(<TUI snapshot={latest} now={now} receive={input.receive} paste={input.paste} />, {
     stdout: Terminal.stderr,
     stderr: Terminal.stderr,
     patchConsole: false,
@@ -18,31 +21,50 @@ export function createTUI(): OutputRenderer {
   })
   const ticker = createElapsedTicker(() => hasRunningChannel(latest), () => {
     now = Time.nowMs()
-    instance.rerender(<TUI snapshot={latest} now={now} />)
+    redraw()
   })
   return {
     update(snapshot) {
       latest = snapshot
       now = Time.nowMs()
-      instance.rerender(<TUI snapshot={latest} now={now} />)
+      redraw()
       ticker.update()
     },
+    readInput: Terminal.isInteractive() ? input.read : undefined,
     async dispose() {
+      disposed = true
+      input.dispose()
       ticker.dispose()
       await instance.waitUntilRenderFlush()
       instance.unmount()
       await instance.waitUntilExit()
     },
   }
+
+  function redraw(): void {
+    if (disposed) {
+      return
+    }
+    const prompt = input.message()
+    const snapshot = prompt === undefined ? latest : { ...latest, prompt }
+    instance.rerender(<TUI snapshot={snapshot} now={now} receive={input.receive} paste={input.paste} />)
+  }
 }
 
-function TUI(props: {
+type TUIProps = {
   now: number
   snapshot: OutputSnapshot
-}): React.JSX.Element {
+  receive(text: string, key: Ink.Key): void
+  paste(text: string): void
+}
+
+function TUI(props: TUIProps): React.JSX.Element {
+  const isActive = props.snapshot.prompt !== undefined
+  Ink.useInput(props.receive, { isActive })
+  Ink.usePaste(props.paste, { isActive })
   const { stdout } = Ink.useStdout()
   const width = Math.max(1, stdout.columns ?? 80)
-  const height = Math.max(4, stdout.rows ?? 24)
+  const height = Math.max(1, stdout.rows ?? 24)
   return <OutputView snapshot={props.snapshot} now={props.now} width={width} height={height} />
 }
 

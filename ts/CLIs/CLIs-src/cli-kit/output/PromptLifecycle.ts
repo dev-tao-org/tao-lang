@@ -11,16 +11,19 @@ export function createPromptLifecycle(operations: PromptLifecycleOperations) {
   let suspended = false
   let transition = Promise.resolve()
   return {
-    run: <T>(prompt: () => Promise<T>) => beginPrompt(prompt),
+    run: <T>(prompt: () => Promise<T>) => beginPrompt(prompt, true),
+    runEmbedded: <T>(prompt: () => Promise<T>) => beginPrompt(prompt, false),
   }
 
-  async function beginPrompt<T>(prompt: () => Promise<T>): Promise<T> {
+  async function beginPrompt<T>(prompt: () => Promise<T>, suspend: boolean): Promise<T> {
     if (promptActive) {
       Errors.ThrowShouldNeverHappen('Another prompt is active. Wait for it to finish before starting another prompt.')
     }
     promptActive = true
     enqueue(async () => {
-      suspended = await operations.suspend() || suspended
+      if (suspend) {
+        suspended = await operations.suspend() || suspended
+      }
     })
     return await runPrompt(prompt, transition, finishPrompt, operations.reportResumeFailure, () => {
       promptActive = false

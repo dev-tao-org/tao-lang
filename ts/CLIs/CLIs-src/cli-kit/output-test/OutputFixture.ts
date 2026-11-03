@@ -5,6 +5,7 @@ import { runNonInteractiveCommand } from '../cmd-exec'
 import { IO, renderOutput } from '../io'
 import { configureCLIOutput } from '../output/Configuration'
 import type { OutputRenderer } from '../output/Output'
+import { runPaneFixture, writePaneChild } from './PaneFixture'
 
 /** outputFixturePath locates the isolated CLI output fixture. */
 export const outputFixturePath = Repo.resolvePath('ts/CLIs/CLIs-src/cli-kit/output-test/OutputFixture.ts')
@@ -15,6 +16,9 @@ if (Platform.isMain(import.meta)) {
 
 async function runFixture(): Promise<void> {
   const mode = Platform.argv[2]
+  if (await runPaneMode(mode)) {
+    return
+  }
   if (mode === 'command-failure') {
     await configureCLIOutput('agent')
     const status = Platform.argv[3] === 'null' ? null : Number(Platform.argv[3])
@@ -135,4 +139,44 @@ async function runPromptRecoveryFixture(mode: PromptRecoveryMode): Promise<void>
   })
   Terminal.stdout.write(events.join(',') + NewlineCharacter)
   await IO.finish()
+}
+
+async function runPaneRoutingFixture(): Promise<void> {
+  let latest = ''
+  const renderer = (): OutputRenderer => ({
+    update(snapshot) {
+      latest = snapshot.main.lines.join('|') + ' / '
+        + snapshot.channels.map(channel => channel.lines.join('|')).join('/')
+    },
+    async dispose() {},
+  })
+  IO.config({ stdout: 'terminal', stderr: 'terminal', progress: 'terminal' })
+  IO.setPromptRenderer(async () => renderer())
+  renderOutput(renderer())
+  const worker = IO.channel({ title: 'TypeScript shard 2' })
+  await IO.prompt(async () => {
+    IO.print('Managed npm declarations changed')
+    worker.stdout('worker partial ')
+    worker.stdout('completed\n')
+    worker.stderr('worker stderr\n')
+    IO.progress('Set up dependencies and continue?')
+  })
+  Terminal.stdout.write('RESTORED PANES: ' + latest + NewlineCharacter)
+  await IO.finish()
+}
+
+async function runPaneMode(mode = ''): Promise<boolean> {
+  if (mode === 'pane-interactive') {
+    await runPaneFixture()
+    return true
+  }
+  if (mode === 'pane-child') {
+    writePaneChild()
+    return true
+  }
+  if (mode === 'pane-routing') {
+    await runPaneRoutingFixture()
+    return true
+  }
+  return false
 }

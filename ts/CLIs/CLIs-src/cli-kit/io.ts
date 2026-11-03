@@ -19,7 +19,7 @@ export const IO = {
   prompt: withPrompt,
   setCommands(commands: readonly Output.OutputCommand[]) {
     output.setCommands(commands)
-    if (!tui) {
+    if (!tui && !suspendedTui) {
       printCommands()
     }
   },
@@ -73,6 +73,7 @@ type CommandEnvironment = Readonly<Record<string, EnvironmentValue>>
 /** renderOutput installs the sole terminal renderer for this process. */
 export function renderOutput(renderer: Output.OutputRenderer): void {
   tui = true
+  activeRenderer = renderer
   output.render(renderer)
 }
 
@@ -85,8 +86,11 @@ type LogDirectory = 'agent' | 'dev'
 type OutputStatus = 'passed' | 'failed'
 let configuration: IOConfiguration = {}
 let plainOutput = createPlainOutput()
-let writeFileOutput = createFileOutput({})
+let writeFileOutput = createFileOutput({}, announceLog)
 let tui = false
+let suspendedTui = false
+type ActiveOutputRenderer = Output.OutputRenderer | undefined
+let activeRenderer: ActiveOutputRenderer
 let lastMainOutput = ''
 let diagnostics = { warn: 0, error: 0 }
 let warningDetails: string[] = []
@@ -98,13 +102,16 @@ const promptLifecycle = createPromptLifecycle({
     if (!tui) {
       return false
     }
+    suspendedTui = true
     await output.finish()
     tui = false
+    activeRenderer = undefined
     return true
   },
   async resume() {
     if (promptRenderer) {
       renderOutput(await promptRenderer())
+      suspendedTui = false
     }
   },
   reportResumeFailure(error) {
@@ -115,11 +122,34 @@ const promptLifecycle = createPromptLifecycle({
 type ConfirmationArguments = Parameters<typeof Terminal.askConfirm>
 
 function askConfirmation(...args: ConfirmationArguments): Promise<boolean> {
+  const [options, terminal] = args
+  const renderer = activeRenderer
+  if (!terminal && renderer?.readInput) {
+    return promptLifecycle.runEmbedded(() =>
+      Terminal.askConfirm(options, {
+        isInteractive: () => true,
+        open: () => ({
+          question: (message, request) => readPaneInput(renderer, { message, signal: request.signal }),
+          close() {},
+        }),
+        write: message => IO.progress(message),
+      })
+    )
+  }
   return withPrompt(() => Terminal.askConfirm(...args))
 }
 
 function askSecret(message: string): Promise<string> {
+  const renderer = activeRenderer
+  if (renderer?.readInput) {
+    return promptLifecycle.runEmbedded(() => readPaneInput(renderer, { message, secret: true }))
+  }
   return withPrompt(() => Terminal.askSecret(message))
+}
+
+async function readPaneInput(renderer: Output.OutputRenderer, request: Output.OutputInputRequest): Promise<string> {
+  IO.progress(request.message)
+  return await renderer.readInput!(request)
 }
 
 function withPrompt<T>(prompt: () => Promise<T>): Promise<T> {
@@ -135,9 +165,17 @@ function configureOutput(options: IOConfiguration): void {
   diagnostics = { warn: 0, error: 0 }
   warningDetails = []
   plainOutput = createPlainOutput()
-  writeFileOutput = createFileOutput(options)
+  writeFileOutput = createFileOutput(options, announceLog)
   output = Output.createOutput(writeOutput)
   output.main.start()
+}
+
+function announceLog(message: string): void {
+  if (tui || suspendedTui) {
+    output.main.progress(message.trimEnd())
+  } else {
+    Terminal.stderr.write(message)
+  }
 }
 
 function writeOutput(event: Output.OutputEvent): void {
@@ -159,7 +197,8 @@ function writeOutput(event: Output.OutputEvent): void {
     mode(event.text)
     return
   }
-  if (!tui && (mode !== 'log' || event.summary)) {
+  const visiblePlainOutput = !tui && !suspendedTui
+  if (visiblePlainOutput && (mode !== 'log' || event.summary)) {
     plainOutput.write(event)
     printCommands()
   }
@@ -190,7 +229,7 @@ function countDiagnostic(event: Output.OutputEvent): void {
 
 function shouldReportQuietError(): boolean {
   const isFirstQuietError = diagnostics.error === 1 && isQuiet()
-  const isLocalOutput = !configuration.forwardEvents && !tui
+  const isLocalOutput = !configuration.forwardEvents && !tui && !suspendedTui
   return isFirstQuietError && isLocalOutput
 }
 
@@ -209,6 +248,8 @@ async function finishOutput(status: OutputStatus = 'passed'): Promise<void> {
   output.main.finish(status)
   await output.finish()
   tui = false
+  suspendedTui = false
+  activeRenderer = undefined
   plainOutput.finish()
   if (wasTui) {
     const snapshot = output.snapshot()
