@@ -41,8 +41,9 @@ export async function runPaneFixture(): Promise<void> {
   })
   await exercisePanePrompts(input)
   await requirePaneCancellation(cancellation.signal)
+  recordCompletionFailure()
   IO.summary('pane input completed')
-  await IO.finish()
+  await IO.finish('failed')
   Terminal.stdout.write('PANES' + NewlineCharacter + frames.join(NewlineCharacter))
 
   function redraw(): void {
@@ -87,4 +88,12 @@ async function requirePaneCancellation(signal: AbortSignal): Promise<void> {
   if (!cancelled) {
     Errors.ThrowShouldNeverHappen('Fixture cancellation did not reach its active reader.')
   }
+}
+
+function recordCompletionFailure(): void {
+  IO.warn('fixture completion warning')
+  const channel = IO.channel({ title: 'Failed worker' })
+  channel.start()
+  channel.printToStdErr('fixture worker failure')
+  channel.finish('failed')
 }
