@@ -93,7 +93,7 @@ function parseHistoryRecord(source: string): HistoryRecord {
 }
 
 function serializeHistoryRecord(record: HistoryRecord): string {
-  return Json.PrintIndented(record) + NewlineCharacter
+  return Json.Print(record) + NewlineCharacter
 }
 
 function parsePreviewReport(source: string): unknown {

@@ -157,11 +157,11 @@ function decorateHmrPayload(message: string, options: MetroHookOptions): string 
   if (payload.type === 'error') {
     options.reportError(Json.Print(payload.body))
   }
-  return Json.Print(payload)
+  return Json.Print(payload, { prettyPrint: false })
 }
 
 function serializeInternalHmrError(error: unknown): string {
-  return Json.Print({ type: 'error', body: { type: 'InternalError', message: String(error) } })
+  return Json.Print({ type: 'error', body: { type: 'InternalError', message: String(error) } }, { prettyPrint: false })
 }
 
 function wrapChangeListeners(prototype: MetroPrototype, options: MetroHookOptions): void {

@@ -1,4 +1,4 @@
-import { Json } from '@shared'
+import { Json, Objects } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { collectAllRequirements, defaultSingletonPackages } from '../ManagedModule/ManagedModuleGraph'
@@ -123,7 +123,7 @@ export function createManagedProfileManifest(
   runtimePolicy?: ManagedTypes.ManagedRuntimePolicy,
 ): string {
   return `${
-    Json.PrintIndented({
+    Json.Print({
       name: 'tao-managed-app',
       private: true,
       type: 'module',
@@ -261,9 +261,9 @@ function parseManagedProfileMetadata(contents: string): MaybeManagedProfileMetad
 }
 
 function sameManagedPackageVersions(left: unknown, right: ManagedTypes.ManagedRuntimePins): boolean {
-  return Json.Print(left) === Json.Print(right)
+  return Objects.equal(left, right)
 }
 
 function sameSerializedSingletonPackages(left: unknown, right: readonly string[]): boolean {
-  return Json.Print(left) === Json.Print(right)
+  return Objects.equal(left, right)
 }

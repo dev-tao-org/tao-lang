@@ -124,5 +124,5 @@ function isOwnershipRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function serializeHostOwnership(files: GeneratedHostFiles, dependencies?: string): string {
-  return Json.PrintIndented({ files, dependencies })
+  return Json.Print({ files, dependencies })
 }

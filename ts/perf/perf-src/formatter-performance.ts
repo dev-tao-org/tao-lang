@@ -74,7 +74,7 @@ type FormatterPerformanceReport = {
 type FormatterFixtureReport = { scenario: string; hash: string }
 
 function serializeFormatterPerformanceReport(report: FormatterPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 function sampleFixture(fixture: { source: string; scenario: string }, typescript: Embedded.EmbeddedFormatter) {

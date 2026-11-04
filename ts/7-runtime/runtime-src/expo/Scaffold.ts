@@ -35,7 +35,7 @@ function serializeExpoPackageManifest(
   dependencies: RuntimePackageVersions,
   devDependencies: RuntimePackageVersions,
 ): string {
-  return Json.PrintIndented({
+  return Json.Print({
     name: 'tao-preview',
     private: true,
     main: 'Application.ts',
@@ -47,7 +47,7 @@ function serializeExpoPackageManifest(
 
 function serializeTaoResolution(options: ExpoScaffoldOptions): string {
   const singletonPackages = resolveSingletonPackages(options)
-  return Json.PrintIndented({
+  return Json.Print({
     watchFolders: options.watchFolders ?? [],
     singletonPackages,
   })
@@ -61,11 +61,11 @@ function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string
 }
 
 function serializeExpoAppManifest(): string {
-  return Json.PrintIndented({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
+  return Json.Print({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
 }
 
 function serializeExpoTypeScriptConfig(): string {
-  return Json.PrintIndented(expoTypeScriptConfig)
+  return Json.Print(expoTypeScriptConfig)
 }
 
 const expoTypeScriptConfig = {

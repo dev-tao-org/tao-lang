@@ -55,7 +55,7 @@ export async function installFixturePackage(
   await FS.mkdir(directory)
   await FS.writeFile(
     Path.join(directory, 'package.json'),
-    Json.PrintIndented({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }),
+    Json.Print({ private: true, dependencies: { 'tao-fixture-label': '1.0.0' } }),
   )
   const installed = await createBunExecutor(root, registry)('bun', ['install', '--no-progress'], directory)
   if (installed.status !== 0) {
@@ -123,7 +123,7 @@ async function recordProfileInstall(
   lock.overrides = manifest.overrides
   Object.assign(lock.packages, fixtureLock.packages)
   await materializeLockGraph(lock, options, nodeModules)
-  await FS.writeFile(Path.join(directory, 'bun.lock'), `${Json.PrintIndented(lock)}${NewlineCharacter}`)
+  await FS.writeFile(Path.join(directory, 'bun.lock'), `${Json.Print(lock)}${NewlineCharacter}`)
 }
 
 async function materializeLockGraph(

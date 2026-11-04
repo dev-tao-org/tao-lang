@@ -157,7 +157,7 @@ export async function readJson<Value>(path: string): Promise<Value> {
 /** writeJson atomically replaces retained state. */
 export async function writeJson(path: string, value: unknown): Promise<void> {
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FS.writeFile(pending, Json.PrintIndented(value) + NewlineCharacter)
+  await FS.writeFile(pending, Json.Print(value) + NewlineCharacter)
   await FS.rename(pending, path)
 }
 

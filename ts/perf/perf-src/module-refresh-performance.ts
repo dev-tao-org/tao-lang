@@ -272,7 +272,7 @@ type ModuleRefreshPerformanceSummary = {
 }[]
 
 function serializeModuleRefreshPerformanceReport(report: ModuleRefreshPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 async function disposeLayouts(owned: Resources): Promise<void> {

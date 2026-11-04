@@ -1,5 +1,5 @@
 import { Errors, Json, Sort, Timings, Try } from '@shared'
-import { Artifacts, BuildLock, FS, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, BuildLock, FS, Hash, Path, Platform, Repo } from '@shared/os'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
 import { readRuntimeSources, type RuntimeSourceContents, type RuntimeSourcePaths } from './runtime-sources'
@@ -129,11 +129,12 @@ type RuntimePackage = {
 type RuntimeWorkspace = { patchedDependencies?: RuntimeLock.RuntimePatchPaths }
 
 function createRuntimeBuildIdentity(inputs: RuntimeBuildInputs): string {
-  return Platform.hashText(Json.Print(inputs))
+  // This rebuildable cache treats object key order as semantically irrelevant.
+  return Hash.Of(inputs)
 }
 
 function formatRuntimeManifest(manifest: RuntimeLock.RuntimeManifest): string {
-  return Json.PrintIndented(manifest)
+  return Json.Print(manifest)
 }
 
 function formatRuntimeMetadata(
@@ -141,7 +142,7 @@ function formatRuntimeMetadata(
   manifest: RuntimeLock.RuntimeManifest,
   sources: RuntimeSourcePaths,
 ): string {
-  return Json.PrintIndented({
+  return Json.Print({
     version: 2,
     identity,
     dependencies: manifest.dependencies,

@@ -102,11 +102,11 @@ type ObservedSourceField = 'path' | 'document'
 function createDependencySignature(requirements: DependencyRequirement[]): string {
   const authoredRequirements = requirements.filter(item => item.provider !== 'bundled' || item.identifier !== 'tao')
   const serializedRequirements = authoredRequirements.map(serializeDependencyRequirement).sort(Sort.CompareStrings)
-  return Json.Print(serializedRequirements)
+  return Json.Print(serializedRequirements, { prettyPrint: false })
 }
 
 function serializeDependencyRequirement(requirement: DependencyRequirement): string {
-  return Json.Print(requirement)
+  return Json.Print(requirement, { prettyPrint: false })
 }
 
 function requireEditableDependencyDeclarations(lock: DependencyLock, owner: string): void {

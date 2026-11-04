@@ -49,7 +49,7 @@ function formatPublishedExtensionManifest(contents: string): string {
   delete manifest.dependencies
   delete manifest.devDependencies
   delete manifest.private
-  return Json.PrintIndented({
+  return Json.Print({
     ...manifest,
     name: 'tao',
     publisher: 'devtao',

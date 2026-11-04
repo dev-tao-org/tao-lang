@@ -32,7 +32,7 @@ Tests.test('library initializer emits a typechecked consumer that renders compil
     await page.screenshot({ path: Path.join(root, 'rendered.png') })
     await FS.writeFile(
       Path.join(root, 'render-receipt.json'),
-      Json.PrintIndented({ status: 'passed', url: host.url }),
+      Json.Print({ status: 'passed', url: host.url }),
     )
   }, {
     async finally() {

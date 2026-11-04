@@ -89,12 +89,12 @@ type ParserPerformanceReport = {
 type ParserPerformanceDefinitions = { cold: string; warm: string; rebuild: string; transformer: string }
 
 function serializeParserPerformanceReport(report: ParserPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 async function createParserFixtureFingerprint(): Promise<string> {
   const fixtures = await parserFixtures()
-  return Platform.hashText(Json.Print(fixtures))
+  return Platform.hashText(Json.Print(fixtures, { prettyPrint: false }))
 }
 
 async function coldSamples(): Promise<Sample[]> {

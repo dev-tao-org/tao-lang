@@ -36,5 +36,5 @@ export default registerCommand({
 type DoctorOutput = DoctorReport | DoctorReport['fingerprint']
 
 function formatDoctorOutput(report: DoctorOutput): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }

@@ -149,7 +149,7 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: Runtime.Ru
 }
 
 function serializePublishedBuildConfiguration(extendsPath: string): string {
-  return `${Json.PrintIndented({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] })}${NewlineCharacter}`
+  return `${Json.Print({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] })}${NewlineCharacter}`
 }
 
 async function writeSnapshotFiles(

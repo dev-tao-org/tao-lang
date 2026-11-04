@@ -128,5 +128,5 @@ async function writeBuildTimings(timings: Timings): Promise<void> {
 }
 
 function formatParserBuildTimings(timings: Timings): string {
-  return Json.PrintIndented({ version: 1, samples: timings.samples })
+  return Json.Print({ version: 1, samples: timings.samples })
 }

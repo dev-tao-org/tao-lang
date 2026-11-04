@@ -60,7 +60,7 @@ type ReactivityPerformanceDefinitions = {
 }
 
 function serializeReactivityPerformanceReport(report: ReactivityPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 type Scenario = 'unchanged-reads' | 'observed-writes' | 'batched-writes' | 'create-dispose'

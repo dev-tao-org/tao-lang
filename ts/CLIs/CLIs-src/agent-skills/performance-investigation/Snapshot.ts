@@ -50,7 +50,7 @@ export async function createSnapshot(root: string, ref?: string): Promise<Perfor
     const snapshot = await describeSnapshot(root, context)
     await FS.writeFile(
       Path.join(directory, 'snapshot.json'),
-      Json.PrintIndented(snapshot) + NewlineCharacter,
+      Json.Print(snapshot) + NewlineCharacter,
     )
     return snapshot
   }, {

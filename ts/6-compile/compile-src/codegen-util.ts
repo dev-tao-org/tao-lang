@@ -29,7 +29,7 @@ export function getScopeValue(scope: ScopeCode): string {
 
 /** emitStringLiteral escapes an external string for a generated JavaScript literal. */
 export function emitStringLiteral(value: string): string {
-  return Json.Print(value)
+  return Json.Print(value, { prettyPrint: false })
 }
 
 type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag

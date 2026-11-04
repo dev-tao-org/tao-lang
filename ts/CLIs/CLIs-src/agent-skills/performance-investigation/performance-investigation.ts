@@ -98,5 +98,5 @@ function registerMeasurementCommands(command: Command): void {
 }
 
 function printResult(value: unknown): void {
-  IO.print(Json.PrintIndented(value))
+  IO.print(Json.Print(value))
 }

@@ -1,11 +1,10 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Json, Schema } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
 import type { MeasurementJob } from '../../agent-skills/performance-investigation/Runner'
-import type { MeasurementSummary } from '../../agent-skills/performance-investigation/Summary'
 import { describeTimingComparison } from './TimingComparison'
 import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote, type TimingRemoteRequest } from './TimingRemote'
@@ -15,11 +14,7 @@ import { isValidTimingReport, readTimingHistory } from './TimingReportHistory'
 export type TimingReportRequest = { host: string; tooling: string; job?: string }
 
 /** TimingReport identifies independent-session medians validated by the runner helper. */
-export type TimingReport = MeasurementSummary & {
-  runner: string
-  startedAt: string
-  finishedAt: string
-}
+export type TimingReport = Schema.infer<typeof timingReportSchema>
 
 /** reportTiming prints a completed runner job without launching measurements. */
 export async function reportTiming(request: TimingReportRequest): Promise<void> {
@@ -37,7 +32,7 @@ export async function presentTimingReport(
   const history = await readTimingHistory(report, directory)
   const path = Path.join(directory, Path.posix.basename(report.directory) + '.json')
   const pending = `${path}.${Platform.randomUUID()}.pending`
-  await FS.writeFile(pending, Json.PrintIndented(report) + NewlineCharacter)
+  await FS.writeFile(pending, Json.Print(report) + NewlineCharacter)
   await FS.rename(pending, path)
   print([
     formatTimingReport(report),
@@ -61,8 +56,8 @@ export async function readTimingReport(
   requireJobPath(job, request.tooling)
   const args = createTimingHelperArguments('summarize', [job])
   const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const reports = Json.Parse(text) as TimingReport[]
-  if (!Array.isArray(reports) || reports.length !== 1 || reports[0]?.directory !== job) {
+  const reports = parseTimingReports(text)
+  if (reports.length !== 1 || reports[0]?.directory !== job) {
     Errors.ThrowHostEnvironment('The runner did not return the requested timing report.')
   }
   return await readJobProvenance(remote, reports[0], execute)
@@ -170,3 +165,41 @@ function requireJobPath(job: string, tooling: string): void {
     Errors.ThrowUserInput('Select a job directly inside this tooling checkout’s retained jobs directory.')
   }
 }
+
+function parseTimingReports(text: string): TimingReport[] {
+  return Try(() => Json.Parse(text, { schema: Schema.array(timingReportSchema) }), {
+    catch: () => Errors.ThrowHostEnvironment('The runner returned incomplete timing provenance or measurements.'),
+  })
+}
+
+const timingReportSchema = Schema.looseObject({
+  directory: Schema.string(),
+  commit: Schema.string(),
+  tree: Schema.string(),
+  fixtureSha256: Schema.string(),
+  settings: Schema.looseObject({
+    repo: Schema.string(),
+    fixture: Schema.string(),
+    samples: Schema.number(),
+    edits: Schema.number(),
+  }),
+  conditions: Schema.looseObject({
+    system: Schema.unknown(),
+    runtime: Schema.string(),
+    browser: Schema.string(),
+    measurement: Schema.unknown(),
+    frameSizes: Schema.array(Schema.unknown()),
+  }),
+  groups: Schema.array(Schema.looseObject({
+    name: Schema.string(),
+    sessions: Schema.number(),
+    medianMs: Schema.number(),
+    minMs: Schema.number(),
+    maxMs: Schema.number(),
+    runMediansMs: Schema.array(Schema.number()),
+  })),
+  interpretation: Schema.string(),
+  runner: Schema.string(),
+  startedAt: Schema.string(),
+  finishedAt: Schema.string(),
+})

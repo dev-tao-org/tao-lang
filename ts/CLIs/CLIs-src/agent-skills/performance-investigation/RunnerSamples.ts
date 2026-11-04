@@ -36,6 +36,6 @@ export async function collectSamples(
 async function writeJob(directory: string, job: MeasurementJob): Promise<void> {
   const path = Path.join(directory, JobFileName)
   const pending = `${path}.pending`
-  await FS.writeFile(pending, Json.PrintIndented(job) + '\n')
+  await FS.writeFile(pending, Json.Print(job) + '\n')
   await FS.rename(pending, path)
 }

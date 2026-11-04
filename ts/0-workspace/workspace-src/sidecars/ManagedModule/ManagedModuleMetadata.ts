@@ -124,7 +124,7 @@ function resolveTypeScriptDefaultsPath(projectRoot: string): string {
 function createModuleTypeScriptConfig(moduleDirectory: string, defaultsPath: string): string {
   const extendsPath = Path.toRelativeModuleSpecifier(Path.relative(moduleDirectory, defaultsPath))
   return `${
-    Json.PrintIndented({
+    Json.Print({
       extends: extendsPath,
       compilerOptions: { baseUrl: '.' },
       include: ['**/*.ts', '**/*.tsx'],
@@ -222,7 +222,7 @@ async function repairModuleFiles(
 }
 
 function createModuleManifest(dependencies: ManagedTypes.ManagedPackageVersionMap): string {
-  return `${Json.PrintIndented({ private: true, type: 'module', dependencies })}${NewlineCharacter}`
+  return `${Json.Print({ private: true, type: 'module', dependencies })}${NewlineCharacter}`
 }
 
 function cannotReplaceModuleFile(
@@ -239,7 +239,7 @@ function createModuleOwnerMarker(
   profile: string,
 ): string {
   return `${
-    Json.PrintIndented({
+    Json.Print({
       files: files.map(([path]) => path),
       generatedHashes: Object.fromEntries(files.map(([path, contents]) => [path, Platform.hashText(contents)])),
       packages: requirements.map(({ name }) => name),
@@ -312,7 +312,7 @@ function rejectSymlink(path: string): void {
 
 function createTypeScriptDefaults(): string {
   return `${
-    Json.PrintIndented({
+    Json.Print({
       compilerOptions: {
         moduleResolution: 'Bundler',
         module: 'ESNext',

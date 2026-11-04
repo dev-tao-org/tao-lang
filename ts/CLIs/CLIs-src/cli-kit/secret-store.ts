@@ -118,8 +118,7 @@ export function formatSecretStore(store: SecretStore, header = secretStoreHeader
         ...(store.storeKey === undefined ? {} : { storeKey: store.storeKey }),
         secrets,
       },
-      undefined,
-      2,
+      { prettyPrint: true },
     )
   }${NewlineCharacter}`
 }

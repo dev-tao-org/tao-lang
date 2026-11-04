@@ -179,7 +179,7 @@ function describeNativeRebuildRequirement(profile: OptionalManagedProfile): stri
 // createDeclarationKey includes reachable files, npm declarations and foreign-view presence.
 // Source-only edits retain readiness; a changed declaration or reachable module takes the authoritative path.
 function createDeclarationKey(program: Typecheck.LinkedProgram): string {
-  return Json.Print(program.modules.map(describeModuleDeclarationFingerprint))
+  return Json.Print(program.modules.map(describeModuleDeclarationFingerprint), { prettyPrint: false })
 }
 
 function describeModuleDeclarationFingerprint(module: Typecheck.LinkedProgram['modules'][number]) {

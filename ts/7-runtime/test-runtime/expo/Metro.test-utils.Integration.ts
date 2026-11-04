@@ -53,7 +53,7 @@ export async function verifyMetroBurst(
   }
   const path = Artifacts.resolvePath('notes/radical-preview', `metro-burst-${Platform.randomUUID()}.json`)
   await FS.mkdir(Path.dirname(path))
-  await FS.writeFile(path, Json.PrintIndented(report))
+  await FS.writeFile(path, Json.Print(report))
 }
 
 function createLargerNamespace(): Record<string, string> {

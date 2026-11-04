@@ -233,7 +233,7 @@ type PreviewPerformanceDefinitions = {
 }
 
 function serializePreviewPerformanceReport(report: PreviewPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 function requirePublished(result: Workspace.UpdateResult): void {

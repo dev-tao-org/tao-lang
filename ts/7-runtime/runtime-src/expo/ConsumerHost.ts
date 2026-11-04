@@ -40,7 +40,7 @@ export async function createConsumerHost(options: ConsumerHostOptions): Promise<
 }
 
 function serializeConsumerManifest(options: ConsumerHostOptions): string {
-  return Json.PrintIndented({
+  return Json.Print({
     name: 'tao-consumer-host',
     private: true,
     main: 'Application.ts',
@@ -61,18 +61,18 @@ function resolveHostDependencies(versions: RuntimePackageVersions, directory: st
 }
 
 function serializeConsumerApp(name: string): string {
-  return Json.PrintIndented({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } })
+  return Json.Print({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } })
 }
 
 function serializeConsumerResolution(options: ConsumerHostOptions): string {
-  return Json.PrintIndented({
+  return Json.Print({
     packageDirectory: options.packageDirectory,
     packages: Object.keys(options.dependencies),
   })
 }
 
 function serializeConsumerTypeScript(): string {
-  return Json.PrintIndented({
+  return Json.Print({
     extends: 'expo/tsconfig.base',
     compilerOptions: { noEmit: true },
     include: ['Application.ts'],

@@ -204,7 +204,7 @@ async function damageCurrentOwnershipMarker(marker: string): Promise<void> {
   const contents = Json.Parse(await FS.readFile(marker, 'utf8')) as ManagedTransitionFixtureRecord
   delete contents.generatedHashes
   await FS.chmod(marker, 0o644)
-  await FS.writeFile(marker, `${Json.PrintIndented(contents)}${NewlineCharacter}`)
+  await FS.writeFile(marker, `${Json.Print(contents)}${NewlineCharacter}`)
 }
 
 async function assertConsumerConflict(root: string): Promise<void> {

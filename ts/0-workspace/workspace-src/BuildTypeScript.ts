@@ -25,7 +25,7 @@ export async function prepareBuildTypeScript(
 
 type BuildTypeScriptConfiguration = { extends: string; include: string[] }
 function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
-  return `${Json.PrintIndented(configuration)}${NewlineCharacter}`
+  return `${Json.Print(configuration)}${NewlineCharacter}`
 }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {

@@ -43,7 +43,7 @@ type Options = Map<string, string[]>
 type OptionalOptionName = string | undefined
 
 function formatLearningResult(result: ReviewLearningCommandResult): string {
-  return Json.PrintIndented(result)
+  return Json.Print(result)
 }
 
 async function executeCommand(

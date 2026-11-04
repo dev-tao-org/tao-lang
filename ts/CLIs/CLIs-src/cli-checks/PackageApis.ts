@@ -104,7 +104,7 @@ function readPackageManifestFiles(root: string): string[] {
 }
 
 function serializeCompilerConfig(config: unknown): string {
-  return Json.PrintIndented(config)
+  return Json.Print(config)
 }
 
 function readManifestApis(filename: string): PackageApi[] {

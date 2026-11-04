@@ -8,7 +8,10 @@ export type OutputMessage = Pick<OutputEvent, OutputMessageFields>
 /** encodeOutputMessage frames a Tao event without interpreting arbitrary tool output as diagnostics. */
 export function encodeOutputMessage(event: OutputMessage): string {
   return RecordSeparatorCharacter
-    + Json.Print({ stream: event.stream, level: event.level, text: event.text, summary: event.summary })
+    + Json.Print(
+      { stream: event.stream, level: event.level, text: event.text, summary: event.summary },
+      { prettyPrint: false },
+    )
     + NewlineCharacter
 }
 

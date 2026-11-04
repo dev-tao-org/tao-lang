@@ -24,7 +24,7 @@ const embeddedFiles = {
 }
 
 function serializeEmbeddedProjectMetadata(metadata: typeof ProjectMetadata): string {
-  return `${Json.PrintIndented(metadata)}${NewlineCharacter}`
+  return `${Json.Print(metadata)}${NewlineCharacter}`
 }
 
 async function resolveDefaultProjectDirectory(): Promise<string> {
