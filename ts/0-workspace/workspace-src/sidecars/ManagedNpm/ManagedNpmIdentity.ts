@@ -35,7 +35,7 @@ export function calculateManagedGraphFingerprint(
     singletonPackages: Sort.Strings(input.singletonPackages ?? defaultSingletonPackages),
     policyRegistryVersion: 1,
     runtimePolicy: ManagedNpmPolicy.describeManagedResolutionPolicy(input.runtimePolicy),
-  }))
+  }, { prettyPrint: false }))
 }
 
 /** calculateManagedProfileFingerprint identifies one graph install for its Bun, host, and compiler settings. */
@@ -49,7 +49,7 @@ export function calculateManagedProfileFingerprint(
     installHost: installHostIdentity(input),
     typeScriptDefaultsHash: typeScriptDefaultsHash(),
     runtimePatches: ManagedNpmPolicy.calculateManagedPatchIdentity(input.runtimePolicy),
-  }))
+  }, { prettyPrint: false }))
 }
 
 /** resolveManagedProfilePath resolves the host-specific generated profile directory. */

@@ -47,5 +47,5 @@ const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory()
 
 function respond(response: MetroPlatform.OutgoingResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
-  response.end(Json.Print(value))
+  response.end(Json.Print(value, { prettyPrint: false }))
 }

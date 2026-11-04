@@ -32,7 +32,7 @@ function formatPublishedDevManifest(contents: string): string {
   const manifest = Json.Parse(contents) as DevExtensionManifest
   delete manifest.private
   delete manifest.devDependencies
-  return Json.PrintIndented({
+  return Json.Print({
     ...manifest,
     name: 'dev-tao-org',
     publisher: 'devtao',

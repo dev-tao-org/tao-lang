@@ -177,7 +177,7 @@ async function stageSnapshot(input: SnapshotStageInput): Promise<void> {
 }
 
 function serializeSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${Json.PrintIndented({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
+  return `${Json.Print({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
 }
 
 function resolvePublishedSnapshotRoot(snapshotRoot: string, recoveryRoot: string): string {

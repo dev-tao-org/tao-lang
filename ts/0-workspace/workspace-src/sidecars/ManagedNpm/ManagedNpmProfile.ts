@@ -236,7 +236,7 @@ async function persistProfile(
 }
 
 function serializeProfileMetadata(metadata: State.ManagedProfileMetadata): string {
-  return `${Json.PrintIndented(metadata)}${NewlineCharacter}`
+  return `${Json.Print(metadata)}${NewlineCharacter}`
 }
 
 function createProfileMetadata(

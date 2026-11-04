@@ -138,5 +138,5 @@ async function ensureProjectIdentity(path: string): Promise<void> {
 }
 
 function serializeProjectIdentity(id: string): string {
-  return `${Json.PrintIndented({ version: 1, id })}${NewlineCharacter}`
+  return `${Json.Print({ version: 1, id })}${NewlineCharacter}`
 }

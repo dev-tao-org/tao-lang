@@ -51,12 +51,15 @@ async function listTaoFiles(relative: string): Promise<string[]> {
 }
 
 function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
-  return Json.Print(value, (key, item) => {
-    if (key === 'start' || key === 'end') {
-      return undefined
-    }
-    return key === 'code'
-      ? typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
-      : item
+  return Json.Print(value, {
+    prettyPrint: false,
+    replacer: (key, item) => {
+      if (key === 'start' || key === 'end') {
+        return undefined
+      }
+      return key === 'code'
+        ? typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
+        : item
+    },
   })
 }

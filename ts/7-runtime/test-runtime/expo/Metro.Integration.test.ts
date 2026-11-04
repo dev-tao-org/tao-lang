@@ -58,7 +58,7 @@ async function verifyOverlapAndRepair(session: ExpoSession, publishBeforeAdmissi
   const messages: MetroSocketMessage[] = []
   socket.addEventListener('message', event => messages.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)
-  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
+  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }, { prettyPrint: false }))
   let published = false
   const pending = session.publish(createRevision('B', 1)).then(outcome => {
     published = true
@@ -122,7 +122,7 @@ async function verifyMultipleGroups(
   const secondary: typeof primary = []
   socket.addEventListener('message', event => secondary.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)
-  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }))
+  socket.send(Json.Print({ type: 'register-entrypoints', entryPoints: [bundleUrl] }, { prettyPrint: false }))
   await waitFor(async () => secondary.some(message => message.type === 'bundle-registered'))
   await Http.request(`${session.url}/__tao_test/arm`)
   let firstDone = false

@@ -11,7 +11,7 @@ export function runtimeLock(source: string, manifest: RuntimeManifest): string {
   const packages = Object.fromEntries(
     Object.entries(lock.packages).filter(([, resolution]) => !resolution[0].includes('@workspace:')),
   )
-  return Json.PrintIndented({
+  return Json.Print({
     lockfileVersion: lock.lockfileVersion,
     configVersion: lock.configVersion,
     workspaces: {

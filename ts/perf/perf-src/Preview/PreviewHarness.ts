@@ -240,7 +240,7 @@ function sendEvent(
 }
 
 function encodeEvent(encoder: WebHost.TextEncoder, name: string, data: object): Uint8Array {
-  const message = Shared.joinTextLines(`event: ${name}`, `data: ${Json.Print(data)}`, '', '')
+  const message = Shared.joinTextLines(`event: ${name}`, `data: ${Json.Print(data, { prettyPrint: false })}`, '', '')
   return encoder.encode(message)
 }
 

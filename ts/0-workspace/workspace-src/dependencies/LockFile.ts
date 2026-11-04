@@ -262,7 +262,7 @@ async function parseDependencyLockFile(path: string): Promise<unknown> {
 
 function serializeDependencyLock(lock: Types.DependencyLock, projectRoot: string): string {
   const portableLock = relativizeLocations(lock, projectRoot)
-  return Json.PrintIndented(portableLock) + NewlineCharacter
+  return Json.Print(portableLock) + NewlineCharacter
 }
 
 async function parseRetainedProfileMetadata(path: string): Promise<unknown> {

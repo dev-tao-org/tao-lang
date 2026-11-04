@@ -1,18 +1,13 @@
-import { Json } from '@shared'
+import { Json, Schema } from '@shared'
 import { Errors, Lists, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
 
 type SerializedModuleOwner = string | undefined
 type PreviousModuleOwner = ManagedModuleOwner | undefined
-type ManagedGeneratedFileHashes = Record<string, string>
 
 /** ManagedModuleOwner records the consumer profile and package links owning generated module files. */
-export type ManagedModuleOwner = {
-  profile: string
-  packages: string[]
-  generatedHashes?: ManagedGeneratedFileHashes
-}
+export type ManagedModuleOwner = Schema.infer<typeof managedModuleOwnerSchema>
 
 /** validateModuleOwnership checks current files and accepts transitions only within one project cache. */
 export async function validateModuleOwnership(
@@ -138,33 +133,17 @@ function parseGeneratedModulePackageNames(contents: string): string[] {
 }
 
 function parseOwner(ownerText: string): ManagedModuleOwner | undefined {
-  const owner = Try.WithDefault(undefined, () => parseManagedModuleOwner(ownerText))
-  return isManagedModuleOwner(owner) ? owner : undefined
+  return Try.WithDefault(undefined, () => parseManagedModuleOwner(ownerText))
 }
 
-type ParsedModuleOwnerFields = Record<string, unknown>
+const managedModuleOwnerSchema = Schema.looseObject({
+  profile: Schema.string(),
+  packages: Schema.array(Schema.string().refine(isNpmPackageName)),
+  generatedHashes: Schema.record(Schema.string(), Schema.string()).optional(),
+})
 
-function isManagedModuleOwner(value: unknown): value is ManagedModuleOwner {
-  if (!isParsedModuleOwnerFields(value)) {
-    return false
-  }
-  if (typeof value.profile !== 'string' || !Array.isArray(value.packages)) {
-    return false
-  }
-  return value.packages.every(isPackageName)
-}
-
-function parseManagedModuleOwner(contents: string): ParsedModuleOwnerFields | undefined {
-  const value: unknown = Json.Parse(contents)
-  return isParsedModuleOwnerFields(value) ? value : undefined
-}
-
-function isParsedModuleOwnerFields(value: unknown): value is ParsedModuleOwnerFields {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isPackageName(name: unknown): name is string {
-  return typeof name === 'string' && isNpmPackageName(name)
+function parseManagedModuleOwner(contents: string): ManagedModuleOwner {
+  return Json.Parse(contents, { schema: managedModuleOwnerSchema })
 }
 
 function validateOwnerProfile(

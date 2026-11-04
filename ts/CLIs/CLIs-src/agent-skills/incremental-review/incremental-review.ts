@@ -68,7 +68,7 @@ type OptionalPath = string | undefined
 type ReviewNoteResult = { notes: string[]; recheck: string[] }
 
 function formatReviewResult(result: IncrementalReviewResult): string {
-  return Json.PrintIndented(result)
+  return Json.Print(result)
 }
 
 async function runSessionCommand(

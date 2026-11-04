@@ -79,7 +79,7 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
 ]
 
 function serializeLibraryProjectManifest(): string {
-  return Json.PrintIndented({
+  return Json.Print({
     name: 'tao-library-consumer',
     private: true,
     type: 'module',
@@ -106,7 +106,7 @@ function serializeLibraryProjectManifest(): string {
 }
 
 function serializeLibraryProjectTypeScript(): string {
-  return Json.PrintIndented({
+  return Json.Print({
     extends: 'expo/tsconfig.base',
     compilerOptions: {
       strict: true,

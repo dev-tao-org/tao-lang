@@ -112,7 +112,7 @@ type NativeBuildIdentityInputs = {
 }
 
 function createNativeBuildIdentity(inputs: NativeBuildIdentityInputs): string {
-  return Platform.hashText(Json.Print(inputs))
+  return Platform.hashText(Json.Print(inputs, { prettyPrint: false }))
 }
 
 function parseNativeNodeMetadata(contents: string): NativeInputs['node'] {

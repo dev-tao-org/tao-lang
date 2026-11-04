@@ -82,5 +82,5 @@ async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
 type LandingRecord = LandingProof & { archive?: PublishedPreviewArchive }
 
 function formatLandingRecord(record: LandingRecord): string {
-  return Json.PrintIndented(record) + NewlineCharacter
+  return Json.Print(record) + NewlineCharacter
 }

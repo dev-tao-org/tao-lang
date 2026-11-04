@@ -331,7 +331,7 @@ function fingerprintFor(
         `${right.root}/${right.path}/${right.name}`,
       )
     ),
-  }))
+  }, { prettyPrint: false }))
 }
 
 function isTypeScriptSource(path: string): boolean {

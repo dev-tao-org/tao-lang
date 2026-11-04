@@ -75,7 +75,7 @@ async function writeGeneratedSources(directory: string, files: Readonly<Record<s
 }
 
 function serializeLibraryBuildConfiguration(): string {
-  return Json.PrintIndented({
+  return Json.Print({
     compilerOptions: {
       jsx: 'react-jsx',
       paths: {
@@ -113,7 +113,7 @@ async function writeLibraryPackage(
 type LibraryPackageExports = Record<string, { types: string; default: string }>
 
 function serializeLibraryPackage(name: string, exports: LibraryPackageExports): string {
-  return Json.PrintIndented({
+  return Json.Print({
     name,
     version: '0.0.0',
     type: 'module',

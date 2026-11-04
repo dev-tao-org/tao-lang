@@ -46,7 +46,7 @@ export async function cachedSnapshotMatches(input: CacheValidationInput): Promis
 /** createTypeScriptConfigContent returns the generated module configuration bytes. */
 export function createTypeScriptConfigContent(defaultsPath: string): string {
   return `${
-    Json.PrintIndented({
+    Json.Print({
       extends: FS.realpathSync(defaultsPath),
       compilerOptions: { baseUrl: '.' },
       include: ['**/*.ts', '**/*.tsx', '.tao-*.contract.ts', 'tao-assets.d.ts'],
@@ -71,7 +71,7 @@ function parseSidecarSnapshotMarker(contents: string): unknown {
 }
 
 function serializeExpectedSidecarSnapshotMarker(fingerprint: string, nodeModulesDirectory: string): string {
-  return `${Json.PrintIndented({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
+  return `${Json.Print({ fingerprint, nodeModulesDirectory })}${NewlineCharacter}`
 }
 
 function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, Uint8Array> {

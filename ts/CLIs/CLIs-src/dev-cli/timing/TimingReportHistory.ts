@@ -18,7 +18,7 @@ export async function readTimingHistory(current: TimingReport, directory: string
     const path = Path.join(directory, name)
     const value: unknown = await Try.WithDefault(
       undefined,
-      async () => Json.Parse(await FS.readFile(path, 'utf8')),
+      async () => FS.readJson(path),
     )
     if (!isValidTimingReport(value)) {
       history.unusable++

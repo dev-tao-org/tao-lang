@@ -64,7 +64,7 @@ export async function disconnectTiming(options: TimingConnection, io = createCon
 
 /** resolveTimingSocket isolates reusable connections by the exact selected host. */
 export function resolveTimingSocket(host: string, sessionId?: string): string {
-  const identity = sessionId ? Json.Print({ host, sessionId }) : host
+  const identity = sessionId ? Json.Print({ host, sessionId }, { prettyPrint: false }) : host
   const name = 's-' + Platform.hashText(identity).slice(0, 16)
   const socket = DevelopmentStorage.resolveDirectory('ssh', name)
   if (socket.length > 100) {

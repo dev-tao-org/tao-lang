@@ -1,15 +1,15 @@
-import { Errors, Json, NewlineCharacter, Regxs, Sort, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Objects, Regxs, Sort, Try } from '@shared'
 import { FS, Path, Platform, SessionLock } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
 /** encodeLearningSnapshot retains insertion order in the complete scan identity. */
 export function encodeLearningSnapshot(snapshot: LearningSnapshot): string {
-  return Json.Print(snapshot)
+  return Json.Print(snapshot, { prettyPrint: false })
 }
 
 /** haveDifferentLearningFileHashes compares captured hashes while retaining path insertion order. */
 export function haveDifferentLearningFileHashes(left: LearningFileHashes, right: LearningFileHashes): boolean {
-  return Json.Print(left) !== Json.Print(right)
+  return Json.Print(left, { prettyPrint: false }) !== Json.Print(right, { prettyPrint: false })
 }
 
 /** withLearningState serializes retained state writes within the authorized checkout. */
@@ -41,7 +41,7 @@ export async function withLearningState<Value>(
 export async function saveLearningState(state: LearningState): Promise<void> {
   const path = Path.join(state.root, '.artifacts/notes/review-learning/state.json')
   const temporary = `${path}.${Platform.randomUUID()}.pending`
-  await FS.writeFile(temporary, Json.PrintIndented(state) + NewlineCharacter, { flag: 'wx' })
+  await FS.writeFile(temporary, Json.Print(state) + NewlineCharacter, { flag: 'wx' })
   await FS.rename(temporary, path)
 }
 

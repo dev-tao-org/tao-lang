@@ -81,7 +81,7 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
     }
   }
   const repairedLock = applyManagedLockPolicy(lock, input.runtimePolicy)
-  return `${Json.PrintIndented(repairedLock)}${NewlineCharacter}`
+  return `${Json.Print(repairedLock)}${NewlineCharacter}`
 }
 
 function applyManagedLockPolicy(

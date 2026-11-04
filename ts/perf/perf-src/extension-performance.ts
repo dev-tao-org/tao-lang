@@ -77,7 +77,7 @@ type ExtensionPerformanceReport = {
 }
 
 function serializeExtensionPerformanceReport(report: ExtensionPerformanceReport): string {
-  return Json.PrintIndented(report)
+  return Json.Print(report)
 }
 
 type ExtensionPerformanceSummary = {
