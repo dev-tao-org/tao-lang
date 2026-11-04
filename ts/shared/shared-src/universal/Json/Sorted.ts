@@ -1,7 +1,7 @@
 import * as Sort from '../Sort'
 import { Print } from './Native'
 
-/** Sorted serializes with recursive ordinal object-key ordering while retaining native JSON behavior. */
+/** Sorted serializes with native integer-index key order and ordinal order for other strings. */
 export function Sorted(value: unknown): string | undefined {
   return Print(value, { prettyPrint: false, replacer: sortRecordKeys })
 }

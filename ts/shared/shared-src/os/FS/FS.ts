@@ -139,7 +139,7 @@ export async function readJson<SchemaType extends z.ZodType = z.ZodType>(
   if (options.schema === undefined) {
     return Json.Parse(contents, { sourceName })
   }
-  return Json.Parse(contents, { schema: options.schema, sourceName })
+  return await Json.ParseAsync(contents, { schema: options.schema, sourceName })
 }
 
 /** writeJson serializes JSON with the selected native file and print options. */

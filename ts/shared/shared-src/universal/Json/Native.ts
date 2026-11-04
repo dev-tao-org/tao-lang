@@ -35,7 +35,24 @@ export function Parse<SchemaType extends z.ZodType = z.ZodType>(
   if (options.schema === undefined) {
     return value
   }
-  return Schema.Parse(value, options.schema, { sourceName: options.sourceName })
+  return Schema.Parse(value, options.schema, { sourceName: options.sourceName ?? 'JSON input' })
+}
+
+/** ParseAsync decodes JSON and applies synchronous or asynchronous schema validation. */
+export function ParseAsync<SchemaType extends z.ZodType>(
+  source: string,
+  options: JsonSchemaParseOptions<SchemaType>,
+): Promise<z.output<SchemaType>>
+export function ParseAsync(source: string, options?: ParseOptions<never>): Promise<unknown>
+export async function ParseAsync<SchemaType extends z.ZodType = z.ZodType>(
+  source: string,
+  options: ParseOptions<SchemaType> = {},
+): Promise<unknown> {
+  const value = parseSource(source, options.sourceName)
+  if (options.schema === undefined) {
+    return value
+  }
+  return await Schema.ParseAsync(value, options.schema, { sourceName: options.sourceName ?? 'JSON input' })
 }
 
 /** Print serializes using native JSON omission and conversion rules; pretty printing defaults on. */
@@ -64,7 +81,10 @@ function requireAcyclic(value: unknown, ancestors: Set<object>): void {
   }
   ancestors.add(value)
   for (const key of Object.keys(value)) {
-    requireAcyclic((value as Record<string, unknown>)[key], ancestors)
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor && Object.hasOwn(descriptor, 'value')) {
+      requireAcyclic(descriptor.value, ancestors)
+    }
   }
   ancestors.delete(value)
 }
