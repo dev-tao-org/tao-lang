@@ -15,10 +15,16 @@ export type PrintOptions = {
   replacer?: JsonReplacer
 }
 
+type JsonSchemaParseOptions<SchemaType extends z.ZodType> = ParseOptions<SchemaType> & { schema: SchemaType }
+type JsonReplacer = JsonReplacerCallback | JsonReplacerKeyList
+type JsonReplacerCallback = (this: unknown, key: string, value: unknown) => unknown
+type JsonReplacerKeyList = JsonReplacerKey[]
+type JsonReplacerKey = string | number
+
 /** Parse decodes JSON as unknown or validates it and returns its schema output type. */
 export function Parse<SchemaType extends z.ZodType>(
   source: string,
-  options: ParseOptions<SchemaType> & { schema: SchemaType },
+  options: JsonSchemaParseOptions<SchemaType>,
 ): z.output<SchemaType>
 export function Parse(source: string, options?: ParseOptions<never>): unknown
 export function Parse<SchemaType extends z.ZodType = z.ZodType>(
@@ -62,5 +68,3 @@ function requireAcyclic(value: unknown, ancestors: Set<object>): void {
   }
   ancestors.delete(value)
 }
-
-type JsonReplacer = ((this: unknown, key: string, value: unknown) => unknown) | (string | number)[]

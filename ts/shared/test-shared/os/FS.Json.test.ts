@@ -1,4 +1,4 @@
-import { Json, Schema } from '@shared'
+import { Json, Schema, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import * as FS from '../../shared-src/os/FS/FS'
 import * as Hash from '../../shared-src/os/Hash'
@@ -9,17 +9,15 @@ Tests.test('JSON filesystem helpers preserve schemas, file flags, and determinis
   const root = await FS.mkdtemp(Path.join(Platform.temporaryDirectory(), 'tao-json-'))
   const path = Path.join(root, 'settings.json')
   const schema = Schema.object({ name: Schema.string(), count: Schema.string().transform(Number) })
-  try {
+  await Try(async () => {
     await FS.writeJson(path, { name: 'Tao', count: '3' }, { prettyPrint: false, flag: 'wx' })
     const settings = await FS.readJson(path, { schema, sourceName: 'settings.json', encoding: 'utf8', flag: 'r' })
     Tests.expect(settings).toEqual({ name: 'Tao', count: 3 })
     Tests.expect(await FS.readFile(path, 'utf8')).toBe('{"name":"Tao","count":"3"}')
     Tests.expect(Hash.Of({ z: { y: 2, x: 1 } })).toBe(Hash.Of({ z: { x: 1, y: 2 } }))
     Tests.expect(Hash.Of([1, 2])).not.toBe(Hash.Of([2, 1]))
-    const invalidWrite = await FS.writeJson(path, undefined).catch(error => error)
+    const invalidWrite = await Try(() => FS.writeJson(path, undefined), { catch: error => error })
     Tests.expect(invalidWrite).toBeInstanceOf(Error)
     Tests.expect(Json.Parse(await FS.readFile(path, 'utf8'), { schema })).toEqual(settings)
-  } finally {
-    await FS.rm(root, { recursive: true, force: true })
-  }
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })

@@ -1,4 +1,4 @@
-import * as JsonSorted from './Json/Sorted'
+import * as Json from './Json'
 
 /** ObjectCopy describes a shallow copy with writable own properties. */
 export type ObjectCopy<T extends object> = { -readonly [Key in keyof T]: T[Key] }
@@ -11,5 +11,5 @@ export function copy<T extends object>(source: T): ObjectCopy<T> {
 
 /** equal compares values by deterministic native JSON encoding with recursive object key order. */
 export function equal(left: unknown, right: unknown): boolean {
-  return JsonSorted.Sorted(left) === JsonSorted.Sorted(right)
+  return Json.Sorted(left) === Json.Sorted(right)
 }

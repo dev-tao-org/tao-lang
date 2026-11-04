@@ -42,6 +42,20 @@ export {
 } from '../bridges/Bridge_node/Bridge_node'
 export { nativeFileSystemPromises } from '../bridges/Bridge_node/Bridge_node'
 
+type JsonReadFileOptions = { encoding?: BufferEncoding; flag?: string; signal?: AbortSignal }
+type JsonReadOptions<SchemaType extends z.ZodType> = Json.ParseOptions<SchemaType> & JsonReadFileOptions
+type JsonSchemaReadOptions<SchemaType extends z.ZodType> = JsonReadOptions<SchemaType> & { schema: SchemaType }
+type JsonUnknownReadOptions = Json.ParseOptions<never> & JsonReadFileOptions
+type JsonWriteFileOptions = {
+  encoding?: BufferEncoding
+  flag?: string
+  mode?: number
+  signal?: AbortSignal
+  flush?: boolean
+}
+type JsonWriteOptions = Json.PrintOptions & JsonWriteFileOptions
+type OptionalJsonContents = string | undefined
+
 /** mkdir creates a directory and any missing parents. */
 export async function mkdir(path: string): Promise<string | undefined> {
   return await Native.mkdir(path, { recursive: true })
@@ -112,12 +126,12 @@ export async function writeIfChanged(path: string, content: string): Promise<boo
 /** readJson reads UTF-8 JSON and optionally validates the decoded value. */
 export async function readJson<SchemaType extends z.ZodType>(
   path: string,
-  options: Json.ParseOptions<SchemaType> & { schema: SchemaType } & JsonReadOptions,
+  options: JsonSchemaReadOptions<SchemaType>,
 ): Promise<z.output<SchemaType>>
-export async function readJson(path: string, options?: Json.ParseOptions<never> & JsonReadOptions): Promise<unknown>
+export async function readJson(path: string, options?: JsonUnknownReadOptions): Promise<unknown>
 export async function readJson<SchemaType extends z.ZodType = z.ZodType>(
   path: string,
-  options: Json.ParseOptions<SchemaType> & JsonReadOptions = {},
+  options: JsonReadOptions<SchemaType> = {},
 ): Promise<unknown> {
   const encoding = options.encoding ?? 'utf8'
   const contents = await Native.readFile(path, { encoding, flag: options.flag, signal: options.signal })
@@ -132,9 +146,9 @@ export async function readJson<SchemaType extends z.ZodType = z.ZodType>(
 export async function writeJson(
   path: string,
   value: unknown,
-  options: Json.PrintOptions & JsonWriteOptions = {},
+  options: JsonWriteOptions = {},
 ): Promise<void> {
-  const contents = Json.Print(value, options) as string | undefined
+  const contents = Json.Print(value, options) as OptionalJsonContents
   if (contents === undefined) {
     Errors.ThrowUserInput(`JSON value cannot be written to a file: ${path}`)
   }
@@ -189,13 +203,4 @@ export async function listProductionSourceFiles(root: string): Promise<string[]>
 function isTestSourcePath(root: string, path: string): boolean {
   const relative = Native.relative(root, path).replaceAll('\\', '/')
   return relative.split('/').some(segment => segment.endsWith('-test')) || Regxs.TestSourceSuffix.test(relative)
-}
-
-type JsonReadOptions = { encoding?: BufferEncoding; flag?: string; signal?: AbortSignal }
-type JsonWriteOptions = {
-  encoding?: BufferEncoding
-  flag?: string
-  mode?: number
-  signal?: AbortSignal
-  flush?: boolean
 }
