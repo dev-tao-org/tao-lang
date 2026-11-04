@@ -8,8 +8,12 @@ export function Throw(error: unknown): never {
 
 /** ThrowUserInput throws a user-correctable Tao error.
  *  The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
-export function ThrowUserInput(messageForUser: string, details?: Values.ErrorDetails): never {
-  throw new Values.UserInputError(messageForUser, details)
+export function ThrowUserInput(
+  messageForUser: string,
+  details?: Values.ErrorDetails,
+  opts?: { cause?: unknown },
+): never {
+  throw new Values.UserInputError(messageForUser, details, opts)
 }
 
 /** ThrowShouldNeverHappen throws an internal Tao error.

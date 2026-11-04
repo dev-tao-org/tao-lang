@@ -33,8 +33,8 @@ export type CommandErrorResult = {
 export class UserInputError extends BaseTaoError {
   override readonly name = 'UserInputError'
 
-  constructor(messageForUser: string, details?: ErrorDetails) {
-    super('UserInputError', messageForUser, { details })
+  constructor(messageForUser: string, details?: ErrorDetails, opts: { cause?: unknown } = {}) {
+    super('UserInputError', messageForUser, { ...opts, details })
   }
 }
 

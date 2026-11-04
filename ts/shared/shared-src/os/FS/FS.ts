@@ -1,4 +1,5 @@
-import { Regxs, Try } from '../../universal/universal'
+import { Errors, Json, Regxs, Try } from '../../universal/universal'
+import z from '../../bridges/Bridge_zod'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
@@ -108,6 +109,40 @@ export async function writeIfChanged(path: string, content: string): Promise<boo
   return true
 }
 
+/** readJson reads UTF-8 JSON and optionally validates the decoded value. */
+export async function readJson<SchemaType extends z.ZodType>(
+  path: string,
+  options: Json.ParseOptions<SchemaType> & { schema: SchemaType } & JsonReadOptions,
+): Promise<z.output<SchemaType>>
+export async function readJson(path: string, options?: Json.ParseOptions<never> & JsonReadOptions): Promise<unknown>
+export async function readJson<SchemaType extends z.ZodType = z.ZodType>(
+  path: string,
+  options: Json.ParseOptions<SchemaType> & JsonReadOptions = {},
+): Promise<unknown> {
+  const encoding = options.encoding ?? 'utf8'
+  const contents = await Native.readFile(path, { encoding, flag: options.flag, signal: options.signal })
+  return Json.Parse(contents, { schema: options.schema, sourceName: options.sourceName ?? path })
+}
+
+/** writeJson serializes JSON with the selected native file and print options. */
+export async function writeJson(
+  path: string,
+  value: unknown,
+  options: Json.PrintOptions & JsonWriteOptions = {},
+): Promise<void> {
+  const contents = Json.Print(value, options) as string | undefined
+  if (contents === undefined) {
+    Errors.ThrowUserInput(`JSON value cannot be written to a file: ${path}`)
+  }
+  await Native.writeFile(path, contents, {
+    encoding: options.encoding ?? 'utf8',
+    flag: options.flag,
+    mode: options.mode,
+    signal: options.signal,
+    flush: options.flush,
+  })
+}
+
 /** replaceDirectoryLink atomically replaces a directory symlink without changing its target's contents. */
 export async function replaceDirectoryLink(target: string, path: string): Promise<void> {
   const pending = `${path}.${Native.randomUUID()}.pending`
@@ -150,4 +185,13 @@ export async function listProductionSourceFiles(root: string): Promise<string[]>
 function isTestSourcePath(root: string, path: string): boolean {
   const relative = Native.relative(root, path).replaceAll('\\', '/')
   return relative.split('/').some(segment => segment.endsWith('-test')) || Regxs.TestSourceSuffix.test(relative)
+}
+
+type JsonReadOptions = { encoding?: BufferEncoding; flag?: string; signal?: AbortSignal }
+type JsonWriteOptions = {
+  encoding?: BufferEncoding
+  flag?: string
+  mode?: number
+  signal?: AbortSignal
+  flush?: boolean
 }

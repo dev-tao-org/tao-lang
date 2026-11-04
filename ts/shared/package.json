@@ -9,7 +9,8 @@
     "chokidar": "5.0.0",
     "memfs": "4.80.0",
     "playwright": "1.58.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",
@@ -38,6 +39,7 @@
           "Lists",
           "Addr",
           "Objects",
+          "Schema",
           "Regxs",
           "Range",
           "Source",
@@ -71,6 +73,7 @@
           "HeadlessBrowser",
           "Env",
           "FS",
+          "Hash",
           "Files",
           "GeneratedFileSystem",
           "WorkspaceWatch",

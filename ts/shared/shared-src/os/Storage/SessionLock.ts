@@ -1,4 +1,5 @@
 import { Json } from '@shared'
+import z from '../../bridges/Bridge_zod'
 import { Errors, Regxs, Try } from '../../universal/universal'
 import * as FS from '../FS'
 import * as Path from '../Path'
@@ -42,14 +43,12 @@ export function isSafeVersionName(identity: string, directory: string): boolean 
 }
 
 type LockPointer = { identity: string; directory: string }
+const LockPointerSchema = z.object({ identity: z.string(), directory: z.string() })
 
 async function readLockPointer(root: string, path: string): Promise<LockPointer> {
   return await Try(async () => {
     const contents = await FS.readFile(path, 'utf8')
     const value = parseLockPointer(path, contents)
-    if (!isLockPointerRecord(value)) {
-      throwInvalidPointer(path)
-    }
     const pointer = value
     if (!hasSafePointerVersion(pointer)) {
       throwInvalidPointer(path)
@@ -72,15 +71,10 @@ async function readLockPointer(root: string, path: string): Promise<LockPointer>
   })
 }
 
-function parseLockPointer(path: string, contents: string): unknown {
-  return Try(() => Json.Parse(contents), { catch: () => throwInvalidPointer(path) })
-}
-
-function isLockPointerRecord(value: unknown): value is { identity: unknown; directory: unknown } {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  return 'identity' in value && 'directory' in value
+function parseLockPointer(path: string, contents: string): LockPointer {
+  return Try(() => Json.Parse(contents, { schema: LockPointerSchema, sourceName: path }), {
+    catch: () => throwInvalidPointer(path),
+  })
 }
 
 function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown }): pointer is {
