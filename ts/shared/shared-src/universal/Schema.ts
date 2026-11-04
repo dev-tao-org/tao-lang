@@ -1,6 +1,8 @@
+import z from '../bridges/Bridge_zod'
 import * as Errors from './Errors'
 import { Try } from './TryCatch'
-import z from '../bridges/Bridge_zod'
+
+export * from '../bridges/Bridge_zod'
 
 /** SchemaParseOptions names the input whose value is being validated. */
 export type ParseOptions = { sourceName?: string }
@@ -15,9 +17,9 @@ export function Parse<Value>(value: unknown, schema: z.ZodType<Value>, options: 
         : 'validation failed'
       Errors.ThrowUserInput(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
     },
-  })
+  }) as Value
 }
 
-function formatPath(path: readonly (string | number)[]): string {
+function formatPath(path: readonly PropertyKey[]): string {
   return path.length === 0 ? 'at root' : `at ${path.map(String).join('.')}`
 }

@@ -1,6 +1,5 @@
-import { Json } from '@shared'
+import { Json, Schema } from '@shared'
 import * as Tests from '@shared-tests'
-import z from '../../shared-src/bridges/Bridge_zod'
 import * as FS from '../../shared-src/os/FS/FS'
 import * as Hash from '../../shared-src/os/Hash'
 import * as Path from '../../shared-src/os/Path'
@@ -9,7 +8,7 @@ import * as Platform from '../../shared-src/os/Platform'
 Tests.test('JSON filesystem helpers preserve schemas, file flags, and deterministic hashes', async () => {
   const root = await FS.mkdtemp(Path.join(Platform.temporaryDirectory(), 'tao-json-'))
   const path = Path.join(root, 'settings.json')
-  const schema = z.object({ name: z.string(), count: z.string().transform(Number) })
+  const schema = Schema.object({ name: Schema.string(), count: Schema.string().transform(Number) })
   try {
     await FS.writeJson(path, { name: 'Tao', count: '3' }, { prettyPrint: false, flag: 'wx' })
     const settings = await FS.readJson(path, { schema, sourceName: 'settings.json', encoding: 'utf8', flag: 'r' })

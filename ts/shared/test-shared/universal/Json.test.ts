@@ -1,19 +1,31 @@
 import { Json, NewlineCharacter, Schema, Try } from '@shared'
-import * as JsonSorted from '../../shared-src/universal/Json/Sorted'
 import * as Tests from '@shared-tests'
-import * as Objects from '../../shared-src/universal/Objects'
 import z from '../../shared-src/bridges/Bridge_zod'
+import * as JsonSorted from '../../shared-src/universal/Json/Sorted'
+import * as Objects from '../../shared-src/universal/Objects'
 
 Tests.test('JSON codecs support native options, schema validation, and deterministic encodings', () => {
   const value = { 'z': [3, { z: -0, a: 'quoted"' }], 'a': true, '2': null, '10': false }
   Tests.expect(Json.Print(value)).toBe([
-    '{', '  "2": null,', '  "10": false,', '  "z": [', '    3,', '    {', '      "z": 0,',
-    '      "a": "quoted\\\""', '    }', '  ],', '  "a": true', '}',
+    '{',
+    '  "2": null,',
+    '  "10": false,',
+    '  "z": [',
+    '    3,',
+    '    {',
+    '      "z": 0,',
+    '      "a": "quoted\\""',
+    '    }',
+    '  ],',
+    '  "a": true',
+    '}',
   ].join(NewlineCharacter))
   Tests.expect(Json.Print({ z: 1, a: 2 }, { prettyPrint: false })).toBe('{"z":1,"a":2}')
-  Tests.expect(Json.Print({ value: 1 }, { replacer: ['value'] })).toBe(['{', '  "value": 1', '}'].join(NewlineCharacter))
+  Tests.expect(Json.Print({ value: 1 }, { replacer: ['value'] })).toBe(
+    ['{', '  "value": 1', '}'].join(NewlineCharacter),
+  )
   Tests.expect(Json.Parse('{"__proto__":1,"value":null}')).toEqual({ ['__proto__']: 1, value: null })
-  const schema = z.object({ name: z.string(), count: z.string().transform(Number) })
+  const schema = Schema.object({ name: Schema.string(), count: Schema.string().transform(Number) })
   Tests.expect(Json.Parse('{"name":"Tao","count":"4"}', { schema, sourceName: 'fixture.json' }))
     .toEqual({ name: 'Tao', count: 4 })
   Tests.expect(Schema.Parse({ name: 'Tao', count: '4' }, schema)).toEqual({ name: 'Tao', count: 4 })
@@ -41,10 +53,28 @@ function assertInvalidCanonicalData(): void {
       accessed = true
     },
   })
-  const invalid = [undefined, () => 1, Symbol('x'), 1n, NaN, Infinity, -Infinity, { a: undefined }, [undefined],
-    new Array(1), Object.assign([], { extra: 1 }), new Date(0), new Map(), new Number(1), { toJSON: () => 1 },
-    { [Symbol('x')]: 1 }, Object.defineProperty({}, 'hidden', { value: 1 }), accessor, cycle,
-    Object.create({ inherited: 1 })]
+  const invalid = [
+    undefined,
+    () => 1,
+    Symbol('x'),
+    1n,
+    NaN,
+    Infinity,
+    -Infinity,
+    { a: undefined },
+    [undefined],
+    new Array(1),
+    Object.assign([], { extra: 1 }),
+    new Date(0),
+    new Map(),
+    new Number(1),
+    { toJSON: () => 1 },
+    { [Symbol('x')]: 1 },
+    Object.defineProperty({}, 'hidden', { value: 1 }),
+    accessor,
+    cycle,
+    Object.create({ inherited: 1 }),
+  ]
   for (const candidate of invalid) {
     const failure = Try(() => Json.Canonical(candidate), { catch: error => error })
     Tests.expect(failure).toBeInstanceOf(Error)
@@ -57,9 +87,12 @@ function assertFailures(): void {
   Tests.expect(syntax).toBeInstanceOf(Error)
   Tests.expect((syntax as Error & { cause?: unknown }).cause).toBeInstanceOf(Error)
   Tests.expect((syntax as Error).message).toContain('broken.json')
-  const invalid = Try(() => Json.Parse('{"name":1}', { schema: z.object({ name: z.string() }), sourceName: 'user.json' }), {
-    catch: error => error,
-  })
+  const invalid = Try(
+    () => Json.Parse('{"name":1}', { schema: Schema.object({ name: Schema.string() }), sourceName: 'user.json' }),
+    {
+      catch: error => error,
+    },
+  )
   Tests.expect(invalid).toBeInstanceOf(Error)
   Tests.expect((invalid as Error & { cause?: unknown }).cause).toBeInstanceOf(z.ZodError)
   Tests.expect((invalid as Error).message).toContain('user.json')

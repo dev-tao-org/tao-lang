@@ -1,5 +1,5 @@
-import { Errors, Json, Regxs, Try } from '../../universal/universal'
 import z from '../../bridges/Bridge_zod'
+import { Errors, Json, Regxs, Try } from '../../universal/universal'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
@@ -121,7 +121,11 @@ export async function readJson<SchemaType extends z.ZodType = z.ZodType>(
 ): Promise<unknown> {
   const encoding = options.encoding ?? 'utf8'
   const contents = await Native.readFile(path, { encoding, flag: options.flag, signal: options.signal })
-  return Json.Parse(contents, { schema: options.schema, sourceName: options.sourceName ?? path })
+  const sourceName = options.sourceName ?? path
+  if (options.schema === undefined) {
+    return Json.Parse(contents, { sourceName })
+  }
+  return Json.Parse(contents, { schema: options.schema, sourceName })
 }
 
 /** writeJson serializes JSON with the selected native file and print options. */

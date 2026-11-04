@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import z from '../../bridges/Bridge_zod'
+import { Json, Schema } from '@shared'
 import { Errors, Regxs, Try } from '../../universal/universal'
 import * as FS from '../FS'
 import * as Path from '../Path'
@@ -43,7 +42,7 @@ export function isSafeVersionName(identity: string, directory: string): boolean 
 }
 
 type LockPointer = { identity: string; directory: string }
-const LockPointerSchema = z.object({ identity: z.string(), directory: z.string() })
+const LockPointerSchema = Schema.object({ identity: Schema.string(), directory: Schema.string() })
 
 async function readLockPointer(root: string, path: string): Promise<LockPointer> {
   return await Try(async () => {

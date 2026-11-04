@@ -1,7 +1,7 @@
+import z from '../../bridges/Bridge_zod'
 import * as Errors from '../Errors'
 import * as Schema from '../Schema'
 import { Try } from '../TryCatch'
-import z from '../../bridges/Bridge_zod'
 
 /** ParseOptions configures source-aware JSON decoding and optional schema validation. */
 export type ParseOptions<SchemaType extends z.ZodType = z.ZodType> = {
@@ -12,7 +12,7 @@ export type ParseOptions<SchemaType extends z.ZodType = z.ZodType> = {
 /** PrintOptions controls native JSON replacer behavior and optional indentation. */
 export type PrintOptions = {
   prettyPrint?: boolean
-  replacer?: Parameters<typeof JSON.stringify>[1]
+  replacer?: JsonReplacer
 }
 
 /** Parse decodes JSON as unknown or validates it and returns its schema output type. */
@@ -36,7 +36,7 @@ export function Parse<SchemaType extends z.ZodType = z.ZodType>(
 export function Print(value: unknown, options: PrintOptions = {}): string {
   requireAcyclic(value, new Set())
   const indentation = options.prettyPrint === false ? undefined : 2
-  return JSON.stringify(value, options.replacer, indentation) as string
+  return JSON.stringify(value, options.replacer as never, indentation) as string
 }
 
 function parseSource(source: string, sourceName?: string): unknown {
@@ -62,3 +62,5 @@ function requireAcyclic(value: unknown, ancestors: Set<object>): void {
   }
   ancestors.delete(value)
 }
+
+type JsonReplacer = ((this: unknown, key: string, value: unknown) => unknown) | (string | number)[]
