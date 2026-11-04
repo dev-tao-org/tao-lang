@@ -1,6 +1,7 @@
 {
   "autoRun": {
     "allow_instructions": [
+      "Allow pinned environment setup to write .devenv inside the active workspace and ~/code/tao-lang/.devenv, the shared environment state used by linked checkouts. This does not grant writes to other checkout source files or bypass the host filesystem sandbox.",
       "Allow all read-only web Fetch requests to public internet resources for research, documentation, source code, package information, issue trackers, APIs, standards, and technical references.",
       "Allow read-only network requests that do not transmit secrets, credentials, private keys, tokens, private repository contents, or other sensitive local data.",
       "Allow ordinary read-only shell commands used to inspect files, source code, git state, logs, test output, build artifacts, dependencies, and local environment information.",

@@ -112,6 +112,8 @@
     },
     "filesystem": {
       "allowWrite": [
+        "./.devenv",
+        "~/code/tao-lang/.devenv",
         "~/.tao",
         "~/.bun",
         "~/.cache",
