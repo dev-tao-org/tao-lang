@@ -136,3 +136,27 @@ branch from current main with the final verified tree and one runnable implement
 Original review/worker branches and backups are preserved; no existing history is rewritten and
 the gate is not weakened. The new checkpoint needs its own timing record and tree-equivalence
 receipt before handoff. Landing remains separately authorized.
+
+The consolidated implementation is now `966ef2c351ff85048738b68c90ec40c9fe3889e8`, directly on
+`c7f53bd5c515cac219c0feb2806fd585b38ac7d7`. Its tree
+`6da3014c67ab8368aeb1610124e156554d79f828` exactly matches preserved review source
+`959e2d82d2c9ed3b0092089e291fef3884ba3247`. The original source remains backed up separately.
+Its own source-linked preview timing record passed without implementation edits.
+
+The [delivery inventory](../../.storage/evidence/966ef2c351ff85048738b68c90ec40c9fe3889e8/json-readiness/inventory.json)
+and [receipt](../../.storage/evidence/966ef2c351ff85048738b68c90ec40c9fe3889e8/json-readiness/delivery-receipt.md)
+identify the companion archive `15ae30f247f84230ef8a5e8949c5f88c25fd2b98`: 15 selected diagnostic
+and validation files, their inventory, and the delivery timing record/report pair. It extends the
+prior archive without replacing any records.
+
+Fresh-checkout validation passed by components: formatting/checks and all 636 TypeScript tests,
+then all 6 Tao journeys after repairing generated paths left by worktree relocation. The combined
+verify run that stopped at app preparation is retained as such; it is not relabeled as a passing
+invocation. The original clean-source full verification remains retained. No implementation code
+changed during consolidation. Documentation and archive-pointer follow-ups are separate.
+
+Two tooling follow-ups remain: the managed worktree creation request stalled without returning
+an operation ID, and a secret-redaction test mistakes `private` in a checkout path for secret
+content. This task used an ordinary Git worktree under the normal worktrees directory. Its stale
+cache symlink and generated app ownership metadata were rebuilt; affected tests passed. Neither
+workaround is claimed as a fix for the underlying tooling follow-ups. Landing remains separate.
