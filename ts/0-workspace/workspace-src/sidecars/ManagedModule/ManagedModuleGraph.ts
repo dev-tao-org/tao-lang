@@ -139,9 +139,8 @@ function collectSingletonPackageNames(
   packages: readonly InstalledPackage[],
 ): string[] {
   const declaredSingletons = input.singletonPackages ?? []
-  const runtimePackageNames = Object.keys(input.runtimePins)
   const nativePackageNames = packages.filter(item => item.native).map(item => item.name)
-  return Lists.unique(defaultSingletonPackages, declaredSingletons, runtimePackageNames, nativePackageNames)
+  return Lists.unique(defaultSingletonPackages, declaredSingletons, nativePackageNames)
 }
 
 function validatePackageName(name: string, owner: string): void {

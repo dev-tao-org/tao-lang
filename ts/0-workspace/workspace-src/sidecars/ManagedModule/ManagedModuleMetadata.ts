@@ -326,6 +326,8 @@ function createTypeScriptDefaults(): string {
         lib: ['ES2022', 'DOM'],
         paths: {
           ...Runtime.runtimeTypeScriptPaths(),
+          'zod': ['node_modules/zod'],
+          'zod/*': ['node_modules/zod/*'],
           'react': ['node_modules/@types/react'],
           'react/*': ['node_modules/@types/react/*'],
           'react-native': ['node_modules/react-native'],
