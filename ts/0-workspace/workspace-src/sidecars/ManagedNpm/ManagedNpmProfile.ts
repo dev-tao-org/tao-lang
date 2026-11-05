@@ -1,3 +1,4 @@
+import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
@@ -254,7 +255,7 @@ function createProfileMetadata(
     bunVersion: input.bunVersion,
     runtimePins: input.runtimePins,
     requirements: Graph.collectAllRequirements(requirements),
-    singletonPackages: input.singletonPackages ?? Graph.defaultSingletonPackages,
+    singletonPackages: Runtime.resolveRuntimeSingletonPackages(input.singletonPackages),
     policyRegistryVersion: 1,
     typeScriptDefaultsHash: Metadata.typeScriptDefaultsHash(),
     lockHash: Platform.hashText(lock),

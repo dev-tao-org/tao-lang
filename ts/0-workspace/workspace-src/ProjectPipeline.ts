@@ -253,7 +253,7 @@ function configureRuntimeDependencies(
 ): void {
   options.dependencyDirectory = Path.join(managed.packageDirectory, 'node_modules')
   options.watchFolders = collectRuntimeWatchFolders(baseWatchFolders, managed.packageDirectory, sessionDirectory)
-  options.singletonPackages = Lists.unique(Object.keys(input.runtimePins), managed.nativePackages)
+  options.singletonPackages = Runtime.resolveRuntimeSingletonPackages(input.singletonPackages, managed.nativePackages)
 }
 
 function collectRuntimeWatchFolders(

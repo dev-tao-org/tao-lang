@@ -1,3 +1,4 @@
+import * as Runtime from '@runtime'
 import { Errors, Lists, Sort, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
@@ -5,9 +6,6 @@ import { satisfies, valid, validRange } from '../../bridges/Bridge_semver'
 import { isNpmPackageName } from '../../NpmPackageName'
 import * as ManagedTypes from './ManagedModuleTypes'
 import * as PackageMetadata from './ManagedPackageMetadata'
-
-/** defaultSingletonPackages lists app frameworks that require one canonical installed path. */
-export const defaultSingletonPackages = ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
 
 /** collectAllRequirements combines Tao declarations and centrally pinned app runtime packages. */
 export function collectAllRequirements(
@@ -104,7 +102,8 @@ export async function auditInstalledGraph(
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
 ): Promise<void> {
   const packages = await installedPackages(profile, collectAllRequirements(requirements, input.runtimePins))
-  const singletons = collectSingletonPackageNames(input, packages)
+  const nativePackageNames = packages.filter(item => item.native).map(item => item.name)
+  const singletons = Runtime.resolveRuntimeSingletonPackages(input.singletonPackages, nativePackageNames)
   for (const name of singletons) {
     validateSingleton(name, packages, input.runtimePins[name])
   }
@@ -133,15 +132,6 @@ type InstalledPackage = {
 }
 
 type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string> }
-
-function collectSingletonPackageNames(
-  input: ManagedTypes.ManagedModulesInput,
-  packages: readonly InstalledPackage[],
-): string[] {
-  const declaredSingletons = input.singletonPackages ?? []
-  const nativePackageNames = packages.filter(item => item.native).map(item => item.name)
-  return Lists.unique(defaultSingletonPackages, declaredSingletons, nativePackageNames)
-}
 
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {

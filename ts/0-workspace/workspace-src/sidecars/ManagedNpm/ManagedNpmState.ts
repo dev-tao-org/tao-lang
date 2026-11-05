@@ -1,7 +1,8 @@
+import * as Runtime from '@runtime'
 import { Json, Objects } from '@shared'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
-import { collectAllRequirements, defaultSingletonPackages } from '../ManagedModule/ManagedModuleGraph'
+import { collectAllRequirements } from '../ManagedModule/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../ManagedModule/ManagedModuleMetadata'
 import * as ManagedTypes from '../ManagedModule/ManagedModuleTypes'
 import { describeManagedResolutionPolicy } from './ManagedNpmPolicy'
@@ -47,7 +48,7 @@ function profileMetadataMatches(
   if (!sameManagedPackageVersions(metadata.runtimePins, input.runtimePins)) {
     return false
   }
-  const expectedSingletons = input.singletonPackages ?? defaultSingletonPackages
+  const expectedSingletons = Runtime.resolveRuntimeSingletonPackages(input.singletonPackages)
   if (!sameSerializedSingletonPackages(metadata.singletonPackages, expectedSingletons)) {
     return false
   }

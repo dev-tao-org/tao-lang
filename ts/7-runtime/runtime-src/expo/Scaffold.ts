@@ -4,6 +4,7 @@ import { FS, Path } from '@shared/os'
 import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
+import * as RuntimeDependencyPolicy from './RuntimeDependencyPolicy'
 
 /** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
@@ -54,10 +55,7 @@ function serializeTaoResolution(options: ExpoScaffoldOptions): string {
 }
 
 function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string[] {
-  if (options.singletonPackages !== undefined && options.singletonPackages !== null) {
-    return options.singletonPackages
-  }
-  return ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
+  return RuntimeDependencyPolicy.resolveRuntimeSingletonPackages(options.singletonPackages)
 }
 
 function serializeExpoAppManifest(): string {
