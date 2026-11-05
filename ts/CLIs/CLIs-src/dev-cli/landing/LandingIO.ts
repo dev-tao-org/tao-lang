@@ -1,5 +1,6 @@
 import { IO } from '@cli-kit'
-import { FileSystem, Path, Platform, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 
 /** LandingIO isolates command and file effects so workflow tests never launch Git or GitHub. */
 export type LandingIO = {
@@ -20,25 +21,29 @@ export function createLandingIO(): LandingIO {
       if (progress) {
         IO.progress(progress)
       }
-      return Platform.capture(command, { variadicArgs: args, cwd: directory, trim: false })
+      return Processes.capture(command, { variadicArgs: args, cwd: directory, trim: false })
     },
-    read: path => FileSystem.readFile(Path.resolve(root, path), 'utf8'),
-    exists: path => FileSystem.exists(Path.resolve(root, path)),
+    read: path => FS.readFile(Path.resolve(root, path), 'utf8'),
+    exists: path => FS.exists(Path.resolve(root, path)),
     async write(path, text) {
       const destination = Path.resolve(root, path)
-      await FileSystem.mkdir(Path.dirname(destination), { recursive: true })
-      await FileSystem.writeFile(destination, text)
+      await FS.mkdir(Path.dirname(destination))
+      await FS.writeFile(destination, text)
     },
   }
 }
 
-/** git reads or mutates the selected repository using literal arguments. */
-export async function git(io: LandingIO, args: readonly string[], storage = false): Promise<string> {
-  return (await io.command('git', args, storage ? Path.join(io.root, '.storage') : io.root)).trim()
+type GitOptions = { storage?: boolean; trim?: boolean }
+
+/** git runs literal arguments in the selected repository; trim:false preserves exact output bytes. */
+export async function git(io: LandingIO, args: readonly string[], options: GitOptions = {}): Promise<string> {
+  const directory = options.storage ? Path.join(io.root, '.storage') : io.root
+  const output = await io.command('git', args, directory)
+  return options.trim === false ? output : output.trim()
 }
 
 function commandProgress(command: string, args: readonly string[]): string | undefined {
-  const stages: Record<string, string> = {
+  const stages: LandingCommandMessages = {
     './agent verify': 'Verifying the reviewed source…',
     'git fetch': 'Fetching remote history…',
     'git push': 'Publishing the pinned commit…',
@@ -54,3 +59,5 @@ function commandProgress(command: string, args: readonly string[]): string | und
   }
   return stages[command] ?? stages[`${command} ${args[0]}`]
 }
+
+type LandingCommandMessages = Record<string, string>

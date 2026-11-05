@@ -1,11 +1,13 @@
+import { Json } from '@shared'
 import { Errors } from '@shared'
-import { FileSystem, Path, Platform, Repo } from '@shared/os'
-import * as TypeScript from 'typescript'
+import { FS, Path, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** checkEditorTypeScript verifies editor settings and the managed tsc executable against the pinned compiler. */
 export async function checkEditorTypeScript(): Promise<void> {
-  assertEditorTypeScript(await FileSystem.readFile(Repo.resolvePath('.vscode/settings.json'), 'utf8'))
-  const actual = await Platform.capture('tsc --version')
+  assertEditorTypeScript(await FS.readFile(Repo.resolvePath('.vscode/settings.json'), 'utf8'))
+  const actual = await Processes.capture('tsc --version')
   if (actual !== `Version ${TypeScript.version}`) {
     Errors.ThrowUserInput(
       `Managed tsc reports ${actual}; expected TypeScript ${TypeScript.version}. Run ./agent setup.`,
@@ -13,8 +15,7 @@ export async function checkEditorTypeScript(): Promise<void> {
   }
 }
 
-/** assertEditorTypeScript verifies that editor SDK settings select the compiler used by check. */
-export function assertEditorTypeScript(source: string, readVersion = sdkVersion): void {
+function assertEditorTypeScript(source: string): void {
   const parsed = TypeScript.parseConfigFileTextToJson('.vscode/settings.json', source)
   if (parsed.error) {
     Errors.ThrowUserInput('Cannot parse .vscode/settings.json for the editor TypeScript SDK.')
@@ -28,7 +29,7 @@ export function assertEditorTypeScript(source: string, readVersion = sdkVersion)
   if (settings['js/ts.experimental.useTsgo'] === true || settings['typescript.experimental.useTsgo'] === true) {
     Errors.ThrowUserInput('Disable experimental TypeScript Native Preview to match the compiler used by check.')
   }
-  const version = readVersion(sdk)
+  const version = sdkVersion(sdk)
   if (version !== TypeScript.version) {
     Errors.ThrowUserInput(`Editor TypeScript ${version} differs from check (${TypeScript.version}).`)
   }
@@ -36,8 +37,20 @@ export function assertEditorTypeScript(source: string, readVersion = sdkVersion)
 
 function sdkVersion(sdk: string): string {
   const directory = Repo.resolvePath(sdk)
-  if (!FileSystem.existsSync(Path.join(directory, 'tsserver.js'))) {
+  if (!FS.existsSync(Path.join(directory, 'tsserver.js'))) {
     Errors.ThrowUserInput(`Editor TypeScript SDK is missing: ${sdk}. Run ./agent setup or correct the SDK path.`)
   }
-  return JSON.parse(FileSystem.readFileSync(Path.join(directory, '../package.json'), 'utf8')).version
+  return parseSdkVersion(FS.readFileSync(Path.join(directory, '../package.json'), 'utf8'))
+}
+
+function parseSdkVersion(source: string): string {
+  const manifest = Json.Parse(source)
+  if (!manifest || typeof manifest !== 'object') {
+    Errors.ThrowUserInput('Editor TypeScript package manifest must contain a version string.')
+  }
+  const version = (manifest as Record<string, unknown>).version
+  if (typeof version !== 'string') {
+    Errors.ThrowUserInput('Editor TypeScript package manifest must contain a version string.')
+  }
+  return version
 }

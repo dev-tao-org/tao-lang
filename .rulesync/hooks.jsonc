@@ -6,7 +6,7 @@
   // Keep commands harness-neutral: discover the worktree root through Git so a harness launched from any
   // repository subdirectory reaches the same script, and use no field one harness does not document.
   "hooks": {
-    // Install the current checkout's locked TypeScript dependencies through root setup.
+    // Install locked dependencies and initialize missing storage through root setup.
     // Codex local environments, Cursor worktree setup and Worktrunk use this same entry.
     // Cloud environments provision tools first; .claude/cloud-setup.md owns that setup.
     "sessionStart": [

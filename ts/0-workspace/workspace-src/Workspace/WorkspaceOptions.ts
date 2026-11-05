@@ -1,0 +1,39 @@
+import type * as Compile from '@compile'
+import type * as Runtime from '@runtime'
+import type * as Typecheck from '@typecheck'
+
+import type { FileManagerOptions } from '../FileManager/FileManager'
+import type { ModuleLoadOptions } from '../modules/Loader'
+import type { Project } from '../Project'
+import type { ProjectPipelineResult } from '../ProjectPipeline'
+import type { CompiledApp, UpdateResult } from '../Workspace'
+
+/** WorkspaceOptions configures output publication for a single compile session. */
+export type WorkspaceOptions = {
+  directory?: string
+  outputDirectory?: string
+  project?: Project
+  runtimeOptions?: Omit<Runtime.RuntimeCreateOptions, 'directory'>
+  compile?: typeof Compile.compile
+  onProgress?: (message: string) => void
+  publish?: (app: CompiledApp, isCurrent: () => boolean) => Promise<void>
+  onExpected?: (revision: string, startedAtMs: number) => void
+  onSourceUpdate?: (result: UpdateResult) => void
+  onSourceError?: (error: unknown) => void
+  watch?: FileManagerOptions['watch']
+  schedule?: FileManagerOptions['schedule']
+  resolveProject?: ModuleLoadOptions['resolveProject']
+  observeProjectSources?: ModuleLoadOptions['observeProjectSources']
+  includeModuleRequirements?: boolean
+  beforeLoad?: () => Promise<void>
+  watchDirectories?: readonly string[]
+  beforeCompile?: PrepareWorkspace
+}
+
+type WatchAttemptedFiles = (files: readonly string[]) => Promise<void>
+/** WorkspacePreparation contains optional results returned by a project pipeline callback. */
+export type WorkspacePreparation = Partial<ProjectPipelineResult>
+type PrepareWorkspace = (
+  program: Typecheck.LinkedProgram,
+  watchAttemptedFiles: WatchAttemptedFiles,
+) => Promise<WorkspacePreparation>

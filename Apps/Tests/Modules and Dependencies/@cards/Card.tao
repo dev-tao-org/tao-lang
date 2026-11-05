@@ -1,0 +1,12 @@
+use tao@ui Col, Text
+use PackageCaption
+use FolderCaption as LocalCaption
+
+let Caption = PackageCaption
+
+project view Card {
+  render Col {
+    Text(Caption)
+    Text(LocalCaption)
+  }
+}

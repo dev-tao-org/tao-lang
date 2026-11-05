@@ -6,9 +6,22 @@
   "dependencies": {
     "@tao/ast-gen": "workspace:*",
     "@tao/runtime": "workspace:*",
-    "@tao/shared": "workspace:*"
+    "@tao/shared": "workspace:*",
+    "@tao/typecheck": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "1.4.0"
+    "@types/bun": "1.4.0",
+    "typescript": "5.9.3"
+  },
+  "exports": {
+    ".": "./compile-src/Compile.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@compile",
+        "namespace": "Compile"
+      }
+    }
   }
 }

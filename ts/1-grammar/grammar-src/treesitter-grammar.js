@@ -1,36 +1,122 @@
 /// <reference types="tree-sitter-cli/dsl" />
 
+const WhitespaceCharacterRegx = /\s/
+const ContextReferenceRegx = /@@[A-Za-z_][A-Za-z0-9_]*/
+const TypeScriptTextCharacterRegx = /[^`]/
+const TypeScriptSingleBacktickRegx = /`[^`]/
+const TypeScriptDoubleBacktickRegx = /``[^`]/
+const RelativeRequirementIdentifierRegx = /\.\.\/[A-Za-z0-9._@/-]+/
+const ScopedRequirementIdentifierRegx = /@[A-Za-z0-9._-]+\/[A-Za-z0-9._@/-]+/
+const RequirementIdentifierRegx = /[A-Za-z0-9._@/-]+/
+const RequirementVersionRegx = /[A-Za-z0-9._+-]+/
+const ImportPathRegx =
+  /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)|([a-zA-Z0-9._-]+@[a-zA-Z0-9._@/-]+\/?[a-zA-Z0-9._@/-]*)/
+const RenderTagRegx = /#[A-Za-z_][A-Za-z0-9_-]*/
+const TextLiteralCharacterRegx = /[^"\\\r\n\u0000-\u001f]/
+const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
+const LineCommentRegx = /\/\/[^\n\r]*/
+const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
+const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+
 export default grammar({
   name: 'tao',
-  extras() {
-    return [/\s/]
+  extras($) {
+    return [WhitespaceCharacterRegx, $.Comment]
   },
+  supertypes: $ => [$._Declaration, $._Expression, $._ViewRenderStatement],
   rules: {
     SourceFile($) {
-      return repeat(choice($.AppDeclaration, $.ViewDeclaration))
+      return repeat($._Declaration)
     },
-
-    // Apps
-    AppDeclaration($) {
-      return seq('app', field('name', $.Identifier), '{', $.RootDeclaration, '}')
+    _Declaration($) {
+      return choice(
+        $.AppDeclaration,
+        $.ViewDeclaration,
+        $.TestsDeclaration,
+        $.LetDeclaration,
+        $.UseStatement,
+        $.UsePackageStatement,
+        $.RequiresDeclaration,
+        $.TypeScriptLibraryDeclaration,
+        $.PublishDeclaration,
+      )
     },
-    RootDeclaration($) {
-      return seq('root', field('view', $.Identifier))
+    _Expression($) {
+      return choice($.QualifiedName, $.TextLiteral)
     },
-
-    // Views and rendering
-    ViewDeclaration($) {
+    _ViewRenderStatement($) {
+      return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
+    },
+    _AppBlock($) {
+      return seq('{', field('statements', $.RootDeclaration), '}')
+    },
+    _ViewDeclarationBlock($) {
+      return seq(
+        '{',
+        repeat(field('statements', $.LetDeclaration)),
+        field('statements', $._ViewRenderStatement),
+        repeat(field('statements', alias($._NestedViewDeclaration, $.ViewDeclaration))),
+        '}',
+      )
+    },
+    _NestedViewDeclaration($) {
       return seq(
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
+        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
+      )
+    },
+    _ViewRenderBlock($) {
+      return seq(
         '{',
-        $.RenderStatement,
+        repeat(field('statements', choice($.LetDeclaration, $.ViewRenderExpression))),
         '}',
       )
     },
-    RenderStatement($) {
-      return seq('render', field('body', choice($.ViewRender, $.Injection)))
+    _TestsBlock($) {
+      return seq('{', repeat(field('statements', $.TestDeclaration)), '}')
+    },
+    _TestBlock($) {
+      return seq(
+        '{',
+        repeat(field('statements', choice($.RunStatement, $.PressStatement, $.TypeStatement, $.ExpectStatement))),
+        '}',
+      )
+    },
+    _ExpectationBlock($) {
+      return seq('{', repeat(field('statements', choice($.TextExpectation, $.InputValueExpectation))), '}')
+    },
+
+    // Apps and views
+    AppDeclaration($) {
+      return seq(
+        optional(field('visibility', $.Visibility)),
+        'app',
+        field('name', $.Identifier),
+        field('block', alias($._AppBlock, $.Block)),
+      )
+    },
+    RootDeclaration($) {
+      return seq('root', field('view', $.QualifiedName))
+    },
+    ViewDeclaration($) {
+      return seq(
+        optional(field('visibility', $.Visibility)),
+        'view',
+        field('name', $.Identifier),
+        optional(field('parameters', $.ParameterList)),
+        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
+      )
+    },
+    ForeignView($) {
+      return seq('from', field('path', $.ImportPath))
+    },
+    RenderInjectStatement($) {
+      return seq('render', field('injection', $.Injection))
+    },
+    RenderViewExpressionStatement($) {
+      return seq('render', field('expression', $.ViewRenderExpression))
     },
 
     // View parameters and native injection boundaries
@@ -38,7 +124,7 @@ export default grammar({
       return seq('(', optional(seq($.Parameter, repeat(seq(',', $.Parameter)))), ')')
     },
     Parameter($) {
-      return seq(field('name', $.Identifier), field('type', $.Identifier))
+      return seq(field('name', $.Identifier), field('type', $.QualifiedName))
     },
     Injection($) {
       return seq(
@@ -48,20 +134,147 @@ export default grammar({
       )
     },
     InjectionCapture($) {
-      return seq(field('name', $.Identifier), optional(field('value', choice($.Identifier, $.ContextReference))))
+      return seq(field('name', $.Identifier), optional(field('value', choice($.QualifiedName, $.ContextReference))))
     },
     ContextReference() {
-      return /@@[A-Za-z_][A-Za-z0-9_]*/
+      return ContextReferenceRegx
     },
     TypeScript() {
-      return token(seq('```ts', repeat(choice(/[^`]/, /`[^`]/, /``[^`]/)), '```'))
-    },
-    ViewRender($) {
-      return seq(
-        field('view', $.Identifier),
-        optional(field('argumentList', $.ArgumentList)),
-        optional(seq('{', repeat(field('children', $.ViewRender)), '}')),
+      return token(
+        seq(
+          '```ts',
+          repeat(choice(TypeScriptTextCharacterRegx, TypeScriptSingleBacktickRegx, TypeScriptDoubleBacktickRegx)),
+          '```',
+        ),
       )
+    },
+    ViewRenderExpression($) {
+      return seq(
+        optional(field('tag', $.RenderTag)),
+        field('view', $.QualifiedName),
+        optional(field('argumentList', $.ArgumentList)),
+        optional(field('block', alias($._ViewRenderBlock, $.Block))),
+      )
+    },
+
+    // Lexical values
+    LetDeclaration($) {
+      return seq(
+        optional(field('visibility', $.Visibility)),
+        'let',
+        field('name', $.Identifier),
+        optional(seq('is', field('type', $.QualifiedName))),
+        '=',
+        field('value', $._Expression),
+      )
+    },
+
+    // Modules
+    TypeScriptLibraryDeclaration($) {
+      return seq('ts-library', field('name', $.Identifier), '{', field('publication', $.PublishDeclaration), '}')
+    },
+    PublishDeclaration($) {
+      return seq(
+        'publish',
+        '{',
+        optional(
+          seq(field('members', $.NamedImport), repeat(seq(',', field('members', $.NamedImport))), optional(',')),
+        ),
+        '}',
+      )
+    },
+    UseStatement($) {
+      return choice(
+        seq('use', field('from', $.ImportPath), field('all', $.All)),
+        seq(
+          'use',
+          optional(field('from', $.ImportPath)),
+          field('imports', $.NamedImport),
+          repeat(seq(',', field('imports', $.NamedImport))),
+        ),
+      )
+    },
+    NamedImport($) {
+      return seq(field('target', $.Identifier), optional(seq('as', field('alias', $.Identifier))))
+    },
+    All() {
+      return 'all'
+    },
+    UsePackageStatement($) {
+      return seq('use', 'package', field('from', $.ImportPath), optional(seq('as', field('alias', $.Identifier))))
+    },
+    RequiresDeclaration($) {
+      return seq(
+        'requires',
+        field('provider', $.RequirementProvider),
+        ':',
+        field('identifier', $.RequirementIdentifier),
+        optional(seq('version', field('version', $.RequirementVersion))),
+        optional(seq('as', field('alias', $.Identifier))),
+      )
+    },
+    RequirementProvider() {
+      return choice('github', 'file', 'npm', 'bundled')
+    },
+    RequirementIdentifier() {
+      return token(
+        choice(RelativeRequirementIdentifierRegx, ScopedRequirementIdentifierRegx, RequirementIdentifierRegx),
+      )
+    },
+    RequirementVersion() {
+      return token(RequirementVersionRegx)
+    },
+    ImportPath() {
+      return ImportPathRegx
+    },
+    Visibility() {
+      return choice('file', 'folder', 'package', 'project', 'public')
+    },
+
+    // App tests and interactions
+    TestsDeclaration($) {
+      return seq('tests', optional(field('label', $.TextLiteral)), field('block', alias($._TestsBlock, $.Block)))
+    },
+    TestDeclaration($) {
+      return seq(
+        'test',
+        optional(choice(
+          field('label', $.TextLiteral),
+          seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
+        )),
+        field('block', alias($._TestBlock, $.Block)),
+      )
+    },
+    RunStatement($) {
+      return seq('run', field('app', $.QualifiedName))
+    },
+    PressStatement($) {
+      return seq('press', field('target', $.RenderTag))
+    },
+    TypeStatement($) {
+      return seq('type', field('value', $.TextLiteral), 'into', field('target', $.RenderTag))
+    },
+    ExpectStatement($) {
+      return seq(
+        'expect',
+        choice(
+          $.TextExpectation,
+          $.InputExpectation,
+          seq(optional(field('target', $.RenderTag)), field('block', alias($._ExpectationBlock, $.Block))),
+        ),
+      )
+    },
+    TextExpectation($) {
+      return seq('text', field('value', $.TextLiteral))
+    },
+    InputExpectation($) {
+      return seq(field('target', $.RenderTag), 'input', 'value', field('value', $.TextLiteral))
+    },
+    InputValueExpectation($) {
+      return seq('input', 'value', field('value', $.TextLiteral))
+    },
+    RenderTag() {
+      return RenderTagRegx
     },
 
     // Expressions
@@ -69,19 +282,25 @@ export default grammar({
       return seq(
         '(',
         optional(seq(
-          choice($.TextLiteral, $.Identifier),
-          repeat(seq(',', choice($.TextLiteral, $.Identifier))),
+          $._Expression,
+          repeat(seq(',', $._Expression)),
         )),
         ')',
       )
     },
     TextLiteral() {
-      return token(seq('"', repeat(choice(/[^"\\\r\n\u0000-\u001f]/, /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/)), '"'))
+      return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
     },
 
     // Names
+    Comment() {
+      return token(choice(LineCommentRegx, BlockCommentRegx))
+    },
     Identifier() {
-      return /[A-Za-z_][A-Za-z0-9_]*/
+      return IdentifierRegx
+    },
+    QualifiedName($) {
+      return seq($.Identifier, repeat(seq('.', $.Identifier)))
     },
   },
 })

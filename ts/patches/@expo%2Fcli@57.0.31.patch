@@ -1,0 +1,12 @@
+diff --git a/build/metro-require/require.js b/build/metro-require/require.js
+--- a/build/metro-require/require.js
++++ b/build/metro-require/require.js
+@@ -423,7 +423,7 @@
+                 reactRefreshTimeout = setTimeout(()=>{
+                     reactRefreshTimeout = null;
+                     Refresh.performReactRefresh();
+-                }, 30);
++                }, 0);
+             }
+         }
+     };

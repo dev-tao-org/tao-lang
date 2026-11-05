@@ -1,4 +1,4 @@
-import { runSteps } from '@cli-kit'
+import * as CLIKit from '@cli-kit'
 import { workspaceTests } from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
 import check from './check'
@@ -13,12 +13,13 @@ export default registerCommand({
     description: 'Limit formatting to named files or globs; checks stay workspace-wide.',
     variadic: true,
   }],
-  async action(paths: string[]) {
+  options: [{ flags: '--yes', description: 'Authorize required app dependency setup.' }],
+  async action(paths: string[], options: { yes?: boolean } = {}) {
     // Native app journeys await their testing implementation.
-    await runSteps(
+    await CLIKit.runSteps(
       () => fmt.action(paths),
       () => check.action(),
-      () => workspaceTests(),
+      () => workspaceTests([], undefined, { yes: options.yes }),
     )
   },
 })

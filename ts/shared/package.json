@@ -5,15 +5,123 @@
   "type": "module",
   "module": "shared-src/shared.ts",
   "dependencies": {
+    "@dprint/typescript": "0.96.1",
     "chokidar": "5.0.0",
-    "typescript": "5.9.3"
+    "memfs": "4.80.0",
+    "playwright": "1.58.2",
+    "typescript": "5.9.3",
+    "zod": "4.6.7"
   },
-  "devDependencies": { "@types/bun": "1.4.0" },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "node-addon-api": "8.5.0",
+    "node-gyp": "12.1.0"
+  },
   "exports": {
     ".": "./shared-src/shared.ts",
     "./os": "./shared-src/os.ts",
     "./os/browser": "./shared-src/os/BrowserRuntime.ts",
-    "./os/preview": "./shared-src/os/PreviewPlatform.ts",
-    "./universal": "./shared-src/universal/universal.ts"
+    "./os/preview": "./shared-src/os/preview/PreviewPlatform.ts",
+    "./tests": "./test-shared/Shared.test-utils.ts",
+    "./preview": "./shared-src/Preview.ts",
+    "./errors/external": "./shared-src/universal/Errors/external.ts",
+    "./os/metro": "./shared-src/os/MetroPlatform.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@shared",
+        "namespace": "Shared",
+        "entities": [
+          "Errors",
+          "Json",
+          "Sort",
+          "Lists",
+          "Addr",
+          "Objects",
+          "Schema",
+          "Regxs",
+          "Range",
+          "Source",
+          "Styles",
+          "Switch",
+          "Time",
+          "NullCharacter",
+          "ControlCCharacter",
+          "ControlDCharacter",
+          "BackspaceCharacter",
+          "TabCharacter",
+          "NewlineCharacter",
+          "CarriageReturnCharacter",
+          "EscapeCharacter",
+          "RecordSeparatorCharacter",
+          "DeleteCharacter",
+          "NewlineCharacterCode",
+          "S",
+          "TimingSample",
+          "TimingEntry",
+          "Timings",
+          "Try"
+        ]
+      },
+      "./os": {
+        "alias": "@shared/os",
+        "namespace": "OS",
+        "entities": [
+          "BrowserRuntime",
+          "Browser",
+          "HeadlessBrowser",
+          "Env",
+          "FS",
+          "Hash",
+          "Files",
+          "GeneratedFileSystem",
+          "WorkspaceWatch",
+          "JavaScriptHeap",
+          "MetroPlatform",
+          "Http",
+          "Path",
+          "Platform",
+          "PreviewPlatform",
+          "Process",
+          "Processes",
+          "Repo",
+          "Storage",
+          "Artifacts",
+          "BuildLock",
+          "DevelopmentStorage",
+          "SessionLock",
+          "Streams",
+          "Terminal",
+          "Text",
+          "Bundle",
+          "FormatterResources"
+        ]
+      },
+      "./os/preview": {
+        "alias": "@shared/os/preview",
+        "namespace": "PreviewPlatform"
+      },
+      "./os/browser": {
+        "alias": "@shared/os/browser",
+        "namespace": "BrowserRuntime"
+      },
+      "./tests": {
+        "alias": "@shared-tests",
+        "namespace": "Tests"
+      },
+      "./preview": {
+        "alias": "@shared/preview",
+        "namespace": "Preview"
+      },
+      "./errors/external": {
+        "alias": "@shared/errors/external",
+        "namespace": "ExternalErrors"
+      },
+      "./os/metro": {
+        "alias": "@shared/os/metro",
+        "namespace": "MetroPlatform"
+      }
+    }
   }
 }

@@ -1,0 +1,5 @@
+use tao@ui Text
+
+folder view Nearby {
+  render Text("Folder sibling")
+}

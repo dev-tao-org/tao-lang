@@ -1,43 +1,61 @@
-import { Errors, Try } from '@shared'
-import { Artifacts, FileSystem, Platform, Repo } from '@shared/os'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Artifacts, FS, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 
-/** doctorReport gathers diagnostics for the active implementation without changing developer state. */
-export async function doctorReport(fingerprintOnly = false): Promise<{
+/** DoctorReport contains environment diagnostics and the host fingerprint. */
+export type DoctorReport = {
   version: 1
   repositoryRoot: string
   checks: Check[]
   status: Check['status']
   fingerprint: Fingerprint
-}> {
+}
+/** doctorReport gathers diagnostics for the active implementation without changing developer state. */
+export async function doctorReport(fingerprintOnly = false): Promise<DoctorReport> {
   const snapshot = await readSnapshot()
   const fingerprint = await readFingerprint(snapshot)
   const checks = fingerprintOnly ? [] : await readChecks(snapshot)
-  const status = checks.some(check => check.status === 'fail')
-    ? 'fail'
-    : checks.some(check => check.status === 'warn')
-    ? 'warn'
-    : 'pass'
+  const status = resolveReportStatus(checks)
   return { version: 1, repositoryRoot: Repo.getWorkspaceRoot(), checks, status, fingerprint }
 }
 
-/** safeToken admits only plain version and identifier tokens into the pasteable fingerprint. */
-export function safeToken(value: string | undefined): string | undefined {
+/** assertDoctorReady raises the diagnosis after its report has been printed. */
+export function assertDoctorReady(status: Check['status']): void {
+  if (status === 'fail') {
+    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
+  }
+}
+
+type OptionalToolOutput = string | undefined
+type CheckStatus = 'pass' | 'warn' | 'fail'
+
+function resolveReportStatus(checks: readonly Check[]): Check['status'] {
+  if (checks.some(check => check.status === 'fail')) {
+    return 'fail'
+  }
+  if (checks.some(check => check.status === 'warn')) {
+    return 'warn'
+  }
+  return 'pass'
+}
+
+function safeToken(value: OptionalToolOutput): string | undefined {
   const token = value?.trim()
-  return token && /^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(token) ? token : undefined
+  return token && Regxs.DoctorToken.test(token) ? token : undefined
 }
 
-/** toolVersion extracts a version token while dropping paths and other identifying output. */
-export function toolVersion(output: string | undefined): string | undefined {
-  const token = output?.split('\n')[0]?.trim().split(/\s+/).map(value => value.replace(/,$/, ''))
-    .find(value => /^v?[0-9][0-9A-Za-z._+-]*$/.test(value))
-  return safeToken(token?.replace(/^v/, ''))
+function toolVersion(output: OptionalToolOutput): string | undefined {
+  const token = output?.split(NewlineCharacter)[0]?.trim().split(Regxs.WhitespaceRunsRegx).map(value =>
+    value.replace(Regxs.TrailingComma, '')
+  )
+    .find(value => Regxs.ToolVersionToken.test(value))
+  return safeToken(token?.replace(Regxs.VersionPrefix, ''))
 }
 
-/** diagnoseTools classifies required runtime versions and optional local-service tools. */
-export function diagnoseTools(
+function diagnoseTools(
   tools: readonly string[],
-  versions: readonly (string | undefined)[],
-  failures: readonly (string | undefined)[] = [],
+  versions: readonly OptionalToolOutput[],
+  failures: readonly OptionalToolOutput[] = [],
 ): Check[] {
   return tools.map((name, index) => {
     const version = toolVersion(versions[index])
@@ -63,14 +81,7 @@ export function diagnoseTools(
   })
 }
 
-/** assertDoctorReady raises the diagnosis after its report has been printed. */
-export function assertDoctorReady(status: Check['status']): void {
-  if (status === 'fail') {
-    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
-  }
-}
-
-type Check = { name: string; status: 'pass' | 'warn' | 'fail'; detail: string; remediation?: string }
+type Check = { name: string; status: CheckStatus; detail: string; remediation?: string }
 type Fingerprint = {
   version: 1
   architecture?: string
@@ -80,9 +91,17 @@ type Fingerprint = {
   toolchain: { name: string; present: boolean; version?: string; hash?: string }[]
 }
 
+type DoctorSnapshot = {
+  versions: OptionalToolOutput[]
+  failures: OptionalToolOutput[]
+  commit: OptionalToolOutput
+  describe: OptionalToolOutput
+  changes: OptionalToolOutput
+}
+
 const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
 
-async function readSnapshot() {
+async function readSnapshot(): Promise<DoctorSnapshot> {
   const [probes, commit, describe, changes] = await Promise.all([
     Promise.all(tools.map(probeTool)),
     probe('git rev-parse HEAD'),
@@ -100,7 +119,7 @@ async function readSnapshot() {
 
 async function probeTool(tool: string): Promise<{ output?: string; failure?: string }> {
   return await Try(async () => ({
-    output: await Platform.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
+    output: await Processes.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
   }), {
     catch(error) {
       const failure = Errors.isCommandExecutionError(error)
@@ -111,9 +130,7 @@ async function probeTool(tool: string): Promise<{ output?: string; failure?: str
   })
 }
 
-type Snapshot = Awaited<ReturnType<typeof readSnapshot>>
-
-async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
+async function readFingerprint(snapshot: DoctorSnapshot): Promise<Fingerprint> {
   const system = Platform.systemInfo()
   const fingerprint: Fingerprint = {
     version: 1,
@@ -138,7 +155,7 @@ async function readFingerprint(snapshot: Snapshot): Promise<Fingerprint> {
   return fingerprint
 }
 
-async function readChecks(snapshot: Snapshot): Promise<Check[]> {
+async function readChecks(snapshot: DoctorSnapshot): Promise<Check[]> {
   const checks = diagnoseTools(tools, snapshot.versions, snapshot.failures)
   const main = Try.WithDefault(undefined, Repo.getMainWorktreeRoot)
   checks.push({
@@ -154,7 +171,7 @@ async function readChecks(snapshot: Snapshot): Promise<Check[]> {
 
 function workspaceChecks(): Check[] {
   return ['package.json', 'bun.lock', 'node_modules'].map(name => {
-    const present = FileSystem.existsSync(Repo.resolvePath('ts', name))
+    const present = FS.existsSync(Repo.resolvePath('ts', name))
     return {
       name: 'workspace ' + name,
       status: present ? 'pass' : 'fail',
@@ -178,12 +195,12 @@ async function artifactChecks(): Promise<Check[]> {
 async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
   return Try.WithDefault(
     undefined,
-    () => Platform.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
+    () => Processes.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
   )
 }
 
-function gitHash(value: string | undefined): string | undefined {
-  return value && /^[0-9a-f]{40}$/.test(value) ? value : undefined
+function gitHash(value: OptionalToolOutput): string | undefined {
+  return value && Regxs.Sha1HashRegx.test(value) ? value : undefined
 }
 
 function isSupportedRuntime(name: string, version: string): boolean {
@@ -194,5 +211,8 @@ function isSupportedRuntime(name: string, version: string): boolean {
   if (name !== 'bun') {
     return true
   }
-  return major > 1 || (major === 1 && (minor > 4 || (minor === 4 && patch >= 2)))
+  if (major !== 1) {
+    return major > 1
+  }
+  return minor > 4 || (minor === 4 && patch >= 2)
 }

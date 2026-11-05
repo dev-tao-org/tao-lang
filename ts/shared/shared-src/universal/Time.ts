@@ -1,3 +1,6 @@
+/** clockIdentity identifies this runtime's monotonic clock; distinct identities cannot share relative timestamps. */
+export const clockIdentity = `runtime:${performance.timeOrigin}:${Math.random().toString(36).slice(2)}`
+
 /** nowMs returns a monotonic millisecond reading for duration measurements. */
 export function nowMs(): number {
   return performance.now()
@@ -28,4 +31,17 @@ export function sleep(duration: number): Promise<void> {
 export function schedule(durationMs: number, action: () => void): () => void {
   const timer = setTimeout(action, durationMs)
   return () => clearTimeout(timer)
+}
+
+/** scheduleMicrotask runs after the current synchronous stack unless canceled first. */
+export function scheduleMicrotask(action: () => void): () => void {
+  let active = true
+  queueMicrotask(() => {
+    if (active) {
+      action()
+    }
+  })
+  return () => {
+    active = false
+  }
 }

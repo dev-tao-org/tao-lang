@@ -270,11 +270,14 @@ Describe('agent hooks', () => {
       .toEqual(['Installed commit-msg.', 'Left pre-commit in place: it was not written by this repository.'])
   })
 
-  Test('names a hook script that exists for every command the hook source declares', async () => {
+  Test('routes session setup through root and names existing reference scripts for other hooks', async () => {
     const hooks = JSON.parse(
       Text.stripJsonc(await FS.readText(Repo.resolveGitPath('.rulesync/hooks.jsonc'))),
     ) as { hooks: Record<string, Array<{ command: string; matcher?: string }>> }
-    const commands = Object.values(hooks.hooks).flat()
+    Expect(hooks.hooks['sessionStart']?.map(entry => entry.command)).toEqual([
+      'repo_root="$(git rev-parse --show-toplevel)" && cd "$repo_root" && ./agent setup --frozen-lockfile',
+    ])
+    const commands = Object.entries(hooks.hooks).flatMap(([event, entries]) => event === 'sessionStart' ? [] : entries)
 
     for (const entry of commands) {
       const script = entry.command.match(/.x-tao-old-v1\/packages\/cli\/agent-cli\/agent-cli-src\/cli\/[\w-]+\.zsh/)

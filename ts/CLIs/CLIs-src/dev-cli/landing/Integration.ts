@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Regxs } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { requireOwnedStorageChanges } from './StorageStatus'
 
@@ -13,7 +13,7 @@ export async function requireCleanBranch(io: LandingIO): Promise<string> {
 
 /** requireFeatureBranch validates a literal feature branch before using it in refspecs or paths. */
 export function requireFeatureBranch(branch: string): void {
-  if (!/^feat\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(branch) || branch.includes('..') || branch.endsWith('/')) {
+  if (!Regxs.FeatureBranchNameRegx.test(branch) || branch.includes('..') || branch.endsWith('/')) {
     Errors.ThrowUserInput('Landing requires a named feat/<name> branch.')
   }
 }

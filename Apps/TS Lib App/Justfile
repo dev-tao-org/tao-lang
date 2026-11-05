@@ -1,0 +1,23 @@
+set quiet
+
+TAO := env_var_or_default('TAO', justfile_directory() / '../../tao')
+
+# Show this app's commands.
+help:
+    just --list
+
+# Compile the configured Tao library.
+compile:
+    "{{TAO}}" compile Demo --package src/ts
+
+# Start the managed Expo web host for this library consumer.
+run: compile
+    "{{TAO}}" run --package src/ts --web
+
+# Check actual JSX props and expected type errors with the local TypeScript config.
+check: compile
+    cd src/ts && bun run check
+
+# Compile, check and run the local headless browser journey.
+test: check
+    cd src/ts && TAO_CLI="{{TAO}}" bun test test

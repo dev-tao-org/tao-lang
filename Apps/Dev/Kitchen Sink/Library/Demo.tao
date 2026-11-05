@@ -1,0 +1,18 @@
+use tao@ui Col, Text
+
+ts-library KitchenSinkLibrary {
+  publish { LibraryGreeting, }
+}
+
+public
+view LibraryGreeting(First text, Second text) {
+  render Col {
+    Text(First)
+    PrivateCaption
+    Text(Second)
+  }
+
+  view PrivateCaption {
+    render Text("Compiled Tao library")
+  }
+}

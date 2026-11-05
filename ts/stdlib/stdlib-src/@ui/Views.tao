@@ -1,0 +1,27 @@
+public
+view Text(Value text) {
+  render inject Value ```ts
+    return <Tao.Text>{Value}</Tao.Text>
+  ```
+}
+
+public
+view Col {
+  render inject Children @@children ```ts
+    return <Tao.View style={{ flexDirection: 'column' }}>{Children}</Tao.View>
+  ```
+}
+
+public
+view Row {
+  render inject Children @@children ```ts
+    return <Tao.View style={{ flexDirection: 'row' }}>{Children}</Tao.View>
+  ```
+}
+
+public
+view Input(Value text) {
+  render inject Value ```ts
+    return <Tao.TextInput defaultValue={Value} />
+  ```
+}

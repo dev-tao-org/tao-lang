@@ -1,24 +1,38 @@
-import { Errors, Try } from '@shared'
-import { Platform, Text } from '@shared/os'
+import { Errors, EscapeCharacter, NewlineCharacter, Try } from '@shared'
+import * as ExternalErrors from '@shared/errors/external'
+import { Terminal, Text } from '@shared/os'
+import { Process } from '@shared/os'
 import { IO } from './cli-kit'
 
-Platform.onUncaughtException(fatalError)
-Platform.onUnhandledRejection(fatalError)
+Process.onUncaughtException(fatalError)
+Process.onUnhandledRejection(fatalError)
 
-function fatalError(error: unknown): void {
+async function fatalError(error: unknown): Promise<void> {
   const commandFailure = Errors.isCommandExecutionError(error)
   const status = commandFailure ? error.result.status : undefined
-  Try(() => printError(error), {
+  await Try(async () => {
+    printError(error)
+    IO.summary(`Failed: ${ExternalErrors.fromUnknown(error).message.split(NewlineCharacter)[0]!.slice(0, 240)}`)
+    await IO.finish('failed')
+  }, {
+    catch: () => writeFallbackError(error),
     finally() {
-      Platform.exit(status ?? 1)
+      Process.exit(status || 1)
     },
   })
+}
+
+function writeFallbackError(error: unknown): void {
+  const { stacks, details } = Errors.describe(error)
+  Terminal.stderr.write(
+    `${[...stacks, Text.inspect(details)].filter(Boolean).join(NewlineCharacter)}${NewlineCharacter}`,
+  )
 }
 
 function printError(error: unknown): void {
   const { stacks, details } = Errors.describe(error)
   for (const stack of stacks) {
-    IO.printToStdErr('\u001b[33m%s\u001b[0m', stack)
+    IO.printToStdErr(EscapeCharacter + '[33m%s' + EscapeCharacter + '[0m', stack)
   }
   IO.printToStdErr('%s', Text.inspect(details))
 }

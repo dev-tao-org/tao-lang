@@ -1,0 +1,15 @@
+use tao@ui Col
+use ScopeExamples, PrivateViewExamples
+
+folder app Language {
+  root LanguageExamples
+}
+
+view LanguageExamples {
+  render Col {
+    #scopes
+    ScopeExamples
+    #privateViews
+    PrivateViewExamples
+  }
+}

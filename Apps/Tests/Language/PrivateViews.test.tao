@@ -1,0 +1,13 @@
+use Language
+
+tests "Nested view scope" {
+  test "captures are isolated across owner instances" {
+    run Language
+    expect text "Original"
+    expect text "Left: 0"
+    expect text "Right: 0"
+    press #Left
+    expect text "Left: 1"
+    expect text "Right: 0"
+  }
+}

@@ -2,10 +2,10 @@
 
 Divide one outcome between agents that write at the same time, and put the pieces back together,
 once `delegation`'s own rules have said to delegate at all. Use when two or more substantial
-workstreams can proceed concurrently without sharing mutable seams. This assumes agents writing into
-your worktree, where ownership is what keeps them safe; a fan-out the Developer will run from printed briefs is
-the other case, where each agent takes a worktree of its own and there is no integration owner, and
-`delegation` says what changes.
+workstreams can proceed concurrently without sharing mutable seams. Each agent works in a separate
+worktree on a fresh feature branch from the parent's committed baseline. Name one integration owner
+and give every worker exclusive concept or path ownership to limit merge conflicts. A fan-out the
+Developer will run from printed briefs follows the same isolation rule; `delegation` owns its setup.
 
 ## Build the execution graph
 
@@ -36,6 +36,6 @@ agent's account of it. Integrate shared manifests, generated artifacts, dependen
 and documentation only after their upstream workstreams settle, running focused validation for each
 integrated slice and fixing confirmed failures before unblocking dependent work. When commits are
 authorized, use `git-workflow` and commit green integration units as work stabilizes, preferring
-continued parallel progress over artificial commit perfection. Finish with independent review across
-workstream boundaries (`references/review-fanout.md`), then run the repository's full final gate and
-report any environment-limited validation separately.
+continued parallel progress over artificial commit perfection. When the Developer requests independent
+review, cover workstream boundaries (`references/review-fanout.md`). Run the repository's full final
+gate and report any environment-limited validation separately.

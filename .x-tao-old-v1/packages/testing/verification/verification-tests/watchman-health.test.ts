@@ -74,6 +74,23 @@ Describe('Watchman health', () => {
     Expect(root?.remediation).toContain('watchman watch-del /clone')
   })
 
+  Test('accepts the Git root of a nested implementation but rejects a broader watch', () => {
+    const nested = {
+      gitWorktreeRoot: '/clone/worktrees/task',
+      repositoryRoot: '/clone/worktrees/task/.x-tao-old-v1',
+    }
+    const root = check(nested, 'watchman root')
+    const broader = check({
+      ...nested,
+      server: { roots: ['/clone/worktrees/task', '/clone'], state: 'answering' },
+    }, 'watchman root')
+
+    Expect(root?.status).toBe('pass')
+    Expect(root?.detail).toBe('this checkout is watched as its own root')
+    Expect(broader?.status).toBe('fail')
+    Expect(broader?.remediation).toContain('watchman watch-del /clone')
+  })
+
   Test('treats only a strict ancestor as enclosing', () => {
     Expect(enclosingWatchRoot(['/clone/worktrees/task'], '/clone/worktrees/task')).toBeUndefined()
     Expect(enclosingWatchRoot(['/clone/worktrees/other', '/clone-b'], '/clone/worktrees/task'))

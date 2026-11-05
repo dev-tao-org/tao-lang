@@ -34,3 +34,8 @@ export class Document {
     return Object.freeze({ path: this.path, source: this.currentSource, version: this.currentVersion })
   }
 }
+
+/** IsDocument identifies a manager-owned document without accepting lookalike source records. */
+export function IsDocument(value: unknown): value is Document {
+  return value instanceof Document
+}

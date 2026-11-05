@@ -1,7 +1,8 @@
-import { Errors } from '../universal/universal'
-import * as FileSystem from './FileSystem'
+import { Errors, NullCharacter } from '../universal/universal'
+import * as FS from './FS'
 import * as Path from './Path'
-import * as Platform from './Platform'
+
+import * as Processes from './Processes'
 
 /** getWorkspaceRoot locates this checkout from the executing module, independently of the caller's directory. */
 export function getWorkspaceRoot(): string {
@@ -9,7 +10,7 @@ export function getWorkspaceRoot(): string {
     return workspaceRoot
   }
   let directory = Path.dirname(Path.fileURLToPath(import.meta.url))
-  while (!FileSystem.existsSync(Path.join(directory, '.git'))) {
+  while (!FS.existsSync(Path.join(directory, '.git'))) {
     const parent = Path.dirname(directory)
     if (parent === directory) {
       Errors.ThrowHostEnvironment('Cannot find the Git checkout containing the repository tooling.')
@@ -25,7 +26,9 @@ export function getMainWorktreeRoot(): string {
   if (mainWorktreeRoot) {
     return mainWorktreeRoot
   }
-  const records = Platform.captureSync('git worktree list --porcelain -z', { cwd: getWorkspaceRoot() }).split('\0')
+  const records = Processes.captureSync('git worktree list --porcelain -z', { cwd: getWorkspaceRoot() }).split(
+    NullCharacter,
+  )
   const first = records[0]
   if (!first?.startsWith('worktree ') || records[1] === 'bare') {
     Errors.ThrowHostEnvironment('Git did not report a primary working checkout.')
@@ -39,5 +42,6 @@ export function resolvePath(...segments: string[]): string {
   return Path.resolve(getWorkspaceRoot(), ...segments)
 }
 
-let workspaceRoot: string | undefined
-let mainWorktreeRoot: string | undefined
+type CachedRepositoryRoot = string | undefined
+let workspaceRoot: CachedRepositoryRoot
+let mainWorktreeRoot: CachedRepositoryRoot

@@ -1,6 +1,7 @@
-import { runCommand } from '@cli-kit'
-import { Errors, Try } from '@shared'
-import { Env, Platform, Repo } from '@shared/os'
+import * as CLIKit from '@cli-kit'
+import { Errors, Regxs, Try } from '@shared'
+import { Env, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
 /** myBranchCommand switches to the developer's existing personal branch. */
@@ -15,7 +16,7 @@ export default registerCommand({
   async action(name: string = '') {
     const cwd = Repo.getWorkspaceRoot()
     const branch = await resolveDeveloperBranch(name, cwd)
-    await runCommand('git switch', { variadicArgs: [branch], cwd })
+    await CLIKit.runNonInteractiveCommand('git switch', { variadicArgs: [branch], cwd })
   },
 })
 
@@ -35,7 +36,7 @@ async function resolveDeveloperBranch(name: string, cwd: string): Promise<string
     return developerBranch(configured)
   }
   const identity = await optionalGitValue('user.name', cwd)
-  const firstName = slug(identity.split(/\s+/u)[0] ?? '')
+  const firstName = slug(identity.split(Regxs.BranchSlugWhitespaceRegx)[0] ?? '')
   return `${developerPrefix}${firstName || 'local'}`
 }
 
@@ -44,11 +45,13 @@ function developerBranch(name: string): string {
 }
 
 function slug(value: string): string {
-  return value.toLowerCase().replaceAll(/[^a-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '')
+  return value.toLowerCase()
+    .replaceAll(Regxs.BranchSlugInvalidCharacterRegx, '-')
+    .replace(Regxs.BranchSlugEdgeDashesRegx, '')
 }
 
 async function optionalGitValue(key: string, cwd: string): Promise<string> {
-  return Try(() => Platform.capture('git config --get', { variadicArgs: [key], cwd }), {
+  return Try(() => Processes.capture('git config --get', { variadicArgs: [key], cwd }), {
     catch(error) {
       if (isMissingConfigValue(error)) {
         return ''

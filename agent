@@ -2,15 +2,14 @@
 # Run agent commands inside this checkout's pinned environment, forwarding arguments unchanged.
 
 set -e
-# Log normal output by default; TERMINAL_OUTPUT=1 requests terminal output instead.
-export TERMINAL_OUTPUT="${TERMINAL_OUTPUT:-0}"
 # Activate managed tools, then resolve command modules from the TypeScript workspace.
 . "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"
 # Fresh setup must run before Commander and other workspace dependencies are installed.
 if [ "${1:-}" = setup ]; then
   shift
-  exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" "$@"
+  exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" --agent "$@"
 fi
+. "$repository/.config/ensure-cli-generated.sh"
 # Replace the wrapper so signals and exit status belong to the command process.
 exec bun run "./CLIs/CLIs-src/agent-cli/agent-cli.ts" "$@"

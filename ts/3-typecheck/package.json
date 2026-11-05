@@ -4,9 +4,22 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@tao/ast-gen": "workspace:*",
     "@tao/shared": "workspace:*"
   },
   "devDependencies": {
+    "@tao/grammar": "workspace:*",
     "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./typecheck-src/Typecheck.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@typecheck",
+        "namespace": "Typecheck"
+      }
+    }
   }
 }

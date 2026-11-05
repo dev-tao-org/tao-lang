@@ -1,0 +1,11 @@
+use tao@ui Text, Col, Row
+
+app Preview {
+  root Stage
+}
+
+view Stage {
+  render Col {
+    Text("Ready")
+  }
+}

@@ -1,4 +1,4 @@
-import { CLI, FS, LocalSocket, Platform, Switch } from '@shared'
+import { CLI, FS, LocalSocket, Platform, Repo, Switch } from '@shared'
 import type { DoctorCheck } from './RepositoryDoctor'
 
 /**
@@ -39,6 +39,8 @@ export type WatchmanServer =
 export type WatchmanFacts = {
   /** The pinned client's version, or undefined when no `watchman` is on PATH. */
   readonly clientVersion?: string
+  /** The canonical Git worktree boundary when the implementation lives inside it. */
+  readonly gitWorktreeRoot?: string
   /** What launchd restarts Watchman from, when a LaunchAgent exists. */
   readonly launchAgent?: {
     readonly program: string
@@ -103,7 +105,8 @@ function watchRootCheck(facts: WatchmanFacts): DoctorCheck {
   if (facts.server?.state !== 'answering') {
     return { detail: 'not checked: no Watchman server answered', name, status: 'pass' }
   }
-  const enclosing = enclosingWatchRoot(facts.server.roots, facts.repositoryRoot)
+  const worktreeRoot = facts.gitWorktreeRoot ?? facts.repositoryRoot
+  const enclosing = enclosingWatchRoot(facts.server.roots, worktreeRoot)
   if (enclosing !== undefined) {
     return {
       // Watchman resolves a checkout to an existing enclosing watch before its own root marker, so
@@ -116,7 +119,7 @@ function watchRootCheck(facts: WatchmanFacts): DoctorCheck {
       status: 'fail',
     }
   }
-  const watched = facts.server.roots.includes(facts.repositoryRoot)
+  const watched = facts.server.roots.includes(worktreeRoot) || facts.server.roots.includes(facts.repositoryRoot)
   return {
     detail: watched ? 'this checkout is watched as its own root' : 'this checkout is not watched yet',
     name,
@@ -159,15 +162,18 @@ function launchAgentChecks(facts: WatchmanFacts): DoctorCheck[] {
 
 /** readWatchmanFacts inspects Watchman without starting a server or creating a watch. */
 export async function readWatchmanFacts(repositoryRoot: string): Promise<WatchmanFacts> {
-  const [clientVersion, socket, checkouts, canonicalRoot] = await Promise.all([
+  const gitRoot = Repo.getGitRoot(repositoryRoot)
+  const [clientVersion, socket, checkouts, canonicalRoot, canonicalGitRoot] = await Promise.all([
     readClientVersion(),
     readSocket(),
     readCheckouts(repositoryRoot),
     FS.realPath(repositoryRoot).catch(() => repositoryRoot),
+    FS.realPath(gitRoot).catch(() => gitRoot),
   ])
   const facts: WatchmanFacts = {
     ...(clientVersion === undefined ? {} : { clientVersion }),
     ...(socket === undefined ? {} : { server: await readWatchmanServer(socket), socket }),
+    gitWorktreeRoot: canonicalGitRoot,
     repositoryRoot: canonicalRoot,
     ...(checkouts.primary === undefined ? {} : { stableClient: FS.resolvePath(PROFILE_WATCHMAN, checkouts.primary) }),
   }

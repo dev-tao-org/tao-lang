@@ -1,0 +1,180 @@
+diff --git a/build/index.js b/build/index.js
+index f51c2c76b..baba91050 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -179,6 +179,10 @@ class FileMap extends events_1.default {
+     #plugins;
+     #startupPerfLogger;
+     #watcher;
++    #externalBatch;
++    #externalQueue = Promise.resolve();
++    #externalEnded = false;
++    #externalPoisoned = false;
+     static create(options) {
+         return new FileMap(options);
+     }
+@@ -551,18 +555,28 @@ class FileMap extends events_1.default {
+     /**
+      * Watch mode
+      */
++    applyExternalBatch(changes) {
++        const result = this.#externalQueue.then(async () => {
++            if (this.#externalEnded) throw new Error('FileMap has ended');
++            await this.build();
++            if (this.#externalEnded) throw new Error('FileMap has ended');
++            if (this.#externalPoisoned) {
++                throw Object.assign(new Error('FileMap commit failed; rebuild required'), { requiresRestart: true });
++            }
++            if (this.#options.watch) throw new Error('External batches require native watch:false');
++            return this.#externalBatch(changes);
++        });
++        this.#externalQueue = result.catch(() => {});
++        return result;
++    }
+     async #watch(fileSystem, clocks, plugins) {
+         this.#startupPerfLogger?.point('watch_start');
+-        if (!this.#options.watch) {
+-            this.#startupPerfLogger?.point('watch_end');
+-            return;
+-        }
+         const hasWatchedExtension = (filePath) => this.#options.extensions.some((ext) => filePath.endsWith(ext));
+         let nextEmit = null;
+         const emitChange = () => {
+             if (nextEmit == null) {
+                 // Nothing to emit
+-                return;
++                return 0;
+             }
+             const { events, firstEventTimestamp, firstEnqueuedTimestamp } = nextEmit;
+             const changeAggregator = new FileSystemChangeAggregator_1.FileSystemChangeAggregator();
+@@ -586,7 +600,7 @@ class FileMap extends events_1.default {
+                 // We had events, but they've exactly cancelled each other out, reset
+                 // so that timers are correct for the next change.
+                 nextEmit = null;
+-                return;
++                return 0;
+             }
+             this.#plugins.forEach(({ plugin, dataIdx }) => {
+                 plugin.onChanged(changeAggregator.getMappedView(dataIdx != null ? (metadata) => metadata[dataIdx] : () => null));
+@@ -615,9 +629,10 @@ class FileMap extends events_1.default {
+             };
+             this.emit('change', changeEvent);
+             nextEmit = null;
++            return changeSize;
+         };
+         let changeQueue = Promise.resolve();
+-        const onChange = (change) => {
++        const onChange = (change, external = false) => {
+             // Recrawl events bypass normal filtering - they trigger a full subdirectory scan
+             if (change.event !== 'recrawl' &&
+                 change.metadata &&
+@@ -690,7 +705,7 @@ class FileMap extends events_1.default {
+                         });
+                     }
+                     catch (e) {
+-                        if (!['ENOENT', 'EACCESS'].includes(e.code)) {
++                        if (external || !['ENOENT', 'EACCESS'].includes(e.code)) {
+                             throw e;
+                         }
+                         // Swallow ENOENT/ACCESS errors silently. Safe because either:
+@@ -750,9 +765,48 @@ class FileMap extends events_1.default {
+                 return null;
+             })
+                 .catch((error) => {
++                if (external) throw error;
+                 this.#console.error(`metro-file-map: watch error:\n  ${error.stack}\n`);
+             });
+         };
++        this.#externalBatch = async (changes) => {
++            if (!Array.isArray(changes)) throw new Error('Expected a change array');
++            const paths = new Set();
++            for (const change of changes) {
++                const relative = change.relativePath;
++                if (change.root !== this.#options.rootDir || typeof relative !== 'string' ||
++                    path.isAbsolute(relative) || relative.includes('\\') || relative.split('/').some(p => p === '.' || p === '..' || p === '') ||
++                    paths.has(relative) || !hasWatchedExtension(relative) ||
++                    this.#options.ignorePattern?.test(path.join(change.root, relative)) ||
++                    !['touch', 'delete'].includes(change.event) ||
++                    (change.event === 'touch' && (change.metadata?.type !== 'f' ||
++                        !Number.isFinite(change.metadata.size) || change.metadata.size < 0))) {
++                    throw new Error('Unsupported external change: ' + String(relative));
++                }
++                paths.add(relative);
++            }
++            try {
++                for (const change of changes) onChange(change, true);
++                await changeQueue;
++                if (this.#externalEnded) throw new Error('FileMap ended during batch');
++                try {
++                    return { status: 'accepted', changed: emitChange() };
++                }
++                catch (error) {
++                    this.#externalPoisoned = true;
++                    throw Object.assign(new Error('FileMap commit failed; rebuild required', { cause: error }),
++                        { requiresRestart: true });
++                }
++            }
++            finally {
++                nextEmit = null;
++                changeQueue = Promise.resolve();
++            }
++        };
++        if (!this.#options.watch) {
++            this.#startupPerfLogger?.point('watch_end');
++            return;
++        }
+         this.#changeInterval = setInterval(emitChange, CHANGE_INTERVAL);
+         (0, invariant_1.default)(this.#watcher != null, 'Expected #watcher to have been initialised by build()');
+         await this.#watcher.watch(onChange);
+@@ -772,6 +826,8 @@ class FileMap extends events_1.default {
+         this.#startupPerfLogger?.point('watch_end');
+     }
+     async end() {
++        this.#externalEnded = true;
++        await this.#externalQueue;
+         if (this.#changeInterval) {
+             clearInterval(this.#changeInterval);
+         }
+diff --git a/build/index.d.ts b/build/index.d.ts
+index debfd7173..2d0f062fd 100644
+--- a/build/index.d.ts
++++ b/build/index.d.ts
+@@ -135,6 +135,13 @@ export default class FileMap extends EventEmitter {
+      * 1. read data from the cache or create an empty structure.
+      */
+     read(): Promise<CacheData | undefined | null>;
++    /** applyExternalBatch processes known regular-file changes with native watch disabled. */
++    applyExternalBatch(changes: readonly {
++        event: 'touch' | 'delete';
++        root: string;
++        relativePath: string;
++        metadata?: { type: 'f'; size: number; modifiedTime?: number | null };
++    }[]): Promise<{ status: 'accepted'; changed: number }>;
+     end(): Promise<void>;
+     static H: HType;
+ }
+diff --git a/build/worker.js b/build/worker.js
+index 1dd3dcb1a..3276f1b62 100644
+--- a/build/worker.js
++++ b/build/worker.js
+@@ -45,15 +45,16 @@ class Worker {
+         if (computeSha1) {
+             sha1Promise = getContent().then(sha1hex);
+         }
++        const [pluginData, sha1] = await Promise.all([pluginDataPromise, sha1Promise]);
+         return contentPromise != null && data.maybeReturnContent
+             ? {
+                 content: await contentPromise,
+-                pluginData: await pluginDataPromise,
+-                sha1: await sha1Promise,
++                pluginData,
++                sha1,
+             }
+             : {
+-                pluginData: await pluginDataPromise,
+-                sha1: await sha1Promise,
++                pluginData,
++                sha1,
+             };
+     }
+ }

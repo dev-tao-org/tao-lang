@@ -1,6 +1,7 @@
-import { Errors } from '@shared'
+import * as Perf from '@perf'
+import { Json } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
-import { validatePreviewReport } from '../../../../perf/perf-src/PreviewHistoryStore'
 import { git, type LandingIO } from './LandingIO'
 
 /** PreviewRecord names one immutable measured source and its validated archive files. */
@@ -17,7 +18,7 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
     'HEAD',
     '--',
     'AGENTS.md',
-  ])).split('\n')[0]
+  ])).split(NewlineCharacter)[0]
   if (!introduced) {
     Errors.ThrowUserInput('Cannot locate the preview-record policy introduction in this branch.')
   }
@@ -30,10 +31,11 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
     '^origin/main',
   ])
   const result: PreviewRecord[] = []
-  for (const source of commits.split('\n').filter(Boolean)) {
-    const paths = (await git(io, ['diff-tree', '--no-commit-id', '--name-only', '-r', source])).split('\n').filter(
-      Boolean,
-    )
+  for (const source of commits.split(NewlineCharacter).filter(Boolean)) {
+    const paths = (await git(io, ['diff-tree', '--no-commit-id', '--name-only', '-r', source])).split(NewlineCharacter)
+      .filter(
+        Boolean,
+      )
     if (paths.every(isExemptPath)) {
       continue
     }
@@ -43,28 +45,35 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
 }
 
 function isExemptPath(path: string): boolean {
-  return path === '.storage' || /(^|\/)(AGENTS|CLAUDE)\.md$/.test(path)
-    || path.startsWith('agents/') || path.startsWith('.rulesync/') || path.startsWith('.codex/')
-    || path.startsWith('.claude/') || path.startsWith('.cursor/') || path.startsWith('Docs/')
+  const isInstructionPath = path === '.storage' || Regxs.AgentInstructionPathRegx.test(path)
+  const isAgentTools = path.startsWith('agents/') || path.startsWith('.rulesync/')
+  const isAgentEditors = path.startsWith('.codex/') || path.startsWith('.claude/')
+  const isAgentConfiguration = isAgentTools || isAgentEditors
+  const isEditorConfiguration = path.startsWith('.cursor/') || path.startsWith('Docs/')
+  return isInstructionPath || isAgentConfiguration || isEditorConfiguration
 }
 
 async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord> {
   const directory = `performance/preview/${source}`
   const pending = `.artifacts/notes/preview-history/${source}`
   const base = await io.exists(`${pending}/record.json`) ? pending : `.storage/${directory}`
-  if (!await io.exists(`${base}/record.json`) || !await io.exists(`${base}/report.json`)) {
-    Errors.ThrowUserInput(`Missing preview measurement for ${source}; historical capture is not available.`)
-  }
+  await requirePreviewRecordFiles(io, base, source)
   const record = await io.read(`${base}/record.json`)
   const report = await io.read(`${base}/report.json`)
-  validatePreviewReport(report, source)
-  const metadata = JSON.parse(record) as RecordMetadata
+  Perf.validatePreviewReport(report, source)
+  const metadata = parseRecordMetadata(record)
   const tree = await git(io, ['rev-parse', `${source}^{tree}`])
-  const fixture = await io.command('git', ['show', `${source}:${metadata.fixture?.path}`])
+  const fixture = await git(io, ['show', `${source}:${metadata.fixture?.path}`], { trim: false })
   if (!validMetadata(metadata, source, tree, report, fixture)) {
     Errors.ThrowUserInput(`Preview record ${source} is failed, unavailable, inconsistent or incomplete.`)
   }
   return { source, record, report, directory }
+}
+
+async function requirePreviewRecordFiles(io: LandingIO, base: string, source: string): Promise<void> {
+  if (!await io.exists(`${base}/record.json`) || !await io.exists(`${base}/report.json`)) {
+    Errors.ThrowUserInput(`Missing preview measurement for ${source}; historical capture is not available.`)
+  }
 }
 
 type RecordMetadata = {
@@ -77,8 +86,15 @@ type RecordMetadata = {
 }
 
 function validMetadata(record: RecordMetadata, source: string, tree: string, report: string, fixture: string): boolean {
-  return record.version === 1 && record.status === 'passed' && record.sourceCommit === source
-    && record.sourceTree === tree && record.reportSha256 === Platform.hashText(report)
-    && record.fixture?.path === 'Apps/Tests/Hello World.tao'
-    && record.fixture?.sha256 === Platform.hashText(fixture)
+  const isPassedSource = record.version === 1 && record.status === 'passed' && record.sourceCommit === source
+  const matchesSourceTree = record.sourceTree === tree && record.reportSha256 === Platform.hashText(report)
+  const hasValidFixturePath = typeof record.fixture?.path === 'string' && record.fixture.path.endsWith('.tao')
+  const matchesFixture = record.fixture?.sha256 === Platform.hashText(fixture)
+  const matchesRecord = isPassedSource && matchesSourceTree
+  const matchesFixtureRecord = hasValidFixturePath && matchesFixture
+  return matchesRecord && matchesFixtureRecord
+}
+
+function parseRecordMetadata(contents: string): RecordMetadata {
+  return Json.Parse(contents) as RecordMetadata
 }

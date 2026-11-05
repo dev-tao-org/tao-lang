@@ -1,123 +1,145 @@
-import { Errors, S, Try } from '@shared'
-import { FileSystem, Path } from '@shared/os'
+import { Json } from '@shared'
+import { Errors, Lists, S, Try } from '@shared'
+import { FS, Path } from '@shared/os'
+import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
+import type { RuntimePackageVersions } from '../Runtime'
+import { writeGeneratedHost } from './GeneratedHost'
+import * as RuntimeDependencyPolicy from './RuntimeDependencyPolicy'
 
 /** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
   directory: string,
   resourcesDirectory: string,
-  dependencies: Record<string, string>,
-  devDependencies: Record<string, string>,
+  dependencies: RuntimePackageVersions,
+  devDependencies: RuntimePackageVersions,
   sourceFiles: string[],
+  options: ExpoScaffoldOptions = {},
 ): Promise<void> {
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'package.json'),
-    JSON.stringify(
-      {
-        name: 'tao-preview',
-        private: true,
-        main: 'index.ts',
-        dependencies,
-        devDependencies,
-        scripts: { web: 'expo start --web --no-dev' },
-      },
-      null,
-      2,
-    ),
-  )
-  await FileSystem.writeIfChanged(Path.join(directory, 'index.ts'), expoEntry)
-  await FileSystem.writeIfChanged(Path.join(directory, 'metro.config.js'), metroConfiguration)
-  await FileSystem.writeIfChanged(
-    Path.join(directory, 'app.json'),
-    JSON.stringify({ expo: { name: 'Tao Preview', slug: 'tao-preview' } }, null, 2),
-  )
-  await FileSystem.writeIfChanged(Path.join(directory, 'tsconfig.json'), JSON.stringify(expoTypeScriptConfig, null, 2))
-  await FileSystem.mkdir(Path.join(directory, 'src'), { recursive: true })
+  await writeGeneratedHost(directory, {
+    'package.json': serializeExpoPackageManifest(dependencies, devDependencies),
+    'Application.ts': expoEntry,
+    'metro.config.js': metroConfiguration,
+    'tao-resolution.json': serializeTaoResolution(options),
+    'app.json': serializeExpoAppManifest(),
+    'tsconfig.json': serializeExpoTypeScriptConfig(),
+  }, options.dependencyDirectory)
+  await FS.mkdir(Path.join(directory, 'src'))
   await linkRuntimeSources(directory, resourcesDirectory, sourceFiles)
 }
 
-const metroConfiguration = S`
-  const path = require('node:path');
-  const fs = require('node:fs');
-  const { getDefaultConfig } = require('expo/metro-config');
-  const config = getDefaultConfig(__dirname);
-  config.resolver.platforms = ['web', 'native'];
-  config.watchFolders = [fs.realpathSync(path.join(__dirname, 'src/_gen_runtime'))];
-  config.resolver.nodeModulesPaths = [path.join(__dirname, 'node_modules')];
-  config.resolver.resolveRequest = (context, name, platform) => {
-    if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
-    if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
-    if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/PreviewPlatform.ts'), platform);
-    if (name === '@expo/metro/metro-runtime/modules/HMRClient') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/HMRClient.ts'), platform);
-    if (name === 'tao:metro-hmr-client') return context.resolveRequest(context, '@expo/metro/metro-runtime/modules/HMRClient', platform);
-    return context.resolveRequest(context, name, platform);
-  };
-  module.exports = config;
-`
+type ExpoScaffoldOptions = {
+  watchFolders?: readonly string[]
+  singletonPackages?: readonly string[]
+  dependencyDirectory?: string
+}
+function serializeExpoPackageManifest(
+  dependencies: RuntimePackageVersions,
+  devDependencies: RuntimePackageVersions,
+): string {
+  return Json.Print({
+    name: 'tao-preview',
+    private: true,
+    main: 'Application.ts',
+    dependencies,
+    devDependencies,
+    scripts: { start: 'expo start', web: 'expo start --web --no-dev' },
+  })
+}
+
+function serializeTaoResolution(options: ExpoScaffoldOptions): string {
+  const singletonPackages = resolveSingletonPackages(options)
+  return Json.Print({
+    watchFolders: options.watchFolders ?? [],
+    singletonPackages,
+  })
+}
+
+function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string[] {
+  return RuntimeDependencyPolicy.resolveRuntimeSingletonPackages(options.singletonPackages)
+}
+
+function serializeExpoAppManifest(): string {
+  return Json.Print({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
+}
+
+function serializeExpoTypeScriptConfig(): string {
+  return Json.Print(expoTypeScriptConfig)
+}
 
 const expoTypeScriptConfig = {
   extends: 'expo/tsconfig.base',
   compilerOptions: {
     baseUrl: '.',
     strict: true,
+    jsxImportSource: '@runtime/client/Bridge_react',
     preserveSymlinks: true,
     paths: {
       '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
+      '@runtime/client/*': ['src/_gen_runtime/runtime/*'],
+      '@tao/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
       '@shared': ['src/_gen_runtime/shared/shared.ts'],
-      '@shared/os/preview': ['src/_gen_runtime/shared/os/PreviewPlatform.ts'],
+      '@shared/os/preview': ['src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'],
     },
   },
 }
 
 const expoEntry = S`
-  import { registerRootComponent } from 'expo';
+  import { registerRootComponent } from './src/_gen_runtime/runtime/Bridge_expo';
+  import React from '@runtime/client/Bridge_react/Bridge_react';
+  import ReactNative from '@runtime/client/Bridge_react-native';
+  import { DefaultAppearance } from './src/_gen_runtime/runtime/Appearance';
   import App from './src/App';
-  registerRootComponent(App);
+  function TaoApplication() {
+    return React.createElement(ReactNative.View, { style: { flex: 1, backgroundColor: DefaultAppearance.background } }, React.createElement(App));
+  }
+  registerRootComponent(TaoApplication);
 `
 
 async function linkRuntimeSources(directory: string, resourcesDirectory: string, sourceFiles: string[]): Promise<void> {
   const target = Path.join(directory, 'src/_gen_runtime')
-  const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(target))
+  const current = await Try.WithDefault(undefined, () => FS.lstatSync(target))
   if (current?.isSymbolicLink()) {
-    const existingPath = await Try.WithDefault(undefined, () => FileSystem.realpathSync(target))
+    const existingPath = await Try.WithDefault(undefined, () => FS.realpathSync(target))
     if (existingPath === resourcesDirectory) {
       return
     }
-    await FileSystem.replaceDirectoryLink(resourcesDirectory, target)
+    await FS.replaceDirectoryLink(resourcesDirectory, target)
     return
   }
   if (current?.isDirectory()) {
     await removeOwnedSourceCopies(target, sourceFiles)
-    const remaining = await FileSystem.readdir(target)
-    if (remaining.length > 0) {
+    if (!await FS.isEmptyDir(target)) {
       Errors.ThrowUserInput(`Generated runtime source path contains user files: ${target}`)
     }
-    await FileSystem.rmdir(target)
+    await FS.rmdir(target)
   } else if (current) {
     Errors.ThrowUserInput(`Generated runtime source path is not a directory: ${target}`)
+  } else {
+    // A missing target needs no cleanup before creating the runtime source link.
   }
-  await FileSystem.symlink(resourcesDirectory, target, 'dir')
+  await FS.symlink(resourcesDirectory, target, 'dir')
 }
 
 async function removeOwnedSourceCopies(target: string, sourceFiles: string[]): Promise<void> {
   const oldSources = [...sourceFiles, 'runtime/Native.ts', 'TR.js', 'HMRClient.js']
-  const directories = [...new Set(oldSources.flatMap(file => parentDirectories(target, file)))]
+  const directories = Lists.unique(oldSources.flatMap(file => parentDirectories(target, file)))
     .sort((left, right) => left.length - right.length)
   await assertUnlinkedDirectories(directories)
   for (const file of oldSources) {
-    await FileSystem.rm(Path.join(target, file), { force: true })
+    await FS.rm(Path.join(target, file), { force: true })
   }
   for (const directory of directories.toReversed()) {
-    const entries = await Try.WithDefault([], () => FileSystem.readdir(directory))
-    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
-    if (current?.isDirectory() && entries.length === 0) {
-      await FileSystem.rmdir(directory)
+    const directoryIsEmpty = await Try.WithDefault(true, () => FS.isEmptyDir(directory))
+    const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
+    if (current?.isDirectory() && directoryIsEmpty) {
+      await FS.rmdir(directory)
     }
   }
 }
 
 async function assertUnlinkedDirectories(directories: readonly string[]): Promise<void> {
   for (const directory of directories) {
-    const current = await Try.WithDefault(undefined, () => FileSystem.lstatSync(directory))
+    const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (current?.isSymbolicLink()) {
       Errors.ThrowUserInput(`Generated runtime source path contains a linked directory: ${directory}`)
     }

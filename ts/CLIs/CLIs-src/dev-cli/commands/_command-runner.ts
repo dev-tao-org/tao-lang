@@ -1,12 +1,14 @@
+import { Process } from '@shared/os'
 import '../../cli-kit/fatal-errors'
 import { IO } from '@cli-kit'
-import { Platform } from '@shared/os'
+import { Regxs } from '@shared'
 
 /** CommandDefinition declares a command's metadata and inline implementation. */
 export type CommandDefinition<Args extends unknown[] = []> = {
   name: string
   description: string
   arguments?: readonly CommandArgument[]
+  options?: readonly CommandOption[]
   allowUnknownOptions?: boolean
   action: (...args: Args) => void | Promise<void>
 }
@@ -34,13 +36,13 @@ export function registerCommand<Args extends unknown[]>(definition: CommandDefin
 /** execute parses and executes the registered commands for one CLI invocation. */
 export async function execute(name = 'dev'): Promise<void> {
   // Setup can register and invoke its action before Commander has been installed.
-  const { Command } = await import('commander')
+  const { Command } = await import('../../cli-kit/bridges/Bridge_commander')
   const parser = new Command().name(name).configureOutput({
     writeOut(text) {
-      IO.print(text.replace(/\n$/, ''))
+      IO.print(text.replace(Regxs.TrailingNewlineRegx, ''))
     },
     writeErr(text) {
-      IO.printToStdErr(text.replace(/\n$/, ''))
+      IO.printToStdErr(text.replace(Regxs.TrailingNewlineRegx, ''))
     },
   })
   for (const definition of commands) {
@@ -49,12 +51,18 @@ export async function execute(name = 'dev'): Promise<void> {
       const label = `${argument.name}${argument.variadic ? '...' : ''}`
       command.argument(argument.required ? `<${label}>` : `[${label}]`, argument.description, argument.defaultValue)
     }
+    for (const option of definition.options ?? []) {
+      command.option(option.flags, option.description, option.defaultValue)
+    }
     command.allowUnknownOption(definition.allowUnknownOptions ?? false)
     command.action(async (...args: unknown[]) => {
-      await definition.action(...args.slice(0, definition.arguments?.length ?? 0))
+      const positional = args.slice(0, definition.arguments?.length ?? 0)
+      const options = definition.options ? [command.opts()] : []
+      await definition.action(...positional, ...options)
     })
   }
-  await parser.parseAsync(Platform.argv)
+  await parser.parseAsync(Process.argv)
+  await IO.finish()
 }
 
 type CommandArgument = {
@@ -63,6 +71,12 @@ type CommandArgument = {
   required?: boolean
   variadic?: boolean
   defaultValue?: unknown
+}
+
+type CommandOption = {
+  flags: string
+  description: string
+  defaultValue?: string
 }
 
 const commands: CommandDefinition<unknown[]>[] = []
