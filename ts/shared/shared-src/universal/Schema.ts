@@ -4,22 +4,47 @@ import { Try } from './TryCatch'
 
 export * from '../bridges/Bridge_zod'
 
-/** SchemaParseOptions names the input whose value is being validated. */
+/** ParseOptions configures source attribution for schema validation failures. */
 export type ParseOptions = { sourceName?: string }
 
 /** Parse validates unknown data and returns the schema's inferred output type. */
 export function Parse<Value>(value: unknown, schema: z.ZodType<Value>, options: ParseOptions = {}): Value {
   return Try(() => schema.parse(value), {
-    catch(cause) {
-      const sourceName = options.sourceName ?? 'Value'
-      const detail = cause instanceof z.ZodError
-        ? cause.issues.map(issue => `${formatPath(issue.path)} ${issue.message}`).join('; ')
-        : 'validation failed'
-      Errors.ThrowUserInput(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
-    },
+    catch: cause => throwSchemaFailure(options.sourceName ?? 'Value', cause),
   }) as Value
+}
+
+/** ParseAsync validates unknown data with synchronous or asynchronous schema checks. */
+export async function ParseAsync<Value>(
+  value: unknown,
+  schema: z.ZodType<Value>,
+  options: ParseOptions = {},
+): Promise<Value> {
+  return await Try(() => schema.parseAsync(value), {
+    catch: cause => throwSchemaFailure(options.sourceName ?? 'Value', cause),
+  }) as Value
+}
+
+function throwSchemaFailure(sourceName: string, cause: unknown): never {
+  if (isAsyncSchemaError(cause)) {
+    Errors.ThrowShouldNeverHappen('Schema.Parse requires a synchronous schema. Use Schema.ParseAsync instead.', {
+      cause,
+    })
+  }
+  const detail = isSchemaError(cause)
+    ? cause.issues.map(issue => `${formatPath(issue.path)} ${issue.message}`).join('; ')
+    : 'validation failed'
+  Errors.ThrowUserInput(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
 }
 
 function formatPath(path: readonly PropertyKey[]): string {
   return path.length === 0 ? 'at root' : `at ${path.map(String).join('.')}`
+}
+
+function isSchemaError(value: unknown): value is z.ZodError {
+  return value instanceof z.ZodError
+}
+
+function isAsyncSchemaError(value: unknown): value is z.core.$ZodAsyncError {
+  return value instanceof z.core.$ZodAsyncError
 }

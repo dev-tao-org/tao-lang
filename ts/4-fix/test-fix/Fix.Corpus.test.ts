@@ -57,9 +57,10 @@ function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter
       if (key === 'start' || key === 'end') {
         return undefined
       }
-      return key === 'code' && typeof item === 'string'
-        ? typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
-        : item
+      if (key === 'code' && typeof item === 'string') {
+        return typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
+      }
+      return item
     },
   })
 }
