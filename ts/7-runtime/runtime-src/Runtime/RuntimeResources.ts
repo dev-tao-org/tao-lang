@@ -10,4 +10,5 @@ export const RuntimeSourceDirectories = {
 export const RuntimeSourceFiles = {
   'runtime/Bridge_expo.ts': 'ts/7-runtime/runtime-src/bridges/Bridge_expo/Bridge_expo.ts',
   'shared/shared.ts': 'ts/shared/shared-src/shared.ts',
+  'shared/bridges/Bridge_zod.ts': 'ts/shared/shared-src/bridges/Bridge_zod.ts',
 } as const

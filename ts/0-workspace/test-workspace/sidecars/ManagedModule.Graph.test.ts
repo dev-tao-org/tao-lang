@@ -107,6 +107,19 @@ Tests.test('checks installed npm aliases against target names, ranges, and singl
   }, { finally: () => FS.rm(profile, { recursive: true, force: true }) })
 })
 
+Tests.test('keeps exact runtime pins without treating ordinary libraries as singletons', async () => {
+  const profile = Artifacts.resolvePath('tmp', `managed-library-runtime-${Platform.randomUUID()}`)
+  const input = { ...buildManagedInput(profile), runtimePins: { expo: '57.0.30', zod: '4.6.7' } }
+  await Try(async () => {
+    await writePackage(profile, 'expo', 'expo', '57.0.30', { '@expo/cli': '57.0.31' })
+    await writePackage(profile, 'expo/node_modules/@expo/cli', '@expo/cli', '57.0.31', { zod: '^3.25.76' })
+    await writePackage(profile, 'expo/node_modules/@expo/cli/node_modules/zod', 'zod', '3.25.76')
+    await writePackage(profile, 'zod', 'zod', '4.6.7')
+
+    await ManagedModuleGraph.auditInstalledGraph(profile, input, [])
+  }, { finally: () => FS.rm(profile, { recursive: true, force: true }) })
+})
+
 function buildManagedInput(directory: string): ManagedModuleTypes.ManagedModulesInput {
   return { directory, modules: [], target: 'browser', runtimePins: {}, bunVersion: '1.4.2' }
 }
