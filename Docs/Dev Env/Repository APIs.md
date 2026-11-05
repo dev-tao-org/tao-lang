@@ -107,3 +107,32 @@ checkpoint was `af3b2059bf762b801877a44789570007e767f0f1`; its acceptance does n
 rollout. Before landing, also reconcile the inherited missing `509bb1c2` timing record and the
 original whole-branch baseline comparison. Native PTY/resize acceptance remains unclaimed;
 public IO and actual Ink frame/lifecycle proofs passed. No landing was performed.
+
+## Final integration evidence
+
+The later independent reviews cover the repository migration through
+`b93bfb728dc2533710c14bb60297a36f82f829dd` and the JSON/runtime changes through
+`6490b7ad8ff623ecf288898b92b6d3a0ce81c9c5`, with no unresolved confirmed P0–P2 or required
+conformance findings. The four JSON review rounds are complete. Generated development app lock
+state in `09199521fccf4df2ad75d548406fa6ae80dfb4e5` is identified separately: full verification
+produced and exercised it, passing 636 TypeScript tests and 6 headless Tao journeys. Native
+PTY/resize and device acceptance remain unclaimed. Reviews and tests do not grant human acceptance.
+
+The [JSON readiness inventory](../../.storage/evidence/09199521fccf4df2ad75d548406fa6ae80dfb4e5/json-readiness/inventory.json)
+identifies 47 selected reports, logs and measurement inputs with SHA-256 hashes encoded as base64.
+Archive commit `cc54217fba68cb08e6788ef645e23ece5150c00e` also retains nine source-linked timing
+record/report pairs. Prior archive packets remain intact.
+
+Three matching baseline/final sessions compare original branch start `c7f53bd5c` with `09199521f`:
+first-edit React receipt medians are 133.1/37.8 ms and warm row session medians are 130.9/59.0 ms.
+The baseline uses a disclosed four-file measurement adapter; both use the same authored fixture,
+frames and toolchain. Startup ranges overlap. These are React commit receipts, not physical paint
+or causal attribution to JSON alone. Raw samples, the adapter and unsuccessful earlier runs are
+retained in the inventory. The original `509bb1c2` timing record has also been recovered.
+
+A complete audit found 163 missing timing records among 231 required implementation commits in
+the inherited source history. The developer authorized a new `feat/metro-memory-preview-ready`
+branch from current main with the final verified tree and one runnable implementation checkpoint.
+Original review/worker branches and backups are preserved; no existing history is rewritten and
+the gate is not weakened. The new checkpoint needs its own timing record and tree-equivalence
+receipt before handoff. Landing remains separately authorized.
