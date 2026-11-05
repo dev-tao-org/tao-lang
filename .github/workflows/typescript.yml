@@ -59,7 +59,8 @@ jobs:
       - name: Check workspace
         run: ./agent check
       - name: Test workspace
-        run: ./agent test --yes
+        # Browser/Metro and compiler integration tests share this runner's CPU and memory.
+        run: ./agent test --serial --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Upload logs and test timings
