@@ -4,6 +4,7 @@ import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import * as RuntimeDependencyPolicy from '../runtime-src/expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../runtime-src/expo/Scaffold'
 import * as Toolchain from '../runtime-src/expo/Toolchain'
 import * as ToolchainIdentity from '../runtime-src/expo/ToolchainIdentity'
@@ -15,7 +16,11 @@ Tests.test('web preview scaffold excludes native platforms that trigger Expo Xco
   await FS.mkdir(directory)
   await writeExpoApplication(directory, directory, {}, {}, [])
   const app = Json.Parse(await FS.readFile(Path.join(directory, 'app.json'), 'utf8')) as ExpoAppFixture
+  const resolution = Json.Parse(await FS.readFile(Path.join(directory, 'tao-resolution.json'), 'utf8')) as {
+    singletonPackages: string[]
+  }
   Tests.expect(app.expo.platforms).toEqual(['web'])
+  Tests.expect(resolution.singletonPackages).toEqual(['react', 'react-dom', 'react-native', 'react-native-web', 'expo'])
 })
 
 Tests.test('Runtime.create prepares relocated compiled resources and reuses the pinned toolchain', async () => {
@@ -75,6 +80,26 @@ Tests.test('runtime toolchain identity preserves cache bytes and distinguishes e
   Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, runtimeVersion: '1.5.0' })).not.toBe(key)
   Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, os: 'linux' })).not.toBe(key)
   Tests.expect(ToolchainIdentity.calculateToolchainKey({ ...identity, architecture: 'x64' })).not.toBe(key)
+})
+
+Tests.test('runtime dependency policy pins Expo packages from exact lock identities', async () => {
+  const directory = Artifacts.resolvePath('tmp', `runtime-policy-${Platform.randomUUID()}`)
+  await Try(async () => {
+    await FS.mkdir(directory)
+    await FS.writeFile(Path.join(directory, 'package.json'), Json.Print({ patchedDependencies: {} }))
+    await FS.writeFile(
+      Path.join(directory, 'bun.lock'),
+      Json.Print({
+        packages: {
+          '@expo/metro': ['@expo/metro@56.0.2'],
+          '@expo/router-server': ['@expo/router-server@57.0.13'],
+        },
+      }),
+    )
+
+    const policy = await RuntimeDependencyPolicy.readRuntimeDependencyPolicy(directory)
+    Tests.expect(policy.overrides).toEqual({ '@expo/metro': '56.0.2', '@expo/router-server': '57.0.13' })
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 
 Tests.test('runtime toolchain copies dependency patches and invalidates the cache when patch bytes change', async () => {

@@ -1,4 +1,5 @@
 import { Json } from '@shared'
+import { Lists } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
@@ -17,11 +18,21 @@ export function parseRuntimeDependencyLock(contents: string, path: string): Runt
 
 type RuntimePackageOverrides = Record<string, string>
 
-/** RuntimeDependencyPolicy carries exact Metro package policy into separately installed app profiles. */
+const DefaultRuntimeSingletonPackages = ['react', 'react-dom', 'react-native', 'react-native-web', 'expo']
+
+/** RuntimeDependencyPolicy carries exact Expo package policy into separately installed app profiles. */
 export type RuntimeDependencyPolicy = {
   patchedDependencies: RuntimePatches['patchedDependencies']
   overrides: RuntimePackageOverrides
   patches: RuntimePatches['patches']
+}
+
+/** resolveRuntimeSingletonPackages returns framework, declared, and native packages requiring one canonical path. */
+export function resolveRuntimeSingletonPackages(
+  declaredSingletons: readonly string[] = [],
+  nativePackages: readonly string[] = [],
+): string[] {
+  return Lists.unique(DefaultRuntimeSingletonPackages, declaredSingletons, nativePackages)
 }
 
 /** readRuntimeDependencyPolicy reads relocatable patch bytes and their exact package identities. */
@@ -42,11 +53,27 @@ export async function readRuntimeDependencyPolicy(directory: string): Promise<Ru
     await FS.readFile(Path.join(directory, 'bun.lock'), 'utf8'),
     Path.join(directory, 'bun.lock'),
   )
-  const wrapper = lock.packages['@expo/metro']?.[0]
-  if (wrapper) {
-    overrides['@expo/metro'] = wrapper.slice('@expo/metro@'.length)
+  for (const packageName of ExpoLockOverridePackages) {
+    const version = readLockedPackageVersion(lock, packageName)
+    if (version !== undefined) {
+      overrides[packageName] = version
+    }
   }
   return { patchedDependencies, overrides, patches }
+}
+
+const ExpoLockOverridePackages = ['@expo/metro', '@expo/router-server'] as const
+
+function readLockedPackageVersion(lock: RuntimeDependencyLock, packageName: string): string | undefined {
+  const packageIdentity = lock.packages[packageName]?.[0]
+  if (packageIdentity === undefined) {
+    return undefined
+  }
+  const identityPrefix = `${packageName}@`
+  if (!packageIdentity.startsWith(identityPrefix)) {
+    Errors.ThrowUserInput(`Runtime dependency lock entry for ${packageName} has an invalid identity.`)
+  }
+  return packageIdentity.slice(identityPrefix.length)
 }
 
 function isRuntimeDependencyLock(value: unknown): value is RuntimeDependencyLock {

@@ -1,6 +1,7 @@
+import * as Runtime from '@runtime'
 import { Json, NewlineCharacter, NullCharacter, Sort } from '@shared'
 import { Path, Platform } from '@shared/os'
-import { collectAllRequirements, defaultSingletonPackages } from '../ManagedModule/ManagedModuleGraph'
+import { collectAllRequirements } from '../ManagedModule/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../ManagedModule/ManagedModuleMetadata'
 import * as ManagedModuleTypes from '../ManagedModule/ManagedModuleTypes'
 import { installHostIdentity } from './ManagedNpmHost'
@@ -32,7 +33,7 @@ export function calculateManagedGraphFingerprint(
     runtimePins: Object.fromEntries(
       Sort.Strings(Object.keys(input.runtimePins)).map(key => [key, input.runtimePins[key]]),
     ),
-    singletonPackages: Sort.Strings(input.singletonPackages ?? defaultSingletonPackages),
+    singletonPackages: Sort.Strings(Runtime.resolveRuntimeSingletonPackages(input.singletonPackages)),
     policyRegistryVersion: 1,
     runtimePolicy: ManagedNpmPolicy.describeManagedResolutionPolicy(input.runtimePolicy),
   }, { prettyPrint: false }))

@@ -4,6 +4,7 @@ import { FS, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from '../expo/Expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from '../expo/PreviewProtocol'
 import * as RuntimeDependencyPolicy from '../expo/RuntimeDependencyPolicy'
+export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '../expo/Toolchain'
 
