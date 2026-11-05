@@ -24,5 +24,5 @@ export function calculateToolchainKey(identity: ToolchainIdentity): string {
 }
 
 function serializeRuntimePatchIdentity(patches: RuntimePatches['patches']): string {
-  return Json.Print(patches)
+  return Json.Print(patches, { prettyPrint: false })
 }

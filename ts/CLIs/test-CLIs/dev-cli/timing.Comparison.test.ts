@@ -27,7 +27,7 @@ Tests.test('timing reports select the previous comparable measurement and never 
   await saveReport(directory, diagnostic)
   await saveReport(directory, createReport('future', '12', 900))
   await FS.writeFile(Path.join(directory, 'invalid.json'), '{')
-  const overflow = Json.Print(createReport('overflow', '10:55', 900))
+  const overflow = Json.Print(createReport('overflow', '10:55', 900), { prettyPrint: false })
     .replace('"system":{}', '"system":{"overflow":1e400}')
   await FS.writeFile(Path.join(directory, 'overflow.json'), overflow)
   const current = createReport('current', '11', 25)
