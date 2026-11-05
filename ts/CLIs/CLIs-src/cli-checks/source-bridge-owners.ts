@@ -38,6 +38,7 @@ type BridgeOwner = { packageName: string; path: string; folder?: boolean }
 
 const bridgeOwners: BridgeOwner[] = [
   { packageName: 'typescript', path: 'ts/shared/shared-src/bridges/Bridge_typescript.ts' },
+  { packageName: 'zod', path: 'ts/shared/shared-src/bridges/Bridge_zod.ts' },
   { packageName: 'node', path: 'ts/shared/shared-src/os/bridges/Bridge_node', folder: true },
   { packageName: 'bun', path: 'ts/shared/shared-src/os/bridges/Bridge_bun', folder: true },
   { packageName: 'chokidar', path: 'ts/shared/shared-src/os/bridges/Bridge_chokidar.ts' },

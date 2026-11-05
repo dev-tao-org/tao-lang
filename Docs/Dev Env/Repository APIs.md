@@ -16,17 +16,27 @@ and types without creating aggregate wrapper objects.
 
 ## Serialization and ordering
 
-- `Json.Parse(text)` returns `unknown`; the owning domain codec validates the result.
-- `Json.Print` preserves native stringify overloads, omission rules and field order.
-- `Json.PrintIndented(value)` uses two-space indentation and adds no trailing newline.
+- `Json.Parse(text)` returns `unknown`; `Json.Parse(text, { schema, sourceName })` validates the
+  result and infers its schema output. Syntax and schema failures retain their causes and context.
+- `Json.Print(value, options)` uses two-space indentation by default, preserves native omission
+  rules and field order, and adds no trailing newline. Use `prettyPrint: false` for inline source,
+  byte-sensitive identities or other outputs whose purpose requires single-line encoding.
+- Shared `Schema` owns runtime validation through the sole Zod bridge. Domain codecs retain their
+  ownership, path-safety and recovery policies. `FS.readJson` and `FS.writeJson` combine JSON options
+  with applicable file options; atomic publication remains the caller's policy.
+- `Objects.equal(left, right)` compares deterministic encodings directly. `Hash.Of(value)` returns
+  a SHA-256 fingerprint using the same ordering, with shared Sort helpers. Arrays retain their order.
+  Actual text/byte hashing remains distinct from structured-data fingerprints.
 - `Json.Canonical(value)` explicitly encodes ordinary JSON data with recursively sorted ordinal
   UTF-16 object keys. It preserves array order, normalizes negative zero, and rejects non-finite
   numbers, cycles, sparse arrays, accessors and unsupported values or object shapes.
 
 Only `Json/Native.ts` accesses native JSON globals. Independent external scripts and expected-byte
 fixtures keep their own source contracts. Keep typed, domain-named parsing/serialization functions
-around shared operations. Ordinary printing deliberately preserves existing durable pin and cache
-bytes; canonicalization is opt-in, rather than a silent change to stored identities.
+around shared operations. Select print options for each output's contract rather than mechanically
+retaining old formatting. Preserve durable pin bytes explicitly; changing ordinary print defaults
+does not authorize changing persisted dependency identities. Cycles fail in ordinary printing,
+comparison and fingerprinting; broader rejection of native omission/conversion behavior is deferred.
 
 `Sort.CompareStrings` compares ordinal UTF-16 code units. `Sort.By(keyOf, compare)` derives a
 comparator; `Sort.Reverse(compare)` reverses its arguments; `Sort.Strings(values)` returns a sorted

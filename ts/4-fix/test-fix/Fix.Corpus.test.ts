@@ -53,11 +53,11 @@ async function listTaoFiles(relative: string): Promise<string[]> {
 function describeSemanticStructure(value: unknown, typescript: EmbeddedFormatter): string {
   return Json.Print(value, {
     prettyPrint: false,
-    replacer: (key, item) => {
+    replacer(key, item) {
       if (key === 'start' || key === 'end') {
         return undefined
       }
-      return key === 'code'
+      return key === 'code' && typeof item === 'string'
         ? typescript(item, { indent: 2, level: 0, width: 120, newline: NewlineCharacter })
         : item
     },
