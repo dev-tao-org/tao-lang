@@ -77,6 +77,8 @@ export function createManagedGraphExecutor(options: ManagedGraphFixturePaths): B
   }
 }
 
+const FixtureInstallTimeoutMs = 15_000
+
 function createBunExecutor(root: string, registry: string): BunExecutor {
   return async (command, args, cwd) => {
     if (args[0] === '--version') {
@@ -97,13 +99,11 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    const child = Processes.spawnPiped([command, ...args, '--registry', registry], { cwd, addEnv })
-    const [status, stdout, stderr] = await Promise.all([
-      child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
-    ])
-    return { status, stdout, stderr }
+    return await Processes.run([command, ...args, '--registry', registry], {
+      cwd,
+      addEnv,
+      timeoutMs: FixtureInstallTimeoutMs,
+    })
   }
 }
 

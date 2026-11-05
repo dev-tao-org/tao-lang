@@ -27,7 +27,7 @@ Tests.test(
       browser = await HeadlessBrowser.launch('test <file.tao>')
       const page = await browser.newPage()
       page.setDefaultTimeout(5000)
-      await page.goto(expo.url)
+      await HeadlessBrowser.openPage(page, expo.url)
       await page.getByTestId('Left').click()
       await page.getByText('Left: 1', { exact: true }).waitFor()
       const updated = source.replace('"Original"', '"Updated"')

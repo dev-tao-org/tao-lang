@@ -28,6 +28,7 @@ Tests.test.skipIf(Platform.systemInfo().os === 'Windows_NT')(
         child.terminal!.write(ControlCCharacter)
         await child.exited
         child.terminal!.close()
+        await FS.mkdir(Artifacts.resolvePath('notes'))
         await FS.writeFile(Artifacts.resolvePath('notes/ts-lib-local-terminal.txt'), output)
       },
     })

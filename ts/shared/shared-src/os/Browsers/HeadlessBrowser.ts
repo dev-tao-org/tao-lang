@@ -38,6 +38,12 @@ export async function launch(
   })
 }
 
+const InitialNavigationTimeoutMs = 30_000
+/** openPage waits for initial document loading separately from short interaction deadlines. */
+export async function openPage(page: Page, url: string): Promise<void> {
+  await page.goto(url, { timeout: InitialNavigationTimeoutMs })
+}
+
 /** openTestBrowser adapts the existing browser toolchain to isolated headless app journeys. */
 export async function openTestBrowser(): Promise<TestBrowser> {
   const browser = await launch('test <file.tao>', { handleSignals: false })
@@ -46,7 +52,7 @@ export async function openTestBrowser(): Promise<TestBrowser> {
     page.setDefaultTimeout(5000)
     return {
       async open(url) {
-        await page.goto(url)
+        await openPage(page, url)
       },
       async press(tag) {
         await page.getByTestId(tag).click()

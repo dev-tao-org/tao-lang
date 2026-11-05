@@ -41,7 +41,7 @@ async function verifyOwnershipJourney(
   const pageErrors: string[] = []
   page.setDefaultTimeout(5000)
   page.on('pageerror', error => pageErrors.push(error.message))
-  await page.goto(expo.url)
+  await HeadlessBrowser.openPage(page, expo.url)
   await expectValue(page, 'count-A', '1')
   await expectValue(page, 'count-B', '10')
   await expectValue(page, 'scaled-A', '2')

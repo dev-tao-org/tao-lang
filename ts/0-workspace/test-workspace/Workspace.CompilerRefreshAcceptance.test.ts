@@ -31,7 +31,7 @@ Tests.test('compiled Tao custom-hook components refresh through Metro with commi
     browser = await HeadlessBrowser.launch('test compiler refresh')
     const page = await browser.newPage({ viewport: { width: 768, height: 1024 } })
     pageErrors = observePageErrors(page)
-    await page.goto(expo.url)
+    await HeadlessBrowser.openPage(page, expo.url)
     await verifyInitialCounters(page)
     await verifyComputedEdit(page, entry, session)
     await verifyInvalidRecovery(page, entry, session)
