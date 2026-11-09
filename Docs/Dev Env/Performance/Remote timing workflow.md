@@ -8,7 +8,7 @@ session evidence. It needs no Tao daemon or separate Tao authentication. See the
 
 ## Local Wi-Fi setup and shared developer home
 
-Use a checkout containing these commands on each Mac, prepared with `./agent setup --frozen-lockfile`.
+Use a checkout containing these commands on each Mac, prepared with `./agent unsandboxed setup --frozen-lockfile`.
 Initialize development storage on both Macs:
 
 ```sh

@@ -6,6 +6,6 @@ The packaged extension includes the web-tree-sitter runtime, the generated Tao a
 
 From the repository root, Cmd+Shift+B or `just install-ide-extension` builds Tao Language Support and Dev Tao Org and installs both into Cursor and VS Code using their `cursor` and `code` CLI commands. `./dev build-ide-extension` builds both without installing. The language VSIX remains at `.artifacts/ide-extension/tao-language.vsix`; developer tools are at `.artifacts/ide-extensions/dev-tao-org/dev-tao-org.vsix`.
 
-Run `./agent setup` before building. The first WASM build lets the pinned Tree-sitter CLI download its WASI SDK into its cache; later builds reuse it. The extension needs no network access at runtime. `./agent performance extension` records incremental parser/query timings on Kitchen Sink, excluding editor rendering.
+Run `./agent unsandboxed setup --frozen-lockfile` before building. The first WASM build lets the pinned Tree-sitter CLI download its WASI SDK into its cache; later builds reuse it. The extension needs no network access at runtime. `./agent performance extension` records incremental parser/query timings on Kitchen Sink, excluding editor rendering.
 
 Tao trees are retained per document. Embedded TSX blocks are fully parsed and queried on each update in this first slice. Diagnostics cover syntax; typechecking and completion remain future language-service work.

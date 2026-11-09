@@ -19,8 +19,8 @@ before selecting a legacy lane. Relative commands below run from that folder.
 - Keep common workflow definitions and human developer commands in `Justfile`; keep shell entrypoints and the `./tao` wrapper thin.
 - Keep agent-only host operations named in `HostCommandTargets.ts`, permitted by the single
   `agentHostCommands` list in `.rulesync/permissions.jsonc`, and invoked as `./agent unsandboxed <operation>`.
-  Add a host operation only for a repository-used shape; regenerate both harnesses with `./agent setup`.
-- Keep one setup entry, `./agent setup`, and route every harness through it: Worktrunk's blocking `pre-start` hook enters `devenv shell --no-tui ./agent setup` (`.config/wt.toml`), the Claude Code and Codex `SessionStart` hooks use the same source (`.rulesync/hooks.jsonc`), and Cursor uses its blocking worktree setup (`.cursor/worktrees.json` and its script). Dependencies and generated agent adapters must exist before a harness reads them; when setup changes, update the comments that cross-reference these entry points.
+  Add a host operation only for a repository-used shape; regenerate both harnesses with `./agent unsandboxed setup --frozen-lockfile`.
+- Keep one setup entry, `./agent unsandboxed setup --frozen-lockfile`, and route every harness through it: Worktrunk's blocking `pre-start` hook enters `devenv shell --no-tui ./agent unsandboxed setup --frozen-lockfile` (`.config/wt.toml`), the Claude Code and Codex `SessionStart` hooks use the same source (`.rulesync/hooks.jsonc`), and Cursor uses its blocking worktree setup (`.cursor/worktrees.json` and its script). Dependencies and generated agent adapters must exist before a harness reads them; when setup changes, update the comments that cross-reference these entry points.
 - Never name a Bun install backend — `environment-recovery` says why. Bun's macOS default clones whole directories and installs fine in a linked worktree.
 - Keep `./agent` able to reuse the primary checkout's pinned devenv profile in linked worktrees; never fall back to an unpinned host Node. When no shared profile exists, `./enter-tao-dev-env` creates one and runs setup.
 - Expose formatting, fixing, testing, checking, and final validation as thin `./agent` passthroughs to the matching Just recipes.
@@ -54,5 +54,5 @@ before selecting a legacy lane. Relative commands below run from that folder.
 - `just` has no named-argument syntax. `just recipe run_id="local"` passes the literal string `run_id=local` as the recipe's _first positional_ parameter, so a composed recipe silently runs with the wrong arguments. Pass positionals in declaration order.
 - Chrome never synthesizes HTML5 drag-and-drop from `Input.dispatchMouseEvent`. Pointer-driven UI (dividers, resizers) works with mouse events; anything using `dragstart`/`drop` needs drag interception: `Input.setInterceptDrags`, then the payload from `Input.dragIntercepted`, replayed through `Input.dispatchDragEvent`. A mouse-only drag against a drop target fails silently.
 - A task may be unable to rewrite protected generated harness files such as `.codex/rules/tao.rules`.
-  After changing `.rulesync/`, run `./agent setup`; if it reports that protected output is stale,
+  After changing `.rulesync/`, run `./agent unsandboxed setup --frozen-lockfile`; if it reports that protected output is stale,
   ask the Developer to run that setup once from a normal terminal. An unchanged worktree needs no refresh.

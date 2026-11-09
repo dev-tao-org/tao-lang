@@ -54,21 +54,53 @@ Tests.test('bootstrap propagates install and completion failure statuses with re
   }
 })
 
+Tests.test('host bootstrap requires allowlisted setup and host access before installing', async () => {
+  for (
+    const request of [
+      { commands: ['setup'], hostStatus: 0, expectedStatus: 0 },
+      { commands: ['check'], hostStatus: 0, expectedStatus: 1 },
+      { commands: ['setup'], hostStatus: 9, expectedStatus: 1 },
+    ]
+  ) {
+    const root = Artifacts.resolvePath('tmp', `bootstrap-host-${Platform.randomUUID()}`)
+    await Try(async () => {
+      const result = await runBootstrap(root, 0, 'install', undefined, request)
+      Tests.expect(result.status).toBe(request.expectedStatus)
+      if (request.expectedStatus === 0) {
+        Tests.expect(await readFile(join(root, 'calls'), 'utf8')).toBe(
+          'install --no-save --verbose\nrun ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts\n',
+        )
+      } else {
+        Tests.expect(FS.existsSync(join(root, 'calls'))).toBe(false)
+        Tests.expect(result.stderr).toContain(
+          request.hostStatus === 0 ? 'not allowlisted' : 'Host process access is unavailable',
+        )
+      }
+    }, { finally: () => rm(root, { recursive: true, force: true }) })
+  }
+})
+
+type HostSetupRequest = { commands: string[]; hostStatus: number }
 type BootstrapResult = { status: number; stdout: string; stderr: string }
 async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: FailureStage = 'install',
   sourceDirectory = new WebHost.URL('../../../shared-src/os/', import.meta.url),
+  hostSetup?: HostSetupRequest,
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
   await mkdirs(ts, bin)
   await copyBootstrapSources(sourceDirectory, ts)
   await writeStub(bin, failureStatus, failureStage)
+  if (hostSetup) {
+    await prepareHostSetup(root, bin, hostSetup)
+  }
+  const installMethod = hostSetup ? 'installHostWorkspace' : 'installWorkspace'
   const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
     + `const bootstrap=await import(${Json.Print(Path.pathToFileURL(join(ts, 'Tooling/Bootstrap.ts')).href)});`
-    + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
+    + `await bootstrap.${installMethod}('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
   const environment = {
     PATH: `${bin}${delimiter}${Env.get('PATH') ?? ''}`,
     TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
@@ -85,6 +117,19 @@ async function runBootstrap(
     Processes.readText(child.stderr),
   ])
   return { status, stdout, stderr }
+}
+
+async function prepareHostSetup(root: string, bin: string, request: HostSetupRequest): Promise<void> {
+  await mkdirs(join(root, '.config'))
+  await writeFile(join(root, '.config/agent-host-commands.json'), Json.Print(request.commands))
+  const probe = join(bin, 'ps')
+  const script = S`
+    #!/bin/sh
+    printf '42 1\\n'
+    exit ${request.hostStatus}
+  `
+  await writeFile(probe, script)
+  await chmod(probe, 0o755)
 }
 
 async function copyBootstrapSources(sourceDirectory: WebHost.URL, target: string): Promise<void> {
