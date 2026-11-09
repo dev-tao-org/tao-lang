@@ -160,3 +160,28 @@ an operation ID, and a secret-redaction test mistakes `private` in a checkout pa
 content. This task used an ordinary Git worktree under the normal worktrees directory. Its stale
 cache symlink and generated app ownership metadata were rebuilt; affected tests passed. Neither
 workaround is claimed as a fix for the underlying tooling follow-ups. Landing remains separate.
+
+## CI follow-up
+
+PR [88](https://github.com/dev-tao-org/tao-lang/pull/88) received three CI repairs after the
+consolidated delivery checkpoint. Build-only jobs explicitly set `TAO_SETUP_STORAGE=false`, so
+workspace setup does not require credentials for the private evidence archive. Normal developer
+setup and landing/publication archive validation retain their existing behavior. CI runs the full
+suite serially to avoid competing compiler, Metro and browser workers.
+
+Initial browser document navigation now has a separate bounded startup allowance; short
+interaction deadlines and test-case budgets remain unchanged. Fresh-checkout terminal diagnostics
+create their output directory, and fixture npm execution captures bounded command failures.
+Setup's existing cleanup also removed an unreferenced pre-Zod generated lock and digest; the
+active dependency graph and pins remain unchanged.
+
+Hosted [Verify 310](https://github.com/dev-tao-org/tao-lang/actions/runs/42085397783) passed on
+`c222eee169921d45b4b6a2832703848158294d47`: setup, checks, 637 TypeScript tests, 6 Tao journeys,
+and the unchanged-tracked-files check. The hosted suite took 224.99 seconds. This is a CI proof,
+not additional human acceptance or native/device acceptance.
+
+The [CI repair inventory](../../.storage/evidence/c222eee169921d45b4b6a2832703848158294d47/ci-repair/inventory.json)
+identifies the retained failed/successful hosted logs, local proofs and three repair timing pairs
+in archive `99c47e622839256bcf180e763ab826fd70f678c0`. It extends the earlier packets without
+replacing their source identities or bytes. The final documentation/archive-pin follow-up must
+pass CI on its own head before handoff; no source landing is implied.
