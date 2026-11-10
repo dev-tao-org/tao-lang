@@ -4,8 +4,8 @@ import { appendFileSync, mkdirSync, resolve, spawn, writeFileSync } from '../../
 import * as Process from '../../Process/Process-Current'
 
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
-export async function installWorkspace(completionScript: string): Promise<void> {
-  const args = Process.argv.slice(Process.argv[2] === '--agent' ? 3 : 2)
+export async function installWorkspace(completionScript: string, setupArgs: readonly string[] = []): Promise<void> {
+  requireNoSetupArguments(setupArgs)
   const logDirectory = resolve('..', '.artifacts', 'logs', 'setup')
   mkdirSync(logDirectory, { recursive: true })
   const logPath = resolve(logDirectory, 'bootstrap.log')
@@ -13,7 +13,7 @@ export async function installWorkspace(completionScript: string): Promise<void> 
   Process.stderr.write(
     EscapeCharacter + '[90mInstalling workspace dependencies\u2026' + EscapeCharacter + '[0m' + NewlineCharacter,
   )
-  const installStatus = await runLogged(['install', ...args], logPath)
+  const installStatus = await runLogged(['install', '--frozen-lockfile'], logPath)
   if (installStatus !== 0) {
     Process.stderr.write(`Workspace installation failed. See ${logPath}${NewlineCharacter}`)
     Process.exit(installStatus)
@@ -27,6 +27,14 @@ export async function installWorkspace(completionScript: string): Promise<void> 
 }
 
 type OutputStream = 'stdout' | 'stderr'
+
+function requireNoSetupArguments(args: readonly string[]): void {
+  if (args.length === 0) {
+    return
+  }
+  Process.stderr.write('Setup takes no arguments. Run ./agent setup or ./dev setup.' + NewlineCharacter)
+  Process.exit(1)
+}
 
 function runLogged(args: string[], logPath: string): Promise<number> {
   appendFileSync(logPath, `${NewlineCharacter}$ bun ${args.join(' ')}${NewlineCharacter}`)

@@ -10,7 +10,7 @@ export async function checkEditorTypeScript(): Promise<void> {
   const actual = await Processes.capture('tsc --version')
   if (actual !== `Version ${TypeScript.version}`) {
     Errors.ThrowUserInput(
-      `Managed tsc reports ${actual}; expected TypeScript ${TypeScript.version}. Run ./agent unsandboxed setup --frozen-lockfile.`,
+      `Managed tsc reports ${actual}; expected TypeScript ${TypeScript.version}. Run ./agent setup.`,
     )
   }
 }
@@ -39,7 +39,7 @@ function sdkVersion(sdk: string): string {
   const directory = Repo.resolvePath(sdk)
   if (!FS.existsSync(Path.join(directory, 'tsserver.js'))) {
     Errors.ThrowUserInput(
-      `Editor TypeScript SDK is missing: ${sdk}. Run ./agent unsandboxed setup --frozen-lockfile or correct the SDK path.`,
+      `Editor TypeScript SDK is missing: ${sdk}. Run ./agent setup or correct the SDK path.`,
     )
   }
   return parseSdkVersion(FS.readFileSync(Path.join(directory, '../package.json'), 'utf8'))

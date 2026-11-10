@@ -35,7 +35,7 @@ export const off = process.off.bind(process)
 export const once = process.once.bind(process)
 
 /** exit delegates to the current process with its receiver preserved. */
-export const exit: (code?: number) => never = process.exit.bind(process)
+export const exit = process.exit.bind(process)
 
 /** kill delegates to the current process with its receiver preserved. */
 export const kill = process.kill.bind(process)

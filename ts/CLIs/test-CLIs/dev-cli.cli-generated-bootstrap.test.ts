@@ -57,11 +57,9 @@ async function assertExplicitSetupBypassesPreflight(root: string): Promise<void>
   await FS.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const result = await runLauncher(root, 'agent', ['unsandboxed', 'setup', '--frozen-lockfile'])
+  const result = await runLauncher(root, 'agent', ['setup'])
   Tests.expect(result.status).toBe(0)
-  Tests.expect(await readCalls(root)).toBe(
-    'host-setup:run ./CLIs/CLIs-src/dev-cli/commands/_setup-host.ts --agent --frozen-lockfile\n',
-  )
+  Tests.expect(await readCalls(root)).toBe('setup\n')
 }
 
 async function assertMissingDependenciesRequireSetup(root: string): Promise<void> {
@@ -70,7 +68,7 @@ async function assertMissingDependenciesRequireSetup(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'])
   Tests.expect(result.status).toBe(1)
-  Tests.expect(result.stderr).toContain('./agent unsandboxed setup --frozen-lockfile')
+  Tests.expect(result.stderr).toContain('./agent setup')
   Tests.expect(await readCalls(root)).toBe('')
 }
 
@@ -80,7 +78,7 @@ async function assertPreparationFailureStopsLauncher(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
   Tests.expect(result.status).toBe(23)
-  Tests.expect(result.stderr).toContain('./agent unsandboxed setup --frozen-lockfile')
+  Tests.expect(result.stderr).toContain('./agent setup')
   Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 
@@ -117,9 +115,6 @@ function fakeBunScript(): string {
   return S`
     #!/bin/sh
     case "$*" in
-      *commands/_setup-host.ts*)
-        printf 'host-setup:%s\\n' "$*" >> "$BOOTSTRAP_LOG"
-        ;;
       *commands/_setup.ts*)
         printf 'setup\\n' >> "$BOOTSTRAP_LOG"
         if [ -n "$BOOTSTRAP_FAILURE_STATUS" ]; then exit "$BOOTSTRAP_FAILURE_STATUS"; fi

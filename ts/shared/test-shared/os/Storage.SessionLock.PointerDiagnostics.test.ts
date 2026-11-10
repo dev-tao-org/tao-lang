@@ -43,9 +43,7 @@ Tests.test('production session acquisition gives setup guidance for malformed an
     const failures = Json.Parse(stdout) as Array<{ name: string; message: string }>
     Tests.expect(failures).toHaveLength(4)
     Tests.expect(
-      failures.every(error =>
-        error.name === 'HostEnvironmentError' && error.message.includes('./agent unsandboxed setup --frozen-lockfile')
-      ),
+      failures.every(error => error.name === 'HostEnvironmentError' && error.message.includes('./agent setup')),
     ).toBe(true)
     Tests.expect(await FS.exists(Path.join(root, 'session.lock'))).toBe(false)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
