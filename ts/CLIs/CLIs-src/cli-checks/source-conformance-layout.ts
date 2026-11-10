@@ -1,4 +1,6 @@
-import * as TypeScript from 'typescript'
+import { Range, Regxs, Source } from '@shared'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */
 export function functionBodyLineCount(
@@ -21,15 +23,24 @@ export function functionBodyLineCount(
 
 /** functionBody extracts the concise body of a function-like syntax node. */
 export function functionBody(node: TypeScript.Node): TypeScript.ConciseBody | undefined {
-  if (
-    TypeScript.isFunctionDeclaration(node) || TypeScript.isFunctionExpression(node)
-    || TypeScript.isArrowFunction(node) || TypeScript.isMethodDeclaration(node)
-    || TypeScript.isConstructorDeclaration(node) || TypeScript.isGetAccessorDeclaration(node)
-    || TypeScript.isSetAccessorDeclaration(node)
-  ) {
+  if (isRuntimeFunctionNode(node)) {
     return node.body
   }
 }
+
+/** singleLineImportIssue reports import declarations that span physical lines. */
+export function singleLineImportIssue(
+  node: TypeScript.ImportDeclaration,
+  file: TypeScript.SourceFile,
+): string | undefined {
+  const firstLine = file.getLineAndCharacterOfPosition(node.getStart(file)).line
+  const lastLine = file.getLineAndCharacterOfPosition(node.getEnd() - 1).line
+  return firstLine === lastLine
+    ? undefined
+    : 'import declarations must fit on one line; use a namespace import for long lists'
+}
+
+const MultilineStringMessage = 'multiline strings must use S from @shared'
 
 /** multilineStringIssue reports multiline runtime literals that violate S layout. */
 export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.SourceFile): string | undefined {
@@ -37,19 +48,67 @@ export function multilineStringIssue(node: TypeScript.Node, file: TypeScript.Sou
     return
   }
   const layout = stringLayout(node, file)
-  if (!/[\r\n]/.test(layout)) {
+  if (!Regxs.NewlineCharacter.test(layout)) {
+    if (hasEscapedMultilineText(node) && !isIndependentTestExpectation(node, file)) {
+      return MultilineStringMessage
+    }
     return
   }
   if (!isSTemplate(node)) {
-    return 'multiline strings must use S from @shared'
+    return MultilineStringMessage
   }
-  const lines = layout.split(/\r?\n/)
+  const lines = layout.split(Regxs.OptionalCarriageNewline)
   const opening =
-    file.text.slice(file.text.lastIndexOf('\n', node.getStart(file)) + 1, node.getStart(file)).match(/^[\t ]*/)![0]
+    Source.slice(file.text, Source.lineStartBefore(file.text, node.getStart(file)), node.getStart(file)).match(
+      Regxs.LeadingHorizontalWhitespaceRegx,
+    )![0]
   const closing = lines[lines.length - 1]
   if (invalidSLayout(lines, opening, closing)) {
     return 'S content must start on a new line, be indented, and end with an aligned closing delimiter'
   }
+}
+
+type RuntimeString = TypeScript.StringLiteralLike | TypeScript.TemplateExpression
+type InterpolationStart = TypeScript.TemplateHead | TypeScript.TemplateMiddle
+
+function hasEscapedMultilineText(node: RuntimeString): boolean {
+  if (TypeScript.isTaggedTemplateExpression(node.parent)) {
+    return false
+  }
+  const text = cookedStringText(node)
+  if (!Regxs.NewlineCharacter.test(text)) {
+    return false
+  }
+  return text.split(Regxs.OptionalCarriageNewline).filter(line => line.trim()).length > 1
+}
+
+function cookedStringText(node: RuntimeString): string {
+  if (TypeScript.isTemplateExpression(node)) {
+    return node.head.text + node.templateSpans.map(span => span.literal.text).join('')
+  }
+  return node.text
+}
+
+const ExpectedValueMatchers = new Set(['toBe', 'toEqual', 'toStrictEqual', 'toContain', 'toMatchObject', 'toEndWith'])
+
+function isIndependentTestExpectation(node: RuntimeString, file: TypeScript.SourceFile): boolean {
+  const testFile = file.fileName.endsWith('.test.ts') || file.fileName.endsWith('.test.tsx')
+  if (!testFile) {
+    return false
+  }
+  let value: TypeScript.Node = node
+  while (value.parent && !TypeScript.isCallExpression(value.parent)) {
+    if (TypeScript.isFunctionLike(value.parent)) {
+      return false
+    }
+    value = value.parent
+  }
+  const call = value.parent
+  if (!call || !TypeScript.isCallExpression(call) || !call.arguments.some(argument => argument === value)) {
+    return false
+  }
+  return TypeScript.isPropertyAccessExpression(call.expression)
+    && ExpectedValueMatchers.has(call.expression.name.text)
 }
 
 function isBraceOnlyLine(
@@ -61,24 +120,34 @@ function isBraceOnlyLine(
   last: number,
 ): boolean {
   if (index === first && index === last) {
-    return source.slice(body.getStart() + 1, body.getEnd() - 1).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, body.getEnd() - 1)
   }
   const lineStart = lineStarts[index]
   const lineEnd = lineStarts[index + 1] ?? source.length
   if (index === first) {
-    return source.slice(body.getStart() + 1, lineEnd).trim() === ''
+    return isBlankSpan(source, body.getStart() + 1, lineEnd)
   }
-  return index === last && source.slice(lineStart, body.getEnd() - 1).trim() === ''
+  return index === last && isBlankSpan(source, lineStart, body.getEnd() - 1)
 }
 
-function isRuntimeString(node: TypeScript.Node): node is TypeScript.StringLiteralLike | TypeScript.TemplateExpression {
+function isBlankSpan(source: string, start: number, end: number): boolean {
+  return Source.slice(source, start, end).trim() === ''
+}
+
+function isRuntimeString(node: TypeScript.Node): node is RuntimeString {
   return (TypeScript.isStringLiteralLike(node) || TypeScript.isTemplateExpression(node))
     && !TypeScript.isLiteralTypeNode(node.parent)
 }
 
 function isSTemplate(node: TypeScript.Node): boolean {
-  return TypeScript.isTaggedTemplateExpression(node.parent) && TypeScript.isIdentifier(node.parent.tag)
-    && node.parent.tag.text === 'S'
+  return TypeScript.isTaggedTemplateExpression(node.parent) && isStringTemplateTag(node.parent.tag)
+}
+
+function isStringTemplateTag(tag: TypeScript.LeftHandSideExpression): boolean {
+  if (TypeScript.isIdentifier(tag)) {
+    return tag.text === 'S'
+  }
+  return TypeScript.isPropertyAccessExpression(tag) && tag.name.text === 'S'
 }
 
 function invalidSLayout(lines: string[], opening: string, closing: string): boolean {
@@ -87,26 +156,36 @@ function invalidSLayout(lines: string[], opening: string, closing: string): bool
 }
 
 function stringLayout(
-  node: TypeScript.StringLiteralLike | TypeScript.TemplateExpression,
+  node: RuntimeString,
   file: TypeScript.SourceFile,
 ): string {
   let layout = node.getText(file)
   if (!TypeScript.isTemplateExpression(node)) {
     return layout
   }
-  const ranges: { start: number; end: number }[] = []
-  let previous: TypeScript.TemplateHead | TypeScript.TemplateMiddle = node.head
+  const ranges: Range[] = []
+  let previous: InterpolationStart = node.head
   for (const span of node.templateSpans) {
-    ranges.push({
-      start: previous.end - 2 - node.getStart(file),
-      end: span.literal.getStart(file) + 1 - node.getStart(file),
-    })
+    const rangeStart = templateInterpolationStart(previous, node.getStart(file))
+    const rangeEnd = templateInterpolationEnd(span.literal.getStart(file), node.getStart(file))
+    ranges.push(Range(rangeStart, rangeEnd))
     if (TypeScript.isTemplateMiddle(span.literal)) {
       previous = span.literal
     }
   }
   for (const range of ranges.reverse()) {
-    layout = layout.slice(0, range.start) + 'x' + layout.slice(range.end)
+    layout = Source.replace(layout, range, 'x')
   }
   return layout
+}
+
+function templateInterpolationStart(
+  previous: InterpolationStart,
+  templateStart: number,
+): number {
+  return previous.end - 2 - templateStart
+}
+
+function templateInterpolationEnd(literalStart: number, templateStart: number): number {
+  return literalStart + 1 - templateStart
 }

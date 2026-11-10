@@ -1,0 +1,34 @@
+{
+  "name": "ts-lib-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --project tsconfig.json"
+  },
+  "tao": {
+    "compile": {
+      "entry": "../tao/Library.tao",
+      "out": "../../.tao/cache/libraries/Demo",
+      "name": "@example/tao-library"
+    },
+    "run": {
+      "entry": "Consumer.tsx",
+      "name": "TS Lib App"
+    }
+  },
+  "dependencies": {
+    "@example/tao-library": "file:../../.tao/cache/libraries/Demo",
+    "expo": "57.0.30",
+    "@expo/metro-runtime": "57.0.17",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "0.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0",
+    "typescript": "5.9.3",
+    "@types/bun": "1.4.0",
+    "playwright": "1.58.2"
+  }
+}

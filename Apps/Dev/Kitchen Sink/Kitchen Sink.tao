@@ -1,57 +1,111 @@
+// Standard views are ordinary imported Tao declarations.
+// Project dependency declarations live in ../Dependencies.tao.
+use tao@ui all
+use ModuleCaption
+use tao@ui Text as Caption
+use package tao@ui as UI
+use ModuleCaption as ImportedCaption
+use package ./Modules
+use ./Library LibraryGreeting
+
+file
+let DefaultTitle is text = "Kitchen Sink"
+
 app KitchenSink {
   root RootView
 }
 
 view RootView {
+  let Title = DefaultTitle
   render Col {
     Heading
+    PrivateGreeting
+    LibraryGreeting("Typed", "TypeScript props")
+    Text(Title)
+    Text(Modules.ModuleCaption)
+    Text(ModuleCaption)
+    Text(ImportedCaption)
+    SidecarGreeting("Validated TypeScript sidecar")
+    Col {
+      let Title = "Nested lexical scope"
+      Text(Title)
+    }
+    #editable
+    Input("Original")
+    #save
+    SaveButton
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
       Row() {
-        Text("Left")
-        Text("Right")
+        Caption("Left")
+        UI.Text("Right")
       }
     }
   }
+
+  view PrivateGreeting {
+    render Text("Private nested view")
+  }
 }
 
+folder
 view Pair(First text, Second text) {
+  let FirstCaption = First
   render Col {
-    Text(First)
+    Text(FirstCaption)
     Text(Second)
   }
 }
 
-view Text(Value text) {
-  render inject Value ```ts
-    return <TR.ReactNative.Text>{Value}</TR.ReactNative.Text>
-  ```
-}
-
+package
 view Panel(Title text) {
+  /* Injections explicitly capture their Tao values and contextual children. */
   render inject Caption Title, Children @@children ```ts
-    return <TR.ReactNative.View style={{ padding: 12, borderWidth: 1 }}>
-      <TR.ReactNative.Text>{Caption}</TR.ReactNative.Text>
-      {Children}
-    </TR.ReactNative.View>
+    return (
+      <Tao.View style={{ padding: 12, borderWidth: 1 }}>
+        <Tao.Text>{Caption}</Tao.Text>
+        {Children}
+      </Tao.View>
+    )
   ```
 }
 
-view Col() {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'column', gap: 8 }}>{Children}</TR.ReactNative.View>
-  ```
-}
-
-view Row {
-  render inject Children @@children ```ts
-    return <TR.ReactNative.View style={{ flexDirection: 'row', gap: 16 }}>{Children}</TR.ReactNative.View>
-  ```
-}
-
+project
 view Heading {
   render inject ```ts
-    return <TR.ReactNative.Text style={{ fontSize: 24 }}>Kitchen Sink</TR.ReactNative.Text>
+    return <Tao.Text style={{ fontSize: 24 }}>Kitchen Sink</Tao.Text>
   ```
+}
+
+public
+view SaveButton {
+  render inject ```ts
+    const saved = Tao.useWritable(() => false)
+    const isSaved = Tao.useValue(saved)
+    return (
+      <Tao.Pressable onPress={() => saved.update(true)}>
+        <Tao.Text>{isSaved ? 'Saved' : 'Save'}</Tao.Text>
+      </Tao.Pressable>
+    )
+  ```
+}
+
+public
+view SidecarGreeting(Value text) from ./SidecarGreeting.tsx
+
+tests "Kitchen Sink" {
+  test(Label "Tagged input and control") {
+    run KitchenSink
+    expect text "Kitchen Sink"
+    expect text "Private nested view"
+    expect text "Sidecar: Validated TypeScript sidecar"
+    expect text "Nested lexical scope"
+    type "Edited text" into #editable
+    press #save
+    expect {
+      text "Saved"
+    }
+    expect #editable input value "Edited text"
+  }
 }

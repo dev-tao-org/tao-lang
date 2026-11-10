@@ -14,6 +14,11 @@ This skill owns the one route a `feat/<name>` branch takes onto `main`, and the 
 
 ## New implementation
 
+Before entering the landing route, complete `git-workflow`'s
+[branch evidence preservation](../git-workflow/references/branch-evidence.md), including research
+and review evidence as well as timing records. The landing command's timing publication is not a
+substitute for this inventory and durable handoff.
+
 Root commands outside `.x-tao-old-v1/` expose three routes, with the same names in `./dev` and
 `./agent unsandboxed`:
 
@@ -59,8 +64,9 @@ What you ask for turns on whether the gates prove the change, not on its size.
 ## Before the route
 
 - Complete `pipeline-performance`'s [preview history](../pipeline-performance/references/preview-history.md)
-  publication and pointer update before landing; carry measured source SHAs and archive references
-  into the reviewed merge message.
+  branch-start-to-final comparison and publication/pointer workflow before landing; report
+  significant changes and carry the comparison, measured source SHAs and archive references into
+  the reviewed merge message.
 - The branch is a clean `feat/<name>` with the exact reviewed task paths committed, instructed documentation edits complete and the `.artifacts` ledger current: an edit after `Verify` starts changes the head it proves.
 - The merge message at `.artifacts/merge/<branch>.msg` is written and reviewed (below).
 - Maintained native bindings need no manual step: `open-pr --auto-merge` regenerates them before the push and refuses if that fails or changes the worktree.

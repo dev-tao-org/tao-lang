@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
-import { Env, Platform } from '@shared/os'
+import * as CLIKit from '@cli-kit'
+import { Platform } from '@shared/os'
 import '../cli-kit/fatal-errors'
 import './commands/agent-config'
 import './commands/build-ide-extension'
@@ -24,19 +24,23 @@ import './commands/secrets'
 import './commands/start'
 import './commands/stop'
 import './commands/test'
+import './commands/tailscale-install'
+import './commands/timing-setup-controller'
+import './commands/timing-setup-runner'
+import './commands/timing-connect'
+import './commands/timing-home'
+import './commands/timing-disconnect'
+import './commands/timing-session'
+import './commands/timing-run'
+import './commands/timing-report'
+import '../tao-cli/commands/init'
+import '../tao-cli/commands/add'
+import '../tao-cli/commands/update'
+import '../tao-cli/commands/test-sidecars'
 import './commands/verify'
 import { execute } from './commands/_command-runner'
 
 if (Platform.isMain(import.meta)) {
-  const outputPreference = Env.get('TERMINAL_OUTPUT')
-  const testRun = Platform.argv[2] === 'test' || Platform.argv[2] === 'verify'
-  const terminal = outputPreference === undefined ? !testRun : outputPreference === '1'
-  IO.config({
-    stdout: terminal ? 'terminal' : 'log',
-    stderr: terminal ? 'terminal' : 'both',
-    progress: terminal ? 'terminal' : 'both',
-    logDirectory: 'dev',
-    logFile: Env.get('OUTPUT_LOG_FILE'),
-  })
+  await CLIKit.configureCLIOutput('dev')
   await execute()
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Cursor runs this from .cursor/worktrees.json when it creates a worktree, before an agent works
-# in it. It installs the locked TypeScript dependencies through root `./agent setup`.
+# in it. Root `./agent setup` installs locked dependencies and initializes missing storage.
 # Worktrunk's pre-start hook (.config/wt.toml)
 # and the Claude Code and Codex SessionStart hooks (.rulesync/hooks.jsonc) run the same entry;
 # keep those references in step when changing setup.

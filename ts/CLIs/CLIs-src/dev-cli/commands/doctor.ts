@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
-import { assertDoctorReady, doctorReport } from '../../cli-checks/doctor'
+import { Errors, Json } from '@shared'
+import { assertDoctorReady, type DoctorReport, doctorReport } from '../../cli-checks/doctor'
 import { registerCommand } from './_command-runner'
 
 /** doctorCommand reports setup issues or explicitly requested environment diagnostics. */
@@ -16,11 +16,11 @@ export default registerCommand({
     const fingerprintOnly = args.includes('--fingerprint')
     const report = await doctorReport(fingerprintOnly)
     if (fingerprintOnly) {
-      IO.print(JSON.stringify(report.fingerprint, null, 2))
+      IO.print(formatDoctorOutput(report.fingerprint))
       return
     }
     if (args.includes('--json')) {
-      IO.print(JSON.stringify(report, null, 2))
+      IO.print(formatDoctorOutput(report))
     } else {
       for (const check of report.checks.filter(check => check.status !== 'pass')) {
         const line = `${check.status.toUpperCase()} ${check.name}: ${check.detail}${
@@ -32,3 +32,9 @@ export default registerCommand({
     assertDoctorReady(report.status)
   },
 })
+
+type DoctorOutput = DoctorReport | DoctorReport['fingerprint']
+
+function formatDoctorOutput(report: DoctorOutput): string {
+  return Json.Print(report)
+}

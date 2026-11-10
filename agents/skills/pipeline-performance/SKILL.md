@@ -9,6 +9,7 @@ description: >-
 
 # Pipeline Performance
 
+- Use [the performance guide](../../../Docs/Dev%20Env/Performance/README.md) to select current measurement commands and find retained baselines. Historical records describe their recorded revisions; compare equivalent fixtures rather than treating those figures as current results.
 - Consider performance in every implementation touching the current or future preview-refresh hot
   path: keystroke change, updated file outcome, partial recompilation, generated-output publication,
   Expo HMR/Fast Refresh, and the visible app update. Aim to keep the complete path below 100 ms where
@@ -74,3 +75,6 @@ description: >-
 - Retain one preview timing record per implementation commit using
   [preview history](references/preview-history.md). `.artifacts` reports alone are temporary;
   publish and pin the `.storage` history before an authorized landing.
+- Follow [preview history](references/preview-history.md#comparisons-and-significant-changes) for
+  diagnostic comparisons during development, immediate reporting of significant speedups or
+  slowdowns, and the mandatory branch-start-to-final comparison before landing.

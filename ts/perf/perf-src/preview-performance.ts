@@ -1,17 +1,22 @@
-import * as Runtime from '@runtime/Runtime'
-import { Errors, Time, Try } from '@shared'
-import { Artifacts, type BrowserRuntime, Env, FileSystem, Path, Platform, Repo } from '@shared/os'
-import type { createWorkspace, Project, UpdateResult } from '@workspace/Workspace'
-import { createPreviewHarness, type PreviewHarness } from './PreviewHarness'
+import * as Runtime from '@runtime'
+import { Json } from '@shared'
+import { Errors, NewlineCharacter, Time, Try } from '@shared'
+import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
+import { Processes } from '@shared/os'
+import type * as Workspace from '@workspace'
+
+import { createPreviewHarness, type PreviewHarness } from './Preview/PreviewHarness'
+import * as PreviewMeasurement from './Preview/PreviewMeasurement'
 import type { ReloadTiming } from './ReloadTimings'
 
 /** previewPerformance measures source edits through two isolated headless Expo web previews.
  *  macOS requires host process access before any browser starts; no screenshots are captured. */
 export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Platform.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
+    await Processes.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
-  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID() }
+  const measurement = PreviewMeasurement.readPreviewMeasurement(options.measurement)
+  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
       await disposePreview(options, resources)
@@ -20,17 +25,23 @@ export async function previewPerformance(options: PreviewOptions) {
 }
 
 /** PreviewOptions supplies a compile session, generated app, and canonical starting Tao source. */
-export type PreviewOptions = { workspace: ReturnType<typeof createWorkspace>; project: Project; initialSource: string }
+export type PreviewOptions = {
+  workspace: Workspace.WorkspaceSession
+  project: Workspace.Project
+  initialSource: string
+  measurement?: Partial<PreviewMeasurement.PreviewMeasurement>
+}
 
 type Resources = {
   sessionId: string
+  measurement: PreviewMeasurement.PreviewMeasurement
   errors: string[]
   reloads: ReloadTiming[]
   expo?: Runtime.ExpoSession
   startupMs?: number
-  frameSizes?: { id: string; width: number; height: number }[]
+  frameSizes?: PreviewFrameSize[]
   harness?: PreviewHarness
-  browser?: import('playwright').Browser
+  browser?: HeadlessBrowser.HeadlessBrowserSession
 }
 type PreviewResult = {
   scenario: string
@@ -39,28 +50,30 @@ type PreviewResult = {
   clickTimestampMs: number
   timings: unknown[]
   stages?: unknown
-  frames: Record<string, { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }>
+  frames: Record<string, PreviewFrameTimings>
 }
 
-const scenarios = ['text', 'add-text', 'row'] as const
+type PreviewFrameSize = { id: string; width: number; height: number }
+type PreviewFrameTimings = { clickToHmrMs: number; hmrToAppliedMs: number; clickToAppliedMs: number }
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
-  const sourcePath = Path.join(options.project.directory, '_source/Hello World.tao')
-  await FileSystem.mkdir(Path.dirname(sourcePath), { recursive: true })
-  await FileSystem.writeFile(sourcePath, options.initialSource, 'utf8')
+  const { source, sourcePath } = await prepareMeasurementSource(options, owned.measurement)
+  const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
   requirePublished(await options.workspace.openFile(sourcePath))
   owned.expo = await Runtime.start(options.workspace.runtime!)
   owned.harness = await createPreviewHarness({
     workspace: options.workspace,
     previewUrl: owned.expo.url,
     sessionId: owned.sessionId,
+    canonicalSource: source,
+    scenarios,
+    frameCount: owned.measurement.frameCount,
     onReload(timing) {
       owned.reloads.push(timing)
     },
   })
-  const { chromium } = await import('playwright')
-  owned.browser = await chromium.launch({ headless: true, channel: Env.get('TAO_PREVIEW_BROWSER_CHANNEL') ?? 'chrome' })
+  owned.browser = await HeadlessBrowser.launch('performance preview')
   const page = await owned.browser.newPage({ viewport: { width: 1280, height: 800 } })
   page.on('pageerror', error => owned.errors.push(String(error)))
   page.on('console', message => {
@@ -69,7 +82,7 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     }
   })
   await page.goto(owned.harness.url)
-  await waitForFrameText(page, 'Hello World')
+  await waitForFrameText(page, 'Hello World', owned.measurement)
   owned.startupMs = Time.nowMs() - started
   owned.frameSizes = await page.locator('iframe').evaluateAll(frames =>
     frames.map(frame => ({
@@ -78,15 +91,31 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
       height: frame.clientHeight,
     }))
   )
-  const results = await runScenarios(page)
-  await waitForReloadReports(owned)
-  const path = await writeReport(options.project, owned, results)
+  const results = await runScenarios(page, scenarios.map(scenario => scenario.name), owned.measurement)
+  await waitForReloadReports(owned, results)
+  const fixtureSha256 = Platform.hashText(options.initialSource)
+  const path = await writeReport(options.project, owned, results, fixtureSha256)
   return { path, sessionId: owned.sessionId, results, reloads: owned.reloads, startupMs: owned.startupMs }
 }
 
-async function runScenarios(page: import('playwright').Page): Promise<PreviewResult[]> {
+async function prepareMeasurementSource(options: PreviewOptions, measurement: PreviewMeasurement.PreviewMeasurement) {
+  const fixture = PreviewMeasurement.createMeasurementFiles(options.initialSource, measurement)
+  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
+  await FS.mkdir(Path.dirname(sourcePath))
+  for (const file of fixture.extraFiles) {
+    await FS.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
+  }
+  await FS.writeFile(sourcePath, fixture.entry, 'utf8')
+  return { source: fixture.entry, sourcePath }
+}
+
+async function runScenarios(
+  page: HeadlessBrowser.Page,
+  scenarios: readonly string[],
+  measurement: PreviewMeasurement.PreviewMeasurement,
+): Promise<PreviewResult[]> {
   for (const [index, scenario] of scenarios.entries()) {
-    await page.locator('#run').click()
+    await page.locator('#run').click({ timeout: 5000 })
     await page.waitForFunction(
       expected => {
         const state = window.__taoPreviewState
@@ -97,9 +126,9 @@ async function runScenarios(page: import('playwright').Page): Promise<PreviewRes
     )
     const state: BrowserRuntime.PageState = await page.evaluate(() => window.__taoPreviewState)
     if (state.status === 'failed') {
-      Errors.ThrowUnexpected(state.error ?? 'Preview update failed.')
+      Errors.ThrowShouldNeverHappen(state.error ?? 'Preview update failed.')
     }
-    await assertScenario(page, scenario)
+    await PreviewMeasurement.assertMeasurementScenario(page, scenario, measurement)
   }
   return await page.evaluate(() => window.__taoPreviewState.results) as PreviewResult[]
 }
@@ -115,9 +144,12 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   await options.workspace.dispose()
   const output = owned.expo ? await owned.expo.output() : undefined
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)
-  await Artifacts.mkdir(Path.dirname(logPath), { recursive: true })
+  await Artifacts.mkdir(Path.dirname(logPath))
   Artifacts.trackTemporary(logPath)
-  await Artifacts.write(logPath, [output?.stdout, output?.stderr, ...owned.errors].filter(Boolean).join('\n'))
+  await Artifacts.write(
+    logPath,
+    [output?.stdout, output?.stderr, ...owned.errors].filter(Boolean).join(NewlineCharacter),
+  )
   for (const cleanup of cleanups) {
     if (cleanup.status === 'rejected') {
       Errors.Throw(cleanup.reason)
@@ -125,79 +157,112 @@ async function disposePreview(options: PreviewOptions, owned: Resources): Promis
   }
 }
 
-async function assertScenario(page: import('playwright').Page, scenario: typeof scenarios[number]): Promise<void> {
-  for (const frameId of ['left', 'right']) {
-    const frame = page.frameLocator(`#${frameId}`)
-    await frame.getByText('Hello Tao', { exact: true }).waitFor()
-    if (scenario !== 'text') {
-      await frame.getByText('Second view', { exact: true }).waitFor()
-    }
-    if (scenario === 'row' && !await hasRowLayout(frame)) {
-      Errors.ThrowUnexpected(`${frameId} frame did not place both Text children in a Row layout.`)
-    }
-  }
-}
-
-async function hasRowLayout(frame: import('playwright').FrameLocator): Promise<boolean> {
-  return await frame.getByText('Hello Tao', { exact: true }).evaluate(first => {
-    const parent = first.parentElement
-    const second = parent && [...parent.children].find(node => node.textContent === 'Second view')
-    return !!second && getComputedStyle(parent!).flexDirection === 'row'
-  })
-}
-
-async function waitForFrameText(page: import('playwright').Page, text: string): Promise<void> {
-  for (const frameId of ['left', 'right']) {
+async function waitForFrameText(
+  page: HeadlessBrowser.Page,
+  text: string,
+  measurement: PreviewMeasurement.PreviewMeasurement,
+): Promise<void> {
+  for (const frameId of PreviewMeasurement.measurementFrameIds(measurement.frameCount)) {
     await page.frameLocator(`#${frameId}`).getByText(text, { exact: true }).waitFor({ timeout: 60_000 })
   }
 }
 
-async function writeReport(project: Project, owned: Resources, results: PreviewResult[]): Promise<string> {
+async function writeReport(
+  project: Workspace.Project,
+  owned: Resources,
+  results: PreviewResult[],
+  fixtureSha256: string,
+): Promise<string> {
   const directory = Artifacts.resolvePath('logs/performance')
-  await Artifacts.mkdir(directory, { recursive: true })
+  await Artifacts.mkdir(directory)
   const path = Path.join(directory, `preview-${owned.sessionId}.json`)
   Artifacts.trackTemporary(path)
-  await Artifacts.write(
-    path,
-    JSON.stringify(
-      {
-        version: 1,
-        sessionId: owned.sessionId,
-        commit: await Platform.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-        modified: await Platform.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
-        system: Platform.systemInfo(),
-        browser: await owned.browser!.version(),
-        generatedProject: project.directory,
-        startupMs: owned.startupMs,
-        frameSizes: owned.frameSizes,
-        reloads: owned.reloads,
-        definitions: {
-          compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
-          updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
-          applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
-          total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
-        },
-        results,
-      },
-      null,
-      2,
-    ),
-  )
+  const report: PreviewPerformanceReport = {
+    version: 1,
+    sessionId: owned.sessionId,
+    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    system: Platform.systemInfo(),
+    runtime: Platform.runtimeVersion(),
+    fixtureSha256,
+    browser: await owned.browser!.version(),
+    generatedProject: project.directory,
+    startupMs: owned.startupMs,
+    frameSizes: owned.frameSizes,
+    measurement: PreviewMeasurement.describeMeasurement(owned.measurement),
+    primaryMetric: 'parentClickToLastAppliedMs',
+    reloads: owned.reloads,
+    definitions: {
+      compile: 'In-process parse, AST transform and code generation; typecheck/fix/check explicitly skipped.',
+      updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
+      applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
+      total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
+      observedSource: 'Reload source-observed timings may restart after duplicate watch observations; secondary only.',
+    },
+    results: results.map((result, index) => describeResult(result, index, owned.measurement.frameCount)),
+  }
+  await Artifacts.write(path, serializePreviewPerformanceReport(report))
   return path
 }
 
-function requirePublished(result: UpdateResult): void {
+type PreviewPerformanceReport = {
+  version: 1
+  sessionId: string
+  commit: string
+  modified: boolean
+  system: Platform.SystemInformation
+  runtime: string
+  fixtureSha256: string
+  browser: string
+  generatedProject: string
+  startupMs: Resources['startupMs']
+  frameSizes: Resources['frameSizes']
+  measurement: PreviewMeasurement.MeasurementDescription
+  primaryMetric: string
+  reloads: ReloadTiming[]
+  definitions: PreviewPerformanceDefinitions
+  results: PreviewPerformanceResult[]
+}
+
+type PreviewPerformanceDefinitions = {
+  compile: string
+  updateDone: string
+  applied: string
+  total: string
+  observedSource: string
+}
+
+function serializePreviewPerformanceReport(report: PreviewPerformanceReport): string {
+  return Json.Print(report)
+}
+
+function requirePublished(result: Workspace.UpdateResult): void {
   if (result.status !== 'published') {
-    Errors.ThrowUnexpected(`Initial preview source was ${result.status}.`)
+    const detail = result.status === 'failed' ? ` ${result.error}` : ''
+    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.${detail}`)
   }
 }
 
-async function waitForReloadReports(owned: Resources): Promise<void> {
+async function waitForReloadReports(owned: Resources, results: readonly PreviewResult[]): Promise<void> {
   const deadline = Time.nowMs() + 5000
-  while (owned.reloads.length < scenarios.length) {
+  while (results.some(result => !owned.reloads.some(timing => timing.revision === result.revision))) {
     if (Time.nowMs() >= deadline) {
-      Errors.ThrowUnexpected('Preview receipts did not reach the terminal timing reporter.')
+      Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
     }
     await Time.sleep(10)
   }
+}
+
+type PreviewPerformanceResult = PreviewResult & {
+  sample: PreviewMeasurement.MeasurementSample
+  parentClickToLastAppliedMs: number
+}
+
+function describeResult(result: PreviewResult, index: number, frameCount: number): PreviewPerformanceResult {
+  const frames = Object.values(result.frames)
+  if (frames.length !== frameCount) {
+    Errors.ThrowShouldNeverHappen(`Measurement ${result.revision} did not collect its complete React receipt quorum.`)
+  }
+  const parentClickToLastAppliedMs = Math.max(...frames.map(frame => frame.clickToAppliedMs))
+  return { ...result, sample: PreviewMeasurement.classifyMeasurementSample(index), parentClickToLastAppliedMs }
 }

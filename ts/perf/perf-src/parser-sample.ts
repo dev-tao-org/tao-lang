@@ -1,22 +1,28 @@
 import { IO } from '@cli-kit'
-import { Errors, Timings } from '@shared'
+import { Errors, Json, Timings, type TimingSample } from '@shared'
 import { Platform } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 
-const LoadParserModule = Timings.measure('parser.module-load', loadParserModule)
+const loadParserModule = Timings.measured('parser.module-load', async () => {
+  const Grammar = await import('@grammar')
+  return Grammar
+})
 
-if (Platform.isMain(import.meta)) {
-  const timings = new Timings(`process:${Platform.pid}`)
-  const { createParser } = await LoadParserModule(timings)
-  const parser = createParser(timings)
+const main = Timings.createTopLevelTimer(async function(timings) {
+  const Grammar = await timings.run(loadParserModule)
+  const parser = timings.run(Grammar.createParser)
   const source = (await parserFixtures())[0]!.source
-  const { tree } = parser.parse(source, timings)
+  const tree = timings.run(parser.parse, source)
   if (tree.rootNode.hasError || tree.rootNode.text !== source) {
-    Errors.ThrowUnexpected('Cold parser sample did not parse the complete HelloWorld fixture.')
+    Errors.ThrowShouldNeverHappen('Cold parser sample did not parse the complete performance fixture.')
   }
-  IO.print(JSON.stringify(timings.samples))
+  IO.print(serializeParserTimingSamples(timings.samples))
+})
+
+function serializeParserTimingSamples(samples: readonly TimingSample[]): string {
+  return Json.Print(samples)
 }
 
-function loadParserModule() {
-  return import('../../1-grammar/grammar-src/parser')
+if (Platform.isMain(import.meta)) {
+  await main()
 }

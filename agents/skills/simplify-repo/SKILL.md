@@ -30,9 +30,9 @@ run shares. Standing decisions below are the Developer's and are not reopened; a
    `parser-gen`, `ledger-index`, …), not a direct `just` recipe it already exposes. Run narrow checks
    and `verify-changed` while iterating; hosted `Verify` on `landing`'s route is the only merge
    evidence. After moving or renaming a package, `./agent setup --refresh-lockfile`
-   is the one install that rewrites `bun.lock`. A read-only `reviewer` using `delegation`'s effort policy reads every wave's
-   seams before it starts and the whole diff again before every landing, briefed to hunt what
-   `./agent check` cannot see — a moved literal that still resolves, just not to what it used to.
+   is the one install that rewrites `bun.lock`. If the Developer requests a review, use `code-review`
+   for wave seams and the complete diff, briefed to hunt what `./agent check` cannot see — a moved
+   literal that still resolves, just not to what it used to.
    Package moves and alias renames go last, after merging `main`, in one mechanical commit; if a move
    touched a Git hook script, `./agent doctor` after landing checks the shared `.git/hooks` picked it
    up rather than a stale script silently exiting 0.

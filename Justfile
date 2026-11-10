@@ -39,6 +39,60 @@ doctor *ARGS:
 shell-setup:
     ./dev shell-setup --configure
 
+# Install the official Tailscale macOS app; sign in and approve native prompts afterward
+[group('Setup')]
+[positional-arguments]
+tailscale-install *ARGS:
+    ./dev tailscale-install "$@"
+
+# Install/start CLI-only private networking and sign in on this controller Mac
+[group('Setup')]
+[positional-arguments]
+timing-setup-controller *ARGS:
+    ./dev timing-setup-controller "$@"
+
+# Install/start CLI-only private networking and sign in on the timing Mac
+[group('Setup')]
+[positional-arguments]
+timing-setup-runner *ARGS:
+    ./dev timing-setup-runner "$@"
+
+# Authenticate an existing SSH login and return here without opening a remote shell
+[group('Performance')]
+[positional-arguments]
+timing-connect HOST *ARGS:
+    ./dev timing-connect "$@"
+
+# Initialize shared ~/.tao-dev timing storage without installing network software
+[group('Performance')]
+[positional-arguments]
+timing-home *ARGS:
+    ./dev timing-home "$@"
+
+# Close the saved reusable SSH connection to the timing Mac
+[group('Performance')]
+[positional-arguments]
+timing-disconnect HOST *ARGS:
+    ./dev timing-disconnect "$@"
+
+# Connect, measure, print and close a private one-shot timing session
+[group('Performance')]
+[positional-arguments]
+timing-session HOST CHECKOUT *ARGS:
+    ./dev timing-session "$@"
+
+# Repeat measurements in an immutable runner checkout; source is not synchronized
+[group('Performance')]
+[positional-arguments]
+timing-run HOST CHECKOUT *ARGS:
+    ./dev timing-run "$@"
+
+# Print a retained timing report without launching measurements
+[group('Performance')]
+[positional-arguments]
+timing-report HOST CHECKOUT *ARGS:
+    ./dev timing-report "$@"
+
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
 clean:
@@ -52,7 +106,7 @@ clean-full:
 # Dev loop
 ##########
 
-# Run tests in the new TypeScript workspace
+# Run TypeScript tests and all Tao app tests
 [group('Dev')]
 test target="":
     ./dev test {{ quote(target) }}
@@ -91,7 +145,7 @@ my-branch name='':
 # Dev environment services
 ##########################
 
-# Compile the existing Hello World app and keep its two browser previews running
+# Compile the Preview app and keep its two browser previews running
 [group('Dev')]
 dev:
     ./dev dev
@@ -101,7 +155,7 @@ dev:
 performance:
     ./dev performance preview
 
-# Build the Tao extension once and install it into Cursor and VS Code
+# Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]
 install-ide-extension:
     ./dev install-ide-extension

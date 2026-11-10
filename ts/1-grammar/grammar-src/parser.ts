@@ -1,41 +1,37 @@
-import { Timings } from '@shared'
+import { type TimingEntry, Timings } from '@shared'
 import { Platform, Repo } from '@shared/os'
-import Parser from 'tree-sitter'
+import NativeParser from './bridges/Bridge_tree-sitter'
+
+/** ParsedTree retains the native concrete syntax tree produced from one source snapshot. */
+export type ParsedTree = NativeParser.Tree
+
+/** Parser owns a timed parse boundary for complete Tao source snapshots. */
+export type Parser = { parse: TimingEntry<[source: string], ParsedTree> }
 
 /** createParser creates a session parsing complete source snapshots without reusing prior CSTs.
- *  Each parse returns its own timings by default; callers may supply their request's collector.
+ *  Creation and each parse start fresh timing boundaries; timings.run can reuse an existing collector.
  *  Returned CSTs remain caller-owned and are reclaimed by the native binding's garbage collector. */
-export function createParser(initialization = new Timings(`process:${Platform.pid}`)) {
-  const parser = InitializeParser(initialization, initialization)
+export const createParser = Timings.createTopLevelTimer(function(timings): Parser {
+  const parser = timings.run(initializeParser)
   return {
-    initialization: initialization.samples,
-    parse(source: string, timings = new Timings(`process:${Platform.pid}`)) {
-      const tree = Parse(timings, parser, source)
-      return { tree, timings: timings.samples }
-    },
+    parse: Timings.createTopLevelTimer((context, source: string) => context.run(parseSource, parser, source)),
   }
-}
+})
 
-const InitializeParser = Timings.measure('parser.initialize', initializeParser)
-const LoadNativeLanguage = Timings.measure('parser.native-load', loadNativeLanguage)
-const Parse = Timings.measure('parser.parse', parseSource)
-
-function initializeParser(initialization: Timings): Parser {
-  const instance = new Parser()
-  const language = LoadNativeLanguage(initialization)
-  language.nodeTypeInfo = Platform.loadModule<Parser.NodeInfo[]>(
+const initializeParser = Timings.measure('parser.initialize', function(timings): NativeParser {
+  const instance = new NativeParser()
+  const language = timings.run(loadNativeLanguage)
+  language.nodeTypeInfo = Platform.loadModule<NativeParser.NodeInfo[]>(
     Repo.resolvePath('ts/1-grammar/_gen_parser/src/node-types.json'),
   )
   instance.setLanguage(language)
   return instance
-}
+})
 
-function loadNativeLanguage(): Parser.Language {
-  return Platform.loadModule<Parser.Language>(
+const parseSource = Timings.measured('parser.parse', (parser: NativeParser, source: string) => parser.parse(source))
+
+const loadNativeLanguage = Timings.measured('parser.native-load', function(): NativeParser.Language {
+  return Platform.loadModule<NativeParser.Language>(
     Repo.resolvePath('ts/1-grammar/_gen_parser/build/Release/tree_sitter_tao_binding.node'),
   )
-}
-
-function parseSource(parser: Parser, source: string): Parser.Tree {
-  return parser.parse(source)
-}
+})

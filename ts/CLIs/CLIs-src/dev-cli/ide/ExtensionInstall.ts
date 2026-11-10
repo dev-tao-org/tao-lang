@@ -1,13 +1,21 @@
-import { runCommand } from '@cli-kit'
-import { Platform } from '@shared/os'
+import * as CLIKit from '@cli-kit'
+import { Regxs } from '@shared'
 
-/** installExtension installs the same built VSIX into Cursor and VS Code without opening editor windows. */
-export async function installExtension(vsix: string, run = runCommand, capture = Platform.capture): Promise<void> {
+import { Processes } from '@shared/os'
+
+/** installExtensions installs both built VSIX files into Cursor and VS Code without opening editor windows. */
+export async function installExtensions(
+  vsixs: readonly string[],
+  run = CLIKit.runNonInteractiveCommand,
+  capture = Processes.capture,
+): Promise<void> {
   for (const editor of ['cursor', 'code']) {
-    const installed = (await capture(`${editor} --list-extensions`)).split(/\r?\n/u)
+    const installed = (await capture(`${editor} --list-extensions`)).split(Regxs.ExtensionLineEndingRegx)
     if (installed.includes('tao.tao-language')) {
       await run(`${editor} --uninstall-extension tao.tao-language`)
     }
-    await run(`${editor} --install-extension`, { variadicArgs: [vsix, '--force'] })
+    for (const vsix of vsixs) {
+      await run(`${editor} --install-extension`, { variadicArgs: [vsix, '--force'] })
+    }
   }
 }

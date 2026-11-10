@@ -1,75 +1,98 @@
-import { FileSystem, Path, Repo } from '../shared/shared-src/os'
+import { deriveCompilerPaths } from '../CLIs/CLIs-src/cli-checks/PackageApis'
+import { FS, Path, Repo } from '../shared/shared-src/os'
+import { Regxs, Sort } from '../shared/shared-src/shared'
 
 /** knipConfiguration checks package workspaces while recognizing imported command registrations. */
 export default {
   workspaces: {
-    '0-workspace': packageWorkspace([
+    '0-workspace': createPackageWorkspace([
       'workspace-src/Workspace.ts',
-      '**/*.test.ts',
     ]),
-    '1-grammar': packageWorkspace(['**/*.test.ts']),
-    '2-ast-gen': packageWorkspace(['**/*.test.ts']),
-    '3-typecheck': packageWorkspace([]),
-    '4-fix': packageWorkspace([]),
-    '5-check': packageWorkspace([]),
-    '6-compile': packageWorkspace(['**/*.test.ts']),
-    '7-runtime': packageWorkspace([
-      'runtime-src/TR.ts',
-      'runtime-src/HMRClient.ts',
-      '**/*.test.ts',
+    '1-grammar': createPackageWorkspace([]),
+    '2-ast-gen': createPackageWorkspace([]),
+    '3-typecheck': createPackageWorkspace([]),
+    '4-fix': createPackageWorkspace([]),
+    '5-check': { ...createPackageWorkspace([]), entry: [] },
+    '6-compile': createPackageWorkspace([]),
+    '7-runtime': createPackageWorkspace([
+      'runtime-src/client/TR.ts',
+      // Generated app entries and automatic JSX lowering consume these source contracts.
+      'runtime-src/client/Bridge_react/jsx-runtime.ts',
+      'runtime-src/client/Bridge_react/jsx-dev-runtime.ts',
+      'runtime-src/bridges/Bridge_expo/Bridge_expo.ts',
+      'runtime-src/client/TaoRuntimeAPI.ts',
+      'runtime-src/client/HMRClient.ts',
+      'runtime-src/expo/Metro/MetroPreload.ts',
     ]),
-    CLIs: packageWorkspace([
-      ...cliEntries(),
-      ...cliEntries().flatMap(commandEntries),
-      'CLIs-src/tao-cli/tao-cli.ts',
+    'CLIs': createPackageWorkspace([
+      ...listCLIEntries(),
+      ...listCLIEntries().flatMap(listCommandEntries),
       'CLIs-src/dev-cli/commands/_setup.ts',
       'CLIs-src/dev-cli/commands/_setup-complete.ts',
-      '**/*.test.ts',
+      'CLIs-src/cli-checks/prepare-cli-generated.ts',
+      'CLIs-src/dev-cli/testing/TaoTestWorker.ts',
+      ...await listSkillEntries(),
     ]),
-    perf: packageWorkspace([
+    'perf': createPackageWorkspace([
       'perf-src/parser-sample.ts',
       'perf-src/parser-performance.ts',
       'perf-src/preview-performance.ts',
-      'perf-src/PreviewHarness.ts',
+      'perf-src/Preview/PreviewHarness.ts',
       'perf-src/preview-browser.ts',
-      '**/*.test.ts',
     ]),
-    shared: packageWorkspace(['**/*.test.ts']),
-    'ide-extension': packageWorkspace(['ide-extension-src/extension.ts', '**/*.test.ts']),
+    'shared': createPackageWorkspace([]),
+    'stdlib': createPackageWorkspace(['stdlib-src/.tao/.gitignore.d.ts']),
+    'ts-api': createPackageWorkspace(['ts-api-src/ts-api.ts']),
+    'ide-extensions/tao-ide-extension': createNestedPackageWorkspace(['tao-ide-extension-src/extension.ts']),
+    'ide-extensions/dev-tao-org': createNestedPackageWorkspace(['dev-tao-org-src/extension.ts']),
   },
   include: ['enumMembers', 'exports', 'files', 'nsExports', 'nsTypes', 'types'],
 }
 
-function packageWorkspace(entry: string[]) {
+function createPackageWorkspace(entry: string[]) {
   return {
-    ...(entry.length > 0 ? { entry } : {}),
-    project: ['**/*.{ts,tsx}'],
-    paths: {
-      '@cli-kit': ['../CLIs/CLIs-src/cli-kit/cli-kit.ts'],
-      '@shared': ['../shared/shared-src/shared.ts'],
-      '@shared/os': ['../shared/shared-src/os.ts'],
-      '@shared/os/preview': ['../shared/shared-src/os/PreviewPlatform.ts'],
-      '@grammar/*': ['../1-grammar/grammar-src/*'],
-      '@ast-gen/*': ['../2-ast-gen/ast-gen-src/*'],
-      '@typecheck/*': ['../3-typecheck/typecheck-src/*'],
-      '@fix/*': ['../4-fix/fix-src/*'],
-      '@check/*': ['../5-check/check-src/*'],
-      '@compile/*': ['../6-compile/compile-src/*'],
-      '@runtime/*': ['../7-runtime/runtime-src/*'],
-      '@workspace/*': ['../0-workspace/workspace-src/*'],
-    },
+    entry: [...entry.map(pattern => `${pattern}!`), '**/*.test.ts'],
+    project: ['**/*.{ts,tsx}!', '!**/test-*/**!', '!**/*.test.ts!'],
+    paths: deriveCompilerPaths(Repo.resolvePath('ts/package')),
   }
 }
 
-function cliEntries(): string[] {
+function createNestedPackageWorkspace(entry: string[]) {
+  const configuration = createPackageWorkspace(entry)
+  return {
+    ...configuration,
+    paths: Object.fromEntries(
+      Object.entries(configuration.paths).map(([name, paths]) => [name, paths.map(path => `../${path}`)]),
+    ),
+  }
+}
+
+function listCLIEntries(): string[] {
   return [
     'CLIs-src/agent-cli/agent-cli.ts',
     'CLIs-src/dev-cli/dev-cli.ts',
+    'CLIs-src/tao-cli/tao-cli.ts',
   ]
 }
 
-function commandEntries(registry: string): string[] {
-  const source = FileSystem.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
-  return [...source.matchAll(/^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm)]
+function listCommandEntries(registry: string): string[] {
+  const source = FS.readFileSync(Repo.resolvePath('ts', 'CLIs', registry), 'utf8')
+  return [...source.matchAll(Regxs.CommandRegistrationImportRegx)]
     .map(([, specifier]) => Path.posix.join(Path.dirname(registry), specifier!) + '.ts')
+}
+
+async function listSkillEntries(): Promise<string[]> {
+  const root = Repo.resolvePath('ts/CLIs/CLIs-src/agent-skills')
+  const entries: string[] = []
+  for (const folder of await FS.readdir(root, { withFileTypes: true })) {
+    if (!folder.isDirectory()) {
+      continue
+    }
+    const name = folder.name
+    const path = Path.join(root, name, `${name}.ts`)
+    if (FS.existsSync(path) && FS.statSync(path).isFile()) {
+      entries.push(`CLIs-src/agent-skills/${name}/${name}.ts`)
+    }
+  }
+  return entries.sort(Sort.CompareStrings)
 }

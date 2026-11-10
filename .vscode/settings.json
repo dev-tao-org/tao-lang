@@ -1,11 +1,13 @@
 {
+  "explorer.sortOrder": "type",
+  "json.schemaDownload.enable": true,
   // Match the pinned TypeScript compiler used by the new workspace checks.
   "typescript.tsdk": "ts/CLIs/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "js/ts.experimental.useTsgo": false,
   "typescript.experimental.useTsgo": false,
-  // Build and install the IDE extension, then restart the extension host (requires extension ryuta46.multi-command).
+  // Build and install both IDE extensions, then restart the extension host (requires extension ryuta46.multi-command).
   "tao.workspaceKeybinding.buildAndRestart": true,
   "multiCommand.commands": [
     {
@@ -33,7 +35,7 @@
   "editor.formatOnSave": true,
   "[tao]": {
     "editor.defaultFormatter": "devtao.tao",
-    "editor.tabSize": 3,
+    "editor.tabSize": 2,
     "editor.insertSpaces": true
   },
   /////////////////////////////
@@ -61,8 +63,10 @@
     "devenv.yaml": true,
     "**/tsconfig.tsbuildinfo": true,
     "local.properties": true,
+    ".x-tao-old-v1/**": true,
     ".x-tao-old-v1/**/node_modules": true,
     "old-packages/**/node_modules": true,
+    // "**/.tao/cache/**": true,
     ".x-tao-old-v1/Apps/Tao Studio/tsconfig.json": true,
     ".x-tao-old-v1/Apps/Tao Studio/node_modules": true,
     ".x-tao-old-v1/Apps/Syntax2/tsconfig.json": true,

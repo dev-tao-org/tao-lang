@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../../.artifacts/cache/typescript/dev-tao-org.tsbuildinfo",
+    "noEmit": true,
+    "types": [
+      "bun",
+      "vscode"
+    ]
+  },
+  "include": [
+    "dev-tao-org-src/**/*.ts",
+    "test-dev-tao-org/**/*.ts"
+  ]
+}

@@ -9,7 +9,23 @@ description: >-
 
 # Verification Lanes
 
-`./agent help` and each command's own `--help` print the lane scopes, their composition, and the flags; read those rather than a second copy here. This skill owns what they do not print: the caching and test-selection reasoning (`references/caching-and-selection.md`), CI contention and coverage (`references/hosted-verification.md`), and the judgment calls below. `landing` owns the route that proves a merge.
+`./agent help` and each command's own `--help` own available commands and flags. `landing` owns
+landing authorization and its proof. Root `AGENTS.md` owns required validation checkpoints.
+
+## Current implementation outside .x-tao-old-v1
+
+- During iteration, run the focused new/changed proof and relevant existing journeys or package tests. Instruction-only changes use `./agent check`; completing an implementation slice still requires root's `./agent verify`. Do not run application tests merely because instruction prose changed.
+- Reuse successful validation for unchanged inputs across commit-only chunks, read-only review rounds and repeated status requests. Record the scope, source snapshot and result; rerun affected checks after relevant changes. Focused evidence does not count as a full-suite pass, and don't assume an automated test-result cache exists.
+- The current `verify` command formats, checks and runs the complete TypeScript and Tao suites. Its format paths do not narrow checks or tests. Current workers have a per-run budget; do not assume they participate in the retained implementation's machine-wide broker or landing lock. Coordinate expensive runs across agents when needed.
+- Use the announced current command logs and JUnit timing report to distinguish preparation, suite wall time and summed case costs. The existing TypeScript slow threshold warns only; Tao workers report durations separately. Follow `ts/AGENTS.md` for responding to slow tests without gaming thresholds or case boundaries.
+- After a broad failure, inspect its log, reproduce the failed scope directly, repair and run the required final checks. Don't pay for repeated broad discovery runs while a known failure remains unresolved. Timeouts on a busy machine are not performance proof; repeat unchanged work in controlled isolation before assigning the cause.
+- Keep timing measurements serial and separate from concurrent verification. `pipeline-performance` owns current measurement commands and evidence boundaries; `test-quality` owns deterministic work-count proofs. Do not invoke a retained command just because it appears below.
+
+## Retained workflows inside .x-tao-old-v1
+
+The remaining sections and their linked cache/CI references describe the retained implementation.
+Use them only when working there under root's legacy scope rules; they do not establish command
+availability, cache reuse or locking for the current TypeScript workspace.
 
 Run a host-only lane through its listed wrapper shape, such as `./agent unsandboxed studio-smoke`;
 the plain `./agent` shape stays sandboxed.

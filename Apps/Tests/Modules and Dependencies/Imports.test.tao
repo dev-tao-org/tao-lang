@@ -1,0 +1,12 @@
+use ModulesAndDependencies
+
+tests "Modules" {
+  test "Imported views retain private values and package scope" {
+    run ModulesAndDependencies
+    expect text "Package-owned value"
+    expect text "Folder-owned package value"
+    expect text "Folder sibling"
+    expect text "Public wildcard"
+    expect text "Caller scope"
+  }
+}

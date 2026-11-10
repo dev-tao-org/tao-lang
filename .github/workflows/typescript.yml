@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 45
     env:
       TERMINAL_OUTPUT: '1'
+      # Build/test jobs do not publish evidence or have cross-repository archive credentials.
+      TAO_SETUP_STORAGE: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -57,7 +59,8 @@ jobs:
       - name: Check workspace
         run: ./agent check
       - name: Test workspace
-        run: ./agent test
+        # Browser/Metro and compiler integration tests share this runner's CPU and memory.
+        run: ./agent test --serial --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Upload logs and test timings

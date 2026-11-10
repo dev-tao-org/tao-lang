@@ -1,7 +1,45 @@
-# Tests
+# Tests WIP
 
-A `tests { ... }` block groups test cases and their setup. Its label is optional:
-`tests "Sign-in" { ... }`. Referenced views, data types and datasource implementations are declared
+A `tests { ... }` block groups independent app journeys that exercise controls and assert visible results.
+
+```tao
+tests "App interactions" {
+  test(Label "Edit and save") {
+    run UIInteractions
+    expect text "Ready"
+    expect #name input value "Original"
+    type "Hello World" into #name
+    press #save
+    expect text "Saved"
+    expect #name input value "Hello World"
+  }
+}
+```
+
+#### `run UIInteractions`
+
+Each case launches an app declared in the same source or imported into it, in a fresh isolated
+headless web session. [Forms.test.tao](../../Apps/Tests/UI%20Interactions/Forms.test.tao) is a runnable example.
+The current runner requires `run <app>`; direct rendering, state overrides, devices and datasource
+arguments below are agreed future behavior, not yet executable.
+
+#### `test(Label "Edit and save")`
+
+Labels are optional; unnamed cases are reported by file and line.
+
+#### `type "Hello World" into #name`
+
+Typing replaces the input's existing value; cursor-position specifiers are deferred.
+`press #save` activates the selected control.
+
+#### `expect text "Saved"`
+
+Text assertions match exact visible text; `expect #name input value "..."` checks input contents.
+Assertions wait for their condition within a bounded timeout.
+
+#### Direct rendering and supplied setup — proposed
+
+These examples specify future behavior; referenced views, data types and datasources are declared
 elsewhere.
 
 ```tao
@@ -36,24 +74,24 @@ tests "Sign-in" {
 }
 ```
 
-`test(...)` accepts an optional label, datasource instance and device. Arguments follow ordinary
-type matching; their order is not significant. An unconfigured case can be written `test { ... }`.
-Unnamed cases are reported by file and line.
+#### `test(SharedData, NarrowWeb, Label "Narrow sign-in")` — proposed
 
-Each case starts with a fresh render and, unless supplied explicitly, a fresh in-memory datasource.
-Passing the same datasource instance to multiple cases explicitly shares their data. Render-body
-state specifications initialize the rendered view's declared state before its first render, as in
-[live previews](Live%20Previews.md); rerenders do not reapply them.
+A case accepts an optional label, datasource instance and device using ordinary type matching;
+argument order is insignificant. An unconfigured case can use `test { ... }`.
 
-Tests use `Device`, not `Display`. A device specifies the execution platform, frame dimensions and
-environment settings such as appearance, accessibility, locale and time. Devices can be declared
-directly or constructed with helpers such as `WebDevice(...)`, `IOSDevice(...)` and
-`AndroidDevice(...)`.
+#### `render LoginForm(Admin yes) { ... }` — proposed
 
-Tests run against the configured default device set unless a device is supplied. The initial default
-set contains only headless web; omitting a platform also selects headless web. Unavailable platforms
-are reported as skipped, rather than passed.
+Each case starts with a fresh render and, by default, a fresh in-memory datasource. Explicitly
+reusing a datasource shares its data. Render-body state specifications replace initializers before
+the first render; rerenders do not reapply them, as in [live previews](Live%20Previews.md).
 
-`type` replaces an input's existing value. Cursor-position specifiers are deferred. `press` activates
-the selected control. `expect text` matches exact visible text; input contents are checked with
-`expect #name input value "..."`. Assertions wait for their condition within a bounded timeout.
+#### `device NarrowWeb { ... }` — proposed
+
+Tests use `Device`; previews use `Display`. Devices specify platform, dimensions and environment
+inputs, including appearance, accessibility, locale and time. They can be declared directly or
+constructed with `WebDevice(...)`, `IOSDevice(...)` and `AndroidDevice(...)`.
+
+#### Default devices — proposed
+
+Without an explicit device, tests use the configured default set, initially headless web only.
+Omitting a platform selects headless web. Unavailable platforms are skipped rather than passed.

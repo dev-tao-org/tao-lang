@@ -6,5 +6,6 @@
 # worktrees they create themselves, and Cursor from .cursor/worktrees.json. Change what setup
 # does in its TypeScript command, and keep this command and those hooks in step.
 # Root `./agent` activates the pinned environment before installing dependencies.
+# Setup also initializes missing storage at this checkout's pinned submodule commit.
 [pre-start]
 setup = "./agent setup --frozen-lockfile"

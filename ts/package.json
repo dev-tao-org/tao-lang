@@ -13,12 +13,19 @@
     "6-compile",
     "7-runtime",
     "CLIs",
-    "ide-extension",
+    "ide-extensions/*",
     "perf",
-    "shared"
+    "shared",
+    "stdlib",
+    "ts-api"
   ],
   "overrides": {
     "rulesync": { "js-yaml": "5.4.2" }
+  },
+  "patchedDependencies": {
+    "@expo/metro-file-map@57.0.4": "patches/@expo%2Fmetro-file-map@57.0.4.patch",
+    "metro@0.84.5": "patches/metro@0.84.5.patch",
+    "@expo/cli@57.0.31": "patches/@expo%2Fcli@57.0.31.patch"
   },
   "trustedDependencies": ["tree-sitter", "tree-sitter-cli"]
 }

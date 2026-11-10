@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "../../.artifacts/cache/typescript/ide-extension.tsbuildinfo",
-    "noEmit": true,
-    "types": ["bun", "vscode"]
-  },
-  "include": ["ide-extension-src/**/*.ts", "ide-extension-test/**/*.ts"]
-}

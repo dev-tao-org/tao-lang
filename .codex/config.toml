@@ -98,6 +98,12 @@ description = "Tao worktree: write the workspace, read the reference repo, reach
 # The previous repository is reference material only (see AGENTS.md).
 "~/code/tao-lang" = "read"
 
+# Linked checkouts reuse this checkout's pinned environment; its source stays read-only.
+"~/code/tao-lang/.devenv" = "write"
+
+[permissions.tao-workspace.filesystem.":workspace_roots"]
+".devenv" = "write"
+
 [permissions.tao-workspace.network]
 enabled = true
 # Tao's dev loop binds Metro, Studio, and the local InstantDB stack to loopback ports.

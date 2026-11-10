@@ -9,21 +9,59 @@ description: >-
 
 # Git Workflow
 
+Before finishing a branch, preparing a merge handoff, landing, or retiring its worktree/task,
+complete [evidence preservation](references/branch-evidence.md). Include ignored files and
+submodule contents; a clean parent status is not a preservation receipt.
+
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
-`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Pushing is
-irreversible: confirm with the Developer before pushing anything the Developer did not ask to be
-pushed.
+`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Non-main
+branch pushes through the guarded route are authorized; other publication needs the Developer's authorization.
+
+## Guarded branch pushes
+
+- Use `./agent unsandboxed push <remote> <branch>` to publish the matching local branch. For a
+  different destination, use `--source <local-branch>`, such as
+  `./agent unsandboxed push origin backup/feat/work --source feat/work`.
+- Keep raw `git push` outside the generic host allowlist. Force pushes, remote deletions and
+  landing still need separate explicit authorization; this command does not perform them.
+
+## Backup pushes
+
+- Use the guarded push command above for backups and `./agent unsandboxed git <operation>` for other supported Git mutations; the harness must grant host execution. Keep ordinary read-only Git inspection sandboxed. Do not install machine-local Git filesystem grants as a prerequisite.
+
+- Before ending any round of work that created commits, push those commits to `origin` through
+  the guarded route without opening a PR or asking for separate push approval. Batch the round's
+  commits into one backup push. Confirm the remote destination contains the committed tip;
+  report a failed backup and retain it as an unresolved task complication.
+- Backup pushes must not trigger CI unless the Developer requests CI for that push. Check current
+  workflow triggers and open pull requests before choosing a destination. With the current
+  workflows, pushing a feature branch without an open PR does not start CI; updating an open PR does.
+- If the working branch has an open PR, push the committed snapshot to a dedicated
+  `backup/<working-branch>` ref without an open PR instead. Confirm that destination is outside
+  automatic CI triggers; do not open a PR or dispatch a workflow for a backup. If no CI-free
+  destination is available, retain the backup as pending and explain the constraint.
+- Use an ordinary fast-forward push, set upstream only for the actual working branch, and never
+  force-push, push `main`, rewrite commit messages to skip CI, or weaken workflow gates for a backup.
+  A backup is not landing authorization or verification evidence.
 
 ## Worktree ownership
 
 `git worktree list` routinely shows fifteen or more checkouts sharing one object store, worked in concurrently by other agents and the Developer.
 
+- Create a fresh `feat/*` branch only when the Developer instructs branch or worktree creation;
+  permission to edit code alone does not authorize changing branches.
+  If the sandbox blocks Git metadata writes, use
+  `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
+  switch, replace an existing branch, or discard dirty work under this authorization.
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
   root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
   worktree you created once its branch is merged or abandoned.
+- After authoritatively confirming a landing, fetch remote `main` and fast-forward local `main`.
+  If local `main` is checked out in another worktree, have its owner update that checkout rather
+  than moving its branch ref behind it. Preserve local commits and dirty work; never reset them.
 - Before reclaiming a worktree, use `./agent reclaim` and follow
   `references/reclaim-task-associations.md` for agent task ownership that local metadata cannot prove.
 - Git operations that replace protected paths can half-succeed inside the sandbox: HEAD and most
@@ -66,6 +104,19 @@ nowhere else, capture it first with `git commit-tree $(git write-tree) -p HEAD -
 the SHA. It preserves Git's squash appendix on `main` — summary, bullets, a blank line, then
 `Squashed commit of the following:` and each squashed commit's own header and indented body — which
 `git log <base>..<head>` reproduces by hand.
+
+## Child branches after a parent squash
+
+- Before integrating a child branch whose parent was squash-merged into `main`, rebase only the
+  child's intended additional commits onto updated `main`; the squash does not preserve the
+  original parent commits as ancestors. Identify the original parent boundary before choosing
+  the replay range, rather than blindly rebasing the whole inherited history.
+- Retain the original parent ref or a recoverable checkpoint until the child's rebase and final
+  diff are verified. Confirm that the diff against `main` contains only the intended additional
+  work, resolve conflicts and rerun affected validation before presenting it for review or landing.
+- Follow root authorization and ownership rules before rebasing. This workflow does not authorize
+  rewriting a published child branch or force-pushing it; preserve the existing branch and use a
+  fresh feature branch when rewriting it is not authorized.
 
 ## Rebuilding history
 

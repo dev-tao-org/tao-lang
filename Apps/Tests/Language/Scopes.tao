@@ -1,0 +1,40 @@
+use tao@ui Text, Col
+
+let Greeting is text = "File scope"
+let __proto__ = "Prototype name"
+
+folder view ScopeExamples {
+  let Caption = Greeting
+  render Col {
+    #file
+    Text(Caption)
+    Col {
+      let Greeting = "Nested scope"
+      #inner
+      Text(Greeting)
+      #native
+      NativeLet
+      Col {
+        let Greeting = "Deep scope"
+        #deep
+        Text(Greeting)
+      }
+    }
+    #sibling
+    Text(Greeting)
+    Echo("Parameter scope")
+    Text(__proto__)
+  }
+}
+
+view Echo(Greeting text) {
+  let Caption = Greeting
+  render Text(Caption)
+}
+
+view NativeLet {
+  let Caption = Greeting
+  render inject Caption ```ts
+    return <Tao.Text>{Caption}</Tao.Text>
+  ```
+}

@@ -1,21 +1,35 @@
 ---
 name: code-review
 description: >-
-  Review branch changes with one or more read-only subagents. Use for implementation reviews,
-  requested changeset reviews, and ongoing style, conformance, file-layout and organizational-health
-  reviews at implementation checkpoints.
+  Review and repair branch changes in bounded rounds with read-only subagents. Use when the Developer explicitly
+  requests a review, including correctness, style, conformance, file-layout and organizational-health reviews.
 ---
 
 # Code Review
 
-Use at least one read-only subagent; one is the usual choice. Add reviewers when distinct parts of
-the code tree or functional responsibilities justify separate attention. Functional scopes may
-intersect files; make ownership of each review question clear and reconcile overlapping findings.
-Reviewing does not authorize implementation, publication, or landing.
+Root `AGENTS.md` owns review authorization. Invoking this skill requests a bounded review-and-fix
+loop within the Developer's stated scope, unless the request is read-only or findings-only.
+Reviewers remain read-only; the assigning agent owns authorized repairs and commits them locally
+in coherent chunks as part of the write-authorized review-and-fix flow, unless the Developer
+explicitly requests otherwise. Findings-only or read-only requests authorize neither repairs nor
+commits. Other Git operations, publication, landing and dependencies retain their authorization
+requirements.
 
-## Ongoing organizational review
+## Bounded review rounds
 
-At completed implementation checkpoints, include a read-only review of style, conformance,
+- Plan an initial review and at least one follow-up after substantive fixes. Usually one or two follow-ups suffice; never launch more than four review rounds in one cycle, including an initial review already completed for the same request.
+- Use at least one independent read-only subagent per round. Run reviewers in parallel when distinct functional responsibilities justify it; explicitly assign every changed file, conformance coverage and cross-scope seam. Several reviewers inspecting one pinned snapshot count as one round.
+- Choose model and effort for each assignment under `delegation`, within the same-or-lower reviewer ceiling. A standard reviewer at medium effort is a useful first pass; a fast reviewer at high effort can check straightforward repairs while a standard reviewer at high effort independently probes intricate compiler, concurrency or lifecycle seams. These are defaults to adapt, not mandatory model combinations. Do not repeatedly pay for broad high-effort reviews of settled code.
+- Pin each round's commit and dirty snapshot. Pause writers while reviewers read that snapshot. Follow-ups cover every change since the last reviewed snapshot, reopened findings, affected callers and regression tests; retain the original branch scope and include an independent check of the risky integrated behavior rather than only confirming the proposed patch.
+- Reconcile findings before changing code. In a write-authorized cycle, fix confirmed P0–P2 issues and required instruction violations, add the smallest credible regression proof and run relevant verification. Low-priority suggestions alone do not require speculative refactoring. Findings-only requests stop at the report and do not enter a repair phase.
+- Commit validated repairs as the work progresses, before the next review round or final report. Group coupled fixes with their regression tests; keep independent repairs in separate self-contained commits. Follow root formatting/verification policy and `git-workflow`, preserve unrelated edits and index selections, and record each commit with its findings and validation. Do not accumulate completed repairs as an uncommitted final handoff unless the Developer requests it; a commit does not imply that its follow-up review has passed.
+- After meaningful repairs, run another independent review round. Finish when the reviewed state has no P0–P2 findings or required instruction violations; report any remaining low-priority findings and coverage limits. Do not launch a redundant round solely to reach a planned count when the first pass needs no substantive repairs.
+- At the four-round cap, stop before starting a fifth round or making another repair batch that would need it. Report remaining findings, repeated root causes and the next work needed; never describe unreviewed repairs or an interrupted round as clean.
+- Record each round's reviewers/models/effort, snapshot, findings, fixes, verification and remaining risks in the task checkpoint. Keep the last fully reviewed commit and any reviewed dirty snapshot distinct.
+
+## Requested organizational review
+
+When requested, include a read-only review of style, conformance,
 file layout and organizational health. For a small slice, one reviewer may cover both correctness
 and organization; give substantial or cross-package changes a dedicated organizational pass.
 Check naming, definition ordering, file cohesion and size, package ownership, shared helpers,
@@ -26,8 +40,8 @@ speculative abstractions or implementing deferred features.
 Separate demonstrated instruction violations and maintainability problems from optional design
 suggestions. Cite the applicable rule or concrete maintenance cost and the smallest useful change;
 personal preferences alone are not findings. Report strengths and justified deferrals when they
-explain why the current organization should remain. The ongoing authorization covers these reviews,
-not unsolicited correctness-review fan-outs, refactoring, or scope expansion.
+explain why the current organization should remain. Keep repairs within the requested scope;
+optional refactoring and scope expansion need separate authorization.
 
 ## Scope and checkpoint
 
@@ -47,7 +61,7 @@ The **last reviewed commit** is the newest full commit SHA whose complete preced
 was covered. Uncommitted changes may have a reviewed snapshot, but cannot advance that commit marker
 until the committed contents are confirmed to match the snapshot. Record unresolved findings
 separately; reviewed does not mean approved or fixed. Partial or interrupted reviews do not advance
-the marker. Re-review fixes and later changes before advancing it again.
+the marker. Advance it again only after fixes and later changes receive an authorized review.
 
 ## Reviewer selection and brief
 
@@ -75,6 +89,7 @@ checkpoint and final report. A passing test run does not replace the independent
 
 - Always check **all new code** in the review range for conformance with applicable repository
   instructions and local conventions; distribute this coverage explicitly across reviewers.
+- Use `test-quality` and `ts/AGENTS.md` when reviewing tests: check primary journey assertions before reporting a missing package test, require a distinct coverage gap for added package proofs, and assess expensive effects and aggregate cost. Missing per-helper tests are not findings when required behavior is already proved; fast overlapping E2E journeys are acceptable.
 - Look for DRY opportunities within the changes and nearby relevant code. Check reasonably for
   existing functions that already do similar work, without exhaustively searching the repository.
   Also identify sufficiently aligned operations that should share a new function; explain the

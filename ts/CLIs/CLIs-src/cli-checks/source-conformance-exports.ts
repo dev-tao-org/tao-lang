@@ -1,17 +1,8 @@
-import * as TypeScript from 'typescript'
-import {
-  ApiGroup,
-  bindingNames,
-  docs,
-  hasDescription,
-  isApiDeclaration,
-  isApiMember,
-  isExported,
-  isImplementationNode,
-  isLocalNamedExport,
-  isPrivateApiMember,
-  normalizeDoc,
-} from './source-conformance-api'
+import { Source } from '@shared'
+import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import * as SourceConformanceApi from './source-conformance-api'
+
+type OptionalApiName = string | undefined
 
 /** ExportedApiChecker checks documentation and shapes for exported APIs. */
 export class ExportedApiChecker {
@@ -27,25 +18,33 @@ export class ExportedApiChecker {
   ) {}
 
   /** checkScope validates API docs within one source or namespace scope. */
-  checkScope(scope: TypeScript.SourceFile | TypeScript.ModuleBlock, implicitExports = false): void {
-    const groups = new Map<string, ApiGroup>()
-    const anonymous: ApiGroup[] = []
+  checkScope(scope: ApiScope, implicitExports = false): void {
+    const groups = new Map<string, SourceConformanceApi.ApiGroup>()
+    const anonymous: SourceConformanceApi.ApiGroup[] = []
     this.collectScopeDeclarations(scope, implicitExports, groups, anonymous)
     this.collectScopeExports(scope, groups, anonymous)
     this.checkExportedGroups(groups, anonymous)
   }
 
   private collectScopeDeclarations(
-    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
+    scope: ApiScope,
     implicitExports: boolean,
-    groups: Map<string, ApiGroup>,
-    anonymous: ApiGroup[],
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
     for (const statement of scope.statements) {
       if (TypeScript.isVariableStatement(statement)) {
         this.addVariableDeclarations(statement, implicitExports, groups, anonymous)
-      } else if (isApiDeclaration(statement)) {
-        this.addApiGroup(statement.name?.text, [statement], implicitExports || isExported(statement), groups, anonymous)
+      } else if (SourceConformanceApi.isApiDeclaration(statement)) {
+        this.addApiGroup(
+          statement.name?.text,
+          [statement],
+          implicitExports || SourceConformanceApi.isExported(statement),
+          groups,
+          anonymous,
+        )
+      } else {
+        // Imports, forwarding exports and executable statements do not define local API groups.
       }
     }
   }
@@ -53,15 +52,15 @@ export class ExportedApiChecker {
   private addVariableDeclarations(
     statement: TypeScript.VariableStatement,
     implicitExports: boolean,
-    groups: Map<string, ApiGroup>,
-    anonymous: ApiGroup[],
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
     for (const declaration of statement.declarationList.declarations) {
-      for (const name of bindingNames(declaration.name)) {
+      for (const name of SourceConformanceApi.collectBindingNames(declaration.name)) {
         this.addApiGroup(
           name.text,
           [name, declaration, statement],
-          implicitExports || isExported(statement),
+          implicitExports || SourceConformanceApi.isExported(statement),
           groups,
           anonymous,
         )
@@ -70,11 +69,11 @@ export class ExportedApiChecker {
   }
 
   private addApiGroup(
-    name: string | undefined,
+    name: OptionalApiName,
     nodes: TypeScript.Node[],
     exported: boolean,
-    groups: Map<string, ApiGroup>,
-    anonymous: ApiGroup[],
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
     if (name === undefined) {
       if (exported) {
@@ -89,23 +88,28 @@ export class ExportedApiChecker {
   }
 
   private collectScopeExports(
-    scope: TypeScript.SourceFile | TypeScript.ModuleBlock,
-    groups: Map<string, ApiGroup>,
-    anonymous: ApiGroup[],
+    scope: ApiScope,
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
     for (const statement of scope.statements) {
       if (TypeScript.isExportDeclaration(statement)) {
         this.collectForwardingExport(statement, groups)
       } else if (TypeScript.isExportAssignment(statement)) {
         this.collectDefaultExport(statement, groups, anonymous)
+      } else {
+        // Declaration exports were collected earlier; other statements add no forwarding exports.
       }
     }
   }
 
-  private collectForwardingExport(statement: TypeScript.ExportDeclaration, groups: Map<string, ApiGroup>): void {
+  private collectForwardingExport(
+    statement: TypeScript.ExportDeclaration,
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+  ): void {
     // Forwarding exports may be documented but do not duplicate the declaration's docs.
     this.allowDocs([statement])
-    if (isLocalNamedExport(statement)) {
+    if (SourceConformanceApi.isLocalNamedExport(statement)) {
       for (const specifier of statement.exportClause.elements) {
         const group = groups.get(specifier.propertyName?.text ?? specifier.name.text)
         if (group) {
@@ -117,8 +121,8 @@ export class ExportedApiChecker {
 
   private collectDefaultExport(
     statement: TypeScript.ExportAssignment,
-    groups: Map<string, ApiGroup>,
-    anonymous: ApiGroup[],
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
   ): void {
     const group = TypeScript.isIdentifier(statement.expression) ? groups.get(statement.expression.text) : undefined
     if (group) {
@@ -129,7 +133,10 @@ export class ExportedApiChecker {
     }
   }
 
-  private checkExportedGroups(groups: Map<string, ApiGroup>, anonymous: ApiGroup[]): void {
+  private checkExportedGroups(
+    groups: Map<string, SourceConformanceApi.ApiGroup>,
+    anonymous: SourceConformanceApi.ApiGroup[],
+  ): void {
     for (const group of [...groups.values(), ...anonymous]) {
       if (group.exported) {
         this.checkExportedGroup(group)
@@ -137,7 +144,7 @@ export class ExportedApiChecker {
     }
   }
 
-  private checkExportedGroup(group: ApiGroup): void {
+  private checkExportedGroup(group: SourceConformanceApi.ApiGroup): void {
     this.checkDocs(group)
     for (const node of group.nodes) {
       if (TypeScript.isModuleDeclaration(node)) {
@@ -159,9 +166,12 @@ export class ExportedApiChecker {
     }
   }
 
-  private checkDocs(group: ApiGroup): void {
+  private checkDocs(group: SourceConformanceApi.ApiGroup): void {
     const valid = this.allowDocs(group.nodes).some(range =>
-      hasDescription(normalizeDoc(this.source.slice(range.pos + 3, range.end - 2)), group.name)
+      SourceConformanceApi.hasDescription(
+        SourceConformanceApi.normalizeDoc(Source.slice(this.source, range.pos + 3, range.end - 2)),
+        group.name,
+      )
     )
     if (!valid) {
       this.report(
@@ -173,7 +183,7 @@ export class ExportedApiChecker {
   }
 
   private allowShapeDocs(node: TypeScript.Node): void {
-    if (isPrivateApiMember(node) || isImplementationNode(node)) {
+    if (SourceConformanceApi.isPrivateApiMember(node) || SourceConformanceApi.isImplementationNode(node)) {
       return
     }
     this.allowDocs([node])
@@ -182,7 +192,7 @@ export class ExportedApiChecker {
   }
 
   private allowInlineMemberDocs(node: TypeScript.Node): void {
-    if (!isApiMember(node)) {
+    if (!SourceConformanceApi.isApiMember(node)) {
       return
     }
     // Inline member docs are trailing trivia after the preceding brace or separator.
@@ -194,10 +204,12 @@ export class ExportedApiChecker {
   }
 
   private allowDocs(nodes: readonly TypeScript.Node[]): TypeScript.CommentRange[] {
-    const ranges = docs(this.source, nodes)
+    const ranges = SourceConformanceApi.docs(this.source, nodes)
     for (const range of ranges) {
       this.publicDocs.add(range.pos)
     }
     return ranges
   }
 }
+
+type ApiScope = TypeScript.SourceFile | TypeScript.ModuleBlock
