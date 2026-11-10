@@ -66,7 +66,7 @@ async function linkInstalledPackage(name: string, owner: string, modules: string
   const installed = FS.resolvePackageDirectory(name, owner)
   if (!installed) {
     Errors.ThrowHostEnvironment(
-      `Missing pinned test dependency ${name}; run ./agent unsandboxed setup --frozen-lockfile.`,
+      `Missing pinned test dependency ${name}; run ./agent setup.`,
     )
   }
   const source = FS.realpathSync(installed)

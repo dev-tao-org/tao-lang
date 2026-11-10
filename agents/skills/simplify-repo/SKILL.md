@@ -29,8 +29,8 @@ run shares. Standing decisions below are the Developer's and are not reopened; a
 6. Execute on one branch through `./agent`'s own commands (`verify`, `check`, `dead-exports`,
    `parser-gen`, `ledger-index`, …), not a direct `just` recipe it already exposes. Run narrow checks
    and `verify-changed` while iterating; hosted `Verify` on `landing`'s route is the only merge
-   evidence. After moving or renaming a package, `./agent unsandboxed setup --refresh-lockfile`
-   is the one install that rewrites `bun.lock`. If the Developer requests a review, use `code-review`
+   evidence. After moving or renaming a package, have the Developer approve and refresh `ts/bun.lock`
+   before rerunning `./agent setup`. If the Developer requests a review, use `code-review`
    for wave seams and the complete diff, briefed to hunt what `./agent check` cannot see — a moved
    literal that still resolves, just not to what it used to.
    Package moves and alias renames go last, after merging `main`, in one mechanical commit; if a move

@@ -6,10 +6,6 @@ set -e
 . "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"
 # Fresh setup must run before Commander and other workspace dependencies are installed.
-if [ "${1:-}" = unsandboxed ] && [ "${2:-}" = setup ]; then
-  shift 2
-  exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup-host.ts" --agent "$@"
-fi
 if [ "${1:-}" = setup ]; then
   shift
   exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" --agent "$@"
