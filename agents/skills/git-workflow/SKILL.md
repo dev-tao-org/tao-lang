@@ -105,6 +105,19 @@ the SHA. It preserves Git's squash appendix on `main` — summary, bullets, a bl
 `Squashed commit of the following:` and each squashed commit's own header and indented body — which
 `git log <base>..<head>` reproduces by hand.
 
+## Child branches after a parent squash
+
+- Before integrating a child branch whose parent was squash-merged into `main`, rebase only the
+  child's intended additional commits onto updated `main`; the squash does not preserve the
+  original parent commits as ancestors. Identify the original parent boundary before choosing
+  the replay range, rather than blindly rebasing the whole inherited history.
+- Retain the original parent ref or a recoverable checkpoint until the child's rebase and final
+  diff are verified. Confirm that the diff against `main` contains only the intended additional
+  work, resolve conflicts and rerun affected validation before presenting it for review or landing.
+- Follow root authorization and ownership rules before rebasing. This workflow does not authorize
+  rewriting a published child branch or force-pushing it; preserve the existing branch and use a
+  fresh feature branch when rewriting it is not authorized.
+
 ## Rebuilding history
 
 When collapsing a chain of branches into per-branch squash commits, do not chain `git merge --squash`
