@@ -36,7 +36,9 @@ ignores mode changes; captured and received source bytes, symlinks and modes are
 
 `receive` verifies the bundle hash and clones into a new directory; it never resets an existing
 checkout. A requested historical SHA must exist in the bundle. Seed required submodule pins as
-described below before running `./agent setup` inside each new candidate.
+described below before running setup inside each new candidate. Use `./agent setup` on revisions
+that enforce frozen installs by default. On older revisions that forward installer flags, use
+`./agent setup --frozen-lockfile`.
 Inspect and record setup-induced source changes;
 the runner refuses dirty implementation inputs. No dependency/tool versions are upgraded implicitly.
 

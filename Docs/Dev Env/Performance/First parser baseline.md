@@ -6,7 +6,7 @@ there is no comparable prior new-parser baseline and no speedup claim.
 
 ## Workload and reproduction
 
-At the recorded revision, run `./agent setup`, then `./agent performance parser`.
+At the recorded revision, run `./agent setup --frozen-lockfile`, then `./agent performance parser`.
 Raw samples and summaries are saved under `.artifacts/logs/performance/`.
 Today's commands and automation boundaries are described in the [performance guide](README.md).
 
