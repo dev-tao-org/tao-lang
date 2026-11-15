@@ -12,3 +12,4 @@
 - In compiler implementation, use shared `Json.Print` through the small serialization utilities in `codegen-util.ts`. Distinguish quoted names/literals from unquoted identifiers and authored code; typed name, reference and binding emitters own that distinction.
 - Compile view names generically; do not encode built-in Text, Col or Row behavior in code generation.
 - Generate calls against defined runtime contracts. Code-generation tests alone do not prove that an Expo app runs.
+- Compile semantically validated statements; `ts/3-typecheck/` owns placement diagnostics. Do not silently omit misplaced statements or move placement enforcement into parsing to simplify generation.
