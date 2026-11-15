@@ -47,7 +47,8 @@ async function verifyReopenWithConcurrentSave(page: HeadlessBrowser.Page, change
   await page.locator('body[data-status="closed"]').waitFor()
   await page.route('**/open-preview', async route => {
     const response = await route.fetch()
-    await change('Ready')
+    const revision = await change('Ready')
+    await page.locator(`body[data-received-baseline*="${revision}"]`).waitFor()
     await route.fulfill({ response })
   }, { times: 1 })
   await page.getByRole('button', { name: 'Show previews' }).click()

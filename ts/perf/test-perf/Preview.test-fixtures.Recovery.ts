@@ -20,17 +20,18 @@ export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Pro
     const page = await browser.newPage()
     page.setDefaultTimeout(5000)
     await page.clock.install()
-    await observePublicationOutcomes(page)
+    await observePreviewPublications(page)
     await page.goto(expo.url)
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({
       workspace,
-      preview: expo.url,
+      preview: async () => expo!.url,
       sessionId: Platform.randomUUID(),
       canonicalSource: source,
       previewTimeoutMs: 1000,
     })
     await page.goto(host.url)
+    await page.getByRole('button', { name: 'Show previews' }).click()
     await run({ page, change })
   }, {
     async finally() {
@@ -82,17 +83,19 @@ async function createRecoveryWorkspace(root: string) {
   }
 }
 
-async function observePublicationOutcomes(page: HeadlessBrowser.Page): Promise<void> {
+async function observePreviewPublications(page: HeadlessBrowser.Page): Promise<void> {
   await page.addInitScript(() => {
     const add = EventSource.prototype.addEventListener
     Object.defineProperty(EventSource.prototype, 'addEventListener', {
       value(this: EventSource, ...args: Parameters<typeof add>) {
         add.apply(this, args)
-        if (args[0] === 'outcome') {
-          add.call(this, 'outcome', (event: Event) => {
-            document.body.dataset.receivedOutcome = (event as MessageEvent<string>).data
-          })
+        if (args[0] !== 'outcome' && args[0] !== 'baseline') {
+          return
         }
+        const attribute = `data-received-${args[0]}`
+        add.call(this, args[0], (event: Event) => {
+          document.body.setAttribute(attribute, (event as MessageEvent<string>).data)
+        })
       },
     })
   })

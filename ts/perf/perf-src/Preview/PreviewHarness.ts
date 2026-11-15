@@ -9,6 +9,7 @@ import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/B
 import { type ReloadTiming, ReloadTimings } from '../ReloadTimings'
 import { observePreviewEdit } from './ObservePreviewEdit'
 import type { PreviewFrameCount } from './PreviewMeasurement'
+import type { OpenedPreview } from './PreviewOpening'
 import { PreviewPublication } from './PreviewPublication'
 import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 import { describeGeneratedChanges, type PreviewEditTrace } from './PreviewWork'
@@ -109,7 +110,7 @@ function createRequestHandler(
       return pageResponse(options)
     }
     if (request.method === 'POST' && url.pathname === '/open-preview') {
-      return await openPreviewResponse(options, url.origin)
+      return await openPreviewResponse(options, publication, url.origin)
     }
     const favicon = resolveFaviconFile(url.pathname)
     if (request.method === 'GET' && favicon) {
@@ -162,13 +163,18 @@ function pageResponse(options: ResolvedHarnessOptions): Http.HttpResponse {
   )
 }
 
-async function openPreviewResponse(options: ResolvedHarnessOptions, origin: string): Promise<Http.HttpResponse> {
+async function openPreviewResponse(
+  options: ResolvedHarnessOptions,
+  publication: PreviewPublication,
+  origin: string,
+): Promise<Http.HttpResponse> {
   const previewUrl = typeof options.preview === 'string' ? options.preview : await options.preview()
-  const revision = options.workspace.runtime?.generated?.revision ?? options.workspace.lastGoodRevision
-  if (!revision) {
+  const baseline = publication.readBaseline()
+  if (!baseline) {
     Errors.ThrowShouldNeverHappen('Preview opened without a generated revision.')
   }
-  return Http.jsonResponse({ revision, url: parentPreviewUrl(previewUrl, options.sessionId, origin) })
+  const opened: OpenedPreview = { baseline, url: parentPreviewUrl(previewUrl, options.sessionId, origin) }
+  return Http.jsonResponse(opened)
 }
 
 async function editResponse(

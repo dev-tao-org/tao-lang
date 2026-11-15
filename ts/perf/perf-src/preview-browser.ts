@@ -5,6 +5,7 @@ import { EventStream, Http } from '@shared/web'
 
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
+import { type OpenedPreview, PreviewOpening } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
 import type { PreviewEditTrace } from './Preview/PreviewWork'
@@ -93,6 +94,7 @@ events.addEventListener('outcome', event => {
 
 events.addEventListener('baseline', event => {
   baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
+  finishPreviewOpening()
   for (const recovery of recoveries.values()) {
     recovery.setBaseline(baseline)
   }
@@ -127,9 +129,6 @@ if (opensOnLoad) {
   openButton.disabled = false
 }
 
-type PreviewOpening = { started: number; revision: string; applied: Set<string> }
-type OpenedPreview = { revision: string; url: string }
-
 async function openPreviews(measure: boolean): Promise<void> {
   const started = Time.nowMs()
   setStatus('opening')
@@ -139,7 +138,7 @@ async function openPreviews(measure: boolean): Promise<void> {
   const url = Http.url(preview.url)
   previewOrigin = url.origin
   if (measure) {
-    opening = { started, revision: preview.revision, applied: new Set() }
+    opening = new PreviewOpening(preview.baseline, started, frames.size)
   }
   for (const [id, frame] of frames) {
     url.searchParams.set('frameId', id)
@@ -169,13 +168,13 @@ function closePreviews(): void {
   setStatus('closed')
 }
 
-function recordPreviewOpened(signal: PreviewSignal): void {
-  if (!opening || signal.revision !== opening.revision) {
-    return
-  }
-  opening.applied.add(signal.frameId)
-  if (opening.applied.size === frames.size) {
-    result.previewOpenMs = Time.nowMs() - opening.started
+function finishPreviewOpening(): void {
+  const duration = opening?.measureCompletion(
+    signal => recoveries.get(signal.frameId)?.matchesInstance(signal.bootId) === true,
+    baseline,
+  )
+  if (duration !== undefined) {
+    result.previewOpenMs = duration
     opening = undefined
     markPreviewsReady()
   }
@@ -200,7 +199,8 @@ function receiveSignal(event: MessageEvent): void {
   }
   const signal = event.data
   if (signal.type === 'tao.preview-applied') {
-    recordPreviewOpened(signal)
+    opening?.recordApplied(signal)
+    finishPreviewOpening()
     recoveries.get(signal.frameId)?.receive(signal, signal.revision, 'applied')
   }
   if (!expected.has(signal.revision)) {
