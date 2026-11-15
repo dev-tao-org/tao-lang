@@ -4,6 +4,7 @@ import { Errors, Json, NewlineCharacter, Objects, Schema } from '@shared'
 import { Artifacts, Exec, FS, Path, Platform, Repo } from '@shared/os'
 
 import { measurePreviewTimings, type PreviewTiming } from '../../agent-skills/performance-investigation/BranchMetrics'
+import { captureGit, resolveCommit } from '../../agent-skills/performance-investigation/Git'
 import { parsePreviewReport, type PreviewReport } from '../../agent-skills/performance-investigation/ReportContract'
 import { withTimingLock } from '../../agent-skills/performance-investigation/Runner'
 import { describeMeasurementConditions, median } from '../../agent-skills/performance-investigation/Summary'
@@ -19,18 +20,22 @@ const baselineSchema = Schema.object({ paths: Schema.array(Schema.string()) })
 /** recordLocalPreviewBaseline retains five fresh sessions and promotes them after validation. */
 export async function recordLocalPreviewBaseline(): Promise<void> {
   await withTimingLock(async () => {
+    const root = Repo.getWorkspaceRoot()
+    const commit = await resolveCommit(root, 'HEAD')
+    await requireUnchangedSource(root, commit)
     const directory = Path.join(Path.dirname(BaselinePath), Platform.randomUUID())
     await FS.mkdir(directory)
     const paths: string[] = []
     for (let index = 0; index < BaselineSessions; index++) {
       IO.progress(`Recording preview baseline session ${index + 1} of ${BaselineSessions}…`)
       const path = await measureFreshProcess()
+      await requireUnchangedSource(root, commit)
       const destination = Path.join(directory, `sample-${index + 1}.json`)
       await FS.copyFile(path, destination)
       paths.push(destination)
     }
     const reports = await Promise.all(paths.map(readReport))
-    requireComparableSessions(reports)
+    requireComparableSessions(reports, commit)
     const pending = Path.join(directory, 'baseline.json')
     await FS.writeFile(pending, Json.Print({ paths }))
     await FS.rename(pending, BaselinePath)
@@ -79,15 +84,24 @@ async function readReport(path: string): Promise<PreviewReport> {
   return parsePreviewReport(await FS.readFile(path, 'utf8'), path)
 }
 
-function requireComparableSessions(reports: PreviewReport[]): void {
+async function requireUnchangedSource(root: string, commit: string): Promise<void> {
+  const status = await captureGit(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+  if (status || await resolveCommit(root, 'HEAD') !== commit) {
+    Errors.ThrowUserInput('Commit local changes and keep the checkout at one revision throughout baseline capture.')
+  }
+}
+
+function requireComparableSessions(reports: PreviewReport[], commit: string): void {
   const first = reports[0]!
   const uniqueSessions = new Set(reports.map(report => report.sessionId))
-  const valid = reports.every(report =>
-    sameConditions(first, report) && report.results.length === Perf.DefaultPreviewEditCount
-  )
+  const valid = reports.every(report => isBaselineSample(report, commit) && sameConditions(first, report))
   if (!valid || uniqueSessions.size !== BaselineSessions) {
     Errors.ThrowUserInput('Baseline needs five independent sessions of the same complete workload.')
   }
+}
+
+function isBaselineSample(report: PreviewReport, commit: string): boolean {
+  return report.commit === commit && !report.modified && report.results.length === Perf.DefaultPreviewEditCount
 }
 
 function sameConditions(first: PreviewReport, second: PreviewReport): boolean {

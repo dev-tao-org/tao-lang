@@ -1,12 +1,13 @@
 import { Json } from '@shared'
 import type * as Preview from '@shared/preview'
+import { Http } from '@shared/web'
 import type { PreviewSignal } from './PreviewSignal'
+import type { PreviewEditTrace } from './PreviewWork'
 
 export {
   parsePreviewExpectation,
   parsePreviewOutcome,
   parsePreviewScenarios,
-  serializeEditScenario,
   serializePreviewReceipt,
 }
 
@@ -20,6 +21,29 @@ type PreviewReceipt = {
   timestampMs: number
 }
 type EditScenarioRequest = { scenario: string }
+
+/** ScenarioUpdate is the edit receipt used before waiting for the rendered frames. */
+export type ScenarioUpdate = {
+  status: string
+  revision: string
+  timings: unknown[]
+  stages?: unknown
+  editTrace: PreviewEditTrace
+}
+
+type ScenarioResponse = { ok: true; update: ScenarioUpdate } | { ok: false; status: number; message: string }
+
+/** requestScenarioUpdate submits one saved scenario and decodes the reply. */
+export async function requestScenarioUpdate(scenario: string): Promise<ScenarioResponse> {
+  const response = await Http.request('/edit', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: serializeEditScenario(scenario),
+  })
+  return response.ok
+    ? { ok: true, update: Json.Parse(await response.text()) as ScenarioUpdate }
+    : { ok: false, status: response.status, message: await response.text() }
+}
 
 /** parsePreviewScenarios decodes the harness-owned scenario metadata. */
 function parsePreviewScenarios(source: string): string[] {
@@ -43,7 +67,6 @@ function serializePreviewReceipt(signal: PreviewSignal): string {
   return Json.Print(receipt)
 }
 
-/** serializeEditScenario encodes the scenario selected for the next harness edit. */
 function serializeEditScenario(scenario: string): string {
   const request: EditScenarioRequest = { scenario }
   return Json.Print(request)

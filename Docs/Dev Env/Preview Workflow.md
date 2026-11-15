@@ -17,6 +17,8 @@ The compiler produces a complete generated revision in memory and publishes it t
 
 `just performance` uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
 
+Use a fresh performance editor session for manual saves or for the built-in benchmark edits. The first edit selects that session's mode and protects saved source and benchmark inputs from each other.
+
 Timings distinguish source observation, reading, queueing, parsing, AST construction, module resolution, code generation, output writing and publication. Two app receipts finish each update:
 
 - Metro `update-done`: the actual refresh client's update-completion event.

@@ -24,3 +24,6 @@ export const PreviewReportFilenameRegx = /^preview-.*\.json$/
 
 /** MeasurementScenarioCycleSuffixRegx removes the cycle number from a scenario name. */
 export const MeasurementScenarioCycleSuffixRegx = /-\d+$/
+
+/** PreviewDependencyLabelRegx matches the editable label inside the mounted fixture dependency. */
+export const PreviewDependencyLabelRegx = /Text\("(?:Imported leaf 1|Imported edit \d+)"\)/

@@ -121,7 +121,9 @@ async function measurePreviewReopens(page: HeadlessBrowser.Page, measurement: Pr
 
 async function measurePreviewOpen(page: HeadlessBrowser.Page, measurement: PreviewMeasurement.PreviewMeasurement) {
   await page.getByRole('button', { name: 'Show previews' }).click()
-  await page.locator('body:is([data-status="ready"],[data-status="failed"])').waitFor({ timeout: 60_000 })
+  await page.locator('body:is([data-status="ready"],[data-status="failed"],[data-status="open-failed"])').waitFor({
+    timeout: 60_000,
+  })
   const state = await page.evaluate(() => window.__taoPreviewState)
   if (state.previewOpenMs === undefined || state.status !== 'ready') {
     Errors.ThrowShouldNeverHappen(state.error ?? 'Preview did not acknowledge its first render.')

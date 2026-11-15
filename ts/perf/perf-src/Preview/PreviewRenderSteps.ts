@@ -59,7 +59,7 @@ export async function assertPreviewRender(frame: HeadlessBrowser.FrameLocator, s
   for (const root of PreviewImportGroupRoots) {
     await requireRenderCount(frame, `Imported group ${root}`, step.importedSets)
   }
-  await requireRenderCount(frame, 'Load 11', step.importedSets)
+  await requireImportedLeaves(frame, step.importedSets)
   if (step.name === 'dependency-edit') {
     await requireRenderCount(frame, marker, step.importedSets)
   }
@@ -95,9 +95,17 @@ function entryMarker(step: PreviewRenderStep, cycle: number): string {
   return step.name === 'reset' ? InitialMarker : `Render ${step.label} ${cycle}`
 }
 
-const PreviousDependencyLabelRegx = /Text\("(?:Imported leaf 1|Imported edit \d+)"\)/
 function editDependency(source: string, cycle: number): string {
-  return source.replace(PreviousDependencyLabelRegx, `Text("Imported edit ${cycle}")`)
+  return source.replace(Regxs.PreviewDependencyLabelRegx, `Text("Imported edit ${cycle}")`)
+}
+
+const ImportedLeafFiles = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23]
+
+async function requireImportedLeaves(frame: HeadlessBrowser.FrameLocator, expected: number): Promise<void> {
+  await Promise.all(ImportedLeafFiles.map(file => {
+    const label = `Load ${file * PreviewViewsPerFile + 1}`
+    return requireRenderCount(frame, label, expected)
+  }))
 }
 
 async function requireRenderCount(frame: HeadlessBrowser.FrameLocator, text: string, expected: number): Promise<void> {

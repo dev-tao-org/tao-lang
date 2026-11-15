@@ -107,11 +107,16 @@ async function saveSource(editor: SourceEditor): Promise<void> {
   editor.save.disabled = true
   editor.status.textContent = 'Saving…'
   await Try(async () => {
-    const saved = await Http.requestJson<SavedPreviewEdit>('/file', {
+    const response = await Http.request('/file', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: serializeSourceSave(path, editor.source.value),
     })
+    if (!response.ok) {
+      showError(editor, await response.text())
+      return
+    }
+    const saved = await response.json() as SavedPreviewEdit
     editor.drafts.delete(path)
     editor.status.textContent = describeSave(saved)
   }, {

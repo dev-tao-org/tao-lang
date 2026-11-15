@@ -13,7 +13,7 @@ import { assertMaterializedTree, readTreeEntries } from './SourceTree'
 import { appendTimingProgress, describeTimingSample } from './TimingProgress'
 
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
-export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number }
+export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number; frameCount?: 2 }
 
 type MeasurementJobStatus = 'running' | 'passed' | 'failed'
 type MeasurementEnvironmentValue = string | undefined
@@ -55,6 +55,7 @@ const measurementJobSchema = Schema.object({
     fixture: Schema.string(),
     samples: Schema.number(),
     edits: Schema.number(),
+    frameCount: Schema.literal(2).optional(),
   }),
   environment: Schema.record(Schema.string(), Schema.string()),
   system: Schema.object({ architecture: Schema.string(), kernel: Schema.string(), os: Schema.string() }),
@@ -131,14 +132,17 @@ async function describeJob(options: RunnerOptions, fixture: string): Promise<Mea
     tree,
     fixtureSha256,
     settings: options,
-    environment: describeEnvironment(),
+    environment: describeEnvironment(options),
     system: Platform.systemInfo(),
     samples: [],
   }
 }
 
-function describeEnvironment(): MeasurementEnvironment {
-  return { TAO_PREVIEW_FRAME_COUNT: Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2' }
+function describeEnvironment(options: RunnerOptions): MeasurementEnvironment {
+  const frameCount = options.frameCount === undefined
+    ? Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2'
+    : String(options.frameCount)
+  return { TAO_PREVIEW_FRAME_COUNT: frameCount }
 }
 
 async function measurePreview(job: MeasurementJob, fixture: string, directory: string): Promise<string> {
@@ -159,7 +163,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
   ]
   return await runWithEvidence(directory, sources, async () => {
     await CLIKit.runNonInteractiveCommand('./dev performance preview', {
-      variadicArgs: ['--fixture', fixture, '--report-only'],
+      variadicArgs: ['--fixture', fixture],
       cwd: options.repo,
       addEnv: describePreviewEnvironment(job),
     })

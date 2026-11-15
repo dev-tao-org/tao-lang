@@ -65,7 +65,10 @@ async function startHarness(
     workspace,
     editor,
     async preview() {
-      pending ??= launchPreview(workspace, editor, controller.signal)
+      pending ??= launchPreview(workspace, editor, controller.signal).catch(error => {
+        pending = undefined
+        return Errors.Throw(error)
+      })
       return (await pending).url
     },
     sessionId: options.sessionId,

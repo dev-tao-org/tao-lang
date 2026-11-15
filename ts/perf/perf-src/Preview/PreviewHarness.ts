@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Time, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Schema, Time, Try } from '@shared'
 import { Artifacts, Browser, FS, HttpServer, Path, Repo } from '@shared/os'
 import { Addr, EventStream, Http } from '@shared/web'
 import type * as Workspace from '@workspace'
@@ -32,7 +32,7 @@ export type HarnessOptions = {
   sessionId: string
   /** canonicalSource is the authored fixture text restored by the reset scenario. */
   canonicalSource: string
-  /** scenarios is the ordered button cycle. The minimal performance cycle is the default. */
+  /** scenarios is the ordered button cycle. The live Preview cycle is the default. */
   scenarios?: readonly PreviewScenario[]
   previewTimeoutMs?: number
   frameCount?: PreviewFrameCount
@@ -114,7 +114,9 @@ function createRequestHandler(
       return await handlePreviewEditorRequest(options.editor, request, url)
     }
     if (request.method === 'POST' && url.pathname === '/open-preview') {
-      return await openPreviewResponse(options, publication, url.origin)
+      return await Try(() => openPreviewResponse(options, publication, url.origin), {
+        catch: error => Http.response(String(error), { status: 422 }),
+      })
     }
     const favicon = resolveFaviconFile(url.pathname)
     if (request.method === 'GET' && favicon) {
@@ -190,36 +192,47 @@ async function editResponse(
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
   }
+  const scenarioName = await readScenarioName(request)
+  if (scenarioName === undefined) {
+    return Http.response('Invalid preview scenario request', { status: 400 })
+  }
   if (options.editor) {
-    const body = await request.json() as { scenario?: string }
-    const scenario = requirePreviewScenario(options.scenarios, body.scenario)
+    const scenario = requirePreviewScenario(options.scenarios, scenarioName)
     const update = (current: string) => scenario.apply(current, options.canonicalSource)
-    const saved = scenario.path === undefined
-      ? await options.editor.editEntry(update)
-      : await options.editor.save(scenario.path, update)
-    return Http.jsonResponse(saved)
+    const saved = await options.editor.saveScenario(scenario.path, update)
+    return saved
+      ? Http.jsonResponse(saved)
+      : Http.response('This session has manual edits. Start a new performance session to run benchmarks.', {
+        status: 412,
+      })
   }
   if (edits.active) {
     return Http.response('A preview edit is already pending', { status: 409 })
   }
   edits.active = true
-  return await Try(() => writeEditResponse(request, options, edits), {
+  return await Try(() => writeEditResponse(scenarioName, options, edits), {
     finally() {
       edits.active = false
     },
   })
 }
 
+const scenarioRequestSchema = Schema.object({ scenario: Schema.string() })
+
+async function readScenarioName(request: Http.HttpRequest): Promise<string | undefined> {
+  const text = await request.text()
+  return Try.WithDefault(undefined, () => Json.Parse(text, { schema: scenarioRequestSchema }).scenario)
+}
+
 async function writeEditResponse(
-  request: Http.HttpRequest,
+  scenarioName: string,
   options: ResolvedHarnessOptions,
   edits: EditState,
 ): Promise<Http.HttpResponse> {
   const receivedAtMs = Time.timestampMs()
-  const body = await request.json() as { scenario?: string }
   const path = options.workspace.files.entryPath ?? Errors.ThrowUserInput('Open an app before editing its source.')
   const currentSource = await FS.readFile(path, 'utf8')
-  const source = applyScenario(options.scenarios, body.scenario, currentSource, options.canonicalSource)
+  const source = applyScenario(options.scenarios, scenarioName, currentSource, options.canonicalSource)
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
   }

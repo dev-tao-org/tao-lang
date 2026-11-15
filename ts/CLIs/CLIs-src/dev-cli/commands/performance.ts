@@ -128,7 +128,7 @@ async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
     ? await FS.readFile(CLIKit.resolveCallerPath(options.fixture), 'utf8')
     : undefined
   const result = await runPreview(source)
-  if (!options.reportOnly) {
+  if (!options.reportOnly && !options.fixture) {
     await LocalBaseline.printLocalPreviewChanges(result.path)
   }
   IO.summary(LocalBaseline.PreviewPerformanceReportPrefix + result.path)

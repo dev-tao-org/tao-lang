@@ -3,6 +3,7 @@ import * as BrowserRuntime from '@shared/os/browser'
 import * as Preview from '@shared/preview'
 import { EventStream, Http } from '@shared/web'
 
+import { refreshPreviewControls } from './Preview/PreviewBrowserControls'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { startPreviewEditor } from './Preview/PreviewEditorBrowser'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
@@ -34,6 +35,7 @@ const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
+let benchmarkUnavailable = false
 const result: BrowserRuntime.PageState & { results: PreviewWork.PreviewScenarioResult[] } = {
   status: 'closed',
   results: [],
@@ -83,7 +85,7 @@ events.addEventListener('baseline', event => {
 BrowserRuntime.onMessage(receiveSignal)
 openButton.addEventListener('click', () => {
   if (result.status === 'closed') {
-    void openPreviews(!opensOnLoad).then(undefined, failScenario)
+    void openPreviews(!opensOnLoad).then(undefined, failPreviewOpen)
   } else if (result.status === 'ready' || result.status === 'complete') {
     closePreviews()
   }
@@ -108,10 +110,15 @@ if (opensOnLoad) {
 
 async function openPreviews(measure: boolean): Promise<void> {
   const started = Time.nowMs()
+  delete result.error
   setStatus('opening')
   result.status = 'opening'
   openButton.disabled = true
-  const preview = await Http.requestJson<OpenedPreview>('/open-preview', { method: 'POST' })
+  const response = await Http.request('/open-preview', { method: 'POST' })
+  if (!response.ok) {
+    return failPreviewOpen(await response.text())
+  }
+  const preview = await response.json() as OpenedPreview
   const url = Http.url(preview.url)
   previewOrigin = url.origin
   const published = acceptPublishedBaseline(preview.baseline)
@@ -156,11 +163,19 @@ function closePreviews(): void {
   recoveries.clear()
   pendingSignals.length = 0
   previewOrigin = undefined
+  opening = undefined
   delete result.previewOpenMs
   result.status = 'closed'
   openButton.textContent = 'Show previews'
   refreshRunButton()
   setStatus('closed')
+}
+
+function failPreviewOpen(reason: unknown): void {
+  closePreviews()
+  result.error = String(reason)
+  setStatus('open-failed')
+  BrowserRuntime.querySelector<HTMLSpanElement>('#status')!.textContent = 'Could not open previews. ' + result.error
 }
 
 function finishPreviewOpening(): void {
@@ -248,16 +263,25 @@ function relaySignal(signal: PreviewSignal): void {
 }
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
-  const update = await Http.requestJson<
-    { status: string; revision: string; timings: unknown[]; stages?: unknown; editTrace: PreviewWork.PreviewEditTrace }
-  >(
-    '/edit',
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: PreviewBrowserJson.serializeEditScenario(scenario),
-    },
-  )
+  const response = await PreviewBrowserJson.requestScenarioUpdate(scenario)
+  if (!response.ok) {
+    if (response.status === 412) {
+      benchmarkUnavailable = true
+      markPreviewsReady()
+      BrowserRuntime.querySelector<HTMLSpanElement>('#status')!.textContent = response.message
+      return
+    }
+    return failScenario(response.message)
+  }
+  await recordScenarioUpdate(response.update, scenario, clickTime, clickTimestampMs)
+}
+
+async function recordScenarioUpdate(
+  update: PreviewBrowserJson.ScenarioUpdate,
+  scenario: string,
+  clickTime: number,
+  clickTimestampMs: number,
+): Promise<void> {
   if (update.status !== 'published') {
     return failScenario(`The ${scenario} source was ${update.status}.`)
   }
@@ -285,29 +309,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
 }
 
 function refreshRunButton(): void {
-  const runButton = BrowserRuntime.querySelector<HTMLButtonElement>('#run')!
-  const complete = scenarioIndex >= scenarios.length
-  runButton.disabled = complete || result.status !== 'ready'
-  openButton.disabled = result.status === 'running' || result.status === 'failed'
-  runButton.textContent = resolveRunButtonLabel(complete, result.status, scenarioIndex, scenarios)
-}
-
-function resolveRunButtonLabel(
-  complete: boolean,
-  status: string,
-  scenarioIndex: number,
-  scenarios: readonly string[],
-): string {
-  if (complete) {
-    return 'Complete'
-  }
-  if (status === 'running') {
-    return `Running ${scenarios[scenarioIndex]}…`
-  }
-  if (scenarioIndex === 0) {
-    return 'Run edit scenarios'
-  }
-  return `Run ${scenarios[scenarioIndex]}`
+  refreshPreviewControls(result.status, scenarioIndex, scenarios, benchmarkUnavailable)
 }
 
 function failScenario(reason: unknown): void {

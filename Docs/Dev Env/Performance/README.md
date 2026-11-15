@@ -9,7 +9,7 @@ Use these commands from the repository root after `./agent unsandboxed setup`:
 | `./agent performance extension`           | Incremental Tao parsing, embedded TSX parsing and highlight queries; excludes editor paint.               |
 | `./agent unsandboxed performance preview` | Editor save, compiler publication, Metro, and app receipts in two isolated headless previews.             |
 | `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.     |
-| `./dev performance preview --baseline`    | Retains five fresh sessions as the checkout's comparison baseline.                                        |
+| `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                  |
 | `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.      |
 | `just performance`                        | Developer preview measurement command, printing results and retaining the raw report.                     |
 

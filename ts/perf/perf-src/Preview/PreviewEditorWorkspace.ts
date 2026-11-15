@@ -27,11 +27,14 @@ export async function preparePreviewEditor(
 export type SavedPreviewEdit = Workspace.UpdateResult & { editTrace: PreviewEditTrace }
 
 type PreviewSourceTransform = (source: string) => string
+type PreviewEditMode = 'manual' | 'scenario'
+type OptionalScenarioPath = string | undefined
 
 /** PreviewEditorWorkspace serializes complete saves in the existing project compiler session. */
 export class PreviewEditorWorkspace {
   private tail = Promise.resolve()
   private closed = false
+  private editMode?: PreviewEditMode
 
   constructor(
     private readonly workspace: Workspace.WorkspaceSession,
@@ -55,15 +58,19 @@ export class PreviewEditorWorkspace {
     })
   }
 
-  editEntry(updateSource: PreviewSourceTransform): Promise<SavedPreviewEdit> {
-    return this.save(EntryFile, updateSource)
-  }
-
-  save(path: string, updateSource: PreviewSourceTransform): Promise<SavedPreviewEdit> {
+  save(
+    path: string,
+    mode: PreviewEditMode,
+    updateSource: PreviewSourceTransform,
+  ): Promise<SavedPreviewEdit | undefined> {
     const file = this.resolveFile(path)
     const receivedAtMs = Time.timestampMs()
     return this.enqueue(async () => {
+      if (this.editMode && this.editMode !== mode) {
+        return undefined
+      }
       const source = updateSource(await FS.readFile(file, 'utf8'))
+      this.editMode = mode
       const previous = this.workspace.runtime?.generated?.files
       const writeStartedAtMs = Time.timestampMs()
       await FS.writeFile(file, source, 'utf8')
@@ -73,6 +80,13 @@ export class PreviewEditorWorkspace {
       const editTrace: PreviewEditTrace = { receivedAtMs, writeStartedAtMs, writtenAtMs, changes }
       return { ...result, editTrace }
     })
+  }
+
+  saveScenario(
+    path: OptionalScenarioPath,
+    updateSource: PreviewSourceTransform,
+  ): Promise<SavedPreviewEdit | undefined> {
+    return this.save(path ?? EntryFile, 'scenario', updateSource)
   }
 
   async close(): Promise<void> {
@@ -145,5 +159,10 @@ async function saveEditorFile(
   if (!save || !editor.files.includes(save.path)) {
     return Http.response('Invalid source file save', { status: 400 })
   }
-  return Http.jsonResponse(await editor.save(save.path, () => save.source))
+  const saved = await editor.save(save.path, 'manual', () => save.source)
+  return saved
+    ? Http.jsonResponse(saved)
+    : Http.response('This session is running benchmark edits. Start a new performance session to save source.', {
+      status: 409,
+    })
 }

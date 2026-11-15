@@ -1,8 +1,9 @@
 import { Errors, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, HeadlessBrowser, Path, Platform } from '@shared/os'
+import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 
+import { openPerformanceHarness } from '../perf-src/Preview/PerformanceHarness'
 import { preparePreviewEditor } from '../perf-src/Preview/PreviewEditorWorkspace'
 import { createPreviewHarness } from '../perf-src/Preview/PreviewHarness'
 
@@ -33,6 +34,49 @@ Tests.test('the performance editor opens a dependency and saves it through the p
   const directory = Artifacts.resolvePath('tmp', `performance-editor-${Platform.randomUUID()}`)
   await Try(() => verifyEditor(directory), { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 }, 30_000)
+
+Tests.test('the editor can reopen a repaired preview without overwriting its saved source', async () => {
+  const directory = Artifacts.resolvePath('tmp', `performance-editor-${Platform.randomUUID()}`)
+  await Try(() => verifyRepairedPreview(directory), {
+    finally: () => FS.rm(directory, { recursive: true, force: true }),
+  })
+}, 30_000)
+
+async function verifyRepairedPreview(directory: string): Promise<void> {
+  const project = await Workspace.createProject({ directory })
+  const workspace = Workspace.createWorkspace({
+    project,
+    runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
+  })
+  const initialSource = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const harness = await openPerformanceHarness({ project, workspace, initialSource })
+  await Try(async () => {
+    const browser = await HeadlessBrowser.launch('test <file.tao>')
+    await Try(async () => {
+      const page = await browser.newPage()
+      await page.goto(harness.url)
+      await page.getByRole('button', { name: 'Performance.tao' }).click()
+      await savePerformanceEntry(page, 'invalid Tao program')
+      const show = page.getByRole('button', { name: 'Show previews' })
+      await show.click()
+      await page.locator('body[data-status="open-failed"]').waitFor()
+      const repaired = initialSource.replace('Hello World', 'Repaired source')
+      await savePerformanceEntry(page, repaired)
+      await page.getByText('Saved', { exact: true }).waitFor()
+      await show.click()
+      await page.frameLocator('#left').getByText('Repaired source', { exact: true }).waitFor()
+      await page.getByRole('button', { name: 'Run edit scenarios' }).click()
+      await page.getByText('This session has manual edits.', { exact: false }).waitFor()
+      const saved = await FS.readFile(Path.join(directory, '_source/Performance.tao'), 'utf8')
+      Tests.expect(saved).toContain('Text("Repaired source")')
+    }, { finally: () => browser.close() })
+  }, { finally: () => harness.dispose() })
+}
+
+async function savePerformanceEntry(page: HeadlessBrowser.Page, source: string): Promise<void> {
+  await page.getByRole('textbox', { name: 'Performance.tao' }).fill(source)
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+}
 
 async function verifyEditor(directory: string): Promise<void> {
   const project = await Workspace.createProject({ directory })

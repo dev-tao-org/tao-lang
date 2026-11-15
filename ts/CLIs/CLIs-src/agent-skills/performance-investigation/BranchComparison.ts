@@ -154,7 +154,7 @@ async function measureRound(
       const path = Runner.allocateTimingJob(Path.join(comparison.directory, 'sessions'))
       jobs[side].push(path)
       await saveComparison(comparison)
-      await Runner.runMeasurementJob({ repo, fixture, samples: 1, edits: EditsPerSession }, path)
+      await Runner.runMeasurementJob({ repo, fixture, samples: 1, edits: EditsPerSession, frameCount: 2 }, path)
       const report = await readComparableReport(path, comparison, side)
       requireComparableSession(report, sessionHistory)
       sessions[side].push(report)
