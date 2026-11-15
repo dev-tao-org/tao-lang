@@ -2,7 +2,7 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 
 type TimingSetupRole = 'controller' | 'runner'
 
@@ -13,7 +13,7 @@ export type TimingSetup = { role: TimingSetupRole; dryRun?: boolean; noBrowser?:
 export type TimingSetupIO = {
   platform: string
   interactive: boolean
-  capture: typeof Processes.capture
+  capture: typeof Exec.captureStdout
   resolveExecutable: () => Promise<string>
   execute: typeof CLIKit.runNonInteractiveCommand
   executeInteractive: typeof CLIKit.runInteractiveCommand
@@ -69,8 +69,8 @@ function createSetupIO(): TimingSetupIO {
   return {
     platform: Platform.systemInfo().os,
     interactive: Terminal.isInteractive(),
-    capture: Processes.capture,
-    resolveExecutable: async () => await FS.realpath(await Processes.capture('which netbird')),
+    capture: Exec.captureStdout,
+    resolveExecutable: async () => await FS.realpath(await Exec.captureStdout('which', 'netbird')),
     execute: CLIKit.runNonInteractiveCommand,
     executeInteractive: CLIKit.runInteractiveCommand,
     exists: FS.exists,
@@ -83,9 +83,7 @@ function createSetupIO(): TimingSetupIO {
 }
 
 async function requireMatchingService(io: TimingSetupIO, executable: string): Promise<void> {
-  const installed = await io.capture('plutil -extract ProgramArguments.0 raw -o -', {
-    variadicArgs: [NetBirdService],
-  })
+  const installed = await io.capture('plutil', ['-extract', 'ProgramArguments.0', 'raw', '-o', '-', NetBirdService])
   if (installed !== executable) {
     Errors.ThrowHostEnvironment(
       'The existing NetBird service uses a different executable. Keep its current owner; do not install a second service.',

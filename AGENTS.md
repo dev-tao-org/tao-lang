@@ -29,7 +29,8 @@ These are your rules of usage:
 ## Dependencies and feature planning
 
 - Determine during planning whether new or updated dependencies are needed.
-- Ask the developer before installing, adding or updating dependencies, including manifest or lockfile changes. Removing dependencies and updating the corresponding manifests and lockfiles does not require approval. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
+- Agents may install the repository's existing pinned dependencies through `./agent setup` whenever setup is needed, without separate developer confirmation.
+- Ask the developer before adding or updating dependencies, including manifest or lockfile changes. Removing dependencies and updating the corresponding manifests and lockfiles does not require approval. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
 - Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.
 - Consider Windows, Linux, macOS, iOS and Android as eventual runtime targets when developing and choosing dependencies: Studio and CLI target at least Windows/Linux/macOS, Companion targets iOS/Android, and standalone Studio-like authoring on iPad remains a future possibility. Keep platform-specific assumptions behind explicit boundaries; this does not require implementing every target in each slice.
@@ -70,7 +71,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Prefer larger formatting fixtures exercising multiple rules over a separate test for each formatting detail.
     - Run every new test directly before finishing implementation; also run relevant existing tests when the change may affect broader behavior. If parallel agents cause failures outside your owned work, report and coordinate them without repairing their changes yourself.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;
+  - Always use [code-review](agents/skills/code-review/SKILL.md) for developer-requested reviews. Keep rounds within the requested scope. Implementation, commits and landing require a separate review request before launching reviews;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete. Instruction-only changes require `./agent check`, without rerunning application tests; `verification-lanes` owns selection and reuse of unchanged validation evidence.

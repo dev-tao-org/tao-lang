@@ -9,7 +9,7 @@ Tests.test('extension installation forwards both VSIX files to both editors with
   await installExtensions(packages, async (command, options) => {
     calls.push({ command, options })
   }, async command =>
-    command.startsWith('cursor ')
+    command === 'cursor'
       ? S`
         devtao.tao
         tao.tao-language

@@ -45,8 +45,9 @@ behind it.
   cache — `failed to download <package>: EPERM`. `./agent` distinguishes these from a denied
   temporary directory and prints the matching recovery; `./agent doctor` reports the broken install
   and the same remediation. Only the tempdir case is resumable. For a protected-path failure, run
-  `./agent unsandboxed setup`, the same entry the SessionStart hook runs on the host. Do not start
-  `just session-unsandboxed` on your own.
+  `./agent unsandboxed setup` with harness host approval when the CLI dependencies are prepared.
+  Use this recovery only after an actual sandbox denial; ordinary setup uses `./agent setup`.
+  Do not start `just session-unsandboxed` on your own.
 - Never name a Bun install backend to work around this. `--backend=copyfile` writes every packaged
   file through its own path, making `bun install` unrunnable sandboxed rather than fixing it.
 

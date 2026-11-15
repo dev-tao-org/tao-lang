@@ -1,16 +1,18 @@
 import * as Client from '@runtime/client'
 import { Json } from '@shared'
-import { Addr, Errors, NewlineCharacter, S, Styles, Try } from '@shared'
-import * as Shared from '@shared'
-import { Artifacts, Browser, FS, Http, Path, Repo } from '@shared/os'
+import { Errors, NewlineCharacter, S, Styles, Time, Try } from '@shared'
+import { Artifacts, Browser, FS, HttpServer, Path, Repo } from '@shared/os'
+import { Addr, EventStream, Http } from '@shared/web'
 import type * as Workspace from '@workspace'
 
 import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { type ReloadTiming, ReloadTimings } from '../ReloadTimings'
 import { observePreviewEdit } from './ObservePreviewEdit'
 import type { PreviewFrameCount } from './PreviewMeasurement'
+import type { OpenedPreview } from './PreviewOpening'
 import { PreviewPublication } from './PreviewPublication'
 import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
+import { describeGeneratedChanges, type PreviewEditTrace } from './PreviewWork'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
 export async function createPreviewHarness(options: HarnessOptions): Promise<PreviewHarness> {
@@ -21,10 +23,12 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
   }, sessionDir)
 }
 
-/** HarnessOptions binds one browser surface to a workspace and running Expo URL. */
+type HarnessPreview = string | (() => Promise<string>)
+
+/** HarnessOptions binds one browser surface to a workspace and either an eager or on-demand Expo preview. */
 export type HarnessOptions = {
   workspace: Workspace.WorkspaceSession
-  previewUrl: string
+  preview: HarnessPreview
   sessionId: string
   /** canonicalSource is the authored fixture text restored by the reset scenario. */
   canonicalSource: string
@@ -38,7 +42,7 @@ export type HarnessOptions = {
 /** PreviewHarness exposes a local URL and deterministic resource disposal. */
 export type PreviewHarness = { url: string; dispose(): void }
 
-type OptionalStreamController = Http.StreamController | undefined
+type OptionalStreamController = EventStream.Controller | undefined
 type EditState = { closed: boolean; active: boolean; pending: Set<() => void> }
 type ResolvedHarnessOptions = HarnessOptions & {
   canonicalSource: string
@@ -60,7 +64,7 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
 }
 
 async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: string): Promise<PreviewHarness> {
-  const streams = new Set<Http.StreamController>()
+  const streams = new Set<EventStream.Controller>()
   const encoder = new WebHost.TextEncoder()
   const edits: EditState = { closed: false, active: false, pending: new Set() }
   const frameIds = options.frameCount === 1 ? ['left'] : ['left', 'right']
@@ -71,7 +75,7 @@ async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: s
     (revision, startedAtMs) => reload.begin(revision, startedAtMs),
     event => reload.published(event),
   )
-  const server = Http.serve({
+  const server = HttpServer.serve({
     idleTimeout: 0,
     hostname: Addr.Localhost,
     port: 0,
@@ -94,16 +98,19 @@ async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: s
 function createRequestHandler(
   options: ResolvedHarnessOptions,
   sessionDir: string,
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   publication: PreviewPublication,
   encoder: WebHost.TextEncoder,
   reload: ReloadTimings,
   edits: EditState,
 ): (request: Http.HttpRequest) => Promise<Http.HttpResponse> {
   return async request => {
-    const url = new WebHost.URL(request.url)
+    const url = Http.url(request.url)
     if (request.method === 'GET' && url.pathname === '/') {
-      return pageResponse(options, url.origin)
+      return pageResponse(options)
+    }
+    if (request.method === 'POST' && url.pathname === '/open-preview') {
+      return await openPreviewResponse(options, publication, url.origin)
     }
     const favicon = resolveFaviconFile(url.pathname)
     if (request.method === 'GET' && favicon) {
@@ -140,16 +147,34 @@ function resolveFaviconFile(pathname: string): string | undefined {
   return undefined
 }
 
-function pageResponse(options: ResolvedHarnessOptions, origin: string): Http.HttpResponse {
-  const left = frameUrl(options.previewUrl, options.sessionId, origin, 'left')
-  const right = frameUrl(options.previewUrl, options.sessionId, origin, 'right')
+function pageResponse(options: ResolvedHarnessOptions): Http.HttpResponse {
   const names = options.scenarios.map(scenario => scenario.name)
   return Http.response(
-    pageHtml(options.sessionId, options.previewUrl, left, right, names, options.previewTimeoutMs, options.frameCount),
+    pageHtml(
+      options.sessionId,
+      names,
+      typeof options.preview === 'string',
+      options.previewTimeoutMs,
+      options.frameCount,
+    ),
     {
       headers: { 'content-type': 'text/html; charset=utf-8' },
     },
   )
+}
+
+async function openPreviewResponse(
+  options: ResolvedHarnessOptions,
+  publication: PreviewPublication,
+  origin: string,
+): Promise<Http.HttpResponse> {
+  const previewUrl = typeof options.preview === 'string' ? options.preview : await options.preview()
+  const baseline = publication.readBaseline()
+  if (!baseline) {
+    Errors.ThrowShouldNeverHappen('Preview opened without a generated revision.')
+  }
+  const opened: OpenedPreview = { baseline, url: parentPreviewUrl(previewUrl, options.sessionId, origin) }
+  return Http.jsonResponse(opened)
 }
 
 async function editResponse(
@@ -176,34 +201,47 @@ async function writeEditResponse(
   options: ResolvedHarnessOptions,
   edits: EditState,
 ): Promise<Http.HttpResponse> {
+  const receivedAtMs = Time.timestampMs()
   const body = await request.json() as { scenario?: string }
   const path = options.workspace.files.entryPath ?? Errors.ThrowUserInput('Open an app before editing its source.')
-  const current = await FS.readFile(path, 'utf8')
-  const source = applyScenario(options.scenarios, body.scenario, current, options.canonicalSource)
+  const currentSource = await FS.readFile(path, 'utf8')
+  const source = applyScenario(options.scenarios, body.scenario, currentSource, options.canonicalSource)
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
   }
   const observation = observePreviewEdit(options.workspace.files, path, source, edits.pending)
   return await Try(async () => {
-    const [, result] = await Promise.all([FS.writeFile(path, source, 'utf8'), observation.result])
-    return Http.jsonResponse(result)
+    const previous = options.workspace.runtime?.generated?.files
+    const writeStartedAtMs = Time.timestampMs()
+    const [writtenAtMs, result] = await Promise.all([writePreviewSource(path, source), observation.result])
+    const publishedFiles = options.workspace.runtime?.generated?.files
+    const changes = describeGeneratedChanges(previous, publishedFiles)
+    const editTrace: PreviewEditTrace = { receivedAtMs, writeStartedAtMs, writtenAtMs, changes }
+    return Http.jsonResponse({ ...result, editTrace })
   }, {
     finally: observation.dispose,
   })
 }
 
+async function writePreviewSource(path: string, source: string): Promise<number> {
+  await FS.writeFile(path, source, 'utf8')
+  return Time.timestampMs()
+}
+
+const EventRetryMs = 1000
+
 function eventsResponse(
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   publication: PreviewPublication,
   encoder: WebHost.TextEncoder,
 ): Http.HttpResponse {
   let streamController: OptionalStreamController
-  const stream = Http.stream({
+  return EventStream.response({
     start(controller) {
       streamController = controller
       streams.add(controller)
-      controller.enqueue(encoder.encode(Shared.joinTextLines('retry: 1000', '', '')))
-      publication.replay((name, data) => controller.enqueue(encodeEvent(encoder, name, data)))
+      controller.enqueue(EventStream.encodeRetry(encoder, EventRetryMs))
+      publication.replay((name, data) => controller.enqueue(EventStream.encodeJsonEvent(encoder, name, data)))
     },
     cancel() {
       if (streamController) {
@@ -211,16 +249,9 @@ function eventsResponse(
       }
     },
   })
-  return Http.response(stream, {
-    headers: {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      'connection': 'keep-alive',
-    },
-  })
 }
 
-function closeStreams(streams: Set<Http.StreamController>): void {
+function closeStreams(streams: Set<EventStream.Controller>): void {
   for (const stream of streams) {
     stream.close()
   }
@@ -228,51 +259,41 @@ function closeStreams(streams: Set<Http.StreamController>): void {
 }
 
 function sendEvent(
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   encoder: WebHost.TextEncoder,
   name: string,
   data: object,
 ): void {
-  const encoded = encodeEvent(encoder, name, data)
+  const encoded = EventStream.encodeJsonEvent(encoder, name, data)
   for (const stream of streams) {
     stream.enqueue(encoded)
   }
 }
 
-function encodeEvent(encoder: WebHost.TextEncoder, name: string, data: object): Uint8Array {
-  const message = Shared.joinTextLines(`event: ${name}`, `data: ${Json.Print(data, { prettyPrint: false })}`, '', '')
-  return encoder.encode(message)
-}
-
-function frameUrl(previewUrl: string, sessionId: string, parentOrigin: string, frameId: string): string {
-  const url = new WebHost.URL(previewUrl)
+function parentPreviewUrl(previewUrl: string, sessionId: string, parentOrigin: string): string {
+  const url = Http.url(previewUrl)
   url.searchParams.set('sessionId', sessionId)
-  url.searchParams.set('frameId', frameId)
   url.searchParams.set('parentOrigin', parentOrigin)
   return url.toString()
 }
 
 function pageHtml(
   sessionId: string,
-  previewUrl: string,
-  left: string,
-  right: string,
   scenarios: readonly string[],
+  eager: boolean,
   previewTimeoutMs = 10_000,
   frameCount = 2,
 ): string {
   const safe = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
-  const rightFrame = frameCount === 2 ? `<iframe id="right" title="Wide preview" src="${safe(right)}"></iframe>` : ''
+  const rightFrame = frameCount === 2 ? '<iframe id="right" title="Wide preview" hidden></iframe>' : ''
   const columns = frameCount === 2 ? '380px minmax(600px,1fr)' : 'minmax(380px,1fr)'
   const styleText = createPreviewPageStyles(columns)
   return S`
     <!doctype html><html><head><meta charset="utf-8"><meta name="tao-preview-timeout-ms" content="${previewTimeoutMs}"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
     safe(sessionId)
-  }"><meta name="tao-preview-url" content="${safe(previewUrl)}"><meta name="tao-scenarios" content="${
+  }"><meta name="tao-scenarios" content="${
     safe(serializePreviewScenariosMetadata(scenarios))
-  }"><title>Tao preview performance</title><style>${styleText}</style></head><body><header><button id="run">Run edit scenarios</button><span id="status">ready</span></header><main><iframe id="left" title="Narrow preview" src="${
-    safe(left)
-  }"></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
+  }"><title>Tao preview performance</title><style>${styleText}</style></head><body data-open-on-load="${eager}"><header><button id="open" disabled>Show previews</button><button id="run" disabled>Run edit scenarios</button><span id="status">starting</span></header><main><iframe id="left" title="Narrow preview" hidden></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
   `
 }
 

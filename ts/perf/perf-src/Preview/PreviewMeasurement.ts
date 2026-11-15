@@ -13,6 +13,12 @@ export type PreviewMeasurement = {
 /** PreviewFrameCount selects the supported single-frame or dual-frame measurement. */
 export type PreviewFrameCount = 1 | 2
 
+/** PreviewMeasurementProtocol identifies the comparable preview launch and edit workload. */
+export const PreviewMeasurementProtocol = 'preview-opening-v1'
+
+/** PreviewReopenCount is the number of fresh preview opens on an already running host. */
+export const PreviewReopenCount = 3
+
 /** MeasurementFile is one generated sibling Tao module. */
 export type MeasurementFile = { name: string; source: string }
 
@@ -45,11 +51,14 @@ export function createMeasurementScenarios(settings: PreviewMeasurement): readon
   return Array.from({ length: settings.editCount / 4 }, (_, index) => createCycle(index + 1)).flat()
 }
 
-/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
-export function createMeasurementFiles(source: string, settings: PreviewMeasurement): {
+/** MeasurementSource holds the entry and generated sibling inputs of a preview measurement. */
+export type MeasurementSource = {
   entry: string
   extraFiles: readonly MeasurementFile[]
-} {
+}
+
+/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
+export function createMeasurementFiles(source: string, settings: PreviewMeasurement): MeasurementSource {
   const fileCount = Math.min(settings.extraViews, settings.extraFileCount)
   if (fileCount === 0) {
     return { entry: appendViews(source, 0, settings.extraViews), extraFiles: [] }
@@ -105,6 +114,7 @@ export function measurementFrameIds(frameCount: PreviewFrameCount): readonly str
 export function describeMeasurement(settings: PreviewMeasurement): MeasurementDescription {
   return {
     ...settings,
+    protocol: PreviewMeasurementProtocol,
     firstEditIndex: 0,
     warmStartIndex: 4,
     warmEditCount: Math.max(0, settings.editCount - 4),
@@ -116,6 +126,7 @@ export function describeMeasurement(settings: PreviewMeasurement): MeasurementDe
 
 /** MeasurementDescription records the configured workload and its sample boundaries. */
 export type MeasurementDescription = PreviewMeasurement & {
+  protocol: typeof PreviewMeasurementProtocol
   firstEditIndex: number
   warmStartIndex: number
   warmEditCount: number

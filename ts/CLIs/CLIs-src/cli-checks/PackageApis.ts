@@ -47,9 +47,7 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile).config
   const expected = deriveCompilerPaths(Path.dirname(configPath), apis)
   if (!haveEqualCompilerPaths(config.compilerOptions.paths, expected)) {
-    Errors.ThrowUserInput(
-      'TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.',
-    )
+    Errors.ThrowUserInput('TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.')
   }
 }
 

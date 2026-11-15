@@ -23,7 +23,7 @@ export default registerCommand({
     description: 'Run TypeScript then Tao tests with one worker each.',
   }, {
     flags: '--parallel [workers]',
-    description: 'Run concurrently; optionally override the total worker budget (default: 6).',
+    description: 'Run concurrently with an optional total worker cap (defaults: 5 TypeScript, 1 Tao).',
   }],
   async action(target?: string, options: TestCommandOptions = {}) {
     const slowSeconds = parseSlowTestSeconds(options.slow)

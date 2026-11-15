@@ -119,7 +119,8 @@ Omit unused headings. End at the file list, except an outstanding subagent-readi
   messages" to the narrowest sound content using the conversation and current diff.
 - Execute unambiguous approvals promptly. If scope is materially ambiguous or requires additional
   unreviewed context, show short exact excerpts and links to the proposed sections, recommend a
-  boundary, and ask one focused question. Use [decision rounds](../decision-rounds/SKILL.md) only
+  boundary, and ask one focused question. Use
+  [dialogue decision design conversation](../dialogue-decision-design-conversation/SKILL.md) only
   when an actual design discussion is needed. Never broaden approval because copying a whole file
   or applying a three-way merge would be easier.
 - Ask permission before launching a read-only [reviewer](../code-review/SKILL.md) for a concrete

@@ -7,10 +7,11 @@ import type { GeneratedRevision } from '../PreviewProtocol'
 import { createMetroAdapter, type MetroServer } from './MetroAdapter'
 
 type Middleware = (
-  request: MetroPlatform.IncomingRequest,
-  response: MetroPlatform.OutgoingResponse,
+  request: MetroPlatform.NodeHttp.IncomingRequest,
+  response: MetroPlatform.NodeHttp.OutgoingResponse,
   next: (error?: unknown) => void,
 ) => void
+const PublicationLimitBytes = 32 * 1024 * 1024
 /** enhanceMiddleware binds the preloaded memory owner to Expo's existing Metro HTTP server. */
 export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): Middleware {
   adapter.attach(metro)
@@ -24,7 +25,11 @@ export function enhanceMiddleware(middleware: Middleware, metro: MetroServer): M
         return
       }
       void Try(async () => {
-        const text = await MetroPlatform.readRequestText(request, 32 * 1024 * 1024)
+        const text = await MetroPlatform.NodeHttp.readRequestText(
+          request,
+          PublicationLimitBytes,
+          'Generated publication exceeds its supported size.',
+        )
         const revision = parseGeneratedRevision(text) as GeneratedRevision
         respond(response, 200, await adapter.owner.publish(revision))
       }, {
@@ -45,7 +50,7 @@ const initial = parseGeneratedRevision(
 ) as GeneratedRevision
 const adapter = createMetroAdapter({ directory: MetroPlatform.currentDirectory(), sessionId, initial })
 
-function respond(response: MetroPlatform.OutgoingResponse, status: number, value: unknown): void {
+function respond(response: MetroPlatform.NodeHttp.OutgoingResponse, status: number, value: unknown): void {
   response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
   response.end(Json.Print(value, { prettyPrint: false }))
 }

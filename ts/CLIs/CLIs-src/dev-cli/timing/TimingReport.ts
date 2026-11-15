@@ -4,7 +4,7 @@ import { Json, Schema } from '@shared'
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
-import type { MeasurementJob } from '../../agent-skills/performance-investigation/Runner'
+import { type MeasurementJob, parseMeasurementJob } from '../../agent-skills/performance-investigation/Runner'
 import { describeTimingComparison } from './TimingComparison'
 import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote, type TimingRemoteRequest } from './TimingRemote'
@@ -126,9 +126,10 @@ async function readJobProvenance(
   summary: TimingReport,
   execute: typeof CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
-  const args = ['/bin/cat', Path.posix.join(summary.directory, JobFileName)]
+  const path = Path.posix.join(summary.directory, JobFileName)
+  const args = ['/bin/cat', path]
   const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const job = Json.Parse(text) as MeasurementJob
+  const job = parseMeasurementJob(text, path)
   if (!matchesSummarizedJob(job, summary)) {
     Errors.ThrowHostEnvironment('The runner job identity no longer matches its timing summary.')
   }

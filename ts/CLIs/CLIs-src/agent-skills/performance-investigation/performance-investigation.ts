@@ -4,6 +4,7 @@ import { Json } from '@shared'
 import { Repo } from '@shared/os'
 import { Process } from '@shared/os'
 import { Command } from '../../cli-kit/bridges/Bridge_commander'
+import { type BranchComparisonOptions, runBranchComparison } from './BranchComparison'
 import { receiveSnapshot } from './Checkout'
 import { copyRemote, discoverHosts, executeRemote, type RemoteExecution } from './Remote'
 import { runMeasurements } from './Runner'
@@ -19,7 +20,23 @@ export async function main(): Promise<void> {
   registerSnapshotCommands(command)
   registerRemoteCommands(command)
   registerMeasurementCommands(command)
+  registerComparisonCommand(command)
   await command.parseAsync(Process.argv)
+}
+
+function registerComparisonCommand(command: Command): void {
+  command.command('compare').description('Compare two prepared checkouts in paired preview sessions.')
+    .argument('<baseline>', 'Absolute baseline checkout.')
+    .argument('<candidate>', 'Absolute candidate checkout.')
+    .option('--pairs <count>', 'Independent baseline/candidate pairs per round.', '5')
+    .action(async (baseline: string, candidate: string, options: { pairs: string }) => {
+      const comparison: BranchComparisonOptions = {
+        baseline: CLIKit.resolveCallerPath(baseline),
+        candidate: CLIKit.resolveCallerPath(candidate),
+        pairs: Number(options.pairs),
+      }
+      await runBranchComparison(comparison)
+    })
 }
 
 type ReceiveOptions = { bundle: string; manifest: string; directory: string; ref?: string }

@@ -170,9 +170,7 @@ function collectNamespacePublicEntries(
   return entries
 }
 
-function isPublicNamespaceExport(
-  node: TypeScript.Statement,
-): node is PublicNamespaceExport {
+function isPublicNamespaceExport(node: TypeScript.Statement): node is PublicNamespaceExport {
   if (!TypeScript.isExportDeclaration(node) || node.exportClause === undefined) {
     return false
   }

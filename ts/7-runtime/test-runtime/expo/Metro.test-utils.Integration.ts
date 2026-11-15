@@ -1,7 +1,8 @@
 import { Json } from '@shared'
 import { NewlineCharacter, Time } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Http, Path, Platform } from '@shared/os'
+import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { Http } from '@shared/web'
 import type { ExpoSession } from '../../runtime-src/expo/Expo/Expo'
 import type { GeneratedRevision } from '../../runtime-src/expo/PreviewProtocol'
 

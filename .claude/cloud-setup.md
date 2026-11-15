@@ -31,7 +31,7 @@ local `.codex/hooks.json` is not the cloud setup contract.
 ## Claude Code
 
 Use the same command as the cloud environment's setup script. The repository
-SessionStart hook runs root `./agent setup --frozen-lockfile` on starts and resumes.
+SessionStart hook runs root `./agent setup` on starts and resumes.
 The configured cloud setup script provisions the locked tools before that hook runs;
 the root CLI wrappers activate those tools on every invocation. Multi-repository cloud
 sessions may not load repository hooks, so configure the environment setup script explicitly.

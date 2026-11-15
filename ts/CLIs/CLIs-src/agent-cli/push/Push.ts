@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 
 /** PushIO isolates guarded Git reads and the single publication operation. */
 export type PushIO = {
@@ -46,7 +46,7 @@ export async function pushBranch(
 function createPushIO(): PushIO {
   const cwd = Repo.getWorkspaceRoot()
   return {
-    capture: args => Processes.capture('git', { variadicArgs: args, cwd }),
+    capture: args => Exec.captureStdout('git', args, { cwd }),
     run: args => CLIKit.runNonInteractiveCommand('git', { variadicArgs: args, cwd }),
   }
 }

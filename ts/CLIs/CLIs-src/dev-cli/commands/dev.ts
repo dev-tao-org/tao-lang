@@ -2,7 +2,8 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as Runtime from '@runtime'
 import { ControlCCharacter, Errors, NewlineCharacter, Try } from '@shared'
-import { Browser, FS, Http, Platform, Process, Processes, Repo, Terminal } from '@shared/os'
+import { Browser, Exec, FS, Platform, Process, Repo, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import * as Workspace from '@workspace'
 
 import * as Perf from '@perf'
@@ -24,7 +25,7 @@ export default registerCommand({
 async function runDevSession(yes?: boolean): Promise<void> {
   await prepareRuntime()
   const entry = Repo.resolvePath('Apps/Dev/Preview/Preview.tao')
-  const state: DevSession = { stopped: false, controller: Http.createAbortController() }
+  const state: DevSession = { stopped: false, controller: Cancellation.createController() }
   const stop = Process.onTermination(() => requestDevExit(state))
   const ui = workflowUI(yes, state.controller.signal)
   const options = devWorkspaceOptions(state, entry, ui)
@@ -95,7 +96,7 @@ async function restartDevSession(
 
 type DevSession = {
   stopped: boolean
-  controller: Http.HttpAbortController
+  controller: Cancellation.Controller
   stopKeys?: () => void
   workspace?: Workspace.WorkflowWorkspace
   expo?: Runtime.ExpoSession
@@ -115,7 +116,7 @@ async function startDevRuntime(state: DevSession): Promise<void> {
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
   state.preview = await Perf.createPreviewHarness({
     workspace,
-    previewUrl: state.expo.url,
+    preview: state.expo.url,
     sessionId: Platform.randomUUID(),
     canonicalSource: await FS.readFile(entryPath, 'utf8'),
     scenarios: Perf.previewScenarios,
@@ -195,9 +196,7 @@ function reportExpoOutput(stream: ExpoOutputStream, text: string): void {
 }
 
 function reportReload(timing: Perf.ReloadTiming): void {
-  IO.print(
-    `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`,
-  )
+  IO.print(`Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`)
   for (const [id, frame] of Object.entries(timing.frames)) {
     const label = id === 'left' ? 'narrow' : 'wide'
     IO.print(
@@ -237,7 +236,7 @@ async function cleanup(options: CleanupOptions): Promise<void> {
   })
 }
 
-function printExpoOutput(output: Processes.ProcessOutput): void {
+function printExpoOutput(output: Exec.ProcessOutput): void {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   if (messages.length) {
     IO.printToStdErr(('Expo diagnostics:' + NewlineCharacter) + messages.join(NewlineCharacter))

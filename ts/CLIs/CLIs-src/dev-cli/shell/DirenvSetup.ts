@@ -163,9 +163,7 @@ async function installActivation(
   const resolvedPackage = environment.resolveDirenvPackage?.(profileClient)
   let output = resolvedPackage
   if (output === undefined) {
-    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
-      Regxs.NixDirenvExecutableRegx,
-    )?.[1]
+    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(Regxs.NixDirenvExecutableRegx)?.[1]
   }
   if (output === undefined) {
     Errors.ThrowHostEnvironment(

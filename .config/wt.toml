@@ -8,4 +8,4 @@
 # Root `./agent` activates the pinned environment before installing dependencies.
 # Setup also initializes missing storage at this checkout's pinned submodule commit.
 [pre-start]
-setup = "./agent setup --frozen-lockfile"
+setup = "./agent setup"

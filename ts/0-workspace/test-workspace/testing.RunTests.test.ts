@@ -3,7 +3,7 @@ import * as Grammar from '@grammar'
 import * as Tests from '@shared-tests'
 
 import { Errors, S } from '@shared'
-import { Http } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { runTests, type TestDriver } from '../workspace-src/testing/RunTests'
 
 Tests.test('app journeys execute in order with inherited assertion targets and fresh drivers', async () => {
@@ -73,7 +73,7 @@ Tests.test('a failed assertion stops its journey, reports the source line and st
 
 Tests.test('interrupting a journey disposes its driver and skips remaining cases', async () => {
   const source = 'tests { test { run Example expect text "Ready" } test { run Example expect text "Ready" } }'
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const operations: string[] = []
   const result = await runTests(parse(source), {
     path: '/virtual/interrupted.tao',

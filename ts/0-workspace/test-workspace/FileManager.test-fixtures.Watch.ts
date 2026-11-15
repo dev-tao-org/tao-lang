@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { WorkspaceWatch } from '@shared/os'
+import { FileWatch } from '@shared/os'
 import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
@@ -56,7 +56,7 @@ export function createManagerFixture(
     get maxConcurrentReads() {
       return state.maxConcurrentReads
     },
-    notify(kind: WorkspaceWatch.WorkspaceChange['kind'], path: string) {
+    notify(kind: FileWatch.FileChange['kind'], path: string) {
       state.onChange?.({ kind, path, observedAtMs: Time.timestampMs() })
     },
     flush() {
@@ -107,7 +107,7 @@ export function createDynamicWatchFixture() {
     watchCalls: () => watches,
     updates: () => updates,
     scheduled: () => scheduled,
-    change: (change: WorkspaceWatch.WorkspaceChange) => changed?.(change),
+    change: (change: FileWatch.FileChange) => changed?.(change),
     flush() {
       const callback = scheduled
       scheduled = undefined
@@ -154,7 +154,7 @@ export function createDeferredVoid() {
   return { promise, resolve }
 }
 
-type WatchChangeHandler = (change: WorkspaceWatch.WorkspaceChange) => void
+type WatchChangeHandler = (change: FileWatch.FileChange) => void
 type OptionalWatchChangeHandler = WatchChangeHandler | undefined
 type ScheduledCallback = () => void
 type OptionalScheduledCallback = ScheduledCallback | undefined

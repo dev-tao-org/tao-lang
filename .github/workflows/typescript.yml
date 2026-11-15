@@ -55,7 +55,7 @@ jobs:
           restore-keys: |
             tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-
       - name: Install workspace dependencies
-        run: ./agent setup --frozen-lockfile
+        run: ./dev setup
       - name: Check workspace
         run: ./agent check
       - name: Test workspace

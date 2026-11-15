@@ -7,6 +7,7 @@ export type PreviewSignal = {
   revision: string
   timestampMs: number
   timings: unknown[]
+  metroDeltaModules?: number
 }
 
 /** PreviewSignalType identifies the measured HMR and React milestones. */

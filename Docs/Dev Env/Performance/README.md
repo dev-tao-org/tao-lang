@@ -1,6 +1,6 @@
 # Performance measurements
 
-Use these commands from the repository root after `./agent setup --frozen-lockfile`:
+Use these commands from the repository root after `./agent setup`:
 
 | Command                                   | Measures                                                                                                  |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |

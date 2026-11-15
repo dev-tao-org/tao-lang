@@ -1,29 +1,35 @@
 import * as Tests from '@shared-tests'
-import { Http } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import * as TestPlan from '../../CLIs-src/dev-cli/testing/TestPlan'
 
-Tests.test('allocates fixed workers to selected sections and splits explicit budgets', () => {
+Tests.test('keeps Tao on one worker and caps TypeScript within the total budget', () => {
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps' })).toEqual({
-    typescript: { args: [], workers: 3 },
-    tao: { target: '/apps', workers: 3 },
+    typescript: { args: [], workers: 5 },
+    tao: { target: '/apps', workers: 1 },
     serial: false,
   })
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '5' })).toEqual({
-    typescript: { args: [], workers: 2 },
-    tao: { target: '/apps', workers: 3 },
+    typescript: { args: [], workers: 4 },
+    tao: { target: '/apps', workers: 1 },
     serial: false,
   })
   Tests.expect(TestPlan.planTestExecution({ taoTarget: '/apps' })).toEqual({
     typescript: undefined,
-    tao: { target: '/apps', workers: 4 },
+    tao: { target: '/apps', workers: 1 },
     serial: false,
   })
   Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '6' })).toEqual({
-    typescript: { args: [], workers: 3 },
-    tao: { target: '/apps', workers: 3 },
+    typescript: { args: [], workers: 5 },
+    tao: { target: '/apps', workers: 1 },
     serial: false,
   })
-  Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [] }).typescript?.workers).toBe(3)
+  Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [] }).typescript?.workers).toBe(5)
+  Tests.expect(TestPlan.planTestExecution({ taoTarget: '/apps', parallel: '6' }).tao?.workers).toBe(1)
+  Tests.expect(TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', parallel: '2' })).toEqual({
+    typescript: { args: [], workers: 1 },
+    tao: { target: '/apps', workers: 1 },
+    serial: false,
+  })
 })
 
 Tests.test('serial mode and a one-worker budget run selected sections in sequence', () => {
@@ -109,7 +115,7 @@ Tests.test('waits for every started worker and retains a rejected worker result'
 })
 
 Tests.test('cancellation between Tao files stops the batch and cannot return partial success', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const executed: string[] = []
   await Tests.expect(TestPlan.runFilesSequentially(['first.tao', 'second.tao'], controller.signal, async file => {
     executed.push(file)
@@ -120,7 +126,7 @@ Tests.test('cancellation between Tao files stops the batch and cannot return par
 })
 
 Tests.test('cancelling a serial section does not start the next section', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const executed: string[] = []
   const plan = TestPlan.planTestExecution({ typescriptArgs: [], taoTarget: '/apps', serial: true })
   await Tests.expect(TestPlan.executeTestSections(plan, {

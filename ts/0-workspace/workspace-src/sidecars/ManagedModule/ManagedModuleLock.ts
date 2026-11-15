@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FS, Path, Platform, SessionLock } from '@shared/os'
+import { FileLock, FS, Path, Platform } from '@shared/os'
 import { findNearestProjectRoot } from '../../modules/Paths'
 
 /** withManagedModuleLock serializes publication and cleanup for one live module directory. */
@@ -17,7 +17,7 @@ export async function withManagedModuleLock<Value>(
   const lockDirectory = Path.join(ownerRoot, '.tao', 'locks')
   await FS.mkdir(lockDirectory)
   const lockPath = Path.join(lockDirectory, `module-${Platform.hashText(canonicalDirectory)}.lock`)
-  const lock = await SessionLock.acquire(lockPath)
+  const lock = await FileLock.tryAcquire(lockPath)
   if (!lock) {
     Errors.ThrowUserInput(
       `Managed module metadata is being updated or cleaned: ${moduleDirectory}. Retry after the other operation finishes.`,

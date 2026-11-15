@@ -1,7 +1,7 @@
 import { Json } from '@shared'
 import { Errors, Regxs, Try } from '@shared'
 import { FS, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
@@ -12,21 +12,19 @@ export async function runHostCommand(
   const cwd = Repo.getWorkspaceRoot()
   const prefixes = await readHostCommandPrefixes()
   const route = resolveHostCommand(argv, prefixes)
-  await execution.requireAccess(
-    'Invoke this operation through ./agent unsandboxed in a host-enabled harness.',
-  )
+  await execution.requireAccess('Invoke this operation through ./agent unsandboxed in a host-enabled harness.')
   const execute = requiresHostTerminal(argv) ? execution.executeInteractive : execution.executeNonInteractive
   await execute(route.command, { variadicArgs: route.variadicArgs, cwd })
 }
 
 type HostCommandExecution = {
-  requireAccess: typeof Processes.requireHostProcessAccess
+  requireAccess: typeof Exec.requireHostProcessAccess
   executeInteractive: typeof runInteractiveCommand
   executeNonInteractive: typeof runNonInteractiveCommand
 }
 
 const liveExecution: HostCommandExecution = {
-  requireAccess: Processes.requireHostProcessAccess,
+  requireAccess: Exec.requireHostProcessAccess,
   executeInteractive: runInteractiveCommand,
   executeNonInteractive: runNonInteractiveCommand,
 }

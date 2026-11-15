@@ -1,10 +1,10 @@
 import { Errors, Time } from '@shared'
 import * as Tests from '@shared-tests'
-import { WorkspaceWatch } from '@shared/os'
+import { FileWatch } from '@shared/os'
 import { FileManager, type FileManagerOptions } from '../workspace-src/FileManager/FileManager'
 import type { UpdateResult } from '../workspace-src/Workspace'
 
-type WatchChangeHandler = (change: WorkspaceWatch.WorkspaceChange) => void
+type WatchChangeHandler = (change: FileWatch.FileChange) => void
 type OptionalWatchChangeHandler = WatchChangeHandler | undefined
 type ScheduledCallback = () => void
 type OptionalScheduledCallback = ScheduledCallback | undefined

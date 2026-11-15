@@ -1,13 +1,13 @@
 import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** checkEditorTypeScript verifies editor settings and the managed tsc executable against the pinned compiler. */
 export async function checkEditorTypeScript(): Promise<void> {
   assertEditorTypeScript(await FS.readFile(Repo.resolvePath('.vscode/settings.json'), 'utf8'))
-  const actual = await Processes.capture('tsc --version')
+  const actual = await Exec.captureStdout('tsc', '--version')
   if (actual !== `Version ${TypeScript.version}`) {
     Errors.ThrowUserInput(
       `Managed tsc reports ${actual}; expected TypeScript ${TypeScript.version}. Run ./agent setup.`,

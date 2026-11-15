@@ -1,5 +1,6 @@
 import * as Tests from '@shared-tests'
-import { Http, Streams, Terminal } from '@shared/os'
+import { Streams, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { Buffer as NodeBuffer } from '../shared-src/os/bridges/Bridge_node/Bridge_node'
 import { ControlCCharacter } from '../shared-src/universal/Characters'
 
@@ -34,7 +35,7 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
 })
 
 Tests.test('confirmation cancellation forwards the request signal and closes the active reader', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const events: string[] = []
   const confirmation = Terminal.askConfirm({ message: 'Set up?', defaultValue: true, signal: controller.signal }, {
     isInteractive: () => true,
@@ -59,7 +60,7 @@ Tests.test('confirmation cancellation forwards the request signal and closes the
 })
 
 Tests.test('an already cancelled confirmation never accepts a noninteractive default', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   controller.abort()
   await Tests.rejects(
     Terminal.askConfirm({

@@ -50,7 +50,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
     if (!isExcludedSource(filename, file.text)) {
       for (const change of getSingleLineCallChanges(file)) {
         const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1
-        issues.push(`${relative}:${line}: fit simple calls and if headers on one line`)
+        issues.push(`${relative}:${line}: put fitting calls, single-parameter lists and if headers on one line`)
       }
     }
     for (const change of typeOrder.get(file) ?? []) {

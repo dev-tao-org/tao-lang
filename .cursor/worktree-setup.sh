@@ -8,4 +8,4 @@
 set -e
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 cd "$repository"
-exec ./agent setup --frozen-lockfile
+exec ./agent setup

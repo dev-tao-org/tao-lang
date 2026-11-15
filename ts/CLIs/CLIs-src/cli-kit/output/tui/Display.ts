@@ -4,9 +4,7 @@ import type { ChannelState } from '../Output'
 
 type DisplayStatus = { mark: string; color: DisplayColor }
 /** displayStatus maps a channel status to its compact marker and color. */
-export function displayStatus(
-  status: ChannelState['status'],
-): DisplayStatus {
+export function displayStatus(status: ChannelState['status']): DisplayStatus {
   return Switch(status, {
     idle: () => ({ mark: '○', color: 'gray' }),
     running: () => ({ mark: '●', color: 'yellow' }),

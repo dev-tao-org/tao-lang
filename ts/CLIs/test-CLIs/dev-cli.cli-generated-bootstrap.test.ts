@@ -2,7 +2,7 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 
 Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
   await FS.mkdir(Artifacts.resolvePath('tmp'))
@@ -54,6 +54,7 @@ async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void>
 }
 
 async function assertExplicitSetupBypassesPreflight(root: string): Promise<void> {
+  await FS.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
   const result = await runLauncher(root, 'agent', ['setup'])
@@ -158,14 +159,10 @@ async function runLauncher(
     TAO_DEVENV: '1',
     ...extraEnvironment,
   }
-  const child = Processes.spawnPiped(Path.join(root, launcher), {
-    variadicArgs: args,
-    cwd: root,
-    addEnv,
-  })
+  const child = Exec.spawn(Path.join(root, launcher), args, { cwd: root, addEnv })
   const [stdout, stderr, status] = await Promise.all([
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
     child.exited,
   ])
   return { status, stdout, stderr }

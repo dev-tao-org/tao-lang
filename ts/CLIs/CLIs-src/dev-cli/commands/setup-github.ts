@@ -2,7 +2,7 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */
@@ -77,7 +77,7 @@ async function verifyOrigin(): Promise<void> {
       stdout: command.startsWith('git ls-remote ') ? 'ignore' : 'inherit',
     })
   }
-  const remote = await Processes.run('git remote get-url origin', { cwd })
+  const remote = await Exec.capture('git', 'remote get-url origin', { cwd })
   if (remote.stderr.trim()) {
     IO.warn(remote.stderr.trimEnd())
   }

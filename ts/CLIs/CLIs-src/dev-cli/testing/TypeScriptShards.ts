@@ -4,6 +4,7 @@ import * as CLIKit from '@cli-kit'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import { FS, Repo } from '@shared/os'
 import { withTestTimings } from '../../cli-checks/slow-tests'
+import * as TestBalance from './TestBalance'
 import { assertTestRunActive, runWorkerBatch, type TestPlan, type TestRunSignal } from './TestPlan'
 import { planTypeScriptShards } from './TypeScriptShardPlan'
 
@@ -18,6 +19,7 @@ export async function runTypeScriptTests(
   slowSeconds: OptionalSlowSeconds,
   signal: TestRunSignal,
   workerEnvironment: TestWorkerEnvironment,
+  timings: TestBalance.TestTimingGroup,
 ): Promise<void> {
   if (!plan.typescript || !channel) {
     return
@@ -30,15 +32,16 @@ export async function runTypeScriptTests(
     const output = shards.length === 1 ? channel : IO.channel({ title: `TypeScript shard ${index + 1}` })
     const shardWorkers = shards.length === 1 ? workers : 1
     output.start()
-    await Try(
-      () => runShard(paths, shardWorkers, output, slowSeconds, signal, workerEnvironment),
-      {
-        catch(error) {
-          output.finish('failed')
-          Errors.Throw(error)
+    await TestBalance.recordTestWorker(timings, index, () =>
+      Try(
+        () => runShard(paths, shardWorkers, output, slowSeconds, signal, workerEnvironment),
+        {
+          catch(error) {
+            output.finish('failed')
+            Errors.Throw(error)
+          },
         },
-      },
-    )
+      ))
     output.finish('passed')
     return undefined
   }, (_, error) => String(error))
@@ -50,7 +53,7 @@ export async function runTypeScriptTests(
 }
 
 async function selectShards(args: readonly string[], workers: number): Promise<readonly (readonly string[])[]> {
-  if (!isFullSuiteSelection(args) || workers < 3) {
+  if (!isFullSuiteSelection(args) || workers < 2) {
     return [args]
   }
   const sources = await FS.listSourceFiles(Repo.resolvePath('ts'))
