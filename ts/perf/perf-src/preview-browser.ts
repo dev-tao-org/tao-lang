@@ -4,6 +4,7 @@ import * as Preview from '@shared/preview'
 import { EventStream, Http } from '@shared/web'
 
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
+import { startPreviewEditor } from './Preview/PreviewEditorBrowser'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
 import { type OpenedPreview, PreviewOpening } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
@@ -44,6 +45,7 @@ const openButton = BrowserRuntime.querySelector<HTMLButtonElement>('#open')!
 const opensOnLoad = BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true'
 BrowserRuntime.setPageState(result)
 const events = EventStream.open('/events')
+void startPreviewEditor()
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)

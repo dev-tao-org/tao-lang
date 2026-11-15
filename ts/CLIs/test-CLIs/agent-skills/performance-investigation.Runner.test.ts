@@ -87,8 +87,8 @@ function createReport(job: MeasurementJob, session: number) {
     measurement: {
       editCount: 12,
       frameCount: 2,
-      extraViews: 0,
-      extraFileCount: 0,
+      extraViews: 240,
+      extraFileCount: 24,
       protocol: Perf.PreviewMeasurementProtocol,
     },
     results,

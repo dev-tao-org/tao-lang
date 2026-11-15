@@ -1,6 +1,4 @@
-import * as Client from '@runtime/client'
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, S, Styles, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, Browser, FS, HttpServer, Path, Repo } from '@shared/os'
 import { Addr, EventStream, Http } from '@shared/web'
 import type * as Workspace from '@workspace'
@@ -8,8 +6,10 @@ import type * as Workspace from '@workspace'
 import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { type ReloadTiming, ReloadTimings } from '../ReloadTimings'
 import { observePreviewEdit } from './ObservePreviewEdit'
+import { handlePreviewEditorRequest, type PreviewEditorWorkspace } from './PreviewEditorWorkspace'
 import type { PreviewFrameCount } from './PreviewMeasurement'
 import type { OpenedPreview } from './PreviewOpening'
+import { previewPage } from './PreviewPage'
 import { PreviewPublication } from './PreviewPublication'
 import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 import { describeGeneratedChanges, type PreviewEditTrace } from './PreviewWork'
@@ -36,6 +36,7 @@ export type HarnessOptions = {
   scenarios?: readonly PreviewScenario[]
   previewTimeoutMs?: number
   frameCount?: PreviewFrameCount
+  editor?: PreviewEditorWorkspace
   onReload?(timing: ReloadTiming): void
 }
 
@@ -109,6 +110,9 @@ function createRequestHandler(
     if (request.method === 'GET' && url.pathname === '/') {
       return pageResponse(options)
     }
+    if (options.editor && (url.pathname === '/files' || url.pathname === '/file')) {
+      return await handlePreviewEditorRequest(options.editor, request, url)
+    }
     if (request.method === 'POST' && url.pathname === '/open-preview') {
       return await openPreviewResponse(options, publication, url.origin)
     }
@@ -150,13 +154,14 @@ function resolveFaviconFile(pathname: string): string | undefined {
 function pageResponse(options: ResolvedHarnessOptions): Http.HttpResponse {
   const names = options.scenarios.map(scenario => scenario.name)
   return Http.response(
-    pageHtml(
-      options.sessionId,
-      names,
-      typeof options.preview === 'string',
-      options.previewTimeoutMs,
-      options.frameCount,
-    ),
+    previewPage({
+      sessionId: options.sessionId,
+      scenarios: names,
+      eager: typeof options.preview === 'string',
+      previewTimeoutMs: options.previewTimeoutMs,
+      frameCount: options.frameCount,
+      editor: options.editor !== undefined,
+    }),
     {
       headers: { 'content-type': 'text/html; charset=utf-8' },
     },
@@ -184,6 +189,13 @@ async function editResponse(
 ): Promise<Http.HttpResponse> {
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
+  }
+  if (options.editor) {
+    const body = await request.json() as { scenario?: string }
+    const saved = await options.editor.editEntry(current =>
+      applyScenario(options.scenarios, body.scenario, current, options.canonicalSource)
+    )
+    return Http.jsonResponse(saved)
   }
   if (edits.active) {
     return Http.response('A preview edit is already pending', { status: 409 })
@@ -275,67 +287,4 @@ function parentPreviewUrl(previewUrl: string, sessionId: string, parentOrigin: s
   url.searchParams.set('sessionId', sessionId)
   url.searchParams.set('parentOrigin', parentOrigin)
   return url.toString()
-}
-
-function pageHtml(
-  sessionId: string,
-  scenarios: readonly string[],
-  eager: boolean,
-  previewTimeoutMs = 10_000,
-  frameCount = 2,
-): string {
-  const safe = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
-  const rightFrame = frameCount === 2 ? '<iframe id="right" title="Wide preview" hidden></iframe>' : ''
-  const columns = frameCount === 2 ? '380px minmax(600px,1fr)' : 'minmax(380px,1fr)'
-  const styleText = createPreviewPageStyles(columns)
-  return S`
-    <!doctype html><html><head><meta charset="utf-8"><meta name="tao-preview-timeout-ms" content="${previewTimeoutMs}"><link rel="icon" href="/favicon-white.svg" media="(prefers-color-scheme: dark)"><link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: light)"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="tao-session" content="${
-    safe(sessionId)
-  }"><meta name="tao-scenarios" content="${
-    safe(serializePreviewScenariosMetadata(scenarios))
-  }"><title>Tao preview performance</title><style>${styleText}</style></head><body data-open-on-load="${eager}"><header><button id="open" disabled>Show previews</button><button id="run" disabled>Run edit scenarios</button><span id="status">starting</span></header><main><iframe id="left" title="Narrow preview" hidden></iframe>${rightFrame}</main><script type="module" src="/preview-browser.js"></script></body></html>
-  `
-}
-
-function createPreviewPageStyles(columns: string): string {
-  return Styles.stylesheet({
-    'html,body': {
-      'height': '100%',
-      'margin': '0',
-      'font': '14px system-ui',
-      'color': '#e8e6e3',
-      'background': '#202020',
-      'color-scheme': 'dark',
-    },
-    'header': { 'height': '44px', 'display': 'flex', 'align-items': 'center', 'gap': '12px', 'padding': '0 12px' },
-    'button': {
-      'font': 'inherit',
-      'color': 'inherit',
-      'background': '#333',
-      'border': '1px solid #555',
-      'border-radius': '4px',
-      'padding': '5px 10px',
-    },
-    'button:hover': { 'background': '#404040' },
-    'button:disabled': { 'color': '#a8a6a3' },
-    'main': {
-      'height': 'calc(100% - 44px)',
-      'display': 'grid',
-      'grid-template-columns': columns,
-      'gap': '1px',
-      'background': '#484848',
-    },
-    'iframe': {
-      'width': '100%',
-      'height': '100%',
-      'border': '0',
-      'background': Client.DefaultAppearance.background,
-      'outline': `1px solid ${Client.DefaultAppearance.border}`,
-      'outline-offset': '-1px',
-    },
-  })
-}
-
-function serializePreviewScenariosMetadata(scenarios: readonly string[]): string {
-  return Json.Print(scenarios)
 }

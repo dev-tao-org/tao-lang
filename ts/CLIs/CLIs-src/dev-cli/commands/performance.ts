@@ -1,8 +1,8 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as Runtime from '@runtime'
-import { Errors, Timings } from '@shared'
-import { Artifacts, FS, Path, Repo } from '@shared/os'
+import { Errors, Timings, Try } from '@shared'
+import { Artifacts, FS, Path, Process, Repo } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from './_command-runner'
@@ -13,7 +13,7 @@ export default registerCommand({
   description: 'Measure language phases, reactive policies, editor updates or live Expo previews; save raw samples.',
   arguments: [{
     name: 'target',
-    description: 'parser, formatter, reactivity, modules, extension, preview or record (current commit).',
+    description: 'parser, formatter, reactivity, modules, extension, preview, editor or record (current commit).',
     defaultValue: 'parser',
   }],
   options: [{ flags: '--fixture <path>', description: 'Canonical Tao fixture for preview comparisons.' }],
@@ -33,9 +33,9 @@ export default registerCommand({
     if (target === 'extension') {
       return runExtension()
     }
-    if (!['parser', 'preview', 'record'].includes(target)) {
+    if (!['parser', 'preview', 'editor', 'record'].includes(target)) {
       Errors.ThrowUserInput(
-        'Available performance targets: parser, formatter, reactivity, modules, extension, preview, record',
+        'Available performance targets: parser, formatter, reactivity, modules, extension, preview, editor, record',
       )
     }
     await timings.run(prepareParser, target === 'parser')
@@ -51,6 +51,9 @@ export default registerCommand({
         : undefined
       await runPreview(source)
       return
+    }
+    if (target === 'editor') {
+      return await runPerformanceEditor()
     }
     const Perf = await import('@perf')
     const { path, summary } = await Perf.parserPerformance(timings.samples)
@@ -108,6 +111,34 @@ async function runExtension(): Promise<void> {
 }
 
 async function runPreview(initialSource?: string) {
+  const Perf = await import('@perf')
+  const options = await preparePreviewProject(initialSource)
+  const result = await Perf.previewPerformance(options)
+  printPreviewOpening(result.startupMs, result.opening)
+  for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
+    if (!timing) {
+      IO.warn(`${scenario}: no matching save timing; browser samples remain in the raw report.`)
+      continue
+    }
+    IO.print(
+      `${scenario}: save accepted → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
+        + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
+    )
+    IO.print('  ' + CLIKit.formatTimings(timing.pipeline))
+  }
+  IO.print('Preview performance report: ' + result.path)
+  return result
+}
+
+async function runPerformanceEditor(): Promise<void> {
+  const Perf = await import('@perf')
+  const options = await preparePreviewProject()
+  const harness = await Perf.openPerformanceHarness(options)
+  IO.print('Performance editor: ' + harness.url)
+  await Try(() => Process.waitForTermination(), { finally: () => harness.dispose() })
+}
+
+async function preparePreviewProject(initialSource?: string): Promise<import('@perf').PreviewOptions> {
   await prepareRuntime()
   const Workspace = await import('@workspace')
   const Perf = await import('@perf')
@@ -131,28 +162,14 @@ async function runPreview(initialSource?: string) {
       },
     },
   })
-  const result = await Perf.previewPerformance({
+  return {
     project,
     workspace: await Workspace.openProjectWorkspace(project.directory, {
       id: 'performance',
       runtimeOptions,
     }),
     initialSource: initialSource ?? await Perf.readPerformanceFixture(),
-  })
-  printPreviewOpening(result.startupMs, result.opening)
-  for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
-    if (!timing) {
-      IO.warn(`${scenario}: no matching watcher timing; browser samples remain in the raw report.`)
-      continue
-    }
-    IO.print(
-      `${scenario}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
-        + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
-    )
-    IO.print('  ' + CLIKit.formatTimings(timing.pipeline))
   }
-  IO.print('Preview performance report: ' + result.path)
-  return result
 }
 
 function printPreviewOpening(startupMs: number, opening: import('@perf').PreviewOpeningTimings): void {

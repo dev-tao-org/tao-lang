@@ -7,13 +7,21 @@ Use these commands from the repository root after `./agent setup`:
 | `./agent performance parser`              | Forced grammar/native build, process-cold parsing and warm full-source parser/AST/code-generation phases. |
 | `./agent performance formatter`           | Tao formatting/fixing and embedded TSX formatting on the driver's fixtures.                               |
 | `./agent performance extension`           | Incremental Tao parsing, embedded TSX parsing and highlight queries; excludes editor paint.               |
-| `./agent unsandboxed performance preview` | Diagnostic disk-save → watcher → compilation → Metro → app receipts in two headless frames.               |
+| `./agent unsandboxed performance preview` | Editor save, compiler publication, Metro, and app receipts in two isolated headless previews.             |
+| `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.     |
 | `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.      |
 | `just performance`                        | Developer preview measurement command, printing results and retaining the raw report.                     |
 
 The preview host route is required in the macOS agent environment. See
 [Preview Workflow](../Preview%20Workflow.md) for the persistent `just dev` loop, output locations and
 receipt definitions. App receipts establish a React commit, not physical repaint.
+
+The editor and both timing commands use the same fixed project. Its entry imports six module
+groups with 24 dependency files and 240 additional compiled views. The additional views are
+unmounted so the workload measures compiler and module costs without adding render work. The
+editor opens with previews closed and loads its source tree from the compiler process. Saves are
+serialized through disk persistence and compilation. The automated scenarios use the same save
+path. The new fixture and save path establish a new baseline.
 
 Ordinary `verify` and TypeScript CI prepare assets and run correctness checks/tests; they do not run
 these benchmark targets automatically. Do not infer a new timing baseline from a passing verify.

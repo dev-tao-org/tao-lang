@@ -1,12 +1,10 @@
-import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
-import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, type BrowserRuntime, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import { Exec } from '@shared/os'
-import { Cancellation } from '@shared/web'
 import type * as Workspace from '@workspace'
 
-import { createPreviewHarness, type PreviewHarness } from './Preview/PreviewHarness'
+import { openPerformanceHarness, type PerformanceHarness, type PreviewOptions } from './Preview/PerformanceHarness'
 import * as PreviewMeasurement from './Preview/PreviewMeasurement'
 import { describePreviewWork, type PreviewEditTrace, type PreviewWork } from './Preview/PreviewWork'
 import type { ReloadTiming } from './ReloadTimings'
@@ -23,21 +21,12 @@ export async function previewPerformance(options: PreviewOptions) {
     reloads: [],
     sessionId: Platform.randomUUID(),
     measurement,
-    launchController: Cancellation.createController(),
   }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
-      await disposePreview(options, resources)
+      await disposePreview(resources)
     },
   })
-}
-
-/** PreviewOptions supplies a compile session, generated app, and canonical starting Tao source. */
-export type PreviewOptions = {
-  workspace: Workspace.WorkspaceSession
-  project: Workspace.Project
-  initialSource: string
-  measurement?: Partial<PreviewMeasurement.PreviewMeasurement>
 }
 
 type Resources = {
@@ -45,13 +34,10 @@ type Resources = {
   measurement: PreviewMeasurement.PreviewMeasurement
   errors: string[]
   reloads: ReloadTiming[]
-  launchController: Cancellation.Controller
-  launching?: Promise<string>
-  expo?: Runtime.ExpoSession
   startupMs?: number
   opening?: PreviewOpeningTimings
   frameSizes?: PreviewFrameSize[]
-  harness?: PreviewHarness
+  harness?: PerformanceHarness
   browser?: HeadlessBrowser.HeadlessBrowserSession
 }
 type PreviewResult = {
@@ -77,26 +63,17 @@ type PreviewFrameTimings = {
 export type PreviewOpeningTimings = { firstMs: number; reopenMs: number[] }
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
-  const started = Time.nowMs()
-  const source = PreviewMeasurement.createMeasurementFiles(options.initialSource, owned.measurement)
   const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
-  owned.harness = await createPreviewHarness({
-    workspace: options.workspace,
-    preview: () => owned.launching ??= startPreview(options, owned, source),
-    sessionId: owned.sessionId,
-    canonicalSource: source.entry,
-    scenarios,
-    frameCount: owned.measurement.frameCount,
-    onReload(timing) {
-      owned.reloads.push(timing)
-    },
+  owned.harness = await openPerformanceHarness(options, owned.sessionId, timing => {
+    owned.reloads.push(timing)
   })
   owned.browser = await HeadlessBrowser.launch('performance preview')
   const page = await openMeasurementPage(owned.browser, owned.errors)
   await page.goto(owned.harness.url)
   await page.locator('body[data-status="closed"] #open:enabled').waitFor()
+  await page.locator('#source-editor[data-files-ready="true"]').waitFor()
   await page.locator('iframe[src]').waitFor({ state: 'detached' })
-  owned.startupMs = Time.nowMs() - started
+  owned.startupMs = Time.nowMs() - owned.harness.shellStartedAt
   const firstMs = await measurePreviewOpen(page, owned.measurement)
   owned.frameSizes = await page.locator('iframe').evaluateAll(frames =>
     frames.map(frame => ({
@@ -119,29 +96,6 @@ async function measurePreview(options: PreviewOptions, owned: Resources) {
     startupMs: owned.startupMs,
     opening: owned.opening,
   }
-}
-
-async function startPreview(
-  options: PreviewOptions,
-  owned: Resources,
-  fixture: PreviewMeasurement.MeasurementSource,
-): Promise<string> {
-  const sourcePath = await prepareMeasurementSource(options, fixture)
-  requirePublished(await options.workspace.openFile(sourcePath))
-  const signal = owned.launchController.signal
-  signal.throwIfAborted()
-  owned.expo = await Runtime.start(options.workspace.runtime!, { signal })
-  return owned.expo.url
-}
-
-async function prepareMeasurementSource(options: PreviewOptions, fixture: PreviewMeasurement.MeasurementSource) {
-  const sourcePath = Path.join(options.project.directory, '_source/Performance.tao')
-  await FS.mkdir(Path.dirname(sourcePath))
-  for (const file of fixture.extraFiles) {
-    await FS.writeFile(Path.join(options.project.directory, `_source/${file.name}.tao`), file.source, 'utf8')
-  }
-  await FS.writeFile(sourcePath, fixture.entry, 'utf8')
-  return sourcePath
 }
 
 async function openMeasurementPage(browser: HeadlessBrowser.HeadlessBrowserSession, errors: string[]) {
@@ -200,18 +154,12 @@ async function runScenarios(
   return await page.evaluate(() => window.__taoPreviewState.results) as PreviewResult[]
 }
 
-async function disposePreview(options: PreviewOptions, owned: Resources): Promise<void> {
-  owned.launchController.abort()
-  const cleanups: PromiseSettledResult<unknown>[] = await Promise.allSettled([owned.browser?.close()])
-  cleanups.push(
-    ...await Promise.allSettled([
-      Try(() => owned.harness?.dispose()),
-    ]),
-  )
-  await owned.launching?.catch(() => undefined)
-  cleanups.push(...await Promise.allSettled([owned.expo?.dispose()]))
-  await options.workspace.dispose()
-  const output = owned.expo ? await owned.expo.output() : undefined
+async function disposePreview(owned: Resources): Promise<void> {
+  const cleanups = await Promise.allSettled([
+    owned.browser?.close(),
+    owned.harness?.dispose(),
+  ])
+  const output = await owned.harness?.output()
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)
   await Artifacts.mkdir(Path.dirname(logPath))
   Artifacts.trackTemporary(logPath)
@@ -267,8 +215,8 @@ async function writeReport(
       updateDone: 'Actual Expo Metro client update-done event; React may still have work pending.',
       applied: 'Matching revision acknowledged by a React effect after commit; no physical-paint claim.',
       total: 'Parent click to receipt measured entirely on the parent monotonic clock.',
-      observedSource: 'Reload source-observed timings may restart after duplicate watch observations; secondary only.',
-      startup: 'Harness server and headless page launch through ready controls, with Expo and preview frames unopened.',
+      observedSource: 'After the editor accepts a save, including queue, persistence and compilation; secondary only.',
+      startup: 'Harness server and headless page launch through ready controls and file tree, before preview open.',
       previewOpen: 'Show previews click through the last frame’s first React commit receipt; reopen retains Expo.',
     },
     results: results.map((result, index) => describeResult(result, index, owned.measurement.frameCount)),
@@ -309,13 +257,6 @@ type PreviewPerformanceDefinitions = {
 
 function serializePreviewPerformanceReport(report: PreviewPerformanceReport): string {
   return Json.Print(report)
-}
-
-function requirePublished(result: Workspace.UpdateResult): void {
-  if (result.status !== 'published') {
-    const detail = result.status === 'failed' ? ` ${result.error}` : ''
-    Errors.ThrowShouldNeverHappen(`Initial preview source was ${result.status}.${detail}`)
-  }
 }
 
 async function waitForReloadReports(owned: Resources, results: readonly PreviewResult[]): Promise<void> {

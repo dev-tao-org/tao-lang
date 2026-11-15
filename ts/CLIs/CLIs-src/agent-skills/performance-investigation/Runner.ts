@@ -15,9 +15,6 @@ import { appendTimingProgress, describeTimingSample } from './TimingProgress'
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
 export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number }
 
-/** PreviewLoad selects compiled views and sibling modules for a measured session. */
-export type PreviewLoad = { extraViews: number; extraFileCount: number }
-
 type MeasurementJobStatus = 'running' | 'passed' | 'failed'
 type MeasurementEnvironmentValue = string | undefined
 type MeasurementEnvironment = Record<string, MeasurementEnvironmentValue>
@@ -103,10 +100,10 @@ export async function withTimingLock<Result>(run: () => Promise<Result>): Promis
 }
 
 /** runMeasurementJob measures one retained job while its caller holds the timing lease. */
-export async function runMeasurementJob(options: RunnerOptions, directory: string, load?: PreviewLoad): Promise<void> {
+export async function runMeasurementJob(options: RunnerOptions, directory: string): Promise<void> {
   requireRunnerOptions(options)
   const fixture = await FS.readFile(options.fixture, 'utf8')
-  const job = await describeJob(options, fixture, load)
+  const job = await describeJob(options, fixture)
   await FS.mkdir(directory)
   const fixturePath = Path.join(directory, 'fixture.tao')
   await FS.writeFile(fixturePath, fixture)
@@ -120,7 +117,7 @@ export async function runMeasurementJob(options: RunnerOptions, directory: strin
   })
 }
 
-async function describeJob(options: RunnerOptions, fixture: string, load?: PreviewLoad): Promise<MeasurementJob> {
+async function describeJob(options: RunnerOptions, fixture: string): Promise<MeasurementJob> {
   await requireCleanSource(options.repo)
   await requirePreviewProtocol(options.repo)
   const commit = await resolveCommit(options.repo, 'HEAD')
@@ -134,18 +131,14 @@ async function describeJob(options: RunnerOptions, fixture: string, load?: Previ
     tree,
     fixtureSha256,
     settings: options,
-    environment: describeEnvironment(load),
+    environment: describeEnvironment(),
     system: Platform.systemInfo(),
     samples: [],
   }
 }
 
-function describeEnvironment(load?: PreviewLoad): MeasurementEnvironment {
-  return {
-    TAO_PREVIEW_FRAME_COUNT: load ? '2' : Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2',
-    TAO_PREVIEW_EXTRA_VIEWS: load ? String(load.extraViews) : Env.get('TAO_PREVIEW_EXTRA_VIEWS') ?? '0',
-    TAO_PREVIEW_EXTRA_FILE_COUNT: load ? String(load.extraFileCount) : Env.get('TAO_PREVIEW_EXTRA_FILE_COUNT') ?? '0',
-  }
+function describeEnvironment(): MeasurementEnvironment {
+  return { TAO_PREVIEW_FRAME_COUNT: Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2' }
 }
 
 async function measurePreview(job: MeasurementJob, fixture: string, directory: string): Promise<string> {

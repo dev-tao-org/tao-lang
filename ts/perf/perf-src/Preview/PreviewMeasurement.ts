@@ -2,7 +2,7 @@ import { Errors, NewlineCharacter, S } from '@shared'
 import { Env, type HeadlessBrowser } from '@shared/os'
 import { performanceScenarios, type PreviewScenario } from './PreviewScenarios'
 
-/** PreviewMeasurement selects edit volume, preview frames and generated Tao source shape. */
+/** PreviewMeasurement describes the repetitions and fixed generated Tao source shape. */
 export type PreviewMeasurement = {
   editCount: number
   frameCount: PreviewFrameCount
@@ -10,11 +10,14 @@ export type PreviewMeasurement = {
   extraFileCount: number
 }
 
+/** PreviewRunOptions selects repetitions and frame count for the fixed performance project. */
+export type PreviewRunOptions = { editCount?: number; frameCount?: PreviewFrameCount }
+
 /** PreviewFrameCount selects the supported single-frame or dual-frame measurement. */
 export type PreviewFrameCount = 1 | 2
 
 /** PreviewMeasurementProtocol identifies the comparable preview launch and edit workload. */
-export const PreviewMeasurementProtocol = 'preview-opening-v1'
+export const PreviewMeasurementProtocol = 'preview-editor-project-v2'
 
 /** PreviewReopenCount is the number of fresh preview opens on an already running host. */
 export const PreviewReopenCount = 3
@@ -23,24 +26,16 @@ export const PreviewReopenCount = 3
 export type MeasurementFile = { name: string; source: string }
 
 /** readPreviewMeasurement resolves explicit settings or documented measurement environment values. */
-export function readPreviewMeasurement(options: Partial<PreviewMeasurement> = {}): PreviewMeasurement {
+export function readPreviewMeasurement(options: PreviewRunOptions = {}): PreviewMeasurement {
   const editCount = options.editCount ?? readCount('TAO_PREVIEW_EDIT_COUNT', 4)
   const frameCount = options.frameCount ?? readCount('TAO_PREVIEW_FRAME_COUNT', 2)
-  const extraViews = options.extraViews ?? readCount('TAO_PREVIEW_EXTRA_VIEWS', 0)
-  const extraFileCount = options.extraFileCount ?? readCount('TAO_PREVIEW_EXTRA_FILE_COUNT', 0)
   if (!isValidEditCount(editCount)) {
     Errors.ThrowUserInput('Preview edit count must be a positive multiple of four.')
   }
   if (frameCount !== 1 && frameCount !== 2) {
     Errors.ThrowUserInput('Preview frame count must be one or two.')
   }
-  if (!Number.isInteger(extraViews) || extraViews < 0) {
-    Errors.ThrowUserInput('Preview extra view count must be a nonnegative integer.')
-  }
-  if (!Number.isInteger(extraFileCount) || extraFileCount < 0) {
-    Errors.ThrowUserInput('Preview extra file count must be a nonnegative integer.')
-  }
-  return { editCount, frameCount, extraViews, extraFileCount }
+  return { editCount, frameCount, extraViews: FixtureFileCount * ViewsPerFile, extraFileCount: FixtureFileCount }
 }
 
 /** createMeasurementScenarios repeats real source edits with unique text in each measured cycle. */
@@ -57,24 +52,26 @@ export type MeasurementSource = {
   extraFiles: readonly MeasurementFile[]
 }
 
-/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
-export function createMeasurementFiles(source: string, settings: PreviewMeasurement): MeasurementSource {
-  const fileCount = Math.min(settings.extraViews, settings.extraFileCount)
-  if (fileCount === 0) {
-    return { entry: appendViews(source, 0, settings.extraViews), extraFiles: [] }
-  }
-  const imports = Array.from({ length: fileCount }, (_, index) => `use package ./LoadViews${index}`).join(
-    NewlineCharacter,
-  )
-  const entry = appendViews(`${imports}${NewlineCharacter}${source}`, 0, 0)
-  const baseCount = Math.floor(settings.extraViews / fileCount)
-  const remainder = settings.extraViews % fileCount
-  const extraFiles = Array.from({ length: fileCount }, (_, index) => {
-    const start = index * baseCount + Math.min(index, remainder)
-    const count = baseCount + (index < remainder ? 1 : 0)
-    return { name: `LoadViews${index}`, source: createViewModule(start, count) }
+const FixtureFileCount = 24
+const ViewsPerFile = 10
+const FilesPerGroup = 4
+
+/** createMeasurementFiles builds the same module graph in every preview performance project. */
+export function createMeasurementFiles(source: string): MeasurementSource {
+  const groups = Array.from({ length: FixtureFileCount / FilesPerGroup }, (_, index) => index * FilesPerGroup)
+  const entry = `${importModules(groups)}${NewlineCharacter}${source}`
+  const extraFiles = Array.from({ length: FixtureFileCount }, (_, index) => {
+    const module = createViewModule(index * ViewsPerFile, ViewsPerFile)
+    const dependencies = index % FilesPerGroup === 0
+      ? Array.from({ length: FilesPerGroup - 1 }, (_, child) => index + child + 1)
+      : []
+    return { name: `LoadViews${index}`, source: importModules(dependencies) + module }
   })
   return { entry, extraFiles }
+}
+
+function importModules(indices: readonly number[]): string {
+  return indices.map(index => `use package ./LoadViews${index}${NewlineCharacter}`).join('')
 }
 
 const MeasurementScenarioSuffixRegx = /-\d+$/
@@ -120,7 +117,7 @@ export function describeMeasurement(settings: PreviewMeasurement): MeasurementDe
     warmEditCount: Math.max(0, settings.editCount - 4),
     warmDefinition: 'Exclude the first complete four-edit cycle; first edit is recorded separately.',
     largeSource: 'Extra view declarations compile into output but are not mounted in the app.',
-    extraFileDefinition: 'Extra file count partitions extra view declarations across imported sibling Tao modules.',
+    extraFileDefinition: 'Six imported module groups each reference three additional Tao modules.',
   }
 }
 
@@ -149,13 +146,6 @@ export function classifyMeasurementSample(index: number): MeasurementSample {
 /** isValidEditCount requires complete four-edit preview cycles. */
 export function isValidEditCount(count: number): boolean {
   return Number.isInteger(count) && count >= 4 && count % 4 === 0
-}
-
-function appendViews(source: string, start: number, count: number): string {
-  const declarations = Array.from({ length: count }, (_, index) => createViewDeclaration(start + index))
-  return declarations.length
-    ? source + NewlineCharacter + declarations.join(NewlineCharacter + NewlineCharacter) + NewlineCharacter
-    : source
 }
 
 function createViewModule(start: number, count: number): string {
