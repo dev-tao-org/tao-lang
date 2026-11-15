@@ -1,14 +1,15 @@
 # Preview Workflow
 
 ```sh
-just dev
+./dev
+./dev help
 just performance
 ./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
 ```
 
-`just dev` opens the existing `Apps/Dev/Preview` workspace and serves its app in two differently sized iframes. It keeps running until Ctrl-C and does not open a browser automatically; press `w` to open the preview in Chrome. Authored files stay in place; generated build output and the readable Expo runtime live under `.artifacts/dev/preview/`.
+`./dev` and `just dev` start the keyboard launcher. Press `p` for the performance editor or `v` for the live Preview app. Each shortcut starts its app on demand and opens its URL in the browser. Press either shortcut again to reopen its existing session. Press `q` or Ctrl-C to shut down both sessions. `./dev help` lists all developer commands.
 
-Edit `Preview.tao`, or use the page's button to cycle through a label change, an added view, a row layout and a reset. The button asks the server to write the source file. The workspace's FileManager observes the change, updates its in-memory Document and schedules compilation. Compilation runs in process; the button does not start a compiler CLI process.
+For the live Preview app, edit `Apps/Dev/Preview/Preview.tao` or use the page's button to cycle through a label change, an added view, a row layout and a reset. The workspace's FileManager observes each save and schedules in-process compilation.
 
 The compiler produces a complete generated revision in memory and publishes it to Metro. Metro refreshes changed modules, then accepted revisions update the readable disk inspection mirror. Metro delivers the update to both frames. Invalid source keeps the last successfully published app available.
 

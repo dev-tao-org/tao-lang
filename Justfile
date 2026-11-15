@@ -162,10 +162,10 @@ my-branch name='':
 # Dev environment services
 ##########################
 
-# Compile the Preview app and keep its two browser previews running
+# Open development apps with keyboard shortcuts
 [group('Dev')]
 dev:
-    ./dev dev
+    ./dev
 
 # Measure preview refresh and print scenario timings and the raw report path
 [group('Dev')]

@@ -18,6 +18,18 @@ const GitFingerprintFailureScript = Shared.joinTextLines(
   '',
 )
 
+Tests.test('the developer launcher offers its command list and explains interactive app startup', async () => {
+  const command = Repo.resolvePath('dev')
+  const cwd = Repo.getWorkspaceRoot()
+  const help = await Exec.captureStdout(command, 'help', { cwd })
+  Tests.expect(help).toContain('Commands:')
+  Tests.expect(help).toContain('performance')
+  Tests.expect(help).toContain('timing-compare')
+  Tests.expect(help).toContain('verify')
+  const noArguments = await Exec.captureStdout(command, { cwd })
+  Tests.expect(noArguments).toContain('Run ./dev in an interactive terminal')
+})
+
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
   const addEnv = { TERMINAL_OUTPUT: undefined }
   const child = Exec.spawn(Repo.resolvePath('agent'), [
