@@ -27,7 +27,7 @@ Until the list is settled, every reply in the dialogue ends with a `Decide now` 
 
 - Each item is a top-level list entry phrased as a question, ending in `?`.
 - Under it, its realistic options, one line each, with exactly one marked **(recommended)**.
-- Nothing else goes inside the block. Context, evidence, and what was settled come before it, ideally under one short heading per question, so the questions can be answered without rereading the prose.
+- Nothing else goes inside the block. Put only context and evidence needed for the next decisions before it.
 
 A reply that ends in context, a summary, or a vague "which do you prefer" breaks the dialogue. The only reply without a `Decide now` block is the one that says the list is settled and what happens next.
 
@@ -36,13 +36,13 @@ A reply that ends in context, a summary, or a vague "which do you prefer" breaks
 1. Always open a planning discussion with three questions, choosing upstream decisions first. Continue asking questions until every decision needed for implementation is settled; use three per later round while enough substantive open decisions remain.
 2. Give each decision its realistic options and mark the recommended one, as above.
 3. Print the round as text in the reply, in the shape below. Never put it through a harness question prompt such as `AskUserQuestion`: a prompt hides the round from the transcript, caps what an answer can say, and forces every item through its own box. The Developer answers in the conversation — by letter and number, in prose, or with an option the round did not offer.
-4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. An item the Developer skips takes its recommendation, and the next message says so in one line so the Developer can veto it.
+4. The Developer may answer "your recommendations" or "defaults for the rest"; take them and continue. Otherwise retain unanswered items as open rather than inferring approval.
 5. Continue until the planning decisions are settled, then follow root `AGENTS.md`'s explicit go-ahead requirement before implementation. For decisions discovered during authorized implementation, follow its decision policy. Explicit approval gates still apply.
 
 ## Record what was settled
 
-- The conversation is the record. The handoff lists the decisions made, and the commit message carries the ones that shaped the change among its bullets.
-- Keep any additional decision record with the task's `.artifacts` notes; amend repository specifications only when the developer instructs it.
+- Record accepted choices without conversational recaps such as "Settled:" or "Decided:". Focus replies on what needs deciding next. Revisit an accepted choice only when an unaddressed issue or changed circumstances warrants reconsideration; explain that specific reason rather than repeating the decision history.
+- Follow root `AGENTS.md` for accepted decision, specification and roadmap ownership; keep unresolved proposals in task-local notes unless the developer explicitly requests another destination.
 
 ## Shape
 
