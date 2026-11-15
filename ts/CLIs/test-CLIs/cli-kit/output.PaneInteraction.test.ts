@@ -2,6 +2,7 @@ import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Processes, Repo, Text } from '@shared/os'
 import { outputFixturePath } from './output.test-fixtures'
+import { PaneSecretInput } from './output.test-fixtures.Panes'
 
 const LogPathRegx = /Logs: (.+?\.log)/
 
@@ -31,8 +32,6 @@ Tests.test('dashboard prompts and failure completion retain all output in Ink pa
     Tests.expect(matching.length).toBeGreaterThan(0)
     Tests.expect(matching.every(line => line.startsWith('│') && line.endsWith('│'))).toBe(true)
   }
-  Tests.expect(visible).not.toContain('private')
-  Tests.expect(visible).not.toContain('value')
   Tests.expect(result.stderr).toBe('')
   const logPath = LogPathRegx.exec(visible)?.[1]?.trim()
   Tests.expect(logPath).toBeDefined()
@@ -41,8 +40,10 @@ Tests.test('dashboard prompts and failure completion retain all output in Ink pa
   Tests.expect(log).toContain('[info stdout] [TypeScript shard 2] shard stdout ')
   Tests.expect(log).toContain('[info stderr] [TypeScript shard 2] shard stderr completed')
   Tests.expect(log).toContain('Set up dependencies and continue?')
-  Tests.expect(log).not.toContain('private')
-  Tests.expect(log).not.toContain('value')
+  for (const chunk of Object.values(PaneSecretInput)) {
+    Tests.expect(visible).not.toContain(chunk)
+    Tests.expect(log).not.toContain(chunk)
+  }
 })
 
 function expectFinalRecoveryNotice(visible: string, logPath: string): void {

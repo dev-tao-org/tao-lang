@@ -9,6 +9,9 @@ import type { OutputSnapshot } from '../../CLIs-src/cli-kit/output/Output'
 import { createPaneInput, type PaneInput } from '../../CLIs-src/cli-kit/output/tui/PromptInput'
 import { OutputView } from '../../CLIs-src/cli-kit/output/tui/View'
 
+/** PaneSecretInput supplies the typed and pasted parts of the dashboard's synthetic secret. */
+export const PaneSecretInput = { typed: 'pane-secret-larch', pasted: 'pane-secret-cedar' }
+
 /** runPaneFixture exercises public dashboard prompts while a captured child writes both streams. */
 export async function runPaneFixture(): Promise<void> {
   let latest!: OutputSnapshot
@@ -28,8 +31,8 @@ export async function runPaneFixture(): Promise<void> {
       if (request.signal) {
         cancellation.abort()
       } else if (request.secret) {
-        input.receive('private', {} as Ink.Key)
-        input.paste(NewlineCharacter + 'value')
+        input.receive(PaneSecretInput.typed, {} as Ink.Key)
+        input.paste(NewlineCharacter + PaneSecretInput.pasted)
       } else if (++questions > 1) {
         input.receive('yex', {} as Ink.Key)
         input.receive('', { backspace: true } as Ink.Key)
@@ -79,7 +82,7 @@ async function exercisePanePrompts(input: PaneInput): Promise<void> {
     Errors.ThrowUserInput('Fixture setup declined.')
   }
   const secret = await IO.askSecret('Fixture hidden token: ')
-  if (secret !== Shared.joinTextLines('private', 'value')) {
+  if (secret !== Shared.joinTextLines(PaneSecretInput.typed, PaneSecretInput.pasted)) {
     Errors.ThrowShouldNeverHappen('Fixture secret changed.')
   }
 }
