@@ -1,11 +1,14 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import * as Runtime from '@runtime'
 import { Errors, Timings, Try } from '@shared'
-import { Artifacts, FS, Path, Process, Repo } from '@shared/os'
+import { FS, Process } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
+import * as LocalBaseline from '../preview/LocalPreviewBaseline'
+import { preparePreviewProject, startPerformanceEditor } from '../preview/PerformanceProject'
 import { registerCommand } from './_command-runner'
+
+type PerformanceOptions = { fixture?: string; baseline?: boolean; reportOnly?: boolean }
 
 /** performanceCommand records the available implementation's repeated performance baselines. */
 export default registerCommand({
@@ -16,10 +19,14 @@ export default registerCommand({
     description: 'parser, formatter, reactivity, modules, extension, preview, editor or record (current commit).',
     defaultValue: 'parser',
   }],
-  options: [{ flags: '--fixture <path>', description: 'Canonical Tao fixture for preview comparisons.' }],
-  action: Timings.createTopLevelTimer(async function(timings, target: string, options: { fixture?: string }) {
-    if (options.fixture && target !== 'preview') {
-      Errors.ThrowUserInput('--fixture is available only for performance preview.')
+  options: [
+    { flags: '--fixture <path>', description: 'Canonical Tao fixture for preview comparisons.' },
+    { flags: '--baseline', description: 'Capture five independent preview sessions for local comparisons.' },
+    { flags: '--report-only', description: 'Print the raw preview report path without a baseline comparison.' },
+  ],
+  action: Timings.createTopLevelTimer(async function(timings, target: string, options: PerformanceOptions) {
+    if (target !== 'preview' && hasPreviewOptions(options)) {
+      Errors.ThrowUserInput('--fixture, --baseline, and --report-only are available only for performance preview.')
     }
     if (target === 'modules') {
       return runModules()
@@ -46,11 +53,7 @@ export default registerCommand({
       return
     }
     if (target === 'preview') {
-      const source = options.fixture
-        ? await FS.readFile(CLIKit.resolveCallerPath(options.fixture), 'utf8')
-        : undefined
-      await runPreview(source)
-      return
+      return await runPreviewTarget(options)
     }
     if (target === 'editor') {
       return await runPerformanceEditor()
@@ -65,6 +68,10 @@ export default registerCommand({
     IO.print('Performance report: ' + path)
   }),
 })
+
+function hasPreviewOptions(options: PerformanceOptions): boolean {
+  return Boolean(options.fixture || options.baseline || options.reportOnly)
+}
 
 async function runModules(): Promise<void> {
   await prepareRuntime()
@@ -110,71 +117,36 @@ async function runExtension(): Promise<void> {
   IO.print('Performance report: ' + path)
 }
 
+async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
+  if (options.baseline) {
+    if (options.fixture) {
+      Errors.ThrowUserInput('Capture the baseline on the fixed performance project.')
+    }
+    return await LocalBaseline.recordLocalPreviewBaseline()
+  }
+  const source = options.fixture
+    ? await FS.readFile(CLIKit.resolveCallerPath(options.fixture), 'utf8')
+    : undefined
+  const result = await runPreview(source)
+  if (!options.reportOnly) {
+    await LocalBaseline.printLocalPreviewChanges(result.path)
+  }
+  IO.summary(LocalBaseline.PreviewPerformanceReportPrefix + result.path)
+}
+
 async function runPreview(initialSource?: string) {
   const Perf = await import('@perf')
   const options = await preparePreviewProject(initialSource)
   const result = await Perf.previewPerformance(options)
-  printPreviewOpening(result.startupMs, result.opening)
   for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
     if (!timing) {
       IO.warn(`${scenario}: no matching save timing; browser samples remain in the raw report.`)
-      continue
     }
-    IO.print(
-      `${scenario}: save accepted → Metro ${timing.saveToHmrMs.toFixed(1)} ms`
-        + ` | preview quorum applied ${timing.saveToAppliedMs.toFixed(1)} ms`,
-    )
-    IO.print('  ' + CLIKit.formatTimings(timing.pipeline))
   }
-  IO.print('Preview performance report: ' + result.path)
   return result
 }
 
 async function runPerformanceEditor(): Promise<void> {
-  const Perf = await import('@perf')
-  const options = await preparePreviewProject()
-  const harness = await Perf.openPerformanceHarness(options)
-  IO.print('Performance editor: ' + harness.url)
+  const harness = await startPerformanceEditor()
   await Try(() => Process.waitForTermination(), { finally: () => harness.dispose() })
-}
-
-async function preparePreviewProject(initialSource?: string): Promise<import('@perf').PreviewOptions> {
-  await prepareRuntime()
-  const Workspace = await import('@workspace')
-  const Perf = await import('@perf')
-  const project = await Workspace.createProject()
-  const dependencies = await Workspace.createProjectDependencyOptions(project.directory)
-  await Workspace.prepareDependencies(
-    project.directory,
-    await dependencies.readRequirements(project.directory),
-    dependencies,
-  )
-  const runtimeOptions = { toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains') }
-  await Runtime.prepareRuntime({
-    ...runtimeOptions,
-    install: {
-      async install(directory) {
-        await FS.symlink(
-          Repo.resolvePath('ts/7-runtime/node_modules'),
-          Path.join(directory, 'node_modules'),
-          'dir',
-        )
-      },
-    },
-  })
-  return {
-    project,
-    workspace: await Workspace.openProjectWorkspace(project.directory, {
-      id: 'performance',
-      runtimeOptions,
-    }),
-    initialSource: initialSource ?? await Perf.readPerformanceFixture(),
-  }
-}
-
-function printPreviewOpening(startupMs: number, opening: import('@perf').PreviewOpeningTimings): void {
-  IO.summary(`Harness launch (previews closed): ${startupMs.toFixed(1)} ms`)
-  IO.summary(`First preview open: ${opening.firstMs.toFixed(1)} ms`)
-  const reopens = opening.reopenMs.map(ms => ms.toFixed(1))
-  IO.summary(`Warm preview reopens: ${reopens.join(' / ')} ms`)
 }

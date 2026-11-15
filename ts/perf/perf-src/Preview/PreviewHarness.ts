@@ -11,7 +11,7 @@ import type { PreviewFrameCount } from './PreviewMeasurement'
 import type { OpenedPreview } from './PreviewOpening'
 import { previewPage } from './PreviewPage'
 import { PreviewPublication } from './PreviewPublication'
-import { applyScenario, performanceScenarios, type PreviewScenario } from './PreviewScenarios'
+import { applyScenario, type PreviewScenario, previewScenarios, requirePreviewScenario } from './PreviewScenarios'
 import { describeGeneratedChanges, type PreviewEditTrace } from './PreviewWork'
 
 /** createPreviewHarness serves the local controls and revision receipt relay. */
@@ -19,7 +19,7 @@ export async function createPreviewHarness(options: HarnessOptions): Promise<Pre
   const sessionDir = await prepareBrowserClient(options.sessionId)
   return await startHarnessServer({
     ...options,
-    scenarios: options.scenarios ?? performanceScenarios,
+    scenarios: options.scenarios ?? previewScenarios,
   }, sessionDir)
 }
 
@@ -192,9 +192,11 @@ async function editResponse(
   }
   if (options.editor) {
     const body = await request.json() as { scenario?: string }
-    const saved = await options.editor.editEntry(current =>
-      applyScenario(options.scenarios, body.scenario, current, options.canonicalSource)
-    )
+    const scenario = requirePreviewScenario(options.scenarios, body.scenario)
+    const update = (current: string) => scenario.apply(current, options.canonicalSource)
+    const saved = scenario.path === undefined
+      ? await options.editor.editEntry(update)
+      : await options.editor.save(scenario.path, update)
     return Http.jsonResponse(saved)
   }
   if (edits.active) {

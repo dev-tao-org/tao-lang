@@ -159,7 +159,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
   ]
   return await runWithEvidence(directory, sources, async () => {
     await CLIKit.runNonInteractiveCommand('./dev performance preview', {
-      variadicArgs: ['--fixture', fixture],
+      variadicArgs: ['--fixture', fixture, '--report-only'],
       cwd: options.repo,
       addEnv: describePreviewEnvironment(job),
     })
@@ -213,6 +213,6 @@ function requireRunnerOptions(options: RunnerOptions): void {
     Errors.ThrowUserInput('Sample count must be a positive integer.')
   }
   if (!Perf.isValidEditCount(options.edits)) {
-    Errors.ThrowUserInput('Edit count must be a positive multiple of four.')
+    Errors.ThrowUserInput(`Edit count must be a positive multiple of ${Perf.PreviewCycleSize}.`)
   }
 }

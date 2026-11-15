@@ -97,7 +97,7 @@ function registerMeasurementCommands(command: Command): void {
     .requiredOption('--repo <path>', 'Candidate checkout; source must be clean.')
     .requiredOption('--fixture <path>', 'Canonical fixture held constant across checkpoints.')
     .option('--samples <count>', 'Independent preview process sessions.', '1')
-    .option('--edits <count>', 'Edits per session; warm samples exclude the first four.', '24')
+    .option('--edits <count>', 'Edits per session; warm samples exclude the first complete cycle.', '24')
     .action(async (options: RunOptions) => {
       const directory = await runMeasurements({
         repo: CLIKit.resolveCallerPath(options.repo),

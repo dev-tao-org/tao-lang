@@ -14,8 +14,8 @@ source commit instead of triggering another measurement.
   Failed, partial or corrupt existing records are retained and reported; they are not overwritten.
 - Developer command: `./dev performance preview`. Agents on macOS use the approved host operation
   `./agent unsandboxed performance preview`. This starts isolated headless Expo web previews,
-  runs text, added-view and column-to-row edits through the performance editor's serialized save
-  path, and prints the JSON report path. No screenshots are required.
+  runs the fixed local and imported render transitions through the performance editor's serialized
+  save path, and prints the JSON report path.
 - Measure the committed source and fixture. Preserve unrelated developer edits; use an isolated
   committed snapshot when they affect benchmark inputs. Never attribute a dirty implementation
   run to a clean commit merely by replacing the report's commit field.

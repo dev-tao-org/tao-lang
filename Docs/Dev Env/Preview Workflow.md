@@ -14,7 +14,7 @@ The compiler produces a complete generated revision in memory and publishes it t
 
 ## Measurements
 
-`just performance` uses an isolated copy of the Hello World fixture, preserving the authored source. It checks text replacement, an added Text view, a column-to-row change and reset in both frame sizes. It validates the resulting text and layout without screenshots.
+`just performance` uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
 
 Timings distinguish source observation, reading, queueing, parsing, AST construction, module resolution, code generation, output writing and publication. Two app receipts finish each update:
 
@@ -23,7 +23,7 @@ Timings distinguish source observation, reading, queueing, parsing, AST construc
 
 Receipts carry session, frame, boot and source-revision identities so an old document or delayed update cannot complete a newer measurement. Browser and CLI epoch-relative timestamps share the agreed same-host clock; click-to-receipt totals use the parent frame's monotonic clock.
 
-The terminal reports both frames and the total duration. The total clock begins when the workspace observes a source change, while the per-frame Metro clock begins when publication starts. “Applied” establishes a React commit rather than physical paint.
+`./dev performance preview --baseline` captures five independent sessions. Subsequent runs print percentage changes for launch, opening and each warm transition. Raw reports retain both frames and absolute durations. The end-to-end clock starts at the parent click. “Applied” establishes a React commit.
 
 Raw reports remain under `.artifacts/logs/performance/`. `./agent unsandboxed performance record` retains one commit-linked run locally; the authorized landing workflow publishes those records under `.storage/performance/preview/`. Diagnostic `performance preview` runs do not create immutable commit records.
 

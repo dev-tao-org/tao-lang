@@ -1,3 +1,4 @@
+import * as Perf from '@perf'
 import { NewlineCharacter } from '@shared'
 import type { BranchComparison, ComparisonScenario } from './BranchComparison'
 import * as Metrics from './BranchMetrics'
@@ -66,8 +67,17 @@ function formatWorkload(workload: Workload): string[] {
     `${scenario.name}${size} · ${coverage}`,
     TimingColumns.TimingComparisonHeader,
     ...metrics.filter(metric => isHeadline(metric.first.name)).map(formatMetric),
+    ...formatStepChanges(metrics),
     formatWorkCounts(scenario.rounds[0]),
     ...formatQuality(scenario.rounds),
+  ]
+}
+
+function formatStepChanges(metrics: ComparedMetric[]): string[] {
+  const steps = metrics.filter(metric => Perf.PreviewRenderSteps.some(step => step.label === metric.first.name))
+  return [
+    '  Change  Warm render steps',
+    ...steps.map(({ first }) => `  ${TimingColumns.formatPercentage(first.changePercent).padStart(7)}  ${first.name}`),
   ]
 }
 
