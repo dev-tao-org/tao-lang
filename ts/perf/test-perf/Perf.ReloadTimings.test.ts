@@ -23,6 +23,7 @@ Tests.test('reload output waits for both matching previews and measures from the
   })
   Tests.expect(reported).toEqual([{
     revision: 'r2',
+    observedAtMs: 1000,
     saveToHmrMs: 85,
     saveToAppliedMs: 115,
     pipeline: [],

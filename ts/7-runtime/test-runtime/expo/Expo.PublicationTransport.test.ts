@@ -1,6 +1,6 @@
 import { Json } from '@shared'
 import * as Tests from '@shared-tests'
-import { Http } from '@shared/os'
+import { Http } from '@shared/web'
 import { createPublicationTransport } from '../../runtime-src/expo/Expo/ExpoPublicationTransport'
 
 Tests.test('a publication deadline faults its session even when the request ignores cancellation', async () => {

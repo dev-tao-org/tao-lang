@@ -36,7 +36,8 @@ ignores mode changes; captured and received source bytes, symlinks and modes are
 
 `receive` verifies the bundle hash and clones into a new directory; it never resets an existing
 checkout. A requested historical SHA must exist in the bundle. Seed required submodule pins as
-described below before running `./agent setup --frozen-lockfile` inside each new candidate.
+described below before running setup inside each new candidate. Use `./agent unsandboxed setup`
+on current revisions. Historical revisions use the setup command declared by that checkout.
 Inspect and record setup-induced source changes;
 the runner refuses dirty implementation inputs. No dependency/tool versions are upgraded implicitly.
 
@@ -71,7 +72,7 @@ or add a separate Tao credential to bypass it. An invalid target is not automati
 
 On a new runner without this skill, bootstrap through existing SSH: transfer the bundle/manifest,
 invoke `git clone --branch performance-snapshot /absolute/snapshot.bundle /absolute/tooling`, seed
-required submodule pins, then run `./agent setup --frozen-lockfile` in that tooling clone. The skill
+required submodule pins, then run `./agent unsandboxed setup` in that tooling clone. The skill
 is now available there. Use its `receive` operation for other checkpoints. SSH infrastructure itself
 must already be enabled.
 

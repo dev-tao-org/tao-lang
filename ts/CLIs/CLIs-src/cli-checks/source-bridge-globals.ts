@@ -132,9 +132,7 @@ function isRegisteredGlobalMember(
   return member !== undefined && platformGlobals.has(member) && isGlobalThisAccess(node)
 }
 
-function accessedMemberName(
-  node: MemberAccess,
-): string | undefined {
+function accessedMemberName(node: MemberAccess): string | undefined {
   if (TypeScript.isPropertyAccessExpression(node)) {
     return node.name.text
   }

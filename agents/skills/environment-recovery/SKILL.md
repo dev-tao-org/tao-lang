@@ -27,7 +27,7 @@ behind it.
 
 ## The devenv profile
 
-- Root CLI entrypoints reuse a prepared devenv profile whose recorded inputs and profile target still match, including a matching primary-checkout profile for worktrees. Cold or changed inputs enter devenv once to prepare it; ordinary reuse does not create new GC roots. Dependency installation stays explicit through `./agent setup`;
+- Root CLI entrypoints reuse a prepared devenv profile whose recorded inputs and profile target still match, including a matching primary-checkout profile for worktrees. Cold or changed inputs enter devenv once to prepare it; ordinary reuse does not create new GC roots. Dependency installation stays explicit through `./agent unsandboxed setup`;
   `dev-automation` owns the harness setup entrypoints.
 - Linux without devenv can reuse a prepared portable Nix profile; the entrypoint checks its locked
   identity through the tools-only bootstrap. Without either environment, it reports what is missing
@@ -45,8 +45,8 @@ behind it.
   cache — `failed to download <package>: EPERM`. `./agent` distinguishes these from a denied
   temporary directory and prints the matching recovery; `./agent doctor` reports the broken install
   and the same remediation. Only the tempdir case is resumable. For a protected-path failure, run
-  `./agent unsandboxed setup`, the same entry the SessionStart hook runs on the host. Do not start
-  `just session-unsandboxed` on your own.
+  `./agent unsandboxed setup` with harness host approval.
+  Do not start `just session-unsandboxed` on your own.
 - Never name a Bun install backend to work around this. `--backend=copyfile` writes every packaged
   file through its own path, making `bun install` unrunnable sandboxed rather than fixing it.
 

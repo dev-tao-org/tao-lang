@@ -1,6 +1,6 @@
 import { Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Http } from '@shared/os'
+import { Cancellation, Http } from '@shared/web'
 import { waitForExpoReady } from '../../runtime-src/expo/Expo/ExpoReadiness'
 
 Tests.test('Expo readiness aborts a stalled request at the deadline', async () => {
@@ -41,7 +41,7 @@ Tests.test('Expo readiness rejects an OK response that arrives after the deadlin
 })
 
 Tests.test('interrupting Expo startup aborts its pending request instead of awaiting the startup deadline', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   let requestAborted = false
   const request: typeof Http.request = async (_url, init) => {
     controller.abort()

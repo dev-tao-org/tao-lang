@@ -44,9 +44,7 @@ export function readOptionalPeerNames(value: unknown): Set<string> {
   if (!isMetadataObject(value)) {
     return new Set()
   }
-  return new Set(
-    Object.entries(value).filter(([, metadata]) => isOptionalPeerMetadata(metadata)).map(([name]) => name),
-  )
+  return new Set(Object.entries(value).filter(([, metadata]) => isOptionalPeerMetadata(metadata)).map(([name]) => name))
 }
 
 /** readPackageMetadata reads a package manifest or reports managed npm state failure. */

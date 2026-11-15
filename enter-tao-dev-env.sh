@@ -28,8 +28,8 @@ fi
 # Setup-only exits after installing dependencies inside the pinned environment.
 export DEVENV_TUI=false
 if [ "${1:-}" = --setup-only ]; then
-  exec devenv shell --no-tui ./agent setup
+  exec devenv shell --no-tui ./agent unsandboxed setup
 fi
 
 # Replace this process with the developer's interactive shell after successful setup.
-exec devenv shell --no-tui -- sh -ec './agent setup; exec "$1" -i' tao-dev-shell "${SHELL:-/bin/sh}"
+exec devenv shell --no-tui -- sh -ec './agent unsandboxed setup; exec "$1" -i' tao-dev-shell "${SHELL:-/bin/sh}"

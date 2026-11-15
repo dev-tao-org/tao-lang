@@ -22,9 +22,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
       packageName: '@scope/graph',
       version: '2.4.1',
     })
-    Tests.expect(await FS.readFile(source, 'utf8')).toBe(
-      'requires npm:@scope/graph version 2.4.1 as graph\n',
-    )
+    Tests.expect(await FS.readFile(source, 'utf8')).toBe('requires npm:@scope/graph version 2.4.1 as graph\n')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -41,9 +39,7 @@ Tests.test('module add resolves bare packages through the injected executor and 
     })
     Tests.expect(asked).toBe(`date-fns:${root}`)
     Tests.expect(result.sourcePath).toBe(Path.join(module, 'Dependencies.tao'))
-    Tests.expect(await FS.readFile(result.sourcePath, 'utf8')).toBe(
-      'requires npm:date-fns version 4.1.0\n',
-    )
+    Tests.expect(await FS.readFile(result.sourcePath, 'utf8')).toBe('requires npm:date-fns version 4.1.0\n')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

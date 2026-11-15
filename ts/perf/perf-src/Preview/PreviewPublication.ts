@@ -39,6 +39,10 @@ export class PreviewPublication {
     ]
   }
 
+  readBaseline(): Preview.PreviewExpectation | undefined {
+    return this.baseline
+  }
+
   replay(send: (name: string, data: object) => void): void {
     if (this.baseline) {
       send('baseline', this.baseline)

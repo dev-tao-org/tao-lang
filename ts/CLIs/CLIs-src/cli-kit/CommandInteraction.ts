@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import type { FS } from '@shared/os'
+import type { Exec, FS } from '@shared/os'
 import type { OutputChannel } from './output/Output'
 
 /** Command identifies an executable with optional space-separated arguments or explicit argv. */
@@ -9,10 +9,8 @@ type InheritedOutputMode = 'inherit' | 'ignore'
 type InteractiveOption = 'variadicArgs' | 'cwd' | 'addEnv' | 'signal'
 
 /** CommandRunOptions controls a supervised command with optional explicit file input. */
-export type CommandRunOptions = {
+export type CommandRunOptions = Exec.CommandOptions & {
   variadicArgs?: readonly string[]
-  cwd?: string
-  addEnv?: Record<string, EnvironmentValue>
   stdin?: FS.File
   stdout?: InheritedOutputMode
   stderr?: InheritedOutputMode
@@ -26,8 +24,6 @@ export type InteractiveCommandOptions = Pick<CommandRunOptions, InteractiveOptio
 
 /** CommandInteractionMode selects terminal ownership independently of output routing. */
 export type CommandInteractionMode = 'interactive' | 'noninteractive'
-
-type EnvironmentValue = string | undefined
 
 /** CommandInteractionOperations supplies prompt ownership and shared process execution. */
 export type CommandInteractionOperations = {

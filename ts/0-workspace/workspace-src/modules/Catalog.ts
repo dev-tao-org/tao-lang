@@ -112,9 +112,7 @@ async function isSafeDirectory(path: string, boundary: string): Promise<boolean>
 
 type SourceDirectoryEntry = { name: string; isFile(): boolean; isDirectory(): boolean }
 
-async function readDirectoryEntries(
-  path: string,
-): Promise<SourceDirectoryEntry[]> {
+async function readDirectoryEntries(path: string): Promise<SourceDirectoryEntry[]> {
   const fallback: SourceDirectoryEntry[] = []
   return await Try.WithDefault(fallback, () => FS.readdir(path, { withFileTypes: true }))
 }

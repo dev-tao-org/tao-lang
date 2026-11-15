@@ -154,9 +154,7 @@ Tests.test('shell setup uses a short consent prompt and enables activation once 
       "Auto-load Tao's dev environment in zsh when you enter this repo (and its worktrees)?",
     )
     Tests.expect(await FS.readFile(fixtureState.zshrc, 'utf8')).toContain(sourceLine)
-    Tests.expect(await FS.readFile(Path.join(fixtureState.shell, 'activation.zsh'), 'utf8')).toBe(
-      '# runtime fixture\n',
-    )
+    Tests.expect(await FS.readFile(Path.join(fixtureState.shell, 'activation.zsh'), 'utf8')).toBe('# runtime fixture\n')
     Tests.expect(await FS.readFile(fixtureState.choice, 'utf8')).toBe('enabled\n')
   })
 })
@@ -176,9 +174,7 @@ Tests.test('reconfiguring an enabled shell setup off revokes only its direnv all
       args: ['deny', fixtureState.root],
       command: 'direnv',
     })
-    Tests.expect(await FS.readFile(Path.join(fixtureState.shell, 'activation.zsh'), 'utf8')).toBe(
-      '# runtime fixture\n',
-    )
+    Tests.expect(await FS.readFile(Path.join(fixtureState.shell, 'activation.zsh'), 'utf8')).toBe('# runtime fixture\n')
     Tests.expect(result.output.at(-1)).toContain('./agent shell-setup --configure')
     Tests.expect(result.output.at(-1)).toContain('every already-open zsh terminal')
     Tests.expect(result.output.at(-1)).toContain(sourceLine)

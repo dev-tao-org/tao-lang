@@ -149,9 +149,7 @@ function createExecutor(invocations: string[][]): BunExecutor {
       return { status: 0, stdout: '1.2.0' + NewlineCharacter, stderr: '' }
     }
     invocations.push([...args])
-    const manifest = Json.Parse(
-      await FS.readFile(Path.join(cwd, 'package.json'), 'utf8'),
-    ) as ManagedPatchFixtureRecord
+    const manifest = Json.Parse(await FS.readFile(Path.join(cwd, 'package.json'), 'utf8')) as ManagedPatchFixtureRecord
     if (manifest.patchedDependencies) {
       Tests.expect(await FS.exists(Path.join(cwd, 'patches/fixture.patch'))).toBe(true)
     }

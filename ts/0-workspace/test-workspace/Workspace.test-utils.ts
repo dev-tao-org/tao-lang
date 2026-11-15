@@ -65,7 +65,7 @@ export async function linkStandaloneLibraryDependencies(directory: string): Prom
 async function linkInstalledPackage(name: string, owner: string, modules: string): Promise<string> {
   const installed = FS.resolvePackageDirectory(name, owner)
   if (!installed) {
-    Errors.ThrowHostEnvironment(`Missing pinned test dependency ${name}; run ./agent setup --frozen-lockfile.`)
+    Errors.ThrowHostEnvironment(`Missing pinned test dependency ${name}; run ./agent unsandboxed setup.`)
   }
   const source = FS.realpathSync(installed)
   const destination = Path.join(modules, name)

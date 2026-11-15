@@ -2,6 +2,7 @@ import { NewlineCharacter } from '../../universal/Characters'
 import * as PreviewOutcomeTrackerModule2 from '../../universal/PreviewOutcomeTracker'
 import * as Styles from '../../universal/Styles'
 import * as Time from '../../universal/Time'
+import * as Http from '../../web/net/Http'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 
 type PreviewControlSignal = PreviewOutcomeTrackerModule2.PreviewIdentity & {
@@ -22,17 +23,19 @@ export class PreviewRecovery {
   private baseline?: PreviewOutcomeTrackerModule2.PreviewExpectation
   private cancelTimer?: () => void
   private disposed = false
+  private readonly onPageHide = () => this.dispose()
 
   constructor(
     private readonly frame: WebHost.HTMLIFrameElement,
+    initialUrl: string,
     sessionId: string,
     frameId: string,
     timeoutMs = 10_000,
   ) {
     this.tracker = new PreviewOutcomeTrackerModule2.PreviewOutcomeTracker(sessionId, frameId, timeoutMs)
     this.panel = createRecoveryPanel(() => this.reload(true))
-    WebHost.getBrowserWindow().addEventListener('pagehide', () => this.dispose(), { once: true })
-    this.reload(false)
+    WebHost.getBrowserWindow().addEventListener('pagehide', this.onPageHide, { once: true })
+    this.reload(false, initialUrl)
   }
 
   expect(expectation: PreviewOutcomeTrackerModule2.PreviewExpectation): void {
@@ -86,9 +89,7 @@ export class PreviewRecovery {
     return bootId === this.bootId
   }
 
-  receiveControlSignal(
-    signal: PreviewControlSignal,
-  ): boolean {
+  receiveControlSignal(signal: PreviewControlSignal): boolean {
     if (signal.type === 'tao.preview-connection') {
       this.reportConnection(signal.connected === true)
     } else if (signal.type === 'tao.preview-error') {
@@ -120,17 +121,18 @@ export class PreviewRecovery {
 
   dispose(): void {
     this.disposed = true
+    WebHost.getBrowserWindow().removeEventListener('pagehide', this.onPageHide)
     this.cancelTimer?.()
     this.panel.remove()
   }
 
-  private reload(manual: boolean): void {
+  private reload(manual: boolean, initialUrl = this.frame.src): void {
     if (manual) {
       this.tracker.manualRecovery()
     }
     this.bootId = WebHost.crypto.randomUUID()
     this.tracker.bindInstance(this.bootId)
-    const url = new WebHost.URL(this.frame.src)
+    const url = Http.url(initialUrl)
     url.searchParams.set('bootId', this.bootId)
     this.frame.src = url.toString()
     const expectation = this.baseline ?? this.latest

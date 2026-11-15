@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path, Platform, Repo, WorkspaceWatch } from '@shared/os'
+import { Artifacts, FileWatch, FS, Path, Platform, Repo } from '@shared/os'
 import { FileManager } from '../workspace-src/FileManager/FileManager'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
@@ -53,7 +53,7 @@ Tests.test('managed preview accepts an aliased entry inside its canonical discov
   })
 })
 
-type OptionalWatchChangeHandler = ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
+type OptionalWatchChangeHandler = ((change: FileWatch.FileChange) => void) | undefined
 
 Tests.test('aliased output exclusions retain canonical identity before generated directories exist', async () => {
   const root = Artifacts.resolvePath('tmp', `output-identity-${Platform.randomUUID()}`)

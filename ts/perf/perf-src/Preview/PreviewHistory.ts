@@ -1,7 +1,8 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import * as PreviewHistoryStore from './PreviewHistoryStore'
+import { PreviewRenderSteps } from './PreviewRenderSteps'
 
 /** PreviewHistoryOptions supplies the checkout and Git boundary for commit-linked capture. */
 export type PreviewHistoryOptions = {
@@ -15,12 +16,7 @@ export async function recordPreviewPerformance(
   options: PreviewHistoryOptions = {},
 ): Promise<{ directory: string; reused: boolean }> {
   const root = options.directory ?? Repo.getWorkspaceRoot()
-  const git = options.git ?? ((args, exact) =>
-    Processes.capture('git', {
-      variadicArgs: args,
-      cwd: root,
-      trim: !exact,
-    }))
+  const git = options.git ?? ((args, exact) => Exec.captureStdout('git', args, { cwd: root, trim: !exact }))
   const context = await captureContext(git)
   const pending = Path.join(root, '.artifacts/notes/preview-history')
   return await BuildLock.withBuildLock(Path.join(pending, `${context.sourceCommit}.lock`), async () => {
@@ -87,7 +83,7 @@ function newRecord(context: Context): PreviewHistoryStore.HistoryRecord {
     status: 'failed',
     command: './agent unsandboxed performance record',
     fixture: { path: fixturePath, sha256: context.fixtureSha256 },
-    scenarios: ['text', 'add-text', 'row', 'reset'],
+    scenarios: PreviewRenderSteps.map(step => step.name),
     sourceIsolation:
       'Committed fixture copied into the generated benchmark workspace; passed records require clean implementation inputs before and after capture. Raw report dirty-state provenance is preserved.',
   }

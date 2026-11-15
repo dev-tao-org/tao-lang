@@ -51,9 +51,16 @@ when it clarifies real ownership, rather than creating a wrapper for every direc
 For case-only moves, verify the staged/committed Git spelling as well as the physical filename;
 a clean status on a case-insensitive filesystem does not prove they agree.
 
-Shared host responsibilities are grouped under FS, Storage, Process, Processes, Browsers, Net and
-Tooling. `Process` owns the current process; `Processes` owns children. Env and Terminal build on
+Shared host responsibilities are grouped under FS, Storage, Process, Exec, Browsers, net and
+Tooling. `Process` owns the current process and `Exec` owns children. Env and Terminal build on
 the current-process boundary. Browser, preview and dependency-light bootstrap entries stay separate.
+`Exec.capture` waits for the complete result, `Exec.captureStdout` returns stdout after a successful
+exit, and `Exec.spawn` returns a live child with configurable streams. Each takes an exact executable
+name or path, optional positional arguments and optional settings. Argument strings split on whitespace.
+Pass an array for dynamic arguments, arguments containing spaces and empty arguments. `Exec.runSync`
+uses the same call forms for synchronous host probes.
+`@shared/web` owns HTTP requests, WebSocket connections and server-sent events. Bun server startup
+and Node HTTP and socket adapters live under `os/net`.
 
 Each package has one `test-<package>/` root. Tests mirror source-folder responsibilities, not source
 files one for one: a source folder `builds/sidecar/` uses `builds/sidecar.test.ts`, or multiple

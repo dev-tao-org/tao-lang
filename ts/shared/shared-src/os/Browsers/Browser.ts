@@ -1,7 +1,7 @@
 import { Errors, Switch } from '@shared'
 import { Platform } from '@shared/os'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
-import * as Processes from '../Processes'
+import * as Exec from '../Exec'
 
 /** build bundles browser entry points for a local tooling surface. */
 export async function build(entrypoints: string[], outdir: string): Promise<BunHost.BuildOutput> {
@@ -28,9 +28,10 @@ type BrowserHost = {
 function nativeBrowser(): BrowserHost {
   return {
     os: Platform.systemInfo().os,
-    requireAccess: Processes.requireHostProcessAccess,
-    async start(command) {
-      const child = Processes.spawnSilent(command)
+    requireAccess: Exec.requireHostProcessAccess,
+    async start([command, ...args]) {
+      const child = Exec.spawn(command, args, { stdout: 'ignore', stderr: 'ignore' })
+      child.unref()
       return await child.exited
     },
   }

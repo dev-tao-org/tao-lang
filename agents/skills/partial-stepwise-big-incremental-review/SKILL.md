@@ -90,21 +90,18 @@ description: >-
   verification before readiness to land. Omit detailed test ledgers and application reruns for
   acceptance-only transfers.
 
-## Presentation formats
+## Presentation
 
-Propose feature sets, group counts and Tao examples; get agreement first.
-
-List remaining group titles, then the current set of groups and their files:
+Use indented lists. Nest proposed groups under feature sets and numbered files under their groups.
+List remaining group titles before the current groups and omit unused headings.
 
 ```text
 **X% done** — <completed>/<frozen total> original review units.
-Remaining groups: <titles only>
-**<Current group and brief summary>** — X folders, Y files, Z hunks
-1. F43 New: <Absolute file link> (+24 −0)
-2. F50: <Absolute file link> (+8 −3)
-```
 
-Omit unused headings. End at the file list, except an outstanding subagent-readiness footer.
+- **<Current group and summary>** — X folders, Y files, Z hunks
+  1. F43 New: <Absolute file link> (+24 −0)
+  2. F50: <Absolute file link> (+8 −3)
+```
 
 ## Interpret approval
 
@@ -119,7 +116,8 @@ Omit unused headings. End at the file list, except an outstanding subagent-readi
   messages" to the narrowest sound content using the conversation and current diff.
 - Execute unambiguous approvals promptly. If scope is materially ambiguous or requires additional
   unreviewed context, show short exact excerpts and links to the proposed sections, recommend a
-  boundary, and ask one focused question. Use [decision rounds](../decision-rounds/SKILL.md) only
+  boundary, and ask one focused question. Use
+  [dialogue decision design conversation](../dialogue-decision-design-conversation/SKILL.md) only
   when an actual design discussion is needed. Never broaden approval because copying a whole file
   or applying a three-way merge would be easier.
 - Ask permission before launching a read-only [reviewer](../code-review/SKILL.md) for a concrete

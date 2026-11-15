@@ -47,7 +47,7 @@ export function beginPreviewRevision(revision: string): void {
 
 type PreviewEventType = 'tao.preview-applied' | 'tao.update-done'
 /** reportPreviewEvent sends one revision-specific client event to its configured parent. */
-export function reportPreviewEvent(type: PreviewEventType, revision?: string): void {
+export function reportPreviewEvent(type: PreviewEventType, revision?: string, metroDeltaModules?: number): void {
   const state = previewState()
   if (!state?.revision || (revision && revision !== state.revision)) {
     return
@@ -65,6 +65,7 @@ export function reportPreviewEvent(type: PreviewEventType, revision?: string): v
     localTime: Time.nowMs(),
     timeOrigin: WebHost.performance.timeOrigin,
     moduleAppliedAtMs: state.moduleAppliedAtMs,
+    metroDeltaModules,
     timings: [...state.timings],
   }, state.parentOrigin)
 }

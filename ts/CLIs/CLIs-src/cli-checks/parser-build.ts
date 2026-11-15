@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
@@ -98,9 +98,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
     sources,
     lock: Platform.hashText(await FS.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
-    node: parseParserNodeMetadata(
-      await Processes.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
-    ),
+    node: parseParserNodeMetadata(await Exec.captureStdout('node', ['-p', nodeMetadataProbe])),
     environment: await collectEnvironmentInputs(),
   }
 }

@@ -37,7 +37,8 @@ Tests.test('timing reports select the previous comparable measurement and never 
   await presentTimingReport(current, print, directory)
   Tests.expect(printed[0]).toBe(printed[1])
   Tests.expect(printed[0]).toContain('Baseline: baseline · 2026-11-01T10:00:00.000Z')
-  Tests.expect(printed[0]).toContain('warm/text: +5.00 ms (+25.0%); session ranges overlap')
+  Tests.expect(printed[0]).toContain('  Change    This run    Baseline  Metric')
+  Tests.expect(printed[0]).toContain('  +25.0%    25.00 ms    20.00 ms  warm/text · session ranges overlap')
   Tests.expect(printed[0]).toContain('Skipped 2 saved report(s) lacking valid provenance or measurements.')
   Tests.expect(printed[0]).toContain(
     'Machine drift control: measured source tree is unchanged; any detected shift requires confirmation.',

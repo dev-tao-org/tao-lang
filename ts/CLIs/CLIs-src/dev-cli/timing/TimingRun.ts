@@ -67,7 +67,9 @@ export function requireTimingRun(options: TimingRun): void {
     Errors.ThrowUserInput('Use absolute paths for the runner checkout and optional tooling checkout.')
   }
   if (!hasValidWorkload(options)) {
-    Errors.ThrowUserInput('Use a positive session count and an edit count that is a positive multiple of four.')
+    Errors.ThrowUserInput(
+      `Use a positive session count and an edit count that is a positive multiple of ${Perf.PreviewCycleSize}.`,
+    )
   }
   if (options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)) {
     Errors.ThrowUserInput('Use an absolute runner fixture path.')

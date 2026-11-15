@@ -2,4 +2,4 @@ version = 1
 name = "tao-lang"
 
 [setup]
-script = "./agent setup --frozen-lockfile"
+script = "./agent unsandboxed setup"

@@ -172,9 +172,7 @@ export async function decryptSecretValues(
   for (const name of names) {
     const value = await Try(() => cipher.decryptWithKey(store.secrets[name]!.value.join(NewlineCharacter), secretKey), {
       catch: () =>
-        Errors.ThrowUserInput(
-          `${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`,
-        ),
+        Errors.ThrowUserInput(`${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`),
     })
     values.set(name, value)
   }

@@ -239,9 +239,7 @@ async function verifyCreatedApplications(
   Tests.expect(manifest.dependencies).toEqual(dependencyVersions)
   Tests.expect(manifest.devDependencies).toEqual({})
   Tests.expect(FS.lstatSync(Path.join(first.directory, 'src/_gen_runtime')).isSymbolicLink()).toBe(true)
-  Tests.expect(FS.realpathSync(Path.join(first.directory, 'src/_gen_runtime'))).toBe(
-    FS.realpathSync(resourcesB),
-  )
+  Tests.expect(FS.realpathSync(Path.join(first.directory, 'src/_gen_runtime'))).toBe(FS.realpathSync(resourcesB))
   Tests.expect(FS.realpathSync(Path.join(otherRuntime.directory, 'src/_gen_runtime')))
     .toBe(FS.realpathSync(resourcesA))
   Tests.expect(FS.realpathSync(Path.join(changed.directory, 'src/_gen_runtime')))

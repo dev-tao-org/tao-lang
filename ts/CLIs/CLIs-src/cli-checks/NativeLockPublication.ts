@@ -1,6 +1,6 @@
 import { Json } from '@shared'
 import { Errors, Try } from '@shared'
-import { FS, Path, Platform, SessionLock } from '@shared/os'
+import { FileLock, FS, Path, Platform } from '@shared/os'
 
 /** NativeLockPointer identifies the immutable addon installation for one build identity. */
 export type NativeLockPointer = { identity: string; directory: string }
@@ -13,7 +13,7 @@ export async function readNativeLockPointerForSetup(root: string): Promise<Nativ
 
 /** nativeLockVersionRoot resolves only a direct, identity-matched addon version directory. */
 export function nativeLockVersionRoot(root: string, pointer: NativeLockPointer): string {
-  if (!SessionLock.isSafeVersionName(pointer.identity, pointer.directory)) {
+  if (!FileLock.isSafeVersionName(pointer.identity, pointer.directory)) {
     Errors.ThrowHostEnvironment(`Native lock version directory is invalid: ${pointer.directory}`)
   }
   const absoluteRoot = Path.resolve(root)

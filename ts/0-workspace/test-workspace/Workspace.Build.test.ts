@@ -2,7 +2,7 @@ import type * as Runtime from '@runtime'
 import type * as Expo from '@runtime/expo'
 import * as Tests from '@shared-tests'
 
-import { Time, Timings, Try } from '@shared'
+import { Timings, Try } from '@shared'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { publishBuild } from '../workspace-src/Workspace'
 
@@ -313,21 +313,12 @@ type DeferredPublication = {
 }
 
 function createDeferredPublication(): DeferredPublication {
-  let resolvePublication: (outcome: Expo.PublicationOutcome) => void = () => {}
-  let started = false
-  const promise = new Promise<Expo.PublicationOutcome>(resolve => {
-    resolvePublication = resolve
-  })
+  const publication = Promise.withResolvers<Expo.PublicationOutcome>()
+  const started = Promise.withResolvers<void>()
   return {
-    promise,
-    start() {
-      started = true
-    },
-    complete: outcome => resolvePublication(outcome),
-    async wait() {
-      while (!started) {
-        await Time.sleep(0)
-      }
-    },
+    promise: publication.promise,
+    start: () => started.resolve(),
+    complete: outcome => publication.resolve(outcome),
+    wait: () => started.promise,
   }
 }

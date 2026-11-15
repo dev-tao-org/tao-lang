@@ -163,9 +163,7 @@ async function installActivation(
   const resolvedPackage = environment.resolveDirenvPackage?.(profileClient)
   let output = resolvedPackage
   if (output === undefined) {
-    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
-      Regxs.NixDirenvExecutableRegx,
-    )?.[1]
+    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(Regxs.NixDirenvExecutableRegx)?.[1]
   }
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
@@ -190,7 +188,7 @@ async function installActivation(
   const completionPath = Path.resolve(root, '.artifacts/cache/dev-shell/completion.zsh')
   const completion = FS.existsSync(completionPath)
     ? await FS.readFile(completionPath, 'utf8')
-    : ('# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter)
+    : ('# Tao dev shell completion is generated during ./agent unsandboxed setup.' + NewlineCharacter)
   const rooted = await environment.run('nix-store', {
     args: ['--realise', output, '--add-root', Path.resolve(shellRoot, 'direnv'), '--indirect'],
     cwd: root,

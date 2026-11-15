@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
+import { Regxs } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 
 /** LandingIO isolates command and file effects so workflow tests never launch Git or GitHub. */
 export type LandingIO = {
@@ -21,7 +22,8 @@ export function createLandingIO(): LandingIO {
       if (progress) {
         IO.progress(progress)
       }
-      return Processes.capture(command, { variadicArgs: args, cwd: directory, trim: false })
+      const [executable, ...fixedArgs] = command.split(Regxs.SpacesRegx)
+      return Exec.captureStdout(executable, [...fixedArgs, ...args], { cwd: directory, trim: false })
     },
     read: path => FS.readFile(Path.resolve(root, path), 'utf8'),
     exists: path => FS.exists(Path.resolve(root, path)),
