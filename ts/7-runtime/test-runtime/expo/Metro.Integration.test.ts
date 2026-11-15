@@ -2,7 +2,8 @@ import { Json } from '@shared'
 import { Errors, Objects, S, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, Env, FS, Http, MetroPlatform, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, Env, FS, Path, Platform, Repo } from '@shared/os'
+import { Http, WebSocket } from '@shared/web'
 import type { ExpoSession } from '../../runtime-src/expo/Expo/Expo'
 import type { GeneratedRevision } from '../../runtime-src/expo/PreviewProtocol'
 import * as Runtime from '../../runtime-src/Runtime'
@@ -54,7 +55,7 @@ async function verifyOverlapAndRepair(session: ExpoSession, publishBeforeAdmissi
   await Http.request(`${session.url}/__tao_test/arm`)
   const initial = Http.request(bundleUrl).then(response => response.text())
   await waitFor(async () => (await readStatus(session.url)).held === true)
-  const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
+  const socket = WebSocket.connect(`${session.url.replace('http:', 'ws:')}/hot`)
   const messages: MetroSocketMessage[] = []
   socket.addEventListener('message', event => messages.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)
@@ -118,7 +119,7 @@ async function verifyMultipleGroups(
 ): Promise<void> {
   const bundleUrl = originalBundleUrl.replace('dev=true', 'dev=false')
   Tests.expect((await Http.request(bundleUrl)).ok).toBe(true)
-  const socket = MetroPlatform.openWebSocket(`${session.url.replace('http:', 'ws:')}/hot`)
+  const socket = WebSocket.connect(`${session.url.replace('http:', 'ws:')}/hot`)
   const secondary: typeof primary = []
   socket.addEventListener('message', event => secondary.push(Json.Parse(String(event.data)) as MetroSocketMessage))
   await waitFor(async () => socket.readyState === 1)

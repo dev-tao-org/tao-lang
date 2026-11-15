@@ -1,5 +1,5 @@
 import { Errors, Json, NewlineCharacter, Regxs, Sort, Try } from '@shared'
-import { FS, Path, Platform, SessionLock } from '@shared/os'
+import { FileLock, FS, Path, Platform } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
 /** encodeLearningSnapshot retains insertion order in the complete scan identity. */
@@ -19,7 +19,7 @@ export async function withLearningState<Value>(
 ): Promise<Value> {
   const directory = Path.join(root, '.artifacts/notes/review-learning')
   await ensureProjectMetadataDirectory(root, directory)
-  const lock = await SessionLock.acquire(Path.join(directory, 'operation.lock'))
+  const lock = await FileLock.tryAcquire(Path.join(directory, 'operation.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another review learning operation is active.')
   }

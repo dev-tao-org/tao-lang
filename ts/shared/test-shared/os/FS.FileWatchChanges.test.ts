@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 
-import { reconcileWatchChanges } from '../../shared-src/os/FS/WorkspaceWatchChanges'
+import { reconcileWatchChanges } from '../../shared-src/os/FS/FileWatchChanges'
 
 type WatchStamp = string | undefined
 

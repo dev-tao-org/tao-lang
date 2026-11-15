@@ -3,7 +3,7 @@ import * as CLIKit from '@cli-kit'
 import * as Perf from '@perf'
 import { Json } from '@shared'
 import { Errors, Regxs, Time, Try } from '@shared'
-import { Env, FS, Path, Platform, Repo, SessionLock, Storage } from '@shared/os'
+import { Env, FileLock, FS, Path, Platform, Repo, Storage } from '@shared/os'
 import { runWithEvidence } from './Evidence'
 import { captureGit, resolveCommit } from './Git'
 import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFiles'
@@ -39,7 +39,7 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
   requireRunnerOptions(options)
   const path = Storage.resolveSupportDirectory('locks', TimingLockName)
   await FS.mkdir(Path.dirname(path))
-  const lock = await SessionLock.acquire(path)
+  const lock = await FileLock.tryAcquire(path)
   if (!lock) {
     Errors.ThrowHostEnvironment(
       'Another performance investigation owns this account’s timing lock. Retry when it finishes.',

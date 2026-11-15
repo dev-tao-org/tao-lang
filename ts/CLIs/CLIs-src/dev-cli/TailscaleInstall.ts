@@ -1,7 +1,8 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { FS, Http, Path, Platform, Storage, Terminal } from '@shared/os'
+import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
+import { Http } from '@shared/web'
 
 /** installTailscale installs the official standalone macOS package without replacing an existing app variant. */
 export async function installTailscale(dryRun: boolean, io: InstallIO = createSystemInstallIO()): Promise<void> {

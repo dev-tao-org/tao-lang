@@ -14,7 +14,7 @@
 class LockHandle : public Napi::ObjectWrap<LockHandle> {
  public:
   static Napi::Function Init(Napi::Env env) {
-    return DefineClass(env, "SessionLock", { InstanceMethod("release", &LockHandle::Release) });
+    return DefineClass(env, "FileLock", { InstanceMethod("release", &LockHandle::Release) });
   }
 
   LockHandle(const Napi::CallbackInfo& info) : Napi::ObjectWrap<LockHandle>(info) {
@@ -75,7 +75,7 @@ const char* PortableErrorCode(unsigned long code) {
   if (code == EACCES) return "EACCES";
   if (code == EPERM) return "EPERM";
 #endif
-  return "ERR_SESSION_LOCK_OS";
+  return "ERR_FILE_LOCK_OS";
 }
 
 Napi::Value Acquire(const Napi::CallbackInfo& info) {
@@ -130,7 +130,7 @@ Napi::Value Acquire(const Napi::CallbackInfo& info) {
 }
 
 void ThrowLockError(Napi::Env env, const std::string& path, const char* operation, unsigned long code) {
-  std::string message = "Cannot " + std::string(operation) + " session lock file '" + path + "' (OS error "
+  std::string message = "Cannot " + std::string(operation) + " file lock file '" + path + "' (OS error "
       + std::to_string(code) + ")";
   Napi::Error error = Napi::Error::New(env, message);
   error.Set("code", Napi::String::New(env, PortableErrorCode(code)));

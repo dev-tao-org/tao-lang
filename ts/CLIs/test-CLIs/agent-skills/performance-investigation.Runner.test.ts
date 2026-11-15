@@ -20,9 +20,7 @@ Tests.test('measurement failure retains completed samples and records a failed j
       }
       return report
     })).rejects.toThrow('Fixture measurement failed')
-    const saved = Json.Parse(
-      await FS.readFile(Path.join(directory, 'job.json'), 'utf8'),
-    ) as MeasurementFixtureRecord
+    const saved = Json.Parse(await FS.readFile(Path.join(directory, 'job.json'), 'utf8')) as MeasurementFixtureRecord
     Tests.expect(saved.status).toBe('failed')
     Tests.expect(saved.samples).toEqual(['sample-1.json'])
     Tests.expect(saved.finishedAt).toBeString()
@@ -94,9 +92,7 @@ Tests.test('postvalidation failures retain raw reports and logs even after the c
     })).rejects.toThrow('Postvalidation failed')
     Tests.expect(await FS.readFile(Path.join(directory, 'failed-preview-preview.json'), 'utf8'))
       .toBe('{"wrongCommit":true}')
-    Tests.expect(await FS.readFile(Path.join(directory, 'failed-preview-service.log'), 'utf8')).toBe(
-      'diagnostic',
-    )
+    Tests.expect(await FS.readFile(Path.join(directory, 'failed-preview-service.log'), 'utf8')).toBe('diagnostic')
   })
 })
 

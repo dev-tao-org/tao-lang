@@ -1,9 +1,10 @@
 import { Json } from '@shared'
-import { Addr, Errors, NewlineCharacter, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Files, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
+import { Addr } from '@shared/web'
 import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
@@ -119,11 +120,11 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    const child = Processes.spawnPiped([command, ...args, ...registryArguments], { cwd, addEnv })
+    const child = Exec.spawn(command, [...args, ...registryArguments], { cwd, addEnv })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     const lockExists = await FS.exists(Path.join(cwd, 'bun.lock'))
     return lockExists || status !== 0

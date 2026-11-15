@@ -1,43 +1,46 @@
-import { Errors, Lists, Regxs, Sort, Time, Try } from '@shared'
+import { Errors, Lists, Sort, Time, Try } from '@shared'
 import { Path } from '@shared/os'
 import type { FSWatcher } from '../bridges/Bridge_chokidar'
 import type { Stats } from '../bridges/Bridge_node/Bridge_node'
-import { reconcileWatchChanges, watchStamp } from './WorkspaceWatchChanges'
+import { reconcileWatchChanges, watchStamp } from './FileWatchChanges'
 
-/** WorkspaceChange identifies one authored file or directory notification. */
-export type WorkspaceChange = {
+/** FileChange identifies one file or directory notification. */
+export type FileChange = {
   path: string
-  kind: WorkspaceChangeKind
+  kind: ChangeKind
   observedAtMs: number
 }
 
-/** WorkspaceWatcher updates dynamic observation roots and releases native subscriptions. */
-export type WorkspaceWatcher = {
+/** Watcher updates dynamic observation roots and releases native subscriptions. */
+export type Watcher = {
   updateDirectories?(additionalDirectories: readonly string[], ignoredDirectories: readonly string[]): Promise<void>
   dispose(): Promise<void>
 }
 
-/** WorkspaceWatchSession is the Chokidar handle that observes a workspace tree. */
-export type WorkspaceWatchSession = FSWatcher
+/** WatchTreeOptions selects extra roots and paths to exclude from observation. */
+export type WatchTreeOptions = {
+  additionalDirectories?: readonly string[]
+  ignoredDirectories?: readonly string[]
+  ignorePath?: (relativePath: string) => boolean
+}
 
 type WatchChangeReconciliation = {
   observe(path: string, stamp: string): void
   dispose(): void
 }
 
-/** watchWorkspace observes a source tree without following links or debouncing compilation.
- *  Resolves after initial discovery; generated, hidden and installed trees are excluded. */
-export async function watchWorkspace(
+/** watchTree observes file and directory changes without following links.
+ *  Resolves after initial discovery. */
+export async function watchTree(
   directory: string,
-  onChange: (change: WorkspaceChange) => void,
+  onChange: (change: FileChange) => void,
   onError: (error: unknown) => void,
-  ignoredDirectories: readonly string[] = [],
-  additionalDirectories: readonly string[] = [],
-): Promise<WorkspaceWatcher> {
+  options: WatchTreeOptions = {},
+): Promise<Watcher> {
   const root = Path.resolve(directory)
-  const excluded = collectUniquePaths(ignoredDirectories)
-  const roots = [root, ...collectUniquePaths(additionalDirectories).filter(path => path !== root)]
-  const watcher = await createWatcher(roots, excluded)
+  const excluded = collectUniquePaths(options.ignoredDirectories ?? [])
+  const roots = [root, ...collectUniquePaths(options.additionalDirectories ?? []).filter(path => path !== root)]
+  const watcher = await createWatcher(roots, excluded, options.ignorePath)
   let ready = false
   let disposed = false
   const reconciliation = reconcileWatchChanges(path => {
@@ -73,17 +76,17 @@ export async function watchWorkspace(
   return dynamicWatcher(watcher, root, roots, excluded, reconciliation, () => disposed, () => disposed = true)
 }
 
-type WorkspaceChangeKind = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
+type ChangeKind = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
 
 function dynamicWatcher(
-  watcher: WorkspaceWatchSession,
+  watcher: FSWatcher,
   root: string,
   roots: string[],
   excluded: string[],
   reconciliation: WatchChangeReconciliation,
   isDisposed: () => boolean,
   dispose: () => void,
-): WorkspaceWatcher {
+): Watcher {
   let updates = Promise.resolve()
   return {
     updateDirectories(additional, ignored) {
@@ -115,7 +118,7 @@ function dynamicWatcher(
   }
 }
 
-async function createWatcher(roots: string[], excluded: string[]) {
+async function createWatcher(roots: string[], excluded: string[], ignorePath: WatchTreeOptions['ignorePath']) {
   const { watch } = await import('../bridges/Bridge_chokidar')
   return watch(roots, {
     ignoreInitial: true,
@@ -123,22 +126,33 @@ async function createWatcher(roots: string[], excluded: string[]) {
     usePolling: false,
     awaitWriteFinish: false,
     atomic: 5,
-    ignored: (path, stats) => ignoredRootsPath(roots, path, excluded, stats),
+    ignored: (path, stats) => ignoredRootsPath(roots, path, excluded, ignorePath, stats),
   })
 }
 
-function ignoredRootsPath(roots: readonly string[], path: string, excluded: readonly string[], stats?: Stats): boolean {
+function ignoredRootsPath(
+  roots: readonly string[],
+  path: string,
+  excluded: readonly string[],
+  ignorePath: WatchTreeOptions['ignorePath'],
+  stats?: Stats,
+): boolean {
   const root = roots.find(root => withinDirectory(root, path))
-  return root === undefined || ignoredPath(root, path, excluded, stats)
+  return root === undefined || ignoredPath(root, path, excluded, ignorePath, stats)
 }
 
-function ignoredPath(root: string, path: string, excluded: readonly string[], stats?: Stats): boolean {
+function ignoredPath(
+  root: string,
+  path: string,
+  excluded: readonly string[],
+  ignorePath: WatchTreeOptions['ignorePath'],
+  stats?: Stats,
+): boolean {
   const relative = Path.relative(root, path)
   if (!relative) {
     return false
   }
-  const parts = relative.split(Regxs.PathSeparatorRegx)
-  return parts.some(ignoredName) || stats?.isSymbolicLink() === true
+  return ignorePath?.(relative) === true || stats?.isSymbolicLink() === true
     || excluded.some(root => withinDirectory(root, path))
 }
 
@@ -150,10 +164,6 @@ function collectUniquePaths(paths: readonly string[]): string[] {
   return Lists.unique(paths.map(path => Path.resolve(path))).sort(Sort.CompareStrings)
 }
 
-function ignoredName(name: string): boolean {
-  return name.startsWith('.') || name.startsWith('_gen_') || name === 'node_modules'
-}
-
-function isChangeKind(kind: string): kind is WorkspaceChange['kind'] {
+function isChangeKind(kind: string): kind is FileChange['kind'] {
   return ['add', 'change', 'unlink', 'addDir', 'unlinkDir'].includes(kind)
 }

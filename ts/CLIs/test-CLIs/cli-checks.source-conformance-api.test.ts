@@ -81,9 +81,7 @@ Tests.test('source conformance > resolves imported member types before recommend
       token ? token.text as 'label' : undefined
     `
     await FS.write(Path.join(root, 'ts/consumer.ts'), source)
-    await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
-      'ts/consumer.ts:5: prefer optional access',
-    )
+    await Tests.expect(checkSourceConformance(root)).rejects.toThrow('ts/consumer.ts:5: prefer optional access')
     await FS.write(
       Path.join(root, 'ts/consumer.ts'),
       source.replace(

@@ -1,12 +1,13 @@
 import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
-import { FS, Processes, Repo, Text } from '@shared/os'
+import { Exec, FS, Repo, Text } from '@shared/os'
 import { outputFixturePath } from './output.test-fixtures'
 
 const LogPathRegx = /Logs: (.+?\.log)/
 
 Tests.test('dashboard prompts and failure completion retain all output in Ink panes and hide secret pastes', async () => {
-  const result = await Processes.runIgnoreStatus(['bun', 'run', outputFixturePath, 'pane-interactive'], {
+  const result = await Exec.capture('bun', ['run', outputFixturePath, 'pane-interactive'], {
+    check: false,
     cwd: Repo.getWorkspaceRoot(),
     addEnv: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', CLI_OUTPUT_EVENTS: undefined },
   })

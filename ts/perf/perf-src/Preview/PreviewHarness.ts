@@ -1,8 +1,8 @@
 import * as Client from '@runtime/client'
 import { Json } from '@shared'
-import { Addr, Errors, NewlineCharacter, S, Styles, Try } from '@shared'
-import * as Shared from '@shared'
-import { Artifacts, Browser, FS, Http, Path, Repo } from '@shared/os'
+import { Errors, NewlineCharacter, S, Styles, Try } from '@shared'
+import { Artifacts, Browser, FS, HttpServer, Path, Repo } from '@shared/os'
+import { Addr, EventStream, Http } from '@shared/web'
 import type * as Workspace from '@workspace'
 
 import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
@@ -38,7 +38,7 @@ export type HarnessOptions = {
 /** PreviewHarness exposes a local URL and deterministic resource disposal. */
 export type PreviewHarness = { url: string; dispose(): void }
 
-type OptionalStreamController = Http.StreamController | undefined
+type OptionalStreamController = EventStream.Controller | undefined
 type EditState = { closed: boolean; active: boolean; pending: Set<() => void> }
 type ResolvedHarnessOptions = HarnessOptions & {
   canonicalSource: string
@@ -60,7 +60,7 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
 }
 
 async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: string): Promise<PreviewHarness> {
-  const streams = new Set<Http.StreamController>()
+  const streams = new Set<EventStream.Controller>()
   const encoder = new WebHost.TextEncoder()
   const edits: EditState = { closed: false, active: false, pending: new Set() }
   const frameIds = options.frameCount === 1 ? ['left'] : ['left', 'right']
@@ -71,7 +71,7 @@ async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: s
     (revision, startedAtMs) => reload.begin(revision, startedAtMs),
     event => reload.published(event),
   )
-  const server = Http.serve({
+  const server = HttpServer.serve({
     idleTimeout: 0,
     hostname: Addr.Localhost,
     port: 0,
@@ -94,14 +94,14 @@ async function startHarnessServer(options: ResolvedHarnessOptions, sessionDir: s
 function createRequestHandler(
   options: ResolvedHarnessOptions,
   sessionDir: string,
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   publication: PreviewPublication,
   encoder: WebHost.TextEncoder,
   reload: ReloadTimings,
   edits: EditState,
 ): (request: Http.HttpRequest) => Promise<Http.HttpResponse> {
   return async request => {
-    const url = new WebHost.URL(request.url)
+    const url = Http.url(request.url)
     if (request.method === 'GET' && url.pathname === '/') {
       return pageResponse(options, url.origin)
     }
@@ -192,18 +192,20 @@ async function writeEditResponse(
   })
 }
 
+const EventRetryMs = 1000
+
 function eventsResponse(
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   publication: PreviewPublication,
   encoder: WebHost.TextEncoder,
 ): Http.HttpResponse {
   let streamController: OptionalStreamController
-  const stream = Http.stream({
+  return EventStream.response({
     start(controller) {
       streamController = controller
       streams.add(controller)
-      controller.enqueue(encoder.encode(Shared.joinTextLines('retry: 1000', '', '')))
-      publication.replay((name, data) => controller.enqueue(encodeEvent(encoder, name, data)))
+      controller.enqueue(EventStream.encodeRetry(encoder, EventRetryMs))
+      publication.replay((name, data) => controller.enqueue(EventStream.encodeJsonEvent(encoder, name, data)))
     },
     cancel() {
       if (streamController) {
@@ -211,16 +213,9 @@ function eventsResponse(
       }
     },
   })
-  return Http.response(stream, {
-    headers: {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      'connection': 'keep-alive',
-    },
-  })
 }
 
-function closeStreams(streams: Set<Http.StreamController>): void {
+function closeStreams(streams: Set<EventStream.Controller>): void {
   for (const stream of streams) {
     stream.close()
   }
@@ -228,24 +223,19 @@ function closeStreams(streams: Set<Http.StreamController>): void {
 }
 
 function sendEvent(
-  streams: Set<Http.StreamController>,
+  streams: Set<EventStream.Controller>,
   encoder: WebHost.TextEncoder,
   name: string,
   data: object,
 ): void {
-  const encoded = encodeEvent(encoder, name, data)
+  const encoded = EventStream.encodeJsonEvent(encoder, name, data)
   for (const stream of streams) {
     stream.enqueue(encoded)
   }
 }
 
-function encodeEvent(encoder: WebHost.TextEncoder, name: string, data: object): Uint8Array {
-  const message = Shared.joinTextLines(`event: ${name}`, `data: ${Json.Print(data, { prettyPrint: false })}`, '', '')
-  return encoder.encode(message)
-}
-
 function frameUrl(previewUrl: string, sessionId: string, parentOrigin: string, frameId: string): string {
-  const url = new WebHost.URL(previewUrl)
+  const url = Http.url(previewUrl)
   url.searchParams.set('sessionId', sessionId)
   url.searchParams.set('frameId', frameId)
   url.searchParams.set('parentOrigin', parentOrigin)

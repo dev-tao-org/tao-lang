@@ -3,13 +3,13 @@ import { Errors, Regxs, Try } from '../../universal/universal'
 import * as FS from '../FS'
 import * as Path from '../Path'
 import * as Platform from '../Platform'
-import * as Artifacts from './Artifacts'
+import * as Artifacts from '../Storage/Artifacts'
 
-/** SessionLock is a process-independent operating-system lock handle. */
-export type SessionLock = { release(): void; dispose(): void }
+/** FileLock holds a path-based operating-system lock until release or process exit. */
+export type FileLock = { release(): void; dispose(): void }
 
-/** acquire takes a nonblocking kernel lock and returns undefined when another process holds it. */
-export async function acquire(path: string): Promise<SessionLock | undefined> {
+/** tryAcquire takes a nonblocking kernel lock and returns undefined when another process holds it. */
+export async function tryAcquire(path: string): Promise<FileLock | undefined> {
   const root = Artifacts.resolvePath('cache/native-locks')
   const pointerPath = Path.join(root, 'current.json')
   const pointer = await readLockPointer(root, pointerPath)
@@ -64,7 +64,7 @@ async function readLockPointer(root: string, path: string): Promise<LockPointer>
         Errors.Throw(error)
       }
       Errors.ThrowHostEnvironment(
-        `Native session-lock support is not prepared. Run ./agent setup from the Tao repository before using sessions. (${path})`,
+        `Native file-lock support is not prepared. Run ./agent setup from the Tao repository before acquiring locks. (${path})`,
       )
     },
   })
@@ -86,7 +86,7 @@ function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown 
 
 function throwInvalidPointer(path: string): never {
   Errors.ThrowHostEnvironment(
-    `Native session-lock pointer is invalid or outdated. Run ./agent setup to rebuild it. (${path})`,
+    `Native file-lock pointer is invalid or outdated. Run ./agent setup to rebuild it. (${path})`,
   )
 }
 
@@ -101,7 +101,7 @@ async function loadLockBinding(path: string): Promise<LockBinding> {
         Errors.Throw(error)
       }
       Errors.ThrowHostEnvironment(
-        `The prepared native session-lock addon is missing. Run ./agent setup to rebuild it. (${path})`,
+        `The prepared native file-lock addon is missing. Run ./agent setup to rebuild it. (${path})`,
       )
     },
   })

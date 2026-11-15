@@ -67,7 +67,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
     - Prefer larger formatting fixtures exercising multiple rules over a separate test for each formatting detail.
     - Run every new test directly before finishing implementation; also run relevant existing tests when the change may affect broader behavior. If parallel agents cause failures outside your owned work, report and coordinate them without repairing their changes yourself.
     - Implement one functional piece at a time; handle newly discovered decisions using the policy above.
-  - Never launch reviews unless explicitly instructed by the developer. This includes correctness, style, conformance, file-layout and organizational-health reviews, checkpoint reviews and review follow-ups. Use `code-review` only within the requested scope; implementing, committing or landing does not authorize a review;
+  - Always use [code-review](agents/skills/code-review/SKILL.md) for developer-requested reviews. Keep rounds within the requested scope. Implementation, commits and landing require a separate review request before launching reviews;
   - After each implementation chunk, run `./agent fmt`.
   - After heavy testing and at completed-work checkpoints, periodically run `./agent clean --partial`. It retains 24 hours of successful output, all failures, active or unclassified artifacts, caches, and task notes; clean only after needed diagnostics have been inspected.
   - After completing an implementation slice, run `./agent verify` and resolve relevant failures before reporting the slice complete. Instruction-only changes require `./agent check`, without rerunning application tests; `verification-lanes` owns selection and reuse of unchanged validation evidence.

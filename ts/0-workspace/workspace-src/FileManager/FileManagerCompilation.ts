@@ -1,9 +1,10 @@
 import { Lists, Regxs, Sort, Time, Timings, Try } from '@shared'
-import { FS, Path, WorkspaceWatch } from '@shared/os'
+import { FileWatch, FS, Path } from '@shared/os'
 import { Document } from '../Document'
 import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
 import { isSetupRequired } from '../SetupRequired'
 import type { UpdateResult } from '../Workspace'
+import type { watchSourceTree } from './SourceWatch'
 
 type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
 
@@ -124,7 +125,7 @@ export type FileManagerOptions = {
   compile(request: CompileRequest, isCurrent: () => boolean): Promise<UpdateResult>
   onSourceUpdate?: (result: UpdateResult) => void
   onSourceError?: (error: unknown) => void
-  watch?: typeof WorkspaceWatch.watchWorkspace
+  watch?: typeof watchSourceTree
   read?: (path: string, observedAtMs: number) => Promise<ReadResult>
   schedule?: (delayMs: number, callback: () => void) => () => void
 }
@@ -215,7 +216,7 @@ export function createFailedInput(request: QueuedInput, error: unknown): Complet
 
 /** isRelevantChange identifies watcher events that invalidate Tao compilation. */
 export function isRelevantChange(
-  change: WorkspaceWatch.WorkspaceChange,
+  change: FileWatch.FileChange,
   watchesFile: (path: string) => boolean,
 ): boolean {
   const isDirectoryChange = change.kind === 'addDir' || change.kind === 'unlinkDir'

@@ -1,6 +1,6 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import * as PreviewHistoryStore from './PreviewHistoryStore'
 
 /** PreviewHistoryOptions supplies the checkout and Git boundary for commit-linked capture. */
@@ -15,12 +15,7 @@ export async function recordPreviewPerformance(
   options: PreviewHistoryOptions = {},
 ): Promise<{ directory: string; reused: boolean }> {
   const root = options.directory ?? Repo.getWorkspaceRoot()
-  const git = options.git ?? ((args, exact) =>
-    Processes.capture('git', {
-      variadicArgs: args,
-      cwd: root,
-      trim: !exact,
-    }))
+  const git = options.git ?? ((args, exact) => Exec.captureStdout('git', args, { cwd: root, trim: !exact }))
   const context = await captureContext(git)
   const pending = Path.join(root, '.artifacts/notes/preview-history')
   return await BuildLock.withBuildLock(Path.join(pending, `${context.sourceCommit}.lock`), async () => {

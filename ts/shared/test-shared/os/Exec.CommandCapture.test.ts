@@ -2,8 +2,8 @@ import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import * as Exec from '../../shared-src/os/Exec'
 import * as Process from '../../shared-src/os/Process'
-import * as Processes from '../../shared-src/os/Processes'
 
 type OptionalDescendantPid = number | undefined
 
@@ -18,8 +18,8 @@ Tests.test('a command deadline bounds inherited capture after its immediate chil
   const parentSource = `Bun.spawn([process.execPath, '-e', ${
     Json.Print(source)
   }], { stdin: 'ignore', stdout: 'inherit', stderr: 'inherit' }); process.exit(0)`
-  const command = [Process.argv[0]!, '-e', parentSource]
-  const observed = Processes.runIgnoreStatus(command, { timeoutMs: 100 }).then(
+  const args = ['-e', parentSource]
+  const observed = Exec.capture(Process.argv[0]!, args, { check: false, timeoutMs: 100 }).then(
     result => ({ result, error: undefined }),
     error => ({ result: undefined, error }),
   )
@@ -65,9 +65,9 @@ async function readOwnedDescendantPid(receipt: string): Promise<number> {
 
 Tests.test('command deadlines stop blocked input while preserving a live child signal', async () => {
   const source = 'process.stdout.write("ready"); setTimeout(() => process.exit(0), 3000)'
-  const command = [Process.argv[0]!, '-e', source]
+  const args = ['-e', source]
   const stdin = new Uint8Array(8 * 1024 * 1024)
-  const result = await Processes.runIgnoreStatus(command, { stdin, timeoutMs: 100 })
+  const result = await Exec.capture(Process.argv[0]!, args, { check: false, stdin, timeoutMs: 100 })
   Tests.expect(result.signal).toBe('SIGKILL')
   Tests.expect(result.stdout).toBe('ready')
 })

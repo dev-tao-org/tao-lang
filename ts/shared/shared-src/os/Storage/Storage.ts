@@ -4,9 +4,9 @@ import type { Dirent } from '../bridges/Bridge_node/Bridge_node'
 import { dirname, join, posix, readdir, win32 } from '../bridges/Bridge_node/Bridge_node'
 import Env from '../Env'
 import * as FS from '../FS'
+import * as FileLock from '../locks/FileLock'
 import * as Path from '../Path'
 import * as Platform from '../Platform'
-import * as SessionLock from './SessionLock'
 
 /** StorageRoots contains the user-owned Tao cache and support roots. */
 export type StorageRoots = { cache: string; support: string }
@@ -73,7 +73,7 @@ export async function acquireCacheLease(identity: string): Promise<() => void | 
   let releaseLease!: () => Promise<void>
   await withCacheMutation(async () => {
     await hasBusyLease(resolveSupportDirectory('leases'))
-    const lock = await SessionLock.acquire(path)
+    const lock = await FileLock.tryAcquire(path)
     if (!lock) {
       Errors.ThrowHostEnvironment(`Cache lease is already held for identity: ${identity}`)
     }
@@ -155,10 +155,10 @@ function resolveBelow(root: string, segments: readonly string[]): string {
   return result
 }
 
-async function acquireMutationLock(path: string): Promise<SessionLock.SessionLock> {
+async function acquireMutationLock(path: string): Promise<FileLock.FileLock> {
   const deadline = Time.nowMs() + 120_000
   while (true) {
-    const lock = await SessionLock.acquire(path)
+    const lock = await FileLock.tryAcquire(path)
     if (lock) {
       return lock
     }
@@ -184,7 +184,7 @@ async function acquireLocalMutation(): Promise<() => void> {
   }
 }
 
-async function releaseCacheLease(path: string, lock: SessionLock.SessionLock): Promise<void> {
+async function releaseCacheLease(path: string, lock: FileLock.FileLock): Promise<void> {
   let released = false
   const release = () => {
     if (!released) {
@@ -251,7 +251,7 @@ async function checkLeaseEntry(directory: string, entry: Dirent, report?: (reaso
     report?.(`Unexpected lease entry at ${path}. Inspect it before retrying tao clean --wipe.`)
     return true
   }
-  const lock = await Try(() => SessionLock.acquire(path), {
+  const lock = await Try(() => FileLock.tryAcquire(path), {
     catch: error => blockedProbe(error, path, report) ? undefined : Errors.Throw(error),
   })
   if (!lock) {

@@ -1,7 +1,8 @@
 import React from '@runtime/client/Bridge_react/Bridge_react'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import * as Shared from '@shared'
-import { Http, Repo, Terminal } from '@shared/os'
+import { Repo, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { Ink } from '../../CLIs-src/cli-kit/bridges/Bridge_ink'
 import { runNonInteractiveCommand } from '../../CLIs-src/cli-kit/cmd-exec'
 import { IO, renderOutput } from '../../CLIs-src/cli-kit/io'
@@ -15,7 +16,7 @@ export async function runPaneFixture(): Promise<void> {
   const frames: string[] = []
   const input = createPaneInput(redraw)
   let questions = 0
-  const cancellation = Http.createAbortController()
+  const cancellation = Cancellation.createController()
   IO.config({ stdout: 'terminal', stderr: 'terminal', progress: 'terminal' })
   renderOutput({
     update(snapshot) {

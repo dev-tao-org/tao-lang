@@ -1,7 +1,7 @@
 import { Errors, NewlineCharacter, S } from '@shared'
 import * as Tests from '@shared-tests'
 import { Env, Path, Platform, Repo } from '@shared/os'
-import * as Processes from '../../shared-src/os/Processes'
+import * as Exec from '../../shared-src/os/Exec'
 
 const ProbeSource = S`
   const input = await Bun.stdin.text();
@@ -11,25 +11,31 @@ const ProbeSource = S`
 Tests.test('command execution preserves argument boundaries, environment, cwd and stdin', async () => {
   const cwd = Repo.getWorkspaceRoot()
   const addEnv = { TAO_PROCESS_PROBE: 'present', TAO_PROCESS_UNSET: undefined }
-  const options = { variadicArgs: ['-e', ProbeSource, 'with spaces'], cwd, addEnv, stdin: 'payload' }
-  const command = ['bun']
-  const asynchronous = await Processes.run(command, options)
-  const synchronous = Processes.runSync(command, options)
+  const args = ['-e', ProbeSource, 'with spaces'] as const
+  const options = { cwd, addEnv, stdin: 'payload' }
+  const asynchronous = await Exec.capture('bun', args, options)
+  const synchronous = Exec.runSync('bun', args, options)
   for (const result of [asynchronous, synchronous]) {
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.signal).toBe(null)
     Tests.expect(result.cwd).toBe(cwd)
-    Tests.expect(result.args).toEqual(options.variadicArgs)
+    Tests.expect(result.args).toEqual(args)
     Tests.expect(result.stdout).toBe(`${cwd}|present|${Env.get('PATH') ?? ''}|true|with spaces|payload`)
     Tests.expect(result.stderr).toBe('')
   }
 })
 
+Tests.test('command strings name one executable and positional strings supply fixed arguments', async () => {
+  const version = await Exec.captureStdout('bun', '  --version\t ')
+  Tests.expect(version).toBe(await Exec.captureStdout('bun', ['--version']))
+  await Tests.rejects(() => Exec.capture('bun --version'), isCommandStartFailure)
+})
+
 Tests.test('command execution preserves binary stdin without text decoding', async () => {
   const source = 'process.stdout.write([...new Uint8Array(await Bun.stdin.arrayBuffer())].join(","))'
   const options = { stdin: new Uint8Array([0, 255, 128]) }
-  const asynchronous = await Processes.run(['bun', '-e', source], options)
-  const synchronous = Processes.runSync(['bun', '-e', source], options)
+  const asynchronous = await Exec.capture('bun', ['-e', source], options)
+  const synchronous = Exec.runSync('bun', ['-e', source], options)
   Tests.expect(asynchronous.stdout).toBe('0,255,128')
   Tests.expect(synchronous.stdout).toBe('0,255,128')
 })
@@ -41,9 +47,9 @@ const NonzeroSource = S`
 `
 
 Tests.test('commands throw by default and preserve nonzero results only through the explicit opt-out', async () => {
-  const command = ['bun', '-e', NonzeroSource]
-  const asynchronous = await Processes.runIgnoreStatus(command)
-  const synchronous = Processes.runIgnoreStatusSync(command)
+  const args = ['-e', NonzeroSource]
+  const asynchronous = await Exec.capture('bun', args, { check: false })
+  const synchronous = Exec.runSync('bun', args, { check: false })
   for (const result of [asynchronous, synchronous]) {
     Tests.expect(result).toMatchObject({
       status: 7,
@@ -54,8 +60,8 @@ Tests.test('commands throw by default and preserve nonzero results only through 
     Tests.expect(result.command).toBe('bun')
     Tests.expect(result.args).toEqual(['-e', NonzeroSource])
   }
-  await Tests.rejects(() => Processes.run(command), isNonzeroCommandFailure)
-  Tests.throws(() => Processes.runSync(command), isNonzeroCommandFailure)
+  await Tests.rejects(() => Exec.capture('bun', args), isNonzeroCommandFailure)
+  Tests.throws(() => Exec.runSync('bun', args), isNonzeroCommandFailure)
 })
 
 function isNonzeroCommandFailure(error: unknown): boolean {
@@ -75,9 +81,8 @@ function isNonzeroCommandFailure(error: unknown): boolean {
 
 Tests.test('ignoring exit status still throws structured failures when a command cannot start', async () => {
   const missing = Path.join(Repo.getWorkspaceRoot(), '.artifacts', Platform.randomUUID(), 'missing-command')
-  const command = [missing]
-  await Tests.rejects(() => Processes.runIgnoreStatus(command), isCommandStartFailure)
-  Tests.throws(() => Processes.runIgnoreStatusSync(command), isCommandStartFailure)
+  await Tests.rejects(() => Exec.capture(missing, { check: false }), isCommandStartFailure)
+  Tests.throws(() => Exec.runSync(missing, { check: false }), isCommandStartFailure)
 })
 
 function isCommandStartFailure(error: unknown): boolean {
@@ -94,14 +99,14 @@ function isCommandStartFailure(error: unknown): boolean {
 
 Tests.test('command deadlines force termination and preserve the explicit status policy', async () => {
   const source = 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)'
-  const command = ['bun', '-e', source]
+  const args = ['-e', source]
   const options = { timeoutMs: 100 }
-  const asynchronous = await Processes.runIgnoreStatus(command, options)
-  const synchronous = Processes.runIgnoreStatusSync(command, options)
+  const asynchronous = await Exec.capture('bun', args, { ...options, check: false })
+  const synchronous = Exec.runSync('bun', args, { ...options, check: false })
   Tests.expect(asynchronous.signal).toBe('SIGKILL')
   Tests.expect(synchronous.signal).toBe('SIGKILL')
-  await Tests.rejects(() => Processes.run(command, options), isDeadlineCommandFailure)
-  Tests.throws(() => Processes.runSync(command, options), isDeadlineCommandFailure)
+  await Tests.rejects(() => Exec.capture('bun', args, options), isDeadlineCommandFailure)
+  Tests.throws(() => Exec.runSync('bun', args, options), isDeadlineCommandFailure)
 })
 
 function isDeadlineCommandFailure(error: unknown): boolean {

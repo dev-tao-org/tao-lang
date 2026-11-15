@@ -238,8 +238,7 @@ function createSetupFixture(installed = false) {
   const io: TimingSetupIO = {
     platform: 'Darwin',
     interactive: true,
-    capture: async command =>
-      command === 'which netbird' ? '/nix/store/fixture-netbird/bin/netbird' : '/foreign/netbird',
+    capture: async () => '/foreign/netbird',
     resolveExecutable: async () => '/nix/store/fixture-netbird/bin/netbird',
     async execute(name, options) {
       commands.push({ name, args: [...options?.variadicArgs ?? []] })

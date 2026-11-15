@@ -1,7 +1,7 @@
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { pushBranch, type PushIO } from '../../CLIs-src/agent-cli/push/Push'
 
 Tests.test('a local guarded push updates only its destination despite broader remote configuration', async () => {
@@ -57,5 +57,5 @@ function localIO(root: string): PushIO {
 }
 
 async function git(root: string, args: readonly string[]): Promise<string> {
-  return Processes.capture('git', { variadicArgs: args, cwd: root })
+  return Exec.captureStdout('git', args, { cwd: root })
 }

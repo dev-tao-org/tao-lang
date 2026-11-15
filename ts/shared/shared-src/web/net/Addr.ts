@@ -1,4 +1,4 @@
-/** Localhost identifies the IPv4 loopback interface for local services. */
+/** Localhost identifies the IPv4 loopback address for local services. */
 export const Localhost = '127.0.0.1'
 
 /** localhostUrl formats a loopback URL with an explicit port and HTTP by default. */

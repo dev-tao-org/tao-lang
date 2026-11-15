@@ -2,7 +2,7 @@ import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import type * as Workspace from '@workspace'
 
 import { createPreviewHarness, type PreviewHarness } from './Preview/PreviewHarness'
@@ -13,7 +13,7 @@ import type { ReloadTiming } from './ReloadTimings'
  *  macOS requires host process access before any browser starts; no screenshots are captured. */
 export async function previewPerformance(options: PreviewOptions) {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Processes.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
+    await Exec.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
   const measurement = PreviewMeasurement.readPreviewMeasurement(options.measurement)
   const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
@@ -180,8 +180,8 @@ async function writeReport(
   const report: PreviewPerformanceReport = {
     version: 1,
     sessionId: owned.sessionId,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     runtime: Platform.runtimeVersion(),
     fixtureSha256,
@@ -244,12 +244,12 @@ function requirePublished(result: Workspace.UpdateResult): void {
 }
 
 async function waitForReloadReports(owned: Resources, results: readonly PreviewResult[]): Promise<void> {
-  const deadline = Time.nowMs() + 5000
-  while (results.some(result => !owned.reloads.some(timing => timing.revision === result.revision))) {
-    if (Time.nowMs() >= deadline) {
-      Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
-    }
-    await Time.sleep(10)
+  const reported = await Time.waitFor(success => {
+    const allReported = results.every(result => owned.reloads.some(timing => timing.revision === result.revision))
+    return allReported ? success(true) : undefined
+  }, { timeout: 5000, interval: 10 })
+  if (reported === undefined) {
+    Errors.ThrowShouldNeverHappen('Preview receipts did not reach the terminal timing reporter.')
   }
 }
 

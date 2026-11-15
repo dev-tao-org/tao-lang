@@ -3,15 +3,15 @@ import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
 import * as WebHost from '../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import * as Exec from '../../shared-src/os/Exec'
 import * as Process from '../../shared-src/os/Process'
-import * as Processes from '../../shared-src/os/Processes'
 
 Tests.test('production session acquisition gives setup guidance for malformed and outdated pointers', async () => {
   const root = Artifacts.resolvePath('tmp', `lock-pointer-errors-${Platform.randomUUID()}`)
   await Try(async () => {
     await FS.mkdir(root)
     const artifactsUrl = new WebHost.URL('../../shared-src/os/Storage/Artifacts.ts', import.meta.url).href
-    const lockUrl = new WebHost.URL('../../shared-src/os/Storage/SessionLock.ts', import.meta.url).href
+    const lockUrl = new WebHost.URL('../../shared-src/os/locks/FileLock.ts', import.meta.url).href
     const script = S`
       import { mock } from 'bun:test';
       import { Try } from ${
@@ -27,17 +27,17 @@ Tests.test('production session acquisition gives setup guidance for malformed an
       const failures = [];
       for (const contents of ['{', '{}', JSON.stringify({identity:'a'.repeat(64)}), JSON.stringify({identity:'a'.repeat(64),directory:'../outside'})]) {
         await fs.writeFile(${Json.Print(Path.join(root, 'current.json'))}, contents);
-        await Try(() => locks.acquire(${Json.Print(Path.join(root, 'session.lock'))}), {
+        await Try(() => locks.tryAcquire(${Json.Print(Path.join(root, 'session.lock'))}), {
           catch: error => failures.push({name:error.name,message:error.message})
         });
       }
       process.stdout.write(JSON.stringify(failures));
     `
-    const child = Processes.spawnPiped(Process.argv[0]!, { variadicArgs: ['-e', script] })
+    const child = Exec.spawn(Process.argv[0]!, ['-e', script])
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
     const failures = Json.Parse(stdout) as Array<{ name: string; message: string }>

@@ -1,8 +1,8 @@
 import { Time } from '@shared'
 import * as BrowserRuntime from '@shared/os/browser'
 import * as Preview from '@shared/preview'
+import { EventStream, Http } from '@shared/web'
 
-import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
@@ -31,7 +31,7 @@ type PreviewResult = {
 
 const sessionId = BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
 const previewOrigin =
-  new WebHost.URL(BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
+  Http.url(BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
 const frames = new Map(['left', 'right'].flatMap(id => {
   const frame = BrowserRuntime.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []
@@ -57,7 +57,7 @@ const result: { status: string; currentScenario?: string; results: PreviewResult
   results: [],
 }
 BrowserRuntime.setPageState(result)
-const events = BrowserRuntime.eventStream('/events')
+const events = EventStream.open('/events')
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
@@ -149,7 +149,7 @@ function isFrameMessage(event: MessageEvent): boolean {
 }
 
 function relaySignal(signal: PreviewSignal): void {
-  void BrowserRuntime.requestJson('/receipt', {
+  void Http.requestJson('/receipt', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: PreviewBrowserJson.serializePreviewReceipt(signal),
@@ -157,7 +157,7 @@ function relaySignal(signal: PreviewSignal): void {
 }
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
-  const update = await BrowserRuntime.requestJson<
+  const update = await Http.requestJson<
     { status: string; revision: string; timings: unknown[]; stages?: unknown }
   >(
     '/edit',
@@ -234,26 +234,27 @@ function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
   }
 }
 
-function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<SignalReceipt>>> {
-  return new Promise((resolve, reject) => {
-    const deadline = Time.nowMs() + 90_000
-    const poll = () => {
-      const terminal = terminalOutcomes.get(revision)
-      const collected = receipts.complete(revision)
-      if (terminal?.kind === 'noop' || terminal?.kind === 'superseded') {
-        resolve(new Map())
-      } else if (terminal) {
-        reject(terminal.message ?? `Preview ${terminal.kind}.`)
-      } else if (collected.size === frames.size) {
-        resolve(collected)
-      } else if (Time.nowMs() >= deadline) {
-        reject(`Timed out waiting for both preview receipts for ${revision}.`)
-      } else {
-        void Time.sleep(25).then(poll)
-      }
+type FrameReceiptResult = Map<string, ReceiptPair<SignalReceipt>> | string
+
+async function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<SignalReceipt>>> {
+  const result = await Time.waitFor<FrameReceiptResult>(success => {
+    const terminal = terminalOutcomes.get(revision)
+    const collected = receipts.complete(revision)
+    if (terminal?.kind === 'noop' || terminal?.kind === 'superseded') {
+      return success(new Map())
     }
-    poll()
-  })
+    if (terminal) {
+      return success(terminal.message ?? `Preview ${terminal.kind}.`)
+    }
+    return collected.size === frames.size ? success(collected) : undefined
+  }, { timeout: 90_000 })
+  if (result === undefined) {
+    return await Promise.reject(`Timed out waiting for both preview receipts for ${revision}.`)
+  }
+  if (typeof result === 'string') {
+    return await Promise.reject(result)
+  }
+  return result
 }
 
 function setStatus(status: string): void {

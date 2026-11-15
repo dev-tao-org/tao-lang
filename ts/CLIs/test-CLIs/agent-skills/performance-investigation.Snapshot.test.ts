@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Exec } from '@shared/os'
 import { receiveSnapshot } from '../../CLIs-src/agent-skills/performance-investigation/Checkout'
 import { runMeasurements } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
 import { createSnapshot } from '../../CLIs-src/agent-skills/performance-investigation/Snapshot'
@@ -10,7 +10,7 @@ import { createSnapshot } from '../../CLIs-src/agent-skills/performance-investig
 Tests.test('performance bundles retain saved source and history without changing staged selections', async () => {
   const root = Repo.resolvePath('.artifacts/tmp/performance-snapshot', Platform.randomUUID())
   await FS.mkdir(root)
-  const git = (...args: string[]) => Processes.capture('git', { variadicArgs: args, cwd: root, trim: false })
+  const git = (...args: string[]) => Exec.captureStdout('git', args, { cwd: root, trim: false })
   await Try(async () => {
     await git('init', '-b', 'main')
     await git('config', '--local', 'user.name', 'Performance fixture')
@@ -50,7 +50,7 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
   const manifest = Path.join(Path.dirname(bundle), 'snapshot.json')
   await receiveWithLineEndingConfiguration(bundle, manifest, clone)
   await Tests.expect(receiveSnapshot(bundle, manifest, clone)).rejects.toThrow('destination already exists')
-  const git = (...args: string[]) => Processes.capture('git', { variadicArgs: args, cwd: clone })
+  const git = (...args: string[]) => Exec.captureStdout('git', args, { cwd: clone })
   Tests.expect(await git('rev-parse', 'HEAD')).toBe(commit)
   Tests.expect(await git('rev-parse', 'HEAD^')).toBe(head)
   Tests.expect(await FS.readFile(Path.join(clone, 'source.ts'), 'utf8')).toBe('saved\n')

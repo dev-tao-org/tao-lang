@@ -7,9 +7,7 @@ import * as Workspace from '@workspace'
 import { createPreviewHarness, type PreviewHarness } from '../perf-src/Preview/PreviewHarness'
 
 /** withRecoveryPreview runs the real dual-frame host against a controlled render fixture. */
-export async function withRecoveryPreview(
-  run: (fixture: RecoveryFixture) => Promise<void>,
-): Promise<void> {
+export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `preview-recovery-${Platform.randomUUID()}`)
   const { workspace, source, change } = await createRecoveryWorkspace(root)
   let expo: OptionalExpoSession

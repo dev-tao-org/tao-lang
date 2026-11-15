@@ -137,7 +137,7 @@ function isExplicitBuiltinMockFixture(node: TypeScript.Node, filename: string, s
   return specifier === 'node:fs/promises' && isDynamicImportCall(node) && [
     'ts/shared/test-shared/os/FS.Files.GeneratedMetadata.test.ts',
     'ts/shared/test-shared/os/Storage.LeaseFailures.test.ts',
-    'ts/shared/test-shared/os/Storage.SessionLock.PointerDiagnostics.test.ts',
+    'ts/shared/test-shared/os/locks.FileLock.PointerDiagnostics.test.ts',
   ].includes(filename.replaceAll('\\', '/'))
 }
 

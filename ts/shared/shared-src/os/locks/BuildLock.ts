@@ -9,12 +9,10 @@ import { dirname, mkdirSync, readFileSync, rmSync, writeFileSync } from '../brid
 export async function withBuildLock<Value>(path: string, operation: () => Promise<Value>): Promise<Value> {
   mkdirSync(dirname(path), { recursive: true })
   const owner = `${Process.pid}:${WebHost.crypto.randomUUID()}`
-  const deadline = Time.nowMs() + 120_000
-  while (!acquire(path, owner)) {
-    if (Time.nowMs() >= deadline) {
-      Errors.ThrowHostEnvironment(`Build lock is still held: ${path}. Inspect its owner before removing it.`)
-    }
-    await Time.sleep(25)
+  const acquired = acquire(path, owner)
+    || await Time.waitFor(success => acquire(path, owner) ? success(true) : undefined, { timeout: 120_000 })
+  if (acquired === undefined) {
+    Errors.ThrowHostEnvironment(`Build lock is still held: ${path}. Inspect its owner before removing it.`)
   }
   return await Try(operation, {
     finally() {

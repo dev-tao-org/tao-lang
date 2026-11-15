@@ -27,9 +27,7 @@ Tests.test('native TSX formatting preserves literal values, aligns fences and le
       \`\`\`
     }
   `)
-  Tests.expect(
-    format({ source: formatted.text, tree: parser.parse(formatted.text) }, { typescript }).edits,
-  )
+  Tests.expect(format({ source: formatted.text, tree: parser.parse(formatted.text) }, { typescript }).edits)
     .toEqual([])
   const literal = MultilineLiteral
   const token = '```ts' + literal + '```'
