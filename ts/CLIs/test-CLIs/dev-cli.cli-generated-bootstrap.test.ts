@@ -57,9 +57,17 @@ async function assertExplicitSetupBypassesPreflight(root: string): Promise<void>
   await FS.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const result = await runLauncher(root, 'agent', ['setup'])
-  Tests.expect(result.status).toBe(0)
-  Tests.expect(await readCalls(root)).toBe('setup\n')
+  const plain = await runLauncher(root, 'agent', ['setup'])
+  Tests.expect(plain.status).toBe(1)
+  Tests.expect(plain.stderr).toContain('./agent unsandboxed setup')
+  Tests.expect(await readCalls(root)).toBe('')
+  for (const [launcher, args] of [['agent', ['unsandboxed', 'setup']], ['dev', ['setup']]] as const) {
+    await removeGeneratedAst(root)
+    await writeCalls(root, '')
+    const result = await runLauncher(root, launcher, args)
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe('setup\n')
+  }
 }
 
 async function assertMissingDependenciesRequireSetup(root: string): Promise<void> {
@@ -68,7 +76,7 @@ async function assertMissingDependenciesRequireSetup(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'])
   Tests.expect(result.status).toBe(1)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('')
 }
 
@@ -78,7 +86,7 @@ async function assertPreparationFailureStopsLauncher(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
   Tests.expect(result.status).toBe(23)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 

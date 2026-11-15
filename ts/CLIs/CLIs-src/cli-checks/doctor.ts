@@ -66,7 +66,7 @@ function diagnoseTools(
         name,
         status: optional ? 'warn' : 'fail',
         detail: diagnostic || 'Not available on the managed PATH.',
-        remediation: 'Enter the repository devenv; run ./agent setup.',
+        remediation: 'Enter the repository devenv; run ./agent unsandboxed setup.',
       }
     }
     if (!isSupportedRuntime(name, version)) {
@@ -176,7 +176,7 @@ function workspaceChecks(): Check[] {
       name: 'workspace ' + name,
       status: present ? 'pass' : 'fail',
       detail: present ? 'Present in ts/.' : 'Missing from ts/.',
-      remediation: present ? undefined : './agent setup',
+      remediation: present ? undefined : './agent unsandboxed setup',
     }
   })
 }

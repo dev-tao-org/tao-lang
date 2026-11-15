@@ -64,7 +64,7 @@ async function readLockPointer(root: string, path: string): Promise<LockPointer>
         Errors.Throw(error)
       }
       Errors.ThrowHostEnvironment(
-        `Native file-lock support is not prepared. Run ./agent setup from the Tao repository before acquiring locks. (${path})`,
+        `Native file-lock support is not prepared. Run ./agent unsandboxed setup from the Tao repository before acquiring locks. (${path})`,
       )
     },
   })
@@ -86,7 +86,7 @@ function hasSafePointerVersion(pointer: { identity: unknown; directory: unknown 
 
 function throwInvalidPointer(path: string): never {
   Errors.ThrowHostEnvironment(
-    `Native file-lock pointer is invalid or outdated. Run ./agent setup to rebuild it. (${path})`,
+    `Native file-lock pointer is invalid or outdated. Run ./agent unsandboxed setup to rebuild it. (${path})`,
   )
 }
 
@@ -101,7 +101,7 @@ async function loadLockBinding(path: string): Promise<LockBinding> {
         Errors.Throw(error)
       }
       Errors.ThrowHostEnvironment(
-        `The prepared native file-lock addon is missing. Run ./agent setup to rebuild it. (${path})`,
+        `The prepared native file-lock addon is missing. Run ./agent unsandboxed setup to rebuild it. (${path})`,
       )
     },
   })

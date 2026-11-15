@@ -12,7 +12,7 @@ sandboxed, and the `just` and `./dev` landing aliases are human and recovery ent
 host-access exceptions. A session may hold the permission rules it started with: a harness
 that loads project-local rules at task startup needs a new task after a new wrapper prefix lands,
 and another harness may pick the rules up sooner; after
-changing their source, `./agent setup` refreshes the generated rules where writable, or
+changing their source, `./agent unsandboxed setup` refreshes the generated rules where writable, or
 `./agent unsandboxed fix-agent-config` in a task that has that prefix loaded.
 
 ## One process

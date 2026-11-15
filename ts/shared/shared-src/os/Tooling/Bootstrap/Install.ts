@@ -32,7 +32,7 @@ function requireNoSetupArguments(args: readonly string[]): void {
   if (args.length === 0) {
     return
   }
-  Process.stderr.write('Setup takes no arguments. Run ./agent setup or ./dev setup.' + NewlineCharacter)
+  Process.stderr.write('Setup takes no arguments. Run ./agent unsandboxed setup or ./dev setup.' + NewlineCharacter)
   Process.exit(1)
 }
 
