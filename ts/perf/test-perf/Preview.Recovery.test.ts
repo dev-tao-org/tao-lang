@@ -68,22 +68,13 @@ async function verifyReloadWithStaleBaseline(page: HeadlessBrowser.Page, baselin
     baseline,
   )
   const retiredBoot = (await readBoots(page)).left!
-  await page.frameLocator('#left').locator('body').evaluate(body => {
-    body.ownerDocument.defaultView!.dispatchEvent(new ErrorEvent('error', { message: 'Stale baseline probe' }))
-  })
-  await page.locator('aside:visible').filter({ hasText: 'Stale baseline probe' })
-    .getByRole('button', { name: 'Reload', exact: true }).click()
+  await reloadPreviewAfterError(page, 'Stale baseline probe')
   await page.locator(`#left[src]:not([src*="${retiredBoot}"])`).waitFor()
   await expectLabels(page, 'Ready')
 }
 
 async function verifyManualReloadAndRetiredMessages(page: HeadlessBrowser.Page, retiredBoot: string): Promise<void> {
-  const oldFrame = page.frameLocator('#left')
-  await oldFrame.locator('body').evaluate(body => {
-    body.ownerDocument.defaultView!.dispatchEvent(new ErrorEvent('error', { message: 'Manual recovery probe' }))
-  })
-  await page.locator('aside:visible').filter({ hasText: 'Manual recovery probe' })
-    .getByRole('button', { name: 'Reload', exact: true }).click()
+  await reloadPreviewAfterError(page, 'Manual recovery probe')
   await expectLabels(page, 'Repaired')
   const boots = await readBoots(page)
   Tests.expect(boots.left).not.toBe(retiredBoot)
@@ -103,6 +94,14 @@ async function verifyManualReloadAndRetiredMessages(page: HeadlessBrowser.Page, 
   await page.locator('body[data-retired-message-received="true"]').waitFor()
   Tests.expect(await page.locator('aside:visible').count()).toBe(0)
   Tests.expect(await readBoots(page)).toEqual(boots)
+}
+
+async function reloadPreviewAfterError(page: HeadlessBrowser.Page, message: string): Promise<void> {
+  await page.frameLocator('#left').locator('body').evaluate((body, text) => {
+    body.ownerDocument.defaultView!.dispatchEvent(new ErrorEvent('error', { message: text }))
+  }, message)
+  await page.locator('aside:visible').filter({ hasText: message })
+    .getByRole('button', { name: 'Reload', exact: true }).click()
 }
 
 async function observeRetiredMessage(page: HeadlessBrowser.Page): Promise<void> {
