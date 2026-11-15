@@ -1,6 +1,9 @@
 import { Lists, type TimingSample } from '@shared'
 import type * as Preview from '@shared/preview'
 
+import type { ReceiptPair } from './PreviewReceipts'
+import type { PreviewSignal } from './PreviewSignal'
+
 type GeneratedSource = Readonly<Record<string, string>>
 type PublishedSource = GeneratedSource | undefined
 
@@ -28,7 +31,10 @@ export type PreviewScenarioResult = {
   frames: PreviewScenarioFrames
 }
 
-type PreviewScenarioFrames = Record<string, {
+type PreviewScenarioFrames = Record<string, PreviewScenarioFrame>
+
+type PreviewScenarioFrame = {
+  bootId: string
   clickToHmrMs: number
   hmrToAppliedMs: number
   clickToAppliedMs: number
@@ -37,7 +43,28 @@ type PreviewScenarioFrames = Record<string, {
   hmrTimings: unknown[]
   appliedTimings: unknown[]
   metroDeltaModules?: number
-}>
+}
+
+/** PreviewSignalReceipt records the parent receipt time of a frame's measured milestone. */
+export type PreviewSignalReceipt = { signal: PreviewSignal; receivedAt: number }
+
+/** describePreviewFrameTimings measures an edit's milestones for one frame boot. */
+export function describePreviewFrameTimings(
+  receipt: ReceiptPair<PreviewSignalReceipt>,
+  clickTime: number,
+): PreviewScenarioFrame {
+  return {
+    bootId: receipt.applied.signal.bootId,
+    clickToHmrMs: receipt.hmr.receivedAt - clickTime,
+    hmrToAppliedMs: receipt.applied.signal.timestampMs - receipt.hmr.signal.timestampMs,
+    clickToAppliedMs: receipt.applied.receivedAt - clickTime,
+    hmrTimestampMs: receipt.hmr.signal.timestampMs,
+    appliedTimestampMs: receipt.applied.signal.timestampMs,
+    hmrTimings: receipt.hmr.signal.timings,
+    appliedTimings: receipt.applied.signal.timings,
+    metroDeltaModules: receipt.hmr.signal.metroDeltaModules,
+  }
+}
 
 /** PreviewWork counts operations performed for one preview edit. */
 export type PreviewWork = {

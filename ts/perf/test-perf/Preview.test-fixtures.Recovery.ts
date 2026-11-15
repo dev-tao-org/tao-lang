@@ -92,6 +92,12 @@ async function observePreviewPublications(page: HeadlessBrowser.Page): Promise<v
         if (args[0] !== 'outcome' && args[0] !== 'baseline') {
           return
         }
+        if (args[0] === 'baseline') {
+          document.addEventListener('fixture:replay-baseline', event => {
+            const data = (event as CustomEvent<string>).detail
+            this.dispatchEvent(new MessageEvent('baseline', { data }))
+          })
+        }
         const attribute = `data-received-${args[0]}`
         add.call(this, args[0], (event: Event) => {
           document.body.setAttribute(attribute, (event as MessageEvent<string>).data)

@@ -5,12 +5,11 @@ import { EventStream, Http } from '@shared/web'
 
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
-import { type OpenedPreview, PreviewOpening, selectPublishedBaseline } from './Preview/PreviewOpening'
+import { type OpenedPreview, PreviewOpening } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
-import type { PreviewEditTrace, PreviewScenarioResult } from './Preview/PreviewWork'
+import * as PreviewWork from './Preview/PreviewWork'
 
-type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
 type PreviewOrigin = string | undefined
 type PendingPreviewOpening = PreviewOpening | undefined
@@ -22,7 +21,7 @@ const frames = new Map(['left', 'right'].flatMap(id => {
   const frame = BrowserRuntime.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []
 }))
-const receipts = new PreviewReceipts<SignalReceipt>()
+const receipts = new PreviewReceipts<PreviewWork.PreviewSignalReceipt>()
 const previewTimeoutMs = Number(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content,
 )
@@ -34,7 +33,7 @@ const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
-const result: BrowserRuntime.PageState & { results: PreviewScenarioResult[] } = {
+const result: BrowserRuntime.PageState & { results: PreviewWork.PreviewScenarioResult[] } = {
   status: 'closed',
   results: [],
 }
@@ -48,6 +47,9 @@ const events = EventStream.open('/events')
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
+  if (isOlderThanPublished(expectation.sequence)) {
+    return
+  }
   latestExpectation = expectation
   const revision = expectation.revision
   for (const recovery of recoveries.values()) {
@@ -64,18 +66,16 @@ events.addEventListener('outcome', event => {
   if (terminalOutcomes.size > 64) {
     terminalOutcomes.delete(terminalOutcomes.keys().next().value!)
   }
+  if (isOlderThanPublished(outcome.sequence)) {
+    return
+  }
   for (const recovery of recoveries.values()) {
     recovery.terminal(outcome)
   }
 })
 
 events.addEventListener('baseline', event => {
-  baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
-  finishPreviewOpening()
-  for (const recovery of recoveries.values()) {
-    recovery.setBaseline(baseline)
-  }
-  replayPendingSignals()
+  acceptPublishedBaseline(PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data))
 })
 
 BrowserRuntime.onMessage(receiveSignal)
@@ -112,10 +112,10 @@ async function openPreviews(measure: boolean): Promise<void> {
   const preview = await Http.requestJson<OpenedPreview>('/open-preview', { method: 'POST' })
   const url = Http.url(preview.url)
   previewOrigin = url.origin
+  const published = acceptPublishedBaseline(preview.baseline)
   if (measure) {
-    opening = new PreviewOpening(preview.baseline, started, frames.size)
+    opening = new PreviewOpening(started, frames.size)
   }
-  const published = selectPublishedBaseline(preview.baseline, baseline)
   for (const [id, frame] of frames) {
     url.searchParams.set('frameId', id)
     frame.hidden = false
@@ -126,6 +126,23 @@ async function openPreviews(measure: boolean): Promise<void> {
   if (!measure) {
     markPreviewsReady()
   }
+}
+
+function isOlderThanPublished(sequence: number): boolean {
+  return !!baseline && sequence < baseline.sequence
+}
+
+function acceptPublishedBaseline(candidate: Preview.PreviewExpectation): Preview.PreviewExpectation {
+  if (baseline && baseline.sequence >= candidate.sequence) {
+    return baseline
+  }
+  baseline = candidate
+  for (const recovery of recoveries.values()) {
+    recovery.setBaseline(candidate)
+  }
+  finishPreviewOpening()
+  replayPendingSignals()
+  return baseline
 }
 
 function closePreviews(): void {
@@ -145,9 +162,12 @@ function closePreviews(): void {
 }
 
 function finishPreviewOpening(): void {
+  if (!baseline) {
+    return
+  }
   const duration = opening?.measureCompletion(
-    signal => recoveries.get(signal.frameId)?.matchesInstance(signal.bootId) === true,
     baseline,
+    signal => recoveries.get(signal.frameId)?.matchesInstance(signal.bootId) === true,
   )
   if (duration !== undefined) {
     result.previewOpenMs = duration
@@ -227,7 +247,7 @@ function relaySignal(signal: PreviewSignal): void {
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
   const update = await Http.requestJson<
-    { status: string; revision: string; timings: unknown[]; stages?: unknown; editTrace: PreviewEditTrace }
+    { status: string; revision: string; timings: unknown[]; stages?: unknown; editTrace: PreviewWork.PreviewEditTrace }
   >(
     '/edit',
     {
@@ -250,7 +270,10 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
     editTrace: update.editTrace,
     stages: update.stages,
     outcome: terminalOutcomes.get(update.revision),
-    frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [id, frameTimings(receipt, clickTime)])),
+    frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [
+      id,
+      PreviewWork.describePreviewFrameTimings(receipt, clickTime),
+    ])),
   })
   scenarioIndex++
   result.currentScenario = scenario
@@ -292,23 +315,9 @@ function failScenario(reason: unknown): void {
   setStatus('failed')
 }
 
-function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
-  return {
-    bootId: receipt.applied.signal.bootId,
-    clickToHmrMs: receipt.hmr.receivedAt - clickTime,
-    hmrToAppliedMs: receipt.applied.signal.timestampMs - receipt.hmr.signal.timestampMs,
-    clickToAppliedMs: receipt.applied.receivedAt - clickTime,
-    hmrTimestampMs: receipt.hmr.signal.timestampMs,
-    appliedTimestampMs: receipt.applied.signal.timestampMs,
-    hmrTimings: receipt.hmr.signal.timings,
-    appliedTimings: receipt.applied.signal.timings,
-    metroDeltaModules: receipt.hmr.signal.metroDeltaModules,
-  }
-}
+type FrameReceiptResult = Map<string, ReceiptPair<PreviewWork.PreviewSignalReceipt>> | string
 
-type FrameReceiptResult = Map<string, ReceiptPair<SignalReceipt>> | string
-
-async function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<SignalReceipt>>> {
+async function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<PreviewWork.PreviewSignalReceipt>>> {
   const result = await Time.waitFor<FrameReceiptResult>(success => {
     const terminal = terminalOutcomes.get(revision)
     const collected = receipts.complete(revision)

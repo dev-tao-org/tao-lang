@@ -43,6 +43,7 @@ async function verifyReopenRetainsBuildError(page: HeadlessBrowser.Page, change:
 }
 
 async function verifyReopenWithConcurrentSave(page: HeadlessBrowser.Page, change: RecoveryFixture['change']) {
+  const previousBaseline = await page.locator('body').getAttribute('data-received-baseline')
   await page.getByRole('button', { name: 'Close previews' }).click()
   await page.locator('body[data-status="closed"]').waitFor()
   await page.route('**/open-preview', async route => {
@@ -57,6 +58,22 @@ async function verifyReopenWithConcurrentSave(page: HeadlessBrowser.Page, change
   const boots = await readBoots(page)
   await page.clock.fastForward(1200)
   Tests.expect(await readBoots(page)).toEqual(boots)
+  await expectLabels(page, 'Ready')
+  await verifyReloadWithStaleBaseline(page, previousBaseline!)
+}
+
+async function verifyReloadWithStaleBaseline(page: HeadlessBrowser.Page, baseline: string): Promise<void> {
+  await page.evaluate(
+    data => document.dispatchEvent(new CustomEvent('fixture:replay-baseline', { detail: data })),
+    baseline,
+  )
+  const retiredBoot = (await readBoots(page)).left!
+  await page.frameLocator('#left').locator('body').evaluate(body => {
+    body.ownerDocument.defaultView!.dispatchEvent(new ErrorEvent('error', { message: 'Stale baseline probe' }))
+  })
+  await page.locator('aside:visible').filter({ hasText: 'Stale baseline probe' })
+    .getByRole('button', { name: 'Reload', exact: true }).click()
+  await page.locator(`#left[src]:not([src*="${retiredBoot}"])`).waitFor()
   await expectLabels(page, 'Ready')
 }
 
