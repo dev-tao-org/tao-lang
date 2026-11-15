@@ -80,7 +80,9 @@ description: >-
   in the baseline-to-final comparison. Stop with an inconclusive explanation only when concrete
   evidence limits progress: incompatible history/workload, unavailable host, persistent uncontrolled
   noise, or a required Developer decision. State what was established and the exact remaining gap.
-- Report absolute and percentage changes, independent session counts, variability, checkpoint
+- In comparison tables, put signed percentage change first, then this run, then baseline. Leave
+  parentheses and milliseconds out of the change column. Give absolute deltas in alert details.
+- Report independent session counts, variability, checkpoint
   identities, implicated phase/code and intervention outcome. Retain raw reports, fixture,
   snapshot manifests, run order, host/toolchain conditions and failed/interrupted jobs under task
   `.artifacts/notes/`. Follow pipeline-performance and git-workflow for durable evidence at handoff;

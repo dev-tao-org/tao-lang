@@ -2,7 +2,9 @@ import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
+import * as BranchMetrics from '../../CLIs-src/agent-skills/performance-investigation/BranchMetrics'
 import { runWithEvidence } from '../../CLIs-src/agent-skills/performance-investigation/Evidence'
+import type { PreviewReport } from '../../CLIs-src/agent-skills/performance-investigation/ReportContract'
 import type { MeasurementJob } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
 import { collectSamples } from '../../CLIs-src/agent-skills/performance-investigation/RunnerSamples'
 import { summarizeJob } from '../../CLIs-src/agent-skills/performance-investigation/Summary'
@@ -95,6 +97,49 @@ Tests.test('postvalidation failures retain raw reports and logs even after the c
     Tests.expect(await FS.readFile(Path.join(directory, 'failed-preview-service.log'), 'utf8')).toBe('diagnostic')
   })
 })
+
+Tests.test('branch verdicts require paired agreement and a repeated tier while keeping tail and restart evidence', () => {
+  const baseline = [50, 60, 70, 80, 90].map(createBranchSession)
+  const slower = [60, 70, 80, 90, 100].map(createBranchSession)
+  const reversed = slower.toReversed()
+  const large = [70, 80, 90, 100, 110].map(createBranchSession)
+  const first = readWarmMedian(baseline, slower)
+  const noisy = readWarmMedian(baseline, reversed)
+  const second = readWarmMedian(baseline, large)
+  Tests.expect(first.change).toBe('warning')
+  Tests.expect(first.candidate.madMs).toBe(10)
+  Tests.expect(noisy.change).toBe('variable')
+  Tests.expect(second.change).toBe('error')
+  Tests.expect(BranchMetrics.confirmMetricChange(first, second)).toBe('warning')
+  Tests.expect(BranchMetrics.confirmMetricChange(first, noisy)).toBe('variable')
+  const { warmBudgetMisses, frameRestartEdits, observedTransitions, comparableTransitions } = BranchMetrics
+    .countPreviewQuality(baseline)
+  Tests.expect(warmBudgetMisses).toBe(5)
+  Tests.expect(frameRestartEdits).toBe(5)
+  Tests.expect(observedTransitions).toBe(55)
+  Tests.expect(comparableTransitions).toBe(55)
+  const tail = BranchMetrics.compareBranchMetrics({ baseline, candidate: slower }).find(metric =>
+    metric.name === 'Warm p95'
+  )
+  Tests.expect(tail?.candidate.medianMs).toBe(150)
+})
+
+function createBranchSession(duration: number): PreviewReport {
+  const report = createReport(createJob(), duration)
+  const results = report.results.map((edit, index) => ({
+    ...edit,
+    parentClickToLastAppliedMs: index === 11 ? 150 : duration,
+    frames: {
+      left: { bootId: index < 6 ? 'start' : 'restarted' },
+      right: { bootId: 'start' },
+    },
+  }))
+  return { ...report, measurement: { ...report.measurement, frameCount: 2 }, results }
+}
+
+function readWarmMedian(baseline: PreviewReport[], candidate: PreviewReport[]) {
+  return BranchMetrics.compareBranchMetrics({ baseline, candidate }).find(metric => metric.name === 'Warm p50')!
+}
 
 function createResults(session: number) {
   const scenarios = ['text', 'add-text', 'row', 'reset']

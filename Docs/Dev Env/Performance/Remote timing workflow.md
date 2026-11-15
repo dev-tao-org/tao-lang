@@ -98,6 +98,39 @@ It attempts cleanup after authentication, measurement or reporting failures, and
 report after cleanup succeeds. It accepts the same workload flags as `timing-run`, including
 `--samples`, `--edits`, `--tooling`, `--fixture` and `--dry-run`. No execution deadline is added.
 
+## Compare a branch
+
+Prepare an immutable baseline and candidate checkout on the timing laptop using the
+[snapshot and receive operations](../../../agents/skills/performance-investigation/references/operations.md).
+Use the branch point as the baseline for attributing changes to the branch, or keep using a fixed
+reference checkout to track progress over time. Run one comparison from the controller:
+
+```sh
+just timing-compare ro@192.168.50.199 /absolute/runner/baseline /absolute/runner/candidate --tooling /absolute/runner/tooling
+```
+
+The command uses the enrolled SSH key and prints the exact revisions. Use `--tooling` when
+the candidate does not contain this command. The tooling checkout provides the same fixture to
+both revisions. The comparison runs an actual headless browser preview in two frames, with a
+small app and the same app under 80 extra compiled view declarations across eight modules.
+It starts five fresh baseline/candidate pairs per workload, alternating which revision runs first.
+Each session measures startup and 24 edits, including 20 warm edits. The browser checks the
+requested content and layout after each edit.
+
+The report shows percentage and millisecond changes, medians and session variability for
+startup, first edit, warm p50 and p95, and each warm edit scenario. It also counts warm edits
+over 100 ms and edits with observed frame restarts. A slowdown needs at least 10% for a warning
+or 15% for an error, plus a minimum of 150 ms for startup, 5 ms for first edit, or 4 ms for warm
+edits. The same thresholds describe speedups. A change needs agreement in at least 80% of pairs
+and a fresh confirmation round within the same command. Inconclusive rows indicate disagreement
+within or across rounds. The error label describes severity. Measurement or provenance failure
+causes a nonzero command exit.
+
+The runner keeps the comparison index, fixed fixture and linked raw per-session timings, including
+the phase timings needed for follow-up. An interrupted or failed run retains evidence separately
+from completed comparisons. The browser endpoint is React-applied with a DOM check. The native
+Studio app and its benchmark are still in the legacy implementation.
+
 ## Repeat an existing immutable benchmark
 
 Run `just timing-watch` in Terminal on the timing laptop from a checkout that supports it. Leave
@@ -118,7 +151,7 @@ JSON summary is also saved under `~/.tao-dev/timing/reports/`, shared across con
 The report ends with a blank-line-separated deviation summary comparing the previous comparable
 locally collected job on the same SSH address. Selection uses measurement timestamps, not retrieval
 order, and requires matching fixture, workload, browser, toolchain, system and frame conditions.
-Each scenario shows its median change in milliseconds and percent, plus session-range overlap.
+Each scenario shows percentage change, this run's median, the baseline median and session-range overlap.
 Changes meeting both 5% and 2 ms are flagged as unconfirmed; at least five independent sessions
 per job are required. Reports with fewer sessions remain evidence but are not selected as baselines.
 An unchanged measured source tree provides a machine-drift control; changed source cannot isolate

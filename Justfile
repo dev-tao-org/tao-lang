@@ -93,6 +93,12 @@ timing-session HOST CHECKOUT *ARGS:
 timing-run HOST CHECKOUT *ARGS:
     ./dev timing-run "$@"
 
+# Compare preview timings across prepared baseline and candidate revisions
+[group('Performance')]
+[positional-arguments]
+timing-compare HOST BASELINE CANDIDATE *ARGS:
+    ./dev timing-compare "$@"
+
 # Follow current and future benchmark jobs on the timing laptop
 [group('Performance')]
 timing-watch:

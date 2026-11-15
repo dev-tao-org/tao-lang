@@ -1,5 +1,5 @@
 import { Json } from '@shared'
-import { Errors, Regxs } from '@shared'
+import { Errors, Objects, Regxs } from '@shared'
 import { FS, Path } from '@shared/os'
 import { JobFileName, requireSampleName } from './JobFiles'
 import { type PreviewReport, requireReport } from './ReportContract'
@@ -18,7 +18,8 @@ export type MeasurementSummary = {
 }
 
 type MeasurementConditionField = 'system' | 'runtime' | 'browser' | 'measurement' | 'frameSizes'
-type MeasurementConditions = Pick<PreviewReport, MeasurementConditionField>
+/** MeasurementConditions identifies environment and workload fields that must match. */
+export type MeasurementConditions = Pick<PreviewReport, MeasurementConditionField>
 type MeasurementGroupSummary = {
   name: string
   sessions: number
@@ -30,24 +31,10 @@ type MeasurementGroupSummary = {
 
 /** summarizeJob retains independent-session medians and conditions without issuing an automatic significance verdict. */
 export async function summarizeJob(directory: string): Promise<MeasurementSummary> {
-  const job = Json.Parse(await FS.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
-  if (!isCompleteJob(job)) {
-    Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
-  }
-  const reports = await Promise.all(job.samples.map(name => readReport(directory, name, job)))
-  if (new Set(reports.map(report => report.sessionId)).size !== reports.length) {
-    Errors.ThrowUserInput('Duplicate session identities cannot count as independent measurements.')
-  }
-  const conditions = reports.map(report =>
-    Json.Print({
-      system: report.system,
-      runtime: report.runtime,
-      browser: report.browser,
-      measurement: report.measurement,
-      frameSizes: report.frameSizes,
-    })
-  )
-  if (new Set(conditions).size !== 1) {
+  const { job, reports } = await readCompletedJob(directory)
+  const conditions = describeMeasurementConditions(reports[0])
+  const sameConditions = reports.every(report => Objects.equal(describeMeasurementConditions(report), conditions))
+  if (!sameConditions) {
     Errors.ThrowUserInput('Job conditions changed between sessions; split the comparison before interpreting timings.')
   }
   const groups = collectGroups(reports)
@@ -58,9 +45,33 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
     tree: job.tree,
     fixtureSha256: job.fixtureSha256,
     settings: job.settings,
-    conditions: Json.Parse(conditions[0]) as MeasurementConditions,
+    conditions,
     groups: summaries,
     interpretation: 'Run medians are independent session units. Edit counts are not independent process counts.',
+  }
+}
+
+/** readCompletedJob loads and validates the raw sessions from a passed job. */
+export async function readCompletedJob(directory: string): Promise<{ job: MeasurementJob; reports: PreviewReport[] }> {
+  const job = Json.Parse(await FS.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
+  if (!isCompleteJob(job)) {
+    Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
+  }
+  const reports = await Promise.all(job.samples.map(name => readReport(directory, name, job)))
+  if (new Set(reports.map(report => report.sessionId)).size !== reports.length) {
+    Errors.ThrowUserInput('Duplicate session identities cannot count as independent measurements.')
+  }
+  return { job, reports }
+}
+
+/** describeMeasurementConditions selects the report fields that must match across comparisons. */
+export function describeMeasurementConditions(report: PreviewReport): MeasurementConditions {
+  return {
+    system: report.system,
+    runtime: report.runtime,
+    browser: report.browser,
+    measurement: report.measurement,
+    frameSizes: report.frameSizes,
   }
 }
 
@@ -108,7 +119,8 @@ function describeGroup(name: string, values: number[]): MeasurementGroupSummary 
   }
 }
 
-function median(values: number[]): number {
+/** median returns the middle of a nonempty set of measured durations. */
+export function median(values: readonly number[]): number {
   const sorted = values.toSorted((left, right) => left - right)
   const middle = Math.floor(sorted.length / 2)
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2

@@ -19,7 +19,13 @@ export type PreviewReport = {
 }
 
 type PreviewFrameSize = { width: number; height: number }
-type PreviewReportResult = { scenario: string; sample: string; parentClickToLastAppliedMs: number }
+type PreviewReportResult = {
+  scenario: string
+  sample: string
+  parentClickToLastAppliedMs: number
+  frames?: PreviewResultFrames
+}
+type PreviewResultFrames = Record<string, { bootId?: string }>
 type PreviewFrameCount = Perf.PreviewFrameCount
 
 /** requireReport verifies source, workload completeness and measurement conditions before accepting timings. */

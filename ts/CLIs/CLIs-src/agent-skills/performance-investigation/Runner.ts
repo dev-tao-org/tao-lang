@@ -15,6 +15,9 @@ import { appendTimingProgress, describeTimingSample } from './TimingProgress'
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
 export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number }
 
+/** PreviewLoad selects compiled views and sibling modules for a measured session. */
+export type PreviewLoad = { extraViews: number; extraFileCount: number }
+
 type MeasurementJobStatus = 'running' | 'passed' | 'failed'
 type MeasurementEnvironmentValue = string | undefined
 type MeasurementEnvironment = Record<string, MeasurementEnvironmentValue>
@@ -37,7 +40,16 @@ export type MeasurementJob = {
 
 /** runMeasurements runs an immutable checkout under the account-wide timing lock and retains raw samples. */
 export async function runMeasurements(options: RunnerOptions): Promise<string> {
-  requireRunnerOptions(options)
+  const directory = allocateTimingJob()
+  await withTimingLock(() => runMeasurementJob(options, directory))
+  return directory
+}
+
+/** allocateTimingJob reserves an identity for a job before it is started. */
+export const allocateTimingJob = (): string => Repo.resolvePath(JobsDirectory, Platform.randomUUID())
+
+/** withTimingLock holds the account-wide lease through an entire measurement or comparison. */
+export async function withTimingLock<Result>(run: () => Promise<Result>): Promise<Result> {
   const path = Storage.resolveSupportDirectory('locks', TimingLockName)
   await FS.mkdir(Path.dirname(path))
   const lock = await FileLock.tryAcquire(path)
@@ -46,26 +58,28 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
       'Another performance investigation owns this account’s timing lock. Retry when it finishes.',
     )
   }
-  return await Try(async () => {
-    const fixture = await FS.readFile(options.fixture, 'utf8')
-    const job = await describeJob(options, fixture)
-    const directory = Repo.resolvePath(JobsDirectory, Platform.randomUUID())
-    await FS.mkdir(directory)
-    const fixturePath = Path.join(directory, 'fixture.tao')
-    await FS.writeFile(fixturePath, fixture)
-    IO.print(`Performance job: ${directory}`)
-    await appendTimingProgress(
-      `Starting ${job.commit.slice(0, 12)} · ${options.samples} sessions × ${options.edits} edits`,
-    )
-    await Try(() => collectSamples(directory, job, () => measurePreview(job, fixturePath, directory)), {
-      finally: (_thrown, error) =>
-        appendTimingProgress(error ? `Failed: ${error.message}` : `Finished ${job.commit.slice(0, 12)} · ${directory}`),
-    })
-    return directory
-  }, { finally: () => lock.release() })
+  return await Try(run, { finally: () => lock.release() })
 }
 
-async function describeJob(options: RunnerOptions, fixture: string): Promise<MeasurementJob> {
+/** runMeasurementJob measures one retained job while its caller holds the timing lease. */
+export async function runMeasurementJob(options: RunnerOptions, directory: string, load?: PreviewLoad): Promise<void> {
+  requireRunnerOptions(options)
+  const fixture = await FS.readFile(options.fixture, 'utf8')
+  const job = await describeJob(options, fixture, load)
+  await FS.mkdir(directory)
+  const fixturePath = Path.join(directory, 'fixture.tao')
+  await FS.writeFile(fixturePath, fixture)
+  IO.print(`Performance job: ${directory}`)
+  await appendTimingProgress(
+    `Starting ${job.commit.slice(0, 12)} · ${options.samples} sessions × ${options.edits} edits`,
+  )
+  await Try(() => collectSamples(directory, job, () => measurePreview(job, fixturePath, directory)), {
+    finally: (_thrown, error) =>
+      appendTimingProgress(error ? `Failed: ${error.message}` : `Finished ${job.commit.slice(0, 12)} · ${directory}`),
+  })
+}
+
+async function describeJob(options: RunnerOptions, fixture: string, load?: PreviewLoad): Promise<MeasurementJob> {
   await requireCleanSource(options.repo)
   const commit = await resolveCommit(options.repo, 'HEAD')
   const tree = (await captureGit(options.repo, ['rev-parse', `${commit}^{tree}`])).trim()
@@ -78,13 +92,17 @@ async function describeJob(options: RunnerOptions, fixture: string): Promise<Mea
     tree,
     fixtureSha256,
     settings: options,
-    environment: {
-      TAO_PREVIEW_FRAME_COUNT: Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2',
-      TAO_PREVIEW_EXTRA_VIEWS: Env.get('TAO_PREVIEW_EXTRA_VIEWS') ?? '0',
-      TAO_PREVIEW_EXTRA_FILE_COUNT: Env.get('TAO_PREVIEW_EXTRA_FILE_COUNT') ?? '0',
-    },
+    environment: describeEnvironment(load),
     system: Platform.systemInfo(),
     samples: [],
+  }
+}
+
+function describeEnvironment(load?: PreviewLoad): MeasurementEnvironment {
+  return {
+    TAO_PREVIEW_FRAME_COUNT: load ? '2' : Env.get('TAO_PREVIEW_FRAME_COUNT') ?? '2',
+    TAO_PREVIEW_EXTRA_VIEWS: load ? String(load.extraViews) : Env.get('TAO_PREVIEW_EXTRA_VIEWS') ?? '0',
+    TAO_PREVIEW_EXTRA_FILE_COUNT: load ? String(load.extraFileCount) : Env.get('TAO_PREVIEW_EXTRA_FILE_COUNT') ?? '0',
   }
 }
 
@@ -108,10 +126,19 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
     await CLIKit.runNonInteractiveCommand('./dev performance preview', {
       variadicArgs: ['--fixture', fixture],
       cwd: options.repo,
-      addEnv: { TAO_PREVIEW_EDIT_COUNT: String(options.edits), TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
+      addEnv: describePreviewEnvironment(job),
     })
     return await acceptPreviewReport(job, commit, reports, before)
   })
+}
+
+function describePreviewEnvironment(job: MeasurementJob): MeasurementEnvironment {
+  return {
+    ...job.environment,
+    TAO_PREVIEW_EDIT_COUNT: String(job.settings.edits),
+    TERMINAL_UI: '0',
+    TERMINAL_OUTPUT: '1',
+  }
 }
 
 async function acceptPreviewReport(job: MeasurementJob, commit: string, reports: string, before: Set<string>) {
