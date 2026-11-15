@@ -24,7 +24,7 @@ Success: the CLI and editor agree on errors, and ordinary edits avoid a full-wor
 ## Goal 3 — Stateful views, actions and executable previews
 
 - [ ] Implement view state, event handlers and actions.
-- [ ] Settle remaining questions in [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md) before implementing the relevant data behavior.
+- [ ] Implement agreed state, action and data behavior through the [Tao runtime PoC](Tao%20Runtime%20PoC.md).
 - [ ] After the human-review branch merges, implement `draft <DataDef>` for detached, uncreated data, with the TypeScript form `Draft(DataDef): Draft<DataDef>`. Keep live entity parameters distinct from drafts unless their declared contract explicitly accepts drafts.
 - [ ] Implement [Live Previews](../Specification/Live%20Previews.md), including named previews, supplied environment settings and initial-state overrides.
 - [ ] Extend [Tests](../Specification/Tests.md) to render individual views with supplied inputs and state.
