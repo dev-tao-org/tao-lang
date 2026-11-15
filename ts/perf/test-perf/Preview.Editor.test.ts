@@ -57,6 +57,7 @@ async function verifyRepairedPreview(directory: string): Promise<void> {
       await page.goto(harness.url)
       await page.getByRole('button', { name: 'Performance.tao' }).click()
       await savePerformanceEntry(page, 'invalid Tao program')
+      await page.getByText('Saved. Preview invalid.', { exact: true }).waitFor()
       const show = page.getByRole('button', { name: 'Show previews' })
       await show.click()
       await page.locator('body[data-status="open-failed"]').waitFor()

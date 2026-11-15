@@ -3,7 +3,7 @@ import * as BrowserRuntime from '@shared/os/browser'
 import { Http } from '@shared/web'
 
 import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
-import type { SavedPreviewEdit } from './PreviewEditorWorkspace'
+import { parseSavedPreviewStatus, type SavedPreviewStatus } from './PreviewBrowserJson'
 
 type SourceEditor = {
   files: WebHost.HTMLElement
@@ -116,7 +116,7 @@ async function saveSource(editor: SourceEditor): Promise<void> {
       showError(editor, await response.text())
       return
     }
-    const saved = await response.json() as SavedPreviewEdit
+    const saved = parseSavedPreviewStatus(await response.text())
     editor.drafts.delete(path)
     editor.status.textContent = describeSave(saved)
   }, {
@@ -133,7 +133,7 @@ function serializeSourceSave(path: string, source: string): string {
   return Json.Print({ path, source })
 }
 
-function describeSave(saved: SavedPreviewEdit): string {
+function describeSave(saved: SavedPreviewStatus): string {
   if (saved.status === 'published') {
     return 'Saved'
   }
