@@ -5,37 +5,16 @@ import { EventStream, Http } from '@shared/web'
 
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
-import { type OpenedPreview, PreviewOpening } from './Preview/PreviewOpening'
+import { type OpenedPreview, PreviewOpening, selectPublishedBaseline } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
-import type { PreviewEditTrace } from './Preview/PreviewWork'
+import type { PreviewEditTrace, PreviewScenarioResult } from './Preview/PreviewWork'
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
 type PreviewOrigin = string | undefined
 type PendingPreviewOpening = PreviewOpening | undefined
 type OptionalPreviewExpectation = Preview.PreviewExpectation | undefined
-
-type PreviewResult = {
-  scenario: string
-  revision: string
-  clickTime: number
-  clickTimestampMs: number
-  timings: unknown[]
-  editTrace: PreviewEditTrace
-  stages?: unknown
-  outcome?: Preview.PreviewOutcome
-  frames: Record<string, {
-    clickToHmrMs: number
-    hmrToAppliedMs: number
-    clickToAppliedMs: number
-    hmrTimestampMs: number
-    appliedTimestampMs: number
-    hmrTimings: unknown[]
-    appliedTimings: unknown[]
-    metroDeltaModules?: number
-  }>
-}
 
 const sessionId = BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
 let previewOrigin: PreviewOrigin
@@ -55,7 +34,7 @@ const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
-const result: BrowserRuntime.PageState & { results: PreviewResult[] } = {
+const result: BrowserRuntime.PageState & { results: PreviewScenarioResult[] } = {
   status: 'closed',
   results: [],
 }
@@ -76,9 +55,7 @@ events.addEventListener('expected', event => {
   }
   expected.clear()
   expected.add(revision)
-  for (const pending of pendingSignals.splice(0)) {
-    receiveSignal(pending)
-  }
+  replayPendingSignals()
 })
 
 events.addEventListener('outcome', event => {
@@ -98,9 +75,7 @@ events.addEventListener('baseline', event => {
   for (const recovery of recoveries.values()) {
     recovery.setBaseline(baseline)
   }
-  for (const pending of pendingSignals.splice(0)) {
-    receiveSignal(pending)
-  }
+  replayPendingSignals()
 })
 
 BrowserRuntime.onMessage(receiveSignal)
@@ -140,12 +115,13 @@ async function openPreviews(measure: boolean): Promise<void> {
   if (measure) {
     opening = new PreviewOpening(preview.baseline, started, frames.size)
   }
+  const published = selectPublishedBaseline(preview.baseline, baseline)
   for (const [id, frame] of frames) {
     url.searchParams.set('frameId', id)
     frame.hidden = false
     const recovery = new Preview.PreviewRecovery(frame, url.toString(), sessionId, id, previewTimeoutMs)
     recoveries.set(id, recovery)
-    restoreFrameRecovery(recovery, baseline, latestExpectation, terminalOutcomes)
+    restoreFrameRecovery(recovery, published, latestExpectation, terminalOutcomes)
   }
   if (!measure) {
     markPreviewsReady()
@@ -187,7 +163,15 @@ function markPreviewsReady(): void {
   setStatus('ready')
 }
 
-function receiveSignal(event: MessageEvent): void {
+function replayPendingSignals(): void {
+  for (const pending of pendingSignals.splice(0)) {
+    receiveSignal(pending, 'replay')
+  }
+}
+
+type SignalDelivery = 'live' | 'replay'
+
+function receiveSignal(event: MessageEvent, delivery: SignalDelivery = 'live'): void {
   if (event.origin !== previewOrigin || !isFrameMessage(event)) {
     return
   }
@@ -199,8 +183,10 @@ function receiveSignal(event: MessageEvent): void {
   }
   const signal = event.data
   if (signal.type === 'tao.preview-applied') {
-    opening?.recordApplied(signal)
-    finishPreviewOpening()
+    if (delivery === 'live') {
+      opening?.recordApplied(signal, Time.nowMs())
+      finishPreviewOpening()
+    }
     recoveries.get(signal.frameId)?.receive(signal, signal.revision, 'applied')
   }
   if (!expected.has(signal.revision)) {

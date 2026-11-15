@@ -1,4 +1,5 @@
 import { Lists, type TimingSample } from '@shared'
+import type * as Preview from '@shared/preview'
 
 type GeneratedSource = Readonly<Record<string, string>>
 type PublishedSource = GeneratedSource | undefined
@@ -13,6 +14,30 @@ export type PreviewEditTrace = {
   writtenAtMs: number
   changes?: GeneratedChanges
 }
+
+/** PreviewScenarioResult carries browser measurements for one submitted edit and its frames. */
+export type PreviewScenarioResult = {
+  scenario: string
+  revision: string
+  clickTime: number
+  clickTimestampMs: number
+  timings: unknown[]
+  editTrace: PreviewEditTrace
+  stages?: unknown
+  outcome?: Preview.PreviewOutcome
+  frames: PreviewScenarioFrames
+}
+
+type PreviewScenarioFrames = Record<string, {
+  clickToHmrMs: number
+  hmrToAppliedMs: number
+  clickToAppliedMs: number
+  hmrTimestampMs: number
+  appliedTimestampMs: number
+  hmrTimings: unknown[]
+  appliedTimings: unknown[]
+  metroDeltaModules?: number
+}>
 
 /** PreviewWork counts operations performed for one preview edit. */
 export type PreviewWork = {
