@@ -27,11 +27,35 @@ async function verifyRecoveryJourney({ page, change }: RecoveryFixture): Promise
   await expectLabels(page, 'Repaired')
   Tests.expect(await readBoots(page)).toEqual(initialBoots)
   await verifyManualReloadAndRetiredMessages(page, initialBoots.left!)
+  await verifyReopenWithConcurrentSave(page, change)
+  await verifyReopenRetainsBuildError(page, change)
+}
+
+async function verifyReopenRetainsBuildError(page: HeadlessBrowser.Page, change: RecoveryFixture['change']) {
+  await page.getByRole('button', { name: 'Close previews' }).click()
+  await Tests.expect(change('Invalid')).rejects.toThrow('failed')
+  await page.locator('body[data-received-outcome*="build-error"]').waitFor()
+  await page.getByRole('button', { name: 'Show previews' }).click()
+  for (const [index, id] of ['left', 'right'].entries()) {
+    await page.frameLocator(`#${id}`).getByTestId('recovery-label').filter({ hasText: 'Ready' }).waitFor()
+    await page.locator('aside').nth(index).filter({ hasText: 'Deliberate preview build failure' }).waitFor()
+  }
+}
+
+async function verifyReopenWithConcurrentSave(page: HeadlessBrowser.Page, change: RecoveryFixture['change']) {
   await page.getByRole('button', { name: 'Close previews' }).click()
   await page.locator('body[data-status="closed"]').waitFor()
-  await change('Ready')
+  await page.route('**/open-preview', async route => {
+    const response = await route.fetch()
+    await change('Ready')
+    await route.fulfill({ response })
+  }, { times: 1 })
   await page.getByRole('button', { name: 'Show previews' }).click()
   await page.locator('body[data-status="ready"]').waitFor()
+  await expectLabels(page, 'Ready')
+  const boots = await readBoots(page)
+  await page.clock.fastForward(1200)
+  Tests.expect(await readBoots(page)).toEqual(boots)
   await expectLabels(page, 'Ready')
 }
 

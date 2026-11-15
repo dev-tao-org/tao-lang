@@ -4,6 +4,7 @@ import * as Preview from '@shared/preview'
 import { EventStream, Http } from '@shared/web'
 
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
+import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
 import type { PreviewEditTrace } from './Preview/PreviewWork'
@@ -12,7 +13,7 @@ type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
 type PreviewOrigin = string | undefined
 type PendingPreviewOpening = PreviewOpening | undefined
-type PreviewBaseline = Preview.PreviewExpectation | undefined
+type OptionalPreviewExpectation = Preview.PreviewExpectation | undefined
 
 type PreviewResult = {
   scenario: string
@@ -58,7 +59,8 @@ const result: BrowserRuntime.PageState & { results: PreviewResult[] } = {
   results: [],
 }
 let opening: PendingPreviewOpening
-let baseline: PreviewBaseline
+let baseline: OptionalPreviewExpectation
+let latestExpectation: OptionalPreviewExpectation
 const openButton = BrowserRuntime.querySelector<HTMLButtonElement>('#open')!
 const opensOnLoad = BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true'
 BrowserRuntime.setPageState(result)
@@ -66,6 +68,7 @@ const events = EventStream.open('/events')
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
+  latestExpectation = expectation
   const revision = expectation.revision
   for (const recovery of recoveries.values()) {
     recovery.expect(expectation)
@@ -143,10 +146,7 @@ async function openPreviews(measure: boolean): Promise<void> {
     frame.hidden = false
     const recovery = new Preview.PreviewRecovery(frame, url.toString(), sessionId, id, previewTimeoutMs)
     recoveries.set(id, recovery)
-    if (baseline?.revision === preview.revision) {
-      recovery.setBaseline(baseline)
-      recovery.expect(baseline)
-    }
+    restoreFrameRecovery(recovery, baseline, latestExpectation, terminalOutcomes)
   }
   if (!measure) {
     markPreviewsReady()

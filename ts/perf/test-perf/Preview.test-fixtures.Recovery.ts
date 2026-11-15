@@ -20,6 +20,7 @@ export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Pro
     const page = await browser.newPage()
     page.setDefaultTimeout(5000)
     await page.clock.install()
+    await observePublicationOutcomes(page)
     await page.goto(expo.url)
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({
@@ -48,7 +49,7 @@ export type RecoveryFixture = {
   change(mode: RecoveryMode): Promise<string>
 }
 
-type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
+type RecoveryMode = 'Ready' | 'Broken' | 'Repaired' | 'Invalid'
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 type OptionalRecoveryBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
 type OptionalRecoveryHost = PreviewHarness | undefined
@@ -60,9 +61,12 @@ async function createRecoveryWorkspace(root: string) {
   const workspace = Workspace.createWorkspace({
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
-    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => ({
-      'App.tsx': createRecoveryApp(options.revision, mode),
-    })),
+    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => {
+      if (mode === 'Invalid') {
+        Errors.ThrowUserInput('Deliberate preview build failure')
+      }
+      return { 'App.tsx': createRecoveryApp(options.revision, mode) }
+    }),
   })
   return {
     workspace,
@@ -76,6 +80,22 @@ async function createRecoveryWorkspace(root: string) {
       return result.revision
     },
   }
+}
+
+async function observePublicationOutcomes(page: HeadlessBrowser.Page): Promise<void> {
+  await page.addInitScript(() => {
+    const add = EventSource.prototype.addEventListener
+    Object.defineProperty(EventSource.prototype, 'addEventListener', {
+      value(this: EventSource, ...args: Parameters<typeof add>) {
+        add.apply(this, args)
+        if (args[0] === 'outcome') {
+          add.call(this, 'outcome', (event: Event) => {
+            document.body.dataset.receivedOutcome = (event as MessageEvent<string>).data
+          })
+        }
+      },
+    })
+  })
 }
 
 function createRecoveryApp(revision: string, mode: RecoveryMode): string {
