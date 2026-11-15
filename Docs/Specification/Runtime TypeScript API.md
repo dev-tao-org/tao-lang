@@ -46,8 +46,14 @@ attach an observation; abandoned renders and unmounted components retain no subs
 #### `expression.jsValue()`
 
 Returns the underlying raw, non-reactive JavaScript value, evaluating the expression when needed.
-Receiving that value does not itself subscribe the caller to later changes. Object-valued results
-are shared read-only snapshots, without copying on each read; writes use Tao's writable APIs.
+Receiving that value does not itself subscribe the caller to later changes. Ordinary lists and
+records are deeply readonly snapshots. Tao copies them when an initializer, write or calculation
+supplies an external value. Later changes to the external object cannot affect the snapshot.
+Expressions reuse snapshots already owned by the runtime. Capabilities such as writable
+expressions and observation handles retain identity inside a collection. Spreading a handle creates
+an ordinary record. Ordinary records use own enumerable string fields, and lists use indexed data.
+Tao rejects symbol keys and cycles in ordinary collections. Opaque host objects with custom
+prototypes are outside the ordinary snapshot contract.
 
 #### `writable.update(value)`
 
@@ -58,7 +64,9 @@ follows the enclosing batch's settlement.
 
 Calls the callback immediately with the current raw JavaScript value, then with changed values after
 each batch. Returns an object with an `unobserve()` method that stops observation.
-Values are compared with `Object.is`.
+Lists compare in order, including duplicates. Records compare by fields regardless of field order.
+Equal calculation results retain their previous snapshot and do not trigger downstream evaluations.
+Primitive values and capability handles use `Object.is`.
 
 ```ts
 const observation = expression.observe(value => console.log(value))

@@ -13,6 +13,7 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await page.getByTestId('react-child').waitFor()
   await first.getByText('Published submodule', { exact: true }).waitFor()
   await verifyLanguageFeatures(page)
+  await verifyValueSnapshots(page)
   await first.getByText('Nested private Tao helper 0', { exact: true }).click()
   await first.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   await second.getByText('Nested private Tao helper 0', { exact: true }).waitFor()
@@ -51,4 +52,14 @@ async function verifyLanguageFeatures(page: Page): Promise<void> {
   const input = features.getByRole('textbox')
   await input.fill('Edited library input')
   expect(await input.inputValue()).toBe('Edited library input')
+}
+
+async function verifyValueSnapshots(page: Page): Promise<void> {
+  await page.getByText('A, A, B', { exact: true }).waitFor()
+  await page.getByTestId('recompute-equal').click()
+  await page.getByText('Reused snapshot', { exact: true }).waitFor()
+  await page.getByTestId('reorder-rows').click()
+  await page.getByText('B, A, A', { exact: true }).waitFor()
+  await page.getByTestId('add-duplicate-row').click()
+  await page.getByText('B, A, A, A', { exact: true }).waitFor()
 }
