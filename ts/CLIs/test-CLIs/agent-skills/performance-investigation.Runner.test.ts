@@ -139,10 +139,24 @@ Tests.test('branch verdicts require paired agreement and a repeated tier while k
   )
   Tests.expect(tail?.candidate.medianMs).toBe(150)
   assertBranchReport(baseline, slower, large)
+  const zeroBaseline = [0, 60, 70, 80, 90].map(createBranchSession)
+  const zeroCandidate = [10, 70, 80, 90, 100].map(createBranchSession)
+  const report = renderBranchReport(zeroBaseline, [zeroCandidate])
+  Tests.expect(report).toContain('Paired percentage unavailable. 5 of 5 pairs agreed.')
 })
 
 function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[], repeat: PreviewReport[]): void {
-  const rounds = [candidate, repeat].map(sessions => ({
+  const report = renderBranchReport(baseline, [candidate, repeat])
+  Tests.expect(report.startsWith('Confirmed ')).toBe(true)
+  Tests.expect(report).toContain('Typical warm edit — +14.3% (+10.00 ms). Slowdown (warning). Repeat measured +28.6%')
+  Tests.expect(report).toContain('Slow warm edit (p95)')
+  Tests.expect(report).toContain('Warm preview reopen')
+  Tests.expect(report).toContain('generated paths changed 2 / 2 · Metro delta modules — / —')
+  Tests.expect(report).toContain('Edits with a frame restart: 10/110 vs 10/110 baseline')
+}
+
+function renderBranchReport(baseline: PreviewReport[], comparisons: PreviewReport[][]): string {
+  const rounds = comparisons.map(sessions => ({
     jobs: { baseline: baseline.map(report => report.sessionId), candidate: sessions.map(report => report.sessionId) },
     metrics: BranchMetrics.compareBranchMetrics({ baseline, candidate: sessions }),
     quality: {
@@ -151,7 +165,7 @@ function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[
     },
     work: { baseline: BranchMetrics.describeWarmWork(baseline), candidate: BranchMetrics.describeWarmWork(sessions) },
   }))
-  const report = formatBranchComparison({
+  return formatBranchComparison({
     directory: '/fixture',
     status: 'passed',
     startedAt: '2026-11-14T00:00:00Z',
@@ -160,12 +174,6 @@ function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[
     fixtureSha256: 'fixture',
     scenarios: [{ name: 'Small app', load: { extraViews: 0, extraFileCount: 0 }, rounds }],
   })
-  Tests.expect(report.startsWith('Confirmed ')).toBe(true)
-  Tests.expect(report).toContain('Typical warm edit — +14.3% (+10.00 ms). Slowdown (warning). Repeat measured +28.6%')
-  Tests.expect(report).toContain('Slow warm edit (p95)')
-  Tests.expect(report).toContain('Warm preview reopen')
-  Tests.expect(report).toContain('generated paths changed 2 / 2 · Metro delta modules — / —')
-  Tests.expect(report).toContain('Edits with a frame restart: 10/110 vs 10/110 baseline')
 }
 
 function createBranchSession(duration: number): PreviewReport {

@@ -125,7 +125,11 @@ function formatMetricName(name: string): string {
 function describeOutcome({ first, confirmation, change }: ComparedMetric): string {
   if (change === 'variable') {
     if (!confirmation) {
-      return `Only ${first.agreeingPairs} of ${first.pairs} pairs agreed.`
+      const agreement = `${first.agreeingPairs} of ${first.pairs} pairs agreed.`
+      if (first.pairedChangePercent === null) {
+        return `Paired percentage unavailable. ${agreement}`
+      }
+      return agreement
     }
     return `Repeat measured ${formatMovement(confirmation)}. The change did not hold up across rounds.`
   }
