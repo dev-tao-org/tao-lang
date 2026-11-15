@@ -23,5 +23,7 @@ export function describeTimingSample(report: PreviewReport): string {
   const warm = report.results.filter(result => result.sample === 'warm')
   const warmDurations = warm.map(result => result.parentClickToLastAppliedMs)
   const peak = warmDurations.length ? ` · slowest warm edit ${Math.max(...warmDurations).toFixed(1)} ms` : ''
-  return `Startup ${report.startupMs.toFixed(0)} ms · first edit ${first.toFixed(1)} ms${peak}`
+  return `Harness ${report.startupMs.toFixed(0)} ms · first open ${report.opening.firstMs.toFixed(0)} ms · first edit ${
+    first.toFixed(1)
+  } ms${peak}`
 }

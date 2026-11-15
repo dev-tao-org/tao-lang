@@ -1,6 +1,12 @@
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 /** PageState names the small state object exposed to headless preview automation. */
-export type PageState = { status: string; currentScenario?: string; results: unknown[]; error?: string }
+export type PageState = {
+  status: string
+  currentScenario?: string
+  results: unknown[]
+  error?: string
+  previewOpenMs?: number
+}
 
 /** querySelector selects one page element through the browser document. */
 export function querySelector<ElementType extends WebHost.Element>(selector: string): ElementType | null {

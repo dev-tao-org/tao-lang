@@ -6,9 +6,13 @@ import { EventStream, Http } from '@shared/web'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
+import type { PreviewEditTrace } from './Preview/PreviewWork'
 
 type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
+type PreviewOrigin = string | undefined
+type PendingPreviewOpening = PreviewOpening | undefined
+type PreviewBaseline = Preview.PreviewExpectation | undefined
 
 type PreviewResult = {
   scenario: string
@@ -16,6 +20,7 @@ type PreviewResult = {
   clickTime: number
   clickTimestampMs: number
   timings: unknown[]
+  editTrace: PreviewEditTrace
   stages?: unknown
   outcome?: Preview.PreviewOutcome
   frames: Record<string, {
@@ -26,12 +31,12 @@ type PreviewResult = {
     appliedTimestampMs: number
     hmrTimings: unknown[]
     appliedTimings: unknown[]
+    metroDeltaModules?: number
   }>
 }
 
 const sessionId = BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
-const previewOrigin =
-  Http.url(BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
+let previewOrigin: PreviewOrigin
 const frames = new Map(['left', 'right'].flatMap(id => {
   const frame = BrowserRuntime.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []
@@ -40,11 +45,7 @@ const receipts = new PreviewReceipts<SignalReceipt>()
 const previewTimeoutMs = Number(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content,
 )
-const recoveries = new Map(
-  [...frames].map((
-    [frameId, frame],
-  ) => [frameId, new Preview.PreviewRecovery(frame, sessionId, frameId, previewTimeoutMs)]),
-)
+const recoveries = new Map<string, Preview.PreviewRecovery>()
 const expected = new Set<string>()
 const terminalOutcomes = new Map<string, Preview.PreviewOutcome>()
 const pendingSignals: MessageEvent[] = []
@@ -52,10 +53,13 @@ const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
-const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
-  status: 'ready',
+const result: BrowserRuntime.PageState & { results: PreviewResult[] } = {
+  status: 'closed',
   results: [],
 }
+let opening: PendingPreviewOpening
+let baseline: PreviewBaseline
+const openButton = BrowserRuntime.querySelector<HTMLButtonElement>('#open')!
 BrowserRuntime.setPageState(result)
 const events = EventStream.open('/events')
 
@@ -84,7 +88,7 @@ events.addEventListener('outcome', event => {
 })
 
 events.addEventListener('baseline', event => {
-  const baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
+  baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
   for (const recovery of recoveries.values()) {
     recovery.setBaseline(baseline)
   }
@@ -94,6 +98,13 @@ events.addEventListener('baseline', event => {
 })
 
 BrowserRuntime.onMessage(receiveSignal)
+openButton.addEventListener('click', () => {
+  if (result.status === 'closed') {
+    void openPreviews().then(undefined, failScenario)
+  } else if (result.status === 'ready' || result.status === 'complete') {
+    closePreviews()
+  }
+})
 BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () => {
   if (result.status !== 'ready' || scenarioIndex >= scenarios.length) {
     return
@@ -105,6 +116,76 @@ BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click
   const clickTimestampMs = Time.timestampMs()
   void runScenario(scenarios[scenarioIndex]!, clickTime, clickTimestampMs).then(undefined, failScenario)
 })
+setStatus('closed')
+if (BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true') {
+  void openPreviews(false).then(undefined, failScenario)
+} else {
+  openButton.disabled = false
+}
+
+type PreviewOpening = { started: number; revision: string; applied: Set<string> }
+type OpenedPreview = { revision: string; url: string }
+
+async function openPreviews(measure = true): Promise<void> {
+  const started = Time.nowMs()
+  setStatus('opening')
+  result.status = 'opening'
+  openButton.disabled = true
+  const preview = await Http.requestJson<OpenedPreview>('/open-preview', { method: 'POST' })
+  const url = Http.url(preview.url)
+  previewOrigin = url.origin
+  if (measure) {
+    opening = { started, revision: preview.revision, applied: new Set() }
+  }
+  for (const [id, frame] of frames) {
+    url.searchParams.set('frameId', id)
+    frame.hidden = false
+    const recovery = new Preview.PreviewRecovery(frame, url.toString(), sessionId, id, previewTimeoutMs)
+    recoveries.set(id, recovery)
+    if (baseline?.revision === preview.revision) {
+      recovery.setBaseline(baseline)
+      recovery.expect(baseline)
+    }
+  }
+  if (!measure) {
+    markPreviewsReady()
+  }
+}
+
+function closePreviews(): void {
+  for (const [id, frame] of frames) {
+    recoveries.get(id)?.dispose()
+    frame.hidden = true
+    frame.removeAttribute('src')
+  }
+  recoveries.clear()
+  pendingSignals.length = 0
+  previewOrigin = undefined
+  delete result.previewOpenMs
+  result.status = 'closed'
+  openButton.textContent = 'Show previews'
+  refreshRunButton()
+  setStatus('closed')
+}
+
+function recordPreviewOpened(signal: PreviewSignal): void {
+  if (!opening || signal.revision !== opening.revision) {
+    return
+  }
+  opening.applied.add(signal.frameId)
+  if (opening.applied.size === frames.size) {
+    result.previewOpenMs = Time.nowMs() - opening.started
+    opening = undefined
+    markPreviewsReady()
+  }
+}
+
+function markPreviewsReady(): void {
+  result.status = 'ready'
+  openButton.textContent = 'Close previews'
+  refreshRunButton()
+  setStatus('ready')
+}
 
 function receiveSignal(event: MessageEvent): void {
   if (event.origin !== previewOrigin || !isFrameMessage(event)) {
@@ -118,6 +199,7 @@ function receiveSignal(event: MessageEvent): void {
   }
   const signal = event.data
   if (signal.type === 'tao.preview-applied') {
+    recordPreviewOpened(signal)
     recoveries.get(signal.frameId)?.receive(signal, signal.revision, 'applied')
   }
   if (!expected.has(signal.revision)) {
@@ -158,7 +240,7 @@ function relaySignal(signal: PreviewSignal): void {
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
   const update = await Http.requestJson<
-    { status: string; revision: string; timings: unknown[]; stages?: unknown }
+    { status: string; revision: string; timings: unknown[]; stages?: unknown; editTrace: PreviewEditTrace }
   >(
     '/edit',
     {
@@ -178,6 +260,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
     clickTime,
     clickTimestampMs,
     timings: update.timings,
+    editTrace: update.editTrace,
     stages: update.stages,
     outcome: terminalOutcomes.get(update.revision),
     frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [id, frameTimings(receipt, clickTime)])),
@@ -192,7 +275,8 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
 function refreshRunButton(): void {
   const runButton = BrowserRuntime.querySelector<HTMLButtonElement>('#run')!
   const complete = scenarioIndex >= scenarios.length
-  runButton.disabled = complete || result.status === 'running'
+  runButton.disabled = complete || result.status !== 'ready'
+  openButton.disabled = result.status === 'running' || result.status === 'failed'
   runButton.textContent = resolveRunButtonLabel(complete, result.status, scenarioIndex, scenarios)
 }
 
@@ -231,6 +315,7 @@ function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
     appliedTimestampMs: receipt.applied.signal.timestampMs,
     hmrTimings: receipt.hmr.signal.timings,
     appliedTimings: receipt.applied.signal.timings,
+    metroDeltaModules: receipt.hmr.signal.metroDeltaModules,
   }
 }
 

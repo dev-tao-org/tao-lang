@@ -36,6 +36,23 @@ export const WarmEditBudgetMs = 100
 /** MinimumBranchPairs is the minimum number of independent pairs for a comparison round. */
 export const MinimumBranchPairs = 5
 
+type WorkKey = keyof PreviewReport['results'][number]['work']
+type WorkCount = number | null
+
+/** WarmPreviewWork describes median per-edit work across independent warm session medians. */
+export type WarmPreviewWork = Record<WorkKey, WorkCount>
+
+/** describeWarmWork summarizes work without treating unobserved counters as zero. */
+export function describeWarmWork(reports: PreviewReport[]): WarmPreviewWork {
+  return {
+    moduleDiscoveries: medianWork(reports, 'moduleDiscoveries'),
+    parses: medianWork(reports, 'parses'),
+    modulesEmitted: medianWork(reports, 'modulesEmitted'),
+    generatedPathsChanged: medianWork(reports, 'generatedPathsChanged'),
+    metroDeltaModules: medianWork(reports, 'metroDeltaModules'),
+  }
+}
+
 /** compareBranchMetrics uses whole sessions as units and validates equal pair counts. */
 export function compareBranchMetrics(sessions: BranchSessions): BranchMetric[] {
   if (sessions.baseline.length !== sessions.candidate.length || !sessions.baseline.length) {
@@ -92,7 +109,9 @@ type OptionalPreviewFrames = PreviewFrames | undefined
 type FrameTransition = 'same' | 'restarted'
 
 const Metrics: readonly TimingMetric[] = [
-  { name: 'Startup', floorMs: 150, measure: report => report.startupMs },
+  { name: 'Harness launch', floorMs: 150, measure: report => report.startupMs },
+  { name: 'First preview open', floorMs: 150, measure: report => report.opening.firstMs },
+  { name: 'Warm preview reopen', floorMs: 5, measure: report => median(report.opening.reopenMs) },
   { name: 'First edit', floorMs: 5, measure: report => report.results[0].parentClickToLastAppliedMs },
   { name: 'Warm p50', floorMs: 4, measure: report => median(readWarmDurations(report)) },
   { name: 'Warm p95', floorMs: 4, measure: report => readP95(readWarmDurations(report)) },
@@ -111,6 +130,19 @@ function readWarmDurations(report: PreviewReport, scenario?: string): number[] {
 
 function readP95(values: number[]): number {
   return values.toSorted((left, right) => left - right)[Math.ceil(values.length * 0.95) - 1]
+}
+
+function medianWork(reports: PreviewReport[], key: WorkKey): WorkCount {
+  const perSession: number[] = []
+  for (const report of reports) {
+    const values = report.results.filter(edit => edit.sample === 'warm').map(edit => edit.work[key])
+    const observed = values.filter(value => value !== undefined)
+    if (!observed.length || observed.length !== values.length) {
+      return null
+    }
+    perSession.push(median(observed))
+  }
+  return median(perSession)
 }
 
 function compareMetric(metric: TimingMetric, sessions: BranchSessions): BranchMetric {

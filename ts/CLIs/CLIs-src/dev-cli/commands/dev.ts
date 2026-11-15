@@ -116,7 +116,7 @@ async function startDevRuntime(state: DevSession): Promise<void> {
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
   state.preview = await Perf.createPreviewHarness({
     workspace,
-    previewUrl: state.expo.url,
+    preview: state.expo.url,
     sessionId: Platform.randomUUID(),
     canonicalSource: await FS.readFile(entryPath, 'utf8'),
     scenarios: Perf.previewScenarios,

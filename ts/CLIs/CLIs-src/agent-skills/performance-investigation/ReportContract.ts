@@ -9,6 +9,7 @@ export type PreviewReport = {
   commit: string
   modified: boolean
   startupMs: number
+  opening: Perf.PreviewOpeningTimings
   browser: string
   runtime: string
   fixtureSha256: string
@@ -24,6 +25,7 @@ type PreviewReportResult = {
   sample: string
   parentClickToLastAppliedMs: number
   frames?: PreviewResultFrames
+  work: Perf.PreviewWork
 }
 type PreviewResultFrames = Record<string, { bootId?: string }>
 type PreviewFrameCount = Perf.PreviewFrameCount
@@ -36,7 +38,14 @@ export function requireReport(report: PreviewReport, job: MeasurementJob): void 
   if (!hasExpectedWorkload(report, job)) {
     Errors.ThrowUserInput('Sample workload is incomplete or differs from the configured measurement.')
   }
-  const durations = [report.startupMs, ...report.results.map(result => result.parentClickToLastAppliedMs)]
+  if (!report.opening || report.opening.reopenMs?.length !== 3) {
+    Errors.ThrowUserInput('Sample is missing the first preview open or successive warm opens.')
+  }
+  if (!report.results.every(result => result.work && Number.isInteger(result.work.modulesEmitted))) {
+    Errors.ThrowUserInput('Sample is missing module work observations.')
+  }
+  const durations = [report.startupMs, report.opening.firstMs, ...report.opening.reopenMs]
+  durations.push(...report.results.map(result => result.parentClickToLastAppliedMs))
   if (durations.some(duration => !Number.isFinite(duration) || duration < 0)) {
     Errors.ThrowUserInput('Sample contains a missing or invalid measured duration.')
   }

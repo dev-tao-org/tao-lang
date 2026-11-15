@@ -139,7 +139,7 @@ async function runPreview(initialSource?: string) {
     }),
     initialSource: initialSource ?? await Perf.readPerformanceFixture(),
   })
-  IO.print(`Preview startup: ${result.startupMs.toFixed(1)} ms`)
+  printPreviewOpening(result.startupMs, result.opening)
   for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
     if (!timing) {
       IO.warn(`${scenario}: no matching watcher timing; browser samples remain in the raw report.`)
@@ -153,4 +153,11 @@ async function runPreview(initialSource?: string) {
   }
   IO.print('Preview performance report: ' + result.path)
   return result
+}
+
+function printPreviewOpening(startupMs: number, opening: import('@perf').PreviewOpeningTimings): void {
+  IO.summary(`Harness launch (previews closed): ${startupMs.toFixed(1)} ms`)
+  IO.summary(`First preview open: ${opening.firstMs.toFixed(1)} ms`)
+  const reopens = opening.reopenMs.map(ms => ms.toFixed(1))
+  IO.summary(`Warm preview reopens: ${reopens.join(' / ')} ms`)
 }

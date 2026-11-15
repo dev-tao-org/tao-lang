@@ -95,7 +95,11 @@ async function readReport(directory: string, name: string, job: MeasurementJob):
 function collectGroups(reports: PreviewReport[]): Map<string, number[]> {
   const groups = new Map<string, number[]>()
   for (const report of reports) {
-    const session = new Map<string, number[]>([['startup', [report.startupMs]]])
+    const session = new Map<string, number[]>([
+      ['harness launch', [report.startupMs]],
+      ['first preview open', [report.opening.firstMs]],
+      ['warm preview reopen', report.opening.reopenMs],
+    ])
     for (const result of report.results) {
       const scenario = result.scenario.replace(Regxs.MeasurementScenarioCycleSuffixRegx, '')
       const name = `${result.sample}/${scenario}`

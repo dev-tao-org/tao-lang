@@ -9,6 +9,7 @@ export type FileChange = {
   path: string
   kind: ChangeKind
   observedAtMs: number
+  reconciled?: true
 }
 
 /** Watcher updates dynamic observation roots and releases native subscriptions. */
@@ -45,7 +46,7 @@ export async function watchTree(
   let disposed = false
   const reconciliation = reconcileWatchChanges(path => {
     if (!disposed) {
-      onChange({ kind: 'change', path, observedAtMs: Time.timestampMs() })
+      onChange({ kind: 'change', path, observedAtMs: Time.timestampMs(), reconciled: true })
     }
   })
   watcher.on('all', (kind, path, stats) => {

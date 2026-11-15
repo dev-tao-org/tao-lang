@@ -90,7 +90,7 @@ export async function loadFileManagerInput(
       timings: request.input.timings,
     }
   }
-  const snapshot = await readSource(request.input.path, request.input.startedAtMs, read)
+  const snapshot = await readSource(request.input, read)
   if (isUpdateResult(snapshot)) {
     return snapshot
   }
@@ -265,7 +265,14 @@ type SourceFileManagerInput = {
   startedAtMs: number
   timings: Timings
 }
-type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number }
+type DiskObservation = 'watch' | 'reconciliation'
+type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number; observation?: DiskObservation }
+
+/** createWatchedInput retains the origin of a file watcher notification through the queued read. */
+export function createWatchedInput(path: string, change: FileWatch.FileChange): DiskFileManagerInput {
+  const observation = change.reconciled ? 'reconciliation' : 'watch'
+  return { kind: 'disk', path, startedAtMs: change.observedAtMs, observation }
+}
 
 type SourceReadResult = SourceSnapshot | UpdateResult
 type ReadResult = { source: string; observedAtMs: number } | UpdateResult
@@ -273,12 +280,14 @@ type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
 const readSource = Timings.createTopLevelTimer(async function(
   timings,
-  path: string,
-  observedAtMs: number,
+  input: DiskFileManagerInput,
   read: (path: string, observedAtMs: number) => Promise<ReadResult> = defaultRead,
 ): Promise<SourceReadResult> {
-  timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const snapshot = await timings.run(readWorkspaceSource, path, observedAtMs, read)
+  const observedAtMs = input.startedAtMs
+  const observations = Math.max(0, Time.timestampMs() - observedAtMs)
+  const name = input.observation === 'reconciliation' ? 'workspace.reconciled-to-read' : 'workspace.observe-to-read'
+  timings.record(name, Time.nowMs() - observations)
+  const snapshot = await timings.run(readWorkspaceSource, input.path, observedAtMs, read)
   return isUpdateResult(snapshot) ? snapshot : { ...snapshot, timings }
 })
 

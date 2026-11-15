@@ -19,6 +19,7 @@ type Round = {
   jobs: SessionJobs
   metrics: Metrics.BranchMetric[]
   quality: Record<Side, Metrics.PreviewQuality>
+  work: Record<Side, Metrics.WarmPreviewWork>
 }
 type ScenarioSessions = { conditions?: MeasurementConditions; seenIds: Set<string> }
 
@@ -158,8 +159,12 @@ async function measureRound(
   const baseline = Metrics.countPreviewQuality(sessions.baseline)
   const candidate = Metrics.countPreviewQuality(sessions.candidate)
   const metrics = Metrics.compareBranchMetrics(sessions)
+  const work = {
+    baseline: Metrics.describeWarmWork(sessions.baseline),
+    candidate: Metrics.describeWarmWork(sessions.candidate),
+  }
   delete comparison.activeJobs
-  return { jobs, metrics, quality: { baseline, candidate } }
+  return { jobs, metrics, quality: { baseline, candidate }, work }
 }
 
 async function readComparableReport(path: string, comparison: BranchComparison, side: Side): Promise<PreviewReport> {

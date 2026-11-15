@@ -3,6 +3,7 @@ import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as BranchMetrics from '../../CLIs-src/agent-skills/performance-investigation/BranchMetrics'
+import { formatBranchComparison } from '../../CLIs-src/agent-skills/performance-investigation/BranchReport'
 import { runWithEvidence } from '../../CLIs-src/agent-skills/performance-investigation/Evidence'
 import type { PreviewReport } from '../../CLIs-src/agent-skills/performance-investigation/ReportContract'
 import type { MeasurementJob } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
@@ -73,6 +74,7 @@ function createReport(job: MeasurementJob, session: number) {
     commit: job.commit,
     modified: false,
     startupMs: 100,
+    opening: { firstMs: 350, reopenMs: [20, 25, 30] },
     browser: 'Fixture browser',
     runtime: 'Fixture runtime',
     fixtureSha256: 'fixture',
@@ -122,7 +124,35 @@ Tests.test('branch verdicts require paired agreement and a repeated tier while k
     metric.name === 'Warm p95'
   )
   Tests.expect(tail?.candidate.medianMs).toBe(150)
+  assertBranchReport(baseline, slower, large)
 })
+
+function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[], repeat: PreviewReport[]): void {
+  const rounds = [candidate, repeat].map(sessions => ({
+    jobs: { baseline: baseline.map(report => report.sessionId), candidate: sessions.map(report => report.sessionId) },
+    metrics: BranchMetrics.compareBranchMetrics({ baseline, candidate: sessions }),
+    quality: {
+      baseline: BranchMetrics.countPreviewQuality(baseline),
+      candidate: BranchMetrics.countPreviewQuality(sessions),
+    },
+    work: { baseline: BranchMetrics.describeWarmWork(baseline), candidate: BranchMetrics.describeWarmWork(sessions) },
+  }))
+  const report = formatBranchComparison({
+    directory: '/fixture',
+    status: 'passed',
+    startedAt: '2026-11-14T00:00:00Z',
+    options: { baseline: '/baseline', candidate: '/candidate', pairs: 5 },
+    commits: { baseline: 'baseline', candidate: 'candidate' },
+    fixtureSha256: 'fixture',
+    scenarios: [{ name: 'Small app', load: { extraViews: 0, extraFileCount: 0 }, rounds }],
+  })
+  Tests.expect(report.startsWith('Confirmed ')).toBe(true)
+  Tests.expect(report).toContain('Typical warm edit — +14.3% (+10.00 ms). Slowdown (warning). Repeat measured +28.6%')
+  Tests.expect(report).toContain('Slow warm edit (p95)')
+  Tests.expect(report).toContain('Warm preview reopen')
+  Tests.expect(report).toContain('generated paths changed 2 / 2 · Metro delta modules — / —')
+  Tests.expect(report).toContain('Edits with a frame restart: 10/110 vs 10/110 baseline')
+}
 
 function createBranchSession(duration: number): PreviewReport {
   const report = createReport(createJob(), duration)
@@ -147,7 +177,8 @@ function createResults(session: number) {
     const cycle = Math.floor(index / 4) + 1
     const sample = describeFixtureSample(index)
     const duration = (session - 1) * 20 + (cycle === 2 ? 10 : 20)
-    return { scenario: `${scenarios[index % 4]}-${cycle}`, sample, parentClickToLastAppliedMs: duration }
+    const work = { moduleDiscoveries: 5, parses: 5, modulesEmitted: 5, generatedPathsChanged: 2 }
+    return { scenario: `${scenarios[index % 4]}-${cycle}`, sample, parentClickToLastAppliedMs: duration, work }
   })
 }
 

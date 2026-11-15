@@ -117,9 +117,13 @@ It starts five fresh baseline/candidate pairs per workload, alternating which re
 Each session measures startup and 24 edits, including 20 warm edits. The browser checks the
 requested content and layout after each edit.
 
-The report shows percentage and millisecond changes, medians and session variability for
-startup, first edit, warm p50 and p95, and each warm edit scenario. It also counts warm edits
-over 100 ms and edits with observed frame restarts. A slowdown needs at least 10% for a warning
+The report leads with confirmed speedups, slowdowns and inconclusive changes. Each workload shows
+harness launch with previews closed, first preview open, warm preview reopen, and edit timings.
+The harness opens the frames by clicking Show previews. The first open starts Expo. Three warm
+reopens use fresh frames in the running browser and Expo session after the edits. The edit rows
+include session variation, warm edits over 100 ms, and observed frame restarts. Work counts cover
+compiler discovery, parse and emit operations, changed generated paths, and delivered Metro delta
+modules. A slowdown needs at least 10% for a warning
 or 15% for an error, plus a minimum of 150 ms for startup, 5 ms for first edit, or 4 ms for warm
 edits. The same thresholds describe speedups. A change needs agreement in at least 80% of pairs
 and a fresh confirmation round within the same command. Inconclusive rows indicate disagreement
@@ -128,7 +132,8 @@ causes a nonzero command exit.
 
 The runner keeps the comparison index, fixed fixture and linked raw per-session timings, including
 the phase timings needed for follow-up. An interrupted or failed run retains evidence separately
-from completed comparisons. The browser endpoint is React-applied with a DOM check. The native
+from completed comparisons. Compare revisions with the same launch and reopen workloads.
+The browser endpoint is React-applied with a DOM check. The native
 Studio app and its benchmark are still in the legacy implementation.
 
 ## Repeat an existing immutable benchmark

@@ -24,7 +24,7 @@ export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Pro
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({
       workspace,
-      previewUrl: expo.url,
+      preview: expo.url,
       sessionId: Platform.randomUUID(),
       canonicalSource: source,
       previewTimeoutMs: 1000,

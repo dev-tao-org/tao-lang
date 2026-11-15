@@ -45,11 +45,14 @@ export function createMeasurementScenarios(settings: PreviewMeasurement): readon
   return Array.from({ length: settings.editCount / 4 }, (_, index) => createCycle(index + 1)).flat()
 }
 
-/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
-export function createMeasurementFiles(source: string, settings: PreviewMeasurement): {
+/** MeasurementSource holds the entry and generated sibling inputs of a preview measurement. */
+export type MeasurementSource = {
   entry: string
   extraFiles: readonly MeasurementFile[]
-} {
+}
+
+/** createMeasurementFiles distributes compiled but unrendered views across optional sibling Tao modules. */
+export function createMeasurementFiles(source: string, settings: PreviewMeasurement): MeasurementSource {
   const fileCount = Math.min(settings.extraViews, settings.extraFileCount)
   if (fileCount === 0) {
     return { entry: appendViews(source, 0, settings.extraViews), extraFiles: [] }

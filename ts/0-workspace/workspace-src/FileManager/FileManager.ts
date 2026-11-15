@@ -165,7 +165,8 @@ export class FileManager {
     const debounceMs = this.options.debounceMs ?? 5
     this.refreshTimer = scheduleRefresh(debounceMs, () => {
       this.refreshTimer = undefined
-      void this.enqueue({ kind: 'disk', path, startedAtMs: change.observedAtMs }, generation, observation)
+      const input = FileManagerCompilation.createWatchedInput(path, change)
+      void this.enqueue(input, generation, observation)
         .then(refresh.settle)
     })
   }
