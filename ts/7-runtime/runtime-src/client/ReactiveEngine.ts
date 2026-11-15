@@ -108,8 +108,15 @@ type EngineState = {
 function buildEngine(state: EngineState): ReactiveEngine {
   return {
     createWritable: initial => createWritable(state, initial),
-    createComputed: evaluate => createExpression(state, () => takeValueSnapshot(evaluate())),
-    createConstant: value => createConstant(state, value),
+    createComputed(evaluate) {
+      assertActive(state)
+      return createExpression(state, () => takeValueSnapshot(evaluate()))
+    },
+    createConstant(value) {
+      assertActive(state)
+      const snapshot = takeValueSnapshot(value)
+      return createExpression(state, () => snapshot)
+    },
     batch(perform) {
       assertActive(state)
       return runSynchronousReactiveBatch(perform)
@@ -120,24 +127,17 @@ function buildEngine(state: EngineState): ReactiveEngine {
 
 function createNode<T>(state: EngineState, evaluate: () => T): Node<T> {
   let previous: ReactiveValue
-  return {
-    value: Preact.computed(() => {
-      previous = evaluateNode(state, evaluate, previous)
-      return previous
-    }),
-    evaluate,
-  }
+  const value = Preact.computed(() => {
+    previous = evaluateNode(state, evaluate, previous)
+    return previous
+  })
+  return { value, evaluate }
 }
 
 function createExpression<T>(state: EngineState, evaluate: () => T): Expression<T> {
-  assertActive(state)
-  return registerValueCapability(expressionFor(state, createNode(state, evaluate)))
-}
-
-function createConstant<T>(state: EngineState, value: T): Expression<ValueSnapshot<T>> {
-  assertActive(state)
-  const snapshot = takeValueSnapshot(value)
-  return registerValueCapability(expressionFor(state, createNode(state, () => snapshot)))
+  const node = createNode(state, evaluate)
+  const expression = expressionFor(state, node)
+  return registerValueCapability(expression)
 }
 
 function expressionFor<T>(state: EngineState, node: Node<T>): InternalExpression<T> {
