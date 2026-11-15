@@ -60,6 +60,7 @@ const result: BrowserRuntime.PageState & { results: PreviewResult[] } = {
 let opening: PendingPreviewOpening
 let baseline: PreviewBaseline
 const openButton = BrowserRuntime.querySelector<HTMLButtonElement>('#open')!
+const opensOnLoad = BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true'
 BrowserRuntime.setPageState(result)
 const events = EventStream.open('/events')
 
@@ -100,7 +101,7 @@ events.addEventListener('baseline', event => {
 BrowserRuntime.onMessage(receiveSignal)
 openButton.addEventListener('click', () => {
   if (result.status === 'closed') {
-    void openPreviews().then(undefined, failScenario)
+    void openPreviews(!opensOnLoad).then(undefined, failScenario)
   } else if (result.status === 'ready' || result.status === 'complete') {
     closePreviews()
   }
@@ -117,7 +118,7 @@ BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click
   void runScenario(scenarios[scenarioIndex]!, clickTime, clickTimestampMs).then(undefined, failScenario)
 })
 setStatus('closed')
-if (BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true') {
+if (opensOnLoad) {
   void openPreviews(false).then(undefined, failScenario)
 } else {
   openButton.disabled = false
@@ -126,7 +127,7 @@ if (BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad ==
 type PreviewOpening = { started: number; revision: string; applied: Set<string> }
 type OpenedPreview = { revision: string; url: string }
 
-async function openPreviews(measure = true): Promise<void> {
+async function openPreviews(measure: boolean): Promise<void> {
   const started = Time.nowMs()
   setStatus('opening')
   result.status = 'opening'

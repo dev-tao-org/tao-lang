@@ -1,13 +1,13 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as Perf from '@perf'
-import { Json } from '@shared'
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Json, Schema } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
 import { Env, FileLock, FS, Path, Platform, Repo, Storage } from '@shared/os'
 import { runWithEvidence } from './Evidence'
 import { captureGit, resolveCommit } from './Git'
 import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFiles'
-import { type PreviewReport, requireReport } from './ReportContract'
+import { parsePreviewReport, requireReport } from './ReportContract'
 import { collectSamples } from './RunnerSamples'
 import { assertMaterializedTree, readTreeEntries } from './SourceTree'
 import { appendTimingProgress, describeTimingSample } from './TimingProgress'
@@ -38,6 +38,33 @@ export type MeasurementJob = {
   error?: string
 }
 
+/** parseMeasurementJob validates the retained job manifest at the file boundary. */
+export function parseMeasurementJob(source: string, path: string): MeasurementJob {
+  return Try(() => Json.Parse(source, { schema: measurementJobSchema }), {
+    catch: () => Errors.ThrowUserInput(`Invalid timing job manifest at ${path}.`),
+  })
+}
+
+const measurementJobSchema = Schema.object({
+  version: Schema.literal(1),
+  status: Schema.union([Schema.literal('running'), Schema.literal('passed'), Schema.literal('failed')]),
+  startedAt: Schema.string(),
+  finishedAt: Schema.string().optional(),
+  commit: Schema.string(),
+  tree: Schema.string(),
+  fixtureSha256: Schema.string(),
+  settings: Schema.object({
+    repo: Schema.string(),
+    fixture: Schema.string(),
+    samples: Schema.number(),
+    edits: Schema.number(),
+  }),
+  environment: Schema.record(Schema.string(), Schema.string()),
+  system: Schema.object({ architecture: Schema.string(), kernel: Schema.string(), os: Schema.string() }),
+  samples: Schema.array(Schema.string()),
+  error: Schema.string().optional(),
+})
+
 /** runMeasurements runs an immutable checkout under the account-wide timing lock and retains raw samples. */
 export async function runMeasurements(options: RunnerOptions): Promise<string> {
   const directory = allocateTimingJob()
@@ -46,7 +73,21 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
 }
 
 /** allocateTimingJob reserves an identity for a job before it is started. */
-export const allocateTimingJob = (): string => Repo.resolvePath(JobsDirectory, Platform.randomUUID())
+export const allocateTimingJob = (parent = Repo.resolvePath(JobsDirectory)): string =>
+  Path.join(parent, Platform.randomUUID())
+
+const PreviewMeasurementSource = 'HEAD:ts/perf/perf-src/Preview/PreviewMeasurement.ts'
+
+/** requirePreviewProtocol checks the measured source before launching any preview process. */
+export async function requirePreviewProtocol(repo: string): Promise<void> {
+  const source = await Try.WithDefault('', () => captureGit(repo, ['show', PreviewMeasurementSource]))
+  const declaration = `export const PreviewMeasurementProtocol = '${Perf.PreviewMeasurementProtocol}'`
+  if (!source.split(NewlineCharacter).includes(declaration)) {
+    Errors.ThrowUserInput(
+      `Incompatible preview measurement protocol in ${repo}. Prepare both revisions with the same instrumentation.`,
+    )
+  }
+}
 
 /** withTimingLock holds the account-wide lease through an entire measurement or comparison. */
 export async function withTimingLock<Result>(run: () => Promise<Result>): Promise<Result> {
@@ -81,6 +122,7 @@ export async function runMeasurementJob(options: RunnerOptions, directory: strin
 
 async function describeJob(options: RunnerOptions, fixture: string, load?: PreviewLoad): Promise<MeasurementJob> {
   await requireCleanSource(options.repo)
+  await requirePreviewProtocol(options.repo)
   const commit = await resolveCommit(options.repo, 'HEAD')
   const tree = (await captureGit(options.repo, ['rev-parse', `${commit}^{tree}`])).trim()
   const fixtureSha256 = Platform.hashText(fixture)
@@ -152,7 +194,7 @@ async function acceptPreviewReport(job: MeasurementJob, commit: string, reports:
     Errors.ThrowUserInput('Expected one new raw preview report; inspect the candidate performance logs.')
   }
   const path = Path.join(reports, created[0])
-  const report = Json.Parse(await FS.readFile(path, 'utf8')) as PreviewReport
+  const report = parsePreviewReport(await FS.readFile(path, 'utf8'), path)
   requireReport(report, job)
   await appendTimingProgress(describeTimingSample(report))
   return path

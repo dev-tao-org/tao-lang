@@ -1,3 +1,4 @@
+import * as Perf from '@perf'
 import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
@@ -62,6 +63,9 @@ Tests.test('summaries keep warm edits grouped by independent session and reject 
     truncated.results.pop()
     await FS.writeFile(path, Json.Print(truncated))
     await Tests.expect(summarizeJob(directory)).rejects.toThrow('workload is incomplete')
+    const invalidOpening = { firstMs: 350, reopenMs: { length: 3 } }
+    await FS.writeFile(path, Json.Print({ ...createReport(job, 2), opening: invalidOpening }))
+    await Tests.expect(summarizeJob(directory)).rejects.toThrow('Invalid preview report')
   })
 })
 
@@ -80,7 +84,13 @@ function createReport(job: MeasurementJob, session: number) {
     fixtureSha256: 'fixture',
     system: job.system,
     frameSizes: [{ width: 100, height: 100 }, { width: 100, height: 100 }],
-    measurement: { editCount: 12, frameCount: 2, extraViews: 0, extraFileCount: 0 },
+    measurement: {
+      editCount: 12,
+      frameCount: 2,
+      extraViews: 0,
+      extraFileCount: 0,
+      protocol: Perf.PreviewMeasurementProtocol,
+    },
     results,
   }
 }
@@ -108,6 +118,10 @@ Tests.test('branch verdicts require paired agreement and a repeated tier while k
   const first = readWarmMedian(baseline, slower)
   const noisy = readWarmMedian(baseline, reversed)
   const second = readWarmMedian(baseline, large)
+  const equalMedians = readWarmMedian(baseline, [60, 70, 80, 90, 50].map(createBranchSession))
+  Tests.expect(equalMedians.deltaMs).toBe(0)
+  Tests.expect(equalMedians.pairedDeltaMs).toBe(10)
+  Tests.expect(equalMedians.change).toBe('warning')
   Tests.expect(first.change).toBe('warning')
   Tests.expect(first.candidate.madMs).toBe(10)
   Tests.expect(noisy.change).toBe('variable')

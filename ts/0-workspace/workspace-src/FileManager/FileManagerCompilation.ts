@@ -284,9 +284,9 @@ const readSource = Timings.createTopLevelTimer(async function(
   read: (path: string, observedAtMs: number) => Promise<ReadResult> = defaultRead,
 ): Promise<SourceReadResult> {
   const observedAtMs = input.startedAtMs
-  const observations = Math.max(0, Time.timestampMs() - observedAtMs)
+  const observationDelayMs = Math.max(0, Time.timestampMs() - observedAtMs)
   const name = input.observation === 'reconciliation' ? 'workspace.reconciled-to-read' : 'workspace.observe-to-read'
-  timings.record(name, Time.nowMs() - observations)
+  timings.record(name, Time.nowMs() - observationDelayMs)
   const snapshot = await timings.run(readWorkspaceSource, input.path, observedAtMs, read)
   return isUpdateResult(snapshot) ? snapshot : { ...snapshot, timings }
 })

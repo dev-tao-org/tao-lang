@@ -13,6 +13,12 @@ export type PreviewMeasurement = {
 /** PreviewFrameCount selects the supported single-frame or dual-frame measurement. */
 export type PreviewFrameCount = 1 | 2
 
+/** PreviewMeasurementProtocol identifies the comparable preview launch and edit workload. */
+export const PreviewMeasurementProtocol = 'preview-opening-v1'
+
+/** PreviewReopenCount is the number of fresh preview opens on an already running host. */
+export const PreviewReopenCount = 3
+
 /** MeasurementFile is one generated sibling Tao module. */
 export type MeasurementFile = { name: string; source: string }
 
@@ -108,6 +114,7 @@ export function measurementFrameIds(frameCount: PreviewFrameCount): readonly str
 export function describeMeasurement(settings: PreviewMeasurement): MeasurementDescription {
   return {
     ...settings,
+    protocol: PreviewMeasurementProtocol,
     firstEditIndex: 0,
     warmStartIndex: 4,
     warmEditCount: Math.max(0, settings.editCount - 4),
@@ -119,6 +126,7 @@ export function describeMeasurement(settings: PreviewMeasurement): MeasurementDe
 
 /** MeasurementDescription records the configured workload and its sample boundaries. */
 export type MeasurementDescription = PreviewMeasurement & {
+  protocol: typeof PreviewMeasurementProtocol
   firstEditIndex: number
   warmStartIndex: number
   warmEditCount: number

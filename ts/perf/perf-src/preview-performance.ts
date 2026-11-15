@@ -3,6 +3,7 @@ import { Json } from '@shared'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import { Exec } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import type * as Workspace from '@workspace'
 
 import { createPreviewHarness, type PreviewHarness } from './Preview/PreviewHarness'
@@ -17,7 +18,13 @@ export async function previewPerformance(options: PreviewOptions) {
     await Exec.requireHostProcessAccess('Run ./agent unsandboxed performance preview; Chrome was not launched.')
   }
   const measurement = PreviewMeasurement.readPreviewMeasurement(options.measurement)
-  const resources: Resources = { errors: [], reloads: [], sessionId: Platform.randomUUID(), measurement }
+  const resources: Resources = {
+    errors: [],
+    reloads: [],
+    sessionId: Platform.randomUUID(),
+    measurement,
+    launchController: Cancellation.createController(),
+  }
   return await Try(() => measurePreview(options, resources), {
     async finally() {
       await disposePreview(options, resources)
@@ -38,6 +45,8 @@ type Resources = {
   measurement: PreviewMeasurement.PreviewMeasurement
   errors: string[]
   reloads: ReloadTiming[]
+  launchController: Cancellation.Controller
+  launching?: Promise<string>
   expo?: Runtime.ExpoSession
   startupMs?: number
   opening?: PreviewOpeningTimings
@@ -66,16 +75,14 @@ type PreviewFrameTimings = {
 
 /** PreviewOpeningTimings measures first opening and successive openings of fresh frames in the same session. */
 export type PreviewOpeningTimings = { firstMs: number; reopenMs: number[] }
-type PendingPreviewLaunch = Promise<string> | undefined
 
 async function measurePreview(options: PreviewOptions, owned: Resources) {
   const started = Time.nowMs()
   const source = PreviewMeasurement.createMeasurementFiles(options.initialSource, owned.measurement)
   const scenarios = PreviewMeasurement.createMeasurementScenarios(owned.measurement)
-  let launching: PendingPreviewLaunch
   owned.harness = await createPreviewHarness({
     workspace: options.workspace,
-    preview: () => launching ??= startPreview(options, owned, source),
+    preview: () => owned.launching ??= startPreview(options, owned, source),
     sessionId: owned.sessionId,
     canonicalSource: source.entry,
     scenarios,
@@ -121,7 +128,9 @@ async function startPreview(
 ): Promise<string> {
   const sourcePath = await prepareMeasurementSource(options, fixture)
   requirePublished(await options.workspace.openFile(sourcePath))
-  owned.expo = await Runtime.start(options.workspace.runtime!)
+  const signal = owned.launchController.signal
+  signal.throwIfAborted()
+  owned.expo = await Runtime.start(options.workspace.runtime!, { signal })
   return owned.expo.url
 }
 
@@ -146,11 +155,9 @@ async function openMeasurementPage(browser: HeadlessBrowser.HeadlessBrowserSessi
   return page
 }
 
-const PreviewReopenCount = 3
-
 async function measurePreviewReopens(page: HeadlessBrowser.Page, measurement: PreviewMeasurement.PreviewMeasurement) {
   const reopenMs: number[] = []
-  for (let index = 0; index < PreviewReopenCount; index++) {
+  for (let index = 0; index < PreviewMeasurement.PreviewReopenCount; index++) {
     await page.getByRole('button', { name: 'Close previews' }).click()
     await page.locator('body[data-status="closed"]').waitFor()
     reopenMs.push(await measurePreviewOpen(page, measurement))
@@ -194,13 +201,15 @@ async function runScenarios(
 }
 
 async function disposePreview(options: PreviewOptions, owned: Resources): Promise<void> {
+  owned.launchController.abort()
   const cleanups: PromiseSettledResult<unknown>[] = await Promise.allSettled([owned.browser?.close()])
   cleanups.push(
     ...await Promise.allSettled([
       Try(() => owned.harness?.dispose()),
-      owned.expo?.dispose(),
     ]),
   )
+  await owned.launching?.catch(() => undefined)
+  cleanups.push(...await Promise.allSettled([owned.expo?.dispose()]))
   await options.workspace.dispose()
   const output = owned.expo ? await owned.expo.output() : undefined
   const logPath = Artifacts.resolvePath('logs/performance', `preview-${owned.sessionId}.log`)

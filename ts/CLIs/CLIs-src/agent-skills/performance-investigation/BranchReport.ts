@@ -1,6 +1,7 @@
 import { NewlineCharacter } from '@shared'
 import type { BranchComparison, ComparisonScenario } from './BranchComparison'
 import * as Metrics from './BranchMetrics'
+import * as TimingColumns from './TimingColumns'
 
 /** formatBranchComparison leads with meaningful changes, then shows the timings and reliability of each workload. */
 export function formatBranchComparison(comparison: BranchComparison): string {
@@ -9,13 +10,12 @@ export function formatBranchComparison(comparison: BranchComparison): string {
   return [
     describeVerdict(workloads.flatMap(workload => workload.metrics)),
     ...findings,
-    `Candidate ${comparison.commits.candidate.slice(0, 12)} · baseline ${comparison.commits.baseline.slice(0, 12)}`,
+    `Candidate ${comparison.commits.candidate} · baseline ${comparison.commits.baseline}`,
     'Measures harness launch with previews closed, then preview open and edit-to-render time.',
     ...workloads.flatMap(formatWorkload),
     '',
-    'Timing rows use the first round. Variation is median absolute deviation, this run / baseline.',
-    'A change must repeat at 10% or more in both rounds with 80% pair agreement.',
-    'Minimum changes are 150 ms for launch or first open, 5 ms for reopen or first edit and 4 ms for warm edits.',
+    'Timing rows show first-round session medians. Findings use paired changes. Variation is median absolute deviation.',
+    ...describeThresholds(),
     `Full measurements and phase timings on the runner: ${comparison.directory}/comparison.json`,
   ].join(NewlineCharacter)
 }
@@ -64,7 +64,7 @@ function formatWorkload(workload: Workload): string[] {
   return [
     '',
     `${scenario.name}${size} · ${coverage}`,
-    '  Change    This run    Baseline  Metric',
+    TimingColumns.TimingComparisonHeader,
     ...metrics.filter(metric => isHeadline(metric.first.name)).map(formatMetric),
     formatWorkCounts(scenario.rounds[0]),
     ...formatQuality(scenario.rounds),
@@ -97,14 +97,16 @@ function isHeadline(name: string): boolean {
 }
 
 function formatMetric({ first }: ComparedMetric): string {
-  const percent = formatPercent(first)
-  const current = formatMs(first.candidate.medianMs)
-  const baseline = formatMs(first.baseline.medianMs)
+  const columns = TimingColumns.formatTimingColumns(
+    first.changePercent,
+    first.candidate.medianMs,
+    first.baseline.medianMs,
+  )
   const name = formatMetricName(first.name)
   const variation = `typical session variation ${first.candidate.madMs.toFixed(1)} / ${
     first.baseline.madMs.toFixed(1)
   } ms`
-  return `${percent.padStart(8)}${current}${baseline}  ${name} · ${variation}`
+  return `${columns}  ${name} · ${variation}`
 }
 
 function formatMetricName(name: string): string {
@@ -132,22 +134,19 @@ function describeOutcome({ first, confirmation, change }: ComparedMetric): strin
 }
 
 function formatMovement(metric: BranchMetric): string {
-  const percent = formatPercent(metric)
-  const delta = signed(metric.deltaMs, 2)
+  const percent = TimingColumns.formatPercentage(metric.pairedChangePercent)
+  const delta = TimingColumns.formatSignedNumber(metric.pairedDeltaMs, 2)
   return `${percent} (${delta} ms)`
 }
 
-function formatPercent(metric: BranchMetric): string {
-  return metric.changePercent === null ? '—' : signed(metric.changePercent, 1) + '%'
-}
-
-function formatMs(ms: number): string {
-  return `${ms.toFixed(2)} ms`.padStart(12)
-}
-
-function signed(value: number, places: number): string {
-  const number = value.toFixed(places)
-  return value < 0 ? number : '+' + number
+function describeThresholds(): string[] {
+  const rules = Metrics.BranchTimingThresholds
+  const agreementPercent = rules.agreement * 100
+  return [
+    `Repeat threshold: ${rules.warningPercent}% movement with ${agreementPercent}% pair agreement in both rounds.`,
+    `Slowdowns at ${rules.errorPercent}% in both rounds are errors.`,
+    `Minimum changes: ${rules.startupFloorMs} ms launch/first open, ${rules.firstEditFloorMs} ms reopen/first edit, ${rules.warmEditFloorMs} ms warm edits.`,
+  ]
 }
 
 function formatQuality(rounds: Round[]): string[] {

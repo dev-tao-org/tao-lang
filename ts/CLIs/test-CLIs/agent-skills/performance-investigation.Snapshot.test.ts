@@ -62,12 +62,13 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
   Tests.expect(await git('ls-files', '--stage', '--', 'new file.ts')).toStartWith('100755 ')
   Tests.expect(await git('ls-files', '--stage', '--', 'source.ts')).toStartWith('100755 ')
   Tests.expect(await git('ls-files', '--', '.artifacts')).toBe('')
+  const options = { repo: clone, fixture: Path.join(clone, 'source.ts'), samples: 1, edits: 4 }
+  await Tests.expect(runMeasurements(options)).rejects.toThrow('Incompatible preview measurement protocol')
   await git('config', '--local', 'core.autocrlf', 'true')
   await FS.writeFile(Path.join(clone, 'source.ts'), 'saved\r\n')
   await git('add', '--', 'source.ts')
   Tests.expect(await git('status', '--porcelain')).toBe('')
-  await Tests.expect(runMeasurements({ repo: clone, fixture: Path.join(clone, 'source.ts'), samples: 1, edits: 4 }))
-    .rejects.toThrow('source differs from the captured Git tree')
+  await Tests.expect(runMeasurements(options)).rejects.toThrow('source differs from the captured Git tree')
 }
 
 async function receiveWithLineEndingConfiguration(bundle: string, manifest: string, clone: string): Promise<void> {

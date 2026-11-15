@@ -22,13 +22,16 @@ export default class PreviewHMRClient extends MetroHMRClient {
 }
 
 type MetroDeltaCount = number | undefined
-type MetroDelta = { added?: unknown[]; modified?: unknown[]; deleted?: unknown[] }
+type MetroDelta = { isInitialUpdate?: boolean; added?: unknown[]; modified?: unknown[]; deleted?: unknown[] }
 
 function countMetroDelta(value: unknown): number | undefined {
   if (typeof value !== 'object' || value === null) {
     return undefined
   }
-  const { added, modified, deleted } = value as MetroDelta
+  const { isInitialUpdate, added, modified, deleted } = value as MetroDelta
+  if (isInitialUpdate) {
+    return undefined
+  }
   if (Array.isArray(added) && Array.isArray(modified) && Array.isArray(deleted)) {
     return added.length + modified.length + deleted.length
   }

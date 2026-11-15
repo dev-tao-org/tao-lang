@@ -244,7 +244,14 @@ function createTimingReportFixture(tooling: string): TimingReport.TimingReport {
 }
 
 function createJobResponse(report: TimingReport.TimingReport): string {
-  return Json.Print({ ...report, status: 'passed' })
+  return Json.Print({
+    ...report,
+    version: 1,
+    status: 'passed',
+    environment: {},
+    system: { os: 'Fixture', architecture: 'fixture', kernel: 'fixture' },
+    samples: ['sample-1.json'],
+  })
 }
 
 function createConnectionFixture() {

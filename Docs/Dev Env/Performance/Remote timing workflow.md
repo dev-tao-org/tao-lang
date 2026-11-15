@@ -18,7 +18,8 @@ just timing-home
 This creates `~/.tao-dev/timing/{checkouts,reports,transfers}`, `~/.tao-dev/locks` and
 `~/.tao-dev/ssh`. Existing shell setup uses `~/.tao-dev/shell`. Prepared immutable clones belong
 under `timing/checkouts`; transferred bundles belong under `timing/transfers`. Collected reports
-and comparisons are shared across controller worktrees under `timing/reports`. Credentials stay
+are shared across controller worktrees under `timing/reports`. Branch comparison artifacts stay
+in the runner tooling checkout. Credentials stay
 with ordinary SSH/Keychain. Host defaults can later live in `hosts.json`; no empty config is created.
 
 Import collected reports from an existing controller checkout once, retaining the original evidence:
@@ -102,16 +103,20 @@ report after cleanup succeeds. It accepts the same workload flags as `timing-run
 
 Prepare an immutable baseline and candidate checkout on the timing laptop using the
 [snapshot and receive operations](../../../agents/skills/performance-investigation/references/operations.md).
-Use the branch point as the baseline for attributing changes to the branch, or keep using a fixed
-reference checkout to track progress over time. Run one comparison from the controller:
+Use a fixed reference checkout to track progress over time. To compare against a branch point
+that predates the current measurement protocol, prepare separate snapshots with the same
+instrumentation on both revisions. Record the original revisions and the instrumentation changes
+with the comparison. Compare only the workloads both can run with equivalent boundaries.
 
 ```sh
 just timing-compare ro@192.168.50.199 /absolute/runner/baseline /absolute/runner/candidate --tooling /absolute/runner/tooling
 ```
 
-The command uses the enrolled SSH key and prints the exact revisions. Use `--tooling` when
-the candidate does not contain this command. The tooling checkout provides the same fixture to
-both revisions. The comparison runs an actual headless browser preview in two frames, with a
+The command uses the enrolled SSH key and prints the exact revisions. The tooling checkout
+provides the fixture and coordinates the run. Each measured checkout supplies its own preview
+driver and must support the same measurement protocol. The command checks this before starting
+the first session. Use the original tooling snapshot to summarize previously recorded jobs.
+The comparison runs an actual headless browser preview in two frames, with a
 small app and the same app under 80 extra compiled view declarations across eight modules.
 It starts five fresh baseline/candidate pairs per workload, alternating which revision runs first.
 Each session measures startup and 24 edits, including 20 warm edits. The browser checks the
@@ -123,15 +128,16 @@ The harness opens the frames by clicking Show previews. The first open starts Ex
 reopens use fresh frames in the running browser and Expo session after the edits. The edit rows
 include session variation, warm edits over 100 ms, and observed frame restarts. Work counts cover
 compiler discovery, parse and emit operations, changed generated paths, and delivered Metro delta
-modules. A slowdown needs at least 10% for a warning
-or 15% for an error, plus a minimum of 150 ms for startup, 5 ms for first edit, or 4 ms for warm
-edits. The same thresholds describe speedups. A change needs agreement in at least 80% of pairs
+modules. The report prints its alert thresholds and the paired changes used to check them.
+A change needs agreement across pairs
 and a fresh confirmation round within the same command. Inconclusive rows indicate disagreement
 within or across rounds. The error label describes severity. Measurement or provenance failure
 causes a nonzero command exit.
 
-The runner keeps the comparison index, fixed fixture and linked raw per-session timings, including
-the phase timings needed for follow-up. An interrupted or failed run retains evidence separately
+The runner keeps the comparison index, fixed fixture and raw timings under the printed comparison
+directory. To collect the evidence, retrieve that directory including its `sessions/` children.
+These sessions are separate from the jobs searched by the standalone `timing-report` command.
+An interrupted or failed run retains evidence separately
 from completed comparisons. Compare revisions with the same launch and reopen workloads.
 The browser endpoint is React-applied with a DOM check. The native
 Studio app and its benchmark are still in the legacy implementation.

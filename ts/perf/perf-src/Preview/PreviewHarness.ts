@@ -198,8 +198,8 @@ async function writeEditResponse(
   const receivedAtMs = Time.timestampMs()
   const body = await request.json() as { scenario?: string }
   const path = options.workspace.files.entryPath ?? Errors.ThrowUserInput('Open an app before editing its source.')
-  const current = await FS.readFile(path, 'utf8')
-  const source = applyScenario(options.scenarios, body.scenario, current, options.canonicalSource)
+  const currentSource = await FS.readFile(path, 'utf8')
+  const source = applyScenario(options.scenarios, body.scenario, currentSource, options.canonicalSource)
   if (edits.closed) {
     return Http.response('Preview harness is closed', { status: 503 })
   }
@@ -208,8 +208,8 @@ async function writeEditResponse(
     const previous = options.workspace.runtime?.generated?.files
     const writeStartedAtMs = Time.timestampMs()
     const [writtenAtMs, result] = await Promise.all([writePreviewSource(path, source), observation.result])
-    const current = options.workspace.runtime?.generated?.files
-    const changes = describeGeneratedChanges(previous, current)
+    const publishedFiles = options.workspace.runtime?.generated?.files
+    const changes = describeGeneratedChanges(previous, publishedFiles)
     const editTrace: PreviewEditTrace = { receivedAtMs, writeStartedAtMs, writtenAtMs, changes }
     return Http.jsonResponse({ ...result, editTrace })
   }, {

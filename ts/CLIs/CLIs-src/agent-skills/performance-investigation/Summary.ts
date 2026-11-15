@@ -1,9 +1,8 @@
-import { Json } from '@shared'
 import { Errors, Objects, Regxs } from '@shared'
 import { FS, Path } from '@shared/os'
 import { JobFileName, requireSampleName } from './JobFiles'
-import { type PreviewReport, requireReport } from './ReportContract'
-import type { MeasurementJob } from './Runner'
+import { parsePreviewReport, type PreviewReport, requireReport } from './ReportContract'
+import { type MeasurementJob, parseMeasurementJob } from './Runner'
 
 /** MeasurementSummary retains grouped results and the conditions attached to a completed job. */
 export type MeasurementSummary = {
@@ -53,7 +52,8 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
 
 /** readCompletedJob loads and validates the raw sessions from a passed job. */
 export async function readCompletedJob(directory: string): Promise<{ job: MeasurementJob; reports: PreviewReport[] }> {
-  const job = Json.Parse(await FS.readFile(Path.join(directory, JobFileName), 'utf8')) as MeasurementJob
+  const jobPath = Path.join(directory, JobFileName)
+  const job = parseMeasurementJob(await FS.readFile(jobPath, 'utf8'), jobPath)
   if (!isCompleteJob(job)) {
     Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
   }
@@ -75,6 +75,13 @@ export function describeMeasurementConditions(report: PreviewReport): Measuremen
   }
 }
 
+/** median returns the middle of a nonempty set of measured durations. */
+export function median(values: readonly number[]): number {
+  const sorted = values.toSorted((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+}
+
 function isCompleteJob(job: MeasurementJob): boolean {
   if (job.version !== 1 || job.status !== 'passed') {
     return false
@@ -87,7 +94,8 @@ function isCompleteJob(job: MeasurementJob): boolean {
 
 async function readReport(directory: string, name: string, job: MeasurementJob): Promise<PreviewReport> {
   requireSampleName(name)
-  const report = Json.Parse(await FS.readFile(Path.join(directory, name), 'utf8')) as PreviewReport
+  const path = Path.join(directory, name)
+  const report = parsePreviewReport(await FS.readFile(path, 'utf8'), path)
   requireReport(report, job)
   return report
 }
@@ -121,11 +129,4 @@ function describeGroup(name: string, values: number[]): MeasurementGroupSummary 
     maxMs: Math.max(...values),
     runMediansMs: values,
   }
-}
-
-/** median returns the middle of a nonempty set of measured durations. */
-export function median(values: readonly number[]): number {
-  const sorted = values.toSorted((left, right) => left - right)
-  const middle = Math.floor(sorted.length / 2)
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
 }

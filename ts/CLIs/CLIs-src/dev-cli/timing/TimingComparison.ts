@@ -1,5 +1,6 @@
 import { NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
+import { formatTimingColumns, TimingComparisonHeader } from '../../agent-skills/performance-investigation/TimingColumns'
 import type { TimingReport } from './TimingReport'
 import { MinimumComparisonSessions, type TimingHistory } from './TimingReportHistory'
 
@@ -16,7 +17,7 @@ export function describeTimingComparison(current: TimingReport, history: TimingH
   return skipped + [
     `Baseline: ${Path.posix.basename(baseline.directory)} · ${baseline.startedAt} · ${baseline.commit.slice(0, 12)}`,
     `Runner address: ${current.runner}; independent sessions: ${baseline.settings.samples} → ${current.settings.samples}`,
-    '  Change    This run    Baseline  Metric',
+    TimingComparisonHeader,
     ...deltas.map(formatDelta),
     'Screen only: at least 5% and 2 ms; session ranges describe variability, not statistical significance.',
     describeDriftAttribution(current, baseline),
@@ -56,18 +57,10 @@ function compareGroups(current: TimingReport, baseline: TimingReport): TimingDel
 }
 
 function formatDelta(delta: TimingDelta): string {
-  const sign = delta.deltaMs >= 0 ? '+' : ''
-  const percent = delta.baselineMs > 0
-    ? `${sign}${(delta.deltaMs / delta.baselineMs * 100).toFixed(1)}%`
-    : '—'
-  const current = formatMilliseconds(delta.currentMs)
-  const baseline = formatMilliseconds(delta.baselineMs)
+  const percent = delta.baselineMs > 0 ? delta.deltaMs / delta.baselineMs * 100 : null
+  const columns = formatTimingColumns(percent, delta.currentMs, delta.baselineMs)
   const variability = delta.overlaps ? 'session ranges overlap' : 'session ranges do not overlap'
-  return `${percent.padStart(8)}${current}${baseline}  ${delta.name} · ${variability}`
-}
-
-function formatMilliseconds(ms: number): string {
-  return `${ms.toFixed(2)} ms`.padStart(12)
+  return `${columns}  ${delta.name} · ${variability}`
 }
 
 function describeDriftAttribution(current: TimingReport, baseline: TimingReport): string {

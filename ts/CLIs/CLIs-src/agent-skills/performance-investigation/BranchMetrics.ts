@@ -16,6 +16,8 @@ export type BranchMetric = {
   candidate: SessionStats
   deltaMs: number
   changePercent: ChangePercent
+  pairedDeltaMs: number
+  pairedChangePercent: ChangePercent
   agreeingPairs: number
   pairs: number
   change: MetricChange
@@ -35,6 +37,16 @@ export const WarmEditBudgetMs = 100
 
 /** MinimumBranchPairs is the minimum number of independent pairs for a comparison round. */
 export const MinimumBranchPairs = 5
+
+/** BranchTimingThresholds defines the difference and agreement needed for a meaningful movement. */
+export const BranchTimingThresholds = {
+  warningPercent: 10,
+  errorPercent: 15,
+  agreement: 0.8,
+  startupFloorMs: 150,
+  firstEditFloorMs: 5,
+  warmEditFloorMs: 4,
+} as const
 
 type WorkKey = keyof PreviewReport['results'][number]['work']
 type WorkCount = number | null
@@ -109,15 +121,35 @@ type OptionalPreviewFrames = PreviewFrames | undefined
 type FrameTransition = 'same' | 'restarted'
 
 const Metrics: readonly TimingMetric[] = [
-  { name: 'Harness launch', floorMs: 150, measure: report => report.startupMs },
-  { name: 'First preview open', floorMs: 150, measure: report => report.opening.firstMs },
-  { name: 'Warm preview reopen', floorMs: 5, measure: report => median(report.opening.reopenMs) },
-  { name: 'First edit', floorMs: 5, measure: report => report.results[0].parentClickToLastAppliedMs },
-  { name: 'Warm p50', floorMs: 4, measure: report => median(readWarmDurations(report)) },
-  { name: 'Warm p95', floorMs: 4, measure: report => readP95(readWarmDurations(report)) },
+  { name: 'Harness launch', floorMs: BranchTimingThresholds.startupFloorMs, measure: report => report.startupMs },
+  {
+    name: 'First preview open',
+    floorMs: BranchTimingThresholds.startupFloorMs,
+    measure: report => report.opening.firstMs,
+  },
+  {
+    name: 'Warm preview reopen',
+    floorMs: BranchTimingThresholds.firstEditFloorMs,
+    measure: report => median(report.opening.reopenMs),
+  },
+  {
+    name: 'First edit',
+    floorMs: BranchTimingThresholds.firstEditFloorMs,
+    measure: report => report.results[0].parentClickToLastAppliedMs,
+  },
+  {
+    name: 'Warm p50',
+    floorMs: BranchTimingThresholds.warmEditFloorMs,
+    measure: report => median(readWarmDurations(report)),
+  },
+  {
+    name: 'Warm p95',
+    floorMs: BranchTimingThresholds.warmEditFloorMs,
+    measure: report => readP95(readWarmDurations(report)),
+  },
   ...['text', 'add-text', 'row', 'reset'].map(scenario => ({
     name: `Warm ${scenario} p50`,
-    floorMs: 4,
+    floorMs: BranchTimingThresholds.warmEditFloorMs,
     measure: (report: PreviewReport) => median(readWarmDurations(report, scenario)),
   })),
 ]
@@ -152,13 +184,32 @@ function compareMetric(metric: TimingMetric, sessions: BranchSessions): BranchMe
   const candidate = describeSessionStats(candidateValues)
   const deltaMs = candidate.medianMs - baseline.medianMs
   const changePercent = baseline.medianMs ? deltaMs / baseline.medianMs * 100 : null
-  const agreeingPairs = candidateValues.filter((current, index) => {
-    const pairedDelta = current - baselineValues[index]
-    return Math.sign(pairedDelta) === Math.sign(deltaMs) && pairedDelta !== 0
-  }).length
+  const pairDeltas = candidateValues.map((current, index) => current - baselineValues[index])
+  const pairedDeltaMs = median(pairDeltas)
+  const pairedChangePercent = measurePairedPercentage(pairDeltas, baselineValues, pairedDeltaMs)
+  const agreeingPairs = pairDeltas.filter(delta => Math.sign(delta) === Math.sign(pairedDeltaMs) && delta !== 0).length
   const pairs = baselineValues.length
-  const change = classifyMetricChange(deltaMs, changePercent, metric.floorMs, agreeingPairs, pairs)
-  return { name: metric.name, baseline, candidate, deltaMs, changePercent, agreeingPairs, pairs, change }
+  const change = classifyMetricChange(pairedDeltaMs, pairedChangePercent, metric.floorMs, agreeingPairs, pairs)
+  return {
+    name: metric.name,
+    baseline,
+    candidate,
+    deltaMs,
+    changePercent,
+    pairedDeltaMs,
+    pairedChangePercent,
+    agreeingPairs,
+    pairs,
+    change,
+  }
+}
+
+function measurePairedPercentage(deltas: number[], baselines: number[], medianDelta: number): ChangePercent {
+  if (baselines.some(ms => ms === 0)) {
+    return null
+  }
+  const percentage = median(deltas.map((delta, index) => 100 * delta / baselines[index]))
+  return Math.sign(percentage) === Math.sign(medianDelta) ? percentage : null
 }
 
 function describeSessionStats(values: number[]): SessionStats {
@@ -174,14 +225,14 @@ function classifyMetricChange(
   agreeingPairs: number,
   pairs: number,
 ): MetricChange {
-  if (Math.abs(deltaMs) < floorMs || Math.abs(changePercent ?? Infinity) < 10) {
+  if (Math.abs(deltaMs) < floorMs || Math.abs(changePercent ?? Infinity) < BranchTimingThresholds.warningPercent) {
     return 'stable'
   }
-  const consistent = agreeingPairs / pairs >= 0.8 && pairs >= MinimumBranchPairs
+  const consistent = agreeingPairs / pairs >= BranchTimingThresholds.agreement && pairs >= MinimumBranchPairs
   if (!consistent || changePercent === null) {
     return 'variable'
   }
-  const large = Math.abs(changePercent) >= 15
+  const large = Math.abs(changePercent) >= BranchTimingThresholds.errorPercent
   if (deltaMs > 0) {
     return large ? 'error' : 'warning'
   }

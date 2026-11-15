@@ -4,7 +4,7 @@ import type { HeadlessBrowser } from '@shared/os'
 import { type RecoveryFixture, withRecoveryPreview } from './Preview.test-fixtures.Recovery'
 
 Tests.test(
-  'dual previews retain render errors for manual recovery and accept corrected commits from fresh instances',
+  'dual previews retain render errors and follow saves after recovering or reopening',
   async () => {
     await withRecoveryPreview(verifyRecoveryJourney)
   },
@@ -27,6 +27,12 @@ async function verifyRecoveryJourney({ page, change }: RecoveryFixture): Promise
   await expectLabels(page, 'Repaired')
   Tests.expect(await readBoots(page)).toEqual(initialBoots)
   await verifyManualReloadAndRetiredMessages(page, initialBoots.left!)
+  await page.getByRole('button', { name: 'Close previews' }).click()
+  await page.locator('body[data-status="closed"]').waitFor()
+  await change('Ready')
+  await page.getByRole('button', { name: 'Show previews' }).click()
+  await page.locator('body[data-status="ready"]').waitFor()
+  await expectLabels(page, 'Ready')
 }
 
 async function verifyManualReloadAndRetiredMessages(page: HeadlessBrowser.Page, retiredBoot: string): Promise<void> {
