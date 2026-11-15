@@ -4,7 +4,8 @@ import { registerCommand } from '../../dev-cli/commands/_command-runner'
 /** unsandboxedCommand dispatches an explicitly allowlisted operation through the host route. */
 export default registerCommand({
   name: 'unsandboxed',
-  description: 'Run an allowlisted host operation; the agent harness must grant execution outside its sandbox.',
+  description:
+    'Run an allowlisted host operation with host access. Use unsandboxed setup to install pinned dependencies.',
   arguments: [{
     name: 'args',
     required: true,

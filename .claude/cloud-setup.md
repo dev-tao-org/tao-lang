@@ -76,9 +76,8 @@ verified ownership; do not open general CDN wildcards or disable the proxy.
 
 Named host execution and network access are separate: passing
 `./agent unsandboxed capabilities` does not prove image downloads can pass the
-session's network policy. After canonical policy edits, regenerate adapters with
-`./agent unsandboxed setup`; protected adapter writes use the named
-`./agent unsandboxed fix-agent-config` operation. A session that still rejects a
+session's network policy. Regenerate lifecycle hooks and subagents with `./agent agent-config`.
+Use `./agent unsandboxed agent-config` when the harness protects those output paths. A session that still rejects a
 newly allowed domain must be restarted with the regenerated repository policy
 before retrying, rather than bypassing its proxy.
 

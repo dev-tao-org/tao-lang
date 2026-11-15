@@ -46,6 +46,9 @@ export async function execute(name = 'dev'): Promise<void> {
     },
   })
   for (const definition of commands) {
+    if (name === 'agent' && definition.name === 'setup') {
+      continue
+    }
     const command = parser.command(definition.name).description(definition.description)
     for (const argument of definition.arguments ?? []) {
       const label = `${argument.name}${argument.variadic ? '...' : ''}`

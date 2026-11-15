@@ -40,6 +40,11 @@ async function createLauncherFixture(root: string): Promise<void> {
     ),
   )
   await writeFixtureCommand(bin, 'bun', fakeBunScript())
+  const hostProbe = S`
+    #!/bin/sh
+    test "$*" = '-axo pid=,ppid=' && test "\${BOOTSTRAP_DENY_PS:-0}" = 0
+  `
+  await writeFixtureCommand(bin, 'ps', hostProbe)
 }
 
 async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void> {
@@ -60,6 +65,10 @@ async function assertExplicitSetupBypassesPreflight(root: string): Promise<void>
   const plain = await runLauncher(root, 'agent', ['setup'])
   Tests.expect(plain.status).toBe(1)
   Tests.expect(plain.stderr).toContain('./agent unsandboxed setup')
+  Tests.expect(await readCalls(root)).toBe('')
+  const denied = await runLauncher(root, 'agent', ['unsandboxed', 'setup'], { BOOTSTRAP_DENY_PS: '1' })
+  Tests.expect(denied.status).toBe(1)
+  Tests.expect(denied.stderr).toContain('Host process access is unavailable')
   Tests.expect(await readCalls(root)).toBe('')
   for (const [launcher, args] of [['agent', ['unsandboxed', 'setup']], ['dev', ['setup']]] as const) {
     await removeGeneratedAst(root)
