@@ -201,7 +201,7 @@ Tests.test('timing remote jobs retain literal paths and reject invalid workloads
   Tests.expect(printed.at(-1)).toContain('25.00')
   Tests.expect(printed.at(-1)).toContain('20.00–30.00')
   Tests.expect(printed.at(-1)).toMatch(MissingTimingBaselineRegx)
-  await Tests.expect(invokeTiming({ ...request, edits: 3 })).rejects.toThrow('positive multiple of four')
+  await Tests.expect(invokeTiming({ ...request, edits: 3 })).rejects.toThrow('positive multiple of 8')
   await Tests.expect(invokeTiming({ ...request, host: '-oProxyCommand=surprise' })).rejects.toThrow('SSH alias')
   Tests.expect(commands.length).toBe(3)
 })

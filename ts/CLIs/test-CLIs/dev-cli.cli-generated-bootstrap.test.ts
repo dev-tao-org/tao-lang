@@ -40,6 +40,11 @@ async function createLauncherFixture(root: string): Promise<void> {
     ),
   )
   await writeFixtureCommand(bin, 'bun', fakeBunScript())
+  const hostProbe = S`
+    #!/bin/sh
+    test "$*" = '-axo pid=,ppid=' && test "\${BOOTSTRAP_DENY_PS:-0}" = 0
+  `
+  await writeFixtureCommand(bin, 'ps', hostProbe)
 }
 
 async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void> {
@@ -57,9 +62,21 @@ async function assertExplicitSetupBypassesPreflight(root: string): Promise<void>
   await FS.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const result = await runLauncher(root, 'agent', ['setup'])
-  Tests.expect(result.status).toBe(0)
-  Tests.expect(await readCalls(root)).toBe('setup\n')
+  const plain = await runLauncher(root, 'agent', ['setup'])
+  Tests.expect(plain.status).toBe(1)
+  Tests.expect(plain.stderr).toContain('./agent unsandboxed setup')
+  Tests.expect(await readCalls(root)).toBe('')
+  const denied = await runLauncher(root, 'agent', ['unsandboxed', 'setup'], { BOOTSTRAP_DENY_PS: '1' })
+  Tests.expect(denied.status).toBe(1)
+  Tests.expect(denied.stderr).toContain('Host process access is unavailable')
+  Tests.expect(await readCalls(root)).toBe('')
+  for (const [launcher, args] of [['agent', ['unsandboxed', 'setup']], ['dev', ['setup']]] as const) {
+    await removeGeneratedAst(root)
+    await writeCalls(root, '')
+    const result = await runLauncher(root, launcher, args)
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe('setup\n')
+  }
 }
 
 async function assertMissingDependenciesRequireSetup(root: string): Promise<void> {
@@ -68,7 +85,7 @@ async function assertMissingDependenciesRequireSetup(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'])
   Tests.expect(result.status).toBe(1)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('')
 }
 
@@ -78,7 +95,7 @@ async function assertPreparationFailureStopsLauncher(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
   Tests.expect(result.status).toBe(23)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 

@@ -7,7 +7,8 @@ import { ControlCCharacter } from '../shared-src/universal/Characters'
 const ConfirmationCancelledRegx = /Confirmation cancelled/
 
 Tests.test('single-key actions restore terminal input and stop receiving keys after disposal', () => {
-  for (const initiallyRaw of [false, true]) {
+  for (const initialFlowing of [null, false, true]) {
+    const initiallyRaw = initialFlowing === true
     const input = Object.assign(Streams.createPassThrough(), {
       isTTY: true,
       isRaw: initiallyRaw,
@@ -15,7 +16,11 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
         this.isRaw = raw
       },
     })
-    input.pause()
+    if (initialFlowing === true) {
+      input.resume()
+    } else if (initialFlowing === false) {
+      input.pause()
+    }
     const keys: string[] = []
     const stop = Terminal.listenForKeys(key => keys.push(key), input)
     Tests.expect(input.isRaw).toBe(true)
@@ -24,7 +29,7 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     stop()
     Tests.expect(input.isRaw).toBe(initiallyRaw)
-    Tests.expect(input.isPaused()).toBe(true)
+    Tests.expect(input.isPaused()).toBe(initialFlowing !== true)
     input.emit('data', NodeBuffer.from('w'))
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     input.resume()

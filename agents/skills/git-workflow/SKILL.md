@@ -15,7 +15,7 @@ submodule contents; a clean parent status is not a preservation receipt.
 
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
-`./agent setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
+`./agent unsandboxed setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
 `landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Non-main
 branch pushes through the guarded route are authorized; other publication needs the Developer's authorization.
 
@@ -78,7 +78,7 @@ branch pushes through the guarded route are authorized; other publication needs 
   `./agent start-branch feat/<name>`; to take over a `feat/*` branch someone already pushed, run
   `./agent take-branch feat/<name>`, which tracks `origin/feat/<name>`. When either refuses its
   fetch or its write probe, run the same command as `./agent unsandboxed …`. Both require a clean
-  worktree, and both run `./agent setup` after switching; nothing else reruns setup when a worktree
+  worktree, and both run `./agent unsandboxed setup` after switching; nothing else reruns setup when a worktree
   changes branch, so run it yourself after any other switch. An authorized
   `./agent unsandboxed land` performs its own integration under the landing lock. For any other
   Git operation that half-succeeded, diagnose the exact state read-only, report the write needed,

@@ -53,7 +53,7 @@ description: >-
   startup and warm refresh; do not equate React-applied receipts with physical paint.
 - Start with five balanced rounds across the selected checkpoints, one independent runner session
   per checkpoint per round. Alternate/reverse checkpoint order between rounds to expose drift.
-  Use the default 24 edits, excluding the first four from warm analysis, unless the task needs another
+  Use the default 24 edits, excluding the first complete cycle from warm analysis, unless the task needs another
   recorded workload. Compare scenario medians within sessions, then independent session distributions.
 - The summary helper reports values and conditions, not statistical significance. Compare startup,
   first edit and warm scenarios separately. Verify conditions across jobs as well as within each job;

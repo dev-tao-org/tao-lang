@@ -29,7 +29,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
     return () => {}
   }
   const wasRaw = input.isRaw === true
-  const wasPaused = input.isPaused()
+  const wasFlowing = input.readableFlowing === true
   let listening = true
   const readKey = (_text: KeypressText, key: { sequence: string }) => receive(key.sequence)
   emitKeypressEvents(input)
@@ -43,7 +43,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
     listening = false
     input.off('keypress', readKey)
     input.setRawMode(wasRaw)
-    if (wasPaused) {
+    if (!wasFlowing) {
       input.pause()
     }
   }

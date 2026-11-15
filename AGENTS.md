@@ -21,7 +21,7 @@ These are your rules of usage:
   - Developer-used commands live in `ts/CLIs/CLIs-src/dev-cli/*`
 - Agents NEVER use `python`, `bun` etc directly
 - `./agent` logs full output by default and prints concise results plus warning/error notices. `TERMINAL_OUTPUT=1` also streams full output to the terminal.
-- CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile); dependency installation remains explicit through `./agent setup`.
+- CLI entrypoints activate the checkout's pinned devenv (or prepared portable Linux profile).
 - Keep equivalent native agent settings synchronized across Codex, Claude Code and Cursor in the same change; `agent-instructions` owns their file locations and unsupported equivalents.
 - Host execution uses `./agent unsandboxed <operation>` with `.config/agent-host-commands.json`; the harness must grant host access.
 - Root formatting, fixing, checking, testing, verification and cleanup commands operate on the new implementation. Run legacy workflows from `.x-tao-old-v1/`; agents check or test the legacy implementation only when its files have changed.
@@ -29,7 +29,7 @@ These are your rules of usage:
 ## Dependencies and feature planning
 
 - Determine during planning whether new or updated dependencies are needed.
-- Agents may install the repository's existing pinned dependencies through `./agent setup` whenever setup is needed, without separate developer confirmation.
+- Agents may install the repository's existing pinned dependencies through `./agent unsandboxed setup` whenever setup is needed, without separate developer confirmation.
 - Ask the developer before adding or updating dependencies, including manifest or lockfile changes. Removing dependencies and updating the corresponding manifests and lockfiles does not require approval. Prefer asking during planning; ask mid-implementation when a newly discovered library is necessary or useful. After approval, agents may perform the approved installs and updates; existing approval applies within its stated scope.
 - When planning features, use a subagent to research open-source libraries through the library-research workflow in `agents/skills/delegation/SKILL.md`.
 - Use `pipeline-performance` for every change touching the current or future preview-refresh hot path.

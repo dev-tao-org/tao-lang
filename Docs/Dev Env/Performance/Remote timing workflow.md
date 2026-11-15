@@ -8,7 +8,7 @@ session evidence. It needs no Tao daemon or separate Tao authentication. See the
 
 ## Local Wi-Fi setup and shared developer home
 
-Use a checkout containing these commands on each Mac, prepared with `./agent setup`.
+Use a checkout containing these commands on each Mac, prepared with `./agent unsandboxed setup`.
 Initialize development storage on both Macs:
 
 ```sh
@@ -116,11 +116,11 @@ The command uses the enrolled SSH key and prints the exact revisions. The toolin
 provides the fixture and coordinates the run. Each measured checkout supplies its own preview
 driver and must support the same measurement protocol. The command checks this before starting
 the first session. Use the original tooling snapshot to summarize previously recorded jobs.
-The comparison runs an actual headless browser preview in two frames, with a
-small app and the same app under 80 extra compiled view declarations across eight modules.
-It starts five fresh baseline/candidate pairs per workload, alternating which revision runs first.
-Each session measures startup and 24 edits, including 20 warm edits. The browser checks the
-requested content and layout after each edit.
+The comparison runs actual headless browser previews on the fixed performance project with
+24 dependency files and 240 additional compiled views. It starts five fresh baseline/candidate
+pairs, alternating which revision runs first.
+Each session measures startup and 24 edits, including 16 warm edits. The browser checks the
+requested content and mounted tree after each edit.
 
 The report leads with confirmed speedups, slowdowns and inconclusive changes. Each workload shows
 harness launch with previews closed, first preview open, warm preview reopen, and edit timings.
@@ -155,7 +155,7 @@ From the controlling Mac, after preparing or relocating the immutable checkpoint
 just timing-run ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
 ```
 
-This runs five independent sessions of 24 edits, retaining 20 warm edits per session. Reports remain
+This runs five independent sessions of 24 edits, retaining 16 warm edits per session. Reports remain
 under the tooling checkout's `.artifacts/notes/performance-investigation/jobs/`. The command prints
 the measured commit, session count, scenario medians and ranges, and raw-report location. A collected
 JSON summary is also saved under `~/.tao-dev/timing/reports/`, shared across controller worktrees.

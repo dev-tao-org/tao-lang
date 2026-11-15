@@ -3,6 +3,14 @@ import { Buffer as NodeBuffer } from '../../bridges/Bridge_node/Bridge_node'
 import { appendFileSync, mkdirSync, resolve, spawn, writeFileSync } from '../../bridges/Bridge_node/Bridge_node'
 import * as Process from '../../Process/Process-Current'
 
+/** requireAllowedSetup applies the checkout host allowlist before an agent bootstrap installs anything. */
+export function requireAllowedSetup(operations: unknown): void {
+  if (!Array.isArray(operations) || !operations.includes('setup')) {
+    Process.stderr.write('Host operation setup is not allowlisted.' + NewlineCharacter)
+    Process.exit(1)
+  }
+}
+
 /** installWorkspace installs pinned dependencies before loading the normal command graph. */
 export async function installWorkspace(completionScript: string, setupArgs: readonly string[] = []): Promise<void> {
   requireNoSetupArguments(setupArgs)
@@ -32,7 +40,7 @@ function requireNoSetupArguments(args: readonly string[]): void {
   if (args.length === 0) {
     return
   }
-  Process.stderr.write('Setup takes no arguments. Run ./agent setup or ./dev setup.' + NewlineCharacter)
+  Process.stderr.write('Setup takes no arguments. Run ./agent unsandboxed setup or ./dev setup.' + NewlineCharacter)
   Process.exit(1)
 }
 

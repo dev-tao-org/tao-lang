@@ -109,8 +109,6 @@ function hasExpectedWorkload(report: PreviewReport, job: MeasurementJob): boolea
   const settings = Perf.readPreviewMeasurement({
     editCount: job.settings.edits,
     frameCount: Number(job.environment.TAO_PREVIEW_FRAME_COUNT ?? '2') as PreviewFrameCount,
-    extraViews: Number(job.environment.TAO_PREVIEW_EXTRA_VIEWS ?? '0'),
-    extraFileCount: Number(job.environment.TAO_PREVIEW_EXTRA_FILE_COUNT ?? '0'),
   })
   if (!hasExpectedSettings(report, settings) || !Array.isArray(report.results)) {
     return false

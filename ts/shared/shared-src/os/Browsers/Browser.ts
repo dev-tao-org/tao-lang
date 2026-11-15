@@ -31,6 +31,7 @@ function nativeBrowser(): BrowserHost {
     requireAccess: Exec.requireHostProcessAccess,
     async start([command, ...args]) {
       const child = Exec.spawn(command, args, { stdout: 'ignore', stderr: 'ignore' })
+      child.unref()
       return await child.exited
     },
   }

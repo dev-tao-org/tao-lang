@@ -85,10 +85,10 @@ function createReport(job: MeasurementJob, session: number) {
     system: job.system,
     frameSizes: [{ width: 100, height: 100 }, { width: 100, height: 100 }],
     measurement: {
-      editCount: 12,
+      editCount: 24,
       frameCount: 2,
-      extraViews: 0,
-      extraFileCount: 0,
+      extraViews: 240,
+      extraFileCount: 24,
       protocol: Perf.PreviewMeasurementProtocol,
     },
     results,
@@ -132,8 +132,8 @@ Tests.test('branch verdicts require paired agreement and a repeated tier while k
     .countPreviewQuality(baseline)
   Tests.expect(warmBudgetMisses).toBe(5)
   Tests.expect(frameRestartEdits).toBe(5)
-  Tests.expect(observedTransitions).toBe(55)
-  Tests.expect(comparableTransitions).toBe(55)
+  Tests.expect(observedTransitions).toBe(115)
+  Tests.expect(comparableTransitions).toBe(115)
   const tail = BranchMetrics.compareBranchMetrics({ baseline, candidate: slower }).find(metric =>
     metric.name === 'Warm p95'
   )
@@ -151,8 +151,10 @@ function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[
   Tests.expect(report).toContain('Typical warm edit — +14.3% (+10.00 ms). Slowdown (warning). Repeat measured +28.6%')
   Tests.expect(report).toContain('Slow warm edit (p95)')
   Tests.expect(report).toContain('Warm preview reopen')
+  Tests.expect(report).toContain('Warm render steps')
+  Tests.expect(report).toContain('Edit mounted dependency')
   Tests.expect(report).toContain('generated paths changed 2 / 2 · Metro delta modules — / —')
-  Tests.expect(report).toContain('Edits with a frame restart: 10/110 vs 10/110 baseline')
+  Tests.expect(report).toContain('Edits with a frame restart: 10/230 vs 10/230 baseline')
 }
 
 function renderBranchReport(baseline: PreviewReport[], comparisons: PreviewReport[][]): string {
@@ -194,13 +196,22 @@ function readWarmMedian(baseline: PreviewReport[], candidate: PreviewReport[]) {
 }
 
 function createResults(session: number) {
-  const scenarios = ['text', 'add-text', 'row', 'reset']
-  return Array.from({ length: 12 }, (_, index) => {
-    const cycle = Math.floor(index / 4) + 1
+  const scenarios = [
+    'text',
+    'local-expand',
+    'local-shrink',
+    'imported-mount',
+    'imported-expand',
+    'dependency-edit',
+    'imported-shrink',
+    'reset',
+  ]
+  return Array.from({ length: 24 }, (_, index) => {
+    const cycle = Math.floor(index / 8) + 1
     const sample = describeFixtureSample(index)
     const duration = (session - 1) * 20 + (cycle === 2 ? 10 : 20)
     const work = { moduleDiscoveries: 5, parses: 5, modulesEmitted: 5, generatedPathsChanged: 2 }
-    return { scenario: `${scenarios[index % 4]}-${cycle}`, sample, parentClickToLastAppliedMs: duration, work }
+    return { scenario: `${scenarios[index % 8]}-${cycle}`, sample, parentClickToLastAppliedMs: duration, work }
   })
 }
 
@@ -208,7 +219,7 @@ function describeFixtureSample(index: number): string {
   if (index === 0) {
     return 'first-edit'
   }
-  return index < 4 ? 'first-cycle' : 'warm'
+  return index < 8 ? 'first-cycle' : 'warm'
 }
 
 function createJob(): MeasurementJob {
@@ -219,7 +230,7 @@ function createJob(): MeasurementJob {
     commit: 'a'.repeat(40),
     tree: 'b'.repeat(40),
     fixtureSha256: 'fixture',
-    settings: { repo: '/fixture', fixture: '/fixture.tao', samples: 2, edits: 12 },
+    settings: { repo: '/fixture', fixture: '/fixture.tao', samples: 2, edits: 24 },
     environment: {},
     system: { architecture: 'fixture', kernel: 'fixture', os: 'fixture' },
     samples: [],

@@ -62,7 +62,7 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
   Tests.expect(await git('ls-files', '--stage', '--', 'new file.ts')).toStartWith('100755 ')
   Tests.expect(await git('ls-files', '--stage', '--', 'source.ts')).toStartWith('100755 ')
   Tests.expect(await git('ls-files', '--', '.artifacts')).toBe('')
-  const options = { repo: clone, fixture: Path.join(clone, 'source.ts'), samples: 1, edits: 4 }
+  const options = { repo: clone, fixture: Path.join(clone, 'source.ts'), samples: 1, edits: 8 }
   await Tests.expect(runMeasurements(options)).rejects.toThrow('Incompatible preview measurement protocol')
   await git('config', '--local', 'core.autocrlf', 'true')
   await FS.writeFile(Path.join(clone, 'source.ts'), 'saved\r\n')

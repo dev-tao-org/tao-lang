@@ -1,3 +1,4 @@
+import * as Perf from '@perf'
 import { Errors } from '@shared'
 import type { PreviewReport } from './ReportContract'
 import { median } from './Summary'
@@ -73,6 +74,16 @@ export function compareBranchMetrics(sessions: BranchSessions): BranchMetric[] {
   return Metrics.map(metric => compareMetric(metric, sessions))
 }
 
+/** measurePreviewTimings returns one session's startup and independent warm-step medians. */
+export function measurePreviewTimings(report: PreviewReport): PreviewTiming[] {
+  return Metrics.map(metric => ({ name: metric.name, ms: metric.measure(report) })).filter(row =>
+    Number.isFinite(row.ms)
+  )
+}
+
+/** PreviewTiming is one measured preview metric in milliseconds. */
+export type PreviewTiming = { name: string; ms: number }
+
 /** countPreviewQuality counts budget misses and detects frame instance changes after the first edit. */
 export function countPreviewQuality(reports: PreviewReport[]): PreviewQuality {
   const quality = {
@@ -147,16 +158,16 @@ const Metrics: readonly TimingMetric[] = [
     floorMs: BranchTimingThresholds.warmEditFloorMs,
     measure: report => readP95(readWarmDurations(report)),
   },
-  ...['text', 'add-text', 'row', 'reset'].map(scenario => ({
-    name: `Warm ${scenario} p50`,
+  ...Perf.PreviewRenderSteps.map(step => ({
+    name: step.label,
     floorMs: BranchTimingThresholds.warmEditFloorMs,
-    measure: (report: PreviewReport) => median(readWarmDurations(report, scenario)),
+    measure: (report: PreviewReport) => median(readWarmDurations(report, step.name)),
   })),
 ]
 
 function readWarmDurations(report: PreviewReport, scenario?: string): number[] {
   return report.results
-    .filter(edit => edit.sample === 'warm' && (!scenario || edit.scenario.startsWith(`${scenario}-`)))
+    .filter(edit => edit.sample === 'warm' && (!scenario || Perf.previewRenderStepName(edit.scenario) === scenario))
     .map(edit => edit.parentClickToLastAppliedMs)
 }
 
