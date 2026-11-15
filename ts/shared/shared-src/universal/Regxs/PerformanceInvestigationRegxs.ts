@@ -13,6 +13,9 @@ export const SshAliasRegx = /^[a-z\d][a-z\d_.-]*$/i
 /** SshHostRegx matches an SSH alias or user and hostname pair. */
 export const SshHostRegx = /^(?:[a-z\d_][a-z\d_.-]*@)?[a-z\d][a-z\d_.:-]*$/i
 
+/** SshPublicKeyFingerprintRegx identifies the SHA-256 fingerprint printed by OpenSSH. */
+export const SshPublicKeyFingerprintRegx = /SHA256:[a-z\d+/]+/i
+
 /** RemotePathControlCharacterRegx matches null and line breaks forbidden in runner paths. */
 export const RemotePathControlCharacterRegx = /[\0\r\n]/
 

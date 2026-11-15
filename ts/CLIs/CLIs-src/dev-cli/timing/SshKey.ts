@@ -1,6 +1,6 @@
 import * as CLIKit from '@cli-kit'
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { BuildLock, Exec, FS, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { installSshConfig } from './SshKeyConfig'
@@ -24,9 +24,12 @@ export async function setupSshKey(host: string, options: SshKeySetupOptions = {}
 }
 
 async function enrollKey(host: string, identity: string): Promise<void> {
-  const alreadyEnrolled = await FS.exists(identity) && (await probeKeyLogin(host, identity)).status === 0
+  const alreadyEnrolled = await FS.exists(identity) && await probeDedicatedKey(host, identity)
   if (!alreadyEnrolled) {
     await copyKeyToHost(host, identity)
+  }
+  if (!alreadyEnrolled && !await probeDedicatedKey(host, identity)) {
+    Errors.ThrowHostEnvironment(`A fresh SSH login to ${host} did not authenticate with the dedicated key.`)
   }
   await installSshConfig(host, identity, Path.home('.ssh', 'config'))
   await verifyKeyLogin(host)
@@ -41,7 +44,7 @@ async function copyKeyToHost(host: string, identity: string): Promise<void> {
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', { variadicArgs: ['--apple-use-keychain', identity] })
   IO.print(`Installing the public key on ${host}. SSH may ask for the remote login password once.`)
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-copy-id', {
-    variadicArgs: ['-i', identity + PublicKeySuffix, '-o', 'ConnectTimeout=10', '--', host],
+    variadicArgs: ['-f', '-i', identity + PublicKeySuffix, '-o', 'ConnectTimeout=10', '--', host],
   })
 }
 
@@ -81,9 +84,19 @@ const FreshLoginArgs = [
   'ConnectTimeout=10',
 ] as const
 
-function probeKeyLogin(host: string, identity: string) {
+async function probeDedicatedKey(host: string, identity: string): Promise<boolean> {
+  const publicKey = identity + PublicKeySuffix
+  if (!await FS.exists(publicKey)) {
+    Errors.ThrowUserInput(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
+  }
+  const keyInfo = await Exec.captureStdout('/usr/bin/ssh-keygen', ['-lf', publicKey])
+  const fingerprint = keyInfo.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]
+  if (!fingerprint) {
+    Errors.ThrowHostEnvironment(`Unable to identify the dedicated SSH key at ${publicKey}.`)
+  }
   const args = [
     ...FreshLoginArgs,
+    '-v',
     '-o',
     'UseKeychain=yes',
     '-o',
@@ -94,7 +107,18 @@ function probeKeyLogin(host: string, identity: string) {
     host,
     'true',
   ]
-  return Exec.capture('/usr/bin/ssh', args, { check: false })
+  const result = await Exec.capture('/usr/bin/ssh', args, { check: false })
+  return result.status === 0 && readAcceptedFingerprint(result.stderr) === fingerprint
+}
+
+function readAcceptedFingerprint(diagnostics: string): string | undefined {
+  const lines = diagnostics.split(NewlineCharacter)
+  const authenticated = lines.findIndex(line => line.startsWith('Authenticated to '))
+  if (authenticated === -1 || !lines[authenticated].endsWith('using "publickey".')) {
+    return undefined
+  }
+  const acceptance = lines.slice(0, authenticated).findLast(line => line.startsWith('debug1: Server accepts key:'))
+  return acceptance?.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]
 }
 
 async function verifyKeyLogin(host: string): Promise<void> {

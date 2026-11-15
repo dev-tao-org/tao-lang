@@ -1,6 +1,6 @@
 import { Json, NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { Artifacts, Exec, FS, Path, Platform } from '@shared/os'
 import { Command } from '../../CLIs-src/cli-kit/bridges/Bridge_commander'
 import timingSetupController from '../../CLIs-src/dev-cli/commands/timing-setup-controller'
 import timingSetupRunner from '../../CLIs-src/dev-cli/commands/timing-setup-runner'
@@ -25,16 +25,23 @@ Tests.test('SSH key setup preserves user settings and replaces its own entry on 
     const original = S`
       Host other
         User someone
+      Host timing.invalid
+        IdentitiesOnly no
+        AddKeysToAgent no
+        UseKeychain no
     ` + NewlineCharacter
     const host = 'ro@timing.invalid'
     const key = Path.join(directory, 'id_ed25519_tao_primary')
     await FS.writeFile(config, original)
     await installSshConfig(host, key, config)
     const installed = await FS.readFile(config, 'utf8')
-    Tests.expect(installed.endsWith(original)).toBe(true)
+    Tests.expect(installed.startsWith(original)).toBe(true)
     Tests.expect(installed).toContain('Match originalhost timing.invalid user ro')
     Tests.expect(installed).toContain('  IdentityFile ~/.ssh/id_ed25519_tao_primary')
     Tests.expect(installed).toContain('  UseKeychain yes')
+    const resolved = await Exec.captureStdout('/usr/bin/ssh', ['-G', '-F', config, '--', host])
+    Tests.expect(resolved).toContain('identitiesonly no')
+    Tests.expect(resolved).toContain('addkeystoagent false')
     await installSshConfig(host, key, config)
     Tests.expect(await FS.readFile(config, 'utf8')).toBe(installed)
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })

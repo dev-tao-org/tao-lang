@@ -28,21 +28,25 @@ function withSshKeyEntry(config: string, host: string, identity: string): string
     ${begin}
     ${matchHost(host)}
       IdentityFile ~/.ssh/${file}
-      IdentitiesOnly yes
-      AddKeysToAgent yes
       UseKeychain yes
     Host *
     ${end}
   ` + NewlineCharacter
   const start = config.indexOf(begin + NewlineCharacter)
   if (start < 0) {
-    return entry + config
+    return appendEntry(config, entry)
   }
   const endPosition = config.indexOf(end + NewlineCharacter, start)
   if (endPosition < 0) {
     Errors.ThrowUserInput('The Tao SSH config entry is incomplete. Restore its end marker before rerunning setup.')
   }
-  return config.slice(0, start) + entry + config.slice(endPosition + end.length + NewlineCharacter.length)
+  const original = config.slice(0, start) + config.slice(endPosition + end.length + NewlineCharacter.length)
+  return appendEntry(original, entry)
+}
+
+function appendEntry(config: string, entry: string): string {
+  const separator = config && !config.endsWith(NewlineCharacter) ? NewlineCharacter : ''
+  return config + separator + entry
 }
 
 function matchHost(host: string): string {
