@@ -10,6 +10,7 @@ import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFil
 import { type PreviewReport, requireReport } from './ReportContract'
 import { collectSamples } from './RunnerSamples'
 import { assertMaterializedTree, readTreeEntries } from './SourceTree'
+import { appendTimingProgress, describeTimingSample } from './TimingProgress'
 
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
 export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number }
@@ -53,7 +54,13 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
     const fixturePath = Path.join(directory, 'fixture.tao')
     await FS.writeFile(fixturePath, fixture)
     IO.print(`Performance job: ${directory}`)
-    await collectSamples(directory, job, () => measurePreview(job, fixturePath, directory))
+    await appendTimingProgress(
+      `Starting ${job.commit.slice(0, 12)} · ${options.samples} sessions × ${options.edits} edits`,
+    )
+    await Try(() => collectSamples(directory, job, () => measurePreview(job, fixturePath, directory)), {
+      finally: (_thrown, error) =>
+        appendTimingProgress(error ? `Failed: ${error.message}` : `Finished ${job.commit.slice(0, 12)} · ${directory}`),
+    })
     return directory
   }, { finally: () => lock.release() })
 }
@@ -92,6 +99,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
   const reports = Path.join(options.repo, PreviewReportsDirectory)
   const before = new Set(await listPreviewReports(reports))
   IO.progress(`Measuring ${commit.slice(0, 12)} (${options.edits} edits)…`)
+  await appendTimingProgress(`Session ${job.samples.length + 1}/${options.samples} · ${commit.slice(0, 12)}`)
   const sources = [
     { directory: reports, label: 'preview' },
     { directory: Path.join(options.repo, '.artifacts/logs/dev'), label: 'command' },
@@ -119,6 +127,7 @@ async function acceptPreviewReport(job: MeasurementJob, commit: string, reports:
   const path = Path.join(reports, created[0])
   const report = Json.Parse(await FS.readFile(path, 'utf8')) as PreviewReport
   requireReport(report, job)
+  await appendTimingProgress(describeTimingSample(report))
   return path
 }
 

@@ -38,6 +38,12 @@ With Remote Login enabled for the runner's existing macOS user, connect from the
 just timing-connect ro@192.168.50.199
 ```
 
+For password-free repeat connections, run `just ssh-key-setup ro@192.168.50.199` in Terminal
+on the controller. Choose a passphrase and unlock the key when macOS Keychain prompts. SSH may
+ask for the laptop's login password to install the public key. The recipe manages its own entry
+in `~/.ssh/config` and verifies a new login with the old socket and SSH agent disabled.
+Rerun it to complete or repair enrollment. Use the same endpoint or alias for later timing commands.
+
 The examples below require prepared clones at the shown paths. Existing clones under `~/Timing`
 must be relocated while idle and re-prepared/validated before using their new paths; directory
 creation alone does not move them. Retained historical reports keep their original recorded paths.
@@ -93,6 +99,11 @@ report after cleanup succeeds. It accepts the same workload flags as `timing-run
 `--samples`, `--edits`, `--tooling`, `--fixture` and `--dry-run`. No execution deadline is added.
 
 ## Repeat an existing immutable benchmark
+
+Run `just timing-watch` in Terminal on the timing laptop from a checkout that supports it. Leave
+the window open to see each job, session and result as it arrives. Jobs share an append-only log in
+the timing home, so the same window follows subsequent runs from any updated tooling checkout.
+Press Ctrl+C to close the display.
 
 From the controlling Mac, after preparing or relocating the immutable checkpoint:
 

@@ -1,9 +1,10 @@
-import { Json } from '@shared'
+import { Json, NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, Platform } from '@shared/os'
+import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { Command } from '../../CLIs-src/cli-kit/bridges/Bridge_commander'
 import timingSetupController from '../../CLIs-src/dev-cli/commands/timing-setup-controller'
 import timingSetupRunner from '../../CLIs-src/dev-cli/commands/timing-setup-runner'
+import { installSshConfig } from '../../CLIs-src/dev-cli/timing/SshKeyConfig'
 import * as TimingCommandOptions from '../../CLIs-src/dev-cli/timing/TimingCommandOptions'
 import * as TimingConnection from '../../CLIs-src/dev-cli/timing/TimingConnection'
 import * as TimingReport from '../../CLIs-src/dev-cli/timing/TimingReport'
@@ -11,6 +12,33 @@ import { runTiming, type TimingRunIO } from '../../CLIs-src/dev-cli/timing/Timin
 import { setupTiming, type TimingSetupIO } from '../../CLIs-src/dev-cli/timing/TimingSetup'
 
 const MissingTimingBaselineRegx = /\n\nTiming deviation: NOT ASSESSED — no previous comparable report on this runner\.$/
+
+Tests.test('SSH key setup preserves user settings and replaces its own entry on rerun', async () => {
+  if (Platform.systemInfo().os !== 'Darwin') {
+    return
+  }
+  const root = Artifacts.resolvePath('tmp')
+  await FS.mkdir(root)
+  const directory = await FS.mkdtemp(Path.join(root, 'ssh-config-'))
+  await Try(async () => {
+    const config = Path.join(directory, 'config')
+    const original = S`
+      Host other
+        User someone
+    ` + NewlineCharacter
+    const host = 'ro@timing.invalid'
+    const key = Path.join(directory, 'id_ed25519_tao_primary')
+    await FS.writeFile(config, original)
+    await installSshConfig(host, key, config)
+    const installed = await FS.readFile(config, 'utf8')
+    Tests.expect(installed.endsWith(original)).toBe(true)
+    Tests.expect(installed).toContain('Match originalhost timing.invalid user ro')
+    Tests.expect(installed).toContain('  IdentityFile ~/.ssh/id_ed25519_tao_primary')
+    Tests.expect(installed).toContain('  UseKeychain yes')
+    await installSshConfig(host, key, config)
+    Tests.expect(await FS.readFile(config, 'utf8')).toBe(installed)
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
+})
 
 Tests.test('both timing setup registrations preserve parsed browser choices and dry-run behavior', async () => {
   const registrations = [
