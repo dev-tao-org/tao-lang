@@ -5,6 +5,7 @@ import { Command } from '../../CLIs-src/cli-kit/bridges/Bridge_commander'
 import timingSetupController from '../../CLIs-src/dev-cli/commands/timing-setup-controller'
 import timingSetupRunner from '../../CLIs-src/dev-cli/commands/timing-setup-runner'
 import { installSshConfig } from '../../CLIs-src/dev-cli/timing/SshKeyConfig'
+import { readAuthenticatedKeyFingerprint } from '../../CLIs-src/dev-cli/timing/SshKeyDiagnostics'
 import * as TimingCommandOptions from '../../CLIs-src/dev-cli/timing/TimingCommandOptions'
 import * as TimingConnection from '../../CLIs-src/dev-cli/timing/TimingConnection'
 import * as TimingReport from '../../CLIs-src/dev-cli/timing/TimingReport'
@@ -12,6 +13,18 @@ import { runTiming, type TimingRunIO } from '../../CLIs-src/dev-cli/timing/Timin
 import { setupTiming, type TimingSetupIO } from '../../CLIs-src/dev-cli/timing/TimingSetup'
 
 const MissingTimingBaselineRegx = /\n\nTiming deviation: NOT ASSESSED — no previous comparable report on this runner\.$/
+
+Tests.test('SSH setup identifies the key that signed the destination login from macOS logs', () => {
+  const dedicated = 'SHA256:dedicated'
+  const alternate = 'SHA256:alternate'
+  const offer = `debug1: Server accepts key: /Users/fixture/.ssh/tao ED25519 ${dedicated} explicit`
+  const first = `debug3: sign_and_send_pubkey: signing using ssh-ed25519 ${dedicated}`
+  const fallback = `debug3: sign_and_send_pubkey: signing using ssh-ed25519 ${alternate}`
+  const success = 'Authenticated to timing.invalid (via proxy) using "publickey".'
+  Tests.expect(readAuthenticatedKeyFingerprint([offer, first, success].join('\r\n'))).toBe(dedicated)
+  Tests.expect(readAuthenticatedKeyFingerprint([offer, first, fallback, success].join('\r\n'))).toBe(alternate)
+  Tests.expect(readAuthenticatedKeyFingerprint([offer, first].join('\r\n'))).toBeUndefined()
+})
 
 Tests.test('SSH key setup preserves user settings and replaces its own entry on rerun', async () => {
   if (Platform.systemInfo().os !== 'Darwin') {

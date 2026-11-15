@@ -1,9 +1,10 @@
 import * as CLIKit from '@cli-kit'
 import { IO } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Errors, Regxs, Try } from '@shared'
 import { BuildLock, Exec, FS, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { installSshConfig } from './SshKeyConfig'
+import { readAuthenticatedKeyFingerprint } from './SshKeyDiagnostics'
 
 type SshKeySetupOptions = { dryRun?: boolean }
 
@@ -89,36 +90,43 @@ async function probeDedicatedKey(host: string, identity: string): Promise<boolea
   if (!await FS.exists(publicKey)) {
     Errors.ThrowUserInput(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
   }
-  const keyInfo = await Exec.captureStdout('/usr/bin/ssh-keygen', ['-lf', publicKey])
+  const keyInfo = await Exec.captureStdout('/usr/bin/ssh-keygen', ['-E', 'sha256', '-lf', publicKey])
   const fingerprint = keyInfo.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]
   if (!fingerprint) {
     Errors.ThrowHostEnvironment(`Unable to identify the dedicated SSH key at ${publicKey}.`)
   }
-  const args = [
-    ...FreshLoginArgs,
-    '-v',
-    '-o',
-    'UseKeychain=yes',
-    '-o',
-    'IdentitiesOnly=yes',
-    '-i',
-    identity,
-    '--',
-    host,
-    'true',
-  ]
-  const result = await Exec.capture('/usr/bin/ssh', args, { check: false })
-  return result.status === 0 && readAcceptedFingerprint(result.stderr) === fingerprint
+  return await readDedicatedLogin(host, identity) === fingerprint
 }
 
-function readAcceptedFingerprint(diagnostics: string): string | undefined {
-  const lines = diagnostics.split(NewlineCharacter)
-  const authenticated = lines.findIndex(line => line.startsWith('Authenticated to '))
-  if (authenticated === -1 || !lines[authenticated].endsWith('using "publickey".')) {
-    return undefined
-  }
-  const acceptance = lines.slice(0, authenticated).findLast(line => line.startsWith('debug1: Server accepts key:'))
-  return acceptance?.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]
+async function readDedicatedLogin(host: string, identity: string): Promise<string | undefined> {
+  const directory = await FS.mkdtemp(Path.join(Path.dirname(identity), '.tao-ssh-probe-'))
+  return await Try(async () => {
+    const log = Path.join(directory, 'ssh.log')
+    const args = [
+      ...FreshLoginArgs,
+      '-vvv',
+      '-E',
+      log,
+      '-o',
+      'FingerprintHash=sha256',
+      '-o',
+      'LogVerbose=none',
+      '-o',
+      'UseKeychain=yes',
+      '-o',
+      'IdentitiesOnly=yes',
+      '-i',
+      identity,
+      '--',
+      host,
+      'true',
+    ]
+    const result = await Exec.capture('/usr/bin/ssh', args, { check: false })
+    if (result.status !== 0) {
+      return undefined
+    }
+    return readAuthenticatedKeyFingerprint(await FS.readFile(log, 'utf8'))
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 }
 
 async function verifyKeyLogin(host: string): Promise<void> {
