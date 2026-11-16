@@ -4,7 +4,7 @@ use LanguageFeatures
 use ValueSnapshots
 
 ts-library Demo {
-  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, Cards as Catalog, }
+  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, Cards, }
 }
 
 public

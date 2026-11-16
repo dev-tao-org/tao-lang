@@ -16,7 +16,7 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
     view viewer(argument text) {
       render inject capture argument \`\`\`ts return capture \`\`\`
     }
-    ts-library library { publish { Main as exportName } }
+    ts-library library { publish { Main } }
   `
   const tree = Grammar.createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
@@ -32,6 +32,5 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
     'argument',
     'capture',
     'library',
-    'exportName',
   ])
 })

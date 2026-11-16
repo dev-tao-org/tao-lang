@@ -1,5 +1,5 @@
 import library from '@tao-dev/ts-lib-example'
-import Card from '@tao-dev/ts-lib-example/Catalog/Greeting'
+import Card from '@tao-dev/ts-lib-example/Cards/Caption'
 import Greeting from '@tao-dev/ts-lib-example/Greeting'
 import LanguageFeatures from '@tao-dev/ts-lib-example/LanguageFeatures'
 import React from 'react'

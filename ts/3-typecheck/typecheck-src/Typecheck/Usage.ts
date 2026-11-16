@@ -86,7 +86,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 
 function visitPublication(node: AST.PublishDeclaration, scope: Scope): void {
   for (const member of node.members) {
-    reference(scope, member.target)
+    reference(scope, member)
   }
 }
 

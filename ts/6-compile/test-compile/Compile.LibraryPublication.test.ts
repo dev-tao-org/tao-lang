@@ -7,9 +7,10 @@ import { S } from '@shared'
 
 import { collectLibraryPublications } from '../compile-src/Compile/LibraryPublications'
 
-Tests.test('library publication lists require commas and accept aliases and trailing commas', () => {
+Tests.test('library publication lists require commas, reject aliases and accept trailing commas', () => {
   const parser = Grammar.createParser()
-  Tests.expect(parser.parse('ts-library Demo { publish { First, Second as Other, } }').rootNode.hasError).toBe(false)
+  Tests.expect(parser.parse('ts-library Demo { publish { First, Second as Other, } }').rootNode.hasError).toBe(true)
+  Tests.expect(parser.parse('ts-library Demo { publish { First, Second, } }').rootNode.hasError).toBe(false)
   Tests.expect(parser.parse('publish { First, Second, }').rootNode.hasError).toBe(false)
   Tests.expect(parser.parse('publish { First Second }').rootNode.hasError).toBe(true)
   Tests.expect(parser.parse('ts-library Demo { publish { First Second } }').rootNode.hasError).toBe(true)
@@ -40,7 +41,7 @@ Tests.test('module publication resolves one list across imported sources includi
     'Library.tao',
     S`
       use package ./cards as Cards
-      ts-library Demo { publish { Cards as Catalog, } }
+      ts-library Demo { publish { Cards, } }
     `,
   )
   const greeting = createModule(
@@ -48,7 +49,7 @@ Tests.test('module publication resolves one list across imported sources includi
     'public view Greeting(Name text) { render inject ```ts return null ``` }',
   )
   const other = createModule('cards/Other.tao', 'public view Other { render inject ```ts return null ``` }')
-  const list = createModule('cards/Publication.tao', 'publish { Greeting as Hello, }')
+  const list = createModule('cards/Publication.tao', 'publish { Greeting, }')
   entry.imports = [{
     statement: AST.GetImportStatements(entry.document)[0]!,
     targets: [greeting, other, list].map(module => ({ path: module.path, relation: 'same-project' })),
@@ -56,7 +57,7 @@ Tests.test('module publication resolves one list across imported sources includi
   const sources = [entry, greeting, other, list]
   const program = Typecheck.linkModules(entry.path, sources)
   Tests.expect(collectLibraryPublications(program, new Set(sources.map(module => module.path))).map(view => view.path))
-    .toEqual(['Catalog/Hello'])
+    .toEqual(['Cards/Greeting'])
 })
 
 Tests.test('library signatures allow uppercase Tao props with React-related names', () => {

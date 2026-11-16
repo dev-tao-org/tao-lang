@@ -198,7 +198,7 @@ export default grammar({
         'publish',
         '{',
         optional(
-          seq(field('members', $.NamedImport), repeat(seq(',', field('members', $.NamedImport))), optional(',')),
+          seq(field('members', $.Identifier), repeat(seq(',', field('members', $.Identifier))), optional(',')),
         ),
         '}',
       )
