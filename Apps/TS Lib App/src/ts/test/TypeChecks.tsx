@@ -1,5 +1,6 @@
 import library from '@example/tao-library'
 import Card from '@example/tao-library/Catalog/Greeting'
+import DisabledPreview from '@example/tao-library/DisabledPreview'
 import Greeting from '@example/tao-library/Greeting'
 import LanguageFeatures from '@example/tao-library/LanguageFeatures'
 import React from 'react'
@@ -10,6 +11,7 @@ const valid = (
     <Greeting First="Ada" Second="Lovelace" />
     <Card Value="Card" />
     <LanguageFeatures Name="Ada" />
+    <DisabledPreview Locked={false} />
   </library.Provider>
 )
 // @ts-expect-error Missing required Second prop.
@@ -20,6 +22,8 @@ const wrong = <Greeting First={7} Second="Lovelace" />
 const unknown = <Greeting First="Ada" Second="Lovelace" Third="No" />
 // @ts-expect-error New published views retain their required text parameter.
 const missingFeatureName = <LanguageFeatures />
+// @ts-expect-error A published Tao boolean is a required boolean prop.
+const invalidDisabledCondition = <DisabledPreview Locked="yes" />
 // @ts-expect-error Private Tao helper has no package export.
 import Hidden from '@example/tao-library/PrivateGreeting'
 // @ts-expect-error Unselected public view has no package export.

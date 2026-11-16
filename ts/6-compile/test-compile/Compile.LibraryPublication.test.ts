@@ -24,7 +24,9 @@ Tests.test('library publications reject private, unsupported, duplicate and depe
   `
   Tests.expect(resolvePublications(source).map(view => view.path)).toEqual(['Greeting'])
   Tests.expect(() => resolvePublications(source.replace('public view', 'file view'))).toThrow('public declaration')
-  Tests.expect(() => resolvePublications(source.replace('Value text', 'Value number'))).toThrow('text parameters')
+  Tests.expect(() => resolvePublications(source.replace('Value text', 'Value number'))).toThrow(
+    'text or boolean parameters',
+  )
   Tests.expect(() => resolvePublications(source.replace('Greeting, }', 'Greeting, Greeting, }'))).toThrow('Duplicate')
   Tests.expect(() => resolvePublications(source, new Set())).toThrow('dependency definition')
 })

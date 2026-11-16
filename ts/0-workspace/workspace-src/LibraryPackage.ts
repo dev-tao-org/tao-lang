@@ -45,7 +45,8 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
   const output = Path.resolve(request.out)
   await FS.mkdir(output)
-  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration)
+  const runtimeAPI = Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')
+  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration, runtimeAPI)
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
     name: request.name,
     peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
@@ -87,7 +88,6 @@ function serializeLibraryBuildConfiguration(): string {
       paths: {
         '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
         '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
-        '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
         '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
         '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],

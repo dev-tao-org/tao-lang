@@ -107,7 +107,18 @@ stay behind API-owned contracts rather than a re-exported React Native namespace
 
 #### Disabled interaction
 
-In the agreed future behavior, core Tao controls honor inherited disabled state automatically, including when composed inside a TypeScript sidecar. A raw custom control must honor that state and suppress user-triggered interaction while disabled. Programmatic work continues. See [Actions and Results](Actions%20and%20Results.md#disabled-interaction).
+`Tao.Pressable` and `Tao.TextInput` honor inherited disabled state automatically, including when composed inside a TypeScript sidecar.
+
+A raw custom control reads `Tao.useInteractionDisabled()` at render time. When it returns `true`, set the platform control's disabled or read-only and accessibility state as appropriate, and suppress all user-triggered callbacks, including keyboard and touch. Call the hook in the component that renders the raw control so changes to the enclosing Tao condition reach it. Programmatic calls and updates can continue. See [Actions and Results](Actions%20and%20Results.md#disabled-interaction).
+
+On the web, a native button can use this contract directly:
+
+```tsx
+function CustomButton({ onPress }: { onPress: () => void }) {
+  const disabled = Tao.useInteractionDisabled()
+  return <button disabled={disabled} onClick={disabled ? undefined : onPress}>Continue</button>
+}
+```
 
 #### `Tao.Text`, `Tao.View`, `Tao.TextInput`, `Tao.Pressable`
 

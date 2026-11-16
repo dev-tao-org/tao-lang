@@ -224,13 +224,13 @@ async function validateModuleViews(
 ): Promise<void> {
   for (const view of group.views) {
     const name = AST.GetViewName(view.declaration)
-    if (view.declaration.parameters.some(parameter => parameter.type.value !== 'text')) {
-      Errors.ThrowUserInput(`Foreign view ${name} parameters must all use text.`)
+    if (!Compile.hasSupportedViewParameters(view.declaration)) {
+      Errors.ThrowUserInput(`Foreign view ${name} parameters must all use text or boolean.`)
     }
     await checkForeignViewContract({
       directory: destination,
       name,
-      parameters: Compile.projectTextViewParameterTypes(view.declaration),
+      parameters: Compile.projectViewParameterTypes(view.declaration),
       exportFile: Path.join(destination, view.relativeSidecarPath),
       compiler: options.compiler ?? 'tsc',
     }, options.executor)

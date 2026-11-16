@@ -101,15 +101,24 @@ export function emitViewRenderExpression(
   scope: CodegenUtil.ScopeCode,
   argumentsCode: string,
   children: string,
+  condition?: string,
 ): string {
-  const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
-  const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
+  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : 'undefined'
+  const interactionArguments = compileInteractionArguments(node, tag, condition)
+  const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${interactionArguments})`
   return S`
     TR.ViewRenderExpression(
       ${emitName(node.target, scope)},
       ${argumentsValue}
     )
   `
+}
+
+function compileInteractionArguments(node: AST.ViewRenderExpression, tag: string, condition?: string): string {
+  if (condition !== undefined) {
+    return `, ${tag}, TR.DisabledWhen(${condition})`
+  }
+  return node.tag ? `, ${tag}` : ''
 }
 
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */

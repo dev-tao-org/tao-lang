@@ -49,7 +49,7 @@ Tests.test('foreign views reject non-text parameter contracts', () => {
   const document = AST.transform(Grammar.createParser().parse(source))!
 
   Tests.expect(() => compile(document, { revision: 'foreign-view-type' }))
-    .toThrow('parameters must all use the text type')
+    .toThrow('parameters must all use text or boolean')
 })
 
 Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {

@@ -80,7 +80,7 @@ export default grammar({
       )
     },
     _Expression($) {
-      return choice($.QualifiedName, $.TextLiteral)
+      return choice($.QualifiedName, $.TextLiteral, $.BooleanLiteral)
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -154,8 +154,12 @@ export default grammar({
         optional(field('tag', $.RenderTag)),
         field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
+        optional(field('interaction', $.DisabledModifier)),
         optional(field('block', $.Block)),
       )
+    },
+    DisabledModifier($) {
+      return seq('[', 'disabled', field('condition', choice($.BooleanLiteral, $.QualifiedName)), ']')
     },
 
     // A namespace derived from a package path can share a statement keyword.
@@ -166,6 +170,7 @@ export default grammar({
           seq(field('tag', $.RenderTag), field('view', alias($._TaggedInputName, $.QualifiedName))),
         ),
         optional(field('argumentList', $.ArgumentList)),
+        optional(field('interaction', $.DisabledModifier)),
         optional(field('block', $.Block)),
       )
     },
@@ -313,6 +318,9 @@ export default grammar({
     },
     TextLiteral() {
       return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
+    },
+    BooleanLiteral() {
+      return choice('yes', 'no')
     },
 
     // Names

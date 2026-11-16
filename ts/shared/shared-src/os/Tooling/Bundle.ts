@@ -22,16 +22,30 @@ export async function bundleNode(entrypoint: string, outdir: string, external: s
   }
 }
 
+const RuntimeAPIImportRegx = /^@tao\/runtime-api$/
+
 /** bundleLibrary emits one portable runtime closure while leaving host React and native peers external. */
-export async function bundleLibrary(entrypoint: string, outdir: string, tsconfig: string): Promise<void> {
+export async function bundleLibrary(
+  entrypoint: string,
+  outdir: string,
+  tsconfig: string,
+  runtimeAPIPath: string,
+): Promise<void> {
   const result = await BunHost.getRuntime().build({
     entrypoints: [entrypoint],
     outdir,
     target: 'browser',
     format: 'esm',
+    throw: false,
     tsconfig,
     external: ['react', 'react/jsx-runtime', 'react-native', '@preact/signals-core'],
     naming: '_Library.js',
+    plugins: [{
+      name: 'tao-library-runtime-api',
+      setup(builder) {
+        builder.onResolve({ filter: RuntimeAPIImportRegx }, () => ({ path: runtimeAPIPath }))
+      },
+    }],
   })
   if (!result.success) {
     Errors.ThrowUserInput(`Library bundling failed: ${result.logs.map(log => log.message).join('\n')}`)

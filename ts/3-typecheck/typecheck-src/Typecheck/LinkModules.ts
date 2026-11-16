@@ -1,7 +1,8 @@
 import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
+import { assertBooleanDisabledConditions } from '../DisabledConditions'
 import { orderDefinitions } from '../LinkModuleDefinitions'
-import { assertUniqueLocalBindings, collectReferencedNames } from '../LinkModuleValidation'
+import { assertUniqueLocalBindings, collectModuleReferences } from '../LinkModuleValidation'
 import { assertValidStatements } from '../StatementValidation'
 import * as Modules from './Modules'
 
@@ -20,6 +21,7 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
   const ownNames: OwnDeclarationNamesBySourcePath = new Map(
     sources.map(source => [source.path, collectOwnDeclarationNames(source)]),
   )
+  const modulesWithNamedConditions = new Set<string>()
 
   for (const source of sources) {
     const sourceBindings = bindings.get(source.path)!
@@ -27,8 +29,12 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     assertUniqueOwnDeclarations(source)
     assertUniqueLocalBindings(source)
     addExplicitBindings(source, modules, sourceBindings, sourceNames)
-    addImplicitSiblingBindings(source, modules, sourceBindings, sourceNames, collectReferencedNames(source.document))
+    const references = collectModuleReferences(source.document)
+    addImplicitSiblingBindings(source, modules, sourceBindings, sourceNames, references.names)
     assertUniqueBindings(source, sourceBindings, sourceNames)
+    if (references.hasNamedDisabledCondition) {
+      modulesWithNamedConditions.add(source.path)
+    }
   }
 
   const linkedModules = sources.map(source => ({
@@ -37,7 +43,11 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     bindings: bindings.get(source.path)!,
     imports: source.imports,
   }))
-  return { entry, modules: linkedModules, definitions: orderDefinitions(linkedModules) }
+  const definitions = orderDefinitions(linkedModules)
+  if (modulesWithNamedConditions.size > 0) {
+    assertBooleanDisabledConditions(linkedModules, definitions, modulesWithNamedConditions)
+  }
+  return { entry, modules: linkedModules, definitions }
 }
 
 type SourceModulesByPath = ReadonlyMap<string, Modules.SourceModule>

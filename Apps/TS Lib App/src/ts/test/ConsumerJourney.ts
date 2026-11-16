@@ -1,5 +1,6 @@
 import { expect } from 'bun:test'
 import type { Page } from 'playwright'
+import { verifyDisabledPreview } from './DisabledPreviewJourney'
 
 /** verifyConsumer exercises compiled Tao views through an ordinary React consumer. */
 export async function verifyConsumer(page: Page): Promise<void> {
@@ -14,6 +15,7 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await first.getByText('Published submodule', { exact: true }).waitFor()
   await verifyLanguageFeatures(page)
   await verifyValueSnapshots(page)
+  await verifyDisabledPreview(page)
   await first.getByText('Nested private Tao helper 0', { exact: true }).click()
   await first.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   await second.getByText('Nested private Tao helper 0', { exact: true }).waitFor()
