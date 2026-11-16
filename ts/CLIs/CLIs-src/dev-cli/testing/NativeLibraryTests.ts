@@ -5,11 +5,11 @@ import { Errors, Try } from '@shared'
 import * as Shared from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
-import type { NativeTestPlatform } from './NativeTestDevice'
+import type { NativeTestDevice, NativeTestPlatform, NativeTestTarget } from './NativeTestDevice'
 
 /** verifyNativeLibrary runs disabled interaction through an ordinary consumer of the compiled Tao library. */
 export async function verifyNativeLibrary(
-  target: Workspace.AppTestTarget,
+  target: NativeTestTarget,
   platform: NativeTestPlatform,
 ): Promise<void> {
   const directory = await prepareConsumerFixture()
@@ -19,7 +19,7 @@ export async function verifyNativeLibrary(
 }
 
 async function runLibraryJourney(
-  target: Workspace.AppTestTarget,
+  target: NativeTestTarget,
   platform: NativeTestPlatform,
   host: string,
 ): Promise<void> {
@@ -30,13 +30,13 @@ async function runLibraryJourney(
     await verifyDisabledLibraryControls(device)
   }, {
     async finally() {
-      await Try(() => device.dispose(), { finally: () => closeConsumerHost(host, expo) })
+      await Try(() => device.dispose(), { finally: () => closeConsumerHost(expo, platform) })
     },
   })
 }
 
-async function verifyDisabledLibraryControls(device: Workspace.AppTestDevice): Promise<void> {
-  await device.expectText('Lock preview', 'previewLock')
+async function verifyDisabledLibraryControls(device: NativeTestDevice): Promise<void> {
+  await device.waitForOpeningText('Lock preview', 'previewLock')
   await device.type('previewInput', 'Before locking')
   await device.expectInput('previewInput', 'Before locking')
   await device.press('previewLock')
@@ -59,10 +59,12 @@ async function verifyDisabledLibraryControls(device: Workspace.AppTestDevice): P
   await device.expectText('Programmatic: 1')
 }
 
-async function closeConsumerHost(host: string, expo: Runtime.ExpoSession): Promise<void> {
+async function closeConsumerHost(expo: Runtime.ExpoSession, platform: NativeTestPlatform): Promise<void> {
   await expo.dispose()
   const { stdout, stderr } = await expo.output()
-  await FS.writeFile(Path.join(host, 'expo.log'), Shared.joinTextLines(stdout, stderr))
+  const logs = Artifacts.resolvePath('logs', 'native-journeys', 'compiled-library')
+  await FS.mkdir(logs)
+  await FS.writeFile(Path.join(logs, `${platform}-${Platform.randomUUID()}.log`), Shared.joinTextLines(stdout, stderr))
 }
 
 async function prepareConsumerFixture(): Promise<string> {

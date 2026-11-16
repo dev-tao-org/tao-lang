@@ -7,12 +7,23 @@ import { type NativeWebDriver, waitForNativeObservation } from './NativeWebDrive
 /** NativeTestPlatform identifies the native React Native platforms used for journeys. */
 export type NativeTestPlatform = 'ios' | 'android'
 
+/** NativeTestTarget opens an Expo Go journey device. */
+export type NativeTestTarget = {
+  platform: NativeTestPlatform
+  openDevice(): Promise<NativeTestDevice>
+}
+
+/** NativeTestDevice provides a separate wait for the compiled consumer's first screen. */
+export type NativeTestDevice = Workspace.AppTestDevice & {
+  waitForOpeningText(value: string, tag: string): Promise<void>
+}
+
 /** createNativeTestTarget adapts an owned native WebDriver session to the Tao journey runner. */
 export function createNativeTestTarget(
   platform: NativeTestPlatform,
   driver: NativeWebDriver,
   clearAppData?: () => Promise<void>,
-): Workspace.AppTestTarget {
+): NativeTestTarget {
   return {
     platform,
     openDevice: async () => ({
@@ -23,6 +34,7 @@ export function createNativeTestTarget(
       },
       type: (tag, value) => typeInput(platform, driver, tag, value),
       expectText: (value, tag) => expectText(platform, driver, value, tag),
+      waitForOpeningText: (value, tag) => expectText(platform, driver, value, tag, 90_000),
       expectInput: (tag, value) => expectInput(platform, driver, tag, value),
       dispose: () => disposeDevice(platform, driver),
     }),
@@ -122,16 +134,22 @@ async function expectText(
   driver: NativeWebDriver,
   value: string,
   tag: TaggedScope,
+  timeoutMs?: number,
 ): Promise<void> {
   const literal = xpathLiteral(value)
   const attributes = platform === 'ios' ? ['label', 'value'] : ['text', 'content-desc']
   const condition = attributes.map(name => `@${name}=${literal}`).join(' or ')
   const description = tag ? `exact text ${Json.Print(value)} in #${tag}` : `exact text ${Json.Print(value)}`
-  await waitForElement(driver, withinTag(platform, tag, condition), description)
+  await waitForElement(driver, withinTag(platform, tag, condition), description, timeoutMs)
 }
 
-function waitForElement(driver: NativeWebDriver, selector: string, description: string): Promise<string> {
-  return waitForNativeObservation(description, () => findJourneyElement(driver, selector), 30_000)
+function waitForElement(
+  driver: NativeWebDriver,
+  selector: string,
+  description: string,
+  timeoutMs = 30_000,
+): Promise<string> {
+  return waitForNativeObservation(description, () => findJourneyElement(driver, selector), timeoutMs)
 }
 
 async function findJourneyElement(driver: NativeWebDriver, selector: string): Promise<string | undefined> {

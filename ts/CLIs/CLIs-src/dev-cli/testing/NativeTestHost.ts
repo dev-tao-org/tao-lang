@@ -166,12 +166,13 @@ async function waitForEmulator(target: AndroidTestTarget, child: PipedChildProce
     if (child.exitCode !== null) {
       Errors.ThrowHostEnvironment('Android emulator exited before boot. See emulator.log.')
     }
-    const args = adbDeviceArguments(target, ['shell', 'getprop', 'sys.boot_completed'])
+    const ready = 'test "$(getprop sys.boot_completed)" = 1 && pm path android'
+    const args = adbDeviceArguments(target, ['shell', ready])
     const boot = await Exec.capture('adb', args, {
       check: false,
       timeoutMs: 5000,
     })
-    return boot.stdout.trim() === '1' ? true : undefined
+    return boot.status === 0 ? true : undefined
   }, 180_000)
 }
 
@@ -189,14 +190,13 @@ async function installAndroidExpoGo(target: AndroidTestTarget, binary: string): 
     IO.progress('Transferring Expo Go to the Android emulator…')
     await adb(target, ['push', '-Z', binary, StagedExpoGoApk], 120_000)
     IO.progress('Installing Expo Go on the Android emulator…')
-    // Native CI verifies this exact APK by SHA-256 before publishing EXPO_GO_BINARY.
-    const verifiedFixture = isGitHubHostedRunner() && Env.get('EXPO_GO_BINARY') === binary
-    const verification = verifiedFixture ? ['--skip-verification'] : []
-    const result = await adb(target, ['shell', 'pm', 'install', ...verification, StagedExpoGoApk], 120_000)
+    const timeoutMs = isGitHubHostedRunner() ? 240_000 : 120_000
+    const result = await adb(target, ['shell', 'pm', 'install', StagedExpoGoApk], timeoutMs)
     if (result !== 'Success') {
       Errors.ThrowHostEnvironment(`Could not install Expo Go on the owned emulator: ${result}`)
     }
     await adb(target, ['shell', 'rm', StagedExpoGoApk], 10_000)
+    IO.progress('Expo Go installed on the Android emulator.')
   }, {
     async finally(_thrown, error) {
       if (error) {
@@ -211,7 +211,7 @@ function isGitHubHostedRunner(): boolean {
 }
 
 async function recordAndroidInstallLog(target: AndroidTestTarget): Promise<void> {
-  const log = await adb(target, ['logcat', '-d', '-t', '300', '-s', 'PackageManager', 'PackageInstallerSession'], 5000)
+  const log = await adb(target, ['logcat', '-b', 'all', '-d', '-t', '3000'], 5000)
   await FS.writeFile(Path.join(target.root, 'android-install.log'), log)
 }
 
@@ -277,7 +277,7 @@ async function waitForAppium(child: PipedChildProcess, url: string): Promise<voi
     }
     const response = await Try.WithDefault(undefined, () => Http.request(url + '/status'))
     return response?.ok ? response : undefined
-  })
+  }, 60_000)
 }
 
 function reservePort(): number {
