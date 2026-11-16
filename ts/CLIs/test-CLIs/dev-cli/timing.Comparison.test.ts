@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { describeTimingComparison } from '../../CLIs-src/dev-cli/timing/TimingComparison'
-import { type TimingReport } from '../../CLIs-src/dev-cli/timing/TimingReport'
+import { type TimingReport } from '../../CLIs-src/dev-cli/timing/TimingReportContract'
 import { readTimingHistory } from '../../CLIs-src/dev-cli/timing/TimingReportHistory'
 
 const PossibleSlowdownRegx =

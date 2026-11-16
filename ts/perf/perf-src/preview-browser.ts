@@ -2,7 +2,6 @@ import { Time } from '@shared'
 import * as BrowserRuntime from '@shared/os/browser'
 import * as Preview from '@shared/preview'
 import { EventStream, Http } from '@shared/web'
-
 import { refreshPreviewControls } from './Preview/PreviewBrowserControls'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { startPreviewEditor } from './Preview/PreviewEditorBrowser'
@@ -86,7 +85,7 @@ BrowserRuntime.onMessage(receiveSignal)
 openButton.addEventListener('click', () => {
   if (result.status === 'closed') {
     void openPreviews(!opensOnLoad).then(undefined, failPreviewOpen)
-  } else if (result.status === 'ready' || result.status === 'complete') {
+  } else if (opening || result.status === 'ready' || result.status === 'complete') {
     closePreviews()
   }
 })
@@ -134,6 +133,9 @@ async function openPreviews(measure: boolean): Promise<void> {
   }
   if (!measure) {
     markPreviewsReady()
+  } else {
+    openButton.textContent = 'Close previews'
+    refreshRunButton()
   }
 }
 

@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Format from '@fix/format'
 
 import * as Shared from '@shared'
-import * as Typecheck from '@typecheck'
+import * as SourceValidation from '@source-validation'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from './Bridge_web-tree-sitter'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
@@ -194,9 +194,9 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
   return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
 }
 
-function collectTaoStatementDiagnostics(tree: Tree): readonly Typecheck.StatementDiagnostic[] {
+function collectTaoStatementDiagnostics(tree: Tree): readonly SourceValidation.StatementDiagnostic[] {
   const document = AST.transform(tree)
-  return document ? Typecheck.collectStatementDiagnostics(document) : []
+  return document ? SourceValidation.collectStatementDiagnostics(document) : []
 }
 
 function measure<T>(options: SessionOptions, phase: MeasurementPhase, operation: () => T): T {

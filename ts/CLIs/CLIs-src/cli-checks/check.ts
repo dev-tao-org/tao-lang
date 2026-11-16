@@ -64,6 +64,7 @@ export async function workspaceTypes(): Promise<void> {
     '0-workspace',
     '1-grammar',
     '2-ast-gen',
+    '2.5-source-validation',
     '3-typecheck',
     '4-fix',
     '5-check',

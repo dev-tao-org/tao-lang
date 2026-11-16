@@ -23,7 +23,7 @@ export function getSingleLineCallChanges(file: TypeScript.SourceFile): TypeScrip
     const isCall = TypeScript.isCallExpression(node) || TypeScript.isNewExpression(node)
     if (isCall) {
       const replacement = singleLineCallReplacement(node, file)
-      if (replacement) {
+      if (replacement && replacement !== node.getText(file)) {
         changes.push({
           span: { start: node.getStart(file), length: node.getEnd() - node.getStart(file) },
           newText: replacement,

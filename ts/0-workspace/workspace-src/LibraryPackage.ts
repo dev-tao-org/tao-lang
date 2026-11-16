@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
 import { Errors, Json } from '@shared'
+import * as SourceValidation from '@source-validation'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
@@ -26,6 +27,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   if (!document) {
     Errors.ThrowUserInput(`Invalid Tao library syntax: ${entry}.`)
   }
+  SourceValidation.assertValidStatements(document, entry)
   const dependencies = new ProjectDependencies(root, await createProjectDependencyOptions(root))
   await dependencies.refresh()
   const modules = await loadModules({ path: entry, document }, {

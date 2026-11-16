@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { S, Source } from '@shared'
 import * as Tests from '@shared-tests'
-import * as Typecheck from '../typecheck-src/Typecheck'
+import * as SourceValidation from '../source-validation-src/SourceValidation'
 
 Tests.test('statement diagnostics identify every explicitly authored lowercase declaration name', () => {
   const source = S`
@@ -21,7 +21,8 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
   const tree = Grammar.createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   const document = AST.transform(tree)!
-  const names = Typecheck.collectStatementDiagnostics(document).map(diagnostic => Source.slice(source, diagnostic))
+  const diagnostics = SourceValidation.collectStatementDiagnostics(document)
+  const names = diagnostics.map(diagnostic => Source.slice(source, diagnostic))
   Tests.expect(names).toEqual([
     'dependency',
     'textAlias',

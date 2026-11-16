@@ -1,19 +1,15 @@
 import { IO } from '@cli-kit'
-import { Json, Schema } from '@shared'
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
-import { type MeasurementJob, parseMeasurementJob } from '../../agent-skills/performance-investigation/Runner'
 import { describeTimingComparison } from './TimingComparison'
 import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote, type TimingRemoteRequest } from './TimingRemote'
-import { isValidTimingReport, readTimingHistory } from './TimingReportHistory'
+import { parseTimingReport, type TimingReport } from './TimingReportContract'
+import { readTimingHistory } from './TimingReportHistory'
 
 /** TimingReportRequest selects a tooling checkout and optional exact completed job. */
 export type TimingReportRequest = { host: string; tooling: string; job?: string }
-
-/** TimingReport identifies independent-session medians validated by the runner helper. */
-export type TimingReport = Schema.infer<typeof timingReportSchema>
 
 /** reportTiming prints a completed runner job without launching measurements. */
 export async function reportTiming(request: TimingReportRequest): Promise<void> {
@@ -52,13 +48,10 @@ export async function readTimingReport(
   const remote = { host: request.host, directory: request.tooling, controlPath }
   const job = request.job ?? await readLatestJob(remote)
   requireJobPath(job, request.tooling)
-  const args = createTimingHelperArguments('summarize', [job])
-  const text = await readTimingRemote(withTimingArguments(remote, args))
-  const reports = parseTimingReports(text)
-  if (reports.length !== 1 || reports[0]?.directory !== job) {
-    Errors.ThrowHostEnvironment('The runner did not return the requested timing report.')
-  }
-  return await readJobProvenance(remote, reports[0])
+  const summary = await readTimingRemote(withTimingArguments(remote, createTimingHelperArguments('summarize', [job])))
+  const manifestPath = Path.posix.join(job, JobFileName)
+  const manifest = await readTimingRemote(withTimingArguments(remote, ['/bin/cat', manifestPath]))
+  return parseTimingReport({ summary, manifest, job, runner: request.host })
 }
 
 /** readTimingJobPath identifies the exact job announced by a completed measurement command. */
@@ -116,85 +109,9 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
   return { ...remote, args }
 }
 
-async function readJobProvenance(
-  remote: Omit<TimingRemoteRequest, 'args'>,
-  summary: TimingReport,
-): Promise<TimingReport> {
-  const path = Path.posix.join(summary.directory, JobFileName)
-  const args = ['/bin/cat', path]
-  const text = await readTimingRemote(withTimingArguments(remote, args))
-  const job = parseMeasurementJob(text, path)
-  if (!matchesSummarizedJob(job, summary)) {
-    Errors.ThrowHostEnvironment('The runner job identity no longer matches its timing summary.')
-  }
-  const report = withJobProvenance(summary, job, remote.host)
-  if (!isValidTimingReport(report)) {
-    Errors.ThrowHostEnvironment('The runner returned incomplete timing provenance or measurements.')
-  }
-  return report
-}
-
-function withJobProvenance(summary: TimingReport, job: MeasurementJob, runner: string): TimingReport {
-  return { ...summary, runner, startedAt: job.startedAt, finishedAt: job.finishedAt! }
-}
-
-function matchesSummarizedJob(job: MeasurementJob, report: TimingReport): boolean {
-  return isPassedJob(job) && matchesJobIdentity(job, report) && matchesJobSettings(job, report)
-}
-
-function isPassedJob(job: MeasurementJob): boolean {
-  return !!job && job.status === 'passed'
-}
-
-function matchesJobIdentity(job: MeasurementJob, report: TimingReport): boolean {
-  return job.commit === report.commit && job.tree === report.tree && job.fixtureSha256 === report.fixtureSha256
-}
-
-function matchesJobSettings(job: MeasurementJob, report: TimingReport): boolean {
-  return job.settings?.edits === report.settings?.edits && job.settings?.samples === report.settings?.samples
-}
-
 function requireJobPath(job: string, tooling: string): void {
   const parent = Path.posix.join(tooling, JobsDirectory)
   if (Path.posix.dirname(job) !== parent || !Regxs.TimingJobIdRegx.test(Path.posix.basename(job))) {
     Errors.ThrowUserInput('Select a job directly inside this tooling checkout’s retained jobs directory.')
   }
 }
-
-function parseTimingReports(text: string): TimingReport[] {
-  return Try(() => Json.Parse(text, { schema: Schema.array(timingReportSchema) }), {
-    catch: () => Errors.ThrowHostEnvironment('The runner returned incomplete timing provenance or measurements.'),
-  })
-}
-
-const timingReportSchema = Schema.looseObject({
-  directory: Schema.string(),
-  commit: Schema.string(),
-  tree: Schema.string(),
-  fixtureSha256: Schema.string(),
-  settings: Schema.looseObject({
-    repo: Schema.string(),
-    fixture: Schema.string(),
-    samples: Schema.number(),
-    edits: Schema.number(),
-  }),
-  conditions: Schema.looseObject({
-    system: Schema.unknown(),
-    runtime: Schema.string(),
-    browser: Schema.string(),
-    measurement: Schema.unknown(),
-    frameSizes: Schema.array(Schema.unknown()),
-  }),
-  groups: Schema.array(Schema.looseObject({
-    name: Schema.string(),
-    sessions: Schema.number(),
-    medianMs: Schema.number(),
-    minMs: Schema.number(),
-    maxMs: Schema.number(),
-    runMediansMs: Schema.array(Schema.number()),
-  })),
-  interpretation: Schema.string(),
-  runner: Schema.string(),
-  startedAt: Schema.string(),
-  finishedAt: Schema.string(),
-})

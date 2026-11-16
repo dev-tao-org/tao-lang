@@ -10,6 +10,7 @@ import type { PreviewReport } from '../../CLIs-src/agent-skills/performance-inve
 import type { MeasurementJob } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
 import { collectSamples } from '../../CLIs-src/agent-skills/performance-investigation/RunnerSamples'
 import { summarizeJob } from '../../CLIs-src/agent-skills/performance-investigation/Summary'
+import { parseTimingReport } from '../../CLIs-src/dev-cli/timing/TimingReportContract'
 
 Tests.test('measurement failure retains completed samples and records a failed job', async () => {
   await withDirectory(async directory => {
@@ -44,6 +45,12 @@ Tests.test('summaries keep warm edits grouped by independent session and reject 
       return report
     })
     const summary = await summarizeJob(directory)
+    const manifest = await FS.readFile(Path.join(directory, 'job.json'), 'utf8')
+    const payload = { summary: Json.Print([summary]), manifest, job: directory, runner: 'runner-fixture' }
+    const collected = parseTimingReport(payload)
+    Tests.expect(collected.runner).toBe('runner-fixture')
+    Tests.expect(collected.finishedAt).toBeString()
+    Tests.expect(collected.groups).toEqual(summary.groups)
     Tests.expect(summary.groups.find(group => group.name === 'warm/text')).toEqual({
       name: 'warm/text',
       sessions: 2,
@@ -226,7 +233,7 @@ function createJob(): MeasurementJob {
   return {
     version: 1,
     status: 'running',
-    startedAt: '2026-10-28T00:00:00Z',
+    startedAt: '2026-10-28T00:00:00.000Z',
     commit: 'a'.repeat(40),
     tree: 'b'.repeat(40),
     fixtureSha256: 'fixture',

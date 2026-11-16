@@ -29,6 +29,26 @@ async function verifyRecoveryJourney({ page, change }: RecoveryFixture): Promise
   await verifyManualReloadAndRetiredMessages(page, initialBoots.left!)
   await verifyReopenWithConcurrentSave(page, change)
   await verifyReopenRetainsBuildError(page, change)
+  await verifyOpeningCanBeClosed(page)
+}
+
+async function verifyOpeningCanBeClosed(page: HeadlessBrowser.Page): Promise<void> {
+  await page.getByRole('button', { name: 'Close previews' }).click()
+  await page.route(
+    url => url.searchParams.has('frameId'),
+    route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><p>Waiting for preview.</p>' }),
+    { times: 2 },
+  )
+  await page.getByRole('button', { name: 'Show previews' }).click()
+  for (const id of ['left', 'right']) {
+    await page.frameLocator(`#${id}`).getByText('Waiting for preview.').waitFor()
+  }
+  await page.locator('body[data-status="opening"]').waitFor()
+  await page.getByRole('button', { name: 'Close previews' }).click()
+  await page.locator('body[data-status="closed"]').waitFor()
+  Tests.expect(await page.locator('iframe[src]').count()).toBe(0)
+  await page.getByRole('button', { name: 'Show previews' }).click()
+  await page.locator('body[data-status="ready"]').waitFor()
 }
 
 async function verifyReopenRetainsBuildError(page: HeadlessBrowser.Page, change: RecoveryFixture['change']) {

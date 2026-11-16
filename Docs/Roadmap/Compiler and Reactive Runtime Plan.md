@@ -64,11 +64,14 @@ Do not assume Tree-sitter's structural node metadata alone captures all semantic
 Keep any added metadata small and explicit. No second intermediate tree, additional full-tree
 preview traversal, or general AST-generation framework without a concrete need.
 
-Preserve recognized statements and their source ranges in the CST and AST. Validate permitted
-owners, ordering, multiplicity and authored declaration names on the semantic AST before linking and code generation. The editor
-reports the same placement diagnostics for complete syntax and retains parser diagnostics for
-incomplete edits. Preserve supported valid syntax and the single-render rule. Consult old
-grammar and validation for proven edge cases while honoring the names and shapes above.
+Preserve recognized statements and their source ranges in the CST and AST. The source-validation
+stage checks permitted owners, ordering, multiplicity and authored declaration names on each
+reached semantic AST before resolving that document's imports. Structurally invalid programs stop
+before linking and code generation. The workspace owns project requirements that depend on paths
+and dependency state. The editor reports the same placement
+diagnostics for complete syntax and retains parser diagnostics for incomplete edits. Preserve
+supported valid syntax and the single-render rule. Consult old grammar and validation for proven
+edge cases while honoring the names and shapes above.
 
 Update linker, formatter, workspace consumers, tests and specs together. No compatibility readers,
 duplicate old/new node designs, or implicit porting of additional language features.

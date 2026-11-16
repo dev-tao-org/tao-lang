@@ -35,14 +35,34 @@ export async function fixSourceConformance(
     if (edits.length === 0) {
       continue
     }
-    let text = file.text
-    for (const edit of edits.sort((first, second) => second.span.start - first.span.start)) {
-      text = Source.replace(text, Range(edit.span.start, edit.span.start + edit.span.length), edit.newText)
-    }
-    await FS.write(filename, text)
+    const text = applyEdits(file.text, edits)
+    await FS.write(filename, finishCallLayouts(filename, text))
     changed++
   }
   IO.print(`Fixed source conformance: ${changed} file(s)`)
+}
+
+function finishCallLayouts(filename: string, text: string): string {
+  while (true) {
+    const file = TypeScript.createSourceFile(filename, text, TypeScript.ScriptTarget.Latest, true)
+    const edits = getSingleLineCallChanges(file)
+    if (edits.length === 0) {
+      return text
+    }
+    // Each layout edit removes a line break, so nested layouts eventually stop changing.
+    const updated = applyEdits(text, edits)
+    if (updated === text) {
+      return text
+    }
+    text = updated
+  }
+}
+
+function applyEdits(text: string, edits: TypeScript.TextChange[]): string {
+  for (const edit of edits.sort((first, second) => second.span.start - first.span.start)) {
+    text = Source.replace(text, Range(edit.span.start, edit.span.start + edit.span.length), edit.newText)
+  }
+  return text
 }
 
 function collectSourceChanges(

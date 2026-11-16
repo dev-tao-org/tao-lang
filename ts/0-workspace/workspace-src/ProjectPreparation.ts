@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Runtime from '@runtime'
 import Exec from '@shared/os/exec'
+import * as SourceValidation from '@source-validation'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Try } from '@shared'
@@ -14,7 +15,7 @@ import { prepareDependencies, prepareSourceDependency } from './dependencies/Sto
 import type { DependencyStoreOptions } from './dependencies/Types'
 import { collectModuleRequirements } from './ModuleRequirements'
 import { loadModules } from './modules/Loader'
-import { findNamedPackageRoot, findNearestProjectRoot } from './modules/Paths'
+import { findNamedPackageRoot, findNearestProjectRoot, resolveCanonicalPath } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
 import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
@@ -165,6 +166,7 @@ async function loadProjectManagedInput(
   if (!project) {
     Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
+  const source = await readPreparationEntry(entry)
   const dependencies = new ProjectDependencies(
     project.root,
     options.dependencyOptions ?? await createProjectDependencyOptions(project.root),
@@ -172,18 +174,19 @@ async function loadProjectManagedInput(
   await dependencies.refresh()
   return await buildManagedModulesInput(
     project.root,
-    await loadEntry(entry, project.root, dependencies),
+    await loadEntry(source, project.root, dependencies),
     options.runtimePins,
   )
 }
 
 async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
+  const source = await readPreparationEntry(entry)
   const services = options.dependencyOptions ?? await createProjectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
   if (options.update?.length) {
     await prepareDependencies(root, await services.readRequirements(root), services, options.update)
   }
-  const sources = await prepareEntrySources(entry, root, services)
+  const sources = await prepareEntrySources(source, root, services)
   const input = await buildManagedModulesInput(root, sources, options.runtimePins)
   if (!input) {
     await Runtime.prepareRuntime({
@@ -206,7 +209,7 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
 }
 
 async function prepareEntrySources(
-  entry: string,
+  entry: PreparationEntry,
   root: string,
   services: DependencyStoreOptions,
 ): Promise<Typecheck.SourceModule[]> {
@@ -231,23 +234,30 @@ async function prepareEntrySources(
     }), { finally: lock.release })
 }
 
+type PreparationEntry = { path: string; document: AST.Document; parser: Grammar.Parser }
+
+async function readPreparationEntry(path: string): Promise<PreparationEntry> {
+  const parser = Grammar.createParser()
+  const document = AST.transform(parser.parse(await FS.readFile(path, 'utf8')))
+  if (document === undefined) {
+    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${path}.`)
+  }
+  SourceValidation.assertValidStatements(document, resolveCanonicalPath(path))
+  return { path, document, parser }
+}
+
 async function loadEntry(
-  entry: string,
+  entry: PreparationEntry,
   root: string,
   dependencies: Pick<ProjectDependencies, 'resolveProject'>,
 ): Promise<Typecheck.SourceModule[]> {
-  const parser = Grammar.createParser()
-  const document = AST.transform(parser.parse(await FS.readFile(entry, 'utf8')))
-  if (document === undefined) {
-    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
-  }
   return await loadModules(
-    { path: entry, document },
+    entry,
     {
       directory: root,
       includeModuleRequirements: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
-    parser,
+    entry.parser,
   )
 }

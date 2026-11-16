@@ -22,7 +22,7 @@ export type WorkspaceOptions = {
   resolveProject?: ModuleLoadOptions['resolveProject']
   observeProjectSources?: ModuleLoadOptions['observeProjectSources']
   includeModuleRequirements?: boolean
-  beforeLoad?: () => Promise<void>
+  beforeLoad?: ModuleLoadOptions['beforeLoad']
   watchDirectories?: readonly string[]
   beforeCompile?: PrepareWorkspace
 }

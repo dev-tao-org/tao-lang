@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import type * as Grammar from '@grammar'
+import * as SourceValidation from '@source-validation'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Timings } from '@shared'
@@ -16,9 +17,10 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
+  beforeLoad?: () => Promise<void>
 }
 
-/** loadModules discovers and parses the source graph reachable from one parsed entry.
+/** loadModules discovers the source graph, validating each reached document before resolving its imports.
  *  Successful results are nonempty, with the canonical entry module first. */
 export const loadModules = Timings.createTopLevelTimer(function(
   timings,
@@ -63,6 +65,10 @@ const loadGraph = Timings.measure(
   async function(timings, request: LoadRequest): Promise<Typecheck.SourceModule[]> {
     const { entry, options } = request
     const entryPath = Paths.resolveCanonicalPath(entry.path)
+    timings.run(ValidateStatements, entry.document, entryPath)
+    if (options.beforeLoad) {
+      await timings.run(LoadSources, options.beforeLoad)
+    }
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
     while (state.pending.length > 0) {
@@ -71,6 +77,9 @@ const loadGraph = Timings.measure(
     return await completedGraph(state, timings)
   },
 )
+
+const ValidateStatements = Timings.measured('source.validate', SourceValidation.assertValidStatements)
+const LoadSources = Timings.measured('dependencies.sources', (load: () => Promise<void>) => load())
 
 function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string): string {
   const entryDirectory = Path.dirname(entryPath)
@@ -104,6 +113,7 @@ async function addDiscoveredSources(
       const document = text === undefined
         ? await readDocument(candidate, state.parser, state.documents, timings)
         : parseDocument(text, candidate, state.parser, timings)
+      timings.run(ValidateStatements, document, candidate)
       state.documents.set(candidate, document)
       state.sources.set(candidate, sourceModule(candidate, document))
       state.pending.push(candidate)

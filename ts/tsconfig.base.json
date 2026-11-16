@@ -32,6 +32,9 @@
       "@ast-gen": [
         "./2-ast-gen/ast-gen-src/ASTGen.ts"
       ],
+      "@source-validation": [
+        "./2.5-source-validation/source-validation-src/SourceValidation.ts"
+      ],
       "@typecheck": [
         "./3-typecheck/typecheck-src/Typecheck.ts"
       ],
