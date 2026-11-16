@@ -38,7 +38,11 @@ description: >-
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
   units across interruptions; never recalculate progress from the growing current diff.
-- Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
+- Use absolute file links without default line anchors. Beside every file, show its owning
+  workspace package using the name in the nearest workspace package manifest, such as
+  `@tao/cli`. For paths outside a package, show the repository area, such as `Docs/Dev Env`,
+  `Agent skills`, or `Repository root`. Resolve renamed paths at their destination and
+  deleted paths from the approved-content tree. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
   `binary` for binary changes. Add a line anchor only when a particular location is useful.
   Present at least three whole groups totaling at least ten files, or all remaining files if fewer.
@@ -46,7 +50,7 @@ description: >-
   Explain partial-file scope in at most two sentences. End immediately after the file list.
 - Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
   Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
-- Number consecutively across displayed groups from 1: `1. F43 New: <file link>`. Plain numbers
+- Number consecutively across displayed groups from 1: `1. F43 New: <file link> · @tao/cli (+N −M)`. Plain numbers
   reference current positions; `F43` is stable. Restart numbering for the next set; retain
   positions while that set remains active.
 - Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
