@@ -30,11 +30,18 @@ export async function withNativeTestHost(
 }
 
 type RunNativeCases = (driver: NativeWebDriver, clearAppData?: () => Promise<void>) => Promise<void>
-type NativeTarget = {
-  platform: NativeTestPlatform
+type IosTestTarget = {
+  platform: 'ios'
   id: string
   root: string
 }
+type AndroidTestTarget = {
+  platform: 'android'
+  id: string
+  root: string
+  adbPort: number
+}
+type NativeTarget = IosTestTarget | AndroidTestTarget
 
 async function requireRuntimeBinary(binary: string): Promise<void> {
   if (!await FS.exists(binary)) {
@@ -64,6 +71,11 @@ async function withSimulator(root: string, binary: string, run: RunNativeCases):
 }
 
 async function requireNoSimulatorViewer(): Promise<void> {
+  const isGitHubHosted = Env.get('GITHUB_ACTIONS') === 'true' && Env.get('RUNNER_ENVIRONMENT') === 'github-hosted'
+  // CoreSimulator may start a viewer during boot on the disposable runner. Appium closes it in headless mode.
+  if (isGitHubHosted) {
+    return
+  }
   const viewer = await Exec.capture('pgrep', ['-x', 'Simulator'], { check: false, timeoutMs: 3000 })
   if (viewer.status !== 1) {
     Errors.ThrowHostEnvironment(
@@ -76,30 +88,44 @@ function simctl(args: readonly string[]): Promise<string> {
   return Exec.captureStdout('xcrun', ['simctl', ...args], { timeoutMs: 180_000 })
 }
 
-const EmulatorPort = 5570
+// The default adb server scans emulator transports through 5585.
+const EmulatorPort = 5620
 const EmulatorSerial = 'emulator-' + EmulatorPort
 async function withEmulator(root: string, binary: string, run: RunNativeCases): Promise<void> {
-  const { stdout } = await Exec.capture('adb', ['devices'], { timeoutMs: 10_000 })
-  if (stdout.includes(EmulatorSerial)) {
-    Errors.ThrowHostEnvironment(`Android emulator port is already in use: ${EmulatorPort}`)
-  }
-  const environment = await prepareAndroidDevice(root)
-  const child = Exec.spawn('emulator', emulatorArguments(), { addEnv: environment })
-  const output = Exec.captureProcessOutput(child)
-  await Try(async () => {
-    await waitForEmulator(child)
-    await adb(['install', binary], 120_000)
-    const target: NativeTarget = { platform: 'android', id: EmulatorSerial, root }
-    await withAppium(target, run)
-  }, {
-    finally: () => disposeEmulator(child, output, root),
+  const target: AndroidTestTarget = { platform: 'android', id: EmulatorSerial, root, adbPort: reservePort() }
+  const port = String(target.adbPort)
+  await Exec.capture('adb', ['-P', port, '--one-device', target.id, 'start-server'], {
+    addEnv: { ADB_LOCAL_TRANSPORT_MAX_PORT: '5554', ADB_MDNS_AUTO_CONNECT: '0' },
+    timeoutMs: 10_000,
+  })
+  await Try(() => runAndroidEmulator(target, binary, run), {
+    async finally() {
+      await Exec.capture('adb', ['-P', port, 'kill-server'], { timeoutMs: 10_000 })
+    },
   })
 }
 
-async function prepareAndroidDevice(root: string) {
-  const directory = Path.join(root, 'android')
+async function runAndroidEmulator(target: AndroidTestTarget, binary: string, run: RunNativeCases): Promise<void> {
+  const environment = await prepareAndroidDevice(target)
+  const child = Exec.spawn('emulator', emulatorArguments(), { addEnv: environment })
+  const output = Exec.captureProcessOutput(child)
+  await Try(async () => {
+    await waitForEmulator(target, child)
+    await installAndroidExpoGo(target, binary)
+    await withAppium(target, run)
+  }, {
+    finally: () => disposeEmulator(child, output, target.root),
+  })
+}
+
+async function prepareAndroidDevice(target: AndroidTestTarget) {
+  const directory = Path.join(target.root, 'android')
   await FS.mkdir(directory)
-  const environment = { ANDROID_USER_HOME: directory, ANDROID_AVD_HOME: Path.join(directory, 'avd') }
+  const environment = {
+    ANDROID_USER_HOME: directory,
+    ANDROID_AVD_HOME: Path.join(directory, 'avd'),
+    ANDROID_ADB_SERVER_PORT: String(target.adbPort),
+  }
   const arch = Platform.systemInfo().architecture
   const abi = arch === 'arm64' ? 'arm64-v8a' : 'x86_64'
   await Exec.capture('avdmanager', [
@@ -136,12 +162,13 @@ function emulatorArguments(): string[] {
 
 type CapturedOutput = Promise<ProcessOutput>
 
-async function waitForEmulator(child: PipedChildProcess): Promise<void> {
+async function waitForEmulator(target: AndroidTestTarget, child: PipedChildProcess): Promise<void> {
   await waitForNativeObservation('booted Android emulator', async () => {
     if (child.exitCode !== null) {
       Errors.ThrowHostEnvironment('Android emulator exited before boot. See emulator.log.')
     }
-    const boot = await Exec.capture('adb', ['-s', EmulatorSerial, 'shell', 'getprop', 'sys.boot_completed'], {
+    const args = adbDeviceArguments(target, ['shell', 'getprop', 'sys.boot_completed'])
+    const boot = await Exec.capture('adb', args, {
       check: false,
       timeoutMs: 5000,
     })
@@ -149,13 +176,29 @@ async function waitForEmulator(child: PipedChildProcess): Promise<void> {
   }, 180_000)
 }
 
-function adb(args: readonly string[], timeoutMs: number): Promise<string> {
-  return Exec.captureStdout('adb', ['-s', EmulatorSerial, ...args], { timeoutMs })
+function adbDeviceArguments(target: AndroidTestTarget, args: readonly string[]): string[] {
+  return ['-P', String(target.adbPort), '-s', target.id, ...args]
 }
 
-async function clearAndroidExpoGo(): Promise<void> {
+function adb(target: AndroidTestTarget, args: readonly string[], timeoutMs: number): Promise<string> {
+  return Exec.captureStdout('adb', adbDeviceArguments(target, args), { timeoutMs })
+}
+
+const StagedExpoGoApk = '/data/local/tmp/tao-expo-go.apk'
+async function installAndroidExpoGo(target: AndroidTestTarget, binary: string): Promise<void> {
+  IO.progress('Transferring Expo Go to the Android emulator…')
+  await adb(target, ['push', '-Z', binary, StagedExpoGoApk], 120_000)
+  IO.progress('Installing Expo Go on the Android emulator…')
+  const result = await adb(target, ['shell', 'pm', 'install', StagedExpoGoApk], 120_000)
+  if (result !== 'Success') {
+    Errors.ThrowHostEnvironment(`Could not install Expo Go on the owned emulator: ${result}`)
+  }
+  await adb(target, ['shell', 'rm', StagedExpoGoApk], 10_000)
+}
+
+async function clearAndroidExpoGo(target: AndroidTestTarget): Promise<void> {
   // Android Expo Go otherwise restores the previous project with the same Expo slug.
-  const result = await adb(['shell', 'pm', 'clear', expoGoApplicationId('android')], 10_000)
+  const result = await adb(target, ['shell', 'pm', 'clear', expoGoApplicationId('android')], 10_000)
   if (result !== 'Success') {
     Errors.ThrowHostEnvironment(`Could not reset Expo Go on the owned emulator: ${result}`)
   }
@@ -176,7 +219,7 @@ async function withAppium(target: NativeTarget, run: RunNativeCases): Promise<vo
     await waitForAppium(child, url)
     const capabilities = await capabilitiesForTarget(target)
     const driver = await openNativeWebDriver(url, capabilities)
-    const clearAppData = target.platform === 'android' ? clearAndroidExpoGo : undefined
+    const clearAppData = target.platform === 'android' ? () => clearAndroidExpoGo(target) : undefined
     await Try(() => run(driver, clearAppData), { finally: () => driver.close() })
   }, {
     finally: () => stopWithLogs(child, output, Path.join(target.root, 'appium-process.log')),
@@ -259,11 +302,13 @@ function iosCapabilities(target: NativeTarget, bundleId: string, derivedDataPath
   }
 }
 
-function androidCapabilities(target: NativeTarget, appPackage: string) {
+function androidCapabilities(target: AndroidTestTarget, appPackage: string) {
   return {
     'platformName': 'Android',
     'appium:automationName': 'UiAutomator2',
     'appium:udid': target.id,
+    'appium:adbPort': target.adbPort,
+    'appium:suppressKillServer': true,
     'appium:appPackage': appPackage,
     'appium:appActivity': '.LauncherActivity',
     'appium:noReset': true,
