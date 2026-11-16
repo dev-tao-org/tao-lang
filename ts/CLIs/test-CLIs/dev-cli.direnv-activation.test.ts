@@ -1,7 +1,7 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type RuntimeFixture = {
   home: string

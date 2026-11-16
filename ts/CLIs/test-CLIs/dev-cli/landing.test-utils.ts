@@ -1,7 +1,8 @@
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, S, TabCharacter } from '@shared'
 import * as Shared from '@shared'
-import { Exec, Platform } from '@shared/os'
+import { Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { type LandingIO } from '../../CLIs-src/dev-cli/landing/LandingIO'
 
 /** recordingLanding records external effects and resolves Git/GitHub responses without subprocesses. */

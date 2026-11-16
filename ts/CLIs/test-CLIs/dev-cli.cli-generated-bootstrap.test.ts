@@ -2,7 +2,7 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
   await FS.mkdir(Artifacts.resolvePath('tmp'))

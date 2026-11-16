@@ -1,10 +1,10 @@
 import * as ExternalErrors from '../../universal/Errors/external'
 import { Errors, Time, Try } from '../../universal/universal'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
-import type * as Exec from '../Exec'
+import type { CaptureOptions, CommandInvocation, CommandResult, PipedChildProcess } from './Exec'
 
 type CommandInputMode = 'pipe' | 'ignore'
-type CapturedChild = Exec.PipedChildProcess<CommandInputMode>
+type CapturedChild = PipedChildProcess<CommandInputMode>
 type CommandCapture = { finished: Promise<void>; stop(): void; read(): string }
 type CommandCaptures = { stdout: CommandCapture; stderr: CommandCapture }
 type CommandDeadline = { finished: Promise<void>; cancel(): void; expired: boolean; childHadExited: boolean }
@@ -12,9 +12,9 @@ type CommandDeadline = { finished: Promise<void>; cancel(): void; expired: boole
 /** collectCommand bounds owned input and capture by the command deadline and preserves partial failure output. */
 export async function collectCommand(
   child: CapturedChild,
-  invocation: Exec.CommandInvocation,
-  options: Exec.CaptureOptions,
-): Promise<Exec.CommandResult<number>> {
+  invocation: CommandInvocation,
+  options: CaptureOptions,
+): Promise<CommandResult<number>> {
   const captures = { stdout: captureStream(child.stdout), stderr: captureStream(child.stderr) }
   const deadline = startCommandDeadline(child, options.timeoutMs)
   return await Try(async () => {
@@ -37,7 +37,7 @@ export async function collectCommand(
   })
 }
 
-function requireCompleteCapture(deadline: CommandDeadline, result: Exec.CommandResult<number>): void {
+function requireCompleteCapture(deadline: CommandDeadline, result: CommandResult<number>): void {
   if (!deadline.expired) {
     return
   }
@@ -108,7 +108,7 @@ function startCommandDeadline(
   return deadline
 }
 
-async function writeInput(child: CapturedChild, input: Exec.CaptureOptions['stdin']): Promise<void> {
+async function writeInput(child: CapturedChild, input: CaptureOptions['stdin']): Promise<void> {
   if (input !== undefined && child.stdin) {
     await child.stdin.write(input)
     await child.stdin.end()
@@ -127,9 +127,9 @@ function stopCommandIo(child: CapturedChild, captures: CommandCaptures): void {
 
 async function readCommandResult(
   child: CapturedChild,
-  invocation: Exec.CommandInvocation,
+  invocation: CommandInvocation,
   captures: CommandCaptures,
-): Promise<Exec.CommandResult<number>> {
+): Promise<CommandResult<number>> {
   const status = await child.exited
   return {
     ...invocation,
@@ -142,7 +142,7 @@ async function readCommandResult(
 
 async function failCommandIo(
   child: CapturedChild,
-  invocation: Exec.CommandInvocation,
+  invocation: CommandInvocation,
   captures: CommandCaptures,
   error: unknown,
 ): Promise<never> {

@@ -1,7 +1,7 @@
 import { Json, S } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 import * as WorkspaceTests from '@workspace-tests'

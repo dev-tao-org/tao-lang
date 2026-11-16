@@ -1,7 +1,7 @@
 import { Json } from '@shared'
 import { Errors, Regxs, Try } from '@shared'
 import { FS, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */

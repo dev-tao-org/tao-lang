@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs, Try } from '@shared'
 import { Env, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { registerCommand } from './_command-runner'
 
 /** myBranchCommand switches to the developer's existing personal branch. */

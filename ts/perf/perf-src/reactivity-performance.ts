@@ -3,7 +3,7 @@ import { Json } from '@shared'
 
 import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */

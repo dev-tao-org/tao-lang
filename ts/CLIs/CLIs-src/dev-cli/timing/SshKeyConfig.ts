@@ -1,5 +1,6 @@
 import { Errors, NewlineCharacter, S, Try } from '@shared'
-import { Exec, FS, Path, Platform } from '@shared/os'
+import { FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** installSshConfig makes the dedicated key available to fresh connections through OpenSSH config. */
 export async function installSshConfig(host: string, identity: string, configPath: string): Promise<void> {

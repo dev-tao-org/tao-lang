@@ -1,7 +1,7 @@
 import { Json } from '@shared'
 import { Errors } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 
 /** checkEditorTypeScript verifies editor settings and the managed tsc executable against the pinned compiler. */

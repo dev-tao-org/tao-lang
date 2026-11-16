@@ -1,6 +1,7 @@
 import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
-import { Exec, FS, Repo, Text } from '@shared/os'
+import { FS, Repo, Text } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { outputFixturePath } from './output.test-fixtures'
 import { PaneSecretLines } from './output.test-fixtures.Panes'
 

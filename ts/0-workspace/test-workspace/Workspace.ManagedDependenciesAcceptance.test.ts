@@ -1,7 +1,7 @@
 import { Errors, NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { Addr } from '@shared/web'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'

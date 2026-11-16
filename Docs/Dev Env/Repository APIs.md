@@ -59,6 +59,10 @@ exit, and `Exec.spawn` returns a live child with configurable streams. Each take
 name or path, optional positional arguments and optional settings. Argument strings split on whitespace.
 Pass an array for dynamic arguments, arguments containing spaces and empty arguments. `Exec.runSync`
 uses the same call forms for synchronous host probes.
+Import the child-process API as `import Exec from '@shared/os/exec'`. Its operation methods are
+available on the default value; named imports from that entrypoint are reserved for types such as
+`CommandOptions` and `SpawnOptions`. The broader `@shared/os` entry retains its named `Exec` export
+for platform-boundary fallback imports.
 `@shared/web` owns HTTP requests, WebSocket connections and server-sent events. Bun server startup
 and Node HTTP and socket adapters live under `os/net`.
 

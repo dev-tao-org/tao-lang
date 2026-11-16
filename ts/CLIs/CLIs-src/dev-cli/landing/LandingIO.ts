@@ -1,10 +1,11 @@
 import { IO } from '@cli-kit'
-import { Exec, FS, Path, Repo } from '@shared/os'
+import { FS, Path, Repo } from '@shared/os'
+import Exec, { type Command, type CommandArgs, type CommandOptions } from '@shared/os/exec'
 
 /** LandingIO scopes landing commands and file operations to the selected checkout. */
 export type LandingIO = {
   root: string
-  command: (command: Exec.Command, args?: Exec.CommandArgs, options?: Exec.CommandOptions) => Promise<string>
+  command: (command: Command, args?: CommandArgs, options?: CommandOptions) => Promise<string>
   read: (path: string) => Promise<string>
   exists: (path: string) => Promise<boolean>
   write: (path: string, text: string) => Promise<void>

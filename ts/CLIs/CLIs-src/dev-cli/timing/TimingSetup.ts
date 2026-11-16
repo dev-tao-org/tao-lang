@@ -2,7 +2,7 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type TimingSetupRole = 'controller' | 'runner'
 

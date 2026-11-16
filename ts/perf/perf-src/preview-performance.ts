@@ -1,7 +1,7 @@
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, Time, Try } from '@shared'
 import { Artifacts, type BrowserRuntime, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type * as Workspace from '@workspace'
 
 import { openPerformanceHarness, type PerformanceHarness, type PreviewOptions } from './Preview/PerformanceHarness'

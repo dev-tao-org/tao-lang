@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 import { findTaoTestFiles } from '../CLIs-src/dev-cli/testing/TaoTests'

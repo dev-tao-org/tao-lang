@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import * as Exec from '../../shared-src/os/Exec'
+import Exec from '@shared/os/exec'
 import * as Process from '../../shared-src/os/Process'
 
 const { join } = Path

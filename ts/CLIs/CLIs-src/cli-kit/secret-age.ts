@@ -1,6 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FS, Path } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec, { type CommandArgs } from '@shared/os/exec'
 import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
 
@@ -66,7 +66,7 @@ async function recipientOfKey(secretKey: string): Promise<string> {
 
 async function run(
   command: string,
-  args: Exec.CommandArgs = [],
+  args: CommandArgs = [],
   stdin?: string,
 ): Promise<string> {
   const result = await Exec.capture(command, args, { check: false, stdin })

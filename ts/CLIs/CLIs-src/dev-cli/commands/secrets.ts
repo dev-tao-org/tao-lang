@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, Sort, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'

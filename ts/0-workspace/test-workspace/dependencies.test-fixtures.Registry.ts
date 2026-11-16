@@ -1,6 +1,6 @@
 import { Json } from '@shared'
 import { FS, HttpServer, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { Addr, Http } from '@shared/web'
 import type { ManagedPackageVersionMap } from '../workspace-src/sidecars/ManagedModule/ManagedModuleTypes'
 

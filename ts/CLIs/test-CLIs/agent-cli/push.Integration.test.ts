@@ -1,6 +1,7 @@
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Exec, FS, Path, Platform, Repo } from '@shared/os'
+import { FS, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 Tests.test('a local guarded push updates only its destination despite broader remote configuration', async () => {
   await withRepository(async (root, remote) => {

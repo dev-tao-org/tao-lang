@@ -1,6 +1,6 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as PreviewHistoryStore from './PreviewHistoryStore'
 import { PreviewRenderSteps } from './PreviewRenderSteps'
 

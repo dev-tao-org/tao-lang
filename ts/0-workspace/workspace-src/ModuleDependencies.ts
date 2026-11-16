@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Sort } from '@shared'
 import { Json } from '@shared'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Text } from '@shared/os'

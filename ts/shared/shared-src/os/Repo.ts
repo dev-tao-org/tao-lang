@@ -2,7 +2,7 @@ import { Errors, NullCharacter } from '../universal/universal'
 import * as FS from './FS'
 import * as Path from './Path'
 
-import * as Exec from './Exec'
+import Exec from './Exec'
 
 /** getWorkspaceRoot locates this checkout from the executing module, independently of the caller's directory. */
 export function getWorkspaceRoot(): string {

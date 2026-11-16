@@ -1,7 +1,7 @@
 import { Errors, Switch } from '@shared'
 import { Platform } from '@shared/os'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
-import * as Exec from '../Exec'
+import Exec, { type CommandInvocation } from '../Exec'
 
 /** build bundles browser entry points for a local tooling surface. */
 export async function build(entrypoints: string[], outdir: string): Promise<BunHost.BuildOutput> {
@@ -24,11 +24,11 @@ export async function openUrl(url: string): Promise<void> {
   }
 }
 
-function resolveBrowserInvocation(url: string, os: string): Exec.CommandInvocation {
+function resolveBrowserInvocation(url: string, os: string): CommandInvocation {
   if (!Platform.isSupportedHostSystem(os)) {
     Errors.ThrowHostEnvironment(`Opening a browser is unsupported on ${os}.`)
   }
-  return Switch<Platform.HostSystem, Exec.CommandInvocation>(os, {
+  return Switch<Platform.HostSystem, CommandInvocation>(os, {
     Darwin: () => ({ command: 'open', args: ['-g', '-a', 'Google Chrome', url] }),
     Linux: () => ({ command: 'google-chrome', args: [url] }),
     Windows_NT: () => ({ command: 'cmd', args: ['/c', 'start', '', 'chrome', url] }),

@@ -1,7 +1,7 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { createProjectDependencyOptions } from '../workspace-src/dependencies/Options'
 import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import { compileLibraryPackage } from '../workspace-src/LibraryPackage'

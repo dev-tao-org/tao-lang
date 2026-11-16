@@ -2,7 +2,7 @@ import { NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 const CompletedWarningSummaryRegx = /Completed: [1-9]\d* warning\(s\), 0 error\(s\)/
 const SlowTestWarningRegx = /Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/

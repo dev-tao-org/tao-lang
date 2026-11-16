@@ -3,8 +3,8 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
-import * as Exec from '../../../shared-src/os/Exec'
 import * as Process from '../../../shared-src/os/Process'
 
 const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FS

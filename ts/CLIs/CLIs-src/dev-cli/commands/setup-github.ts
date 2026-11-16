@@ -2,7 +2,7 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { registerCommand } from './_command-runner'
 
 /** setupGithubCommand configures and verifies the repository's GitHub HTTPS authentication. */

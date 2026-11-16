@@ -2,7 +2,7 @@ import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
 /** moduleRefreshPerformance compares generated component module groupings through real Metro refreshes. */

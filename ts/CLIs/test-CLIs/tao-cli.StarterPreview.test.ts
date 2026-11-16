@@ -3,11 +3,11 @@ import { Errors, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec, { type ChildProcess } from '@shared/os/exec'
 import { Http } from '@shared/web'
 import * as WorkspaceTests from '@workspace-tests'
 
-type StarterHost = { child: Exec.ChildProcess; url: string; output: Promise<string[]> }
+type StarterHost = { child: ChildProcess; url: string; output: Promise<string[]> }
 type OptionalStarterBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
 
 Tests.test('library initializer emits a typechecked consumer that renders compiled Tao props', async () => {

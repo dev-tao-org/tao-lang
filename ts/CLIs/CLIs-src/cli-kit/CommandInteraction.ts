@@ -1,12 +1,13 @@
 import { Errors } from '@shared'
-import type { Exec, FS } from '@shared/os'
+import type { FS } from '@shared/os'
+import type { Command, CommandArgs, CommandOptions } from '@shared/os/exec'
 import type { OutputChannel } from './output/Output'
 
 type InheritedOutputMode = 'inherit' | 'ignore'
 type InteractiveOption = 'cwd' | 'addEnv' | 'signal'
 
 /** CommandRunOptions controls a supervised command with optional explicit file input. */
-export type CommandRunOptions = Exec.CommandOptions & {
+export type CommandRunOptions = CommandOptions & {
   stdin?: FS.File
   stdout?: InheritedOutputMode
   stderr?: InheritedOutputMode
@@ -26,8 +27,8 @@ export type CommandInteractionOperations = {
   isInteractive: () => boolean
   prompt: <T>(action: () => Promise<T>) => Promise<T>
   execute: (
-    command: Exec.Command,
-    args: Exec.CommandArgs,
+    command: Command,
+    args: CommandArgs,
     options: CommandRunOptions,
     mode: CommandInteractionMode,
   ) => Promise<void>
@@ -37,8 +38,8 @@ export type CommandInteractionOperations = {
 export function createCommandRunners(operations: CommandInteractionOperations) {
   return {
     async runInteractiveCommand(
-      command: Exec.Command,
-      args: Exec.CommandArgs = [],
+      command: Command,
+      args: CommandArgs = [],
       options: InteractiveCommandOptions = {},
     ): Promise<void> {
       if (!operations.isInteractive()) {
@@ -46,7 +47,7 @@ export function createCommandRunners(operations: CommandInteractionOperations) {
       }
       await operations.prompt(() => operations.execute(command, args, options, 'interactive'))
     },
-    runNonInteractiveCommand: (command: Exec.Command, args: Exec.CommandArgs = [], options: CommandRunOptions = {}) =>
+    runNonInteractiveCommand: (command: Command, args: CommandArgs = [], options: CommandRunOptions = {}) =>
       operations.execute(command, args, options, 'noninteractive'),
   }
 }

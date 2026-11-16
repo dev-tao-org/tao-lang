@@ -1,6 +1,7 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, Exec, FS, Path, Platform } from '@shared/os'
+import { Artifacts, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { installSshConfig } from '../../CLIs-src/dev-cli/timing/SshKeyConfig'
 import { readAuthenticatedKeyFingerprint } from '../../CLIs-src/dev-cli/timing/SshKeyDiagnostics'
 import * as TimingReport from '../../CLIs-src/dev-cli/timing/TimingReport'

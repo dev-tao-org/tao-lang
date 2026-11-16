@@ -2,7 +2,7 @@ import { Errors, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec, { type ChildProcess } from '@shared/os/exec'
 import { Http } from '@shared/web'
 import * as Workspace from '@workspace'
 
@@ -60,7 +60,7 @@ function createTaoRunEnvironment() {
   return { CI: '1', BROWSER: 'none', NODE_ENV: 'development' }
 }
 
-async function waitForAppServer(url: string, child: Exec.ChildProcess): Promise<void> {
+async function waitForAppServer(url: string, child: ChildProcess): Promise<void> {
   const deadline = Time.nowMs() + 30_000
   while (Time.nowMs() < deadline && child.exitCode === null) {
     const ready = await Try.WithDefault(false, async () => (await Http.request(url)).ok)

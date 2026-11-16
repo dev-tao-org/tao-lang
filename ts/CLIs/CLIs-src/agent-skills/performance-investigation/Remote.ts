@@ -3,7 +3,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { Errors, NullCharacter, Regxs, S, Try } from '@shared'
 import { FS, Path } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
 export type RemoteExecution = { directory: string; log?: string; controlPath?: string }

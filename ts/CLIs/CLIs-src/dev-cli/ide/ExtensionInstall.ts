@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Regxs } from '@shared'
 
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** installExtensions installs both built VSIX files into Cursor and VS Code without opening editor windows. */
 export async function installExtensions(vsixs: readonly string[]): Promise<void> {

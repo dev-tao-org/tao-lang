@@ -1,6 +1,7 @@
 import * as Runtime from '@runtime'
 import { Errors, Time, Try } from '@shared'
-import { type Exec, Platform } from '@shared/os'
+import { Platform } from '@shared/os'
+import type { ProcessOutput } from '@shared/os/exec'
 import { Cancellation } from '@shared/web'
 import type * as Workspace from '@workspace'
 
@@ -22,7 +23,7 @@ export type PerformanceHarness = {
   url: string
   shellStartedAt: number
   dispose(): Promise<void>
-  output(): Promise<Exec.ProcessOutput | undefined>
+  output(): Promise<ProcessOutput | undefined>
 }
 
 /** openPerformanceHarness stages the fixed project and serves its editor with previews initially closed. */

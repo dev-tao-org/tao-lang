@@ -1,7 +1,7 @@
 import { Errors, NewlineCharacter, S } from '@shared'
 import * as Tests from '@shared-tests'
 import { Env, Path, Platform, Repo } from '@shared/os'
-import * as Exec from '../../shared-src/os/Exec'
+import Exec from '@shared/os/exec'
 
 const ProbeSource = S`
   const input = await Bun.stdin.text();

@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
-import { Env, Exec, FS, Path, Repo, Terminal } from '@shared/os'
+import { Env, FS, Path, Repo, Terminal } from '@shared/os'
+import type { CommandArgs } from '@shared/os/exec'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
 import { prepareDevelopmentShell } from './DirenvSetupPreparation'
@@ -14,7 +15,7 @@ type SetupEnvironment = {
   confirm: typeof IO.askConfirm
   interactive: () => boolean
   root: () => string
-  run: (command: string, args?: Exec.CommandArgs, options?: RunOptions) => Promise<CommandResult>
+  run: (command: string, args?: CommandArgs, options?: RunOptions) => Promise<CommandResult>
   write: (message: string) => void
 }
 

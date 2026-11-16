@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Runtime from '@runtime'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Try } from '@shared'

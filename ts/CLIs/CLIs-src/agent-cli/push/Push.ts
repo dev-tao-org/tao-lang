@@ -1,6 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { Exec, Repo } from '@shared/os'
+import { Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** pushBranch publishes one pinned local branch to an explicit non-main destination. */
 export async function pushBranch(
