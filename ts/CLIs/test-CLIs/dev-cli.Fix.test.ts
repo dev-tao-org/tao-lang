@@ -11,7 +11,7 @@ Tests.test('repository fix restores its own missing analysis alias', async () =>
     const workspace = Path.join(root, 'ts')
     const config = Path.join(workspace, 'tsconfig.base.json')
     const expected = await removeAnalysisAlias(config)
-    const command = ['./CLIs/CLIs-src/agent-cli/agent-cli.ts', 'fix']
+    const command = ['./CLIs/CLIs-src/agent-cli/agent-cli.ts', 'fix', '--exclude', 'Justfile']
     await Exec.captureStdout('bun', ['run', ...command], { cwd: workspace })
     Tests.expect(await FS.readJson(config)).toEqual(expected)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
@@ -21,29 +21,44 @@ type DependencyDirectory = { source: string; destination: string }
 
 async function copyFixWorkspace(root: string): Promise<void> {
   await FS.mkdir(Path.join(root, '.git'))
-  await FS.cp(Repo.resolvePath('Justfile'), Path.join(root, 'Justfile'))
-  const formatter = await FS.readFile(Repo.resolvePath('.config/dprint.jsonc'), 'utf8')
-  await FS.writeFile(Path.join(root, '.dprint.jsonc'), formatter.replaceAll('../ts/', './ts/'))
+  await writeFixFormatterConfig(root)
   const dependencies: DependencyDirectory[] = []
   await FS.cp(Repo.resolvePath('ts'), Path.join(root, 'ts'), {
     recursive: true,
     verbatimSymlinks: true,
     filter(source, destination) {
-      if (Path.basename(source) === 'node_modules') {
+      const name = Path.basename(source)
+      if (name === 'node_modules') {
         dependencies.push({ source, destination })
         return false
       }
-      return true
+      return !isTestDirectory(name)
     },
   })
   await Promise.all(dependencies.map(({ source, destination }) => FS.symlink(source, destination, 'junction')))
 }
 
+function isTestDirectory(name: string): boolean {
+  return name.startsWith('test-') && Path.extname(name) === ''
+}
+
+async function writeFixFormatterConfig(root: string): Promise<void> {
+  const config = {
+    includes: ['ts/tsconfig.base.json'],
+    plugins: [Repo.resolvePath('ts/0-workspace/node_modules/@dprint/json/plugin.wasm')],
+  }
+  await FS.writeJson(Path.join(root, '.dprint.jsonc'), config)
+}
+
 type FixtureCompilerPaths = Record<string, string[]>
-type FixtureCompilerConfig = { compilerOptions: { paths: FixtureCompilerPaths } }
+type FixtureCompilerOptions = { paths: FixtureCompilerPaths; noLib?: boolean; types?: string[] }
+type FixtureCompilerConfig = { compilerOptions: FixtureCompilerOptions }
 
 async function removeAnalysisAlias(path: string): Promise<FixtureCompilerConfig> {
   const expected = await FS.readJson(path) as FixtureCompilerConfig
+  expected.compilerOptions.noLib = true
+  expected.compilerOptions.types = []
+  await FS.writeJson(path, expected)
   const reduced = await FS.readJson(path) as FixtureCompilerConfig
   delete reduced.compilerOptions.paths['@repo-analysis']
   await FS.writeJson(path, reduced)
