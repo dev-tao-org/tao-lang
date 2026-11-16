@@ -17,6 +17,10 @@ The preview host route is required in the macOS agent environment. See
 [Preview Workflow](../Preview%20Workflow.md) for the persistent `just dev` loop, output locations and
 receipt definitions. App receipts establish a React commit, not physical repaint.
 
+The drivers live in [repository analysis](../../../ts/repo-analysis/repo-analysis-src/Performance)
+and share the [authored workload](../../../ts/repo-analysis/performance-fixtures/Performance/Performance.tao).
+Each timing record keeps the fixture path and hash at the revision it measured.
+
 The fixed project imports six groups across 24 dependency files. A cycle measures a small text
 edit, expanding and shrinking a same-file tree, mounting and expanding a nested imported tree,
 editing a mounted dependency, shrinking the imported tree, and resetting. Launch and first and

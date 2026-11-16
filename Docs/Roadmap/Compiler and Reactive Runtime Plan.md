@@ -449,8 +449,8 @@ approval is inferred from test results or this document.
 - [ ] **Scope and timing:** coordinate the affected runtime/benchmark paths and baseline with the
       ongoing human review before starting; implementation requires separate authorization and must
       not advance review approvals. Start from [ReactiveEngine.ts](../../ts/7-runtime/runtime-src/client/ReactiveEngine.ts),
-      [reactivity-performance.ts](../../ts/perf/perf-src/reactivity-performance.ts) and
-      [reactivity-heap.ts](../../ts/perf/perf-src/reactivity-heap.ts). Production currently uses native-lazy
+      [reactivity-performance.ts](../../ts/repo-analysis/repo-analysis-src/Performance/reactivity-performance.ts) and
+      [reactivity-heap.ts](../../ts/repo-analysis/repo-analysis-src/Performance/reactivity-heap.ts). Production currently uses native-lazy
       computation and synchronous delivery; alternate policies are test/experiment hooks.
 - **Bounded comparison:** while those hooks remain, evaluate native-lazy, uncached-public-read,
   observed-eager and deferred-notification approaches; add candidates only for a concrete gap.

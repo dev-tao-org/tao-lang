@@ -1,0 +1,5 @@
+export { analyzePackageGraph, renderPackageGraph, serializePackageGraph } from './PackageGraph/PackageGraph'
+export { analyzeSourceConformance, type SourceConformanceResult } from './Source/source-conformance'
+export { createConformanceProgram } from './Source/source-conformance-program'
+export { assertPackageApis } from './Workspace/PackageApis'
+export { readWorkspaceManifestPaths } from './Workspace/WorkspaceManifests'

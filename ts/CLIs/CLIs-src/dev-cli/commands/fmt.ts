@@ -18,7 +18,7 @@ export default registerCommand({
     await Check.assertNewWorkspaceTree()
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
-      Check.assertNewWorkspacePath(absolute)
+      Repo.assertNewWorkspacePath(absolute)
       const isFile = FS.existsSync(absolute) && FS.statSync(absolute).isFile()
       if (!isFile && !Regxs.CliGlobTokenRegx.test(path)) {
         Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)

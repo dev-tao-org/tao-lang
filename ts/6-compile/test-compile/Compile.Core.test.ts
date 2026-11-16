@@ -13,10 +13,10 @@ import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles, transpileGeneratedFiles } from './Compile.test-utils'
 
 Tests.test('Preview performance fixture generates generic runtime calls and authored native injections', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const document = AST.transform(tree)!
-  const entryPath = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const entryPath = Repo.resolvePath('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const program = await linkedUIProgram(entryPath, document)
   const code = combineGeneratedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')

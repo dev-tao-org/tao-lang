@@ -1,4 +1,4 @@
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Json } from '@shared'
 import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
@@ -96,7 +96,7 @@ function createReport(job: MeasurementJob, session: number) {
       frameCount: 2,
       extraViews: 240,
       extraFileCount: 24,
-      protocol: Perf.PreviewMeasurementProtocol,
+      protocol: Performance.PreviewMeasurementProtocol,
     },
     results,
   }

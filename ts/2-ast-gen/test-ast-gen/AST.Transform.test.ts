@@ -60,7 +60,7 @@ Tests.test('an unfinished app produces no AST', async () => {
 })
 
 Tests.test('Preview performance fixture transforms imported generic renders', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)
   const view = result && AST.FindViewDeclaration(result.root.block.statements)
@@ -94,7 +94,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
 })
 
 async function readAppDeclaration(): Promise<string> {
-  return (await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')).match(
+  return (await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')).match(
     PerformanceAppDeclarationRegx,
   )![0]
 }

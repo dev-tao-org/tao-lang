@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Json, Schema } from '@shared'
 import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
 import { Env, FileLock, FS, Path, Platform, Repo, Storage } from '@shared/os'
@@ -74,17 +74,25 @@ export async function runMeasurements(options: RunnerOptions): Promise<string> {
 export const allocateTimingJob = (parent = Repo.resolvePath(JobsDirectory)): string =>
   Path.join(parent, Platform.randomUUID())
 
-const PreviewMeasurementSource = 'HEAD:ts/perf/perf-src/Preview/PreviewMeasurement.ts'
-
 /** requirePreviewProtocol checks the measured source before launching any preview process. */
 export async function requirePreviewProtocol(repo: string): Promise<void> {
-  const source = await Try.WithDefault('', () => captureGit(repo, ['show', PreviewMeasurementSource]))
-  const declaration = `export const PreviewMeasurementProtocol = '${Perf.PreviewMeasurementProtocol}'`
+  const source = await Try.WithDefault('', () => readPreviewMeasurementSource(repo))
+  const declaration = `export const PreviewMeasurementProtocol = '${Performance.PreviewMeasurementProtocol}'`
   if (!source.split(NewlineCharacter).includes(declaration)) {
     Errors.ThrowUserInput(
       `Incompatible preview measurement protocol in ${repo}. Prepare both revisions with the same instrumentation.`,
     )
   }
+}
+
+const PreviewMeasurementSourceSuffix = '/Preview/PreviewMeasurement.ts'
+async function readPreviewMeasurementSource(repo: string): Promise<string> {
+  const entries = await readTreeEntries(repo, 'HEAD')
+  const sources = entries.filter(entry => entry.path.endsWith(PreviewMeasurementSourceSuffix))
+  if (sources.length !== 1) {
+    return ''
+  }
+  return await captureGit(repo, ['show', `HEAD:${sources[0]!.path}`])
 }
 
 /** withTimingLock holds the account-wide lease through an entire measurement or comparison. */
@@ -215,7 +223,7 @@ function requireRunnerOptions(options: RunnerOptions): void {
   if (!Number.isInteger(options.samples) || options.samples < 1) {
     Errors.ThrowUserInput('Sample count must be a positive integer.')
   }
-  if (!Perf.isValidEditCount(options.edits)) {
-    Errors.ThrowUserInput(`Edit count must be a positive multiple of ${Perf.PreviewCycleSize}.`)
+  if (!Performance.isValidEditCount(options.edits)) {
+    Errors.ThrowUserInput(`Edit count must be a positive multiple of ${Performance.PreviewCycleSize}.`)
   }
 }

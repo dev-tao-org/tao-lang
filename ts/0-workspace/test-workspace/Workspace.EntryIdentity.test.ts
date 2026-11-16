@@ -10,7 +10,7 @@ Tests.test('file compilation and document updates link an aliased entry with its
   const root = Artifacts.resolvePath('tmp', `entry-identity-${Platform.randomUUID()}`)
   const alias = root + '-alias'
   await initializeProject(root)
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   await FS.writeFile(Path.join(root, 'Main.tao'), source)
   await FS.symlink(root, alias, 'dir')
   const workspace = createWorkspace({ directory: alias, async publish() {} })
@@ -31,7 +31,7 @@ Tests.test('managed preview accepts an aliased entry inside its canonical discov
   const root = Artifacts.resolvePath('tmp', `managed-entry-identity-${Platform.randomUUID()}`)
   const alias = root + '-alias'
   await initializeProject(root)
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   await FS.writeFile(Path.join(root, 'Main.tao'), source)
   await FS.symlink(root, alias, 'dir')
   const entry = Path.join(alias, 'Main.tao')

@@ -1,0 +1,39 @@
+{
+  "name": "@tao/repo-analysis",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@tao/ast-gen": "workspace:*",
+    "@tao/compile": "workspace:*",
+    "@tao/fix": "workspace:*",
+    "@tao/grammar": "workspace:*",
+    "@tao/ide-extension": "workspace:*",
+    "@tao/runtime": "workspace:*",
+    "@tao/shared": "workspace:*",
+    "@tao/stdlib": "workspace:*",
+    "@tao/typecheck": "workspace:*",
+    "@tao/workspace": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "dependency-cruiser": "18.7.2"
+  },
+  "exports": {
+    ".": "./repo-analysis-src/RepoAnalysis.ts",
+    "./performance": "./repo-analysis-src/Performance/Performance.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@repo-analysis",
+        "namespace": "RepoAnalysis"
+      },
+      "./performance": {
+        "alias": "@repo-analysis/performance",
+        "namespace": "Performance",
+        "entities": ["ReloadTimings"]
+      }
+    }
+  }
+}
