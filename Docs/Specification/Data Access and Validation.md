@@ -12,6 +12,10 @@ data Note / Notes {
 
 An applicable grant can authorize the operation. Update and delete evaluate authority using prior state, and update grants can restrict which fields may change. A creation can use submitted values, while authority cannot come from relationships the creation itself would grant. Policies can access the authenticated user when present. MVP policies have no admin override mode.
 
+For an app with no access policy at all, declared collections are public. This default does not grant access to otherwise ungranted collections in an app that declares a policy. Private apps must declare their access policy.
+
+Queries return matching records the caller may read. Providers derive the necessary query restrictions from access policies while enforcing authorization authoritatively. A provider that cannot faithfully implement a policy/query combination rejects it during compilation rather than substituting provider-specific query rejection or returning unauthorized records.
+
 #### Validation
 
 Every applicable invariant must hold. Entity validation applies to create, update, or delete. A write rule covers both creation and update, and has no prior entity on creation. Multiple blocks may carry descriptive string labels. These labels are descriptive only.
