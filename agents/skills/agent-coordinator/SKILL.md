@@ -2,7 +2,7 @@
 name: agent-coordinator
 description: >-
   Coordinate a project run by several agent sessions. Use when you create or take over agent
-  sessions (spawn_task chips, started or forked sessions), pace their landings, relay directives,
+  sessions (visible chats, started or forked sessions), pace their landings, relay directives,
   archive finished sessions, or run a coordinator loop; also when asked to orchestrate slices,
   coordinate agents, hand off coordination, or when many agents contend for CI or merge into
   main at once. Subagent delegation stays with `delegation`.
@@ -14,16 +14,15 @@ A coordinator owns a project that other agent sessions carry out. It creates and
 
 ## Creating sessions
 
-- **Whole slices use visible sessions**; bounded lookups, research and requested reviews use subagents. Root `AGENTS.md` owns isolation and starting points.
-- **Set the base and isolation at creation.** Desktop `create_thread` uses `environment.type: worktree` and `startingState: { type: branch, branchName: <current branch> }`, without `onMissing`. Never use `local` and ask the child to isolate later. Verify checkout/ancestry and create its fresh `feat/*` branch before implementation. Other harnesses need equivalent isolation and base selection.
-- **Every session you create runs a lower model tier than you do.** The standard tier of `delegation`'s routing table or below; never the frontier tier unless the Developer asked for it in the current request. A chip cannot carry a model and a new session starts on the app's default, so the brief opens with a gate (do no work until the coordinator confirms the model) and the coordinator sets model and effort the moment the session reports in, per `references/session-model-gate.md`. Doing it after the session has started working is not compliance: the first turn is the long one.
-- **Effort is chosen on purpose.** Medium is the default for a slice; high for deep analysis. Above high needs a specific and very important justification written in the brief; routine slices, landings, measurements, and reviews never qualify.
-- **The brief is all the session knows.** Open with the model gate above. Carry the goal and why it matters, what is already known and ruled out, decisions already made, the paths it owns and must not touch, who it reports to and in what shape, the stopping rule, and the standing Developer directives verbatim (see below). Say that the click is required. Give each session exclusive paths; two sessions on one file is a merge conflict scheduled in advance.
+- **Create visible Codex chats only on explicit Developer request.** For bounded work within the current task, follow `delegation`. Use the app's configured model unless the Developer explicitly requests a model.
+- **Set the base and isolation at creation.** Root `AGENTS.md` owns the default fresh worktree and branch. Use supported creation options within the Developer's request. Codex `create_thread` requires an explicit worktree request for `environment.type: worktree` and an explicit Git starting-state request for `startingState`. If the available options cannot establish the authorized checkout and base, stop and explain the limitation before launch. Verify checkout and ancestry before edits.
+- **Start with restricted permissions.** Apply `references/restricted-launch.md` before launching a new chat or subagent. Use `maintain-task-title` for visible spin-off titles.
+- **Brief each session for independent work.** Include the goal and rationale, findings, settled decisions, exclusive write paths, reporting format, stopping rule, and standing Developer directives verbatim. State any prerequisite for beginning work.
 - **Keep a checkpoint** at `.artifacts/checkpoint/<project>.md` in your worktree: state, each session's id and ownership, standing directives, the loop, and the pacing order. A successor coordinator starts from it; refresh it after every material change.
 
 ## Taking over
 
-Read the predecessor's checkpoint first, then `references/taking-over.md` for the handover messages and what to do about sessions you cannot reach.
+Read the predecessor's checkpoint first, then `references/taking-over.md` for coordinator handovers and `references/visible-handoff.md` when continuing a background subagent's work in a visible chat.
 
 ## Messaging
 

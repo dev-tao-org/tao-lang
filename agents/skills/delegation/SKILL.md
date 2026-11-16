@@ -11,6 +11,8 @@ description: >-
 
 Delegate when it saves time after briefing. Read `references/parallel-implementation.md` for concurrent writers, `../code-review/SKILL.md` for branch reviews, `references/review-fanout.md` for multi-unit audits, and [library research](references/library-research.md) when planning features.
 
+Before launching a subagent, follow [restricted launch requirements](../agent-coordinator/references/restricted-launch.md). `agent-coordinator` owns continuing a background agent's work in a visible chat.
+
 ## Delegate when
 
 - **The work compresses**: large input, small conclusion — sweeping many files for a pattern, reading a long log down to the failures, a page of vendor docs for one fact. Holds even when you could do it quickly yourself, because what you'd carry afterwards is worse than what you'd carry now.
@@ -35,11 +37,11 @@ Send one when the exchange buys something a subagent of your own would not, and 
 
 ## Model and effort routing
 
-**Non-review agents run a lower model tier than you do.** Reviewers follow `code-review`: the same tier or lower, never higher. Other frontier-tier delegation requires the Developer's current request. Set model and effort explicitly when supported; if history forks forbid overrides, use a self-contained brief with overrides. Fixed-role pins must match. A spawned session starts on the app default: its brief must prohibit work until the coordinator sets and confirms model and effort under `agent-coordinator`. Report unavailable choices; do not silently inherit or fall back.
+Apply this routing table within the active harness's model and effort rules. For explicit subagent overrides, use a lower model tier for non-review work. Reviewers follow `code-review`. Use frontier for non-review work only on the Developer's current request. Where overrides require more authorization, inherit the harness defaults. When a permitted override requires a self-contained brief, supply the necessary context. Fixed-role pins must match. Report any requested choice the harness cannot provide. `agent-coordinator` owns model selection for visible chats.
 
 **Choose effort deliberately.** Use medium for most work; high for deep analysis/research and settled code writing with newest GPT-6 Luna. Review effort follows `code-review` and may exceed the assigner's effort for important or intricate work. Above-high effort otherwise needs a strong reason in the brief, never for sweeps, verification or whole-slice sessions. Newest GPT-6 Sol handles unsettled intricate implementation; hand settled writing to Luna. Mechanical work may use Luna at low.
 
-These rules govern primary agents and subagents where selectable; avoid incompatible fixed roles. Light means `low`. GPT family choices override tier labels. Other harnesses keep the table's newest available family and the review tier limit; concrete IDs are defaults, not ceilings. Preserve supported rolling aliases; never invent one.
+Use the table for permitted subagent selections. Avoid incompatible fixed roles. Light means `low`. GPT family choices override tier labels. Other harnesses keep the table's newest available family and the review tier limit. Preserve supported rolling aliases.
 
 | Work                                                    | Tier                             | Effort                              |
 | ------------------------------------------------------- | -------------------------------- | ----------------------------------- |
@@ -77,7 +79,7 @@ Resume when earlier context helps; start fresh for unrelated work. Review each i
 
 For an agent launched into its isolated worktree, the `subagentStart` hook gives every Claude Code and Codex subagent the repository's standing rules (worktree root, `rg`, no Git index changes, no ledger edits, no agent identity), so a brief does not repeat them; a Cursor brief still does. A worker must not write another worktree's index; its brief states whether commits on its own feature branch are authorized.
 
-A brief the Developer asks you to print takes none of that worktree boilerplate: they paste it into a fresh agent that gets a worktree of its own, sharing nothing with this session — not this worktree's path, not its branch, not its uncommitted edits, not its `.artifacts/`. A request to print, paste, or hand over a prompt is always that kind; only an agent you launch through the harness yourself is the other. So name no worktree path and never say where to run: pointing it at another worktree sends it to edit someone else's tree. Say what it starts from — `main`, or a named commit — rather than your own state, and carry every finding into the brief as a `file:line` that survives a clean checkout, along with reproductions runnable from one; a scratch fixture or a generated tree you built here does not exist for it. Exclusive path ownership still belongs in the brief, but the hazard is now the merge and any shared ledger allocating IDs, where two branches taking the next `DEVENV` number collide silently. Its branch, its gates, and its merge message are its own, so say which it should reach — no integration owner is watching it.
+A brief for a fresh agent starts from the agreed committed base and assumes its own isolated worktree. Carry findings as `file:line` references that survive a clean checkout, along with reproducible commands and any fixtures it needs. State exclusive path ownership, the required gates and the intended stopping point. For a Developer-directed takeover of an existing checkout, use the handoff in `agent-coordinator`.
 
 ## The return contract and what you do with it
 
