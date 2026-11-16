@@ -57,6 +57,7 @@ const bridgeOwners: BridgeOwner[] = [
   { packageName: 'ink', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_ink.ts' },
   { packageName: 'wrap-ansi', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_wrap-ansi.ts' },
   { packageName: 'commander', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_commander.ts' },
+  { packageName: 'dependency-cruiser', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_dependency-cruiser.ts' },
   { packageName: 'rulesync', path: 'ts/CLIs/CLIs-src/cli-kit/bridges/Bridge_rulesync.ts' },
   { packageName: 'vscode', path: 'ts/ide-extensions/bridges/Bridge_vscode.ts' },
   {

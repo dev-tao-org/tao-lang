@@ -9,6 +9,26 @@ browser, bootstrap and packaging boundaries retain deliberately separate module 
 from the same owner. `./agent check` detects stale paths, missing targets, wildcard entrypoints,
 private cross-package imports and incorrect operation-family imports.
 
+Run `just package-graph` to generate `.artifacts/package-graph.md` with Mermaid diagrams of
+direct source and test imports between TypeScript workspace packages. The arrows point from
+the importing package to the imported package. Labels count value, type and compile-only imports
+separately. Inspect `.artifacts/package-graph.json` for the source file, import specifier and resolved
+target behind each edge, as well as unresolved specifiers. Dependency-cruiser resolves imports
+locally using the workspace TypeScript aliases. The report describes static analysis of source
+files and excludes generated directories and third-party packages from the diagrams.
+
+`./agent check` writes `.artifacts/test-only-usage.md` with source locations for production
+modules, exported declarations and optional arguments observed only in tests. The report reuses
+the TypeScript source-conformance program and applies the same explicit entrypoint inventory as
+Knip. It treats designated SDK, generated and host-tool exports as production contracts. Internal
+manifest entrypoints can still be candidates. Each candidate includes one observed test reference.
+
+Optional arguments are counted by position in direct, statically resolved calls to function
+declarations. The report skips functions with observed indirect references or spread calls.
+It examines the options argument as a whole. Review individual options fields, computed imports,
+generated callers and intended external contracts separately. Findings are advisory, and the
+existing Knip check still gates unused files and exports.
+
 Use module namespaces for operation families, such as `import * as Workspace from '@workspace'`.
 Narrow imports remain appropriate for manifest-declared primary entities and constructors. Shared
 families are already namespaces: `import { Json, Sort } from '@shared'` exposes qualified operations

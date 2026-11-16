@@ -112,7 +112,7 @@ export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   // Formatting and test execution also import this module; load the compiler only for source checks.
   const { checkSourceConformance } = await import('./source-conformance')
-  await checkSourceConformance(Repo.getWorkspaceRoot())
+  await checkSourceConformance(Repo.getWorkspaceRoot(), true)
 }
 
 /** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */

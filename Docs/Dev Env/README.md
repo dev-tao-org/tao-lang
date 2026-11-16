@@ -15,6 +15,12 @@ describe Tao for app authors; the [roadmaps](../Roadmap/) track planned work.
 Keep temporary investigations and task progress in `.artifacts/notes/`, `.artifacts/checkpoint/`
 or `.artifacts/progress/`. Those survive ordinary cleanup; they are not documentation of current behavior.
 
+After the developer approves a dependency and exact version, add it to a workspace package with
+`./agent dependency-add <directory-under-ts> <package@version>`. Use `--dev` for a development
+dependency. The command updates the package manifest and shared Bun lockfile with lifecycle
+scripts disabled. Use `./agent unsandboxed dependency-add` with host permission when the
+sandbox blocks the installation.
+
 Agent branch publication uses `./agent unsandboxed push origin <branch>`. It pins the matching local
 branch's commit and publishes only that destination. Use `--source <local-branch>` for a different
 destination, such as a backup branch. The guard rejects `main`, force pushes, deletions and bulk

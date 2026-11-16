@@ -221,6 +221,7 @@
       "mcp__claude-in-chrome__*"
     ],
     "ask": [
+      "Bash(./agent unsandboxed dependency-add *)",
       "Bash(./agent land-unlock --force*)"
     ],
     "deny": [

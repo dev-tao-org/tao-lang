@@ -145,6 +145,11 @@ fix:
 check *ARGS:
     ./dev check "$@"
 
+# Diagram direct TypeScript imports between workspace packages
+[group('Dev')]
+package-graph:
+    ./dev package-graph
+
 # Format, check and test the new TypeScript workspace
 [group('Dev')]
 [positional-arguments]

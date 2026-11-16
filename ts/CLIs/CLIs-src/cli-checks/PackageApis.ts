@@ -89,8 +89,8 @@ export function packageNamespaceIssue(
   }
 }
 
-// Read exact entrypoints without traversing fixture packages.
-function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
+/** readPackageApis reads exact entrypoints without traversing fixture packages. */
+export function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
   return readPackageManifestFiles(root).flatMap(filename => readManifestApis(filename))
 }
 

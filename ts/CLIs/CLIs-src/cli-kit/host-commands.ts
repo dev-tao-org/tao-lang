@@ -57,6 +57,7 @@ const developerCommands = new Set([
   'landed',
   'merge-main',
   'setup',
+  'dependency-add',
   'agent-config',
   'my-branch',
   'fmt',
