@@ -1,7 +1,7 @@
+import * as RepoAnalysis from '@repo-analysis'
 import { Errors, Lists, Range } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
-import { createConformanceProgram } from '../../cli-checks/source-conformance-program'
 import { encodeLearningSnapshot, isInScope, snapshotScope } from './LearningStore'
 import type { Correction, Finding, QueryRule, Scan } from './LearningTypes'
 import { validateCorrectionAuthority } from './LearningValidation'
@@ -12,7 +12,7 @@ export async function runCandidateScan(root: string, correction: Correction, sel
   const snapshot = await snapshotScope(root, correction)
   const files = Object.keys(snapshot.files)
   const included = selected.length ? files.filter(file => isInScope(file, selected)) : files
-  const program = createConformanceProgram(root, files.map(file => Path.join(root, file)))
+  const program = RepoAnalysis.createConformanceProgram(root, files.map(file => Path.join(root, file)))
   const findings = queryProgram(program, root, included, correction.rule)
   const after = await snapshotScope(root, correction)
   if (encodeLearningSnapshot(snapshot) !== encodeLearningSnapshot(after)) {

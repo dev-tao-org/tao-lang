@@ -41,6 +41,29 @@ export function resolvePath(...segments: string[]): string {
   return Path.resolve(getWorkspaceRoot(), ...segments)
 }
 
+/** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
+export function assertNewWorkspacePath(path: string, root = getWorkspaceRoot()): void {
+  const absolute = Path.resolve(path)
+  let existing = absolute
+  while (!FS.existsSync(existing)) {
+    const parent = Path.dirname(existing)
+    if (parent === existing) {
+      break
+    }
+    existing = parent
+  }
+  const canonical = FS.realpathSync(existing)
+  const legacyRoot = resolvePath('.x-tao-old-v1')
+  const legacy = FS.existsSync(legacyRoot) ? FS.realpathSync(legacyRoot) : legacyRoot
+  if (Path.isWithin(legacyRoot, absolute) || Path.isWithin(legacy, canonical)) {
+    Errors.ThrowUserInput('Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.')
+  }
+  const canonicalRoot = FS.realpathSync(root)
+  if (!Path.isWithin(root, absolute) || !Path.isWithin(canonicalRoot, canonical)) {
+    Errors.ThrowUserInput(`Requested paths must remain inside ${root}: ${path}`)
+  }
+}
+
 type CachedRepositoryRoot = string | undefined
 let workspaceRoot: CachedRepositoryRoot
 let mainWorktreeRoot: CachedRepositoryRoot

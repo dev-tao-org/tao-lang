@@ -25,7 +25,7 @@ test('Tao library renders React props, children and isolated instances', async (
   try {
     await waitForServer(url, server)
     browser = await chromium.launch({ headless: true, channel: 'chrome' })
-    const page = await browser.newPage()
+    const page = await browser.newPage({ hasTouch: true })
     await page.goto(url)
     await verifyConsumer(page)
     if (shouldRefreshSource) {

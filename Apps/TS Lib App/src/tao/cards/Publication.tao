@@ -1,1 +1,1 @@
-publish { Caption as Greeting, }
+publish { Caption, }

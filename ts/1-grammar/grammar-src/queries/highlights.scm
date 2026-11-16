@@ -8,6 +8,8 @@
 (Injection "inject" @keyword)
 (Parameter type: (QualifiedName) @type)
 (ViewRenderExpression view: (QualifiedName) @function)
+(DisabledModifier "disabled" @keyword)
+(BooleanLiteral) @boolean
 (TestsDeclaration "tests" @keyword)
 (TestDeclaration "test" @keyword)
 (RunStatement "run" @keyword)
@@ -23,8 +25,7 @@
 (TypeScriptLibraryDeclaration "ts-library" @keyword)
 (TypeScriptLibraryDeclaration name: (Identifier) @type)
 (PublishDeclaration "publish" @keyword)
-(PublishDeclaration (NamedImport target: (Identifier) @type))
-(PublishDeclaration (NamedImport alias: (Identifier) @type))
+(PublishDeclaration (Identifier) @type)
 (All) @keyword
 (UsePackageStatement ["use" "package" "as"] @keyword)
 (NamedImport "as" @keyword)

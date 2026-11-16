@@ -18,11 +18,11 @@ Tests.test('an ordinary TS consumer renders a prepared Tao dependency and refres
     const options = await createProjectDependencyOptions(root)
     await prepareDependencies(root, await options.readRequirements(root), options)
     await FS.symlink(root, alias, 'dir')
-    const output = Path.join(root, '.tao/cache/libraries/Demo')
+    const output = Path.join(root, '.tao/cache/sessions/.cli/libraries/Demo')
     await compileLibraryPackage({
       entry: Path.join(alias, 'src/tao/Library.tao'),
       out: output,
-      name: '@example/tao-library',
+      name: '@tao-dev/ts-lib-example',
     })
     const manifest = await FS.readFile(Path.join(output, 'package.json'), 'utf8')
     Tests.expect(manifest).toContain('"./Greeting"')
@@ -49,13 +49,13 @@ Tests.test('library compilation requires a prepared external dependency without 
     await Tests.rejects(
       compileLibraryPackage({
         entry: Path.join(root, 'src/tao/Library.tao'),
-        out: Path.join(root, '.tao/cache/libraries/Demo'),
-        name: '@example/tao-library',
+        out: Path.join(root, '.tao/cache/sessions/.cli/libraries/Demo'),
+        name: '@tao-dev/ts-lib-example',
       }),
       DependencySetupRequiredRegx,
     )
     Tests.expect(await FS.exists(lock)).toBe(false)
-    Tests.expect(await FS.exists(Path.join(root, '.tao/cache/libraries/Demo'))).toBe(false)
+    Tests.expect(await FS.exists(Path.join(root, '.tao/cache/sessions/.cli/libraries/Demo'))).toBe(false)
   }, {
     async finally() {
       await FS.rm(root + '-widgets', { recursive: true, force: true })
@@ -98,6 +98,6 @@ async function createDependencyWrapper(root: string): Promise<void> {
 
 async function verifyConsumer(root: string): Promise<void> {
   const result = await Exec.capture('just', 'test', { cwd: root, addEnv: { TAO_TEST_SOURCE_REFRESH: '1' } })
-  Tests.expect(result.stdout).toContain('.tao/cache/libraries/Demo')
+  Tests.expect(result.stdout).toContain('.tao/cache/sessions/.cli/libraries/Demo')
   Tests.expect(FS.existsSync(Path.join(root, 'src/.tao'))).toBe(false)
 }

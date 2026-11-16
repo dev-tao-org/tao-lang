@@ -86,8 +86,11 @@
       "@cli-kit/runtime-tooling": [
         "./CLIs/CLIs-src/cli-checks/RuntimeTooling.ts"
       ],
-      "@perf": [
-        "./perf/perf-src/Perf.ts"
+      "@repo-analysis": [
+        "./repo-analysis/repo-analysis-src/RepoAnalysis.ts"
+      ],
+      "@repo-analysis/performance": [
+        "./repo-analysis/repo-analysis-src/Performance/Performance.ts"
       ],
       "@shared": [
         "./shared/shared-src/shared.ts"

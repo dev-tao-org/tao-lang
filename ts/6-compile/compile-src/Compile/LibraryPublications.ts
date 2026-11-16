@@ -2,10 +2,15 @@ import * as AST from '@ast-gen'
 import { Errors } from '@shared'
 import * as Typecheck from '@typecheck'
 
-import { isTextParameter } from '../ValuesCompiler'
+import { hasSupportedViewParameters } from '../ValuesCompiler'
 
 /** PublishedView retains source ownership and the public package subpath of a Tao view. */
 export type PublishedView = { path: string; source: string; declaration: AST.ViewDeclaration }
+
+/** compilePublicationExportName identifies a public component consistently across package entrypoints. */
+export function compilePublicationExportName(index: number): string {
+  return `Published${index}`
+}
 
 /** collectLibraryPublications resolves explicit own-project public views and selected module lists. */
 export function collectLibraryPublications(
@@ -38,11 +43,10 @@ export function collectLibraryPublications(
 function collectSelectedPublication(
   program: Typecheck.LinkedProgram,
   entry: Typecheck.LinkedModule,
-  member: AST.NamedImport,
+  member: AST.Name,
   ownSources: ReadonlySet<string>,
 ): PublishedView[] {
-  const name = member.target.value
-  const alias = member.alias?.value ?? name
+  const name = member.value
   const importedModule = entry.imports.find(imported => {
     const statement = imported.statement
     return AST.IsUsePackageStatement(statement)
@@ -52,7 +56,7 @@ function collectSelectedPublication(
     const binding = entry.bindings.find(binding => binding.name === name)
     const source = binding?.source ?? entry.path
     const owner = program.modules.find(module => module.path === source)!
-    return [requirePublishedView(owner, binding?.target ?? name, alias, ownSources)]
+    return [requirePublishedView(owner, binding?.target ?? name, name, ownSources)]
   }
   const sources = new Set(importedModule.targets.map(target => target.path))
   const lists = program.modules.filter(module => sources.has(module.path)).flatMap(module =>
@@ -62,14 +66,12 @@ function collectSelectedPublication(
     Errors.ThrowUserInput(`Published module ${name} must declare one publish block.`)
   }
   return lists[0]!.members.map(selected => {
-    const binding = entry.bindings.find(binding => binding.name === `${name}.${selected.target.value}`)
+    const binding = entry.bindings.find(binding => binding.name === `${name}.${selected.value}`)
     if (!binding || !sources.has(binding.source)) {
-      return Errors.ThrowUserInput(
-        `Published definition ${selected.target.value} must be an own-project public declaration.`,
-      )
+      return Errors.ThrowUserInput(`Published definition ${selected.value} must be an own-project public declaration.`)
     }
     const owner = program.modules.find(module => module.path === binding.source)!
-    const path = `${alias}/${selected.alias?.value ?? selected.target.value}`
+    const path = `${name}/${selected.value}`
     return requirePublishedView(owner, binding.target, path, ownSources)
   })
 }
@@ -87,8 +89,8 @@ function requirePublishedView(
   if (!declaration || declaration.visibility !== 'public') {
     Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
   }
-  if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
-    Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)
+  if (!AST.IsViewDeclaration(declaration) || !hasSupportedViewParameters(declaration)) {
+    Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text or boolean parameters.`)
   }
   return { path, source: owner.path, declaration }
 }

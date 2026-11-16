@@ -1,42 +1,46 @@
 import { Errors, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
+import type { CompileTarget } from './CompileTarget'
 import { compileLibraryPackage, type LibraryPackageRequest } from './LibraryPackage'
+import type { ProjectSession } from './projects/Sessions'
+import { publishDirectory } from './PublishDirectory'
 
-const OwnerMarker = '.tao-library-package'
-
-/** publishLibrary compiles a fresh generation and atomically updates only its own output link. */
-export async function publishLibrary(request: LibraryPackageRequest): Promise<string> {
-  const output = Path.resolve(request.out)
+/** publishLibrary compiles into the caller's locked session without changing another session's library. */
+export async function publishLibrary(target: CompileTarget, session: ProjectSession): Promise<string> {
+  const request = createSessionLibraryRequest(target, session)
+  const output = request.out
   const generations = output + '.generations'
-  await requireOwnedOutput(output, generations)
+  await requireOutputDirectory(Path.dirname(output))
+  await requireOutputDirectory(output)
+  await requireOutputDirectory(generations)
   const generation = Path.join(generations, Platform.randomUUID())
   await compileLibraryPackage(createGenerationRequest(request, generation))
-  await FS.writeFile(Path.join(generation, OwnerMarker), request.name)
-  await FS.mkdir(Path.dirname(output))
-  const target = Path.relative(Path.dirname(output), generation)
-  if (FS.existsSync(output)) {
-    await FS.replaceDirectoryLink(target, output)
-  } else {
-    await FS.symlink(target, output, 'dir')
-  }
+  await publishDirectory(generation, output)
   return output
+}
+
+function createSessionLibraryRequest(target: CompileTarget, session: ProjectSession): LibraryPackageRequest {
+  if (target.kind !== 'library' || !target.target || !target.name) {
+    Errors.ThrowUserInput('Select a ts-library and configure tao.compile.name in the authored package.json.')
+  }
+  const libraries = Path.join(session.directory, 'libraries')
+  const out = Path.join(libraries, target.target)
+  if (Path.dirname(out) !== libraries) {
+    Errors.ThrowUserInput(`Invalid library target name: ${target.target}`)
+  }
+  return { entry: target.entry, target: target.target, name: target.name, out }
 }
 
 function createGenerationRequest(request: LibraryPackageRequest, out: string): LibraryPackageRequest {
   return { ...request, out }
 }
 
-async function requireOwnedOutput(output: string, generations: string): Promise<void> {
+async function requireOutputDirectory(output: string): Promise<void> {
   const existing = await Try.WithDefault(undefined, () => FS.lstat(output))
   if (!existing) {
     return
   }
-  if (!existing.isSymbolicLink()) {
-    return Errors.ThrowUserInput(`Compiler output already exists and is not owned; preserved it: ${output}.`)
-  }
-  const target = Path.resolve(Path.dirname(output), await FS.readlink(output))
-  const marker = Path.join(target, OwnerMarker)
-  if (!Path.isWithin(generations, target) || !FS.existsSync(marker)) {
-    Errors.ThrowUserInput(`Compiler output links to unrelated data; preserved it: ${output}.`)
+  if (!existing.isDirectory() || existing.isSymbolicLink()) {
+    return Errors.ThrowUserInput(`Compiler output is not a regular directory; preserved it: ${output}.`)
   }
 }

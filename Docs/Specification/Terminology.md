@@ -13,7 +13,7 @@ This index names Tao language and authoring concepts: unmarked entries describe 
   - **Render tree**: Nested render expressions describing UI structure.
   - **Render tag**: An authored `#name` identifying a rendered target for interactions and assertions.
   - **Children**: Ordered nested render expressions supplied to a parent view and available to its injection through `@@children`.
-- **Declaration name**: An authored Tao name that starts with an uppercase letter, such as `Main` or `Caption`. Explicit import, dependency and publication aliases, parameters, and injection captures follow the same rule. Package paths and names supplied by the Tao SDK, such as `text`, keep their own spelling.
+- **Declaration name**: An authored Tao name that starts with an uppercase letter, such as `Main` or `Caption`. Explicit import and dependency aliases, parameters, and injection captures follow the same rule. Package paths and names supplied by the Tao SDK, such as `text`, keep their own spelling.
 - **Parameter**: A declared input to a view; currently supported view parameters use `text`.
 - **Argument**: A value supplied to a parameter; current view arguments bind by position.
 - **Let binding**: An immutable named value in its lexical scope.

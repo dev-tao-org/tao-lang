@@ -39,6 +39,7 @@ export function createViewRender(
 ): AST.ViewRenderExpression {
   return {
     kind: 'ViewRenderExpression',
+    interaction: undefined,
     range: Range(),
     tag: undefined,
     target: createIdentifier(target),

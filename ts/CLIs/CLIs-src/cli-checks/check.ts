@@ -1,34 +1,12 @@
 import * as CLIKit from '@cli-kit'
-import { Errors } from '@shared'
-import { FS, Path, Repo } from '@shared/os'
+import type * as RepoAnalysis from '@repo-analysis'
+import { Errors, NewlineCharacter, Time, Try } from '@shared'
+import { Artifacts, FS, Path, Repo } from '@shared/os'
 import { planTestExecution, type TestExecutionOptions } from '../dev-cli/testing/TestPlan'
 import { checkEditorTypeScript } from './editor-typescript'
 import { prepareNativeLocks } from './native-lock-build'
-import { assertPackageApis } from './PackageApis'
 import { prepareParser } from './parser-build'
 import { prepareRuntime } from './runtime-build'
-
-/** assertNewWorkspacePath confines requested paths to the selected root and excludes the reference implementation. */
-export function assertNewWorkspacePath(path: string, root = Repo.getWorkspaceRoot()): void {
-  const absolute = Path.resolve(path)
-  let existing = absolute
-  while (!FS.existsSync(existing)) {
-    const parent = Path.dirname(existing)
-    if (parent === existing) {
-      break
-    }
-    existing = parent
-  }
-  const canonical = FS.realpathSync(existing)
-  const legacy = FS.existsSync(legacyRoot) ? FS.realpathSync(legacyRoot) : legacyRoot
-  if (isWithinDirectory(absolute, legacyRoot) || isWithinDirectory(canonical, legacy)) {
-    Errors.ThrowUserInput('Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.')
-  }
-  const canonicalRoot = FS.realpathSync(root)
-  if (!isWithinDirectory(absolute, root) || !isWithinDirectory(canonical, canonicalRoot)) {
-    Errors.ThrowUserInput(`Requested paths must remain inside ${root}: ${path}`)
-  }
-}
 
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
 export async function assertNewWorkspaceTree(): Promise<void> {
@@ -41,7 +19,7 @@ export async function assertNewWorkspaceTree(): Promise<void> {
       const path = `${directory}/${entry.name}`
       if (entry.isSymbolicLink()) {
         const target = FS.realpathSync(path)
-        assertNewWorkspacePath(target)
+        Repo.assertNewWorkspacePath(target)
         if (!isWithinDirectory(target, workspace)) {
           Errors.ThrowUserInput(`Workspace source links must remain inside ts/: ${path}`)
         }
@@ -59,34 +37,22 @@ export async function assertNewWorkspaceTree(): Promise<void> {
 export async function workspaceTypes(): Promise<void> {
   await assertNewWorkspaceTree()
   await checkEditorTypeScript()
-  assertPackageApis()
-  const packages = [
-    '0-workspace',
-    '1-grammar',
-    '2-ast-gen',
-    '2.5-source-validation',
-    '3-typecheck',
-    '4-fix',
-    '5-check',
-    '6-compile',
-    '7-runtime',
-    'CLIs',
-    'ide-extensions/tao-ide-extension',
-    'ide-extensions/dev-tao-org',
-    'perf',
-    'shared',
-    'stdlib',
-    'ts-api',
-  ]
-  const discoveredProjects = await Promise.all(packages.map(async project => {
-    const sourceFiles = await FS.listSourceFiles(Repo.resolvePath('ts', project))
-    return sourceFiles.length > 0 ? project : undefined
+  const RepoAnalysis = await import('@repo-analysis')
+  RepoAnalysis.assertPackageApis()
+  const workspace = Repo.resolvePath('ts')
+  const manifests = await RepoAnalysis.readWorkspaceManifestPaths(workspace)
+  const configs = await readTypeScriptProjects(workspace, manifests)
+  await CLIKit.runNonInteractiveCommand('tsc', ['--build', ...configs], { cwd: workspace })
+}
+
+async function readTypeScriptProjects(workspace: string, manifests: readonly string[]): Promise<string[]> {
+  const projects = await Promise.all(manifests.map(async manifest => {
+    const directory = Path.dirname(manifest)
+    const sources = await FS.listSourceFiles(directory)
+    const configPath = Path.relative(workspace, Path.join(directory, 'tsconfig.json'))
+    return sources.length > 0 ? configPath : undefined
   }))
-  const projects = discoveredProjects.filter((project): project is string => project !== undefined)
-  const configs = projects.map(project => `${project}/tsconfig.json`)
-  await CLIKit.runNonInteractiveCommand('tsc', ['--build', ...configs], {
-    cwd: Repo.resolvePath('ts'),
-  })
+  return projects.filter((project): project is string => project !== undefined)
 }
 
 /** workspaceShellSyntax checks the root entrypoints and portable bootstrap without executing them. */
@@ -112,18 +78,28 @@ export async function workspaceShellSyntax(): Promise<void> {
 export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   // Formatting and test execution also import this module; load the compiler only for source checks.
-  const { checkSourceConformance } = await import('./source-conformance')
-  await checkSourceConformance(Repo.getWorkspaceRoot(), true)
+  const RepoAnalysis = await import('@repo-analysis')
+  const started = Time.nowMs()
+  const result = await RepoAnalysis.analyzeSourceConformance(Repo.getWorkspaceRoot())
+  const elapsed = Math.round(Time.nowMs() - started)
+  CLIKit.IO.print(`Checked source conformance: ${result.findings.length} issue(s) in ${elapsed}ms`)
+  if (result.findings.length > 0) {
+    Errors.ThrowUserInput(
+      result.findings.map(({ file, line, message }) => `${file}${line === undefined ? '' : ':' + line}: ${message}`)
+        .join(NewlineCharacter),
+    )
+  }
+  await writeTestOnlyUsageReport(result)
 }
 
 /** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */
 export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
-  await CLIKit.runNonInteractiveCommand('knip', '--config scripts/knip.ts --no-progress', {
+  await CLIKit.runNonInteractiveCommand('knip', '--config repo-analysis/scripts/knip.ts --no-progress', {
     cwd: Repo.resolvePath('ts'),
   })
-  await CLIKit.runNonInteractiveCommand('knip', '--config scripts/knip.ts --no-progress --production', {
+  await CLIKit.runNonInteractiveCommand('knip', '--config repo-analysis/scripts/knip.ts --no-progress --production', {
     cwd: Repo.resolvePath('ts'),
   })
 }
@@ -194,8 +170,23 @@ function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   })
 }
 
+const TestOnlyUsageReportFilename = 'test-only-usage.md'
+
+async function writeTestOnlyUsageReport(result: RepoAnalysis.SourceConformanceResult): Promise<void> {
+  await Try(async () => {
+    const started = Time.nowMs()
+    const report = await result.readUsageReport()
+    const reportPath = Artifacts.resolvePath(TestOnlyUsageReportFilename)
+    await FS.write(reportPath, report.markdown)
+    const elapsed = Math.round(Time.nowMs() - started)
+    const counts =
+      `${report.moduleCount} module(s), ${report.declarationCount} declaration(s), ${report.optionalArgumentCount} optional argument(s)`
+    CLIKit.IO.print(
+      `Test-only usage candidates in ${elapsed}ms (${counts}). See .artifacts/${TestOnlyUsageReportFilename}`,
+    )
+  }, { catch: error => CLIKit.IO.warn(`Could not produce the test-only usage report: ${String(error)}`) })
+}
+
 function isWithinDirectory(path: string, directory: string): boolean {
   return Path.isWithin(directory, path)
 }
-
-const legacyRoot = Repo.resolvePath('.x-tao-old-v1')

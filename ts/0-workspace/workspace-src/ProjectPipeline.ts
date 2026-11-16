@@ -19,6 +19,9 @@ export type ProjectPipelineResult = {
   snapshotDirectories: readonly string[]
 }
 
+/** WorkspacePreparation contains optional results returned by a project pipeline callback. */
+export type WorkspacePreparation = Partial<ProjectPipelineResult>
+
 /** ProjectRuntimeOptions carries runtime-owned mutable Metro configuration. */
 export type ProjectRuntimeOptions = {
   dependencyDirectory?: string

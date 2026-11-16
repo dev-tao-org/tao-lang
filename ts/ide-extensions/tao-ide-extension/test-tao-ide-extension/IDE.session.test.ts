@@ -86,7 +86,7 @@ Tests.test('TypeScript library declarations highlight their keyword, name and pu
   Shared.Try(() => {
     const source = Shared.S`
       ts-library Demo {
-        publish { Greeting, Cards as Catalog, }
+        publish { Greeting, Cards, }
       }
     `
     const result = runtime.document.update(source)
@@ -98,8 +98,6 @@ Tests.test('TypeScript library declarations highlight their keyword, name and pu
       { kind: 'keyword', text: 'publish' },
       { kind: 'type', text: 'Greeting' },
       { kind: 'type', text: 'Cards' },
-      { kind: 'keyword', text: 'as' },
-      { kind: 'type', text: 'Catalog' },
     ])
   }, { finally: runtime.dispose })
 })

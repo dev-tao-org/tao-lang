@@ -51,7 +51,9 @@ export const consumerMetroConfiguration = S`
   const consumer = require('./tao-consumer.json');
   const config = getDefaultConfig(__dirname);
   const modules = path.join(__dirname, 'node_modules');
+  const library = consumer.library;
   function dependencyRoot(name) {
+    if (library && name === library.name) return library.directory;
     let directory = fs.realpathSync(path.join(modules, name));
     let root = directory;
     while (path.dirname(directory) !== directory) {
@@ -63,6 +65,15 @@ export const consumerMetroConfiguration = S`
   config.watchFolders = [...new Set([consumer.packageDirectory, ...consumer.packages.map(dependencyRoot)])];
   config.resolver.nodeModulesPaths = [modules];
   config.resolver.resolveRequest = (context, name, platform) => {
+    if (library && (name === library.name || name.startsWith(library.name + '/'))) {
+      const generatedContext = {
+        ...context,
+        disableHierarchicalLookup: true,
+        nodeModulesPaths: [],
+        extraNodeModules: { [library.name]: library.directory },
+      };
+      return context.resolveRequest(generatedContext, name, platform);
+    }
     const peer = ['react', 'react-dom', 'react-native', 'react-native-web'].find(id => name === id || name.startsWith(id + '/'));
     return context.resolveRequest(context, peer ? path.join(modules, name) : name, platform);
   };

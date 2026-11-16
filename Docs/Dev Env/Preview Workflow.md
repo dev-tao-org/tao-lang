@@ -4,7 +4,7 @@
 ./dev
 ./dev help
 just performance
-./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
+./tao compile ts/repo-analysis/performance-fixtures/Performance/Performance.tao
 ```
 
 `./dev` and `just dev` start the keyboard launcher. Press `p` for the performance editor or `v` for the live Preview app. Each shortcut starts its app on demand and opens its URL in the browser. Press either shortcut again to reopen its existing session. Press `q` or Ctrl-C to shut down both sessions. `./dev help` lists all developer commands.

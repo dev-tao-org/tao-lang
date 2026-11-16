@@ -1,4 +1,4 @@
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors, Json, Schema, Try } from '@shared'
 import type { MeasurementJob } from './Runner'
 
@@ -9,12 +9,12 @@ export type PreviewReport = {
   commit: string
   modified: boolean
   startupMs: number
-  opening: Perf.PreviewOpeningTimings
+  opening: Performance.PreviewOpeningTimings
   browser: string
   runtime: string
   fixtureSha256: string
   system: unknown
-  measurement: Perf.PreviewMeasurement & { protocol: string }
+  measurement: Performance.PreviewMeasurement & { protocol: string }
   frameSizes: PreviewFrameSize[]
   results: PreviewReportResult[]
 }
@@ -25,10 +25,10 @@ type PreviewReportResult = {
   sample: string
   parentClickToLastAppliedMs: number
   frames?: PreviewResultFrames
-  work: Perf.PreviewWork
+  work: Performance.PreviewWork
 }
 type PreviewResultFrames = Record<string, { bootId?: string }>
-type PreviewFrameCount = Perf.PreviewFrameCount
+type PreviewFrameCount = Performance.PreviewFrameCount
 
 /** parsePreviewReport validates the raw preview measurement before workload and provenance checks. */
 export function parsePreviewReport(source: string, path: string): PreviewReport {
@@ -79,7 +79,7 @@ export function requireReport(report: PreviewReport, job: MeasurementJob): void 
   if (!hasExpectedWorkload(report, job)) {
     Errors.ThrowUserInput('Sample workload is incomplete or differs from the configured measurement.')
   }
-  if (!report.opening || report.opening.reopenMs?.length !== Perf.PreviewReopenCount) {
+  if (!report.opening || report.opening.reopenMs?.length !== Performance.PreviewReopenCount) {
     Errors.ThrowUserInput('Sample is missing the first preview open or successive warm opens.')
   }
   if (!report.results.every(result => result.work && Number.isInteger(result.work.modulesEmitted))) {
@@ -106,25 +106,25 @@ function hasExpectedIdentity(report: PreviewReport, job: MeasurementJob): boolea
 }
 
 function hasExpectedWorkload(report: PreviewReport, job: MeasurementJob): boolean {
-  const settings = Perf.readPreviewMeasurement({
+  const settings = Performance.readPreviewMeasurement({
     editCount: job.settings.edits,
     frameCount: Number(job.environment.TAO_PREVIEW_FRAME_COUNT ?? '2') as PreviewFrameCount,
   })
   if (!hasExpectedSettings(report, settings) || !Array.isArray(report.results)) {
     return false
   }
-  const scenarios = Perf.createMeasurementScenarios(settings)
+  const scenarios = Performance.createMeasurementScenarios(settings)
   if (report.results.length !== scenarios.length) {
     return false
   }
   return report.results.every((result, index) => hasExpectedScenarioResult(result, index, scenarios[index].name))
 }
 
-function hasExpectedSettings(report: PreviewReport, settings: Perf.PreviewMeasurement): boolean {
+function hasExpectedSettings(report: PreviewReport, settings: Performance.PreviewMeasurement): boolean {
   if (!report.measurement || !Array.isArray(report.frameSizes)) {
     return false
   }
-  if (report.measurement.protocol !== Perf.PreviewMeasurementProtocol) {
+  if (report.measurement.protocol !== Performance.PreviewMeasurementProtocol) {
     Errors.ThrowUserInput('Preview measurement protocol differs. Use tooling from the revision that recorded this job.')
   }
   if (report.measurement.editCount !== settings.editCount || report.measurement.frameCount !== settings.frameCount) {
@@ -148,7 +148,7 @@ function hasExpectedScenarioResult(
   scenario: string,
 ): boolean {
   return result.scenario === scenario
-    && result.sample === Perf.classifyMeasurementSample(index)
+    && result.sample === Performance.classifyMeasurementSample(index)
 }
 
 function hasMeasuredSize(size: PreviewFrameSize): boolean {

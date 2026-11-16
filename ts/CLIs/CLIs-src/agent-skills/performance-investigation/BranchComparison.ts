@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors, Objects, Time, Try } from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as Metrics from './BranchMetrics'
@@ -24,7 +24,7 @@ type Round = {
 }
 type ScenarioSessions = { conditions?: MeasurementConditions; seenIds: Set<string> }
 type ComparisonLoadField = 'extraViews' | 'extraFileCount'
-type ComparisonLoad = Pick<Perf.PreviewMeasurement, ComparisonLoadField>
+type ComparisonLoad = Pick<Performance.PreviewMeasurement, ComparisonLoadField>
 
 /** ComparisonScenario retains the measurements and job provenance for a fixed workload. */
 export type ComparisonScenario = {
@@ -65,7 +65,10 @@ export async function runBranchComparison(options: BranchComparisonOptions): Pro
     IO.print(`Performance comparison: ${comparison.directory}`)
     await saveComparison(comparison)
     await Try(async () => {
-      const { extraViews, extraFileCount } = Perf.readPreviewMeasurement({ editCount: EditsPerSession, frameCount: 2 })
+      const { extraViews, extraFileCount } = Performance.readPreviewMeasurement({
+        editCount: EditsPerSession,
+        frameCount: 2,
+      })
       const scenario: ComparisonScenario = {
         name: 'Performance project',
         load: { extraViews, extraFileCount },
@@ -96,14 +99,13 @@ export function requireBranchPairCount(pairs: number): void {
   }
 }
 
-const Fixture = 'ts/perf/perf-fixtures/Performance/Performance.tao'
 const ComparisonsDirectory = '.artifacts/notes/performance-investigation/comparisons'
 
 async function createComparison(options: BranchComparisonOptions): Promise<BranchComparison> {
   const baseline = await resolveCommit(options.baseline, 'HEAD')
   const candidate = await resolveCommit(options.candidate, 'HEAD')
   const directory = Repo.resolvePath(ComparisonsDirectory, Platform.randomUUID())
-  const source = await FS.readFile(Repo.resolvePath(Fixture), 'utf8')
+  const source = await Performance.readPerformanceFixture()
   await FS.mkdir(directory)
   await FS.writeFile(Path.join(directory, 'fixture.tao'), source)
   return {

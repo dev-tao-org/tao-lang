@@ -1,6 +1,8 @@
-import { Json, S } from '@shared'
+import { S } from '@shared'
 
-import type { PublishedView } from './LibraryPublications'
+import { emitJsonDocument } from '../codegen-util'
+import { projectViewParameterTypes } from './ForeignViewContractCompiler'
+import { compilePublicationExportName, type PublishedView } from './LibraryPublications'
 import type { CompiledFiles } from './ModulesCompiler'
 
 /** LibraryPackageConfiguration supplies the resolved package name and dependency versions. */
@@ -25,7 +27,7 @@ export function compileLibraryPackageFiles(
     const entry = `${stem}.js`
     const declaration = `${stem}.d.ts`
     exports[`./${view.path}`] = { types: `./${declaration}`, default: `./${entry}` }
-    files[entry] = `export { Published${index} as default } from './_Library.js';\n`
+    files[entry] = `export { ${compilePublicationExportName(index)} as default } from './_Library.js';\n`
     files[declaration] = compileViewDeclaration(view)
   }
   files['package.json'] = serializeLibraryPackage(configuration, exports)
@@ -37,7 +39,7 @@ type LibraryPackageExports = Record<string, { types: string; default: string }>
 type LibraryPackageFiles = Record<string, string>
 
 function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exports: LibraryPackageExports): string {
-  return Json.Print({
+  return emitJsonDocument({
     name: configuration.name,
     version: '0.0.0',
     type: 'module',
@@ -48,7 +50,8 @@ function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exp
 }
 
 function compileViewDeclaration(view: PublishedView): string {
-  const props = view.declaration.parameters.map(parameter => `${parameter.name.value}: string;`).join(' ')
+  const parameters = projectViewParameterTypes(view.declaration)
+  const props = Object.entries(parameters).map(([name, type]) => `${name}: ${type};`).join(' ')
   return S`
     import type * as React from 'react';
     export type Props = { ${props} children?: React.ReactNode };

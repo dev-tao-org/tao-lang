@@ -8,6 +8,8 @@
     "**/node_modules",
     "**/*-lock.json",
     "**/_gen_*/**",
+    // Tao CLI owns project metadata and generated files, including in external projects.
+    "**/.tao/**",
     // Native acceptance builds the runtime module in place; Gradle owns this output.
     "packages/apps/runtime/android/build/**",
     ".x-tao-old-v1/packages/apps/runtime/android/build/**",

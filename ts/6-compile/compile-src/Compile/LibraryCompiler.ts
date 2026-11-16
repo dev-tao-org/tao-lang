@@ -4,7 +4,8 @@ import type * as Typecheck from '@typecheck'
 import { emitStringLiteral } from '../codegen-util'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
-import { collectLibraryPublications, type PublishedView } from './LibraryPublications'
+import { projectViewParameterTypes } from './ForeignViewContractCompiler'
+import { collectLibraryPublications, compilePublicationExportName, type PublishedView } from './LibraryPublications'
 import { type CompiledFiles, compileModuleSources } from './ModulesCompiler'
 
 /** CompiledLibrary holds shared generated sources and explicit public component subpaths. */
@@ -50,9 +51,11 @@ function compileLibraryBootstrap(
 }
 
 function compilePublicComponent(view: PublishedView, index: number): string {
-  const props = view.declaration.parameters.map(parameter => `${emitStringLiteral(parameter.name.value)}: string`)
-  const parameters = view.declaration.parameters.map(parameter => emitStringLiteral(parameter.name.value))
-  return `export const Published${index} = createViewComponent<ViewProps & { ${props.join('; ')} }>(library, ${
+  const types = projectViewParameterTypes(view.declaration)
+  const props = Object.entries(types).map(([name, type]) => `${emitStringLiteral(name)}: ${type}`)
+  const parameters = Object.keys(types).map(emitStringLiteral)
+  const exportName = compilePublicationExportName(index)
+  return `export const ${exportName} = createViewComponent<ViewProps & { ${props.join('; ')} }>(library, ${
     emitStringLiteral(view.path)
   }, [${parameters.join(', ')}]);`
 }

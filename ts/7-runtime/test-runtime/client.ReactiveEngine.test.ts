@@ -236,6 +236,35 @@ Tests.test('observer reads do not become dependencies of the observed expression
   engine.dispose()
 })
 
+Tests.test('equal collection replacements retain identity without evaluating downstream', () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable({ value: 'A', count: 1 })
+  const rows = engine.createComputed(() => {
+    const current = source.jsValue()
+    const derivedCount = current.count % 2
+    return [{ value: current.value, count: derivedCount }]
+  })
+  let evaluations = 0
+  const downstream = engine.createComputed(() => {
+    evaluations += 1
+    return rows.jsValue()[0]!.count
+  })
+  const values: number[] = []
+  downstream.observe(value => values.push(value))
+
+  const original = source.jsValue()
+  const firstRows = rows.jsValue()
+  source.update({ count: 1, value: 'A' })
+  Tests.expect(source.jsValue()).toBe(original)
+  source.update({ count: 3, value: 'A' })
+  Tests.expect(rows.jsValue()).toBe(firstRows)
+  Tests.expect(evaluations).toBe(1)
+  source.update({ count: 2, value: 'A' })
+  Tests.expect(values).toEqual([1, 0])
+  Tests.expect(evaluations).toBe(2)
+  engine.dispose()
+})
+
 function verifyPolicySemantics(engine: ReactiveEngine, queue: (() => void)[]): void {
   verifyDiamondAndNestedBatch(engine, queue)
   verifyDynamicBranchDetaches(engine, queue)

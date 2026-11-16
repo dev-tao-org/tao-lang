@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import React from './Bridge_react/Bridge_react'
+import { DisabledInteraction } from './DisabledInteraction'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
 
@@ -25,11 +26,12 @@ export type ViewComponentProps = {
 /** ViewRenderContext keeps bound values and timing around one component render. */
 export type ViewRenderContext = ViewComponentProps & { readonly startedAt?: number }
 
-/** ViewRenderArguments holds positional values, ordered children and an optional native tag. */
+/** ViewRenderArguments holds positional values, children and optional render metadata. */
 export type ViewRenderArguments = {
   readonly values: readonly unknown[]
   readonly children: readonly React.ReactNode[]
   readonly testID?: string
+  readonly disabled?: boolean
 }
 
 /** AppOptions configures the preview acknowledgement and runtime timings. */
@@ -61,16 +63,17 @@ export function ViewDeclaration(
   return { name, parameters: [...parameters], render, scope, [viewMarker]: true }
 }
 
-/** ViewRenderArguments packages positional values, children and an optional test identifier. */
+/** ViewRenderArguments packages positional values, children and optional render metadata. */
 export function ViewRenderArguments(
   values: readonly unknown[] = [],
   inputChildren: readonly React.ReactNode[] = [],
   testID?: string,
+  disabled?: boolean,
 ): ViewRenderArguments {
   const children = inputChildren.map((child, index) =>
     React.isValidElement(child) ? React.cloneElement(child, { key: child.key ?? index }) : child
   )
-  return { values, testID, children }
+  return { values, testID, children, disabled }
 }
 
 /** ViewRenderExpression creates an element for a named view resolved from a Tao scope. */
@@ -115,7 +118,11 @@ function ViewBody({ candidate, args, testID }: ViewBodyProps): React.ReactElemen
   const scope = bindValues(view, args)
   observe(observer, 'bind', bindingStartedAt)
   const componentProps = { view, scope, children: args.children, testID: args.testID ?? testID, observer }
-  return React.createElement(view.render, componentProps)
+  const children = React.createElement(view.render, componentProps)
+  return args.disabled === undefined ? children : React.createElement(DisabledInteraction, {
+    disabled: args.disabled,
+    children,
+  })
 }
 
 type OptionalTestID = string | undefined

@@ -1,7 +1,8 @@
+import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Repo } from '@shared/os'
-import { assertNewWorkspacePath, assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
-import { synchronizePackageApis } from '../../cli-checks/PackageApis'
+import { synchronizePackageApis } from '../../../../repo-analysis/repo-analysis-src/Workspace/PackageApis'
+import { assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
 
@@ -18,9 +19,12 @@ export default registerCommand({
     if (paths.length === 0) {
       await assertNewWorkspaceTree()
       synchronizePackageApis()
-      const { fixSourceConformance } = await import('../../cli-checks/source-conformance-fix')
+      const SourceConformance = await import(
+        '../../../../repo-analysis/repo-analysis-src/Source/source-conformance-fix'
+      )
       const excludedFiles = options.exclude ?? []
-      await fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
+      const changed = await SourceConformance.fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
+      IO.print(`Fixed source conformance: ${changed} file(s)`)
       await workspaceFormat('fmt', excludedFiles)
       return
     }
@@ -29,7 +33,7 @@ export default registerCommand({
     }
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
-      assertNewWorkspacePath(absolute)
+      Repo.assertNewWorkspacePath(absolute)
       if (!path.endsWith('.tao') || !FS.statSync(absolute).isFile()) {
         Errors.ThrowUserInput(`Fixing requires a Tao source file: ${path}`)
       }

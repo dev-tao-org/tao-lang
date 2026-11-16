@@ -1,0 +1,16 @@
+use UIInteractions
+
+tests "Disabled controls" {
+   test "Inherits disabled state and leaves siblings interactive" {
+      run UIInteractions
+      expect #inherited { text "Inherited: 0" }
+      expect #direct { text "Direct: 0" }
+      expect #enabled { text "Enabled: 0" }
+      press #inherited
+      press #direct
+      press #enabled
+      expect #inherited { text "Inherited: 0" }
+      expect #direct { text "Direct: 0" }
+      expect #enabled { text "Enabled: 1" }
+      expect #lockedInput input value "Locked"
+}  }

@@ -136,6 +136,7 @@
         "@tao/ast-gen": "workspace:*",
         "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/repo-analysis": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/typecheck": "workspace:*",
@@ -150,7 +151,6 @@
       "devDependencies": {
         "@types/bun": "1.4.0",
         "@types/react": "~19.2.0",
-        "dependency-cruiser": "18.7.2",
         "rulesync": "16.18.0",
       },
     },
@@ -177,13 +177,14 @@
         "@vscode/vsce": "3.7.1",
       },
     },
-    "perf": {
-      "name": "@tao/perf",
+    "repo-analysis": {
+      "name": "@tao/repo-analysis",
       "dependencies": {
         "@tao/ast-gen": "workspace:*",
-        "@tao/cli": "workspace:*",
+        "@tao/compile": "workspace:*",
         "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/ide-extension": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/stdlib": "workspace:*",
@@ -192,6 +193,7 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
+        "dependency-cruiser": "18.7.2",
       },
     },
     "shared": {
@@ -753,7 +755,7 @@
 
     "@tao/ide-extension": ["@tao/ide-extension@workspace:ide-extensions/tao-ide-extension"],
 
-    "@tao/perf": ["@tao/perf@workspace:perf"],
+    "@tao/repo-analysis": ["@tao/repo-analysis@workspace:repo-analysis"],
 
     "@tao/runtime": ["@tao/runtime@workspace:7-runtime"],
 

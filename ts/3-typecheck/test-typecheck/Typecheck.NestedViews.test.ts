@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import { Range } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { collectReferencedNames } from '../typecheck-src/LinkModuleValidation'
+import { collectModuleReferences } from '../typecheck-src/LinkModuleValidation'
 import { linkModules } from '../typecheck-src/Typecheck'
 import * as Fixtures from './Typecheck.test-fixtures.LinkModules'
 
@@ -27,7 +27,7 @@ Tests.test('nested views resolve their sibling group through descendants', () =>
       Fixtures.createView('Peer'),
     ]),
   }
-  Tests.expect(collectReferencedNames(Fixtures.createSource('app/main.tao', [owner]).document)).toEqual(
+  Tests.expect(collectModuleReferences(Fixtures.createSource('app/main.tao', [owner]).document).names).toEqual(
     new Set(['Col']),
   )
 })

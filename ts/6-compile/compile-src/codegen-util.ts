@@ -32,6 +32,11 @@ export function emitStringLiteral(value: string): string {
   return Json.Print(value, { prettyPrint: false })
 }
 
+/** emitJsonDocument emits a formatted JSON document for generated package metadata. */
+export function emitJsonDocument(value: unknown): string {
+  return Json.Print(value)
+}
+
 type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag
 /** emitLiteral serializes a source string as a JavaScript string literal. */
 export function emitLiteral(node: LiteralNode): string {

@@ -31,13 +31,13 @@ export default registerCommand({
     planTestExecution(execution)
     if (target?.endsWith('.tao')) {
       const path = Repo.resolvePath(target)
-      Check.assertNewWorkspacePath(path)
+      Repo.assertNewWorkspacePath(path)
       await runTaoTests(path, execution)
       return
     }
     await Check.assertNewWorkspaceTree()
     if (target) {
-      Check.assertNewWorkspacePath(Repo.resolvePath(target))
+      Repo.assertNewWorkspacePath(Repo.resolvePath(target))
     }
     const workspaceTarget = workspaceTestTarget(target)
     const args = resolveTestArguments(workspaceTarget, target)
@@ -62,7 +62,7 @@ function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
     return undefined
   }
   const path = resolveTestTargetPath(target)
-  Check.assertNewWorkspacePath(path)
+  Repo.assertNewWorkspacePath(path)
   const canonical = FS.existsSync(path) ? FS.realpathSync(path) : path
   const root = FS.realpathSync(Repo.getWorkspaceRoot())
   const workspace = FS.realpathSync(Repo.resolvePath('ts'))
@@ -70,7 +70,7 @@ function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
     return workspace
   }
   if (FS.existsSync(path) || Path.isAbsolute(target)) {
-    Check.assertNewWorkspacePath(path, workspace)
+    Repo.assertNewWorkspacePath(path, workspace)
     return canonical
   }
   return undefined

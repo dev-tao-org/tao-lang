@@ -9,7 +9,7 @@ import { NewlineCharacter, S, Timings, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 
 import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
-import { publishBuild } from '../workspace-src/Workspace'
+import { publishBuild } from '../workspace-src/Workspace/WorkspaceBuild'
 
 Tests.test('standard view uses navigate through generated lexical types to their source-owned definition', async () => {
   await inspectGeneratedTypes(await generateNavigationFixture(), (service, build) => {

@@ -16,8 +16,9 @@ import { type CompileRequest, FileManager } from '../FileManager/FileManager'
 import { watchSourceTree } from '../FileManager/SourceWatch'
 import { loadModules } from '../modules/Loader'
 import { resolveCanonicalPath } from '../modules/Paths'
+import type { WorkspacePreparation } from '../ProjectPipeline'
 import { publishBuild } from './WorkspaceBuild'
-import type { WorkspaceOptions, WorkspacePreparation } from './WorkspaceOptions'
+import type { WorkspaceOptions } from './WorkspaceOptions'
 
 export { Document } from '../Document'
 export * from '../Project'
@@ -322,7 +323,7 @@ function createOutputPaths(options: WorkspaceOptions): WorkspaceOutputPaths | un
   if (options.project) {
     return {
       buildDirectory: options.project.buildDirectory,
-      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/expo'),
+      runtimeDirectory: Path.join(Path.dirname(options.project.buildDirectory), 'expo'),
     }
   }
   return undefined

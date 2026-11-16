@@ -1,10 +1,12 @@
-import library from '@example/tao-library'
-import Card from '@example/tao-library/Catalog/Greeting'
-import Greeting from '@example/tao-library/Greeting'
-import LanguageFeatures from '@example/tao-library/LanguageFeatures'
-import Panel from '@example/tao-library/Panel'
+import library from '@tao-dev/ts-lib-example'
+import Card from '@tao-dev/ts-lib-example/Cards/Caption'
+import Greeting from '@tao-dev/ts-lib-example/Greeting'
+import LanguageFeatures from '@tao-dev/ts-lib-example/LanguageFeatures'
+import Panel from '@tao-dev/ts-lib-example/Panel'
+import ValueSnapshots from '@tao-dev/ts-lib-example/ValueSnapshots'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import DisabledPreviewDemo from './DisabledPreviewDemo'
 
 const first = library.instantiate()
 const second = library.instantiate()
@@ -30,8 +32,10 @@ export default function Consumer() {
               <Text style={styles.label} testID="react-child">React child</Text>
             </Panel>
             <Card Value="Published submodule" />
+            <DisabledPreviewDemo />
             <View testID="language-features">
               <LanguageFeatures Name="Ada" />
+              <ValueSnapshots />
             </View>
           </library.Provider>
         </View>

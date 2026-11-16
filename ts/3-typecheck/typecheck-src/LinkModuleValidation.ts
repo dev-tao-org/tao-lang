@@ -9,15 +9,19 @@ export function assertUniqueLocalBindings(source: SourceModule): void {
   }
 }
 
-/** collectReferencedNames returns module names used by source declarations and app tests. */
-export function collectReferencedNames(document: AST.Document): ReadonlySet<string> {
+/** ModuleReferences records module names in use and whether the module needs condition type checking. */
+export type ModuleReferences = { names: ReadonlySet<string>; hasNamedDisabledCondition: boolean }
+
+/** collectModuleReferences finds module references and named render conditions in the same walk. */
+export function collectModuleReferences(document: AST.Document): ModuleReferences {
   const names = new Set<string>()
+  const references: MutableModuleReferences = { names, hasNamedDisabledCondition: false }
   for (const declaration of AST.GetDeclarations(document)) {
     Switch.kind(declaration, {
       AppDeclaration(app) {
         names.add(AST.GetAppRoot(app).value)
       },
-      ViewDeclaration: view => collectViewReferences(view, names, new Set()),
+      ViewDeclaration: view => collectViewReferences(view, references, new Set()),
       LetDeclaration: definition => addLetReferences(definition, names),
       TestsDeclaration: tests => collectTestReferences(tests, names),
       // Imports and requirements introduce bindings but do not reference Tao values.
@@ -28,8 +32,10 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
       PublishDeclaration: Switch.nothing,
     })
   }
-  return names
+  return references
 }
+
+type MutableModuleReferences = { names: Set<string>; hasNamedDisabledCondition: boolean }
 
 function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>): void {
   for (const test of AST.GetTests(tests)) {
@@ -61,9 +67,14 @@ function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void 
   }
 }
 
-function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, parentNames: ReadonlySet<string>): void {
+function collectViewReferences(
+  view: AST.ViewDeclaration,
+  references: MutableModuleReferences,
+  parentNames: ReadonlySet<string>,
+): void {
   const statements = AST.GetViewDeclarationStatements(view) ?? []
   const localNames = new Set(parentNames)
+  const { names } = references
   for (const parameter of view.parameters) {
     addReference(parameter.type.value, names, localNames)
     localNames.add(parameter.name.value)
@@ -77,9 +88,9 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
         addScopedLetReferences(definition, names, localNames)
         localNames.add(definition.name.value)
       },
-      RenderViewExpressionStatement: render => addScopedRenderReferences(render.expression, names, localNames),
+      RenderViewExpressionStatement: render => addScopedRenderReferences(render.expression, references, localNames),
       RenderInjectStatement: render => addInjectionReferences(render.injection, names, localNames),
-      ViewDeclaration: view => collectViewReferences(view, names, localNames),
+      ViewDeclaration: view => collectViewReferences(view, references, localNames),
     })
   }
 }
@@ -127,11 +138,17 @@ function addScopedLetReferences(
 
 function addScopedRenderReferences(
   render: AST.ViewRenderExpression,
-  names: Set<string>,
+  references: MutableModuleReferences,
   parentNames: ReadonlySet<string>,
 ): void {
   const localNames = new Set(parentNames)
+  const { names } = references
   addReference(render.target.value, names, localNames)
+  const condition = render.interaction?.condition
+  if (condition && AST.IsKind(condition, 'Name')) {
+    references.hasNamedDisabledCondition = true
+    addReference(condition.value, names, localNames)
+  }
   for (const argument of render.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       addReference(argument.value, names, localNames)
@@ -142,7 +159,7 @@ function addScopedRenderReferences(
       addScopedLetReferences(child, names, localNames)
       localNames.add(child.name.value)
     } else {
-      addScopedRenderReferences(child, names, localNames)
+      addScopedRenderReferences(child, references, localNames)
     }
   }
 }

@@ -1,10 +1,37 @@
-import { Errors } from '@shared'
+import { Errors, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
 import { withConsumerProject } from '../workspace-src/ConsumerProject'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { acquireSession } from '../workspace-src/projects/Sessions'
 import { createStandaloneLibraryFixture } from './Workspace.test-utils'
+
+Tests.test('consumer sessions publish independent libraries and resolve their own output', async () => {
+  const root = await createStandaloneLibraryFixture()
+  const packageDirectory = Path.join(root, 'src/ts')
+  const entry = Path.join(root, 'src/tao/Library.tao')
+  await Try(async () => {
+    await withConsumerProject(packageDirectory, 'first', async firstHost => {
+      const firstOutput = Path.join(firstHost, '../libraries/Demo')
+      const accepted = await FS.readFile(Path.join(firstOutput, '_Library.js'), 'utf8')
+      const source = await FS.readFile(entry, 'utf8')
+      await FS.writeFile(entry, source.replace('Nested private Tao helper', 'Second session helper'))
+      await withConsumerProject(packageDirectory, 'second', async secondHost => {
+        const secondOutput = Path.join(secondHost, '../libraries/Demo')
+        Tests.expect(await FS.readFile(Path.join(secondOutput, '_Library.js'), 'utf8')).toContain(
+          'Second session helper',
+        )
+        Tests.expect(await FS.readFile(Path.join(firstOutput, '_Library.js'), 'utf8')).toBe(accepted)
+        Tests.expect(await FS.readFile(Path.join(firstHost, 'tao-consumer.json'), 'utf8')).toContain(
+          '/first/libraries/Demo',
+        )
+        Tests.expect(await FS.readFile(Path.join(secondHost, 'tao-consumer.json'), 'utf8')).toContain(
+          '/second/libraries/Demo',
+        )
+      })
+    })
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test('managed consumer host borrows authored dependencies and protects active state until failure releases its session', async () => {
   const root = await createStandaloneLibraryFixture()

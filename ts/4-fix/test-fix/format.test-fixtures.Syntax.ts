@@ -10,13 +10,13 @@ export const syntaxFixture = S`
   use Local
   requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
-  ts-library Demo{publish{Root as Main,}}
+  ts-library Demo{publish{Root,}}
   publish{Root,}
   file let Caption is text="Hello"
   folder app Demo{root Root}
   public view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message)}
+  render #root UI . Col[ disabled yes ]{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message)}
   }
   package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`}
   project let Shared=Caption
@@ -36,7 +36,7 @@ export const formattedSyntaxFixture = S`
 
   ts-library Demo {
     publish {
-      Root as Main,
+      Root,
     }
   }
 
@@ -55,7 +55,7 @@ export const formattedSyntaxFixture = S`
   public
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    render #root UI.Col {
+    render #root UI.Col [disabled yes] {
       #child
       Panel(Title, Caption)
       let Message = Hidden
@@ -116,6 +116,8 @@ export const syntaxKinds = {
   ContextReference: true,
   TypeScript: true,
   ViewRenderExpression: true,
+  DisabledModifier: true,
+  BooleanLiteral: true,
   LetDeclaration: true,
   UseStatement: true,
   NamedImport: true,

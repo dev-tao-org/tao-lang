@@ -152,8 +152,6 @@ function collectDeclarationNameDiagnostics(statement: AST.Statement, diagnostics
   }
   if (AST.IsKind(statement, 'UseStatement')) {
     addAliasDiagnostics(statement.imports, diagnostics)
-  } else if (AST.IsKind(statement, 'PublishDeclaration')) {
-    addAliasDiagnostics(statement.members, diagnostics)
   } else {
     // Other statements introduce no authored names of their own.
   }

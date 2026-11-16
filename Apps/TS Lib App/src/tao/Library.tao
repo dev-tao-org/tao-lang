@@ -1,9 +1,11 @@
 use tao@ui Col, Text
 use package ./cards as Cards
 use LanguageFeatures
+use ValueSnapshots
+use DisabledPreview
 
 ts-library Demo {
-  publish { Greeting, Panel, LanguageFeatures, Cards as Catalog, }
+  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, DisabledPreview, Cards, }
 }
 
 public

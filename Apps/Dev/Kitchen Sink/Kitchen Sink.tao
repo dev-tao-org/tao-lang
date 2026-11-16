@@ -34,6 +34,10 @@ view RootView {
     Input("Original")
     #save
     SaveButton
+    Col [disabled yes] {
+      SaveButton [disabled no]
+      Input("Disabled by its container")
+    }
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
@@ -81,11 +85,11 @@ view Heading {
 public
 view SaveButton {
   render inject ```ts
-    const saved = Tao.useWritable(() => false)
-    const isSaved = Tao.useValue(saved)
+    const status = Tao.useWritable(() => ({ captions: ['Save'] }))
+    const snapshot = Tao.useValue(status)
     return (
-      <Tao.Pressable onPress={() => saved.update(true)}>
-        <Tao.Text>{isSaved ? 'Saved' : 'Save'}</Tao.Text>
+      <Tao.Pressable onPress={() => status.update({ captions: ['Saved'] })}>
+        <Tao.Text>{snapshot.captions[0]}</Tao.Text>
       </Tao.Pressable>
     )
   ```
