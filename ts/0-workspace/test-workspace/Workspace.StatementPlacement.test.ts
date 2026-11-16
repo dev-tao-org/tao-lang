@@ -119,3 +119,29 @@ Tests.test('lowercase declarations keep their syntax and block compilation at th
     Tests.expect(await workspace.update(corrected)).toMatchObject({ status: 'published' })
   }, { finally: () => workspace.dispose() })
 })
+
+Tests.test('bare and tagged qualified views accept package-derived keyword namespaces', async () => {
+  const directory = Artifacts.resolvePath('tmp', `placement-namespaces-${Platform.randomUUID()}`)
+  const entry = Path.join(directory, 'Main.tao')
+  const source = S`
+    use tao@ui Col
+    use package ./root
+    use package ./input
+    app Example { root Main }
+    view Main { render Col { root.Leaf #edge input.Leaf } }
+  `
+  const workspace = createWorkspace({ directory })
+  await Try(async () => {
+    await FS.mkdirs(Path.join(directory, 'root'), Path.join(directory, 'input'))
+    await FS.writeFile(entry, source)
+    for (const namespace of ['root', 'input']) {
+      await FS.writeFile(Path.join(directory, namespace, 'Leaf.tao'), `public view Leaf { ${RootRender} }`)
+    }
+    Tests.expect(await workspace.files.compileFile(entry)).toMatchObject({ status: 'published' })
+  }, {
+    async finally() {
+      await workspace.dispose()
+      await FS.rm(directory, { recursive: true, force: true })
+    },
+  })
+})

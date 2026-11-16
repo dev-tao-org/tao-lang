@@ -17,6 +17,26 @@ const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+const VisibilityKeywords = ['file', 'folder', 'package', 'project', 'public']
+const StatementKeywords = [
+  'app',
+  'root',
+  'view',
+  'render',
+  'let',
+  'publish',
+  'use',
+  'requires',
+  'tests',
+  'test',
+  'run',
+  'press',
+  'type',
+  'expect',
+  'text',
+  'input',
+  ...VisibilityKeywords,
+]
 
 export default grammar({
   name: 'tao',
@@ -35,6 +55,7 @@ export default grammar({
         $.RootDeclaration,
         $._ViewRenderStatement,
         $.ViewRenderExpression,
+        alias($._QualifiedKeywordView, $.ViewRenderExpression),
         $.TestDeclaration,
         $.RunStatement,
         $.PressStatement,
@@ -137,6 +158,25 @@ export default grammar({
       )
     },
 
+    // A namespace derived from a package path can share a statement keyword.
+    _QualifiedKeywordView($) {
+      return seq(
+        choice(
+          field('view', alias($._QualifiedKeywordName, $.QualifiedName)),
+          seq(field('tag', $.RenderTag), field('view', alias($._TaggedInputName, $.QualifiedName))),
+        ),
+        optional(field('argumentList', $.ArgumentList)),
+        optional(field('block', $.Block)),
+      )
+    },
+    _QualifiedKeywordName($) {
+      const head = choice(...StatementKeywords.map(keyword => alias(keyword, $.Identifier)))
+      return seq(head, repeat1(seq('.', $.Identifier)))
+    },
+    _TaggedInputName($) {
+      return seq(alias('input', $.Identifier), repeat1(seq('.', $.Identifier)))
+    },
+
     // Lexical values
     LetDeclaration($) {
       return seq(
@@ -208,7 +248,7 @@ export default grammar({
       return ImportPathRegx
     },
     Visibility() {
-      return choice('file', 'folder', 'package', 'project', 'public')
+      return choice(...VisibilityKeywords)
     },
 
     // App tests and interactions

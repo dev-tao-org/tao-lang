@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import { Errors } from '@shared'
+import * as Typecheck from '@typecheck'
 import { valid } from './bridges/Bridge_semver'
 import type { ManagedModuleRequirement } from './sidecars/ManagedModule/ManagedModules'
 
@@ -24,6 +25,9 @@ function createModuleRequirement(
   const version = declaration.version
   if (!version || valid(version) !== version) {
     Errors.ThrowUserInput(`npm dependency ${declaration.identifier} needs an exact version in ${path}.`)
+  }
+  if (declaration.alias) {
+    Typecheck.requireValidDeclarationName(declaration.alias, path)
   }
   return { name: declaration.identifier, version, origin: path }
 }

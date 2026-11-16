@@ -71,8 +71,9 @@ Declarations marked `folder` are also available implicitly to sibling files, wit
 #### `use package ./cards as Cards`
 
 Import the visible declarations under a namespace, accessed as `Cards.Caption` rather than
-`Caption`. Without `as Cards`, the namespace is derived from the source path. In contrast,
-`use ./cards Caption, Card as Panel` selects individual local names; `use ./cards all` imports
+`Caption`. Without `as Cards`, the namespace keeps the spelling derived from the source path,
+as in `cards.Caption` after `use package ./cards`. The import `use ./cards Caption, Card as Panel`
+selects individual local names; `use ./cards all` imports
 all public declarations as local names. All forms retain their visibility and ownership boundaries.
 
 #### `tao setup` and `tao update`

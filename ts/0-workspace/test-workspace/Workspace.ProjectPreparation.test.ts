@@ -8,6 +8,7 @@ import { prepareProject } from '../workspace-src/ProjectPreparation'
 import { initializeProject } from '../workspace-src/projects/Projects'
 
 const ConflictingDependencyCommitErrorRegx = /conflicting commits/
+const LowercaseNpmAliasErrorRegx = /Declared name 'packageAlias' must start with an uppercase letter\./
 
 Tests.test('automatic preparation rejects reached aliases that resolve one repository to different commits', async () => {
   const root = Artifacts.resolvePath('tmp', `project-preparation-source-conflict-${Platform.randomUUID()}`)
@@ -49,5 +50,27 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
     const lock = await readDependencyLock(resolveDependencyLockPath(root))
     Tests.expect(lock?.sources['github:example/shared']?.commit).toBe('a'.repeat(40))
     Tests.expect(lock?.roots).toEqual({ First: 'github:example/shared@v1' })
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('project preparation rejects lowercase npm aliases before installing or recording a lock', async () => {
+  const root = Artifacts.resolvePath('tmp', `project-preparation-npm-alias-${Platform.randomUUID()}`)
+  const entry = Path.join(root, 'Main.tao')
+  let toolInvocations = 0
+  await Try(async () => {
+    await initializeProject(root)
+    await FS.writeFile(entry, 'requires npm:date-fns version 4.1.0 as packageAlias')
+    const lock = resolveDependencyLockPath(root)
+    const originalLock = await readDependencyLock(lock)
+    const preparation = prepareProject(entry, {
+      runtimePins: { react: '0.0.0-tao-fixture' },
+      async executor() {
+        toolInvocations++
+        return { status: 1, stdout: '', stderr: 'Unexpected tool invocation' }
+      },
+    })
+    await Tests.rejects(preparation, LowercaseNpmAliasErrorRegx)
+    Tests.expect(toolInvocations).toBe(0)
+    Tests.expect(await readDependencyLock(lock)).toEqual(originalLock)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
