@@ -17,10 +17,12 @@ The review branch was merged first, followed by the codegen/design branch. Neith
 merge had Git conflicts. The new `dependency-add` command needed one integration
 adjustment to use the reviewed executable-plus-arguments command API.
 
-The separate immutable-values candidate is not part of this consolidation.
+The subsequent integration `42c9c072522615d16bbc09498bffd2445cf902d0` includes the immutable-values candidate `fd71fc00f9b1404979c7057a7130182d6e52c22b`, including its TS Lib App examples and consumer assertions. It preserves the reviewed `Catalog` publication alias and pane fixtures, and adapts the snapshot test to the reviewed execution API. Independent review of this expanded batch follows the earlier human-reviewed baseline; these integrations do not themselves establish human approval.
 
 ## Verification and findings
 
+- Expanded integration `42c9c072522615d16bbc09498bffd2445cf902d0` passed full verification in `.artifacts/logs/dev/2026-11-16T16-06-27.944Z-89302.log`, including the TS Lib App and immutable-value Tao journey. An earlier run timed out in an unchanged HTTP browser test; that test then passed unchanged in isolation and in the full rerun. The timeout's root cause is unconfirmed.
+- Its exact-commit preview record passed under `.storage/performance/preview/42c9c072522615d16bbc09498bffd2445cf902d0/`. A single-session comparison with the preceding tip does not establish a speed change or physical paint timing.
 - The tooling implementation passed 653 TypeScript tests and six Tao journeys
   before integration. The combined implementation passed 611 TypeScript tests and
   six Tao journeys, including the reviewed branch's test changes.

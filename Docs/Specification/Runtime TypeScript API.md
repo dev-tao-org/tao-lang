@@ -35,6 +35,8 @@ Incompatible loaded definitions of the same nominal declaration are rejected wit
 
 #### Generated sidecar contracts
 
+The following is agreed future behavior. Current foreign-view compilation generates React prop checks; the owning-module implementation API and one-sidecar-per-file contract are not yet implemented.
+
 The compiler generates the interfaces and function or method signatures a sidecar implementation must satisfy from its Tao declaration. The sidecar conforms to that generated contract rather than separately defining the requirements exposed to Tao callers.
 
 The owning `.tao` module is the canonical TypeScript import surface for generated types, factories and implementation contracts. Pure callbacks and action callbacks have distinct generated contracts: pure callbacks participate in evaluation, while action callbacks explicitly invoke effects.
@@ -63,6 +65,8 @@ Compiler/SDK-defined imports use lowercase names, while authored Tao declaration
 
 #### Managed sidecar execution
 
+This section describes agreed future execution boundaries, not implemented action or pure-function wrappers.
+
 All sidecar execution belongs to Tao-managed execution. Returned promises and additional asynchronous work or callbacks must participate through managed interfaces and helpers, so runtime exceptions become defined Tao failures and reach declared application handling. Generated contracts, documentation and discoverable defaults guide authors through this path; arbitrary detached work that bypasses it is outside that guarantee.
 
 Network and storage effects occur inside invoked sidecar actions, not during module loading. Module scope contains declarations and configuration; module-loading exceptions still enter defined Tao failure handling. An asynchronous module-initialization lifecycle is not part of this initial contract.
@@ -80,6 +84,8 @@ In the agreed future contract, pure function sidecars receive immutable input sn
 The compiler and runtime automatically create and own reactive evaluation wrappers. Pure sidecar authors implement ordinary snapshot-in/result-out functions without constructing those wrappers. Tao-authored callbacks invoked synchronously within an evaluation retain their captured reactive dependencies. Callback identity alone is insufficient to determine whether the enclosing computation is current. Per-item caching is a separate optimization, not required for correctness.
 
 #### Pure callback lifetime
+
+This is an agreed future contract; enforcement in generated pure-function wrappers is not yet implemented.
 
 Callbacks supplied to a pure sidecar evaluation may be invoked only during their owning evaluation. The generated runtime wrapper rejects invocation after that evaluation has ended; retaining a callback does not extend its lifetime. View event handlers and action callbacks have separately declared lifetimes. This rule does not by itself define the contract for pure functions returned as values.
 
