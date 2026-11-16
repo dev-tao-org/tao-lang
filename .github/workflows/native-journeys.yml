@@ -114,6 +114,16 @@ jobs:
           fi
           "$ANDROID_HOME/emulator/emulator" -accel-check
           df -h "$PWD"
+          if [ "$RUNNER_ENVIRONMENT" = github-hosted ]; then
+            cores=$(nproc)
+            memory=3072
+            if [ "$cores" -ge 4 ]; then
+              cores=4
+              memory=4096
+            fi
+            printf 'Android emulator resources: %s cores, %s MiB RAM\n' "$cores" "$memory"
+            printf 'TAO_ANDROID_JOURNEY_CORES=%s\nTAO_ANDROID_JOURNEY_MEMORY=%s\n' "$cores" "$memory" >> "$GITHUB_ENV"
+          fi
           printf '%s\n' "$command_tools" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
       - name: Identify the Xcode toolchain
         if: matrix.platform == 'ios'

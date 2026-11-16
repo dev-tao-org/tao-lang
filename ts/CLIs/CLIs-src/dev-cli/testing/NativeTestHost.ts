@@ -143,6 +143,7 @@ async function prepareAndroidDevice(target: AndroidTestTarget) {
 }
 
 function emulatorArguments(): string[] {
+  const cores = Env.get('TAO_ANDROID_JOURNEY_CORES')
   return [
     '-avd',
     'tao-journey',
@@ -154,8 +155,9 @@ function emulatorArguments(): string[] {
     '-no-boot-anim',
     '-gpu',
     'swiftshader',
+    ...cores ? ['-accel', 'on', '-cores', cores] : [],
     '-memory',
-    '2048',
+    Env.get('TAO_ANDROID_JOURNEY_MEMORY') ?? '2048',
   ]
 }
 
@@ -166,8 +168,7 @@ async function waitForEmulator(target: AndroidTestTarget, child: PipedChildProce
     if (child.exitCode !== null) {
       Errors.ThrowHostEnvironment('Android emulator exited before boot. See emulator.log.')
     }
-    const ready = 'test "$(getprop sys.boot_completed)" = 1 && pm path android'
-    const args = adbDeviceArguments(target, ['shell', ready])
+    const args = adbDeviceArguments(target, ['shell', 'test "$(getprop sys.boot_completed)" = 1 && pm path android'])
     const boot = await Exec.capture('adb', args, {
       check: false,
       timeoutMs: 5000,
