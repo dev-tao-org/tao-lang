@@ -4,7 +4,9 @@ import * as Shared from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
-/** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata. */
+/** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata.
+ *  It writes ts/2-ast-gen/_gen_AST/AST-generated.ts during parser prepare; @ast-gen re-exports it
+ *  as the semantic AST model for CST transform, typecheck, compile and the Tao IDE extension. */
 export async function writeSemanticAst(directory: string): Promise<void> {
   const metadataPath = Path.join(directory, 'src/node-types.json')
   const nodes = await readNodeMetadata(metadataPath)
