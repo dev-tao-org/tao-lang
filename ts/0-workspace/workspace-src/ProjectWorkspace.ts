@@ -2,17 +2,14 @@ import { Errors, Try } from '@shared'
 import { Path, Storage } from '@shared/os'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { ProjectDependencies } from './ProjectDependencies'
-import { createProjectPipeline, type ProjectPipelineResult, type ProjectPipelineServices } from './ProjectPipeline'
+import { createProjectPipeline, type ProjectPipelineResult } from './ProjectPipeline'
 import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
 import { createWorkspace, type WorkspaceOptions, type WorkspaceSession } from './Workspace'
 import type { WorkspacePreparation } from './Workspace'
 
 /** ProjectWorkspaceOptions configures a managed project workspace and its session lifetime. */
-export type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & SessionOptions & {
-  pipelineServices?: ProjectPipelineServices
-  acquireLease?: typeof Storage.acquireCacheLease
-}
+export type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & SessionOptions
 /** openProjectWorkspace acquires a project session before opening its independent generated workspace. */
 export async function openProjectWorkspace(
   entry: string,
@@ -23,19 +20,13 @@ export async function openProjectWorkspace(
     Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
   }
   const session = await acquireSession(project.root, options)
-  const releaseCache = await Try(
-    () => {
-      const acquireLease = options.acquireLease ?? Storage.acquireCacheLease
-      const identity = `${project.root}:${session.id}`
-      return acquireLease(identity)
+  const identity = `${project.root}:${session.id}`
+  const releaseCache = await Try(() => Storage.acquireCacheLease(identity), {
+    catch(error) {
+      session.release()
+      return Errors.Throw(error)
     },
-    {
-      catch(error) {
-        session.release()
-        return Errors.Throw(error)
-      },
-    },
-  )
+  })
   const release = () => Try(releaseCache, { finally: () => session.release() })
   return await Try(async () => {
     const dependencies = new ProjectDependencies(project.root, await createProjectDependencyOptions(project.root))
@@ -50,9 +41,7 @@ export async function openProjectWorkspace(
 }
 
 type ProjectWorkspaceOption = 'directory' | 'outputDirectory' | 'project'
-type ManagedWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & {
-  pipelineServices?: ProjectPipelineServices
-}
+type ManagedWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption>
 
 type WorkspaceReleaseResult = void | Promise<void>
 type WorkspaceRelease = () => WorkspaceReleaseResult
@@ -78,7 +67,7 @@ function createManagedWorkspaceOptions(
   options: ManagedWorkspaceOptions,
 ): WorkspaceOptions {
   const runtimeOptions = createProjectRuntimeOptions(root, options)
-  const pipeline = createProjectPipeline(root, output, runtimeOptions, options.pipelineServices)
+  const pipeline = createProjectPipeline(root, output, runtimeOptions)
   return {
     ...options,
     directory: root,

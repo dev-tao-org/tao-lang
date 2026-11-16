@@ -26,14 +26,14 @@ export default registerCommand({
       if (isFile && path.endsWith('.tao')) {
         await updateTaoSource(absolute, 'format')
       } else if (isFile && Path.basename(absolute) === 'Justfile') {
-        await CLIKit.runNonInteractiveCommand('just --fmt --justfile', {
-          variadicArgs: [absolute],
+        await CLIKit.runNonInteractiveCommand('just', ['--fmt', '--justfile', absolute], {
           cwd: Repo.getWorkspaceRoot(),
         })
       } else {
         await CLIKit.runNonInteractiveCommand(
-          'dprint fmt --config .dprint.jsonc --incremental=false --excludes .x-tao-old-v1/** --',
-          { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() },
+          'dprint',
+          ['fmt', '--config', '.dprint.jsonc', '--incremental=false', '--excludes', '.x-tao-old-v1/**', '--', path],
+          { cwd: Repo.getWorkspaceRoot() },
         )
       }
     }

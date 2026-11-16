@@ -20,12 +20,14 @@ type RunnableOperation<Arguments extends unknown[], Value> = Operation<Arguments
 
 /** Timings collects operation spans for one request or bounded measurement run.
  *  Define orchestration with measure and leaves with measured; run descriptors through a collector.
- *  Default collectors use the runtime's clock identity; injected clocks require an explicit identity.
+ *  Collectors use the runtime's clock identity.
  *  Discard the collector with its request; timestamps from different clock domains cannot be subtracted. */
 export class Timings {
   readonly samples: TimingSample[] = []
 
-  private constructor(readonly clock = Time.clockIdentity, private readonly now = Time.nowMs) {}
+  readonly clock = Time.clockIdentity
+
+  private constructor() {}
 
   record(name: string, startMs: number): void {
     this.samples.push({
@@ -33,7 +35,7 @@ export class Timings {
       role: 'observation',
       clock: this.clock,
       startMs,
-      durationMs: this.now() - startMs,
+      durationMs: Time.nowMs() - startMs,
       status: 'succeeded',
     })
   }
@@ -46,7 +48,7 @@ export class Timings {
     if (typeof operation === 'function') {
       return operation[entry](this, ...args)
     }
-    const startMs = this.now()
+    const startMs = Time.nowMs()
     return Try(() => operation[action](this, ...args), {
       finally: (_thrown, error) => {
         this.samples.push({
@@ -54,7 +56,7 @@ export class Timings {
           role: operation.role,
           clock: this.clock,
           startMs,
-          durationMs: this.now() - startMs,
+          durationMs: Time.nowMs() - startMs,
           status: error ? 'failed' : 'succeeded',
         })
       },
@@ -80,10 +82,9 @@ export class Timings {
   /** createTopLevelTimer creates a callable fresh-collector boundary that run can enter with an existing collector. */
   static createTopLevelTimer<Arguments extends unknown[], Value>(
     action: (timings: Timings, ...args: Arguments) => Value,
-    options?: { clock: string; now: () => number },
   ): TimingEntry<Arguments, Value> {
     return Object.assign(
-      (...args: Arguments) => action(new Timings(options?.clock, options?.now), ...args),
+      (...args: Arguments) => action(new Timings(), ...args),
       { [entry]: action },
     )
   }

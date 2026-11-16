@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Sort } from '@shared'
 import { Json } from '@shared'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Text } from '@shared/os'
@@ -94,11 +94,10 @@ export async function withDependencySession<T>(
   projectRoot: string,
   sessionId: DependencySessionId,
   action: (session: ProjectSession) => Promise<T>,
-  acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
   const session = await acquireSession(projectRoot, { id: sessionId, kind: 'cli' })
-  const releaseLease = await Try(() => acquireLease(identity), {
+  const releaseLease = await Try(() => Storage.acquireCacheLease(identity), {
     catch(error) {
       session.release()
       return Errors.Throw(error)

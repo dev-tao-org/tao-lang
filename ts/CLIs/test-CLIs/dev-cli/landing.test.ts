@@ -3,6 +3,7 @@ import { NullCharacter, S } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { publishPreviewArchive } from '../../CLIs-src/dev-cli/landing/Archive'
 import { integrateMain } from '../../CLIs-src/dev-cli/landing/Integration'
 import { land } from '../../CLIs-src/dev-cli/landing/Land'
@@ -204,11 +205,13 @@ Tests.test('pointer commits preserve unrelated user changes staged immediately b
   const f = recordingLanding()
   f.state.pointerPending = true
   const command = f.io.command
-  f.io.command = async (name, args = [], directory = '/recording') => {
-    if (name === 'git' && args[0] === 'commit' && directory === '/recording') {
+  f.io.command = async (name, args = [], options = {}) => {
+    const [subcommand] = Exec.resolveCommandArgs(args)
+    const gitCommit = name === 'git' && subcommand === 'commit'
+    if (gitCommit && options.cwd === '/recording') {
       f.state.userStagedPaths = 'user-owned.ts'
     }
-    return command(name, args, directory)
+    return command(name, args, options)
   }
   const published = await publishPreviewArchive(f.io, f.source)
   Tests.expect(published.landingHead).toBe('e'.repeat(40))

@@ -1,6 +1,7 @@
 import { Json, S, Time } from '@shared'
 import * as Tests from '@shared-tests'
-import { Exec, Path, Repo } from '@shared/os'
+import { Path, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Process from '../shared-src/os/Process'
 
 Tests.test('waitFor preserves explicit success values and bounds periodic checks without real sleeps', async () => {

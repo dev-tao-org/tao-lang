@@ -8,8 +8,8 @@ import { requireHost } from '../../agent-skills/performance-investigation/Remote
 /** TimingConnection selects an existing SSH endpoint and optional connection preview. */
 export type TimingConnection = { host: string; dryRun?: boolean; controlPath?: string }
 
-/** TimingConnectionIO isolates authentication and existing connection checks from test fixtures. */
-export type TimingConnectionIO = {
+// TimingConnectionIO holds native SSH operations for one connection invocation.
+type TimingConnectionIO = {
   interactive: boolean
   execute: typeof CLIKit.runNonInteractiveCommand
   executeInteractive: typeof CLIKit.runInteractiveCommand
@@ -20,7 +20,8 @@ export type TimingConnectionIO = {
 }
 
 /** connectTiming authenticates one reusable SSH session without changing keys, trust policy or SSH configuration. */
-export async function connectTiming(options: TimingConnection, io = createConnectionIO()): Promise<void> {
+export async function connectTiming(options: TimingConnection): Promise<void> {
+  const io = createConnectionIO()
   requireHost(options.host)
   const socket = options.controlPath ?? io.resolveSocket(options.host)
   if (options.dryRun) {
@@ -28,7 +29,7 @@ export async function connectTiming(options: TimingConnection, io = createConnec
     return
   }
   if (await io.exists(socket)) {
-    await io.execute('ssh -O check', { variadicArgs: ['-S', socket, '--', options.host] })
+    await io.execute('ssh', ['-O', 'check', '-S', socket, '--', options.host])
     io.print(`Existing SSH connection is ready for ${options.host}.`)
     return
   }
@@ -37,17 +38,26 @@ export async function connectTiming(options: TimingConnection, io = createConnec
   }
   await io.mkdir(Path.dirname(socket))
   io.print('SSH may ask for the timing Mac’s login password. Input is hidden; Ctrl+C cancels.')
-  await io.executeInteractive('ssh -fN -o ControlMaster=auto -o ControlPersist=2h -o ConnectTimeout=10', {
-    variadicArgs: ['-S', socket, '--', options.host],
-  })
-  await io.execute('ssh -o BatchMode=yes -o ConnectTimeout=10', {
-    variadicArgs: ['-S', socket, '--', options.host, 'true'],
-  })
+  await io.executeInteractive('ssh', [
+    '-fN',
+    '-o',
+    'ControlMaster=auto',
+    '-o',
+    'ControlPersist=2h',
+    '-o',
+    'ConnectTimeout=10',
+    '-S',
+    socket,
+    '--',
+    options.host,
+  ])
+  await io.execute('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-S', socket, '--', options.host, 'true'])
   io.print(`SSH ready for ${options.host}. You are still on this Mac; no remote shell was opened.`)
 }
 
 /** disconnectTiming closes the selected Tao SSH master without opening a remote shell. */
-export async function disconnectTiming(options: TimingConnection, io = createConnectionIO()): Promise<void> {
+export async function disconnectTiming(options: TimingConnection): Promise<void> {
+  const io = createConnectionIO()
   requireHost(options.host)
   const socket = options.controlPath ?? io.resolveSocket(options.host)
   if (options.dryRun) {
@@ -58,7 +68,7 @@ export async function disconnectTiming(options: TimingConnection, io = createCon
     io.print(`No saved SSH connection to ${options.host} is open.`)
     return
   }
-  await io.execute('ssh -O exit', { variadicArgs: ['-S', socket, '--', options.host] })
+  await io.execute('ssh', ['-O', 'exit', '-S', socket, '--', options.host])
   io.print(`SSH connection to ${options.host} closed.`)
 }
 

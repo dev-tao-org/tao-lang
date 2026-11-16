@@ -1,5 +1,4 @@
 import { IO } from '@cli-kit'
-import * as CLIKit from '@cli-kit'
 import { Json, Schema } from '@shared'
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
@@ -26,8 +25,8 @@ export async function reportTiming(request: TimingReportRequest): Promise<void> 
 export async function presentTimingReport(
   report: TimingReport,
   print: (message: string) => void = IO.summary,
-  directory = DevelopmentStorage.resolveDirectory('timing', 'reports'),
 ): Promise<void> {
+  const directory = DevelopmentStorage.resolveDirectory('timing', 'reports')
   await FS.mkdir(directory)
   const history = await readTimingHistory(report, directory)
   const path = Path.join(directory, Path.posix.basename(report.directory) + '.json')
@@ -46,21 +45,20 @@ export async function presentTimingReport(
 export async function readTimingReport(
   request: TimingReportRequest,
   controlPath: string,
-  execute = CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
   if (!Path.posix.isAbsolute(request.tooling)) {
     Errors.ThrowUserInput('Use an absolute runner tooling checkout path.')
   }
   const remote = { host: request.host, directory: request.tooling, controlPath }
-  const job = request.job ?? await readLatestJob(remote, execute)
+  const job = request.job ?? await readLatestJob(remote)
   requireJobPath(job, request.tooling)
   const args = createTimingHelperArguments('summarize', [job])
-  const text = await readTimingRemote(withTimingArguments(remote, args), execute)
+  const text = await readTimingRemote(withTimingArguments(remote, args))
   const reports = parseTimingReports(text)
   if (reports.length !== 1 || reports[0]?.directory !== job) {
     Errors.ThrowHostEnvironment('The runner did not return the requested timing report.')
   }
-  return await readJobProvenance(remote, reports[0], execute)
+  return await readJobProvenance(remote, reports[0])
 }
 
 /** readTimingJobPath identifies the exact job announced by a completed measurement command. */
@@ -103,13 +101,10 @@ function formatTimingReport(report: TimingReport): string {
   ].join(NewlineCharacter)
 }
 
-async function readLatestJob(
-  remote: Omit<TimingRemoteRequest, 'args'>,
-  execute: typeof CLIKit.runNonInteractiveCommand,
-): Promise<string> {
+async function readLatestJob(remote: Omit<TimingRemoteRequest, 'args'>): Promise<string> {
   const jobs = Path.posix.join(remote.directory, JobsDirectory)
   const args = ['/bin/ls', '-1t', jobs]
-  const listing = await readTimingRemote(withTimingArguments(remote, args), execute)
+  const listing = await readTimingRemote(withTimingArguments(remote, args))
   const latest = listing.split(Regxs.TimingListingLineBreakRegx).find(name => Regxs.TimingJobIdRegx.test(name))
   if (!latest) {
     Errors.ThrowUserInput('No timing jobs were found in this tooling checkout.')
@@ -124,11 +119,10 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
 async function readJobProvenance(
   remote: Omit<TimingRemoteRequest, 'args'>,
   summary: TimingReport,
-  execute: typeof CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
   const path = Path.posix.join(summary.directory, JobFileName)
   const args = ['/bin/cat', path]
-  const text = await readTimingRemote(withTimingArguments(remote, args), execute)
+  const text = await readTimingRemote(withTimingArguments(remote, args))
   const job = parseMeasurementJob(text, path)
   if (!matchesSummarizedJob(job, summary)) {
     Errors.ThrowHostEnvironment('The runner job identity no longer matches its timing summary.')

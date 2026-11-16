@@ -16,18 +16,12 @@
     "Capture": ["value"]
   },
   "fieldTypeOverrides": {
-    "AppDeclaration": {
-      "block": "AppDeclarationBlock"
-    },
     "Capture": {
       "value": "CaptureValue"
     },
     "ExpectStatement": {
-      "block": "ExpectationBlock | undefined",
+      "block": "Block | undefined",
       "expectation": "Expectation | undefined"
-    },
-    "File": {
-      "block": "DeclarationBlock"
     },
     "Injection": {
       "captures": "readonly Capture[]"
@@ -35,43 +29,23 @@
     "InputExpectation": {
       "target": "RenderTag | undefined"
     },
-    "TestDeclaration": {
-      "block": "TestBlock"
-    },
-    "TestsDeclaration": {
-      "block": "TestsBlock"
-    },
     "ViewDeclaration": {
       "body": "ViewDeclarationImplementation",
       "parameters": "readonly Parameter[]"
     },
     "ViewRenderExpression": {
-      "block": "ViewRenderBlock | undefined",
       "arguments": "readonly Expression[]"
     },
     "UseStatement": {
       "all": "boolean"
     }
   },
-  "blocks": {
-    "DeclarationBlock": { "members": ["_Declaration"] },
-    "AppDeclarationBlock": { "members": ["RootDeclaration"] },
-    "ViewDeclarationBlock": {
-      "statementUnion": "ViewDeclarationStatement",
-      "members": ["LetDeclaration", "_ViewRenderStatement", "ViewDeclaration"]
-    },
-    "ViewRenderBlock": {
-      "statementUnion": "ViewRenderBlockStatement",
-      "members": ["LetDeclaration", "ViewRenderExpression"]
-    },
-    "TestsBlock": { "members": ["TestDeclaration"] },
-    "TestBlock": { "members": ["RunStatement", "PressStatement", "TypeStatement", "ExpectStatement"] },
-    "ExpectationBlock": { "members": ["TextExpectation", "InputValueExpectation"] }
-  },
   "unions": {
     "CaptureValue": ["Name", "ContextReference"],
     "TestStep": ["RunStatement", "PressStatement", "TypeStatement", "ExpectStatement"],
     "Expectation": ["TextExpectation", "InputExpectation"],
-    "ValueDeclaration": ["AppDeclaration", "ViewDeclaration", "LetDeclaration"]
+    "ValueDeclaration": ["AppDeclaration", "ViewDeclaration", "LetDeclaration"],
+    "ViewDeclarationStatement": ["LetDeclaration", "_ViewRenderStatement", "ViewDeclaration"],
+    "ViewRenderBlockStatement": ["LetDeclaration", "ViewRenderExpression"]
   }
 }

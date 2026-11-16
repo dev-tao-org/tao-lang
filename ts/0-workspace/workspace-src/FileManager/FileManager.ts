@@ -161,9 +161,8 @@ export class FileManager {
     const path = this.entryPath!
     const generation = this.entryGeneration
     const observation = this.observationGeneration
-    const scheduleRefresh = this.options.schedule ?? Time.schedule
     const debounceMs = this.options.debounceMs ?? 5
-    this.refreshTimer = scheduleRefresh(debounceMs, () => {
+    this.refreshTimer = Time.schedule(debounceMs, () => {
       this.refreshTimer = undefined
       const input = FileManagerCompilation.createWatchedInput(path, change)
       void this.enqueue(input, generation, observation)
@@ -255,7 +254,6 @@ export class FileManager {
     const loaded = await FileManagerCompilation.loadFileManagerInput(
       request,
       this.documents,
-      this.options.read,
       () => this.isCurrent(request),
     )
     if (FileManagerCompilation.isUpdateResult(loaded)) {

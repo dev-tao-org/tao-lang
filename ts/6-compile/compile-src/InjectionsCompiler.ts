@@ -1,6 +1,5 @@
 import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
-import { TypeScript as ts } from '../../shared/shared-src/bridges/Bridge_typescript'
 import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
@@ -37,21 +36,7 @@ function compileCapture(
 }
 
 function assertCaptureName(name: string): void {
-  if (name === 'TR' || name === 'Tao' || reservedCaptureNames.has(name)) {
+  if (name === 'TR' || name === 'Tao') {
     Errors.ThrowUserInput(`Injection capture name ${name} conflicts with generated JavaScript.`)
   }
 }
-
-function createReservedCaptureNames(): ReadonlySet<string> {
-  // Await is reserved in modules; eval and arguments are forbidden strict-mode bindings.
-  const names = new Set(['await', 'eval', 'arguments'])
-  for (let kind = ts.SyntaxKind.FirstReservedWord; kind <= ts.SyntaxKind.LastFutureReservedWord; kind++) {
-    const keyword = ts.tokenToString(kind)
-    if (keyword) {
-      names.add(keyword)
-    }
-  }
-  return names
-}
-
-const reservedCaptureNames = createReservedCaptureNames()

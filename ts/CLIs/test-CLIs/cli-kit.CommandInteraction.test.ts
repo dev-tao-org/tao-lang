@@ -21,7 +21,7 @@ Tests.test('interactive command execution hands off the terminal and restores it
   const runners = createCommandRunners({
     isInteractive: () => true,
     prompt: lifecycle.run,
-    async execute(command, _options, mode) {
+    async execute(command, _args, _options, mode) {
       events.push(`${command}:${mode}`)
       if (command === 'fail') {
         Errors.Throw(failure)
@@ -48,7 +48,7 @@ Tests.test('headless commands reject interactive execution before launch and bat
       events.push('prompt')
       return await action()
     },
-    async execute(_command, _options, mode) {
+    async execute(_command, _args, _options, mode) {
       events.push(mode)
     },
   })

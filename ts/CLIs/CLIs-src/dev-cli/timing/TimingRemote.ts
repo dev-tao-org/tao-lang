@@ -8,11 +8,8 @@ import { executeRemote } from '../../agent-skills/performance-investigation/Remo
 export type TimingRemoteRequest = { host: string; directory: string; controlPath: string; args: readonly string[] }
 
 /** readTimingRemote retains runner stdout while preserving ordinary command logs and SSH supervision. */
-export async function readTimingRemote(
-  request: TimingRemoteRequest,
-  execute = CLIKit.runNonInteractiveCommand,
-  channel = IO.channel({ title: 'Timing runner' }),
-): Promise<string> {
+export async function readTimingRemote(request: TimingRemoteRequest): Promise<string> {
+  const channel = IO.channel({ title: 'Timing runner' })
   let text = ''
   const decode = Streams.createDecoder()
   const output: CLIKit.OutputChannel = {
@@ -35,11 +32,11 @@ export async function readTimingRemote(
   await executeRemote(request.host, args, {
     directory: request.directory,
     controlPath: request.controlPath,
-  }, (command, options) => execute(command, withTimingOutput(options, output)))
+  }, (command, args, options) => CLIKit.runNonInteractiveCommand(command, args, withTimingOutput(options, output)))
   return text
 }
 
-type CommandOptions = Parameters<typeof CLIKit.runNonInteractiveCommand>[1]
+type CommandOptions = Parameters<typeof CLIKit.runNonInteractiveCommand>[2]
 
 function withTimingOutput(options: CommandOptions, output: CLIKit.OutputChannel): CommandOptions {
   return { ...options, output }

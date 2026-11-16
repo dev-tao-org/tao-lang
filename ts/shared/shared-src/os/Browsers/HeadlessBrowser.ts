@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import type { Browser, Page } from '../bridges/Bridge_playwright'
 import Env from '../Env'
-import * as Exec from '../Exec'
+import Exec from '../Exec'
 import * as Platform from '../Platform'
 
 export type { Browser, FrameLocator, Page } from '../bridges/Bridge_playwright'

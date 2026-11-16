@@ -127,6 +127,15 @@ export async function readText(stream: WebHost.ReadableStream<Uint8Array>): Prom
   return new WebHost.Response(stream).text()
 }
 
+/** resolveCommandArgs returns exact argv entries from a separate command argument value. */
+export function resolveCommandArgs(args: CommandArgs): string[] {
+  if (typeof args !== 'string') {
+    return [...args]
+  }
+  const text = args.trim()
+  return text ? text.split(Regxs.WhitespaceRunsRegx) : []
+}
+
 type CommandInvocationField = 'command' | 'args' | 'cwd'
 /** CommandInvocation identifies the executable, arguments and working directory before execution. */
 export type CommandInvocation = Pick<CommandResult, CommandInvocationField>
@@ -165,7 +174,7 @@ function resolveCommand<Options extends CommandOptions>(
     Errors.ThrowUserInput('A command is required.')
   }
   const hasArgs = isCommandArgs(argsOrOptions)
-  const args = hasArgs ? resolveArgs(argsOrOptions) : []
+  const args = hasArgs ? resolveCommandArgs(argsOrOptions) : []
   const options = hasArgs ? explicitOptions : argsOrOptions
   const invocation: CommandInvocation = { command, args, cwd: options?.cwd }
   return { invocation, options }
@@ -199,14 +208,6 @@ function createCommandResult<Status extends CommandStatus>(
   stderr: string,
 ): CommandResult<Status> {
   return { ...invocation, status, signal, stdout, stderr }
-}
-
-function resolveArgs(args: CommandArgs): readonly string[] {
-  if (typeof args !== 'string') {
-    return [...args]
-  }
-  const text = args.trim()
-  return text ? text.split(Regxs.WhitespaceRunsRegx) : []
 }
 
 function startCommand<

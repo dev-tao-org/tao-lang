@@ -203,15 +203,16 @@ async function runTaoWorker(
   TestPlanModule2.assertTestRunActive(signal)
   channel.start()
   let commandFailure: OptionalCommandFailure
+  const args = [
+    'run',
+    Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),
+    '--report',
+    worker.reportPath,
+    '--',
+    ...worker.paths,
+  ]
   await Try(() =>
-    CLIKit.runNonInteractiveCommand('bun run', {
-      variadicArgs: [
-        Repo.resolvePath('ts/CLIs/CLIs-src/dev-cli/testing/TaoTestWorker.ts'),
-        '--report',
-        worker.reportPath,
-        '--',
-        ...worker.paths,
-      ],
+    CLIKit.runNonInteractiveCommand('bun', args, {
       structuredOutput: true,
       cwd: Repo.getWorkspaceRoot(),
       output: channel,

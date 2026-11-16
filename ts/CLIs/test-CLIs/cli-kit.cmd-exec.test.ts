@@ -46,8 +46,7 @@ Tests.test('command cancellation drains cooperative cleanup and cannot report a 
     await stopped
     Terminal.stderr.write('cleanup complete\\n')
   `
-  await Tests.expect(runNonInteractiveCommand('bun', {
-    variadicArgs: ['-e', child],
+  await Tests.expect(runNonInteractiveCommand('bun', ['-e', child], {
     cwd: Repo.resolvePath('ts'),
     output: output.channel('fixture'),
     signal: controller.signal,
@@ -67,7 +66,7 @@ Tests.test('batch commands read explicitly supplied files without acquiring term
       captured.push(event.text)
     }
   })
-  await runNonInteractiveCommand('cat', { stdin: FS.file(path), output: output.channel('fixture') })
+  await runNonInteractiveCommand('cat', [], { stdin: FS.file(path), output: output.channel('fixture') })
   Tests.expect(captured.join('')).toBe('explicit command input\n')
   await output.finish()
 })

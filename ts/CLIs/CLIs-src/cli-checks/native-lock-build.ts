@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
 import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
@@ -174,8 +174,13 @@ function quoteGypPath(path: string): string {
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {
   const options = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS'))
-  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [staging, ...options.headers],
+  await CLIKit.runNonInteractiveCommand('node-gyp', [
+    'rebuild',
+    '--loglevel=warn',
+    '--directory',
+    staging,
+    ...options.headers,
+  ], {
     cwd: sharedRoot,
     addEnv: options.environment,
   })

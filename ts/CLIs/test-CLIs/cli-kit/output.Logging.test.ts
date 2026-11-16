@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 import { FS, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { outputFixturePath } from './output.test-fixtures'
 
 const LogPathRegx = /Logs: (.+\.log)/

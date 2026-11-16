@@ -1,5 +1,5 @@
 import * as Tests from '@shared-tests'
-import * as Exec from '../../shared-src/os/Exec'
+import Exec from '@shared/os/exec'
 import * as FS from '../../shared-src/os/FS'
 import * as Path from '../../shared-src/os/Path'
 import * as Platform from '../../shared-src/os/Platform'

@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Storage } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { readRuntimePatches } from './RuntimePatches'
 import * as ToolchainIdentity from './ToolchainIdentity'
 

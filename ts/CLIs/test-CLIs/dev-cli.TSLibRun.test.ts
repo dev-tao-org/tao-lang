@@ -1,7 +1,7 @@
 import { ControlCCharacter, Errors, Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HttpServer, Path, Platform, Streams, Text } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { Http } from '@shared/web'
 import * as WorkspaceTests from '@workspace-tests'
 

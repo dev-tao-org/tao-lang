@@ -12,9 +12,9 @@ description: >-
 
 ## Guide the review
 
-- Propose all groups in review order and get explicit agreement before presenting files. Group one
-  feature at a time; combine only mutually dependent features. Normally separate Projects,
-  Dependencies and Sidecars.
+- Propose all groups in order with [recommended auto-approvals](references/operations.md#recommend-auto-approval).
+  Get explicit agreement before presenting files. Group by feature, combining only interdependent
+  features. Normally separate Projects, Dependencies and Sidecars.
 - Organize large reviews into functional feature sets containing review groups. Include each
   specification with its first related implementation group; keep design-only specifications with
   related planning. Give each feature set and group a brief cognitive overview of its contribution.

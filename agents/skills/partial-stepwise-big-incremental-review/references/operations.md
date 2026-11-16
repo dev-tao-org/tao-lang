@@ -96,6 +96,19 @@ selections; checkpoint source corrections before transferring accepted contents.
 verification merely to copy previously committed approved contents. For implementation corrections,
 choose proportionate intermittent checks and retain actionable failures.
 
+## Recommend auto-approval
+
+With each group proposal, list candidates by file or stable ID and give a short reason for each.
+Report any files already accepted under standing authorization separately. A recommendation needs
+developer approval unless standing authorization already covers the change.
+
+Recommend straightforward tests and changes to fixtures or helpers whose callers are exclusively
+tests. Trace usage and check that the changes preserve meaningful coverage. Keep shared runners,
+execution infrastructure, and fixtures that define substantial expected behavior available for
+manual review. Recommend Markdown changes that accurately document verified implementation or
+make editorial corrections. Keep changes that introduce architectural decisions, unimplemented
+behavior, or new contracts in their review groups.
+
 ## Automatic test acceptance
 
 Authored TypeScript `.test.ts` and `.test.tsx` files are automatically approved under this skill's

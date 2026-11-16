@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import { Errors, Source, Switch, Time, Try } from '@shared'
+import * as Typecheck from '@typecheck'
 
 /** TestDriver runs one isolated app journey against a platform's visible UI. */
 export type TestDriver = {
@@ -34,9 +35,10 @@ export type TestResult = {
 
 /** runTests executes the app journeys declared in one semantic source document. */
 export async function runTests(document: AST.Document, options: TestOptions): Promise<TestResult[]> {
+  Typecheck.assertValidStatements(document, options.path)
   const results: TestResult[] = []
-  for (const suite of AST.GetDeclarations(document).filter(AST.IsTestsDeclaration)) {
-    for (const test of suite.block.statements) {
+  for (const suite of AST.GetTestsDeclarations(document)) {
+    for (const test of AST.GetTests(suite)) {
       const label = caseLabel(suite, test, options)
       options.onProgress?.(`Test ${label}…`)
       results.push(await runCase(suite, test, options))
@@ -114,16 +116,21 @@ function runStep(step: AST.TestStep, driver: TestDriver): Promise<void> {
     RunStatement: value => driver.run(value.app.value),
     PressStatement: value => driver.press(value.target.value),
     TypeStatement: value => driver.type(value.target.value, value.value.value),
-    async ExpectStatement(value) {
-      if (value.expectation) {
-        await expectValue(value.expectation, value.target?.value, driver)
-      } else if (value.block) {
-        for (const expectation of value.block.statements) {
-          await expectValue(expectation, value.target?.value, driver)
-        }
-      }
-    },
+    ExpectStatement: value => runExpectStatement(value, driver),
   })
+}
+
+// Expand Tao expect syntax before calling the platform driver.
+// Inline and block forms share an optional parent tag. TestDriver keeps only expectText and
+// expectInput so browser implementations stay free of AST shapes.
+async function runExpectStatement(statement: AST.ExpectStatement, driver: TestDriver): Promise<void> {
+  if (statement.expectation) {
+    await expectValue(statement.expectation, statement.target?.value, driver)
+  } else if (statement.block) {
+    for (const expectation of AST.GetExpectations(statement.block)) {
+      await expectValue(expectation, statement.target?.value, driver)
+    }
+  }
 }
 
 function hasExpectations(step: AST.ExpectStatement): boolean {

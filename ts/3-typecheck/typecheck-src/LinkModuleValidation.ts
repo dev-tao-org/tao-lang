@@ -32,7 +32,7 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
 }
 
 function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>): void {
-  for (const test of tests.block.statements) {
+  for (const test of AST.GetTests(tests)) {
     for (const step of AST.GetTestSteps(test)) {
       if (AST.IsKind(step, 'RunStatement')) {
         names.add(step.app.value)
@@ -43,8 +43,8 @@ function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>):
 
 function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void {
   const statements = AST.GetViewDeclarationStatements(view) ?? []
-  const lets = statements.filter(AST.IsLetDeclaration)
-  const children = statements.filter(AST.IsViewDeclaration)
+  const lets = AST.GetLetDeclarations(statements)
+  const children = AST.GetNestedViewDeclarations(statements)
   assertUniqueNames(source, view.name.value, [
     ...view.parameters.map(parameter => parameter.name.value),
     ...lets.map(definition => definition.name.value),
@@ -68,7 +68,7 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
     addReference(parameter.type.value, names, localNames)
     localNames.add(parameter.name.value)
   }
-  for (const child of statements.filter(AST.IsViewDeclaration)) {
+  for (const child of AST.GetNestedViewDeclarations(statements)) {
     localNames.add(child.name.value)
   }
   for (const statement of statements) {
@@ -86,9 +86,9 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
 
 function assertUniqueRenderChildren(source: string, view: string, render: AST.ViewRenderExpression): void {
   const statements = AST.GetViewRenderBlockStatements(render)
-  const lets = statements.filter(AST.IsLetDeclaration)
+  const lets = AST.GetLetDeclarations(statements)
   assertUniqueNames(source, view, lets.map(definition => definition.name.value))
-  for (const child of statements.filter(AST.IsViewRenderExpression)) {
+  for (const child of AST.GetViewRenderExpressions(statements)) {
     assertUniqueRenderChildren(source, view, child)
   }
 }

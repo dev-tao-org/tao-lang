@@ -168,7 +168,7 @@ function compileBindingTypes(
   paths: GeneratedModulePaths,
   context: DeclarationCompiler.DeclarationContext,
 ): string {
-  const members = AST.GetDeclarations(module.document).filter(AST.IsValueDeclaration).map(node => {
+  const members = AST.GetValueDeclarations(module.document).map(node => {
     const type = resolveBindingType(node, context)
     return `readonly ${emitStringLiteral(node.name.value)}: ${type};`
   })

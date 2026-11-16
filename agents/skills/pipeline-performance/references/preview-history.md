@@ -39,7 +39,7 @@ Store each source commit under `.storage/performance/preview/<full-source-commit
 Keep raw samples and the measurement definitions. Preview-applied is the matching React commit
 receipt, not proof of physical paint. The save-based clock starts when the compiler process
 accepts the edit, before persistence and compilation.
-One run's three scenarios are individual samples, not a statistically established median or p95.
+Warm steps within one session are repeated edits. Use independent sessions to assess repeatability.
 Do not replace an existing per-commit record with a faster rerun. Diagnostic reruns stay in
 `.artifacts` with their conditions; a correction is a separately identified archive addition.
 

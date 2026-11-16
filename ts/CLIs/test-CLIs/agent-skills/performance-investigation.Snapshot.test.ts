@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { receiveSnapshot } from '../../CLIs-src/agent-skills/performance-investigation/Checkout'
 import { runMeasurements } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
 import { createSnapshot } from '../../CLIs-src/agent-skills/performance-investigation/Snapshot'
@@ -72,18 +72,19 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
 }
 
 async function receiveWithLineEndingConfiguration(bundle: string, manifest: string, clone: string): Promise<void> {
-  await CLIKit.runNonInteractiveCommand('./agent skill-script', {
-    variadicArgs: [
-      'agents/skills/performance-investigation/scripts/performance.ts',
-      '--',
-      'receive',
-      '--bundle',
-      bundle,
-      '--manifest',
-      manifest,
-      '--directory',
-      clone,
-    ],
+  const args = [
+    'skill-script',
+    'agents/skills/performance-investigation/scripts/performance.ts',
+    '--',
+    'receive',
+    '--bundle',
+    bundle,
+    '--manifest',
+    manifest,
+    '--directory',
+    clone,
+  ]
+  await CLIKit.runNonInteractiveCommand('./agent', args, {
     cwd: Repo.getWorkspaceRoot(),
     addEnv: {
       GIT_CONFIG_COUNT: '1',

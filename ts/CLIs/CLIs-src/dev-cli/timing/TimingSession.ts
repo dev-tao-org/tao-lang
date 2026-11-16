@@ -1,12 +1,11 @@
 import { IO } from '@cli-kit'
-import * as CLIKit from '@cli-kit'
 import { Errors, Try } from '@shared'
 import { Platform } from '@shared/os'
 import { connectTiming, disconnectTiming, resolveTimingSocket } from './TimingConnection'
 import { requireTimingRun, runTiming, type TimingRun } from './TimingRun'
 
-/** TimingSessionIO supplies one owned connection lifecycle and delayed final report presentation. */
-export type TimingSessionIO = {
+// TimingSessionIO groups the owned SSH lifecycle and delayed report presentation.
+type TimingSessionIO = {
   createSocket: (host: string) => string
   connect: typeof connectTiming
   disconnect: typeof disconnectTiming
@@ -18,7 +17,8 @@ export type TimingSessionIO = {
 type PendingTimingReport = string | undefined
 
 /** runTimingSession connects, measures and closes its private master before printing the final report. */
-export async function runTimingSession(options: TimingRun, io = createSessionIO()): Promise<void> {
+export async function runTimingSession(options: TimingRun): Promise<void> {
+  const io = createSessionIO()
   requireTimingRun(options)
   if (options.dryRun) {
     await io.run(options, io.print)
@@ -46,14 +46,10 @@ function createSessionIO(): TimingSessionIO {
     createSocket: host => resolveTimingSocket(host, Platform.randomUUID()),
     connect: connectTiming,
     disconnect: disconnectTiming,
-    run: (request, summary) => runTiming(request, describeSessionRunIO(summary)),
+    run: (request, summary) => runTiming(request, summary),
     print: IO.summary,
     warn: IO.warn,
   }
-}
-
-function describeSessionRunIO(summary: (message: string) => void) {
-  return { execute: CLIKit.runNonInteractiveCommand, print: IO.print, summary, resolveSocket: resolveTimingSocket }
 }
 
 function withSessionSocket(options: TimingRun, controlPath: string): TimingRun {

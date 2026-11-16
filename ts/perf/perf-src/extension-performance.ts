@@ -3,7 +3,7 @@ import { Json } from '@shared'
 import { Errors, Lists, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {

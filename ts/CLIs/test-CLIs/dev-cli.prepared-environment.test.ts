@@ -2,7 +2,7 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 Tests.test('prepared activation retains toolchain values, rejects changed inputs and avoids another shell activation', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/prepared-environment-'))

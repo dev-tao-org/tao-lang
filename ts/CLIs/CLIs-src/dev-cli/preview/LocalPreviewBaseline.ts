@@ -1,7 +1,8 @@
 import { IO } from '@cli-kit'
 import * as Perf from '@perf'
 import { Errors, Json, NewlineCharacter, Objects, Schema } from '@shared'
-import { Artifacts, Exec, FS, Path, Platform, Repo } from '@shared/os'
+import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 import { measurePreviewTimings, type PreviewTiming } from '../../agent-skills/performance-investigation/BranchMetrics'
 import { captureGit, resolveCommit } from '../../agent-skills/performance-investigation/Git'

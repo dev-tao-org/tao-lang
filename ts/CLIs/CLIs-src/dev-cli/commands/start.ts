@@ -17,14 +17,16 @@ export default registerCommand({
     await CLIKit.runSteps(
       () =>
         CLIKit.runNonInteractiveCommand(
-          'docker compose --project-name tao-local-instantdb --file docker-compose.yml up --detach --wait',
+          'docker',
+          'compose --project-name tao-local-instantdb --file docker-compose.yml up --detach --wait',
           {
             cwd,
           },
         ),
       () =>
         CLIKit.runNonInteractiveCommand(
-          'docker compose --project-name tao-local-instantdb --file docker-compose.yml exec -T postgres psql --set ON_ERROR_STOP=1 --username instant --dbname instant --set app_id=9faf89c0-c15c-49b4-bf3f-3b5b2cd9a19f --file /dev/stdin',
+          'docker',
+          'compose --project-name tao-local-instantdb --file docker-compose.yml exec -T postgres psql --set ON_ERROR_STOP=1 --username instant --dbname instant --set app_id=9faf89c0-c15c-49b4-bf3f-3b5b2cd9a19f --file /dev/stdin',
           {
             cwd,
             stdin: FS.file(Repo.resolvePath('.config/local-instantdb/seed-app.sql')),

@@ -23,5 +23,3 @@ Timings.createTopLevelTimer(collector => {
   // @ts-expect-error Context injection does not add an authored argument.
   collector.run(orchestration, collector, 'Tao')
 })
-// @ts-expect-error Injected clocks require an explicit identity.
-Timings.createTopLevelTimer(() => {}, { now: () => 0 })

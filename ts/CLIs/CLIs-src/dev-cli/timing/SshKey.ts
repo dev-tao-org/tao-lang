@@ -1,7 +1,8 @@
 import * as CLIKit from '@cli-kit'
 import { IO } from '@cli-kit'
 import { Errors, Regxs, Try } from '@shared'
-import { BuildLock, Exec, FS, Path, Platform, Terminal } from '@shared/os'
+import { BuildLock, FS, Path, Platform, Terminal } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { installSshConfig } from './SshKeyConfig'
 import { readAuthenticatedKeyFingerprint } from './SshKeyDiagnostics'
@@ -42,11 +43,17 @@ async function copyKeyToHost(host: string, identity: string): Promise<void> {
     Errors.ThrowUserInput('Run just ssh-key-setup HOST in Terminal to enroll the key.')
   }
   await prepareKey(host, identity)
-  await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', { variadicArgs: ['--apple-use-keychain', identity] })
+  await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', ['--apple-use-keychain', identity])
   IO.print(`Installing the public key on ${host}. SSH may ask for the remote login password once.`)
-  await CLIKit.runInteractiveCommand('/usr/bin/ssh-copy-id', {
-    variadicArgs: ['-f', '-i', identity + PublicKeySuffix, '-o', 'ConnectTimeout=10', '--', host],
-  })
+  await CLIKit.runInteractiveCommand('/usr/bin/ssh-copy-id', [
+    '-f',
+    '-i',
+    identity + PublicKeySuffix,
+    '-o',
+    'ConnectTimeout=10',
+    '--',
+    host,
+  ])
 }
 
 function sshKeyPath(host: string): string {
@@ -66,9 +73,7 @@ async function prepareKey(host: string, identity: string): Promise<void> {
   }
   await FS.mkdirPrivate(Path.dirname(identity))
   IO.print('Choose a passphrase for the dedicated key. macOS Keychain can store it for later logins.')
-  await CLIKit.runInteractiveCommand('/usr/bin/ssh-keygen', {
-    variadicArgs: ['-t', 'ed25519', '-f', identity, '-C', `tao:${host}`],
-  })
+  await CLIKit.runInteractiveCommand('/usr/bin/ssh-keygen', ['-t', 'ed25519', '-f', identity, '-C', `tao:${host}`])
 }
 
 const PublicKeySuffix = '.pub'

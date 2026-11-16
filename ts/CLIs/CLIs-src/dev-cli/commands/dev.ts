@@ -28,21 +28,17 @@ async function runDevelopmentLoop(yes?: boolean): Promise<void> {
     return
   }
   const controller = Cancellation.createController()
-  const ui = workflowUI(yes, controller.signal)
   const apps: AppLaunches = new Map([
     ['p', { label: 'Performance', start: startPerformanceEditor }],
     ['v', {
       label: 'Live Preview',
-      start: () =>
-        startDevelopmentPreview(controller.signal, {
-          ...ui,
-          confirm: requirement => keys.withoutKeys(() => ui.confirm(requirement)),
-        }),
+      start: () => startDevelopmentPreview(controller.signal, ui),
     }],
   ])
   const sessions: DevelopmentSessions = new Map()
   IO.print([...apps].map(([key, app]) => `${key}  ${app.label}`).concat('q  Quit').join(NewlineCharacter))
   const keys = listenForDevelopmentApps(apps, sessions, controller)
+  const ui = workflowUI(yes, controller.signal, options => keys.withoutKeys(() => IO.askTerminalConfirmation(options)))
   await Try(() => Process.waitForTermination(controller.signal), {
     async finally() {
       keys.stop()

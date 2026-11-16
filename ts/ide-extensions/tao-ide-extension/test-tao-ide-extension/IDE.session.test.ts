@@ -64,7 +64,7 @@ Tests.test('requirements and import source markers receive keyword highlights', 
   const runtime = await loadRuntime()
   Shared.Try(() => {
     const source = Shared.S`
-      requires npm:date-fns version 4.1.0 as dateFns
+      requires npm:date-fns version 4.1.0 as DateFns
       use tao@ui Text
     `
     const result = runtime.document.update(source)
@@ -86,7 +86,7 @@ Tests.test('TypeScript library declarations highlight their keyword, name and pu
   Shared.Try(() => {
     const source = Shared.S`
       ts-library Demo {
-        publish { Greeting, Cards as cards, }
+        publish { Greeting, Cards as Catalog, }
       }
     `
     const result = runtime.document.update(source)
@@ -99,7 +99,7 @@ Tests.test('TypeScript library declarations highlight their keyword, name and pu
       { kind: 'type', text: 'Greeting' },
       { kind: 'type', text: 'Cards' },
       { kind: 'keyword', text: 'as' },
-      { kind: 'type', text: 'cards' },
+      { kind: 'type', text: 'Catalog' },
     ])
   }, { finally: runtime.dispose })
 })
@@ -133,6 +133,32 @@ Tests.test('embedded TSX captures map through Unicode prefixes into editor UTF-1
     Tests.expect(result.tokens.some(token => token.kind === 'variable' && token.range.start === titleStart)).toBe(true)
     Tests.expect(runtime.document.update(source.replace('<Thing />', '<Thing>')).diagnostics.length).toBeGreaterThan(0)
     Tests.expect(runtime.document.update(source.replace('😀', '😁')).diagnostics).toEqual([])
+  }, { finally: runtime.dispose })
+})
+
+Tests.test('editor shows the misplaced statement range alongside embedded syntax diagnostics', async () => {
+  const runtime = await loadRuntime()
+  Shared.Try(() => {
+    const misplaced = 'root Other'
+    const source = Shared.S`
+      // 😀
+      view main { root Other render inject \`\`\`ts return <Broken> \`\`\` }
+    `
+    const result = runtime.document.update(source)
+    const start = source.indexOf(misplaced)
+    const placement = {
+      range: Shared.Range(start, start + misplaced.length),
+      message: 'Root declarations belong directly inside an app.',
+    }
+    Tests.expect(result.diagnostics).toContainEqual(placement)
+    const nameStart = source.indexOf('main')
+    Tests.expect(result.diagnostics).toContainEqual({
+      range: Shared.Range(nameStart, nameStart + 'main'.length),
+      message: "Declared name 'main' must start with an uppercase letter.",
+    })
+    const corrected = source.replace('view main', 'view Main').replace(misplaced, '').replace('<Broken>', '<Broken />')
+    Tests.expect(result.diagnostics.some(diagnostic => diagnostic.range.start > placement.range.end)).toBe(true)
+    Tests.expect(runtime.document.update(corrected).diagnostics).toEqual([])
   }, { finally: runtime.dispose })
 })
 

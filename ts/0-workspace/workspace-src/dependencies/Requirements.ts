@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
+import * as Typecheck from '@typecheck'
 
 import { Errors, Sort } from '@shared'
 import { FS, Path } from '@shared/os'
@@ -89,6 +90,9 @@ function requirementFromDeclaration(
     Errors.ThrowUserInput(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)
   }
   const version = provider === 'github' ? declaration.version! : declaration.version ?? getDefaultVersion(provider)
+  if (declaration.alias) {
+    Typecheck.requireValidDeclarationName(declaration.alias, path)
+  }
   const aliasFields = declaration.alias ? { alias: declaration.alias.value } : {}
   return {
     provider,

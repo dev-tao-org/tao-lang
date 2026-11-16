@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, FS, Platform, Repo } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec, { type CommandArgs } from '@shared/os/exec'
 
 /** DoctorReport contains environment diagnostics and the host fingerprint. */
 export type DoctorReport = {
@@ -192,7 +192,7 @@ async function artifactChecks(): Promise<Check[]> {
   }))
 }
 
-async function probe(command: string, args: Exec.CommandArgs): Promise<string | undefined> {
+async function probe(command: string, args: CommandArgs): Promise<string | undefined> {
   return Try.WithDefault(
     undefined,
     () => Exec.captureStdout(command, args, { cwd: Repo.getWorkspaceRoot() }),

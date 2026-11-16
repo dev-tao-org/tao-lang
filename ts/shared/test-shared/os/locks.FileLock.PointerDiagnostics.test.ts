@@ -2,8 +2,8 @@ import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
-import * as Exec from '../../shared-src/os/Exec'
 import * as Process from '../../shared-src/os/Process'
 
 Tests.test('production session acquisition gives setup guidance for malformed and outdated pointers', async () => {

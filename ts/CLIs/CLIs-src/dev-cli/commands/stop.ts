@@ -13,7 +13,8 @@ export default registerCommand({
       Errors.ThrowUserInput('Supported service: local-instantdb.')
     }
     await CLIKit.runNonInteractiveCommand(
-      'docker compose --project-name tao-local-instantdb --file docker-compose.yml down',
+      'docker',
+      'compose --project-name tao-local-instantdb --file docker-compose.yml down',
       {
         cwd: Repo.resolvePath('.config/local-instantdb'),
       },

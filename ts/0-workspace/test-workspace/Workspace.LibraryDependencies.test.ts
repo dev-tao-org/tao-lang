@@ -1,14 +1,14 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { createProjectDependencyOptions } from '../workspace-src/dependencies/Options'
 import { prepareDependencies } from '../workspace-src/dependencies/Store'
 import { compileLibraryPackage } from '../workspace-src/LibraryPackage'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { createStandaloneLibraryFixture } from './Workspace.test-utils'
 
-const DependencySetupRequiredRegx = /Dependency widgets needs setup/
+const DependencySetupRequiredRegx = /Dependency Widgets needs setup/
 
 Tests.test('an ordinary TS consumer renders a prepared Tao dependency and refreshes consumer source', async () => {
   const root = await createStandaloneLibraryFixture()
@@ -77,13 +77,13 @@ async function createDependencyWrapper(root: string): Promise<void> {
   )
   await FS.writeFile(
     Path.join(root, 'Dependencies.tao'),
-    `requires file:../${Path.basename(widgets)} version local as widgets${NewlineCharacter}`,
+    `requires file:../${Path.basename(widgets)} version local as Widgets${NewlineCharacter}`,
   )
   const entry = Path.join(root, 'src/tao/Library.tao')
   const source = await FS.readFile(entry, 'utf8')
   const wrapper = source.replace('    Text(First)', '    Text(First)' + NewlineCharacter + '    Widget')
   Tests.expect(wrapper).not.toBe(source)
-  const wrapperSource = 'use widgets@ui Widget' + NewlineCharacter + wrapper
+  const wrapperSource = 'use Widgets@ui Widget' + NewlineCharacter + wrapper
   await FS.writeFile(entry, wrapperSource)
   const journey = Path.join(root, 'src/ts/test/ConsumerJourney.ts')
   const consumer = await FS.readFile(journey, 'utf8')

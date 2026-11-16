@@ -7,7 +7,7 @@ import { refreshPreviewControls } from './Preview/PreviewBrowserControls'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
 import { startPreviewEditor } from './Preview/PreviewEditorBrowser'
 import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
-import { type OpenedPreview, PreviewOpening } from './Preview/PreviewOpening'
+import { PreviewOpening } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
 import * as PreviewWork from './Preview/PreviewWork'
@@ -118,7 +118,7 @@ async function openPreviews(measure: boolean): Promise<void> {
   if (!response.ok) {
     return failPreviewOpen(await response.text())
   }
-  const preview = await response.json() as OpenedPreview
+  const preview = PreviewBrowserJson.parseOpenedPreview(await response.text())
   const url = Http.url(preview.url)
   previewOrigin = url.origin
   const published = acceptPublishedBaseline(preview.baseline)

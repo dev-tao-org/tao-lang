@@ -3,7 +3,7 @@ use package ./cards as Cards
 use LanguageFeatures
 
 ts-library Demo {
-  publish { Greeting, Panel, LanguageFeatures, Cards as cards, }
+  publish { Greeting, Panel, LanguageFeatures, Cards as Catalog, }
 }
 
 public

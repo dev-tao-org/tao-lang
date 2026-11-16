@@ -1,4 +1,4 @@
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type GitOptions = { env?: Record<string, string>; input?: string }
 /** captureGit runs literal Git arguments without refreshing the developer's index. */

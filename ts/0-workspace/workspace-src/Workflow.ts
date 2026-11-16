@@ -49,65 +49,51 @@ type CompileWorkflowKind = 'compile' | 'preview'
 type PreparationWorkflowKind = 'setup' | 'sidecar-tests'
 type WorkflowExecutionResult = WorkflowWorkspace | TestResult[] | void
 
-/** WorkflowServices isolates readiness and mutation at their owning project boundary. */
-export type WorkflowServices = {
-  inspect: typeof inspectProjectPreparation
-  setup: typeof prepareProject
-  openWorkspace?: typeof openProjectWorkspace
-}
-
 /** execute performs consented setup and dispatches the original workflow automatically.
  *  Preview restarts use a fresh output session so failed replacement builds retain last-good bundles and snapshots.
  *  Inactive generations are retained until the existing project cache cleanup removes them. */
 export function execute(
   request: Extract<WorkflowRequest, { kind: CompileWorkflowKind }>,
   ui: WorkflowUI,
-  services?: WorkflowServices,
 ): Promise<WorkflowWorkspace>
 export function execute(
   request: Extract<WorkflowRequest, { kind: 'app-tests' }>,
   ui: WorkflowUI,
-  services?: WorkflowServices,
 ): Promise<TestResult[]>
 export function execute(
   request: Extract<WorkflowRequest, { kind: PreparationWorkflowKind }>,
   ui: WorkflowUI,
-  services?: WorkflowServices,
 ): Promise<void>
 export async function execute(
   request: WorkflowRequest,
   ui: WorkflowUI,
-  services: WorkflowServices = { inspect: inspectProjectPreparation, setup: prepareProject },
 ): Promise<WorkflowExecutionResult> {
-  await prepareWorkflow(request, ui, services)
+  await prepareWorkflow(request, ui)
   assertActive(ui)
-  return await Try(() => dispatch(request, services), {
+  return await Try(() => dispatch(request), {
     async catch(error) {
       if (!isSetupRequired(error)) {
         return Errors.Throw(error)
       }
       await confirmSetup(request.entry, error.message, ui)
-      await services.setup(request.entry)
+      await prepareProject(request.entry)
       assertActive(ui)
-      return await dispatch(request, services)
+      return await dispatch(request)
     },
   })
 }
 
-function dispatch(
-  request: WorkflowRequest,
-  services: WorkflowServices,
-): Promise<WorkflowExecutionResult> {
+function dispatch(request: WorkflowRequest): Promise<WorkflowExecutionResult> {
   return Switch.kind<WorkflowRequest, Promise<WorkflowExecutionResult>>(request, {
     async 'setup'() {},
-    'compile': value => openWorkflowWorkspace(value, services),
-    'preview': value => openWorkflowWorkspace(value, services),
+    'compile': value => openWorkflowWorkspace(value),
+    'preview': value => openWorkflowWorkspace(value),
     'app-tests': value => runAppTests(value.entry, value.openBrowser, value.onProgress, value.signal),
     'sidecar-tests': value => runSidecarTests(value.moduleRoot, value.executor),
   })
 }
 
-async function prepareWorkflow(request: WorkflowRequest, ui: WorkflowUI, services: WorkflowServices): Promise<void> {
+async function prepareWorkflow(request: WorkflowRequest, ui: WorkflowUI): Promise<void> {
   assertActive(ui)
   const restart = request.kind === 'preview' ? request.restart : undefined
   if (restart) {
@@ -116,15 +102,12 @@ async function prepareWorkflow(request: WorkflowRequest, ui: WorkflowUI, service
   }
   if (request.kind === 'setup' && request.preparation?.repair) {
     await confirmSetup(request.entry, 'Repair the generated dependency files.', ui)
-    await services.setup(request.entry, request.preparation)
+    await prepareProject(request.entry, request.preparation)
     return
   }
   await Try(async () => {
     if (request.kind !== 'app-tests' || await discoverProject(request.entry)) {
-      await services.inspect(
-        request.entry,
-        inspectionOptions(request),
-      )
+      await inspectProjectPreparation(request.entry, inspectionOptions(request))
     }
   }, {
     async catch(error) {
@@ -135,7 +118,7 @@ async function prepareWorkflow(request: WorkflowRequest, ui: WorkflowUI, service
         await confirmSetup(request.entry, error.message, ui)
       }
       assertActive(ui)
-      await services.setup(request.entry, request.kind === 'setup' ? request.preparation : undefined)
+      await prepareProject(request.entry, request.kind === 'setup' ? request.preparation : undefined)
     },
   })
 }
@@ -151,11 +134,9 @@ function inspectionOptions(request: WorkflowRequest) {
 
 async function openWorkflowWorkspace(
   request: Extract<WorkflowRequest, { kind: CompileWorkflowKind }>,
-  services: WorkflowServices,
 ): Promise<WorkflowWorkspace> {
   const options = createWorkflowWorkspaceOptions(request)
-  const openWorkspace = services.openWorkspace ?? openProjectWorkspace
-  const workspace = await openWorkspace(request.entry, options)
+  const workspace = await openProjectWorkspace(request.entry, options)
   return await Try(async () => {
     const initialResult = request.kind === 'preview'
       ? await workspace.openFile(request.entry)

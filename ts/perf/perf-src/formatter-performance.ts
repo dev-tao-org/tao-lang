@@ -3,7 +3,7 @@ import * as Fix from '@fix'
 import * as Embedded from '@fix/embedded'
 import * as Grammar from '@grammar'
 import { Json } from '@shared'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Typecheck from '@typecheck'
 
 import { Errors, NewlineCharacter, S, Timings, type TimingSample } from '@shared'

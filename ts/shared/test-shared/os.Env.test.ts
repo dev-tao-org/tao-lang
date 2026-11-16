@@ -1,7 +1,7 @@
 import { Errors } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, Path } from '@shared/os'
-import * as Exec from '../shared-src/os/Exec'
+import Exec from '@shared/os/exec'
 
 type EnvironmentValue = string | undefined
 type MutableEnvironment = Record<string, EnvironmentValue>

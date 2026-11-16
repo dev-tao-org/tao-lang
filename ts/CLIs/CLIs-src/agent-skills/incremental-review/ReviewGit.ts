@@ -1,6 +1,6 @@
 import { Errors, Json, Lists, NewlineCharacter, NullCharacter, Sort, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */

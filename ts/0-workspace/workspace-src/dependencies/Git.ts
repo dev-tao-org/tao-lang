@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter, Regxs, TabCharacter } from '@shared'
 import { FS } from '@shared/os'
-import { Exec } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type { GitSourceAdapter } from './Types'
 
 /** gitSourceAdapter resolves GitHub refs and checks out exact immutable commits. */

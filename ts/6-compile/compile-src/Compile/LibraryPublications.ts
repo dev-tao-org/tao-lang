@@ -14,19 +14,17 @@ export function collectLibraryPublications(
   target?: string,
 ): readonly PublishedView[] {
   const entry = program.modules.find(module => module.path === program.entry)!
-  const libraries = AST.GetDeclarations(entry.document).filter(
-    (node): node is AST.TypeScriptLibraryDeclaration =>
-      node.kind === 'TypeScriptLibraryDeclaration'
-      && (target === undefined || node.name.value === target),
-  )
+  const libraries = [...AST.GetTypeScriptLibraryDeclarations(entry.document, target)]
   if (libraries.length !== 1) {
     Errors.ThrowUserInput(
       target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.',
     )
   }
-  const views = libraries[0]!.publication.members.flatMap(member =>
-    collectSelectedPublication(program, entry, member, ownSources)
-  )
+  const publication = AST.FindLibraryPublication(libraries[0]!)
+  if (!publication) {
+    Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
+  }
+  const views = publication.members.flatMap(member => collectSelectedPublication(program, entry, member, ownSources))
   const paths = new Set<string>()
   for (const view of views) {
     if (paths.has(view.path)) {
@@ -58,9 +56,7 @@ function collectSelectedPublication(
   }
   const sources = new Set(importedModule.targets.map(target => target.path))
   const lists = program.modules.filter(module => sources.has(module.path)).flatMap(module =>
-    AST.GetDeclarations(module.document).filter(
-      (node): node is AST.PublishDeclaration => node.kind === 'PublishDeclaration',
-    )
+    AST.GetPublishDeclarations(module.document)
   )
   if (lists.length !== 1) {
     Errors.ThrowUserInput(`Published module ${name} must declare one publish block.`)
@@ -87,18 +83,12 @@ function requirePublishedView(
   if (!ownSources.has(owner.path)) {
     Errors.ThrowUserInput(`Cannot publish dependency definition ${name}.`)
   }
-  const declaration = AST.GetValueDeclarations(owner.document).find(node => node.name.value === name)
+  const declaration = AST.FindValueDeclaration(owner.document, name)
   if (!declaration || declaration.visibility !== 'public') {
     Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
   }
   if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
     Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)
-  }
-  const reserved = declaration.parameters.find(parameter => ['children', 'key'].includes(parameter.name.value))
-  if (reserved) {
-    Errors.ThrowUserInput(
-      `TypeScript library publication ${name} cannot use reserved React prop ${reserved.name.value}.`,
-    )
   }
   return { path, source: owner.path, declaration }
 }

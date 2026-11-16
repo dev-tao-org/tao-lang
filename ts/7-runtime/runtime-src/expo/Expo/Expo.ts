@@ -1,5 +1,6 @@
 import { Errors, NewlineCharacter, Try } from '@shared'
-import { Env, Exec, HttpServer, Path } from '@shared/os'
+import { Env, HttpServer, Path } from '@shared/os'
+import Exec, { type ProcessOutput } from '@shared/os/exec'
 import { Addr, Http } from '@shared/web'
 import { HeadlessExpoEnvironment } from '../../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimeApplication } from '../../Runtime'
@@ -45,7 +46,7 @@ export type ExpoSession = {
   url: string
   sessionId: string
   publish(revision: GeneratedRevision): Promise<PublicationOutcome>
-  output(): Promise<Exec.ProcessOutput>
+  output(): Promise<ProcessOutput>
   dispose(): Promise<void>
 }
 
@@ -80,7 +81,7 @@ function unusedPort(): number {
   return port
 }
 
-function formatOutput(output: Exec.ProcessOutput): string {
+function formatOutput(output: ProcessOutput): string {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   return messages.length ? `Expo output:${NewlineCharacter}${messages.join(NewlineCharacter)}` : ''
 }

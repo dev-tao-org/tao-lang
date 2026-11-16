@@ -2,7 +2,6 @@ import type * as Compile from '@compile'
 import type * as Runtime from '@runtime'
 import type * as Typecheck from '@typecheck'
 
-import type { FileManagerOptions } from '../FileManager/FileManager'
 import type { ModuleLoadOptions } from '../modules/Loader'
 import type { Project } from '../Project'
 import type { ProjectPipelineResult } from '../ProjectPipeline'
@@ -20,8 +19,6 @@ export type WorkspaceOptions = {
   onExpected?: (revision: string, startedAtMs: number) => void
   onSourceUpdate?: (result: UpdateResult) => void
   onSourceError?: (error: unknown) => void
-  watch?: FileManagerOptions['watch']
-  schedule?: FileManagerOptions['schedule']
   resolveProject?: ModuleLoadOptions['resolveProject']
   observeProjectSources?: ModuleLoadOptions['observeProjectSources']
   includeModuleRequirements?: boolean
