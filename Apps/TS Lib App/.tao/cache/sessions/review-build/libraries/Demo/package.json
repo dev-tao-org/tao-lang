@@ -1,0 +1,38 @@
+{
+  "name": "@tao-dev/ts-lib-example",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./Library.d.ts",
+      "default": "./Library.js"
+    },
+    "./Greeting": {
+      "types": "./view0.d.ts",
+      "default": "./view0.js"
+    },
+    "./Panel": {
+      "types": "./view1.d.ts",
+      "default": "./view1.js"
+    },
+    "./LanguageFeatures": {
+      "types": "./view2.d.ts",
+      "default": "./view2.js"
+    },
+    "./ValueSnapshots": {
+      "types": "./view3.d.ts",
+      "default": "./view3.js"
+    },
+    "./Cards/Caption": {
+      "types": "./view4.d.ts",
+      "default": "./view4.js"
+    }
+  },
+  "peerDependencies": {
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "dependencies": {
+    "@preact/signals-core": "1.14.4"
+  }
+}
