@@ -3,9 +3,46 @@ import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
+import { execute } from '../workspace-src/Workflow'
 import type { WorkspaceSession } from '../workspace-src/Workspace'
 
 type OptionalWorkspace = WorkspaceSession | undefined
+
+Tests.test('declining or cancelling restart keeps the active preview running', async () => {
+  const root = Artifacts.resolvePath('tmp', `restart-consent-${Platform.randomUUID()}`)
+  const entry = Path.join(root, 'Main.tao')
+  const events: string[] = []
+  const request = {
+    kind: 'preview' as const,
+    entry,
+    restart: {
+      reason: 'Dependencies changed.',
+      async suspend() {
+        events.push('suspended')
+      },
+    },
+  }
+  let cancelled = false
+  await Try(async () => {
+    await initializeProject(root)
+    await writeFixture(root, entry)
+    await Tests.expect(execute(request, {
+      async confirm() {
+        events.push('declined')
+        return false
+      },
+    })).rejects.toThrow('Dependency setup was declined.')
+    await Tests.expect(execute(request, {
+      async confirm() {
+        events.push('cancelled')
+        cancelled = true
+        return true
+      },
+      cancelled: () => cancelled,
+    })).rejects.toThrow('Workflow cancelled.')
+    Tests.expect(events).toEqual(['declined', 'cancelled'])
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test('invalid preview edits and changed dependencies retain last-good output', async () => {
   const root = Artifacts.resolvePath('tmp', `workflow-preview-${Platform.randomUUID()}`)

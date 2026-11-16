@@ -246,6 +246,7 @@ async function loadEntry(
     {
       directory: root,
       includeModuleRequirements: true,
+      validateStatementsBeforeDiscovery: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,

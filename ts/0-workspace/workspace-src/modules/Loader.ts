@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import type * as Grammar from '@grammar'
-import type * as Typecheck from '@typecheck'
+import * as Typecheck from '@typecheck'
 
 import { Errors, Timings } from '@shared'
 import { FS, Path } from '@shared/os'
@@ -16,6 +16,7 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
+  validateStatementsBeforeDiscovery?: boolean
 }
 
 /** loadModules discovers and parses the source graph reachable from one parsed entry.
@@ -88,6 +89,9 @@ function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string
 async function loadNextSource(state: LoadState, timings: Timings): Promise<void> {
   const path = state.pending.shift()!
   const source = state.sources.get(path)!
+  if (state.options.validateStatementsBeforeDiscovery) {
+    Typecheck.assertValidStatements(source.document, path)
+  }
   const discovery = await timings.run(discover, state, source)
   await addDiscoveredSources(state, discovery, timings)
   source.imports = discovery.imports
