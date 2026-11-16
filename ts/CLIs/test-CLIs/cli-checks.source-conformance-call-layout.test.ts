@@ -214,6 +214,14 @@ function applyChanges(source: string): string {
   )
 }
 
+Tests.test('call layout leaves Unicode line separators inside template text intact', () => {
+  for (const code of [0x2028, 0x2029]) {
+    const separator = String.fromCharCode(code)
+    const source = 'emit(`before' + separator + 'after`)'
+    Tests.expect(getSingleLineCallChanges(parse(source))).toEqual([])
+  }
+})
+
 function parse(source: string): TypeScript.SourceFile {
   return TypeScript.createSourceFile('/call-layout-fixture.ts', source, TypeScript.ScriptTarget.Latest, true)
 }

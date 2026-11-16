@@ -50,7 +50,11 @@ function finishCallLayouts(filename: string, text: string): string {
       return text
     }
     // Each layout edit removes a line break, so nested layouts eventually stop changing.
-    text = applyEdits(text, edits)
+    const updated = applyEdits(text, edits)
+    if (updated === text) {
+      return text
+    }
+    text = updated
   }
 }
 
