@@ -22,7 +22,7 @@ async function verifyProjectWorkspaces(
 ): Promise<void> {
   const entry = await createProjectEntry(root)
   const runtimeOptions = await prepareLocalRuntime(root)
-  const options = { async publish() {}, acquireLease: async () => () => {}, runtimeOptions }
+  const options = { async publish() {}, runtimeOptions }
   const first = await openProjectWorkspace(entry, { ...options, id: 'one' })
   workspaces.push(first)
   const busy = await Try(() => openProjectWorkspace(entry, { ...options, id: 'one' }), { catch: () => undefined })

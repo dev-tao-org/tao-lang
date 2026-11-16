@@ -162,8 +162,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
     { directory: Path.join(options.repo, '.artifacts/logs/dev'), label: 'command' },
   ]
   return await runWithEvidence(directory, sources, async () => {
-    await CLIKit.runNonInteractiveCommand('./dev performance preview', {
-      variadicArgs: ['--fixture', fixture],
+    await CLIKit.runNonInteractiveCommand('./dev', ['performance', 'preview', '--fixture', fixture], {
       cwd: options.repo,
       addEnv: describePreviewEnvironment(job),
     })

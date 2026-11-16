@@ -72,18 +72,19 @@ async function verifyBundle(bundle: string, commit: string, head: string, root: 
 }
 
 async function receiveWithLineEndingConfiguration(bundle: string, manifest: string, clone: string): Promise<void> {
-  await CLIKit.runNonInteractiveCommand('./agent skill-script', {
-    variadicArgs: [
-      'agents/skills/performance-investigation/scripts/performance.ts',
-      '--',
-      'receive',
-      '--bundle',
-      bundle,
-      '--manifest',
-      manifest,
-      '--directory',
-      clone,
-    ],
+  const args = [
+    'skill-script',
+    'agents/skills/performance-investigation/scripts/performance.ts',
+    '--',
+    'receive',
+    '--bundle',
+    bundle,
+    '--manifest',
+    manifest,
+    '--directory',
+    clone,
+  ]
+  await CLIKit.runNonInteractiveCommand('./agent', args, {
     cwd: Repo.getWorkspaceRoot(),
     addEnv: {
       GIT_CONFIG_COUNT: '1',

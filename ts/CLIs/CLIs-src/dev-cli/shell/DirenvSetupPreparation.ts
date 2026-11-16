@@ -41,16 +41,12 @@ async function shouldPrepareEnvironment(environment: SetupEnvironment): Promise<
   if (!FS.existsSync(Path.resolve(root, 'devenv.nix'))) {
     return false
   }
-  const git = await environment.run('git', {
-    args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    cwd: root,
-  })
+  const git = await environment.run('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root })
   if (git.status !== 0) {
     return false
   }
   const common = FS.realpathSync(git.stdout.trim())
-  const hash = await environment.run('git', {
-    args: ['hash-object', '--stdin'],
+  const hash = await environment.run('git', ['hash-object', '--stdin'], {
     cwd: root,
     stdin: `${common}${NewlineCharacter}`,
   })
@@ -81,10 +77,7 @@ async function isRegisteredWorktree(
   canonicalRoot: string,
   environment: SetupEnvironment,
 ): Promise<boolean> {
-  const worktrees = await environment.run('git', {
-    args: ['worktree', 'list', '--porcelain', '-z'],
-    cwd: root,
-  })
+  const worktrees = await environment.run('git', ['worktree', 'list', '--porcelain', '-z'], { cwd: root })
   return worktrees.status === 0
     && worktrees.stdout.split(NullCharacter).includes(`worktree ${canonicalRoot}`)
 }
@@ -93,8 +86,7 @@ async function runDevenvShellPrepare(environment: SetupEnvironment): Promise<voi
   const { run, write } = environment
   const root = environment.root()
   write('Preparing this checkout’s development shell for automatic directory entry...')
-  const prepared = await run('devenv', {
-    args: ['shell', '--no-tui', '--', 'true'],
+  const prepared = await run('devenv', ['shell', '--no-tui', '--', 'true'], {
     cwd: root,
     addEnv: { DEVENV_TUI: 'false' },
     timeoutMs: 60_000,

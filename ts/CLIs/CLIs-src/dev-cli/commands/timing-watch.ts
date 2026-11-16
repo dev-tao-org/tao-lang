@@ -11,6 +11,6 @@ export default registerCommand({
     const path = timingProgressPath()
     await FS.mkdirPrivate(Path.dirname(path))
     await FS.writeFile(path, '', { flag: 'a', mode: 0o600 })
-    await CLIKit.runForegroundCommand('tail -n 25 -F', { variadicArgs: [path] })
+    await CLIKit.runForegroundCommand('tail', ['-n', '25', '-F', path])
   },
 })

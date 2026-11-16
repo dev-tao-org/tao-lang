@@ -94,11 +94,10 @@ export async function withDependencySession<T>(
   projectRoot: string,
   sessionId: DependencySessionId,
   action: (session: ProjectSession) => Promise<T>,
-  acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
   const session = await acquireSession(projectRoot, { id: sessionId, kind: 'cli' })
-  const releaseLease = await Try(() => acquireLease(identity), {
+  const releaseLease = await Try(() => Storage.acquireCacheLease(identity), {
     catch(error) {
       session.release()
       return Errors.Throw(error)

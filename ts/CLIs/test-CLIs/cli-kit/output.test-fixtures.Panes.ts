@@ -73,10 +73,8 @@ async function exercisePanePrompts(input: PaneInput): Promise<void> {
   const channel = IO.channel({ title: 'TypeScript shard 2' })
   IO.print('Managed npm declarations changed')
   const confirmation = IO.askConfirm({ message: 'Set up dependencies and continue?', defaultValue: true })
-  await runNonInteractiveCommand('bun run', {
-    variadicArgs: [Repo.resolvePath('ts/CLIs/test-CLIs/cli-kit/output.test-fixtures.ts'), 'pane-child'],
-    output: channel,
-  })
+  const fixture = Repo.resolvePath('ts/CLIs/test-CLIs/cli-kit/output.test-fixtures.ts')
+  await runNonInteractiveCommand('bun', ['run', fixture, 'pane-child'], { output: channel })
   input.paste('invalid')
   input.receive('', { return: true } as Ink.Key)
   if (!await confirmation) {

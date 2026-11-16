@@ -2,15 +2,11 @@ import { Errors } from '@shared'
 import type { Exec, FS } from '@shared/os'
 import type { OutputChannel } from './output/Output'
 
-/** Command identifies an executable with optional space-separated arguments or explicit argv. */
-export type Command = string | readonly string[]
-
 type InheritedOutputMode = 'inherit' | 'ignore'
-type InteractiveOption = 'variadicArgs' | 'cwd' | 'addEnv' | 'signal'
+type InteractiveOption = 'cwd' | 'addEnv' | 'signal'
 
 /** CommandRunOptions controls a supervised command with optional explicit file input. */
 export type CommandRunOptions = Exec.CommandOptions & {
-  variadicArgs?: readonly string[]
   stdin?: FS.File
   stdout?: InheritedOutputMode
   stderr?: InheritedOutputMode
@@ -29,19 +25,28 @@ export type CommandInteractionMode = 'interactive' | 'noninteractive'
 export type CommandInteractionOperations = {
   isInteractive: () => boolean
   prompt: <T>(action: () => Promise<T>) => Promise<T>
-  execute: (command: Command, options: CommandRunOptions, mode: CommandInteractionMode) => Promise<void>
+  execute: (
+    command: Exec.Command,
+    args: Exec.CommandArgs,
+    options: CommandRunOptions,
+    mode: CommandInteractionMode,
+  ) => Promise<void>
 }
 
 /** createCommandRunners makes terminal handoff mandatory for interactive subprocesses. */
 export function createCommandRunners(operations: CommandInteractionOperations) {
   return {
-    async runInteractiveCommand(command: Command, options: InteractiveCommandOptions = {}): Promise<void> {
+    async runInteractiveCommand(
+      command: Exec.Command,
+      args: Exec.CommandArgs = [],
+      options: InteractiveCommandOptions = {},
+    ): Promise<void> {
       if (!operations.isInteractive()) {
         Errors.ThrowUserInput('Interactive commands require a terminal. Run this operation in Terminal.')
       }
-      await operations.prompt(() => operations.execute(command, options, 'interactive'))
+      await operations.prompt(() => operations.execute(command, args, options, 'interactive'))
     },
-    runNonInteractiveCommand: (command: Command, options: CommandRunOptions = {}) =>
-      operations.execute(command, options, 'noninteractive'),
+    runNonInteractiveCommand: (command: Exec.Command, args: Exec.CommandArgs = [], options: CommandRunOptions = {}) =>
+      operations.execute(command, args, options, 'noninteractive'),
   }
 }

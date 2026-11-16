@@ -174,8 +174,13 @@ function quoteGypPath(path: string): string {
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {
   const options = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS'))
-  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [staging, ...options.headers],
+  await CLIKit.runNonInteractiveCommand('node-gyp', [
+    'rebuild',
+    '--loglevel=warn',
+    '--directory',
+    staging,
+    ...options.headers,
+  ], {
     cwd: sharedRoot,
     addEnv: options.environment,
   })

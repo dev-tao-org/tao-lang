@@ -18,8 +18,13 @@ export async function buildExtension(): Promise<string> {
     'vscode',
   ])
   await validateRelocatedPackage()
-  await CLIKit.runNonInteractiveCommand('vsce package --no-dependencies --allow-missing-repository --out', {
-    variadicArgs: [vsixPath],
+  await CLIKit.runNonInteractiveCommand('vsce', [
+    'package',
+    '--no-dependencies',
+    '--allow-missing-repository',
+    '--out',
+    vsixPath,
+  ], {
     cwd: packageRoot,
   })
   IO.print(vsixPath)
@@ -30,13 +35,17 @@ export async function buildExtension(): Promise<string> {
 export async function prepareExtensionAssets(): Promise<void> {
   await prepareParser()
   await FS.mkdirs(Path.join(packageRoot, 'grammars'), Path.join(packageRoot, 'runtime'))
-  await CLIKit.runNonInteractiveCommand('tree-sitter build --wasm --output', {
-    variadicArgs: [
+  await CLIKit.runNonInteractiveCommand(
+    'tree-sitter',
+    [
+      'build',
+      '--wasm',
+      '--output',
       Path.join(packageRoot, 'grammars/tree-sitter-tao.wasm'),
       Repo.resolvePath('ts/1-grammar/_gen_parser'),
     ],
-    cwd: Repo.resolvePath('ts'),
-  })
+    { cwd: Repo.resolvePath('ts') },
+  )
   await copyAssets()
   const manifest = await FS.readFile(Path.join(sourceRoot, 'package.json'), 'utf8')
   await FS.writeFile(Path.join(packageRoot, 'package.json'), formatPublishedExtensionManifest(manifest))

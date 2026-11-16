@@ -16,7 +16,7 @@ export default registerCommand({
   async action(name: string = '') {
     const cwd = Repo.getWorkspaceRoot()
     const branch = await resolveDeveloperBranch(name, cwd)
-    await CLIKit.runNonInteractiveCommand('git switch', { variadicArgs: [branch], cwd })
+    await CLIKit.runNonInteractiveCommand('git', ['switch', branch], { cwd })
   },
 })
 

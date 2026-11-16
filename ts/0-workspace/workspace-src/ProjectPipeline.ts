@@ -36,17 +36,6 @@ export type ProjectPipeline = {
   ): Promise<ProjectPipelineResult>
 }
 
-/** ProjectPipelineServices isolates prepared graph reads for focused lifecycle tests. */
-export type ProjectPipelineServices = {
-  buildManagedInput(
-    root: string,
-    program: Typecheck.LinkedProgram,
-  ): Promise<ManagedModules.ManagedModulesInput | undefined>
-  readManaged(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.PreparedManagedModules>
-  inspectGeneratedFiles(input: ManagedModules.ManagedModulesInput): Promise<ManagedModules.GeneratedModuleFileDrift[]>
-  prepareSidecars(options: SidecarPipeline.SidecarPipelineOptions): Promise<SidecarPipeline.PreparedSidecars>
-}
-
 /** createProjectPipeline binds prepared dependencies and immutable sidecar snapshots to a session.
  *  Readiness and generated metadata are validated at startup. Reuse matches reachable paths, exact dependency
  *  declarations and foreign-view presence; any changed identity recomputes managed input. Sidecar source
@@ -55,14 +44,8 @@ export function createProjectPipeline(
   root: string,
   sessionDirectory: string,
   runtimeOptions: ProjectRuntimeOptions,
-  services: ProjectPipelineServices = {
-    buildManagedInput: async (projectRoot, program) => buildManagedModulesInput(projectRoot, program.modules),
-    readManaged: ManagedModules.readManagedModules,
-    inspectGeneratedFiles: ManagedModules.inspectGeneratedModuleFiles,
-    prepareSidecars: SidecarPipeline.prepareSidecarPipeline,
-  },
 ): ProjectPipeline {
-  return new PipelineSession(root, sessionDirectory, runtimeOptions, services)
+  return new PipelineSession(root, sessionDirectory, runtimeOptions)
 }
 
 class PipelineSession implements ProjectPipeline {
@@ -77,7 +60,6 @@ class PipelineSession implements ProjectPipeline {
     private readonly root: string,
     private readonly sessionDirectory: string,
     private readonly runtimeOptions: ProjectRuntimeOptions,
-    private readonly services: ProjectPipelineServices,
   ) {
     this.baseWatchFolders = runtimeOptions.watchFolders ?? []
   }
@@ -89,7 +71,7 @@ class PipelineSession implements ProjectPipeline {
     const declarationKey = createDeclarationKey(program)
     const input = declarationKey === this.declarationKey
       ? this.input
-      : await this.services.buildManagedInput(this.root, program)
+      : await buildManagedModulesInput(this.root, program.modules)
     const key = input ? createManagedGraphKey(input) : createEmptyManagedGraphKey()
     this.rejectChangedGraph(key)
     if (!input) {
@@ -101,7 +83,7 @@ class PipelineSession implements ProjectPipeline {
     }
     const managed = await this.readManagedProfile(input, key)
     if (this.graphKey === undefined) {
-      await validateGeneratedFiles(this.services, input)
+      await validateGeneratedFiles(input)
     }
     const sidecars = await this.prepareSidecars(program, managed, watchAttemptedFiles)
     this.updateRuntimeOptions(input, managed)
@@ -135,7 +117,7 @@ class PipelineSession implements ProjectPipeline {
 
   private async readManagedProfile(input: ManagedModules.ManagedModulesInput, key: string) {
     if (this.preparedFingerprint !== key || !this.managedProfile) {
-      this.managedProfile = await this.services.readManaged(input)
+      this.managedProfile = await ManagedModules.readManagedModules(input)
       this.preparedFingerprint = key
     }
     return this.managedProfile
@@ -146,7 +128,7 @@ class PipelineSession implements ProjectPipeline {
     managed: ManagedModules.PreparedManagedModules,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ) {
-    return await this.services.prepareSidecars({
+    return await SidecarPipeline.prepareSidecarPipeline({
       program,
       sessionBuildDirectory: this.sessionDirectory,
       nodeModulesDirectory: Path.join(managed.packageDirectory, 'node_modules'),
@@ -233,11 +215,8 @@ function createPipelineResult(sidecars: SidecarPipeline.PreparedSidecars): Proje
   }
 }
 
-async function validateGeneratedFiles(
-  services: ProjectPipelineServices,
-  input: ManagedModules.ManagedModulesInput,
-): Promise<void> {
-  const drift = await services.inspectGeneratedFiles(input)
+async function validateGeneratedFiles(input: ManagedModules.ManagedModulesInput): Promise<void> {
+  const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
     const first = drift[0]!
     Errors.ThrowUserInput(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)

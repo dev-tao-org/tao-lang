@@ -75,48 +75,27 @@ Tests.test('module add rejects ambiguous local names and invalid versions', asyn
   }, { finally: () => cleanRoots(root, unique) })
 })
 
-Tests.test('prepare entry discovery picks one app and releases injected cache lease', async () => {
+Tests.test('prepare entry discovery picks one app', async () => {
   const root = tempRoot()
-  let released = false
   await Try(async () => {
     await FS.mkdir(Path.join(root, '.tao'))
     const entry = Path.join(root, 'Main.tao')
     await FS.writeFile(entry, 'app Main { root Main }')
     Tests.expect(await ModuleDependencies.findPreparationEntry(root)).toBe(entry)
-    const result = await ModuleDependencies.withDependencySession(
-      root,
-      'test-session',
-      async () => 'prepared',
-      async identity => {
-        Tests.expect(identity).toBe(`project:${root}:session:test-session`)
-        return () => {
-          released = true
-        }
-      },
-    )
-    Tests.expect(result).toBe('prepared')
-    Tests.expect(released).toBe(true)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('dependency session contention fails before acquiring another cache lease', async () => {
+Tests.test('dependency session rejects concurrent work and releases its locks afterward', async () => {
   const root = tempRoot()
-  let leases = 0
-  const lease = async () => {
-    leases++
-    return () => {}
-  }
   await Try(async () => {
     await FS.mkdir(Path.join(root, '.tao'))
     await ModuleDependencies.withDependencySession(root, 'busy', async () => {
       await Tests.rejects(
-        ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease),
+        ModuleDependencies.withDependencySession(root, 'busy', async () => {}),
         DependencySessionAlreadyActiveErrorRegx,
       )
-      Tests.expect(leases).toBe(1)
-    }, lease)
-    await ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease)
-    Tests.expect(leases).toBe(2)
+    })
+    await ModuleDependencies.withDependencySession(root, 'busy', async () => {})
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

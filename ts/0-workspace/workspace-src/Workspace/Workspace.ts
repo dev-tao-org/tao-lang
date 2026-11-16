@@ -133,9 +133,8 @@ class WorkspaceSession {
       onSourceError: options.onSourceError,
       async watch(root, change, error, ignored, additional) {
         const stdlib = await Stdlib.projectDirectory()
-        const watch = options.watch ?? watchSourceTree
         const additionalDirectories = Lists.unique([stdlib], additional ?? [])
-        const watcher = await watch(root, change, error, ignored, additionalDirectories)
+        const watcher = await watchSourceTree(root, change, error, ignored, additionalDirectories)
         return {
           dispose: () => watcher.dispose(),
           async updateDirectories(directories, excluded) {
@@ -143,7 +142,6 @@ class WorkspaceSession {
           },
         }
       },
-      schedule: options.schedule,
     })
   }
 

@@ -9,19 +9,15 @@ export function watchStamp(stats: WatchStats): string {
 
 /** reconcileWatchChanges observes the trailing edge of Chokidar's 50ms change suppression.
  *  First notifications remain immediate; unchanged files do not trigger another compilation. */
-export function reconcileWatchChanges(
-  changed: (path: string) => void,
-  read = readStamp,
-  schedule = Time.schedule,
-) {
+export function reconcileWatchChanges(changed: (path: string) => void) {
   const pending = new Map<string, { cancel(): void }>()
   let disposed = false
   return {
     observe(path: string, stamp: string): void {
       pending.get(path)?.cancel()
       const observation = { cancel() {} }
-      observation.cancel = schedule(55, () => {
-        void read(path).then(current => {
+      observation.cancel = Time.schedule(55, () => {
+        void readStamp(path).then(current => {
           if (pending.get(path) !== observation) {
             return
           }

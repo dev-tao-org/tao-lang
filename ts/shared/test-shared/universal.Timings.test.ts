@@ -1,4 +1,4 @@
-import { Errors, Timings, Try } from '@shared'
+import { Errors, Time, Timings, Try } from '@shared'
 import * as Tests from '@shared-tests'
 
 import type { OperationValue } from './universal.test-fixtures.Timings.Types'
@@ -10,15 +10,11 @@ const parse = Timings.measured('parse', () => 42)
 const compile = Timings.measure('compile', (timings, suffix: string) => timings.run(parse) + suffix)
 const nothing = Timings.measured('nothing', () => {})
 const fail = Timings.measured('failure', (failure: unknown) => Errors.Throw(failure))
-const publish = Timings.measured('publish', async (clock: { now: number }) => {
+const publish = Timings.measured('publish', async () => {
   await Promise.resolve()
-  clock.now = 7
   return 'saved'
 })
-const failPublish = Timings.measured('publish', async (clock: { now: number }, failure: unknown) => {
-  clock.now = 11
-  Errors.Throw(failure)
-})
+const failPublish = Timings.measured('publish', async (failure: unknown) => Errors.Throw(failure))
 
 Tests.test(
   'operations preserve inferred arguments, ordinary values and void without being callable',
@@ -33,28 +29,29 @@ Tests.test(
 )
 
 Tests.test('repeated operation executions sample their own clock intervals and collector', () => {
-  const ticks = [4, 7, 10, 15]
   Timings.createTopLevelTimer(timings => {
     timings.run(concatenate, 'T', 'ao')
     timings.run(concatenate, 'Tao', '!')
-    Tests.expect(timings.samples.map(sample => [sample.startMs, sample.durationMs])).toEqual([[4, 3], [10, 5]])
-    Timings.createTopLevelTimer(other => {
-      Tests.expect(other.run(concatenate, 'T', 'ao')).toBe('Tao')
-      Tests.expect(other.samples[0]?.clock).toBe('other')
-    }, { clock: 'other', now: () => 100 })()
-    Tests.expect(timings.samples).toHaveLength(2)
-  }, { clock: 'first', now: () => ticks.shift()! })()
+    const [first, second] = timings.samples
+    Tests.expect(second.startMs).toBeGreaterThanOrEqual(first.startMs + first.durationMs)
+    Tests.expect(second.clock).toBe(first.clock)
+  })()
 })
 
 Tests.test('orchestration injects its collector and records nested leaf spans', () => {
-  const ticks = [10, 12, 15, 20]
   Timings.createTopLevelTimer(timings => {
     Tests.expect(timings.run(compile, '!')).toBe('42!')
-    Tests.expect(timings.samples).toEqual([
-      { name: 'parse', role: 'leaf', clock: 'test', startMs: 12, durationMs: 3, status: 'succeeded' },
-      { name: 'compile', role: 'orchestration', clock: 'test', startMs: 10, durationMs: 10, status: 'succeeded' },
-    ])
-  }, { clock: 'test', now: () => ticks.shift()! })()
+    const [leaf, orchestration] = timings.samples
+    Tests.expect(leaf).toMatchObject({ name: 'parse', role: 'leaf', clock: timings.clock, status: 'succeeded' })
+    Tests.expect(orchestration).toMatchObject({
+      name: 'compile',
+      role: 'orchestration',
+      clock: timings.clock,
+      status: 'succeeded',
+    })
+    Tests.expect(leaf.startMs).toBeGreaterThanOrEqual(orchestration.startMs)
+    Tests.expect(leaf.durationMs).toBeLessThanOrEqual(orchestration.durationMs)
+  })()
 })
 
 Tests.test(
@@ -67,18 +64,14 @@ Tests.test(
 )
 
 Tests.test('async spans finish after settlement and retain failure identity', async () => {
-  const clock = { now: 0 }
   await Timings.createTopLevelTimer(async timings => {
-    const pending = timings.run(publish, clock)
+    const pending = timings.run(publish)
     Tests.expect(timings.samples).toEqual([])
     Tests.expect(await pending).toBe('saved')
     const failure = Try(() => Errors.ThrowUserInput('Publish failed'), { catch: error => error })
-    Tests.expect(await Try(() => timings.run(failPublish, clock, failure), { catch: error => error })).toBe(failure)
-    Tests.expect(timings.samples.map(sample => [sample.durationMs, sample.status])).toEqual([
-      [7, 'succeeded'],
-      [4, 'failed'],
-    ])
-  }, { clock: 'test', now: () => clock.now })()
+    Tests.expect(await Try(() => timings.run(failPublish, failure), { catch: error => error })).toBe(failure)
+    Tests.expect(timings.samples.map(sample => sample.status)).toEqual(['succeeded', 'failed'])
+  })()
 })
 
 Tests.test('callable entries isolate boundaries and retain the existing context and clock through run', () => {
@@ -98,8 +91,8 @@ Tests.test('callable entries isolate boundaries and retain the existing context 
   Timings.createTopLevelTimer(existing => {
     Tests.expect(existing.run(entry, 'nested')).toBe('nested!')
     Tests.expect(contexts[2]).toBe(existing)
-    Tests.expect(existing.samples[0]?.clock).toBe('existing')
-  }, { clock: 'existing', now: () => 1 })()
+    Tests.expect(existing.samples[0]?.clock).toBe(existing.clock)
+  })()
 })
 
 Tests.test('concurrent async entries retain separate collectors across interleaved settlement', async () => {
@@ -131,9 +124,16 @@ Tests.test('concurrent async entries retain separate collectors across interleav
 Tests.test(
   'manual observations retain their clock and distinguish their span role',
   Timings.createTopLevelTimer(timings => {
-    timings.record('queue', 3)
-    Tests.expect(timings.samples).toEqual([
-      { name: 'queue', role: 'observation', clock: 'observation', startMs: 3, durationMs: 5, status: 'succeeded' },
-    ])
-  }, { clock: 'observation', now: () => 8 }),
+    const startMs = Time.nowMs()
+    timings.record('queue', startMs)
+    const [sample] = timings.samples
+    Tests.expect(sample).toMatchObject({
+      name: 'queue',
+      role: 'observation',
+      clock: timings.clock,
+      startMs,
+      status: 'succeeded',
+    })
+    Tests.expect(sample.durationMs).toBeGreaterThanOrEqual(0)
+  }),
 )

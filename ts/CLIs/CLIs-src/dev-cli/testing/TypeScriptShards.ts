@@ -89,14 +89,15 @@ async function runShard(
 ): Promise<TestFileTiming[]> {
   assertTestRunActive(signal)
   return await withTestTimings(
-    reportPath =>
-      CLIKit.runNonInteractiveCommand(`bun test --parallel=${workers}`, {
-        variadicArgs: [...args, ...reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []],
+    reportPath => {
+      const reportArgs = reportPath ? ['--reporter=junit', '--reporter-outfile', reportPath] : []
+      return CLIKit.runNonInteractiveCommand('bun', ['test', `--parallel=${workers}`, ...args, ...reportArgs], {
         cwd: Repo.resolvePath('ts'),
         output,
         signal,
         addEnv: { ...workerEnvironment, TERMINAL_UI: '0', TERMINAL_OUTPUT: '1' },
-      }),
+      })
+    },
     slowSeconds,
     output,
   )
