@@ -17,6 +17,7 @@ const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+const BooleanKeywords = ['yes', 'no']
 const VisibilityKeywords = ['file', 'folder', 'package', 'project', 'public']
 const StatementKeywords = [
   'app',
@@ -80,7 +81,10 @@ export default grammar({
       )
     },
     _Expression($) {
-      return choice($.QualifiedName, $.TextLiteral, $.BooleanLiteral)
+      return choice($._BooleanOrName, $.TextLiteral)
+    },
+    _BooleanOrName($) {
+      return choice($.BooleanLiteral, $.QualifiedName, alias($._QualifiedBooleanName, $.QualifiedName))
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -159,7 +163,7 @@ export default grammar({
       )
     },
     DisabledModifier($) {
-      return seq('[', 'disabled', field('condition', choice($.BooleanLiteral, $.QualifiedName)), ']')
+      return seq('[', 'disabled', field('condition', $._BooleanOrName), ']')
     },
 
     // A namespace derived from a package path can share a statement keyword.
@@ -320,7 +324,7 @@ export default grammar({
       return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
     },
     BooleanLiteral() {
-      return choice('yes', 'no')
+      return choice(...BooleanKeywords)
     },
 
     // Names
@@ -329,6 +333,11 @@ export default grammar({
     },
     Identifier() {
       return IdentifierRegx
+    },
+    // A boolean keyword can also be the first part of a derived package namespace.
+    _QualifiedBooleanName($) {
+      const head = choice(...BooleanKeywords.map(keyword => alias(keyword, $.Identifier)))
+      return seq(head, repeat1(seq('.', $.Identifier)))
     },
     QualifiedName($) {
       return seq($.Identifier, repeat(seq('.', $.Identifier)))

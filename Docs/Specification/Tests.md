@@ -30,7 +30,7 @@ Labels are optional; unnamed cases are reported by file and line.
 #### `type "Hello World" into #name`
 
 Typing replaces the input's existing value; cursor-position specifiers are deferred.
-`press #save` activates the selected control.
+`press #save` attempts to activate the selected control. A disabled control remains inactive.
 
 #### `expect text "Saved"`
 

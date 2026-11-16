@@ -103,8 +103,7 @@ export function emitViewRenderExpression(
   children: string,
   condition?: string,
 ): string {
-  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : 'undefined'
-  const interactionArguments = compileInteractionArguments(node, tag, condition)
+  const interactionArguments = compileInteractionArguments(node, condition)
   const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${interactionArguments})`
   return S`
     TR.ViewRenderExpression(
@@ -114,11 +113,12 @@ export function emitViewRenderExpression(
   `
 }
 
-function compileInteractionArguments(node: AST.ViewRenderExpression, tag: string, condition?: string): string {
+function compileInteractionArguments(node: AST.ViewRenderExpression, condition?: string): string {
+  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : undefined
   if (condition !== undefined) {
-    return `, ${tag}, TR.DisabledWhen(${condition})`
+    return `, ${tag ?? 'undefined'}, TR.DisabledWhen(${condition})`
   }
-  return node.tag ? `, ${tag}` : ''
+  return tag === undefined ? '' : `, ${tag}`
 }
 
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */

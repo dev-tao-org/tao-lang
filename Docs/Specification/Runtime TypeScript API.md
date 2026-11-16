@@ -111,7 +111,7 @@ stay behind API-owned contracts rather than a re-exported React Native namespace
 
 A raw custom control reads `Tao.useInteractionDisabled()` at render time. When it returns `true`, set the platform control's disabled or read-only and accessibility state as appropriate, and suppress all user-triggered callbacks, including keyboard and touch. Call the hook in the component that renders the raw control so changes to the enclosing Tao condition reach it. Programmatic calls and updates can continue. See [Actions and Results](Actions%20and%20Results.md#disabled-interaction).
 
-On the web, a native button can use this contract directly:
+The web example passes the inherited state to a native button.
 
 ```tsx
 function CustomButton({ onPress }: { onPress: () => void }) {

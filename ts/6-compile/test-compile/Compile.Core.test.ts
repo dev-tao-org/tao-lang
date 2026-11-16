@@ -44,7 +44,7 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
   Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _Scope)')
 })
 
-Tests.test('foreign views reject non-text parameter contracts', () => {
+Tests.test('foreign views reject unsupported parameter types', () => {
   const source = 'app Calendar { root FormattedDate } view FormattedDate(Value number) from ./FormattedDate.tsx'
   const document = AST.transform(Grammar.createParser().parse(source))!
 
