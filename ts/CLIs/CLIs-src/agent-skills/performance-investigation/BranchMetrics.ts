@@ -1,5 +1,6 @@
 import * as Perf from '@perf'
 import { Errors } from '@shared'
+import { estimatePairedTimingInterval, type PairedTimingInterval } from './PairedTimingInterval'
 import type { PreviewReport } from './ReportContract'
 import { median } from './Summary'
 
@@ -19,6 +20,7 @@ export type BranchMetric = {
   changePercent: ChangePercent
   pairedDeltaMs: number
   pairedChangePercent: ChangePercent
+  pairedDeltasMs: number[]
   agreeingPairs: number
   pairs: number
   change: MetricChange
@@ -46,6 +48,7 @@ export const BranchTimingThresholds = {
   agreement: 0.8,
   startupFloorMs: 150,
   firstEditFloorMs: 5,
+  firstEditWarningPercent: 5,
   warmEditFloorMs: 4,
 } as const
 
@@ -67,11 +70,12 @@ export function describeWarmWork(reports: PreviewReport[]): WarmPreviewWork {
 }
 
 /** compareBranchMetrics uses whole sessions as units and validates equal pair counts. */
-export function compareBranchMetrics(sessions: BranchSessions): BranchMetric[] {
+export function compareBranchMetrics(sessions: BranchSessions, firstEditOnly = false): BranchMetric[] {
   if (sessions.baseline.length !== sessions.candidate.length || !sessions.baseline.length) {
     Errors.ThrowUserInput('Branch comparison requires equal, nonempty sets of paired sessions.')
   }
-  return Metrics.map(metric => compareMetric(metric, sessions))
+  const metrics = firstEditOnly ? [FirstEditMetric] : Metrics
+  return metrics.map(metric => compareMetric(metric, sessions))
 }
 
 /** measurePreviewTimings returns one session's startup and independent warm-step medians. */
@@ -114,22 +118,54 @@ export function countPreviewQuality(reports: PreviewReport[]): PreviewQuality {
 
 /** confirmMetricChange requires independent rounds to agree on direction and uses their lower tier. */
 export function confirmMetricChange(first: BranchMetric, second: BranchMetric): MetricChange {
+  const interval = pairedMetricInterval(first, second)
+  const material = materialDelta(first, second)
   if (first.change === 'stable' && second.change === 'stable') {
-    return 'stable'
+    const screened = screensFirstEditForRepeat(first) || screensFirstEditForRepeat(second)
+    return screened && !intervalRulesOutMaterialChange(interval, material) ? 'variable' : 'stable'
   }
-  if (isSlowdown(first.change) && isSlowdown(second.change)) {
-    return first.change === 'error' && second.change === 'error' ? 'error' : 'warning'
+  if (!interval) {
+    return 'variable'
   }
-  if (isSpeedup(first.change) && isSpeedup(second.change)) {
-    return first.change === 'much faster' && second.change === 'much faster' ? 'much faster' : 'faster'
+  const errorThreshold = materialDelta(first, second, BranchTimingThresholds.errorPercent)
+  const slower = isSlowdown(first.change) && isSlowdown(second.change)
+  const faster = isSpeedup(first.change) && isSpeedup(second.change)
+  if (slower && interval.lowerMs >= material) {
+    const bothErrors = first.change === 'error' && second.change === 'error'
+    return bothErrors && interval.lowerMs >= errorThreshold ? 'error' : 'warning'
+  }
+  if (faster && interval.upperMs <= -material) {
+    const bothLarge = first.change === 'much faster' && second.change === 'much faster'
+    return bothLarge && interval.upperMs <= -errorThreshold ? 'much faster' : 'faster'
   }
   return 'variable'
+}
+
+/** pairedMetricInterval combines independent pairs from both rounds without pooling edits within a session. */
+export function pairedMetricInterval(first: BranchMetric, second: BranchMetric): PairedTimingInterval | undefined {
+  return estimatePairedTimingInterval([...first.pairedDeltasMs, ...second.pairedDeltasMs])
+}
+
+/** screensFirstEditForRepeat checks whether a first-round headline warrants a fresh paired check. */
+export function screensFirstEditForRepeat(metric: BranchMetric): boolean {
+  if (metric.name !== FirstEditMetric.name) {
+    return false
+  }
+  const rules = BranchTimingThresholds
+  const percent = Math.abs(metric.changePercent ?? 0)
+  return Math.abs(metric.deltaMs) >= rules.firstEditFloorMs && percent >= rules.firstEditWarningPercent
 }
 
 type TimingMetric = { name: string; floorMs: number; measure: (report: PreviewReport) => number }
 type PreviewFrames = NonNullable<PreviewReport['results'][number]['frames']>
 type OptionalPreviewFrames = PreviewFrames | undefined
 type FrameTransition = 'same' | 'restarted'
+
+const FirstEditMetric: TimingMetric = {
+  name: 'First edit',
+  floorMs: BranchTimingThresholds.firstEditFloorMs,
+  measure: report => report.results[0].parentClickToLastAppliedMs,
+}
 
 const Metrics: readonly TimingMetric[] = [
   { name: 'Harness launch', floorMs: BranchTimingThresholds.startupFloorMs, measure: report => report.startupMs },
@@ -143,11 +179,7 @@ const Metrics: readonly TimingMetric[] = [
     floorMs: BranchTimingThresholds.firstEditFloorMs,
     measure: report => median(report.opening.reopenMs),
   },
-  {
-    name: 'First edit',
-    floorMs: BranchTimingThresholds.firstEditFloorMs,
-    measure: report => report.results[0].parentClickToLastAppliedMs,
-  },
+  FirstEditMetric,
   {
     name: 'Warm p50',
     floorMs: BranchTimingThresholds.warmEditFloorMs,
@@ -200,7 +232,7 @@ function compareMetric(metric: TimingMetric, sessions: BranchSessions): BranchMe
   const pairedChangePercent = measurePairedPercentage(pairDeltas, baselineValues, pairedDeltaMs)
   const agreeingPairs = pairDeltas.filter(delta => Math.sign(delta) === Math.sign(pairedDeltaMs) && delta !== 0).length
   const pairs = baselineValues.length
-  const change = classifyMetricChange(pairedDeltaMs, pairedChangePercent, metric.floorMs, agreeingPairs, pairs)
+  const change = classifyMetricChange(pairedDeltaMs, pairedChangePercent, metric, agreeingPairs, pairs)
   return {
     name: metric.name,
     baseline,
@@ -209,6 +241,7 @@ function compareMetric(metric: TimingMetric, sessions: BranchSessions): BranchMe
     changePercent,
     pairedDeltaMs,
     pairedChangePercent,
+    pairedDeltasMs: pairDeltas,
     agreeingPairs,
     pairs,
     change,
@@ -232,11 +265,11 @@ function describeSessionStats(values: number[]): SessionStats {
 function classifyMetricChange(
   deltaMs: number,
   changePercent: ChangePercent,
-  floorMs: number,
+  metric: TimingMetric,
   agreeingPairs: number,
   pairs: number,
 ): MetricChange {
-  if (Math.abs(deltaMs) < floorMs || Math.abs(changePercent ?? Infinity) < BranchTimingThresholds.warningPercent) {
+  if (Math.abs(deltaMs) < metric.floorMs || Math.abs(changePercent ?? Infinity) < warningPercent(metric.name)) {
     return 'stable'
   }
   const consistent = agreeingPairs / pairs >= BranchTimingThresholds.agreement && pairs >= MinimumBranchPairs
@@ -248,6 +281,23 @@ function classifyMetricChange(
     return large ? 'error' : 'warning'
   }
   return large ? 'much faster' : 'faster'
+}
+
+function warningPercent(name: string): number {
+  const rules = BranchTimingThresholds
+  return name === FirstEditMetric.name ? rules.firstEditWarningPercent : rules.warningPercent
+}
+
+type OptionalPairedTimingInterval = PairedTimingInterval | undefined
+
+function intervalRulesOutMaterialChange(interval: OptionalPairedTimingInterval, material: number): boolean {
+  return !!interval && interval.lowerMs > -material && interval.upperMs < material
+}
+
+function materialDelta(first: BranchMetric, second: BranchMetric, percent = warningPercent(first.name)): number {
+  const floor = Metrics.find(metric => metric.name === first.name)!.floorMs
+  const baseline = Math.max(first.baseline.medianMs, second.baseline.medianMs)
+  return Math.max(floor, baseline * percent / 100)
 }
 
 function isSlowdown(change: MetricChange): boolean {

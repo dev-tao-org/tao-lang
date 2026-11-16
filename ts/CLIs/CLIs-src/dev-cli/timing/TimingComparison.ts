@@ -1,7 +1,7 @@
 import { NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
 import { formatTimingColumns, TimingComparisonHeader } from '../../agent-skills/performance-investigation/TimingColumns'
-import type { TimingReport } from './TimingReport'
+import type { TimingReport } from './TimingReportContract'
 import { MinimumComparisonSessions, type TimingHistory } from './TimingReportHistory'
 
 /** describeTimingComparison screens comparable independent jobs without asserting statistical significance. */

@@ -12,8 +12,10 @@ export function formatBranchComparison(comparison: BranchComparison): string {
     describeVerdict(workloads.flatMap(workload => workload.metrics)),
     ...findings,
     `Candidate ${comparison.commits.candidate} · baseline ${comparison.commits.baseline}`,
-    'Measures harness launch with previews closed, then preview open and edit-to-render time.',
-    ...workloads.flatMap(formatWorkload),
+    comparison.options.firstEditOnly
+      ? 'Measures the first edit after fresh preview startup.'
+      : 'Measures harness launch with previews closed, then preview open and edit-to-render time.',
+    ...workloads.flatMap(workload => formatWorkload(workload, comparison.options.firstEditOnly === true)),
     '',
     'Timing rows show first-round session medians. Findings use paired changes. Variation is median absolute deviation.',
     ...describeThresholds(),
@@ -56,7 +58,7 @@ function formatFindings(workload: Workload): string[] {
   })
 }
 
-function formatWorkload(workload: Workload): string[] {
+function formatWorkload(workload: Workload, fixedRounds: boolean): string[] {
   const { scenario, metrics } = workload
   const { extraViews, extraFileCount } = scenario.load
   const size = extraFileCount ? ` · ${extraViews} extra compiled views across ${extraFileCount} files` : ''
@@ -66,19 +68,29 @@ function formatWorkload(workload: Workload): string[] {
     '',
     `${scenario.name}${size} · ${coverage}`,
     TimingColumns.TimingComparisonHeader,
-    ...metrics.filter(metric => isHeadline(metric.first.name)).map(formatMetric),
+    ...metrics.filter(metric => isHeadline(metric.first.name)).flatMap(metric => [
+      formatMetric(metric),
+      formatPairEvidence(metric, fixedRounds),
+    ]),
     ...formatStepChanges(metrics),
-    formatWorkCounts(scenario.rounds[0]),
-    ...formatQuality(scenario.rounds),
+    ...formatWarmEvidence(scenario),
   ]
 }
 
 function formatStepChanges(metrics: ComparedMetric[]): string[] {
   const steps = metrics.filter(metric => Perf.PreviewRenderSteps.some(step => step.label === metric.first.name))
+  if (!steps.length) {
+    return []
+  }
   return [
     '  Change  Warm render steps',
     ...steps.map(({ first }) => `  ${TimingColumns.formatPercentage(first.changePercent).padStart(7)}  ${first.name}`),
   ]
+}
+
+function formatWarmEvidence(scenario: ComparisonScenario): string[] {
+  const round = scenario.rounds[0]
+  return round.quality.candidate.warmEdits ? [formatWorkCounts(round), ...formatQuality(scenario.rounds)] : []
 }
 
 function formatWorkCounts({ work }: Round): string {
@@ -119,6 +131,32 @@ function formatMetric({ first }: ComparedMetric): string {
   return `${columns}  ${name} · ${variation}`
 }
 
+function formatPairEvidence({ first, confirmation }: ComparedMetric, fixedRounds: boolean): string {
+  const initial = describePairedRound(first)
+  if (!confirmation) {
+    const low = Math.min(...first.pairedDeltasMs)
+    const high = Math.max(...first.pairedDeltasMs)
+    return `             ${initial} · observed pair range ${formatBounds(low, high)}`
+  }
+  const interval = Metrics.pairedMetricInterval(first, confirmation)
+  const repeat = describePairedRound(confirmation)
+  const ciLabel = fixedRounds ? 'CI' : 'nominal CI after screening'
+  const bounds = interval
+    ? ` · paired median ${(interval.coverage * 100).toFixed(1)}% ${ciLabel} ${
+      formatBounds(interval.lowerMs, interval.upperMs)
+    }`
+    : ''
+  return `             ${initial} · repeat ${repeat}${bounds}`
+}
+
+function describePairedRound(metric: BranchMetric): string {
+  return `paired ${formatMovement(metric)} (${metric.agreeingPairs}/${metric.pairs} same direction)`
+}
+
+function formatBounds(lower: number, upper: number): string {
+  return `[${TimingColumns.formatSignedNumber(lower, 1)}, ${TimingColumns.formatSignedNumber(upper, 1)}] ms`
+}
+
 function formatMetricName(name: string): string {
   if (name === 'Warm p50') {
     return 'Typical warm edit'
@@ -141,7 +179,7 @@ function describeOutcome({ first, confirmation, change }: ComparedMetric): strin
       }
       return agreement
     }
-    return `Repeat measured ${formatMovement(confirmation)}. The change did not hold up across rounds.`
+    return `Repeat measured ${formatMovement(confirmation)}. The effect remains uncertain.`
   }
   const severity = isSlowdown(change) ? `Slowdown (${change})` : `Speedup (${change})`
   return confirmation ? `${severity}. Repeat measured ${formatMovement(confirmation)}.` : severity + '.'
@@ -157,8 +195,9 @@ function describeThresholds(): string[] {
   const rules = Metrics.BranchTimingThresholds
   const agreementPercent = rules.agreement * 100
   return [
-    `Repeat threshold: ${rules.warningPercent}% movement with ${agreementPercent}% pair agreement in both rounds.`,
-    `Slowdowns at ${rules.errorPercent}% in both rounds are errors.`,
+    `Confirmation requires ${rules.warningPercent}% movement (${rules.firstEditWarningPercent}% for first edit) and ${agreementPercent}% pair agreement in both rounds.`,
+    'The paired median confidence interval must also clear the material change threshold.',
+    `The error tier needs ${rules.errorPercent}% movement in both rounds and an interval beyond that share of the baseline median in milliseconds.`,
     `Minimum changes: ${rules.startupFloorMs} ms launch/first open, ${rules.firstEditFloorMs} ms reopen/first edit, ${rules.warmEditFloorMs} ms warm edits.`,
   ]
 }

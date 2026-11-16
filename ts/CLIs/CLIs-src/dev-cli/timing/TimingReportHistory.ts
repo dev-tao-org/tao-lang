@@ -1,6 +1,6 @@
 import { Json, Regxs, Sort, Try } from '@shared'
 import { FS, Path } from '@shared/os'
-import type { TimingReport } from './TimingReport'
+import type { TimingReport } from './TimingReportContract'
 
 /** TimingHistory identifies the previous comparable measurement and unusable saved evidence. */
 export type TimingHistory = { baseline?: TimingReport; unusable: number }

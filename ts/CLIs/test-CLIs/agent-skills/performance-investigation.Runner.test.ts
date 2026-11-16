@@ -6,10 +6,12 @@ import { FS, Path, Platform, Repo } from '@shared/os'
 import * as BranchMetrics from '../../CLIs-src/agent-skills/performance-investigation/BranchMetrics'
 import { formatBranchComparison } from '../../CLIs-src/agent-skills/performance-investigation/BranchReport'
 import { runWithEvidence } from '../../CLIs-src/agent-skills/performance-investigation/Evidence'
+import { estimatePairedTimingInterval } from '../../CLIs-src/agent-skills/performance-investigation/PairedTimingInterval'
 import type { PreviewReport } from '../../CLIs-src/agent-skills/performance-investigation/ReportContract'
 import type { MeasurementJob } from '../../CLIs-src/agent-skills/performance-investigation/Runner'
 import { collectSamples } from '../../CLIs-src/agent-skills/performance-investigation/RunnerSamples'
 import { summarizeJob } from '../../CLIs-src/agent-skills/performance-investigation/Summary'
+import { parseTimingReport } from '../../CLIs-src/dev-cli/timing/TimingReportContract'
 
 Tests.test('measurement failure retains completed samples and records a failed job', async () => {
   await withDirectory(async directory => {
@@ -44,6 +46,12 @@ Tests.test('summaries keep warm edits grouped by independent session and reject 
       return report
     })
     const summary = await summarizeJob(directory)
+    const manifest = await FS.readFile(Path.join(directory, 'job.json'), 'utf8')
+    const payload = { summary: Json.Print([summary]), manifest, job: directory, runner: 'runner-fixture' }
+    const collected = parseTimingReport(payload)
+    Tests.expect(collected.runner).toBe('runner-fixture')
+    Tests.expect(collected.finishedAt).toBeString()
+    Tests.expect(collected.groups).toEqual(summary.groups)
     Tests.expect(summary.groups.find(group => group.name === 'warm/text')).toEqual({
       name: 'warm/text',
       sessions: 2,
@@ -149,6 +157,7 @@ function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[
   const report = renderBranchReport(baseline, [candidate, repeat])
   Tests.expect(report.startsWith('Confirmed ')).toBe(true)
   Tests.expect(report).toContain('Typical warm edit — +14.3% (+10.00 ms). Slowdown (warning). Repeat measured +28.6%')
+  Tests.expect(report).toContain('paired median 97.9% nominal CI after screening [+10.0, +20.0] ms')
   Tests.expect(report).toContain('Slow warm edit (p95)')
   Tests.expect(report).toContain('Warm preview reopen')
   Tests.expect(report).toContain('Warm render steps')
@@ -156,6 +165,48 @@ function assertBranchReport(baseline: PreviewReport[], candidate: PreviewReport[
   Tests.expect(report).toContain('generated paths changed 2 / 2 · Metro delta modules — / —')
   Tests.expect(report).toContain('Edits with a frame restart: 10/230 vs 10/230 baseline')
 }
+
+Tests.test('a first-edit headline can trigger a repeat without establishing a paired slowdown', () => {
+  const baseline = [95, 100, 106, 110, 120].map(createBranchSession)
+  const candidate = [114, 102, 108, 112, 118].map(createBranchSession)
+  const metrics = BranchMetrics.compareBranchMetrics({ baseline, candidate }, true)
+  const [first] = metrics
+  Tests.expect(metrics.map(metric => metric.name)).toEqual(['First edit'])
+  Tests.expect(first.deltaMs).toBe(6)
+  Tests.expect(first.pairedDeltaMs).toBe(2)
+  Tests.expect(first.change).toBe('stable')
+  Tests.expect(BranchMetrics.screensFirstEditForRepeat(first)).toBe(true)
+  const repeat = [65, 90, 108, 140, 170].map(createBranchSession)
+  const [confirmation] = BranchMetrics.compareBranchMetrics({ baseline, candidate: repeat }, true)
+  Tests.expect(BranchMetrics.confirmMetricChange(first, confirmation)).toBe('variable')
+})
+
+Tests.test('five pairs cannot bound a 95% median interval and two noisy rounds can remain inconclusive', () => {
+  Tests.expect(estimatePairedTimingInterval([1, 2, 3, 4, 5])).toBeUndefined()
+  Tests.expect(estimatePairedTimingInterval([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).toEqual({
+    lowerMs: 2,
+    upperMs: 9,
+    coverage: 0.978515625,
+  })
+  const baseline = [70, 70, 70, 70, 70].map(createBranchSession)
+  const candidate = [60, 80, 80, 80, 80].map(createBranchSession)
+  const first = readWarmMedian(baseline, candidate)
+  const second = readWarmMedian(baseline, candidate.toReversed())
+  Tests.expect(first.change).toBe('warning')
+  Tests.expect(second.change).toBe('warning')
+  Tests.expect(BranchMetrics.confirmMetricChange(first, second)).toBe('variable')
+})
+
+Tests.test('the millisecond interval cannot promote a warning to an error', () => {
+  const baseline = [90, 95, 100, 150, 200].map(createBranchSession)
+  const candidate = [105, 110, 105, 165, 215].map(createBranchSession)
+  const repeat = [105, 110, 115, 165, 215].map(createBranchSession)
+  const [first] = BranchMetrics.compareBranchMetrics({ baseline, candidate }, true)
+  const [second] = BranchMetrics.compareBranchMetrics({ baseline, candidate: repeat }, true)
+  Tests.expect(first.change).toBe('warning')
+  Tests.expect(second.change).toBe('error')
+  Tests.expect(BranchMetrics.confirmMetricChange(first, second)).toBe('warning')
+})
 
 function renderBranchReport(baseline: PreviewReport[], comparisons: PreviewReport[][]): string {
   const rounds = comparisons.map(sessions => ({
@@ -226,7 +277,7 @@ function createJob(): MeasurementJob {
   return {
     version: 1,
     status: 'running',
-    startedAt: '2026-10-28T00:00:00Z',
+    startedAt: '2026-10-28T00:00:00.000Z',
     commit: 'a'.repeat(40),
     tree: 'b'.repeat(40),
     fixtureSha256: 'fixture',

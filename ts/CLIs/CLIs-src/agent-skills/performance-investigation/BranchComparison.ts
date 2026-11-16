@@ -11,7 +11,7 @@ import { describeMeasurementConditions, type MeasurementConditions, readComplete
 import { appendTimingProgress } from './TimingProgress'
 
 /** BranchComparisonOptions selects prepared runner checkouts and independent pairs per round. */
-export type BranchComparisonOptions = { baseline: string; candidate: string; pairs: number }
+export type BranchComparisonOptions = { baseline: string; candidate: string; pairs: number; firstEditOnly?: boolean }
 
 type RoundStatus = 'running' | 'passed' | 'failed'
 type Side = 'baseline' | 'candidate'
@@ -65,7 +65,10 @@ export async function runBranchComparison(options: BranchComparisonOptions): Pro
     IO.print(`Performance comparison: ${comparison.directory}`)
     await saveComparison(comparison)
     await Try(async () => {
-      const { extraViews, extraFileCount } = Perf.readPreviewMeasurement({ editCount: EditsPerSession, frameCount: 2 })
+      const { extraViews, extraFileCount } = Perf.readPreviewMeasurement({
+        editCount: editsPerSession(options),
+        frameCount: 2,
+      })
       const scenario: ComparisonScenario = {
         name: 'Performance project',
         load: { extraViews, extraFileCount },
@@ -118,7 +121,10 @@ async function createComparison(options: BranchComparisonOptions): Promise<Branc
 }
 
 function requiresConfirmation(round: Round): boolean {
-  return round.metrics.some(metric => metric.change !== 'stable' && metric.change !== 'variable')
+  return round.metrics.some(metric => {
+    const qualifies = metric.change !== 'stable' && metric.change !== 'variable'
+    return qualifies || Metrics.screensFirstEditForRepeat(metric)
+  })
 }
 
 async function measureScenario(
@@ -129,14 +135,16 @@ async function measureScenario(
   const sessionHistory: ScenarioSessions = { seenIds: new Set() }
   const first = await measureRound(comparison, fixture, sessionHistory, 0)
   scenario.rounds.push(first)
-  if (requiresConfirmation(first)) {
+  if (comparison.options.firstEditOnly || requiresConfirmation(first)) {
     await appendTimingProgress(`Confirming ${scenario.name} · ${comparison.options.pairs} fresh pairs`)
     const second = await measureRound(comparison, fixture, sessionHistory, 1)
     scenario.rounds.push(second)
   }
 }
 
-const EditsPerSession = 24
+function editsPerSession(options: BranchComparisonOptions): number {
+  return options.firstEditOnly ? Perf.PreviewCycleSize : Perf.DefaultPreviewEditCount
+}
 
 async function measureRound(
   comparison: BranchComparison,
@@ -154,7 +162,13 @@ async function measureRound(
       const path = Runner.allocateTimingJob(Path.join(comparison.directory, 'sessions'))
       jobs[side].push(path)
       await saveComparison(comparison)
-      await Runner.runMeasurementJob({ repo, fixture, samples: 1, edits: EditsPerSession, frameCount: 2 }, path)
+      await Runner.runMeasurementJob({
+        repo,
+        fixture,
+        samples: 1,
+        edits: editsPerSession(comparison.options),
+        frameCount: 2,
+      }, path)
       const report = await readComparableReport(path, comparison, side)
       requireComparableSession(report, sessionHistory)
       sessions[side].push(report)
@@ -162,7 +176,7 @@ async function measureRound(
   }
   const baseline = Metrics.countPreviewQuality(sessions.baseline)
   const candidate = Metrics.countPreviewQuality(sessions.candidate)
-  const metrics = Metrics.compareBranchMetrics(sessions)
+  const metrics = Metrics.compareBranchMetrics(sessions, comparison.options.firstEditOnly)
   const work = {
     baseline: Metrics.describeWarmWork(sessions.baseline),
     candidate: Metrics.describeWarmWork(sessions.candidate),

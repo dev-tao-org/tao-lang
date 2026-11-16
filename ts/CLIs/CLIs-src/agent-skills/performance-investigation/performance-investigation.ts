@@ -7,8 +7,9 @@ import { Command } from '../../cli-kit/bridges/Bridge_commander'
 import { type BranchComparisonOptions, runBranchComparison } from './BranchComparison'
 import { receiveSnapshot } from './Checkout'
 import { copyRemote, discoverHosts, executeRemote, type RemoteExecution } from './Remote'
-import { runMeasurements } from './Runner'
+import { runMeasurements, type RunnerOptions } from './Runner'
 import { createSnapshot } from './Snapshot'
+import { runSnapshotMeasurement } from './SnapshotMeasurement'
 import { summarizeJob } from './Summary'
 
 /** main exposes deterministic helpers while the skill owns investigation and causal interpretation. */
@@ -20,6 +21,7 @@ export async function main(): Promise<void> {
   registerSnapshotCommands(command)
   registerRemoteCommands(command)
   registerMeasurementCommands(command)
+  registerSnapshotMeasurementCommand(command)
   registerComparisonCommand(command)
   await command.parseAsync(Process.argv)
 }
@@ -29,11 +31,13 @@ function registerComparisonCommand(command: Command): void {
     .argument('<baseline>', 'Absolute baseline checkout.')
     .argument('<candidate>', 'Absolute candidate checkout.')
     .option('--pairs <count>', 'Independent baseline/candidate pairs per round.', '5')
-    .action(async (baseline: string, candidate: string, options: { pairs: string }) => {
+    .option('--first-edit', 'Measure the first edit in each fresh session and repeat the batch.')
+    .action(async (baseline: string, candidate: string, options: { pairs: string; firstEdit?: boolean }) => {
       const comparison: BranchComparisonOptions = {
         baseline: CLIKit.resolveCallerPath(baseline),
         candidate: CLIKit.resolveCallerPath(candidate),
         pairs: Number(options.pairs),
+        firstEditOnly: options.firstEdit,
       }
       await runBranchComparison(comparison)
     })
@@ -41,6 +45,7 @@ function registerComparisonCommand(command: Command): void {
 
 type ReceiveOptions = { bundle: string; manifest: string; directory: string; ref?: string }
 type RunOptions = { repo: string; fixture: string; samples: string; edits: string }
+type SnapshotRunOptions = RunOptions & { bundle: string; manifest: string }
 type RemoteCommandOptions = { cwd: string; detach?: string; controlPath?: string }
 type CopyOptions = { download?: boolean; controlPath?: string }
 
@@ -67,7 +72,7 @@ function registerSnapshotCommands(command: Command): void {
 }
 
 function registerRemoteCommands(command: Command): void {
-  command.command('hosts').description('List SSH aliases and Tailscale peers; never choose or connect to a host.')
+  command.command('hosts').description('List configured SSH aliases without connecting to a host.')
     .action(async () => printResult(await discoverHosts()))
   command.command('ssh').description('Run argv on a chosen POSIX host through existing SSH configuration.')
     .argument('<host>', 'Existing SSH alias or user@hostname.')
@@ -99,12 +104,7 @@ function registerMeasurementCommands(command: Command): void {
     .option('--samples <count>', 'Independent preview process sessions.', '1')
     .option('--edits <count>', 'Edits per session; warm samples exclude the first complete cycle.', '24')
     .action(async (options: RunOptions) => {
-      const directory = await runMeasurements({
-        repo: CLIKit.resolveCallerPath(options.repo),
-        fixture: CLIKit.resolveCallerPath(options.fixture),
-        samples: Number(options.samples),
-        edits: Number(options.edits),
-      })
+      const directory = await runMeasurements(resolveWorkload(options))
       printResult({ directory })
     })
   command.command('summarize').description('Summarize independent run medians and retain raw job evidence.')
@@ -112,6 +112,35 @@ function registerMeasurementCommands(command: Command): void {
     .action(async (directories: string[]) => {
       printResult(await Promise.all(directories.map(directory => summarizeJob(CLIKit.resolveCallerPath(directory)))))
     })
+}
+
+function registerSnapshotMeasurementCommand(command: Command): void {
+  command.command('run-snapshot').description(
+    'Prepare and measure a transferred snapshot under the shared timing lock.',
+  )
+    .requiredOption('--bundle <path>', 'Transferred snapshot bundle.')
+    .requiredOption('--manifest <path>', 'Transferred snapshot manifest.')
+    .requiredOption('--repo <path>', 'New owned checkout directory.')
+    .requiredOption('--fixture <path>', 'Performance fixture in the new checkout.')
+    .option('--samples <count>', 'Independent preview process sessions.', '1')
+    .option('--edits <count>', 'Edits per session.', '24')
+    .action(async (options: SnapshotRunOptions) => {
+      const directory = await runSnapshotMeasurement({
+        ...resolveWorkload(options),
+        bundle: CLIKit.resolveCallerPath(options.bundle),
+        manifest: CLIKit.resolveCallerPath(options.manifest),
+      })
+      printResult({ directory })
+    })
+}
+
+function resolveWorkload(options: RunOptions): RunnerOptions {
+  return {
+    repo: CLIKit.resolveCallerPath(options.repo),
+    fixture: CLIKit.resolveCallerPath(options.fixture),
+    samples: Number(options.samples),
+    edits: Number(options.edits),
+  }
 }
 
 function printResult(value: unknown): void {
