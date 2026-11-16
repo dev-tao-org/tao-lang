@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { Path, Repo } from '@shared/os'
-import { assertNewWorkspacePath } from '../../cli-checks/check'
+import { assertNewWorkspacePath, assertNewWorkspaceTree } from '../../cli-checks/check'
 import { readWorkspaceManifestPaths } from '../../cli-checks/WorkspaceManifests'
 import { registerCommand } from './_command-runner'
 
@@ -32,6 +32,7 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   const workspace = Repo.resolvePath('ts')
   const directory = Path.resolve(workspace, workspacePackage)
   assertNewWorkspacePath(directory, workspace)
+  await assertNewWorkspaceTree()
   const manifests = await readWorkspaceManifestPaths(workspace)
   const manifest = manifests.find(candidate => Path.relative(directory, Path.dirname(candidate)) === '')
   if (!manifest) {

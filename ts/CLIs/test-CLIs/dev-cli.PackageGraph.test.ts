@@ -125,6 +125,35 @@ Tests.test('package graph resolves workspace aliases and distinguishes source, t
   }, { finally: () => FS.rm(workspace, { recursive: true, force: true }) })
 })
 
+Tests.test('package graph retains inline type edges with or without an emitted import', async () => {
+  const workspace = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'package-inline-'))
+  await Try(async () => {
+    await writeGraphFixture(workspace)
+    const inline = "export type Inline = import('@shared').Input"
+    const combined = S`
+      import compute from '@shared'
+      export const result = compute(1)
+      ${inline}
+    `
+    await FS.writeFile(Path.join(workspace, 'consumer/Inline.tsc.ts'), inline)
+    await FS.writeFile(Path.join(workspace, 'consumer/Combined.tsc.ts'), combined)
+    const graph = await analyzePackageGraph(workspace)
+    const kinds = (file: string) => graph.imports.filter(edge => edge.from.file === file).map(edge => edge.kind)
+    Tests.expect(kinds('consumer/Inline.tsc.ts')).toEqual(['type'])
+    Tests.expect(kinds('consumer/Combined.tsc.ts')).toEqual(['value', 'type'])
+  }, { finally: () => FS.rm(workspace, { recursive: true, force: true }) })
+})
+
+Tests.test('workspace package globs cannot search outside the requested root', async () => {
+  const workspace = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'outside-workspace-'))
+  await Try(async () => {
+    for (const pattern of ['../external/*', '/external/*', 'C:\\external\\*']) {
+      await writeJson(workspace, 'package.json', { workspaces: [pattern] })
+      await Tests.expect(analyzePackageGraph(workspace)).rejects.toThrow('Workspace package globs must stay inside ts/')
+    }
+  }, { finally: () => FS.rm(workspace, { recursive: true, force: true }) })
+})
+
 async function writeGraphFixture(workspace: string): Promise<void> {
   await writeJson(workspace, 'package.json', { workspaces: ['team/*', 'consumer'] })
   await writeJson(workspace, 'tsconfig.base.json', {
