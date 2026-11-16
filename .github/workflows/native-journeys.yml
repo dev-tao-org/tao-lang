@@ -30,6 +30,11 @@ jobs:
       EXPO_GO_VERSION: 57.0.9
     steps:
       - uses: actions/checkout@v4
+      - name: Make room for the Android emulator data partition
+        if: matrix.platform == 'android' && runner.environment == 'github-hosted'
+        run: |
+          # The hosted NDKs are unused because this job installs a prebuilt Expo Go APK.
+          sudo rm -rf -- "${ANDROID_HOME:?Missing Android SDK}/ndk"
       - uses: cachix/install-nix-action@v31
       - uses: nix-community/cache-nix-action@v7
         with:
@@ -77,20 +82,29 @@ jobs:
           test -c /dev/kvm
           sudo setfacl -m "u:$(id -un):rw" /dev/kvm
           command_tools="$ANDROID_HOME/cmdline-tools/latest/bin"
-          "$command_tools/sdkmanager" emulator 'system-images;android-36;google_apis;x86_64'
+          if [ ! -x "$ANDROID_HOME/emulator/emulator" ] || [ ! -f "${{ steps.android.outputs.image }}/source.properties" ]; then
+            "$command_tools/sdkmanager" emulator 'system-images;android-36;google_apis;x86_64'
+          fi
           "$ANDROID_HOME/emulator/emulator" -accel-check
+          df -h "$PWD"
           printf '%s\n' "$command_tools" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
       - name: Identify the Xcode toolchain
         if: matrix.platform == 'ios'
         id: xcode
         run: |
-          printf 'identity=%s\n' "$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          xcode=$(xcodebuild -version)
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-build-version)
+          printf 'identity=%s\n' "$(printf '%s\n' "$xcode" "$sdk" | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
       - name: Restore the WebDriverAgent build
         if: matrix.platform == 'ios'
         uses: actions/cache@v4
         with:
-          path: .artifacts/cache/native-journeys/wda
-          key: tao-wda-v1-${{ runner.arch }}-${{ steps.xcode.outputs.identity }}-${{ hashFiles('ts/bun.lock') }}
+          # Xcode's CompilationCache database changes size during the post-job archive.
+          path: |
+            .artifacts/cache/native-journeys/wda/*/Build
+            .artifacts/cache/native-journeys/wda/*/ModuleCache.noindex
+            .artifacts/cache/native-journeys/wda/*/SDKStatCaches.noindex
+          key: tao-wda-v2-${{ runner.arch }}-${{ steps.xcode.outputs.identity }}-${{ hashFiles('ts/bun.lock') }}
       - name: Restore the Expo Go runtime
         uses: actions/cache@v4
         with:
@@ -129,5 +143,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-journeys-${{ matrix.platform }}
-          path: .artifacts/logs/
+          path: |
+            .artifacts/logs/dev/*.log
+            .artifacts/logs/agent/*.log
+            .artifacts/logs/setup/*.log
+            .artifacts/logs/native-journeys/*/*.log
+            .artifacts/logs/native-journeys/*.xml
+            .artifacts/logs/native-journeys/*.png
+            .artifacts/logs/native-journeys/*/*.png
           if-no-files-found: warn
