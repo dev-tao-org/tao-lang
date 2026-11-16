@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as Perf from '@perf'
-import { Errors, Json, NewlineCharacter, Objects, Schema } from '@shared'
+import { Errors, NewlineCharacter, Objects, Schema } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -38,7 +38,7 @@ export async function recordLocalPreviewBaseline(): Promise<void> {
     const reports = await Promise.all(paths.map(readReport))
     requireComparableSessions(reports, commit)
     const pending = Path.join(directory, 'baseline.json')
-    await FS.writeFile(pending, Json.Print({ paths }))
+    await FS.writeJson(pending, { paths })
     await FS.rename(pending, BaselinePath)
     IO.summary(`Preview baseline recorded from ${reports.length} independent sessions.`)
     IO.summary(`Baseline reports: ${directory}`)
@@ -66,7 +66,7 @@ export async function printLocalPreviewChanges(path: string): Promise<void> {
     IO.summary('Capture a baseline with ./dev performance preview --baseline.')
     return
   }
-  const baseline = Json.Parse(await FS.readFile(BaselinePath, 'utf8'), { schema: baselineSchema })
+  const baseline = await FS.readJson(BaselinePath, { schema: baselineSchema })
   const reports = await Promise.all(baseline.paths.map(readReport))
   const current = await readReport(path)
   if (!reports.length || !sameConditions(reports[0]!, current)) {
