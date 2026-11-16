@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import { Errors, Timings } from '@shared'
+import * as SourceValidation from '@source-validation'
 import * as Typecheck from '@typecheck'
 
 import * as ModulesCompiler from './ModulesCompiler'
@@ -43,6 +44,7 @@ function linkSingleFile(document: AST.Document): Typecheck.LinkedProgram {
     Errors.ThrowUserInput('Compile a Tao file with use statements through its linked program.')
   }
   const path = '<memory>'
+  SourceValidation.assertValidStatements(document, path)
   const source: Typecheck.SourceModule = { path, document, imports: [], siblings: [] }
   return Typecheck.linkModules(path, [source])
 }

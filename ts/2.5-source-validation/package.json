@@ -1,0 +1,25 @@
+{
+  "name": "@tao/source-validation",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@tao/ast-gen": "workspace:*",
+    "@tao/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@tao/grammar": "workspace:*",
+    "@types/bun": "1.4.0"
+  },
+  "exports": {
+    ".": "./source-validation-src/SourceValidation.ts"
+  },
+  "tao": {
+    "publicApi": {
+      ".": {
+        "alias": "@source-validation",
+        "namespace": "SourceValidation"
+      }
+    }
+  }
+}

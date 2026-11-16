@@ -67,7 +67,7 @@ Tests.test('library compilation rejects placements before emitting a package', a
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 
-Tests.test('linking reports required statements, view ordering and expectation placement together', async () => {
+Tests.test('source validation reports required statements, view ordering and expectation placement together', async () => {
   const source = S`
     app Example { root Main root Other }
     view Main {

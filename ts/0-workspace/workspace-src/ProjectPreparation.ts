@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Runtime from '@runtime'
 import Exec from '@shared/os/exec'
+import * as SourceValidation from '@source-validation'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Try } from '@shared'
@@ -172,18 +173,20 @@ async function loadProjectManagedInput(
   await dependencies.refresh()
   return await buildManagedModulesInput(
     project.root,
-    await loadEntry(entry, project.root, dependencies),
+    await loadEntry(await readPreparationEntry(entry), project.root, dependencies),
     options.runtimePins,
   )
 }
 
 async function prepareEntry(entry: string, root: string, options: PreparationOptions): Promise<void> {
+  const source = await readPreparationEntry(entry)
   const services = options.dependencyOptions ?? await createProjectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
   if (options.update?.length) {
+    SourceValidation.assertValidStatements(source.document, source.path)
     await prepareDependencies(root, await services.readRequirements(root), services, options.update)
   }
-  const sources = await prepareEntrySources(entry, root, services)
+  const sources = await prepareEntrySources(source, root, services)
   const input = await buildManagedModulesInput(root, sources, options.runtimePins)
   if (!input) {
     await Runtime.prepareRuntime({
@@ -206,7 +209,7 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
 }
 
 async function prepareEntrySources(
-  entry: string,
+  entry: PreparationEntry,
   root: string,
   services: DependencyStoreOptions,
 ): Promise<Typecheck.SourceModule[]> {
@@ -231,23 +234,29 @@ async function prepareEntrySources(
     }), { finally: lock.release })
 }
 
+type PreparationEntry = { path: string; document: AST.Document; parser: Grammar.Parser }
+
+async function readPreparationEntry(path: string): Promise<PreparationEntry> {
+  const parser = Grammar.createParser()
+  const document = AST.transform(parser.parse(await FS.readFile(path, 'utf8')))
+  if (document === undefined) {
+    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${path}.`)
+  }
+  return { path, document, parser }
+}
+
 async function loadEntry(
-  entry: string,
+  entry: PreparationEntry,
   root: string,
   dependencies: Pick<ProjectDependencies, 'resolveProject'>,
 ): Promise<Typecheck.SourceModule[]> {
-  const parser = Grammar.createParser()
-  const document = AST.transform(parser.parse(await FS.readFile(entry, 'utf8')))
-  if (document === undefined) {
-    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${entry}.`)
-  }
   return await loadModules(
-    { path: entry, document },
+    entry,
     {
       directory: root,
       includeModuleRequirements: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
-    parser,
+    entry.parser,
   )
 }

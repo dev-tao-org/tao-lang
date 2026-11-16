@@ -10,6 +10,7 @@ export default {
     '0-workspace': createPackageWorkspace('0-workspace'),
     '1-grammar': createPackageWorkspace('1-grammar'),
     '2-ast-gen': createPackageWorkspace('2-ast-gen'),
+    '2.5-source-validation': createPackageWorkspace('2.5-source-validation'),
     '3-typecheck': createPackageWorkspace('3-typecheck'),
     '4-fix': createPackageWorkspace('4-fix'),
     '5-check': { ...createPackageWorkspace('5-check'), entry: [] },
