@@ -234,16 +234,22 @@ async function prepareEntrySources(
     }), { finally: lock.release })
 }
 
-type PreparationEntry = { path: string; document: AST.Document; parser: Grammar.Parser }
+type PreparationEntry = { path: string; text: string; document: AST.Document; parser: Grammar.Parser }
 
 async function readPreparationEntry(path: string): Promise<PreparationEntry> {
+  const text = await FS.readFile(path, 'utf8')
   const parser = Grammar.createParser()
-  const document = AST.transform(parser.parse(await FS.readFile(path, 'utf8')))
+  const document = parsePreparationEntry(path, text, parser)
+  SourceValidation.assertValidStatements(document, resolveCanonicalPath(path))
+  return { path, text, document, parser }
+}
+
+function parsePreparationEntry(path: string, text: string, parser: Grammar.Parser): AST.Document {
+  const document = AST.transform(parser.parse(text))
   if (document === undefined) {
     Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${path}.`)
   }
-  SourceValidation.assertValidStatements(document, resolveCanonicalPath(path))
-  return { path, document, parser }
+  return document
 }
 
 async function loadEntry(
@@ -251,13 +257,16 @@ async function loadEntry(
   root: string,
   dependencies: Pick<ProjectDependencies, 'resolveProject'>,
 ): Promise<Typecheck.SourceModule[]> {
+  const { path, parser } = entry
+  const text = await FS.readFile(path, 'utf8')
+  const document = text === entry.text ? entry.document : parsePreparationEntry(path, text, parser)
   return await loadModules(
-    entry,
+    { path, document },
     {
       directory: root,
       includeModuleRequirements: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
-    entry.parser,
+    parser,
   )
 }
