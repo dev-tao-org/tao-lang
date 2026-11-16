@@ -15,7 +15,7 @@ import { prepareDependencies, prepareSourceDependency } from './dependencies/Sto
 import type { DependencyStoreOptions } from './dependencies/Types'
 import { collectModuleRequirements } from './ModuleRequirements'
 import { loadModules } from './modules/Loader'
-import { findNamedPackageRoot, findNearestProjectRoot } from './modules/Paths'
+import { findNamedPackageRoot, findNearestProjectRoot, resolveCanonicalPath } from './modules/Paths'
 import { ProjectDependencies } from './ProjectDependencies'
 import * as Lifecycle from './projects/Lifecycle'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
@@ -166,6 +166,7 @@ async function loadProjectManagedInput(
   if (!project) {
     Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
+  const source = await readPreparationEntry(entry)
   const dependencies = new ProjectDependencies(
     project.root,
     options.dependencyOptions ?? await createProjectDependencyOptions(project.root),
@@ -173,7 +174,7 @@ async function loadProjectManagedInput(
   await dependencies.refresh()
   return await buildManagedModulesInput(
     project.root,
-    await loadEntry(await readPreparationEntry(entry), project.root, dependencies),
+    await loadEntry(source, project.root, dependencies),
     options.runtimePins,
   )
 }
@@ -183,7 +184,6 @@ async function prepareEntry(entry: string, root: string, options: PreparationOpt
   const services = options.dependencyOptions ?? await createProjectDependencyOptions(root)
   const executor = options.executor ?? executeManagedTool
   if (options.update?.length) {
-    SourceValidation.assertValidStatements(source.document, source.path)
     await prepareDependencies(root, await services.readRequirements(root), services, options.update)
   }
   const sources = await prepareEntrySources(source, root, services)
@@ -242,6 +242,7 @@ async function readPreparationEntry(path: string): Promise<PreparationEntry> {
   if (document === undefined) {
     Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${path}.`)
   }
+  SourceValidation.assertValidStatements(document, resolveCanonicalPath(path))
   return { path, document, parser }
 }
 

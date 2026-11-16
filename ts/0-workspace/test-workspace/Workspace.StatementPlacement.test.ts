@@ -3,6 +3,8 @@ import * as Grammar from '@grammar'
 import { S, Source, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
+import { initializeProject } from '../workspace-src/projects/Projects'
 import { compileLibraryPackage, createWorkspace } from '../workspace-src/Workspace'
 
 const PlacementMessage = 'Root declarations belong directly inside an app.'
@@ -48,7 +50,7 @@ Tests.test('misplaced statements retain their AST ranges and block app publicati
   }, { finally: () => workspace.dispose() })
 })
 
-Tests.test('library compilation rejects placements before emitting a package', async () => {
+Tests.test('library compilation rejects misplaced statements before reading dependency state or emitting a package', async () => {
   const directory = Artifacts.resolvePath('tmp', `library-placement-${Platform.randomUUID()}`)
   const entry = Path.join(directory, 'Library.tao')
   const output = Path.join(directory, 'output')
@@ -60,8 +62,9 @@ Tests.test('library compilation rejects placements before emitting a package', a
     }
   `
   await Try(async () => {
-    await FS.mkdir(directory)
+    await initializeProject(directory)
     await FS.writeFile(entry, source)
+    await FS.writeFile(resolveDependencyLockPath(directory), 'corrupt')
     await Tests.rejects(compileLibraryPackage({ entry, out: output, name: '@example/placement' }), LibraryPlacementRegx)
     Tests.expect(await FS.exists(output)).toBe(false)
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })

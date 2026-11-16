@@ -5,7 +5,7 @@ import { Artifacts, FS, Path, Platform } from '@shared/os'
 import { gitSourceAdapter } from '../workspace-src/dependencies/Git'
 import { readDependencyLock, resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
-import { prepareProject } from '../workspace-src/ProjectPreparation'
+import { inspectProjectPreparation, prepareProject } from '../workspace-src/ProjectPreparation'
 import { initializeProject } from '../workspace-src/projects/Projects'
 
 const ConflictingDependencyCommitErrorRegx = /conflicting commits/
@@ -77,7 +77,7 @@ Tests.test('project preparation rejects lowercase npm aliases before installing 
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('project preparation rejects misplaced statements before resolving source requirements', async () => {
+Tests.test('project preparation and inspection reject misplaced statements before reading source requirements', async () => {
   const root = Artifacts.resolvePath('tmp', `project-preparation-placement-${Platform.randomUUID()}`)
   const entry = Path.join(root, 'Main.tao')
   const source = S`
@@ -102,5 +102,7 @@ Tests.test('project preparation rejects misplaced statements before resolving so
     await Tests.rejects(prepareProject(entry, { dependencyOptions, update: ['Packages'] }), MisplacedRootErrorRegx)
     Tests.expect(requirementReads).toBe(0)
     Tests.expect(await readDependencyLock(lock)).toEqual(originalLock)
+    await Tests.rejects(inspectProjectPreparation(entry, { dependencyOptions, runtime: false }), MisplacedRootErrorRegx)
+    Tests.expect(requirementReads).toBe(0)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
