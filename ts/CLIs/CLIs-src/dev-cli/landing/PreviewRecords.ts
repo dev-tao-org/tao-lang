@@ -1,4 +1,3 @@
-import * as Performance from '@repo-analysis/performance'
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
@@ -54,6 +53,7 @@ function isExemptPath(path: string): boolean {
 }
 
 async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord> {
+  const Performance = await import('@repo-analysis/performance')
   const directory = `performance/preview/${source}`
   const pending = `.artifacts/notes/preview-history/${source}`
   const base = await io.exists(`${pending}/record.json`) ? pending : `.storage/${directory}`

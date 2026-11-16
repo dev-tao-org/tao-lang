@@ -14,6 +14,7 @@ Tests.test('CLI launchers prepare missing semantic AST before loading commands',
     await assertMissingDependenciesRequireSetup(root)
     await assertPreparationFailureStopsLauncher(root)
     await assertExistingAstSkipsSetup(root)
+    await assertVerifyChecksExistingAst(root)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -109,6 +110,19 @@ async function assertExistingAstSkipsSetup(root: string): Promise<void> {
     Tests.expect(await readCalls(root)).toBe(`${command}:run ${resolveCLIEntry(command)} --help\n`)
     await writeCalls(root, '')
   }
+}
+
+async function assertVerifyChecksExistingAst(root: string): Promise<void> {
+  for (const launcher of ['agent', 'dev'] as const) {
+    await writeCalls(root, '')
+    const result = await runLauncher(root, launcher, ['verify'])
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe(`prepare\n${launcher}:run ${resolveCLIEntry(launcher)} verify\n`)
+  }
+  await writeCalls(root, '')
+  const failed = await runLauncher(root, 'dev', ['verify'], { BOOTSTRAP_FAILURE_STATUS: '23' })
+  Tests.expect(failed.status).toBe(23)
+  Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 
 type CLICommand = 'agent' | 'dev' | 'tao'
