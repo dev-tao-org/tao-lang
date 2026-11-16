@@ -7,6 +7,7 @@ This index records agreed design across the server-side and typed-calculation de
 - Author provider-neutral entities with singular/plural declarations. App or datasource configuration selects the provider, which assigns entity IDs. Import external actions explicitly.
 - Entity access and validation, transaction semantics and authored revision checks are specified in [Data Access and Validation](../Specification/Data%20Access%20and%20Validation.md).
 - Provider capabilities must satisfy the program's requirements. Matching rejects unsupported guarantees. Adapters implement the generated SDK callback transaction boundary and prove its guarantees through [provider conformance](Tao%20Provider%20Conformance.md). Providers own synchronization and queueing.
+- Managed deployment uses provider-neutral `tao ship`, compiler-owned app definitions and provider planning/application of schema and access rules. Private Notes on self-hosted InstantDB precedes Firebase/Firestore and Convex deployment integrations. See the [deployment contract](Tao%20Provider%20Conformance.md#managed-deployment-contract) and [paused implementation review points](Tao%20Runtime%20PoC.md#managed-deployment-review-points).
 
 ## State and actions
 
@@ -21,8 +22,9 @@ This index records agreed design across the server-side and typed-calculation de
 - Sidecar requirements are owned by Tao declarations and compiler-generated interfaces/signatures. Reuse ordinary language concepts; opaque requirements may use sidecar-only declaration syntax when necessary rather than hidden TypeScript metadata.
 - Authored Tao and generated code use three-space indentation; handwritten repository TypeScript follows its two-space policy. Runtime operations own language semantics; generated code connects them rather than duplicating evaluation logic.
 - [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md) owns state replacement, detached edits and opt-in persistence. Automatic persistence-key shorthand follows explicit stable keys.
+- Drafts track per-field baselines, follow live changes in untouched fields and submit captured changed-field patches. Conflict selection preserves unrelated edits; confirmed creation binds the provider entity while preserving newer edits. Local acceptance is distinct from authoritative confirmation; its public inspection API remains open.
 - [Actions and Results](../Specification/Actions%20and%20Results.md) owns activity inspection, failure presentation, guards and disabled interaction. [Advanced Action Execution](Advanced%20Action%20Execution.md) owns the deferred retry design and its remaining questions.
-- Keep `first` and `last` consistent across lists. Collection insertion uses `add Items << Item` to append and `add Item >> Items` to prepend. Action inspection is limited to `when ACTION` for MVP; prior listable status, handle and invocation-selection designs are retained in the post-MVP document.
+- Keep `first` and `last` consistent across lists. Collection insertion uses `add Items << Item` to append and `add Item >> Items` to prepend. MVP action inspection is direct aggregate matching: `when ACTION` matches all applicable cases, while render `pick ACTION` selects the first matching branch in source order with an available `otherwise` fallback. Prior listable status, handle and invocation-selection designs are retained in the post-MVP document.
 - Use spaces inside interpolation braces, as in `{ Expression }`. Prefer a declared type name as its binding name and use an alias to distinguish roles. Use lowercase core type names.
 
 ## Typed calculations

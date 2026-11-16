@@ -1,6 +1,6 @@
 # Actions and Results WIP
 
-The agreed MVP action inspection surface matches aggregate activity through `when ACTION`; the design below is not yet implemented.
+The agreed MVP action inspection surface matches aggregate activity through `when ACTION` or first-match rendering through `pick ACTION`; the design below is not yet implemented.
 
 ```tao
 when Save {
@@ -19,6 +19,20 @@ View-local actions belong to individual view instances, with ownership stable ac
 The `completed` branch has no return-value payload; action code captures ordinary returned values explicitly. An `otherwise` branch runs only if none of the listed cases in that `when` match. Slow reporting has a default threshold of three seconds, overridable on the action; it reports delay without stopping or repeating execution.
 
 The active vocabulary is `idle`, `pending`, `slow`, `completed`, `failed` and `concluded`. Idle means no invocation has started. Slow concerns an executing invocation exceeding its threshold. Concluded means a terminal outcome exists and no invocation remains pending. Cancellation and its previously chosen `cancelling`/`cancelled` statuses are deferred post-MVP in full.
+
+#### `pick ACTION` in rendering
+
+`when` renders every matching branch. `pick` renders only the first matching branch in source order. An `otherwise` branch supplies the fallback when no preceding case matches. Both inspect aggregate action activity without invoking it.
+
+```tao
+pick Save {
+   pending -> Button("Saving…") [disabled yes]
+   failed -> Button("Try again") { on press Save }
+   otherwise -> Button("Save") { on press Save }
+}
+```
+
+Here pending takes precedence over a previous failure, so the two buttons never render together. This selection does not change the underlying activity or acknowledge failures.
 
 #### Event actions
 
