@@ -93,3 +93,10 @@ The accepted session-isolation follow-up replaces shared output with `.tao/cache
 The review-build follow-up uses ordinary compilation to retain reviewable output for the two example projects. See [Generated Output](../Dev%20Env/Generated%20Output.md) for paths and exclusions. These follow-up changes remain under implementation and verification; earlier PoC verification counts above do not establish their completion.
 
 `tao init <existing-directory> --library` creates a nonnested library/React starter without installing dependencies or overwriting existing files. Its generic Justfile uses an installed `tao` by default. The separate static starter copy was removed in favor of `Apps/TS Lib App`, whose Justfile defaults to the checkout CLI resolved from its folder and permits a `TAO` override. The permanent initializer acceptance test still generates, compiles, typechecks and renders a fresh consumer with its compiled Tao prop. Current managed-host evidence and limitations are retained in [the checkpoint](../../.artifacts/checkpoint/managed-expo-host.md); earlier editor and standalone receipts remain historical.
+
+## Cross-library disabled inheritance
+
+Deferred to the accepted package/runtime layout slice: controls from independently compiled Tao libraries must inherit disabled interaction when composed beneath another library's disabled container. The current bundled libraries have separate React contexts; within-runtime inheritance is implemented, cross-library inheritance is not. See [the current behavior and limitation](../Specification/Actions%20and%20Results.md#disabled-interaction).
+
+- [ ] Establish shared disabled-context identity as part of the package/runtime layout.
+- [ ] Prove it through an ordinary TypeScript consumer composing two independently compiled libraries: inherited disabling, a child unable to override it, re-enabling with state retained, and an enabled sibling remaining interactive.

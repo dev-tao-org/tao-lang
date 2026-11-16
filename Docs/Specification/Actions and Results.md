@@ -70,6 +70,8 @@ Inspection does not consume failures. Explicit handlers own presentation; defaul
 
 Tao controls expose their disabled state to the platform and suppress user input and activation. Timers, reactive work and programmatic calls continue. Sidecars composing Tao controls inherit the state automatically. Raw controls follow the [TypeScript runtime contract](Runtime%20TypeScript%20API.md#disabled-interaction).
 
+The current implementation shares this context within one compiled runtime. A control from a separately bundled Tao library does not yet inherit another library's disabled context. Cross-library inheritance is scheduled with the [package/runtime layout work](../Roadmap/TypeScript%20Library%20Decisions%20and%20PoC.md#cross-library-disabled-inheritance).
+
 The proposed ActionButton's exact implementation must respect the reduced MVP inspection surface, without introducing individual execution inspection.
 
 #### Deferred execution features
