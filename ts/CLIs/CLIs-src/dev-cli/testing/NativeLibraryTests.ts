@@ -5,11 +5,11 @@ import { Errors, Try } from '@shared'
 import * as Shared from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
-import type { NativeTestDevice, NativeTestPlatform, NativeTestTarget } from './NativeTestDevice'
+import type { NativeTestPlatform } from './NativeTestDevice'
 
 /** verifyNativeLibrary runs disabled interaction through an ordinary consumer of the compiled Tao library. */
 export async function verifyNativeLibrary(
-  target: NativeTestTarget,
+  target: Workspace.AppTestTarget,
   platform: NativeTestPlatform,
 ): Promise<void> {
   const directory = await prepareConsumerFixture()
@@ -19,7 +19,7 @@ export async function verifyNativeLibrary(
 }
 
 async function runLibraryJourney(
-  target: NativeTestTarget,
+  target: Workspace.AppTestTarget,
   platform: NativeTestPlatform,
   host: string,
 ): Promise<void> {
@@ -35,8 +35,8 @@ async function runLibraryJourney(
   })
 }
 
-async function verifyDisabledLibraryControls(device: NativeTestDevice): Promise<void> {
-  await device.waitForOpeningText('Lock preview', 'previewLock')
+async function verifyDisabledLibraryControls(device: Workspace.AppTestDevice): Promise<void> {
+  await device.expectText('Lock preview', 'previewLock')
   await device.type('previewInput', 'Before locking')
   await device.expectInput('previewInput', 'Before locking')
   await device.press('previewLock')

@@ -20,7 +20,7 @@ export async function createAppTestDriver(
   onProgress?: TestProgress,
   signal?: AbortSignal,
 ): Promise<TestDriver> {
-  const state: Session = {}
+  const state: Session = { platform: target.platform }
   const context = { path, source, target, compileApp, onProgress, signal }
   const abort = listenForAbort(state, signal)
   return {
@@ -45,6 +45,7 @@ type DriverContext = {
 }
 
 type Session = {
+  platform: Runtime.ExpoPlatform
   workspace?: TestWorkspace
   expo?: Runtime.ExpoSession
   device?: AppTestDevice
@@ -179,11 +180,15 @@ async function disposeWorkspaceSession(state: Session): Promise<void> {
 }
 
 async function retainExpoOutput(state: Session): Promise<void> {
-  if (state.expo && state.workspace?.runtime) {
-    const output = await state.expo.output()
-    await FS.writeFile(
-      Path.join(state.workspace.runtime.directory, 'expo.log'),
-      Shared.joinTextLines(output.stdout, output.stderr),
-    )
+  if (!state.expo || !state.workspace?.runtime) {
+    return
+  }
+  const output = await state.expo.output()
+  const log = Shared.joinTextLines(output.stdout, output.stderr)
+  await FS.writeFile(Path.join(state.workspace.runtime.directory, 'expo.log'), log)
+  if (state.platform !== 'web') {
+    const directory = Artifacts.resolvePath('logs', 'native-journeys', 'authored-apps')
+    await FS.mkdir(directory)
+    await FS.writeFile(Path.join(directory, `${state.platform}-${Platform.randomUUID()}.log`), log)
   }
 }

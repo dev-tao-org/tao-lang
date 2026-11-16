@@ -7,37 +7,37 @@ import { type NativeWebDriver, waitForNativeObservation } from './NativeWebDrive
 /** NativeTestPlatform identifies the native React Native platforms used for journeys. */
 export type NativeTestPlatform = 'ios' | 'android'
 
-/** NativeTestTarget opens an Expo Go journey device. */
-export type NativeTestTarget = {
-  platform: NativeTestPlatform
-  openDevice(): Promise<NativeTestDevice>
-}
-
-/** NativeTestDevice provides a separate wait for the compiled consumer's first screen. */
-export type NativeTestDevice = Workspace.AppTestDevice & {
-  waitForOpeningText(value: string, tag: string): Promise<void>
-}
-
 /** createNativeTestTarget adapts an owned native WebDriver session to the Tao journey runner. */
 export function createNativeTestTarget(
   platform: NativeTestPlatform,
   driver: NativeWebDriver,
   clearAppData?: () => Promise<void>,
-): NativeTestTarget {
+): Workspace.AppTestTarget {
   return {
     platform,
-    openDevice: async () => ({
-      open: url => openExpoGo(platform, driver, url, clearAppData),
-      async press(tag) {
-        const element = await waitForElement(driver, tagSelector(platform, tag), `#${tag}`)
-        await driver.tap(element)
-      },
-      type: (tag, value) => typeInput(platform, driver, tag, value),
-      expectText: (value, tag) => expectText(platform, driver, value, tag),
-      waitForOpeningText: (value, tag) => expectText(platform, driver, value, tag, 90_000),
-      expectInput: (tag, value) => expectInput(platform, driver, tag, value),
-      dispose: () => disposeDevice(platform, driver),
-    }),
+    async openDevice() {
+      let opening = false
+      function takeOpeningTimeout() {
+        // The first UI observation includes the device's cold Metro bundle request.
+        const timeout = opening ? 90_000 : undefined
+        opening = false
+        return timeout
+      }
+      return {
+        async open(url) {
+          await openExpoGo(platform, driver, url, clearAppData)
+          opening = true
+        },
+        async press(tag) {
+          const element = await waitForElement(driver, tagSelector(platform, tag), `#${tag}`, takeOpeningTimeout())
+          await driver.tap(element)
+        },
+        type: (tag, value) => typeInput(platform, driver, tag, value, takeOpeningTimeout()),
+        expectText: (value, tag) => expectText(platform, driver, value, tag, takeOpeningTimeout()),
+        expectInput: (tag, value) => expectInput(platform, driver, tag, value, takeOpeningTimeout()),
+        dispose: () => disposeDevice(platform, driver),
+      }
+    },
   }
 }
 
@@ -84,8 +84,9 @@ async function typeInput(
   driver: NativeWebDriver,
   tag: string,
   value: string,
+  timeoutMs?: number,
 ): Promise<void> {
-  const element = await waitForElement(driver, inputSelector(platform, tag), `input #${tag}`)
+  const element = await waitForElement(driver, inputSelector(platform, tag), `input #${tag}`, timeoutMs)
   await driver.tap(element)
   // A disabled field can refuse keyboard focus. Attempt an actual touch before observing that state.
   if (await awaitKeyboard(driver)) {
@@ -116,6 +117,7 @@ async function expectInput(
   driver: NativeWebDriver,
   tag: string,
   value: string,
+  timeoutMs?: number,
 ): Promise<void> {
   const selector = inputSelector(platform, tag)
   const attribute = platform === 'ios' ? 'value' : 'text'
@@ -126,7 +128,7 @@ async function expectInput(
       return element
     }
     return undefined
-  })
+  }, timeoutMs)
 }
 
 async function expectText(
