@@ -49,6 +49,8 @@ function readTypeImportSyntax(filename: string): TypeImportSyntax {
       } else if (hasOnlyNamedTypeSpecifiers(clause?.namedBindings)) {
         const target = clause?.name ? mixedDefaults : explicitTypes
         target.add(node.moduleSpecifier.text)
+      } else if (clause?.name && hasEmptyNamedImports(clause.namedBindings)) {
+        mixedDefaults.add(node.moduleSpecifier.text)
       } else {
         // Other import declarations do not affect the type-only classification.
       }
@@ -102,6 +104,13 @@ function readDynamicImport(node: TypeScript.Node): string | undefined {
 }
 
 type PossibleBindings = TypeScript.NamedImportBindings | TypeScript.NamedExportBindings | undefined
+
+function hasEmptyNamedImports(node: PossibleBindings): boolean {
+  if (!node) {
+    return false
+  }
+  return TypeScript.isNamedImports(node) && node.elements.length === 0
+}
 
 function hasOnlyNamedTypeSpecifiers(node: PossibleBindings): boolean {
   if (node === undefined) {
@@ -157,13 +166,14 @@ function resolveNonTypeImportKinds(
   syntax: TypeImportSyntax,
 ): ImportKind[] {
   const module = dependency.module
-  const fromInlineType = syntax.inlineTypes.has(module) && dependency.dependencyTypes.includes('type-import')
+  const esm = dependency.moduleSystem === 'es6'
+  const fromInlineType = esm && syntax.inlineTypes.has(module) && dependency.dependencyTypes.includes('type-import')
   const kinds: ImportKind[] = []
-  const dynamic = syntax.dynamicImports.has(module)
+  const dynamic = esm && syntax.dynamicImports.has(module)
   if (dynamic || !dependency.preCompilationOnly) {
     kinds.push('value')
   }
-  if (syntax.explicitTypes.has(module)) {
+  if (esm && syntax.explicitTypes.has(module)) {
     kinds.push('type')
   }
   if (needsErasedEdge(dependency, fromInlineType, dynamic)) {
