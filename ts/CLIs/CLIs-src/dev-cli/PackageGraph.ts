@@ -25,8 +25,7 @@ const IgnoredPaths = '(^|/)(node_modules|_gen_[^/]+|[.]tao)(/|$)'
 
 /** analyzePackageGraph resolves and classifies direct imports across workspace package boundaries. */
 export async function analyzePackageGraph(workspace: string): Promise<PackageGraph> {
-  const packages = readWorkspaceManifestPaths(workspace).map(file => readWorkspacePackage(workspace, file))
-    .sort(Sort.By(pkg => pkg.name, Sort.CompareStrings))
+  const packages = await readWorkspacePackages(workspace)
   const entries = packages.flatMap(pkg => listPackageSources(workspace, pkg))
   const tsConfigPath = Path.join(workspace, 'tsconfig.base.json')
   const tsConfig = extractTSConfig(tsConfigPath)
@@ -76,11 +75,14 @@ export function renderPackageGraph(graph: PackageGraph): string {
   ` + NewlineCharacter
 }
 
-function readWorkspacePackage(workspace: string, filename: string): WorkspacePackage {
-  const { name } = Json.Parse(FS.readFileSync(filename, 'utf8'), {
-    schema: PackageManifestSchema,
-    sourceName: filename,
-  })
+async function readWorkspacePackages(workspace: string): Promise<WorkspacePackage[]> {
+  const manifests = await readWorkspaceManifestPaths(workspace)
+  const packages = await Promise.all(manifests.map(file => readWorkspacePackage(workspace, file)))
+  return packages.sort(Sort.By(pkg => pkg.name, Sort.CompareStrings))
+}
+
+async function readWorkspacePackage(workspace: string, filename: string): Promise<WorkspacePackage> {
+  const { name } = await FS.readJson(filename, { schema: PackageManifestSchema })
   const directory = toPortablePath(Path.relative(workspace, Path.dirname(filename)))
   return { name, directory }
 }
