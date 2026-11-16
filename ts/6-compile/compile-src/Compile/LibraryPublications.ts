@@ -14,11 +14,7 @@ export function collectLibraryPublications(
   target?: string,
 ): readonly PublishedView[] {
   const entry = program.modules.find(module => module.path === program.entry)!
-  const libraries = AST.GetDeclarations(entry.document).filter(
-    (node): node is AST.TypeScriptLibraryDeclaration =>
-      node.kind === 'TypeScriptLibraryDeclaration'
-      && (target === undefined || node.name.value === target),
-  )
+  const libraries = [...AST.GetTypeScriptLibraryDeclarations(entry.document, target)]
   if (libraries.length !== 1) {
     Errors.ThrowUserInput(
       target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.',
@@ -60,9 +56,7 @@ function collectSelectedPublication(
   }
   const sources = new Set(importedModule.targets.map(target => target.path))
   const lists = program.modules.filter(module => sources.has(module.path)).flatMap(module =>
-    AST.GetDeclarations(module.document).filter(
-      (node): node is AST.PublishDeclaration => node.kind === 'PublishDeclaration',
-    )
+    AST.GetPublishDeclarations(module.document)
   )
   if (lists.length !== 1) {
     Errors.ThrowUserInput(`Published module ${name} must declare one publish block.`)

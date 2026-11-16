@@ -38,6 +38,49 @@ export function IsExpectation(node: AST.Node): node is AST.Expectation {
   return AST.IsKind(node, ['TextExpectation', 'InputExpectation'])
 }
 
+/** GetLetDeclarations lists let bindings in one statement block, in authored order. */
+export function GetLetDeclarations(statements: readonly AST.Statement[]): readonly AST.LetDeclaration[] {
+  return statements.filter(IsLetDeclaration)
+}
+
+/** GetNestedViewDeclarations lists child view declarations in one statement block. */
+export function GetNestedViewDeclarations(statements: readonly AST.Statement[]): readonly AST.ViewDeclaration[] {
+  return statements.filter(IsViewDeclaration)
+}
+
+/** GetViewRenderExpressions lists nested view renders in one render block, in authored order. */
+export function GetViewRenderExpressions(statements: readonly AST.Statement[]): readonly AST.ViewRenderExpression[] {
+  return statements.filter(IsViewRenderExpression)
+}
+
+/** GetExpectations lists visible assertions in one block, in authored order. */
+export function GetExpectations(block: AST.Block): readonly AST.Expectation[] {
+  return block.statements.filter(IsExpectation)
+}
+
+/** GetTestsDeclarations lists test suites declared in a source document. */
+export function GetTestsDeclarations(document: AST.Document): readonly AST.TestsDeclaration[] {
+  return document.root.block.statements.filter(IsTestsDeclaration)
+}
+
+/** GetTypeScriptLibraryDeclarations lists ts-library declarations, optionally filtered by name. */
+export function GetTypeScriptLibraryDeclarations(
+  document: AST.Document,
+  target?: string,
+): readonly AST.TypeScriptLibraryDeclaration[] {
+  return document.root.block.statements.filter(
+    (node): node is AST.TypeScriptLibraryDeclaration =>
+      AST.IsKind(node, 'TypeScriptLibraryDeclaration') && (target === undefined || node.name.value === target),
+  )
+}
+
+/** GetPublishDeclarations lists publish blocks declared in a source document. */
+export function GetPublishDeclarations(document: AST.Document): readonly AST.PublishDeclaration[] {
+  return document.root.block.statements.filter((node): node is AST.PublishDeclaration =>
+    AST.IsKind(node, 'PublishDeclaration')
+  )
+}
+
 /** GetAppDeclarations lists app declarations in a source document. */
 export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
   return document.root.block.statements.filter(IsAppDeclaration)
@@ -121,7 +164,7 @@ export function GetValueDeclarations(document: AST.Document): AST.ValueDeclarati
 
 /** GetViewDeclarations lists view declarations in a source document. */
 export function GetViewDeclarations(document: AST.Document): AST.ViewDeclaration[] {
-  return document.root.block.statements.filter(IsViewDeclaration)
+  return [...GetNestedViewDeclarations(document.root.block.statements)]
 }
 
 /** GetAllViewDeclarations lists top-level and private views in authored preorder. */

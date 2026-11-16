@@ -99,7 +99,7 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
   }
   const statements = AST.GetViewDeclarationStatements(node)
   if (statements) {
-    for (const child of statements.filter(AST.IsViewDeclaration)) {
+    for (const child of AST.GetNestedViewDeclarations(statements)) {
       declare(scope, child.name)
     }
     for (const statement of statements) {
