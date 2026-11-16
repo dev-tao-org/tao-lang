@@ -4,9 +4,6 @@ import type { LayoutHandlers } from '../lib/formatter/Formatter'
 
 /** Layout defines Tao line boundaries, indentation and preserved list wrapping. */
 export const Layout = {
-  TypeScriptLibraryDeclaration(lm) {
-    lm.block()
-  },
   PublishDeclaration(lm) {
     lm.block()
   },

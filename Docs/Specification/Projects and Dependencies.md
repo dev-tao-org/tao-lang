@@ -3,12 +3,12 @@
 A Tao project owns its source modules, dependency declarations, durable pins and isolated working sessions.
 
 ```tao
-requires github:acme/widgets version v1.2.0 as widgets
-requires file:../shared-widgets as shared
+requires github:acme/widgets version v1.2.0 as Widgets
+requires file:../shared-widgets as Shared
 
 ...
 
-use widgets@ui/controls Button
+use Widgets@ui/controls Button
 use @widgets/ui Badge
 use tao@ui Text, Row, Col, Input
 ```
@@ -28,18 +28,19 @@ stopping at a Git boundary. Initialize the project before using project-scoped i
 dependency commands. Running an app offers any required setup and continues after approval;
 `tao setup ./Calendar/Calendar.tao --yes` can perform that setup explicitly.
 
-#### `requires github:acme/widgets version v1.2.0 as widgets`
+#### `requires github:acme/widgets version v1.2.0 as Widgets`
 
 Project-root declarations select direct source dependencies. GitHub versions may name tags,
 branches or commits; preparation records immutable commits in `.tao/store/dependencies.lock.json`.
-Aliases default from the source name and must be unique in their declaration scope.
+Explicit aliases start with an uppercase letter. Omitted aliases default from the source name.
+Aliases must be unique in their declaration scope.
 
-#### `requires file:../shared-widgets as shared`
+#### `requires file:../shared-widgets as Shared`
 
 File dependencies are live paths relative to the declaring project or dependency. Their optional
 version is descriptive and defaults to `live`. `requires bundled:tao` selects bundled source.
 
-#### `use widgets@ui/controls Button`
+#### `use Widgets@ui/controls Button`
 
 The alias selects a dependency project, `ui` selects its named module, and `controls` selects a
 subdirectory's direct Tao files. Omitting the subdirectory selects the module tree. Modules can
@@ -81,7 +82,7 @@ defaulting to Yes, then continue automatically. Noninteractive setup requires `-
 Ordinary preview edits reuse ready session inputs; dependency changes preserve the last working
 preview, request setup approval, and restart in a fresh session, which resets running app state.
 Routine setup uses durable locks without resolving newer refs or reinstalling unchanged dependencies.
-`tao update widgets --yes` refreshes that direct source pin; `tao update --yes` refreshes all direct
+`tao update Widgets --yes` refreshes that direct source pin; `tao update --yes` refreshes all direct
 source pins while preserving unrelated pins. Source locks also reference exact npm graphs in
 `.tao/store/npm/`.
 

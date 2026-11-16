@@ -13,8 +13,8 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
   const root = Artifacts.resolvePath('tmp', `project-preparation-source-conflict-${Platform.randomUUID()}`)
   const entry = Path.join(root, 'Main.tao')
   const requirements: DependencyRequirement[] = [
-    { provider: 'github', identifier: 'example/shared', version: 'v1', alias: 'first' },
-    { provider: 'github', identifier: 'example/shared', version: 'v2', alias: 'second' },
+    { provider: 'github', identifier: 'example/shared', version: 'v1', alias: 'First' },
+    { provider: 'github', identifier: 'example/shared', version: 'v2', alias: 'Second' },
   ]
   const options: DependencyStoreOptions = {
     storeRoot: Path.join(root, 'source-cache'),
@@ -36,10 +36,10 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
       entry,
       Shared.joinTextLines(
         S`
-          requires github:example/shared version v1 as first
-          requires github:example/shared version v2 as second
-          use first@ui Widget
-          use second@ui Widget
+          requires github:example/shared version v1 as First
+          requires github:example/shared version v2 as Second
+          use First@ui Widget
+          use Second@ui Widget
           app Main { root Widget }
         `,
         '',
@@ -48,6 +48,6 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
     await Tests.rejects(prepareProject(entry, { dependencyOptions: options }), ConflictingDependencyCommitErrorRegx)
     const lock = await readDependencyLock(resolveDependencyLockPath(root))
     Tests.expect(lock?.sources['github:example/shared']?.commit).toBe('a'.repeat(40))
-    Tests.expect(lock?.roots).toEqual({ first: 'github:example/shared@v1' })
+    Tests.expect(lock?.roots).toEqual({ First: 'github:example/shared@v1' })
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })

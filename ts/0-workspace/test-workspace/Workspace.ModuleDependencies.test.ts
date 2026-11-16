@@ -14,7 +14,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
   await Try(async () => {
     await FS.mkdir(module)
     await FS.writeFile(Path.join(root, '.tao'), '')
-    await FS.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as graph' + NewlineCharacter)
+    await FS.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as Graph' + NewlineCharacter)
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', '@scope/graph@2.4.1')
     Tests.expect(result).toEqual({
       moduleRoot: module,
@@ -23,7 +23,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
       version: '2.4.1',
     })
     Tests.expect(await FS.readFile(source, 'utf8')).toBe(
-      'requires npm:@scope/graph version 2.4.1 as graph\n',
+      'requires npm:@scope/graph version 2.4.1 as Graph\n',
     )
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })

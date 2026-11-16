@@ -23,10 +23,27 @@ export default grammar({
   extras($) {
     return [WhitespaceCharacterRegx, $.Comment]
   },
-  supertypes: $ => [$._Declaration, $._Expression, $._ViewRenderStatement],
+  word: $ => $.Identifier,
+  supertypes: $ => [$._Declaration, $._Expression, $._Statement, $._ViewRenderStatement],
   rules: {
     SourceFile($) {
-      return repeat($._Declaration)
+      return repeat($._Statement)
+    },
+    _Statement($) {
+      return choice(
+        $._Declaration,
+        $.RootDeclaration,
+        $._ViewRenderStatement,
+        $.ViewRenderExpression,
+        $.TestDeclaration,
+        $.RunStatement,
+        $.PressStatement,
+        $.TypeStatement,
+        $.ExpectStatement,
+        $.TextExpectation,
+        $.InputExpectation,
+        $.InputValueExpectation,
+      )
     },
     _Declaration($) {
       return choice(
@@ -47,45 +64,8 @@ export default grammar({
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
     },
-    _AppBlock($) {
-      return seq('{', field('statements', $.RootDeclaration), '}')
-    },
-    _ViewDeclarationBlock($) {
-      return seq(
-        '{',
-        repeat(field('statements', $.LetDeclaration)),
-        field('statements', $._ViewRenderStatement),
-        repeat(field('statements', alias($._NestedViewDeclaration, $.ViewDeclaration))),
-        '}',
-      )
-    },
-    _NestedViewDeclaration($) {
-      return seq(
-        'view',
-        field('name', $.Identifier),
-        optional(field('parameters', $.ParameterList)),
-        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
-      )
-    },
-    _ViewRenderBlock($) {
-      return seq(
-        '{',
-        repeat(field('statements', choice($.LetDeclaration, $.ViewRenderExpression))),
-        '}',
-      )
-    },
-    _TestsBlock($) {
-      return seq('{', repeat(field('statements', $.TestDeclaration)), '}')
-    },
-    _TestBlock($) {
-      return seq(
-        '{',
-        repeat(field('statements', choice($.RunStatement, $.PressStatement, $.TypeStatement, $.ExpectStatement))),
-        '}',
-      )
-    },
-    _ExpectationBlock($) {
-      return seq('{', repeat(field('statements', choice($.TextExpectation, $.InputValueExpectation))), '}')
+    Block($) {
+      return seq('{', repeat(field('statements', $._Statement)), '}')
     },
 
     // Apps and views
@@ -94,7 +74,7 @@ export default grammar({
         optional(field('visibility', $.Visibility)),
         'app',
         field('name', $.Identifier),
-        field('block', alias($._AppBlock, $.Block)),
+        field('block', $.Block),
       )
     },
     RootDeclaration($) {
@@ -106,7 +86,7 @@ export default grammar({
         'view',
         field('name', $.Identifier),
         optional(field('parameters', $.ParameterList)),
-        field('body', choice(alias($._ViewDeclarationBlock, $.Block), $.ForeignView)),
+        field('body', choice($.Block, $.ForeignView)),
       )
     },
     ForeignView($) {
@@ -153,7 +133,7 @@ export default grammar({
         optional(field('tag', $.RenderTag)),
         field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
-        optional(field('block', alias($._ViewRenderBlock, $.Block))),
+        optional(field('block', $.Block)),
       )
     },
 
@@ -171,7 +151,7 @@ export default grammar({
 
     // Modules
     TypeScriptLibraryDeclaration($) {
-      return seq('ts-library', field('name', $.Identifier), '{', field('publication', $.PublishDeclaration), '}')
+      return seq('ts-library', field('name', $.Identifier), field('block', $.Block))
     },
     PublishDeclaration($) {
       return seq(
@@ -233,16 +213,19 @@ export default grammar({
 
     // App tests and interactions
     TestsDeclaration($) {
-      return seq('tests', optional(field('label', $.TextLiteral)), field('block', alias($._TestsBlock, $.Block)))
+      return seq('tests', optional(field('label', $.TextLiteral)), field('block', $.Block))
     },
     TestDeclaration($) {
-      return seq(
-        'test',
-        optional(choice(
-          field('label', $.TextLiteral),
-          seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
-        )),
-        field('block', alias($._TestBlock, $.Block)),
+      return prec.dynamic(
+        1,
+        seq(
+          'test',
+          optional(choice(
+            field('label', $.TextLiteral),
+            seq('(', optional(seq(optional('Label'), field('label', $.TextLiteral))), ')'),
+          )),
+          field('block', $.Block),
+        ),
       )
     },
     RunStatement($) {
@@ -260,7 +243,7 @@ export default grammar({
         choice(
           $.TextExpectation,
           $.InputExpectation,
-          seq(optional(field('target', $.RenderTag)), field('block', alias($._ExpectationBlock, $.Block))),
+          seq(optional(field('target', $.RenderTag)), field('block', $.Block)),
         ),
       )
     },

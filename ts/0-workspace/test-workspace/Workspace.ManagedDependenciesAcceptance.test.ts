@@ -80,7 +80,7 @@ async function createFixtureProjects(root: string): Promise<FixtureProjects> {
   await FS.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
   await FS.writeFile(
     Path.join(app, 'Unused.tao'),
-    'requires github:unused/project version v1 as unused' + NewlineCharacter,
+    'requires github:unused/project version v1 as Unused' + NewlineCharacter,
   )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
