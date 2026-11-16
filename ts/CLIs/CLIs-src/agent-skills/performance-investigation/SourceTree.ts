@@ -8,11 +8,21 @@ export type TreeEntry = { mode: string; hash: string; path: string }
 /** readTreeEntries reads literal paths including whitespace without Git's display quoting. */
 export async function readTreeEntries(root: string, tree: string, env?: Record<string, string>): Promise<TreeEntry[]> {
   const output = await captureGit(root, ['ls-tree', '-rz', tree], { env })
+  return parseTreeEntries(output)
+}
+
+/** parseTreeEntries reads NUL-separated Git tree entries from a local or remote checkout. */
+export function parseTreeEntries(output: string): TreeEntry[] {
   return output.split(NullCharacter).filter(Boolean).map(entry => {
     const separator = entry.indexOf('\t')
     const [mode, , hash] = entry.slice(0, separator).split(' ')
     return { mode, hash, path: entry.slice(separator + 1) }
   })
+}
+
+/** isRegularTreeFile checks whether a recursive Git tree entry represents a regular file. */
+export function isRegularTreeFile(entry: TreeEntry): boolean {
+  return entry.mode === RegularFileMode || entry.mode === ExecutableMode
 }
 
 /** assertNoContentTransforms rejects attributes that can change saved or materialized source bytes. */
@@ -73,11 +83,12 @@ export async function assertMaterializedTree(root: string, entries: TreeEntry[])
 
 const GitlinkMode = '160000'
 const SymlinkMode = '120000'
+const RegularFileMode = '100644'
 const ExecutableMode = '100755'
 const HashBatchSize = 128
 
 async function readRegularFileHashes(root: string, entries: TreeEntry[]): Promise<Map<string, string>> {
-  const files = entries.filter(entry => entry.mode !== GitlinkMode && entry.mode !== SymlinkMode)
+  const files = entries.filter(isRegularTreeFile)
   const hashes = new Map<string, string>()
   for (let offset = 0; offset < files.length; offset += HashBatchSize) {
     const batch = files.slice(offset, offset + HashBatchSize)
