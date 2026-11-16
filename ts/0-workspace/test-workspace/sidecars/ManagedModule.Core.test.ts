@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { checkForeignViewContract } from '../../workspace-src/sidecars/ForeignViewContracts'
 import * as ManagedModules from '../../workspace-src/sidecars/ManagedModule/ManagedModules'
@@ -175,7 +175,7 @@ function foreignViewTsconfig(): string {
 async function executeCompiler(command: string, args: readonly string[], cwd: string) {
   return {
     status: 0,
-    stdout: await Processes.capture(command, { variadicArgs: args, cwd }),
+    stdout: await Exec.captureStdout(command, args, { cwd }),
     stderr: '',
   }
 }

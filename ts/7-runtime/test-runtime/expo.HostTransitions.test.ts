@@ -53,9 +53,7 @@ Tests.test('generated Expo host switches app and consumer packages while preserv
   await createConsumerHost(second)
   Tests.expect(FS.realpathSync(Path.join(host, 'node_modules'))).toBe(Path.join(root, 'second/node_modules'))
   await writeExpoApplication(host, root, {}, {}, [], { dependencyDirectory })
-  Tests.expect(FS.realpathSync(Path.join(host, 'node_modules'))).toBe(
-    FS.realpathSync(dependencyDirectory),
-  )
+  Tests.expect(FS.realpathSync(Path.join(host, 'node_modules'))).toBe(FS.realpathSync(dependencyDirectory))
   Tests.expect(await FS.readFile(Path.join(host, 'metro.config.js'), 'utf8')).toContain('tao-resolution.json')
   Tests.expect(FS.existsSync(Path.join(host, 'tao-consumer.json'))).toBe(false)
   Tests.expect(await FS.readFile(sentinel, 'utf8')).toBe('preserve')

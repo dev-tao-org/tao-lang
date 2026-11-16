@@ -3,7 +3,7 @@ import { Json } from '@shared'
 import { Errors, Lists, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** extensionPerformance measures incremental editor parsing, injected TSX and highlight queries. */
 export async function extensionPerformance() {
@@ -52,8 +52,8 @@ async function writeReport(fixture: string, samples: Sample[]) {
   Artifacts.trackTemporary(path)
   const report: ExtensionPerformanceReport = {
     version: 1,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     definition:
       'Kitchen Sink: 20 warmups then 100 alternating text edits. Records parsing/query updates and nonoverlapping token ranges separately. Excludes VS Code rendering.',
     fixtureHash: Platform.hashText(fixture),

@@ -3,19 +3,9 @@ import { Errors, S } from '@shared'
 /** PreviewScenario is one named source edit in a preview button cycle. */
 export type PreviewScenario = {
   name: string
+  path?: string
   apply(source: string, canonical: string): string
 }
-
-/** performanceScenarios edits the minimal benchmark fixture through the preview cycle. */
-export const performanceScenarios: readonly PreviewScenario[] = [
-  { name: 'text', apply: source => source.replace('Hello World', 'Hello Tao') },
-  {
-    name: 'add-text',
-    apply: addBenchmarkText,
-  },
-  { name: 'row', apply: source => source.replace('render Col {', 'render Row {') },
-  { name: 'reset', apply: (_source, canonical) => canonical },
-]
 
 /** previewScenarios edits the isolated Preview app: label, second line, row, then the authored source. */
 export const previewScenarios: readonly PreviewScenario[] = [
@@ -33,21 +23,19 @@ export function applyScenario(
   source: string,
   canonical: string,
 ): string {
+  return requirePreviewScenario(scenarios, name).apply(source, canonical)
+}
+
+/** requirePreviewScenario resolves an exact edit before the harness chooses its source file. */
+export function requirePreviewScenario(
+  scenarios: readonly PreviewScenario[],
+  name: OptionalScenarioName,
+): PreviewScenario {
   const scenario = scenarios.find(item => item.name === name)
   if (!scenario) {
     return Errors.ThrowUserInput('Unknown preview performance scenario: ' + String(name))
   }
-  return scenario.apply(source, canonical)
-}
-
-function addBenchmarkText(source: string): string {
-  return source.replace(
-    'Text("Hello Tao")',
-    S`
-      Text("Hello Tao")
-          Text("Second view")
-    `,
-  )
+  return scenario
 }
 
 function addPreviewDetail(source: string): string {

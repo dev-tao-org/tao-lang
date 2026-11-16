@@ -8,11 +8,12 @@ import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
 import { Errors, Lists, Sort, Time, Timings, type TimingSample } from '@shared'
-import { Path, WorkspaceWatch } from '@shared/os'
+import { Path } from '@shared/os'
 
 import { prepareBuildTypeScript } from '../BuildTypeScript'
 import type { Document } from '../Document'
 import { type CompileRequest, FileManager } from '../FileManager/FileManager'
+import { watchSourceTree } from '../FileManager/SourceWatch'
 import { loadModules } from '../modules/Loader'
 import { resolveCanonicalPath } from '../modules/Paths'
 import { publishBuild } from './WorkspaceBuild'
@@ -132,9 +133,8 @@ class WorkspaceSession {
       onSourceError: options.onSourceError,
       async watch(root, change, error, ignored, additional) {
         const stdlib = await Stdlib.projectDirectory()
-        const watchWorkspace = options.watch ?? WorkspaceWatch.watchWorkspace
         const additionalDirectories = Lists.unique([stdlib], additional ?? [])
-        const watcher = await watchWorkspace(root, change, error, ignored, additionalDirectories)
+        const watcher = await watchSourceTree(root, change, error, ignored, additionalDirectories)
         return {
           dispose: () => watcher.dispose(),
           async updateDirectories(directories, excluded) {
@@ -142,7 +142,6 @@ class WorkspaceSession {
           },
         }
       },
-      schedule: options.schedule,
     })
   }
 
@@ -319,9 +318,7 @@ function createSkippedStages(): PipelineStages {
   return { typecheck: Typecheck.typecheck(), fix: { stage: 'fix', status: 'skipped' }, check: Check.check() }
 }
 
-function createOutputPaths(
-  options: WorkspaceOptions,
-): WorkspaceOutputPaths | undefined {
+function createOutputPaths(options: WorkspaceOptions): WorkspaceOutputPaths | undefined {
   if (options.outputDirectory) {
     const directory = Path.resolve(options.outputDirectory)
     return { buildDirectory: Path.join(directory, 'build'), runtimeDirectory: Path.join(directory, 'expo') }

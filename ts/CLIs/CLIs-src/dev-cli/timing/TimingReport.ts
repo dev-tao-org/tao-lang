@@ -1,20 +1,15 @@
 import { IO } from '@cli-kit'
-import * as CLIKit from '@cli-kit'
-import { Json, Schema } from '@shared'
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
-import type { MeasurementJob } from '../../agent-skills/performance-investigation/Runner'
 import { describeTimingComparison } from './TimingComparison'
 import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote, type TimingRemoteRequest } from './TimingRemote'
-import { isValidTimingReport, readTimingHistory } from './TimingReportHistory'
+import { parseTimingReport, type TimingReport } from './TimingReportContract'
+import { readTimingHistory } from './TimingReportHistory'
 
 /** TimingReportRequest selects a tooling checkout and optional exact completed job. */
 export type TimingReportRequest = { host: string; tooling: string; job?: string }
-
-/** TimingReport identifies independent-session medians validated by the runner helper. */
-export type TimingReport = Schema.infer<typeof timingReportSchema>
 
 /** reportTiming prints a completed runner job without launching measurements. */
 export async function reportTiming(request: TimingReportRequest): Promise<void> {
@@ -26,8 +21,8 @@ export async function reportTiming(request: TimingReportRequest): Promise<void> 
 export async function presentTimingReport(
   report: TimingReport,
   print: (message: string) => void = IO.summary,
-  directory = DevelopmentStorage.resolveDirectory('timing', 'reports'),
 ): Promise<void> {
+  const directory = DevelopmentStorage.resolveDirectory('timing', 'reports')
   await FS.mkdir(directory)
   const history = await readTimingHistory(report, directory)
   const path = Path.join(directory, Path.posix.basename(report.directory) + '.json')
@@ -46,21 +41,17 @@ export async function presentTimingReport(
 export async function readTimingReport(
   request: TimingReportRequest,
   controlPath: string,
-  execute = CLIKit.runNonInteractiveCommand,
 ): Promise<TimingReport> {
   if (!Path.posix.isAbsolute(request.tooling)) {
     Errors.ThrowUserInput('Use an absolute runner tooling checkout path.')
   }
   const remote = { host: request.host, directory: request.tooling, controlPath }
-  const job = request.job ?? await readLatestJob(remote, execute)
+  const job = request.job ?? await readLatestJob(remote)
   requireJobPath(job, request.tooling)
-  const args = createTimingHelperArguments('summarize', [job])
-  const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const reports = parseTimingReports(text)
-  if (reports.length !== 1 || reports[0]?.directory !== job) {
-    Errors.ThrowHostEnvironment('The runner did not return the requested timing report.')
-  }
-  return await readJobProvenance(remote, reports[0], execute)
+  const summary = await readTimingRemote(withTimingArguments(remote, createTimingHelperArguments('summarize', [job])))
+  const manifestPath = Path.posix.join(job, JobFileName)
+  const manifest = await readTimingRemote(withTimingArguments(remote, ['/bin/cat', manifestPath]))
+  return parseTimingReport({ summary, manifest, job, runner: request.host })
 }
 
 /** readTimingJobPath identifies the exact job announced by a completed measurement command. */
@@ -103,13 +94,10 @@ function formatTimingReport(report: TimingReport): string {
   ].join(NewlineCharacter)
 }
 
-async function readLatestJob(
-  remote: Omit<TimingRemoteRequest, 'args'>,
-  execute: typeof CLIKit.runNonInteractiveCommand,
-): Promise<string> {
+async function readLatestJob(remote: Omit<TimingRemoteRequest, 'args'>): Promise<string> {
   const jobs = Path.posix.join(remote.directory, JobsDirectory)
   const args = ['/bin/ls', '-1t', jobs]
-  const listing = await readTimingRemote(withTimingArguments(remote, args), execute)
+  const listing = await readTimingRemote(withTimingArguments(remote, args))
   const latest = listing.split(Regxs.TimingListingLineBreakRegx).find(name => Regxs.TimingJobIdRegx.test(name))
   if (!latest) {
     Errors.ThrowUserInput('No timing jobs were found in this tooling checkout.')
@@ -121,85 +109,9 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
   return { ...remote, args }
 }
 
-async function readJobProvenance(
-  remote: Omit<TimingRemoteRequest, 'args'>,
-  summary: TimingReport,
-  execute: typeof CLIKit.runNonInteractiveCommand,
-): Promise<TimingReport> {
-  const args = ['/bin/cat', Path.posix.join(summary.directory, JobFileName)]
-  const text = await readTimingRemote(withTimingArguments(remote, args), execute)
-  const job = Json.Parse(text) as MeasurementJob
-  if (!matchesSummarizedJob(job, summary)) {
-    Errors.ThrowHostEnvironment('The runner job identity no longer matches its timing summary.')
-  }
-  const report = withJobProvenance(summary, job, remote.host)
-  if (!isValidTimingReport(report)) {
-    Errors.ThrowHostEnvironment('The runner returned incomplete timing provenance or measurements.')
-  }
-  return report
-}
-
-function withJobProvenance(summary: TimingReport, job: MeasurementJob, runner: string): TimingReport {
-  return { ...summary, runner, startedAt: job.startedAt, finishedAt: job.finishedAt! }
-}
-
-function matchesSummarizedJob(job: MeasurementJob, report: TimingReport): boolean {
-  return isPassedJob(job) && matchesJobIdentity(job, report) && matchesJobSettings(job, report)
-}
-
-function isPassedJob(job: MeasurementJob): boolean {
-  return !!job && job.status === 'passed'
-}
-
-function matchesJobIdentity(job: MeasurementJob, report: TimingReport): boolean {
-  return job.commit === report.commit && job.tree === report.tree && job.fixtureSha256 === report.fixtureSha256
-}
-
-function matchesJobSettings(job: MeasurementJob, report: TimingReport): boolean {
-  return job.settings?.edits === report.settings?.edits && job.settings?.samples === report.settings?.samples
-}
-
 function requireJobPath(job: string, tooling: string): void {
   const parent = Path.posix.join(tooling, JobsDirectory)
   if (Path.posix.dirname(job) !== parent || !Regxs.TimingJobIdRegx.test(Path.posix.basename(job))) {
     Errors.ThrowUserInput('Select a job directly inside this tooling checkout’s retained jobs directory.')
   }
 }
-
-function parseTimingReports(text: string): TimingReport[] {
-  return Try(() => Json.Parse(text, { schema: Schema.array(timingReportSchema) }), {
-    catch: () => Errors.ThrowHostEnvironment('The runner returned incomplete timing provenance or measurements.'),
-  })
-}
-
-const timingReportSchema = Schema.looseObject({
-  directory: Schema.string(),
-  commit: Schema.string(),
-  tree: Schema.string(),
-  fixtureSha256: Schema.string(),
-  settings: Schema.looseObject({
-    repo: Schema.string(),
-    fixture: Schema.string(),
-    samples: Schema.number(),
-    edits: Schema.number(),
-  }),
-  conditions: Schema.looseObject({
-    system: Schema.unknown(),
-    runtime: Schema.string(),
-    browser: Schema.string(),
-    measurement: Schema.unknown(),
-    frameSizes: Schema.array(Schema.unknown()),
-  }),
-  groups: Schema.array(Schema.looseObject({
-    name: Schema.string(),
-    sessions: Schema.number(),
-    medianMs: Schema.number(),
-    minMs: Schema.number(),
-    maxMs: Schema.number(),
-    runMediansMs: Schema.array(Schema.number()),
-  })),
-  interpretation: Schema.string(),
-  runner: Schema.string(),
-  startedAt: Schema.string(),
-  finishedAt: Schema.string(),
-})

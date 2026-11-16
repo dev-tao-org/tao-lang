@@ -3,7 +3,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { Errors, NullCharacter, Regxs, S, Try } from '@shared'
 import { FS, Path } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
 export type RemoteExecution = { directory: string; log?: string; controlPath?: string }
@@ -17,14 +17,16 @@ export async function executeRemote(
 ): Promise<void> {
   requireHost(host)
   IO.progress(`Connecting to ${host} using existing SSH access…`)
-  await execute('ssh -o BatchMode=yes -o ConnectTimeout=10', {
-    variadicArgs: [
-      ...options.controlPath ? ['-S', options.controlPath] : [],
-      '--',
-      host,
-      createRemoteCommand(args, options.directory, options.log),
-    ],
-  })
+  await execute('ssh', [
+    '-o',
+    'BatchMode=yes',
+    '-o',
+    'ConnectTimeout=10',
+    ...options.controlPath ? ['-S', options.controlPath] : [],
+    '--',
+    host,
+    createRemoteCommand(args, options.directory, options.log),
+  ])
 }
 
 /** copyRemote transfers a file through existing SSH access; remote paths use modern OpenSSH's SFTP transport. */
@@ -41,7 +43,7 @@ export async function copyRemote(
   const local = CLIKit.resolveCallerPath(download ? destination : source)
   const paths = download ? [`${host}:${remote}`, local] : [local, `${host}:${remote}`]
   const connection = controlPath ? ['-o', `ControlPath=${controlPath}`] : []
-  await CLIKit.runNonInteractiveCommand('scp -B', { variadicArgs: [...connection, '--', ...paths] })
+  await CLIKit.runNonInteractiveCommand('scp', ['-B', ...connection, '--', ...paths])
 }
 
 type DiscoveredHosts = { sshAliases: string[]; sshConfig: string; tailscale: unknown }
@@ -52,7 +54,7 @@ export async function discoverHosts(): Promise<DiscoveredHosts> {
   const aliases = [...text.matchAll(Regxs.SshConfigHostLineRegx)]
     .flatMap(match => match[1].split(Regxs.SshConfigAliasesWhitespaceRegx))
     .filter(alias => Regxs.SshAliasRegx.test(alias))
-  const tailscale = await Try(() => Processes.capture('tailscale status --json'), {
+  const tailscale = await Try(() => Exec.captureStdout('tailscale', 'status --json'), {
     catch: error => Json.Print({ Error: String(error) }),
   })
   return { sshAliases: [...new Set(aliases)], sshConfig: config, tailscale: Json.Parse(tailscale) as unknown }

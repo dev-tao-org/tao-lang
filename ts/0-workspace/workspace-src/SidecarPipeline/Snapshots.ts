@@ -1,4 +1,5 @@
 import * as AST from '@ast-gen'
+import * as Compile from '@compile'
 import { Errors, Json, NewlineCharacter, Sort, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import type * as Typecheck from '@typecheck'
@@ -220,7 +221,7 @@ async function writeModuleMetadata(destination: string, defaultsPath: string): P
     Path.join(destination, 'tsconfig.json'),
     SnapshotIntegrity.createTypeScriptConfigContent(defaultsPath),
   )
-  await FS.writeFile(Path.join(destination, 'tao-assets.d.ts'), SnapshotIntegrity.assetDeclarations)
+  await FS.writeFile(Path.join(destination, 'tao-assets.d.ts'), Compile.SidecarAssetDeclarations)
 }
 
 async function copyModuleFiles(group: SidecarGroup, destination: string): Promise<void> {
@@ -244,7 +245,7 @@ async function validateModuleViews(
     await checkForeignViewContract({
       directory: destination,
       name,
-      parameters: Object.fromEntries(view.declaration.parameters.map(parameter => [parameter.name.value, 'string'])),
+      parameters: Compile.projectTextViewParameterTypes(view.declaration),
       exportFile: Path.join(destination, view.relativeSidecarPath),
       compiler: options.compiler ?? 'tsc',
     }, options.executor)

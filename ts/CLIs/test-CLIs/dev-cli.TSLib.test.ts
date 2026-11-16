@@ -1,7 +1,7 @@
 import { Json, S } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 import * as WorkspaceTests from '@workspace-tests'
@@ -24,13 +24,11 @@ Tests.test('standalone TS-Lib Justfile compiles repeatedly and checks its author
   Tests.expect(FS.existsSync(Path.join(second, 'package.json'))).toBe(true)
   const packageDirectory = Path.join(directory, 'src/ts')
   Tests.expect(FS.realpathSync(Path.join(packageDirectory, 'node_modules/@example/tao-library'))).toBe(second)
-  Tests.expect(FS.resolveModule('@example/tao-library/Greeting', packageDirectory)).toBe(
-    Path.join(second, 'view0.js'),
-  )
+  Tests.expect(FS.resolveModule('@example/tao-library/Greeting', packageDirectory)).toBe(Path.join(second, 'view0.js'))
   await runRecipe(directory, 'check')
-  const inferred = await Processes.capture('../../tao compile --package src/ts', { cwd: directory })
+  const inferred = await Exec.captureStdout('../../tao', 'compile --package src/ts', { cwd: directory })
   Tests.expect(inferred).toContain('.tao/cache/libraries/Demo')
-  await Tests.expect(Processes.capture('../../tao compile Missing --package src/ts', { cwd: directory })).rejects
+  await Tests.expect(Exec.captureStdout('../../tao', 'compile Missing --package src/ts', { cwd: directory })).rejects
     .toThrow()
 })
 
@@ -74,13 +72,12 @@ Tests.test('unified compile rejects unknown and ambiguous targets and still comp
   await Tests.expect(Workspace.resolveCompileTarget(root, 'Missing')).rejects.toThrow('found 0 matching targets')
   Tests.expect((await Workspace.resolveCompileTarget(root, 'Two')).target).toBe('Two')
   await writePreparedTaoApp(root)
-  const result = await Processes.capture(Repo.resolvePath('tao'), { variadicArgs: ['compile', entry], cwd: root })
+  const result = await Exec.captureStdout(Repo.resolvePath('tao'), ['compile', entry], { cwd: root })
   Tests.expect(result).toContain('App.tsx')
 })
 
 async function runRecipe(directory: string, recipe?: string): Promise<string> {
-  return await Processes.capture('just --justfile', {
-    variadicArgs: [Path.join(directory, 'Justfile'), ...recipe ? [recipe] : []],
+  return await Exec.captureStdout('just', ['--justfile', Path.join(directory, 'Justfile'), ...recipe ? [recipe] : []], {
     cwd: directory,
   })
 }

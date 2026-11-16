@@ -3,7 +3,7 @@ import { Errors } from '../../universal/universal'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import { editorBundleProbe } from '../bridges/Bridge_node/Bridge_node-editor-probe'
 import { bundleBanner } from '../bridges/Bridge_node/Bridge_node-emission'
-import { capture } from '../Processes'
+import Exec from '../Exec'
 
 /** bundleNode bundles a TypeScript entry for Node hosts while preserving declared external APIs. */
 export async function bundleNode(entrypoint: string, outdir: string, external: string[]): Promise<void> {
@@ -40,5 +40,5 @@ export async function bundleLibrary(entrypoint: string, outdir: string, tsconfig
 
 /** validateEditorBundle activates a packaged extension under Node with only the editor API stubbed. */
 export async function validateEditorBundle(path: string): Promise<void> {
-  await capture('node -e', { variadicArgs: [editorBundleProbe, path] })
+  await Exec.captureStdout('node', ['-e', editorBundleProbe, path])
 }

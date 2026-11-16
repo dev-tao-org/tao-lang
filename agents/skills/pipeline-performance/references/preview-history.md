@@ -14,8 +14,8 @@ source commit instead of triggering another measurement.
   Failed, partial or corrupt existing records are retained and reported; they are not overwritten.
 - Developer command: `./dev performance preview`. Agents on macOS use the approved host operation
   `./agent unsandboxed performance preview`. This starts isolated headless Expo web previews,
-  exercises text, added-view and column-to-row edits through disk watching, and prints the JSON
-  report path. No screenshots are required.
+  runs the fixed local and imported render transitions through the performance editor's serialized
+  save path, and prints the JSON report path.
 - Measure the committed source and fixture. Preserve unrelated developer edits; use an isolated
   committed snapshot when they affect benchmark inputs. Never attribute a dirty implementation
   run to a clean commit merely by replacing the report's commit field.
@@ -37,8 +37,9 @@ Store each source commit under `.storage/performance/preview/<full-source-commit
   committed snapshot was used, record that fact and its source identity explicitly.
 
 Keep raw samples and the measurement definitions. Preview-applied is the matching React commit
-receipt, not proof of physical paint; the save-based clock currently starts at watcher observation.
-One run's three scenarios are individual samples, not a statistically established median or p95.
+receipt, not proof of physical paint. The save-based clock starts when the compiler process
+accepts the edit, before persistence and compilation.
+Warm steps within one session are repeated edits. Use independent sessions to assess repeatability.
 Do not replace an existing per-commit record with a faster rerun. Diagnostic reruns stay in
 `.artifacts` with their conditions; a correction is a separately identified archive addition.
 

@@ -1,39 +1,78 @@
-import { Errors, NewlineCharacter, S, Try } from '@shared'
+import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { buildManagedModulesInput } from '../workspace-src/ProjectPreparation'
 import { initializeProject } from '../workspace-src/projects/Projects'
-import { execute, type WorkflowWorkspace } from '../workspace-src/Workflow'
-import { createWatchFixture } from './FileManager.test-fixtures.Watch'
+import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
+import { execute } from '../workspace-src/Workflow'
+import type { WorkspaceSession } from '../workspace-src/Workspace'
 
-type OptionalWorkflowWorkspace = WorkflowWorkspace | undefined
+type OptionalWorkspace = WorkspaceSession | undefined
 
-Tests.test('unchanged and partial preview edits never inspect setup or install and retain last-good output', async () => {
-  const root = Artifacts.resolvePath('tmp', `workflow-preview-${Platform.randomUUID()}`)
+Tests.test('declining or cancelling restart keeps the active preview running', async () => {
+  const root = Artifacts.resolvePath('tmp', `restart-consent-${Platform.randomUUID()}`)
   const entry = Path.join(root, 'Main.tao')
   const events: string[] = []
-  const published: string[] = []
-  let workspace: OptionalWorkflowWorkspace
+  const request = {
+    kind: 'preview' as const,
+    entry,
+    restart: {
+      reason: 'Dependencies changed.',
+      async suspend() {
+        events.push('suspended')
+      },
+    },
+  }
+  let cancelled = false
   await Try(async () => {
     await initializeProject(root)
     await writeFixture(root, entry)
-    workspace = await openPreview(entry, events, published)
+    await Tests.expect(execute(request, {
+      async confirm() {
+        events.push('declined')
+        return false
+      },
+    })).rejects.toThrow('Dependency setup was declined.')
+    await Tests.expect(execute(request, {
+      async confirm() {
+        events.push('cancelled')
+        cancelled = true
+        return true
+      },
+      cancelled: () => cancelled,
+    })).rejects.toThrow('Workflow cancelled.')
+    Tests.expect(events).toEqual(['declined', 'cancelled'])
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('invalid preview edits and changed dependencies retain last-good output', async () => {
+  const root = Artifacts.resolvePath('tmp', `workflow-preview-${Platform.randomUUID()}`)
+  const entry = Path.join(root, 'Main.tao')
+  const published: string[] = []
+  let workspace: OptionalWorkspace
+  await Try(async () => {
+    await initializeProject(root)
+    await writeFixture(root, entry)
+    workspace = await openProjectWorkspace(entry, {
+      runtimeOptions: { dependencyDirectory: '/prepared-runtime' },
+      async publish(app) {
+        published.push(app.files['App.tsx'] ?? '')
+      },
+    })
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     const first = workspace.lastGoodRevision
     const requirements = Path.join(root, '@widgets/Requirements.tao')
     await FS.writeFile(requirements, 'requires npm:')
-    Tests.expect((await workspace.files.openFile(entry)).status).toBe('failed')
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('failed')
     Tests.expect(workspace.lastGoodRevision).toBe(first)
-    Tests.expect(events).toEqual(['startup', 'input'])
     await FS.writeFile(requirements, `${metadataSource}${NewlineCharacter}requires npm:fixture version 1.0.0`)
-    const changed = await workspace.files.openFile(entry)
+    const changed = await workspace.files.compileFile(entry)
     Tests.expect(changed.status === 'failed' && changed.setupRequired).toBe(true)
     Tests.expect(workspace.lastGoodRevision).toBe(first)
     Tests.expect(published).toHaveLength(1)
     Tests.expect(published[0]).not.toContain('Unrelated')
     await FS.writeFile(requirements, metadataSource)
     await FS.writeFile(Path.join(root, '@widgets/feature/Widget.tao'), widgetSource.replace('First', 'Second'))
-    Tests.expect((await workspace.files.openFile(entry)).status).toBe('published')
-    Tests.expect(events).toEqual(['startup', 'input', 'input'])
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     Tests.expect(published).toHaveLength(2)
   }, {
     async finally() {
@@ -42,40 +81,6 @@ Tests.test('unchanged and partial preview edits never inspect setup or install a
     },
   })
 })
-
-async function openPreview(entry: string, events: string[], published: string[]): Promise<WorkflowWorkspace> {
-  return await execute(
-    {
-      kind: 'preview',
-      entry,
-      options: {
-        ...createWatchFixture().options,
-        acquireLease: async () => () => {},
-        runtimeOptions: { dependencyDirectory: '/prepared-runtime' },
-        async publish(app) {
-          published.push(app.files['App.tsx'] ?? '')
-        },
-        pipelineServices: {
-          async buildManagedInput(directory, program) {
-            events.push('input')
-            return await buildManagedModulesInput(directory, program.modules, {})
-          },
-          readManaged: async () =>
-            Errors.ThrowShouldNeverHappen('No managed profile should be inspected on this session.'),
-          inspectGeneratedFiles: async () => Errors.ThrowShouldNeverHappen('No generated setup scan should run.'),
-          prepareSidecars: async () => Errors.ThrowShouldNeverHappen('No sidecar should be installed.'),
-        },
-      },
-    },
-    { confirm: async () => Errors.ThrowShouldNeverHappen('An ordinary edit must not prompt.') },
-    {
-      async inspect() {
-        events.push('startup')
-      },
-      setup: async () => Errors.ThrowShouldNeverHappen('An ordinary edit must not install.'),
-    },
-  )
-}
 
 async function writeFixture(root: string, entry: string): Promise<void> {
   await FS.mkdir(Path.join(root, '@widgets/feature'))

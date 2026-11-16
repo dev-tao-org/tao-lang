@@ -2,6 +2,7 @@ import { Json } from '@shared'
 import { Errors, NewlineCharacter, S, TabCharacter } from '@shared'
 import * as Shared from '@shared'
 import { Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { type LandingIO } from '../../CLIs-src/dev-cli/landing/LandingIO'
 
 /** recordingLanding records external effects and resolves Git/GitHub responses without subprocesses. */
@@ -11,8 +12,8 @@ export function recordingLanding() {
   const files = initialFiles()
   const io: LandingIO = {
     root: '/recording',
-    command: (command, args = [], directory = '/recording') =>
-      Promise.resolve(commandReply(command, args, directory, state, calls)),
+    command: (command, args = [], { cwd = '/recording' } = {}) =>
+      Promise.resolve(commandReply(command, Exec.resolveCommandArgs(args), cwd, state, calls)),
     async read(path) {
       const content = files.get(path)
       if (content === undefined) {
@@ -136,10 +137,10 @@ function commandReply(
   if (state.fail && label.includes(state.fail)) {
     Errors.ThrowHostEnvironment(`Recording failure: ${label}`)
   }
-  if (command.startsWith('gh ')) {
-    return githubReply(command, args, state)
+  if (command === 'gh') {
+    return githubReply(args, state)
   }
-  if (command === './agent verify') {
+  if (command === './agent' && args[0] === 'verify') {
     return ''
   }
   return gitReply(args, state, storage)
@@ -201,17 +202,17 @@ function applyGitChanges(args: readonly string[], state: RecordingLandingState, 
   }
 }
 
-function githubReply(command: string, args: readonly string[], state: RecordingLandingState): string {
-  if (command === 'gh api') {
+function githubReply(args: readonly string[], state: RecordingLandingState): string {
+  if (args[0] === 'api') {
     return '{"status":"ahead"}'
   }
-  if (command === 'gh pr create') {
+  if (args[1] === 'create') {
     state.prOpen = true
   }
-  if (command === 'gh pr merge') {
+  if (args[1] === 'merge') {
     state.merged = true
   }
-  if (command !== 'gh pr list') {
+  if (args[1] !== 'list') {
     return ''
   }
   const merged = args.includes('merged')

@@ -139,9 +139,7 @@ async function verifyPublication(
 ): Promise<void> {
   const runtime = workspace.runtime!
   Tests.expect(await FS.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('compiled A')
-  Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe(
-    'export const value = 1',
-  )
+  Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe('export const value = 1')
   await verifyGeneratedBuildConfiguration(buildDirectory, runtime)
   const unchanged = await verifyUnchangedGeneratedFiles(workspace, source, runtime)
   const runtimeAsset = Path.join(runtime.directory, 'src/_gen_runtime/runtime/TR.ts')
@@ -150,9 +148,7 @@ async function verifyPublication(
   Tests.expect((await workspace.update(source)).status).toBe('published')
   Tests.expect(await FS.readFile(runtime.appPath, 'utf8')).toBe('compiled B')
   Tests.expect(await FS.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe('compiled B')
-  Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe(
-    'export const value = 2',
-  )
+  Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Widget.ts'), 'utf8')).toBe('export const value = 2')
   Tests.expect(FS.statSync(runtime.appPath).ino).not.toBe(unchanged.appInode)
   Tests.expect(FS.statSync(Path.join(runtime.directory, 'src/source/Widget.ts')).ino)
     .not.toBe(unchanged.sourceInode)
@@ -166,9 +162,7 @@ async function verifyGeneratedBuildConfiguration(
   const configPath = Path.join(buildDirectory, 'tsconfig.json')
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
   Tests.expect(config.error).toBeUndefined()
-  Tests.expect(Path.resolve(buildDirectory, config.config.extends)).toBe(
-    Path.join(runtime.directory, 'tsconfig.json'),
-  )
+  Tests.expect(Path.resolve(buildDirectory, config.config.extends)).toBe(Path.join(runtime.directory, 'tsconfig.json'))
   const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, buildDirectory)
   Tests.expect(parsed.fileNames).toContain(Path.join(buildDirectory, 'source/Widget.ts'))
   Tests.expect(parsed.errors.some(error => error.code === 5083)).toBe(false)

@@ -150,7 +150,7 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
 
   const typedParameterView: AST.ViewDeclaration = {
     ...unreferenced,
-    parameters: [Fixtures.createParameter('value', 'Item')],
+    parameters: [Fixtures.createParameter('Value', 'Item')],
   }
   const typedParameterSource = Fixtures.createSource('app/main.tao', [typedParameterView], [left.path, right.path])
   Tests.expect(() => linkModules(typedParameterSource.path, [typedParameterSource, left, right]))

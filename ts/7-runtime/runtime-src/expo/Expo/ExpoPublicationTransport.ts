@@ -1,5 +1,5 @@
 import { Errors, Time, Try } from '@shared'
-import { Http } from '@shared/os'
+import { Cancellation, Http } from '@shared/web'
 import { serializeGeneratedRevision, snapshotRevision } from '../GeneratedRevision'
 import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
 
@@ -54,7 +54,7 @@ async function publishRevision(
   if (state.fault) {
     return createPoisonedOutcome(state, revision)
   }
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   let interrupt!: () => void
   const stopped = new Promise<PublicationOutcome>(resolve => {
     interrupt = () => {

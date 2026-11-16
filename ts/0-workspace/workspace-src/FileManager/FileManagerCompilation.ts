@@ -1,9 +1,10 @@
 import { Lists, Regxs, Sort, Time, Timings, Try } from '@shared'
-import { FS, Path, WorkspaceWatch } from '@shared/os'
+import { FileWatch, FS, Path } from '@shared/os'
 import { Document } from '../Document'
 import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
 import { isSetupRequired } from '../SetupRequired'
 import type { UpdateResult } from '../Workspace'
+import type { watchSourceTree } from './SourceWatch'
 
 type PipelineWatchDirectoryOption = 'outputDirectory' | 'watchDirectories'
 
@@ -77,7 +78,6 @@ type LoadedInputResult = LoadedSource | UpdateResult
 export async function loadFileManagerInput(
   request: Pending,
   documents: Map<string, Document>,
-  read: FileManagerOptions['read'],
   isCurrent: () => boolean,
 ): Promise<LoadedInputResult> {
   if (request.input.kind === 'source') {
@@ -89,10 +89,7 @@ export async function loadFileManagerInput(
       timings: request.input.timings,
     }
   }
-  const snapshot = await readSource(request.input.path, request.input.startedAtMs, read)
-  if (isUpdateResult(snapshot)) {
-    return snapshot
-  }
+  const snapshot = await readSource(request.input)
   if (!isCurrent()) {
     return createSupersededResult(request.id)
   }
@@ -108,10 +105,8 @@ export async function loadFileManagerInput(
   }
 }
 
-type FileManagerReadOutcome = LoadedInputResult | SourceReadResult | ReadResult
-
 /** isUpdateResult distinguishes a completed workspace outcome from captured source input. */
-export function isUpdateResult(value: FileManagerReadOutcome): value is UpdateResult {
+export function isUpdateResult(value: LoadedInputResult): value is UpdateResult {
   return 'status' in value
 }
 
@@ -124,9 +119,7 @@ export type FileManagerOptions = {
   compile(request: CompileRequest, isCurrent: () => boolean): Promise<UpdateResult>
   onSourceUpdate?: (result: UpdateResult) => void
   onSourceError?: (error: unknown) => void
-  watch?: typeof WorkspaceWatch.watchWorkspace
-  read?: (path: string, observedAtMs: number) => Promise<ReadResult>
-  schedule?: (delayMs: number, callback: () => void) => () => void
+  watch?: typeof watchSourceTree
 }
 
 /** CompiledEvent identifies the immutable source version associated with a completed compile. */
@@ -215,7 +208,7 @@ export function createFailedInput(request: QueuedInput, error: unknown): Complet
 
 /** isRelevantChange identifies watcher events that invalidate Tao compilation. */
 export function isRelevantChange(
-  change: WorkspaceWatch.WorkspaceChange,
+  change: FileWatch.FileChange,
   watchesFile: (path: string) => boolean,
 ): boolean {
   const isDirectoryChange = change.kind === 'addDir' || change.kind === 'unlinkDir'
@@ -264,42 +257,39 @@ type SourceFileManagerInput = {
   startedAtMs: number
   timings: Timings
 }
-type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number }
+type DiskObservation = 'watch' | 'reconciliation'
+type DiskFileManagerInput = { kind: 'disk'; path: string; startedAtMs: number; observation?: DiskObservation }
 
-type SourceReadResult = SourceSnapshot | UpdateResult
-type ReadResult = { source: string; observedAtMs: number } | UpdateResult
+/** createWatchedInput retains the origin of a file watcher notification through the queued read. */
+export function createWatchedInput(path: string, change: FileWatch.FileChange): DiskFileManagerInput {
+  const observation = change.reconciled ? 'reconciliation' : 'watch'
+  return { kind: 'disk', path, startedAtMs: change.observedAtMs, observation }
+}
+
+type ReadResult = { source: string; observedAtMs: number }
 type SourceSnapshot = { source: string; observedAtMs: number; timings: Timings }
 
 const readSource = Timings.createTopLevelTimer(async function(
   timings,
-  path: string,
-  observedAtMs: number,
-  read: (path: string, observedAtMs: number) => Promise<ReadResult> = defaultRead,
-): Promise<SourceReadResult> {
-  timings.record('workspace.observe-to-read', Time.nowMs() - Math.max(0, Time.timestampMs() - observedAtMs))
-  const snapshot = await timings.run(readWorkspaceSource, path, observedAtMs, read)
-  return isUpdateResult(snapshot) ? snapshot : { ...snapshot, timings }
+  input: DiskFileManagerInput,
+): Promise<SourceSnapshot> {
+  const observedAtMs = input.startedAtMs
+  const observationDelayMs = Math.max(0, Time.timestampMs() - observedAtMs)
+  const name = input.observation === 'reconciliation' ? 'workspace.reconciled-to-read' : 'workspace.observe-to-read'
+  timings.record(name, Time.nowMs() - observationDelayMs)
+  const snapshot = await timings.run(readWorkspaceSource, input.path, observedAtMs)
+  return { ...snapshot, timings }
 })
 
-const readWorkspaceSource = Timings.measured('workspace.read', function(
-  path: string,
-  observedAtMs: number,
-  read: (path: string, observedAtMs: number) => Promise<ReadResult>,
-): Promise<ReadResult> {
-  return read(path, observedAtMs).then(result => {
-    if (isUpdateResult(result)) {
-      return result
-    }
-    return { source: result.source, observedAtMs }
-  })
-})
-
-function defaultRead(path: string, observedAtMs: number): Promise<ReadResult> {
-  return FS.readFile(path, 'utf8').then(source => ({
-    source,
-    observedAtMs,
-  }))
-}
+const readWorkspaceSource = Timings.measured(
+  'workspace.read',
+  function(path: string, observedAtMs: number): Promise<ReadResult> {
+    return FS.readFile(path, 'utf8').then(source => ({
+      source,
+      observedAtMs,
+    }))
+  },
+)
 
 function resolveAttemptedFileProject(path: string): string[] {
   // Missing nested files still belong to an existing project root; never observe arbitrary ancestors.

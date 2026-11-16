@@ -23,6 +23,8 @@ Historical starting point: `feat/metro-memory-preview`, October 26, 2026. Its lo
 
 ## Milestones
 
+The agreed [app developer overlay](App%20Developer%20Overlay.md) adds an in-app entry point for inspection, debugging captures and on-screen editing. Integrate its editing with the working-copy/source-edit ownership below; capture and overlay delivery are tracked separately.
+
 | Milestone                              | Reviewable outcome                                                                                                                                                  |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Research and contracts                 | Compare editor/source-edit and canvas/drag options after reading the proposed architecture; choose dependencies and settle syntax/isolation with the developer.     |

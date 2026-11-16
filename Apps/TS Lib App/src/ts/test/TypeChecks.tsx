@@ -1,5 +1,5 @@
 import library from '@example/tao-library'
-import Card from '@example/tao-library/cards/Greeting'
+import Card from '@example/tao-library/Catalog/Greeting'
 import Greeting from '@example/tao-library/Greeting'
 import LanguageFeatures from '@example/tao-library/LanguageFeatures'
 import React from 'react'

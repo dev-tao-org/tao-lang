@@ -8,7 +8,7 @@ export function limitHmrSocketQueue(socket: HmrSocket, limit = 4 * 1024 * 1024):
     if (socket.readyState !== 1) {
       return
     }
-    const size = MetroPlatform.messageByteLength(args[0])
+    const size = MetroPlatform.WebSocketPayload.byteLength(args[0])
     if (socket.bufferedAmount > 0 && socket.bufferedAmount + size > limit) {
       socket.terminate()
       return

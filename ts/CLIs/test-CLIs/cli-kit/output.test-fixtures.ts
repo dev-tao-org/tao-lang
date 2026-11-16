@@ -43,7 +43,7 @@ async function runFixture(): Promise<void> {
   }
   if (mode === 'delegate') {
     await configureCLIOutput('agent', { delegate: true })
-    await runNonInteractiveCommand('bun run', { variadicArgs: [outputFixturePath, 'dev-child'] })
+    await runNonInteractiveCommand('bun', ['run', outputFixturePath, 'dev-child'])
     await IO.finish()
     return
   }
@@ -54,7 +54,7 @@ async function runFixture(): Promise<void> {
     Shared.joinTextLines(EscapeCharacter + '[33mfixture warning' + EscapeCharacter + '[0m', '  at /tmp/fixture.ts:12'),
   )
   if (mode === 'parent' || mode === 'failed') {
-    await runNonInteractiveCommand('bun run', { variadicArgs: [outputFixturePath, 'child'], structuredOutput: true })
+    await runNonInteractiveCommand('bun', ['run', outputFixturePath, 'child'], { structuredOutput: true })
   }
   if (mode === 'failed') {
     Errors.ThrowShouldNeverHappen('fixture failure')

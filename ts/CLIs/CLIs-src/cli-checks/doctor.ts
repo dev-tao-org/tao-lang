@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, FS, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec, { type CommandArgs } from '@shared/os/exec'
 
 /** DoctorReport contains environment diagnostics and the host fingerprint. */
 export type DoctorReport = {
@@ -66,7 +66,7 @@ function diagnoseTools(
         name,
         status: optional ? 'warn' : 'fail',
         detail: diagnostic || 'Not available on the managed PATH.',
-        remediation: 'Enter the repository devenv; run ./agent setup.',
+        remediation: 'Enter the repository devenv; run ./agent unsandboxed setup.',
       }
     }
     if (!isSupportedRuntime(name, version)) {
@@ -104,9 +104,9 @@ const tools = ['bun', 'node', 'git', 'just', 'dprint', 'tsc', 'age', 'docker']
 async function readSnapshot(): Promise<DoctorSnapshot> {
   const [probes, commit, describe, changes] = await Promise.all([
     Promise.all(tools.map(probeTool)),
-    probe('git rev-parse HEAD'),
-    probe('git describe --always --dirty'),
-    probe('git status --porcelain'),
+    probe('git', 'rev-parse HEAD'),
+    probe('git', 'describe --always --dirty'),
+    probe('git', 'status --porcelain'),
   ])
   return {
     versions: probes.map(probe => probe.output),
@@ -119,7 +119,7 @@ async function readSnapshot(): Promise<DoctorSnapshot> {
 
 async function probeTool(tool: string): Promise<{ output?: string; failure?: string }> {
   return await Try(async () => ({
-    output: await Processes.capture(tool + ' --version', { cwd: Repo.getWorkspaceRoot() }),
+    output: await Exec.captureStdout(tool, '--version', { cwd: Repo.getWorkspaceRoot() }),
   }), {
     catch(error) {
       const failure = Errors.isCommandExecutionError(error)
@@ -149,7 +149,7 @@ async function readFingerprint(snapshot: DoctorSnapshot): Promise<Fingerprint> {
     })),
   }
   for (const name of ['ts/bun.lock', 'devenv.lock']) {
-    const hash = gitHash(await probe('git hash-object --', { variadicArgs: [name] }))
+    const hash = gitHash(await probe('git', ['hash-object', '--', name]))
     fingerprint.toolchain.push({ name, present: hash !== undefined, hash })
   }
   return fingerprint
@@ -176,7 +176,7 @@ function workspaceChecks(): Check[] {
       name: 'workspace ' + name,
       status: present ? 'pass' : 'fail',
       detail: present ? 'Present in ts/.' : 'Missing from ts/.',
-      remediation: present ? undefined : './agent setup',
+      remediation: present ? undefined : './agent unsandboxed setup',
     }
   })
 }
@@ -192,10 +192,10 @@ async function artifactChecks(): Promise<Check[]> {
   }))
 }
 
-async function probe(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string | undefined> {
+async function probe(command: string, args: CommandArgs): Promise<string | undefined> {
   return Try.WithDefault(
     undefined,
-    () => Processes.capture(command, { variadicArgs: options.variadicArgs, cwd: Repo.getWorkspaceRoot() }),
+    () => Exec.captureStdout(command, args, { cwd: Repo.getWorkspaceRoot() }),
   )
 }
 

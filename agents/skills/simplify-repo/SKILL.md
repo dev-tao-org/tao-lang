@@ -11,7 +11,7 @@ description: >-
 The goal is the best concluding state, not the smallest diff: current structure is no constraint.
 Each run has a plan under `.artifacts/notes/repository-simplification/`; this skill owns what every
 run shares. Standing decisions below are the Developer's and are not reopened; anything new goes through
-`decision-rounds`.
+`dialogue-decision-design-conversation`.
 
 ## Sequence
 
@@ -22,15 +22,15 @@ run shares. Standing decisions below are the Developer's and are not reopened; a
 3. Find concurrent work with `./agent board`, read each branch's touched paths, and write them into
    the plan as fences. Files several branches edit belong to the orchestrator alone.
 4. Propose the top five projects from the audit, plus other focuses the numbers suggest, and settle
-   them with the Developer through `decision-rounds`.
+   them with the Developer through `dialogue-decision-design-conversation`.
 5. Write the plan: decisions, fences, projects, waves with exclusive path ownership and a model
    tier per agent, and a ledger. `delegation`'s `references/parallel-implementation.md` owns the
    fan-out mechanics.
 6. Execute on one branch through `./agent`'s own commands (`verify`, `check`, `dead-exports`,
    `parser-gen`, `ledger-index`, …), not a direct `just` recipe it already exposes. Run narrow checks
    and `verify-changed` while iterating; hosted `Verify` on `landing`'s route is the only merge
-   evidence. After moving or renaming a package, `./agent setup --refresh-lockfile`
-   is the one install that rewrites `bun.lock`. If the Developer requests a review, use `code-review`
+   evidence. After moving or renaming a package, have the Developer approve and refresh `ts/bun.lock`
+   before rerunning `./agent unsandboxed setup`. If the Developer requests a review, use `code-review`
    for wave seams and the complete diff, briefed to hunt what `./agent check` cannot see — a moved
    literal that still resolves, just not to what it used to.
    Package moves and alias renames go last, after merging `main`, in one mechanical commit; if a move

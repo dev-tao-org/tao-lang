@@ -46,6 +46,12 @@ export type HTMLElement = globalThis.HTMLElement
 /** HTMLIFrameElement describes the standard web host contract. */
 export type HTMLIFrameElement = globalThis.HTMLIFrameElement
 
+/** HTMLButtonElement describes the standard web host button contract. */
+export type HTMLButtonElement = globalThis.HTMLButtonElement
+
+/** HTMLTextAreaElement describes the standard web host textarea contract. */
+export type HTMLTextAreaElement = globalThis.HTMLTextAreaElement
+
 /** Window describes the standard web host contract. */
 export type Window = globalThis.Window
 

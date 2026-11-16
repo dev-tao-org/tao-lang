@@ -22,12 +22,19 @@ export const compile = Timings.createTopLevelTimer(function(
   return timings.run(generate, document, options)
 })
 
-const generate = Timings.measured('compiler.generate', function(
+const generate = Timings.measure('compiler.generate', function(
+  timings,
   document: AST.Document,
   options: CompileOptions,
 ): ModulesCompiler.CompiledFiles {
   const program = options.program ?? linkSingleFile(document)
-  return ModulesCompiler.compileProgram(program, options.revision, options.app, options.resolveForeignViewPath)
+  return timings.run(
+    ModulesCompiler.compileProgram,
+    program,
+    options.revision,
+    options.app,
+    options.resolveForeignViewPath,
+  )
 })
 
 function linkSingleFile(document: AST.Document): Typecheck.LinkedProgram {

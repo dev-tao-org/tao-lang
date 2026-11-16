@@ -2,21 +2,22 @@ import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, Env, FS, HeadlessBrowser, Http, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Artifacts, Env, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
+import Exec, { type ChildProcess } from '@shared/os/exec'
+import { Http } from '@shared/web'
 import * as WorkspaceTests from '@workspace-tests'
 
-type StarterHost = { child: Processes.ChildProcess; url: string; output: Promise<string[]> }
+type StarterHost = { child: ChildProcess; url: string; output: Promise<string[]> }
 type OptionalStarterBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
 
 Tests.test('library initializer emits a typechecked consumer that renders compiled Tao props', async () => {
   const root = await createStarterDirectory()
   const packageDirectory = Path.join(root, 'src/ts')
   const tao = Repo.resolvePath('tao')
-  await Processes.capture(tao, { variadicArgs: ['init', root, '--library'] })
+  await Exec.captureStdout(tao, ['init', root, '--library'])
   await WorkspaceTests.linkStandaloneLibraryDependencies(root)
-  await Processes.capture(tao, { variadicArgs: ['compile', 'Demo', '--package', packageDirectory], cwd: root })
-  await Processes.capture('bun run check', { cwd: packageDirectory })
+  await Exec.captureStdout(tao, ['compile', 'Demo', '--package', packageDirectory], { cwd: root })
+  await Exec.captureStdout('bun', 'run check', { cwd: packageDirectory })
   const host = startStarterHost(root)
   let browser: OptionalStarterBrowser
   await Try(async () => {
@@ -62,24 +63,20 @@ async function createStarterDirectory(): Promise<string> {
 }
 
 function startStarterHost(root: string): StarterHost {
-  const reservation = Http.serve({ port: 0, fetch: () => Http.response() })
+  const reservation = HttpServer.serve({ port: 0, fetch: () => Http.response() })
   const port = reservation.port
   reservation.stop(true)
-  const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-    variadicArgs: [
-      'run',
-      '--package',
-      Path.join(root, 'src/ts'),
-      '--web',
-      '--port',
-      String(port),
-      '--session',
-      'starter-preview',
-    ],
-    cwd: root,
-    addEnv: createStarterEnvironment(),
-  })
-  const output = Promise.all([Processes.readText(child.stdout), Processes.readText(child.stderr)])
+  const child = Exec.spawn(Repo.resolvePath('tao'), [
+    'run',
+    '--package',
+    Path.join(root, 'src/ts'),
+    '--web',
+    '--port',
+    String(port),
+    '--session',
+    'starter-preview',
+  ], { cwd: root, addEnv: createStarterEnvironment() })
+  const output = Promise.all([Exec.readText(child.stdout), Exec.readText(child.stderr)])
   return { child, output, url: 'http://localhost:' + port }
 }
 

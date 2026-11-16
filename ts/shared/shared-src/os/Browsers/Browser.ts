@@ -1,7 +1,7 @@
 import { Errors, Switch } from '@shared'
 import { Platform } from '@shared/os'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
-import * as Processes from '../Processes'
+import Exec, { type CommandInvocation } from '../Exec'
 
 /** build bundles browser entry points for a local tooling surface. */
 export async function build(entrypoints: string[], outdir: string): Promise<BunHost.BuildOutput> {
@@ -9,40 +9,28 @@ export async function build(entrypoints: string[], outdir: string): Promise<BunH
 }
 
 /** openUrl opens a web URL in Google Chrome without activating it on macOS. */
-export async function openUrl(url: string, host: BrowserHost = nativeBrowser()): Promise<void> {
-  if (host.os === 'Darwin') {
-    await host.requireAccess('Run just dev in a normal terminal or a host-enabled harness; the browser was not opened.')
+export async function openUrl(url: string): Promise<void> {
+  const os = Platform.systemInfo().os
+  if (os === 'Darwin') {
+    await Exec.requireHostProcessAccess(
+      'Run just dev in a normal terminal or a host-enabled harness; the browser was not opened.',
+    )
   }
-  const status = await host.start(browserCommand(url, host.os))
-  if (status !== 0) {
+  const { command, args } = resolveBrowserInvocation(url, os)
+  const child = Exec.spawn(command, args, { stdout: 'ignore', stderr: 'ignore' })
+  child.unref()
+  if (await child.exited !== 0) {
     Errors.ThrowHostEnvironment(`Could not open the preview URL in Google Chrome: ${url}`)
   }
 }
 
-type BrowserHost = {
-  os: string
-  requireAccess: (hint: string) => Promise<void>
-  start: (command: readonly string[]) => Promise<number>
-}
-
-function nativeBrowser(): BrowserHost {
-  return {
-    os: Platform.systemInfo().os,
-    requireAccess: Processes.requireHostProcessAccess,
-    async start(command) {
-      const child = Processes.spawnSilent(command)
-      return await child.exited
-    },
-  }
-}
-
-function browserCommand(url: string, os: string): string[] {
+function resolveBrowserInvocation(url: string, os: string): CommandInvocation {
   if (!Platform.isSupportedHostSystem(os)) {
     Errors.ThrowHostEnvironment(`Opening a browser is unsupported on ${os}.`)
   }
-  return Switch<Platform.HostSystem, string[]>(os, {
-    Darwin: () => ['open', '-g', '-a', 'Google Chrome', url],
-    Linux: () => ['google-chrome', url],
-    Windows_NT: () => ['cmd', '/c', 'start', '', 'chrome', url],
+  return Switch<Platform.HostSystem, CommandInvocation>(os, {
+    Darwin: () => ({ command: 'open', args: ['-g', '-a', 'Google Chrome', url] }),
+    Linux: () => ({ command: 'google-chrome', args: [url] }),
+    Windows_NT: () => ({ command: 'cmd', args: ['/c', 'start', '', 'chrome', url] }),
   })
 }

@@ -1,12 +1,14 @@
 import * as Tests from '@shared-tests'
-import { Http, Streams, Terminal } from '@shared/os'
+import { Streams, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { Buffer as NodeBuffer } from '../shared-src/os/bridges/Bridge_node/Bridge_node'
 import { ControlCCharacter } from '../shared-src/universal/Characters'
 
 const ConfirmationCancelledRegx = /Confirmation cancelled/
 
 Tests.test('single-key actions restore terminal input and stop receiving keys after disposal', () => {
-  for (const initiallyRaw of [false, true]) {
+  for (const initialFlowing of [null, false, true]) {
+    const initiallyRaw = initialFlowing === true
     const input = Object.assign(Streams.createPassThrough(), {
       isTTY: true,
       isRaw: initiallyRaw,
@@ -14,7 +16,11 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
         this.isRaw = raw
       },
     })
-    input.pause()
+    if (initialFlowing === true) {
+      input.resume()
+    } else if (initialFlowing === false) {
+      input.pause()
+    }
     const keys: string[] = []
     const stop = Terminal.listenForKeys(key => keys.push(key), input)
     Tests.expect(input.isRaw).toBe(true)
@@ -23,7 +29,7 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     stop()
     Tests.expect(input.isRaw).toBe(initiallyRaw)
-    Tests.expect(input.isPaused()).toBe(true)
+    Tests.expect(input.isPaused()).toBe(initialFlowing !== true)
     input.emit('data', NodeBuffer.from('w'))
     Tests.expect(keys).toEqual(['w', 'q', '\u0003'])
     input.resume()
@@ -34,7 +40,7 @@ Tests.test('single-key actions restore terminal input and stop receiving keys af
 })
 
 Tests.test('confirmation cancellation forwards the request signal and closes the active reader', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const events: string[] = []
   const confirmation = Terminal.askConfirm({ message: 'Set up?', defaultValue: true, signal: controller.signal }, {
     isInteractive: () => true,
@@ -59,7 +65,7 @@ Tests.test('confirmation cancellation forwards the request signal and closes the
 })
 
 Tests.test('an already cancelled confirmation never accepts a noninteractive default', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   controller.abort()
   await Tests.rejects(
     Terminal.askConfirm({

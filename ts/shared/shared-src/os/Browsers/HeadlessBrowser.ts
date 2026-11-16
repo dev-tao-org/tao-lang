@@ -2,8 +2,8 @@ import { Json } from '@shared'
 import { Errors, Time, Try } from '@shared'
 import type { Browser, Page } from '../bridges/Bridge_playwright'
 import Env from '../Env'
+import Exec from '../Exec'
 import * as Platform from '../Platform'
-import * as Processes from '../Processes'
 
 export type { Browser, FrameLocator, Page } from '../bridges/Bridge_playwright'
 
@@ -26,7 +26,7 @@ export async function launch(
   options: { handleSignals?: boolean } = {},
 ): Promise<HeadlessBrowserSession> {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Processes.requireHostProcessAccess(`Run ./agent unsandboxed ${operation}; Chrome was not launched.`)
+    await Exec.requireHostProcessAccess(`Run ./agent unsandboxed ${operation}; Chrome was not launched.`)
   }
   const { chromium } = await import('../bridges/Bridge_playwright')
   return await chromium.launch({

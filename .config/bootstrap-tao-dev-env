@@ -1,5 +1,5 @@
 #!/bin/sh
-# Explicit noninteractive Linux tool activation; repository dependencies stay in ./agent setup.
+# Explicit noninteractive Linux tool activation; repository dependencies stay in ./agent unsandboxed setup.
 set -eu
 
 tools_only=false
@@ -12,7 +12,7 @@ for argument in "$@"; do
     --verify-setup) verify_setup=true ;;
     --help)
       printf 'Usage: ./.config/bootstrap-tao-dev-env [--install-nix] [--tools-only | --verify-setup]\n'
-      printf 'Build the locked portable Linux profile, then run ./agent setup.\n'
+      printf 'Build the locked portable Linux profile, then run ./agent unsandboxed setup.\n'
       printf 'Use --tools-only to prepare a reusable tools image without repository dependencies.\n'
       printf 'Use --verify-setup to prepare the retained legacy verification lane.\n'
       exit 0 ;;
@@ -146,4 +146,4 @@ if "$verify_setup"; then
   printf 'Verify setup: TypeScript formatter plugins...\n'
   exec "$state_dir/profile/bin/bun" install --cwd "$checkout/ts" --frozen-lockfile
 fi
-exec "$repository/agent" setup
+exec "$repository/agent" unsandboxed setup

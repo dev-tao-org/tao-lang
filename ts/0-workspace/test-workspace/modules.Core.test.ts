@@ -2,33 +2,29 @@ import { Json } from '@shared'
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { createWorkspace, type UpdateResult, type WorkspaceSession } from '../workspace-src/Workspace'
-import { createWatchFixture, type WatchFixture } from './FileManager.test-fixtures.Watch'
+import { createWorkspace } from '../workspace-src/Workspace'
 
 type OptionalCompiledContents = Readonly<Record<string, string>> | undefined
 
-Tests.test('dependency changes reload modules and recover invalid source', async () => {
+Tests.test('recompilation reloads changed dependencies and recovers from invalid source', async () => {
   const directory = Artifacts.resolvePath('tmp', `module-watch-${Platform.randomUUID()}`)
   const dependency = Path.join(directory, '@cards/Card.tao')
+  const entry = Path.join(directory, 'feature/App.tao')
   const publications: Readonly<Record<string, string>>[] = []
-  const observation = createWatchFixture()
   const workspace = createWorkspace({
-    ...observation.options,
     async publish(app) {
       publications.push(app.files)
     },
   })
   await Try(async () => {
     await writeFixture(directory, dependency)
-    Tests.expect((await workspace.openFile(Path.join(directory, 'feature/App.tao'))).status).toBe('published')
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     Tests.expect(compiledContents(publications.at(-1))).toContain('"First value"')
-    Tests.expect((await changeDependency(workspace, observation, dependency, 'project view Card {')).status).toBe(
-      'failed',
-    )
+    await FS.writeFile(dependency, 'project view Card {')
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('failed')
     Tests.expect(publications).toHaveLength(1)
-    Tests.expect((await changeDependency(workspace, observation, dependency, card('Repaired value'))).status).toBe(
-      'published',
-    )
+    await FS.writeFile(dependency, card('Repaired value'))
+    Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     Tests.expect(publications).toHaveLength(2)
     Tests.expect(compiledContents(publications.at(-1))).toContain('"Repaired value"')
   }, {
@@ -44,7 +40,6 @@ Tests.test('root requirement observation never links unrelated root declarations
   const publications: Readonly<Record<string, string>>[] = []
   const observed: string[] = []
   const workspace = createWorkspace({
-    ...createWatchFixture().options,
     observeProjectSources(_root, sources) {
       observed.push(...sources.map(source => source.path))
     },
@@ -87,7 +82,6 @@ async function writeFixture(directory: string, dependency: string): Promise<void
     `,
   )
 }
-
 function card(value: string): string {
   return S`
     use tao@ui Text
@@ -97,20 +91,4 @@ function card(value: string): string {
 
 function compiledContents(files: OptionalCompiledContents): string {
   return Object.values(files ?? {}).join(NewlineCharacter)
-}
-
-async function changeDependency(
-  workspace: WorkspaceSession,
-  observation: WatchFixture,
-  path: string,
-  source: string,
-): Promise<UpdateResult> {
-  await FS.writeFile(path, source)
-  let complete!: (result: UpdateResult) => void
-  const result = new Promise<UpdateResult>(resolve => complete = resolve)
-  const stop = workspace.files.onCompiled(event => complete(event.result))
-  return await Try(async () => {
-    observation.notify(path)
-    return await result
-  }, { finally: stop })
 }

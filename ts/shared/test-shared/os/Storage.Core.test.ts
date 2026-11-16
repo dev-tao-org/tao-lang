@@ -2,9 +2,9 @@ import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import * as Process from '../../shared-src/os/Process'
-import * as Processes from '../../shared-src/os/Processes'
 
 import { resolveStorage } from '../../shared-src/os/Storage'
 
@@ -41,14 +41,11 @@ Tests.test('cleanSharedCache waits for local leases and removes only cache conte
       Json.Print(moduleUrl)
     }); const release = await storage.acquireCacheLease('fixture'); const first = await storage.cleanSharedCache(); await Promise.all([release(), release()]); const second = await storage.cleanSharedCache(); process.stdout.write(JSON.stringify([first, second]));`
     const environment = { TAO_CACHE_DIR: cache, TAO_SUPPORT_DIR: support }
-    const child = Processes.spawnPiped(Process.execPath, {
-      variadicArgs: ['-e', script],
-      addEnv: environment,
-    })
+    const child = Exec.spawn(Process.execPath, ['-e', script], { addEnv: environment })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
     Tests.expect(Json.Parse(stdout)).toEqual([false, true])
@@ -109,14 +106,13 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
         });
       `,
     )
-    const child = Processes.spawnPiped('bun', {
-      variadicArgs: ['test', path],
+    const child = Exec.spawn('bun', ['test', path], {
       addEnv: { TAO_CACHE_DIR: undefined, TAO_SUPPORT_DIR: undefined },
     })
     const [status, , stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     Tests.expect({ status, failed: stderr.includes('(fail)') }).toEqual({ status: 0, failed: false })
     const roots = Json.Parse(await readFile(result, 'utf8')) as string[]
@@ -128,14 +124,14 @@ Tests.test('direct test invocations scope Tao storage without changing the real 
 async function runStorageScript(root: string, source: string): Promise<string> {
   const moduleUrl = new WebHost.URL('../../shared-src/os/Storage.ts', import.meta.url).href
   const environment = { TAO_CACHE_DIR: join(root, 'cache'), TAO_SUPPORT_DIR: join(root, 'support') }
-  const child = Processes.spawnPiped(Process.execPath, {
-    variadicArgs: ['-e', `const storage = await import(${Json.Print(moduleUrl)}); ${source}`],
-    addEnv: environment,
-  })
+  const child = Exec.spawn(Process.execPath, [
+    '-e',
+    `const storage = await import(${Json.Print(moduleUrl)}); ${source}`,
+  ], { addEnv: environment })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
   return stdout

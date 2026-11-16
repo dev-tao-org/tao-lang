@@ -4,13 +4,17 @@ import { Process } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 type OptionalReportPath = string | undefined
-/** withTestTimings prints slow-test warnings after a run while preserving its failure. */
+/** TestFileTiming records wall time for one complete file suite in Bun's JUnit output. */
+export type TestFileTiming = { file: string; durationMs: number }
+
+/** withTestTimings reports slow cases and returns per-file wall times from successful runs. */
 export async function withTestTimings(
   run: (reportPath: OptionalReportPath) => Promise<void>,
   slowSeconds = 0.075,
   output: Pick<typeof IO, 'warn'> = IO,
-): Promise<void> {
+): Promise<TestFileTiming[]> {
   const reportPath = await prepareTestReport()
+  let files: TestFileTiming[] = []
   await Try(() => run(reportPath), {
     async finally() {
       if (!reportPath) {
@@ -24,11 +28,42 @@ export async function withTestTimings(
         for (const warning of slowTestWarnings(report, slowSeconds)) {
           output.warn(warning)
         }
+        files = readTestFileTimings(report)
       }, {
         catch: (error) => IO.warn('Unable to read test timings:', error),
       })
     },
   })
+  return files
+}
+
+function readTestFileTimings(report: string): TestFileTiming[] {
+  if (!report.trimEnd().endsWith('</testsuites>')) {
+    return []
+  }
+  const files: TestFileTiming[] = []
+  let depth = 0
+  for (const [token] of report.matchAll(Regxs.XmlToken)) {
+    const tag = token.match(Regxs.TestReportTag)
+    if (tag?.[2] !== 'testsuite') {
+      continue
+    }
+    if (tag[1] === '/') {
+      depth--
+      continue
+    }
+    if (depth === 0) {
+      const attributes = xmlAttributes(token)
+      const seconds = attributes.time?.trim() ? Number(attributes.time) : NaN
+      if (attributes.file && Number.isFinite(seconds) && seconds >= 0) {
+        files.push({ file: attributes.file, durationMs: Math.max(1, seconds * 1000) })
+      }
+    }
+    if (!token.endsWith('/>')) {
+      depth++
+    }
+  }
+  return files
 }
 
 /** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */

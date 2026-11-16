@@ -88,9 +88,7 @@ function isImplementationNode(node: TypeScript.Node): boolean {
 }
 
 /** isApiDeclaration identifies declarations that can define public API groups. */
-function isApiDeclaration(
-  node: TypeScript.Node,
-): node is ApiDeclaration {
+function isApiDeclaration(node: TypeScript.Node): node is ApiDeclaration {
   return isCallableDeclaration(node) || isTypeDeclaration(node) || isContainerDeclaration(node)
 }
 
@@ -164,20 +162,14 @@ function isImplementationContainer(node: TypeScript.Node): node is Implementatio
     || TypeScript.isClassStaticBlockDeclaration(node)
 }
 
-function isCallableDeclaration(
-  node: TypeScript.Node,
-): node is CallableDeclaration {
+function isCallableDeclaration(node: TypeScript.Node): node is CallableDeclaration {
   return TypeScript.isFunctionDeclaration(node) || TypeScript.isClassDeclaration(node)
 }
 
-function isTypeDeclaration(
-  node: TypeScript.Node,
-): node is TypeDeclaration {
+function isTypeDeclaration(node: TypeScript.Node): node is TypeDeclaration {
   return TypeScript.isInterfaceDeclaration(node) || TypeScript.isTypeAliasDeclaration(node)
 }
 
-function isContainerDeclaration(
-  node: TypeScript.Node,
-): node is ContainerDeclaration {
+function isContainerDeclaration(node: TypeScript.Node): node is ContainerDeclaration {
   return TypeScript.isEnumDeclaration(node) || TypeScript.isModuleDeclaration(node)
 }

@@ -1,245 +1,128 @@
 import { IO } from '@cli-kit'
-import * as CLIKit from '@cli-kit'
-import * as Runtime from '@runtime'
-import { ControlCCharacter, Errors, NewlineCharacter, Try } from '@shared'
-import { Browser, FS, Http, Platform, Process, Processes, Repo, Terminal } from '@shared/os'
-import * as Workspace from '@workspace'
-
-import * as Perf from '@perf'
-
-import { prepareRuntime } from '../../cli-checks/runtime-build'
+import { ControlCCharacter, NewlineCharacter, Try } from '@shared'
+import { Browser, Process, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
+import { startDevelopmentPreview } from '../preview/DevelopmentPreview'
+import { startPerformanceEditor } from '../preview/PerformanceProject'
 import { registerCommand } from './_command-runner'
 
-/** devCommand runs the isolated Preview fixture in a persistent dual-preview Expo session. */
+/** devCommand runs the keyboard launcher and owns opened development apps until exit. */
 export default registerCommand({
   name: 'dev',
-  description: 'Run the Preview fixture in two live previews and refresh after each button edit.',
+  description: 'Open development apps with keyboard shortcuts and keep their sessions running.',
   options: [{ flags: '--yes', description: 'Authorize required dependency setup and preview restarts.' }],
-  async action(options: { yes?: boolean } = {}) {
-    await runDevSession(options.yes)
-  },
+  action: (options: { yes?: boolean }) => runDevelopmentLoop(options.yes),
 })
 
-async function runDevSession(yes?: boolean): Promise<void> {
-  await prepareRuntime()
-  const entry = Repo.resolvePath('Apps/Dev/Preview/Preview.tao')
-  const state: DevSession = { stopped: false, controller: Http.createAbortController() }
-  const stop = Process.onTermination(() => requestDevExit(state))
-  const ui = workflowUI(yes, state.controller.signal)
-  const options = devWorkspaceOptions(state, entry, ui)
-  await Try(async () => {
-    state.workspace = await Workspace.execute({ kind: 'preview', entry, options }, ui)
-    await startDevRuntime(state)
-    IO.print('Edit Apps/Dev/Preview/Preview.tao to refresh both previews.')
-    startDevActions(state)
-    if (!state.stopped) {
-      await Process.waitForTermination(state.controller.signal)
-    }
-  }, {
+type DevelopmentApp = { readonly url?: string; readonly stopped?: boolean; dispose(): Promise<void> }
+type AppLaunch = { label: string; start(): Promise<DevelopmentApp> }
+type AppLaunches = ReadonlyMap<string, AppLaunch>
+type OptionalDevelopmentApp = DevelopmentApp | undefined
+type DevelopmentSessions = Map<string, Promise<OptionalDevelopmentApp>>
+type DevelopmentSignal = Cancellation.Controller['signal']
+
+async function runDevelopmentLoop(yes?: boolean): Promise<void> {
+  if (!Terminal.isInteractive()) {
+    IO.print('Run ./dev in an interactive terminal to open development apps. Use ./dev help for all commands.')
+    return
+  }
+  const controller = Cancellation.createController()
+  const apps: AppLaunches = new Map([
+    ['p', { label: 'Performance', start: startPerformanceEditor }],
+    ['v', {
+      label: 'Live Preview',
+      start: () => startDevelopmentPreview(controller.signal, ui),
+    }],
+  ])
+  const sessions: DevelopmentSessions = new Map()
+  IO.print([...apps].map(([key, app]) => `${key}  ${app.label}`).concat('q  Quit').join(NewlineCharacter))
+  const keys = listenForDevelopmentApps(apps, sessions, controller)
+  const ui = workflowUI(yes, controller.signal, options => keys.withoutKeys(() => IO.askTerminalConfirmation(options)))
+  await Try(() => Process.waitForTermination(controller.signal), {
     async finally() {
-      requestDevExit(state)
+      keys.stop()
+      controller.abort()
+      IO.setCommands([])
       IO.progress('Shutting down…')
-      await state.recovery
-      await stopDevSession(state)
-      stop()
+      await Promise.all([...sessions.values()].map(async pending => (await pending)?.dispose()))
     },
   })
 }
 
-type DevWorkspaceOptions = {
-  kind: 'studio'
-  onSourceUpdate(result: Workspace.UpdateResult): void
-  onSourceError(error: unknown): void
-}
+type DevelopmentKeys = { stop(): void; withoutKeys(run: () => Promise<boolean>): Promise<boolean> }
 
-function devWorkspaceOptions(state: DevSession, entry: string, ui: Workspace.WorkflowUI): DevWorkspaceOptions {
-  const options = {
-    kind: 'studio',
-    onSourceUpdate(result: Workspace.UpdateResult) {
-      reportSourceUpdate(result)
-      const canRecoverSetup = result.status === 'failed' && result.setupRequired && state.workspace
-      if (canRecoverSetup && !state.recovery) {
-        state.recovery = restartDevSession(state, entry, options, ui, result.error)
+function listenForDevelopmentApps(
+  apps: AppLaunches,
+  sessions: DevelopmentSessions,
+  controller: Cancellation.Controller,
+): DevelopmentKeys {
+  let stop = Terminal.listenForKeys(dispatch)
+  let paused = 0
+  return {
+    stop: () => stop(),
+    async withoutKeys(run) {
+      if (++paused === 1) {
+        stop()
       }
+      return await Try(run, {
+        finally() {
+          if (--paused === 0 && !controller.signal.aborted) {
+            stop = Terminal.listenForKeys(dispatch)
+          }
+        },
+      })
     },
-    onSourceError: reportSourceError,
-  } as const
-  return options
-}
-
-async function restartDevSession(
-  state: DevSession,
-  entry: string,
-  options: DevWorkspaceOptions,
-  ui: Workspace.WorkflowUI,
-  reason: string,
-): Promise<void> {
-  state.stopKeys?.()
-  await Try(async () => {
-    state.workspace = await Workspace.execute({
-      kind: 'preview',
-      entry,
-      options,
-      restart: { reason, suspend: () => stopDevSession(state) },
-    }, ui)
-    await startDevRuntime(state)
-  }, {
-    catch: error => IO.warn(`Preview restart did not complete: ${String(error)}`),
-    finally() {
-      state.recovery = undefined
-      startDevActions(state)
-    },
-  })
-}
-
-type DevSession = {
-  stopped: boolean
-  controller: Http.HttpAbortController
-  stopKeys?: () => void
-  workspace?: Workspace.WorkflowWorkspace
-  expo?: Runtime.ExpoSession
-  preview?: Perf.PreviewHarness
-  recovery?: Promise<void>
-}
-
-async function startDevRuntime(state: DevSession): Promise<void> {
-  if (state.stopped) {
-    return
   }
-  const workspace = state.workspace ?? Errors.ThrowShouldNeverHappen('Preview workspace is unavailable.')
-  const entryPath = workspace.files.entryPath
-  if (!entryPath) {
-    Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
-  }
-  state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.controller.signal })
-  state.preview = await Perf.createPreviewHarness({
-    workspace,
-    previewUrl: state.expo.url,
-    sessionId: Platform.randomUUID(),
-    canonicalSource: await FS.readFile(entryPath, 'utf8'),
-    scenarios: Perf.previewScenarios,
-    onReload: reportReload,
-  })
-  IO.print('Tao preview is running at ' + state.preview.url)
-}
 
-function startDevActions(state: DevSession): void {
-  if (state.stopped || !Terminal.isInteractive()) {
-    return
-  }
-  state.stopKeys?.()
-  const stopKeys = Terminal.listenForKeys(key => {
+  function dispatch(key: string): void {
     if (key === 'q' || key === ControlCCharacter) {
-      requestDevExit(state)
-    } else if (key === 'w') {
-      openDevBrowser(state)
-    } else {
-      // Unassigned keys leave the running preview unchanged.
+      controller.abort()
+      return
     }
-  })
-  state.stopKeys = () => {
-    stopKeys()
-    IO.setCommands([])
-  }
-  IO.setCommands([{ key: 'w', label: 'open web' }, { key: 'q', label: 'quit' }])
-}
-
-function openDevBrowser(state: DevSession): void {
-  const url = state.preview?.url
-  if (url && !state.stopped) {
-    void Try(() => Browser.openUrl(url), {
-      catch: error => IO.warn(`Could not open preview browser: ${String(error)}`),
+    const app = apps.get(key)
+    if (!app || controller.signal.aborted) {
+      return
+    }
+    void Try(() => openDevelopmentApp(key, app, sessions, controller.signal), {
+      catch: error => IO.warn(`${app.label} could not open. ${String(error)}`),
     })
   }
 }
 
-function requestDevExit(state: DevSession): void {
-  state.stopped = true
-  state.controller.abort()
-  state.stopKeys?.()
-}
-
-async function stopDevSession(state: DevSession): Promise<void> {
-  state.stopKeys?.()
-  if (state.workspace) {
-    await cleanup({ preview: state.preview, expo: state.expo, workspace: state.workspace, reportFailure: false })
-    state.workspace = undefined
-    state.expo = undefined
-    state.preview = undefined
+async function openDevelopmentApp(
+  key: string,
+  app: AppLaunch,
+  sessions: DevelopmentSessions,
+  signal: DevelopmentSignal,
+): Promise<void> {
+  let pending = sessions.get(key)
+  if (pending && (await pending)?.stopped) {
+    if (sessions.get(key) !== pending) {
+      return
+    }
+    sessions.delete(key)
+    pending = undefined
   }
-}
-
-function reportSourceUpdate(result: Workspace.UpdateResult): void {
-  IO.print(`Compile ${result.revision}:${NewlineCharacter}  ${CLIKit.formatTimings(result.timings)}`)
-  if (result.status === 'failed') {
-    IO.warn(`Preview source compilation failed: ${result.error}`)
-    IO.warn('The last good app remains available.')
+  if (signal.aborted) {
     return
   }
-  if (result.status === 'invalid') {
-    IO.warn('Preview source was not published; the last good app remains available.')
+  if (pending === undefined) {
+    IO.progress('Starting ' + app.label + '…')
+    pending = Promise.resolve(Try(() => app.start(), {
+      catch(error) {
+        sessions.delete(key)
+        IO.warn(`${app.label} could not start. ${String(error)}`)
+        return undefined
+      },
+    }))
+    sessions.set(key, pending)
   }
-}
-
-function reportSourceError(error: unknown): void {
-  IO.warn('Could not read changed source: ' + String(error))
-}
-
-type ExpoOutputStream = 'stdout' | 'stderr'
-type OptionalPreview = Perf.PreviewHarness | undefined
-type OptionalExpoSession = Runtime.ExpoSession | undefined
-
-function reportExpoOutput(stream: ExpoOutputStream, text: string): void {
-  IO.progress(`[expo ${stream}] ${text.trimEnd().replace('Starting project at ', 'Starting Expo runtime at ')}`)
-}
-
-function reportReload(timing: Perf.ReloadTiming): void {
-  IO.print(
-    `Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`,
-  )
-  for (const [id, frame] of Object.entries(timing.frames)) {
-    const label = id === 'left' ? 'narrow' : 'wide'
-    IO.print(
-      `  ${label}: publication → Metro ${frame.publishToHmrMs.toFixed(1)} ms (${
-        (frame.saveToHmrMs / 1000).toFixed(4)
-      } s elapsed)`
-        + ` | Metro → applied ${frame.hmrToAppliedMs.toFixed(1)} ms (${
-          (frame.saveToAppliedMs / 1000).toFixed(4)
-        } s elapsed)`,
-    )
-  }
-  IO.print(
-    `Total ${timing.revision}: change observed → preview applied ${timing.saveToAppliedMs.toFixed(1)} ms (${
-      (timing.saveToAppliedMs / 1000).toFixed(4)
-    } s elapsed, both previews).`,
-  )
-}
-
-type CleanupOptions = {
-  preview: OptionalPreview
-  workspace: Workspace.WorkspaceSession
-  expo: OptionalExpoSession
-  reportFailure: boolean
-}
-
-async function cleanup(options: CleanupOptions): Promise<void> {
-  options.preview?.dispose()
-  await Try(() => options.workspace.dispose(), {
-    async finally() {
-      if (options.expo) {
-        await options.expo.dispose()
-        if (options.reportFailure) {
-          printExpoOutput(await options.expo.output())
-        }
-      }
-    },
-  })
-}
-
-function printExpoOutput(output: Processes.ProcessOutput): void {
-  const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
-  if (messages.length) {
-    IO.printToStdErr(('Expo diagnostics:' + NewlineCharacter) + messages.join(NewlineCharacter))
+  const active = await pending
+  const url = active?.url
+  if (url && !signal.aborted) {
+    await Try(() => Browser.openUrl(url), {
+      catch: error => IO.warn(`Open ${url} in your browser. ${String(error)}`),
+    })
   }
 }

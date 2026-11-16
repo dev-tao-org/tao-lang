@@ -1,8 +1,9 @@
 import { Errors, Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, HeadlessBrowser, Http, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Artifacts, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
+import Exec, { type ChildProcess } from '@shared/os/exec'
+import { Http } from '@shared/web'
 import * as Workspace from '@workspace'
 
 import { writePreparedTaoApp } from './dev-cli.test-fixtures.TaoApp'
@@ -14,16 +15,20 @@ Tests.test('public Tao app run renders from its generated Expo session and relea
   Artifacts.trackTemporary(root)
   await Workspace.initializeProject(root)
   const entry = await writePreparedTaoApp(root)
-  const reservation = Http.serve({ port: 0, fetch: () => Http.response() })
+  const reservation = HttpServer.serve({ port: 0, fetch: () => Http.response() })
   const port = reservation.port
   reservation.stop(true)
   const url = 'http://localhost:' + port
-  const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-    variadicArgs: ['run', entry, '--session', 'run-proof', '--port', String(port), '--web'],
-    cwd: root,
-    addEnv: createTaoRunEnvironment(),
-  })
-  const output = Promise.all([Processes.readText(child.stdout), Processes.readText(child.stderr)])
+  const child = Exec.spawn(Repo.resolvePath('tao'), [
+    'run',
+    entry,
+    '--session',
+    'run-proof',
+    '--port',
+    String(port),
+    '--web',
+  ], { cwd: root, addEnv: createTaoRunEnvironment() })
+  const output = Promise.all([Exec.readText(child.stdout), Exec.readText(child.stderr)])
   let browser: OptionalTestBrowser
   await Try(async () => {
     await waitForAppServer(url, child)
@@ -55,7 +60,7 @@ function createTaoRunEnvironment() {
   return { CI: '1', BROWSER: 'none', NODE_ENV: 'development' }
 }
 
-async function waitForAppServer(url: string, child: Processes.ChildProcess): Promise<void> {
+async function waitForAppServer(url: string, child: ChildProcess): Promise<void> {
   const deadline = Time.nowMs() + 30_000
   while (Time.nowMs() < deadline && child.exitCode === null) {
     const ready = await Try.WithDefault(false, async () => (await Http.request(url)).ok)

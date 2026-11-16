@@ -56,8 +56,8 @@ function isExplicitHostProbe(node: TypeScript.Node, filename: string): boolean {
 // These programs must capture the actual external module graph to prove routing and interception.
 // Standalone consumer templates and declaration contracts intentionally resolve the consumer's peers.
 const hostProbeSpecifiers = new Map<string, readonly string[]>([
-  ['ts/0-workspace/workspace-src/LibraryPackage.ts', ['react']],
-  ['ts/0-workspace/workspace-src/sidecars/ForeignViewContracts.ts', ['react']],
+  ['ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts', ['react']],
+  ['ts/6-compile/compile-src/Compile/LibraryPackageCompiler.ts', ['react']],
   ['ts/0-workspace/workspace-src/projects/LibraryProjectTemplate.ts', [
     '@example/tao-library',
     '@example/tao-library/Greeting',
@@ -106,5 +106,5 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
   ['ts/CLIs/test-CLIs/cli-checks.source-conformance-api.test.ts', ['@model']],
   ['ts/shared/test-shared/os/FS.Files.GeneratedMetadata.test.ts', ['bun:test']],
   ['ts/shared/test-shared/os/Storage.LeaseFailures.test.ts', ['bun:test']],
-  ['ts/shared/test-shared/os/Storage.SessionLock.PointerDiagnostics.test.ts', ['bun:test']],
+  ['ts/shared/test-shared/os/locks.FileLock.PointerDiagnostics.test.ts', ['bun:test']],
 ])

@@ -9,26 +9,26 @@ import { S } from '@shared'
 import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles } from './Compile.test-utils'
 
-Tests.test('imported prototype-named text retains its value through an aliased injection capture', () => {
+Tests.test('imported public text retains its value through an aliased injection capture', () => {
   const files = compileImportedRoot(
     'render inject Captured Imported ```ts return Captured ```',
-    'public let __proto__ = "Captured value"',
+    'public let Original = "Captured value"',
   )
   Tests.expect(renderRoot(files)).toBe('Captured value')
 })
 
-Tests.test('imported prototype-named views retain their descriptor when rendered through an alias', () => {
+Tests.test('imported public views retain their descriptor when rendered through an alias', () => {
   const files = compileImportedRoot(
     'render Imported',
-    'public view __proto__ { render inject ```ts return null ``` }',
+    'public view Original { render inject ```ts return null ``` }',
   )
-  Tests.expect(renderRoot(files)).toMatchObject({ name: '__proto__', parameters: [] })
+  Tests.expect(renderRoot(files)).toMatchObject({ name: 'Original', parameters: [] })
 })
 
 function compileImportedRoot(render: string, declaration: string): Readonly<Record<string, string>> {
   const parser = Grammar.createParser()
   const entry = AST.transform(parser.parse(S`
-    use ./Other __proto__ as Imported
+    use ./Other Original as Imported
     app Main { root Root }
     view Root { ${render} }
   `))!

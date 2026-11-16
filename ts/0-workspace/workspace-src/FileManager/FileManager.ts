@@ -1,10 +1,11 @@
 import { Errors, Time, Try } from '@shared'
-import { Path, WorkspaceWatch } from '@shared/os'
+import { FileWatch, Path } from '@shared/os'
 import { Document } from '../Document'
 import { findNearestProjectRoot, resolveCanonicalPath } from '../modules/Paths'
 import type { UpdateResult } from '../Workspace'
 import * as FileManagerCompilation from './FileManagerCompilation'
 import * as FileManagerInputs from './FileManagerInputs'
+import { watchSourceTree } from './SourceWatch'
 
 export type { CompiledEvent, CompileRequest, FileManagerOptions } from './FileManagerCompilation'
 
@@ -15,8 +16,8 @@ export class FileManager {
   entryPath: FileManagerEntryPath
   private readonly listeners = new Set<(event: FileManagerCompilation.CompiledEvent) => void>()
   private readonly documents = new Map<string, Document>()
-  private watcher?: WorkspaceWatch.WorkspaceWatcher
-  private watcherStart?: Promise<WorkspaceWatch.WorkspaceWatcher>
+  private watcher?: FileWatch.Watcher
+  private watcherStart?: Promise<FileWatch.Watcher>
   private watcherRoot?: string
   private workspaceRoot?: string
   private readonly pipelineDirectories: FileManagerCompilation.PipelineWatchDirectories
@@ -148,7 +149,7 @@ export class FileManager {
     return refresh
   }
 
-  private onChange(change: WorkspaceWatch.WorkspaceChange): void {
+  private onChange(change: FileWatch.FileChange): void {
     if (!this.shouldRefresh(change)) {
       return
     }
@@ -160,11 +161,11 @@ export class FileManager {
     const path = this.entryPath!
     const generation = this.entryGeneration
     const observation = this.observationGeneration
-    const scheduleRefresh = this.options.schedule ?? Time.schedule
     const debounceMs = this.options.debounceMs ?? 5
-    this.refreshTimer = scheduleRefresh(debounceMs, () => {
+    this.refreshTimer = Time.schedule(debounceMs, () => {
       this.refreshTimer = undefined
-      void this.enqueue({ kind: 'disk', path, startedAtMs: change.observedAtMs }, generation, observation)
+      const input = FileManagerCompilation.createWatchedInput(path, change)
+      void this.enqueue(input, generation, observation)
         .then(refresh.settle)
     })
   }
@@ -185,9 +186,9 @@ export class FileManager {
     }
     this.watcherRoot = root
     const ignoredDirectories = this.pipelineDirectories.ignored()
-    const watchWorkspace = this.options.watch ?? WorkspaceWatch.watchWorkspace
+    const watch = this.options.watch ?? watchSourceTree
     const additionalDirectories = this.pipelineDirectories.additional()
-    this.watcherStart = watchWorkspace(
+    this.watcherStart = watch(
       root,
       change => this.onChange(change),
       error => this.options.onSourceError?.(error),
@@ -253,7 +254,6 @@ export class FileManager {
     const loaded = await FileManagerCompilation.loadFileManagerInput(
       request,
       this.documents,
-      this.options.read,
       () => this.isCurrent(request),
     )
     if (FileManagerCompilation.isUpdateResult(loaded)) {
@@ -284,7 +284,7 @@ export class FileManager {
     return resolveCanonicalPath(absolute)
   }
 
-  private shouldRefresh(change: WorkspaceWatch.WorkspaceChange): boolean {
+  private shouldRefresh(change: FileWatch.FileChange): boolean {
     return this.hasActiveEntry()
       && FileManagerCompilation.isRelevantChange(change, path => this.pipelineDirectories.watchesFile(path))
       && !this.isOutputChange(change.path)

@@ -1,18 +1,13 @@
 import { Errors } from '@shared'
 import type { FS } from '@shared/os'
+import type { Command, CommandArgs, CommandOptions } from '@shared/os/exec'
 import type { OutputChannel } from './output/Output'
 
-/** Command identifies an executable with optional space-separated arguments or explicit argv. */
-export type Command = string | readonly string[]
-
 type InheritedOutputMode = 'inherit' | 'ignore'
-type InteractiveOption = 'variadicArgs' | 'cwd' | 'addEnv' | 'signal'
+type InteractiveOption = 'cwd' | 'addEnv' | 'signal'
 
 /** CommandRunOptions controls a supervised command with optional explicit file input. */
-export type CommandRunOptions = {
-  variadicArgs?: readonly string[]
-  cwd?: string
-  addEnv?: Record<string, EnvironmentValue>
+export type CommandRunOptions = CommandOptions & {
   stdin?: FS.File
   stdout?: InheritedOutputMode
   stderr?: InheritedOutputMode
@@ -27,25 +22,32 @@ export type InteractiveCommandOptions = Pick<CommandRunOptions, InteractiveOptio
 /** CommandInteractionMode selects terminal ownership independently of output routing. */
 export type CommandInteractionMode = 'interactive' | 'noninteractive'
 
-type EnvironmentValue = string | undefined
-
 /** CommandInteractionOperations supplies prompt ownership and shared process execution. */
 export type CommandInteractionOperations = {
   isInteractive: () => boolean
   prompt: <T>(action: () => Promise<T>) => Promise<T>
-  execute: (command: Command, options: CommandRunOptions, mode: CommandInteractionMode) => Promise<void>
+  execute: (
+    command: Command,
+    args: CommandArgs,
+    options: CommandRunOptions,
+    mode: CommandInteractionMode,
+  ) => Promise<void>
 }
 
 /** createCommandRunners makes terminal handoff mandatory for interactive subprocesses. */
 export function createCommandRunners(operations: CommandInteractionOperations) {
   return {
-    async runInteractiveCommand(command: Command, options: InteractiveCommandOptions = {}): Promise<void> {
+    async runInteractiveCommand(
+      command: Command,
+      args: CommandArgs = [],
+      options: InteractiveCommandOptions = {},
+    ): Promise<void> {
       if (!operations.isInteractive()) {
         Errors.ThrowUserInput('Interactive commands require a terminal. Run this operation in Terminal.')
       }
-      await operations.prompt(() => operations.execute(command, options, 'interactive'))
+      await operations.prompt(() => operations.execute(command, args, options, 'interactive'))
     },
-    runNonInteractiveCommand: (command: Command, options: CommandRunOptions = {}) =>
-      operations.execute(command, options, 'noninteractive'),
+    runNonInteractiveCommand: (command: Command, args: CommandArgs = [], options: CommandRunOptions = {}) =>
+      operations.execute(command, args, options, 'noninteractive'),
   }
 }

@@ -1,31 +1,22 @@
-import { Json } from '@shared'
-import { Addr, Errors, NewlineCharacter, S, Try } from '@shared'
-import * as Shared from '@shared'
+import { Errors, NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Files, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
-import type { ProjectPipelineServices } from '../workspace-src/ProjectPipeline'
+import { FS, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
+import { Addr } from '@shared/web'
 import * as ProjectPreparation from '../workspace-src/ProjectPreparation'
 import { cleanProject } from '../workspace-src/projects/Clean'
 import { initializeProject } from '../workspace-src/projects/Projects'
-import { prepareSidecarPipeline } from '../workspace-src/SidecarPipeline'
 import type { BunExecutor } from '../workspace-src/sidecars/ManagedModule/ManagedModules'
-import * as ManagedModules from '../workspace-src/sidecars/ManagedModule/ManagedModules'
-import type { UpdateResult, WorkspaceSession } from '../workspace-src/Workspace'
 import * as ManagedDependencyRegistry from './dependencies.test-fixtures.Registry'
-import { openAutomaticWorkspace } from './Workspace.test-fixtures.AutomaticWorkflow'
 
 const runtimePins = { react: '0.0.0-tao-fixture' }
 const ManagedDependencyInstallFailureRegx = /could not be prepared.*fixture install interruption/
 const PackageEntryJavaScriptPathRegx = /index\.js$/
-const GeneratedForeignViewImportRegx = /import\s+\{\s*Widget as _taoForeignView\d+\s*\}\s+from\s+("(?:[^"\\]|\\.)*")/
-const GeneratedDependencyFilesDriftRegx = /drifted|Generated dependency files changed/
 const IncompatibleReactVersionRegx = /incompatible versions of react/
 
 Tests.test('managed npm preparation resolves a local project foreign view through an isolated registry', async () => {
   const root = ArtifactsRoot()
   const requests: string[] = []
-  const workspaceHandles: WorkspaceSession[] = []
   await FS.mkdir(root)
   await Try(async () => {
     const { app, ui, entry } = await createFixtureProjects(root)
@@ -38,32 +29,19 @@ Tests.test('managed npm preparation resolves a local project foreign view throug
       const port = server.port ?? Errors.ThrowShouldNeverHappen('Dependency registry did not bind a TCP port.')
       const registry = Addr.localhostUrl(port)
       await expectInstallRetry(entry, root)
-      const published: string[] = []
-      const workspace = await openAutomaticWorkspace(
-        entry,
-        published,
-        createBunExecutor(root, registry),
+      await ProjectPreparation.prepareProject(entry, {
+        executor: createBunExecutor(root, registry),
         runtimePins,
-        pipelineServices(),
-      )
+      })
+      await ProjectPreparation.inspectProjectPreparation(entry, { runtimePins })
       await verifyInstalledGraph(app, ui, artifacts, registry)
-      workspaceHandles.push(workspace)
-      await verifyCompiledSidecar(workspace, entry, ui, published)
-      await verifyRuntimeConflictPreservesPreview(workspace, entry, ui, published)
-      await verifyLastGoodSurvivesDrift(workspace, entry, ui, published)
-      await workspace.dispose()
-      workspaceHandles.length = 0
+      await verifyRuntimeConflict(entry, ui)
       await verifyFrozenReprepare(app, entry, root, registry)
       verifyRegistryRequests(requests, registry)
       Tests.expect(await FS.exists(Path.join(app, '.tao/store/npm'))).toBe(true)
     }, { finally: () => server.stop(true) })
   }, {
-    async finally() {
-      for (const workspace of workspaceHandles) {
-        await workspace.dispose()
-      }
-      await FS.rm(root, { recursive: true, force: true })
-    },
+    finally: () => FS.rm(root, { recursive: true, force: true }),
   })
 })
 
@@ -80,7 +58,7 @@ async function createFixtureProjects(root: string): Promise<FixtureProjects> {
   await FS.rename(Path.join(ui, '@ui/Widget.fixture'), Path.join(ui, '@ui/Widget.tsx'))
   await FS.writeFile(
     Path.join(app, 'Unused.tao'),
-    'requires github:unused/project version v1 as unused' + NewlineCharacter,
+    'requires github:unused/project version v1 as Unused' + NewlineCharacter,
   )
   return { app, ui, entry: Path.join(app, 'Main.tao') }
 }
@@ -119,11 +97,11 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    const child = Processes.spawnPiped([command, ...args, ...registryArguments], { cwd, addEnv })
+    const child = Exec.spawn(command, [...args, ...registryArguments], { cwd, addEnv })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     const lockExists = await FS.exists(Path.join(cwd, 'bun.lock'))
     return lockExists || status !== 0
@@ -165,49 +143,6 @@ function verifyRegistryRequests(requests: string[], registry: string): void {
   Tests.expect(requests.every(path => path.startsWith(registry))).toBe(true)
 }
 
-function pipelineServices(): ProjectPipelineServices {
-  return {
-    buildManagedInput: async (root, program) =>
-      ProjectPreparation.buildManagedModulesInput(root, program.modules, runtimePins),
-    readManaged: ManagedModules.readManagedModules,
-    inspectGeneratedFiles: ManagedModules.inspectGeneratedModuleFiles,
-    prepareSidecars: prepareSidecarPipeline,
-  }
-}
-
-async function verifyCompiledSidecar(
-  workspace: WorkspaceSession,
-  entry: string,
-  ui: string,
-  published: string[],
-): Promise<void> {
-  const initial = await workspace.files.openFile(entry)
-  const result = resolveOpenFileOutcome(initial)
-  Tests.expect(result).toBe('published')
-  Tests.expect(published).toHaveLength(2)
-  Tests.expect(published[0]).toContain('foreign-views')
-  Tests.expect(FS.resolveModule('react', Path.join(ui, '@ui'))).toContain('node_modules/react')
-  const importPath = GeneratedForeignViewImportRegx.exec(published[0]!)
-  Tests.expect(importPath).not.toBeNull()
-  const modulePath = Json.Parse(importPath![1]!) as string
-  const module = Platform.loadModule<{ Widget(props: { Value: string }): unknown }>(modulePath)
-  Tests.expect(module.Widget({ Value: 'acceptance' })).toBe('label:acceptance')
-}
-
-function resolveOpenFileOutcome(result: UpdateResult): string {
-  if (result.status === 'published') {
-    return 'published'
-  }
-  if (hasOpenFileError(result)) {
-    return result.error
-  }
-  return result.status
-}
-
-function hasOpenFileError(result: UpdateResult): result is Extract<UpdateResult, { status: 'failed' }> {
-  return 'error' in result
-}
-
 async function verifyFrozenReprepare(app: string, entry: string, root: string, registry: string): Promise<void> {
   const store = Path.join(app, '.tao/store/npm')
   const lockName = (await FS.readdir(store))[0]!
@@ -230,62 +165,9 @@ async function verifyFrozenReprepare(app: string, entry: string, root: string, r
   Tests.expect(await FS.readFile(lockPath)).toEqual(lockBefore)
 }
 
-async function verifyLastGoodSurvivesDrift(
-  workspace: WorkspaceSession,
-  entry: string,
-  ui: string,
-  published: string[],
-): Promise<void> {
-  const lastGood = workspace.lastGoodRevision
-  await FS.writeFile(
-    Path.join(ui, '@ui/Widget.tsx'),
-    Shared.joinTextLines(
-      S`
-        import { label } from 'tao-fixture-label'
-        export function Widget({ Value }: { Value: number }) { return label(String(Value)) }
-      `,
-      '',
-    ),
-  )
-  const contractFailure = await workspace.files.openFile(entry)
-  Tests.expect(contractFailure.status).toBe('failed')
-  Tests.expect(workspace.lastGoodRevision).toBe(lastGood)
-  await FS.writeFile(
-    Path.join(ui, '@ui/Widget.tsx'),
-    Shared.joinTextLines(
-      S`
-        import { label } from 'tao-fixture-label'
-        export function Widget() { return label('fixture-rendered') }
-      `,
-      '',
-    ),
-  )
-  Tests.expect((await workspace.files.openFile(entry)).status).toBe('published')
-  const repaired = workspace.lastGoodRevision
-  const publishedCount = published.length
-  Tests.expect(publishedCount).toBeGreaterThan(1)
-  const moduleConfig = Path.join(ui, '@ui/tsconfig.json')
-  await Files.withWritableFile(moduleConfig, file => file.write('{ drifted }' + NewlineCharacter))
-  const driftFailure = await workspace.files.openFile(entry)
-  Tests.expect(driftFailure.status).toBe('published')
-  Tests.expect(workspace.lastGoodRevision).not.toBe(repaired)
-  Tests.expect(published).toHaveLength(publishedCount + 1)
-  await Tests.rejects(
-    ProjectPreparation.inspectProjectPreparation(entry, { runtimePins }),
-    GeneratedDependencyFilesDriftRegx,
-  )
-}
-
-async function verifyRuntimeConflictPreservesPreview(
-  workspace: WorkspaceSession,
-  entry: string,
-  ui: string,
-  published: string[],
-): Promise<void> {
+async function verifyRuntimeConflict(entry: string, ui: string): Promise<void> {
   const path = Path.join(ui, '@ui/Widget.tao')
   const source = await FS.readFile(path, 'utf8')
-  const lastGood = workspace.lastGoodRevision
-  const publishedCount = published.length
   await FS.writeFile(path, `${source}${NewlineCharacter}requires npm:react version 1.0.0${NewlineCharacter}`)
   await Tests.rejects(
     ProjectPreparation.prepareProject(entry, {
@@ -294,9 +176,6 @@ async function verifyRuntimeConflictPreservesPreview(
     }),
     IncompatibleReactVersionRegx,
   )
-  Tests.expect((await workspace.files.openFile(entry)).status).toBe('failed')
-  Tests.expect(workspace.lastGoodRevision).toBe(lastGood)
-  Tests.expect(published).toHaveLength(publishedCount)
   await FS.writeFile(path, source)
 }
 

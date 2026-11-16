@@ -1,17 +1,11 @@
-import * as CLIKit from '@cli-kit'
+import { installWorkspace } from '../../../../shared/shared-src/os/Tooling/Bootstrap'
 import { registerCommand } from './_command-runner'
 
 /** setupCommand installs the TypeScript development workspace dependencies. */
 export default registerCommand({
   name: 'setup',
-  description: 'Install the TypeScript development workspace dependencies.',
-  arguments: [{ name: 'args', description: 'Bun install arguments.', variadic: true }],
-  allowUnknownOptions: true,
-  async action(args: string[]) {
-    await CLIKit.runNonInteractiveCommand('bun install', { variadicArgs: args })
-    // A new process resolves dependencies from the completed installation.
-    await CLIKit.runNonInteractiveCommand('bun run ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts', {
-      structuredOutput: true,
-    })
+  description: 'Install the TypeScript development workspace dependencies from the frozen lockfile.',
+  async action() {
+    await installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts')
   },
 })

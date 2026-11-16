@@ -1,10 +1,12 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
-import { FS, Http, Path, Platform, Storage, Terminal } from '@shared/os'
+import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
+import { Http } from '@shared/web'
 
 /** installTailscale installs the official standalone macOS package without replacing an existing app variant. */
-export async function installTailscale(dryRun: boolean, io: InstallIO = createSystemInstallIO()): Promise<void> {
+export async function installTailscale(dryRun: boolean): Promise<void> {
+  const io = createSystemInstallIO()
   if (io.platform !== 'Darwin') {
     Errors.ThrowUserInput(
       'tailscale-install currently supports macOS. See https://tailscale.com/docs/install for other systems.',
@@ -32,13 +34,11 @@ export async function installTailscale(dryRun: boolean, io: InstallIO = createSy
   await FS.mkdir(directory)
   const path = Path.join(directory, packageName)
   io.progress('Downloading Tailscale from its official stable package server…')
-  await io.execute('curl --fail --location --proto =https --tlsv1.2', {
-    variadicArgs: ['--output', path, packageUrl],
-  })
+  await io.execute('curl', ['--fail', '--location', '--proto', '=https', '--tlsv1.2', '--output', path, packageUrl])
   io.progress('Verifying the macOS installer signature…')
-  await io.execute('pkgutil --check-signature', { variadicArgs: [path] })
+  await io.execute('pkgutil', ['--check-signature', path])
   io.progress('Installing Tailscale; macOS may request your administrator password…')
-  await io.executeInteractive('sudo installer', { variadicArgs: ['-pkg', path, '-target', '/'] })
+  await io.executeInteractive('sudo', ['installer', '-pkg', path, '-target', '/'])
   io.print('Tailscale installed.')
   printNextSteps(io.print)
 }

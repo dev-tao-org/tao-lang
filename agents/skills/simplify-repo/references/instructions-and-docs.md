@@ -21,14 +21,14 @@ trigger no other skill covers survives the merge.
 
 For each mechanical rule pick the enforcement point and delete the sentence:
 
-| Rule kind                                        | Enforcement point                          |
-| ------------------------------------------------ | ------------------------------------------ |
-| Commit message content, branch state             | git hooks installed by `./agent setup`     |
-| Source conventions, doc structure, budgets       | `repo-lint` convention table               |
-| Generated harness files stale                    | `repo-lint` against `./agent setup` output |
-| Shell habits (`grep -r`, `cd` prefix, pipe exit) | PreToolUse hook in `.rulesync/hooks.jsonc` |
-| Subagent brief boilerplate                       | subagent-start hook                        |
-| Recovery steps                                   | the failing command's own output           |
+| Rule kind                                        | Enforcement point                                      |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Commit message content, branch state             | git hooks installed by `./agent unsandboxed setup`     |
+| Source conventions, doc structure, budgets       | `repo-lint` convention table                           |
+| Generated harness files stale                    | `repo-lint` against `./agent unsandboxed setup` output |
+| Shell habits (`grep -r`, `cd` prefix, pipe exit) | PreToolUse hook in `.rulesync/hooks.jsonc`             |
+| Subagent brief boilerplate                       | subagent-start hook                                    |
+| Recovery steps                                   | the failing command's own output                       |
 
 New hooks warn. Promoting one to blocking is the Developer's decision.
 

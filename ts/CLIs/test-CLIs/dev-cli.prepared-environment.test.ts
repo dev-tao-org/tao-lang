@@ -2,15 +2,13 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 Tests.test('prepared activation retains toolchain values, rejects changed inputs and avoids another shell activation', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/prepared-environment-'))
   await Try(async () => {
     await prepareFixture(root)
-    const output = await Processes.capture('sh', {
-      variadicArgs: ['-ec', activationFixture(), Path.join(root, 'agent')],
-    })
+    const output = await Exec.captureStdout('sh', ['-ec', activationFixture(), Path.join(root, 'agent')])
     Tests.expect(output).toContain('JAVA:/fixture/jdk with spaces')
     Tests.expect(output).toContain('SDK:/fixture/sdk')
     Tests.expect(output).toContain(`ROOT:${root}`)

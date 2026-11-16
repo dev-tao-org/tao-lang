@@ -1,94 +1,57 @@
 # Local State and Data Drafts WIP
 
-Proposed local state and detached in-memory drafts support editing datasource values before explicitly saving them; these examples are not yet executable.
+The agreed future design uses detached drafts to edit datasource values before explicitly saving them.
 
 ```tao
-use tao@ui Button, Col, Text, TextInput
-
-data Items / Item {
-   Name text,
-   Parts,
-}
-
-data Parts / Part {
-   Name text,
-}
-
-view ItemList {
-   query Items = Items with { order by Name }
-   render Col {
-      Create
-      loop Items / Item {
-         ItemCrud(Item)
-      }
-   }
-}
-
-view Create {
-   state Draft = draft Item { Name: "New Item" }
-   render Col {
-      TextInput(Draft.Name)
-      Button("Create Item") {
-         on press -> { create Item with Draft }
-      }
-   }
-}
-
-view ItemCrud(Item) {
-   state Draft = draft Item
-   render Col {
-      TextInput(Draft.Name)
-      Text("Parts")
-      Button("Save Changes") {
-         on press -> { update Item with Draft }
-      }
-      loop Draft.Parts / Part {
-         TextInput(Part.Name)
-      }
-   }
-}
+state Draft = draft Item
 ```
 
-#### Local state
+#### Detached edits
 
-The proposed model includes view-local and locally persisted values alongside datasource-synced
-state; detached drafts prepare changes without immediately syncing them.
+Editing the draft changes a local value. An explicit create or update submits changes to the datasource.
 
-#### `state Draft = draft Item`
+`draft Item` constructs detached editing data; `state Draft = draft Item` creates and retains its writable storage. Draft construction alone does not allocate retained state. Writable fields within that state can be supplied to sidecar parameters declared with `state`.
 
-A draft initializes once per mounted view instance; rerenders and datasource refreshes do not
-discard edits. Repeated item views retain state by stable data-item identity across reordering;
-removing a view ends its draft lifetime.
+Ordinary re-renders and datasource query updates do not reinitialize retained draft state or overwrite its unsaved edits. Use `set` to replace a draft explicitly.
 
-#### `create Item with Draft` and `update Item with Draft`
+#### Live fields and conflicts
 
-A draft does not write to a datasource until an explicit create or update. Updates are intended
-to include only draft-modified properties.
+A draft tracks an existing or not-yet-created entity and a baseline for each field. Untouched fields follow live source changes immediately and advance their baselines. Locally edited fields retain their edits. A field conflicts when the local and source values both differ from its baseline and from each other. Equal local and source values do not conflict.
 
-#### Related items
+Choosing the source version adopts only conflicted fields, preserving unrelated local edits. Choosing the local version submits the local patch. The conflict branch receives the live entity; the exact inspection and selection syntax, related-entity behavior, and protection against a source change during selection remain open.
 
-Stored data lists are has-many relations, so `Parts` contains `Part` items rather than scalar
-values. `TextInput(Part.Name)` targets a data-item property. Ordinary in-memory scalar lists remain
-allowed; this example does not introduce writable scalar loop references.
+The agreed conflict choices use ordinary updates: `update Draft with Item` adopts the source's conflicted fields locally; `update Item with Draft` submits the draft's changed fields to the datasource. No separate `resolve` or `force` operation is required. This conflict-resolution behavior does not establish general draft-update semantics outside that context.
 
-#### Draft identity — unresolved
+Choosing the source version reads its latest values at button activation, rather than retaining the version previously displayed. Only fields currently conflicted are adopted; unrelated local edits remain.
 
-If a retained view receives a different item's identity, should its draft reset automatically or
-must the caller replace the view instance?
+#### Submission and confirmation
 
-#### Dirty state and source changes — unresolved
+`create DATA with DRAFT` and `update DATA with DRAFT` explicitly submit to the selected provider. Updates capture only locally changed fields at submission. Later edits remain in the draft while the submission proceeds.
 
-What establishes the dirty baseline, does reverting a field clear it, and does saving advance it?
-Decide whether drafts track their original datasource item and how saving handles concurrent
-source changes.
+After authoritative creation confirmation, the draft binds to the created entity and preserves newer edits. Local acceptance, an optimistic query value, or a lost acknowledgement is not authoritative confirmation. Providers own queueing, overlapping-write handling and acknowledgement recovery. The public API for distinguishing local and remote acceptance remains open; it does not require general individual-action inspection.
 
-#### Related drafts — unresolved
+An optimistic echo does not discard submitted edits or their recovery baseline. Matching draft and source values can remove a visible conflict while recovery information remains until authoritative confirmation. If the provider rolls back a rejected write, the draft retains the user's edits. An older confirmation must not erase newer edits.
 
-Does `draft Item` copy related items into detached drafts or retain their references? References
-could make `Part.Name` edits affect live data before Save. Define related-item creation and whether
-saving a parent also saves related changes atomically; the example omits adding related parts
-until those semantics are settled.
+If a provider cannot confirm the remote outcome, retain the recovery information until confirmation arrives or the draft is explicitly discarded. Lack of confirmation capability does not prevent using editable drafts.
 
-#### Create-form reset — unresolved
+If the source entity is deleted while editing, retain the draft. Saving must not silently recreate the entity. The app may offer explicit creation from the retained draft, with a new provider-assigned identity.
 
-Decide whether a successful create clears or replaces the draft to prevent accidental resubmission.
+#### Persistence
+
+State is in memory by default. Persist a draft with an explicit stable key:
+
+```tao
+state Draft = draft Note (persist "note-editor { Note.Id }")
+```
+
+Automatic-key shorthand is deferred to a follow-up.
+
+#### Sign-out
+
+Signing out clears all local app state, including persisted state and drafts. Unsaved edits are discarded and are not restored on a later sign-in. This lifecycle boundary also ends the retention of draft recovery information described above.
+
+App sign-out also signs out of the connected provider. The provider handles clearing its own local state through its logout lifecycle; Tao clears the app state and drafts it owns. Tao does not introduce a separate provider queue-cleanup policy.
+
+#### Replacement
+
+`set` replaces a slot's value. To submit a change, the operation captures the inputs it needs. See [Data Access and Validation](Data%20Access%20and%20Validation.md#revision-checks) for revision rejection. Language-level retry is deferred in [Advanced Action Execution](../Roadmap/Advanced%20Action%20Execution.md#retry-directions-retained-for-later-implementation).

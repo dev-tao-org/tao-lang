@@ -18,8 +18,13 @@ export async function buildDevExtension(): Promise<string> {
   )
   await FS.cp(Path.join(source, 'README.md'), Path.join(output, 'README.md'))
   await FS.cp(Repo.resolvePath('LICENSE'), Path.join(output, 'LICENSE'))
-  await CLIKit.runNonInteractiveCommand('vsce package --no-dependencies --allow-missing-repository --out', {
-    variadicArgs: [vsix],
+  await CLIKit.runNonInteractiveCommand('vsce', [
+    'package',
+    '--no-dependencies',
+    '--allow-missing-repository',
+    '--out',
+    vsix,
+  ], {
     cwd: output,
   })
   IO.print(vsix)

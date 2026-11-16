@@ -20,7 +20,7 @@ Tests.test('compiled Tao library emits explicit own-project public component pat
       './Greeting',
       './Panel',
       './LanguageFeatures',
-      './cards/Greeting',
+      './Catalog/Greeting',
     ])
     const bundle = await FS.readFile(Path.join(output, '_Library.js'), 'utf8')
     Tests.expect(bundle).toContain('Nested private Tao helper')

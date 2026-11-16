@@ -1,38 +1,36 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { Artifacts, FS, Path, Platform, Storage } from '@shared/os'
 import * as Workspace from '@workspace'
 import * as WorkspaceTests from '@workspace/testing'
 
 import { withProjectSessions } from '../CLIs-src/tao-cli/ProjectCommand'
 
 const SidecarFailureOutputRegx = /Sidecar tests failed.*test output/
+const HeldCacheLeaseRegx = /Cache lease is already held/
 
-Tests.test('project command sessions acquire distinct projects in stable order and release all leases', async () => {
+Tests.test('project command sessions hold both cache leases and release them after completing', async () => {
   const first = tempProject('first')
   const second = tempProject('second')
-  const acquired: string[] = []
-  const released: string[] = []
+  const identities = [first, second].map(root => `project:${root}:session:editor-session`)
   await Try(async () => {
     await Workspace.initializeProject(first)
     await Workspace.initializeProject(second)
     const result = await withProjectSessions(
       [Path.join(second, 'Main.tao'), Path.join(first, 'Main.tao')],
-      async () => 'done',
-      'editor-session',
-      async identity => {
-        acquired.push(identity)
-        return () => {
-          released.push(identity)
+      async () => {
+        for (const identity of identities) {
+          await Tests.rejects(Storage.acquireCacheLease(identity), HeldCacheLeaseRegx)
         }
+        return 'done'
       },
+      'editor-session',
     )
     Tests.expect(result).toBe('done')
-    Tests.expect(acquired).toEqual([
-      `project:${first}:session:editor-session`,
-      `project:${second}:session:editor-session`,
-    ])
-    Tests.expect(released).toEqual([...acquired].reverse())
+    for (const identity of identities) {
+      const release = await Storage.acquireCacheLease(identity)
+      await release()
+    }
   }, { finally: () => cleanProjects(first, second) })
 })
 

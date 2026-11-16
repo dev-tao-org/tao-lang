@@ -1,11 +1,11 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Runtime from '@runtime'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Try } from '@shared'
-import { FS, Path, Platform, SessionLock, Storage } from '@shared/os'
+import { FileLock, FS, Path, Platform, Storage } from '@shared/os'
 
 import * as LockFile from './dependencies/LockFile'
 import { createProjectDependencyOptions } from './dependencies/Options'
@@ -52,7 +52,7 @@ export async function prepareProject(
     Errors.ThrowUserInput('Project maintenance is active. Retry dependency preparation when it finishes.')
   }
   return await Try(async () => {
-    const lock = await SessionLock.acquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
+    const lock = await FileLock.tryAcquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
     if (!lock) {
       Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
     }
@@ -129,7 +129,7 @@ export async function buildManagedModulesInput(
 /** executeManagedTool runs pinned workspace tools with Tao's sandbox-compatible Bun cache. */
 export const executeManagedTool: ManagedModules.BunExecutor = async (command, args, cwd) => {
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const result = await Processes.runIgnoreStatus([command, ...args], { cwd, addEnv })
+  const result = await Exec.capture(command, [...args], { check: false, cwd, addEnv })
   return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
@@ -210,7 +210,7 @@ async function prepareEntrySources(
   root: string,
   services: DependencyStoreOptions,
 ): Promise<Typecheck.SourceModule[]> {
-  const lock = await SessionLock.acquire(Path.join(root, '.tao/locks/dependencies.lock'))
+  const lock = await FileLock.tryAcquire(Path.join(root, '.tao/locks/dependencies.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
   }
@@ -246,6 +246,7 @@ async function loadEntry(
     {
       directory: root,
       includeModuleRequirements: true,
+      validateStatementsBeforeDiscovery: true,
       resolveProject: (importer, alias) => dependencies.resolveProject(importer, alias),
     },
     parser,

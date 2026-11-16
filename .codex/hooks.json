@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent setup --frozen-lockfile",
+            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent unsandboxed setup",
             "name": "Set up this checkout",
             "description": "Install the current checkout's locked TypeScript dependencies before the agent works."
           }

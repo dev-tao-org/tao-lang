@@ -10,7 +10,10 @@ export const ModuleAliasRegx = /^@[A-Za-z_][\w.-]*$/
 /** ModuleSourceKeyRegx captures the source and module portions of a key. */
 export const ModuleSourceKeyRegx = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/
 
-/** TaoIdentifierRegx validates an identifier in Tao declarations. */
+/** UppercaseInitialRegx matches a leading ASCII uppercase letter. */
+export const UppercaseInitialRegx = /^[A-Z]/
+
+/** TaoIdentifierRegx matches the lexical shape of a Tao identifier. */
 export const TaoIdentifierRegx = /^[_a-zA-Z][_a-zA-Z0-9]*$/
 
 /** JavaScriptIdentifierRegx validates an identifier used in generated JavaScript. */
@@ -27,6 +30,10 @@ export const LowercaseOperationNameRegx = /^[a-z]/
 
 /** PackageNameSegmentRegx validates one scoped or unscoped package-name segment. */
 export const PackageNameSegmentRegx = ModuleNameSegmentRegx
+
+/** RegistryDependencyPinRegx recognizes a scoped or unscoped registry package with an exact version. */
+export const RegistryDependencyPinRegx =
+  /^(?:@[a-zA-Z0-9][\w.-]*\/)?[a-zA-Z0-9][\w.-]*@(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)?(?:\+[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)?$/
 
 /** GithubCoordinateRegx validates a GitHub owner or repository name. */
 export const GithubCoordinateRegx = /^[A-Za-z0-9_.-]+$/

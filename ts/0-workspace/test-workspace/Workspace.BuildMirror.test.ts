@@ -26,9 +26,7 @@ Tests.test('rewrites corrupted unchanged files in the memory-build mirror', asyn
     await FS.writeFile(Path.join(buildDirectory, 'source/Card.ts'), 'corrupt card')
     await publishBuildWithTiming(buildDirectory, files, 'revision-2', runtime)
     Tests.expect(await FS.readFile(Path.join(buildDirectory, 'App.tsx'), 'utf8')).toBe(files['App.tsx'])
-    Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Card.ts'), 'utf8')).toBe(
-      files['source/Card.ts'],
-    )
+    Tests.expect(await FS.readFile(Path.join(buildDirectory, 'source/Card.ts'), 'utf8')).toBe(files['source/Card.ts'])
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

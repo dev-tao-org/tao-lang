@@ -49,24 +49,26 @@ would constrain a faster or simpler solution; distinguish recommendations from a
   `ViewRenderStatement` union of `RenderInjectStatement | RenderViewExpressionStatement`.
   Preserve the authored `render` statement boundary in concrete nodes.
 - `ViewDeclaration.body` is `ViewDeclarationImplementation`, a union of
-  `ViewDeclarationBlock | ForeignView`.
-- Statement collections use `Block<Statement>`, with common kind `Block` and `statements`.
-  Specialized types include `DeclarationBlock`, `ViewDeclarationBlock` and `ViewRenderBlock`,
-  plus app/test blocks where needed. `File.block` is a `DeclarationBlock`.
+  `Block | ForeignView`.
+- File and braced statement collections use one `Block` with ordered `Statement` members.
+  The parser uses the same statement alternatives for every owner.
+- Author declaration and binding names with an uppercase initial, including explicit aliases,
+  parameters and captures. SDK-provided names and package paths keep their own spelling.
 
 Generate as much of the semantic node definitions, fields, union membership, constructors,
 predicates and dispatch as practical from grammar-owned metadata. Keep one source of truth rather
 than parallel handwritten type inventories. Explicit small semantic transformations remain for
-literal decoding, normalized collections, qualified names, tags and placement diagnostics.
+literal decoding, normalized collections, qualified names and tags.
 
 Do not assume Tree-sitter's structural node metadata alone captures all semantic invariants.
 Keep any added metadata small and explicit. No second intermediate tree, additional full-tree
 preview traversal, or general AST-generation framework without a concrete need.
 
-Validate permitted placement and ordering during CST-to-AST construction before exposing narrowed
-block types. Preserve supported valid syntax, source ranges, useful incomplete-edit diagnostics,
-and the existing one-final-render rule. Consult old grammar/validation for proven edge cases, while
-honoring the explicit new names and shapes above.
+Preserve recognized statements and their source ranges in the CST and AST. Validate permitted
+owners, ordering, multiplicity and authored declaration names on the semantic AST before linking and code generation. The editor
+reports the same placement diagnostics for complete syntax and retains parser diagnostics for
+incomplete edits. Preserve supported valid syntax and the single-render rule. Consult old
+grammar and validation for proven edge cases while honoring the names and shapes above.
 
 Update linker, formatter, workspace consumers, tests and specs together. No compatibility readers,
 duplicate old/new node designs, or implicit porting of additional language features.

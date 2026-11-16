@@ -86,8 +86,8 @@ function admitMethod(prototype: MetroPrototype, name: string, admission: MetroAd
 function wrapHttpRequests(prototype: MetroPrototype, options: MetroHookOptions): void {
   const original = requireMethod(prototype, '_processRequest')
   prototype._processRequest = function(...args) {
-    const request = args[0] as MetroPlatform.IncomingRequest
-    const response = args[1] as MetroPlatform.OutgoingResponse
+    const request = args[0] as MetroPlatform.NodeHttp.IncomingRequest
+    const response = args[1] as MetroPlatform.NodeHttp.OutgoingResponse
     if (!consumesSource(request.url ?? '')) {
       return original.apply(this, args)
     }

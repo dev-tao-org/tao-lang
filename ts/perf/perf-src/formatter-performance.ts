@@ -3,7 +3,7 @@ import * as Fix from '@fix'
 import * as Embedded from '@fix/embedded'
 import * as Grammar from '@grammar'
 import { Json } from '@shared'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Typecheck from '@typecheck'
 
 import { Errors, NewlineCharacter, S, Timings, type TimingSample } from '@shared'
@@ -42,8 +42,8 @@ export const formatterPerformance = Timings.createTopLevelTimer(async function(i
   Artifacts.trackTemporary(path)
   const report: FormatterPerformanceReport = {
     version: 1,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     initialization: initialization.samples,
     wasmBytes: bytes.byteLength,

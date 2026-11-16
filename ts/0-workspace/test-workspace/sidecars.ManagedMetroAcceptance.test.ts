@@ -25,7 +25,6 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
     await prepareProject(projects.entry, { executor })
     const workspace = await openProjectWorkspace(projects.entry, {
       id: `managed-metro-${Platform.randomUUID()}`,
-      acquireLease: async () => () => {},
     })
     workspaces.push(workspace)
     const result = await workspace.files.openFile(projects.entry)

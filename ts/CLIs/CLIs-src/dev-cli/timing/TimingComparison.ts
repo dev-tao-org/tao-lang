@@ -1,6 +1,7 @@
 import { NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
-import type { TimingReport } from './TimingReport'
+import { formatTimingColumns, TimingComparisonHeader } from '../../agent-skills/performance-investigation/TimingColumns'
+import type { TimingReport } from './TimingReportContract'
 import { MinimumComparisonSessions, type TimingHistory } from './TimingReportHistory'
 
 /** describeTimingComparison screens comparable independent jobs without asserting statistical significance. */
@@ -16,6 +17,7 @@ export function describeTimingComparison(current: TimingReport, history: TimingH
   return skipped + [
     `Baseline: ${Path.posix.basename(baseline.directory)} · ${baseline.startedAt} · ${baseline.commit.slice(0, 12)}`,
     `Runner address: ${current.runner}; independent sessions: ${baseline.settings.samples} → ${current.settings.samples}`,
+    TimingComparisonHeader,
     ...deltas.map(formatDelta),
     'Screen only: at least 5% and 2 ms; session ranges describe variability, not statistical significance.',
     describeDriftAttribution(current, baseline),
@@ -26,7 +28,14 @@ export function describeTimingComparison(current: TimingReport, history: TimingH
 
 const MinimumRelativeChange = 0.05
 
-type TimingDelta = { name: string; deltaMs: number; baselineMs: number; material: boolean; overlaps: boolean }
+type TimingDelta = {
+  name: string
+  deltaMs: number
+  currentMs: number
+  baselineMs: number
+  material: boolean
+  overlaps: boolean
+}
 
 const MinimumAbsoluteChangeMs = 2
 function compareGroups(current: TimingReport, baseline: TimingReport): TimingDelta[] {
@@ -39,6 +48,7 @@ function compareGroups(current: TimingReport, baseline: TimingReport): TimingDel
     return {
       name: group.name,
       deltaMs,
+      currentMs: group.medianMs,
       baselineMs: previous.medianMs,
       material,
       overlaps,
@@ -47,12 +57,10 @@ function compareGroups(current: TimingReport, baseline: TimingReport): TimingDel
 }
 
 function formatDelta(delta: TimingDelta): string {
-  const sign = delta.deltaMs >= 0 ? '+' : ''
-  const percent = delta.baselineMs > 0
-    ? `${sign}${(delta.deltaMs / delta.baselineMs * 100).toFixed(1)}%`
-    : 'percentage unavailable: zero baseline'
+  const percent = delta.baselineMs > 0 ? delta.deltaMs / delta.baselineMs * 100 : null
+  const columns = formatTimingColumns(percent, delta.currentMs, delta.baselineMs)
   const variability = delta.overlaps ? 'session ranges overlap' : 'session ranges do not overlap'
-  return `${delta.name}: ${sign}${delta.deltaMs.toFixed(2)} ms (${percent}); ${variability}`
+  return `${columns}  ${delta.name} · ${variability}`
 }
 
 function describeDriftAttribution(current: TimingReport, baseline: TimingReport): string {

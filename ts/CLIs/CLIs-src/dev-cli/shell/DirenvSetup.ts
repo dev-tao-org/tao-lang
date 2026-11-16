@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
 import { Env, FS, Path, Repo, Terminal } from '@shared/os'
+import type { CommandArgs } from '@shared/os/exec'
 import { type CommandResult, runCapturedCommand, type RunOptions } from './DirenvSetupCommands'
 import * as DirenvSetupFiles from './DirenvSetupFiles'
 import { prepareDevelopmentShell } from './DirenvSetupPreparation'
@@ -13,17 +14,14 @@ const ACTIVATION_SOURCE = 'ts/CLIs/CLIs-src/dev-cli/shell/direnv-activation.zsh'
 type SetupEnvironment = {
   confirm: typeof IO.askConfirm
   interactive: () => boolean
-  resolveDirenvPackage?: (profileClient: string) => string | undefined
   root: () => string
-  run: (command: string, options?: RunOptions) => Promise<CommandResult>
+  run: (command: string, args?: CommandArgs, options?: RunOptions) => Promise<CommandResult>
   write: (message: string) => void
 }
 
 /** runDirenvSetup offers optional zsh activation through pinned direnv for this Git identity. */
-async function runDirenvSetup(
-  options: { configure?: boolean; prepare?: boolean } = {},
-  environment: SetupEnvironment = liveEnvironment(),
-): Promise<number> {
+async function runDirenvSetup(options: { configure?: boolean; prepare?: boolean } = {}): Promise<number> {
+  const environment = liveEnvironment()
   await prepareDevelopmentShell(options.prepare, environment)
   if (isSetupDisabled(environment)) {
     return 0
@@ -103,7 +101,7 @@ function resolveZshrcPath(root: string): string {
 }
 
 async function revokeDirenvAllowance(root: string, environment: SetupEnvironment): Promise<void> {
-  const denied = await environment.run('direnv', { args: ['deny', root], cwd: root })
+  const denied = await environment.run('direnv', ['deny', root], { cwd: root })
   if (denied.status !== 0) {
     Errors.ThrowHostEnvironment(
       `Could not revoke direnv trust for ${root} (exit ${denied.status}):${NewlineCharacter}${denied.stderr.trim()}`,
@@ -131,10 +129,7 @@ async function resolveGitIdentity(
   root: string,
   environment: SetupEnvironment,
 ): Promise<{ commonDirectory: string; identity: string }> {
-  const git = await environment.run('git', {
-    args: ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    cwd: root,
-  })
+  const git = await environment.run('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root })
   if (git.status !== 0) {
     Errors.ThrowHostEnvironment('Shell setup requires Git and a working repository checkout.')
   }
@@ -142,8 +137,7 @@ async function resolveGitIdentity(
   rejectLineBreaks(commonPath)
   const commonDirectory = FS.realpathSync(commonPath)
   rejectLineBreaks(commonDirectory)
-  const hash = await environment.run('git', {
-    args: ['hash-object', '--stdin'],
+  const hash = await environment.run('git', ['hash-object', '--stdin'], {
     cwd: root,
     stdin: `${commonDirectory}${NewlineCharacter}`,
   })
@@ -160,13 +154,7 @@ async function installActivation(
   environment: SetupEnvironment,
 ): Promise<void> {
   const profileClient = Path.resolve(root, '.devenv/profile/bin/direnv')
-  const resolvedPackage = environment.resolveDirenvPackage?.(profileClient)
-  let output = resolvedPackage
-  if (output === undefined) {
-    output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(
-      Regxs.NixDirenvExecutableRegx,
-    )?.[1]
-  }
+  const output = (await DirenvSetupFiles.realPathIfPresent(profileClient)).match(Regxs.NixDirenvExecutableRegx)?.[1]
   if (output === undefined) {
     Errors.ThrowHostEnvironment(
       S`
@@ -177,7 +165,7 @@ async function installActivation(
       `,
     )
   }
-  const devenv = await environment.run('devenv', { args: ['version'], cwd: root })
+  const devenv = await environment.run('devenv', ['version'], { cwd: root })
   if (devenv.status !== 0) {
     Errors.ThrowHostEnvironment(
       `devenv version failed (exit ${devenv.status}):${NewlineCharacter}${
@@ -190,9 +178,14 @@ async function installActivation(
   const completionPath = Path.resolve(root, '.artifacts/cache/dev-shell/completion.zsh')
   const completion = FS.existsSync(completionPath)
     ? await FS.readFile(completionPath, 'utf8')
-    : ('# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter)
-  const rooted = await environment.run('nix-store', {
-    args: ['--realise', output, '--add-root', Path.resolve(shellRoot, 'direnv'), '--indirect'],
+    : ('# Tao dev shell completion is generated during ./agent unsandboxed setup.' + NewlineCharacter)
+  const rooted = await environment.run('nix-store', [
+    '--realise',
+    output,
+    '--add-root',
+    Path.resolve(shellRoot, 'direnv'),
+    '--indirect',
+  ], {
     cwd: root,
   })
   if (rooted.status !== 0) {

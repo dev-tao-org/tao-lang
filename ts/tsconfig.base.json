@@ -92,6 +92,12 @@
       "@shared/os": [
         "./shared/shared-src/os.ts"
       ],
+      "@shared/os/exec": [
+        "./shared/shared-src/os/Exec.ts"
+      ],
+      "@shared/web": [
+        "./shared/shared-src/web.ts"
+      ],
       "@shared/os/preview": [
         "./shared/shared-src/os/preview/PreviewPlatform.ts"
       ],

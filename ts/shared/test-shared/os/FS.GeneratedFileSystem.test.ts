@@ -1,8 +1,8 @@
 import * as Tests from '@shared-tests'
+import Exec from '@shared/os/exec'
 import * as FS from '../../shared-src/os/FS'
 import * as Path from '../../shared-src/os/Path'
 import * as Platform from '../../shared-src/os/Platform'
-import * as Processes from '../../shared-src/os/Processes'
 import * as Repo from '../../shared-src/os/Repo'
 import * as Artifacts from '../../shared-src/os/Storage/Artifacts'
 import * as Bundle from '../../shared-src/os/Tooling/Bundle'
@@ -56,13 +56,12 @@ const routingScript = S`
 
 async function runRoutingFixture(directory: string, root: string): Promise<void> {
   await Try(async () => {
-    const result = await Processes.capture('node -e', {
-      variadicArgs: [
-        `(async () => {${routingScript}})().catch(error => { console.error(error); process.exit(1) })`,
-        Path.join(directory, 'GeneratedFileSystem.js'),
-        root,
-      ],
-    })
+    const result = await Exec.captureStdout('node', [
+      '-e',
+      `(async () => {${routingScript}})().catch(error => { console.error(error); process.exit(1) })`,
+      Path.join(directory, 'GeneratedFileSystem.js'),
+      root,
+    ])
     Tests.expect(result).toContain('routing and descriptor assertions passed')
   }, {
     finally: () => FS.rm(directory, { recursive: true, force: true }),

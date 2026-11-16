@@ -19,6 +19,7 @@
       "Allow ./agent unsandboxed install-ide-extension to install devtao.tao and devtao.dev-tao-org and remove the accidental tao.tao-language installation in Cursor and VS Code."
     ],
     "block_instructions": [
+      "Require developer authorization for registry dependency additions through ./agent dependency-add or ./agent unsandboxed dependency-add.",
       "Require review for commands that delete or substantially overwrite user or repository data.",
       "Require review for actions that transmit secrets, credentials, tokens, private keys, private repository contents, or other sensitive local data to external services, except repository contents sent to configured remotes through ./agent unsandboxed push.",
       "Require review for publishing, deployment, package publication, raw git push, force push, remote branch mutation, or other externally visible mutations, except non-main pushes through ./agent unsandboxed push.",

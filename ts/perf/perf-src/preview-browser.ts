@@ -1,50 +1,32 @@
 import { Time } from '@shared'
 import * as BrowserRuntime from '@shared/os/browser'
 import * as Preview from '@shared/preview'
-
-import * as WebHost from '../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import { EventStream, Http } from '@shared/web'
+import { refreshPreviewControls } from './Preview/PreviewBrowserControls'
 import * as PreviewBrowserJson from './Preview/PreviewBrowserJson'
+import { startPreviewEditor } from './Preview/PreviewEditorBrowser'
+import { restoreFrameRecovery } from './Preview/PreviewFrameRecovery'
+import { PreviewOpening } from './Preview/PreviewOpening'
 import { PreviewReceipts, type ReceiptPair } from './Preview/PreviewReceipts'
 import { isPreviewSignal, type PreviewSignal } from './Preview/PreviewSignal'
+import * as PreviewWork from './Preview/PreviewWork'
 
-type SignalReceipt = { signal: PreviewSignal; receivedAt: number }
 type OptionalSignalIdentity = Partial<PreviewSignal> | undefined
-
-type PreviewResult = {
-  scenario: string
-  revision: string
-  clickTime: number
-  clickTimestampMs: number
-  timings: unknown[]
-  stages?: unknown
-  outcome?: Preview.PreviewOutcome
-  frames: Record<string, {
-    clickToHmrMs: number
-    hmrToAppliedMs: number
-    clickToAppliedMs: number
-    hmrTimestampMs: number
-    appliedTimestampMs: number
-    hmrTimings: unknown[]
-    appliedTimings: unknown[]
-  }>
-}
+type PreviewOrigin = string | undefined
+type PendingPreviewOpening = PreviewOpening | undefined
+type OptionalPreviewExpectation = Preview.PreviewExpectation | undefined
 
 const sessionId = BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-session"]')!.content
-const previewOrigin =
-  new WebHost.URL(BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-url"]')!.content).origin
+let previewOrigin: PreviewOrigin
 const frames = new Map(['left', 'right'].flatMap(id => {
   const frame = BrowserRuntime.querySelector<HTMLIFrameElement>(`#${id}`)
   return frame ? [[id, frame] as const] : []
 }))
-const receipts = new PreviewReceipts<SignalReceipt>()
+const receipts = new PreviewReceipts<PreviewWork.PreviewSignalReceipt>()
 const previewTimeoutMs = Number(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-preview-timeout-ms"]')!.content,
 )
-const recoveries = new Map(
-  [...frames].map((
-    [frameId, frame],
-  ) => [frameId, new Preview.PreviewRecovery(frame, sessionId, frameId, previewTimeoutMs)]),
-)
+const recoveries = new Map<string, Preview.PreviewRecovery>()
 const expected = new Set<string>()
 const terminalOutcomes = new Map<string, Preview.PreviewOutcome>()
 const pendingSignals: MessageEvent[] = []
@@ -52,24 +34,33 @@ const scenarios = PreviewBrowserJson.parsePreviewScenarios(
   BrowserRuntime.querySelector<HTMLMetaElement>('meta[name="tao-scenarios"]')!.content,
 )
 let scenarioIndex = 0
-const result: { status: string; currentScenario?: string; results: PreviewResult[]; error?: string } = {
-  status: 'ready',
+let benchmarkUnavailable = false
+const result: BrowserRuntime.PageState & { results: PreviewWork.PreviewScenarioResult[] } = {
+  status: 'closed',
   results: [],
 }
+let opening: PendingPreviewOpening
+let baseline: OptionalPreviewExpectation
+let latestExpectation: OptionalPreviewExpectation
+const openButton = BrowserRuntime.querySelector<HTMLButtonElement>('#open')!
+const opensOnLoad = BrowserRuntime.querySelector<HTMLBodyElement>('body')!.dataset.openOnLoad === 'true'
 BrowserRuntime.setPageState(result)
-const events = BrowserRuntime.eventStream('/events')
+const events = EventStream.open('/events')
+void startPreviewEditor()
 
 events.addEventListener('expected', event => {
   const expectation = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
+  if (isOlderThanPublished(expectation.sequence)) {
+    return
+  }
+  latestExpectation = expectation
   const revision = expectation.revision
   for (const recovery of recoveries.values()) {
     recovery.expect(expectation)
   }
   expected.clear()
   expected.add(revision)
-  for (const pending of pendingSignals.splice(0)) {
-    receiveSignal(pending)
-  }
+  replayPendingSignals()
 })
 
 events.addEventListener('outcome', event => {
@@ -78,22 +69,26 @@ events.addEventListener('outcome', event => {
   if (terminalOutcomes.size > 64) {
     terminalOutcomes.delete(terminalOutcomes.keys().next().value!)
   }
+  if (isOlderThanPublished(outcome.sequence)) {
+    return
+  }
   for (const recovery of recoveries.values()) {
     recovery.terminal(outcome)
   }
 })
 
 events.addEventListener('baseline', event => {
-  const baseline = PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data)
-  for (const recovery of recoveries.values()) {
-    recovery.setBaseline(baseline)
-  }
-  for (const pending of pendingSignals.splice(0)) {
-    receiveSignal(pending)
-  }
+  acceptPublishedBaseline(PreviewBrowserJson.parsePreviewExpectation((event as MessageEvent<string>).data))
 })
 
 BrowserRuntime.onMessage(receiveSignal)
+openButton.addEventListener('click', () => {
+  if (result.status === 'closed') {
+    void openPreviews(!opensOnLoad).then(undefined, failPreviewOpen)
+  } else if (opening || result.status === 'ready' || result.status === 'complete') {
+    closePreviews()
+  }
+})
 BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click', () => {
   if (result.status !== 'ready' || scenarioIndex >= scenarios.length) {
     return
@@ -105,8 +100,117 @@ BrowserRuntime.querySelector<HTMLButtonElement>('#run')!.addEventListener('click
   const clickTimestampMs = Time.timestampMs()
   void runScenario(scenarios[scenarioIndex]!, clickTime, clickTimestampMs).then(undefined, failScenario)
 })
+setStatus('closed')
+if (opensOnLoad) {
+  void openPreviews(false).then(undefined, failScenario)
+} else {
+  openButton.disabled = false
+}
 
-function receiveSignal(event: MessageEvent): void {
+async function openPreviews(measure: boolean): Promise<void> {
+  const started = Time.nowMs()
+  delete result.error
+  setStatus('opening')
+  result.status = 'opening'
+  openButton.disabled = true
+  const response = await Http.request('/open-preview', { method: 'POST' })
+  if (!response.ok) {
+    return failPreviewOpen(await response.text())
+  }
+  const preview = PreviewBrowserJson.parseOpenedPreview(await response.text())
+  const url = Http.url(preview.url)
+  previewOrigin = url.origin
+  const published = acceptPublishedBaseline(preview.baseline)
+  if (measure) {
+    opening = new PreviewOpening(started, frames.size)
+  }
+  for (const [id, frame] of frames) {
+    url.searchParams.set('frameId', id)
+    frame.hidden = false
+    const recovery = new Preview.PreviewRecovery(frame, url.toString(), sessionId, id, previewTimeoutMs)
+    recoveries.set(id, recovery)
+    restoreFrameRecovery(recovery, published, latestExpectation, terminalOutcomes)
+  }
+  if (!measure) {
+    markPreviewsReady()
+  } else {
+    openButton.textContent = 'Close previews'
+    refreshRunButton()
+  }
+}
+
+function isOlderThanPublished(sequence: number): boolean {
+  return !!baseline && sequence < baseline.sequence
+}
+
+function acceptPublishedBaseline(candidate: Preview.PreviewExpectation): Preview.PreviewExpectation {
+  if (baseline && baseline.sequence >= candidate.sequence) {
+    return baseline
+  }
+  baseline = candidate
+  for (const recovery of recoveries.values()) {
+    recovery.setBaseline(candidate)
+  }
+  finishPreviewOpening()
+  replayPendingSignals()
+  return baseline
+}
+
+function closePreviews(): void {
+  for (const [id, frame] of frames) {
+    recoveries.get(id)?.dispose()
+    frame.hidden = true
+    frame.removeAttribute('src')
+  }
+  recoveries.clear()
+  pendingSignals.length = 0
+  previewOrigin = undefined
+  opening = undefined
+  delete result.previewOpenMs
+  result.status = 'closed'
+  openButton.textContent = 'Show previews'
+  refreshRunButton()
+  setStatus('closed')
+}
+
+function failPreviewOpen(reason: unknown): void {
+  closePreviews()
+  result.error = String(reason)
+  setStatus('open-failed')
+  BrowserRuntime.querySelector<HTMLSpanElement>('#status')!.textContent = 'Could not open previews. ' + result.error
+}
+
+function finishPreviewOpening(): void {
+  if (!baseline) {
+    return
+  }
+  const duration = opening?.measureCompletion(
+    baseline,
+    signal => recoveries.get(signal.frameId)?.matchesInstance(signal.bootId) === true,
+  )
+  if (duration !== undefined) {
+    result.previewOpenMs = duration
+    opening = undefined
+    markPreviewsReady()
+  }
+}
+
+function markPreviewsReady(): void {
+  result.status = 'ready'
+  openButton.textContent = 'Close previews'
+  refreshRunButton()
+  setStatus('ready')
+}
+
+function replayPendingSignals(): void {
+  for (const pending of pendingSignals.splice(0)) {
+    receiveSignal(pending, 'replay')
+  }
+}
+
+type SignalDelivery = 'live' | 'replay'
+
+function receiveSignal(event: MessageEvent, delivery: SignalDelivery = 'live'): void {
   if (event.origin !== previewOrigin || !isFrameMessage(event)) {
     return
   }
@@ -118,6 +222,10 @@ function receiveSignal(event: MessageEvent): void {
   }
   const signal = event.data
   if (signal.type === 'tao.preview-applied') {
+    if (delivery === 'live') {
+      opening?.recordApplied(signal, Time.nowMs())
+      finishPreviewOpening()
+    }
     recoveries.get(signal.frameId)?.receive(signal, signal.revision, 'applied')
   }
   if (!expected.has(signal.revision)) {
@@ -149,7 +257,7 @@ function isFrameMessage(event: MessageEvent): boolean {
 }
 
 function relaySignal(signal: PreviewSignal): void {
-  void BrowserRuntime.requestJson('/receipt', {
+  void Http.requestJson('/receipt', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: PreviewBrowserJson.serializePreviewReceipt(signal),
@@ -157,16 +265,25 @@ function relaySignal(signal: PreviewSignal): void {
 }
 
 async function runScenario(scenario: string, clickTime: number, clickTimestampMs: number): Promise<void> {
-  const update = await BrowserRuntime.requestJson<
-    { status: string; revision: string; timings: unknown[]; stages?: unknown }
-  >(
-    '/edit',
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: PreviewBrowserJson.serializeEditScenario(scenario),
-    },
-  )
+  const response = await PreviewBrowserJson.requestScenarioUpdate(scenario)
+  if (!response.ok) {
+    if (response.status === 412) {
+      benchmarkUnavailable = true
+      markPreviewsReady()
+      BrowserRuntime.querySelector<HTMLSpanElement>('#status')!.textContent = response.message
+      return
+    }
+    return failScenario(response.message)
+  }
+  await recordScenarioUpdate(response.update, scenario, clickTime, clickTimestampMs)
+}
+
+async function recordScenarioUpdate(
+  update: PreviewBrowserJson.ScenarioUpdate,
+  scenario: string,
+  clickTime: number,
+  clickTimestampMs: number,
+): Promise<void> {
   if (update.status !== 'published') {
     return failScenario(`The ${scenario} source was ${update.status}.`)
   }
@@ -178,9 +295,13 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
     clickTime,
     clickTimestampMs,
     timings: update.timings,
+    editTrace: update.editTrace,
     stages: update.stages,
     outcome: terminalOutcomes.get(update.revision),
-    frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [id, frameTimings(receipt, clickTime)])),
+    frames: Object.fromEntries([...frameReceipts].map(([id, receipt]) => [
+      id,
+      PreviewWork.describePreviewFrameTimings(receipt, clickTime),
+    ])),
   })
   scenarioIndex++
   result.currentScenario = scenario
@@ -190,28 +311,7 @@ async function runScenario(scenario: string, clickTime: number, clickTimestampMs
 }
 
 function refreshRunButton(): void {
-  const runButton = BrowserRuntime.querySelector<HTMLButtonElement>('#run')!
-  const complete = scenarioIndex >= scenarios.length
-  runButton.disabled = complete || result.status === 'running'
-  runButton.textContent = resolveRunButtonLabel(complete, result.status, scenarioIndex, scenarios)
-}
-
-function resolveRunButtonLabel(
-  complete: boolean,
-  status: string,
-  scenarioIndex: number,
-  scenarios: readonly string[],
-): string {
-  if (complete) {
-    return 'Complete'
-  }
-  if (status === 'running') {
-    return `Running ${scenarios[scenarioIndex]}…`
-  }
-  if (scenarioIndex === 0) {
-    return 'Run edit scenarios'
-  }
-  return `Run ${scenarios[scenarioIndex]}`
+  refreshPreviewControls(result.status, scenarioIndex, scenarios, benchmarkUnavailable)
 }
 
 function failScenario(reason: unknown): void {
@@ -221,39 +321,27 @@ function failScenario(reason: unknown): void {
   setStatus('failed')
 }
 
-function frameTimings(receipt: ReceiptPair<SignalReceipt>, clickTime: number) {
-  return {
-    bootId: receipt.applied.signal.bootId,
-    clickToHmrMs: receipt.hmr.receivedAt - clickTime,
-    hmrToAppliedMs: receipt.applied.signal.timestampMs - receipt.hmr.signal.timestampMs,
-    clickToAppliedMs: receipt.applied.receivedAt - clickTime,
-    hmrTimestampMs: receipt.hmr.signal.timestampMs,
-    appliedTimestampMs: receipt.applied.signal.timestampMs,
-    hmrTimings: receipt.hmr.signal.timings,
-    appliedTimings: receipt.applied.signal.timings,
-  }
-}
+type FrameReceiptResult = Map<string, ReceiptPair<PreviewWork.PreviewSignalReceipt>> | string
 
-function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<SignalReceipt>>> {
-  return new Promise((resolve, reject) => {
-    const deadline = Time.nowMs() + 90_000
-    const poll = () => {
-      const terminal = terminalOutcomes.get(revision)
-      const collected = receipts.complete(revision)
-      if (terminal?.kind === 'noop' || terminal?.kind === 'superseded') {
-        resolve(new Map())
-      } else if (terminal) {
-        reject(terminal.message ?? `Preview ${terminal.kind}.`)
-      } else if (collected.size === frames.size) {
-        resolve(collected)
-      } else if (Time.nowMs() >= deadline) {
-        reject(`Timed out waiting for both preview receipts for ${revision}.`)
-      } else {
-        void Time.sleep(25).then(poll)
-      }
+async function waitForFrames(revision: string): Promise<Map<string, ReceiptPair<PreviewWork.PreviewSignalReceipt>>> {
+  const result = await Time.waitFor<FrameReceiptResult>(success => {
+    const terminal = terminalOutcomes.get(revision)
+    const collected = receipts.complete(revision)
+    if (terminal?.kind === 'noop' || terminal?.kind === 'superseded') {
+      return success(new Map())
     }
-    poll()
-  })
+    if (terminal) {
+      return success(terminal.message ?? `Preview ${terminal.kind}.`)
+    }
+    return collected.size === frames.size ? success(collected) : undefined
+  }, { timeout: 90_000 })
+  if (result === undefined) {
+    return await Promise.reject(`Timed out waiting for both preview receipts for ${revision}.`)
+  }
+  if (typeof result === 'string') {
+    return await Promise.reject(result)
+  }
+  return result
 }
 
 function setStatus(status: string): void {

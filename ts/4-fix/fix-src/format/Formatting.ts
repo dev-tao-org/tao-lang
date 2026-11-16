@@ -4,7 +4,6 @@ import type { FormattingHandlers } from '../lib/formatter/Formatter'
 export const Formatting = {
   TypeScriptLibraryDeclaration(fm) {
     fm.oneSpaceAfter('ts-library')
-    fm.oneSpaceAround('{', '}')
   },
   PublishDeclaration(fm) {
     fm.oneSpaceAround('{', '}')

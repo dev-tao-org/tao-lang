@@ -1,6 +1,6 @@
 # One-time local install: brew install worktrunk && wt config shell install
 #
-# Worktrunk's blocking pre-start hook runs the repository's one setup entry, `./agent setup`,
+# Worktrunk's blocking pre-start hook runs the repository's one setup entry, `./agent unsandboxed setup`,
 # before it launches an agent in a new worktree. Every other harness reaches the same entry:
 # Claude Code and Codex from the SessionStart hook generated out of .rulesync/hooks.jsonc for
 # worktrees they create themselves, and Cursor from .cursor/worktrees.json. Change what setup
@@ -8,4 +8,4 @@
 # Root `./agent` activates the pinned environment before installing dependencies.
 # Setup also initializes missing storage at this checkout's pinned submodule commit.
 [pre-start]
-setup = "./agent setup --frozen-lockfile"
+setup = "./agent unsandboxed setup"

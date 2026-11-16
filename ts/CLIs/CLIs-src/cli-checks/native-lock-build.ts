@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { NewlineCharacter, Regxs, Try } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as NodeAddonApi from '../../../shared/shared-src/os/bridges/Bridge_node-addon-api'
 import * as NodeGyp from '../../../shared/shared-src/os/bridges/Bridge_node-gyp'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
@@ -42,7 +42,7 @@ type NativeInputs = {
 const sourceRoot = Repo.resolvePath('ts/shared/shared-src/os/platforms/locks')
 const sharedRoot = Repo.resolvePath('ts/shared')
 const outputRoot = Artifacts.resolvePath('cache/native-locks')
-const sourceNames = ['binding.gyp', 'SessionLock.cc']
+const sourceNames = ['binding.gyp', 'FileLock.cc']
 
 async function buildNativeLocks(): Promise<void> {
   const inputs = await readInputs()
@@ -63,11 +63,9 @@ async function buildNativeLocks(): Promise<void> {
 }
 
 async function readInputs(): Promise<NativeInputs> {
-  const sourceContents = await Promise.all(
-    sourceNames.map(name => FS.readFile(Path.join(sourceRoot, name), 'utf8')),
-  )
+  const sourceContents = await Promise.all(sourceNames.map(name => FS.readFile(Path.join(sourceRoot, name), 'utf8')))
   const builderSource = await readBuilderSources()
-  const node = parseNativeNodeMetadata(await Processes.capture('node -p', { variadicArgs: [nodeMetadataProbe] }))
+  const node = parseNativeNodeMetadata(await Exec.captureStdout('node', ['-p', nodeMetadataProbe]))
   const [addon, nodeGyp, include] = await Promise.all([
     NodeAddonApi.readMetadata(sharedRoot),
     NodeGyp.readMetadata(sharedRoot),
@@ -176,8 +174,13 @@ function quoteGypPath(path: string): string {
 
 async function buildStagedAddon(staging: string, node: NativeInputs['node']): Promise<void> {
   const options = nodeGypOptions(node.executable, Env.get('NODE_OPTIONS'))
-  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [staging, ...options.headers],
+  await CLIKit.runNonInteractiveCommand('node-gyp', [
+    'rebuild',
+    '--loglevel=warn',
+    '--directory',
+    staging,
+    ...options.headers,
+  ], {
     cwd: sharedRoot,
     addEnv: options.environment,
   })

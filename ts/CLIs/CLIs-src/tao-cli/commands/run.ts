@@ -46,7 +46,7 @@ async function startExpo(directory: string, options: RunCommandOptions): Promise
   const headless = !Terminal.isInteractive()
   const addEnv = headless ? BridgeExpoConfig.HeadlessExpoEnvironment : undefined
   IO.print('Expo host: ' + directory)
-  await CLIKit.runForegroundCommand('bun run start', { variadicArgs: args, cwd: directory, addEnv })
+  await CLIKit.runForegroundCommand('bun', ['run', 'start', ...args], { cwd: directory, addEnv })
 }
 
 function requireRunPort(port?: string): void {

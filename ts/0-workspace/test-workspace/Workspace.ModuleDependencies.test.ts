@@ -14,7 +14,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
   await Try(async () => {
     await FS.mkdir(module)
     await FS.writeFile(Path.join(root, '.tao'), '')
-    await FS.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as graph' + NewlineCharacter)
+    await FS.writeFile(source, 'requires npm:@scope/graph version 1.2.3 as Graph' + NewlineCharacter)
     const result = await ModuleDependencies.addModuleNpmDependency(root, '@widgets', '@scope/graph@2.4.1')
     Tests.expect(result).toEqual({
       moduleRoot: module,
@@ -22,9 +22,7 @@ Tests.test('module add replaces an existing npm declaration and preserves its al
       packageName: '@scope/graph',
       version: '2.4.1',
     })
-    Tests.expect(await FS.readFile(source, 'utf8')).toBe(
-      'requires npm:@scope/graph version 2.4.1 as graph\n',
-    )
+    Tests.expect(await FS.readFile(source, 'utf8')).toBe('requires npm:@scope/graph version 2.4.1 as Graph\n')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -41,9 +39,7 @@ Tests.test('module add resolves bare packages through the injected executor and 
     })
     Tests.expect(asked).toBe(`date-fns:${root}`)
     Tests.expect(result.sourcePath).toBe(Path.join(module, 'Dependencies.tao'))
-    Tests.expect(await FS.readFile(result.sourcePath, 'utf8')).toBe(
-      'requires npm:date-fns version 4.1.0\n',
-    )
+    Tests.expect(await FS.readFile(result.sourcePath, 'utf8')).toBe('requires npm:date-fns version 4.1.0\n')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -79,48 +75,27 @@ Tests.test('module add rejects ambiguous local names and invalid versions', asyn
   }, { finally: () => cleanRoots(root, unique) })
 })
 
-Tests.test('prepare entry discovery picks one app and releases injected cache lease', async () => {
+Tests.test('prepare entry discovery picks one app', async () => {
   const root = tempRoot()
-  let released = false
   await Try(async () => {
     await FS.mkdir(Path.join(root, '.tao'))
     const entry = Path.join(root, 'Main.tao')
     await FS.writeFile(entry, 'app Main { root Main }')
     Tests.expect(await ModuleDependencies.findPreparationEntry(root)).toBe(entry)
-    const result = await ModuleDependencies.withDependencySession(
-      root,
-      'test-session',
-      async () => 'prepared',
-      async identity => {
-        Tests.expect(identity).toBe(`project:${root}:session:test-session`)
-        return () => {
-          released = true
-        }
-      },
-    )
-    Tests.expect(result).toBe('prepared')
-    Tests.expect(released).toBe(true)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('dependency session contention fails before acquiring another cache lease', async () => {
+Tests.test('dependency session rejects concurrent work and releases its locks afterward', async () => {
   const root = tempRoot()
-  let leases = 0
-  const lease = async () => {
-    leases++
-    return () => {}
-  }
   await Try(async () => {
     await FS.mkdir(Path.join(root, '.tao'))
     await ModuleDependencies.withDependencySession(root, 'busy', async () => {
       await Tests.rejects(
-        ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease),
+        ModuleDependencies.withDependencySession(root, 'busy', async () => {}),
         DependencySessionAlreadyActiveErrorRegx,
       )
-      Tests.expect(leases).toBe(1)
-    }, lease)
-    await ModuleDependencies.withDependencySession(root, 'busy', async () => {}, lease)
-    Tests.expect(leases).toBe(2)
+    })
+    await ModuleDependencies.withDependencySession(root, 'busy', async () => {})
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

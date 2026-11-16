@@ -1,7 +1,8 @@
 import { Json } from '@shared'
-import { Addr, Errors } from '@shared'
-import { FS, Http, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Errors } from '@shared'
+import { FS, HttpServer, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
+import { Addr, Http } from '@shared/web'
 
 /** FixtureRegistry exposes the test registry URL and its cleanup operation. */
 export type FixtureRegistry = { url: string; stop(force?: boolean): void }
@@ -10,7 +11,7 @@ const FixtureTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
 /** createFixtureRegistry serves real fixture tarballs and transitive metadata over loopback. */
 export async function createFixtureRegistry(root: string): Promise<FixtureRegistry> {
   const packages = await packageArtifacts(root)
-  const server = Http.serve({
+  const server = HttpServer.serve({
     hostname: Addr.Localhost,
     port: 0,
     fetch(request) {
@@ -43,7 +44,7 @@ async function packageArtifacts(root: string): Promise<Map<string, PackageArtifa
       await FS.readFile(Path.join(directory, 'package.json'), 'utf8'),
     ) as RegistryFixtureManifest
     const archive = Path.join(root, 'registry', `${name}.tgz`)
-    await Processes.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
+    await Exec.captureStdout('tar', ['-czf', archive, 'package'], { cwd: Path.dirname(directory) })
     const bytes = await FS.readFile(archive)
     packages.set(name, {
       bytes,

@@ -48,9 +48,7 @@ function groupImports(
       } else {
         const duplicate = isDuplicateImport(statement, seenImports)
         recordImports(statement, seenImports)
-        output.push(
-          duplicate ? retainComments(source, slice, newline) : Shared.Source.slice(source, slice),
-        )
+        output.push(duplicate ? retainComments(source, slice, newline) : Shared.Source.slice(source, slice))
       }
     } else {
       addImport(groups, imports.get(slice.node.startIndex)!, seenImports)

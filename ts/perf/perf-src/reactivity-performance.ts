@@ -3,7 +3,7 @@ import { Json } from '@shared'
 
 import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */
@@ -16,8 +16,8 @@ export async function reactivityPerformance() {
   await Artifacts.mkdir(Artifacts.resolvePath('logs/performance'))
   const report: ReactivityPerformanceReport = {
     version: 2,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     definitions: {
       samples: 'Two unrecorded warmups, then seven alternating samples of 1000 operations per case.',

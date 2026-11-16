@@ -19,7 +19,8 @@ export async function inspectLanding(io: LandingIO, branch: string): Promise<Lan
     Errors.ThrowHostEnvironment(`GitHub returned incomplete or contradictory merge evidence for ${branch}.`)
   }
   const comparison = parseCommitComparison(
-    await io.command('gh api', [
+    await io.command('gh', [
+      'api',
       `repos/{owner}/{repo}/compare/${mergeCommit.oid}...main`,
     ]),
   )
@@ -46,12 +47,14 @@ export async function publishAndMerge(
   await git(io, ['push', 'origin', `${head}:refs/heads/${branch}`])
   const { pr, title, bodyPath } = await reviewedPullRequest(io, branch, message)
   requirePullRequestHead(pr, head)
-  await io.command('gh pr checks', [pr.url, '--required', '--watch', '--fail-fast'])
+  await io.command('gh', ['pr', 'checks', pr.url, '--required', '--watch', '--fail-fast'])
   requirePullRequestHead((await listPullRequests(io, branch, 'open'))[0], head)
   if (await git(io, ['rev-parse', 'HEAD']) !== head) {
     Errors.ThrowUserInput('The local branch changed while checks were running; rerun land.')
   }
-  await io.command('gh pr merge', [
+  await io.command('gh', [
+    'pr',
+    'merge',
     pr.url,
     '--squash',
     '--match-head-commit',
@@ -98,7 +101,9 @@ async function reviewedPullRequest(io: LandingIO, branch: string, message: strin
   if (existing.length > 1) {
     Errors.ThrowUserInput('More than one open pull request matches this branch.')
   }
-  await io.command(existing.length ? 'gh pr edit' : 'gh pr create', [
+  await io.command('gh', [
+    'pr',
+    existing.length ? 'edit' : 'create',
     ...existing.length ? [existing[0].url] : ['--base', 'main', '--head', branch],
     '--title',
     title,
@@ -110,7 +115,9 @@ async function reviewedPullRequest(io: LandingIO, branch: string, message: strin
 
 async function listPullRequests(io: LandingIO, branch: string, state: string): Promise<PullRequest[]> {
   const prs = parsePullRequests(
-    await io.command('gh pr list', [
+    await io.command('gh', [
+      'pr',
+      'list',
       '--head',
       branch,
       '--base',

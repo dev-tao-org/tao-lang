@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 import { FS, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { outputFixturePath } from './output.test-fixtures'
 
 const LogPathRegx = /Logs: (.+\.log)/
@@ -83,13 +83,11 @@ Tests.test('batch commands cannot consume parent input under captured or delegat
 
 Tests.test('fatal command failures exit unsuccessfully while preserving nonzero command status', async () => {
   for (const [commandStatus, expectedStatus] of [['0', 1], ['null', 1], ['7', 7]] as const) {
-    const result = await Processes.runIgnoreStatus(
-      ['bun', 'run', outputFixturePath, 'command-failure', commandStatus],
-      {
-        cwd: Repo.getWorkspaceRoot(),
-        addEnv: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', CLI_OUTPUT_EVENTS: undefined },
-      },
-    )
+    const result = await Exec.capture('bun', ['run', outputFixturePath, 'command-failure', commandStatus], {
+      cwd: Repo.getWorkspaceRoot(),
+      addEnv: { TERMINAL_UI: '0', TERMINAL_OUTPUT: '1', CLI_OUTPUT_EVENTS: undefined },
+      check: false,
+    })
     Tests.expect(result.status).toBe(expectedStatus)
     Tests.expect(result.stdout + result.stderr).toContain('Command failed: fixture')
   }
@@ -101,8 +99,7 @@ async function runFixture(mode: string, terminalOutput?: string, input = '') {
     TERMINAL_UI: '0',
     CLI_OUTPUT_EVENTS: undefined,
   }
-  const child = Processes.spawnPiped('bun run', {
-    variadicArgs: [outputFixturePath, mode],
+  const child = Exec.spawn('bun', ['run', outputFixturePath, mode], {
     cwd: Repo.getWorkspaceRoot(),
     addEnv,
     stdin: 'pipe',
@@ -111,8 +108,8 @@ async function runFixture(mode: string, terminalOutput?: string, input = '') {
   child.stdin.end()
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   return { status, stdout, stderr }
 }

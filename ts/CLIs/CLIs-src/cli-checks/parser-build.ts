@@ -2,7 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
@@ -60,18 +60,31 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
 }
 
 const generateParser = Timings.measured('parser.generate', async function(): Promise<void> {
-  await CLIKit.runNonInteractiveCommand('tree-sitter generate --abi 15 --output', {
-    variadicArgs: [Path.join(outputRoot, 'src'), Path.join(grammarRoot, 'treesitter-grammar.js')],
-    cwd: grammarRoot,
-  })
+  await CLIKit.runNonInteractiveCommand(
+    'tree-sitter',
+    [
+      'generate',
+      '--abi',
+      '15',
+      '--output',
+      Path.join(outputRoot, 'src'),
+      Path.join(grammarRoot, 'treesitter-grammar.js'),
+    ],
+    { cwd: grammarRoot },
+  )
 })
 
 const buildParserNative = Timings.measured('parser.native-build', async function(
   inputs: ParserBuildInputs,
 ): Promise<void> {
   const options = nodeGypOptions(inputs.node.executable, Env.get('NODE_OPTIONS'))
-  await CLIKit.runNonInteractiveCommand('node-gyp rebuild --loglevel=warn --directory', {
-    variadicArgs: [outputRoot, ...options.headers],
+  await CLIKit.runNonInteractiveCommand('node-gyp', [
+    'rebuild',
+    '--loglevel=warn',
+    '--directory',
+    outputRoot,
+    ...options.headers,
+  ], {
     cwd: Repo.resolvePath('ts'),
     addEnv: options.environment,
   })
@@ -98,9 +111,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
     sources,
     lock: Platform.hashText(await FS.file(Repo.resolvePath('ts/bun.lock')).text()),
     system: Platform.systemInfo(),
-    node: parseParserNodeMetadata(
-      await Processes.capture('node -p', { variadicArgs: [nodeMetadataProbe] }),
-    ),
+    node: parseParserNodeMetadata(await Exec.captureStdout('node', ['-p', nodeMetadataProbe])),
     environment: await collectEnvironmentInputs(),
   }
 }

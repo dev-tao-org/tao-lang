@@ -28,7 +28,7 @@ Tests.test('lets retain their lexical owner and ordered render block', () => {
     type: { value: 'text' },
     value: { value: 'File' },
   })
-  const view = document.root.block.statements.find(AST.IsViewDeclaration)!
+  const view = AST.FindViewDeclaration(document.root.block.statements)!
   Tests.expect(view.body).toMatchObject({
     kind: 'Block',
     statements: [
@@ -60,7 +60,7 @@ Tests.test('private views remain ordered after the owner render in the view AST'
   const tree = Grammar.createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   const document = transform(tree)!
-  const view = document.root.block.statements.find(AST.IsViewDeclaration)!
+  const view = AST.FindViewDeclaration(document.root.block.statements)!
   Tests.expect(view.body).toMatchObject({
     kind: 'Block',
     statements: [
@@ -80,8 +80,8 @@ Tests.test('nested foreign views retain their external implementation path', () 
   const tree = Grammar.createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   const document = transform(tree)!
-  const view = document.root.block.statements.find(AST.IsViewDeclaration)!
-  const nested = view.body.kind === 'Block' && view.body.statements.find(AST.IsViewDeclaration)
+  const view = AST.FindViewDeclaration(document.root.block.statements)!
+  const nested = AST.IsKind(view.body, 'Block') && AST.FindViewDeclaration(view.body.statements)
   Tests.expect(AST.GetViewDeclarations(document).map(item => item.name.value)).toEqual(['Main'])
   Tests.expect(AST.GetAllViewDeclarations(document).map(item => item.name.value)).toEqual(['Main', 'Native'])
   Tests.expect(AST.HasForeignViews(document)).toBe(true)

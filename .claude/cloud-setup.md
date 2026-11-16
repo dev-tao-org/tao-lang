@@ -2,7 +2,7 @@
 
 All three providers enter through `./.config/bootstrap-tao-dev-env --install-nix` from the
 repository root. It provisions the locked portable Linux tools noninteractively,
-then calls `./agent setup`, the owner of repository dependencies. Generate harness
+then calls `./agent unsandboxed setup`, the owner of repository dependencies. Generate harness
 adapters separately with `./agent agent-config`. `--install-nix` explicitly permits installation when Nix is missing.
 For an image cache that needs tools alone, add `--tools-only`; run the full entry
 after checking out the task's branch.
@@ -31,7 +31,7 @@ local `.codex/hooks.json` is not the cloud setup contract.
 ## Claude Code
 
 Use the same command as the cloud environment's setup script. The repository
-SessionStart hook runs root `./agent setup --frozen-lockfile` on starts and resumes.
+SessionStart hook runs root `./agent unsandboxed setup` on starts and resumes.
 The configured cloud setup script provisions the locked tools before that hook runs;
 the root CLI wrappers activate those tools on every invocation. Multi-repository cloud
 sessions may not load repository hooks, so configure the environment setup script explicitly.
@@ -42,7 +42,7 @@ sessions may not load repository hooks, so configure the environment setup scrip
 The hand-maintained `.cursor/environment.json` runs `./.config/cursor-dev-environment`
 in `install` to prepare each Build and in a one-shot `start` to refresh each session.
 On Linux that enters `./.config/bootstrap-tao-dev-env --install-nix`, which ends in
-`./agent setup`; on macOS it enters `devenv shell --no-tui ./agent setup`, matching
+`./agent unsandboxed setup`; on macOS it enters `devenv shell --no-tui ./agent unsandboxed setup`, matching
 `.cursor/worktree-setup.sh`.
 Feature branches overlay the active Build and may change its locked tools or
 dependencies. Cursor documents session startup and branch checkout separately;
@@ -59,7 +59,7 @@ required. `.cursor/worktrees.json` remains the separate local worktree setup.
 ## Network and proof boundary
 
 Provisioning needs access to the pinned installer, Nix sources and binary caches,
-and the package registries used by `./agent setup`. Where a provider restricts
+and the package registries used by `./agent unsandboxed setup`. Where a provider restricts
 outbound traffic, configure its allowlist and proxy/CA trust for those downloads.
 Do not disable certificate verification. In particular, Claude Code's GitHub
 proxy can reject release assets from repositories not attached to the session.
@@ -76,9 +76,8 @@ verified ownership; do not open general CDN wildcards or disable the proxy.
 
 Named host execution and network access are separate: passing
 `./agent unsandboxed capabilities` does not prove image downloads can pass the
-session's network policy. After canonical policy edits, regenerate adapters with
-`./agent setup`; protected adapter writes use the named
-`./agent unsandboxed fix-agent-config` operation. A session that still rejects a
+session's network policy. Regenerate lifecycle hooks and subagents with `./agent agent-config`.
+Use `./agent unsandboxed agent-config` when the harness protects those output paths. A session that still rejects a
 newly allowed domain must be restarted with the regenerated repository policy
 before retrying, rather than bypassing its proxy.
 

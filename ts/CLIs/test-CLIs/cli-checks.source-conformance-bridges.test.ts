@@ -67,7 +67,7 @@ Tests.test('source conformance > retains only the three exact builtin mock fixtu
   )
   expectBridgeIssue(
     "const fs = await import('node:fs/promises')",
-    'ts/shared/test-shared/os/Storage.SessionLock.PointerDiagnostics.test.ts',
+    'ts/shared/test-shared/os/locks.FileLock.PointerDiagnostics.test.ts',
   )
   expectBridgeIssue(
     "const fs = await import('node:fs')",

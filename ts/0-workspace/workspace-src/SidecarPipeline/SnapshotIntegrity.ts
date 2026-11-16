@@ -1,26 +1,11 @@
 import * as AST from '@ast-gen'
+import * as Compile from '@compile'
 import { Json } from '@shared'
-import { NewlineCharacter, S, Try } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Text } from '@shared/os'
 import { FS, Path } from '@shared/os'
-import { createForeignViewContractSource, ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
+import { ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
 import type { SidecarGroup } from './Snapshots'
-
-/** assetDeclarations declares the copied asset formats accepted by sidecar TypeScript modules. */
-export const assetDeclarations = S`
-  declare module '*.png' { const asset: number; export default asset }
-  declare module '*.jpg' { const asset: number; export default asset }
-  declare module '*.jpeg' { const asset: number; export default asset }
-  declare module '*.gif' { const asset: number; export default asset }
-  declare module '*.webp' { const asset: number; export default asset }
-  declare module '*.svg' { const asset: number; export default asset }
-  declare module '*.mp4' { const asset: number; export default asset }
-  declare module '*.mp3' { const asset: number; export default asset }
-  declare module '*.ttf' { const asset: number; export default asset }
-  declare module '*.woff' { const asset: number; export default asset }
-  declare module '*.woff2' { const asset: number; export default asset }
-  declare module '*.pdf' { const asset: number; export default asset }
-`
 
 /** cachedSnapshotMatches verifies captured content, inventory, and the managed package links. */
 export async function cachedSnapshotMatches(input: CacheValidationInput): Promise<boolean> {
@@ -86,17 +71,14 @@ function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, 
       Path.join(modulePath, 'tsconfig.json'),
       encodeSnapshotText(createTypeScriptConfigContent(input.defaultsPath)),
     )
-    files.set(Path.join(modulePath, 'tao-assets.d.ts'), encodeSnapshotText(assetDeclarations))
+    files.set(Path.join(modulePath, 'tao-assets.d.ts'), encodeSnapshotText(Compile.SidecarAssetDeclarations))
     for (const view of group.views) {
       const contractPath = Path.join(modulePath, `.tao-${AST.GetViewName(view.declaration)}.contract.ts`)
-      const parameters = Object.fromEntries(
-        view.declaration.parameters.map(parameter => [parameter.name.value, 'string']),
-      )
       files.set(
         contractPath,
-        encodeSnapshotText(createForeignViewContractSource({
+        encodeSnapshotText(Compile.createForeignViewContractSource({
           name: AST.GetViewName(view.declaration),
-          parameters,
+          parameters: Compile.projectTextViewParameterTypes(view.declaration),
           exportRelativePath: view.relativeSidecarPath,
         })),
       )

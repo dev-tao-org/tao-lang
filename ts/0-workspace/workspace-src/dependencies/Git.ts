@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter, Regxs, TabCharacter } from '@shared'
 import { FS } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type { GitSourceAdapter } from './Types'
 
 /** gitSourceAdapter resolves GitHub refs and checks out exact immutable commits. */
@@ -14,7 +14,7 @@ async function resolveGitHubCommit(repository: string, version: string): Promise
     return version.toLowerCase()
   }
   const refs = refNames(version)
-  const output = await Processes.capture('git ls-remote', { variadicArgs: [repository, ...refs] })
+  const output = await Exec.captureStdout('git', ['ls-remote', repository, ...refs])
   // ex: X\trefs/tags/v1\n -> [[X, refs/tags/v1]]
   const records = output.split(NewlineCharacter).filter(Boolean).map(line => line.split(TabCharacter))
   const commit = refs.map(ref => records.find(record => record[1] === ref)?.[0]).find(Boolean)
@@ -26,12 +26,10 @@ async function fetchGitHubCommit(repository: string, commit: string, destination
     Errors.ThrowUserInput(`Invalid immutable Git commit ID ${commit}.`)
   }
   await FS.mkdir(destination)
-  await Processes.capture('git', { variadicArgs: ['init', '--quiet', destination] })
-  await Processes.capture('git', {
-    variadicArgs: ['-C', destination, 'fetch', '--quiet', '--depth=1', repository, commit],
-  })
-  await Processes.capture('git', { variadicArgs: ['-C', destination, 'checkout', '--quiet', '--detach', 'FETCH_HEAD'] })
-  const actual = await Processes.capture('git', { variadicArgs: ['-C', destination, 'rev-parse', 'HEAD'] })
+  await Exec.captureStdout('git', ['init', '--quiet', destination])
+  await Exec.captureStdout('git', ['-C', destination, 'fetch', '--quiet', '--depth=1', repository, commit])
+  await Exec.captureStdout('git', ['-C', destination, 'checkout', '--quiet', '--detach', 'FETCH_HEAD'])
+  const actual = await Exec.captureStdout('git', ['-C', destination, 'rev-parse', 'HEAD'])
   if (actual.toLowerCase() !== commit.toLowerCase()) {
     Errors.ThrowHostEnvironment(`Git fetched ${actual} when Tao requested ${commit}.`)
   }

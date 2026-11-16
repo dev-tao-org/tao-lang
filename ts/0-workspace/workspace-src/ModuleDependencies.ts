@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Sort } from '@shared'
 import { Json } from '@shared'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
 import { Text } from '@shared/os'
@@ -94,11 +94,10 @@ export async function withDependencySession<T>(
   projectRoot: string,
   sessionId: DependencySessionId,
   action: (session: ProjectSession) => Promise<T>,
-  acquireLease: typeof Storage.acquireCacheLease = Storage.acquireCacheLease,
 ): Promise<T> {
   const identity = `project:${Path.resolve(projectRoot)}:session:${sessionId ?? '.cli'}`
   const session = await acquireSession(projectRoot, { id: sessionId, kind: 'cli' })
-  const releaseLease = await Try(() => acquireLease(identity), {
+  const releaseLease = await Try(() => Storage.acquireCacheLease(identity), {
     catch(error) {
       session.release()
       return Errors.Throw(error)
@@ -128,10 +127,7 @@ async function containsApp(path: string): Promise<boolean> {
 // resolveNpmVersion asks Bun for the registry's current exact version.
 async function resolveNpmVersion(packageName: string, cwd: string): Promise<string> {
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-  const result = await Processes.runIgnoreStatus(['bun', 'info', packageName, 'version', '--json'], {
-    cwd,
-    addEnv,
-  })
+  const result = await Exec.capture('bun', ['info', packageName, 'version', '--json'], { check: false, cwd, addEnv })
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
   }

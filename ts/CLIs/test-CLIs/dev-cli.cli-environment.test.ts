@@ -2,7 +2,7 @@ import { NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 const CompletedWarningSummaryRegx = /Completed: [1-9]\d* warning\(s\), 0 error\(s\)/
 const SlowTestWarningRegx = /Warning: .*slow-tests\.test\.ts \d+\.\d+ ms/
@@ -18,17 +18,32 @@ const GitFingerprintFailureScript = Shared.joinTextLines(
   '',
 )
 
+Tests.test('the developer launcher offers its command list and explains interactive app startup', async () => {
+  const command = Repo.resolvePath('dev')
+  const cwd = Repo.getWorkspaceRoot()
+  const help = await Exec.captureStdout(command, 'help', { cwd })
+  Tests.expect(help).toContain('Commands:')
+  Tests.expect(help).toContain('performance')
+  Tests.expect(help).toContain('timing-compare')
+  Tests.expect(help).toContain('verify')
+  const noArguments = await Exec.captureStdout(command, { cwd })
+  Tests.expect(noArguments).toContain('Run ./dev in an interactive terminal')
+})
+
 Tests.test('agent test summarizes results and warnings while retaining full output in its log', async () => {
   const addEnv = { TERMINAL_OUTPUT: undefined }
-  const child = Processes.spawnPiped(Repo.resolvePath('agent'), {
-    variadicArgs: ['test', 'CLIs/test-CLIs/cli-checks.slow-tests.test.ts', '--slow', '0', '--parallel', '1'],
-    cwd: Repo.getWorkspaceRoot(),
-    addEnv,
-  })
+  const child = Exec.spawn(Repo.resolvePath('agent'), [
+    'test',
+    'CLIs/test-CLIs/cli-checks.slow-tests.test.ts',
+    '--slow',
+    '0',
+    '--parallel',
+    '1',
+  ], { cwd: Repo.getWorkspaceRoot(), addEnv })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   Tests.expect(status).toBe(0)
   const completed = stderr.indexOf('Completed: ')
@@ -65,22 +80,20 @@ Tests.test('fresh setup finds nested extension tools installed after the launche
     const tool = Path.join(root, 'fixture-tool')
     await FS.writeFile(tool, '#!/bin/sh' + NewlineCharacter, 'utf8')
     await FS.chmod(tool, 0o755)
-    const path = await Processes.capture('sh', {
-      variadicArgs: [
-        '-c',
-        S`
-          DEVENV_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-          export DEVENV_ROOT TAO_DEVENV=1
-          . "$1"
-          mkdir -p "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin"
-          cp "$2" "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin/tao-fixture-tool"
-          command -v tao-fixture-tool
-        `,
-        Path.join(root, 'agent'),
-        Repo.resolvePath('.config/cli-environment.sh'),
-        tool,
-      ],
-    })
+    const path = await Exec.captureStdout('sh', [
+      '-c',
+      S`
+        DEVENV_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+        export DEVENV_ROOT TAO_DEVENV=1
+        . "$1"
+        mkdir -p "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin"
+        cp "$2" "$repository/ts/ide-extensions/tao-ide-extension/node_modules/.bin/tao-fixture-tool"
+        command -v tao-fixture-tool
+      `,
+      Path.join(root, 'agent'),
+      Repo.resolvePath('.config/cli-environment.sh'),
+      tool,
+    ])
     Tests.expect(path).toBe(Path.join(root, 'ts/ide-extensions/tao-ide-extension/node_modules/.bin/tao-fixture-tool'))
   }, {
     finally: () => FS.rm(root, { recursive: true, force: true }),
@@ -114,17 +127,13 @@ Tests.test('CLI setup reports when Git cannot fingerprint the checkout', async (
       TAO_DEVENV: '1',
       DEVENV_ROOT: repository,
     }
-    const child = Processes.spawnPiped('sh', {
-      variadicArgs: [
-        '-c',
-        '. "$1"',
-        Path.join(repository, 'agent'),
-        Path.join(repository, '.config/cli-environment.sh'),
-      ],
-      addEnv,
-      cwd: repository,
-    })
-    const [status, stderr] = await Promise.all([child.exited, Processes.readText(child.stderr)])
+    const child = Exec.spawn('sh', [
+      '-c',
+      '. "$1"',
+      Path.join(repository, 'agent'),
+      Path.join(repository, '.config/cli-environment.sh'),
+    ], { addEnv, cwd: repository })
+    const [status, stderr] = await Promise.all([child.exited, Exec.readText(child.stderr)])
     Tests.expect(status).toBe(1)
     Tests.expect(stderr).toContain('Tao could not fingerprint this checkout environment.')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
@@ -136,12 +145,11 @@ Tests.test('fatal CLI errors remain visible when the configured log path is unwr
     TERMINAL_OUTPUT: '1',
     TERMINAL_UI: '0',
   }
-  const child = Processes.spawnPiped(Repo.resolvePath('agent'), {
-    variadicArgs: ['unrecognized-command'],
+  const child = Exec.spawn(Repo.resolvePath('agent'), ['unrecognized-command'], {
     cwd: Repo.getWorkspaceRoot(),
     addEnv,
   })
-  const [status, stderr] = await Promise.all([child.exited, Processes.readText(child.stderr)])
+  const [status, stderr] = await Promise.all([child.exited, Exec.readText(child.stderr)])
   Tests.expect(status).toBe(1)
   Tests.expect(stderr).toContain('EISDIR')
   Tests.expect(stderr).toContain(Repo.resolvePath('ts'))

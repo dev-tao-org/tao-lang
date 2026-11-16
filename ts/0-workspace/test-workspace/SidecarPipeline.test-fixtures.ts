@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Json } from '@shared'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import type * as Typecheck from '@typecheck'
 
 import { NewlineCharacter, S, Try } from '@shared'
@@ -48,11 +48,11 @@ export async function executeTypeScript(
   args: readonly string[],
   cwd: string,
 ): Promise<SidecarCommandResult> {
-  const child = Processes.spawnPiped([command, ...args], { cwd })
+  const child = Exec.spawn(command, [...args], { cwd })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   return { status, stdout, stderr }
 }

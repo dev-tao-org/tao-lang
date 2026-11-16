@@ -20,7 +20,6 @@ export type WritableExpression<T> = Expression<T> & {
 export type ReactiveEngineOptions = {
   strategy?: ReactiveReadStrategy
   scheduleDelivery?: (deliver: () => void) => void
-  maxReentrantDeliveries?: number
 }
 
 /** ReactiveEngine creates expressions over one Preact dependency graph. */
@@ -38,7 +37,6 @@ export function createReactiveEngine(options: ReactiveEngineOptions = {}): React
   return buildEngine({
     strategy: options.strategy ?? 'native-lazy',
     scheduleDelivery: options.scheduleDelivery ?? (deliver => deliver()),
-    maxDeliveries: options.maxReentrantDeliveries ?? 100,
     allStops: new Set(),
     pending: [],
     disposed: false,
@@ -83,13 +81,13 @@ export function batch<T>(perform: () => T): T {
 
 type Observation = { unobserve(): void }
 
+const MaxReentrantDeliveries = 100
 const defaultEngine = createReactiveEngine()
 type Node<T> = { value: Preact.Signal<ReactiveValue>; evaluate(): T }
 type InternalExpression<T> = Expression<T> & { snapshot?: () => T }
 type EngineState = {
   strategy: NonNullable<ReactiveEngineOptions['strategy']>
   scheduleDelivery: (deliver: () => void) => void
-  maxDeliveries: number
   allStops: Set<() => void>
   pending: (() => void)[]
   disposed: boolean
@@ -208,7 +206,7 @@ function deliverValue<T>(state: EngineState, receive: (value: T) => void, value:
   }
   state.deliveryChainActive = false
   state.deliveryChainCount += 1
-  if (state.deliveryChainCount > state.maxDeliveries) {
+  if (state.deliveryChainCount > MaxReentrantDeliveries) {
     failDeliveryCycle(state)
   }
   state.deliveryDepth += 1
@@ -255,7 +253,7 @@ function flushDelivery(state: EngineState): void {
   Try(() => {
     while (state.pending.length > 0) {
       passes += 1
-      if (passes > state.maxDeliveries) {
+      if (passes > MaxReentrantDeliveries) {
         failDeliveryCycle(state)
       }
       const current = state.pending

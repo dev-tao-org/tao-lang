@@ -86,9 +86,7 @@ export function typeScriptDefaultsHash(): string {
 }
 
 /** typescriptDefaultsDrift reports missing or changed shared compiler defaults. */
-export async function typescriptDefaultsDrift(
-  projectRoot: string,
-): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
+export async function typescriptDefaultsDrift(projectRoot: string): Promise<ManagedTypes.GeneratedModuleFileDrift[]> {
   const defaults = createTypeScriptDefaults()
   const path = resolveTypeScriptDefaultsPath(projectRoot)
   const marker = `${path}.tao-managed`

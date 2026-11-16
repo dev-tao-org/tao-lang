@@ -3,9 +3,9 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import * as Process from '../../shared-src/os/Process'
-import * as Processes from '../../shared-src/os/Processes'
 
 Tests.test('read-only metadata handles concurrent creators without accepting conflicting contents', async () => {
   const root = Artifacts.resolvePath('tmp', `metadata-race-${Platform.randomUUID()}`)
@@ -33,7 +33,7 @@ Tests.test('writable files serialize canonical aliases and restore their origina
     await FS.symlink(paths.target, paths.alias)
     const originalMode = FS.statSync(paths.target).mode & 0o777
     const script = Shared.joinTextLines(createSerializationBoundaryScript(paths), createSerializationProofScript())
-    const result = await Processes.run([Process.argv[0]!, '-e', script], { timeoutMs: 2000 })
+    const result = await Exec.capture(Process.argv[0]!, ['-e', script], { timeoutMs: 2000 })
     Tests.expect(result.stdout).toBe('1')
     Tests.expect(await FS.readFile(paths.alias, 'utf8')).toBe('second')
     Tests.expect(FS.statSync(paths.target).mode & 0o777).toBe(originalMode)
@@ -119,11 +119,11 @@ async function raceCreator(path: string, winningContent: string): Promise<string
     }, { catch: error => error.message });
     process.stdout.write(result);
   `
-  const child = Processes.spawnPiped(Process.argv[0]!, { variadicArgs: ['-e', script] })
+  const child = Exec.spawn(Process.argv[0]!, ['-e', script])
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
   return stdout

@@ -1,7 +1,8 @@
 import { ControlCCharacter, Errors, Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Http, Path, Platform, Streams, Text } from '@shared/os'
-import { Processes } from '@shared/os'
+import { Artifacts, FS, HttpServer, Path, Platform, Streams, Text } from '@shared/os'
+import Exec from '@shared/os/exec'
+import { Http } from '@shared/web'
 import * as WorkspaceTests from '@workspace-tests'
 
 Tests.test.skipIf(Platform.systemInfo().os === 'Windows_NT')(
@@ -38,7 +39,7 @@ Tests.test.skipIf(Platform.systemInfo().os === 'Windows_NT')(
 
 async function startInteractiveRecipe(receive: (chunk: Uint8Array) => void) {
   const directory = await WorkspaceTests.createStandaloneLibraryFixture()
-  const reservation = Http.serve({ port: 0, fetch: () => Http.response() })
+  const reservation = HttpServer.serve({ port: 0, fetch: () => Http.response() })
   const addEnv = {
     BROWSER: 'none',
     CI: undefined,
@@ -47,7 +48,7 @@ async function startInteractiveRecipe(receive: (chunk: Uint8Array) => void) {
     RCT_METRO_PORT: String(reservation.port),
   }
   reservation.stop(true)
-  const child = Processes.spawnPiped('just run', {
+  const child = Exec.spawn('just', 'run', {
     cwd: directory,
     addEnv,
     terminal: { cols: 80, rows: 28, data: (_terminal, chunk) => receive(chunk) },
@@ -56,23 +57,20 @@ async function startInteractiveRecipe(receive: (chunk: Uint8Array) => void) {
 }
 
 async function waitForReady(read: () => string): Promise<void> {
-  const deadline = Time.nowMs() + 45_000
-  while (Time.nowMs() < deadline) {
-    if (read().includes('show all commands') && read().includes('Ctrl+C')) {
-      return
-    }
-    await Time.sleep(25)
+  const ready = await Time.waitFor(success => {
+    const output = read()
+    return output.includes('show all commands') && output.includes('Ctrl+C') ? success(true) : undefined
+  }, { timeout: 45_000 })
+  if (ready === undefined) {
+    Errors.ThrowUserInput('Interactive Expo did not become ready:\n' + read())
   }
-  Errors.ThrowUserInput('Interactive Expo did not become ready:\n' + read())
 }
 
 async function waitForCommands(read: () => string): Promise<void> {
-  const deadline = Time.nowMs() + 5000
-  while (Time.nowMs() < deadline) {
-    if (read().includes('open web')) {
-      return
-    }
-    await Time.sleep(25)
+  const ready = await Time.waitFor(success => read().includes('open web') ? success(true) : undefined, {
+    timeout: 5000,
+  })
+  if (ready === undefined) {
+    Errors.ThrowUserInput('Expo did not show its web shortcut:\n' + read())
   }
-  Errors.ThrowUserInput('Expo did not show its web shortcut:\n' + read())
 }

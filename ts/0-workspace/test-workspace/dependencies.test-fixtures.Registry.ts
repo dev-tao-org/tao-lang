@@ -1,14 +1,14 @@
 import { Json } from '@shared'
-import { Addr } from '@shared'
-import { FS, Http, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import { FS, HttpServer, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
+import { Addr, Http } from '@shared/web'
 import type { ManagedPackageVersionMap } from '../workspace-src/sidecars/ManagedModule/ManagedModuleTypes'
 
 const NpmTarballPathRegx = /^\/tarballs\/([a-z0-9-]+)\.tgz$/
 /** startManagedDependencyRegistry creates the isolated package fixtures and serves their registry data. */
 export async function startManagedDependencyRegistry(root: string, requests: string[], reactVersion: string) {
   const packages = await createPackageArtifacts(root)
-  const server = Http.serve({
+  const server = HttpServer.serve({
     hostname: Addr.Localhost,
     port: 0,
     fetch(request) {
@@ -48,7 +48,7 @@ async function createPackageArtifacts(root: string): Promise<Map<string, Package
       await FS.readFile(Path.join(directory, 'package.json'), 'utf8'),
     ) as RegistryFixtureManifest
     const archive = Path.join(root, 'registry', `${name}.tgz`)
-    await Processes.capture('tar', { variadicArgs: ['-czf', archive, 'package'], cwd: Path.dirname(directory) })
+    await Exec.captureStdout('tar', ['-czf', archive, 'package'], { cwd: Path.dirname(directory) })
     const bytes = await FS.readFile(archive)
     packages.set(name, {
       bytes,

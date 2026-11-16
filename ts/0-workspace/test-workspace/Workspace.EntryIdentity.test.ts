@@ -1,11 +1,10 @@
-import { Try } from '@shared'
+import { Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path, Platform, Repo, WorkspaceWatch } from '@shared/os'
+import { Artifacts, FileWatch, FS, Path, Platform, Repo } from '@shared/os'
 import { FileManager } from '../workspace-src/FileManager/FileManager'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import { openProjectWorkspace } from '../workspace-src/ProjectWorkspace'
 import { createWorkspace, Document } from '../workspace-src/Workspace'
-import { createUpdateResult } from './FileManager.test-fixtures.Watch'
 
 Tests.test('file compilation and document updates link an aliased entry with its canonical sources', async () => {
   const root = Artifacts.resolvePath('tmp', `entry-identity-${Platform.randomUUID()}`)
@@ -39,7 +38,6 @@ Tests.test('managed preview accepts an aliased entry inside its canonical discov
   const workspace = await openProjectWorkspace(entry, {
     async publish() {},
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime') },
-    watch: async () => ({ async dispose() {} }),
   })
   await Try(async () => {
     Tests.expect(await workspace.openFile(entry)).toMatchObject({ status: 'published' })
@@ -53,7 +51,7 @@ Tests.test('managed preview accepts an aliased entry inside its canonical discov
   })
 })
 
-type OptionalWatchChangeHandler = ((change: WorkspaceWatch.WorkspaceChange) => void) | undefined
+type OptionalWatchChangeHandler = ((change: FileWatch.FileChange) => void) | undefined
 
 Tests.test('aliased output exclusions retain canonical identity before generated directories exist', async () => {
   const root = Artifacts.resolvePath('tmp', `output-identity-${Platform.randomUUID()}`)
@@ -61,9 +59,8 @@ Tests.test('aliased output exclusions retain canonical identity before generated
   await FS.mkdir(root)
   await FS.writeFile(Path.join(root, 'Main.tao'), 'source')
   await FS.symlink(root, alias, 'dir')
-  let notify: OptionalWatchChangeHandler
   let ignored: readonly string[] = []
-  let scheduled = 0
+  let notify: OptionalWatchChangeHandler
   const output = Path.join(root, 'generated/deeper')
   const manager = new FileManager({
     directory: alias,
@@ -74,22 +71,22 @@ Tests.test('aliased output exclusions retain canonical identity before generated
       ignored = exclusions ?? []
       return { async dispose() {} }
     },
-    schedule() {
-      scheduled++
-      return () => {}
-    },
-    compile: async () => createUpdateResult('published'),
+    compile: async () => ({
+      status: 'published',
+      revision: 'fixture',
+      timings: [],
+      stages: {
+        typecheck: { stage: 'typecheck', status: 'skipped' },
+        fix: { stage: 'fix', status: 'skipped' },
+        check: { stage: 'check', status: 'skipped' },
+      },
+    }),
   })
   await Try(async () => {
     await manager.openFile('Main.tao')
     Tests.expect(await FS.exists(output)).toBe(false)
-    for (const path of [Path.join(output, 'build/App.tsx'), Path.join(output, 'state.json'), output]) {
-      notify!({ path, kind: path === output ? 'addDir' : 'change', observedAtMs: 0 })
-    }
-    Tests.expect(scheduled).toBe(0)
     Tests.expect(ignored).toEqual([output])
-    notify!({ path: Path.join(root, 'Main.tao'), kind: 'change', observedAtMs: 0 })
-    Tests.expect(scheduled).toBe(1)
+    notify!({ path: Path.join(output, 'build/App.tsx'), kind: 'change', observedAtMs: Time.timestampMs() })
   }, {
     async finally() {
       await manager.dispose()

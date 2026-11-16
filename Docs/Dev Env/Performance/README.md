@@ -1,19 +1,27 @@
 # Performance measurements
 
-Use these commands from the repository root after `./agent setup --frozen-lockfile`:
+Use these commands from the repository root after `./agent unsandboxed setup`:
 
 | Command                                   | Measures                                                                                                  |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `./agent performance parser`              | Forced grammar/native build, process-cold parsing and warm full-source parser/AST/code-generation phases. |
 | `./agent performance formatter`           | Tao formatting/fixing and embedded TSX formatting on the driver's fixtures.                               |
 | `./agent performance extension`           | Incremental Tao parsing, embedded TSX parsing and highlight queries; excludes editor paint.               |
-| `./agent unsandboxed performance preview` | Diagnostic disk-save → watcher → compilation → Metro → app receipts in two headless frames.               |
+| `./agent unsandboxed performance preview` | Editor save, compiler publication, Metro, and app receipts in two isolated headless previews.             |
+| `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.     |
+| `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                  |
 | `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.      |
 | `just performance`                        | Developer preview measurement command, printing results and retaining the raw report.                     |
 
 The preview host route is required in the macOS agent environment. See
 [Preview Workflow](../Preview%20Workflow.md) for the persistent `just dev` loop, output locations and
 receipt definitions. App receipts establish a React commit, not physical repaint.
+
+The fixed project imports six groups across 24 dependency files. A cycle measures a small text
+edit, expanding and shrinking a same-file tree, mounting and expanding a nested imported tree,
+editing a mounted dependency, shrinking the imported tree, and resetting. Launch and first and
+warm preview opens have separate timers. Each session runs three cycles, allowing the last two to
+supply a warm sample for every edit. Percentage changes use each step's own baseline median.
 
 Ordinary `verify` and TypeScript CI prepare assets and run correctness checks/tests; they do not run
 these benchmark targets automatically. Do not infer a new timing baseline from a passing verify.

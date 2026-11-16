@@ -9,6 +9,7 @@ import * as Requirements from '../workspace-src/dependencies/Requirements'
 const ProjectRootRequirementsOnlyErrorRegx = /project-root Tao files/
 const MissingVersionErrorRegx = /needs a version/
 const DuplicateRequirementErrorRegx = /declared more than once/
+const LowercaseAliasErrorRegx = /Declared name 'widgets' must start with an uppercase letter\./
 
 Tests.test('project source scanning extracts only project root dependencies and applies defaults', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-requirements-${Platform.randomUUID()}`)
@@ -40,7 +41,7 @@ Tests.test('project source scanning extracts only project root dependencies and 
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
-Tests.test('project source scanning rejects missing GitHub versions and duplicate aliases', async () => {
+Tests.test('project source scanning rejects missing versions, duplicate aliases and lowercase aliases', async () => {
   const root = Artifacts.resolvePath('tmp', `dependency-validation-${Platform.randomUUID()}`)
   const path = Path.join(root, 'Main.tao')
   await Try(async () => {
@@ -50,10 +51,12 @@ Tests.test('project source scanning rejects missing GitHub versions and duplicat
     await FS.writeFile(
       path,
       S`
-        requires github:acme/widgets version v1 as shared
-        requires github:acme/other version v1 as shared
+        requires github:acme/widgets version v1 as Shared
+        requires github:acme/other version v1 as Shared
       `,
     )
     await Tests.rejects(Requirements.readProjectRequirements(root), DuplicateRequirementErrorRegx)
+    await FS.writeFile(path, 'requires file:../widgets as widgets')
+    await Tests.rejects(Requirements.readProjectRequirements(root), LowercaseAliasErrorRegx)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })

@@ -2,7 +2,7 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
   await FS.mkdir(Artifacts.resolvePath('tmp'))
@@ -40,6 +40,11 @@ async function createLauncherFixture(root: string): Promise<void> {
     ),
   )
   await writeFixtureCommand(bin, 'bun', fakeBunScript())
+  const hostProbe = S`
+    #!/bin/sh
+    test "$*" = '-axo pid=,ppid=' && test "\${BOOTSTRAP_DENY_PS:-0}" = 0
+  `
+  await writeFixtureCommand(bin, 'ps', hostProbe)
 }
 
 async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void> {
@@ -54,11 +59,24 @@ async function assertMissingAstPreparesWithoutSetup(root: string): Promise<void>
 }
 
 async function assertExplicitSetupBypassesPreflight(root: string): Promise<void> {
+  await FS.rm(Path.join(root, 'ts/node_modules'), { recursive: true, force: true })
   await removeGeneratedAst(root)
   await writeCalls(root, '')
-  const result = await runLauncher(root, 'agent', ['setup'])
-  Tests.expect(result.status).toBe(0)
-  Tests.expect(await readCalls(root)).toBe('setup\n')
+  const plain = await runLauncher(root, 'agent', ['setup'])
+  Tests.expect(plain.status).toBe(1)
+  Tests.expect(plain.stderr).toContain('./agent unsandboxed setup')
+  Tests.expect(await readCalls(root)).toBe('')
+  const denied = await runLauncher(root, 'agent', ['unsandboxed', 'setup'], { BOOTSTRAP_DENY_PS: '1' })
+  Tests.expect(denied.status).toBe(1)
+  Tests.expect(denied.stderr).toContain('Host process access is unavailable')
+  Tests.expect(await readCalls(root)).toBe('')
+  for (const [launcher, args] of [['agent', ['unsandboxed', 'setup']], ['dev', ['setup']]] as const) {
+    await removeGeneratedAst(root)
+    await writeCalls(root, '')
+    const result = await runLauncher(root, launcher, args)
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe('setup\n')
+  }
 }
 
 async function assertMissingDependenciesRequireSetup(root: string): Promise<void> {
@@ -67,7 +85,7 @@ async function assertMissingDependenciesRequireSetup(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'])
   Tests.expect(result.status).toBe(1)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('')
 }
 
@@ -77,7 +95,7 @@ async function assertPreparationFailureStopsLauncher(root: string): Promise<void
   await writeCalls(root, '')
   const result = await runLauncher(root, 'dev', ['--help'], { BOOTSTRAP_FAILURE_STATUS: '23' })
   Tests.expect(result.status).toBe(23)
-  Tests.expect(result.stderr).toContain('./agent setup')
+  Tests.expect(result.stderr).toContain('./agent unsandboxed setup')
   Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 
@@ -158,14 +176,10 @@ async function runLauncher(
     TAO_DEVENV: '1',
     ...extraEnvironment,
   }
-  const child = Processes.spawnPiped(Path.join(root, launcher), {
-    variadicArgs: args,
-    cwd: root,
-    addEnv,
-  })
+  const child = Exec.spawn(Path.join(root, launcher), args, { cwd: root, addEnv })
   const [stdout, stderr, status] = await Promise.all([
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
     child.exited,
   ])
   return { status, stdout, stderr }

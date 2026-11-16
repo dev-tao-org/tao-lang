@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
 import { assertUniqueLocalBindings, collectReferencedNames } from '../LinkModuleValidation'
+import { assertValidStatements } from '../StatementValidation'
 import * as Modules from './Modules'
 
 /** linkModules resolves declaration imports and orders module-level value initialization. */
@@ -9,6 +10,9 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
   const modules: SourceModulesByPath = new Map(sources.map(source => [source.path, source]))
   if (!modules.has(entry)) {
     Errors.ThrowUserInput(`Entry module is unavailable: ${entry}`)
+  }
+  for (const source of sources) {
+    assertValidStatements(source.document, source.path)
   }
   const bindings: ModuleBindingsBySourcePath = new Map(
     sources.map(source => [source.path, [] as Modules.ModuleBinding[]]),

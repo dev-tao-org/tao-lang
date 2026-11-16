@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 import { findTaoTestFiles } from '../CLIs-src/dev-cli/testing/TaoTests'
@@ -34,15 +34,11 @@ Tests.test('tao test resolves default folders and relative files from the caller
         TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
         TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
       }
-      const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-        variadicArgs: ['test', ...args],
-        cwd: directory,
-        addEnv,
-      })
+      const child = Exec.spawn(Repo.resolvePath('tao'), ['test', ...args], { cwd: directory, addEnv })
       const [status, stdout, stderr] = await Promise.all([
         child.exited,
-        Processes.readText(child.stdout),
-        Processes.readText(child.stderr),
+        Exec.readText(child.stdout),
+        Exec.readText(child.stderr),
       ])
       Tests.expect(status).toBe(1)
       Tests.expect(stdout).toContain('Unknown Tao app: Missing.')

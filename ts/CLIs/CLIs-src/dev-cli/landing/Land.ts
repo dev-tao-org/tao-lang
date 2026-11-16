@@ -19,7 +19,7 @@ export async function land(io: LandingIO): Promise<LandingProof> {
     )
   }
   const reviewedHead = await git(io, ['rev-parse', 'HEAD'])
-  await io.command('./agent verify')
+  await io.command('./agent', 'verify')
   await requireClean(io)
   if (await git(io, ['rev-parse', 'HEAD']) !== reviewedHead) {
     Errors.ThrowUserInput('HEAD changed during verification; review it before rerunning land.')

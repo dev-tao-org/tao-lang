@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { satisfies } from '../workspace-src/bridges/Bridge_semver'
 import { initializeProject } from '../workspace-src/projects/Projects'
@@ -99,7 +99,7 @@ function createBunExecutor(root: string, registry: string): BunExecutor {
       NO_PROXY: '*',
       no_proxy: '*',
     }
-    return await Processes.run([command, ...args, '--registry', registry], {
+    return await Exec.capture(command, [...args, '--registry', registry], {
       cwd,
       addEnv,
       timeoutMs: FixtureInstallTimeoutMs,
@@ -115,9 +115,7 @@ async function recordProfileInstall(
   await FS.mkdir(nodeModules)
   const lock = await readLock(Path.join(options.runtimeResources, 'bun.lock'))
   const fixtureLock = await readLock(Path.join(Path.dirname(options.fixtureModules), 'bun.lock'))
-  const manifest = Json.Parse(
-    await FS.readFile(Path.join(directory, 'package.json'), 'utf8'),
-  ) as MetroFixtureManifest
+  const manifest = Json.Parse(await FS.readFile(Path.join(directory, 'package.json'), 'utf8')) as MetroFixtureManifest
   lock.workspaces[''].dependencies = manifest.dependencies
   lock.patchedDependencies = manifest.patchedDependencies
   lock.overrides = manifest.overrides

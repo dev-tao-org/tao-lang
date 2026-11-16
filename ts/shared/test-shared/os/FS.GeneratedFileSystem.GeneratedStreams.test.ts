@@ -1,8 +1,8 @@
 import * as Tests from '@shared-tests'
+import Exec from '@shared/os/exec'
 import * as FS from '../../shared-src/os/FS'
 import * as Path from '../../shared-src/os/Path'
 import * as Platform from '../../shared-src/os/Platform'
-import * as Processes from '../../shared-src/os/Processes'
 import * as Repo from '../../shared-src/os/Repo'
 import * as Artifacts from '../../shared-src/os/Storage/Artifacts'
 import * as Bundle from '../../shared-src/os/Tooling/Bundle'
@@ -15,14 +15,13 @@ Tests.test('generated and disk streams retain native pipe behavior through pinne
     await FS.mkdir(Path.join(root, '_gen_runtime'))
     await FS.writeFile(Path.join(directory, 'outside.ts'), 'outside')
     await Bundle.bundleNode(Repo.resolvePath('ts/shared/shared-src/os/FS/GeneratedFileSystem.ts'), directory, [])
-    const result = await Processes.capture('node -e', {
-      variadicArgs: [
-        `(async () => {${streamScript}})().catch(error => { console.error(error); process.exit(1) })`,
-        Path.join(directory, 'GeneratedFileSystem.js'),
-        root,
-        Repo.resolvePath('ts/7-runtime/package.json'),
-      ],
-    })
+    const result = await Exec.captureStdout('node', [
+      '-e',
+      `(async () => {${streamScript}})().catch(error => { console.error(error); process.exit(1) })`,
+      Path.join(directory, 'GeneratedFileSystem.js'),
+      root,
+      Repo.resolvePath('ts/7-runtime/package.json'),
+    ])
     Tests.expect(result).toContain('native and graceful streams retain snapshot A')
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })

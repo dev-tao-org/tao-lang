@@ -1,6 +1,6 @@
 import { Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Storage } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { readRuntimePatches } from './RuntimePatches'
 import * as ToolchainIdentity from './ToolchainIdentity'
 
@@ -59,10 +59,7 @@ export type RuntimeInstaller = { install(cacheDirectory: string): Promise<void> 
 const managedInstaller: RuntimeInstaller = {
   async install(cacheDirectory) {
     const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
-    await Processes.run(['bun', 'install', '--frozen-lockfile', '--ignore-scripts'], {
-      cwd: cacheDirectory,
-      addEnv,
-    })
+    await Exec.capture('bun', ['install', '--frozen-lockfile', '--ignore-scripts'], { cwd: cacheDirectory, addEnv })
   },
 }
 

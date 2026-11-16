@@ -2,12 +2,20 @@
 # Run agent commands inside this checkout's pinned environment, forwarding arguments unchanged.
 
 set -e
+if [ "${1:-}" = setup ]; then
+  printf 'Run ./agent unsandboxed setup with host access.\n' >&2
+  exit 1
+fi
 # Activate managed tools, then resolve command modules from the TypeScript workspace.
 . "$(dirname "$0")/.config/cli-environment.sh"
 cd "$(dirname "$0")/ts"
 # Fresh setup must run before Commander and other workspace dependencies are installed.
-if [ "${1:-}" = setup ]; then
-  shift
+if [ "${1:-}" = unsandboxed ] && [ "${2:-}" = setup ]; then
+  if ! ps -axo pid=,ppid= >/dev/null 2>&1; then
+    printf 'Host process access is unavailable. Run ./agent unsandboxed setup with host access.\n' >&2
+    exit 1
+  fi
+  shift 2
   exec bun run "./CLIs/CLIs-src/dev-cli/commands/_setup.ts" --agent "$@"
 fi
 . "$repository/.config/ensure-cli-generated.sh"

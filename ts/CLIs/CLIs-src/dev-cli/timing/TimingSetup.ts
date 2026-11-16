@@ -2,18 +2,18 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type TimingSetupRole = 'controller' | 'runner'
 
 /** TimingSetup selects a CLI-only network role and optional setup preview. */
 export type TimingSetup = { role: TimingSetupRole; dryRun?: boolean; noBrowser?: boolean }
 
-/** TimingSetupIO supplies the native installation boundary without mutating machines in tests. */
-export type TimingSetupIO = {
+// TimingSetupIO holds native system operations for one setup invocation.
+type TimingSetupIO = {
   platform: string
   interactive: boolean
-  capture: typeof Processes.capture
+  capture: typeof Exec.captureStdout
   resolveExecutable: () => Promise<string>
   execute: typeof CLIKit.runNonInteractiveCommand
   executeInteractive: typeof CLIKit.runInteractiveCommand
@@ -24,7 +24,8 @@ export type TimingSetupIO = {
 }
 
 /** setupTiming installs the pinned NetBird service, retains its Nix package and starts ordinary browser login. */
-export async function setupTiming(options: TimingSetup, io = createSetupIO()): Promise<void> {
+export async function setupTiming(options: TimingSetup): Promise<void> {
+  const io = createSetupIO()
   if (io.platform !== 'Darwin') {
     Errors.ThrowUserInput('Timing network setup currently supports macOS.')
   }
@@ -49,17 +50,13 @@ export async function setupTiming(options: TimingSetup, io = createSetupIO()): P
   }
   await retainPackage(io, packageDirectory)
   const executeService = (action: string) =>
-    io.executeInteractive('sudo env', {
-      variadicArgs: [`PATH=${Path.dirname(executable)}`, 'netbird', 'service', action],
-    })
+    io.executeInteractive('sudo', ['env', `PATH=${Path.dirname(executable)}`, 'netbird', 'service', action])
   if (!installed) {
     await executeService('install')
   }
   await executeService('start')
-  await io.executeInteractive('netbird up', {
-    variadicArgs: ['--hostname', hostname, ...options.noBrowser ? ['--no-browser'] : []],
-  })
-  await io.execute('netbird status')
+  await io.executeInteractive('netbird', ['up', '--hostname', hostname, ...options.noBrowser ? ['--no-browser'] : []])
+  await io.execute('netbird', ['status'])
   printRoleInstructions(options.role, io.print)
 }
 
@@ -69,8 +66,8 @@ function createSetupIO(): TimingSetupIO {
   return {
     platform: Platform.systemInfo().os,
     interactive: Terminal.isInteractive(),
-    capture: Processes.capture,
-    resolveExecutable: async () => await FS.realpath(await Processes.capture('which netbird')),
+    capture: Exec.captureStdout,
+    resolveExecutable: async () => await FS.realpath(await Exec.captureStdout('which', 'netbird')),
     execute: CLIKit.runNonInteractiveCommand,
     executeInteractive: CLIKit.runInteractiveCommand,
     exists: FS.exists,
@@ -83,9 +80,7 @@ function createSetupIO(): TimingSetupIO {
 }
 
 async function requireMatchingService(io: TimingSetupIO, executable: string): Promise<void> {
-  const installed = await io.capture('plutil -extract ProgramArguments.0 raw -o -', {
-    variadicArgs: [NetBirdService],
-  })
+  const installed = await io.capture('plutil', ['-extract', 'ProgramArguments.0', 'raw', '-o', '-', NetBirdService])
   if (installed !== executable) {
     Errors.ThrowHostEnvironment(
       'The existing NetBird service uses a different executable. Keep its current owner; do not install a second service.',
@@ -95,9 +90,7 @@ async function requireMatchingService(io: TimingSetupIO, executable: string): Pr
 
 async function retainPackage(io: TimingSetupIO, packageDirectory: string): Promise<void> {
   await io.mkdir(Path.dirname(io.packageRoot))
-  await io.execute('nix-store', {
-    variadicArgs: ['--realise', packageDirectory, '--add-root', io.packageRoot, '--indirect'],
-  })
+  await io.execute('nix-store', ['--realise', packageDirectory, '--add-root', io.packageRoot, '--indirect'])
 }
 
 function printRoleInstructions(role: TimingSetup['role'], print: TimingSetupIO['print']): void {

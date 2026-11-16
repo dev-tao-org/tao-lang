@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs, Sort, Time, Try } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { createAgeCipher } from '../../cli-kit/secret-age'
 import * as SecretStoreModule2 from '../../cli-kit/secret-store'
 import { registerCommand } from './_command-runner'
@@ -220,9 +220,7 @@ async function setupSecrets(): Promise<void> {
   await FS.mkdir(Path.dirname(identityPath))
   const existed = FS.existsSync(identityPath)
   if (!existed) {
-    await runIdentityTool('age-plugin-se keygen --access-control any-biometry-or-passcode --output', {
-      variadicArgs: [identityPath],
-    })
+    await runIdentityTool(['keygen', '--access-control', 'any-biometry-or-passcode', '--output', identityPath])
   }
   await FS.chmod(identityPath, 0o600)
   const recipient = await recipientOfIdentity()
@@ -308,15 +306,15 @@ async function recipientOfIdentity(): Promise<string> {
   if (recorded !== undefined) {
     return recorded
   }
-  const recipient = await runIdentityTool('age-plugin-se recipients --input', { variadicArgs: [identityPath] })
+  const recipient = await runIdentityTool(['recipients', '--input', identityPath])
   if (recipient.trim() === '') {
     Errors.ThrowHostEnvironment('age-plugin-se did not return the identity recipient.')
   }
   return recipient.trim()
 }
 
-async function runIdentityTool(command: string, options: { variadicArgs?: readonly string[] } = {}): Promise<string> {
-  const result = await Processes.runIgnoreStatus(command, { variadicArgs: options.variadicArgs })
+async function runIdentityTool(args: readonly string[]): Promise<string> {
+  const result = await Exec.capture('age-plugin-se', args, { check: false })
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowHostEnvironment(`age-plugin-se failed during identity setup (exit ${result.status}).`)
   }

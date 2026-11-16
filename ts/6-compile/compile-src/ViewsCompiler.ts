@@ -50,12 +50,12 @@ function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationC
 
 function compileTaoView(
   node: AST.ViewDeclaration,
-  block: AST.ViewDeclarationBlock,
+  block: AST.Block,
   context: ViewCompilationContext,
 ): DeclarationCompilation {
-  const definitions = block.statements.filter(AST.IsLetDeclaration)
-  const children = block.statements.filter(AST.IsViewDeclaration)
-  const render = block.statements.find(isRenderStatement)
+  const definitions = AST.GetLetDeclarations(block.statements)
+  const children = AST.GetNestedViewDeclarations(block.statements)
+  const render = AST.FindViewRenderStatement(block)
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
   }
@@ -99,10 +99,6 @@ function createNestedOwnerContext(
   shadowedNames: ReadonlySet<string>,
 ): ViewCompilationContext {
   return { ...context, shadowedNames }
-}
-
-function isRenderStatement(node: AST.ViewDeclarationStatement): node is AST.ViewRenderStatement {
-  return AST.IsViewRenderStatement(node)
 }
 
 function compileNestedViews(
@@ -165,14 +161,17 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
   return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
-type OptionalViewRenderBlock = AST.ViewRenderBlock | undefined
+type OptionalViewRenderBlock = AST.Block | undefined
 function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUtil.ScopeCode): string {
   if (!block) {
     return '[]'
   }
-  const blockScope = shadowReferences(scope, block.statements.filter(AST.IsLetDeclaration))
-  if (block.statements.every(isViewRenderExpression)) {
-    return CodegenUtil.listMap(block.statements, child => compileViewRenderExpression(child, scope))
+  const blockScope = shadowReferences(scope, AST.GetLetDeclarations(block.statements))
+  if (AST.HasOnlyViewRenderExpressions(block)) {
+    return CodegenUtil.listMap(
+      AST.GetViewRenderExpressions(block.statements),
+      child => compileViewRenderExpression(child, scope),
+    )
   }
   const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join(
     NewlineCharacter,
@@ -182,15 +181,14 @@ function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUt
 
 type OptionalForeignComponent = string | undefined
 
-function isViewRenderExpression(node: AST.ViewRenderBlockStatement): node is AST.ViewRenderExpression {
-  return node.kind === 'ViewRenderExpression'
-}
-
-function compileBlockStatement(node: AST.ViewRenderBlockStatement, scope: CodegenUtil.ScopeCode): string {
-  return Switch.kind(node, {
-    LetDeclaration: declaration => ValuesCompiler.compileLetDeclaration(declaration, scope),
-    ViewRenderExpression: expression => `_Children.push(${compileViewRenderExpression(expression, scope)});`,
-  })
+function compileBlockStatement(node: AST.Statement, scope: CodegenUtil.ScopeCode): string {
+  if (AST.IsLetDeclaration(node)) {
+    return ValuesCompiler.compileLetDeclaration(node, scope)
+  }
+  if (AST.IsViewRenderExpression(node)) {
+    return `_Children.push(${compileViewRenderExpression(node, scope)});`
+  }
+  return Errors.ThrowShouldNeverHappen(`Unexpected ${node.kind} in a validated render block.`)
 }
 
 function createComponentNames(

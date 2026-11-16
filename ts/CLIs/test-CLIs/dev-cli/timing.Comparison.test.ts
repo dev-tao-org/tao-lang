@@ -1,13 +1,15 @@
 import { Json } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { presentTimingReport, type TimingReport } from '../../CLIs-src/dev-cli/timing/TimingReport'
+import { describeTimingComparison } from '../../CLIs-src/dev-cli/timing/TimingComparison'
+import { type TimingReport } from '../../CLIs-src/dev-cli/timing/TimingReportContract'
+import { readTimingHistory } from '../../CLIs-src/dev-cli/timing/TimingReportHistory'
 
 const PossibleSlowdownRegx =
   /\n\nTiming deviation: POSSIBLE SLOWDOWN — 1 scenario meets both 5% and 2 ms; unconfirmed\.$/
 const NoMaterialMedianChangeRegx =
   /Timing deviation: NO MATERIAL MEDIAN CHANGE — no scenario meets both 5% and 2 ms; smaller changes remain possible\.$/
-const MissingTimingBaselineRegx = /\n\nTiming deviation: NOT ASSESSED — no previous comparable report on this runner\.$/
+const MissingTimingBaselineRegx = /^Timing deviation: NOT ASSESSED — no previous comparable report on this runner\.$/
 const InsufficientSessionsRegx =
   /Timing deviation: NOT ASSESSED — at least 5 independent sessions per job are required\.$/
 const MixedChangesRegx = /Timing deviation: MIXED CHANGES — 2 scenarios meet both 5% and 2 ms; unconfirmed\.$/
@@ -31,18 +33,17 @@ Tests.test('timing reports select the previous comparable measurement and never 
     .replace('"system":{}', '"system":{"overflow":1e400}')
   await FS.writeFile(Path.join(directory, 'overflow.json'), overflow)
   const current = createReport('current', '11', 25)
-  const printed: string[] = []
-  const print = (message: string) => printed.push(message)
-  await presentTimingReport(current, print, directory)
-  await presentTimingReport(current, print, directory)
-  Tests.expect(printed[0]).toBe(printed[1])
-  Tests.expect(printed[0]).toContain('Baseline: baseline · 2026-11-01T10:00:00.000Z')
-  Tests.expect(printed[0]).toContain('warm/text: +5.00 ms (+25.0%); session ranges overlap')
-  Tests.expect(printed[0]).toContain('Skipped 2 saved report(s) lacking valid provenance or measurements.')
-  Tests.expect(printed[0]).toContain(
+  const printed = await describeFromHistory(current, directory)
+  await saveReport(directory, current)
+  Tests.expect(await describeFromHistory(current, directory)).toBe(printed)
+  Tests.expect(printed).toContain('Baseline: baseline · 2026-11-01T10:00:00.000Z')
+  Tests.expect(printed).toContain('  Change    This run    Baseline  Metric')
+  Tests.expect(printed).toContain('  +25.0%    25.00 ms    20.00 ms  warm/text · session ranges overlap')
+  Tests.expect(printed).toContain('Skipped 2 saved report(s) lacking valid provenance or measurements.')
+  Tests.expect(printed).toContain(
     'Machine drift control: measured source tree is unchanged; any detected shift requires confirmation.',
   )
-  Tests.expect(printed[0]).toMatch(PossibleSlowdownRegx)
+  Tests.expect(printed).toMatch(PossibleSlowdownRegx)
 })
 
 Tests.test('timing reports screen both materiality floors and separate source changes from machine drift', async () => {
@@ -52,26 +53,26 @@ Tests.test('timing reports screen both materiality floors and separate source ch
   await saveReport(directory, baseline)
   const current = createReport('current', '11', 42)
   current.tree = 'c'.repeat(40)
-  const printed: string[] = []
-  await presentTimingReport(current, message => printed.push(message), directory)
-  Tests.expect(printed[0]).toContain('Machine drift cannot be isolated: measured source tree changed.')
-  Tests.expect(printed[0]).toContain('POSSIBLE SLOWDOWN')
-  await presentTimingReport(createReport('small', '12', 43.5), message => printed.push(message), directory)
-  Tests.expect(printed[1]).toMatch(NoMaterialMedianChangeRegx)
-  await presentTimingReport(createReport('relative', '13', 45.5), message => printed.push(message), directory)
-  Tests.expect(printed[2]).toContain('NO MATERIAL MEDIAN CHANGE')
+  const printed = await describeFromHistory(current, directory)
+  Tests.expect(printed).toContain('Machine drift cannot be isolated: measured source tree changed.')
+  Tests.expect(printed).toContain('POSSIBLE SLOWDOWN')
+  await saveReport(directory, current)
+  const small = createReport('small', '12', 43.5)
+  Tests.expect(await describeFromHistory(small, directory)).toMatch(NoMaterialMedianChangeRegx)
+  await saveReport(directory, small)
+  const relative = createReport('relative', '13', 45.5)
+  Tests.expect(await describeFromHistory(relative, directory)).toContain('NO MATERIAL MEDIAN CHANGE')
 })
 
 Tests.test('timing reports disclose missing baselines and insufficient independent sessions', async () => {
   const directory = createReportsDirectory()
-  const printed: string[] = []
+  await FS.mkdir(directory)
   const first = createReport('first', '10', 25)
-  await presentTimingReport(first, message => printed.push(message), directory)
-  Tests.expect(printed[0]).toMatch(MissingTimingBaselineRegx)
+  Tests.expect(await describeFromHistory(first, directory)).toMatch(MissingTimingBaselineRegx)
+  await saveReport(directory, first)
   const current = createReport('short', '11', 60)
   useSingleSession(current)
-  await presentTimingReport(current, message => printed.push(message), directory)
-  Tests.expect(printed[1]).toMatch(InsufficientSessionsRegx)
+  Tests.expect(await describeFromHistory(current, directory)).toMatch(InsufficientSessionsRegx)
 })
 
 Tests.test('timing deviation requires both floors and reports improvements as well as mixed changes', async () => {
@@ -82,18 +83,20 @@ Tests.test('timing deviation requires both floors and reports improvements as we
   await saveReport(directory, baseline)
   const small = createReport('small', '11', 21.5)
   small.groups.push({ ...createReport('other', '11', 103).groups[0], name: 'warm/row' })
-  const printed: string[] = []
-  await presentTimingReport(small, message => printed.push(message), directory)
-  Tests.expect(printed[0]).toContain('NO MATERIAL MEDIAN CHANGE')
+  Tests.expect(await describeFromHistory(small, directory)).toContain('NO MATERIAL MEDIAN CHANGE')
+  await saveReport(directory, small)
   const mixed = createReport('mixed', '12', 10)
   mixed.groups.push({ ...createReport('other', '12', 120).groups[0], name: 'warm/row' })
-  await presentTimingReport(mixed, message => printed.push(message), directory)
-  Tests.expect(printed[1]).toMatch(MixedChangesRegx)
+  Tests.expect(await describeFromHistory(mixed, directory)).toMatch(MixedChangesRegx)
+  await saveReport(directory, mixed)
   const faster = createReport('faster', '13', 5)
   faster.groups.push({ ...createReport('other', '13', 100).groups[0], name: 'warm/row' })
-  await presentTimingReport(faster, message => printed.push(message), directory)
-  Tests.expect(printed[2]).toMatch(PossibleSpeedupRegx)
+  Tests.expect(await describeFromHistory(faster, directory)).toMatch(PossibleSpeedupRegx)
 })
+
+async function describeFromHistory(report: TimingReport, directory: string): Promise<string> {
+  return describeTimingComparison(report, await readTimingHistory(report, directory))
+}
 
 function createReportsDirectory(): string {
   const directory = Artifacts.resolvePath('tmp/timing-comparison', Platform.randomUUID())

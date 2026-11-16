@@ -327,9 +327,7 @@ function fingerprintFor(
     defaults: Platform.hashText(defaultsContents),
     files: files.sort((left, right) => `${left.root}/${left.path}`.localeCompare(`${right.root}/${right.path}`)),
     contracts: contracts.sort((left, right) =>
-      `${left.root}/${left.path}/${left.name}`.localeCompare(
-        `${right.root}/${right.path}/${right.name}`,
-      )
+      `${left.root}/${left.path}/${left.name}`.localeCompare(`${right.root}/${right.path}/${right.name}`)
     ),
   }, { prettyPrint: false }))
 }

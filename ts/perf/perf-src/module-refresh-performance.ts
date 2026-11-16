@@ -2,7 +2,7 @@ import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors, Regxs, Time, Try } from '@shared'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as ModuleRefreshFixtureModule2 from './module-refresh-fixture'
 
 /** moduleRefreshPerformance compares generated component module groupings through real Metro refreshes. */
@@ -63,7 +63,7 @@ const reportDefinitions = {
 }
 async function measureLayouts(owned: Resources) {
   if (Platform.systemInfo().os === 'Darwin') {
-    await Processes.requireHostProcessAccess('Run ./agent unsandboxed performance modules; Chrome was not launched.')
+    await Exec.requireHostProcessAccess('Run ./agent unsandboxed performance modules; Chrome was not launched.')
   }
   await prepareLayouts(owned)
   const samples = await runAlternatingSamples(owned.layouts)
@@ -215,8 +215,7 @@ function summarize(samples: RefreshSample[]) {
       samples: durations.length,
       medianMs: percentile(durations, 0.5),
       p95Ms: percentile(durations, 0.95),
-      unrelatedSecondaryRenderDeltas: samples
-        .filter(sample => sample.layout === layout)
+      unrelatedSecondaryRenderDeltas: samples.filter(sample => sample.layout === layout)
         .map(sample => sample.secondaryRenderDelta),
     }
   })
@@ -236,8 +235,8 @@ async function writeReport(owned: Resources, samples: RefreshSample[]): Promise<
   const report: ModuleRefreshPerformanceReport = {
     version: 2,
     sessionId: owned.sessionId,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
     browser: await owned.browser!.version(),
     pageErrors: owned.pageErrors,

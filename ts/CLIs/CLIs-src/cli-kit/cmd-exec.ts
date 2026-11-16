@@ -1,27 +1,31 @@
-import { Errors, Regxs, Time, Try } from '@shared'
-import { Process, Processes, Streams, Terminal } from '@shared/os'
+import { Errors, Time, Try } from '@shared'
+import { Process, Streams, Terminal } from '@shared/os'
+import Exec from '@shared/os/exec'
+import type { ChildProcess, ChildProcessInput, SpawnOptions } from '@shared/os/exec'
+import type { Command, CommandArgs, CommandOptions } from '@shared/os/exec'
 import * as CommandInteraction from './CommandInteraction'
 import { type ConfiguredCommandOutput, configuredCommandOutput, IO } from './io'
 import { createProcessOutput } from './output/ProcessOutput'
 
 /** runNonInteractiveCommand runs a supervised command with explicit file input or immediate EOF.
- *  Prefer strings without shell quoting or expansion; use an argv array to preserve spaces inside arguments.
- *  variadicArgs appends arguments unchanged after the command's own arguments.
+ *  Pass the executable separately from its arguments. Use an array to preserve spaces inside arguments.
  *  Output follows IO.config; tool-specific batch flags still own prompts outside stdin. */
 export async function runNonInteractiveCommand(
-  command: CommandInteraction.Command,
+  command: Command,
+  args: CommandArgs = [],
   options: CommandInteraction.CommandRunOptions = {},
 ): Promise<void> {
-  await runners.runNonInteractiveCommand(command, options)
+  await runners.runNonInteractiveCommand(command, args, options)
 }
 
 /** runInteractiveCommand lends the terminal to a supervised child and restores the dashboard afterward.
  *  Child input and output bypass capture so passwords remain outside command logs. */
 export async function runInteractiveCommand(
-  command: CommandInteraction.Command,
+  command: Command,
+  args: CommandArgs = [],
   options: CommandInteraction.InteractiveCommandOptions = {},
 ): Promise<void> {
-  await runners.runInteractiveCommand(command, options)
+  await runners.runInteractiveCommand(command, args, options)
 }
 
 type CommandStepResult = void | Promise<void>
@@ -39,15 +43,16 @@ const runners = CommandInteraction.createCommandRunners({
 })
 
 async function executeCommand(
-  command: CommandInteraction.Command,
+  command: Command,
+  args: CommandArgs,
   options: CommandInteraction.CommandRunOptions,
   mode: CommandInteraction.CommandInteractionMode,
 ): Promise<void> {
-  const args = commandArguments(command, options)
-  if (!args[0]) {
+  if (!command.trim()) {
     Errors.ThrowUserInput('A command is required.')
   }
-  const label = args.join(' ')
+  const argv = Exec.resolveCommandArgs(args)
+  const label = [command, ...argv].join(' ')
   if (options.signal?.aborted) {
     Errors.ThrowHostEnvironment('Command cancelled before starting.')
   }
@@ -57,8 +62,8 @@ async function executeCommand(
   const started = Time.nowMs()
   await Try(async () => {
     await (shouldCaptureChildOutput(mode, options, output)
-      ? runLoggedCommand(command, options, output)
-      : runInheritedCommand(command, options, mode))
+      ? runLoggedCommand(command, argv, options, output)
+      : runInheritedCommand(command, argv, options, mode))
     if (options.signal?.aborted) {
       Errors.ThrowHostEnvironment('Command interrupted.')
     }
@@ -72,18 +77,20 @@ async function executeCommand(
 
 /** runForegroundCommand gives an interactive child its real terminal and drains cooperative shutdown on Ctrl+C. */
 export async function runForegroundCommand(
-  command: CommandInteraction.Command,
-  options: ForegroundOptions = {},
+  command: Command,
+  args: CommandArgs = [],
+  options: CommandOptions = {},
 ): Promise<void> {
   await IO.prompt(async () => {
+    const argv = Exec.resolveCommandArgs(args)
     const spawnOptions = createForegroundOptions(options)
-    const child = Processes.spawnInherited(command, spawnOptions)
+    const child = Exec.spawn(command, argv, spawnOptions)
     let stopping: ChildShutdown
-    const stop = Process.onTermination(() => stopping ??= Processes.stopProcess(child, 10_000))
+    const stop = Process.onTermination(() => stopping ??= Exec.stopProcess(child, 10_000))
     await Try(async () => {
       const status = await child.exited
       if (!stopping) {
-        requireCommandSuccess(command, options, status, child.signalCode)
+        requireCommandSuccess(command, argv, options, status, child.signalCode)
       }
     }, {
       async finally() {
@@ -94,27 +101,18 @@ export async function runForegroundCommand(
   })
 }
 
-type ForegroundOption = 'variadicArgs' | 'cwd' | 'addEnv'
-type ForegroundOptions = Pick<CommandInteraction.CommandRunOptions, ForegroundOption>
-
-function createForegroundOptions(options: ForegroundOptions) {
-  return { ...options, stdin: 'inherit' as const }
+function createForegroundOptions(options: CommandOptions) {
+  const { cwd, addEnv } = options
+  return { cwd, addEnv, stdin: 'inherit', stdout: 'inherit', stderr: 'inherit' } as const
 }
 
 type OutputText = string | Uint8Array
 
 type OutputPipe = (text: OutputText) => void
-type EnvironmentValue = string | undefined
+type CapturedStreamMode = 'pipe' | 'ignore'
 type InheritedStreamMode = 'inherit' | 'ignore'
-type CapturedStreamMode = 'ignore' | 'pipe'
 type ChildShutdown = Promise<void> | undefined
 type ProcessSignal = string | null
-type ChildSpawnOptions<In extends Processes.ChildProcessInput> = {
-  variadicArgs?: readonly string[]
-  cwd?: string
-  addEnv?: Record<string, EnvironmentValue>
-  stdin?: In
-}
 function shouldCaptureChildOutput(
   mode: CommandInteraction.CommandInteractionMode,
   options: CommandInteraction.CommandRunOptions,
@@ -127,7 +125,8 @@ function shouldCaptureChildOutput(
 }
 
 async function runLoggedCommand(
-  command: CommandInteraction.Command,
+  command: Command,
+  args: readonly string[],
   options: CommandInteraction.CommandRunOptions,
   output: ConfiguredCommandOutput,
 ): Promise<void> {
@@ -139,14 +138,13 @@ async function runLoggedCommand(
     OUTPUT_LOG_FILE: undefined,
     CLI_OUTPUT_EVENTS: options.structuredOutput ? '1' : undefined,
   }
-  const spawnOptions: ChildSpawnOptions<Processes.ChildProcessInput> = {
-    variadicArgs: options.variadicArgs,
+  const spawnOptions: SpawnOptions<ChildProcessInput, CapturedStreamMode> = {
     cwd: options.cwd,
     addEnv: environment,
     stdin: options.stdin ?? 'ignore',
+    stdout: options.stdout === 'ignore' ? 'ignore' : 'pipe',
   }
-  const stdout = options.stdout === 'ignore' ? 'ignore' : 'pipe'
-  const child = spawnLoggedCommand(command, spawnOptions, stdout)
+  const child = Exec.spawn(command, args, spawnOptions)
   const shutdown = manageShutdown(child, options.signal)
   await Try(async () => {
     const [status] = await Promise.all([
@@ -154,32 +152,21 @@ async function runLoggedCommand(
       forwardOutput(child.stderr, commandStderr(options, output), output.receive),
       child.stdout ? forwardOutput(child.stdout, output.stdoutPipe, output.receive) : undefined,
     ])
-    requireCommandSuccess(command, options, status, child.signalCode)
+    requireCommandSuccess(command, args, options, status, child.signalCode)
     shutdown.assertCompleted()
   }, {
     async catch(error) {
-      await Processes.stopProcess(child, 10_000)
+      await Exec.stopProcess(child, 10_000)
       Errors.Throw(error)
     },
     finally: () => shutdown.dispose(),
   })
 }
 
-function spawnLoggedCommand<In extends Processes.ChildProcessInput>(
-  command: CommandInteraction.Command,
-  options: ChildSpawnOptions<In>,
-  stdout: CapturedStreamMode,
-) {
-  if (stdout === 'ignore') {
-    return Processes.spawnStderrPiped(command, options)
-  }
-  return Processes.spawnPiped(command, options)
-}
-
-function manageShutdown(child: Processes.ChildProcess, signal?: AbortSignal) {
+function manageShutdown(child: ChildProcess, signal?: AbortSignal) {
   let stopping: ChildShutdown
   const stop = () => {
-    stopping ??= Processes.stopProcess(child, 10_000)
+    stopping ??= Exec.stopProcess(child, 10_000)
   }
   const unsubscribe = Process.onTermination(stop)
   signal?.addEventListener('abort', stop, { once: true })
@@ -208,57 +195,39 @@ function commandStderr(
 }
 
 async function runInheritedCommand(
-  command: CommandInteraction.Command,
+  command: Command,
+  args: readonly string[],
   options: CommandInteraction.CommandRunOptions,
   mode: CommandInteraction.CommandInteractionMode,
 ): Promise<void> {
   const output = configuredCommandOutput(options.output)
   const environment = { ...output.addEnv, ...options.addEnv }
-  const spawnOptions: ChildSpawnOptions<Processes.ChildProcessInput> = {
-    variadicArgs: options.variadicArgs,
+  const spawnOptions: SpawnOptions<ChildProcessInput, InheritedStreamMode, InheritedStreamMode> = {
     cwd: options.cwd,
     stdin: mode === 'interactive' ? 'inherit' : options.stdin ?? 'ignore',
     addEnv: environment,
+    stdout: options.stdout === 'ignore' ? 'ignore' : 'inherit',
+    stderr: options.stderr ?? 'inherit',
   }
-  const stdout = options.stdout === 'ignore' ? 'ignore' : 'inherit'
-  const stderr = options.stderr ?? 'inherit'
-  const child = spawnInheritedCommand(command, spawnOptions, stdout, stderr)
+  const child = Exec.spawn(command, args, spawnOptions)
   const shutdown = manageShutdown(child, options.signal)
   await Try(async () => {
-    requireCommandSuccess(command, options, await child.exited, child.signalCode)
+    requireCommandSuccess(command, args, options, await child.exited, child.signalCode)
     shutdown.assertCompleted()
   }, { finally: () => shutdown.dispose() })
 }
 
-function spawnInheritedCommand<In extends Processes.ChildProcessInput>(
-  command: CommandInteraction.Command,
-  options: ChildSpawnOptions<In>,
-  stdout: InheritedStreamMode,
-  stderr: InheritedStreamMode,
-) {
-  if (stdout === 'inherit') {
-    if (stderr === 'inherit') {
-      return Processes.spawnInherited(command, options)
-    }
-    return Processes.spawnStdoutInherited(command, options)
-  }
-  if (stderr === 'inherit') {
-    return Processes.spawnStderrInherited(command, options)
-  }
-  return Processes.spawnSilent(command, options)
-}
-
 function requireCommandSuccess(
-  command: CommandInteraction.Command,
-  options: CommandInteraction.CommandRunOptions,
+  command: Command,
+  args: readonly string[],
+  options: CommandOptions,
   status: number,
   signal: ProcessSignal,
 ): void {
   if (status !== 0) {
-    const args = commandArguments(command, options)
     Errors.ThrowCommandExecution({
-      command: args[0],
-      args: args.slice(1),
+      command,
+      args,
       cwd: options.cwd,
       status,
       signal,
@@ -266,16 +235,6 @@ function requireCommandSuccess(
       stderr: '',
     })
   }
-}
-
-function commandArguments(
-  command: CommandInteraction.Command,
-  options: CommandInteraction.CommandRunOptions,
-): string[] {
-  return [
-    ...typeof command === 'string' ? command.trim().split(Regxs.SpacesRegx) : command,
-    ...options.variadicArgs ?? [],
-  ]
 }
 
 async function forwardOutput(

@@ -27,6 +27,37 @@ export function sleep(duration: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, duration))
 }
 
+/** WaitOptions bounds synchronous readiness checks in milliseconds. */
+export type WaitOptions = {
+  timeout: number
+  interval?: number
+}
+
+type WaitSuccess<Value> = { value: Value }
+const WaitSuccess = <Value>(value: Value): WaitSuccess<Value> => ({ value })
+type WaitProbe<Value> = (success: typeof WaitSuccess) => WaitSuccess<Value> | undefined
+const DefaultWaitInterval = 25
+
+/** waitFor checks immediately, then periodically until explicit success or timeout.
+ *  The probe returns success(value) to finish, or undefined to retry. Timeout returns undefined;
+ *  probe errors propagate. Supply a finite nonnegative timeout and a positive interval (default 25 ms). */
+export async function waitFor<Value>(probe: WaitProbe<Value>, options: WaitOptions): Promise<Value | undefined> {
+  const started = nowMs()
+  const interval = options.interval ?? DefaultWaitInterval
+  do {
+    const result = probe(WaitSuccess)
+    if (result !== undefined) {
+      return result.value
+    }
+    const remaining = options.timeout - (nowMs() - started)
+    if (remaining <= 0) {
+      return undefined
+    }
+    await sleep(Math.min(interval, remaining))
+  } while (nowMs() - started < options.timeout)
+  return undefined
+}
+
 /** schedule runs an action after a delay and returns a cancellation function. */
 export function schedule(durationMs: number, action: () => void): () => void {
   const timer = setTimeout(action, durationMs)

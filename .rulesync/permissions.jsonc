@@ -15,7 +15,7 @@
       // `./agent unsandboxed X` operation. The editable dispatcher checks deeper argv.
       "./agent *": "allow",
       // One owner prevents concurrent or redundant Bun installs from colliding in node_modules.
-      // The generated harness rules reject this directly and point agents to `./agent setup`.
+      // The generated harness rules reject this directly and point agents to `./agent unsandboxed setup`.
       "bun install *": "deny",
       // Through the Developer's admin login a direct merge can bypass the required Verify check;
       // `open-pr --auto-merge` opts in; `merge-pr` merges only after Verify. The output-discipline
@@ -103,9 +103,7 @@
   "agentHostCommands": [
     "notify-developer",
     "stop",
-    // `setup` reinstalls on the host what a sandboxed install cannot write: a package shipping a
-    // file every agent sandbox protects, such as `.gitmodules`. The SessionStart hook already runs
-    // the same entry outside the sandbox; this reaches it mid-session.
+    // Agent setup runs on the host because pinned packages can contain protected files.
     "setup",
     // Retained reference defaults include Studio's host launch proof.
     "verify", "test", "check",

@@ -25,9 +25,10 @@ import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 import * as Facades from './source-facades'
 import { isExcludedSource, sourceSizeDiagnostics } from './source-size'
+import { reportTestOnlyUsage } from './TestOnlyUsageReport'
 
 /** checkSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
-export async function checkSourceConformance(root: string): Promise<void> {
+export async function checkSourceConformance(root: string, reportUsage = false): Promise<void> {
   const started = Time.nowMs()
   const issues: string[] = []
   const sources = await conformanceSources(root)
@@ -50,7 +51,7 @@ export async function checkSourceConformance(root: string): Promise<void> {
     if (!isExcludedSource(filename, file.text)) {
       for (const change of getSingleLineCallChanges(file)) {
         const line = file.getLineAndCharacterOfPosition(change.span.start).line + 1
-        issues.push(`${relative}:${line}: fit simple calls and if headers on one line`)
+        issues.push(`${relative}:${line}: put fitting calls, single-parameter lists and if headers on one line`)
       }
     }
     for (const change of typeOrder.get(file) ?? []) {
@@ -67,6 +68,9 @@ export async function checkSourceConformance(root: string): Promise<void> {
   IO.print('Checked source conformance: ' + issues.length + ' issue(s) in ' + Math.round(Time.nowMs() - started) + 'ms')
   if (issues.length > 0) {
     Errors.ThrowUserInput(issues.join(NewlineCharacter))
+  }
+  if (reportUsage) {
+    await reportTestOnlyUsage(root, program, sources)
   }
 }
 

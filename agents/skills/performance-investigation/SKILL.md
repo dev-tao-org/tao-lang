@@ -3,7 +3,7 @@ name: performance-investigation
 description: >-
   Investigate performance changes across branch checkpoints, locate significant speedups or
   slowdowns, and test their causes. Use for performance bifurcation, commit scans, baseline/main
-  comparisons, or timing on a separate computer through existing SSH access.
+  comparisons, timing over existing SSH access, or running and reporting a preview speed test.
 ---
 
 # Performance investigation
@@ -53,7 +53,7 @@ description: >-
   startup and warm refresh; do not equate React-applied receipts with physical paint.
 - Start with five balanced rounds across the selected checkpoints, one independent runner session
   per checkpoint per round. Alternate/reverse checkpoint order between rounds to expose drift.
-  Use the default 24 edits, excluding the first four from warm analysis, unless the task needs another
+  Use the default 24 edits, excluding the first complete cycle from warm analysis, unless the task needs another
   recorded workload. Compare scenario medians within sessions, then independent session distributions.
 - The summary helper reports values and conditions, not statistical significance. Compare startup,
   first edit and warm scenarios separately. Verify conditions across jobs as well as within each job;
@@ -80,8 +80,20 @@ description: >-
   in the baseline-to-final comparison. Stop with an inconclusive explanation only when concrete
   evidence limits progress: incompatible history/workload, unavailable host, persistent uncontrolled
   noise, or a required Developer decision. State what was established and the exact remaining gap.
-- Report absolute and percentage changes, independent session counts, variability, checkpoint
-  identities, implicated phase/code and intervention outcome. Retain raw reports, fixture,
-  snapshot manifests, run order, host/toolchain conditions and failed/interrupted jobs under task
+- Retain raw reports, fixture, snapshot manifests, run order, host/toolchain conditions and
+  failed/interrupted jobs under task
   `.artifacts/notes/`. Follow pipeline-performance and git-workflow for durable evidence at handoff;
   investigation does not authorize committing, merging or changing human review acceptance.
+
+## Report each speed run
+
+- Put the verdict and a compact table in the reply after every requested speed run. Say what
+  improved, slowed down or remained inconclusive. Name the measured revisions, workloads,
+  independent session counts and measurement endpoint.
+- Put **Change**, **This run** and **Baseline** first in comparison tables, in that order. Use
+  signed percentages alone in Change. Include startup, first edit, typical and slow warm edits,
+  session variation, warm edits over budget and observed frame restarts when measured. Use counts
+  with denominators for reliability rows and show unavailable evidence explicitly.
+- Explain noteworthy changes in milliseconds and give the pair agreement or repeat evidence that
+  determines the verdict. Include implicated phases and experiment outcomes when established.
+  Link the full report for per-edit and phase details.

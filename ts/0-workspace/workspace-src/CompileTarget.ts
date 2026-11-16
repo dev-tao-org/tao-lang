@@ -27,9 +27,10 @@ export async function resolveCompileTarget(directory: string, argument?: string)
   if (!document) {
     Errors.ThrowUserInput(`Invalid Tao source: ${entry}.`)
   }
-  const declarations = AST.GetDeclarations(document).filter(node =>
-    node.kind === 'AppDeclaration' || node.kind === 'TypeScriptLibraryDeclaration'
-  )
+  const declarations = [
+    ...AST.GetAppDeclarations(document),
+    ...AST.GetTypeScriptLibraryDeclarations(document),
+  ]
   const matches = declarations.filter(node => selected === undefined || node.name.value === selected)
   if (matches.length !== 1) {
     Errors.ThrowUserInput(`Select one Tao app or ts-library in ${entry}; found ${matches.length} matching targets.`)

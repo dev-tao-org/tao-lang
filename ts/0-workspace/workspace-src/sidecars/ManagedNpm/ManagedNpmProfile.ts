@@ -40,9 +40,7 @@ export async function prepareManagedModules(
 }
 
 /** readManagedModules validates declarations and durable cache references without auditing packages again. */
-export async function readManagedModules(
-  input: Types.ManagedModulesInput,
-): Promise<Types.PreparedManagedModules> {
+export async function readManagedModules(input: Types.ManagedModulesInput): Promise<Types.PreparedManagedModules> {
   const normalized = Identity.normalizeManagedRequirements(input)
   Graph.collectAllRequirements(normalized, input.runtimePins)
   const graphFingerprint = Identity.calculateManagedGraphFingerprint(input, normalized)

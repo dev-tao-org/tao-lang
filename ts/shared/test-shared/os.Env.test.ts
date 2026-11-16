@@ -1,7 +1,7 @@
-import { Errors, Time } from '@shared'
+import { Errors } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, Path } from '@shared/os'
-import * as Processes from '../shared-src/os/Processes'
+import Exec from '@shared/os/exec'
 
 type EnvironmentValue = string | undefined
 type MutableEnvironment = Record<string, EnvironmentValue>
@@ -24,21 +24,28 @@ Tests.test('environment values are copies and clones stay independent', () => {
 Tests.test('environment scopes isolate concurrent work, nesting, failures and child defaults', async () => {
   const key = 'TAO_ENV_SCOPE_PROBE'
   const original = Env.get(key)
+  const bothEntered = Promise.withResolvers<void>()
+  let enteredScopes = 0
   await Promise.all(['left', 'right'].map(value =>
     Tests.withEnv({ [key]: value }, async () => {
-      await Time.sleep(5)
+      enteredScopes++
+      if (enteredScopes === 2) {
+        bothEntered.resolve()
+      }
+      await bothEntered.promise
       Tests.expect(Env.get(key)).toBe(value)
       Tests.expect(Env.KeyValuePairs([key])).toEqual([[key, value]])
-      const child = await Processes.run('bun -e', {
-        variadicArgs: ['process.stdout.write(process.env.TAO_ENV_SCOPE_PROBE)'],
-      })
+      const child = await Exec.capture('bun', ['-e', 'process.stdout.write(process.env.TAO_ENV_SCOPE_PROBE)'])
       Tests.expect(child.stdout).toBe(value)
       Tests.throws(() => Tests.withEnv({ [key]: 'nested' }, () => Errors.ThrowUserInput('scope failure')))
       Tests.expect(Env.get(key)).toBe(value)
-      await Tests.rejects(Tests.withEnv({ [key]: 'rejected' }, async () => {
-        await Time.sleep(1)
+      const rejectScope = Promise.withResolvers<void>()
+      const failedScope = Tests.withEnv({ [key]: 'rejected' }, async () => {
+        await rejectScope.promise
         Errors.ThrowUserInput('async scope failure')
-      }))
+      })
+      rejectScope.resolve()
+      await Tests.rejects(failedScope)
       Tests.expect(Env.get(key)).toBe(value)
     })
   ))

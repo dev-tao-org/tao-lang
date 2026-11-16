@@ -108,9 +108,7 @@ function requireTestOwner(filename: string, module: TestModule, ownership: TestO
   }
   const parent = normalizePath(Path.relative(ownership.root, Path.dirname(filename)))
   const rootOwner = parent === '' && module.owner === ownership.rootOwner
-  const source = rootOwner ? ownership.sourceRoot : normalizePath(
-    Path.join(ownership.sourceRoot, parent, module.owner),
-  )
+  const source = rootOwner ? ownership.sourceRoot : normalizePath(Path.join(ownership.sourceRoot, parent, module.owner))
   if (!ownership.sourceDirectories.has(source)) {
     Errors.ThrowUserInput(`Test modules must name a mirrored source-folder owner: ${filename} -> ${source}`)
   }

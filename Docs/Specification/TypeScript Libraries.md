@@ -7,7 +7,7 @@ use tao@ui Text
 use package ./cards as Cards
 
 ts-library Demo {
-   publish { Greeting, Cards as cards, }
+   publish { Greeting, Cards as Catalog, }
 }
 
 public
@@ -16,13 +16,13 @@ view Greeting(First text, Second text) {
 }
 ```
 
-#### `publish { Greeting, Cards as cards, }`
+#### `publish { Greeting, Cards as Catalog, }`
 
-Publish lists require commas and allow a trailing comma. Select public definitions from the library's own project. Imported dependencies and private helpers remain internal. A selected module declares one `publish { Caption as Greeting, }` list across its source files; the list may live in a separate file. Other public definitions remain unselected. This example exposes the selected view at `cards/Greeting`.
+Publish lists require commas and allow a trailing comma. Select public definitions from the library's own project. Imported dependencies and private helpers remain internal. A selected module declares one `publish { Caption as Greeting, }` list across its source files; the list may live in a separate file. Other public definitions remain unselected. This example exposes the selected view at `Catalog/Greeting`.
 
 #### Typed React components
 
-Published text parameters become named string props. The exact names `children` and `key` are reserved for React and rejected by the compiler; `ref` remains supported as an ordinary React 19 prop. Components accept React children separately.
+Published text parameters become named string props and follow Tao’s uppercase-initial declaration rule. A published `Children` parameter is a string prop. Components accept React children separately.
 
 Keep the consumer's package and dependencies in `src/ts`, with Tao sources in `src/tao`. Configure paths relative to `src/ts/package.json`:
 

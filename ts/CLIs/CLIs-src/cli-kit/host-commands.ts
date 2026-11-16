@@ -1,41 +1,24 @@
 import { Json } from '@shared'
 import { Errors, Regxs, Try } from '@shared'
 import { FS, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
 
 /** runHostCommand resolves an allowlisted operation and executes it without a shell. */
-export async function runHostCommand(
-  argv: readonly string[],
-  execution: HostCommandExecution = liveExecution,
-): Promise<void> {
+export async function runHostCommand(argv: readonly string[]): Promise<void> {
   const cwd = Repo.getWorkspaceRoot()
   const prefixes = await readHostCommandPrefixes()
   const route = resolveHostCommand(argv, prefixes)
-  await execution.requireAccess(
-    'Invoke this operation through ./agent unsandboxed in a host-enabled harness.',
-  )
-  const execute = requiresHostTerminal(argv) ? execution.executeInteractive : execution.executeNonInteractive
-  await execute(route.command, { variadicArgs: route.variadicArgs, cwd })
-}
-
-type HostCommandExecution = {
-  requireAccess: typeof Processes.requireHostProcessAccess
-  executeInteractive: typeof runInteractiveCommand
-  executeNonInteractive: typeof runNonInteractiveCommand
-}
-
-const liveExecution: HostCommandExecution = {
-  requireAccess: Processes.requireHostProcessAccess,
-  executeInteractive: runInteractiveCommand,
-  executeNonInteractive: runNonInteractiveCommand,
+  await Exec.requireHostProcessAccess('Invoke this operation through ./agent unsandboxed in a host-enabled harness.')
+  const execute = requiresHostTerminal(argv) ? runInteractiveCommand : runNonInteractiveCommand
+  await execute(route.executable, route.args, { cwd })
 }
 
 function requiresHostTerminal(argv: readonly string[]): boolean {
   return argv[0] === 'secrets' && argv[1] === 'add'
 }
 
-type HostCommandRoute = { command: string; variadicArgs: readonly string[] }
+type HostCommandRoute = { executable: string; args: readonly string[] }
 
 function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
   if (isInvalidHostCommand(argv)) {
@@ -59,6 +42,7 @@ const developerCommands = new Set([
   'landed',
   'merge-main',
   'setup',
+  'dependency-add',
   'agent-config',
   'my-branch',
   'fmt',
@@ -127,20 +111,20 @@ function hasValidPrefixTokens(tokens: readonly string[]): boolean {
 
 function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostCommandRoute {
   if (prefix.text === 'push') {
-    return { command: './agent push', variadicArgs: trailing }
+    return { executable: './agent', args: ['push', ...trailing] }
   }
   if (isPerformanceOperation(prefix)) {
-    return { command: './dev ' + prefix.text, variadicArgs: trailing }
+    return { executable: './dev', args: [...prefix.tokens, ...trailing] }
   }
   if (prefix.tokens.length === 1 && developerCommands.has(prefix.tokens[0]!)) {
-    return { command: `./dev ${prefix.tokens[0]}`, variadicArgs: trailing }
+    return { executable: './dev', args: [...prefix.tokens, ...trailing] }
   }
   if (prefix.text === 'local-instantdb start' || prefix.text === 'local-instantdb stop') {
     const action = prefix.tokens[1]!
-    return { command: `./dev ${action} local-instantdb`, variadicArgs: trailing }
+    return { executable: './dev', args: [action, 'local-instantdb', ...trailing] }
   }
   if (isNativeGitPrefix(prefix)) {
-    return { command: `git ${prefix.tokens[1]}`, variadicArgs: trailing }
+    return { executable: 'git', args: [prefix.tokens[1]!, ...trailing] }
   }
   Errors.ThrowUserInput(`Host operation '${prefix.text}' is allowlisted but has no supported target.`)
 }

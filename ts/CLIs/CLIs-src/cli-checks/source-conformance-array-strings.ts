@@ -23,9 +23,7 @@ type JoinAccess = TypeScript.PropertyAccessExpression | TypeScript.ElementAccess
 
 type JoinCall = TypeScript.CallExpression & { expression: JoinAccess }
 
-function isNewlineJoin(
-  node: TypeScript.CallExpression,
-): node is JoinCall {
+function isNewlineJoin(node: TypeScript.CallExpression): node is JoinCall {
   if (!isJoinAccess(node.expression)) {
     return false
   }
@@ -62,9 +60,7 @@ function isArrayReceiverWrapper(expression: TypeScript.Expression): expression i
 
 type ParenthesizedOrAsExpression = TypeScript.ParenthesizedExpression | TypeScript.AsExpression
 
-function isParenthesizedOrAsExpression(
-  expression: TypeScript.Expression,
-): expression is ParenthesizedOrAsExpression {
+function isParenthesizedOrAsExpression(expression: TypeScript.Expression): expression is ParenthesizedOrAsExpression {
   return TypeScript.isParenthesizedExpression(expression) || TypeScript.isAsExpression(expression)
 }
 

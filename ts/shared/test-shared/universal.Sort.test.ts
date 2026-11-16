@@ -16,9 +16,7 @@ Tests.test('Sort composes key and reverse comparators', () => {
     { name: 'c', rank: 3 },
     { name: 'd', rank: 2 },
   ]
-  const byRankDescending = Sort.Reverse(
-    Sort.By((value: { rank: number }) => value.rank, (left, right) => left - right),
-  )
+  const byRankDescending = Sort.Reverse(Sort.By((value: { rank: number }) => value.rank, (left, right) => left - right))
 
   Tests.expect([...values].sort(byRankDescending)).toEqual([
     { name: 'c', rank: 3 },

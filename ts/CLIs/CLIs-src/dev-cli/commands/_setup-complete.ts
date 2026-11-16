@@ -27,7 +27,7 @@ async function ensureShellCompletionCache(): Promise<void> {
   await FS.mkdir(cache)
   await FS.writeFile(
     completion,
-    '# Tao dev shell completion is generated during ./agent setup.' + NewlineCharacter,
+    '# Tao dev shell completion is generated during ./agent unsandboxed setup.' + NewlineCharacter,
     'utf8',
   )
 }

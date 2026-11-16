@@ -28,52 +28,153 @@ export function IsValueDeclaration(node: AST.Node): node is AST.ValueDeclaration
   return AST.IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDeclaration'])
 }
 
-/** GetAppDeclarations lists app declarations in a source document. */
-export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
-  return GetDeclarations(document).filter(IsAppDeclaration)
+/** IsDeclaration narrows a statement to a module declaration. */
+export function IsDeclaration(node: AST.Node): node is AST.Declaration {
+  return AST.IsKind(node, AST.DeclarationKinds)
 }
 
-/** GetDeclarations returns a document's declarations without copying or filtering them. */
+/** IsExpectation narrows a statement to a visible expectation. */
+export function IsExpectation(node: AST.Node): node is AST.Expectation {
+  return AST.IsKind(node, ['TextExpectation', 'InputExpectation'])
+}
+
+/** GetLetDeclarations lists let bindings in one statement block, in authored order. */
+export function GetLetDeclarations(statements: readonly AST.Statement[]): readonly AST.LetDeclaration[] {
+  return statements.filter(IsLetDeclaration)
+}
+
+/** GetNestedViewDeclarations lists child view declarations in one statement block. */
+export function GetNestedViewDeclarations(statements: readonly AST.Statement[]): readonly AST.ViewDeclaration[] {
+  return statements.filter(IsViewDeclaration)
+}
+
+/** GetViewRenderExpressions lists nested view renders in one render block, in authored order. */
+export function GetViewRenderExpressions(statements: readonly AST.Statement[]): readonly AST.ViewRenderExpression[] {
+  return statements.filter(IsViewRenderExpression)
+}
+
+/** FindViewRenderStatement returns a view body's final render statement, when present. */
+export function FindViewRenderStatement(block: AST.Block): AST.ViewRenderStatement | undefined {
+  return block.statements.find(IsViewRenderStatement)
+}
+
+/** HasOnlyViewRenderExpressions reports whether a render block contains only nested renders. */
+export function HasOnlyViewRenderExpressions(block: AST.Block): boolean {
+  return block.statements.every(IsViewRenderExpression)
+}
+
+/** FindViewDeclaration returns the first or named view in one statement block. */
+export function FindViewDeclaration(
+  statements: readonly AST.Statement[],
+  name?: string,
+): AST.ViewDeclaration | undefined {
+  const views = GetNestedViewDeclarations(statements)
+  return name === undefined ? views[0] : views.find(view => view.name.value === name)
+}
+
+/** FindLetDeclaration returns the first or named let binding in one statement block. */
+export function FindLetDeclaration(
+  statements: readonly AST.Statement[],
+  name?: string,
+): AST.LetDeclaration | undefined {
+  const lets = GetLetDeclarations(statements)
+  return name === undefined ? lets[0] : lets.find(definition => definition.name.value === name)
+}
+
+/** FindValueDeclaration returns one named value declaration in a source document. */
+export function FindValueDeclaration(document: AST.Document, name: string): AST.ValueDeclaration | undefined {
+  return GetValueDeclarations(document).find(declaration => declaration.name.value === name)
+}
+
+/** GetExpectations lists visible assertions in one block, in authored order. */
+export function GetExpectations(block: AST.Block): readonly AST.Expectation[] {
+  return block.statements.filter(IsExpectation)
+}
+
+/** GetTestsDeclarations lists test suites declared in a source document. */
+export function GetTestsDeclarations(document: AST.Document): readonly AST.TestsDeclaration[] {
+  return document.root.block.statements.filter(IsTestsDeclaration)
+}
+
+/** GetTypeScriptLibraryDeclarations lists ts-library declarations, optionally filtered by name. */
+export function GetTypeScriptLibraryDeclarations(
+  document: AST.Document,
+  target?: string,
+): readonly AST.TypeScriptLibraryDeclaration[] {
+  return document.root.block.statements.filter(
+    (node): node is AST.TypeScriptLibraryDeclaration =>
+      AST.IsKind(node, 'TypeScriptLibraryDeclaration') && (target === undefined || node.name.value === target),
+  )
+}
+
+/** GetPublishDeclarations lists publish blocks declared in a source document. */
+export function GetPublishDeclarations(document: AST.Document): readonly AST.PublishDeclaration[] {
+  return document.root.block.statements.filter((node): node is AST.PublishDeclaration =>
+    AST.IsKind(node, 'PublishDeclaration')
+  )
+}
+
+/** GetAppDeclarations lists app declarations in a source document. */
+export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
+  return document.root.block.statements.filter(IsAppDeclaration)
+}
+
+/** GetDeclarations returns a document's top-level declarations in authored order. */
 export function GetDeclarations(document: AST.Document): readonly AST.Declaration[] {
-  return getBlockDeclarations(document.root.block)
+  return document.root.block.statements.filter(IsDeclaration)
 }
 
 /** GetAppRoot returns the one app root view name. */
 export function GetAppRoot(app: AST.AppDeclaration): AST.Name {
-  const root = app.block.statements[0]
+  const root = FindAppRoot(app)
   if (!root) {
     Errors.ThrowShouldNeverHappen('An app declaration has no root view.')
   }
-  return root.view
+  return root
+}
+
+/** FindAppRoot returns the first root view name, when present in the parsed app block. */
+export function FindAppRoot(app: AST.AppDeclaration): AST.Name | undefined {
+  return app.block.statements.find(statement => AST.IsKind(statement, 'RootDeclaration'))?.view
+}
+
+/** FindLibraryPublication returns the first publish declaration in a parsed library block. */
+export function FindLibraryPublication(library: AST.TypeScriptLibraryDeclaration): AST.PublishDeclaration | undefined {
+  return library.block.statements.find(statement => AST.IsKind(statement, 'PublishDeclaration'))
+}
+
+/** GetTests returns the test cases declared directly inside a suite. */
+export function GetTests(suite: AST.TestsDeclaration): readonly AST.TestDeclaration[] {
+  return suite.block.statements.filter(statement => AST.IsKind(statement, 'TestDeclaration'))
 }
 
 /** GetTestSteps returns one test's ordered interaction and assertion steps. */
 export function GetTestSteps(test: AST.TestDeclaration): readonly AST.TestStep[] {
-  return test.block.statements
+  return test.block.statements.filter(isTestStep)
 }
 
 /** GetViewDeclarationStatements returns view declarations in authored order, if implemented in Tao. */
 export function GetViewDeclarationStatements(
   view: AST.ViewDeclaration,
 ): readonly AST.ViewDeclarationStatement[] | undefined {
-  return AST.IsKind(view.body, 'Block') ? view.body.statements : undefined
+  return AST.IsKind(view.body, 'Block') ? view.body.statements.filter(isViewDeclarationStatement) : undefined
 }
 
 /** GetViewRenderBlockStatements returns nested render declarations in authored order. */
 export function GetViewRenderBlockStatements(
   expression: AST.ViewRenderExpression,
 ): readonly AST.ViewRenderBlockStatement[] {
-  return expression.block?.statements ?? []
+  return expression.block?.statements.filter(isViewRenderBlockStatement) ?? []
 }
 
 /** HasAppDeclarations reports whether a source document declares an app. */
 export function HasAppDeclarations(document: AST.Document): boolean {
-  return GetDeclarations(document).some(IsAppDeclaration)
+  return document.root.block.statements.some(IsAppDeclaration)
 }
 
 /** FindAppDeclaration finds one named app declaration in a source document. */
 export function FindAppDeclaration(document: AST.Document, name: string): AST.AppDeclaration | undefined {
-  return GetDeclarations(document).find(
+  return document.root.block.statements.find(
     (declaration): declaration is AST.AppDeclaration =>
       IsAppDeclaration(declaration) && declaration.name.value === name,
   )
@@ -81,31 +182,29 @@ export function FindAppDeclaration(document: AST.Document, name: string): AST.Ap
 
 /** GetImportStatements lists declaration and package imports in a source document. */
 export function GetImportStatements(document: AST.Document): ImportStatement[] {
-  return GetDeclarations(document).filter(isImportStatement)
+  return document.root.block.statements.filter(isImportStatement)
 }
 
 /** HasImportStatements reports whether a source document declares an import. */
 export function HasImportStatements(document: AST.Document): boolean {
-  return GetDeclarations(document).some(isImportStatement)
+  return document.root.block.statements.some(isImportStatement)
 }
 
 /** GetValueDeclarations lists named values declared by a source document. */
 export function GetValueDeclarations(document: AST.Document): AST.ValueDeclaration[] {
-  return GetDeclarations(document).filter(IsValueDeclaration)
+  return document.root.block.statements.filter(IsValueDeclaration)
 }
 
 /** GetViewDeclarations lists view declarations in a source document. */
 export function GetViewDeclarations(document: AST.Document): AST.ViewDeclaration[] {
-  return GetDeclarations(document).filter(IsViewDeclaration)
+  return [...GetNestedViewDeclarations(document.root.block.statements)]
 }
 
 /** GetAllViewDeclarations lists top-level and private views in authored preorder. */
 export function GetAllViewDeclarations(document: AST.Document): AST.ViewDeclaration[] {
   const views: AST.ViewDeclaration[] = []
-  for (const declaration of GetDeclarations(document)) {
-    if (IsViewDeclaration(declaration)) {
-      appendNestedViews(declaration, views)
-    }
+  for (const declaration of GetViewDeclarations(document)) {
+    appendNestedViews(declaration, views)
   }
   return views
 }
@@ -165,6 +264,14 @@ function appendNestedViews(view: AST.ViewDeclaration, views: AST.ViewDeclaration
   }
 }
 
-function getBlockDeclarations(block: AST.DeclarationBlock): readonly AST.Declaration[] {
-  return block.statements
+function isTestStep(node: AST.Statement): node is AST.TestStep {
+  return AST.IsKind(node, ['RunStatement', 'PressStatement', 'TypeStatement', 'ExpectStatement'])
+}
+
+function isViewDeclarationStatement(node: AST.Statement): node is AST.ViewDeclarationStatement {
+  return IsViewDeclaration(node) || IsViewRenderStatement(node) || IsLetDeclaration(node)
+}
+
+function isViewRenderBlockStatement(node: AST.Statement): node is AST.ViewRenderBlockStatement {
+  return IsViewRenderExpression(node) || IsLetDeclaration(node)
 }

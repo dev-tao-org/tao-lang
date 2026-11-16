@@ -26,7 +26,7 @@ export async function receiveSnapshot(
     Errors.ThrowUserInput('Select a full immutable commit SHA from the snapshot history.')
   }
   await FS.mkdir(Path.dirname(directory))
-  await CLIKit.runNonInteractiveCommand('git clone --no-checkout', { variadicArgs: ['--', bundle, directory] })
+  await CLIKit.runNonInteractiveCommand('git', ['clone', '--no-checkout', '--', bundle, directory])
   if (await resolveCommit(directory, commit) !== commit) {
     Errors.ThrowUserInput('The transferred bundle does not contain the requested checkpoint.')
   }

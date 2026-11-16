@@ -4,6 +4,8 @@
 prefix_rule(pattern=["./agent","unsandboxed","push"], decision="allow", justification="Developer-authorized non-main branch pushes through a guard that rejects main, force, deletion and bulk pushes.")
 prefix_rule(pattern=["./agent","unsandboxed","install-ide-extension"], decision="allow", justification="Developer-approved replacement of the Tao extension in Cursor and VS Code.")
 prefix_rule(pattern=["./agent","unsandboxed","agent-config"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
+prefix_rule(pattern=["./agent","dependency-add"], decision="prompt", justification="Registry dependency additions use a validated exact pin and require developer authorization.")
+prefix_rule(pattern=["./agent","unsandboxed","dependency-add"], decision="prompt", justification="Host registry dependency additions use a validated exact pin and require developer authorization.")
 prefix_rule(pattern=["./agent","unsandboxed","my-branch"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","fmt"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","fix"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")

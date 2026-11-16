@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, Objects, S } from '@shared'
+import { Errors, NewlineCharacter, Objects, S, Timings } from '@shared'
 import * as Shared from '@shared'
 import { Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
@@ -20,23 +20,25 @@ export type CompiledFiles = Readonly<MutableCompiledFiles>
 
 /** compileProgram emits source-owned modules and one ordered, revision-bearing bootstrap.
  *  Components receive lexical records through props; binding-type imports erase at runtime. */
-export function compileProgram(
+export const compileProgram = Timings.createTopLevelTimer(function(
+  timings,
   program: Typecheck.LinkedProgram,
   revision: string,
   appName?: string,
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): CompiledFiles {
   const selected = selectApp(program, appName)
-  const sources = compileModuleSources(program, resolveForeignViewPath)
+  const sources = timings.run(compileModuleSources, program, resolveForeignViewPath)
   const files = Objects.copy(sources.files)
   files['App.tsx'] = compileBootstrap(program, selected, revision, sources.paths)
   return files
-}
+})
 
 type CompiledModuleSources = { files: CompiledFiles; paths: GeneratedModulePaths }
 
 /** compileModuleSources emits shared declaration bodies and derives their output paths once per compilation. */
-export function compileModuleSources(
+export const compileModuleSources = Timings.createTopLevelTimer(function(
+  timings,
   program: Typecheck.LinkedProgram,
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): CompiledModuleSources {
@@ -45,21 +47,21 @@ export function compileModuleSources(
   const files: MutableCompiledFiles = {}
   for (const module of program.modules) {
     const path = resolvePath(paths, module.path)
-    const generated = compileSource(module, program, paths, textBindings, resolveForeignViewPath)
+    const generated = timings.run(compileSource, module, program, paths, textBindings, resolveForeignViewPath)
     files[path] = generated.main
     if (generated.views) {
       files[resolveViewsPath(path)] = generated.views
     }
   }
   return { files, paths }
-}
+})
 
 type GeneratedSource = { main: string; views: string }
 type MutableCompiledFiles = Record<string, string>
 type SelectedApp = { source: string; declaration: AST.AppDeclaration }
 type CompiledDeclaration = { node: AST.Declaration; compiled: DeclarationCompiler.DeclarationCompilation }
 
-function compileSource(
+const compileSource = Timings.measured('compiler.emit-module', function(
   module: Typecheck.LinkedModule,
   program: Typecheck.LinkedProgram,
   paths: GeneratedModulePaths,
@@ -87,7 +89,7 @@ function compileSource(
     `
     : ''
   return { main, views }
-}
+})
 
 function selectSourceProgram(
   program: Typecheck.LinkedProgram,
@@ -166,7 +168,7 @@ function compileBindingTypes(
   paths: GeneratedModulePaths,
   context: DeclarationCompiler.DeclarationContext,
 ): string {
-  const members = AST.GetDeclarations(module.document).filter(AST.IsValueDeclaration).map(node => {
+  const members = AST.GetValueDeclarations(module.document).map(node => {
     const type = resolveBindingType(node, context)
     return `readonly ${emitStringLiteral(node.name.value)}: ${type};`
   })

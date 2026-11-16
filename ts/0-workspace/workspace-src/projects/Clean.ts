@@ -1,5 +1,5 @@
 import { Errors, Lists, Sort, Try } from '@shared'
-import { FS, Path, SessionLock } from '@shared/os'
+import { FileLock, FS, Path } from '@shared/os'
 import { readFileSourceRoots } from '../dependencies/LockFile'
 import { cleanManagedModuleMetadata } from '../sidecars/ManagedModule/ManagedModules'
 import * as Lifecycle from './Lifecycle'
@@ -71,7 +71,7 @@ async function cleanSession(
   if (isUnsafeSessionDirectory(sessionPath) || isUnsafeLockFile(lockPath)) {
     return true
   }
-  const lock = await SessionLock.acquire(lockPath)
+  const lock = await FileLock.tryAcquire(lockPath)
   if (!lock) {
     return true
   }

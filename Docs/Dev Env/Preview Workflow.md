@@ -1,20 +1,23 @@
 # Preview Workflow
 
 ```sh
-just dev
+./dev
+./dev help
 just performance
 ./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
 ```
 
-`just dev` opens the existing `Apps/Dev/Preview` workspace and serves its app in two differently sized iframes. It keeps running until Ctrl-C and does not open a browser automatically; press `w` to open the preview in Chrome. Authored files stay in place; generated build output and the readable Expo runtime live under `.artifacts/dev/preview/`.
+`./dev` and `just dev` start the keyboard launcher. Press `p` for the performance editor or `v` for the live Preview app. Each shortcut starts its app on demand and opens its URL in the browser. Press either shortcut again to reopen its existing session. Press `q` or Ctrl-C to shut down both sessions. `./dev help` lists all developer commands.
 
-Edit `Preview.tao`, or use the page's button to cycle through a label change, an added view, a row layout and a reset. The button asks the server to write the source file. The workspace's FileManager observes the change, updates its in-memory Document and schedules compilation. Compilation runs in process; the button does not start a compiler CLI process.
+For the live Preview app, edit `Apps/Dev/Preview/Preview.tao` or use the page's button to cycle through a label change, an added view, a row layout and a reset. The workspace's FileManager observes each save and schedules in-process compilation.
 
 The compiler produces a complete generated revision in memory and publishes it to Metro. Metro refreshes changed modules, then accepted revisions update the readable disk inspection mirror. Metro delivers the update to both frames. Invalid source keeps the last successfully published app available.
 
 ## Measurements
 
-`just performance` uses an isolated copy of the Hello World fixture, preserving the authored source. It checks text replacement, an added Text view, a column-to-row change and reset in both frame sizes. It validates the resulting text and layout without screenshots.
+`just performance` uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
+
+Use a fresh performance editor session for manual saves or for the built-in benchmark edits. The first edit selects that session's mode and protects saved source and benchmark inputs from each other.
 
 Timings distinguish source observation, reading, queueing, parsing, AST construction, module resolution, code generation, output writing and publication. Two app receipts finish each update:
 
@@ -23,7 +26,7 @@ Timings distinguish source observation, reading, queueing, parsing, AST construc
 
 Receipts carry session, frame, boot and source-revision identities so an old document or delayed update cannot complete a newer measurement. Browser and CLI epoch-relative timestamps share the agreed same-host clock; click-to-receipt totals use the parent frame's monotonic clock.
 
-The terminal reports both frames and the total duration. The total clock begins when the workspace observes a source change, while the per-frame Metro clock begins when publication starts. “Applied” establishes a React commit rather than physical paint.
+`./dev performance preview --baseline` captures five independent sessions. Subsequent runs print percentage changes for launch, opening and each warm transition. Raw reports retain both frames and absolute durations. The end-to-end clock starts at the parent click. “Applied” establishes a React commit.
 
 Raw reports remain under `.artifacts/logs/performance/`. `./agent unsandboxed performance record` retains one commit-linked run locally; the authorized landing workflow publishes those records under `.storage/performance/preview/`. Diagnostic `performance preview` runs do not create immutable commit records.
 

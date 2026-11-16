@@ -3,16 +3,16 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import * as Process from '../../../shared-src/os/Process'
-import * as Processes from '../../../shared-src/os/Processes'
 
 const { chmod, copyFile, mkdirs, mkdtemp, readFile, rm, writeFile } = FS
 const { delimiter, join } = Path
 
 type FailureStage = 'install' | 'run'
 
-Tests.test('bootstrap imports independently and forwards setup output and flags', async () => {
+Tests.test('bootstrap imports independently and installs frozen dependencies without caller flags', async () => {
   const root = await mkdtemp(join(Platform.temporaryDirectory(), 'tao-bootstrap-'))
   await Try(async () => {
     const sourceDirectory = Path.pathToFileURL(join(root, 'source checkout #%') + Path.sep)
@@ -26,7 +26,7 @@ Tests.test('bootstrap imports independently and forwards setup output and flags'
     Tests.expect(result.stderr).toContain('install-error')
     Tests.expect(result.stderr).toContain('Installing workspace dependencies…')
     Tests.expect(await readFile(join(root, 'calls'), 'utf8')).toBe(
-      'install --no-save --verbose\nrun ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts\n',
+      'install --frozen-lockfile\nrun ./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts\n',
     )
     Tests.expect(await readFile(join(root, '.artifacts/logs/setup/bootstrap.log'), 'utf8')).toContain('[stdout]')
   }, {
@@ -54,35 +54,44 @@ Tests.test('bootstrap propagates install and completion failure statuses with re
   }
 })
 
+Tests.test('bootstrap rejects caller flags before installing or changing dependencies', async () => {
+  const root = Artifacts.resolvePath('tmp', `bootstrap-arguments-${Platform.randomUUID()}`)
+  await Try(async () => {
+    const result = await runBootstrap(root, 0, 'install', undefined, ['--no-frozen-lockfile'])
+    Tests.expect(result.status).toBe(1)
+    Tests.expect(result.stderr).toContain('Setup takes no arguments')
+    Tests.expect(FS.existsSync(join(root, 'calls'))).toBe(false)
+  }, { finally: () => rm(root, { recursive: true, force: true }) })
+})
+
 type BootstrapResult = { status: number; stdout: string; stderr: string }
 async function runBootstrap(
   root: string,
   failureStatus: number,
   failureStage: FailureStage = 'install',
   sourceDirectory = new WebHost.URL('../../../shared-src/os/', import.meta.url),
+  setupArgs: readonly string[] = [],
 ): Promise<BootstrapResult> {
   const ts = join(root, 'ts')
   const bin = join(root, 'bin')
   await mkdirs(ts, bin)
   await copyBootstrapSources(sourceDirectory, ts)
   await writeStub(bin, failureStatus, failureStage)
-  const script = `process.argv=['bun','_setup.ts','--agent','--no-save','--verbose'];`
+  const script = `process.argv=['bun','_setup.ts','--agent'];`
     + `const bootstrap=await import(${Json.Print(Path.pathToFileURL(join(ts, 'Tooling/Bootstrap.ts')).href)});`
-    + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts');`
+    + `await bootstrap.installWorkspace('./CLIs/CLIs-src/dev-cli/commands/_setup-complete.ts', ${
+      Json.Print(setupArgs)
+    });`
   const environment = {
     PATH: `${bin}${delimiter}${Env.get('PATH') ?? ''}`,
     TAO_BOOTSTRAP_CALLS: join(root, 'calls'),
   }
   // Keep the running interpreter distinct from the fake installer selected by the child PATH.
-  const child = Processes.spawnPiped(Process.argv[0], {
-    variadicArgs: ['-e', script],
-    cwd: ts,
-    addEnv: environment,
-  })
+  const child = Exec.spawn(Process.argv[0], ['-e', script], { cwd: ts, addEnv: environment })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   return { status, stdout, stderr }
 }

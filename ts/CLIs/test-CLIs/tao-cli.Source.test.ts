@@ -1,7 +1,7 @@
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 Tests.test('tao fmt and fix resolve source paths from the caller directory', async () => {
@@ -18,15 +18,11 @@ Tests.test('tao fmt and fix resolve source paths from the caller directory', asy
           TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
           TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
         }
-        const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-          variadicArgs: [command, Path.relative(cwd, path)],
-          cwd,
-          addEnv,
-        })
+        const child = Exec.spawn(Repo.resolvePath('tao'), [command, Path.relative(cwd, path)], { cwd, addEnv })
         const [status, stdout, stderr] = await Promise.all([
           child.exited,
-          Processes.readText(child.stdout),
-          Processes.readText(child.stderr),
+          Exec.readText(child.stdout),
+          Exec.readText(child.stderr),
         ])
         Tests.expect({ status, failed: stderr.includes('ENOENT') }).toEqual({ status: 0, failed: false })
         Tests.expect(stdout).toContain(path)
@@ -43,14 +39,11 @@ Tests.test('root agent test rejects legacy and outside Tao targets before compil
       ['../outside.tao', 'Requested paths must remain inside'],
     ]
   ) {
-    const child = Processes.spawnPiped(Repo.resolvePath('agent'), {
-      variadicArgs: ['test', target],
-      cwd: Repo.getWorkspaceRoot(),
-    })
+    const child = Exec.spawn(Repo.resolvePath('agent'), ['test', target], { cwd: Repo.getWorkspaceRoot() })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     Tests.expect(status).toBe(1)
     Tests.expect(stdout + stderr).toContain(message)
@@ -74,16 +67,15 @@ Tests.test('cold project compilation requests preparation without installing run
       TAO_CACHE_DIR: Path.join(directory, '.cache-fixture'),
       TAO_SUPPORT_DIR: Path.join(directory, '.support-fixture'),
     }
-    const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-      variadicArgs: ['compile', 'Main.tao'],
+    const child = Exec.spawn(Repo.resolvePath('tao'), ['compile', 'Main.tao'], {
       cwd: directory,
       addEnv,
       stdin: 'ignore',
     })
     const [status, stdout, stderr] = await Promise.all([
       child.exited,
-      Processes.readText(child.stdout),
-      Processes.readText(child.stderr),
+      Exec.readText(child.stdout),
+      Exec.readText(child.stderr),
     ])
     Tests.expect(status).toBe(1)
     Tests.expect(stdout + stderr).toContain('tao setup')

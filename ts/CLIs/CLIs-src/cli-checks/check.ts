@@ -82,8 +82,8 @@ export async function workspaceTypes(): Promise<void> {
     return sourceFiles.length > 0 ? project : undefined
   }))
   const projects = discoveredProjects.filter((project): project is string => project !== undefined)
-  await CLIKit.runNonInteractiveCommand('tsc --build', {
-    variadicArgs: projects.map(project => `${project}/tsconfig.json`),
+  const configs = projects.map(project => `${project}/tsconfig.json`)
+  await CLIKit.runNonInteractiveCommand('tsc', ['--build', ...configs], {
     cwd: Repo.resolvePath('ts'),
   })
 }
@@ -103,7 +103,7 @@ export async function workspaceShellSyntax(): Promise<void> {
       '.cursor/worktree-setup.sh',
     ]
   ) {
-    await CLIKit.runNonInteractiveCommand('sh -n', { variadicArgs: [path], cwd: Repo.getWorkspaceRoot() })
+    await CLIKit.runNonInteractiveCommand('sh', ['-n', path], { cwd: Repo.getWorkspaceRoot() })
   }
 }
 
@@ -112,15 +112,17 @@ export async function workspaceConformance(): Promise<void> {
   await assertNewWorkspaceTree()
   // Formatting and test execution also import this module; load the compiler only for source checks.
   const { checkSourceConformance } = await import('./source-conformance')
-  await checkSourceConformance(Repo.getWorkspaceRoot())
+  await checkSourceConformance(Repo.getWorkspaceRoot(), true)
 }
 
 /** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */
 export async function workspaceDeadExports(): Promise<void> {
   await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
-  await CLIKit.runNonInteractiveCommand('knip --config scripts/knip.ts --no-progress', { cwd: Repo.resolvePath('ts') })
-  await CLIKit.runNonInteractiveCommand('knip --config scripts/knip.ts --no-progress --production', {
+  await CLIKit.runNonInteractiveCommand('knip', '--config scripts/knip.ts --no-progress', {
+    cwd: Repo.resolvePath('ts'),
+  })
+  await CLIKit.runNonInteractiveCommand('knip', '--config scripts/knip.ts --no-progress --production', {
     cwd: Repo.resolvePath('ts'),
   })
 }
@@ -153,18 +155,26 @@ type FormatMode = 'fmt' | 'check'
 export async function workspaceFormat(mode: FormatMode, excludedPaths: readonly string[] = []): Promise<void> {
   await assertNewWorkspaceTree()
   await CLIKit.runNonInteractiveCommand(
-    `dprint ${mode} --config .dprint.jsonc --incremental=false **/* --excludes .x-tao-old-v1/**`,
-    {
-      variadicArgs: excludedPaths,
-      cwd: Repo.getWorkspaceRoot(),
-    },
+    'dprint',
+    [
+      mode,
+      '--config',
+      '.dprint.jsonc',
+      '--incremental=false',
+      '**/*',
+      '--excludes',
+      '.x-tao-old-v1/**',
+      ...excludedPaths,
+    ],
+    { cwd: Repo.getWorkspaceRoot() },
   )
   const justfile = Repo.resolvePath('Justfile')
   const excludesJustfile = excludedPaths.some(path => Path.resolve(Repo.getWorkspaceRoot(), path) === justfile)
   if (excludesJustfile) {
     return
   }
-  await CLIKit.runNonInteractiveCommand(`just --fmt ${mode === 'check' ? '--check ' : ''}--justfile Justfile`, {
+  const formatArgs = ['--fmt', ...mode === 'check' ? ['--check'] : [], '--justfile', 'Justfile']
+  await CLIKit.runNonInteractiveCommand('just', formatArgs, {
     cwd: Repo.getWorkspaceRoot(),
   })
 }

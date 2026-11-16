@@ -135,9 +135,7 @@ test('protects checkpointed review groups and marks accepted paths pending witho
   await FS.writeFile(Path.join(root, '.git/index'), 'user staging')
   await FS.writeFile(Path.join(root, '.git/refs/heads/approved'), 'accepted commit')
   await runLearning(['apply', '--repo', root, '--proposal', 'change'])
-  const session = Json.Parse(
-    await FS.readFile(Path.join(directory, 'session.json'), 'utf8'),
-  ) as LearningFixtureRecord
+  const session = Json.Parse(await FS.readFile(Path.join(directory, 'session.json'), 'utf8')) as LearningFixtureRecord
   expect(session.accepted).toEqual(accepted)
   expect(session.recheck).toEqual(['source.ts'])
   expect(await FS.readFile(Path.join(root, '.git/index'), 'utf8')).toBe('user staging')
@@ -208,9 +206,7 @@ function isLearningScan(result: LearningTypes.ReviewLearningCommandResult): resu
   return 'findings' in result && 'complete' in result
 }
 
-function isLearningStatus(
-  result: LearningTypes.ReviewLearningCommandResult,
-): result is LearningTypes.LearningStatus {
+function isLearningStatus(result: LearningTypes.ReviewLearningCommandResult): result is LearningTypes.LearningStatus {
   return 'corrections' in result && 'appliedProposals' in result
 }
 

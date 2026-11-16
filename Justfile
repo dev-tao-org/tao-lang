@@ -63,6 +63,12 @@ timing-setup-runner *ARGS:
 timing-connect HOST *ARGS:
     ./dev timing-connect "$@"
 
+# Set up a dedicated SSH key for a selected machine
+[group('Setup')]
+[positional-arguments]
+ssh-key-setup HOST *ARGS:
+    ./dev ssh-key-setup "$@"
+
 # Initialize shared ~/.tao-dev timing storage without installing network software
 [group('Performance')]
 [positional-arguments]
@@ -86,6 +92,17 @@ timing-session HOST CHECKOUT *ARGS:
 [positional-arguments]
 timing-run HOST CHECKOUT *ARGS:
     ./dev timing-run "$@"
+
+# Compare preview timings across prepared baseline and candidate revisions
+[group('Performance')]
+[positional-arguments]
+timing-compare HOST BASELINE CANDIDATE *ARGS:
+    ./dev timing-compare "$@"
+
+# Follow current and future benchmark jobs on the timing laptop
+[group('Performance')]
+timing-watch:
+    ./dev timing-watch
 
 # Print a retained timing report without launching measurements
 [group('Performance')]
@@ -128,6 +145,11 @@ fix:
 check *ARGS:
     ./dev check "$@"
 
+# Diagram direct TypeScript imports between workspace packages
+[group('Dev')]
+package-graph:
+    ./dev package-graph
+
 # Format, check and test the new TypeScript workspace
 [group('Dev')]
 [positional-arguments]
@@ -145,10 +167,10 @@ my-branch name='':
 # Dev environment services
 ##########################
 
-# Compile the Preview app and keep its two browser previews running
+# Open development apps with keyboard shortcuts
 [group('Dev')]
 dev:
-    ./dev dev
+    ./dev
 
 # Measure preview refresh and print scenario timings and the raw report path
 [group('Dev')]

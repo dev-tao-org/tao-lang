@@ -1,7 +1,7 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type RuntimeFixture = {
   home: string
@@ -18,9 +18,7 @@ Tests.test('reloading activation replaces an old hook and unloads an active disa
     Tests.expect(result.status).toBe(0)
     Tests.expect(result.stdout).toContain('TAO_ACTIVE:unset')
     Tests.expect(result.stdout).toContain(`DIRENV_DIR:-${Path.dirname(fixture.root)}`)
-    Tests.expect(await FS.file(Path.join(fixture.home, 'export-cwd')).text()).toBe(
-      `${Path.dirname(fixture.root)}\n`,
-    )
+    Tests.expect(await FS.file(Path.join(fixture.home, 'export-cwd')).text()).toBe(`${Path.dirname(fixture.root)}\n`)
     Tests.expect(FS.existsSync(Path.join(fixture.home, 'hook-called'))).toBe(false)
   }, {
     finally: () => FS.rm(Path.dirname(fixture.root), { recursive: true, force: true }),
@@ -124,17 +122,13 @@ async function runActivationHook(fixture: RuntimeFixture, activeRoot: string): P
     TAO_TEST_WORKTREE_A: fixture.worktreeA,
     TAO_TEST_WORKTREE_B: fixture.worktreeB,
   }
-  const child = Processes.spawnPiped('zsh', {
-    variadicArgs: [
-      '-fic',
-      '_tao_dev_direnv_hook() { print -r -- stale >> "$TAO_TEST_HOOK_LOG"; }; source "$TAO_TEST_RUNTIME"; _tao_dev_direnv_hook; print -r -- "TAO_ACTIVE:${TAO_TEST_ACTIVE-unset}"; print -r -- "DIRENV_DIR:$DIRENV_DIR"',
-    ],
-    cwd: fixture.root,
-    addEnv: environment,
-  })
+  const child = Exec.spawn('zsh', [
+    '-fic',
+    '_tao_dev_direnv_hook() { print -r -- stale >> "$TAO_TEST_HOOK_LOG"; }; source "$TAO_TEST_RUNTIME"; _tao_dev_direnv_hook; print -r -- "TAO_ACTIVE:${TAO_TEST_ACTIVE-unset}"; print -r -- "DIRENV_DIR:$DIRENV_DIR"',
+  ], { cwd: fixture.root, addEnv: environment })
   const [status, stdout] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
+    Exec.readText(child.stdout),
   ])
   return { status, stdout }
 }

@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { Errors, Regxs, Try } from '@shared'
 import { Env, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { registerCommand } from './_command-runner'
 
 /** myBranchCommand switches to the developer's existing personal branch. */
@@ -16,7 +16,7 @@ export default registerCommand({
   async action(name: string = '') {
     const cwd = Repo.getWorkspaceRoot()
     const branch = await resolveDeveloperBranch(name, cwd)
-    await CLIKit.runNonInteractiveCommand('git switch', { variadicArgs: [branch], cwd })
+    await CLIKit.runNonInteractiveCommand('git', ['switch', branch], { cwd })
   },
 })
 
@@ -51,7 +51,7 @@ function slug(value: string): string {
 }
 
 async function optionalGitValue(key: string, cwd: string): Promise<string> {
-  return Try(() => Processes.capture('git config --get', { variadicArgs: [key], cwd }), {
+  return Try(() => Exec.captureStdout('git', ['config', '--get', key], { cwd }), {
     catch(error) {
       if (isMissingConfigValue(error)) {
         return ''

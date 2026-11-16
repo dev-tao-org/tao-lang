@@ -13,10 +13,7 @@ export async function runSkillScript(
     Errors.ThrowUserInput('The repository workspace root is unavailable.')
   }
   const script = resolveSkillScript(entryPath, root)
-  await CLIKit.runNonInteractiveCommand('bun run', {
-    variadicArgs: [script, ...args],
-    cwd: root,
-  })
+  await CLIKit.runNonInteractiveCommand('bun', ['run', script, ...args], { cwd: root })
 }
 
 function resolveSkillScript(entryPath: string, root: string): string {

@@ -33,7 +33,7 @@ Tests.test('the standard project is implicit, locked, and observed like other bu
     Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'tao'))
       .toEqual({ root: standardProject })
     Tests.expect(dependencies.sourceDirectories()).toContain(standardProject)
-    await FS.writeFile(Path.join(root, 'Dependencies.tao'), 'requires file:../unrelated as tao')
+    await FS.writeFile(Path.join(root, 'Dependencies.tao'), 'requires file:../tao')
     await Tests.rejects(options.readRequirements(root), BundledTaoAliasErrorRegx)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
@@ -62,14 +62,14 @@ Tests.test('active dependency graphs require restart when authored requirements 
     const dependencies = new ProjectDependencies(root, options)
     await dependencies.refresh()
     await dependencies.refresh()
-    await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'local')
+    await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'Local')
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
 
     requirements = [fileRequirement('./second')]
     Tests.expect(() => dependencies.observeProjectSources(root, parsed(root, requirements)))
       .toThrow(DependencyDeclarationChangedErrorRegx)
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
-    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'local')).toEqual({ root: first })
+    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'Local')).toEqual({ root: first })
 
     requirements = [fileRequirement('./first')]
     dependencies.observeProjectSources(root, parsed(root, requirements))
@@ -82,8 +82,8 @@ Tests.test('active dependency graphs require restart when authored requirements 
 Tests.test('same repository aliases at different refs resolve from their individual durable root pins', async () => {
   const root = Artifacts.resolvePath('tmp', `project-dependency-alias-pins-${Platform.randomUUID()}`)
   const requirements: DependencyRequirement[] = [
-    { provider: 'github', identifier: 'example/shared', version: 'v1', alias: 'first' },
-    { provider: 'github', identifier: 'example/shared', version: 'v2', alias: 'second' },
+    { provider: 'github', identifier: 'example/shared', version: 'v1', alias: 'First' },
+    { provider: 'github', identifier: 'example/shared', version: 'v2', alias: 'Second' },
   ]
   const options: DependencyStoreOptions = {
     readRequirements: async path => Path.resolve(path) === Path.resolve(root) ? requirements : [],
@@ -99,18 +99,18 @@ Tests.test('same repository aliases at different refs resolve from their individ
     await prepareDependencies(root, requirements, options)
     const dependencies = new ProjectDependencies(root, options)
     await dependencies.refresh()
-    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'first'))
-      .toEqual(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'))
+    Tests.expect(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'First'))
+      .toEqual(await dependencies.resolveProject(Path.join(root, 'Main.tao'), 'Second'))
     requirements[1] = { ...requirements[1]!, version: 'v3' }
     await Tests.rejects(
-      dependencies.resolveProject(Path.join(root, 'Main.tao'), 'second'),
+      dependencies.resolveProject(Path.join(root, 'Main.tao'), 'Second'),
       DependencySetupRequiredErrorRegx,
     )
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
 function fileRequirement(identifier: string): DependencyRequirement {
-  return { provider: 'file', identifier, version: 'live', alias: 'local' }
+  return { provider: 'file', identifier, version: 'live', alias: 'Local' }
 }
 
 function parsed(root: string, requirements: DependencyRequirement[]): ObservedSource[] {

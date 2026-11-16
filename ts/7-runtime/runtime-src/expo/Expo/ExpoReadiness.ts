@@ -1,6 +1,6 @@
 import { Errors, Time, Try } from '@shared'
 import * as ExternalErrors from '@shared/errors/external'
-import { Http } from '@shared/os'
+import { Cancellation, Http } from '@shared/web'
 
 /** waitForExpoReady polls a local server while bounding each request by its remaining deadline. */
 export async function waitForExpoReady(
@@ -39,7 +39,7 @@ async function requestBeforeDeadline(
   request: typeof Http.request,
   signal?: AbortSignal,
 ): Promise<Http.HttpResponse> {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   let abort!: () => void
   const cancelled = new Promise<never>((_resolve, reject) => {
     abort = () => {

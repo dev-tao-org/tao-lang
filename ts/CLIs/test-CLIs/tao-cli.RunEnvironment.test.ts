@@ -2,7 +2,7 @@ import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 Tests.test.skipIf(Platform.systemInfo().os === 'Windows_NT')(
@@ -12,8 +12,7 @@ Tests.test.skipIf(Platform.systemInfo().os === 'Windows_NT')(
     const receipt = Path.join(directory, 'launch.json')
     await Try(async () => {
       await writeRecordingConsumer(directory, receipt)
-      await Processes.capture(Repo.resolvePath('tao'), {
-        variadicArgs: ['run', '--package', directory, '--web'],
+      await Exec.captureStdout(Repo.resolvePath('tao'), ['run', '--package', directory, '--web'], {
         cwd: directory,
         addEnv: { EXPO_UNSTABLE_HEADLESS: '0', CI: '0' },
         timeoutMs: 5000,

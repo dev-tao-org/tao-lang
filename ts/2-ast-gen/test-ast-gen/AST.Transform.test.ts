@@ -63,7 +63,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
   const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)
-  const view = result?.root.block.statements.find(AST.IsViewDeclaration)
+  const view = result && AST.FindViewDeclaration(result.root.block.statements)
   Tests.expect(view).toMatchObject({
     kind: 'ViewDeclaration',
     range: { start: source.indexOf('view Preview') },
@@ -155,11 +155,11 @@ function assertPackageImport(all?: AST.Node, packageImport?: AST.Node): void {
 
 Tests.test('requirements and foreign views retain authored fields and source ranges', () => {
   const source = Shared.S`
-    requires github:acme/widgets version v1.2.0 as widgets
+    requires github:acme/widgets version v1.2.0 as Widgets
     requires file:../widgets
     requires npm:date-fns version 4.1.0
-    requires bundled:tao as tao
-    use widgets@ui/controls Button
+    requires bundled:tao as TaoSource
+    use Widgets@ui/controls Button
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = Grammar.createParser().parse(source)
@@ -173,24 +173,24 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     'ViewDeclaration',
   ])
   Tests.expect(result?.root.block.statements.slice(0, 4)).toMatchObject([
-    { provider: 'github', identifier: 'acme/widgets', version: 'v1.2.0', alias: { value: 'widgets' } },
+    { provider: 'github', identifier: 'acme/widgets', version: 'v1.2.0', alias: { value: 'Widgets' } },
     { provider: 'file', identifier: '../widgets' },
     { provider: 'npm', identifier: 'date-fns', version: '4.1.0' },
-    { provider: 'bundled', identifier: 'tao', alias: { value: 'tao' } },
+    { provider: 'bundled', identifier: 'tao', alias: { value: 'TaoSource' } },
   ])
   Tests.expect(result?.root.block.statements[4]).toMatchObject({
     imports: [{ target: { value: 'Button' } }],
-    from: { value: 'widgets@ui/controls' },
+    from: { value: 'Widgets@ui/controls' },
   })
   Tests.expect(result?.root.block.statements[5]).toMatchObject({
     body: { kind: 'ForeignView', path: { value: './FormattedDate.tsx' } },
   })
   Tests.expect(result?.root.block.statements.map(node => Shared.Source.slice(source, node.range))).toEqual([
-    'requires github:acme/widgets version v1.2.0 as widgets',
+    'requires github:acme/widgets version v1.2.0 as Widgets',
     'requires file:../widgets',
     'requires npm:date-fns version 4.1.0',
-    'requires bundled:tao as tao',
-    'use widgets@ui/controls Button',
+    'requires bundled:tao as TaoSource',
+    'use Widgets@ui/controls Button',
     'public view FormattedDate(Value text) from ./FormattedDate.tsx',
   ])
 })

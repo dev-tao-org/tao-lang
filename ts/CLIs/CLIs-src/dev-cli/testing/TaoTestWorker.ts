@@ -2,7 +2,8 @@ import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import { Json } from '@shared'
 import { Errors, Try } from '@shared'
-import { FS, Http, Platform, Process } from '@shared/os'
+import { FS, Platform, Process } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import type { TaoWorkerReport } from './TestPlan'
 import { runTaoTestFiles } from './TestWorkers'
 
@@ -10,7 +11,7 @@ if (Platform.isMain(import.meta)) {
   await CLIKit.configureCLIOutput('agent')
   await Try(async () => {
     const { reportPath, paths } = workerArguments(Process.argv.slice(2))
-    const controller = Http.createAbortController()
+    const controller = Cancellation.createController()
     const report: TaoWorkerReport = { passed: 0, failed: 0 }
     const unregisterTermination = Process.onTermination(() => controller.abort())
     await Try(async () => {

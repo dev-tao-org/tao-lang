@@ -1,5 +1,5 @@
 import { Errors, Try } from '@shared'
-import { FS, Path, SessionLock } from '@shared/os'
+import { FileLock, FS, Path } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import { rejectCommitConflict, resolveDependencyGraph } from './DependencyGraph'
 import * as LockFile from './LockFile'
@@ -45,7 +45,7 @@ export async function prepareDependencies(
   await FS.mkdir(Path.dirname(path))
   const lockPath = Path.join(projectRoot, '.tao', 'locks', 'dependencies.lock')
   await FS.mkdir(Path.dirname(lockPath))
-  const acquireLock = options.acquireLock ?? SessionLock.acquire
+  const acquireLock = options.acquireLock ?? FileLock.tryAcquire
   const lock = await acquireLock(lockPath)
   if (!lock) {
     preparationNeeded('Another Tao dependency preparation is running; retry.')

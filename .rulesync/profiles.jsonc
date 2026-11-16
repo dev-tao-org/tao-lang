@@ -1,5 +1,5 @@
 {
-  // Opt-in permission profiles layered over the default policy in permissions.jsonc. `./agent setup`
+  // Opt-in permission profiles layered over the default policy in permissions.jsonc. `./agent unsandboxed setup`
   // renders each one into `.claude/settings.<name>.json` (which `just session-<name>` launches with)
   // and into the matching `tao-<name>` profile in `.codex/config.toml`. Edit this file, never the
   // generated ones. A profile is what the default policy deliberately lacks: the host commands it

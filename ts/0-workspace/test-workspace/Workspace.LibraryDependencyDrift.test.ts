@@ -20,7 +20,7 @@ Tests.test('library compilation rejects changed transitive source declarations b
     const lock = Path.join(root, '.tao/store/dependencies.lock.json')
     const preparedLock = await FS.readFile(lock)
     const changedRequirements = S`
-      requires file:../new-theme version local as theme
+      requires file:../new-theme version local as Theme
     `
     await FS.writeFile(Path.join(widgets, 'Dependencies.tao'), changedRequirements)
     Tests.expect(await FS.exists(Path.join(directory, 'new-theme'))).toBe(false)
@@ -45,8 +45,8 @@ async function createTransitiveLibrary(directory: string): Promise<void> {
   await FS.writeFile(
     Path.join(root, 'Library.tao'),
     S`
-      requires file:../widgets version local as widgets
-      use widgets@ui Widget
+      requires file:../widgets version local as Widgets
+      use Widgets@ui Widget
       ts-library Demo { publish { Own, } }
       public view Own { render Widget }
     `,
@@ -54,13 +54,13 @@ async function createTransitiveLibrary(directory: string): Promise<void> {
   await FS.writeFile(
     Path.join(widgets, 'Dependencies.tao'),
     S`
-      requires file:../old-theme version local as theme
+      requires file:../old-theme version local as Theme
     `,
   )
   await FS.writeFile(
     Path.join(widgets, '@ui/Widget.tao'),
     S`
-      use theme@ui Theme
+      use Theme@ui Theme
       public view Widget { render Theme }
     `,
   )

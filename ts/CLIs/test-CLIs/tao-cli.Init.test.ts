@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as Workspace from '@workspace'
 
 Tests.test('tao init --library scaffolds a consumer without changing existing files', async () => {
@@ -85,16 +85,15 @@ async function initializeLibraryConsumer(target: string, storageRoot: string): P
     TAO_CLI_CWD: undefined,
     TAO_SUPPORT_DIR: Path.join(storageRoot, '.support-fixture'),
   }
-  const child = Processes.spawnPiped(Repo.resolvePath('tao'), {
-    variadicArgs: ['init', target, '--library'],
+  const child = Exec.spawn(Repo.resolvePath('tao'), ['init', target, '--library'], {
     cwd: Repo.getWorkspaceRoot(),
     addEnv: environment,
     stdin: 'ignore',
   })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   return { status, stdout, stderr }
 }

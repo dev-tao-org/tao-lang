@@ -1,5 +1,7 @@
-import { Addr, Errors, NewlineCharacter, Try } from '@shared'
-import { Env, Http, Path, Processes } from '@shared/os'
+import { Errors, NewlineCharacter, Try } from '@shared'
+import { Env, HttpServer, Path } from '@shared/os'
+import Exec, { type ProcessOutput } from '@shared/os/exec'
+import { Addr, Http } from '@shared/web'
 import { HeadlessExpoEnvironment } from '../../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimeApplication } from '../../Runtime'
 import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
@@ -14,16 +16,15 @@ export async function createExpoSession(
   const port = unusedPort()
   const publication = await prepareExpoPublication(application, options.generated)
   const addEnv = { ...expoEnvironment(application.directory), ...publication.environment }
-  const child = Processes.spawnPiped('expo', {
-    variadicArgs: ['start', '--web', '--port', String(port), '--max-workers', '1'],
+  const child = Exec.spawn('expo', ['start', '--web', '--port', String(port), '--max-workers', '1'], {
     cwd: application.directory,
     addEnv,
   })
   const url = Addr.localhostUrl(port)
-  const output = Processes.captureProcessOutput(child, options.onOutput)
+  const output = Exec.captureProcessOutput(child, options.onOutput)
   await Try(() => waitForExpoReady(url, () => child.exitCode === null, undefined, undefined, options.signal), {
     async catch(error) {
-      await Processes.stopProcess(child)
+      await Exec.stopProcess(child)
       Errors.ThrowHostEnvironment(`Expo web preview failed to start. ${formatOutput(await output)} ${String(error)}`)
     },
   })
@@ -34,7 +35,7 @@ export async function createExpoSession(
     output: () => output,
     async dispose() {
       publication.dispose()
-      await Processes.stopProcess(child)
+      await Exec.stopProcess(child)
       await output
     },
   }
@@ -45,7 +46,7 @@ export type ExpoSession = {
   url: string
   sessionId: string
   publish(revision: GeneratedRevision): Promise<PublicationOutcome>
-  output(): Promise<Processes.ProcessOutput>
+  output(): Promise<ProcessOutput>
   dispose(): Promise<void>
 }
 
@@ -70,7 +71,7 @@ function expoEnvironment(directory: string): Record<string, OptionalEnvironmentV
 }
 
 function unusedPort(): number {
-  const server = Http.serve({
+  const server = HttpServer.serve({
     hostname: Addr.Localhost,
     port: 0,
     fetch: () => Http.response(),
@@ -80,7 +81,7 @@ function unusedPort(): number {
   return port
 }
 
-function formatOutput(output: Processes.ProcessOutput): string {
+function formatOutput(output: ProcessOutput): string {
   const messages = [output.stdout.trim(), output.stderr.trim()].filter(Boolean)
   return messages.length ? `Expo output:${NewlineCharacter}${messages.join(NewlineCharacter)}` : ''
 }

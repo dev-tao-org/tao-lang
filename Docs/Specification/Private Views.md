@@ -16,6 +16,8 @@ view Profile(Name text) {
 
 #### `view Greeting` inside `Profile`
 
-Declare private views after the owning view's render statement. The render may use the nested view
-before its declaration. Nested views in the same group can refer to one another, and descendants can
-refer to their ancestors' sibling group through ordinary lexical resolution.
+Declare private views after the owning view's render statement and omit any visibility modifier.
+If a private view comes before that render, Tao reports its placement on the private view.
+The render may use the nested view before its declaration. Nested views in the same group can refer
+to one another, and descendants can refer to their ancestors' sibling group through ordinary
+lexical resolution.

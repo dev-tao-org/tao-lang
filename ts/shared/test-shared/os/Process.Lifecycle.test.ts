@@ -1,9 +1,10 @@
 import * as Tests from '@shared-tests'
-import { Http, Process } from '@shared/os'
+import { Process } from '@shared/os'
+import { Cancellation } from '@shared/web'
 
 Tests.test('explicit shutdown resolves its wait without finishing another session', async () => {
-  const first = Http.createAbortController()
-  const second = Http.createAbortController()
+  const first = Cancellation.createController()
+  const second = Cancellation.createController()
   const firstWait = Process.waitForTermination(first.signal)
   let secondFinished = false
   const secondWait = Process.waitForTermination(second.signal).then(() => {

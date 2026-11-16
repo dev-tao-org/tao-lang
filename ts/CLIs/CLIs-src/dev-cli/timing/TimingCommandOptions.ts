@@ -34,7 +34,7 @@ export const timingOptions = [
   { flags: '--samples <count>', description: 'Independent preview sessions.', defaultValue: '5' },
   {
     flags: '--edits <count>',
-    description: 'Edits per session, excluding the first four from warm analysis.',
+    description: 'Edits per session, excluding the first complete cycle from warm analysis.',
     defaultValue: '24',
   },
   { flags: '--dry-run', description: 'Print the workload and connection plan without connecting.' },

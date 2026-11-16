@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import type * as Grammar from '@grammar'
-import type * as Typecheck from '@typecheck'
+import * as Typecheck from '@typecheck'
 
 import { Errors, Timings } from '@shared'
 import { FS, Path } from '@shared/os'
@@ -16,6 +16,7 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
+  validateStatementsBeforeDiscovery?: boolean
 }
 
 /** loadModules discovers and parses the source graph reachable from one parsed entry.
@@ -104,6 +105,7 @@ async function addDiscoveredSources(
       const document = text === undefined
         ? await readDocument(candidate, state.parser, state.documents, timings)
         : parseDocument(text, candidate, state.parser, timings)
+      validateDiscoveryDocument(state.options, document, candidate)
       state.documents.set(candidate, document)
       state.sources.set(candidate, sourceModule(candidate, document))
       state.pending.push(candidate)
@@ -117,6 +119,7 @@ async function addDiscoveredSources(
 
 function createLoadState(request: LoadRequest, entryPath: string, projectRoot: string): LoadState {
   const document = request.entry.document
+  validateDiscoveryDocument(request.options, document, entryPath)
   return {
     ...request,
     entryPath,
@@ -126,6 +129,12 @@ function createLoadState(request: LoadRequest, entryPath: string, projectRoot: s
     pending: [entryPath],
     observedRoots: new Set(),
     documents: new Map([[entryPath, document]]),
+  }
+}
+
+function validateDiscoveryDocument(options: ModuleLoadOptions, document: AST.Document, path: string): void {
+  if (options.validateStatementsBeforeDiscovery) {
+    Typecheck.assertValidStatements(document, path)
   }
 }
 

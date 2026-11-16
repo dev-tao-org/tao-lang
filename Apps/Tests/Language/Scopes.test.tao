@@ -19,6 +19,6 @@ tests "Lexical scopes" {
       text "File scope"
     }
     expect text "Parameter scope"
-    expect text "Prototype name"
+    expect text "Second file binding"
   }
 }

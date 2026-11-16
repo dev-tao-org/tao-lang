@@ -1,5 +1,4 @@
 import { Errors } from '@shared'
-import { Http } from '@shared/os'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type TestExecutionOptions = { serial?: boolean; parallel?: ParallelBudget; yes?: boolean }
@@ -21,7 +20,7 @@ export type TestSectionOperations = { typescript: () => Promise<void>; tao: () =
 export type TestSectionFailures = { typescript?: string; tao?: string }
 
 /** TestRunSignal carries cancellation through scheduling and subprocess execution. */
-export type TestRunSignal = Http.HttpAbortSignal
+export type TestRunSignal = AbortSignal
 
 type ParallelBudget = string | boolean
 type OptionalTypeScriptPlan = { args: readonly string[]; workers: number } | undefined
@@ -36,10 +35,10 @@ export type TestExecutionRequest = { typescriptArgs?: readonly string[]; taoTarg
 /** TaoWorkerReport is the shared subprocess result protocol for completed Tao cases. */
 export type TaoWorkerReport = { passed: number; failed: number; error?: string }
 
+const DefaultTypeScriptWorkers = 5
+
 /** planTestExecution validates test options and assigns worker budgets deterministically. */
-export function planTestExecution(
-  options: TestExecutionRequest,
-): TestPlan {
+export function planTestExecution(options: TestExecutionRequest): TestPlan {
   const serial = options.serial ?? false
   const parallel = options.parallel
   if (serial && parallel !== undefined) {
@@ -48,7 +47,9 @@ export function planTestExecution(
   const typescriptSelected = options.typescriptArgs !== undefined
   const taoSelected = options.taoTarget !== undefined
   const sections = Number(typescriptSelected) + Number(taoSelected)
-  const budget = parallel === undefined || parallel === true ? 6 : parseParallelBudget(parallel)
+  const budget = parallel === undefined || parallel === true
+    ? DefaultTypeScriptWorkers + 1
+    : parseParallelBudget(parallel)
   const [typescriptWorkers, taoWorkers] = serial || budget === 1
     ? [1, 1]
     : splitWorkerBudget(budget, sections, typescriptSelected, parallel === undefined || parallel === true)
@@ -131,7 +132,7 @@ export function assertTestRunActive(signal: OptionalTestRunSignal): void {
 
 function parseParallelBudget(value: ParallelBudget): number {
   if (value === false || value === true) {
-    return 6
+    return DefaultTypeScriptWorkers + 1
   }
   const budget = Number(value)
   if (!Number.isSafeInteger(budget) || budget < 1) {
@@ -150,18 +151,14 @@ function splitWorkerBudget(
     const workers = resolveSingleSectionWorkerBudget(defaultBudget, typescriptSelected, budget)
     return typescriptSelected ? [workers, 0] : [0, workers]
   }
-  const typescript = Math.min(3, Math.max(1, Math.floor(budget / 2)))
-  return [typescript, Math.max(1, budget - typescript)]
+  return [defaultBudget ? DefaultTypeScriptWorkers : budget - 1, 1]
 }
 
 function resolveSingleSectionWorkerBudget(defaultBudget: boolean, typescriptSelected: boolean, budget: number): number {
-  if (!defaultBudget) {
-    return budget
+  if (!typescriptSelected) {
+    return 1
   }
-  if (typescriptSelected) {
-    return 3
-  }
-  return 4
+  return defaultBudget ? DefaultTypeScriptWorkers : budget
 }
 
 function runSection(section: TestSection, run: () => Promise<void>, signal?: TestRunSignal) {

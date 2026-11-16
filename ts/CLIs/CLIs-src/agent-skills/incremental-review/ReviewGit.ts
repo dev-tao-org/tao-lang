@@ -1,12 +1,13 @@
 import { Errors, Json, Lists, NewlineCharacter, NullCharacter, Sort, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 
 type GitOptions = { index?: string; input?: GitInput }
 /** git captures Git output without a shell and keeps pathspecs literal. */
 export async function git(root: string, args: string[], options: GitOptions = {}): Promise<string> {
   const addEnv = { GIT_INDEX_FILE: options.index, GIT_TERMINAL_PROMPT: '0' }
-  const result = await Processes.runIgnoreStatus(['git', '--literal-pathspecs', ...args], {
+  const result = await Exec.capture('git', ['--literal-pathspecs', ...args], {
+    check: false,
     cwd: root,
     addEnv,
     stdin: options.input,

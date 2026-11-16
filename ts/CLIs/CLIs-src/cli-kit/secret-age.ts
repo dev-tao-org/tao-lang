@@ -1,6 +1,6 @@
 import { Errors, Regxs, Try } from '@shared'
 import { Artifacts, FS, Path } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec, { type CommandArgs } from '@shared/os/exec'
 import { IO } from './cli-kit'
 import type { Cipher } from './secret-store'
 
@@ -19,10 +19,8 @@ async function encrypt(plaintext: string, recipients: readonly string[]): Promis
   if (recipients.length === 0) {
     Errors.ThrowUserInput('The secret store has no recipients.')
   }
-  return run('age --armor', {
-    variadicArgs: recipients.flatMap(recipient => ['--recipient', recipient]),
-    stdin: plaintext,
-  })
+  const recipientArgs = recipients.flatMap(recipient => ['--recipient', recipient])
+  return run('age', ['--armor', ...recipientArgs], plaintext)
 }
 
 async function decryptStoreKey(identityPath: string, setupCommand: string, armor: string): Promise<string> {
@@ -32,7 +30,7 @@ async function decryptStoreKey(identityPath: string, setupCommand: string, armor
     )
   }
   IO.warn('Unlocking the secret store. On macOS, Secure Enclave authorization may open a Touch ID or login dialog.')
-  return run('age --decrypt --identity', { variadicArgs: [identityPath], stdin: armor })
+  return run('age', ['--decrypt', '--identity', identityPath], armor)
 }
 
 async function decryptWithKey(armor: string, secretKey: string): Promise<string> {
@@ -42,7 +40,7 @@ async function decryptWithKey(armor: string, secretKey: string): Promise<string>
   const path = Path.join(temporary, 'value.age')
   return Try(async () => {
     await Artifacts.write(path, armor)
-    return run('age --decrypt --identity -', { variadicArgs: [path], stdin: secretKey })
+    return run('age', ['--decrypt', '--identity', '-', path], secretKey)
   }, {
     finally: () => Artifacts.rm(temporary, { force: true, recursive: true }),
   })
@@ -59,7 +57,7 @@ async function generateKey(): Promise<{ recipient: string; secretKey: string }> 
 }
 
 async function recipientOfKey(secretKey: string): Promise<string> {
-  const recipient = (await run('age-keygen -y', { stdin: secretKey })).trim()
+  const recipient = (await run('age-keygen', '-y', secretKey)).trim()
   if (!recipient.startsWith('age1')) {
     Errors.ThrowHostEnvironment('age-keygen did not return a valid recipient.')
   }
@@ -68,12 +66,10 @@ async function recipientOfKey(secretKey: string): Promise<string> {
 
 async function run(
   command: string,
-  options: { variadicArgs?: readonly string[]; stdin?: string } = {},
+  args: CommandArgs = [],
+  stdin?: string,
 ): Promise<string> {
-  const result = await Processes.runIgnoreStatus(command, {
-    variadicArgs: options.variadicArgs,
-    stdin: options.stdin,
-  })
+  const result = await Exec.capture(command, args, { check: false, stdin })
   if (result.status !== 0 || result.signal !== null) {
     Errors.ThrowHostEnvironment(`${command} failed while processing the secrets store (exit ${result.status}).`)
   }

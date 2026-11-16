@@ -72,17 +72,13 @@ Tests.test('text literals reject raw JSON control characters but retain escaped 
   Tests.expect(escapedControl.rootNode.hasError).toBe(false)
 })
 
-Tests.test('syntax diagnostics reject invalid contextual statements and superseded imports', () => {
+Tests.test('syntax diagnostics reject incomplete statements and superseded imports', () => {
   const parser = createParser()
   const invalidSources = [
-    'app Demo {}',
-    'view Main {}',
-    'view Main { render Text render Other }',
-    'view Main { view Private { render Text } render Text }',
-    'view Main { render Text let Late = "value" }',
-    'view Main { render Text { render inject ```ts return null ``` } }',
-    'app Demo { root Main root Other }',
-    'tests { test { expect { #save input value "Ready" } } }',
+    'app Demo { root }',
+    'view Main { render Col { Text("Hello") }',
+    'view Main { let Title = }',
+    'tests { test { type into #save } }',
     'use Text from tao@ui',
     'use all from tao@ui',
   ]
@@ -120,12 +116,12 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
 
 Tests.test('requirements, package subpath imports and foreign views parse', () => {
   const source = S`
-    requires github:acme/widgets version v1.2.0 as widgets
-    requires file:../widgets as widgets
+    requires github:acme/widgets version v1.2.0 as Widgets
+    requires file:../widgets as Widgets
     requires npm:@date-fns/tz version 4.1.0
-    requires bundled:tao version v2 as tao
+    requires bundled:tao version v2 as TaoSource
     use @store Save
-    use widgets@ui/controls Button
+    use Widgets@ui/controls Button
     public view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = createParser().parse(source)
@@ -133,7 +129,7 @@ Tests.test('requirements, package subpath imports and foreign views parse', () =
   Tests.expect(tree.rootNode.descendantsOfType('RequiresDeclaration')).toHaveLength(4)
   Tests.expect(tree.rootNode.descendantsOfType('ImportPath').map(node => node.text)).toEqual([
     '@store',
-    'widgets@ui/controls',
+    'Widgets@ui/controls',
     './FormattedDate.tsx',
   ])
   Tests.expect(tree.rootNode.descendantsOfType('ForeignView')).toHaveLength(1)

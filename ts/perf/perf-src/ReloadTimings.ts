@@ -6,6 +6,7 @@ import type { PreviewSignalType } from './Preview/PreviewSignal'
 /** ReloadTiming measures one source update through both previews' refresh milestones. */
 export type ReloadTiming = {
   revision: string
+  observedAtMs: number
   saveToHmrMs: number
   saveToAppliedMs: number
   pipeline: readonly TimingSample[]
@@ -75,6 +76,7 @@ export class ReloadTimings {
     this.reported = true
     this.report?.({
       revision: this.revision,
+      observedAtMs: this.startedAtMs,
       saveToHmrMs: Math.max(...[...complete.values()].map(frame => frame.hmr.timestampMs)) - this.startedAtMs,
       saveToAppliedMs: Math.max(...[...complete.values()].map(frame => frame.applied.timestampMs)) - this.startedAtMs,
       pipeline: publication.timings,

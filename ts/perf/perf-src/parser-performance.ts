@@ -2,7 +2,7 @@ import type * as Grammar from '@grammar'
 import { Json } from '@shared'
 import { Errors, Timings, type TimingSample } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { parserFixtures } from './parser-fixtures'
 import type { ParserFixture } from './parser-fixtures'
 import { transformerSamples } from './transformer-samples'
@@ -21,11 +21,11 @@ export async function parserPerformance(build: readonly TimingSample[]) {
   Artifacts.trackTemporary(path)
   const report: ParserPerformanceReport = {
     version: 1,
-    commit: await Processes.capture('git rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
-    modified: await Processes.capture('git status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
+    commit: await Exec.captureStdout('git', 'rev-parse HEAD', { cwd: Repo.getWorkspaceRoot() }),
+    modified: await Exec.captureStdout('git', 'status --porcelain', { cwd: Repo.getWorkspaceRoot() }) !== '',
     system: Platform.systemInfo(),
-    bun: await Processes.capture('bun --version'),
-    node: await Processes.capture('node --version'),
+    bun: await Exec.captureStdout('bun', '--version'),
+    node: await Exec.captureStdout('node', '--version'),
     fixtureHash: await createParserFixtureFingerprint(),
     definitions: {
       cold: '5 fresh Bun processes; OS, Node headers and native build caches retained.',
@@ -117,8 +117,7 @@ function parseColdParserSamples(output: string): TimingSample[] {
 }
 
 const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {
-  return await Processes.capture('bun run', {
-    variadicArgs: [Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')],
+  return await Exec.captureStdout('bun', ['run', Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')], {
     cwd: Repo.resolvePath('ts'),
   })
 })

@@ -2,15 +2,15 @@ import { Json } from '@shared'
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import Exec from '@shared/os/exec'
 import * as WebHost from '../../shared-src/os/bridges/Bridge_browser/Bridge_browser'
-import * as Processes from '../../shared-src/os/Processes'
 
 Tests.test('failed cache-mutation acquisition releases lease ownership and retains its probe for later cleanup', async () => {
   await withFailureFixture(async root => {
     const script = S`
       let failMutation = false;
-      const acquire = locks.acquire;
-      mock.module(${Json.Print(lockUrl)}, () => ({ ...locks, async acquire(path) {
+      const acquire = locks.tryAcquire;
+      mock.module(${Json.Print(lockUrl)}, () => ({ ...locks, async tryAcquire(path) {
         if (failMutation && path.endsWith('cache-mutation.lock')) throw new Error('mutation unavailable');
         return acquire(path);
       } }));
@@ -68,8 +68,8 @@ function blockedProbeAdapters(stage: string, failure: string): string {
   return S`
         const remove = fs.rm;
         const readDirectory = fs.readdir;
-        const acquire = locks.acquire;
-        mock.module(${Json.Print(lockUrl)}, () => ({ ...locks, async acquire(path) {
+        const acquire = locks.tryAcquire;
+        mock.module(${Json.Print(lockUrl)}, () => ({ ...locks, async tryAcquire(path) {
           if (blocked && ${
     Json.Print(stage)
   } === 'open' && path.endsWith('blocked.lock')) throw Object.assign(new Error('blocked probe'), { code: ${
@@ -113,18 +113,15 @@ async function runFailureScript(root: string, body: string): Promise<string> {
     TAO_CACHE_DIR: Path.join(root, 'cache'),
     TAO_SUPPORT_DIR: Path.join(root, 'support'),
   }
-  const child = Processes.spawnPiped('bun', {
-    variadicArgs: ['-e', script],
-    addEnv: environment,
-  })
+  const child = Exec.spawn('bun', ['-e', script], { addEnv: environment })
   const [status, stdout, stderr] = await Promise.all([
     child.exited,
-    Processes.readText(child.stdout),
-    Processes.readText(child.stderr),
+    Exec.readText(child.stdout),
+    Exec.readText(child.stderr),
   ])
   Tests.expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
   return stdout
 }
 
-const lockUrl = new WebHost.URL('../../shared-src/os/Storage/SessionLock.ts', import.meta.url).href
+const lockUrl = new WebHost.URL('../../shared-src/os/locks/FileLock.ts', import.meta.url).href
 const storageUrl = new WebHost.URL('../../shared-src/os/Storage.ts', import.meta.url).href

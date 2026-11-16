@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent setup --frozen-lockfile"
+            "command": "repo_root=\"$(git rev-parse --show-toplevel)\" && cd \"$repo_root\" && ./agent unsandboxed setup"
           }
         ]
       }
@@ -221,6 +221,8 @@
       "mcp__claude-in-chrome__*"
     ],
     "ask": [
+      "Bash(./agent dependency-add *)",
+      "Bash(./agent unsandboxed dependency-add *)",
       "Bash(./agent land-unlock --force*)"
     ],
     "deny": [

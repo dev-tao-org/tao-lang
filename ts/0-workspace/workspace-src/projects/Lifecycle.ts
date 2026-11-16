@@ -1,12 +1,12 @@
 import { Errors, Time, Try } from '@shared'
-import { FS, Path, SessionLock } from '@shared/os'
+import { FileLock, FS, Path } from '@shared/os'
 import { deriveProjectLayout } from './Projects'
 
 /** acquireProjectLifecycle serializes session startup with project cleanup. */
 export async function acquireProjectLifecycle(
   root: string,
   waitMs = 0,
-): Promise<SessionLock.SessionLock | undefined> {
+): Promise<FileLock.FileLock | undefined> {
   const layout = deriveProjectLayout(Path.resolve(root))
   requireRealDirectory(layout.taoDirectory, 'Tao project metadata')
   const locksRoot = Path.join(layout.taoDirectory, 'locks')
@@ -73,7 +73,7 @@ function ensureRegularLockPath(path: string): void {
 async function acquireLifecycleLock(lockPath: string, waitMs: number) {
   const deadline = Time.nowMs() + waitMs
   while (true) {
-    const lock = await SessionLock.acquire(lockPath)
+    const lock = await FileLock.tryAcquire(lockPath)
     if (lock || Time.nowMs() >= deadline) {
       return lock
     }

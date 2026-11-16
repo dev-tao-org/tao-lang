@@ -1,11 +1,11 @@
 import { IO } from '@cli-kit'
 import { FS, Path, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
+import Exec, { type Command, type CommandArgs, type CommandOptions } from '@shared/os/exec'
 
-/** LandingIO isolates command and file effects so workflow tests never launch Git or GitHub. */
+/** LandingIO scopes landing commands and file operations to the selected checkout. */
 export type LandingIO = {
   root: string
-  command: (command: string, args?: readonly string[], directory?: string) => Promise<string>
+  command: (command: Command, args?: CommandArgs, options?: CommandOptions) => Promise<string>
   read: (path: string) => Promise<string>
   exists: (path: string) => Promise<boolean>
   write: (path: string, text: string) => Promise<void>
@@ -16,12 +16,14 @@ export function createLandingIO(): LandingIO {
   const root = Repo.getWorkspaceRoot()
   return {
     root,
-    command(command, args = [], directory = root) {
-      const progress = commandProgress(command, args)
+    command(command, args = [], options = {}) {
+      const argv = Exec.resolveCommandArgs(args)
+      const progress = commandProgress(command, argv)
       if (progress) {
         IO.progress(progress)
       }
-      return Processes.capture(command, { variadicArgs: args, cwd: directory, trim: false })
+      const { cwd = root, addEnv } = options
+      return Exec.captureStdout(command, argv, { cwd, addEnv, trim: false })
     },
     read: path => FS.readFile(Path.resolve(root, path), 'utf8'),
     exists: path => FS.exists(Path.resolve(root, path)),
@@ -38,7 +40,7 @@ type GitOptions = { storage?: boolean; trim?: boolean }
 /** git runs literal arguments in the selected repository; trim:false preserves exact output bytes. */
 export async function git(io: LandingIO, args: readonly string[], options: GitOptions = {}): Promise<string> {
   const directory = options.storage ? Path.join(io.root, '.storage') : io.root
-  const output = await io.command('git', args, directory)
+  const output = await io.command('git', args, { cwd: directory })
   return options.trim === false ? output : output.trim()
 }
 
@@ -57,7 +59,8 @@ function commandProgress(command: string, args: readonly string[]): string | und
     'gh pr merge': 'Requesting the pinned squash merge…',
     'gh api': 'Confirming the merge on remote main…',
   }
-  return stages[command] ?? stages[`${command} ${args[0]}`]
+  const [subcommand, action] = args
+  return stages[`${command} ${subcommand} ${action}`] ?? stages[`${command} ${subcommand}`]
 }
 
 type LandingCommandMessages = Record<string, string>

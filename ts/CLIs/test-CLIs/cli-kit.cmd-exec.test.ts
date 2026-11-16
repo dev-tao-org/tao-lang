@@ -1,6 +1,7 @@
 import { S } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Http, Platform, Repo } from '@shared/os'
+import { Artifacts, FS, Platform, Repo } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { runNonInteractiveCommand, runSteps } from '../CLIs-src/cli-kit/cli-kit'
 import { createOutput } from '../CLIs-src/cli-kit/output/Output'
 
@@ -28,7 +29,7 @@ Tests.test('awaits variadic void steps in order and stops at the original thrown
 })
 
 Tests.test('command cancellation drains cooperative cleanup and cannot report a successful child as passed', async () => {
-  const controller = Http.createAbortController()
+  const controller = Cancellation.createController()
   const captured: string[] = []
   const output = createOutput(event => {
     if (event.stream === 'stdout' || event.stream === 'stderr') {
@@ -45,8 +46,7 @@ Tests.test('command cancellation drains cooperative cleanup and cannot report a 
     await stopped
     Terminal.stderr.write('cleanup complete\\n')
   `
-  await Tests.expect(runNonInteractiveCommand('bun', {
-    variadicArgs: ['-e', child],
+  await Tests.expect(runNonInteractiveCommand('bun', ['-e', child], {
     cwd: Repo.resolvePath('ts'),
     output: output.channel('fixture'),
     signal: controller.signal,
@@ -66,7 +66,7 @@ Tests.test('batch commands read explicitly supplied files without acquiring term
       captured.push(event.text)
     }
   })
-  await runNonInteractiveCommand('cat', { stdin: FS.file(path), output: output.channel('fixture') })
+  await runNonInteractiveCommand('cat', [], { stdin: FS.file(path), output: output.channel('fixture') })
   Tests.expect(captured.join('')).toBe('explicit command input\n')
   await output.finish()
 })

@@ -1,8 +1,7 @@
 import { NewlineCharacter, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
-import { Processes } from '@shared/os'
-import { pushBranch, type PushIO } from '../../CLIs-src/agent-cli/push/Push'
+import Exec from '@shared/os/exec'
 
 Tests.test('a local guarded push updates only its destination despite broader remote configuration', async () => {
   await withRepository(async (root, remote) => {
@@ -12,14 +11,14 @@ Tests.test('a local guarded push updates only its destination despite broader re
     await git(root, ['commit', '-m', 'Fixture update'])
     await git(root, ['tag', '-a', 'fixture-tag', '-m', 'Do not publish this tag'])
     const commit = await git(root, ['rev-parse', 'HEAD'])
-    await pushBranch('origin', 'feat/work', {}, localIO(root))
+    await push(root, ['origin', 'feat/work'])
     Tests.expect(await git(remote, ['rev-parse', 'refs/heads/feat/work'])).toBe(commit)
     Tests.expect(await git(remote, ['rev-parse', 'refs/heads/main'])).toBe(before)
     Tests.expect(await git(remote, ['rev-parse', 'refs/heads/keep'])).toBe(before)
     Tests.expect(await git(remote, ['tag', '--list'])).toBe('')
-    await pushBranch('origin', 'backup/work', { source: 'feat/work' }, localIO(root))
+    await push(root, ['origin', 'backup/work', '--source', 'feat/work'])
     Tests.expect(await git(remote, ['rev-parse', 'refs/heads/backup/work'])).toBe(commit)
-    await Tests.rejects(pushBranch('origin', 'main', {}, localIO(root)))
+    await Tests.rejects(push(root, ['origin', 'main']))
     Tests.expect(await git(remote, ['rev-parse', 'refs/heads/main'])).toBe(before)
   })
 })
@@ -47,15 +46,11 @@ async function withRepository(action: (root: string, remote: string) => Promise<
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 }
 
-function localIO(root: string): PushIO {
-  return {
-    capture: args => git(root, args),
-    async run(args) {
-      await git(root, args)
-    },
-  }
+async function push(root: string, args: readonly string[]): Promise<void> {
+  const addEnv = { GIT_DIR: Path.join(root, '.git'), GIT_WORK_TREE: root }
+  await Exec.capture(Repo.resolvePath('agent'), ['push', ...args], { cwd: root, addEnv })
 }
 
 async function git(root: string, args: readonly string[]): Promise<string> {
-  return Processes.capture('git', { variadicArgs: args, cwd: root })
+  return Exec.captureStdout('git', args, { cwd: root })
 }

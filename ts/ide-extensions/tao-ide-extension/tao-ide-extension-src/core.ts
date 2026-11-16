@@ -1,6 +1,8 @@
+import * as AST from '@ast-gen'
 import * as Format from '@fix/format'
 
 import * as Shared from '@shared'
+import * as Typecheck from '@typecheck'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from './Bridge_web-tree-sitter'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
@@ -89,7 +91,7 @@ interface DocumentResult {
   diagnostics: QueryResults.Diagnostic[]
 }
 
-type MeasurementPhase = 'tao.parse' | 'tsx.parse' | 'query'
+type MeasurementPhase = 'tao.parse' | 'tao.validation' | 'tsx.parse' | 'query'
 
 function createDocumentSession(options: SessionOptions): DocumentSession {
   let source = ''
@@ -168,6 +170,7 @@ const FenceSuffix = '```'
 function collectResults(options: SessionOptions, tree: Tree, source: string): DocumentResult {
   const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
   const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
+  diagnostics.push(...measure(options, 'tao.validation', () => collectTaoStatementDiagnostics(tree)))
   for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
     const bodyStart = injection.startIndex + FencePrefix.length
     const bodyEnd = injection.endIndex - FenceSuffix.length
@@ -189,6 +192,11 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
     })
   }
   return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
+}
+
+function collectTaoStatementDiagnostics(tree: Tree): readonly Typecheck.StatementDiagnostic[] {
+  const document = AST.transform(tree)
+  return document ? Typecheck.collectStatementDiagnostics(document) : []
 }
 
 function measure<T>(options: SessionOptions, phase: MeasurementPhase, operation: () => T): T {

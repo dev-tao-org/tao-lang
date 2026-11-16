@@ -7,9 +7,7 @@ import * as Workspace from '@workspace'
 import { createPreviewHarness, type PreviewHarness } from '../perf-src/Preview/PreviewHarness'
 
 /** withRecoveryPreview runs the real dual-frame host against a controlled render fixture. */
-export async function withRecoveryPreview(
-  run: (fixture: RecoveryFixture) => Promise<void>,
-): Promise<void> {
+export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Promise<void>): Promise<void> {
   const root = Artifacts.resolvePath('tmp', `preview-recovery-${Platform.randomUUID()}`)
   const { workspace, source, change } = await createRecoveryWorkspace(root)
   let expo: OptionalExpoSession
@@ -22,16 +20,18 @@ export async function withRecoveryPreview(
     const page = await browser.newPage()
     page.setDefaultTimeout(5000)
     await page.clock.install()
+    await observePreviewPublications(page)
     await page.goto(expo.url)
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({
       workspace,
-      previewUrl: expo.url,
+      preview: async () => expo!.url,
       sessionId: Platform.randomUUID(),
       canonicalSource: source,
       previewTimeoutMs: 1000,
     })
     await page.goto(host.url)
+    await page.getByRole('button', { name: 'Show previews' }).click()
     await run({ page, change })
   }, {
     async finally() {
@@ -50,7 +50,7 @@ export type RecoveryFixture = {
   change(mode: RecoveryMode): Promise<string>
 }
 
-type RecoveryMode = 'Ready' | 'Broken' | 'Repaired'
+type RecoveryMode = 'Ready' | 'Broken' | 'Repaired' | 'Invalid'
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 type OptionalRecoveryBrowser = HeadlessBrowser.HeadlessBrowserSession | undefined
 type OptionalRecoveryHost = PreviewHarness | undefined
@@ -62,9 +62,12 @@ async function createRecoveryWorkspace(root: string) {
   const workspace = Workspace.createWorkspace({
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
-    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => ({
-      'App.tsx': createRecoveryApp(options.revision, mode),
-    })),
+    compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => {
+      if (mode === 'Invalid') {
+        Errors.ThrowUserInput('Deliberate preview build failure')
+      }
+      return { 'App.tsx': createRecoveryApp(options.revision, mode) }
+    }),
   })
   return {
     workspace,
@@ -78,6 +81,30 @@ async function createRecoveryWorkspace(root: string) {
       return result.revision
     },
   }
+}
+
+async function observePreviewPublications(page: HeadlessBrowser.Page): Promise<void> {
+  await page.addInitScript(() => {
+    const add = EventSource.prototype.addEventListener
+    Object.defineProperty(EventSource.prototype, 'addEventListener', {
+      value(this: EventSource, ...args: Parameters<typeof add>) {
+        add.apply(this, args)
+        if (args[0] !== 'outcome' && args[0] !== 'baseline') {
+          return
+        }
+        if (args[0] === 'baseline') {
+          document.addEventListener('fixture:replay-baseline', event => {
+            const data = (event as CustomEvent<string>).detail
+            this.dispatchEvent(new MessageEvent('baseline', { data }))
+          })
+        }
+        const attribute = `data-received-${args[0]}`
+        add.call(this, args[0], (event: Event) => {
+          document.body.setAttribute(attribute, (event as MessageEvent<string>).data)
+        })
+      },
+    })
+  })
 }
 
 function createRecoveryApp(revision: string, mode: RecoveryMode): string {

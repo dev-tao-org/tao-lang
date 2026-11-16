@@ -1,7 +1,8 @@
 import React from '@runtime/client/Bridge_react/Bridge_react'
 import { Errors, NewlineCharacter, Try } from '@shared'
 import * as Shared from '@shared'
-import { Http, Repo, Terminal } from '@shared/os'
+import { Repo, Terminal } from '@shared/os'
+import { Cancellation } from '@shared/web'
 import { Ink } from '../../CLIs-src/cli-kit/bridges/Bridge_ink'
 import { runNonInteractiveCommand } from '../../CLIs-src/cli-kit/cmd-exec'
 import { IO, renderOutput } from '../../CLIs-src/cli-kit/io'
@@ -9,13 +10,16 @@ import type { OutputSnapshot } from '../../CLIs-src/cli-kit/output/Output'
 import { createPaneInput, type PaneInput } from '../../CLIs-src/cli-kit/output/tui/PromptInput'
 import { OutputView } from '../../CLIs-src/cli-kit/output/tui/View'
 
+/** PaneSecretLines identifies the typed and pasted lines checked for leaks in dashboard output. */
+export const PaneSecretLines = ['fixture-secret-typed-9f2c', 'fixture-secret-pasted-7a4e'] as const
+
 /** runPaneFixture exercises public dashboard prompts while a captured child writes both streams. */
 export async function runPaneFixture(): Promise<void> {
   let latest!: OutputSnapshot
   const frames: string[] = []
   const input = createPaneInput(redraw)
   let questions = 0
-  const cancellation = Http.createAbortController()
+  const cancellation = Cancellation.createController()
   IO.config({ stdout: 'terminal', stderr: 'terminal', progress: 'terminal' })
   renderOutput({
     update(snapshot) {
@@ -28,8 +32,8 @@ export async function runPaneFixture(): Promise<void> {
       if (request.signal) {
         cancellation.abort()
       } else if (request.secret) {
-        input.receive('private', {} as Ink.Key)
-        input.paste(NewlineCharacter + 'value')
+        input.receive(PaneSecretLines[0], {} as Ink.Key)
+        input.paste(NewlineCharacter + PaneSecretLines[1])
       } else if (++questions > 1) {
         input.receive('yex', {} as Ink.Key)
         input.receive('', { backspace: true } as Ink.Key)
@@ -69,17 +73,15 @@ async function exercisePanePrompts(input: PaneInput): Promise<void> {
   const channel = IO.channel({ title: 'TypeScript shard 2' })
   IO.print('Managed npm declarations changed')
   const confirmation = IO.askConfirm({ message: 'Set up dependencies and continue?', defaultValue: true })
-  await runNonInteractiveCommand('bun run', {
-    variadicArgs: [Repo.resolvePath('ts/CLIs/test-CLIs/cli-kit/output.test-fixtures.ts'), 'pane-child'],
-    output: channel,
-  })
+  const fixture = Repo.resolvePath('ts/CLIs/test-CLIs/cli-kit/output.test-fixtures.ts')
+  await runNonInteractiveCommand('bun', ['run', fixture, 'pane-child'], { output: channel })
   input.paste('invalid')
   input.receive('', { return: true } as Ink.Key)
   if (!await confirmation) {
     Errors.ThrowUserInput('Fixture setup declined.')
   }
   const secret = await IO.askSecret('Fixture hidden token: ')
-  if (secret !== Shared.joinTextLines('private', 'value')) {
+  if (secret !== Shared.joinTextLines(...PaneSecretLines)) {
     Errors.ThrowShouldNeverHappen('Fixture secret changed.')
   }
 }

@@ -1,5 +1,5 @@
 import { Errors, Lists, NullCharacter, Try } from '@shared'
-import { FS, Path, Platform, SessionLock } from '@shared/os'
+import { FileLock, FS, Path, Platform } from '@shared/os'
 import { assertSupportedTransforms, git, head, readJson, snapshot, tree, writeJson } from './ReviewGit'
 import type { ReviewJournal, ReviewSession, ReviewStatus } from './ReviewTypes'
 
@@ -7,7 +7,7 @@ import type { ReviewJournal, ReviewSession, ReviewStatus } from './ReviewTypes'
 export async function withReviewLock<Value>(root: string, action: () => Promise<Value>): Promise<Value> {
   const directory = sessionDirectory(root)
   await FS.mkdir(directory)
-  const lock = await SessionLock.acquire(Path.join(directory, 'operation.lock'))
+  const lock = await FileLock.tryAcquire(Path.join(directory, 'operation.lock'))
   if (!lock) {
     Errors.ThrowUserInput('Another incremental review operation owns this session.')
   }

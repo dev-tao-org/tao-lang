@@ -202,7 +202,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
       ],
       definitions: [{
         source: '/entry',
-        declaration: AST.GetDeclarations(entry).find(AST.IsLetDeclaration)!,
+        declaration: AST.FindLetDeclaration(entry.root.block.statements)!,
       }],
     },
   }
@@ -221,17 +221,17 @@ Tests.test('standalone compilation rejects unresolved use statements', () => {
 Tests.test('injection locals and captures cannot collide with generated callback bindings', () => {
   const source = S`
     app Test { root Root }
-    view Root { render inject _values Value, _children @@children \`\`\`ts
-      const _taoValues = _values;
-      const _taoChildren = _children;
+    view Root { render inject Value, Children @@children \`\`\`ts
+      const _taoValues = Value;
+      const _taoChildren = Children;
       return _taoValues + _taoChildren;
     \`\`\` }
   `
   Tests.expect(() => transpileGeneratedFiles(compileSource(source))).not.toThrow()
 })
 
-Tests.test('injection captures cannot shadow the runtime or use reserved JavaScript names', () => {
-  for (const capture of ['TR', 'Tao', 'return', 'implements', 'await', 'arguments', 'eval']) {
+Tests.test('injection captures cannot shadow the generated runtime', () => {
+  for (const capture of ['TR', 'Tao']) {
     const source = S`
       app Test { root Root }
       view Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }
@@ -240,16 +240,17 @@ Tests.test('injection captures cannot shadow the runtime or use reserved JavaScr
   }
 })
 
-Tests.test('contextual TypeScript keywords remain valid JavaScript injection captures', () => {
-  for (const capture of ['string', 'type', 'namespace']) {
-    const source = S`
-      app Test { root Root }
-      view Root { render inject ${capture} Value \`\`\`ts return ${capture} \`\`\` }
-    `
-    const files = compileSource(source)
-    Tests.expect(Object.values(files).join(NewlineCharacter)).toContain(`${capture}: unknown`)
-    Tests.expect(() => transpileGeneratedFiles(files)).not.toThrow()
-  }
+Tests.test('contextual TypeScript keywords remain valid as handwritten injection locals', () => {
+  const source = S`
+    app Test { root Root }
+    view Root { render inject Value \`\`\`ts
+      const string = Value;
+      const type = string;
+      const namespace = type;
+      return namespace;
+    \`\`\` }
+  `
+  Tests.expect(() => transpileGeneratedFiles(compileSource(source))).not.toThrow()
 })
 
 Tests.test('escaped authored identifiers stay inside their own injection scope', () => {

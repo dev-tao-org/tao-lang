@@ -15,6 +15,7 @@ export const IO = {
   summary: (...values: unknown[]) => output.main.summary(...values),
   channel: (options: { title: string }) => output.channel(options.title),
   askConfirm: askConfirmation,
+  askTerminalConfirmation,
   askSecret,
   prompt: withPrompt,
   setCommands(commands: readonly Output.OutputCommand[]) {
@@ -136,6 +137,10 @@ function askConfirmation(...args: ConfirmationArguments): Promise<boolean> {
     )
   }
   return withPrompt(() => Terminal.askConfirm(...args))
+}
+
+function askTerminalConfirmation(options: ConfirmationArguments[0]): Promise<boolean> {
+  return withPrompt(() => Terminal.askConfirm(options))
 }
 
 function askSecret(message: string): Promise<string> {

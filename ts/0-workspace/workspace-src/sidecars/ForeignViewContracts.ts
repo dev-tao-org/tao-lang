@@ -1,10 +1,7 @@
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Regxs, S, Try } from '@shared'
-import * as Shared from '@shared'
+import * as Compile from '@compile'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { Files, FS, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModule/ManagedModuleTypes'
-
-type ForeignViewParameterTypes = Record<string, string>
 
 /** ForeignViewContractOwnership marks contract files managed by Tao. */
 export const ForeignViewContractOwnership = 'managed-by-tao' + NewlineCharacter
@@ -20,40 +17,9 @@ export type ContractExecutor = (
 export type ForeignViewContract = {
   directory: string
   name: string
-  parameters: ForeignViewParameterTypes
+  parameters: Compile.ForeignViewParameterTypes
   exportFile: string
   compiler: string
-}
-
-/** ForeignViewContractSourceInput carries the named export and props used to create its compiler contract. */
-export type ForeignViewContractSourceInput = {
-  name: string
-  parameters: ForeignViewParameterTypes
-  exportRelativePath: string
-}
-
-/** createForeignViewContractSource emits the module-local React component contract. */
-export function createForeignViewContractSource(input: ForeignViewContractSourceInput): string {
-  const importPath = input.exportRelativePath.replaceAll('\\', '/').replace(Regxs.TypeScriptModuleExtensionRegx, '')
-  const parameters = Object.entries(input.parameters).map(([name, type]) => `  ${name}: ${type}`).join(NewlineCharacter)
-  const foreignViewName = input.name
-  const resolvedImportPath = Json.Print(Path.toRelativeModuleSpecifier(importPath))
-  return Shared.joinTextLines(
-    S`
-      import type * as React from 'react'
-      import { ${foreignViewName} as TaoForeignView } from ${resolvedImportPath}
-
-      export type TaoForeignViewProps = {
-    `,
-    parameters,
-    S`
-      }
-
-      const taoForeignViewContract: React.ComponentType<TaoForeignViewProps> = TaoForeignView
-      void taoForeignViewContract
-    `,
-    '',
-  )
 }
 
 /** checkForeignViewContract writes and type-checks a module-local React component contract. */
@@ -74,7 +40,7 @@ export async function checkForeignViewContract(
     }
   }
   const file = Path.join(contract.directory, `.tao-${contract.name}.contract.ts`)
-  const source = createForeignViewContractSource({
+  const source = Compile.createForeignViewContractSource({
     name: contract.name,
     parameters: contract.parameters,
     exportRelativePath,
