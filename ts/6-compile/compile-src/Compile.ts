@@ -1,4 +1,6 @@
 export * from './Compile/Compile'
+export * from './Compile/ForeignViewContractCompiler'
 export * from './Compile/LibraryCompiler'
+export * from './Compile/LibraryPackageCompiler'
 export * from './Compile/LibraryPublications'
 export * from './Compile/ModulesCompiler'

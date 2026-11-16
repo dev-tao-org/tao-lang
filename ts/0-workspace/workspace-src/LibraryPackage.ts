@@ -1,11 +1,10 @@
 import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
-import { Json } from '@shared'
+import { Errors, Json } from '@shared'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
-import { Errors, S } from '@shared'
 import { Artifacts, Bundle, FS, Path, Platform, Repo } from '@shared/os'
 
 import { createProjectDependencyOptions } from './dependencies/Options'
@@ -47,7 +46,14 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   const output = Path.resolve(request.out)
   await FS.mkdir(output)
   await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration)
-  await writeLibraryPackage(output, request.name, library.views)
+  const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
+    name: request.name,
+    peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
+    dependencies: { '@preact/signals-core': '1.14.4' },
+  })
+  for (const [name, source] of Object.entries(packageFiles)) {
+    await FS.writeFile(Path.join(output, name), source)
+  }
   return output
 }
 
@@ -89,61 +95,3 @@ function serializeLibraryBuildConfiguration(): string {
     },
   })
 }
-
-async function writeLibraryPackage(
-  output: string,
-  name: string,
-  views: readonly Compile.PublishedView[],
-): Promise<void> {
-  const exports: LibraryPackageExports = { '.': { types: './Library.d.ts', default: './Library.js' } }
-  await FS.writeFile(Path.join(output, 'Library.js'), "export { default } from './_Library.js';\n")
-  await FS.writeFile(Path.join(output, 'Library.d.ts'), libraryDeclaration)
-  for (const [index, view] of views.entries()) {
-    const stem = `view${index}`
-    exports[`./${view.path}`] = { types: `./${stem}.d.ts`, default: `./${stem}.js` }
-    await FS.writeFile(
-      Path.join(output, `${stem}.js`),
-      `export { Published${index} as default } from './_Library.js';\n`,
-    )
-    await FS.writeFile(Path.join(output, `${stem}.d.ts`), compileViewDeclaration(view))
-  }
-  await FS.writeFile(Path.join(output, 'package.json'), serializeLibraryPackage(name, exports))
-}
-
-type LibraryPackageExports = Record<string, { types: string; default: string }>
-
-function serializeLibraryPackage(name: string, exports: LibraryPackageExports): string {
-  return Json.Print({
-    name,
-    version: '0.0.0',
-    type: 'module',
-    exports,
-    peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
-    dependencies: { '@preact/signals-core': '1.14.4' },
-  })
-}
-
-function compileViewDeclaration(view: Compile.PublishedView): string {
-  const props = view.declaration.parameters.map(parameter => `${parameter.name.value}: string;`).join(' ')
-  return S`
-    import type * as React from 'react';
-    export type Props = { ${props} children?: React.ReactNode };
-    declare const View: React.ComponentType<Props>;
-    export default View;
-  `
-}
-
-const libraryDeclaration = S`
-  import type * as React from 'react';
-  declare const instanceOwner: unique symbol;
-  export type Instance = {
-    readonly [instanceOwner]: true;
-    readonly disposed: boolean;
-    dispose(): void;
-  };
-  declare const library: {
-    instantiate(): Instance;
-    Provider: React.ComponentType<{ instance: Instance; children?: React.ReactNode }>;
-  };
-  export default library;
-`

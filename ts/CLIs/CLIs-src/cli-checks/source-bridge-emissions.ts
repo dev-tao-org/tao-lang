@@ -56,8 +56,8 @@ function isExplicitHostProbe(node: TypeScript.Node, filename: string): boolean {
 // These programs must capture the actual external module graph to prove routing and interception.
 // Standalone consumer templates and declaration contracts intentionally resolve the consumer's peers.
 const hostProbeSpecifiers = new Map<string, readonly string[]>([
-  ['ts/0-workspace/workspace-src/LibraryPackage.ts', ['react']],
-  ['ts/0-workspace/workspace-src/sidecars/ForeignViewContracts.ts', ['react']],
+  ['ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts', ['react']],
+  ['ts/6-compile/compile-src/Compile/LibraryPackageCompiler.ts', ['react']],
   ['ts/0-workspace/workspace-src/projects/LibraryProjectTemplate.ts', [
     '@example/tao-library',
     '@example/tao-library/Greeting',
