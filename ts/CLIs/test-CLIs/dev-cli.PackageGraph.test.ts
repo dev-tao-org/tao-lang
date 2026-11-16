@@ -5,6 +5,20 @@ import { analyzePackageGraph, renderPackageGraph } from '../CLIs-src/dev-cli/Pac
 
 const ExpectedImports = [
   {
+    from: { package: '@tao/consumer', file: 'consumer/DynamicFirst.ts' },
+    to: { package: '@tao/core', file: 'team/core/Value.ts' },
+    specifier: '@shared',
+    kind: 'value',
+    scope: 'source',
+  },
+  {
+    from: { package: '@tao/consumer', file: 'consumer/DynamicFirst.ts' },
+    to: { package: '@tao/core', file: 'team/core/Value.ts' },
+    specifier: '@shared',
+    kind: 'type',
+    scope: 'source',
+  },
+  {
     from: { package: '@tao/consumer', file: 'consumer/Erased.ts' },
     to: { package: '@tao/core', file: 'team/core/Value.ts' },
     specifier: '@shared',
@@ -40,6 +54,20 @@ const ExpectedImports = [
     scope: 'source',
   },
   {
+    from: { package: '@tao/consumer', file: 'consumer/TypeFirst.ts' },
+    to: { package: '@tao/core', file: 'team/core/Value.ts' },
+    specifier: '@shared',
+    kind: 'value',
+    scope: 'source',
+  },
+  {
+    from: { package: '@tao/consumer', file: 'consumer/TypeFirst.ts' },
+    to: { package: '@tao/core', file: 'team/core/Value.ts' },
+    specifier: '@shared',
+    kind: 'type',
+    scope: 'source',
+  },
+  {
     from: { package: '@tao/consumer', file: 'consumer/test-consumer/Source.test.ts' },
     to: { package: '@tao/test-tool', file: 'team/test-tool/TestTool.ts' },
     specifier: '../../team/test-tool/TestTool',
@@ -57,7 +85,7 @@ Tests.test('package graph resolves workspace aliases and distinguishes source, t
     Tests.expect(graph.imports).toEqual([...ExpectedImports])
     Tests.expect(graph.unresolved.map(dependency => dependency.specifier)).toEqual(['./Missing'])
     const report = renderPackageGraph(graph)
-    Tests.expect(report).toContain('p1 -->|2 value, 2 type, 1 compile-only| p2')
+    Tests.expect(report).toContain('p1 -->|4 value, 4 type, 1 compile-only| p2')
     Tests.expect(report.split('## Test imports')[1]).toContain('p1 -->|1 value| p3')
   }, { finally: () => FS.rm(workspace, { recursive: true, force: true }) })
 })
@@ -88,6 +116,13 @@ async function writeGraphFixture(workspace: string): Promise<void> {
 
 async function writeConsumerSources(workspace: string): Promise<void> {
   await FS.writeFile(
+    Path.join(workspace, 'consumer/DynamicFirst.ts'),
+    S`
+      export const load = () => import('@shared')
+      export type Input = import('@shared').Input
+    `,
+  )
+  await FS.writeFile(
     Path.join(workspace, 'consumer/Erased.ts'),
     S`
       import compute, { type Input } from '@shared'
@@ -99,6 +134,13 @@ async function writeConsumerSources(workspace: string): Promise<void> {
     S`
       import compute, { type Input } from '@shared'
       export const result = compute(1 as Input)
+    `,
+  )
+  await FS.writeFile(
+    Path.join(workspace, 'consumer/TypeFirst.ts'),
+    S`
+      export type Input = import('@shared').Input
+      export const load = () => import('@shared')
     `,
   )
   await FS.writeFile(
