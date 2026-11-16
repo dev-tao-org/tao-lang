@@ -182,6 +182,11 @@ Tests.test('call layout > checker and fixer enforce fitting calls, single parame
       ) {
         name.toLowerCase()
       }
+      emit(
+        String(
+          name,
+        ),
+      )
     `
     await FS.write(path, source)
     await Tests.expect(checkSourceConformance(root)).rejects.toThrow(
@@ -192,6 +197,7 @@ Tests.test('call layout > checker and fixer enforce fitting calls, single parame
     Tests.expect(fixed).toContain("emit('short message')")
     Tests.expect(fixed).toContain('function readLabel(label: string): string {')
     Tests.expect(fixed).toContain('if (Regxs.LargeTestShardRegx.test(name)) {')
+    Tests.expect(fixed).toContain('emit(String(name))')
     await Tests.expect(checkSourceConformance(root)).resolves.toBeUndefined()
     await fixSourceConformance(root)
     Tests.expect(await FS.readFile(path, 'utf8')).toBe(fixed)
