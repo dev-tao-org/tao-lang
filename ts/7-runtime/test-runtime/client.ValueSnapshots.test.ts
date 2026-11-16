@@ -77,6 +77,31 @@ Tests.test('a rejected cyclic write preserves the prior snapshot and observer de
   engine.dispose()
 })
 
+Tests.test('deep snapshots publish changes at the leaf without invalidating equal replacements', () => {
+  const engine = createReactiveEngine()
+  const input = nestValue('before')
+  const constant = engine.createConstant(input)
+  Tests.expect(readLeaf(constant.jsValue())).toBe('before')
+
+  const source = engine.createWritable(input)
+  const initial = source.jsValue()
+  let evaluations = 0
+  const leaf = engine.createComputed(() => {
+    evaluations += 1
+    return readLeaf(source.jsValue())
+  })
+  const observed: string[] = []
+  leaf.observe(value => observed.push(value))
+
+  source.update(nestValue('before'))
+  Tests.expect(source.jsValue()).toBe(initial)
+  Tests.expect(evaluations).toBe(1)
+  source.update(nestValue('after'))
+  Tests.expect(observed).toEqual(['before', 'after'])
+  Tests.expect(evaluations).toBe(2)
+  engine.dispose()
+})
+
 Tests.test('snapshot equality bounds repeated pairs and compares each distinct pairing', async () => {
   const child = { label: 'A' }
   const left = takeValueSnapshot({ first: child, second: child })
@@ -86,3 +111,21 @@ Tests.test('snapshot equality bounds repeated pairs and compares each distinct p
   const result = await Exec.capture('bun', ['run', snapshotComparisonFixturePath], { timeoutMs: 5000 })
   Tests.expect(result.stdout.trim()).toBe('Shared snapshots compared')
 })
+
+type NestedValue = string | { readonly child: NestedValue }
+
+function nestValue(leaf: string): NestedValue {
+  const depth = 20_000
+  let value: NestedValue = leaf
+  for (let level = 0; level < depth; level += 1) {
+    value = { child: value }
+  }
+  return value
+}
+
+function readLeaf(value: NestedValue): string {
+  while (typeof value !== 'string') {
+    value = value.child
+  }
+  return value
+}

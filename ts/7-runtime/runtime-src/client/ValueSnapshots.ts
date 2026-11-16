@@ -43,30 +43,53 @@ type ValueAtom =
 type CollectionPrototype = object | null
 type PendingCollectionCopy = object | undefined
 type CollectionCopies = Map<object, PendingCollectionCopy>
+type OptionalListLength = number | undefined
+type CollectionCopy = {
+  source: object
+  result: object
+  listLength: OptionalListLength
+  fields: string[]
+  nextField: number
+}
+type SnapshotCopy = {
+  copies: CollectionCopies
+  pending: CollectionCopy[]
+}
 type MatchedCollectionPairs = Map<object, Set<object>>
+type CollectionComparison = {
+  left: object
+  right: object
+  fields: string[]
+  nextField: number
+}
+type SnapshotComparison = {
+  pairs: MatchedCollectionPairs
+  pending: CollectionComparison[]
+}
 const ownedSnapshots = new WeakSet<object>()
 const valueCapabilities = new WeakSet<object>()
 
-function snapshotValue(value: unknown, copies?: CollectionCopies): unknown {
-  if (!isObject(value) || isRuntimeOwned(value)) {
+function snapshotValue(value: unknown): unknown {
+  if (!isObject(value)) {
     return value
   }
-  const prototype: CollectionPrototype = Object.getPrototypeOf(value)
-  if (!isOrdinaryCollection(value, prototype)) {
+  const prototype = findCollectionPrototype(value)
+  if (prototype === undefined) {
     return value
   }
-  if (Object.getOwnPropertySymbols(value).length !== 0) {
-    return Errors.ThrowUserInput('Tao collection snapshots require string field names.')
-  }
-  return copyCollection(value, prototype, copies ?? new Map())
+  return copyCollection(value, prototype)
 }
 
 function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
-function isRuntimeOwned(value: object): boolean {
-  return ownedSnapshots.has(value) || valueCapabilities.has(value)
+function findCollectionPrototype(value: object): CollectionPrototype | undefined {
+  if (ownedSnapshots.has(value) || valueCapabilities.has(value)) {
+    return undefined
+  }
+  const prototype: CollectionPrototype = Object.getPrototypeOf(value)
+  return isOrdinaryCollection(value, prototype) ? prototype : undefined
 }
 
 function isOrdinaryCollection(value: object, prototype: CollectionPrototype): boolean {
@@ -75,7 +98,45 @@ function isOrdinaryCollection(value: object, prototype: CollectionPrototype): bo
     : prototype === Object.prototype || prototype === null
 }
 
-function copyCollection(source: object, prototype: CollectionPrototype, copies: CollectionCopies): object {
+function copyCollection(source: object, prototype: CollectionPrototype): object {
+  const traversal: SnapshotCopy = { copies: new Map(), pending: [] }
+  const snapshot = reuseOrBeginCopy(source, prototype, traversal)
+  const { copies, pending } = traversal
+  while (pending.length > 0) {
+    const copy = pending[pending.length - 1]!
+    const name = copy.fields[copy.nextField]
+    if (name === undefined) {
+      Object.freeze(copy.result)
+      ownedSnapshots.add(copy.result)
+      copies.set(copy.source, copy.result)
+      pending.pop()
+      continue
+    }
+    copy.nextField += 1
+    if (copy.listLength !== undefined) {
+      if (name === 'length') {
+        continue
+      }
+      requireListIndex(name, copy.listLength)
+    }
+    const field = requireDataField(copy.source, name)
+    const value = copyFieldValue(field, traversal)
+    Object.defineProperty(copy.result, name, { value, enumerable: true })
+  }
+  return snapshot
+}
+
+function copyFieldValue(value: unknown, traversal: SnapshotCopy): unknown {
+  if (!isObject(value)) {
+    return value
+  }
+  const prototype = findCollectionPrototype(value)
+  return prototype === undefined ? value : reuseOrBeginCopy(value, prototype, traversal)
+}
+
+function reuseOrBeginCopy(source: object, prototype: CollectionPrototype, traversal: SnapshotCopy): object {
+  requireStringFields(source)
+  const { copies, pending } = traversal
   const existing = copies.get(source)
   if (existing !== undefined) {
     return existing
@@ -86,20 +147,15 @@ function copyCollection(source: object, prototype: CollectionPrototype, copies: 
   copies.set(source, undefined)
   const listLength = Array.isArray(source) ? source.length : undefined
   const result: object = listLength === undefined ? Object.create(prototype) : new Array<unknown>(listLength)
-  for (const name of Object.getOwnPropertyNames(source)) {
-    if (listLength !== undefined) {
-      if (name === 'length') {
-        continue
-      }
-      requireListIndex(name, listLength)
-    }
-    const value = snapshotValue(requireDataField(source, name), copies)
-    Object.defineProperty(result, name, { value, enumerable: true })
-  }
-  Object.freeze(result)
-  ownedSnapshots.add(result)
-  copies.set(source, result)
+  const fields = Object.getOwnPropertyNames(source)
+  pending.push({ source, result, listLength, fields, nextField: 0 })
   return result
+}
+
+function requireStringFields(value: object): void {
+  if (Object.getOwnPropertySymbols(value).length !== 0) {
+    Errors.ThrowUserInput('Tao collection snapshots require string field names.')
+  }
 }
 
 function requireListIndex(name: string, length: number): void {
@@ -119,42 +175,74 @@ function requireDataField(source: object, name: string): unknown {
   return field.value as unknown
 }
 
-function compareSnapshotValues(left: unknown, right: unknown, pairs?: MatchedCollectionPairs): boolean {
+function compareSnapshotValues(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) {
     return true
   }
-  if (!isObject(left) || !isObject(right)) {
+  if (!isOwnedSnapshot(left) || !isOwnedSnapshot(right)) {
     return false
   }
-  if (!ownedSnapshots.has(left) || !ownedSnapshots.has(right)) {
+  const comparison: SnapshotComparison = { pairs: new Map(), pending: [] }
+  if (!queueCollectionComparison(left, right, comparison)) {
     return false
   }
-  return compareCollectionPair(left, right, pairs ?? new Map())
-}
-
-function compareCollectionPair(left: object, right: object, pairs: MatchedCollectionPairs): boolean {
-  const matchedRights = pairs.get(left)
-  if (matchedRights?.has(right)) {
-    return true
+  while (comparison.pending.length > 0) {
+    const frame = comparison.pending[comparison.pending.length - 1]!
+    const name = frame.fields[frame.nextField]
+    if (name === undefined) {
+      rememberMatchedPair(frame, comparison.pairs)
+      comparison.pending.pop()
+      continue
+    }
+    frame.nextField += 1
+    if (!compareCollectionField(frame, name, comparison)) {
+      return false
+    }
   }
-  const matchingShape = Array.isArray(left)
-    ? Array.isArray(right) && left.length === right.length
-    : !Array.isArray(right)
-  if (!matchingShape || !areFieldsEqual(left, right, pairs)) {
-    return false
-  }
-  const rights = matchedRights ?? new Set<object>()
-  rights.add(right)
-  pairs.set(left, rights)
   return true
 }
 
-function areFieldsEqual(left: object, right: object, pairs: MatchedCollectionPairs): boolean {
+function isOwnedSnapshot(value: unknown): value is object {
+  return isObject(value) && ownedSnapshots.has(value)
+}
+
+function rememberMatchedPair(frame: CollectionComparison, pairs: MatchedCollectionPairs): void {
+  const rights = pairs.get(frame.left) ?? new Set<object>()
+  rights.add(frame.right)
+  pairs.set(frame.left, rights)
+}
+
+function compareCollectionField(frame: CollectionComparison, name: string, comparison: SnapshotComparison): boolean {
+  if (!Object.hasOwn(frame.right, name)) {
+    return false
+  }
+  const left: unknown = Reflect.get(frame.left, name)
+  const right: unknown = Reflect.get(frame.right, name)
+  if (Object.is(left, right)) {
+    return true
+  }
+  const bothOwned = isOwnedSnapshot(left) && isOwnedSnapshot(right)
+  return bothOwned && queueCollectionComparison(left, right, comparison)
+}
+
+function queueCollectionComparison(left: object, right: object, comparison: SnapshotComparison): boolean {
+  const matchedRights = comparison.pairs.get(left)
+  if (matchedRights?.has(right)) {
+    return true
+  }
+  if (!haveMatchingCollectionShape(left, right)) {
+    return false
+  }
   const fields = Object.keys(left)
   if (fields.length !== Object.keys(right).length) {
     return false
   }
-  return fields.every(name =>
-    Object.hasOwn(right, name) && compareSnapshotValues(Reflect.get(left, name), Reflect.get(right, name), pairs)
-  )
+  comparison.pending.push({ left, right, fields, nextField: 0 })
+  return true
+}
+
+function haveMatchingCollectionShape(left: object, right: object): boolean {
+  return Array.isArray(left)
+    ? Array.isArray(right) && left.length === right.length
+    : !Array.isArray(right)
 }
