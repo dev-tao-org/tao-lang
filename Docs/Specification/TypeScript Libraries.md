@@ -43,7 +43,7 @@ Keep the consumer's package and dependencies in `src/ts`, with Tao sources in `s
 }
 ```
 
-From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports into `.tao/cache/sessions/.cli/libraries/Demo/`. Repeated compilation replaces only its own generated output; unrelated existing output is preserved and reported as an error. Add `"@example/demo": "file:../../.tao/cache/sessions/.cli/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
+From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports into `.tao/cache/sessions/.cli/libraries/Demo/`. This is a Tao-managed destination: repeated compilation replaces its real directory and rejects symlinks or paths escaping the session's library directory. Do not put authored files there. Add `"@example/demo": "file:../../.tao/cache/sessions/.cli/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
 
 Use `--session <name>` to build into a separate session. `tao run --package src/ts --session <name>` compiles and resolves that session's library without changing another session's output or the authored dependency links. Do not configure `tao.compile.out`; the selected session owns the destination. Build files remain after command exit; explicit cleanup can remove inactive sessions.
 

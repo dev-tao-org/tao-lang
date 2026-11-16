@@ -6,7 +6,7 @@ This is the repository's Tao library example and ordinary React consumer. Run co
 - `just run` compiles and starts the managed Expo web host. Ctrl+C stops it.
 - `just test` runs the local type checks and headless browser journey in `src/ts/test`.
 
-The Justfile defaults to this checkout's `../../tao`, resolved from the Justfile location. Set `TAO` to an absolute executable path or an installed command name to use another Tao CLI. The consumer's declared dependencies live in `src/ts/package.json`; install them there with the package manager before using these commands in a fresh copy. Tests require Google Chrome.
+The Justfile defaults to this checkout's `../../tao`, resolved from the Justfile location. Set `TAO` to an absolute executable path or an installed command name to use another Tao CLI. In a fresh copy, run `just compile` first to create the consumer's local library dependency, then install the dependencies declared in `src/ts/package.json` with its package manager before using the commands above. Tests require Google Chrome.
 
 `just test` uses the app's local Bun/Playwright suite and the public Tao CLI. It does not call repository verification or import repository test utilities. `tao test` runs Tao app journeys, rather than TypeScript library-consumer tests, so it is not a replacement for this command.
 

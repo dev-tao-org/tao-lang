@@ -9,6 +9,29 @@ import { initializeProject } from '../workspace-src/projects/Projects'
 import { createStandaloneLibraryFixture } from './Workspace.test-utils'
 
 const DependencySetupRequiredRegx = /Dependency Widgets needs setup/
+const ExistingLibraryOutputRegx = /fresh output directory/
+
+Tests.test('direct library compilation preserves an existing output and its source symlink', async () => {
+  const root = await createStandaloneLibraryFixture()
+  await Try(async () => {
+    const output = Path.join(root, 'output')
+    const authored = Path.join(root, 'authored')
+    await FS.mkdirs(output, authored)
+    const sentinel = Path.join(authored, 'Library.ts')
+    await FS.writeFile(sentinel, 'Keep authored source')
+    await FS.symlink(authored, Path.join(output, 'source'), 'dir')
+    await Tests.rejects(
+      compileLibraryPackage({
+        entry: Path.join(root, 'src/tao/Library.tao'),
+        out: output,
+        name: '@tao-dev/ts-lib-example',
+      }),
+      ExistingLibraryOutputRegx,
+    )
+    Tests.expect(await FS.readFile(sentinel, 'utf8')).toBe('Keep authored source')
+    Tests.expect(await FS.readdir(output)).toEqual(['source'])
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test('an ordinary TS consumer renders a prepared Tao dependency and refreshes consumer source', async () => {
   const root = await createStandaloneLibraryFixture()

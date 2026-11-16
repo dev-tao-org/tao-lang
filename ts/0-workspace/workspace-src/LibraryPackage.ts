@@ -40,12 +40,13 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   }, parser)
   const ownSources = new Set(modules.filter(module => isOwnProjectSource(root, module.path)).map(module => module.path))
   const library = Compile.compileLibrary(Typecheck.linkModules(entry, modules), ownSources, request.target)
-  const sources = Path.join(Path.resolve(request.out), 'source')
+  const output = Path.resolve(request.out)
+  await FS.mkdir(Path.dirname(output))
+  await FS.createExclusiveDirectory(output)
+  const sources = Path.join(output, 'source')
   await writeGeneratedSources(sources, library.files)
   const configuration = Path.join(sources, 'tsconfig.json')
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
-  const output = Path.resolve(request.out)
-  await FS.mkdir(output)
   const runtimeAPI = Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')
   await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration, runtimeAPI)
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
@@ -64,8 +65,8 @@ function requireLibraryPackageRequest(request: LibraryPackageRequest): void {
     Errors.ThrowUserInput('Library compilation requires an output directory and a valid package name.')
   }
   const output = Path.resolve(request.out)
-  if (FS.existsSync(Path.join(output, 'package.json'))) {
-    Errors.ThrowUserInput(`Library output already contains a package: ${output}. Choose a fresh output directory.`)
+  if (FS.existsSync(output)) {
+    Errors.ThrowUserInput(`Library output already exists: ${output}. Choose a fresh output directory.`)
   }
 }
 
