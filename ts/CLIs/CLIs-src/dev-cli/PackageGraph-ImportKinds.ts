@@ -108,7 +108,7 @@ function hasOnlyNamedTypeSpecifiers(node: PossibleBindings): boolean {
 type Dependency = DependencyCruiser.IDependency
 
 function needsSourceClassification(dependency: Dependency): boolean {
-  return isReportedTypeImport(dependency) || isReportedInlineImport(dependency)
+  return isReportedTypeImport(dependency) || isReportedInlineImport(dependency) || isErasedStaticImport(dependency)
 }
 
 function isReportedTypeImport(dependency: Dependency): boolean {
@@ -120,6 +120,14 @@ function isReportedInlineImport(dependency: Dependency): boolean {
   return types.includes('type-import') || types.includes('dynamic-import')
 }
 
+function isErasedStaticImport(dependency: Dependency): boolean {
+  if (!dependency.preCompilationOnly) {
+    return false
+  }
+  const types = dependency.dependencyTypes
+  return types.includes('import') || types.includes('export')
+}
+
 type PossibleTypeImportSyntax = TypeImportSyntax | undefined
 
 function resolveImportKinds(
@@ -129,11 +137,7 @@ function resolveImportKinds(
 ): ImportKind[] {
   const emittedKind = dependency.preCompilationOnly ? 'compile-only' : 'value'
   if (!isReportedTypeImport(dependency)) {
-    if (isCollapsedInlineImport(dependency, syntax)) {
-      const hasTypeEdge = dependencies.some(other => hasSameTarget(other, dependency) && isReportedTypeImport(other))
-      return hasTypeEdge ? ['value'] : ['value', 'type']
-    }
-    return [emittedKind]
+    return resolveNonTypeImportKinds(dependency, dependencies, syntax)
   }
   if (!syntax?.mixedDefaults.has(dependency.module)) {
     return ['type']
@@ -141,7 +145,10 @@ function resolveImportKinds(
   // Dependency-cruiser marks a default import with only named type specifiers as type-only.
   // It also collapses that record with any explicit type import of the same specifier.
   const kinds: ImportKind[] = []
-  if (!dependencies.some(other => alsoReportsNonTypeKind(other, dependency, syntax))) {
+  const hasOtherKind = dependencies.some(other =>
+    alsoReportsNonTypeKind(other, dependency, dependencies, syntax, emittedKind)
+  )
+  if (!hasOtherKind) {
     kinds.push(emittedKind)
   }
   if (syntax.explicitTypes.has(dependency.module)) {
@@ -150,18 +157,40 @@ function resolveImportKinds(
   return kinds
 }
 
-function isCollapsedInlineImport(dependency: Dependency, syntax: PossibleTypeImportSyntax): boolean {
-  // Dependency-cruiser deduplicates inline type and dynamic imports with the same specifier.
-  const hasBothForms = syntax?.inlineTypes.has(dependency.module) && syntax.dynamicImports.has(dependency.module)
-  return hasBothForms === true && isReportedInlineImport(dependency)
+function resolveNonTypeImportKinds(
+  dependency: Dependency,
+  dependencies: readonly Dependency[],
+  syntax: PossibleTypeImportSyntax,
+): ImportKind[] {
+  const erasedStatic = isErasedStaticImport(dependency)
+  const inlineType = syntax?.inlineTypes.has(dependency.module)
+  const collapsedInline = inlineType && isReportedInlineImport(dependency)
+  // Dependency-cruiser can retain an erased static or inline type import and drop the dynamic import.
+  if (!syntax?.dynamicImports.has(dependency.module) || !(collapsedInline || erasedStatic)) {
+    return [dependency.preCompilationOnly ? 'compile-only' : 'value']
+  }
+  const kinds: ImportKind[] = ['value']
+  const hasTypeEdge = dependencies.some(other => hasSameTarget(other, dependency) && isReportedTypeImport(other))
+  if (inlineType && !hasTypeEdge) {
+    kinds.push('type')
+  }
+  if (erasedStatic) {
+    kinds.push('compile-only')
+  }
+  return kinds
 }
 
-function alsoReportsNonTypeKind(other: Dependency, mixed: Dependency, syntax: PossibleTypeImportSyntax): boolean {
+function alsoReportsNonTypeKind(
+  other: Dependency,
+  mixed: Dependency,
+  dependencies: readonly Dependency[],
+  syntax: PossibleTypeImportSyntax,
+  expectedKind: ImportKind,
+): boolean {
   if (!hasSameTarget(other, mixed) || isReportedTypeImport(other)) {
     return false
   }
-  const preCompilationOnly = isCollapsedInlineImport(other, syntax) ? false : other.preCompilationOnly
-  return preCompilationOnly === mixed.preCompilationOnly
+  return resolveNonTypeImportKinds(other, dependencies, syntax).includes(expectedKind)
 }
 
 function hasSameTarget(left: Dependency, right: Dependency): boolean {
