@@ -1,4 +1,4 @@
-import { Json, S, Try } from '@shared'
+import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
 import { analyzePackageGraph, renderPackageGraph } from '../CLIs-src/dev-cli/PackageGraph'
@@ -163,5 +163,5 @@ async function writeConsumerSources(workspace: string): Promise<void> {
 async function writeJson(workspace: string, file: string, value: unknown): Promise<void> {
   const path = Path.join(workspace, file)
   await FS.mkdir(Path.dirname(path))
-  await FS.writeFile(path, Json.Print(value))
+  await FS.writeJson(path, value)
 }
