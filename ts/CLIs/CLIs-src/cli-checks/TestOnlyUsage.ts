@@ -3,6 +3,7 @@ import { Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import * as OptionalArguments from './OptionalArgumentUsage'
 import { isExcludedSource } from './source-size'
+import { readModuleReference } from './TestOnlyUsage-Modules'
 
 /** UsageRoots identifies executable roots and independently consumed external contracts. */
 export type UsageRoots = { root: string; entries: ReadonlySet<string>; contracts: ReadonlySet<string> }
@@ -33,9 +34,10 @@ type ModuleReferencesInFile = {
 export function analyzeTestOnlyUsage(
   program: TypeScript.Program,
   filenames: readonly string[],
-  roots: UsageRoots,
+  usageRoots: UsageRoots,
 ): TestOnlyUsage {
   const checker = program.getTypeChecker()
+  const roots = normalizeUsageRoots(usageRoots)
   const files = filenames.flatMap(filename => program.getSourceFile(filename) ?? [])
   const graph: ModuleReferences = new Map(files.map(file => [file, readReferences(file, checker, roots.root)]))
   const testFiles = files.filter(file => graph.get(file)!.test)
@@ -60,6 +62,14 @@ export function analyzeTestOnlyUsage(
   return result
 }
 
+function normalizeUsageRoots({ root, entries, contracts }: UsageRoots): UsageRoots {
+  return { root, entries: normalizeUsagePaths(entries), contracts: normalizeUsagePaths(contracts) }
+}
+
+function normalizeUsagePaths(paths: ReadonlySet<string>): ReadonlySet<string> {
+  return new Set([...paths].map(Path.toPortablePath))
+}
+
 function findOptionalArguments(references: ScopedSymbolReferences): OptionalArgumentUsage[] {
   return OptionalArguments.findTestOnlyOptionalArguments(references.calls, references.external)
     .filter(({ parameter }) => canReportFile(parameter.getSourceFile()))
@@ -79,7 +89,8 @@ function isTestFile(root: string, filename: string): boolean {
 }
 
 function isProductionRoot(file: TypeScript.SourceFile, roots: UsageRoots, testImports: ModuleImports): boolean {
-  return !testImports.has(file) || roots.entries.has(file.fileName) || roots.contracts.has(file.fileName)
+  const path = Path.toPortablePath(file.fileName)
+  return !testImports.has(file) || roots.entries.has(path) || roots.contracts.has(path)
 }
 
 function canReportFile(file: TypeScript.SourceFile): boolean {
@@ -112,12 +123,12 @@ function readReferences(
     calls: [],
   }
   const visit = (node: TypeScript.Node): void => {
-    if (TypeScript.isImportDeclaration(node) || TypeScript.isExportDeclaration(node)) {
-      recordModuleImport(found.imports, node.moduleSpecifier, file, checker)
-      return
+    const imported = readModuleReference(node, checker)
+    if (imported && !found.imports.has(imported.source)) {
+      found.imports.set(imported.source, nodeLocation(file, imported.specifier))
     }
-    if (TypeScript.isCallExpression(node) && node.expression.kind === TypeScript.SyntaxKind.ImportKeyword) {
-      recordModuleImport(found.imports, node.arguments[0], file, checker)
+    if (TypeScript.isImportDeclaration(node) || TypeScript.isExportDeclaration(node)) {
+      return
     }
     const symbol = readReferenceSymbol(node, checker)
     if (symbol) {
@@ -127,23 +138,6 @@ function readReferences(
   }
   visit(file)
   return found
-}
-
-type ModuleSpecifier = TypeScript.Expression | undefined
-
-function recordModuleImport(
-  imports: ModuleImports,
-  specifier: ModuleSpecifier,
-  file: TypeScript.SourceFile,
-  checker: TypeScript.TypeChecker,
-): void {
-  if (specifier === undefined || !TypeScript.isStringLiteralLike(specifier)) {
-    return
-  }
-  const source = checker.getSymbolAtLocation(specifier)?.valueDeclaration
-  if (source && TypeScript.isSourceFile(source) && !imports.has(source)) {
-    imports.set(source, nodeLocation(file, specifier))
-  }
 }
 
 function readReferenceSymbol(node: TypeScript.Node, checker: TypeScript.TypeChecker): TypeScript.Symbol | undefined {
@@ -268,7 +262,7 @@ function collectUsageReferences(
         result.production.add(symbol)
       }
     }
-    if (roots.contracts.has(file.fileName)) {
+    if (roots.contracts.has(Path.toPortablePath(file.fileName))) {
       const namespace = checker.getSymbolAtLocation(file)
       if (namespace) {
         registerExternalReference(result.external, checker, namespace)
@@ -326,7 +320,7 @@ function appendDeclarationUsage(
 }
 
 function runsAtEntry(file: TypeScript.SourceFile, declaration: TypeScript.Declaration, roots: UsageRoots): boolean {
-  if (!roots.entries.has(file.fileName) || !TypeScript.isExportAssignment(declaration)) {
+  if (!roots.entries.has(Path.toPortablePath(file.fileName)) || !TypeScript.isExportAssignment(declaration)) {
     return false
   }
   return TypeScript.isCallExpression(declaration.expression)

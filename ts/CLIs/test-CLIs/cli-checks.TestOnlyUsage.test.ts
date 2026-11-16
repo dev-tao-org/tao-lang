@@ -8,29 +8,34 @@ Tests.test('test-only usage follows re-exports and keeps static callers and exte
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'tao-usage-'))
   await Try(async () => {
     const files = await writeUsageFixture(root)
-    const main = Path.join(root, 'test-main.ts')
-    const sdk = Path.join(root, 'SDK.ts')
+    const main = Path.win32.join(root, 'test-main.ts')
+    const sdk = Path.win32.join(root, 'SDK.ts')
     const lib = ['lib.es5.d.ts', 'lib.es2015.promise.d.ts']
     const program = TypeScript.createProgram(files, { lib, strict: true, noEmit: true })
     const usage = analyzeTestOnlyUsage(program, files, { root, entries: new Set([main]), contracts: new Set([sdk]) })
+    const portableRoot = root.replaceAll('\\', '/')
     Tests.expect(usage.modules).toEqual([
       {
-        file: Path.join(root, 'TestTool.ts'),
-        testReference: { file: Path.join(root, 'test-support/Support.ts'), line: 1 },
+        file: Path.posix.join(portableRoot, 'OnlyType.ts'),
+        testReference: { file: Path.posix.join(portableRoot, 'Usage.test.ts'), line: 7 },
+      },
+      {
+        file: Path.posix.join(portableRoot, 'TestTool.ts'),
+        testReference: { file: Path.posix.join(portableRoot, 'test-support/Support.ts'), line: 1 },
       },
     ])
     Tests.expect(usage.declarations).toEqual([
       {
         name: 'testOnly',
-        declaration: { file: Path.join(root, 'Operations.ts'), line: 2 },
-        testReference: { file: Path.join(root, 'Usage.test.ts'), line: 3 },
+        declaration: { file: Path.posix.join(portableRoot, 'Operations.ts'), line: 2 },
+        testReference: { file: Path.posix.join(portableRoot, 'Usage.test.ts'), line: 3 },
       },
     ])
     Tests.expect(usage.optionalArguments).toEqual([
       {
         name: 'options',
-        declaration: { file: Path.join(root, 'Operations.ts'), line: 4 },
-        testReference: { file: Path.join(root, 'Usage.test.ts'), line: 4 },
+        declaration: { file: Path.posix.join(portableRoot, 'Operations.ts'), line: 4 },
+        testReference: { file: Path.posix.join(portableRoot, 'Usage.test.ts'), line: 4 },
       },
     ])
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
@@ -60,6 +65,7 @@ async function writeUsageFixture(root: string): Promise<string[]> {
       export type ContractType = number
     `,
     'SDK.ts': "export { contract, sdkInvoke } from './Operations'",
+    'OnlyType.ts': 'export type Shape = { readonly name: string }',
     'TestTool.ts': 'export const testTool = 4',
     'test-support/Support.ts': "import { testTool } from '../TestTool'; void testTool",
     'Usage.test.ts': S`
@@ -69,6 +75,8 @@ async function writeUsageFixture(root: string): Promise<string[]> {
       Facade.invoke(1, { debug: true })
       Facade.ambiguous(1, true)
       Facade.sdkInvoke(1, true)
+      export type Shape = import('./OnlyType').Shape
+      import './test-main'
     `,
   }
   return await Promise.all(
