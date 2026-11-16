@@ -56,8 +56,8 @@ entry. In short: name a new entry after its own title, never a number, and recor
   that field in the same change so the record says what was done.
 - Satisfy the **Acceptance** field literally, with a test or a command whose output you can quote. An
   environment fix with no repeatable check is not addressed; say which part rests on observation.
-- A fix to harness configuration is generated: edit `.rulesync/*.jsonc` and run `./agent unsandboxed setup`, never
-  the generated files. `agent-instructions` and `dev-automation` own those seams.
+- Follow `agent-instructions` for native harness settings and generated configuration. Regenerate hooks
+  and subagent adapters with `./agent agent-config` when their sources change.
 - Several of these entries are about the verification machinery you are running. Read
   `verification-lanes` before concluding that a lane's behavior is the bug.
 

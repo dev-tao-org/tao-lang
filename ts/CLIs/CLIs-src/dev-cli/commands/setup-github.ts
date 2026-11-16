@@ -53,7 +53,7 @@ async function authenticateGithub(): Promise<void> {
     return true
   }, {
     catch(error) {
-      if (!Errors.isCommandExecutionError(error)) {
+      if (!commandFailedWith(error, 1)) {
         Errors.Throw(error)
       }
       return false
@@ -80,5 +80,8 @@ async function verifyOrigin(): Promise<void> {
 }
 
 function commandFailedWith(error: unknown, status: number): boolean {
-  return Errors.isCommandExecutionError(error) && error.result.status === status
+  if (!Errors.isCommandExecutionError(error)) {
+    return false
+  }
+  return error.result.status === status && error.result.signal === null
 }

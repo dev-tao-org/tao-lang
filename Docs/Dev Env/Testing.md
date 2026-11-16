@@ -16,9 +16,9 @@ threshold warn. Zero reports every positive case duration. Warnings do not chang
 This threshold currently applies to TypeScript test reports; Tao journeys print their durations
 without slow-test warnings.
 
-Repository tests run concurrently by default: one Bun process runs TypeScript files with two
-internal workers, alongside up to four Tao worker processes. Each Tao worker runs its assigned files in
-order; each case still creates and cleans up its own app session. Compiler assets are prepared once
+Repository tests run concurrently by default with five TypeScript workers and one Tao worker.
+The Tao worker runs its assigned files in order. Each case creates and cleans up its own app session.
+Compiler assets are prepared once
 before workers start. Performance measurements stay serial.
 
 ```sh
@@ -28,11 +28,11 @@ before workers start. Performance measurements stay serial.
 ./tao test Apps --serial
 ```
 
-`--parallel` without a number uses the default split. A number sets the total worker budget, keeping
-at most two TypeScript workers and assigning the remainder to Tao; a budget of one runs the
-TypeScript section before Tao. `--serial` also uses one worker per section
-and cannot be combined with `--parallel`. A scoped run uses only its selected section; its default
-is two TypeScript workers or up to four Tao workers. Independent failures are collected after all started workers finish.
+`--parallel` without a number uses the default split. When both sections run, a numeric budget
+reserves one worker for Tao and assigns the remainder to TypeScript. A budget of one runs the
+TypeScript section before Tao. `--serial` also uses one worker per section and cannot be combined
+with `--parallel`. A TypeScript-only run can use the entire budget. A Tao-only run uses one worker.
+Independent failures are collected after all started workers finish.
 
 In an interactive terminal, `./dev` shows a dashboard with one TypeScript column and one column per
 Tao worker. Lines wrap within each column; the visible tail is bounded and full output is retained
