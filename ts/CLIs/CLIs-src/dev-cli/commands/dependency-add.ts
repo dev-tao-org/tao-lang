@@ -2,7 +2,6 @@ import * as CLIKit from '@cli-kit'
 import { Errors, Regxs } from '@shared'
 import { Path, Repo } from '@shared/os'
 import { assertNewWorkspacePath } from '../../cli-checks/check'
-import { readWorkspaceManifestPaths } from '../../cli-checks/WorkspaceManifests'
 import { registerCommand } from './_command-runner'
 
 /** dependencyAddCommand installs an exact registry pin into an existing TypeScript workspace package. */
@@ -32,7 +31,8 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   const workspace = Repo.resolvePath('ts')
   const directory = Path.resolve(workspace, workspacePackage)
   assertNewWorkspacePath(directory, workspace)
-  const manifests = await readWorkspaceManifestPaths(workspace)
+  const RepoAnalysis = await import('@repo-analysis')
+  const manifests = await RepoAnalysis.readWorkspaceManifestPaths(workspace)
   if (!manifests.some(manifest => Path.relative(directory, Path.dirname(manifest)) === '')) {
     Errors.ThrowUserInput(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
   }

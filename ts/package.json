@@ -15,6 +15,7 @@
     "CLIs",
     "ide-extensions/*",
     "perf",
+    "repo-analysis",
     "shared",
     "stdlib",
     "ts-api"

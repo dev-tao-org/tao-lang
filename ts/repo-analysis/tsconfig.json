@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/repo-analysis.tsbuildinfo"
+  },
+  "include": [
+    "repo-analysis-src/**/*",
+    "scripts/**/*",
+    "test-repo-analysis/**/*"
+  ]
+}

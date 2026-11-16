@@ -86,6 +86,9 @@
       "@perf": [
         "./perf/perf-src/Perf.ts"
       ],
+      "@repo-analysis": [
+        "./repo-analysis/repo-analysis-src/RepoAnalysis.ts"
+      ],
       "@shared": [
         "./shared/shared-src/shared.ts"
       ],
