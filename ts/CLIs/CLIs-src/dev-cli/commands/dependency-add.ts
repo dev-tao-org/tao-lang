@@ -18,10 +18,8 @@ export default registerCommand({
     requireRegistryPin(dependency)
     const cwd = requireWorkspacePackageDirectory(workspacePackage)
     const groupFlag = options.dev ? '--dev' : '--save-prod'
-    await CLIKit.runNonInteractiveCommand('bun add --exact --ignore-scripts', {
-      variadicArgs: [groupFlag, dependency],
-      cwd,
-    })
+    const args = ['add', '--exact', '--ignore-scripts', groupFlag, dependency]
+    await CLIKit.runNonInteractiveCommand('bun', args, { cwd })
   },
 })
 
