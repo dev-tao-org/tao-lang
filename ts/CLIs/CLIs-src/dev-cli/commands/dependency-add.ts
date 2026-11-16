@@ -17,8 +17,7 @@ export default registerCommand({
   async action(workspacePackage: string, dependency: string, options: { dev?: boolean }) {
     requireRegistryPin(dependency)
     const cwd = requireWorkspacePackageDirectory(workspacePackage)
-    const groupFlag = options.dev ? '--dev' : '--save-prod'
-    const args = ['add', '--exact', '--ignore-scripts', groupFlag, dependency]
+    const args = ['add', '--exact', '--ignore-scripts', ...(options.dev ? ['--dev'] : []), dependency]
     await CLIKit.runNonInteractiveCommand('bun', args, { cwd })
   },
 })
@@ -34,7 +33,7 @@ function requireWorkspacePackageDirectory(workspacePackage: string): string {
   const directory = Path.resolve(workspace, workspacePackage)
   assertNewWorkspacePath(directory, workspace)
   const manifests = readWorkspaceManifestPaths(workspace)
-  if (!manifests.some(manifest => Path.dirname(manifest) === directory)) {
+  if (!manifests.some(manifest => Path.relative(directory, Path.dirname(manifest)) === '')) {
     Errors.ThrowUserInput(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
   }
   return directory

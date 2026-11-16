@@ -3,7 +3,7 @@ import { Artifacts, FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { IO } from '../cli-kit/cli-kit'
 import { readPackageApis } from './PackageApis'
-import { analyzeTestOnlyUsage, type ModuleUsage, type UsageLocation, type UsageRoots } from './TestOnlyUsage'
+import * as TestOnlyUsage from './TestOnlyUsage'
 import { ExternalWorkspaceEntries, readWorkspaceEntries, type WorkspaceEntries } from './WorkspaceEntries'
 
 const ReportFilename = 'test-only-usage.md'
@@ -17,7 +17,7 @@ export async function reportTestOnlyUsage(
   await Try(async () => {
     const started = Time.nowMs()
     const roots = await readUsageRoots(root)
-    const usage = analyzeTestOnlyUsage(program, filenames, roots)
+    const usage = TestOnlyUsage.analyzeTestOnlyUsage(program, filenames, roots)
     const renderModule = createModuleFormatter(root)
     const modules = usage.modules.map(renderModule)
     const declarations = usage.declarations.map(item => formatNamedUsage(root, item))
@@ -51,7 +51,7 @@ export async function reportTestOnlyUsage(
   }, { catch: error => IO.warn(`Could not produce the test-only usage report: ${String(error)}`) })
 }
 
-async function readUsageRoots(root: string): Promise<UsageRoots> {
+async function readUsageRoots(root: string): Promise<TestOnlyUsage.UsageRoots> {
   const workspace = Path.join(root, 'ts')
   const entries = resolveEntryPaths(workspace, await readWorkspaceEntries(workspace))
   const contracts = resolveEntryPaths(workspace, ExternalWorkspaceEntries)
@@ -62,21 +62,29 @@ function resolveEntryPaths(workspace: string, entries: WorkspaceEntries): Readon
   return new Set(Object.entries(entries).flatMap(([pkg, paths]) => paths.map(path => Path.join(workspace, pkg, path))))
 }
 
-function createModuleFormatter(root: string): (usage: ModuleUsage) => string {
-  const apis = readPackageApis(root)
+function createModuleFormatter(root: string): (usage: TestOnlyUsage.ModuleUsage) => string {
+  const apis = readPackageApis(root).map(({ alias, filename }) => ({
+    alias,
+    path: Path.toPortablePath(filename),
+  }))
   return ({ file, testReference }) => {
-    const alias = apis.find(api => api.filename === file)?.alias
+    const path = Path.toPortablePath(file)
+    const alias = apis.find(api => api.path === path)?.alias
     const entry = alias ? ` (manifest entry \`${alias}\`)` : ''
     const location = formatLocation(root, testReference)
     return `- \`${Path.relative(root, file)}\`${entry} reached from \`${location}\``
   }
 }
 
-function formatLocation(root: string, location: UsageLocation): string {
+function formatLocation(root: string, location: TestOnlyUsage.UsageLocation): string {
   return `${Path.relative(root, location.file)}:${location.line}`
 }
 
-type NamedUsage = { name: string; declaration: UsageLocation; testReference: UsageLocation }
+type NamedUsage = {
+  name: string
+  declaration: TestOnlyUsage.UsageLocation
+  testReference: TestOnlyUsage.UsageLocation
+}
 
 function formatNamedUsage(root: string, { name, declaration, testReference }: NamedUsage): string {
   const declared = formatLocation(root, declaration)
