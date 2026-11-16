@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen'
 import { Path } from '@shared/os'
-import * as Typecheck from '@typecheck'
+import * as SourceValidation from '@source-validation'
+import type * as Typecheck from '@typecheck'
 
 import { validateRequirementPlacement } from '../dependencies/Requirements'
 import { isNpmRequirement } from '../ModuleRequirements'
@@ -28,16 +29,11 @@ export async function loadRequirementModules(
         continue
       }
       const document = await readDocument(path)
-      Typecheck.assertValidStatements(document, path)
+      SourceValidation.assertValidStatements(document, path)
       validateRequirementPlacement(document, path, owner)
       const declarations = AST.GetDeclarations(document).filter(isNpmRequirement)
       if (declarations.length > 0) {
-        metadata.push({
-          path,
-          document: createRequirementDocument(document, declarations),
-          imports: [],
-          siblings: [],
-        })
+        metadata.push({ path, document: createRequirementDocument(document, declarations), imports: [], siblings: [] })
       }
     }
   }
