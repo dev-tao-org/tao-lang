@@ -83,16 +83,19 @@ cut and the remaining changes. Use updated `main` as the new implementation base
 explicit reconciliation commit when a shared integration branch supplies the intended base.
 Replay only the outstanding scope under [Git workflow](../../git-workflow/SKILL.md).
 
-- Start a review session on the new implementation branch with `start --base <new-base-sha>`.
+- Start a review session on the new implementation branch with
+  `start --base <new-base-sha> --branch <implementation-branch>-incremental-review-approved`.
   Ordinary `continue` retains the old baseline and approvals tree.
 - If the prior scope all landed, keep the original receipts and begin a fresh scope at the
   new base. The pending diff starts empty before incoming work.
 - When part of the scope remains, carry forward the original inventory, stable IDs, earned
   credit and receipts. Record surviving approved content on the new approvals branch through
   the usual acceptance operations when the original approval still covers its exact content
-  and meaning. Hold conflict resolutions and changes to shared behavior for recheck.
-- Verify that the new pending diff contains the outstanding review scope, including rechecks,
-  before presenting groups. Keep the prior session and landing boundary available for resuming.
+  and meaning. After restoring approvals, register outstanding semantic rechecks and any new
+  ones from conflict resolutions or changes to shared behavior with `recheck --files … --state pending`.
+- Before presenting groups, reconcile `status.pending` with outstanding content changes and
+  `status.recheck` with outstanding semantic rechecks, including files whose bytes are unchanged.
+  Keep the prior session and landing boundary available for resuming.
 
 ## Accept whole files
 
