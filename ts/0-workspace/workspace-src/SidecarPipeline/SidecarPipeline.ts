@@ -7,6 +7,7 @@ import * as Typecheck from '@typecheck'
 
 import * as Paths from '../modules/Paths'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
+import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
 import { collectModuleSpecifiers, getFileExtension } from './Imports'
 import * as Snapshots from './Snapshots'
 
@@ -243,7 +244,7 @@ async function collectFileClosure(
 }
 
 async function resolveRelativeImport(path: string, moduleRoot: string, watchFiles: Set<string>): Promise<string> {
-  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...Snapshots.sidecarAssetExtensions]
+  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...sidecarAssetExtensions]
   const candidates = getFileExtension(path) ? [path] : [
     ...suffixes.map(suffix => `${path}${suffix}`),
     ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),

@@ -44,18 +44,8 @@ export function createForeignViewContractSource(input: ForeignViewContractSource
   )
 }
 
-/** SidecarAssetDeclarations declares the copied asset formats accepted by sidecar TypeScript modules. */
-export const SidecarAssetDeclarations = S`
-  declare module '*.png' { const asset: number; export default asset }
-  declare module '*.jpg' { const asset: number; export default asset }
-  declare module '*.jpeg' { const asset: number; export default asset }
-  declare module '*.gif' { const asset: number; export default asset }
-  declare module '*.webp' { const asset: number; export default asset }
-  declare module '*.svg' { const asset: number; export default asset }
-  declare module '*.mp4' { const asset: number; export default asset }
-  declare module '*.mp3' { const asset: number; export default asset }
-  declare module '*.ttf' { const asset: number; export default asset }
-  declare module '*.woff' { const asset: number; export default asset }
-  declare module '*.woff2' { const asset: number; export default asset }
-  declare module '*.pdf' { const asset: number; export default asset }
-`
+/** compileSidecarAssetDeclarations declares the ordered copied asset formats accepted by sidecar modules. */
+export function compileSidecarAssetDeclarations(extensions: readonly string[]): string {
+  return extensions.map(extension => `declare module '*${extension}' { const asset: number; export default asset }`)
+    .join(NewlineCharacter)
+}
