@@ -1,5 +1,5 @@
 use tao@ui Col
-use ScopeExamples, PrivateViewExamples
+use ScopeExamples, PrivateViewExamples, ImmutableValues
 
 folder app Language {
   root LanguageExamples
@@ -11,5 +11,6 @@ view LanguageExamples {
     ScopeExamples
     #privateViews
     PrivateViewExamples
+    ImmutableValues
   }
 }

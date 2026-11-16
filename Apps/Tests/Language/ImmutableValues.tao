@@ -1,0 +1,24 @@
+folder view ImmutableValues {
+  render inject ```ts
+    const value = Tao.useWritable(() => ({ rows: [{ label: 'Original snapshot' }] }))
+    const snapshot = Tao.useValue(value)
+    const row = snapshot.rows[0]!
+    const frozen = Object.isFrozen(snapshot) && Object.isFrozen(snapshot.rows) && Object.isFrozen(row)
+    return (
+      <Tao.View>
+        <Tao.Text>{row.label}</Tao.Text>
+        <Tao.Text>{frozen ? 'Immutable snapshot' : 'Mutable snapshot'}</Tao.Text>
+        <Tao.Pressable testID="publish-snapshot" onPress={() => {
+          const externalRow = { label: 'Published' }
+          const external = { rows: [externalRow] }
+          value.update(external)
+          externalRow.label = 'Mutated outside Tao'
+          external.rows.push({ label: 'Added outside Tao' })
+        }}>
+          <Tao.Text>Publish snapshot</Tao.Text>
+        </Tao.Pressable>
+        <Tao.Text>{snapshot.rows.length} published row</Tao.Text>
+      </Tao.View>
+    )
+  ```
+}

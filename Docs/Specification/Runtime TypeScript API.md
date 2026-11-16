@@ -126,8 +126,14 @@ attach an observation; abandoned renders and unmounted components retain no subs
 #### `expression.jsValue()`
 
 Returns the underlying raw, non-reactive JavaScript value, evaluating the expression when needed.
-Receiving that value does not itself subscribe the caller to later changes. Object-valued results
-are shared read-only snapshots, without copying on each read; writes use Tao's writable APIs.
+Receiving that value does not itself subscribe the caller to later changes. Ordinary lists and
+records are deeply readonly snapshots. Tao copies them when an initializer, write or calculation
+supplies an external value. Later changes to the external object cannot affect the snapshot.
+Expressions reuse snapshots already owned by the runtime. Capabilities such as writable
+expressions and observation handles retain identity inside a collection. Spreading a handle creates
+an ordinary record. Ordinary records use own enumerable string fields, and lists use indexed data.
+Tao rejects symbol keys and cycles in ordinary collections. Opaque host objects with custom
+prototypes are outside the ordinary snapshot contract.
 
 #### `writable.update(value)`
 
@@ -138,7 +144,9 @@ follows the enclosing batch's settlement.
 
 Calls the callback immediately with the current raw JavaScript value, then with changed values after
 each batch. Returns an object with an `unobserve()` method that stops observation.
-The current implementation compares values with `Object.is`. The agreed future [value equality](Reactive%20Expressions.md#value-equality) compares ordinary lists and records by contents while preserving explicit entity and operation identity.
+Lists compare in order, including duplicates. Records compare by fields regardless of field order.
+Equal calculation results retain their previous snapshot and do not trigger downstream evaluations.
+Primitive values and capability handles use `Object.is`.
 
 #### Immutable and changing values
 
@@ -156,7 +164,7 @@ In the agreed future contract, view-owned observations automatically stop when t
 
 In the agreed future contract, sidecars receive deeply read-only types for ordinary Tao list and record snapshots, backed by runtime-owned immutable snapshots. They publish replacements or use an explicit reactive mutation interface. Types and API names distinguish observation from write authority.
 
-When accepting ordinary external lists and records, the runtime copies them into owned immutable snapshots so retained external references cannot mutate published values. Already-owned snapshots can be reused; reads need not copy. Entity and operation handles remain distinct capabilities rather than values recursively copied or frozen. The precise representation and protection mechanism remain implementation-design work.
+When accepting ordinary external lists and records, the runtime copies them into owned immutable snapshots so retained external references cannot mutate published values. Already-owned snapshots can be reused; reads need not copy. Entity and operation handles remain distinct capabilities rather than values recursively copied or frozen. Runtime snapshot ownership is implemented; generated sidecar reader contracts remain future work.
 
 ```ts
 const observation = expression.observe(value => console.log(value))
