@@ -141,7 +141,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - For `Exec` and its callers, pass the executable as one string, arguments separately, and options last. Use an argument array when individual arguments contain spaces or come from dynamic values.
   - Expose static validation through `check`; keep its individual type, comment and style checks internal.
   - The global CLI fatal handler prints uncaught failures and uses the command error status when present, otherwise 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
-  - Output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve error output for flows near process exit; prefer throwing failures or warning otherwise.
+  - Human-facing command output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve error output for flows near process exit; prefer throwing failures or warning otherwise. Standalone machine protocols may write exact bytes through shared OS streams.
   - Human command progress always appears in gray on stderr; agent progress follows its configured output mode.
   - Common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 

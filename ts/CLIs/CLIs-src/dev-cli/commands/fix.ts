@@ -1,6 +1,7 @@
 import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Repo } from '@shared/os'
+import { synchronizePackageApis } from '../../../../repo-analysis/repo-analysis-src/Workspace/PackageApis'
 import { assertNewWorkspacePath, assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
@@ -17,10 +18,12 @@ export default registerCommand({
   async action(paths: string[], options: FixCommandOptions = {}) {
     if (paths.length === 0) {
       await assertNewWorkspaceTree()
-      const RepoAnalysis = await import('@repo-analysis')
-      RepoAnalysis.synchronizePackageApis()
+      synchronizePackageApis()
+      const SourceConformance = await import(
+        '../../../../repo-analysis/repo-analysis-src/Source/source-conformance-fix'
+      )
       const excludedFiles = options.exclude ?? []
-      const changed = await RepoAnalysis.fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
+      const changed = await SourceConformance.fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
       IO.print(`Fixed source conformance: ${changed} file(s)`)
       await workspaceFormat('fmt', excludedFiles)
       return

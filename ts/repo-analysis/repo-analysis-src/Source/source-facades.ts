@@ -246,7 +246,23 @@ function isPrivatePackageImport(
   if (sourcePackage === undefined || targetPackage === undefined || sourcePackage === targetPackage) {
     return false
   }
-  return !context.namespaces.has(specifier) && !isPlatformToolBoundary(target, context.root)
+  if (context.namespaces.has(specifier) || isPlatformToolBoundary(target, context.root)) {
+    return false
+  }
+  return !isAliasRepairBoundary(importer, target, context.root)
+}
+
+function isAliasRepairBoundary(importer: string, target: string, root: string): boolean {
+  // The fixer must load before any generated alias exists and Bun may retain the old configuration.
+  const command = normalizePath(Path.relative(root, importer))
+  if (command !== 'ts/CLIs/CLIs-src/dev-cli/commands/fix.ts') {
+    return false
+  }
+  const module = normalizePath(Path.relative(root, target))
+  return [
+    'ts/repo-analysis/repo-analysis-src/Workspace/PackageApis.ts',
+    'ts/repo-analysis/repo-analysis-src/Source/source-conformance-fix.ts',
+  ].includes(module)
 }
 
 function sourcePackageDirectory(filename: string, root: string): string | undefined {
