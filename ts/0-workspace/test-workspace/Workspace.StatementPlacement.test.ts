@@ -28,6 +28,30 @@ Tests.test('dependency readiness rejects misplaced statements before inspecting 
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 
+Tests.test('setup diagnoses invalid siblings before resolving their imports', async () => {
+  const directory = Artifacts.resolvePath('tmp', `sibling-placement-${Platform.randomUUID()}`)
+  const feature = Path.join(directory, 'Feature')
+  const entry = Path.join(feature, 'Main.tao')
+  const source = S`
+    view Broken {
+      root Broken
+      ${RootRender}
+    }
+  `
+  const main = S`
+    app Example { root Main }
+    view Main { ${RootRender} }
+  `
+  await Try(async () => {
+    await Workspace.createProject({ directory })
+    await FS.mkdir(feature)
+    await FS.writeFile(entry, main)
+    await FS.writeFile(Path.join(feature, 'A.tao'), 'use missing@widgets Widget')
+    await FS.writeFile(Path.join(feature, 'Z.tao'), source)
+    await Tests.rejects(Workspace.inspectProjectPreparation(entry, { runtime: false }), LibraryPlacementRegx)
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
+})
+
 Tests.test('misplaced statements retain their AST ranges and block app publication until corrected', async () => {
   const source = S`
     use tao@ui Text

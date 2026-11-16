@@ -89,9 +89,6 @@ function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string
 async function loadNextSource(state: LoadState, timings: Timings): Promise<void> {
   const path = state.pending.shift()!
   const source = state.sources.get(path)!
-  if (state.options.validateStatementsBeforeDiscovery) {
-    Typecheck.assertValidStatements(source.document, path)
-  }
   const discovery = await timings.run(discover, state, source)
   await addDiscoveredSources(state, discovery, timings)
   source.imports = discovery.imports
@@ -108,6 +105,7 @@ async function addDiscoveredSources(
       const document = text === undefined
         ? await readDocument(candidate, state.parser, state.documents, timings)
         : parseDocument(text, candidate, state.parser, timings)
+      validateDiscoveryDocument(state.options, document, candidate)
       state.documents.set(candidate, document)
       state.sources.set(candidate, sourceModule(candidate, document))
       state.pending.push(candidate)
@@ -121,6 +119,7 @@ async function addDiscoveredSources(
 
 function createLoadState(request: LoadRequest, entryPath: string, projectRoot: string): LoadState {
   const document = request.entry.document
+  validateDiscoveryDocument(request.options, document, entryPath)
   return {
     ...request,
     entryPath,
@@ -130,6 +129,12 @@ function createLoadState(request: LoadRequest, entryPath: string, projectRoot: s
     pending: [entryPath],
     observedRoots: new Set(),
     documents: new Map([[entryPath, document]]),
+  }
+}
+
+function validateDiscoveryDocument(options: ModuleLoadOptions, document: AST.Document, path: string): void {
+  if (options.validateStatementsBeforeDiscovery) {
+    Typecheck.assertValidStatements(document, path)
   }
 }
 

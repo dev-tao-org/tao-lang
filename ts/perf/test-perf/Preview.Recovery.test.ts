@@ -40,7 +40,9 @@ async function verifyOpeningCanBeClosed(page: HeadlessBrowser.Page): Promise<voi
     { times: 2 },
   )
   await page.getByRole('button', { name: 'Show previews' }).click()
-  await page.frameLocator('#right').getByText('Waiting for preview.').waitFor()
+  for (const id of ['left', 'right']) {
+    await page.frameLocator(`#${id}`).getByText('Waiting for preview.').waitFor()
+  }
   await page.locator('body[data-status="opening"]').waitFor()
   await page.getByRole('button', { name: 'Close previews' }).click()
   await page.locator('body[data-status="closed"]').waitFor()
