@@ -1,5 +1,13 @@
+use tao@ui Col
+use DisabledControls
 use Form
 
 folder app UIInteractions {
-  root Form
+   root Root
 }
+
+file view Root {
+   render Col {
+      Form
+      DisabledControls
+}  }

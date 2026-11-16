@@ -24,6 +24,12 @@ export const Formatting = {
   },
   ViewRenderExpression(fm) {
     fm.noSpaceBeforeProperty('argumentList')
+    fm.oneSpaceBeforeProperty('interaction')
+  },
+  DisabledModifier(fm) {
+    fm.noSpaceAfter('[')
+    fm.oneSpaceAfter('disabled')
+    fm.noSpaceBefore(']')
   },
   LetDeclaration(fm) {
     fm.oneSpaceAfter('let')

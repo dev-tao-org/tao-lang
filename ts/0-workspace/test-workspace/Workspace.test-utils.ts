@@ -20,7 +20,16 @@ export async function createStandaloneLibraryFixture(): Promise<string> {
       packageDirectory: FS.realpathSync(packageDirectory),
     }),
   )
-  for (const name of ['package.json', 'tsconfig.json', 'Consumer.tsx', 'ForeignGreeting.tsx', 'test']) {
+  for (
+    const name of [
+      'package.json',
+      'tsconfig.json',
+      'Consumer.tsx',
+      'ForeignGreeting.tsx',
+      'DisabledPreviewDemo.tsx',
+      'test',
+    ]
+  ) {
     await FS.cp(Path.join(source, 'src/ts', name), Path.join(packageDirectory, name), { recursive: true })
   }
   await linkStandaloneLibraryDependencies(directory)

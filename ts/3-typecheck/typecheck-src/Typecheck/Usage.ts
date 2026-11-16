@@ -127,6 +127,10 @@ function visitLet(node: AST.LetDeclaration, scope: Scope): void {
 
 function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   reference(scope, node.target)
+  const condition = node.interaction?.condition
+  if (condition && AST.IsKind(condition, 'Name')) {
+    reference(scope, condition)
+  }
   for (const argument of node.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       reference(scope, argument)

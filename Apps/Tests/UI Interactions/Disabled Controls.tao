@@ -1,0 +1,28 @@
+use tao@ui Col, Input
+
+folder view DisabledControls {
+   let Locked = yes
+   render Col {
+      Col [disabled Locked] {
+         #inherited
+         DisabledControl("Inherited") [disabled no]
+         #lockedInput
+         Input("Locked")
+      }
+      #direct
+      DisabledControl("Direct") [disabled yes]
+      #enabled
+      DisabledControl("Enabled") [disabled no]
+}  }
+
+file view DisabledControl(Label text) {
+   render inject Label ```ts
+      const presses = Tao.useWritable(() => 0)
+      const count = Tao.useValue(presses)
+      return (
+         <Tao.Pressable onPress={() => presses.update(count + 1)}>
+            <Tao.Text>{`${Label}: ${count}`}</Tao.Text>
+         </Tao.Pressable>
+      )
+   ```
+}

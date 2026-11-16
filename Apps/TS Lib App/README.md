@@ -17,6 +17,7 @@ The library demonstrates the currently executable language surface through publi
 | `src/tao/Library.tao`          | Library publication, module aliases, required text parameters, private nested views, React children and instance-owned writable/computed values                       |
 | `src/tao/LanguageFeatures.tao` | Named, aliased, wildcard and namespace imports; typed file lets; lexical shadowing; escaped text; aliased injection captures; standard input; TypeScript foreign view |
 | `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                                              |
+| `src/tao/DisabledPreview.tao`  | Required boolean prop and inherited disabled state in Tao and raw controls inside a sidecar                                                                           |
 | `src/tao/ScopeExamples.tao`    | Folder, package and project visibility across files                                                                                                                   |
 | `src/tao/cards`                | Separate module publication list and unselected public declarations                                                                                                   |
 | `src/ts/Consumer.tsx`          | Ordinary package/subpath imports, React prop updates, children and two isolated library instances                                                                     |

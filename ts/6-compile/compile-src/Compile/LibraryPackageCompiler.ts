@@ -1,7 +1,7 @@
 import { S } from '@shared'
 
 import { emitJsonDocument } from '../codegen-util'
-import { projectTextViewParameterTypes } from './ForeignViewContractCompiler'
+import { projectViewParameterTypes } from './ForeignViewContractCompiler'
 import { compilePublicationExportName, type PublishedView } from './LibraryPublications'
 import type { CompiledFiles } from './ModulesCompiler'
 
@@ -50,7 +50,7 @@ function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exp
 }
 
 function compileViewDeclaration(view: PublishedView): string {
-  const parameters = projectTextViewParameterTypes(view.declaration)
+  const parameters = projectViewParameterTypes(view.declaration)
   const props = Object.entries(parameters).map(([name, type]) => `${name}: ${type};`).join(' ')
   return S`
     import type * as React from 'react';

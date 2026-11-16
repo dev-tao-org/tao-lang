@@ -14,6 +14,7 @@ Tests.test('Tao app discovery includes developer apps and excludes files without
     'Apps/Tests/Language/PrivateViews.test.tao',
     'Apps/Tests/Language/Scopes.test.tao',
     'Apps/Tests/Modules and Dependencies/Imports.test.tao',
+    'Apps/Tests/UI Interactions/Disabled Controls.test.tao',
     'Apps/Tests/UI Interactions/Forms.test.tao',
   ])
 })

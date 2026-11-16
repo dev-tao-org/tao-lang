@@ -1,4 +1,4 @@
 import type * as React from 'react';
-export type Props = { Value: string; children?: React.ReactNode };
+export type Props = { Locked: boolean; children?: React.ReactNode };
 declare const View: React.ComponentType<Props>;
 export default View;

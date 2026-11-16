@@ -38,8 +38,8 @@ type RenderCompilation = { result: string; components: string }
 const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
-  if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
-    Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
+  if (!ValuesCompiler.hasSupportedViewParameters(node)) {
+    Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use text or boolean.`)
   }
   const component = context.foreignComponent
   if (component === undefined) {
@@ -158,7 +158,8 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
     argument => ValuesCompiler.compileExpression(argument, scope),
   )
   const childrenCode = compileViewRenderBlock(node.block, scope)
-  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
+  const condition = node.interaction ? ValuesCompiler.compileExpression(node.interaction.condition, scope) : undefined
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode, condition)
 }
 
 type OptionalViewRenderBlock = AST.Block | undefined

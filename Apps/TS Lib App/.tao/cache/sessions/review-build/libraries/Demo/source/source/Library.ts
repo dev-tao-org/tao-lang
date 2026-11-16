@@ -6,7 +6,8 @@ import type { Scope as ImportedScope1 } from "./cards/Card";
 import type { Scope as ImportedScope2 } from "./cards/Other";
 import type { Scope as ImportedScope3 } from "./LanguageFeatures";
 import type { Scope as ImportedScope4 } from "./ValueSnapshots";
-import type { Scope as ImportedScope5 } from "./ScopeExamples";
+import type { Scope as ImportedScope5 } from "./DisabledPreview";
+import type { Scope as ImportedScope6 } from "./ScopeExamples";
 
 export type Scope = {
   readonly "Greeting": TR.View;
@@ -18,7 +19,8 @@ export type Scope = {
   readonly "Cards.Unselected": ImportedScope2["Unselected"];
   readonly "LanguageFeatures": ImportedScope3["LanguageFeatures"];
   readonly "ValueSnapshots": ImportedScope4["ValueSnapshots"];
-  readonly "FolderScope": ImportedScope5["FolderScope"];
+  readonly "DisabledPreview": ImportedScope5["DisabledPreview"];
+  readonly "FolderScope": ImportedScope6["FolderScope"];
 };
 
 export type Imports = {
@@ -28,7 +30,8 @@ export type Imports = {
   readonly "Cards.Unselected": Pick<ImportedScope2, "Unselected">;
   readonly "LanguageFeatures": Pick<ImportedScope3, "LanguageFeatures">;
   readonly "ValueSnapshots": Pick<ImportedScope4, "ValueSnapshots">;
-  readonly "FolderScope": Pick<ImportedScope5, "FolderScope">;
+  readonly "DisabledPreview": Pick<ImportedScope5, "DisabledPreview">;
+  readonly "FolderScope": Pick<ImportedScope6, "FolderScope">;
 };
 
 export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.Scope>>): void {
@@ -38,6 +41,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
   TR.AliasBinding(_Scope, "Cards.Unselected", () => _Modules["source/cards/Other.ts"]!["Unselected"]);
   TR.AliasBinding(_Scope, "LanguageFeatures", () => _Modules["source/LanguageFeatures.ts"]!["LanguageFeatures"]);
   TR.AliasBinding(_Scope, "ValueSnapshots", () => _Modules["source/ValueSnapshots.ts"]!["ValueSnapshots"]);
+  TR.AliasBinding(_Scope, "DisabledPreview", () => _Modules["source/DisabledPreview.ts"]!["DisabledPreview"]);
   TR.AliasBinding(_Scope, "FolderScope", () => _Modules["source/ScopeExamples.ts"]!["FolderScope"]);
 }
 

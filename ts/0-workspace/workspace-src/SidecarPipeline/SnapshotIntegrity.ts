@@ -79,7 +79,7 @@ function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, 
         contractPath,
         encodeSnapshotText(Compile.createForeignViewContractSource({
           name: AST.GetViewName(view.declaration),
-          parameters: Compile.projectTextViewParameterTypes(view.declaration),
+          parameters: Compile.projectViewParameterTypes(view.declaration),
           exportRelativePath: view.relativeSidecarPath,
         })),
       )

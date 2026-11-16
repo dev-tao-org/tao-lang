@@ -1,4 +1,5 @@
 export { AppDeclaration } from './App'
+export { DisabledWhen } from './DisabledInteraction'
 export { ForeignView } from './ForeignView'
 export type { ForeignViewComponent } from './ForeignView'
 export { ModuleApplied } from './Preview'
