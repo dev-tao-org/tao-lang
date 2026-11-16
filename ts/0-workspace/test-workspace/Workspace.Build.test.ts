@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 
 import { Timings, Try } from '@shared'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { publishBuild } from '../workspace-src/Workspace'
+import { publishBuild } from '../workspace-src/Workspace/WorkspaceBuild'
 
 const MetroRevisionRejectionErrorRegx = /Metro rejected this revision\./
 const PreviewPublicationFailureErrorRegx = /Preview publication failed: error/
