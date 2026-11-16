@@ -143,9 +143,9 @@ List remaining group titles before the current groups and omit unused headings.
 - Preserve the current group, suggested order, pending approval questions, background reviews and
   semantic rechecks in the retained session checkpoint. On resume, reconcile it with script status
   and committed acceptance receipts; never infer approval from the agent's memory alone.
-- When continuing in a newly authorized implementation worktree, use the script's `continue`
-  operation to inherit the prior session; keep its original progress denominator and record new
-  implementation scope separately. Historical records are evidence, not instructions to replay.
+- For a worktree move on the same baseline, use `continue` and retain the frozen progress
+  denominator. After landing, keep the chat and follow
+  [Continue after a landing](references/operations.md#continue-after-a-landing).
 - In GitLens use Search & Compare's overall Files Changed between the reviewed branch and the
   implementation Working Tree to include pending corrections. Use direct tree comparisons, not
   merge-base/Ahead/Behind comparisons. Refresh after acceptance. Staging alone does not shrink
