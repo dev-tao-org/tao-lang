@@ -67,7 +67,9 @@ preview traversal, or general AST-generation framework without a concrete need.
 Preserve recognized statements and their source ranges in the CST and AST. The source-validation
 stage checks permitted owners, ordering, multiplicity and authored declaration names on each
 reached semantic AST before resolving that document's imports. Structurally invalid programs stop
-before linking and code generation. The workspace owns project requirements that depend on paths
+before linking and code generation. Metadata-only discovery checks requirement declarations and
+their placement without validating unrelated declarations outside the loaded source graph.
+The workspace owns project requirements that depend on paths
 and dependency state. The editor reports the same placement
 diagnostics for complete syntax and retains parser diagnostics for incomplete edits. Preserve
 supported valid syntax and the single-render rule. Consult old grammar and validation for proven

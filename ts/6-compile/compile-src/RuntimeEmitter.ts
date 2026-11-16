@@ -113,14 +113,6 @@ export function emitViewRenderExpression(
   `
 }
 
-function compileInteractionArguments(node: AST.ViewRenderExpression, condition?: string): string {
-  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : undefined
-  if (condition !== undefined) {
-    return `, ${tag ?? 'undefined'}, TR.DisabledWhen(${condition})`
-  }
-  return tag === undefined ? '' : `, ${tag}`
-}
-
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */
 export function emitViewRenderBlock(scope: CodegenUtil.ScopeCode, statements: string): string {
   const value = CodegenUtil.getScopeValue(scope)
@@ -157,6 +149,14 @@ export function emitInjectionCustomHook(
     `,
     invocation: `${names.useInjection}(${argumentsCode})`,
   }
+}
+
+function compileInteractionArguments(node: AST.ViewRenderExpression, condition?: string): string {
+  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : undefined
+  if (condition !== undefined) {
+    return `, ${tag ?? 'undefined'}, TR.DisabledWhen(${condition})`
+  }
+  return tag === undefined ? '' : `, ${tag}`
 }
 
 function emitCaptureParameter(capture: InjectionCapture): string {

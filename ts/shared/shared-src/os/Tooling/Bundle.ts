@@ -52,7 +52,7 @@ export async function bundleLibrary(
     }],
   })
   if (!result.success) {
-    Errors.ThrowUserInput(`Library bundling failed: ${result.logs.map(log => log.message).join('\n')}`)
+    Errors.ThrowUserInput(`Library bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
   }
   const directory = Path.dirname(entrypoint)
   await stabilizeBundleSourceHeaders(Path.join(outdir, LibraryBundleName), directory)

@@ -7,7 +7,8 @@ import { FS, Path, Platform } from '@shared/os'
 import { publishDirectory } from '../PublishDirectory'
 
 /** publishBuild publishes one complete generated-file revision and maintains its disk inspection mirror.
- *  Memory publication remains the only Metro path; disk snapshots are switched atomically after acceptance. */
+ *  Memory publication remains the only Metro path; disk replacement follows acceptance with rollback on failure.
+ *  External disk readers can observe a brief gap between the two directory renames. */
 export async function publishBuild(
   buildDirectory: string,
   files: Expo.GeneratedRevision['files'],

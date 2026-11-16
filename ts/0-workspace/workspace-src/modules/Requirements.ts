@@ -29,7 +29,7 @@ export async function loadRequirementModules(
         continue
       }
       const document = await readDocument(path)
-      SourceValidation.assertValidStatements(document, path)
+      SourceValidation.assertValidRequirements(document, path)
       validateRequirementPlacement(document, path, owner)
       const declarations = AST.GetDeclarations(document).filter(isNpmRequirement)
       if (declarations.length > 0) {
