@@ -12,7 +12,7 @@ Tests.test('compiled Tao library emits explicit own-project public component pat
     await Workspace.compileLibraryPackage({
       entry: Path.join(directory, 'src/tao/Library.tao'),
       out: output,
-      name: '@example/tao-library',
+      name: '@tao-dev/ts-lib-example',
     })
     const manifest = readPackageManifest(await FS.readFile(Path.join(output, 'package.json'), 'utf8'))
     Tests.expect(Object.keys(manifest.exports)).toEqual([

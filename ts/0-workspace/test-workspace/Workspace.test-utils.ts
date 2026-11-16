@@ -30,10 +30,10 @@ export async function createStandaloneLibraryFixture(): Promise<string> {
 /** linkStandaloneLibraryDependencies links this checkout's installed pinned runtime and browser dependencies. */
 export async function linkStandaloneLibraryDependencies(directory: string): Promise<void> {
   const modules = Path.join(directory, 'src/ts/node_modules')
-  await FS.mkdir(Path.join(modules, '@example'))
+  await FS.mkdir(Path.join(modules, '@tao-dev'))
   await FS.symlink(
-    Path.join(directory, '.tao/cache/libraries/Demo'),
-    Path.join(modules, '@example/tao-library'),
+    Path.join(directory, '.tao/cache/sessions/.cli/libraries/Demo'),
+    Path.join(modules, '@tao-dev/ts-lib-example'),
     'dir',
   )
   const runtime = Repo.resolvePath('ts/7-runtime')

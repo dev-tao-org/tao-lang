@@ -13,7 +13,11 @@ export type ConsumerHostOptions = {
   name: string
   dependencies: RuntimePackageVersions
   devDependencies: RuntimePackageVersions
+  library?: ConsumerLibrary
 }
+
+/** ConsumerLibrary identifies the compiled package owned by this host's session. */
+export type ConsumerLibrary = { name: string; directory: string }
 
 /** createConsumerHost writes generated Expo files beside a link to the authored package's dependencies. */
 export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
@@ -68,6 +72,7 @@ function serializeConsumerResolution(options: ConsumerHostOptions): string {
   return Json.Print({
     packageDirectory: options.packageDirectory,
     packages: Object.keys(options.dependencies),
+    library: options.library,
   })
 }
 

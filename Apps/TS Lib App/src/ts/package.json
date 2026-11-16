@@ -8,8 +8,7 @@
   "tao": {
     "compile": {
       "entry": "../tao/Library.tao",
-      "out": "../../.tao/cache/libraries/Demo",
-      "name": "@example/tao-library"
+      "name": "@tao-dev/ts-lib-example"
     },
     "run": {
       "entry": "Consumer.tsx",
@@ -17,7 +16,7 @@
     }
   },
   "dependencies": {
-    "@example/tao-library": "file:../../.tao/cache/libraries/Demo",
+    "@tao-dev/ts-lib-example": "file:../../.tao/cache/sessions/.cli/libraries/Demo",
     "expo": "57.0.30",
     "@expo/metro-runtime": "57.0.17",
     "react": "19.2.3",

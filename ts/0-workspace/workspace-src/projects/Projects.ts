@@ -41,7 +41,7 @@ export async function ensureProjectMetadata(path: string): Promise<ProjectLayout
   await ensureProjectIdentity(Path.join(tao, 'store', 'project.json'))
   const ignore = Path.join(tao, '.gitignore')
   if (!await FS.exists(ignore)) {
-    await FS.writeFile(ignore, Shared.joinTextLines('cache/', 'locks/', ''))
+    await FS.writeFile(ignore, Shared.joinTextLines('/cache/', '/locks/', ''))
   }
   return deriveProjectLayout(root)
 }

@@ -59,8 +59,8 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
   ['ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts', ['react']],
   ['ts/6-compile/compile-src/Compile/LibraryPackageCompiler.ts', ['react']],
   ['ts/0-workspace/workspace-src/projects/LibraryProjectTemplate.ts', [
-    '@example/tao-library',
-    '@example/tao-library/Greeting',
+    '@tao-dev/ts-lib-example',
+    '@tao-dev/ts-lib-example/Greeting',
     'react',
     'react-native',
   ]],

@@ -80,6 +80,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Implementation policy
 
+- Treat `.tao/` directories as Tao-managed state: change them through Tao Studio or CLI, not by direct edits or repository formatters. Direct edits are allowed only when updating existing projects to reflect changes to project-creation tooling.
 - Never preserve backward compatibility. Tao rolls forward only: update affected implementations, callers, formats, fixtures and documentation together. Do not add legacy readers, migration branches, compatibility shims or fallbacks for superseded assumptions.
 - For a large breaking rewrite, coordinate exclusive ownership by one agent with the developer instead of maintaining old and new designs in parallel. Rebuild incompatible generated state explicitly; do not silently discard authored data or re-resolve durable dependency pins.
 

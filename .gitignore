@@ -7,7 +7,7 @@
 *.tao-file-mutation.lock.owner-*
 *.tao-file-mutation.lock.stale-*
 *.tao-file-mutation.lock.release-*
-node_modules/
+node_modules
 *.tsbuildinfo
 .tao-ts/
 # Ignore sidecars left by the previous generated-contract layout.

@@ -5,7 +5,7 @@ import { Errors, Json } from '@shared'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
-import { Artifacts, Bundle, FS, Path, Platform, Repo } from '@shared/os'
+import { Bundle, FS, Path, Repo } from '@shared/os'
 
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { loadModules } from './modules/Loader'
@@ -38,8 +38,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   }, parser)
   const ownSources = new Set(modules.filter(module => isOwnProjectSource(root, module.path)).map(module => module.path))
   const library = Compile.compileLibrary(Typecheck.linkModules(entry, modules), ownSources, request.target)
-  const sources = Artifacts.resolvePath('tmp', `library-sources-${Platform.randomUUID()}`)
-  Artifacts.trackTemporary(sources)
+  const sources = Path.join(Path.resolve(request.out), 'source')
   await writeGeneratedSources(sources, library.files)
   const configuration = Path.join(sources, 'tsconfig.json')
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
@@ -83,14 +82,25 @@ async function writeGeneratedSources(directory: string, files: Readonly<Record<s
 function serializeLibraryBuildConfiguration(): string {
   return Json.Print({
     compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      allowImportingTsExtensions: true,
+      esModuleInterop: true,
       jsx: 'react-jsx',
       paths: {
         '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
+        '@runtime/client': [Repo.resolvePath('ts/7-runtime/runtime-src/client/Client.ts')],
         '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
         '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
         '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
         '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
+        'react': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react')],
+        'react/*': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react/*')],
       },
     },
   })

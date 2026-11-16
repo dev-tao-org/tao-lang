@@ -4,6 +4,7 @@ import { Json } from '@shared'
 
 import { Errors, NewlineCharacter, Objects, Timings, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
+import { publishDirectory } from '../PublishDirectory'
 
 /** publishBuild publishes one complete generated-file revision and maintains its disk inspection mirror.
  *  Memory publication remains the only Metro path; disk snapshots are switched atomically after acceptance. */
@@ -145,7 +146,7 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: Runtime.Ru
   await FS.writeIfChanged(Path.join(nextDirectory, 'tsconfig.json'), configuration)
   const targetLink = Path.join(nextDirectory, 'node_modules')
   const dependencyTarget = Path.join(runtime.directory, 'node_modules')
-  await FS.symlink(Path.relative(nextDirectory, dependencyTarget), targetLink, 'dir')
+  await FS.symlink(dependencyTarget, targetLink, 'dir')
 }
 
 function serializePublishedBuildConfiguration(extendsPath: string): string {
@@ -176,45 +177,8 @@ const publishSnapshot = Timings.measured('workspace.build.publish-snapshot', asy
   directory: string,
   revisionDirectory: string,
 ): Promise<void> {
-  const parent = Path.dirname(directory)
-  const revisions = `${directory}.revisions`
-  await FS.mkdir(parent)
-  const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
-  const previous = current?.isSymbolicLink()
-    ? await Try.WithDefault(undefined, () => FS.realpathSync(directory))
-    : undefined
-  if (current?.isDirectory() && !current.isSymbolicLink()) {
-    const initial = `${directory}.${Platform.randomUUID()}.initial`
-    await FS.rename(directory, initial)
-    await Try(async () => {
-      await FS.replaceDirectoryLink(Path.relative(parent, revisionDirectory), directory)
-    }, {
-      async catch(error) {
-        await FS.rename(initial, directory)
-        Errors.Throw(error)
-      },
-    })
-    await FS.rm(initial, { recursive: true, force: true })
-  } else {
-    await FS.replaceDirectoryLink(Path.relative(parent, revisionDirectory), directory)
-  }
-  const currentDirectory = await Try.WithDefault(revisionDirectory, () => FS.realpathSync(directory))
-  await removeOldSnapshots(revisions, currentDirectory, previous)
+  await publishDirectory(revisionDirectory, directory)
 })
-
-async function removeOldSnapshots(
-  revisions: string,
-  currentDirectory: string,
-  previousDirectory?: string,
-): Promise<void> {
-  for (const entry of await FS.readdir(revisions)) {
-    const path = Path.join(revisions, entry)
-    const target = await Try.WithDefault(path, () => FS.realpathSync(path))
-    if (target !== currentDirectory && target !== previousDirectory) {
-      await FS.rm(path, { recursive: true, force: true })
-    }
-  }
-}
 
 const publishChanged = Timings.measured('workspace.runtime.publish-changed', async function(
   snapshot: string,

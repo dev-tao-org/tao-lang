@@ -5,12 +5,11 @@ import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { readTypeScriptProjectPackage } from './TypeScriptProjectPackage'
 
-/** CompileTarget identifies one selected declaration and its configured package output when applicable. */
+/** CompileTarget identifies one selected declaration and its package name when applicable. */
 export type CompileTarget = {
   kind: CompileTargetKind
   entry: string
   target?: string
-  out?: string
   name?: string
 }
 
@@ -40,7 +39,6 @@ export async function resolveCompileTarget(directory: string, argument?: string)
     kind: declaration.kind === 'TypeScriptLibraryDeclaration' ? 'library' : 'app',
     entry,
     target: declaration.name.value,
-    out: configuration.out ? Path.resolve(directory, configuration.out) : undefined,
     name: configuration.name,
   }
 }

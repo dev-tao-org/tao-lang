@@ -327,7 +327,7 @@ function createOutputPaths(options: WorkspaceOptions): WorkspaceOutputPaths | un
   if (options.project) {
     return {
       buildDirectory: options.project.buildDirectory,
-      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/expo'),
+      runtimeDirectory: Path.join(Path.dirname(options.project.buildDirectory), 'expo'),
     }
   }
   return undefined

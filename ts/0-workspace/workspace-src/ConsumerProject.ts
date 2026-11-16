@@ -4,6 +4,7 @@ import { Path } from '@shared/os'
 import { resolveCompileTarget } from './CompileTarget'
 import { withDependencySession } from './ModuleDependencies'
 import { discoverProject, ensureProjectMetadata } from './projects/Projects'
+import type { ProjectSession } from './projects/Sessions'
 import { publishLibrary } from './PublishLibrary'
 import { readTypeScriptProjectPackage, type TypeScriptProjectPackage } from './TypeScriptProjectPackage'
 
@@ -22,27 +23,33 @@ export async function withConsumerProject(
   }
   await ensureProjectMetadata(project.root)
   await withDependencySession(project.root, sessionId, async session => {
-    await compileConsumerLibrary(manifest)
+    const library = await compileConsumerLibrary(manifest, session)
     const directory = Path.join(session.directory, 'expo')
-    await Expo.createConsumerHost(createHostOptions(manifest, directory))
+    await Expo.createConsumerHost(createHostOptions(manifest, directory, library))
     await run(directory)
   })
 }
 
-async function compileConsumerLibrary(manifest: TypeScriptProjectPackage): Promise<void> {
+type OptionalConsumerLibrary = Expo.ConsumerLibrary | undefined
+
+async function compileConsumerLibrary(
+  manifest: TypeScriptProjectPackage,
+  session: ProjectSession,
+): Promise<OptionalConsumerLibrary> {
   if (!manifest.compile) {
     return
   }
   const target = await resolveCompileTarget(manifest.directory)
-  if (target.kind !== 'library' || !target.out || !target.name) {
+  if (target.kind !== 'library' || !target.name) {
     return Errors.ThrowUserInput(
       'A React consumer tao.compile configuration must select a named TypeScript library output.',
     )
   }
-  await publishLibrary({ entry: target.entry, target: target.target, out: target.out, name: target.name })
+  const directory = await publishLibrary(target, session)
+  return { name: target.name, directory }
 }
 
-function createHostOptions(manifest: TypeScriptProjectPackage, directory: string) {
+function createHostOptions(manifest: TypeScriptProjectPackage, directory: string, library: OptionalConsumerLibrary) {
   const run = manifest.run ?? Errors.ThrowUserInput('Configure tao.run.entry in the authored package.json.')
   return {
     directory,
@@ -51,5 +58,6 @@ function createHostOptions(manifest: TypeScriptProjectPackage, directory: string
     name: run.name,
     dependencies: manifest.dependencies,
     devDependencies: manifest.devDependencies,
+    library,
   }
 }

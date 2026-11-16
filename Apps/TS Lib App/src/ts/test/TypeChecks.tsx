@@ -1,7 +1,7 @@
-import library from '@example/tao-library'
-import Card from '@example/tao-library/Catalog/Greeting'
-import Greeting from '@example/tao-library/Greeting'
-import LanguageFeatures from '@example/tao-library/LanguageFeatures'
+import library from '@tao-dev/ts-lib-example'
+import Card from '@tao-dev/ts-lib-example/Catalog/Greeting'
+import Greeting from '@tao-dev/ts-lib-example/Greeting'
+import LanguageFeatures from '@tao-dev/ts-lib-example/LanguageFeatures'
 import React from 'react'
 
 const instance = library.instantiate()
@@ -21,10 +21,10 @@ const unknown = <Greeting First="Ada" Second="Lovelace" Third="No" />
 // @ts-expect-error New published views retain their required text parameter.
 const missingFeatureName = <LanguageFeatures />
 // @ts-expect-error Private Tao helper has no package export.
-import Hidden from '@example/tao-library/PrivateGreeting'
+import Hidden from '@tao-dev/ts-lib-example/PrivateGreeting'
 // @ts-expect-error Unselected public view has no package export.
-import Unselected from '@example/tao-library/cards/Unselected'
+import Unselected from '@tao-dev/ts-lib-example/cards/Unselected'
 // @ts-expect-error Dependencies are internal to the library.
-import Text from '@example/tao-library/tao/ui/Text'
+import Text from '@tao-dev/ts-lib-example/tao/ui/Text'
 // @ts-expect-error Internal bundle is not a public package path.
-import Internal from '@example/tao-library/_Library.js'
+import Internal from '@tao-dev/ts-lib-example/_Library.js'
