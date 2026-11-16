@@ -8,27 +8,27 @@ import { Document } from '../Document'
 import { discoverProject } from '../projects/Projects'
 import { openProjectWorkspace, type ProjectWorkspaceOptions } from '../ProjectWorkspace'
 import { createWorkspace, type WorkspaceSession } from '../Workspace'
-import type { TestBrowser } from './AppTests'
+import type { AppTestDevice, AppTestTarget } from './AppTests'
 import type { TestDriver, TestProgress } from './RunTests'
 
-/** createAppTestDriver owns the compiler, Expo and browser lifetime of one app test. */
+/** createAppTestDriver owns the compiler, Expo and device lifetime of one app test. */
 export async function createAppTestDriver(
   path: string,
   source: string,
-  openBrowser: () => Promise<TestBrowser>,
+  target: AppTestTarget,
   compileApp: typeof Compile.compile,
   onProgress?: TestProgress,
   signal?: AbortSignal,
 ): Promise<TestDriver> {
   const state: Session = {}
-  const context = { path, source, openBrowser, compileApp, onProgress, signal }
+  const context = { path, source, target, compileApp, onProgress, signal }
   const abort = listenForAbort(state, signal)
   return {
     run: app => runAppTestSession(app, state, context),
-    press: tag => getBrowser(state).press(tag),
-    type: (tag, value) => getBrowser(state).type(tag, value),
-    expectText: (value, tag) => getBrowser(state).expectText(value, tag),
-    expectInput: (tag, value) => getBrowser(state).expectInput(tag, value),
+    press: tag => getDevice(state).press(tag),
+    type: (tag, value) => getDevice(state).type(tag, value),
+    expectText: (value, tag) => getDevice(state).expectText(value, tag),
+    expectInput: (tag, value) => getDevice(state).expectInput(tag, value),
     dispose: () => disposeAppTestSession(state, context, abort),
   }
 }
@@ -38,7 +38,7 @@ type TestWorkspace = WorkspaceSession
 type DriverContext = {
   path: string
   source: string
-  openBrowser: () => Promise<TestBrowser>
+  target: AppTestTarget
   compileApp: typeof Compile.compile
   onProgress?: TestProgress
   signal?: AbortSignal
@@ -47,21 +47,21 @@ type DriverContext = {
 type Session = {
   workspace?: TestWorkspace
   expo?: Runtime.ExpoSession
-  browser?: TestBrowser
+  device?: AppTestDevice
 }
 
 function listenForAbort(state: Session, signal?: AbortSignal): () => void {
   const abort = () => {
-    void Try.WithDefault(undefined, async () => await state.browser?.dispose())
+    void Try.WithDefault(undefined, async () => await state.device?.dispose())
   }
   signal?.addEventListener('abort', abort, { once: true })
   return abort
 }
 
 async function runAppTestSession(app: string, state: Session, context: DriverContext): Promise<void> {
-  const { path, source, compileApp, onProgress, signal } = context
+  const { path, source, target, compileApp, onProgress, signal } = context
   assertActive(signal)
-  state.workspace = await createTestWorkspace(path, app, compileApp)
+  state.workspace = await createTestWorkspace(path, app, compileApp, target.platform)
   onProgress?.(`Compiling app ${app}…`)
   const result = await state.workspace.update(new Document(path, source))
   assertActive(signal)
@@ -69,19 +69,19 @@ async function runAppTestSession(app: string, state: Session, context: DriverCon
     Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
   }
   onProgress?.('Starting Expo…')
-  state.expo = await Runtime.start(state.workspace.runtime!, { signal })
+  state.expo = await Runtime.start(state.workspace.runtime!, { signal, platform: target.platform })
   assertActive(signal)
-  await openAppTestBrowser(state, context)
+  await openAppTestDevice(state, context)
   onProgress?.('Running test steps…')
 }
 
-async function openAppTestBrowser(state: Session, context: DriverContext): Promise<void> {
-  const { openBrowser, onProgress, signal } = context
-  onProgress?.('Launching headless browser…')
-  state.browser = await openBrowser()
+async function openAppTestDevice(state: Session, context: DriverContext): Promise<void> {
+  const { target, onProgress, signal } = context
+  onProgress?.(`Opening ${target.platform} test target…`)
+  state.device = await target.openDevice()
   assertActive(signal)
   onProgress?.('Loading app…')
-  await state.browser.open(state.expo!.url)
+  await state.device.open(state.expo!.url)
 }
 
 function assertActive(signal?: AbortSignal): void {
@@ -97,8 +97,14 @@ async function disposeAppTestSession(state: Session, context: DriverContext, abo
   context.onProgress?.('Cleanup complete.')
 }
 
-async function createTestWorkspace(path: string, app: string, compileApp: typeof Compile.compile) {
+async function createTestWorkspace(
+  path: string,
+  app: string,
+  compileApp: typeof Compile.compile,
+  platform: Runtime.ExpoPlatform,
+) {
   const runtimeOptions = {
+    platform,
     toolchainCacheDirectory: Artifacts.resolvePath('cache/runtime-toolchains'),
     install: {
       async install(directory: string) {
@@ -115,7 +121,7 @@ async function createTestWorkspace(path: string, app: string, compileApp: typeof
     timings.run(compileApp, input, selectCompilationApp(options, app))
   )
   if (await discoverProject(path)) {
-    return await openTestProject(path, app, { runtimeOptions, compile })
+    return await openTestProject(path, app, platform, { runtimeOptions, compile })
   }
   await Artifacts.mkdir(Artifacts.resolvePath('tmp', 'app-tests'))
   const directory = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'app-tests', 'app-'))
@@ -130,9 +136,10 @@ function selectCompilationApp(options: Compile.CompileOptions, app: string): Com
 async function openTestProject(
   path: string,
   app: string,
+  platform: Runtime.ExpoPlatform,
   options: ProjectWorkspaceOptions,
 ) {
-  const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}`).slice(0, 16)}`
+  const prefix = `test-${Platform.hashText(`${Path.resolve(path)}:${app}:${platform}`).slice(0, 16)}`
   for (let slot = 0; slot < 16; slot++) {
     const id = `${prefix}-${slot}`
     const sessionOptions = selectTestSession(options, id)
@@ -155,12 +162,12 @@ function selectTestSession(options: ProjectWorkspaceOptions, id: string) {
   return { ...options, id }
 }
 
-function getBrowser(state: Session): TestBrowser {
-  return state.browser ?? Errors.ThrowShouldNeverHappen('Run an app before interacting with it.')
+function getDevice(state: Session): AppTestDevice {
+  return state.device ?? Errors.ThrowShouldNeverHappen('Run an app before interacting with it.')
 }
 
 async function disposeSession(state: Session): Promise<void> {
-  await Try(() => state.browser?.dispose(), { finally: () => disposeExpoSession(state) })
+  await Try(() => state.device?.dispose(), { finally: () => disposeExpoSession(state) })
 }
 
 async function disposeExpoSession(state: Session): Promise<void> {

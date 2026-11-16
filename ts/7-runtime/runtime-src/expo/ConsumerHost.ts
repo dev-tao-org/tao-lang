@@ -3,6 +3,7 @@ import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { consumerMetroConfiguration, createConsumerBootstrap } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
+import { createExpoSession, type ExpoPlatform, type ExpoSession } from './Expo/Expo'
 import { writeGeneratedHost } from './GeneratedHost'
 
 /** ConsumerHostOptions describes one generated Expo host borrowing an authored package's sole dependency install. */
@@ -13,6 +14,7 @@ export type ConsumerHostOptions = {
   name: string
   dependencies: RuntimePackageVersions
   devDependencies: RuntimePackageVersions
+  platform?: ExpoPlatform
 }
 
 /** createConsumerHost writes generated Expo files beside a link to the authored package's dependencies. */
@@ -31,12 +33,17 @@ export async function createConsumerHost(options: ConsumerHostOptions): Promise<
   await writeGeneratedHost(options.directory, {
     'Application.ts': bootstrap,
     'package.json': serializeConsumerManifest(options),
-    'app.json': serializeConsumerApp(options.name),
+    'app.json': serializeConsumerApp(options.name, options.platform ?? 'web'),
     'metro.config.js': consumerMetroConfiguration,
     'tao-consumer.json': serializeConsumerResolution(options),
     'tsconfig.json': serializeConsumerTypeScript(),
   }, modules)
   return options.directory
+}
+
+/** startConsumerHost starts the generated host without changing the authored consumer. */
+export function startConsumerHost(directory: string, platform: ExpoPlatform): Promise<ExpoSession> {
+  return createExpoSession({ directory }, { platform })
 }
 
 function serializeConsumerManifest(options: ConsumerHostOptions): string {
@@ -60,8 +67,8 @@ function resolveHostDependencies(versions: RuntimePackageVersions, directory: st
   )
 }
 
-function serializeConsumerApp(name: string): string {
-  return Json.Print({ expo: { name, slug: 'tao-consumer', platforms: ['web'] } })
+function serializeConsumerApp(name: string, platform: ExpoPlatform): string {
+  return Json.Print({ expo: { name, slug: 'tao-consumer', platforms: [platform] } })
 }
 
 function serializeConsumerResolution(options: ConsumerHostOptions): string {

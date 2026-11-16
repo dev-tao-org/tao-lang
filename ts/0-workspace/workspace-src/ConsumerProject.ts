@@ -1,3 +1,4 @@
+import type * as Runtime from '@runtime'
 import * as Expo from '@runtime/expo'
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
@@ -14,6 +15,7 @@ export async function withConsumerProject(
   packageDirectory: string,
   sessionId: ConsumerSessionId,
   run: (directory: string) => Promise<void>,
+  platform: Runtime.ExpoPlatform = 'web',
 ): Promise<void> {
   const manifest = await readTypeScriptProjectPackage(packageDirectory)
   const project = await discoverProject(packageDirectory)
@@ -24,7 +26,7 @@ export async function withConsumerProject(
   await withDependencySession(project.root, sessionId, async session => {
     await compileConsumerLibrary(manifest)
     const directory = Path.join(session.directory, 'expo')
-    await Expo.createConsumerHost(createHostOptions(manifest, directory))
+    await Expo.createConsumerHost(createHostOptions(manifest, directory, platform))
     await run(directory)
   })
 }
@@ -42,7 +44,7 @@ async function compileConsumerLibrary(manifest: TypeScriptProjectPackage): Promi
   await publishLibrary({ entry: target.entry, target: target.target, out: target.out, name: target.name })
 }
 
-function createHostOptions(manifest: TypeScriptProjectPackage, directory: string) {
+function createHostOptions(manifest: TypeScriptProjectPackage, directory: string, platform: Runtime.ExpoPlatform) {
   const run = manifest.run ?? Errors.ThrowUserInput('Configure tao.run.entry in the authored package.json.')
   return {
     directory,
@@ -51,5 +53,6 @@ function createHostOptions(manifest: TypeScriptProjectPackage, directory: string
     name: run.name,
     dependencies: manifest.dependencies,
     devDependencies: manifest.devDependencies,
+    platform,
   }
 }

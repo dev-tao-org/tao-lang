@@ -20,6 +20,7 @@
     ],
     "block_instructions": [
       "Require developer authorization for registry dependency additions through ./agent dependency-add or ./agent unsandboxed dependency-add.",
+      "Require developer authorization for hosted Verify dispatch through ./agent unsandboxed verify-ci.",
       "Require review for commands that delete or substantially overwrite user or repository data.",
       "Require review for actions that transmit secrets, credentials, tokens, private keys, private repository contents, or other sensitive local data to external services, except repository contents sent to configured remotes through ./agent unsandboxed push.",
       "Require review for publishing, deployment, package publication, raw git push, force push, remote branch mutation, or other externally visible mutations, except non-main pushes through ./agent unsandboxed push.",

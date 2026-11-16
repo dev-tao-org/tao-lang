@@ -1,7 +1,7 @@
 import { Json } from '@shared'
 import { Errors, Regxs, Try } from '@shared'
 import { FS, Path, Storage } from '@shared/os'
-import { createExpoSession, type ExpoOptions, type ExpoSession } from '../expo/Expo/Expo'
+import * as ExpoHost from '../expo/Expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from '../expo/PreviewProtocol'
 import * as RuntimeDependencyPolicy from '../expo/RuntimeDependencyPolicy'
 export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
@@ -59,7 +59,12 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
     resources.dependencies,
     resources.devDependencies,
     resources.sourceFiles,
-    { watchFolders: options.watchFolders, singletonPackages: options.singletonPackages, dependencyDirectory },
+    {
+      watchFolders: options.watchFolders,
+      singletonPackages: options.singletonPackages,
+      dependencyDirectory,
+      platform: options.platform,
+    },
   )
   options.onProgress?.('Expo runtime application scaffolded.')
   const application = runtimeApplication(directory)
@@ -69,9 +74,9 @@ export async function create(options: RuntimeCreateOptions): Promise<RuntimeAppl
 /** start starts the prepared Expo application and waits for its first response. */
 export async function start(
   application: RuntimeApplication,
-  options?: ExpoOptions,
+  options?: ExpoHost.ExpoOptions,
   onProgress?: (message: string) => void,
-): Promise<ExpoSession> {
+): Promise<ExpoHost.ExpoSession> {
   onProgress?.('Starting Expo server and waiting for readiness…')
   const initial = application.generated ?? {
     revision: 'initial',
@@ -79,7 +84,7 @@ export async function start(
     files: { 'App.tsx': await FS.readFile(application.appPath, 'utf8') },
   }
   const expoOptions = createGeneratedExpoOptions(application, initial, options)
-  const pending = createExpoSession(application, expoOptions)
+  const pending = ExpoHost.createExpoSession(application, expoOptions)
   application.publishGenerated = async revision => (await pending).publish(revision)
   const session = await pending
   onProgress?.('Expo server is ready.')
@@ -106,9 +111,10 @@ export type RuntimeCreateOptions = {
   dependencyDirectory?: string
   watchFolders?: readonly string[]
   singletonPackages?: readonly string[]
+  platform?: ExpoHost.ExpoPlatform
 }
 
-export type { ExpoOptions, ExpoSession } from '../expo/Expo/Expo'
+export type { ExpoOptions, ExpoPlatform, ExpoSession } from '../expo/Expo/Expo'
 export type { RuntimeInstaller } from '../expo/Toolchain'
 
 /** runtimeTypeScriptPaths resolves authored API aliases to the immutable packaged runtime sources. */
@@ -142,12 +148,12 @@ function attachMetroPreload(application: RuntimeApplication, resourcesDirectory:
   return { ...application, metroPreloadPath }
 }
 
-type OptionalExpoOptions = ExpoOptions | undefined
+type OptionalExpoOptions = ExpoHost.ExpoOptions | undefined
 function createGeneratedExpoOptions(
   application: RuntimeApplication,
   initial: GeneratedRevision,
   options: OptionalExpoOptions,
-): ExpoOptions {
+): ExpoHost.ExpoOptions {
   return { ...options, generated: { initial, preloadPath: application.metroPreloadPath } }
 }
 

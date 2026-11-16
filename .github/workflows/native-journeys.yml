@@ -1,0 +1,127 @@
+name: Native Tao journeys
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  journeys:
+    name: Tao journeys (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+            runner: macos-26
+            expo-extension: tar.gz
+            expo-digest: faff18034c9f3504ea4786f07350efab604610c61cfcabd0f2191fc4416a7614
+          - platform: android
+            runner: ubuntu-24.04
+            expo-extension: apk
+            expo-digest: 14c18828a3d04e43922245920bd941b978fd1c7a5aec88a0188032f0bb4972ce
+    env:
+      TERMINAL_OUTPUT: '1'
+      TAO_SETUP_STORAGE: 'false'
+      EXPO_GO_VERSION: 57.0.9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: tao-native-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'devenv.yaml', '.config/nix/*.nix', '.config/bootstrap-tao-dev-env') }}
+          restore-prefixes-first-match: tao-native-tools-v1-${{ runner.os }}-${{ runner.arch }}-
+          gc-max-store-size-linux: 6G
+          gc-max-store-size-macos: 6G
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+      - name: Prepare the locked Linux CLI tools
+        if: matrix.platform == 'android'
+        run: ./.config/bootstrap-tao-dev-env --tools-only
+      - name: Install the macOS shell entry point
+        if: matrix.platform == 'ios'
+        run: nix profile add nixpkgs#devenv
+      - name: Restore workspace downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/dprint
+          key: tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-${{ hashFiles('ts/bun.lock', 'ts/**/package.json', '.config/dprint.jsonc') }}
+          restore-keys: |
+            tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-
+      - name: Install the locked workspace
+        run: ./dev setup
+      - name: Identify the Android system image
+        if: matrix.platform == 'android'
+        id: android
+        run: printf 'image=%s\n' "$ANDROID_HOME/system-images/android-36/google_apis/x86_64" >> "$GITHUB_OUTPUT"
+      - name: Restore the Android system image
+        if: matrix.platform == 'android'
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.android.outputs.image }}
+          key: tao-android-image-v1-google-apis-36-x86_64
+      - name: Require Android hardware acceleration and install the API 36 image
+        if: matrix.platform == 'android'
+        run: |
+          test -c /dev/kvm
+          sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+          emulator -accel-check
+          sdkmanager 'system-images;android-36;google_apis;x86_64'
+      - name: Identify the Xcode toolchain
+        if: matrix.platform == 'ios'
+        id: xcode
+        run: |
+          printf 'identity=%s\n' "$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Restore the WebDriverAgent build
+        if: matrix.platform == 'ios'
+        uses: actions/cache@v4
+        with:
+          path: .artifacts/cache/native-journeys/wda
+          key: tao-wda-v1-${{ runner.arch }}-${{ steps.xcode.outputs.identity }}-${{ hashFiles('ts/bun.lock') }}
+      - name: Restore the Expo Go runtime
+        uses: actions/cache@v4
+        with:
+          path: .artifacts/cache/native-journeys/expo-go
+          key: tao-expo-go-v1-${{ matrix.platform }}-${{ matrix.expo-digest }}
+      - name: Verify the runtime download
+        env:
+          EXTENSION: ${{ matrix.expo-extension }}
+          DIGEST: ${{ matrix.expo-digest }}
+        run: |
+          set -euo pipefail
+          directory="$PWD/.artifacts/cache/native-journeys/expo-go"
+          mkdir -p "$directory"
+          name="Expo-Go-$EXPO_GO_VERSION.$EXTENSION"
+          archive="$directory/$name"
+          if [ ! -f "$archive" ]; then
+            curl --fail --location --retry 3 --output "$archive" "https://github.com/expo/expo-go-releases/releases/download/Expo-Go-$EXPO_GO_VERSION/$name"
+          fi
+          printf '%s  %s\n' "$DIGEST" "$archive" | shasum -a 256 -c -
+          if [ "$EXTENSION" = tar.gz ]; then
+            binary="$RUNNER_TEMP/Expo-Go.app"
+            mkdir "$binary"
+            tar -xzf "$archive" -C "$binary"
+          else
+            binary="$archive"
+          fi
+          printf 'EXPO_GO_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
+      - name: Run all authored journeys and the compiled library acceptance
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --yes
+      - name: Ensure validation kept tracked files unchanged
+        run: git diff --exit-code
+      - name: Keep native driver and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-journeys-${{ matrix.platform }}
+          path: .artifacts/logs/
+          if-no-files-found: warn

@@ -3,6 +3,7 @@ import { Errors, Lists, S, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
+import type { ExpoPlatform } from './Expo/Expo'
 import { writeGeneratedHost } from './GeneratedHost'
 import * as RuntimeDependencyPolicy from './RuntimeDependencyPolicy'
 
@@ -20,7 +21,7 @@ export async function writeExpoApplication(
     'Application.ts': expoEntry,
     'metro.config.js': metroConfiguration,
     'tao-resolution.json': serializeTaoResolution(options),
-    'app.json': serializeExpoAppManifest(),
+    'app.json': serializeExpoAppManifest(options.platform ?? 'web'),
     'tsconfig.json': serializeExpoTypeScriptConfig(),
   }, options.dependencyDirectory)
   await FS.mkdir(Path.join(directory, 'src'))
@@ -31,6 +32,7 @@ type ExpoScaffoldOptions = {
   watchFolders?: readonly string[]
   singletonPackages?: readonly string[]
   dependencyDirectory?: string
+  platform?: ExpoPlatform
 }
 function serializeExpoPackageManifest(
   dependencies: RuntimePackageVersions,
@@ -58,8 +60,8 @@ function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string
   return RuntimeDependencyPolicy.resolveRuntimeSingletonPackages(options.singletonPackages)
 }
 
-function serializeExpoAppManifest(): string {
-  return Json.Print({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
+function serializeExpoAppManifest(platform: ExpoPlatform): string {
+  return Json.Print({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: [platform] } })
 }
 
 function serializeExpoTypeScriptConfig(): string {
@@ -89,8 +91,10 @@ const expoEntry = S`
   import ReactNative from '@runtime/client/Bridge_react-native';
   import { DefaultAppearance } from './src/_gen_runtime/runtime/Appearance';
   import App from './src/App';
+  const RootView = ReactNative.Platform.OS === 'ios' ? ReactNative.SafeAreaView : ReactNative.View;
+  const paddingTop = ReactNative.Platform.OS === 'android' ? ReactNative.StatusBar.currentHeight : undefined;
   function TaoApplication() {
-    return React.createElement(ReactNative.View, { style: { flex: 1, backgroundColor: DefaultAppearance.background } }, React.createElement(App));
+    return React.createElement(RootView, { style: { flex: 1, paddingTop, backgroundColor: DefaultAppearance.background } }, React.createElement(App));
   }
   registerRootComponent(TaoApplication);
 `

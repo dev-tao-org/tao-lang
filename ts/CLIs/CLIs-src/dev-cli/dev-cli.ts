@@ -43,6 +43,7 @@ import '../tao-cli/commands/add'
 import '../tao-cli/commands/update'
 import '../tao-cli/commands/test-sidecars'
 import './commands/verify'
+import './commands/verify-ci'
 import { execute } from './commands/_command-runner'
 
 if (Platform.isMain(import.meta)) {

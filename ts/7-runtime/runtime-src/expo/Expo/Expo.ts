@@ -8,24 +8,28 @@ import type { GeneratedRevision, PublicationOutcome } from '../PreviewProtocol'
 import { type ExpoGeneratedOptions, prepareExpoPublication } from './ExpoPublication'
 import { waitForExpoReady } from './ExpoReadiness'
 
-/** createExpoSession starts a managed Expo web server and waits for its first response. */
+type ExpoApplicationField = 'directory' | 'metroPreloadPath'
+type ExpoApplication = Pick<RuntimeApplication, ExpoApplicationField>
+/** createExpoSession starts a managed Expo server and waits for its first response. */
 export async function createExpoSession(
-  application: RuntimeApplication,
+  application: ExpoApplication,
   options: ExpoOptions = {},
 ): Promise<ExpoSession> {
   const port = unusedPort()
   const publication = await prepareExpoPublication(application, options.generated)
-  const addEnv = { ...expoEnvironment(application.directory), ...publication.environment }
-  const child = Exec.spawn('expo', ['start', '--web', '--port', String(port), '--max-workers', '1'], {
+  const platform = options.platform ?? 'web'
+  const addEnv = createExpoEnvironment(application.directory, publication.environment, platform)
+  const child = Exec.spawn('expo', expoStartArguments(platform, port), {
     cwd: application.directory,
     addEnv,
   })
   const url = Addr.localhostUrl(port)
+  const readinessUrl = platform === 'web' ? url : url + '/status'
   const output = Exec.captureProcessOutput(child, options.onOutput)
-  await Try(() => waitForExpoReady(url, () => child.exitCode === null, undefined, undefined, options.signal), {
+  await Try(() => waitForExpoReady(readinessUrl, () => child.exitCode === null, undefined, undefined, options.signal), {
     async catch(error) {
       await Exec.stopProcess(child)
-      Errors.ThrowHostEnvironment(`Expo web preview failed to start. ${formatOutput(await output)} ${String(error)}`)
+      Errors.ThrowHostEnvironment(`Expo ${platform} failed to start. ${formatOutput(await output)} ${String(error)}`)
     },
   })
   return {
@@ -55,10 +59,34 @@ export type ExpoOptions = {
   onOutput?: (stream: OutputStream, text: string) => void
   signal?: AbortSignal
   generated?: ExpoGeneratedOptions
+  platform?: ExpoPlatform
+}
+
+/** ExpoPlatform identifies the device family served by a generated Expo session. */
+export type ExpoPlatform = 'web' | 'ios' | 'android'
+
+function expoStartArguments(platform: ExpoPlatform, port: number): string[] {
+  const target = platform === 'web' ? ['--web'] : ['--go', '--localhost', '--no-dev']
+  return ['start', ...target, '--port', String(port), '--max-workers', '1']
 }
 
 type OptionalEnvironmentValue = string | undefined
-function expoEnvironment(directory: string): Record<string, OptionalEnvironmentValue> {
+type ExpoProcessEnvironment = Record<string, OptionalEnvironmentValue>
+function createExpoEnvironment(
+  directory: string,
+  publicationEnvironment: ExpoProcessEnvironment,
+  platform: ExpoPlatform,
+): ExpoProcessEnvironment {
+  const environment = { ...expoEnvironment(directory), ...publicationEnvironment }
+  if (platform !== 'web') {
+    // Expo binds --localhost through Node DNS, while devices connect through IPv4 loopback.
+    const nodeOptions = environment['NODE_OPTIONS'] ?? Env.get('NODE_OPTIONS') ?? ''
+    environment['NODE_OPTIONS'] = (nodeOptions + ' --dns-result-order=ipv4first').trim()
+  }
+  return environment
+}
+
+function expoEnvironment(directory: string): ExpoProcessEnvironment {
   return {
     ...HeadlessExpoEnvironment,
     PATH: Path.join(directory, 'node_modules/.bin') + Path.delimiter + (Env.get('PATH') ?? ''),

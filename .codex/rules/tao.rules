@@ -12,6 +12,7 @@ prefix_rule(pattern=["./agent","unsandboxed","fix"], decision="allow", justifica
 prefix_rule(pattern=["./agent","unsandboxed","check"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","test"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
 prefix_rule(pattern=["./agent","unsandboxed","verify"], decision="allow", justification="Repository host wrapper validates the allowlisted operation.")
+prefix_rule(pattern=["./agent","unsandboxed","verify-ci"], decision="prompt", justification="Dispatching hosted Verify for a pushed feature branch requires developer authorization.")
 prefix_rule(pattern=["./agent","unsandboxed","performance","preview"], decision="allow", justification="Developer-approved isolated headless preview proof through the guarded host wrapper.")
 prefix_rule(pattern=["./agent","unsandboxed","performance","modules"], decision="allow", justification="Developer-approved isolated headless module-refresh architecture comparison; no publication.")
 prefix_rule(pattern=["./agent","unsandboxed","performance","record"], decision="allow", justification="Developer-approved commit-linked local performance recording; no push or landing.")

@@ -61,7 +61,7 @@ export async function openTestBrowser(): Promise<TestBrowser> {
         await target.click({ force: disabled })
       },
       async type(tag, value) {
-        await input(page, tag).fill(value)
+        await typeInput(page, tag, value)
       },
       async expectText(value, tag) {
         const scope = tag ? page.getByTestId(tag) : page
@@ -83,6 +83,19 @@ type ObservedInputValue = string | undefined
 function input(page: Page, tag: string) {
   const root = page.getByTestId(tag)
   return page.locator('input, textarea').and(root).or(root.locator('input, textarea'))
+}
+
+async function typeInput(page: Page, tag: string, value: string): Promise<void> {
+  const target = input(page, tag)
+  if (await target.isEditable()) {
+    await target.fill(value)
+    return
+  }
+  await target.click({ force: true })
+  // Only send keys to the requested field; a disabled input can leave another field focused.
+  if (await target.evaluate(node => node.ownerDocument.activeElement === node)) {
+    await page.keyboard.type(value)
+  }
 }
 
 async function expectInput(page: Page, tag: string, value: string): Promise<void> {

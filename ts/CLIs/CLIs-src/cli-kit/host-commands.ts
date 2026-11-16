@@ -50,6 +50,7 @@ const developerCommands = new Set([
   'check',
   'test',
   'verify',
+  'verify-ci',
   'doctor',
   'secrets',
 ])

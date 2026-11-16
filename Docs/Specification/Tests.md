@@ -19,9 +19,10 @@ tests "App interactions" {
 #### `run UIInteractions`
 
 Each case launches an app declared in the same source or imported into it, in a fresh isolated
-headless web session. [Forms.test.tao](../../Apps/Tests/UI%20Interactions/Forms.test.tao) is a runnable example.
-The current runner requires `run <app>`; direct rendering, state overrides, devices and datasource
-arguments below are agreed future behavior, not yet executable.
+session. The same steps run on headless web, iOS Simulator and Android Emulator.
+[Forms.test.tao](../../Apps/Tests/UI%20Interactions/Forms.test.tao) is a runnable example.
+The current runner requires `run <app>`. Direct rendering, state overrides, authored devices and
+datasource arguments below are agreed future behavior.
 
 #### `test(Label "Edit and save")`
 
@@ -29,7 +30,8 @@ Labels are optional; unnamed cases are reported by file and line.
 
 #### `type "Hello World" into #name`
 
-Typing replaces the input's existing value; cursor-position specifiers are deferred.
+Typing replaces the existing value of an editable input. A disabled input retains its value.
+Cursor-position specifiers are deferred.
 `press #save` attempts to activate the selected control. A disabled control remains inactive.
 
 #### `expect text "Saved"`

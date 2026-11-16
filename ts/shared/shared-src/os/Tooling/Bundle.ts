@@ -38,6 +38,7 @@ export async function bundleLibrary(
     format: 'esm',
     throw: false,
     tsconfig,
+    jsx: { runtime: 'automatic', development: false },
     external: ['react', 'react/jsx-runtime', 'react-native', '@preact/signals-core'],
     naming: '_Library.js',
     plugins: [{

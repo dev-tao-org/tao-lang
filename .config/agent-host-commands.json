@@ -12,6 +12,7 @@
   "check",
   "test",
   "verify",
+  "verify-ci",
   "performance preview",
   "performance modules",
   "performance record",

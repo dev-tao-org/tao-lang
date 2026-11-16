@@ -29,6 +29,7 @@ export async function runTestPlan(options: TestWorkerOptions): Promise<void> {
 export async function runTaoTestFiles(
   paths: readonly string[],
   signal?: AbortSignal,
+  target: Workspace.AppTestTarget = { platform: 'web', openDevice: HeadlessBrowser.openTestBrowser },
 ): Promise<{ passed: number; failed: number }> {
   const progress = (message: string) => IO.progress(message)
   const results = await TestPlanModule2.runFilesSequentially(paths, signal, async file => {
@@ -40,7 +41,7 @@ export async function runTaoTestFiles(
       const result of await Workspace.execute({
         kind: 'app-tests',
         entry: file,
-        openBrowser: HeadlessBrowser.openTestBrowser,
+        target,
         onProgress: progress,
         signal,
       }, workflowUI(false, signal))
@@ -67,6 +68,20 @@ export async function runTaoTestFiles(
       failed: 0,
     },
   )
+}
+
+/** prepareTaoTestProjects sets up the declared dependencies once, before launching devices or workers. */
+export async function prepareTaoTestProjects(
+  paths: readonly string[],
+  yes?: boolean,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (const entry of paths) {
+    TestPlanModule2.assertTestRunActive(signal)
+    if (await Workspace.discoverProject(entry)) {
+      await Workspace.execute({ kind: 'setup', entry, for: 'app-tests' }, workflowUI(yes, signal))
+    }
+  }
 }
 
 async function executeTestPlan(
@@ -160,11 +175,7 @@ async function executeTaoTests(
   if (files.length === 0) {
     Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
   }
-  for (const entry of files) {
-    if (await Workspace.discoverProject(entry)) {
-      await Workspace.execute({ kind: 'setup', entry, for: 'app-tests' }, workflowUI(yes, signal))
-    }
-  }
+  await prepareTaoTestProjects(files, yes, signal)
   channels.push(...Array.from(
     { length: Math.min(files.length, plan.tao.workers) },
     (_, index) => IO.channel({ title: `Tao worker ${index + 1}` }),

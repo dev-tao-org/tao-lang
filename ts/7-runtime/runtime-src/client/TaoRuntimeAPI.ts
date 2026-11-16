@@ -42,16 +42,26 @@ function View(props: ViewProps): React.ReactElement {
 
 function TextInput({ style, ...props }: TextInputProps): React.ReactElement {
   const disabled = useInteractionDisabled()
+  const edited = React.useRef<OptionalInputText>(undefined)
   return React.createElement(ReactNative.TextInput, {
     'placeholderTextColor': DefaultAppearance.border,
     'keyboardAppearance': 'dark',
     ...props,
+    // Android reapplies defaultValue when editable changes. Keep the last native edit across that update.
+    'defaultValue': edited.current ?? props.defaultValue,
+    'onChangeText'(value: string) {
+      if (!disabled) {
+        edited.current = value
+      }
+    },
     'aria-disabled': disabled || undefined,
     'focusable': disabled ? false : undefined,
     'readOnly': disabled || undefined,
     'style': [textStyle, style, disabled && DisabledStyle],
   })
 }
+
+type OptionalInputText = string | undefined
 
 function Pressable({ onPress, style, ...props }: PressableProps): React.ReactElement {
   const disabled = useInteractionDisabled()

@@ -1,7 +1,8 @@
 import Tao from '@tao/runtime-api'
 import React from 'react'
+import { Pressable } from 'react-native'
 
-/** DisabledPreviewControls exercises Tao and raw browser controls in the same sidecar. */
+/** DisabledPreviewControls exercises Tao and React Native controls in the same sidecar. */
 export function DisabledPreviewControls({ Locked }: { Locked: boolean }) {
   const disabled = Tao.useInteractionDisabled()
   const state = Tao.useWritable(() => ({ tao: 0, raw: 0, programmatic: 0 }))
@@ -17,12 +18,18 @@ export function DisabledPreviewControls({ Locked }: { Locked: boolean }) {
   }, [Locked])
   return (
     <Tao.View>
-      <Tao.Pressable onPress={() => recordPress('tao')}>
+      <Tao.Pressable testID="taoPreviewPress" onPress={() => recordPress('tao')}>
         <Tao.Text>{`Tao presses: ${counts.tao}`}</Tao.Text>
       </Tao.Pressable>
-      <button disabled={disabled} onClick={disabled ? undefined : () => recordPress('raw')}>
-        Raw presses: {counts.raw}
-      </button>
+      <Pressable
+        testID="rawPreviewPress"
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={disabled ? undefined : () => recordPress('raw')}
+      >
+        <Tao.Text>{`Raw presses: ${counts.raw}`}</Tao.Text>
+      </Pressable>
       <Tao.Text>{`Programmatic: ${counts.programmatic}`}</Tao.Text>
     </Tao.View>
   )

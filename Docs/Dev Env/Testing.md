@@ -3,6 +3,34 @@
 The [Tests specification](../Specification/Tests.md) explains Tao journey syntax. Run `./agent test`
 for the repository TypeScript suite and Tao app journeys; `./tao test Apps` selects Tao journeys only.
 
+Full verification includes web, iOS Simulator and Android Emulator. On macOS, set
+`TAO_IOS_EXPO_GO` to the SDK-matched simulator app directory and `TAO_ANDROID_EXPO_GO` to the
+matching emulator APK before running `./agent unsandboxed verify --yes`. Use `verify --web-only`
+for the portable verification subset. The hosted Verify check requires the web and TypeScript
+job and both native jobs. The iOS job uses Xcode on macOS. The Android job uses an API 36
+emulator and hardware acceleration on Linux.
+
+To run only one native platform or one authored file, use the same test discovery and select
+an Expo Go binary for that target.
+
+```sh
+./agent unsandboxed test --platform ios --expo-go "/path/to/Expo Go.app" --yes
+./agent unsandboxed test "Apps/Tests/UI Interactions/Disabled Controls.test.tao" \
+  --platform android --expo-go "/path/to/Expo Go.apk" --yes
+```
+
+Each suite creates and deletes its own device, drives the React Native UI with Appium, and launches
+a fresh app for each journey case. Close the Simulator viewer before a local iOS run. The Android
+SDK needs the API 36 Google APIs system image for the host architecture. A full native suite also
+opens the ordinary React Native consumer of the compiled Tao library. Logs are retained under
+`.artifacts/logs/native-journeys/`. CI verifies the pinned Expo Go download by digest, restores tool
+and dependency caches, and keys the iOS WebDriverAgent build cache on the Xcode and workspace lock
+identity.
+
+With authorization to run hosted CI, push the feature branch and run `./agent unsandboxed verify-ci`
+from its checkout. The command checks that the pushed revision matches the current branch and
+dispatches the required Verify workflow. Use `verify-ci --status` to find the run for that commit.
+
 Repository TypeScript tests report warnings for slow cases. Set the threshold in seconds for one
 invocation, optionally selecting a test file or directory:
 

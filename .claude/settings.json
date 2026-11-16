@@ -223,6 +223,7 @@
     "ask": [
       "Bash(./agent dependency-add *)",
       "Bash(./agent unsandboxed dependency-add *)",
+      "Bash(./agent unsandboxed verify-ci)",
       "Bash(./agent land-unlock --force*)"
     ],
     "deny": [

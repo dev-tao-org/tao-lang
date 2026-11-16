@@ -20,6 +20,9 @@ jobs:
   typescript:
     uses: ./.github/workflows/typescript.yml
 
+  native-journeys:
+    uses: ./.github/workflows/native-journeys.yml
+
   cla:
     name: Contributor agreement
     if: github.event_name == 'pull_request'
@@ -93,16 +96,17 @@ jobs:
 
   verify:
     name: Verify
-    needs: typescript
+    needs: [typescript, native-journeys]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
-      - name: Require the new TypeScript workspace to pass
+      - name: Require web, iOS and Android verification to pass
         env:
           TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
+          NATIVE_RESULT: ${{ needs.native-journeys.result }}
         run: |
-          if [ "$TYPESCRIPT_RESULT" != success ]; then
-            echo "The TypeScript workspace did not pass ($TYPESCRIPT_RESULT)."
+          if [ "$TYPESCRIPT_RESULT" != success ] || [ "$NATIVE_RESULT" != success ]; then
+            echo "Web and TypeScript: $TYPESCRIPT_RESULT. Native journeys: $NATIVE_RESULT."
             exit 1
           fi

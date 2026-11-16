@@ -5,7 +5,7 @@ import { discoverProject } from './projects/Projects'
 import { openProjectWorkspace, type ProjectWorkspaceOptions } from './ProjectWorkspace'
 import { isSetupRequired, requireSetup } from './SetupRequired'
 import type { BunExecutor } from './sidecars/ManagedModule/ManagedModules'
-import { runAppTests, type TestBrowser } from './testing/AppTests'
+import { type AppTestTarget, runAppTests } from './testing/AppTests'
 import type { TestProgress, TestResult } from './testing/RunTests'
 import { runSidecarTests } from './testing/WorkspaceTests'
 import type { UpdateResult, WorkspaceSession } from './Workspace'
@@ -28,7 +28,7 @@ type PreviewWorkflowRequest = {
 type AppTestsWorkflowRequest = {
   kind: 'app-tests'
   entry: string
-  openBrowser: () => Promise<TestBrowser>
+  target: AppTestTarget
   onProgress?: TestProgress
   signal?: AbortSignal
 }
@@ -88,10 +88,12 @@ function dispatch(request: WorkflowRequest): Promise<WorkflowExecutionResult> {
     async 'setup'() {},
     'compile': value => openWorkflowWorkspace(value),
     'preview': value => openWorkflowWorkspace(value),
-    'app-tests': value => runAppTests(value.entry, value.openBrowser, value.onProgress, value.signal),
+    'app-tests': value => runAppTests(value.entry, value.target, value.onProgress, value.signal),
     'sidecar-tests': value => runSidecarTests(value.moduleRoot, value.executor),
   })
 }
+
+export type { AppTestDevice, AppTestTarget } from './testing/AppTests'
 
 async function prepareWorkflow(request: WorkflowRequest, ui: WorkflowUI): Promise<void> {
   assertActive(ui)
