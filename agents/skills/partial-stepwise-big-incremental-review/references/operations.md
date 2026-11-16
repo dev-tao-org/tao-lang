@@ -97,6 +97,26 @@ Replay only the outstanding scope under [Git workflow](../../git-workflow/SKILL.
   `status.recheck` with outstanding semantic rechecks, including files whose bytes are unchanged.
   Keep the prior session and landing boundary available for resuming.
 
+## Integrate incoming work
+
+- Resolve a named chat to its implementation checkout and branch. Pin the authorized committed
+  tip from its handoff or Git. Track any open findings or verification gaps with that snapshot.
+- Merge the pinned tip into the implementation branch under [Git workflow](../../git-workflow/SKILL.md).
+  Compare the merged snapshot directly with the existing approved-content tree. Carry forward
+  accepted content and receipts, and register rechecks for prior approvals affected by conflict
+  resolution or changed shared behavior. Treat new content as pending under the usual approval rules.
+- If the prior review scope is complete, freeze a new inventory for the incoming round and retain
+  the earlier checkpoint. If it is still open, preserve its frozen progress and mark incoming work
+  as a new scope. Keep any follow-up work on files outside the current display when possible.
+
+## Work during review
+
+- Present requested groups and continue authorized work while awaiting feedback. Respond to new
+  group requests or approvals as they arrive, then resume the work.
+- Keep displayed files stable. If necessary work changes a displayed file, refresh its diff,
+  withdraw any stale approval request, and ask the Developer to review the changed content.
+  Keep new follow-up work pending without changing the original progress denominator.
+
 ## Accept whole files
 
 An unambiguous whole-file request takes one call:
