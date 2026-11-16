@@ -3,9 +3,9 @@ import { FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { readWorkspaceManifestPaths } from '../cli-checks/WorkspaceManifests'
 import { DependencyCruiser, extractTSConfig } from '../cli-kit/bridges/Bridge_dependency-cruiser'
+import { classifyModuleImports, type ImportKind } from './PackageGraph-ImportKinds'
 
 type WorkspacePackage = { name: string; directory: string }
-type ImportKind = 'value' | 'type' | 'compile-only'
 type ImportScope = 'source' | 'test'
 type ImportLocation = { package: string; file: string }
 type PackageImport = {
@@ -45,7 +45,7 @@ export async function analyzePackageGraph(workspace: string): Promise<PackageGra
   if (result.exitCode !== 0 || typeof result.output === 'string') {
     Errors.ThrowUserInput('Dependency-cruiser did not return an import graph.')
   }
-  return collectPackageGraph(packages, result.output.modules)
+  return collectPackageGraph(workspace, packages, result.output.modules)
 }
 
 /** serializePackageGraph retains the resolved file edges and unresolved specifiers for inspection. */
@@ -83,7 +83,7 @@ async function readWorkspacePackages(workspace: string): Promise<WorkspacePackag
 
 async function readWorkspacePackage(workspace: string, filename: string): Promise<WorkspacePackage> {
   const { name } = await FS.readJson(filename, { schema: PackageManifestSchema })
-  const directory = toPortablePath(Path.relative(workspace, Path.dirname(filename)))
+  const directory = Path.toPortablePath(Path.relative(workspace, Path.dirname(filename)))
   return { name, directory }
 }
 
@@ -93,33 +93,31 @@ function listPackageSources(workspace: string, pkg: WorkspacePackage): string[] 
   return files.map(file => Path.relative(workspace, file))
 }
 
-function toPortablePath(path: string): string {
-  return path.split(Path.sep).join('/')
-}
-
 type PackageDirectoryIndex = ReadonlyMap<string, WorkspacePackage>
 
-function collectPackageGraph(packages: WorkspacePackage[], modules: DependencyCruiser.IModule[]): PackageGraph {
+function collectPackageGraph(
+  workspace: string,
+  packages: WorkspacePackage[],
+  modules: DependencyCruiser.IModule[],
+): PackageGraph {
   const owners = new Map(packages.map(pkg => [pkg.directory, pkg]))
   const imports: PackageImport[] = []
   const unresolved: UnresolvedImport[] = []
   const sortedModules = modules.toSorted(Sort.By(module => module.source, Sort.CompareStrings))
   for (const module of sortedModules) {
-    const file = toPortablePath(module.source)
+    const file = Path.toPortablePath(module.source)
     const owner = findPackageOwner(owners, file)
     if (!owner) {
       continue
     }
     const from = { package: owner.name, file }
     const scope = classifyImportScope(owner, file)
-    const dependencies = module.dependencies.toSorted(Sort.By(dependency => dependency.module, Sort.CompareStrings))
-    for (const dependency of dependencies) {
-      const kind = classifyImportKind(dependency)
+    for (const { dependency, kind } of classifyModuleImports(workspace, module)) {
       if (dependency.couldNotResolve) {
         unresolved.push({ from, specifier: dependency.module, kind, scope })
         continue
       }
-      const toFile = toPortablePath(dependency.resolved)
+      const toFile = Path.toPortablePath(dependency.resolved)
       const target = findPackageOwner(owners, toFile)
       if (target && target !== owner) {
         const to = { package: target.name, file: toFile }
@@ -147,13 +145,6 @@ function classifyImportScope(owner: WorkspacePackage, file: string): ImportScope
   const inTestFolder = Path.posix.dirname(packagePath).startsWith('test-')
   const testFile = SourceExtensions.some(extension => packagePath.endsWith(`.test${extension}`))
   return inTestFolder || testFile ? 'test' : 'source'
-}
-
-function classifyImportKind(dependency: DependencyCruiser.IDependency): ImportKind {
-  if (dependency.dependencyTypes.includes('type-only')) {
-    return 'type'
-  }
-  return dependency.preCompilationOnly ? 'compile-only' : 'value'
 }
 
 type ImportCounts = Record<ImportKind, number>

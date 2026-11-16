@@ -19,9 +19,14 @@ export { fileURLToPath, pathToFileURL } from './bridges/Bridge_node/Bridge_node'
 /** home resolves optional segments below the host home; taoDev and tao select its Tao directories. */
 export const home = Object.assign(resolveHome, { taoDev: resolveTaoDevHome, tao: resolveTaoHome })
 
+/** toPortablePath aligns native and slash-separated filenames for cross-platform comparison. */
+export function toPortablePath(path: string): string {
+  return path.replaceAll('\\', '/')
+}
+
 /** toRelativeModuleSpecifier makes a relative path portable and explicit for module/config resolution. */
 export function toRelativeModuleSpecifier(path: string): string {
-  const normalized = path.replaceAll('\\', '/')
+  const normalized = toPortablePath(path)
   if (normalized.startsWith('./') || normalized.startsWith('../')) {
     return normalized
   }
@@ -31,7 +36,7 @@ export function toRelativeModuleSpecifier(path: string): string {
 /** isWithin checks lexical containment after resolving paths with the selected platform rules. */
 export function isWithin(root: string, path: string, platform = NativePath): boolean {
   const relative = platform.relative(platform.resolve(root), platform.resolve(path))
-  const normalized = relative.replaceAll('\\', '/')
+  const normalized = toPortablePath(relative)
   return normalized !== '..' && !normalized.startsWith('../') && !platform.isAbsolute(relative)
 }
 
