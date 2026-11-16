@@ -71,9 +71,8 @@ async function withSimulator(root: string, binary: string, run: RunNativeCases):
 }
 
 async function requireNoSimulatorViewer(): Promise<void> {
-  const isGitHubHosted = Env.get('GITHUB_ACTIONS') === 'true' && Env.get('RUNNER_ENVIRONMENT') === 'github-hosted'
   // CoreSimulator may start a viewer during boot on the disposable runner. Appium closes it in headless mode.
-  if (isGitHubHosted) {
+  if (isGitHubHostedRunner()) {
     return
   }
   const viewer = await Exec.capture('pgrep', ['-x', 'Simulator'], { check: false, timeoutMs: 3000 })
@@ -186,14 +185,34 @@ function adb(target: AndroidTestTarget, args: readonly string[], timeoutMs: numb
 
 const StagedExpoGoApk = '/data/local/tmp/tao-expo-go.apk'
 async function installAndroidExpoGo(target: AndroidTestTarget, binary: string): Promise<void> {
-  IO.progress('Transferring Expo Go to the Android emulator…')
-  await adb(target, ['push', '-Z', binary, StagedExpoGoApk], 120_000)
-  IO.progress('Installing Expo Go on the Android emulator…')
-  const result = await adb(target, ['shell', 'pm', 'install', StagedExpoGoApk], 120_000)
-  if (result !== 'Success') {
-    Errors.ThrowHostEnvironment(`Could not install Expo Go on the owned emulator: ${result}`)
-  }
-  await adb(target, ['shell', 'rm', StagedExpoGoApk], 10_000)
+  await Try(async () => {
+    IO.progress('Transferring Expo Go to the Android emulator…')
+    await adb(target, ['push', '-Z', binary, StagedExpoGoApk], 120_000)
+    IO.progress('Installing Expo Go on the Android emulator…')
+    // Native CI verifies this exact APK by SHA-256 before publishing EXPO_GO_BINARY.
+    const verifiedFixture = isGitHubHostedRunner() && Env.get('EXPO_GO_BINARY') === binary
+    const verification = verifiedFixture ? ['--skip-verification'] : []
+    const result = await adb(target, ['shell', 'pm', 'install', ...verification, StagedExpoGoApk], 120_000)
+    if (result !== 'Success') {
+      Errors.ThrowHostEnvironment(`Could not install Expo Go on the owned emulator: ${result}`)
+    }
+    await adb(target, ['shell', 'rm', StagedExpoGoApk], 10_000)
+  }, {
+    async finally(_thrown, error) {
+      if (error) {
+        await Try.WithDefault(undefined, () => recordAndroidInstallLog(target))
+      }
+    },
+  })
+}
+
+function isGitHubHostedRunner(): boolean {
+  return Env.get('GITHUB_ACTIONS') === 'true' && Env.get('RUNNER_ENVIRONMENT') === 'github-hosted'
+}
+
+async function recordAndroidInstallLog(target: AndroidTestTarget): Promise<void> {
+  const log = await adb(target, ['logcat', '-d', '-t', '300', '-s', 'PackageManager', 'PackageInstallerSession'], 5000)
+  await FS.writeFile(Path.join(target.root, 'android-install.log'), log)
 }
 
 async function clearAndroidExpoGo(target: AndroidTestTarget): Promise<void> {
