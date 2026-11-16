@@ -17,7 +17,7 @@ export function createSource(
 }
 
 /** createView builds a minimal injected view fixture with the requested visibility. */
-export function createView(name: string, visibility: AST.Visibility = 'file'): AST.ViewDeclaration {
+export function createView(name: string, visibility?: AST.Visibility): AST.ViewDeclaration {
   return {
     kind: 'ViewDeclaration',
     range: Range(),
@@ -64,12 +64,12 @@ export function createLetDefinition(
 }
 
 /** createViewBlock builds a declaration block from its statements. */
-export function createViewBlock(statements: readonly AST.ViewDeclarationStatement[]): AST.ViewDeclarationBlock {
+export function createViewBlock(statements: readonly AST.ViewDeclarationStatement[]): AST.Block {
   return createBlock(statements)
 }
 
 /** createBlock builds a typed AST block from its statements. */
-export function createBlock<Statement extends AST.Node>(statements: readonly Statement[]): AST.Block<Statement> {
+export function createBlock(statements: readonly AST.Statement[]): AST.Block {
   return { kind: 'Block', range: Range(), statements }
 }
 

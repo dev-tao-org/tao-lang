@@ -1,7 +1,7 @@
 use tao@ui Text, Col
 
 let Greeting is text = "File scope"
-let __proto__ = "Prototype name"
+let Fallback = "Second file binding"
 
 folder view ScopeExamples {
   let Caption = Greeting
@@ -23,7 +23,7 @@ folder view ScopeExamples {
     #sibling
     Text(Greeting)
     Echo("Parameter scope")
-    Text(__proto__)
+    Text(Fallback)
   }
 }
 

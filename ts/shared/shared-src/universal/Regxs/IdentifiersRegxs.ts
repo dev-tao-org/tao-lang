@@ -10,7 +10,10 @@ export const ModuleAliasRegx = /^@[A-Za-z_][\w.-]*$/
 /** ModuleSourceKeyRegx captures the source and module portions of a key. */
 export const ModuleSourceKeyRegx = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/
 
-/** TaoIdentifierRegx validates an identifier in Tao declarations. */
+/** UppercaseInitialRegx matches a leading ASCII uppercase letter. */
+export const UppercaseInitialRegx = /^[A-Z]/
+
+/** TaoIdentifierRegx matches the lexical shape of a Tao identifier. */
 export const TaoIdentifierRegx = /^[_a-zA-Z][_a-zA-Z0-9]*$/
 
 /** JavaScriptIdentifierRegx validates an identifier used in generated JavaScript. */

@@ -40,7 +40,7 @@ Tests.test('module publication resolves one list across imported sources includi
     'Library.tao',
     S`
       use package ./cards as Cards
-      ts-library Demo { publish { Cards as cards, } }
+      ts-library Demo { publish { Cards as Catalog, } }
     `,
   )
   const greeting = createModule(
@@ -56,18 +56,17 @@ Tests.test('module publication resolves one list across imported sources includi
   const sources = [entry, greeting, other, list]
   const program = Typecheck.linkModules(entry.path, sources)
   Tests.expect(collectLibraryPublications(program, new Set(sources.map(module => module.path))).map(view => view.path))
-    .toEqual(['cards/Hello'])
+    .toEqual(['Catalog/Hello'])
 })
 
-Tests.test('library signatures reject React-reserved children and key text props but allow ref', () => {
+Tests.test('library signatures allow uppercase Tao props with React-related names', () => {
   const source = S`
     ts-library Demo { publish { Greeting, } }
     public view Greeting(Value text) { render inject \`\`\`ts return null \`\`\` }
   `
-  for (const name of ['children', 'key']) {
-    Tests.expect(() => resolvePublications(source.replace('Value text', name + ' text'))).toThrow('reserved React prop')
-  }
-  Tests.expect(resolvePublications(source.replace('Value text', 'ref text'))[0]!.path).toBe('Greeting')
+  const publications = resolvePublications(source.replace('Value text', 'Children text, Key text, Ref text'))
+  Tests.expect(publications[0]!.declaration.parameters.map(parameter => parameter.name.value))
+    .toEqual(['Children', 'Key', 'Ref'])
 })
 
 function resolvePublications(source: string, ownSources: ReadonlySet<string> = new Set(['Library.tao'])) {

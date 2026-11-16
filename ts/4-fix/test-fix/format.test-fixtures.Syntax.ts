@@ -8,7 +8,7 @@ export const syntaxFixture = S`
   use ./Shared all
   use @cards Card as Panel,Heading
   use Local
-  requires github:acme/widgets version v1.2.0 as widgets
+  requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
   ts-library Demo{publish{Root as Main,}}
   publish{Root,}
@@ -31,7 +31,7 @@ export const formattedSyntaxFixture = S`
   use ./Shared all
   use @cards Card as Panel, Heading
   use Local
-  requires github:acme/widgets version v1.2.0 as widgets
+  requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
 
   ts-library Demo {
@@ -100,6 +100,7 @@ export const syntaxKinds = {
   PublishDeclaration: true,
   SourceFile: true,
   _Declaration: true,
+  _Statement: true,
   _Expression: true,
   _ViewRenderStatement: true,
   Block: true,

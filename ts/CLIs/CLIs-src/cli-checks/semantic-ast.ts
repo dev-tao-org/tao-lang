@@ -31,18 +31,13 @@ type SemanticMetadata = {
   semanticFieldNames: Record<string, SemanticNames>
   requiredFields: Record<string, string[]>
   fieldTypeOverrides: Record<string, SemanticFieldTypes>
-  blocks: Record<string, { members: string[]; statementUnion?: string }>
   unions: Record<string, string[]>
 }
 
 type SemanticNames = Record<string, string>
 type SemanticFieldTypes = Record<string, string>
-type SemanticBlockKinds = Record<string, string[]>
 type SemanticAstModel = {
-  blockStatementUnions: string
-  blocks: string
   unions: string
-  blockKinds: SemanticBlockKinds
   constructorKinds: string
   constructors: string
   declarations: string
@@ -51,6 +46,7 @@ type SemanticAstModel = {
   fieldLayouts: string
   generatedRules: string
   renderMembers: string[]
+  statementMembers: string[]
   visibility: string
   providers: string
   semanticKinds: string[]
@@ -99,16 +95,17 @@ function createSemanticAstModel(
   const declarationMembers = subtypeNames(nodes, '_Declaration').map(name => semanticName(name, metadata))
   const expressionMembers = subtypeNames(nodes, '_Expression').map(name => semanticName(name, metadata))
   const renderMembers = subtypeNames(nodes, '_ViewRenderStatement').map(name => semanticName(name, metadata))
+  const statementMembers = resolveMembers(['_Statement'], nodes, metadata)
   const declarations = generateDeclarations(concreteNodes, metadata)
   const semanticKinds = Lists.unique(['Name', ...types])
   const generatedRules = emitSemanticKinds(semanticKinds)
   const constructorKinds = generateConstructorKinds(nodes, metadata)
   const fieldLayouts = generateFieldLayouts(nodes.filter(node => node.named && !node.subtypes), metadata)
-  const semanticTypes = generateSemanticTypes(nodes, metadata)
+  const unions = generateUnions(nodes, metadata)
   const constructors = generateConstructors(nodes, metadata)
   return {
-    ...semanticTypes,
-    blockKinds: generateBlockKinds(nodes, metadata),
+    unions,
+    statementMembers,
     constructorKinds,
     constructors,
     declarations,
@@ -132,32 +129,16 @@ function isConcreteSemanticNode(node: NodeMetadata): boolean {
 
 function generateDeclarations(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
   return [
-    `export type File = Semantic<'File', { block: DeclarationBlock }>`,
+    `export type File = Semantic<'File', { block: Block }>`,
     ...nodes.filter(node => semanticName(node.type, metadata) !== 'Name' && node.type !== 'Block')
       .map(node => generateNodeType(node, metadata)),
   ].join(NewlineCharacter.repeat(2))
 }
 
-function generateSemanticTypes(nodes: NodeMetadata[], metadata: SemanticMetadata) {
-  const blockStatementUnions = Object.values(metadata.blocks).filter(block => block.statementUnion).map(block =>
-    `export type ${block.statementUnion} = ${resolveMembers(block.members, nodes, metadata).join(' | ')}`
-  ).join(NewlineCharacter)
-  const blocks = Object.entries(metadata.blocks).map(([name, block]) =>
-    `export type ${name} = Block<${block.statementUnion ?? resolveMembers(block.members, nodes, metadata).join(' | ')}>`
-  ).join(NewlineCharacter)
-  const unions = Object.entries(metadata.unions).map(([name, members]) =>
+function generateUnions(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
+  return Object.entries(metadata.unions).map(([name, members]) =>
     `export type ${name} = ${resolveMembers(members, nodes, metadata).join(' | ')}`
   ).join(NewlineCharacter)
-  return { blockStatementUnions, blocks, unions }
-}
-
-function generateBlockKinds(nodes: NodeMetadata[], metadata: SemanticMetadata): SemanticBlockKinds {
-  return Object.fromEntries(
-    Object.entries(metadata.blocks).map(([name, block]) => [
-      name,
-      resolveMembers(block.members, nodes, metadata),
-    ]),
-  )
 }
 
 function renderSemanticAst(model: SemanticAstModel): string {
@@ -170,24 +151,20 @@ function renderSemanticAst(model: SemanticAstModel): string {
     export type Visibility = ${model.visibility}
     export type RequirementProvider = ${model.providers}
     export type Name = Semantic<'Name', { value: string }>
-    export interface Block<Statement extends Node = Node> {
-      readonly kind: 'Block'
-      readonly range: Readonly<Range>
-      readonly statements: readonly Statement[]
-    }
+    export type Block = Semantic<'Block', { statements: readonly Statement[] }>
     ${model.declarations}
     export type Declaration = ${model.declarationMembers.join(' | ')}
+    export type Statement = ${model.statementMembers.join(' | ')}
     export type Expression = ${model.expressionMembers.join(' | ')}
     export type ViewRenderStatement = ${model.renderMembers.join(' | ')}
     ${model.unions}
-    ${model.blockStatementUnions}
-    export type ViewDeclarationImplementation = ViewDeclarationBlock | ForeignView
-    ${model.blocks}
+    export type ViewDeclarationImplementation = Block | ForeignView
     export type Node = ${model.semanticKinds.join(' | ')}
     export const SemanticKinds = ${model.generatedRules} as const
     export const CstConstructorKinds = ${model.constructorKinds} as const
     export const CstFieldLayouts = ${model.fieldLayouts} as const
-    export const CstBlockStatementKinds = ${emitBlockKinds(model.blockKinds)} as const
+    export const DeclarationKinds = ${Json.Print(model.declarationMembers)} as const
+    export const StatementKinds = ${Json.Print(model.statementMembers)} as const
     export type OfKind<Kind extends Node['kind']> = Extract<Node, { readonly kind: Kind }>
     export function IsKind<Kind extends Node['kind']>(node: Node, kind: Kind | readonly Kind[]): node is OfKind<Kind> {
       return typeof kind === 'string' ? node.kind === kind : kind.some(candidate => candidate === node.kind)
@@ -302,8 +279,10 @@ function uniqueNodes(nodes: NodeMetadata[], metadata?: SemanticMetadata): NodeMe
 }
 
 function resolveMembers(members: readonly string[], nodes: NodeMetadata[], metadata: SemanticMetadata): string[] {
-  const expanded = members.flatMap(name => subtypeNames(nodes, name).length ? subtypeNames(nodes, name) : [name])
-  return Lists.unique(expanded.map(name => semanticName(name, metadata)))
+  return Lists.unique(members.flatMap(name => {
+    const subtypes = subtypeNames(nodes, name)
+    return subtypes.length > 0 ? resolveMembers(subtypes, nodes, metadata) : [semanticName(name, metadata)]
+  }))
 }
 
 function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata): string {
@@ -313,11 +292,9 @@ function generateConstructors(nodes: NodeMetadata[], metadata: SemanticMetadata)
   )
   const kinds = Lists.unique(['File', 'Block', 'Name', ...constructors.map(node => semanticName(node.type, metadata))])
   const entries = kinds.map(kind =>
-    kind === 'Block'
-      ? `export function Block(cst: CST.SyntaxNode): Block<Node> { return Construct(cst, 'Block') }`
-      : `export function ${kind}(cst: CST.SyntaxNode): ${kind} { return Construct(cst, ${
-        emitSemanticStringLiteral(kind)
-      }) }`
+    `export function ${kind}(cst: CST.SyntaxNode): ${kind} { return Construct(cst, ${
+      emitSemanticStringLiteral(kind)
+    }) }`
   )
   return entries.join(NewlineCharacter)
 }
@@ -331,10 +308,6 @@ function tokenUnion(rule: OptionalGrammarRule): string {
 }
 
 function emitSemanticKinds(kinds: readonly string[]): string {
-  return Json.Print(kinds)
-}
-
-function emitBlockKinds(kinds: SemanticBlockKinds): string {
   return Json.Print(kinds)
 }
 

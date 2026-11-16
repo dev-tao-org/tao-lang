@@ -32,7 +32,7 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
 }
 
 function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>): void {
-  for (const test of tests.block.statements) {
+  for (const test of AST.GetTests(tests)) {
     for (const step of AST.GetTestSteps(test)) {
       if (AST.IsKind(step, 'RunStatement')) {
         names.add(step.app.value)

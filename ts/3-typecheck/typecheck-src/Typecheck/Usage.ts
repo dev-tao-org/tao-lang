@@ -54,11 +54,16 @@ function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
 
 function visitDeclaration(node: AST.Declaration, scope: Scope): void {
   Switch.kind(node, {
-    AppDeclaration: app => reference(scope, AST.GetAppRoot(app)),
+    AppDeclaration(app) {
+      const root = AST.FindAppRoot(app)
+      if (root) {
+        reference(scope, root)
+      }
+    },
     LetDeclaration: value => visitLet(value, scope),
     ViewDeclaration: view => visitView(view, scope),
     TestsDeclaration(tests) {
-      for (const test of tests.block.statements) {
+      for (const test of AST.GetTests(tests)) {
         for (const step of AST.GetTestSteps(test)) {
           if (AST.IsKind(step, 'RunStatement')) {
             reference(scope, step.app)
@@ -69,7 +74,12 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
     UseStatement: Switch.nothing,
     UsePackageStatement: Switch.nothing,
     RequiresDeclaration: Switch.nothing,
-    TypeScriptLibraryDeclaration: library => visitPublication(library.publication, scope),
+    TypeScriptLibraryDeclaration(library) {
+      const publication = AST.FindLibraryPublication(library)
+      if (publication) {
+        visitPublication(publication, scope)
+      }
+    },
     PublishDeclaration: publication => visitPublication(publication, scope),
   })
 }

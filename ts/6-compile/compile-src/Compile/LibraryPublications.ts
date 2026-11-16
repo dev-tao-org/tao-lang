@@ -24,9 +24,11 @@ export function collectLibraryPublications(
       target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.',
     )
   }
-  const views = libraries[0]!.publication.members.flatMap(member =>
-    collectSelectedPublication(program, entry, member, ownSources)
-  )
+  const publication = AST.FindLibraryPublication(libraries[0]!)
+  if (!publication) {
+    Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
+  }
+  const views = publication.members.flatMap(member => collectSelectedPublication(program, entry, member, ownSources))
   const paths = new Set<string>()
   for (const view of views) {
     if (paths.has(view.path)) {
@@ -93,12 +95,6 @@ function requirePublishedView(
   }
   if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
     Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)
-  }
-  const reserved = declaration.parameters.find(parameter => ['children', 'key'].includes(parameter.name.value))
-  if (reserved) {
-    Errors.ThrowUserInput(
-      `TypeScript library publication ${name} cannot use reserved React prop ${reserved.name.value}.`,
-    )
   }
   return { path, source: owner.path, declaration }
 }

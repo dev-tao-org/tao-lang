@@ -10,12 +10,6 @@ export function createCarriageReturnLineEndingsRegx(): RegExp {
 /** LeadingHorizontalWhitespaceRegx matches horizontal whitespace at a line start. */
 export const LeadingHorizontalWhitespaceRegx = /^[\t ]*/
 
-/** BlockTypeSuffixRegx matches the Block suffix of generated CST constructor names. */
-export const BlockTypeSuffixRegx = /Block$/
-
-/** LowercaseUppercaseBoundaryRegx matches a lowercase-to-uppercase name boundary. */
-export const LowercaseUppercaseBoundaryRegx = /([a-z])([A-Z])/g
-
 /** NewlineCharacterGlobalRegx matches each LF used to count source lines. */
 export const NewlineCharacterGlobalRegx = /\n/g
 
