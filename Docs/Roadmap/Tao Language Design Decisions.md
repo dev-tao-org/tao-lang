@@ -2,6 +2,17 @@
 
 This index records agreed design across the server-side and typed-calculation design discussions. The [runtime PoC](Tao%20Runtime%20PoC.md) tracks implementation and verification.
 
+## Package addressing and manifest ownership
+
+- Tao source projects are distributed by making them available at a supported source address, such as GitHub; no project publication block gates Tao consumption. Package visibility owns that API. A `ts-library` declaration owns one publication block selecting a generated TypeScript API. Distribution/install lifecycle for that generated artifact remains to be designed separately from Tao source distribution.
+- Future imports name individual declarations; remove both `use package` namespaces and `use ... all` wildcard imports. Publication selects individual declarations or actual `@name` project packages; an arbitrary folder namespace is not a publication unit. Replace the current import implementation in a separate slice, preserving visibility and updating consumers together.
+- Future visibility has only `file` (default), `folder`, and `package`. Package-visible declarations form the addressable API, including for consumers outside the project through its source address; remove `project` and `public`. Bare declaration imports search the same folder. Relative imports select package-local folders. Preserve subfolder paths in package imports: a declaration in `@cards/details/` is imported from `@cards/details`, not flattened into `@cards`.
+- `@name` folders establish local package boundaries without mandatory package declarations. Bare `@name/subpath` addresses only the current project's packages, under ordinary visibility. External requirements use explicit source providers and aliases.
+- Packages have no separately declared name: external Tao addressing combines the project source with the package's `@folder` name, independent of its location within the project. This supersedes the proposed declared package-identity field. Tao projects do not publish to or install from npm; consuming `npm:` dependencies remains supported.
+- Tao-managed package manifests are derived idempotently from Tao declarations and locked dependencies. Provider and sidecar requirements remain owned by their packages; consumers do not repeat transitive requirements.
+- Published top-level TypeScript declarations use named root exports with one public address each and no publication aliases. Ordinary TS-library consumers require no lifecycle API: one automatically initialized library scope owns singular top-level state; view-local state remains per mount. Tao generates local `@package` mappings for TypeScript as well as Tao consumers; see [TypeScript Libraries](../Specification/TypeScript%20Libraries.md).
+- Implementation remains pending package-block ownership and metadata design. Local cross-project checkout linking is explicitly deferred until post-MVP; it is not a prerequisite for same-project imports or generated manifests. See [Projects and Dependencies](../Specification/Projects%20and%20Dependencies.md).
+
 ## Data and provider boundaries
 
 - Author provider-neutral entities with singular/plural declarations. App or datasource configuration selects the provider, which assigns entity IDs. Import external actions explicitly.

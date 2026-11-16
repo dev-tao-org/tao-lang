@@ -2,7 +2,21 @@
 
 Status: compiler PoC implemented and verified in the uncommitted working tree. This record separates future direction from implemented functionality. No code review or landing is recorded.
 
-## Agreed library contract
+## Accepted export follow-up
+
+Expose `tao compile --ts-lib <Declaration>` with an explicit target output path. Create that output directory and emit a TypeScript-consumable package with `package.json` at its root and no `.tao` source files. A generated-source `tsconfig.json` may live under `source/`; prefer a minimal root. This is an agreed follow-up, not the current session-only CLI; exact output-option spelling remains open. Preserve session-isolated compilation internally while publishing the requested artifact. External TypeScript consumers address package exports beneath the compiled artifact's installation path/name, not the original Tao source address.
+
+Provide automatic initialization of one shared scope per loaded TypeScript library. Top-level state is singular, as for an app; view-local state belongs to each mount. No manual `instantiate()` or provider is needed in the ordinary MVP API. Library lifetime, rather than an individual component unmount, owns shared state cleanup. Shutdown and development reload details remain open.
+
+TypeScript consumers inside Tao projects use project-local package identities such as `@editor`; generated tooling owns type and runtime resolution with Tao visibility. Map currently supported exports first; declaration kinds without a TS representation need an explicit bridge design. Remove publication aliases while retaining ordinary import aliases.
+
+Tao source project distribution uses project-source plus local package identity, without an authored npm publication name. Generated TypeScript artifacts are a separate distribution boundary: an installed artifact's package name prefixes its exported Tao package subpaths. Metadata ownership for packaging that artifact remains open; do not conflate it with naming the Tao source package.
+
+Named root exports are accepted for individually published top-level declarations, with one canonical public address per export. Published packages use artifact-qualified package subpaths, such as `<library-path>/@editor`; package imports preserve subfolder paths. The precise generated file layout remains a proposal. The ordinary MVP lifecycle API is automatic, superseding the explicit provider contract below. Package manifest ownership and local addressing are recorded in [Tao Language Design Decisions](Tao%20Language%20Design%20Decisions.md). Local development linking across separate projects is deferred until after MVP.
+
+## Original PoC contract
+
+This records the earlier contract. Explicit instances/providers, public visibility requirements and default/subpath component imports are superseded by the accepted follow-up above, but remain in the current implementation until their separate slices replace them. Publication aliases have already been removed in the working patch.
 
 - `ts-library` declares a reusable unit with explicit comma-separated `publish` lists; a trailing comma is allowed.
 - Publish only selected public definitions owned by the library project. Dependencies remain internal; a dependency may separately publish its own library.
@@ -31,7 +45,7 @@ Status: compiler PoC implemented and verified in the uncommitted working tree. T
 
 Compile a real Tao library with one published submodule into a local JS/declaration package consumed by an ordinary TS React application. Demonstrate a greeting with two required text arguments, a panel rendering React children through existing injection functionality, a nested/private helper, and internal stdlib dependencies that are not published.
 
-Add minimal executable `ts-library` and `publish` grammar, publication aliases, and a module-level publication list. Require commas and allow a trailing comma. Reuse existing module/view compilation and initialization ordering; the library path must not require an app root. Generated public components use precise props, stable identities and matching library provider context. Reject unsupported signatures rather than weakening them to `any`.
+Add minimal executable `ts-library` and `publish` grammar and a module-level publication list. Require commas and allow a trailing comma. Reuse existing module/view compilation and initialization ordering; the library path must not require an app root. Generated public components use precise props, stable identities and matching library provider context. Reject unsupported signatures rather than weakening them to `any`.
 
 Create one runtime-only workspace package at `ts/ts-api`, with handwritten `ts-api.ts`, `Library.tsx` and `ViewComponent.tsx` under `ts-api-src`, and sibling `ts-api-test` tests. Existing compiler, runtime and workspace/CLI owners retain generation, semantics and packaging. The bridge must not import parser, compiler, workspace, filesystem or Expo startup machinery.
 
@@ -72,6 +86,10 @@ Authored TypeScript, package/configuration and dependency installation live in `
 
 The browser proof reads these actual authored files. Final follow-up verification passed 505 TypeScript tests and six Tao journeys, zero errors. Actual local Justfile compilation was exercised twice with both outputs preserved, and the server returned HTTP 200 before normal shutdown. [Follow-up evidence](../../.artifacts/notes/ts-lib-standalone-evidence/README.md) and [checkpoint](../../.artifacts/checkpoint/ts-lib-standalone.md) retain details. This dev/test/example follow-up does not change the shared refresh path; the performance limitation above remains open.
 
-By explicit user request, this app has its own package.json and tsconfig.json for VS Code, overriding the former no-manifests-under-Apps policy. Its `tao.compile` manifest configuration supplies entry, output and package name. `tao compile Demo --package src/ts` selects a declaration; omitting Demo infers a sole target; explicit app entry paths remain supported. Local `.tao/cache/libraries/Demo` output updates an owned symlink atomically and retains previous generations; unrelated output is rejected without deletion. The consumer dependency names that actual output. Existing pinned dependencies are linked without installation or version changes; no aliases or fake declarations hide package exports.
+By explicit user request, this app has its own package.json and tsconfig.json for VS Code, overriding the former no-manifests-under-Apps policy. Its `tao.compile` manifest configuration supplies entry and package name. `tao compile Demo --package src/ts` selects a declaration; omitting Demo infers a sole target; explicit app entry paths remain supported.
+
+The accepted session-isolation follow-up replaces shared output with `.tao/cache/sessions/<session>/libraries/Demo`. Publication replaces an owned real directory, preserving unrelated output. The ordinary standalone consumer selects `.cli`; managed consumers select their own session's generated package through Metro's package resolver. Installed dependencies for apps, sidecars and imported projects remain shared with their existing resolution. Generated packages and mutable build output belong to the session. Dependency installation per session, source mirroring and a custom dependency-link graph are not required by this design.
+
+The review-build follow-up uses ordinary compilation to retain reviewable output for the two example projects. See [Generated Output](../Dev%20Env/Generated%20Output.md) for paths and exclusions. These follow-up changes remain under implementation and verification; earlier PoC verification counts above do not establish their completion.
 
 `tao init <existing-directory> --library` creates a nonnested library/React starter without installing dependencies or overwriting existing files. Its generic Justfile uses an installed `tao` by default. The separate static starter copy was removed in favor of `Apps/TS Lib App`, whose Justfile defaults to the checkout CLI resolved from its folder and permits a `TAO` override. The permanent initializer acceptance test still generates, compiles, typechecks and renders a fresh consumer with its compiled Tao prop. Current managed-host evidence and limitations are retained in [the checkpoint](../../.artifacts/checkpoint/managed-expo-host.md); earlier editor and standalone receipts remain historical.

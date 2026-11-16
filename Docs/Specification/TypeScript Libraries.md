@@ -7,7 +7,7 @@ use tao@ui Text
 use package ./cards as Cards
 
 ts-library Demo {
-   publish { Greeting, Cards as Catalog, }
+   publish { Greeting, Cards, }
 }
 
 public
@@ -16,9 +16,9 @@ view Greeting(First text, Second text) {
 }
 ```
 
-#### `publish { Greeting, Cards as Catalog, }`
+#### `publish { Greeting, Cards, }`
 
-Publish lists require commas and allow a trailing comma. Select public definitions from the library's own project. Imported dependencies and private helpers remain internal. A selected module declares one `publish { Caption as Greeting, }` list across its source files; the list may live in a separate file. Other public definitions remain unselected. This example exposes the selected view at `Catalog/Greeting`.
+Publish lists require commas and allow a trailing comma. Publication aliases are not supported. Select public definitions from the library's own project. Imported dependencies and private helpers remain internal. A selected module declares one `publish { Caption, }` list across its source files; the list may live in a separate file. Other public definitions remain unselected. This example exposes the selected view at `Cards/Caption`.
 
 #### Typed React components
 
@@ -33,7 +33,6 @@ Keep the consumer's package and dependencies in `src/ts`, with Tao sources in `s
   "tao": {
     "compile": {
       "entry": "../tao/Library.tao",
-      "out": "../../.tao/cache/libraries/Demo",
       "name": "@example/demo"
     },
     "run": {
@@ -44,7 +43,9 @@ Keep the consumer's package and dependencies in `src/ts`, with Tao sources in `s
 }
 ```
 
-From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports. Repeated compilation replaces only its own generated output link; unrelated existing output is preserved and reported as an error. Add `"@example/demo": "file:../../.tao/cache/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
+From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports into `.tao/cache/sessions/.cli/libraries/Demo/`. Repeated compilation replaces only its own generated output; unrelated existing output is preserved and reported as an error. Add `"@example/demo": "file:../../.tao/cache/sessions/.cli/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
+
+Use `--session <name>` to build into a separate session. `tao run --package src/ts --session <name>` compiles and resolves that session's library without changing another session's output or the authored dependency links. Do not configure `tao.compile.out`; the selected session owns the destination. Build files remain after command exit; explicit cleanup can remove inactive sessions.
 
 ```tsx
 import library from '@example/demo'
@@ -72,6 +73,22 @@ Each view resolves the nearest provider for its library. Instances initialize th
 #### Starting a project
 
 Run `tao init <existing-directory> --library` to scaffold a Tao library and React consumer. Initialization creates `src/tao`, the authored package in `src/ts`, a local Justfile, and Tao project metadata. It preserves existing files, rejects collisions and nested projects, and does not install dependencies.
+
+#### Agreed future export addressing
+
+Individually published top-level declarations will be named exports from the generated library's
+root module. Published packages retain package subpaths: a consumer imports from
+`<library-path>/@editor`, where the prefix identifies the installed compiled artifact, not its
+original Tao source project. Local installation and npm installation use the same export structure.
+Package imports preserve subfolder paths. Each declaration has one canonical public address.
+The default lifecycle object and component subpaths shown above describe the currently implemented
+API; the generated layout for the new export structure remains under design.
+
+Ordinary React consumers will receive automatic initialization of one shared scope per loaded
+TypeScript library. Top-level state is singular for that library, as for an app; view-local state
+remains independent per mount. MVP consumers will not need manual `instantiate()` calls or a
+provider. Unmounting one consumer must not discard state still owned by the library. Runtime
+shutdown and development reload lifecycle details remain under design.
 
 #### Supported subset
 
