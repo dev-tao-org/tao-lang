@@ -53,6 +53,39 @@ export function GetViewRenderExpressions(statements: readonly AST.Statement[]): 
   return statements.filter(IsViewRenderExpression)
 }
 
+/** FindViewRenderStatement returns a view body's final render statement, when present. */
+export function FindViewRenderStatement(block: AST.Block): AST.ViewRenderStatement | undefined {
+  return block.statements.find(IsViewRenderStatement)
+}
+
+/** HasOnlyViewRenderExpressions reports whether a render block contains only nested renders. */
+export function HasOnlyViewRenderExpressions(block: AST.Block): boolean {
+  return block.statements.every(IsViewRenderExpression)
+}
+
+/** FindViewDeclaration returns the first or named view in one statement block. */
+export function FindViewDeclaration(
+  statements: readonly AST.Statement[],
+  name?: string,
+): AST.ViewDeclaration | undefined {
+  const views = GetNestedViewDeclarations(statements)
+  return name === undefined ? views[0] : views.find(view => view.name.value === name)
+}
+
+/** FindLetDeclaration returns the first or named let binding in one statement block. */
+export function FindLetDeclaration(
+  statements: readonly AST.Statement[],
+  name?: string,
+): AST.LetDeclaration | undefined {
+  const lets = GetLetDeclarations(statements)
+  return name === undefined ? lets[0] : lets.find(definition => definition.name.value === name)
+}
+
+/** FindValueDeclaration returns one named value declaration in a source document. */
+export function FindValueDeclaration(document: AST.Document, name: string): AST.ValueDeclaration | undefined {
+  return GetValueDeclarations(document).find(declaration => declaration.name.value === name)
+}
+
 /** GetExpectations lists visible assertions in one block, in authored order. */
 export function GetExpectations(block: AST.Block): readonly AST.Expectation[] {
   return block.statements.filter(IsExpectation)

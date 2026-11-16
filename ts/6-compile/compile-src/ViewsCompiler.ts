@@ -53,9 +53,9 @@ function compileTaoView(
   block: AST.Block,
   context: ViewCompilationContext,
 ): DeclarationCompilation {
-  const definitions = block.statements.filter(AST.IsLetDeclaration)
-  const children = block.statements.filter(AST.IsViewDeclaration)
-  const render = block.statements.find(AST.IsViewRenderStatement)
+  const definitions = AST.GetLetDeclarations(block.statements)
+  const children = AST.GetNestedViewDeclarations(block.statements)
+  const render = AST.FindViewRenderStatement(block)
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
   }
@@ -166,9 +166,12 @@ function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUt
   if (!block) {
     return '[]'
   }
-  const blockScope = shadowReferences(scope, block.statements.filter(AST.IsLetDeclaration))
-  if (block.statements.every(AST.IsViewRenderExpression)) {
-    return CodegenUtil.listMap(block.statements, child => compileViewRenderExpression(child, scope))
+  const blockScope = shadowReferences(scope, AST.GetLetDeclarations(block.statements))
+  if (AST.HasOnlyViewRenderExpressions(block)) {
+    return CodegenUtil.listMap(
+      AST.GetViewRenderExpressions(block.statements),
+      child => compileViewRenderExpression(child, scope),
+    )
   }
   const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join(
     NewlineCharacter,

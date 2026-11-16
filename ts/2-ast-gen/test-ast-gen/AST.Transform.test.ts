@@ -63,7 +63,7 @@ Tests.test('Preview performance fixture transforms imported generic renders', as
   const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)
-  const view = result?.root.block.statements.find(AST.IsViewDeclaration)
+  const view = result && AST.FindViewDeclaration(result.root.block.statements)
   Tests.expect(view).toMatchObject({
     kind: 'ViewDeclaration',
     range: { start: source.indexOf('view Preview') },

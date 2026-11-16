@@ -202,7 +202,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
       ],
       definitions: [{
         source: '/entry',
-        declaration: AST.GetDeclarations(entry).find(AST.IsLetDeclaration)!,
+        declaration: AST.FindLetDeclaration(entry.root.block.statements)!,
       }],
     },
   }

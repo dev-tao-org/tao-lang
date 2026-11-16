@@ -83,7 +83,7 @@ function requirePublishedView(
   if (!ownSources.has(owner.path)) {
     Errors.ThrowUserInput(`Cannot publish dependency definition ${name}.`)
   }
-  const declaration = AST.GetValueDeclarations(owner.document).find(node => node.name.value === name)
+  const declaration = AST.FindValueDeclaration(owner.document, name)
   if (!declaration || declaration.visibility !== 'public') {
     Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
   }
