@@ -117,7 +117,10 @@ function parseColdParserSamples(output: string): TimingSample[] {
 }
 
 const runParserProcess = Timings.measured('parser.process-wall', async function(): Promise<string> {
-  return await Exec.captureStdout('bun', ['run', Repo.resolvePath('ts/perf/perf-src/parser-sample.ts')], {
+  return await Exec.captureStdout('bun', [
+    'run',
+    Repo.resolvePath('ts/repo-analysis/repo-analysis-src/Performance/parser-sample.ts'),
+  ], {
     cwd: Repo.resolvePath('ts'),
   })
 })

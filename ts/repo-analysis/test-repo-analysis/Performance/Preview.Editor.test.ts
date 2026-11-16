@@ -3,9 +3,9 @@ import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 
-import { openPerformanceHarness } from '../perf-src/Preview/PerformanceHarness'
-import { preparePreviewEditor } from '../perf-src/Preview/PreviewEditorWorkspace'
-import { createPreviewHarness } from '../perf-src/Preview/PreviewHarness'
+import { openPerformanceHarness } from '../../repo-analysis-src/Performance/Preview/PerformanceHarness'
+import { preparePreviewEditor } from '../../repo-analysis-src/Performance/Preview/PreviewEditorWorkspace'
+import { createPreviewHarness } from '../../repo-analysis-src/Performance/Preview/PreviewHarness'
 
 const EntrySource = S`
   use tao@ui Col, Text
@@ -48,7 +48,7 @@ async function verifyRepairedPreview(directory: string): Promise<void> {
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
   })
-  const initialSource = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const initialSource = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const harness = await openPerformanceHarness({ project, workspace, initialSource })
   await Try(async () => {
     const browser = await HeadlessBrowser.launch('test <file.tao>')

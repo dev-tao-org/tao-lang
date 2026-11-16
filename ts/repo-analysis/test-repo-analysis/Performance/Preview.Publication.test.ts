@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 import type * as Workspace from '@workspace'
 
 import * as Preview from '@shared/preview'
-import { PreviewPublication } from '../perf-src/Preview/PreviewPublication'
+import { PreviewPublication } from '../../repo-analysis-src/Performance/Preview/PreviewPublication'
 
 Tests.test('a committed publication error reloads the actual served revision and retains its diagnostic', () => {
   const fixture = createPublicationFixture()

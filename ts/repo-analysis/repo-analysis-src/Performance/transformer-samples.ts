@@ -8,7 +8,7 @@ import * as Workspace from '@workspace'
 import { Repo } from '@shared/os'
 
 import * as Compile from '@compile'
-import { readPerformanceFixture } from './parser-fixtures'
+import { PerformanceFixturePath, readPerformanceFixture } from './parser-fixtures'
 
 /** transformerSamples measures minimal benchmark parsing, transformation and code generation.
  *  Record 100 warm samples after 20 warmups; no publication or preview is measured here. */
@@ -51,7 +51,7 @@ const parseTransformAndCompile = Timings.measure('compiler.parse-to-code', async
   const tree = timings.run(parser.parse, source)
   const document = timings.run(AST.transform, tree)
   if (document) {
-    const path = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
+    const path = Repo.resolvePath(PerformanceFixturePath)
     const sources = await timings.run(
       Workspace.loadModules,
       { path, document },

@@ -111,7 +111,10 @@ function initialFiles(): Map<string, string> {
         status: 'passed',
         sourceCommit: source,
         sourceTree: tree,
-        fixture: { path: 'ts/perf/perf-fixtures/Performance/Performance.tao', sha256: Platform.hashText(fixture) },
+        fixture: {
+          path: 'ts/repo-analysis/performance-fixtures/Performance/Performance.tao',
+          sha256: Platform.hashText(fixture),
+        },
         reportSha256: Platform.hashText(report),
       }),
     ],

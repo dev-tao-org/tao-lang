@@ -28,7 +28,7 @@ includes all active correctness apps.
 
 ## Performance
 
-- Owner: `ts/perf/perf-fixtures/Performance/`. Future performance sections get their own named workload files and drivers rather than another correctness app.
+- Owner: `ts/repo-analysis/performance-fixtures/Performance/`. Future performance sections get their own named workload files and drivers rather than another correctness app.
 - **Preview**: `Performance.tao` declares the Performance app and its named Preview view. Keep the generated module graph and mounted render steps stable between comparable runs. Verification: `./agent unsandboxed performance preview`; measurement and acceptance policy belong to `pipeline-performance`.
 
 `Apps/Dev/Kitchen Sink/` demonstrates implemented features together; `Apps/Dev/Preview/` supports

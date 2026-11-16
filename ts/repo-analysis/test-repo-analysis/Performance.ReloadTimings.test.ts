@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 
-import { type ReloadTiming, ReloadTimings } from '../perf-src/ReloadTimings'
+import { type ReloadTiming, ReloadTimings } from '../repo-analysis-src/Performance/ReloadTimings'
 
 Tests.test('reload output waits for both matching previews and measures from the observed save', () => {
   const reported: ReloadTiming[] = []

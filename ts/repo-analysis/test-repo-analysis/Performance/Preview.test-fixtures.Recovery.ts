@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 
-import { createPreviewHarness, type PreviewHarness } from '../perf-src/Preview/PreviewHarness'
+import { createPreviewHarness, type PreviewHarness } from '../../repo-analysis-src/Performance/Preview/PreviewHarness'
 
 /** withRecoveryPreview runs the real dual-frame host against a controlled render fixture. */
 export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Promise<void>): Promise<void> {
@@ -57,7 +57,7 @@ type OptionalRecoveryHost = PreviewHarness | undefined
 
 async function createRecoveryWorkspace(root: string) {
   const project = await Workspace.createProject({ directory: Path.join(root, 'project') })
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   let mode: RecoveryMode = 'Ready'
   const workspace = Workspace.createWorkspace({
     project,

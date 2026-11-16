@@ -1,7 +1,7 @@
 export * from './extension-performance'
 export * from './formatter-performance'
 export * from './module-refresh-performance'
-export { readPerformanceFixture } from './parser-fixtures'
+export { PerformanceFixturePath, readPerformanceFixture } from './parser-fixtures'
 export * from './parser-performance'
 export * from './preview-performance'
 export * from './Preview/PerformanceHarness'

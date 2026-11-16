@@ -6,7 +6,7 @@ import { FS, Platform, Repo } from '@shared/os'
 import type { Cancellation } from '@shared/web'
 import * as Workspace from '@workspace'
 
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 /** startDevelopmentPreview opens the live Preview app until its launcher disposes it. */
@@ -96,7 +96,7 @@ type DevSession = {
   signal: Cancellation.Controller['signal']
   workspace?: Workspace.WorkflowWorkspace
   expo?: Runtime.ExpoSession
-  preview?: Perf.PreviewHarness
+  preview?: Performance.PreviewHarness
   recovery?: Promise<void>
 }
 
@@ -110,12 +110,12 @@ async function startDevRuntime(state: DevSession): Promise<void> {
     Errors.ThrowShouldNeverHappen('Preview did not register an entry path for preview edits.')
   }
   state.expo = await Runtime.start(workspace.runtime!, { onOutput: reportExpoOutput, signal: state.signal })
-  state.preview = await Perf.createPreviewHarness({
+  state.preview = await Performance.createPreviewHarness({
     workspace,
     preview: state.expo.url,
     sessionId: Platform.randomUUID(),
     canonicalSource: await FS.readFile(entryPath, 'utf8'),
-    scenarios: Perf.previewScenarios,
+    scenarios: Performance.previewScenarios,
     onReload: reportReload,
   })
   IO.print('Tao preview is running at ' + state.preview.url)
@@ -148,14 +148,14 @@ function reportSourceError(error: unknown): void {
 }
 
 type ExpoOutputStream = 'stdout' | 'stderr'
-type OptionalPreview = Perf.PreviewHarness | undefined
+type OptionalPreview = Performance.PreviewHarness | undefined
 type OptionalExpoSession = Runtime.ExpoSession | undefined
 
 function reportExpoOutput(stream: ExpoOutputStream, text: string): void {
   IO.progress(`[expo ${stream}] ${text.trimEnd().replace('Starting project at ', 'Starting Expo runtime at ')}`)
 }
 
-function reportReload(timing: Perf.ReloadTiming): void {
+function reportReload(timing: Performance.ReloadTiming): void {
   IO.print(`Reload ${timing.revision}: change observed → Metro ${timing.saveToHmrMs.toFixed(1)} ms.`)
   for (const [id, frame] of Object.entries(timing.frames)) {
     const label = id === 'left' ? 'narrow' : 'wide'

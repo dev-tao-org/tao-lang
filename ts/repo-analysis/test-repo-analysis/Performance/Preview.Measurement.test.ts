@@ -2,14 +2,14 @@ import * as Grammar from '@grammar'
 import { NewlineCharacter } from '@shared'
 import * as Tests from '@shared-tests'
 
-import * as PreviewMeasurement from '../perf-src/Preview/PreviewMeasurement'
+import * as PreviewMeasurement from '../../repo-analysis-src/Performance/Preview/PreviewMeasurement'
 
 const LoadViewDeclarationRegx = /view Load\d+ \{/g
 
 Tests.test('repeated measurement edits change source each time and reset each complete cycle', async () => {
   const settings = PreviewMeasurement.readPreviewMeasurement({ editCount: 32, frameCount: 1 })
   const fixture = PreviewMeasurement.createMeasurementFiles(
-    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao'),
   )
   const canonical = fixture.entry
   const scenarios = PreviewMeasurement.createMeasurementScenarios(settings)
@@ -52,7 +52,7 @@ Tests.test('a cycle gives each render transition a distinct stable identity', ()
 
 Tests.test('the performance project has 240 unique views in six groups of four modules', async () => {
   const fixture = PreviewMeasurement.createMeasurementFiles(
-    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao'),
   )
   Tests.expect(fixture.extraFiles).toHaveLength(24)
   Tests.expect(fixture.entry).toContain('use ./LoadViews0 Load0')

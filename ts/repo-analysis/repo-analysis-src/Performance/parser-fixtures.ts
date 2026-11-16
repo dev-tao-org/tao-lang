@@ -1,8 +1,11 @@
 import { FS, Repo } from '@shared/os'
 
+/** PerformanceFixturePath names the shared authored workload relative to the repository root. */
+export const PerformanceFixturePath = 'ts/repo-analysis/performance-fixtures/Performance/Performance.tao'
+
 /** readPerformanceFixture reads the authored source shared by performance workloads. */
 export function readPerformanceFixture(): Promise<string> {
-  return FS.file(Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')).text()
+  return FS.file(Repo.resolvePath(PerformanceFixturePath)).text()
 }
 
 /** parserFixtures reads the canonical app and derives the ordered full-parse measurement edits. */

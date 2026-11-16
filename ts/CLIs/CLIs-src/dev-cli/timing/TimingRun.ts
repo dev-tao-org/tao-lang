@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors, S } from '@shared'
 import { Path } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
@@ -23,7 +23,7 @@ export type TimingRun = {
 export async function runTiming(options: TimingRun, summary: (message: string) => void = IO.summary): Promise<void> {
   requireTimingRun(options)
   const tooling = options.tooling ?? options.repo
-  const fixture = options.fixture ?? Path.posix.join(options.repo, 'ts/perf/perf-fixtures/Performance/Performance.tao')
+  const fixture = options.fixture ?? Path.posix.join(options.repo, Performance.PerformanceFixturePath)
   const args = createRunnerArguments(options, fixture)
   if (options.dryRun) {
     IO.print(
@@ -59,7 +59,7 @@ export function requireTimingRun(options: TimingRun): void {
   }
   if (!hasValidWorkload(options)) {
     Errors.ThrowUserInput(
-      `Use a positive session count and an edit count that is a positive multiple of ${Perf.PreviewCycleSize}.`,
+      `Use a positive session count and an edit count that is a positive multiple of ${Performance.PreviewCycleSize}.`,
     )
   }
   if (options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)) {
@@ -68,7 +68,7 @@ export function requireTimingRun(options: TimingRun): void {
 }
 
 function hasValidWorkload(options: TimingRun): boolean {
-  return Number.isInteger(options.samples) && options.samples >= 1 && Perf.isValidEditCount(options.edits)
+  return Number.isInteger(options.samples) && options.samples >= 1 && Performance.isValidEditCount(options.edits)
 }
 
 function createRunnerArguments(options: TimingRun, fixture: string): string[] {

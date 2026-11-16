@@ -9,6 +9,11 @@ browser, bootstrap and packaging boundaries retain deliberately separate module 
 from the same owner. `./agent check` detects stale paths, missing targets, wildcard entrypoints,
 private cross-package imports and incorrect operation-family imports.
 
+`ts/repo-analysis` owns source policy, package and test analysis, and the Knip configuration.
+The CLI runs the tools, prints findings and writes command artifacts. The package also publishes
+the benchmark harness as `@repo-analysis/performance`, so check and fix can load analysis
+without loading preview or compiler benchmark code.
+
 Run `just package-graph` to generate `.artifacts/package-graph.md` with Mermaid diagrams of
 direct source and test imports between TypeScript workspace packages. The arrows point from
 the importing package to the imported package. Labels count value, type and compile-only imports

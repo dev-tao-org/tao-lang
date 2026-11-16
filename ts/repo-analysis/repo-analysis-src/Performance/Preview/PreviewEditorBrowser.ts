@@ -2,7 +2,7 @@ import { Json, Try } from '@shared'
 import * as BrowserRuntime from '@shared/os/browser'
 import { Http } from '@shared/web'
 
-import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import * as WebHost from '../../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { parseSavedPreviewStatus, type SavedPreviewStatus } from './PreviewBrowserJson'
 
 type SourceEditor = {

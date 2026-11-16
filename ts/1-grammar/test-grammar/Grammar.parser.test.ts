@@ -21,7 +21,7 @@ Tests.test(
 Tests.test(
   'Performance produces a positioned CST with named app, root, view and text nodes',
   Timings.createTopLevelTimer(async timings => {
-    const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+    const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
 
     const parser = createParser()
     const tree = timings.run(parser.parse, source)

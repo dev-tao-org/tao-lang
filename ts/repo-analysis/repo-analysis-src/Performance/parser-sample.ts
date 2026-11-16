@@ -1,6 +1,5 @@
-import { IO } from '@cli-kit'
-import { Errors, Json, Timings, type TimingSample } from '@shared'
-import { Platform } from '@shared/os'
+import { Errors, Json, NewlineCharacter, Timings, type TimingSample } from '@shared'
+import { Platform, Process } from '@shared/os'
 import { parserFixtures } from './parser-fixtures'
 
 const loadParserModule = Timings.measured('parser.module-load', async () => {
@@ -16,7 +15,7 @@ const main = Timings.createTopLevelTimer(async function(timings) {
   if (tree.rootNode.hasError || tree.rootNode.text !== source) {
     Errors.ThrowShouldNeverHappen('Cold parser sample did not parse the complete performance fixture.')
   }
-  IO.print(serializeParserTimingSamples(timings.samples))
+  Process.stdout.write(serializeParserTimingSamples(timings.samples) + NewlineCharacter)
 })
 
 function serializeParserTimingSamples(samples: readonly TimingSample[]): string {

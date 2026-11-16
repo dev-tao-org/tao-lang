@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 import { FS, Repo } from '@shared/os'
-import { applyScenario, previewScenarios } from '../perf-src/Preview/PreviewScenarios'
+import { applyScenario, previewScenarios } from '../../repo-analysis-src/Performance/Preview/PreviewScenarios'
 
 Tests.test('preview button cycle fits the isolated Preview app', async () => {
   const canonical = await FS.readFile(Repo.resolvePath('Apps/Dev/Preview/Preview.tao'), 'utf8')

@@ -2,13 +2,16 @@ import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Browser, FS, Platform, Repo } from '@shared/os'
 
-import { PreviewOpening } from '../perf-src/Preview/PreviewOpening'
-import type { PreviewSignal } from '../perf-src/Preview/PreviewSignal'
+import { PreviewOpening } from '../../repo-analysis-src/Performance/Preview/PreviewOpening'
+import type { PreviewSignal } from '../../repo-analysis-src/Performance/Preview/PreviewSignal'
 
 Tests.test('preview harness bundles with browser-only platform APIs', async () => {
   const directory = Artifacts.resolvePath('tmp', `preview-bundle-${Platform.randomUUID()}`)
   await Try(async () => {
-    const build = await Browser.build([Repo.resolvePath('ts/perf/perf-src/preview-browser.ts')], directory)
+    const build = await Browser.build(
+      [Repo.resolvePath('ts/repo-analysis/repo-analysis-src/Performance/preview-browser.ts')],
+      directory,
+    )
     Tests.expect(build.logs.map(log => log.message)).toEqual([])
     Tests.expect(build.success).toBe(true)
   }, {

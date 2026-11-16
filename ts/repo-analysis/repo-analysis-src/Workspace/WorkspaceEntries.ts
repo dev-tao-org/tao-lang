@@ -27,12 +27,12 @@ export async function readWorkspaceEntries(workspace: string): Promise<Workspace
     ...ExternalWorkspaceEntries,
     '0-workspace': ['workspace-src/Workspace.ts'],
     'CLIs': await listCLIEntries(Path.join(workspace, 'CLIs')),
-    'perf': [
-      'perf-src/parser-sample.ts',
-      'perf-src/parser-performance.ts',
-      'perf-src/preview-performance.ts',
-      'perf-src/Preview/PreviewHarness.ts',
-      'perf-src/preview-browser.ts',
+    'repo-analysis': [
+      'repo-analysis-src/Performance/parser-sample.ts',
+      'repo-analysis-src/Performance/parser-performance.ts',
+      'repo-analysis-src/Performance/preview-performance.ts',
+      'repo-analysis-src/Performance/Preview/PreviewHarness.ts',
+      'repo-analysis-src/Performance/preview-browser.ts',
     ],
   }
 }

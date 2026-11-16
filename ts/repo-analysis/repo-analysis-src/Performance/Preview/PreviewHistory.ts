@@ -1,6 +1,7 @@
 import { Errors, Regxs, Time, Try } from '@shared'
 import { BuildLock, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
+import { PerformanceFixturePath } from '../parser-fixtures'
 import * as PreviewHistoryStore from './PreviewHistoryStore'
 import { PreviewRenderSteps } from './PreviewRenderSteps'
 
@@ -43,7 +44,6 @@ export async function recordPreviewPerformance(
 type Git = (args: readonly string[], exact?: boolean) => Promise<string>
 type Context = { sourceCommit: string; sourceTree: string; source: string; fixtureSha256: string }
 
-const fixturePath = 'ts/perf/perf-fixtures/Performance/Performance.tao'
 const inputs = [
   'ts',
   'Justfile',
@@ -63,7 +63,7 @@ async function captureContext(git: Git): Promise<Context> {
   if (!Regxs.Sha1HashRegx.test(sourceCommit) || !Regxs.Sha1HashRegx.test(sourceTree)) {
     Errors.ThrowShouldNeverHappen('Performance recording requires full Git commit and tree identities.')
   }
-  const source = await git(['show', `${sourceCommit}:${fixturePath}`], true)
+  const source = await git(['show', `${sourceCommit}:${PerformanceFixturePath}`], true)
   return { sourceCommit, sourceTree, source, fixtureSha256: Platform.hashText(source) }
 }
 
@@ -75,7 +75,7 @@ function newRecord(context: Context): PreviewHistoryStore.HistoryRecord {
     capturedAt: Time.date().toISOString(),
     status: 'failed',
     command: './agent unsandboxed performance record',
-    fixture: { path: fixturePath, sha256: context.fixtureSha256 },
+    fixture: { path: PerformanceFixturePath, sha256: context.fixtureSha256 },
     scenarios: PreviewRenderSteps.map(step => step.name),
     sourceIsolation:
       'Committed fixture copied into the generated benchmark workspace; passed records require clean implementation inputs before and after capture. Raw report dirty-state provenance is preserved.',

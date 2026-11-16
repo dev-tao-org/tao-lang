@@ -1,4 +1,4 @@
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors } from '@shared'
 import type { PreviewReport } from './ReportContract'
 import { median } from './Summary'
@@ -158,7 +158,7 @@ const Metrics: readonly TimingMetric[] = [
     floorMs: BranchTimingThresholds.warmEditFloorMs,
     measure: report => readP95(readWarmDurations(report)),
   },
-  ...Perf.PreviewRenderSteps.map(step => ({
+  ...Performance.PreviewRenderSteps.map(step => ({
     name: step.label,
     floorMs: BranchTimingThresholds.warmEditFloorMs,
     measure: (report: PreviewReport) => median(readWarmDurations(report, step.name)),
@@ -167,7 +167,9 @@ const Metrics: readonly TimingMetric[] = [
 
 function readWarmDurations(report: PreviewReport, scenario?: string): number[] {
   return report.results
-    .filter(edit => edit.sample === 'warm' && (!scenario || Perf.previewRenderStepName(edit.scenario) === scenario))
+    .filter(edit =>
+      edit.sample === 'warm' && (!scenario || Performance.previewRenderStepName(edit.scenario) === scenario)
+    )
     .map(edit => edit.parentClickToLastAppliedMs)
 }
 

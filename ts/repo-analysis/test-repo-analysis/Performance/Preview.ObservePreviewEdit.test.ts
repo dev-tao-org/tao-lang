@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 import type * as Workspace from '@workspace'
 import { Document } from '@workspace'
 
-import { observePreviewEdit } from '../perf-src/Preview/ObservePreviewEdit'
+import { observePreviewEdit } from '../../repo-analysis-src/Performance/Preview/ObservePreviewEdit'
 
 Tests.test('a serialized edit waits for a fresh latest nonsuperseded completion with its exact path and source', async () => {
   const fixture = createCompletionFixture()

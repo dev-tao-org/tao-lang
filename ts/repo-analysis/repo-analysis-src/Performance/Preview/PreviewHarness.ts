@@ -3,7 +3,7 @@ import { Artifacts, Browser, FS, HttpServer, Path, Repo } from '@shared/os'
 import { Addr, EventStream, Http } from '@shared/web'
 import type * as Workspace from '@workspace'
 
-import * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import * as WebHost from '../../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import { type ReloadTiming, ReloadTimings } from '../ReloadTimings'
 import { observePreviewEdit } from './ObservePreviewEdit'
 import { handlePreviewEditorRequest, type PreviewEditorWorkspace } from './PreviewEditorWorkspace'
@@ -54,7 +54,9 @@ async function prepareBrowserClient(sessionId: string): Promise<string> {
   const directory = Artifacts.resolvePath('tmp', `preview-ui-${sessionId}`)
   await Artifacts.mkdir(directory)
   Artifacts.trackTemporary(directory)
-  const build = await Browser.build([Repo.resolvePath('ts/perf/perf-src/preview-browser.ts')], directory)
+  const build = await Browser.build([
+    Repo.resolvePath('ts/repo-analysis/repo-analysis-src/Performance/preview-browser.ts'),
+  ], directory)
   if (!build.success) {
     Errors.ThrowShouldNeverHappen(
       'Could not bundle the preview harness browser client: '

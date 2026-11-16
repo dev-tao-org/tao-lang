@@ -3,7 +3,7 @@ import { FS, Path } from '@shared/os'
 import { Http } from '@shared/web'
 import type * as Workspace from '@workspace'
 
-import type * as WebHost from '../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
+import type * as WebHost from '../../../../shared/shared-src/os/bridges/Bridge_browser/Bridge_browser'
 import type { MeasurementSource } from './PreviewMeasurement'
 import { describeGeneratedChanges, type PreviewEditTrace } from './PreviewWork'
 
