@@ -34,21 +34,22 @@ export async function assertNoContentTransforms(root: string, files: string[], c
 /** assertRegisteredGitlinks rejects embedded repositories without a declared transferable submodule boundary. */
 export async function assertRegisteredGitlinks(root: string, tree: string, env: Record<string, string>): Promise<void> {
   const links = (await readTreeEntries(root, tree, env)).filter(entry => entry.mode === GitlinkMode)
-  if (!links.length) {
-    return
+  if (links.length) {
+    await Try(() => captureGit(root, ['submodule', 'status', '--', ...links.map(entry => entry.path)], { env }), {
+      catch() {
+        Errors.ThrowUserInput('An undeclared embedded Git repository cannot be snapshotted; capture it separately.')
+      },
+    })
   }
-  await Try(() => captureGit(root, ['submodule', 'status', '--', ...links.map(entry => entry.path)], { env }), {
-    catch() {
-      Errors.ThrowUserInput('An undeclared embedded Git repository cannot be snapshotted; capture it separately.')
-    },
-  })
+  // Untracked QA receipts in the archive are outside the timing source tree.
   const dirty = await captureGit(root, [
     'submodule',
     'foreach',
     '--quiet',
     '--recursive',
-    'git --no-optional-locks status --porcelain=v1 -uall',
-  ], { env })
+    'if test "$displaypath" = .storage; then git --no-optional-locks status --porcelain=v1 -uno; '
+    + 'else git --no-optional-locks status --porcelain=v1 -uall; fi',
+  ])
   if (dirty) {
     Errors.ThrowUserInput('A submodule has saved changes; snapshot it separately before measuring the parent.')
   }

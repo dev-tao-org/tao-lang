@@ -34,7 +34,7 @@ export async function connectTiming(options: TimingConnection): Promise<void> {
     return
   }
   if (!io.interactive) {
-    Errors.ThrowUserInput('Run just timing-connect HOST in Terminal to verify the host and enter your SSH password.')
+    Errors.ThrowUserInput('Run ./agent timing-connect HOST in Terminal to authenticate to the timing runner.')
   }
   await io.mkdir(Path.dirname(socket))
   io.print('SSH may ask for the timing Mac’s login password. Input is hidden; Ctrl+C cancels.')

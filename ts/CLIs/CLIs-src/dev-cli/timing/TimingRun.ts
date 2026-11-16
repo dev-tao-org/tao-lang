@@ -7,16 +7,19 @@ import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote } from './TimingRemote'
 import { createTimingHelperArguments, presentTimingReport, readTimingJobPath, readTimingReport } from './TimingReport'
 
+type TimingWorkload = { samples: number; edits: number }
+/** TimingSnapshotTransfer identifies the staged runner inputs and expected measurement source. */
+export type TimingSnapshotTransfer = { bundle: string; manifest: string; commit: string; tree: string }
+
 /** TimingRun selects a prepared immutable runner checkout and repeated preview workload. */
-export type TimingRun = {
+export type TimingRun = TimingWorkload & {
   host: string
   repo: string
   tooling?: string
   fixture?: string
-  samples: number
-  edits: number
   dryRun?: boolean
   controlPath?: string
+  snapshot?: TimingSnapshotTransfer
 }
 
 /** runTiming repeats measurements through existing SSH and retains complete raw reports on the runner. */
@@ -35,7 +38,7 @@ export async function runTiming(options: TimingRun, summary: (message: string) =
     `)
     return
   }
-  IO.print('Measuring the named immutable checkout; this command does not sync or modify its source.')
+  IO.print('Measuring in an isolated runner checkout.')
   const controlPath = options.controlPath ?? resolveTimingSocket(options.host)
   const text = await readTimingRemote({
     host: options.host,
@@ -45,6 +48,9 @@ export async function runTiming(options: TimingRun, summary: (message: string) =
   })
   const job = readTimingJobPath(text, tooling)
   const report = await readTimingReport({ host: options.host, tooling, job }, controlPath)
+  if (options.snapshot && (report.commit !== options.snapshot.commit || report.tree !== options.snapshot.tree)) {
+    Errors.ThrowHostEnvironment('The timing runner reported different source from the submitted snapshot.')
+  }
   await presentTimingReport(report, summary)
 }
 
@@ -57,22 +63,26 @@ export function requireTimingRun(options: TimingRun): void {
   if (options.tooling !== undefined && !Path.posix.isAbsolute(options.tooling)) {
     Errors.ThrowUserInput('Use absolute paths for the runner checkout and optional tooling checkout.')
   }
-  if (!hasValidWorkload(options)) {
-    Errors.ThrowUserInput(
-      `Use a positive session count and an edit count that is a positive multiple of ${Perf.PreviewCycleSize}.`,
-    )
-  }
+  requireTimingWorkload(options)
   if (options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)) {
     Errors.ThrowUserInput('Use an absolute runner fixture path.')
   }
 }
 
-function hasValidWorkload(options: TimingRun): boolean {
-  return Number.isInteger(options.samples) && options.samples >= 1 && Perf.isValidEditCount(options.edits)
+/** requireTimingWorkload rejects empty sessions and incomplete edit cycles. */
+export function requireTimingWorkload({ samples, edits }: TimingWorkload): void {
+  if (!Number.isInteger(samples) || samples < 1 || !Perf.isValidEditCount(edits)) {
+    Errors.ThrowUserInput(
+      `Use a positive session count and an edit count that is a positive multiple of ${Perf.PreviewCycleSize}.`,
+    )
+  }
 }
 
 function createRunnerArguments(options: TimingRun, fixture: string): string[] {
-  return createTimingHelperArguments('run', [
+  const { snapshot } = options
+  const source = snapshot ? ['--bundle', snapshot.bundle, '--manifest', snapshot.manifest] : []
+  return createTimingHelperArguments(snapshot ? 'run-snapshot' : 'run', [
+    ...source,
     '--repo',
     options.repo,
     '--fixture',

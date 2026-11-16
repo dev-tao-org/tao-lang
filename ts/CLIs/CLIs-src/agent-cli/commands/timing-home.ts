@@ -1,6 +1,6 @@
 import * as CLIKit from '@cli-kit'
-import { initializeTimingHome, type TimingHome } from '../timing/TimingHome'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { initializeTimingHome, type TimingHome } from '../../dev-cli/timing/TimingHome'
 
 /** timingHomeCommand initializes the existing developer home for LAN timing without installing network software. */
 export default registerCommand({

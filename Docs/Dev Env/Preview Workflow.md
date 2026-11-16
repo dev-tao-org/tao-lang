@@ -3,7 +3,7 @@
 ```sh
 ./dev
 ./dev help
-just performance
+just timing-run
 ./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
 ```
 
@@ -15,7 +15,10 @@ The compiler produces a complete generated revision in memory and publishes it t
 
 ## Measurements
 
-`just performance` uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
+`just timing-run` uses the configured timing machine. Agents can also run
+`./agent unsandboxed performance preview` locally. The benchmark uses the same isolated project
+and serialized save path as the performance editor. It checks text changes, growth and shrink of
+same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
 
 Use a fresh performance editor session for manual saves or for the built-in benchmark edits. The first edit selects that session's mode and protects saved source and benchmark inputs from each other.
 

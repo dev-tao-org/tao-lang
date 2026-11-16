@@ -3,11 +3,13 @@ import { Errors, NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
 import * as BranchComparison from '../../agent-skills/performance-investigation/BranchComparison'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
-import { readTimingRemote } from '../timing/TimingRemote'
-import { createTimingHelperArguments } from '../timing/TimingReport'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { readTimingRemote } from '../../dev-cli/timing/TimingRemote'
+import { createTimingHelperArguments } from '../../dev-cli/timing/TimingReport'
 
-/** timingCompareCommand benchmarks two prepared revisions on the same runner with one SSH invocation. */
+type TimingCompareOptions = { tooling?: string; pairs: string; firstEdit?: boolean }
+
+/** timingCompareCommand benchmarks two prepared revisions on the same runner using current comparison tooling. */
 export default registerCommand({
   name: 'timing-compare',
   description: 'Compare baseline and candidate preview speed on a timing laptop.',
@@ -21,16 +23,36 @@ export default registerCommand({
     },
   ],
   options: [
-    { flags: '--tooling <path>', description: 'Prepared tooling checkout on the runner; defaults to the candidate.' },
+    { flags: '--tooling <path>', description: 'Required path to an up-to-date tooling checkout on the runner.' },
     { flags: '--pairs <count>', description: 'Independent pairs per round, at least five.', defaultValue: '5' },
+    { flags: '--first-edit', description: 'Measure only first-edit timing and repeat the batch.' },
   ],
-  async action(host: string, baseline: string, candidate: string, options: { tooling?: string; pairs: string }) {
-    const directory = options.tooling ?? candidate
+  async action(
+    host: string,
+    baseline: string,
+    candidate: string,
+    options: TimingCompareOptions,
+  ) {
+    const directory = options.tooling
+    if (!directory) {
+      Errors.ThrowUserInput('Supply --tooling with the absolute path to the up-to-date runner tooling checkout.')
+    }
     requireHost(host)
     requireAbsoluteCheckouts([baseline, candidate, directory])
     BranchComparison.requireBranchPairCount(Number(options.pairs))
-    const args = createTimingHelperArguments('compare', [baseline, candidate, '--pairs', options.pairs])
-    const output = await readTimingRemote({ host, directory, controlPath: 'none', args })
+    const remote = { host, directory, controlPath: 'none' }
+    const help = await readTimingRemote({ ...remote, args: createTimingHelperArguments('compare', ['--help']) })
+    if (!help.includes('--first-edit')) {
+      Errors.ThrowUserInput('Update the runner tooling checkout before comparing branches.')
+    }
+    const args = createTimingHelperArguments('compare', [
+      baseline,
+      candidate,
+      '--pairs',
+      options.pairs,
+      ...options.firstEdit ? ['--first-edit'] : [],
+    ])
+    const output = await readTimingRemote({ ...remote, args })
     IO.summary(readBranchReport(output))
   },
 })

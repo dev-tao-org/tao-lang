@@ -11,7 +11,6 @@ Use these commands from the repository root after `./agent unsandboxed setup`:
 | `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.     |
 | `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                  |
 | `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.      |
-| `just performance`                        | Developer preview measurement command, printing results and retaining the raw report.                     |
 
 The preview host route is required in the macOS agent environment. See
 [Preview Workflow](../Preview%20Workflow.md) for the persistent `just dev` loop, output locations and

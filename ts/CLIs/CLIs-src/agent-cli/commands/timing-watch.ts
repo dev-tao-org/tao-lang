@@ -1,7 +1,7 @@
 import * as CLIKit from '@cli-kit'
 import { FS, Path } from '@shared/os'
 import { timingProgressPath } from '../../agent-skills/performance-investigation/TimingProgress'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
 
 /** timingWatchCommand follows benchmark progress across jobs on the timing machine. */
 export default registerCommand({

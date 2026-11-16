@@ -1,6 +1,6 @@
-import * as TimingOptions from '../timing/TimingCommandOptions'
-import { runTimingSession } from '../timing/TimingSession'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import * as TimingOptions from '../../dev-cli/timing/TimingCommandOptions'
+import { runTimingSession } from '../../dev-cli/timing/TimingSession'
 
 /** timingSessionCommand owns one connect, measure, report and disconnect lifecycle. */
 export default registerCommand({

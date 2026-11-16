@@ -1,5 +1,5 @@
-import { setupSshKey } from '../timing/SshKey'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { setupSshKey } from '../../dev-cli/timing/SshKey'
 
 /** sshKeySetupCommand installs a dedicated SSH public key on the selected machine. */
 export default registerCommand({

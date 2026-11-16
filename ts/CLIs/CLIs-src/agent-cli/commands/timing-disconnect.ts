@@ -1,6 +1,6 @@
-import { describeTimingConnection } from '../timing/TimingCommandOptions'
-import { disconnectTiming } from '../timing/TimingConnection'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { describeTimingConnection } from '../../dev-cli/timing/TimingCommandOptions'
+import { disconnectTiming } from '../../dev-cli/timing/TimingConnection'
 
 /** timingDisconnectCommand closes the saved Tao SSH master for the selected host. */
 export default registerCommand({

@@ -1,15 +1,27 @@
-import * as TimingOptions from '../timing/TimingCommandOptions'
-import { runTiming } from '../timing/TimingRun'
+import * as CLIKit from '@cli-kit'
+import { runCheckoutTiming } from '../timing/TimingCheckout'
+import { type TimingWorkloadOptions, timingWorkloadOptions } from '../timing/TimingCommandOptions'
 import { registerCommand } from './_command-runner'
 
-/** timingRunCommand repeats preview measurements in a prepared immutable runner checkout. */
+type TimingCheckoutOptions = TimingWorkloadOptions & { ref?: string }
+type OptionalTimingCheckout = string | undefined
+
+/** timingRunCommand times a snapshot of the selected local worktree on the configured runner. */
 export default registerCommand({
   name: 'timing-run',
-  description: 'Repeat a preview benchmark over SSH in a prepared immutable checkout; no source sync.',
-  arguments: TimingOptions.timingArguments,
-  options: TimingOptions.timingOptions,
-  async action(host: string, repo: string, options: TimingOptions.TimingCommandOptions) {
-    const request = TimingOptions.describeTimingRun(host, repo, options)
-    await runTiming(request)
+  description: 'Time the saved files in a local worktree on the configured SSH runner.',
+  arguments: [{ name: 'checkout', description: 'Local checkout or subdirectory; defaults to the invoking directory.' }],
+  options: [
+    ...timingWorkloadOptions,
+    { flags: '--ref <revision>', description: 'Select a committed revision instead of saved working files.' },
+  ],
+  async action(checkout: OptionalTimingCheckout, options: TimingCheckoutOptions) {
+    await runCheckoutTiming({
+      directory: CLIKit.resolveCallerPath(checkout ?? '.'),
+      samples: Number(options.samples),
+      edits: Number(options.edits),
+      dryRun: options.dryRun,
+      ref: options.ref,
+    })
   },
 })

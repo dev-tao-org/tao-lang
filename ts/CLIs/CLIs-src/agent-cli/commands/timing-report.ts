@@ -1,6 +1,6 @@
-import { describeTimingReport } from '../timing/TimingCommandOptions'
-import { reportTiming } from '../timing/TimingReport'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { describeTimingReport } from '../../dev-cli/timing/TimingCommandOptions'
+import { reportTiming } from '../../dev-cli/timing/TimingReport'
 
 /** timingReportCommand prints a retained runner report without launching measurements. */
 export default registerCommand({

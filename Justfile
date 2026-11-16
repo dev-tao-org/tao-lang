@@ -39,76 +39,16 @@ doctor *ARGS:
 shell-setup:
     ./dev shell-setup --configure
 
-# Install the official Tailscale macOS app; sign in and approve native prompts afterward
-[group('Setup')]
-[positional-arguments]
-tailscale-install *ARGS:
-    ./dev tailscale-install "$@"
+# Print a prompt for an agent to set up the timing runner and its SSH key
+[group('Performance')]
+timing-setup:
+    ./dev timing-setup
 
-# Install/start CLI-only private networking and sign in on this controller Mac
-[group('Setup')]
-[positional-arguments]
-timing-setup-controller *ARGS:
-    ./dev timing-setup-controller "$@"
-
-# Install/start CLI-only private networking and sign in on the timing Mac
-[group('Setup')]
-[positional-arguments]
-timing-setup-runner *ARGS:
-    ./dev timing-setup-runner "$@"
-
-# Authenticate an existing SSH login and return here without opening a remote shell
+# Time the saved files in the current worktree on the configured runner
 [group('Performance')]
 [positional-arguments]
-timing-connect HOST *ARGS:
-    ./dev timing-connect "$@"
-
-# Set up a dedicated SSH key for a selected machine
-[group('Setup')]
-[positional-arguments]
-ssh-key-setup HOST *ARGS:
-    ./dev ssh-key-setup "$@"
-
-# Initialize shared ~/.tao-dev timing storage without installing network software
-[group('Performance')]
-[positional-arguments]
-timing-home *ARGS:
-    ./dev timing-home "$@"
-
-# Close the saved reusable SSH connection to the timing Mac
-[group('Performance')]
-[positional-arguments]
-timing-disconnect HOST *ARGS:
-    ./dev timing-disconnect "$@"
-
-# Connect, measure, print and close a private one-shot timing session
-[group('Performance')]
-[positional-arguments]
-timing-session HOST CHECKOUT *ARGS:
-    ./dev timing-session "$@"
-
-# Repeat measurements in an immutable runner checkout; source is not synchronized
-[group('Performance')]
-[positional-arguments]
-timing-run HOST CHECKOUT *ARGS:
-    ./dev timing-run "$@"
-
-# Compare preview timings across prepared baseline and candidate revisions
-[group('Performance')]
-[positional-arguments]
-timing-compare HOST BASELINE CANDIDATE *ARGS:
-    ./dev timing-compare "$@"
-
-# Follow current and future benchmark jobs on the timing laptop
-[group('Performance')]
-timing-watch:
-    ./dev timing-watch
-
-# Print a retained timing report without launching measurements
-[group('Performance')]
-[positional-arguments]
-timing-report HOST CHECKOUT *ARGS:
-    ./dev timing-report "$@"
+timing-run *ARGS:
+    TAO_CLI_CWD={{ quote(invocation_directory()) }} ./dev timing-run "$@"
 
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
@@ -171,11 +111,6 @@ my-branch name='':
 [group('Dev')]
 dev:
     ./dev
-
-# Measure preview refresh and print scenario timings and the raw report path
-[group('Dev')]
-performance:
-    ./dev performance preview
 
 # Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]

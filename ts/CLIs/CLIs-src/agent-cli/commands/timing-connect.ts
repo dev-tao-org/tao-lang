@@ -1,6 +1,6 @@
-import { describeTimingConnection } from '../timing/TimingCommandOptions'
-import { connectTiming } from '../timing/TimingConnection'
-import { registerCommand } from './_command-runner'
+import { registerCommand } from '../../dev-cli/commands/_command-runner'
+import { describeTimingConnection } from '../../dev-cli/timing/TimingCommandOptions'
+import { connectTiming } from '../../dev-cli/timing/TimingConnection'
 
 /** timingConnectCommand authenticates a reusable ordinary SSH connection without opening a remote shell. */
 export default registerCommand({

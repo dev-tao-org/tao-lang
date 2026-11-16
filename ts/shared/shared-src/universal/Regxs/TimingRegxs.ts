@@ -9,6 +9,3 @@ export const TimingListingLineBreakRegx = /\r?\n/
 
 /** TimingReportTimestampRegx matches a UTC timestamp with millisecond precision. */
 export const TimingReportTimestampRegx = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-
-/** TailscaleStablePackageLinkRegx captures a stable macOS package name from the official listing. */
-export const TailscaleStablePackageLinkRegx = /href=["'](?:\.\/)?(Tailscale-\d+\.\d+\.\d+-macos\.pkg)["']/

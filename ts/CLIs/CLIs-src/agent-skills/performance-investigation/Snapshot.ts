@@ -74,7 +74,6 @@ type SnapshotContext = {
 }
 
 async function snapshotSavedTree(root: string, base: string, env: Record<string, string>): Promise<string> {
-  await assertCleanSubmodules(root)
   await captureGit(root, ['read-tree', base], { env })
   const files = await selectSavedFiles(root, base)
   const input = files.join(NullCharacter) + NullCharacter
@@ -107,19 +106,6 @@ async function selectSavedFiles(root: string, base: string): Promise<string[]> {
     .split(NullCharacter).filter(Boolean)
   const saved = current.filter(path => Try.WithDefault(false, () => !!FS.lstatSync(Path.join(root, path))))
   return [...new Set([...tracked, ...saved])].filter(path => !path.startsWith('.artifacts/'))
-}
-
-async function assertCleanSubmodules(root: string): Promise<void> {
-  const dirty = await captureGit(root, [
-    'submodule',
-    'foreach',
-    '--quiet',
-    '--recursive',
-    'git --no-optional-locks status --porcelain=v1 -uall',
-  ])
-  if (dirty !== '') {
-    Errors.ThrowUserInput('A submodule has saved changes; snapshot it separately before measuring the parent.')
-  }
 }
 
 async function createSnapshotCommit(root: string, tree: string, base: string, env: Record<string, string>) {

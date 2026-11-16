@@ -43,10 +43,11 @@ the runner refuses dirty implementation inputs. No dependency/tool versions are 
 
 ## Existing SSH infrastructure
 
-For local Wi-Fi, initialize storage with `just timing-home` on both Macs and use the runner's
-existing Remote Login account. `just timing-connect HOST` authenticates a reusable socket under
-`~/.tao-dev/ssh`; its path can be supplied to `ssh --control-path` below. Optional private networking
-is described in the [remote workflow](../../../../Docs/Dev%20Env/Performance/Remote%20timing%20workflow.md).
+The [remote workflow](../../../../Docs/Dev%20Env/Performance/Remote%20timing%20workflow.md)
+owns runner setup and the two developer recipes. For advanced operations, use the existing Remote
+Login account. `./agent timing-connect HOST` authenticates a reusable socket under `~/.tao-dev/ssh`;
+its path can be supplied to `ssh --control-path` below. `./agent timing-home` prepares timing directories
+and can import previously collected reports.
 Network installation does not itself establish an authenticated SSH connection.
 
 ```sh
@@ -58,9 +59,8 @@ PERF copy tao-bench /absolute/controller/snapshot.json /Users/ro/.tao-dev/timing
 PERF copy tao-bench /Users/ro/.tao-dev/timing/transfers/job.log /absolute/controller/job.log --download
 ```
 
-`hosts` lists literal aliases from the current user's top-level SSH config and the available
-`tailscale status --json` result. It does not scan arbitrary network addresses, expand SSH Include
-files or connect to candidates. Missing Tailscale is reported alongside usable SSH aliases.
+`hosts` lists literal aliases from the current user's top-level SSH config. It does not scan
+network addresses, expand SSH Include files or connect to candidates.
 Use the actual configured address if an alias comes from an Include file. Discovery does not
 establish that a peer is a prepared timing host.
 
@@ -94,11 +94,27 @@ submodule clone, fetch the transferred bundle's `HEAD` into that owned clone ins
 over it, then check out the pin and retry setup. Do not publish archive data, replace pins, relax
 Git's file-transport policy globally or alter the controller's submodule to make setup pass.
 
-For cafe-to-home use, ordinary SSH can run over the existing Tailscale connection and MagicDNS
-name. The normal macOS Tailscale app needs a logged-in user session; keeping the screen locked is
-compatible with that. Configure the host to remain awake on power before leaving it. Remote access
-after logout/reboot needs separate preparation; a job cannot wake an unreachable computer.
-USB-C helps only when the ports/cable establish a Thunderbolt network interface.
+Keep the timing host awake on power and use a reachable SSH address. A job cannot wake an
+unreachable computer.
+
+## Agent timing commands
+
+- `./agent timing-compare HOST BASELINE CANDIDATE --tooling TOOLING` compares two prepared absolute
+  checkouts with independent alternating pairs. Keep `TOOLING` up to date and separate from the
+  measured source revisions.
+  - Use `--first-edit` when only the first edit is in question. It collects two rounds of five pairs
+    by default and runs only the minimum edit cycle per session.
+  - Report the median paired difference in milliseconds. A single five-pair round shows the
+    observed range. Two planned rounds of five pairs yield a 97.9% exact sign interval for the
+    median. If a screening result triggers the second round, the report labels the interval nominal.
+    Confirmation requires directional agreement in both rounds and an interval beyond the
+    materiality threshold.
+  - In a full comparison, a first-edit difference of at least 5 ms and 5% between branch medians
+    also triggers a repeat. If the repeat remains inconclusive and a decision depends on it,
+    plan a larger fixed-size confirmation batch in advance and report it separately.
+- `./agent timing-session HOST CHECKOUT` opens a private SSH session to measure one prepared checkout.
+- `./agent timing-report HOST TOOLING` retrieves an existing job without starting another one.
+- `./agent timing-watch` follows the progress log on the runner.
 
 ## Measure, detach and collect
 
