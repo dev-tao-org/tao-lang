@@ -57,23 +57,29 @@ jobs:
             tao-typescript-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock') }}-
       - name: Install the locked workspace
         run: ./dev setup
-      - name: Identify the Android system image
+      - name: Identify the Android SDK package paths
         if: matrix.platform == 'android'
         id: android
-        run: printf 'image=%s\n' "$ANDROID_HOME/system-images/android-36/google_apis/x86_64" >> "$GITHUB_OUTPUT"
-      - name: Restore the Android system image
+        run: |
+          printf 'image=%s\n' "${ANDROID_HOME:?Missing Android SDK}/system-images/android-36/google_apis/x86_64" >> "$GITHUB_OUTPUT"
+          printf 'emulator=%s\n' "$ANDROID_HOME/emulator" >> "$GITHUB_OUTPUT"
+      - name: Restore the Android emulator and system image
         if: matrix.platform == 'android'
         uses: actions/cache@v4
         with:
-          path: ${{ steps.android.outputs.image }}
-          key: tao-android-image-v1-google-apis-36-x86_64
-      - name: Require Android hardware acceleration and install the API 36 image
+          path: |
+            ${{ steps.android.outputs.emulator }}
+            ${{ steps.android.outputs.image }}
+          key: tao-android-sdk-v1-emulator-google-apis-36-x86_64
+      - name: Install the Android emulator and require hardware acceleration
         if: matrix.platform == 'android'
         run: |
           test -c /dev/kvm
           sudo setfacl -m "u:$(id -un):rw" /dev/kvm
-          emulator -accel-check
-          sdkmanager 'system-images;android-36;google_apis;x86_64'
+          command_tools="$ANDROID_HOME/cmdline-tools/latest/bin"
+          "$command_tools/sdkmanager" emulator 'system-images;android-36;google_apis;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+          printf '%s\n' "$command_tools" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
       - name: Identify the Xcode toolchain
         if: matrix.platform == 'ios'
         id: xcode
