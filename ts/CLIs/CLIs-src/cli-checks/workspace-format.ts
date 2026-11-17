@@ -2,6 +2,7 @@ import * as CLIKit from '@cli-kit'
 import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
+import { assertNewWorkspaceTree } from './check'
 
 type FormatMode = 'fmt' | 'check'
 type WorkspaceFormatOptions = { paths?: readonly string[]; excludedPaths?: readonly string[] }
@@ -52,6 +53,8 @@ async function formatRequestedTarget(mode: FormatMode, root: string, path: strin
     return
   }
   if (absolute.endsWith('.tao')) {
+    await assertNewWorkspaceTree(root)
+    Repo.assertNewWorkspacePath(Path.join(root, 'ts/1-grammar/_gen_parser'), root)
     const { updateTaoSource } = await import('../dev-cli/source/TaoSource')
     await updateTaoSource(absolute, 'format')
   } else if (Path.basename(absolute) === JustfileName) {
@@ -67,7 +70,8 @@ function encodeDprintPath(path: string): string {
   const escaped = segments.map(segment => {
     const literal = Array.from(segment, character => DprintLiteralGlobCharacters.get(character) ?? character).join('')
     // dprint's traversal recognizes braces as a pattern even when the only escapes are bracket classes.
-    return literal === segment ? segment : `{${literal},${literal}}`
+    const alternative = literal.replaceAll(',', '[,]')
+    return literal === segment ? segment : `{${alternative},${alternative}}`
   })
   return `./${escaped.join('/')}`
 }
