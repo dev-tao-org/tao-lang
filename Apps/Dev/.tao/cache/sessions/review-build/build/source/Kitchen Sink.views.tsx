@@ -1,7 +1,7 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Kitchen Sink";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/partial-review-next/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/b0a1e025eed67a1fd722b176fd446f3224f3659127a4fa35e5f2b2267ad260cd/modules/8719d65389114689/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/partial-review-next/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/3c4f5f5434d08a29cbf31deb8897efbf4fe38392d54824ed653717648dd42107/modules/8719d65389114689/Kitchen Sink/SidecarGreeting.tsx";
 
 export function TaoView_RootView$PrivateGreeting_bffa39d2a324(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);

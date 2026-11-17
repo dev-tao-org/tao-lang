@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./Kitchen Sink.views";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/partial-review-next/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/b0a1e025eed67a1fd722b176fd446f3224f3659127a4fa35e5f2b2267ad260cd/modules/8719d65389114689/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/partial-review-next/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/3c4f5f5434d08a29cbf31deb8897efbf4fe38392d54824ed653717648dd42107/modules/8719d65389114689/Kitchen Sink/SidecarGreeting.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./Modules";
 import type { Scope as ImportedScope2 } from "./Library/Demo";
