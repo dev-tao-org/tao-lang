@@ -27,13 +27,12 @@ export const InjectionCapture = (
 /** InjectionCompilation pairs authored custom-hook code with its call inside the owning view component. */
 export type InjectionCompilation = { hookDeclaration: string; invocation: string }
 
-/** ComponentImports tracks the runtime and lexical bindings needed by one generated view module. */
-export type ComponentImports = { runtimeApi: boolean; scope: boolean; bindings: boolean }
-
-/** emitRuntimeImports supplies the private runtime and the Tao API when authored code uses it. */
-export function emitRuntimeImports(imports: ComponentImports): string {
-  const api = imports.runtimeApi ? "import Tao from '@tao/runtime-api';" : ''
-  return CodegenUtil.joinCodeLines("import * as TR from '@runtime';", api)
+/** emitRuntimeImports supplies the private generated boundary and the authored Tao API. */
+export function emitRuntimeImports(): string {
+  return S`
+    import * as TR from '@runtime';
+    import Tao from '@tao/runtime-api';
+  `
 }
 
 /** emitModuleApplied registers the generated revision with preview instrumentation. */

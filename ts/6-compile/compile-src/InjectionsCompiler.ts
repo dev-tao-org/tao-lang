@@ -1,6 +1,5 @@
 import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
@@ -14,22 +13,6 @@ export function compileInjection(
 ): RuntimeEmitter.InjectionCompilation {
   const captures = node.captures.map(capture => compileCapture(capture, bindings, names, scope))
   return RuntimeEmitter.emitInjectionCustomHook(node, names, captures)
-}
-
-/** usesTaoRuntime finds an authored Tao API identifier, excluding comments and string literals. */
-export function usesTaoRuntime(code: string): boolean {
-  if (!code.includes('Tao')) {
-    return false
-  }
-  const source = TypeScript.createSourceFile('injection.tsx', code, TypeScript.ScriptTarget.Latest, true)
-  return containsTaoIdentifier(source) === true
-}
-
-function containsTaoIdentifier(node: TypeScript.Node): true | undefined {
-  if (TypeScript.isIdentifier(node) && node.text === 'Tao') {
-    return true
-  }
-  return TypeScript.forEachChild(node, containsTaoIdentifier)
 }
 
 function compileCapture(
