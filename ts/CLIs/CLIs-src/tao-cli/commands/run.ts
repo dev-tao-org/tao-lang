@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as BridgeExpoConfig from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
-import { Errors, Try } from '@shared'
+import { Errors, Try, UserInput } from '@shared'
 import { Terminal } from '@shared/os'
 import * as Workspace from '@workspace'
 
@@ -55,7 +55,5 @@ function requireRunPort(port?: string): void {
   }
   const value = Number(port)
   const isInRange = value >= 1 && value <= 65535
-  if (!Number.isInteger(value) || !isInRange) {
-    Errors.ThrowUserInput('--port must be an integer between 1 and 65535.')
-  }
+  UserInput.require(Number.isInteger(value) && isInRange, '--port must be an integer between 1 and 65535.')
 }

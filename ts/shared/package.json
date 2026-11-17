@@ -36,6 +36,8 @@
         "namespace": "Shared",
         "entities": [
           "Errors",
+          "Invariant",
+          "UserInput",
           "Json",
           "Sort",
           "Lists",

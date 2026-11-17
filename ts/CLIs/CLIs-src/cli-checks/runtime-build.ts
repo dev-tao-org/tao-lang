@@ -1,4 +1,4 @@
-import { Errors, Json, Sort, Timings, Try } from '@shared'
+import { Errors, Invariant, Json, Sort, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FS, Hash, Path, Platform, Repo } from '@shared/os'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
@@ -95,9 +95,7 @@ const buildResources = Timings.measured('runtime.build', async function(
 function runtimeManifest(sources: RuntimeSourceContents): RuntimeLock.RuntimeManifest {
   const parsed = parseRuntimePackage(sources[Path.join(packageRoot, 'package.json')]!)
   const dependencies = parsed.dependencies
-  if (dependencies === undefined) {
-    Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
-  }
+  Invariant(dependencies !== undefined, 'Runtime package has no dependencies.')
   const devDependencies = parsed.devDependencies === undefined ? {} : parsed.devDependencies
   const workspace = parseRuntimeWorkspace(sources[Repo.resolvePath('ts/package.json')]!)
   return {

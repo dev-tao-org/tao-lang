@@ -82,7 +82,9 @@ Start with a complete Notes schema, generated datasource contract and real Insta
 
 ## Cross-cutting follow-ups
 
-- Settle internal invariant versus user-input checking APIs and classify checks by owner before migrating them.
+- The [shared invariant and user-input checks](../Dev%20Env/Repository%20APIs.md#invariants-and-user-input)
+  are implemented. Classify remaining checks by owner when migrating them. Establish who validates
+  the publication block for direct `compileLibrary(LinkedProgram)` calls before changing that check.
 - Assess remaining package-export/ownership and AST-generation proposals; do not treat audit suggestions as accepted implementation.
 - Complete runtime/stdlib architecture review: centralize execution semantics, keep generated code compact, and coordinate UI ownership changes with package layout.
 - Re-rank navigation, scrolling, keyed composition and remaining app-authoring gaps rather than assuming an old proposed opening sequence remains approved.
