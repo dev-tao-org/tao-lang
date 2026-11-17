@@ -20,6 +20,7 @@ const StartupMs = 240_000
 const IosSessionMs = 300_000
 const CommandMs = 20_000
 const IosAppLaunchMs = 90_000
+const IosElementLookupMs = 45_000
 /** openNativeWebDriver creates a session using the requested device capabilities. */
 export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabilities): Promise<NativeWebDriver> {
   const ios = alwaysMatch.platformName === 'iOS'
@@ -41,7 +42,9 @@ export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabi
       return command('/execute/sync', 'POST', { script, args }, false, timeoutMs)
     },
     async find(xpath) {
-      const result = await command('/elements', 'POST', { using: 'xpath', value: xpath })
+      // XCTest may wait for Expo Go to become idle before it can snapshot the app.
+      const timeoutMs = ios ? IosElementLookupMs : CommandMs
+      const result = await command('/elements', 'POST', { using: 'xpath', value: xpath }, false, timeoutMs)
       return ElementsSchema.parse(result).map(element => element[ElementKey])
     },
     attribute: (element, name) => command(elementPath(element, '/attribute/' + name), 'GET', undefined, true),
