@@ -15,3 +15,9 @@ export const NewlineCharacterGlobalRegx = /\n/g
 
 /** WhitespaceOnlyRegx matches text containing only whitespace. */
 export const WhitespaceOnlyRegx = /^\s*$/
+
+/** LeadingInlineTaoTriviaRegx matches horizontal spaces and complete single-line block comments. */
+export const LeadingInlineTaoTriviaRegx = /^(?:[\t ]|\/\*[^\r\n]*?\*\/)+/
+
+/** LeadingTaoLetBindingRegx recognizes a let binding or its typed prefix at a statement boundary. */
+export const LeadingTaoLetBindingRegx = /^(?:(?:file|folder|package)[\t ]+)?let[\t ]+[A-Za-z_]\w*[\t ]*(?:=|is\b)/

@@ -1,8 +1,8 @@
 import * as Embedded from '@fix/embedded'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
-import { FormatterResources, FS, Path, Repo } from '@shared/os'
-import { createWasmDocumentSession } from '../tao-ide-extension-src/core'
+import { FormatterResources, FS, Repo } from '@shared/os'
+import { loadRuntime } from './IDE.test-utils'
 
 const ExpectedSaveFormatting = Shared.S`
   // Title
@@ -37,8 +37,6 @@ Tests.test('save formatting uses the WASM snapshot, preserving partial edits and
     )
   }, { finally: runtime.dispose })
 })
-
-const packageRoot = Repo.resolvePath('.artifacts/ide-extension/package')
 
 Tests.test('Kitchen Sink parses with Tao and embedded TSX syntax captures', async () => {
   const runtime = await loadRuntime()
@@ -159,18 +157,3 @@ Tests.test('editor shows the misplaced statement range alongside embedded syntax
     Tests.expect(runtime.document.update(corrected).diagnostics).toEqual([])
   }, { finally: runtime.dispose })
 })
-
-async function loadRuntime() {
-  const readBytes = (path: string) => FS.readFile(Path.join(packageRoot, path))
-  const [taoGrammar, tsxGrammar, taoQuery, tsxQuery] = await Promise.all([
-    readBytes('grammars/tree-sitter-tao.wasm'),
-    readBytes('grammars/tree-sitter-tsx.wasm'),
-    FS.readFile(Path.join(packageRoot, 'queries/tao-highlights.scm'), 'utf8'),
-    FS.readFile(Path.join(packageRoot, 'queries/tsx-highlights.scm'), 'utf8'),
-  ])
-  return createWasmDocumentSession(
-    { taoGrammar, tsxGrammar, taoQuery, tsxQuery },
-    undefined,
-    Path.join(packageRoot, 'runtime/web-tree-sitter.wasm'),
-  )
-}

@@ -4,6 +4,7 @@ import * as Format from '@fix/format'
 import * as Shared from '@shared'
 import * as SourceValidation from '@source-validation'
 import { Language, Parser as WebParser, Query as WebQuery, type Tree } from './Bridge_web-tree-sitter'
+import { refineInlinePressDiagnostics } from './InlinePressDiagnostics'
 import * as QueryResults from './QueryResults'
 import { createRetryableInitialization } from './RetryableInitialization'
 import { editTreeForSource } from './SourceEdit'
@@ -91,7 +92,7 @@ interface DocumentResult {
   diagnostics: QueryResults.Diagnostic[]
 }
 
-type MeasurementPhase = 'tao.parse' | 'tao.validation' | 'tsx.parse' | 'query'
+type MeasurementPhase = 'tao.parse' | 'tao.diagnostic-probe' | 'tao.validation' | 'tsx.parse' | 'query'
 
 function createDocumentSession(options: SessionOptions): DocumentSession {
   let source = ''
@@ -169,7 +170,7 @@ const FenceSuffix = '```'
 
 function collectResults(options: SessionOptions, tree: Tree, source: string): DocumentResult {
   const tokens = QueryResults.collectTokens(options.taoQuery, tree.rootNode, 0, measureQuery(options))
-  const diagnostics = QueryResults.collectDiagnostics(tree.rootNode)
+  const diagnostics = collectTaoSyntaxDiagnostics(options, tree, source)
   diagnostics.push(...measure(options, 'tao.validation', () => collectTaoStatementDiagnostics(tree)))
   for (const injection of QueryResults.findNodes(tree.rootNode, 'TypeScript')) {
     const bodyStart = injection.startIndex + FencePrefix.length
@@ -192,6 +193,20 @@ function collectResults(options: SessionOptions, tree: Tree, source: string): Do
     })
   }
   return { tokens: QueryResults.uniqueTokens(tokens), diagnostics: QueryResults.uniqueDiagnostics(diagnostics) }
+}
+
+function collectTaoSyntaxDiagnostics(options: SessionOptions, tree: Tree, source: string): QueryResults.Diagnostic[] {
+  const root = tree.rootNode
+  if (!root.hasError) {
+    return []
+  }
+  const diagnostics = QueryResults.collectDiagnostics(root)
+  return refineInlinePressDiagnostics(
+    root,
+    source,
+    diagnostics,
+    repaired => measure(options, 'tao.diagnostic-probe', () => options.taoParser.parse(repaired)),
+  )
 }
 
 function collectTaoStatementDiagnostics(tree: Tree): readonly SourceValidation.StatementDiagnostic[] {

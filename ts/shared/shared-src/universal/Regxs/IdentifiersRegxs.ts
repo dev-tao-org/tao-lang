@@ -43,3 +43,6 @@ export const RuntimeNameRegx = /^[A-Za-z0-9._-]+$/
 
 /** PackageAliasPrefixRegx matches a package alias before its module separator. */
 export const PackageAliasPrefixRegx = /^[A-Za-z0-9_-]+@/
+
+/** LeadingTaoQualifiedNameRegx matches a Tao name at the beginning of a source fragment. */
+export const LeadingTaoQualifiedNameRegx = /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*/
