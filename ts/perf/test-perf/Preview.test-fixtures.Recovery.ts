@@ -21,7 +21,7 @@ export async function withRecoveryPreview(run: (fixture: RecoveryFixture) => Pro
     page.setDefaultTimeout(5000)
     await page.clock.install()
     await observePreviewPublications(page)
-    await page.goto(expo.url)
+    await HeadlessBrowser.openPage(page, expo.url)
     await page.getByTestId('recovery-label').waitFor()
     host = await createPreviewHarness({
       workspace,
