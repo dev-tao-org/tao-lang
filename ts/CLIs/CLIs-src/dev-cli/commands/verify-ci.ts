@@ -17,6 +17,7 @@ export default registerCommand({
     { flags: '--status', description: 'Show run status. With no run ID, find the latest dispatch for HEAD.' },
     { flags: '--diagnostics', description: 'Show workflow and job annotations for an exact run.' },
     { flags: '--wait', description: 'Watch the run until it completes and return its verdict.' },
+    { flags: '--cancel', description: 'Cancel an exact Verify dispatch for the current feature branch.' },
     { flags: '--rate-limit', description: 'Show the GitHub API quota and reset time.' },
     {
       flags: '--shards <ts/ios/android>',
@@ -34,6 +35,7 @@ export default registerCommand({
       options.status,
       options.diagnostics,
       options.wait,
+      options.cancel,
       options.rateLimit,
       options.compare !== undefined,
       options.logs,
@@ -77,6 +79,7 @@ type VerifyOptions = {
   status?: boolean
   diagnostics?: boolean
   wait?: boolean
+  cancel?: boolean
   rateLimit?: boolean
   compare?: string
   logs?: boolean
@@ -113,6 +116,10 @@ async function inspectRun(cwd: string, runId: string, options: VerifyOptions): P
     await watchVerifyRun(cwd, runId)
     return
   }
+  if (options.cancel) {
+    await cancelVerifyRun(cwd, runId)
+    return
+  }
   if (options.logs || options.failedLogs) {
     const job = options.job === undefined ? [] : ['--job', options.job]
     await runGitHub(cwd, ['run', 'view', runId, options.logs ? '--log' : '--log-failed', ...job])
@@ -127,6 +134,32 @@ async function inspectRun(cwd: string, runId: string, options: VerifyOptions): P
     return
   }
   await printRunTimings(cwd, runId, options.compare)
+}
+
+const CancellableRunSchema = Schema.object({
+  path: Schema.string(),
+  head_branch: Schema.string().nullable(),
+  event: Schema.string(),
+})
+
+async function cancelVerifyRun(cwd: string, runId: string): Promise<void> {
+  const branch = await requireFeatureBranch(cwd)
+  const output = await Exec.captureStdout('gh', [
+    'api',
+    '--hostname',
+    'github.com',
+    `repos/dev-tao-org/tao-lang/actions/runs/${runId}`,
+  ], { cwd })
+  const run = Json.Parse(output, { schema: CancellableRunSchema, sourceName: `GitHub Actions run ${runId}` })
+  if (!isVerifyDispatchOnBranch(run, branch)) {
+    Errors.ThrowUserInput(`Run ${runId} is not an explicit Verify dispatch for ${branch}.`)
+  }
+  await runGitHub(cwd, ['run', 'cancel', runId])
+}
+
+function isVerifyDispatchOnBranch(run: Schema.infer<typeof CancellableRunSchema>, branch: string): boolean {
+  const workflow = run.path.split('@', 1)[0]
+  return workflow === '.github/workflows/verify.yml' && run.head_branch === branch && run.event === 'workflow_dispatch'
 }
 
 const ArtifactNameRegx = /^[a-zA-Z0-9_-]+$/u
@@ -165,10 +198,7 @@ async function useCurrentBranch(cwd: string, status?: boolean, shardCounts?: str
 }
 
 async function requirePushedFeature(cwd: string) {
-  const branch = await Exec.captureStdout('git', ['symbolic-ref', '--short', 'HEAD'], { cwd })
-  if (!branch.startsWith('feat/')) {
-    Errors.ThrowUserInput('Hosted Verify dispatch requires a checked-out feat/ branch.')
-  }
+  const branch = await requireFeatureBranch(cwd)
   const origin = await Exec.captureStdout('git', ['remote', 'get-url', 'origin'], { cwd })
   if (origin !== `https://github.com/${TaoRepository}.git`) {
     Errors.ThrowUserInput(`Hosted Verify dispatch expects the official origin at ${TaoRepository}.`)
@@ -180,6 +210,14 @@ async function requirePushedFeature(cwd: string) {
     Errors.ThrowUserInput(`Push ${branch} to origin before dispatching Verify for ${commit}.`)
   }
   return { branch, commit }
+}
+
+async function requireFeatureBranch(cwd: string): Promise<string> {
+  const branch = await Exec.captureStdout('git', ['symbolic-ref', '--short', 'HEAD'], { cwd })
+  if (!branch.startsWith('feat/')) {
+    Errors.ThrowUserInput('This hosted Verify operation requires a checked-out feat/ branch.')
+  }
+  return branch
 }
 
 function runGitHub(cwd: string, args: string[]): Promise<void> {
