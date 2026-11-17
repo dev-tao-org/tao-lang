@@ -28,6 +28,9 @@ editing a mounted dependency, shrinking the imported tree, and resetting. Launch
 warm preview opens have separate timers. Each session runs three cycles, allowing the last two to
 supply a warm sample for every edit. Percentage changes use each step's own baseline median.
 
+Protocol v4 uses named imports within a folder and keeps the same rendered workload and source file
+count. Start a new baseline when comparing with v3, which used filename imports.
+
 Ordinary `verify` and TypeScript CI prepare assets and run correctness checks/tests; they do not run
 these benchmark targets automatically. Do not infer a new timing baseline from a passing verify.
 

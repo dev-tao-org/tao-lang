@@ -9,7 +9,7 @@ import { createPreviewHarness } from '../../repo-analysis-src/Performance/Previe
 
 const EntrySource = S`
   use tao@ui Col, Text
-  use package ./Support
+  use Support
 
   app Performance {
     root Preview
@@ -25,7 +25,7 @@ const EntrySource = S`
 const ModuleSource = S`
   use tao@ui Text
 
-  public view Support {
+  package view Support {
     render Text("Original module")
   }
 `

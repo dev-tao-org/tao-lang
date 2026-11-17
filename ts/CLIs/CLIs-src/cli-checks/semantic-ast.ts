@@ -70,7 +70,6 @@ async function readSemanticMetadata(path: string): Promise<SemanticMetadata> {
 }
 
 const omittedRules = new Set([
-  'All',
   'ArgumentList',
   'Comment',
   'Identifier',

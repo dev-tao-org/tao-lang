@@ -1,16 +1,16 @@
 use tao@ui Text, Col
 use @cards Card as ImportedCard
-use package @cards as Cards
-use ./Public all
+use @cards/Data PackageDetail
+use ./Captions SharedCaption
 
 let Caption = "Caller scope"
 
 folder view ModuleExamples {
   render Col {
     ImportedCard
-    Cards.Card
+    PackageDetail
     Nearby
-    PublicCaption
+    SharedCaption
     Text(Caption)
   }
 }

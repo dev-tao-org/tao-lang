@@ -97,7 +97,7 @@ async function createFixture(): Promise<Fixture> {
   await FS.writeFile(Path.join(moduleRoot, 'logo.png'), 'asset-bytes')
   const document = AST.transform(
     Grammar.createParser().parse(
-      'app Calendar { root FormattedDate } public view FormattedDate(Value text) from ./FormattedDate.tsx',
+      'app Calendar { root FormattedDate } package view FormattedDate(Value text) from ./FormattedDate.tsx',
     ),
   )!
   return {

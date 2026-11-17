@@ -45,7 +45,7 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
         publish { Greeting, }
       }
 
-      public
+      package
       view Greeting(Name text) {
         render Text(Name)
       }

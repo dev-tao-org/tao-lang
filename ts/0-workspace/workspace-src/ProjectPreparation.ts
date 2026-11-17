@@ -99,7 +99,7 @@ export async function buildManagedModulesInput(
   for (const source of sources) {
     const owner = findNearestProjectRoot(Path.dirname(source.path)) ?? root
     validateRequirementPlacement(source.document, source.path, owner)
-    const directory = findNamedPackageRoot(source.path, owner) ?? owner
+    const directory = findNamedPackageRoot(Path.dirname(source.path), owner) ?? owner
     const module = modules.get(directory) ?? { directory, requirements: [] }
     module.requirements.push(...collectModuleRequirements(source.document, source.path))
     const hasForeignViews = AST.HasForeignViews(source.document)

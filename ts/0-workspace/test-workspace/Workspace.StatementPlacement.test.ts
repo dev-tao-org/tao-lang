@@ -96,7 +96,7 @@ Tests.test('library compilation rejects misplaced statements before reading depe
   const output = Path.join(directory, 'output')
   const source = S`
     ts-library Demo { publish { Main } }
-    public view Main {
+    package view Main {
       root Main
       ${RootRender}
     }
@@ -121,7 +121,7 @@ Tests.test('source validation reports required statements, view ordering and exp
       ${RootRender}
       let Late = "value"
       render Early
-      public view Exposed { ${RootRender} }
+      package view Exposed { ${RootRender} }
     }
     ts-library Demo {}
     tests { test { expect { #save input value "Ready" } } }
@@ -164,30 +164,4 @@ Tests.test('lowercase declarations keep their syntax and block compilation at th
     const corrected = source.replace('view helper', 'view Helper')
     Tests.expect(await workspace.update(corrected)).toMatchObject({ status: 'published' })
   }, { finally: () => workspace.dispose() })
-})
-
-Tests.test('bare and tagged qualified views accept package-derived keyword namespaces', async () => {
-  const directory = Artifacts.resolvePath('tmp', `placement-namespaces-${Platform.randomUUID()}`)
-  const entry = Path.join(directory, 'Main.tao')
-  const source = S`
-    use tao@ui Col
-    use package ./root
-    use package ./input
-    app Example { root Main }
-    view Main { render Col { root.Leaf #edge input.Leaf } }
-  `
-  const workspace = Workspace.createWorkspace({ directory })
-  await Try(async () => {
-    await FS.mkdirs(Path.join(directory, 'root'), Path.join(directory, 'input'))
-    await FS.writeFile(entry, source)
-    for (const namespace of ['root', 'input']) {
-      await FS.writeFile(Path.join(directory, namespace, 'Leaf.tao'), `public view Leaf { ${RootRender} }`)
-    }
-    Tests.expect(await workspace.files.compileFile(entry)).toMatchObject({ status: 'published' })
-  }, {
-    async finally() {
-      await workspace.dispose()
-      await FS.rm(directory, { recursive: true, force: true })
-    },
-  })
 })

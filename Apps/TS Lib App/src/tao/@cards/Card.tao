@@ -1,6 +1,6 @@
 use tao@ui Text
 
-public
+package
 view Caption(Value text) {
   render Text(Value)
 }

@@ -1,6 +1,6 @@
 use tao@ui Text
 
-project
+folder
 view Unselected {
-  render Text("Unselected public view")
+  render Text("Folder-only view")
 }

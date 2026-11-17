@@ -9,6 +9,6 @@ export function TaoView_Unselected_302ad0c651c1(_Props: TR.ViewComponentProps) {
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Text["Text"],
-    TR.ViewRenderArguments(["Unselected public view"], [])
+    TR.ViewRenderArguments(["Folder-only view"], [])
   ));
 }

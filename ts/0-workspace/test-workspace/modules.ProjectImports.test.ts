@@ -10,6 +10,7 @@ import { loadModules } from '../workspace-src/modules/Loader'
 
 const AmbiguousProjectPackageErrorRegx = /Package @ui is ambiguous/
 const MissingProjectModuleErrorRegx = /Project module tao@missing was not found/
+const MissingLocalPackageErrorRegx = /Package @ui was not found/
 
 Tests.test('project imports resolve through consumer aliases and producer-local aliases', async () => {
   const consumer = await createProject('consumer')
@@ -38,7 +39,7 @@ Tests.test('project module imports reject ambiguous nested package roots', async
       'view Card { render Text("Card") }',
     )
     await writeSource(
-      Path.join(producer, 'examples', '@ui', 'controls', 'Card.tao'),
+      Path.join(producer, 'packages', '@ui', 'examples', '@ui', 'controls', 'Card.tao'),
       'view Card { render Text("Card") }',
     )
     await Tests.rejects(
@@ -123,14 +124,14 @@ function assertProjectImportGraph(
   Tests.expect(byPath.has(paths.label)).toBe(true)
   Tests.expect(byPath.has(paths.unrelated)).toBe(false)
   Tests.expect(modules[0]!.imports[0]!.targets).toEqual([
-    { path: paths.caption, relation: 'public' },
-    { path: paths.card, relation: 'public' },
+    { path: paths.caption, relation: 'package-api' },
+    { path: paths.card, relation: 'package-api' },
   ])
   Tests.expect(byPath.get(paths.card)!.imports[0]!.targets).toEqual([
     { path: paths.caption, relation: 'same-directory' },
     { path: paths.card, relation: 'same-file' },
   ])
-  Tests.expect(byPath.get(paths.card)!.imports[1]!.targets).toEqual([{ path: paths.label, relation: 'public' }])
+  Tests.expect(byPath.get(paths.card)!.imports[1]!.targets).toEqual([{ path: paths.label, relation: 'package-api' }])
 }
 
 Tests.test('the implicit tao alias resolves standard library modules from an ordinary project', async () => {
@@ -145,7 +146,7 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
       parseEntry(
         entryPath,
         S`
-          use tao@ui all
+          use tao@ui Text
           app Main { root Root }
         `,
       ),
@@ -161,7 +162,7 @@ Tests.test('the implicit tao alias resolves standard library modules from an ord
 
     Tests.expect(modules.filter(module => module.path === sourcePath)).toHaveLength(1)
     Tests.expect(modules[0]!.imports.map(imported => imported.targets)).toEqual([
-      [{ path: sourcePath, relation: 'public' }],
+      [{ path: sourcePath, relation: 'package-api' }],
     ])
     Tests.expect((AST.GetDeclarations(modules[1]!.document)[0] as AST.ViewDeclaration).name.value).toBe('Text')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
@@ -176,7 +177,7 @@ Tests.test('aliased project imports reject missing physical modules', async () =
         parseEntry(
           Path.join(consumer, 'Main.tao'),
           S`
-            use tao@missing all
+            use tao@missing Item
             app Main { root Root }
           `,
         ),
@@ -187,6 +188,27 @@ Tests.test('aliased project imports reject missing physical modules', async () =
         Grammar.createParser(),
       ),
       MissingProjectModuleErrorRegx,
+    )
+  }, {
+    async finally() {
+      await FS.rm(consumer, { recursive: true, force: true })
+      await FS.rm(producer, { recursive: true, force: true })
+    },
+  })
+})
+
+Tests.test('bare named packages never resolve through external project aliases', async () => {
+  const consumer = await createProject('local-only')
+  const producer = await createProject('external-ui')
+  const entry = parseEntry(Path.join(consumer, 'Main.tao'), 'use @ui Text')
+  await Try(async () => {
+    await writeSource(Path.join(producer, '@ui', 'Text.tao'), 'package view Text { render Text }')
+    await Tests.rejects(
+      loadModules(entry, {
+        directory: consumer,
+        resolveProject: async () => ({ root: producer }),
+      }, Grammar.createParser()),
+      MissingLocalPackageErrorRegx,
     )
   }, {
     async finally() {

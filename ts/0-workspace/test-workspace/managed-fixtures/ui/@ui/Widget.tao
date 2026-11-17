@@ -1,2 +1,2 @@
 requires npm:tao-fixture-label version 1.0.0
-public view Widget from ./Widget.tsx
+package view Widget from ./Widget.tsx

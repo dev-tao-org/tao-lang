@@ -5,7 +5,7 @@ A public Tao view can delegate its implementation to a named React component in 
 ```tao
 app Calendar { root FormattedDate }
 
-public view FormattedDate(Value text) from ./FormattedDate.tsx
+package view FormattedDate(Value text) from ./FormattedDate.tsx
 ```
 
 #### `public view FormattedDate(Value text) from ./FormattedDate.tsx`

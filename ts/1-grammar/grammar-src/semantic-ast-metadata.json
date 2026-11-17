@@ -12,7 +12,6 @@
     }
   },
   "requiredFields": {
-    "UseStatement": ["all"],
     "Capture": ["value"]
   },
   "fieldTypeOverrides": {
@@ -35,9 +34,6 @@
     },
     "ViewRenderExpression": {
       "arguments": "readonly Expression[]"
-    },
-    "UseStatement": {
-      "all": "boolean"
     }
   },
   "unions": {

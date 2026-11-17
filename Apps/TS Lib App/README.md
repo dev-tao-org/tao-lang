@@ -18,7 +18,7 @@ The library demonstrates the currently executable language surface through publi
 | `src/tao/LanguageFeatures.tao` | Named and aliased imports, typed file lets, lexical shadowing, escaped text, aliased injection captures, standard input and a TypeScript foreign view |
 | `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                              |
 | `src/tao/ScopeExamples.tao`    | Folder, package and project visibility across files                                                                                                   |
-| `src/tao/@cards`               | Published package views, a preserved `details` subpath and an internal project-scoped view                                                            |
+| `src/tao/@cards`               | Published package views, a preserved `details` subpath and an internal view with folder visibility                                                    |
 | `src/ts/Consumer.tsx`          | Ordinary package and subpath imports, React prop updates, children and independent component mounts                                                   |
 
 The browser journey asserts the rendered examples, edits the input, updates state and props, and unmounts one component while the other remains interactive.

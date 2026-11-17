@@ -60,6 +60,6 @@ function isDeclarationBoundary(previous: PreviousSyntaxNode, node: CST.SyntaxNod
 type PreviousSyntaxNode = CST.SyntaxNode | undefined
 
 function isImport(node: CST.SyntaxNode): boolean {
-  return node.type === 'UseStatement' || node.type === 'UsePackageStatement'
+  return node.type === 'UseStatement'
     || node.type === 'RequiresDeclaration'
 }

@@ -1,7 +1,0 @@
-use tao@ui Text
-
-public view PublicCaption {
-  render Text("Public wildcard")
-}
-
-file let PrivateCaption = "Hidden"

@@ -52,7 +52,8 @@ Core-type and bracket design can proceed together. Implement the necessary type 
 
 Owner: [TypeScript libraries](TypeScript%20Library%20Decisions%20and%20PoC.md).
 
-- Address folder-defined packages through explicit imports and the accepted visibility rules; remove superseded whole-package imports and publication aliases.
+The explicit imports and visibility migration is implemented in its review branch. [Projects and Dependencies](../Specification/Projects%20and%20Dependencies.md) owns source addressing; [TypeScript Libraries](../Specification/TypeScript%20Libraries.md) owns publication.
+
 - Add the explicit distribution build for already generated TypeScript source packages. Define its JavaScript and declaration targets and manifest rules.
 - Extend authored-sidecar package resolution and verify multiple independently compiled libraries share the installed Tao runtime in one consumer. The [source package implementation](TypeScript%20Library%20Decisions%20and%20PoC.md#generated-source-packages) covers explicit exports, single library initialization, ordinary TypeScript consumption and relocation.
 

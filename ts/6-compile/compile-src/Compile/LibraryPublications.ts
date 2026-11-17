@@ -41,7 +41,7 @@ export function requireLibraryPublication(document: AST.Document, target?: strin
   return publication ?? Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
 }
 
-/** collectLibraryPublications resolves explicit own-project public views and local package APIs. */
+/** collectLibraryPublications resolves own-project package declarations selected for TypeScript export. */
 export function collectLibraryPublications(
   program: Typecheck.LinkedProgram,
   publication: LibraryPublication,
@@ -84,7 +84,7 @@ function collectPackageViews(
   }
   const views = program.modules.flatMap(module => packageViews(module, root, name, publication.ownSources))
   if (views.length === 0) {
-    Errors.ThrowUserInput(`Published package ${name} has no public declarations.`)
+    Errors.ThrowUserInput(`Published package ${name} has no package-visible declarations.`)
   }
   return views
 }
@@ -103,7 +103,7 @@ function packageViews(
     return []
   }
   const subpath = directory ? `./${name}/${directory}` : `./${name}`
-  return AST.GetValueDeclarations(module.document).filter(declaration => declaration.visibility === 'public')
+  return AST.GetValueDeclarations(module.document).filter(declaration => declaration.visibility === 'package')
     .map(declaration => requirePublishedView(module, declaration, subpath, declaration.name.value, ownSources))
 }
 
@@ -119,8 +119,8 @@ function requirePublishedView(
   if (!ownSources.has(owner.path)) {
     Errors.ThrowUserInput(`Cannot publish dependency definition ${name}.`)
   }
-  if (!declaration || declaration.visibility !== 'public') {
-    Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
+  if (!declaration || declaration.visibility !== 'package') {
+    Errors.ThrowUserInput(`Published definition ${name} must be an own-project package-visible declaration.`)
   }
   if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
     Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)

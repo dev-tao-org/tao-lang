@@ -21,7 +21,7 @@ export async function loadRequirementModules(
   const metadata: Typecheck.SourceModule[] = []
   for (const source of sources) {
     const owner = findNearestProjectRoot(Path.dirname(source.path)) ?? root
-    modules.set(findNamedPackageRoot(source.path, owner) ?? owner, owner)
+    modules.set(findNamedPackageRoot(Path.dirname(source.path), owner) ?? owner, owner)
   }
   for (const [directory, owner] of modules) {
     for (const path of await listRecursiveSourceFiles(directory, directory, owner)) {
