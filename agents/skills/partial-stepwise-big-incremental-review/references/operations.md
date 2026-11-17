@@ -99,15 +99,24 @@ Replay only the outstanding scope under [Git workflow](../../git-workflow/SKILL.
 
 ## Integrate incoming work
 
-- Resolve a named chat to its implementation checkout and branch. Pin the authorized committed
-  tip from its handoff or Git. Track any open findings or verification gaps with that snapshot.
+- Resolve a named chat to its implementation checkout and branch. Record the exact committed SHA
+  from its handoff or Git, the requested scope, and any open findings or verification gaps. Use
+  that snapshot even if the source branch advances. Refresh it only on the Developer's instruction.
+- During an active review, record incoming import requests and ready subagent work in order in
+  the retained session checkpoint. Acknowledge the queue entry and continue the current review.
+  Keep queued snapshots outside the displayed groups and their progress totals. A request to
+  import for review goes into the queue unless the Developer explicitly asks to merge immediately.
+- When the current scope is complete, including its outstanding approvals and rechecks, ask whether
+  to import the first queued snapshot. Wait for the Developer's decision. If they skip it or select
+  another entry, record that choice and keep the other queued snapshots available.
 - Merge the pinned tip into the implementation branch under [Git workflow](../../git-workflow/SKILL.md).
   Compare the merged snapshot directly with the existing approved-content tree. Carry forward
   accepted content and receipts, and register rechecks for prior approvals affected by conflict
   resolution or changed shared behavior. Treat new content as pending under the usual approval rules.
-- If the prior review scope is complete, freeze a new inventory for the incoming round and retain
-  the earlier checkpoint. If it is still open, preserve its frozen progress and mark incoming work
-  as a new scope. Keep any follow-up work on files outside the current display when possible.
+- After importing from the queue, freeze a new inventory for that review and retain the completed
+  checkpoint. When the Developer requests an immediate merge during an active review, preserve
+  the active inventory and earned credit and track the incoming work as a separate scope. Keep
+  follow-up work outside the current display when possible.
 
 ## Work during review
 
