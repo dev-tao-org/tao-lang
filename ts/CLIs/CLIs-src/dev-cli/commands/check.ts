@@ -1,5 +1,7 @@
 import * as CLIKit from '@cli-kit'
+import { Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
+import { workspaceFormat } from '../../cli-checks/workspace-format'
 import { registerCommand } from './_command-runner'
 import doctor from './doctor'
 
@@ -16,7 +18,7 @@ export default registerCommand({
       () => Check.workspaceShellSyntax(),
       () => Check.workspaceDeadExports(),
       () => Check.workspaceConformance(),
-      () => Check.workspaceFormat('check'),
+      () => workspaceFormat('check', Repo.getWorkspaceRoot()),
     )
   },
 })

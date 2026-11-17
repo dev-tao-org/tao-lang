@@ -2,7 +2,8 @@ import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { FS, Repo } from '@shared/os'
 import { synchronizePackageApis } from '../../../../repo-analysis/repo-analysis-src/Workspace/PackageApis'
-import { assertNewWorkspaceTree, workspaceFormat } from '../../cli-checks/check'
+import { assertNewWorkspaceTree } from '../../cli-checks/check'
+import { workspaceFormat } from '../../cli-checks/workspace-format'
 import { updateTaoSource } from '../source/TaoSource'
 import { registerCommand } from './_command-runner'
 
@@ -25,7 +26,7 @@ export default registerCommand({
       const excludedFiles = options.exclude ?? []
       const changed = await SourceConformance.fixSourceConformance(Repo.getWorkspaceRoot(), { excludedFiles })
       IO.print(`Fixed source conformance: ${changed} file(s)`)
-      await workspaceFormat('fmt', excludedFiles)
+      await workspaceFormat('fmt', Repo.getWorkspaceRoot(), { excludedPaths: excludedFiles })
       return
     }
     if (options.exclude?.length) {

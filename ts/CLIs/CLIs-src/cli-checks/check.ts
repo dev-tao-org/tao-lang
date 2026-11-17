@@ -125,33 +125,6 @@ export async function workspaceTests(
   await runTestPlan({ ...selection, slowSeconds })
 }
 
-type FormatMode = 'fmt' | 'check'
-/** workspaceFormat formats or checks the new workspace and shared repository files. */
-export async function workspaceFormat(mode: FormatMode, excludedPaths: readonly string[] = []): Promise<void> {
-  const excludes = excludedPaths.length > 0 ? ['--excludes', ...excludedPaths] : []
-  await CLIKit.runNonInteractiveCommand(
-    'dprint',
-    [
-      mode,
-      '--config',
-      '.dprint.jsonc',
-      '--incremental=false',
-      '**/*',
-      ...excludes,
-    ],
-    { cwd: Repo.getWorkspaceRoot() },
-  )
-  const justfile = Repo.resolvePath('Justfile')
-  const excludesJustfile = excludedPaths.some(path => Path.resolve(Repo.getWorkspaceRoot(), path) === justfile)
-  if (excludesJustfile) {
-    return
-  }
-  const formatArgs = ['--fmt', ...mode === 'check' ? ['--check'] : [], '--justfile', 'Justfile']
-  await CLIKit.runNonInteractiveCommand('just', formatArgs, {
-    cwd: Repo.getWorkspaceRoot(),
-  })
-}
-
 function shouldPrepareExtensionAssets(args: readonly string[]): boolean {
   if (args.length === 0) {
     return true
