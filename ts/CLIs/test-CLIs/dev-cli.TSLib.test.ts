@@ -62,7 +62,7 @@ Tests.test('library compile requests consumer setup and repairs missing dependen
   )
   const args = ['compile', 'Demo', '--package', consumer]
   const cli = Repo.resolvePath('tao')
-  await verifyCompileOnlyPackageDoesNotRun(cli, root, consumer)
+  await verifyInvalidRunDoesNotInstall(cli, root, consumer)
   const cold = await Exec.capture(cli, args, { cwd: root, stdin: 'ignore', check: false })
   Tests.expect(cold.status).toBe(1)
   Tests.expect(cold.stdout + cold.stderr).toContain('Pass --yes')
@@ -120,27 +120,41 @@ async function verifyExistingLinkedInstall(root: string, consumer: string, runti
   await FS.writeFile(receipt, receiptContents)
 }
 
-async function verifyCompileOnlyPackageDoesNotRun(cli: string, root: string, consumer: string): Promise<void> {
-  const result = await Exec.capture(cli, ['run', '--package', consumer, '--yes'], { cwd: root, check: false })
-  Tests.expect(result.status).toBe(1)
-  Tests.expect(result.stdout + result.stderr).toContain('Configure tao.run.entry')
-  Tests.expect(FS.existsSync(Path.join(consumer, 'node_modules'))).toBe(false)
+async function verifyInvalidRunDoesNotInstall(cli: string, root: string, consumer: string): Promise<void> {
+  const args = ['run', '--package', consumer, '--yes']
+  const options = { cwd: root, check: false }
+  const missing = await Exec.capture(cli, args, options)
+  Tests.expect(missing.status).toBe(1)
+  Tests.expect(missing.stdout + missing.stderr).toContain('Configure tao.run.entry')
+  const manifest = Path.join(consumer, 'package.json')
+  const original = await FS.readFile(manifest, 'utf8')
+  await FS.writeFile(manifest, original.replace('"compile":', '"run": { "entry": "../outside.tsx" }, "compile":'))
+  await Try(async () => {
+    const invalid = await Exec.capture(cli, args, options)
+    Tests.expect(invalid.status).toBe(1)
+    Tests.expect(invalid.stdout + invalid.stderr).toContain('tao.run.entry must name an existing component')
+    Tests.expect(FS.existsSync(Path.join(consumer, 'node_modules'))).toBe(false)
+  }, { finally: () => FS.writeFile(manifest, original) })
 }
 
 async function verifyLocalGraphChangeNeedsConsent(root: string, consumer: string, runtime: string): Promise<void> {
   const manifest = Path.join(runtime, 'package.json')
-  const original = await FS.readFile(manifest, 'utf8')
+  const graphPackage = Path.join(consumer, 'local-graph-fixture')
+  await FS.mkdir(graphPackage)
+  await FS.writeJson(Path.join(graphPackage, 'package.json'), { name: 'local-graph-fixture', version: '1.0.0' })
   await FS.writeJson(manifest, {
     name: '@tao/runtime',
     version: '0.0.0',
-    dependencies: { 'local-fixture': 'file:../local-fixture' },
+    dependencies: { 'local-graph-fixture': `file:${graphPackage}` },
   })
-  await Try(async () => {
-    const args = ['compile', 'Demo', '--package', consumer]
-    const result = await Exec.capture(Repo.resolvePath('tao'), args, { cwd: root, stdin: 'ignore', check: false })
-    Tests.expect(result.status).toBe(1)
-    Tests.expect(result.stdout + result.stderr).toContain('Pass --yes')
-  }, { finally: () => FS.writeFile(manifest, original) })
+  const cli = Repo.resolvePath('tao')
+  const args = ['compile', 'Demo', '--package', consumer]
+  const result = await Exec.capture(cli, args, { cwd: root, stdin: 'ignore', check: false })
+  Tests.expect(result.status).toBe(1)
+  Tests.expect(result.stdout + result.stderr).toContain('Pass --yes')
+  await Exec.captureStdout(cli, [...args, '--yes'], { cwd: root })
+  const installed = Path.join(consumer, 'node_modules/@tao/runtime')
+  Tests.expect(FS.resolvePackageDirectory('local-graph-fixture', installed)).toBeDefined()
 }
 
 async function verifyUnrecordedInstallDetectsDependencyChange(root: string, consumer: string): Promise<void> {

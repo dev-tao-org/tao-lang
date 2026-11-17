@@ -26,6 +26,8 @@ export async function linkConsumerBuildDependencies(directory: string, libraryOu
 }
 
 type ConsumerPackages = TypeScriptProjectPackage['dependencies']
+type ConsumerInstallState = { fingerprint: string; localSources: ConsumerPackages }
+type PreviousConsumerInstall = ConsumerInstallState | undefined
 const InstallReceipt = '.tao-consumer-install'
 
 async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: WorkflowUI): Promise<void> {
@@ -36,15 +38,19 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
     return
   }
   const receiptPath = Path.join(directory, 'node_modules', InstallReceipt)
-  const receipt = await readOptionalText(receiptPath)
-  const fingerprint = await fingerprintInstallInputs(directory, packages)
+  const receipt = await readInstallReceipt(receiptPath)
+  const current = await readInstallState(directory, packages)
   const hasPackages = names.every(name => hasInstalledPackage(directory, name))
   const recorded = receipt === undefined
     ? await matchesUnrecordedInstall(directory, packages, hasPackages)
-    : receipt === fingerprint
+    : receipt.fingerprint === current.fingerprint
   if (!hasPackages || !recorded) {
     await confirmConsumerInstall(directory, ui)
+    const hasLock = FS.existsSync(Path.join(directory, 'bun.lock'))
     await installConsumerDependencies(manifest, hasPackages ? ['--force'] : [])
+    if (hasLock) {
+      await updateLocalDependencyGraph(directory, current, receipt)
+    }
     UserInput.require(
       names.every(name => hasInstalledPackage(directory, name)),
       `The install did not prepare all declared packages in ${directory}.`,
@@ -52,7 +58,7 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
   } else {
     await refreshLocalPackages(manifest, packages, ui)
   }
-  await FS.writeIfChanged(receiptPath, await fingerprintInstallInputs(directory, packages))
+  await FS.writeIfChanged(receiptPath, Json.Canonical(await readInstallState(directory, packages)))
 }
 
 async function confirmConsumerInstall(directory: string, ui: WorkflowUI): Promise<void> {
@@ -72,22 +78,29 @@ async function matchesUnrecordedInstall(directory: string, packages: ConsumerPac
   }
   for (const [name, specification] of Object.entries(packages)) {
     const installed = Path.join(directory, 'node_modules', name)
-    if (!await matchesInstalledPackage(directory, specification, installed)) {
+    if (!await matchesInstalledPackage(directory, name, specification, installed)) {
       return false
     }
   }
   return true
 }
 
-async function matchesInstalledPackage(directory: string, specification: string, installed: string): Promise<boolean> {
+async function matchesInstalledPackage(
+  directory: string,
+  name: string,
+  specification: string,
+  installed: string,
+): Promise<boolean> {
   const source = resolveLocalSource(directory, specification)
   if (source) {
     return isDirectory(source) && !await hasChangedLocalDirectory(source, installed)
   }
   const fields = await readPackageFields(installed)
-  const version = fields?.version
+  if (fields?.name !== name || typeof fields.version !== 'string') {
+    return false
+  }
   const range = validRange(specification)
-  return typeof version === 'string' && !!range && satisfies(version, range)
+  return !!range && satisfies(fields.version, range)
 }
 
 async function refreshLocalPackages(
@@ -164,13 +177,31 @@ async function installConsumerDependencies(
   await Exec.capture('bun', args, { cwd: manifest.directory })
 }
 
-async function fingerprintInstallInputs(directory: string, packages: ConsumerPackages): Promise<string> {
+async function updateLocalDependencyGraph(
+  directory: string,
+  current: ConsumerInstallState,
+  previous: PreviousConsumerInstall,
+): Promise<void> {
+  const names = Object.keys(current.localSources).filter(name =>
+    current.localSources[name] !== previous?.localSources[name]
+  )
+  if (names.length) {
+    await Exec.capture('bun', ['update', '--ignore-scripts', ...names], { cwd: directory })
+  }
+}
+
+async function readInstallState(directory: string, packages: ConsumerPackages): Promise<ConsumerInstallState> {
   const manifest = await FS.readFile(Path.join(directory, 'package.json'), 'utf8')
   const lock = await readOptionalText(Path.join(directory, 'bun.lock'))
-  const localSources = await Promise.all(
-    Object.values(packages).map(specification => describeLocalSource(resolveLocalSource(directory, specification))),
-  )
-  return Platform.hashText(Json.Canonical([manifest, lock ?? null, localSources]))
+  const localSources: ConsumerPackages = {}
+  for (const [name, specification] of Object.entries(packages)) {
+    const source = resolveLocalSource(directory, specification)
+    if (source) {
+      localSources[name] = Platform.hashText(Json.Canonical(await describeLocalSource(source)))
+    }
+  }
+  const fingerprint = Platform.hashText(Json.Canonical([manifest, lock ?? null, localSources]))
+  return { fingerprint, localSources }
 }
 
 const LocalPackagePrefixes = ['file:', 'link:']
@@ -214,6 +245,15 @@ function isDirectory(path: string): boolean {
 async function readPackageFields(directory: string) {
   const manifest = Path.join(directory, 'package.json')
   return await Try.WithDefault(undefined, () => FS.readJson(manifest, { schema: PackageFieldsSchema }))
+}
+
+const InstallReceiptSchema = Schema.object({
+  fingerprint: Schema.string(),
+  localSources: Schema.record(Schema.string(), Schema.string()),
+})
+
+async function readInstallReceipt(path: string): Promise<PreviousConsumerInstall> {
+  return await Try.WithDefault(undefined, () => FS.readJson(path, { schema: InstallReceiptSchema }))
 }
 
 async function readOptionalText(path: string): Promise<string | undefined> {

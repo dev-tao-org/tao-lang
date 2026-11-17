@@ -21,6 +21,7 @@ export async function withConsumerProject(
 ): Promise<void> {
   const manifest = await readTypeScriptProjectPackage(packageDirectory)
   const runConfiguration = manifest.run ?? UserInput.fail('Configure tao.run.entry in the authored package.json.')
+  Expo.resolveConsumerEntry(manifest.directory, runConfiguration.entry)
   const project = await discoverProject(packageDirectory)
   UserInput.require(!!project, `No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
   await ensureProjectMetadata(project.root)

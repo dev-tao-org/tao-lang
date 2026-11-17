@@ -18,16 +18,24 @@ export type ConsumerHostOptions = {
 /** ConsumerLibrary identifies the compiled package owned by this host's session. */
 export type ConsumerLibrary = { name: string; directory: string }
 
+/** resolveConsumerEntry checks that the authored entry names a component inside the consumer. */
+export function resolveConsumerEntry(packageDirectory: string, specification: string): string {
+  const entry = Path.resolve(packageDirectory, specification)
+  const isInside = Path.isWithin(packageDirectory, entry)
+  UserInput.require(
+    isInside && FS.existsSync(entry) && FS.statSync(entry).isFile(),
+    `tao.run.entry must name an existing component inside ${packageDirectory}.`,
+  )
+  return entry
+}
+
 /** createConsumerHost writes generated Expo files beside a link to the authored package's dependencies. */
 export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
   const modules = Path.join(options.packageDirectory, 'node_modules')
   if (!FS.existsSync(Path.join(modules, 'expo'))) {
     return UserInput.fail(`Install the authored package dependencies before running: ${options.packageDirectory}.`)
   }
-  const entry = Path.resolve(options.packageDirectory, options.entry)
-  if (!Path.isWithin(options.packageDirectory, entry) || !FS.existsSync(entry)) {
-    return UserInput.fail(`tao.run.entry must name an existing component inside ${options.packageDirectory}.`)
-  }
+  const entry = resolveConsumerEntry(options.packageDirectory, options.entry)
   const bootstrap = createConsumerBootstrap(Path.relative(options.directory, entry))
   await writeGeneratedHost(options.directory, {
     'Application.ts': bootstrap,
