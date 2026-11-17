@@ -91,10 +91,16 @@ description: >-
 ## Presentation
 
 Use indented lists. Nest proposed groups under feature sets and numbered files under their groups.
+Whenever the Developer asks to print review groups, list every ready recheck in a **Ready rechecks**
+section before any group titles or files. Include each recheck's file link and reason. Show the section
+even when no groups remain or the request limits the number of groups.
 List remaining group titles before the current groups and omit unused headings.
 
 ```text
 **X% done** — <completed>/<frozen total> original review units.
+
+- **Ready rechecks**
+  - <Absolute file link> · <Reason for recheck>
 
 - **<Current group and summary>** — X folders, Y files, Z hunks
   1. F43 New: <Absolute file link> · <Package> (+24 −0)
