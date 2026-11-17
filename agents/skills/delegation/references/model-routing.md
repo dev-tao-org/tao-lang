@@ -18,9 +18,9 @@ implementation decisions to Sol and already planned code writing to Luna at high
 writing is confined to intricate processes whose implementation is unsettled. Medium is the default;
 high is for deep analysis/research and the planned-code exception, while reviews stay medium or low.
 Extra-high is an exceptional non-review selection with a reason in the brief, never a profile default.
-Explicit spawn arguments or deliberately selected role pins implement the skill's model
-and effort choices; personal and harness defaults are not inputs to that choice. Generated defaults
-and role files still require concrete IDs. `model-audit` reports when those
+Where the harness permits selection, explicit spawn arguments or selected role pins implement
+the skill's model and effort choices. Generated defaults and role files still require concrete
+IDs. `model-audit` reports when those
 defaults lag; refreshing them is a separate repository change, not an automatic catalog rewrite.
 An unavailable newest release is a reported limitation, not permission to silently change families.
 Cursor documents
@@ -46,9 +46,7 @@ does not establish a cheaper completed task. Missing usage data stays unknown.
 transcript metadata provide them. Spawn hooks do not share an agent ID with start hooks, so a
 transcript observation cannot establish which explicit selection produced it.
 
-`./agent model-audit` ignores personal subagent defaults and does not read personal configuration;
-callers choose the model and effort explicitly. Generated defaults remain a fallback for callers
-outside this policy.
+`./agent model-audit` ignores personal subagent defaults and does not read personal configuration.
 
 The routing audit compares the table with what this machine ran: a Codex id the
 installed catalog supersedes; a full Claude id behind a newer model of its family; and a Claude

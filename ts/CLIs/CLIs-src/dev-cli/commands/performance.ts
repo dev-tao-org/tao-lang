@@ -4,8 +4,6 @@ import { Errors, Timings, Try } from '@shared'
 import { FS, Process } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
-import * as LocalBaseline from '../preview/LocalPreviewBaseline'
-import { preparePreviewProject, startPerformanceEditor } from '../preview/PerformanceProject'
 import { registerCommand } from './_command-runner'
 
 type PerformanceOptions = { fixture?: string; baseline?: boolean; reportOnly?: boolean }
@@ -118,6 +116,7 @@ async function runExtension(): Promise<void> {
 }
 
 async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
+  const LocalBaseline = await import('../preview/LocalPreviewBaseline')
   if (options.baseline) {
     if (options.fixture) {
       Errors.ThrowUserInput('Capture the baseline on the fixed performance project.')
@@ -136,6 +135,7 @@ async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
 
 async function runPreview(initialSource?: string) {
   const Performance = await import('@repo-analysis/performance')
+  const { preparePreviewProject } = await import('../preview/PerformanceProject')
   const options = await preparePreviewProject(initialSource)
   const result = await Performance.previewPerformance(options)
   for (const { scenario, timing } of Performance.describePreviewOutput(result)) {
@@ -147,6 +147,7 @@ async function runPreview(initialSource?: string) {
 }
 
 async function runPerformanceEditor(): Promise<void> {
+  const { startPerformanceEditor } = await import('../preview/PerformanceProject')
   const harness = await startPerformanceEditor()
   await Try(() => Process.waitForTermination(), { finally: () => harness.dispose() })
 }

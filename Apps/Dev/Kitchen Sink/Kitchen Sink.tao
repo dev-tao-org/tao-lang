@@ -34,10 +34,6 @@ view RootView {
     Input("Original")
     #save
     SaveButton
-    Col [disabled yes] {
-      SaveButton [disabled no]
-      Input("Disabled by its container")
-    }
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")

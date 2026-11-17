@@ -1,5 +1,7 @@
-# Prepare the semantic AST before a command graph imports it in a fresh worktree.
-if [ ! -f "$repository/ts/2-ast-gen/_gen_AST/AST-generated.ts" ]; then
+# Both verify routes load the native parser before handing off to the verification workflow.
+if [ "${1:-}" = verify ] \
+  || { [ "${1:-}" = unsandboxed ] && [ "${2:-}" = verify ]; } \
+  || [ ! -f "$repository/ts/2-ast-gen/_gen_AST/AST-generated.ts" ]; then
   if [ ! -d "$repository/ts/node_modules" ]; then
     printf 'Cannot prepare the generated Tao AST because TypeScript dependencies are missing. Run ./agent unsandboxed setup, then retry.\n' >&2
     exit 1

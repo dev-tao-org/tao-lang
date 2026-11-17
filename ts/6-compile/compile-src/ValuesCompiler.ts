@@ -8,7 +8,6 @@ export function compileExpression(node: AST.Expression, scope: ScopeCode): strin
   return Switch.kind(node, {
     Name: name => emitName(name, scope),
     TextLiteral: emitLiteral,
-    BooleanLiteral: literal => literal.value ? 'true' : 'false',
   })
 }
 
@@ -18,27 +17,14 @@ export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode
   return emitLetDeclaration(node, getScopeValue(scope), value)
 }
 
-type TypeScriptParameterType = 'string' | 'boolean'
-
-/** getTypeScriptParameterType maps supported Tao parameter types to their host types. */
-export function getTypeScriptParameterType(parameter: AST.Parameter): TypeScriptParameterType | undefined {
-  if (parameter.type.value === 'text') {
-    return 'string'
-  }
-  if (parameter.type.value === 'boolean') {
-    return 'boolean'
-  }
-  return undefined
-}
-
-/** hasSupportedViewParameters checks whether every view parameter has an implemented TypeScript type. */
-export function hasSupportedViewParameters(declaration: AST.ViewDeclaration): boolean {
-  return declaration.parameters.every(parameter => getTypeScriptParameterType(parameter) !== undefined)
+/** isTextParameter identifies a parameter declared with Tao's text type. */
+export function isTextParameter(node: AST.Parameter): boolean {
+  return node.type.value === 'text'
 }
 
 /** isTextExpression recognizes text literals or names resolved as text in their owning scope. */
 export function isTextExpression(node: AST.Expression, resolveName: (name: AST.Name) => boolean): boolean {
-  return AST.IsKind(node, 'TextLiteral') || AST.IsKind(node, 'Name') && resolveName(node)
+  return AST.IsKind(node, 'TextLiteral') || resolveName(node)
 }
 
 /** collectTextBindings identifies implemented text expressions for native capture annotations. */
@@ -49,7 +35,7 @@ export function collectTextBindings(
 ): ReadonlySet<string> {
   const names = new Set(inherited)
   for (const parameter of parameters) {
-    updateBinding(names, parameter.name.value, parameter.type.value === 'text')
+    updateBinding(names, parameter.name.value, isTextParameter(parameter))
   }
   for (const definition of definitions) {
     const isText = isTextExpression(definition.value, name => names.has(name.value))

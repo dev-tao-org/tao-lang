@@ -43,7 +43,7 @@ Keep the consumer's package and dependencies in `src/ts`, with Tao sources in `s
 }
 ```
 
-From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports into `.tao/cache/sessions/.cli/libraries/Demo/`. Repeated compilation replaces only its own generated output; unrelated existing output is preserved and reported as an error. Add `"@example/demo": "file:../../.tao/cache/sessions/.cli/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
+From the project root, run `tao compile Demo --package src/ts` to select the library by declaration name. Omit `Demo` when the entry has one target. Compilation emits JavaScript, declarations and explicit package exports into `.tao/cache/sessions/.cli/libraries/Demo/`. This is a Tao-managed destination: repeated compilation replaces its real directory and rejects symlinks or paths escaping the session's library directory. Do not put authored files there. Add `"@example/demo": "file:../../.tao/cache/sessions/.cli/libraries/Demo"` to the consumer's dependencies, then install them with its normal package manager.
 
 Use `--session <name>` to build into a separate session. `tao run --package src/ts --session <name>` compiles and resolves that session's library without changing another session's output or the authored dependency links. Do not configure `tao.compile.out`; the selected session owns the destination. Build files remain after command exit; explicit cleanup can remove inactive sessions.
 
@@ -92,6 +92,6 @@ shutdown and development reload lifecycle details remain under design.
 
 #### Supported subset
 
-Published views currently support required `text` and `boolean` parameters as named string and boolean props, plus ordinary React children. Use a boolean prop in a [disabled condition](Actions%20and%20Results.md#disabled-interaction) to update a rendered subtree's disabled state without remounting it. Injections can render captured `@@children`. Private Tao views and the current standard web views run through the same compiler and runtime as app views. Unsupported published signatures and unresolved imports fail compilation.
+Published views currently support required `text` parameters as named string props and ordinary React children. Injections can render captured `@@children`. Private Tao views and the current standard web views run through the same compiler and runtime as app views. Unsupported published signatures and unresolved imports fail compilation.
 
 The initial target is Expo and React Native Web. Data, designs, actions, drafts, selector hooks and native acceptance remain future work.

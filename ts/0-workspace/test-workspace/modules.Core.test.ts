@@ -54,7 +54,7 @@ Tests.test('root requirement observation never links unrelated root declarations
     await FS.writeFile(
       rootFile,
       S`
-        view Hidden { render Unknown }
+        view Hidden {}
         app Other { root Hidden }
       `,
     )
@@ -62,7 +62,10 @@ Tests.test('root requirement observation never links unrelated root declarations
     Tests.expect(result.status).toBe('published')
     Tests.expect(observed).toContain(rootFile)
     Tests.expect(compiledContents(publications[0])).not.toContain('Hidden')
-    Tests.expect(compiledContents(publications[0])).not.toContain('Unknown')
+    await FS.writeFile(rootFile, 'view Hidden { requires npm:react version 19.2.3 }')
+    const invalid = await workspace.files.compileFile(Path.join(directory, 'feature/App.tao'))
+    Tests.expect(invalid.status).toBe('failed')
+    Tests.expect(invalid.status === 'failed' && invalid.error).toContain('Requirements belong at file scope.')
   }, {
     async finally() {
       await workspace.dispose()

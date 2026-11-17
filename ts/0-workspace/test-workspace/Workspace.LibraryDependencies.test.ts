@@ -1,4 +1,4 @@
-import { NewlineCharacter, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -9,6 +9,50 @@ import { initializeProject } from '../workspace-src/projects/Projects'
 import { createStandaloneLibraryFixture } from './Workspace.test-utils'
 
 const DependencySetupRequiredRegx = /Dependency Widgets needs setup/
+const ExistingLibraryOutputRegx = /fresh output directory/
+
+Tests.test('direct library compilation preserves an existing output and its source symlink', async () => {
+  const root = await createStandaloneLibraryFixture()
+  await Try(async () => {
+    const output = Path.join(root, 'output')
+    const authored = Path.join(root, 'authored')
+    await FS.mkdirs(output, authored)
+    const sentinel = Path.join(authored, 'Library.ts')
+    await FS.writeFile(sentinel, 'Keep authored source')
+    await FS.symlink(authored, Path.join(output, 'source'), 'dir')
+    await Tests.rejects(
+      compileLibraryPackage({
+        entry: Path.join(root, 'src/tao/Library.tao'),
+        out: output,
+        name: '@tao-dev/ts-lib-example',
+      }),
+      ExistingLibraryOutputRegx,
+    )
+    Tests.expect(await FS.readFile(sentinel, 'utf8')).toBe('Keep authored source')
+    Tests.expect(await FS.readdir(output)).toEqual(['source'])
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('direct library compilation can retry its output after a bundle failure', async () => {
+  const root = await createStandaloneLibraryFixture()
+  await Try(async () => {
+    const output = Path.join(root, 'output')
+    const sidecar = Path.join(root, 'src/ts/ForeignGreeting.tsx')
+    const source = await FS.readFile(sidecar, 'utf8')
+    const request = {
+      entry: Path.join(root, 'src/tao/Library.tao'),
+      out: output,
+      name: '@tao-dev/ts-lib-example',
+    }
+    await FS.writeFile(sidecar, "export { ForeignGreeting } from './missing-library-module'" + NewlineCharacter)
+    await Tests.rejects(compileLibraryPackage(request), isLibraryBundleFailure)
+    Tests.expect(await FS.exists(output)).toBe(false)
+    await FS.writeFile(sidecar, source)
+    await compileLibraryPackage(request)
+    const manifest = await FS.readFile(Path.join(output, 'package.json'), 'utf8')
+    Tests.expect(manifest).toContain('"./Greeting"')
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
 
 Tests.test('an ordinary TS consumer renders a prepared Tao dependency and refreshes consumer source', async () => {
   const root = await createStandaloneLibraryFixture()
@@ -100,4 +144,12 @@ async function verifyConsumer(root: string): Promise<void> {
   const result = await Exec.capture('just', 'test', { cwd: root, addEnv: { TAO_TEST_SOURCE_REFRESH: '1' } })
   Tests.expect(result.stdout).toContain('.tao/cache/sessions/.cli/libraries/Demo')
   Tests.expect(FS.existsSync(Path.join(root, 'src/.tao'))).toBe(false)
+}
+
+function isLibraryBundleFailure(error: unknown): boolean {
+  if (!Errors.isNativeError(error)) {
+    return false
+  }
+  const bundlerError = error.cause ?? error
+  return Errors.isNativeError(bundlerError) && bundlerError.message === 'Bundle failed'
 }

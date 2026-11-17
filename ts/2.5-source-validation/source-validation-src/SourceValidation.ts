@@ -6,13 +6,20 @@ export function assertValidStatements(document: AST.Document, path: string): voi
   requireNoStatementDiagnostics(collectStatementDiagnostics(document), path)
 }
 
+/** assertValidRequirements validates discovered dependency metadata without validating unrelated declarations. */
+export function assertValidRequirements(document: AST.Document, path: string): void {
+  const diagnostics: StatementDiagnostic[] = []
+  collectBlockDiagnostics(document.root.block, 'file', diagnostics, 'requirements')
+  requireNoStatementDiagnostics(diagnostics, path)
+}
+
 /** StatementDiagnostic identifies a source error in a named declaration or statement. */
 export type StatementDiagnostic = { range: Readonly<Range>; message: string }
 
 /** collectStatementDiagnostics reports statement and declaration errors in a syntactically complete document. */
 export function collectStatementDiagnostics(document: AST.Document): StatementDiagnostic[] {
   const diagnostics: StatementDiagnostic[] = []
-  collectBlockDiagnostics(document.root.block, 'file', diagnostics)
+  collectBlockDiagnostics(document.root.block, 'file', diagnostics, 'all')
   return diagnostics
 }
 
@@ -34,6 +41,7 @@ function requireNoStatementDiagnostics(diagnostics: readonly StatementDiagnostic
 }
 
 type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'library' | 'tests' | 'test' | 'expect'
+type ValidationScope = 'all' | 'requirements'
 type StatementKind = AST.Statement['kind']
 type StatementPlacement = { syntax: string; owners: readonly BlockOwner[] }
 type PlacementByStatementKind = Record<StatementKind, StatementPlacement>
@@ -103,10 +111,15 @@ function collectBlockDiagnostics(
   block: AST.Block,
   owner: BlockOwner,
   diagnostics: StatementDiagnostic[],
+  scope: ValidationScope,
 ): void {
-  const required = RequiredByOwner[owner]
+  const required = scope === 'all' ? RequiredByOwner[owner] : undefined
   let foundRequired = false
   for (const statement of block.statements) {
+    if (scope === 'requirements' && statement.kind !== 'RequiresDeclaration') {
+      collectOwnedBlockDiagnostics(statement, diagnostics, scope)
+      continue
+    }
     const misplaced = describeWrongOwner(statement, owner)
     if (misplaced) {
       diagnostics.push({ range: statement.range, message: misplaced })
@@ -123,7 +136,7 @@ function collectBlockDiagnostics(
       }
     }
     collectDeclarationNameDiagnostics(statement, diagnostics)
-    collectOwnedBlockDiagnostics(statement, diagnostics)
+    collectOwnedBlockDiagnostics(statement, diagnostics, scope)
   }
   if (required && !foundRequired) {
     diagnostics.push({ range: block.range, message: required.message })
@@ -207,19 +220,23 @@ function describeViewOrder(statement: AST.Statement, foundRender: boolean): stri
   return undefined
 }
 
-function collectOwnedBlockDiagnostics(statement: AST.Statement, diagnostics: StatementDiagnostic[]): void {
+function collectOwnedBlockDiagnostics(
+  statement: AST.Statement,
+  diagnostics: StatementDiagnostic[],
+  scope: ValidationScope,
+): void {
   if (AST.IsViewDeclaration(statement)) {
     if (AST.IsKind(statement.body, 'Block')) {
-      collectBlockDiagnostics(statement.body, 'view', diagnostics)
+      collectBlockDiagnostics(statement.body, 'view', diagnostics, scope)
     }
     return
   }
   if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-    collectOwnedBlockDiagnostics(statement.expression, diagnostics)
+    collectOwnedBlockDiagnostics(statement.expression, diagnostics, scope)
     return
   }
   if (ownsBlock(statement) && statement.block !== undefined) {
-    collectBlockDiagnostics(statement.block, OwnerByBlockKind[statement.kind], diagnostics)
+    collectBlockDiagnostics(statement.block, OwnerByBlockKind[statement.kind], diagnostics, scope)
   }
 }
 

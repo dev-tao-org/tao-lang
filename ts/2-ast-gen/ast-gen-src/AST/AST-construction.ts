@@ -31,7 +31,6 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   Identifier: constructName,
   QualifiedName: constructName,
   TextLiteral: constructTextLiteral,
-  BooleanLiteral: constructBooleanLiteral,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
   ImportPath: constructImportPath,
@@ -107,13 +106,8 @@ function constructViewRenderExpression(cst: CST.SyntaxNode): Generated.ViewRende
   const argumentList = cst.childForFieldName('argumentList')
   const block = constructOptionalField(cst, 'block', 'Block')
   return makeNode(cst, 'ViewRenderExpression', {
-    arguments: constructChildren(argumentList?.namedChildren.filter(CST.IsSemanticNode) ?? [], [
-      'Name',
-      'TextLiteral',
-      'BooleanLiteral',
-    ]),
+    arguments: constructChildren(argumentList?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral']),
     block,
-    interaction: constructOptionalField(cst, 'interaction', 'DisabledModifier'),
     tag: constructOptionalField(cst, 'tag', 'RenderTag'),
     target: constructFieldNode(cst, 'view', 'Name'),
   })
@@ -165,11 +159,6 @@ function constructName(cst: CST.SyntaxNode): Generated.Name {
 
 function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
   return makeNode(cst, 'TextLiteral', { value: Json.Parse(cst.text) as string })
-}
-
-const TrueLiteralKeyword = 'yes'
-function constructBooleanLiteral(cst: CST.SyntaxNode): Generated.BooleanLiteral {
-  return makeNode(cst, 'BooleanLiteral', { value: cst.text === TrueLiteralKeyword })
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {

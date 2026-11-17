@@ -1,7 +1,6 @@
 import { IO } from '@cli-kit'
 import { Errors, NewlineCharacter } from '@shared'
 import { Path } from '@shared/os'
-import * as BranchComparison from '../../agent-skills/performance-investigation/BranchComparison'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { readTimingRemote } from '../timing/TimingRemote'
 import { createTimingHelperArguments } from '../timing/TimingReport'
@@ -25,13 +24,14 @@ export default registerCommand({
     { flags: '--pairs <count>', description: 'Independent pairs per round, at least five.', defaultValue: '5' },
   ],
   async action(host: string, baseline: string, candidate: string, options: { tooling?: string; pairs: string }) {
+    const BranchComparison = await import('../../agent-skills/performance-investigation/BranchComparison')
     const directory = options.tooling ?? candidate
     requireHost(host)
     requireAbsoluteCheckouts([baseline, candidate, directory])
     BranchComparison.requireBranchPairCount(Number(options.pairs))
     const args = createTimingHelperArguments('compare', [baseline, candidate, '--pairs', options.pairs])
     const output = await readTimingRemote({ host, directory, controlPath: 'none', args })
-    IO.summary(readBranchReport(output))
+    IO.summary(readBranchReport(output, BranchComparison.BranchReportStart, BranchComparison.BranchReportEnd))
   },
 })
 
@@ -41,10 +41,10 @@ function requireAbsoluteCheckouts(paths: string[]): void {
   }
 }
 
-function readBranchReport(text: string): string {
+function readBranchReport(text: string, startMarker: string, endMarker: string): string {
   const lines = text.split(NewlineCharacter)
-  const start = lines.indexOf(BranchComparison.BranchReportStart)
-  const end = lines.indexOf(BranchComparison.BranchReportEnd, start + 1)
+  const start = lines.indexOf(startMarker)
+  const end = lines.indexOf(endMarker, start + 1)
   if (start === -1 || end <= start + 1) {
     Errors.ThrowHostEnvironment('Missing branch timing report. Inspect the retained runner output.')
   }

@@ -23,13 +23,9 @@
       "types": "./view3.d.ts",
       "default": "./view3.js"
     },
-    "./DisabledPreview": {
+    "./Cards/Caption": {
       "types": "./view4.d.ts",
       "default": "./view4.js"
-    },
-    "./Cards/Caption": {
-      "types": "./view5.d.ts",
-      "default": "./view5.js"
     }
   },
   "peerDependencies": {

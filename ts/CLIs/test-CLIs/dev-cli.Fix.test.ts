@@ -3,14 +3,14 @@ import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 
-Tests.test('repository fix restores its own missing analysis alias', async () => {
+Tests.test('repository fix restores its own missing analysis and performance aliases', async () => {
   await FS.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/alias-repair-'))
   await Try(async () => {
     await copyFixWorkspace(root)
     const workspace = Path.join(root, 'ts')
     const config = Path.join(workspace, 'tsconfig.base.json')
-    const expected = await removeAnalysisAlias(config)
+    const expected = await removeAnalysisAliases(config)
     const command = ['./CLIs/CLIs-src/agent-cli/agent-cli.ts', 'fix', '--exclude', 'Justfile']
     await Exec.captureStdout('bun', ['run', ...command], { cwd: workspace })
     Tests.expect(await FS.readJson(config)).toEqual(expected)
@@ -54,13 +54,14 @@ type FixtureCompilerPaths = Record<string, string[]>
 type FixtureCompilerOptions = { paths: FixtureCompilerPaths; noLib?: boolean; types?: string[] }
 type FixtureCompilerConfig = { compilerOptions: FixtureCompilerOptions }
 
-async function removeAnalysisAlias(path: string): Promise<FixtureCompilerConfig> {
+async function removeAnalysisAliases(path: string): Promise<FixtureCompilerConfig> {
   const expected = await FS.readJson(path) as FixtureCompilerConfig
   expected.compilerOptions.noLib = true
   expected.compilerOptions.types = []
   await FS.writeJson(path, expected)
   const reduced = await FS.readJson(path) as FixtureCompilerConfig
   delete reduced.compilerOptions.paths['@repo-analysis']
+  delete reduced.compilerOptions.paths['@repo-analysis/performance']
   await FS.writeJson(path, reduced)
   return expected
 }

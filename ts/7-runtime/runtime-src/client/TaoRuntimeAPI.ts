@@ -1,11 +1,10 @@
 import { DefaultAppearance } from './Appearance'
 import ReactNative from './Bridge_react-native'
 import React from './Bridge_react/Bridge_react'
-import { useInteractionDisabled } from './DisabledInteraction'
 import { batch, useComputed, useValue, useWritable } from './ReactiveEngine'
 
 /** Tao exposes the runtime capabilities available to authored TypeScript. */
-const Tao = { Text, View, TextInput, Pressable, useInteractionDisabled, useWritable, useComputed, useValue }
+const Tao = { Text, View, TextInput, Pressable, useWritable, useComputed, useValue }
 
 export default Tao
 
@@ -41,33 +40,19 @@ function View(props: ViewProps): React.ReactElement {
 }
 
 function TextInput({ style, ...props }: TextInputProps): React.ReactElement {
-  const disabled = useInteractionDisabled()
   return React.createElement(ReactNative.TextInput, {
-    'placeholderTextColor': DefaultAppearance.border,
-    'keyboardAppearance': 'dark',
+    placeholderTextColor: DefaultAppearance.border,
+    keyboardAppearance: 'dark',
     ...props,
-    'aria-disabled': disabled || undefined,
-    'focusable': disabled ? false : undefined,
-    'readOnly': disabled || undefined,
-    'style': [textStyle, style, disabled && DisabledStyle],
+    style: [textStyle, style],
   })
 }
 
-function Pressable({ onPress, style, ...props }: PressableProps): React.ReactElement {
-  const disabled = useInteractionDisabled()
-  const perform = !disabled && onPress ? () => batch(onPress) : undefined
-  return React.createElement(ReactNative.Pressable, {
-    ...props,
-    accessibilityRole: 'button',
-    accessibilityState: { disabled },
-    disabled,
-    focusable: disabled ? false : undefined,
-    onPress: perform,
-    style: [style, disabled && DisabledStyle],
-  })
+function Pressable({ onPress, ...props }: PressableProps): React.ReactElement {
+  const perform = onPress ? () => batch(onPress) : undefined
+  return React.createElement(ReactNative.Pressable, { ...props, onPress: perform })
 }
 
 const textStyle = { color: DefaultAppearance.foreground }
-const DisabledStyle = { opacity: 0.6 }
 
 type FlexDirection = 'row' | 'column'

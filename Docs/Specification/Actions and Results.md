@@ -66,11 +66,9 @@ Inspection does not consume failures. Explicit handlers own presentation; defaul
 
 #### Disabled interaction
 
-`[disabled Condition]` is available on a rendered view or container. The condition is `yes`, `no`, or a name that refers to a boolean value. A disabled container disables its descendant controls. A child with `[disabled no]` remains disabled until its ancestors are enabled.
+Disabled interaction is future behavior planned with the [layout and style bracket system](../Roadmap/Immediate%20Implementation%20Queue.md). A disabled container suppresses user interaction in descendant controls. Descendants cannot override a disabled ancestor. Timers, reactive work and programmatic actions continue. Standard controls honor the inherited state, and raw custom controls follow the [TypeScript runtime contract](Runtime%20TypeScript%20API.md#disabled-interaction).
 
-Tao controls expose their disabled state to the platform and suppress user input and activation. Timers, reactive work and programmatic calls continue. Sidecars composing Tao controls inherit the state automatically. Raw controls follow the [TypeScript runtime contract](Runtime%20TypeScript%20API.md#disabled-interaction).
-
-The proposed ActionButton's exact implementation must respect the reduced MVP inspection surface, without introducing individual execution inspection.
+The proposed ActionButton uses aggregate action inspection. Its exact implementation will be designed with the controls that consume this behavior.
 
 #### Deferred execution features
 
