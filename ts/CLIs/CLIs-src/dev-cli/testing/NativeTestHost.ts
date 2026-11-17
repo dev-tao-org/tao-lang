@@ -319,6 +319,8 @@ function androidCapabilities(target: AndroidTestTarget, appPackage: string) {
     'appium:appPackage': appPackage,
     'appium:appActivity': '.LauncherActivity',
     'appium:noReset': true,
+    // Appium's empty IME keeps text entry in the app instead of navigating Back to close a keyboard.
+    'appium:hideKeyboard': true,
     'appium:newCommandTimeout': 120,
     'appium:systemPort': reservePort(),
   }

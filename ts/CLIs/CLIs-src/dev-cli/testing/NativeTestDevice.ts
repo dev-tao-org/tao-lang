@@ -88,13 +88,31 @@ async function typeInput(
 ): Promise<void> {
   const element = await waitForElement(driver, inputSelector(platform, tag), `input #${tag}`, timeoutMs)
   await driver.tap(element)
-  // A disabled field can refuse keyboard focus. Attempt an actual touch before observing that state.
-  if (await awaitKeyboard(driver)) {
+  // Android runs with Appium's empty IME. Observe focus on the real field after an actual touch.
+  const ready = platform === 'android'
+    ? await awaitAndroidInputFocus(driver, element)
+    : await awaitKeyboard(driver)
+  if (ready) {
     await driver.enterText(element, value)
-    if (platform === 'android') {
-      await driver.hideKeyboard()
-    }
   }
+}
+
+async function awaitAndroidInputFocus(driver: NativeWebDriver, element: string): Promise<boolean> {
+  if (isNativeBoolean(await driver.attribute(element, 'enabled'), false)) {
+    return false
+  }
+  const deadline = Time.nowMs() + 1500
+  while (Time.nowMs() < deadline) {
+    if (isNativeBoolean(await driver.attribute(element, 'focused'), true)) {
+      return true
+    }
+    await Time.sleep(100)
+  }
+  return false
+}
+
+function isNativeBoolean(value: unknown, expected: boolean): boolean {
+  return value === expected || value === String(expected)
 }
 
 async function awaitKeyboard(driver: NativeWebDriver): Promise<boolean> {
