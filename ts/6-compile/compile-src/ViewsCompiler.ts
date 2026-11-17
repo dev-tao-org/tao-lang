@@ -13,7 +13,7 @@ import { createViewReferences, shadowReferences } from './ViewReferences'
 export type ViewCompilationContext = {
   scope: string
   moduleIdentity: string
-  resolvePrimitiveType: Typecheck.PrimitiveBindingScope
+  textBindings: ReadonlySet<string>
   foreignComponent: OptionalForeignComponent
   scopeType: string
   ownerPath?: readonly string[]
@@ -38,8 +38,8 @@ type RenderCompilation = { result: string; components: string }
 const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
-  if (!ValuesCompiler.hasSupportedViewParameters(node)) {
-    Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use text or boolean.`)
+  if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
+    Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
   if (component === undefined) {
@@ -59,13 +59,12 @@ function compileTaoView(
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
   }
-  const resolveType = ValuesCompiler.createViewPrimitiveScope(
-    context.resolvePrimitiveType,
-    definitions,
-    node.parameters,
-    children,
-  )
-  const names = createComponentNames(node, context, definitions, children, resolveType)
+  const inheritedText = new Set(context.textBindings)
+  for (const child of children) {
+    inheritedText.delete(child.name.value)
+  }
+  const bindings = ValuesCompiler.collectTextBindings(definitions, inheritedText, node.parameters)
+  const names = createComponentNames(node, context, definitions, children, bindings)
   const shadowed = new Set([
     ...context.shadowedNames ?? [],
     ...node.parameters.map(item => item.name.value),
@@ -74,12 +73,12 @@ function compileTaoView(
   ])
   const references = createViewReferences(context.moduleBindings, shadowed)
   const nestedContext = createNestedOwnerContext(context, shadowed)
-  const nested = compileNestedViews(node, children, nestedContext, names, resolveType)
+  const nested = compileNestedViews(node, children, nestedContext, names, bindings)
   const valuesCode = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope))
     .join(
       NewlineCharacter,
     )
-  const compiled = compileViewRenderStatement(render, resolveType, names, references.scope)
+  const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
   const statements = CodegenUtil.joinCodeLines(
     references.initialize(),
     ...nested.map(child => child.initialization),
@@ -107,10 +106,10 @@ function compileNestedViews(
   children: readonly AST.ViewDeclaration[],
   context: ViewCompilationContext,
   names: RuntimeEmitter.ComponentNames,
-  resolveType: Typecheck.PrimitiveBindingScope,
+  bindings: ReadonlySet<string>,
 ): DeclarationCompilation[] {
   return children.map(child =>
-    compileViewDeclaration(child, createChildViewContext(owner, child, context, names, resolveType))
+    compileViewDeclaration(child, createChildViewContext(owner, child, context, names, bindings))
   )
 }
 
@@ -119,7 +118,7 @@ function createChildViewContext(
   child: AST.ViewDeclaration,
   context: ViewCompilationContext,
   names: RuntimeEmitter.ComponentNames,
-  resolvePrimitiveType: Typecheck.PrimitiveBindingScope,
+  textBindings: ReadonlySet<string>,
 ): ViewCompilationContext {
   const ownerPath = [...context.ownerPath ?? [], owner.name.value]
   const foreignComponent = context.resolveForeignComponent?.(child)
@@ -128,7 +127,7 @@ function createChildViewContext(
     scope: names.scope,
     scopeType: names.scopeType,
     ownerPath,
-    resolvePrimitiveType,
+    textBindings,
     componentPrefix: '',
     foreignComponent,
   }
@@ -136,7 +135,7 @@ function createChildViewContext(
 
 function compileViewRenderStatement(
   node: AST.ViewRenderStatement,
-  resolveType: Typecheck.PrimitiveBindingScope,
+  bindings: ReadonlySet<string>,
   names: RuntimeEmitter.ComponentNames,
   scope: CodegenUtil.ScopeCode,
 ): RenderCompilation {
@@ -147,7 +146,7 @@ function compileViewRenderStatement(
         '',
       ),
     RenderInjectStatement(statement) {
-      const injection = compileInjection(statement.injection, resolveType, names, scope)
+      const injection = compileInjection(statement.injection, bindings, names, scope)
       return RenderCompilation(injection.invocation, injection.hookDeclaration)
     },
   })
@@ -159,8 +158,7 @@ function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: Code
     argument => ValuesCompiler.compileExpression(argument, scope),
   )
   const childrenCode = compileViewRenderBlock(node.block, scope)
-  const condition = node.interaction ? ValuesCompiler.compileExpression(node.interaction.condition, scope) : undefined
-  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode, condition)
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
 }
 
 type OptionalViewRenderBlock = AST.Block | undefined
@@ -198,7 +196,7 @@ function createComponentNames(
   context: ViewCompilationContext,
   definitions: readonly AST.LetDeclaration[],
   children: readonly AST.ViewDeclaration[],
-  resolveType: Typecheck.PrimitiveBindingScope,
+  bindings: ReadonlySet<string>,
 ): RuntimeEmitter.ComponentNames {
   const path = [...context.ownerPath ?? [], node.name.value].join('$')
   const identity = `${path}_${context.moduleIdentity}`
@@ -208,7 +206,7 @@ function createComponentNames(
     props: '_Props',
     render: '_Render',
     scope: '_Scope',
-    scopeType: createScopeType(node, context.scopeType, definitions, children, resolveType),
+    scopeType: createScopeType(node, context.scopeType, definitions, children, bindings),
   }
 }
 
@@ -217,13 +215,12 @@ function createScopeType(
   inherited: string,
   definitions: readonly AST.LetDeclaration[],
   children: readonly AST.ViewDeclaration[],
-  resolveType: Typecheck.PrimitiveBindingScope,
+  bindings: ReadonlySet<string>,
 ): string {
-  const values = [...node.parameters, ...definitions].map(value => {
-    const name = value.name.value
-    const primitiveType = resolveType(name)
-    return { name, type: primitiveType === undefined ? 'unknown' : ValuesCompiler.projectPrimitiveType(primitiveType) }
-  })
+  const values = [...node.parameters, ...definitions].map(value => ({
+    name: value.name.value,
+    type: bindings.has(value.name.value) ? 'string' : 'unknown',
+  }))
   const properties = [...values, ...children.map(child => ({ name: child.name.value, type: 'TR.View' }))]
   if (properties.length === 0) {
     return inherited

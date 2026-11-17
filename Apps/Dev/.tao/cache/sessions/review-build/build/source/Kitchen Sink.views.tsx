@@ -1,7 +1,7 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Kitchen Sink";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/a3f0c478eae96ffbd2895e1d0c8ae3a46998902a9844ee67c51895529b84a164/modules/0d1d0a24874c55bf/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/ddf9e84084549dedd88cee1cfafcb36c50a99b5b55f5d34806072d2411e6ef29/modules/0d1d0a24874c55bf/Kitchen Sink/SidecarGreeting.tsx";
 
 export function TaoView_RootView$PrivateGreeting_da9ad98e2365(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
@@ -81,23 +81,6 @@ export function TaoView_RootView_da9ad98e2365(_Props: TR.ViewComponentProps) {
         TR.ViewRenderArguments([], [], "save")
       ),
       TR.ViewRenderExpression(
-        _Imported_Col["Col"],
-        TR.ViewRenderArguments([], [
-          TR.ViewRenderExpression(
-            _Scope["SaveButton"],
-            TR.ViewRenderArguments([], [], undefined, TR.DisabledWhen(false))
-          ),
-          TR.ViewRenderExpression(
-            _Imported_Input["Input"],
-            TR.ViewRenderArguments(["Disabled by its container"], [])
-          )
-        ], undefined, TR.DisabledWhen(true))
-      ),
-      TR.ViewRenderExpression(
-        _Scope["InteractionStatus"],
-        TR.ViewRenderArguments([true], [])
-      ),
-      TR.ViewRenderExpression(
         _Imported_Text["Text"],
         TR.ViewRenderArguments(["Text: \"quotes\", a backslash \\, Unicode ☺\nand a new line"], [])
       ),
@@ -125,17 +108,6 @@ export function TaoView_RootView_da9ad98e2365(_Props: TR.ViewComponentProps) {
       )
     ])
   ));
-}
-
-function useTaoInjectionInteractionStatus_da9ad98e2365(Status: boolean) {
-  const locked: boolean = Status
-      return <Tao.Text>{locked ? 'Controls locked' : 'Controls unlocked'}</Tao.Text>
-}
-export function TaoView_InteractionStatus_da9ad98e2365(_Props: TR.ViewComponentProps) {
-  const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Locked" | "Status"> & { readonly "Locked": boolean; readonly "Status": boolean };
-  TR.LetDeclaration(_Scope, "Status", _Scope["Locked"]);
-  return TR.finishViewRender(_Render, useTaoInjectionInteractionStatus_da9ad98e2365(_Scope["Status"] as boolean));
 }
 
 export function TaoView_Pair_da9ad98e2365(_Props: TR.ViewComponentProps) {

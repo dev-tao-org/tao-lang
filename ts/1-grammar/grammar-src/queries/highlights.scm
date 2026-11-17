@@ -8,8 +8,6 @@
 (Injection "inject" @keyword)
 (Parameter type: (QualifiedName) @type)
 (ViewRenderExpression view: (QualifiedName) @function)
-(DisabledModifier "disabled" @keyword)
-(BooleanLiteral) @boolean
 (TestsDeclaration "tests" @keyword)
 (TestDeclaration "test" @keyword)
 (RunStatement "run" @keyword)

@@ -107,16 +107,20 @@ the SHA. It preserves Git's squash appendix on `main` — summary, bullets, a bl
 
 ## Child branches after a parent squash
 
-- Before integrating a child branch whose parent was squash-merged into `main`, rebase only the
-  child's intended additional commits onto updated `main`; the squash does not preserve the
-  original parent commits as ancestors. Identify the original parent boundary before choosing
-  the replay range, rather than blindly rebasing the whole inherited history.
-- Retain the original parent ref or a recoverable checkpoint until the child's rebase and final
-  diff are verified. Confirm that the diff against `main` contains only the intended additional
-  work, resolve conflicts and rerun affected validation before presenting it for review or landing.
-- Follow root authorization and ownership rules before rebasing. This workflow does not authorize
-  rewriting a published child branch or force-pushing it; preserve the existing branch and use a
-  fresh feature branch when rewriting it is not authorized.
+- Preserve ancestry when integrating dependent feature branches. Use the landing workflow for
+  the final squash onto `main`.
+- After a parent squash, use the [recorded landing boundary](../landing/references/merge-progress.md)
+  to identify the child's actual inherited base and its remaining work. When content was copied
+  earlier, compare the recorded source and destination trees to map that content before choosing
+  a replay range. The squash has its own ancestry even when the landed files match.
+- Default to a fresh continuation branch from updated `origin/main` and replay only the verified
+  child changes. An explicitly authorized rebase of a private child can replay the same range.
+- When a shared integration branch has live dependents and both histories must remain intact,
+  appoint one integration owner to reconcile the branches in a single merge. Use the recorded
+  pre-squash boundary to resolve duplicate changes and preserve both sides' additional work.
+- Retain the original refs or recoverable checkpoints. Confirm that the final diff against
+  updated `main` contains only the intended additional changes and rerun affected validation
+  before presenting it for review or landing.
 
 ## Rebuilding history
 

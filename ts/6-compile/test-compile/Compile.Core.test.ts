@@ -44,12 +44,12 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
   Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _Scope)')
 })
 
-Tests.test('foreign views reject unsupported parameter types', () => {
+Tests.test('foreign views reject non-text parameter contracts', () => {
   const source = 'app Calendar { root FormattedDate } view FormattedDate(Value number) from ./FormattedDate.tsx'
   const document = AST.transform(Grammar.createParser().parse(source))!
 
   Tests.expect(() => compile(document, { revision: 'foreign-view-type' }))
-    .toThrow('parameters must all use text or boolean')
+    .toThrow('parameters must all use the text type')
 })
 
 Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {
@@ -122,7 +122,7 @@ Tests.test('generated bootstrap initializes imported values before entry values'
   Tests.expect(scopes[0]!['Copy']).toBe('ready')
 })
 
-Tests.test('Kitchen Sink compiles typed captures, parameter forwarding and nested children', async () => {
+Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {
   const source = await FS.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
   const tree = Grammar.createParser().parse(source)
   const document = AST.transform(tree)
@@ -134,7 +134,6 @@ Tests.test('Kitchen Sink compiles typed captures, parameter forwarding and neste
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["FirstCaption"]], [])')
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["Title"]], [])')
   Tests.expect(code).toContain("Caption: string, Children: TR.ViewComponentProps['children']")
-  Tests.expect(code).toContain('(Status: boolean) {')
   Tests.expect(code).toContain('TR.AppDeclaration(_scope0["RootView"], "kitchen-sink")')
 })
 

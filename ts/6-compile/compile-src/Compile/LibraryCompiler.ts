@@ -4,7 +4,7 @@ import type * as Typecheck from '@typecheck'
 import { emitStringLiteral } from '../codegen-util'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
-import { projectViewParameterTypes } from './ForeignViewContractCompiler'
+import { projectTextViewParameterTypes } from './ForeignViewContractCompiler'
 import { collectLibraryPublications, compilePublicationExportName, type PublishedView } from './LibraryPublications'
 import { type CompiledFiles, compileModuleSources } from './ModulesCompiler'
 
@@ -51,7 +51,7 @@ function compileLibraryBootstrap(
 }
 
 function compilePublicComponent(view: PublishedView, index: number): string {
-  const types = projectViewParameterTypes(view.declaration)
+  const types = projectTextViewParameterTypes(view.declaration)
   const props = Object.entries(types).map(([name, type]) => `${emitStringLiteral(name)}: ${type}`)
   const parameters = Object.keys(types).map(emitStringLiteral)
   const exportName = compilePublicationExportName(index)

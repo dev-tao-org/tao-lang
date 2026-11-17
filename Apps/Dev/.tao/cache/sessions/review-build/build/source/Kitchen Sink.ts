@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./Kitchen Sink.views";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/a3f0c478eae96ffbd2895e1d0c8ae3a46998902a9844ee67c51895529b84a164/modules/0d1d0a24874c55bf/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/ddf9e84084549dedd88cee1cfafcb36c50a99b5b55f5d34806072d2411e6ef29/modules/0d1d0a24874c55bf/Kitchen Sink/SidecarGreeting.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./Modules";
 import type { Scope as ImportedScope2 } from "./Library/Demo";
@@ -9,7 +9,6 @@ export type Scope = {
   readonly "DefaultTitle": string;
   readonly "KitchenSink": TR.View;
   readonly "RootView": TR.View;
-  readonly "InteractionStatus": TR.View;
   readonly "Pair": TR.View;
   readonly "Panel": TR.View;
   readonly "Heading": TR.View;
@@ -65,7 +64,6 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 export function bindDeclarations(_Scope: Scope): void {
   TR.AliasBinding(_Scope, "KitchenSink", () => _Scope["RootView"]);
   TR.LetDeclaration(_Scope, "RootView", TR.ViewDeclaration("RootView", [], _Views.TaoView_RootView_da9ad98e2365, _Scope));
-  TR.LetDeclaration(_Scope, "InteractionStatus", TR.ViewDeclaration("InteractionStatus", ["Locked"], _Views.TaoView_InteractionStatus_da9ad98e2365, _Scope));
   TR.LetDeclaration(_Scope, "Pair", TR.ViewDeclaration("Pair", ["First", "Second"], _Views.TaoView_Pair_da9ad98e2365, _Scope));
   TR.LetDeclaration(_Scope, "Panel", TR.ViewDeclaration("Panel", ["Title"], _Views.TaoView_Panel_da9ad98e2365, _Scope));
   TR.LetDeclaration(_Scope, "Heading", TR.ViewDeclaration("Heading", [], _Views.TaoView_Heading_da9ad98e2365, _Scope));

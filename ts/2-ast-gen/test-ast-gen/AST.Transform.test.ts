@@ -59,40 +59,6 @@ Tests.test('an unfinished app produces no AST', async () => {
   Tests.expect(transform(tree)).toBeUndefined()
 })
 
-Tests.test('boolean literals and qualified names headed by yes or no remain distinct', () => {
-  const source = Shared.S`
-    use package ./yes
-    use package ./no
-    let Value = yes.Flag
-    view Root {
-      render Panel(yes, no, no.Flag) [disabled no.Flag] {
-        Button [disabled yes]
-      }
-    }
-  `
-  const result = transform(Grammar.createParser().parse(source))
-  const statements = result?.root.block.statements ?? []
-  Tests.expect(AST.FindLetDeclaration(statements, 'Value')?.value).toMatchObject({
-    kind: 'Name',
-    value: 'yes.Flag',
-  })
-  Tests.expect(AST.FindViewDeclaration(statements, 'Root')?.body).toMatchObject({
-    statements: [{
-      expression: {
-        arguments: [
-          { kind: 'BooleanLiteral', value: true },
-          { kind: 'BooleanLiteral', value: false },
-          { kind: 'Name', value: 'no.Flag' },
-        ],
-        interaction: { condition: { kind: 'Name', value: 'no.Flag' } },
-        block: {
-          statements: [{ interaction: { condition: { kind: 'BooleanLiteral', value: true } } }],
-        },
-      },
-    }],
-  })
-})
-
 Tests.test('Preview performance fixture transforms imported generic renders', async () => {
   const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)

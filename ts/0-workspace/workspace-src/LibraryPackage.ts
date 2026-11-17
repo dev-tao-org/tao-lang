@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
-import { Errors, Json } from '@shared'
+import { Errors, Json, Try } from '@shared'
 import * as SourceValidation from '@source-validation'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
@@ -43,21 +43,37 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   const output = Path.resolve(request.out)
   await FS.mkdir(Path.dirname(output))
   await FS.createExclusiveDirectory(output)
+  await Try(() => writeLibraryPackage(output, library, request.name), {
+    catch: error => removeFailedLibraryOutput(output, error),
+  })
+  return output
+}
+
+async function writeLibraryPackage(output: string, library: Compile.CompiledLibrary, name: string): Promise<void> {
   const sources = Path.join(output, 'source')
   await writeGeneratedSources(sources, library.files)
   const configuration = Path.join(sources, 'tsconfig.json')
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
-  const runtimeAPI = Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')
-  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration, runtimeAPI)
+  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration)
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
-    name: request.name,
+    name,
     peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
     dependencies: { '@preact/signals-core': '1.14.4' },
   })
   for (const [name, source] of Object.entries(packageFiles)) {
     await FS.writeFile(Path.join(output, name), source)
   }
-  return output
+}
+
+async function removeFailedLibraryOutput(output: string, buildError: unknown): Promise<never> {
+  await Try(() => FS.rm(output, { recursive: true, force: true }), {
+    catch: cleanupError =>
+      Errors.ThrowHostEnvironment(
+        `Library compilation failed and its incomplete output could not be removed: ${output}.`,
+        { cause: buildError, details: { cleanupError } },
+      ),
+  })
+  Errors.Throw(buildError)
 }
 
 function requireLibraryPackageRequest(request: LibraryPackageRequest): void {
@@ -99,8 +115,8 @@ function serializeLibraryBuildConfiguration(): string {
         '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
         '@runtime/client': [Repo.resolvePath('ts/7-runtime/runtime-src/client/Client.ts')],
         '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
-        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
+        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
         '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
         'react': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react')],

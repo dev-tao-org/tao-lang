@@ -12,14 +12,10 @@
     }
   },
   "requiredFields": {
-    "BooleanLiteral": ["value"],
     "UseStatement": ["all"],
     "Capture": ["value"]
   },
   "fieldTypeOverrides": {
-    "BooleanLiteral": {
-      "value": "boolean"
-    },
     "Capture": {
       "value": "CaptureValue"
     },

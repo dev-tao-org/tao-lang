@@ -6,7 +6,6 @@ import Panel from '@tao-dev/ts-lib-example/Panel'
 import ValueSnapshots from '@tao-dev/ts-lib-example/ValueSnapshots'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import DisabledPreviewDemo from './DisabledPreviewDemo'
 
 const first = library.instantiate()
 const second = library.instantiate()
@@ -32,7 +31,6 @@ export default function Consumer() {
               <Text style={styles.label} testID="react-child">React child</Text>
             </Panel>
             <Card Value="Published submodule" />
-            <DisabledPreviewDemo />
             <View testID="language-features">
               <LanguageFeatures Name="Ada" />
               <ValueSnapshots />

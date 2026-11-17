@@ -106,3 +106,25 @@ Tests.test('project preparation and inspection reject misplaced statements befor
     Tests.expect(requirementReads).toBe(0)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
+
+Tests.test('project preparation and inspection validate entry edits saved during dependency work', async () => {
+  const root = Artifacts.resolvePath('tmp', `project-preparation-entry-edit-${Platform.randomUUID()}`)
+  const entry = Path.join(root, '@ui', 'Main.tao')
+  const source = 'use Packages@ui Widget'
+  const dependencyOptions: DependencyStoreOptions = {
+    storeRoot: Path.join(root, 'source-cache'),
+    git: gitSourceAdapter,
+    async readRequirements() {
+      await FS.writeFile(entry, `${source}${NewlineCharacter}root Widget`)
+      return []
+    },
+  }
+  await Try(async () => {
+    await initializeProject(root)
+    await FS.mkdir(Path.dirname(entry))
+    await FS.writeFile(entry, source)
+    await Tests.rejects(prepareProject(entry, { dependencyOptions, update: ['Packages'] }), MisplacedRootErrorRegx)
+    await FS.writeFile(entry, source)
+    await Tests.rejects(inspectProjectPreparation(entry, { dependencyOptions, runtime: false }), MisplacedRootErrorRegx)
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})

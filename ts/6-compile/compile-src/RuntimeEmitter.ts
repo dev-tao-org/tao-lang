@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { S } from '@shared'
+import { S, Switch } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import * as CodegenUtil from './codegen-util'
@@ -16,9 +16,6 @@ export type ComponentNames = {
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
 export type InjectionCapture = { node: AST.Capture; type: InjectionCaptureType; value: string }
-
-/** TypeScriptPrimitiveType describes an implemented primitive in a generated TypeScript signature. */
-export type TypeScriptPrimitiveType = 'string' | 'boolean'
 
 /** InjectionCapture creates the typed fields for one compiled hook capture. */
 export const InjectionCapture = (
@@ -96,7 +93,7 @@ export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): str
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
 
-type InjectionCaptureType = TypeScriptPrimitiveType | 'children' | 'unknown'
+type InjectionCaptureType = 'text' | 'children' | 'unknown'
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
@@ -104,10 +101,9 @@ export function emitViewRenderExpression(
   scope: CodegenUtil.ScopeCode,
   argumentsCode: string,
   children: string,
-  condition?: string,
 ): string {
-  const interactionArguments = compileInteractionArguments(node, condition)
-  const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${interactionArguments})`
+  const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
+  const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
   return S`
     TR.ViewRenderExpression(
       ${emitName(node.target, scope)},
@@ -154,21 +150,17 @@ export function emitInjectionCustomHook(
   }
 }
 
-function compileInteractionArguments(node: AST.ViewRenderExpression, condition?: string): string {
-  const tag = node.tag ? CodegenUtil.emitLiteral(node.tag) : undefined
-  if (condition !== undefined) {
-    return `, ${tag ?? 'undefined'}, TR.DisabledWhen(${condition})`
-  }
-  return tag === undefined ? '' : `, ${tag}`
-}
-
 function emitCaptureParameter(capture: InjectionCapture): string {
   const type = getCaptureParameterType(capture)
   return `${CodegenUtil.compileIdentifier(capture.node)}: ${type}`
 }
 
 function getCaptureParameterType(capture: InjectionCapture): string {
-  return capture.type === 'children' ? "TR.ViewComponentProps['children']" : capture.type
+  return Switch.property(capture, 'type', {
+    children: () => "TR.ViewComponentProps['children']",
+    text: () => 'string',
+    unknown: () => 'unknown',
+  })
 }
 
 function emitRenderingComponent(
