@@ -58,7 +58,7 @@ window were verified from a successful shell exit alone. Do not change editor se
 existing tabs. A request to open files authorizes this scoped shell launch; no additional approval
 question is needed. Do not open future groups automatically.
 
-## Continue in another implementation worktree
+## Continue in another implementation worktree with the same baseline
 
 After creating the new implementation branch/worktree, continue from the original implementation
 checkout's idle review session:
@@ -74,6 +74,48 @@ the new active session; it does not replay old transaction journals or modify th
 Read the inherited progress/group records and reconcile them before presenting the next group.
 New implementation changes are not automatically approved. Do not pre-create the approved branch
 or copy the old active session over the new one.
+
+## Continue after a landing
+
+Keep the review chat and prior session. Use the
+[landing checkpoint](../../landing/references/merge-progress.md#merging-and-continuing) to pin the
+cut and the remaining changes. Use updated `main` as the new implementation base, or the
+explicit reconciliation commit when a shared integration branch supplies the intended base.
+Replay only the outstanding scope under [Git workflow](../../git-workflow/SKILL.md).
+
+- Start a review session on the new implementation branch with
+  `start --base <new-base-sha> --branch <implementation-branch>-incremental-review-approved`.
+  Ordinary `continue` retains the old baseline and approvals tree.
+- If the prior scope all landed, keep the original receipts and begin a fresh scope at the
+  new base. The pending diff starts empty before incoming work.
+- When part of the scope remains, carry forward the original inventory, stable IDs, earned
+  credit and receipts. Record surviving approved content on the new approvals branch through
+  the usual acceptance operations when the original approval still covers its exact content
+  and meaning. After restoring approvals, register outstanding semantic rechecks and any new
+  ones from conflict resolutions or changes to shared behavior with `recheck --files … --state pending`.
+- Before presenting groups, reconcile `status.pending` with outstanding content changes and
+  `status.recheck` with outstanding semantic rechecks, including files whose bytes are unchanged.
+  Keep the prior session and landing boundary available for resuming.
+
+## Integrate incoming work
+
+- Resolve a named chat to its implementation checkout and branch. Pin the authorized committed
+  tip from its handoff or Git. Track any open findings or verification gaps with that snapshot.
+- Merge the pinned tip into the implementation branch under [Git workflow](../../git-workflow/SKILL.md).
+  Compare the merged snapshot directly with the existing approved-content tree. Carry forward
+  accepted content and receipts, and register rechecks for prior approvals affected by conflict
+  resolution or changed shared behavior. Treat new content as pending under the usual approval rules.
+- If the prior review scope is complete, freeze a new inventory for the incoming round and retain
+  the earlier checkpoint. If it is still open, preserve its frozen progress and mark incoming work
+  as a new scope. Keep any follow-up work on files outside the current display when possible.
+
+## Work during review
+
+- Present requested groups and continue authorized work while awaiting feedback. Respond to new
+  group requests or approvals as they arrive, then resume the work.
+- Keep displayed files stable. If necessary work changes a displayed file, refresh its diff,
+  withdraw any stale approval request, and ask the Developer to review the changed content.
+  Keep new follow-up work pending without changing the original progress denominator.
 
 ## Accept whole files
 

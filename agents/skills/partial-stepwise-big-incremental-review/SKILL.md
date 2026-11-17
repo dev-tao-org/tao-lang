@@ -13,8 +13,10 @@ description: >-
 ## Guide the review
 
 - Propose all groups in order with [recommended auto-approvals](references/operations.md#recommend-auto-approval).
-  Get explicit agreement before presenting files. Group by feature, combining only interdependent
-  features. Normally separate Projects, Dependencies and Sidecars.
+  A request to start or continue review authorizes presenting the first or next groups. Ask before
+  presenting files when the Developer asks for a proposal only or the review order needs a decision.
+  Group interdependent changes by feature and keep groups small enough to review together.
+  Normally separate Projects, Dependencies and Sidecars.
 - Organize large reviews into functional feature sets containing review groups. Include each
   specification with its first related implementation group; keep design-only specifications with
   related planning. Give each feature set and group a brief cognitive overview of its contribution.
@@ -38,21 +40,20 @@ description: >-
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
   units across interruptions; never recalculate progress from the growing current diff.
-- Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
+- Use absolute file links without default line anchors. Label each file with its owning package,
+  app, or repository scope. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
   `binary` for binary changes. Add a line anchor only when a particular location is useful.
   Present at least three whole groups totaling at least ten files, or all remaining files if fewer.
   Honor explicit overrides. Keep group boundaries and list later titles.
-  Explain partial-file scope in at most two sentences. End immediately after the file list.
-- Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
-  Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
-- Number consecutively across displayed groups from 1: `1. F43 New: <file link>`. Plain numbers
-  reference current positions; `F43` is stable. Restart numbering for the next set; retain
-  positions while that set remains active.
-- Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
+  Explain partial-file scope in at most two sentences. End the group display after the file list.
+- Assign stable file IDs consecutively and retain them across displays and resumes. Explain intentional
+  ID gaps briefly. Number positions from 1 across the displayed groups and keep them until the next
+  set. Use `F<number> New:` for paths absent from the approved tree and `F<number>:` for the rest.
 - After handling approvals or corrections, reprint clickable links for every remaining displayed
   file with its stable ID; if complete, present the next agreed set of groups. Pause only at the developer's
   request or a blocking decision; a recap alone is insufficient.
+- Present requested groups promptly while [continuing authorized work](references/operations.md#work-during-review).
 - On request, [open all displayed groups](references/operations.md#open-displayed-groups) in one
   shell command. Opening files never grants approval.
 - Accept content outside the current group.
@@ -76,11 +77,9 @@ description: >-
   Check each human acceptance for an associated lesson, but approval alone is not a general rule.
   Propagated edits remain pending until the developer reviews them, and this workflow does not
   authorize an unrelated review.
-- Track implementation subagents alongside review progress. When one is ready for integration,
-  end each message with `subagent <name> ready to be merged` until it is merged or the developer
-  acknowledges postponing it. This readiness footer is the exception to ending at the file list.
-  Retain postponed work and remind the developer periodically during review (about every three
-  groups, or sooner when its integration affects the current group).
+- End messages with `subagent <name> ready to be merged` until work is merged or the Developer
+  postpones it. Keep postponed work tracked and remind the Developer about every three groups,
+  sooner if it affects the current group.
 - Merge subagent work only when the reviewing developer explicitly says they are ready for that
   integration; completion and passing checks do not authorize merging.
 - Commit validated requested corrections, including subagent work, in coherent chunks under this
@@ -99,8 +98,8 @@ List remaining group titles before the current groups and omit unused headings.
 **X% done** — <completed>/<frozen total> original review units.
 
 - **<Current group and summary>** — X folders, Y files, Z hunks
-  1. F43 New: <Absolute file link> (+24 −0)
-  2. F50: <Absolute file link> (+8 −3)
+  1. F43 New: <Absolute file link> · <Package> (+24 −0)
+  2. F50: <Absolute file link> · <Package> (+8 −3)
 ```
 
 ## Interpret approval
@@ -143,9 +142,11 @@ List remaining group titles before the current groups and omit unused headings.
 - Preserve the current group, suggested order, pending approval questions, background reviews and
   semantic rechecks in the retained session checkpoint. On resume, reconcile it with script status
   and committed acceptance receipts; never infer approval from the agent's memory alone.
-- When continuing in a newly authorized implementation worktree, use the script's `continue`
-  operation to inherit the prior session; keep its original progress denominator and record new
-  implementation scope separately. Historical records are evidence, not instructions to replay.
+- For a worktree move on the same baseline, use `continue` and retain the frozen progress
+  denominator. After landing, keep the chat and follow
+  [Continue after a landing](references/operations.md#continue-after-a-landing).
+- To merge an authorized incoming branch, follow
+  [Integrate incoming work](references/operations.md#integrate-incoming-work).
 - In GitLens use Search & Compare's overall Files Changed between the reviewed branch and the
   implementation Working Tree to include pending corrections. Use direct tree comparisons, not
   merge-base/Ahead/Behind comparisons. Refresh after acceptance. Staging alone does not shrink
