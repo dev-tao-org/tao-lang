@@ -58,7 +58,7 @@ Tests.test('root requirement observation never links unrelated root declarations
         app Other { root Hidden }
       `,
     )
-    const result = await workspace.openFile(Path.join(directory, 'feature/App.tao'))
+    const result = await workspace.files.compileFile(Path.join(directory, 'feature/App.tao'))
     Tests.expect(result.status).toBe('published')
     Tests.expect(observed).toContain(rootFile)
     Tests.expect(compiledContents(publications[0])).not.toContain('Hidden')
