@@ -1,3 +1,4 @@
+import { IO } from '@cli-kit'
 import { Errors, Json, Time, Try } from '@shared'
 import { Artifacts, FS, Platform } from '@shared/os'
 import { Http } from '@shared/web'
@@ -13,6 +14,7 @@ export function createNativeTestTarget(
   driver: NativeWebDriver,
   clearAppData?: () => Promise<void>,
 ): Workspace.AppTestTarget {
+  const find = createJourneyFinder(platform, driver)
   return {
     platform,
     async openDevice() {
@@ -29,12 +31,12 @@ export function createNativeTestTarget(
           opening = true
         },
         async press(tag) {
-          const element = await waitForElement(driver, tagSelector(platform, tag), `#${tag}`, takeOpeningTimeout())
+          const element = await waitForElement(find, tagSelector(platform, tag), `#${tag}`, takeOpeningTimeout())
           await driver.tap(element)
         },
-        type: (tag, value) => typeInput(platform, driver, tag, value, takeOpeningTimeout()),
-        expectText: (value, tag) => expectText(platform, driver, value, tag, takeOpeningTimeout()),
-        expectInput: (tag, value) => expectInput(platform, driver, tag, value, takeOpeningTimeout()),
+        type: (tag, value) => typeInput(platform, driver, find, tag, value, takeOpeningTimeout()),
+        expectText: (value, tag) => expectText(platform, find, value, tag, takeOpeningTimeout()),
+        expectInput: (tag, value) => expectInput(platform, driver, find, tag, value, takeOpeningTimeout()),
         dispose: () => disposeDevice(platform, driver),
       }
     },
@@ -82,11 +84,12 @@ function applicationArguments(platform: NativeTestPlatform): NativeApplicationAr
 async function typeInput(
   platform: NativeTestPlatform,
   driver: NativeWebDriver,
+  find: JourneyFinder,
   tag: string,
   value: string,
   timeoutMs?: number,
 ): Promise<void> {
-  const element = await waitForElement(driver, inputSelector(platform, tag), `input #${tag}`, timeoutMs)
+  const element = await waitForElement(find, inputSelector(platform, tag), `input #${tag}`, timeoutMs)
   await driver.tap(element)
   // Android runs with Appium's empty IME. Observe focus on the real field after an actual touch.
   const ready = platform === 'android'
@@ -129,6 +132,7 @@ async function awaitKeyboard(driver: NativeWebDriver): Promise<boolean> {
 async function expectInput(
   platform: NativeTestPlatform,
   driver: NativeWebDriver,
+  find: JourneyFinder,
   tag: string,
   value: string,
   timeoutMs?: number,
@@ -137,7 +141,7 @@ async function expectInput(
   const attribute = platform === 'ios' ? 'value' : 'text'
   const description = `input #${tag} with value ${Json.Print(value)}`
   await waitForNativeObservation(description, async () => {
-    const element = await findJourneyElement(driver, selector)
+    const element = await find(selector)
     if (element && await driver.attribute(element, attribute) === value) {
       return element
     }
@@ -147,7 +151,7 @@ async function expectInput(
 
 async function expectText(
   platform: NativeTestPlatform,
-  driver: NativeWebDriver,
+  find: JourneyFinder,
   value: string,
   tag: TaggedScope,
   timeoutMs?: number,
@@ -156,24 +160,45 @@ async function expectText(
   const attributes = platform === 'ios' ? ['label', 'value'] : ['text', 'content-desc']
   const condition = attributes.map(name => `@${name}=${literal}`).join(' or ')
   const description = tag ? `exact text ${Json.Print(value)} in #${tag}` : `exact text ${Json.Print(value)}`
-  await waitForElement(driver, withinTag(platform, tag, condition), description, timeoutMs)
+  await waitForElement(find, withinTag(platform, tag, condition), description, timeoutMs)
 }
 
+type JourneyFinder = (selector: string) => Promise<string | undefined>
+
 function waitForElement(
-  driver: NativeWebDriver,
+  find: JourneyFinder,
   selector: string,
   description: string,
   timeoutMs = 30_000,
 ): Promise<string> {
-  return waitForNativeObservation(description, () => findJourneyElement(driver, selector), timeoutMs)
+  return waitForNativeObservation(description, () => find(selector), timeoutMs)
 }
 
-async function findJourneyElement(driver: NativeWebDriver, selector: string): Promise<string | undefined> {
-  const element = await findVisibleElement(driver, selector)
-  if (element === undefined) {
-    await dismissExpoGoMenu(driver)
+const AndroidSystemUiWait = `//*[@package='android'][@resource-id='android:id/parentPanel']`
+  + `[.//*[@resource-id='android:id/alertTitle'][@text="System UI isn't responding"]]`
+  + `//*[@package='android'][@resource-id='android:id/aerr_wait']`
+
+type SystemUiWaitDeadline = number | undefined
+
+function createJourneyFinder(platform: NativeTestPlatform, driver: NativeWebDriver): JourneyFinder {
+  let systemUiWaitDeadline: SystemUiWaitDeadline
+  return async selector => {
+    const element = await findVisibleElement(driver, selector)
+    if (element !== undefined) {
+      return element
+    }
+    const wait = platform === 'android' ? await findVisibleElement(driver, AndroidSystemUiWait) : undefined
+    if (wait === undefined) {
+      await dismissExpoGoMenu(driver)
+    } else if (systemUiWaitDeadline === undefined) {
+      IO.progress('Waiting once for Android System UI on the owned emulator…')
+      await driver.tap(wait)
+      systemUiWaitDeadline = Time.nowMs() + 3000
+    } else if (Time.nowMs() >= systemUiWaitDeadline) {
+      Errors.ThrowHostEnvironment('Android System UI is still blocking the owned emulator after choosing Wait.')
+    }
+    return undefined
   }
-  return element
 }
 
 // The Expo Go panel exposes this heading even when Android's onboarding replaces the menu items.
