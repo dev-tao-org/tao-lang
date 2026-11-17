@@ -92,6 +92,31 @@ Tests.test('rejecting a structural thenable does not execute its deferred write'
   engine.dispose()
 })
 
+Tests.test('rejecting a promise does not execute a thenable produced by its species', async () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable(0)
+  const result = Promise.resolve()
+  let calls = 0
+  function createDerived(execute: (resolve: () => void, reject: () => void) => void) {
+    execute(() => undefined, () => undefined)
+    return {
+      then(resolve: () => void) {
+        calls += 1
+        source.update(1)
+        resolve()
+      },
+    }
+  }
+  Object.defineProperty(result, 'constructor', { value: { [Symbol.species]: createDerived } })
+  Tests.expect(() => source.observe((() => result) as () => void)).toThrow(
+    'Observation callbacks must finish synchronously',
+  )
+  await Promise.resolve()
+  Tests.expect(calls).toBe(0)
+  Tests.expect(source.jsValue()).toBe(0)
+  engine.dispose()
+})
+
 function verifyNestedBatchFailure(deferred: boolean): void {
   const queue: (() => void)[] = []
   const engine = createReactiveEngine({ scheduleDelivery: deferred ? deliver => queue.push(deliver) : undefined })

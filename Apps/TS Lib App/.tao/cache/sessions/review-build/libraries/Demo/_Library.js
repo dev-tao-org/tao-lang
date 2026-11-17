@@ -607,9 +607,11 @@ function requireSynchronousResult(result, stop) {
     return;
   }
   stop();
-  Try(() => Promise.prototype.then.call(result, undefined, () => {
-    return;
-  }), { catch: () => {
+  Try(() => {
+    Promise.prototype.then.call(result, undefined, () => {
+      return;
+    });
+  }, { catch: () => {
     return;
   } });
   throwAsynchronousObservation();

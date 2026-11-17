@@ -53,7 +53,9 @@ function requireSynchronousResult(result: unknown, stop: () => void): void {
   }
   stop()
   // Consume an already-started native promise without invoking an arbitrary thenable's method.
-  void Try(() => Promise.prototype.then.call(result, undefined, () => undefined), { catch: () => undefined })
+  Try(() => {
+    void Promise.prototype.then.call(result, undefined, () => undefined)
+  }, { catch: () => undefined })
   throwAsynchronousObservation()
 }
 
