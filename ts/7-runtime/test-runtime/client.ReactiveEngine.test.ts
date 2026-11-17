@@ -185,26 +185,7 @@ Tests.test('a failing queued observer does not strand other deliveries or subseq
   engine.dispose()
 })
 
-Tests.test('reentrant observer update loops fail with a bounded actionable error', () => {
-  const engine = createReactiveEngine()
-  const first = engine.createWritable(0)
-  const second = engine.createWritable(0)
-  first.observe(value => {
-    if (value > 0 && value < 1000) {
-      second.update(value + 1)
-    }
-  })
-  second.observe(value => {
-    if (value > 0 && value < 1000) {
-      first.update(value + 1)
-    }
-  })
-
-  Tests.expect(() => first.update(1)).toThrow('reentrant delivery limit')
-  engine.dispose()
-})
-
-Tests.test('independent observers and source updates are not counted as one delivery cycle', () => {
+Tests.test('a source delivers both updates to every observer in a broad read-only fan-out', () => {
   const engine = createReactiveEngine()
   const source = engine.createWritable(0)
   let deliveries = 0

@@ -1,113 +1,107 @@
+import { Errors, Time, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { createReactiveEngine } from '../runtime-src/client/ReactiveEngine'
 
-Tests.test('feedback failure preserves unrelated observers and queued deliveries', () => {
-  for (const deferred of [false, true]) {
-    const queue: (() => void)[] = []
-    const engine = createReactiveEngine({ scheduleDelivery: deferred ? deliver => queue.push(deliver) : undefined })
-    const first = engine.createWritable(0)
-    const second = engine.createWritable(0)
-    const independent = engine.createWritable(0)
-    const observed: number[] = []
-    independent.observe(value => observed.push(value))
-    first.observe(value => {
-      if (value > 0) {
-        second.update(value + 1)
-      }
+Tests.test('a write during initial delivery fails before changing the value', () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable(0)
+  let calls = 0
+  Tests.expect(() =>
+    source.observe(() => {
+      calls += 1
+      source.update(1)
     })
-    second.observe(value => {
-      if (value > 0) {
-        first.update(value + 1)
-      }
-    })
-
-    Tests.expect(() => {
-      engine.batch(() => {
-        first.update(1)
-        independent.update(1)
-      })
-      while (queue.length > 0) {
-        queue.shift()?.()
-      }
-    }).toThrow('reentrant delivery limit')
-    independent.update(2)
-    while (queue.length > 0) {
-      queue.shift()?.()
-    }
-    Tests.expect(observed).toEqual([0, 1, 2])
-    engine.dispose()
-  }
+  ).toThrow('Observation callbacks cannot write Tao state')
+  Tests.expect(source.jsValue()).toBe(0)
+  source.update(2)
+  Tests.expect(calls).toBe(1)
+  engine.dispose()
 })
 
-Tests.test('feedback stays bounded with interleaved observers and replacement subscriptions', () => {
-  for (const deferred of [false, true]) {
-    for (const replace of [false, true]) {
-      verifyInterleavedFeedback(deferred, replace)
-    }
-  }
+Tests.test('equal writes through a nested batch fail and only stop the writing observer', () => {
+  verifyNestedBatchFailure(false)
+  verifyNestedBatchFailure(true)
 })
 
-Tests.test('an independent observer entering near the feedback limit remains subscribed', () => {
+Tests.test('a native async callback is rejected before its body executes', () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable(0)
+  let called = false
+  const receive = async (): Promise<void> => {
+    called = true
+  }
+
+  if (false) {
+    // @ts-expect-error Native async callbacks are rejected by the public expression type.
+    source.observe(receive)
+    // @ts-expect-error Callable then methods are rejected even on structural thenables.
+    source.observe(() => ({ then: () => undefined }))
+  }
+
+  Tests.expect(() => source.observe(receive as () => void)).toThrow('Observation callbacks must finish synchronously')
+  const receiveThenable = () => ({ then: () => undefined })
+  Tests.expect(() => source.observe(receiveThenable as () => void)).toThrow(
+    'Observation callbacks must finish synchronously',
+  )
+  Tests.expect(called).toBe(false)
+  engine.dispose()
+})
+
+Tests.test('a rejected promise return stops its observer and releases the writing boundary synchronously', async () => {
   const queue: (() => void)[] = []
   const engine = createReactiveEngine({ scheduleDelivery: deliver => queue.push(deliver) })
   const source = engine.createWritable(0)
-  const independent = engine.createWritable(0)
-  const observed: number[] = []
-  independent.observe(value => observed.push(value))
-  source.observe(value => {
-    if (value > 0 && value < 1000) {
-      source.update(value + 1)
-      if (value === 98) {
-        independent.update(1)
-      }
+  let calls = 0
+  const receive = (value: number) => {
+    calls += 1
+    if (value === 1) {
+      return Promise.resolve().then(() => Errors.ThrowUserInput('late failure'))
     }
-  })
+    return undefined
+  }
+  if (false) {
+    // @ts-expect-error A callback may not return a promise on any branch.
+    source.observe(receive)
+  }
+  source.observe(receive as (value: number) => void)
   source.update(1)
-  Tests.expect(() => queue.shift()?.()).toThrow('reentrant delivery limit')
-  independent.update(2)
+  Tests.expect(() => queue.shift()?.()).toThrow('Observation callbacks must finish synchronously')
+  source.update(2)
   queue.shift()?.()
-  Tests.expect(observed).toEqual([0, 1, 2])
+  await Time.sleep(0)
+  Tests.expect(source.jsValue()).toBe(2)
+  Tests.expect(calls).toBe(2)
   engine.dispose()
 })
 
-function verifyInterleavedFeedback(deferred: boolean, replace: boolean): void {
+function verifyNestedBatchFailure(deferred: boolean): void {
   const queue: (() => void)[] = []
   const engine = createReactiveEngine({ scheduleDelivery: deferred ? deliver => queue.push(deliver) : undefined })
+  const otherEngine = createReactiveEngine()
   const source = engine.createWritable(0)
-  const independent = engine.createWritable(0)
-  let latest = 0
-  let subscription = source.observe(() => undefined)
-  const receive = (value: number): void => {
-    if (value > 0 && value < 1000) {
-      if (replace) {
-        subscription.unobserve()
-        let initial = true
-        subscription = source.observe(next => {
-          if (!initial) {
-            receive(next)
-          }
-        })
-        initial = false
-      }
-      source.update(value + 1)
-      independent.update(value)
+  const independent = otherEngine.createWritable(0)
+  const observed: number[] = []
+  const nestedValues: number[] = []
+  let writingCalls = 0
+  source.observe(value => {
+    writingCalls += 1
+    if (value === 1) {
+      independent.observe(next => nestedValues.push(next))
+      Try(() => otherEngine.batch(() => independent.update(0)), { catch: () => undefined })
     }
-  }
-  subscription.unobserve()
-  subscription = source.observe(receive)
-  independent.observe(value => latest = value)
+  })
+  source.observe(value => observed.push(value))
+
   Tests.expect(() => {
     source.update(1)
     queue.shift()?.()
-  }).toThrow('reentrant delivery limit')
-  Tests.expect(source.jsValue() < 1000).toBe(true)
-  independent.update(2000)
-  while (queue.length > 0) {
-    queue.shift()?.()
-  }
-  Tests.expect(latest).toBe(2000)
-  source.update(1)
+  }).toThrow('Observation callbacks cannot write Tao state')
+  independent.update(2)
+  source.update(2)
   queue.shift()?.()
-  Tests.expect(source.jsValue()).toBe(1)
+  Tests.expect(writingCalls).toBe(2)
+  Tests.expect(observed).toEqual([0, 1, 2])
+  Tests.expect(nestedValues).toEqual([0, 2])
   engine.dispose()
+  otherEngine.dispose()
 }

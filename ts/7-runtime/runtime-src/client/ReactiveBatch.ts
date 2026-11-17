@@ -13,15 +13,16 @@ export function runSynchronousReactiveBatch<T>(perform: () => T): T {
   return result
 }
 
-type ObjectOrFunction = object | Function
-type PotentialThenable = { then?: unknown }
-
-function isThenable(value: unknown): boolean {
+/** isThenable detects a callable then method at synchronous reactive boundaries. */
+export function isThenable(value: unknown): value is PromiseLike<unknown> {
   if (!isObjectOrFunction(value)) {
     return false
   }
   return typeof (value as PotentialThenable).then === 'function'
 }
+
+type ObjectOrFunction = object | Function
+type PotentialThenable = { then?: unknown }
 
 function isObjectOrFunction(value: unknown): value is ObjectOrFunction {
   return typeof value === 'object' && value !== null || typeof value === 'function'
