@@ -17,5 +17,5 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "ValueSnapshots", TR.ViewDeclaration("ValueSnapshots", [], _Views.TaoView_ValueSnapshots_d91ca1acb358, _Scope));
+  TR.LetDeclaration(_Scope, "ValueSnapshots", TR.ViewDeclaration("ValueSnapshots", [], _Views.TaoView_ValueSnapshots_040c7468f6c4, _Scope));
 }

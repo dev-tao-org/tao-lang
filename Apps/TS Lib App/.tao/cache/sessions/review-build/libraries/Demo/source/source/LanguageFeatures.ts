@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./LanguageFeatures.views";
-import { ForeignGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
+import { ForeignGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/d18a/tao-lang/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./cards/Card";
 import type { Scope as ImportedScope2 } from "./cards/Other";
@@ -15,6 +15,7 @@ export type Scope = {
   readonly "Col": ImportedScope0["Col"];
   readonly "Row": ImportedScope0["Row"];
   readonly "Input": ImportedScope0["Input"];
+  readonly "Button": ImportedScope0["Button"];
   readonly "AliasText": ImportedScope0["Text"];
   readonly "Caption": ImportedScope1["Caption"];
   readonly "Cards.Caption": ImportedScope1["Caption"];
@@ -29,6 +30,7 @@ export type Imports = {
   readonly "Col": Pick<ImportedScope0, "Col">;
   readonly "Row": Pick<ImportedScope0, "Row">;
   readonly "Input": Pick<ImportedScope0, "Input">;
+  readonly "Button": Pick<ImportedScope0, "Button">;
   readonly "AliasText": Pick<ImportedScope0, "Text">;
   readonly "Caption": Pick<ImportedScope1, "Caption">;
   readonly "Cards.Caption": Pick<ImportedScope1, "Caption">;
@@ -43,6 +45,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
   TR.AliasBinding(_Scope, "Col", () => _Modules["tao/ui/Views.ts"]!["Col"]);
   TR.AliasBinding(_Scope, "Row", () => _Modules["tao/ui/Views.ts"]!["Row"]);
   TR.AliasBinding(_Scope, "Input", () => _Modules["tao/ui/Views.ts"]!["Input"]);
+  TR.AliasBinding(_Scope, "Button", () => _Modules["tao/ui/Views.ts"]!["Button"]);
   TR.AliasBinding(_Scope, "AliasText", () => _Modules["tao/ui/Views.ts"]!["Text"]);
   TR.AliasBinding(_Scope, "Caption", () => _Modules["source/cards/Card.ts"]!["Caption"]);
   TR.AliasBinding(_Scope, "Cards.Caption", () => _Modules["source/cards/Card.ts"]!["Caption"]);
@@ -53,7 +56,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_a2b02828914f, _Scope));
+  TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_1ce71c128059, _Scope));
   TR.LetDeclaration(_Scope, "ForeignGreeting", TR.ForeignView("ForeignGreeting", ["Value"], _taoForeignView0, _Scope));
 }
 
