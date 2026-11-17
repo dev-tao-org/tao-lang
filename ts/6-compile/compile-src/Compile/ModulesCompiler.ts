@@ -69,8 +69,8 @@ const compileSource = Timings.measured('compiler.emit-module', function(
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): GeneratedSource {
   const sourceProgram = selectSourceProgram(program, module)
-  const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, resolveForeignViewPath)
   const mainPath = resolvePath(paths, module.path)
+  const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, mainPath, resolveForeignViewPath)
   const context = createModuleCompilationContext(module, mainPath, textBindings, foreign.names)
   const declarations = AST.GetDeclarations(module.document).map(node => ({
     node,
@@ -140,7 +140,7 @@ function compileMain(
     `
   ).join(NewlineCharacter + NewlineCharacter)
   return S`
-    import * as TR from '@runtime';
+    ${RuntimeEmitter.emitGeneratedRuntimeImport()}
     ${componentImport}
     ${foreignImports}
     ${bindingTypes}
@@ -222,7 +222,7 @@ function compileBootstrap(
   const initialization = compileModuleInitialization(program, 'App.tsx', paths)
   const scope = initialization.scopes.get(selected.source)!
   return S`
-    import * as TR from '@runtime';
+    ${RuntimeEmitter.emitGeneratedRuntimeImport()}
     ${initialization.imports}
 
     ${RuntimeEmitter.emitModuleApplied(revision)}

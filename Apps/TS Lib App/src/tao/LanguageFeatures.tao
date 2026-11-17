@@ -1,7 +1,5 @@
-use tao@ui all
-use tao@ui Text as AliasText
-use ./cards all
-use package ./cards as Cards
+use tao@ui Col, Input, Text, Text as AliasText
+use @cards Caption, Caption as PackageCaption
 use FolderScope, PackageScope, ProjectScope
 
 file
@@ -17,9 +15,9 @@ view LanguageFeatures(Name text) {
     FolderScope
     PackageScope
     ProjectScope
-    Caption("Wildcard import")
+    Caption("Package import")
     AliasText("Tao alias")
-    Cards.Caption("Namespace member")
+    PackageCaption("Aliased package import")
     Col {
       let FileCaption = "Nested lexical text"
       Text(FileCaption)

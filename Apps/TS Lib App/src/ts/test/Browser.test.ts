@@ -11,7 +11,7 @@ type TaoTestSourceMarker = {
   packageDirectory: string
 }
 
-test('Tao library renders React props, children and isolated instances', async () => {
+test('Tao library renders React props, children and mount-local state', async () => {
   const reservation = Bun.serve({ port: 0, fetch: () => new Response() })
   const port = reservation.port!
   reservation.stop(true)

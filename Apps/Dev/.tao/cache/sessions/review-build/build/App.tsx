@@ -1,4 +1,4 @@
-import * as TR from '@runtime';
+import * as TR from '@tao/runtime/generated';
 import * as Source0 from "./ts/packages/Kitchen Sink/Kitchen Sink";
 import * as Source1 from "./ts/packages/Kitchen Sink/Modules";
 import * as Source2 from "./ts/dependencies/tao/@ui/Views";

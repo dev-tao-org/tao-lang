@@ -1,4 +1,4 @@
-import * as TR from '@runtime';
+import * as TR from '@tao/runtime/generated';
 
 
 import type { Scope as ImportedScope0 } from "./Kitchen Sink";

@@ -1,10 +1,9 @@
 use tao@ui Col, Text
-use package ./cards as Cards
 use LanguageFeatures
 use ValueSnapshots
 
 ts-library Demo {
-  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, Cards, }
+  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, @cards, }
 }
 
 public

@@ -22,7 +22,9 @@ Tests.test('generated build files resolve runtime aliases and JSX packages in th
     const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, build)
     Tests.expect(parsed.errors).toEqual([])
     Tests.expect(parsed.fileNames).toContain(source)
-    for (const name of ['@runtime', '@tao/runtime-api', '@shared', 'react', 'react/jsx-runtime']) {
+    for (
+      const name of ['@tao/runtime/generated', '@tao/runtime/runtime-api', '@shared', 'react', 'react/jsx-runtime']
+    ) {
       const resolved = TypeScript.resolveModuleName(name, source, parsed.options, TypeScript.sys)
       Tests.expect(resolved.resolvedModule).toBeDefined()
     }

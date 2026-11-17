@@ -12,3 +12,11 @@ export const RuntimeSourceFiles = {
   'shared/shared.ts': 'ts/shared/shared-src/shared.ts',
   'shared/bridges/Bridge_zod.ts': 'ts/shared/shared-src/bridges/Bridge_zod.ts',
 } as const
+/** RuntimeLibraryPackageName identifies the shared installed runtime of generated libraries. */
+export const RuntimeLibraryPackageName = '@tao/runtime'
+
+/** RuntimeLibraryPackageVersion selects the current development runtime contract. */
+export const RuntimeLibraryPackageVersion = '0.0.0'
+
+/** RuntimeLibraryResourceDirectory locates the portable package within a prepared runtime generation. */
+export const RuntimeLibraryResourceDirectory = 'library-package'

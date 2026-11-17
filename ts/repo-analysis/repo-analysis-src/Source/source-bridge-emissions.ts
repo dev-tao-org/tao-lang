@@ -35,7 +35,7 @@ export function sourceBridgeEmissionIssues(
 }
 
 function createEmissionBridgeContext(context: SourceBridgeContext): SourceBridgeContext {
-  return { ...context, pathAliases: [...context.pathAliases, '@runtime'] }
+  return { ...context, pathAliases: [...context.pathAliases, '@tao/runtime/generated', '@tao/runtime/runtime-api'] }
 }
 
 function renderTemplateSource(template: TypeScript.TemplateLiteral): string {
@@ -57,15 +57,14 @@ function isExplicitHostProbe(node: TypeScript.Node, filename: string): boolean {
 // Standalone consumer templates and declaration contracts intentionally resolve the consumer's peers.
 const hostProbeSpecifiers = new Map<string, readonly string[]>([
   ['ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts', ['react']],
-  ['ts/6-compile/compile-src/Compile/LibraryPackageCompiler.ts', ['react']],
   ['ts/0-workspace/workspace-src/projects/LibraryProjectTemplate.ts', [
     '@tao-dev/ts-lib-example',
-    '@tao-dev/ts-lib-example/Greeting',
     'react',
     'react-native',
   ]],
   ['ts/0-workspace/test-workspace/sidecars.test-fixtures.ManagedMetro.Acceptance.ts', ['tao-fixture-label']],
   ['ts/0-workspace/test-workspace/Workspace.ManagedDependenciesAcceptance.test.ts', ['tao-fixture-label']],
+  ['ts/0-workspace/test-workspace/Workspace.LibraryDependencies.test.ts', ['@cards']],
   ['ts/7-runtime/test-runtime/expo/Metro.test-fixtures.Integration.DelayPreload.ts', [
     'node:fs',
     'node:module',

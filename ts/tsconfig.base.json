@@ -125,9 +125,6 @@
       "@stdlib": [
         "./stdlib/stdlib-src/Stdlib.ts"
       ],
-      "@tao/ts-api": [
-        "./ts-api/ts-api-src/ts-api.ts"
-      ],
       "@ide": [
         "./ide-extensions/tao-ide-extension/tao-ide-extension-src/Editor.ts"
       ]

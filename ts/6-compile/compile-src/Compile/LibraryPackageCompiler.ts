@@ -1,42 +1,76 @@
 import { S } from '@shared'
 
 import { emitJsonDocument } from '../codegen-util'
-import { projectTextViewParameterTypes } from './ForeignViewContractCompiler'
-import { compilePublicationExportName, type PublishedView } from './LibraryPublications'
+import { compileModuleImport } from '../GeneratedPaths'
+import { LibraryScopePath } from './LibraryCompiler'
+import { type PublishedView, publishedViewBinding } from './LibraryPublications'
 import type { CompiledFiles } from './ModulesCompiler'
 
-/** LibraryPackageConfiguration supplies the resolved package name and dependency versions. */
+/** LibraryPackageConfiguration supplies the generated package name and installer-visible dependencies. */
 export type LibraryPackageConfiguration = {
   name: string
   peerDependencies: LibraryDependencyVersions
   dependencies: LibraryDependencyVersions
 }
 
-/** compileLibraryPackageFiles emits the public entry points, declarations and manifest for a bundled library. */
+/** compileLibraryPackageFiles emits source facades and a relocatable package manifest and TypeScript config. */
 export function compileLibraryPackageFiles(
   views: readonly PublishedView[],
   configuration: LibraryPackageConfiguration,
 ): CompiledFiles {
-  const exports: LibraryPackageExports = { '.': { types: './Library.d.ts', default: './Library.js' } }
-  const files: LibraryPackageFiles = {
-    'Library.js': "export { default } from './_Library.js';\n",
-    'Library.d.ts': LibraryDeclaration,
-  }
-  for (const [index, view] of views.entries()) {
-    const stem = `view${index}`
-    const entry = `${stem}.js`
-    const declaration = `${stem}.d.ts`
-    exports[`./${view.path}`] = { types: `./${declaration}`, default: `./${entry}` }
-    files[entry] = `export { ${compilePublicationExportName(index)} as default } from './_Library.js';\n`
-    files[declaration] = compileViewDeclaration(view)
+  const files: LibraryPackageFiles = {}
+  const exports: LibraryPackageExports = {}
+  const paths: LibraryLocalPaths = {}
+  const groups = groupPublishedViews(views)
+  for (const [subpath, selected] of groups) {
+    const facade = subpath === '.' ? 'Library.ts' : `${subpath.slice(2)}.ts`
+    const path = `ts/${facade}`
+    files[path] = compileFacade(path, selected)
+    exports[subpath] = `./${path}`
+    if (subpath !== '.') {
+      paths[subpath.slice(2)] = [`./${facade}`]
+    }
   }
   files['package.json'] = serializeLibraryPackage(configuration, exports)
+  files['ts/tsconfig.json'] = serializeLibraryTypeScript(paths)
   return files
 }
 
 type LibraryDependencyVersions = Readonly<Record<string, string>>
-type LibraryPackageExports = Record<string, { types: string; default: string }>
+type LibraryPackageExports = Record<string, string>
 type LibraryPackageFiles = Record<string, string>
+type LibraryLocalPaths = Record<string, string[]>
+
+function groupPublishedViews(views: readonly PublishedView[]): Map<string, PublishedView[]> {
+  const groups = new Map<string, PublishedView[]>([['.', []]])
+  for (const view of views) {
+    const packageRoot = view.subpath.split('/').slice(0, 2).join('/')
+    if (!groups.has(packageRoot)) {
+      groups.set(packageRoot, [])
+    }
+    const group = groups.get(view.subpath)
+    if (group) {
+      group.push(view)
+    } else {
+      groups.set(view.subpath, [view])
+    }
+  }
+  return groups
+}
+
+function compileFacade(path: string, views: readonly PublishedView[]): string {
+  const source = compileModuleImport(path, LibraryScopePath)
+  if (views.length === 0) {
+    return S`
+      import ${source};
+      export {};
+    `
+  }
+  const exports = views.map(view => `${publishedViewBinding(view)} as ${view.name}`).join(', ')
+  return S`
+    export { ${exports} } from ${source};
+  `
+}
 
 function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exports: LibraryPackageExports): string {
   return emitJsonDocument({
@@ -49,28 +83,22 @@ function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exp
   })
 }
 
-function compileViewDeclaration(view: PublishedView): string {
-  const parameters = projectTextViewParameterTypes(view.declaration)
-  const props = Object.entries(parameters).map(([name, type]) => `${name}: ${type};`).join(' ')
-  return S`
-    import type * as React from 'react';
-    export type Props = { ${props} children?: React.ReactNode };
-    declare const View: React.ComponentType<Props>;
-    export default View;
-  `
+function serializeLibraryTypeScript(paths: LibraryLocalPaths): string {
+  return emitJsonDocument({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      allowJs: true,
+      allowImportingTsExtensions: true,
+      esModuleInterop: true,
+      jsx: 'react-jsx',
+      preserveSymlinks: true,
+      paths,
+    },
+    include: ['**/*.ts', '**/*.tsx'],
+  })
 }
-
-const LibraryDeclaration = S`
-  import type * as React from 'react';
-  declare const instanceOwner: unique symbol;
-  export type Instance = {
-    readonly [instanceOwner]: true;
-    readonly disposed: boolean;
-    dispose(): void;
-  };
-  declare const library: {
-    instantiate(): Instance;
-    Provider: React.ComponentType<{ instance: Instance; children?: React.ReactNode }>;
-  };
-  export default library;
-`

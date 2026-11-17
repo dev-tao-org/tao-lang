@@ -1,4 +1,4 @@
-import * as TR from '@runtime';
+import * as TR from '@tao/runtime/generated';
 import * as _Views from "./Views.views";
 
 

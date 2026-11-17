@@ -1,5 +1,5 @@
-import * as TR from '@runtime';
-import Tao from '@tao/runtime-api';
+import * as TR from '@tao/runtime/generated';
+import Tao from '@tao/runtime/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Demo";
 
 

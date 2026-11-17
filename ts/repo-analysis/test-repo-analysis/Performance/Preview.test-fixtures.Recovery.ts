@@ -114,7 +114,7 @@ function createRecoveryApp(revision: string, mode: RecoveryMode): string {
   return S`
     import React from '@runtime/client/Bridge_react/Bridge_react';
     import { Errors } from '@shared';
-    import * as TR from '@runtime';
+    import * as TR from '@tao/runtime/generated';
     TR.ModuleApplied('${revision}');
     function RecoveryStage() {
       ${render}

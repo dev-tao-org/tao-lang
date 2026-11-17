@@ -17,6 +17,7 @@ const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+const PublishPackageRegx = /@[A-Za-z_][A-Za-z0-9._-]*/
 const VisibilityKeywords = ['file', 'folder', 'package', 'project', 'public']
 const StatementKeywords = [
   'app',
@@ -194,11 +195,12 @@ export default grammar({
       return seq('ts-library', field('name', $.Identifier), field('block', $.Block))
     },
     PublishDeclaration($) {
+      const member = choice($.Identifier, alias(PublishPackageRegx, $.Identifier))
       return seq(
         'publish',
         '{',
         optional(
-          seq(field('members', $.Identifier), repeat(seq(',', field('members', $.Identifier))), optional(',')),
+          seq(field('members', member), repeat(seq(',', field('members', member))), optional(',')),
         ),
         '}',
       )

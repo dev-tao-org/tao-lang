@@ -17,6 +17,7 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
+  includedSources?: readonly string[]
   beforeLoad?: () => Promise<void>
 }
 
@@ -73,6 +74,16 @@ const loadGraph = Timings.measure(
     }
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
+    if (options.includedSources?.length) {
+      const included: Discovery = {
+        sources: new Map(options.includedSources.map(path => [path, undefined])),
+        imports: [],
+        siblings: [],
+        projectRoots: new Map(),
+        projectAliases: new Map(),
+      }
+      await addDiscoveredSources(state, included, timings)
+    }
     while (state.pending.length > 0) {
       await loadNextSource(state, timings)
     }
