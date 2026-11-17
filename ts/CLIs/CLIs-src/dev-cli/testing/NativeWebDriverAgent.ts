@@ -6,6 +6,7 @@ import Exec from '@shared/os/exec'
 import { type NativeWebDriver, openNativeWebDriver } from './NativeWebDriver'
 
 type Capabilities = Parameters<typeof openNativeWebDriver>[1]
+const ToolchainDiscoveryMs = 60_000
 
 /** openIosWebDriver launches a compatible cached WDA or builds it on the disposable simulator host. */
 export async function openIosWebDriver(url: string, device: string, caps: Capabilities): Promise<NativeWebDriver> {
@@ -36,8 +37,10 @@ export async function openIosWebDriver(url: string, device: string, caps: Capabi
 
 async function resolveWebDriverAgentCache(device: string): Promise<string> {
   const [xcode, sdk, runtime, lock] = await Promise.all([
-    Exec.captureStdout('xcrun', ['xcodebuild', '-version'], { timeoutMs: 10_000 }),
-    Exec.captureStdout('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-build-version'], { timeoutMs: 10_000 }),
+    Exec.captureStdout('xcrun', ['xcodebuild', '-version'], { timeoutMs: ToolchainDiscoveryMs }),
+    Exec.captureStdout('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-build-version'], {
+      timeoutMs: ToolchainDiscoveryMs,
+    }),
     readSimulatorRuntime(device),
     FS.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'),
   ])
@@ -54,7 +57,7 @@ const SimulatorListSchema = Schema.object({
 
 async function readSimulatorRuntime(device: string): Promise<string> {
   const json = await Exec.captureStdout('xcrun', ['simctl', 'list', '--json'], {
-    timeoutMs: 10_000,
+    timeoutMs: ToolchainDiscoveryMs,
   })
   const { devices, runtimes } = Json.Parse(json, { schema: SimulatorListSchema, sourceName: 'simctl booted devices' })
   const identifier = Object.keys(devices).find(key => devices[key]?.some(info => info.udid === device))

@@ -18,15 +18,25 @@ type NativeCapabilityValue = string | boolean | number
 type NativeCapabilities = Record<string, NativeCapabilityValue>
 const StartupMs = 240_000
 const CommandMs = 20_000
+const IosAppLaunchMs = 90_000
 /** openNativeWebDriver creates a session using the requested device capabilities. */
 export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabilities): Promise<NativeWebDriver> {
   const result = await requestAppium(url + '/session', 'POST', { capabilities: { alwaysMatch } }, StartupMs)
   const { sessionId } = SessionSchema.parse(result)
   const sessionUrl = url + '/session/' + sessionId
-  const command = (path: string, method: WebDriverMethod, body?: unknown, tolerateStale = false) =>
-    requestAppium(sessionUrl + path, method, body, CommandMs, tolerateStale)
+  const command = (
+    path: string,
+    method: WebDriverMethod,
+    body?: unknown,
+    tolerateStale = false,
+    timeoutMs = CommandMs,
+  ) => requestAppium(sessionUrl + path, method, body, timeoutMs, tolerateStale)
   return {
-    execute: (script, ...args) => command('/execute/sync', 'POST', { script, args }),
+    execute(script, ...args) {
+      // An iOS deep link can cold-launch Expo Go before returning from the command.
+      const timeoutMs = script === 'mobile: deepLink' && alwaysMatch.platformName === 'iOS' ? IosAppLaunchMs : CommandMs
+      return command('/execute/sync', 'POST', { script, args }, false, timeoutMs)
+    },
     async find(xpath) {
       const result = await command('/elements', 'POST', { using: 'xpath', value: xpath })
       return ElementsSchema.parse(result).map(element => element[ElementKey])
