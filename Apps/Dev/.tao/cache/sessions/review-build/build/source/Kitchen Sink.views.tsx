@@ -1,9 +1,9 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Kitchen Sink";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/ddf9e84084549dedd88cee1cfafcb36c50a99b5b55f5d34806072d2411e6ef29/modules/0d1d0a24874c55bf/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/af79882a7859778de866b7d974bb3ff01c9fb1d8cb85a722512af1ed0a90c604/modules/e493e7fda938e120/Kitchen Sink/SidecarGreeting.tsx";
 
-export function TaoView_RootView$PrivateGreeting_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_RootView$PrivateGreeting_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title" | "PrivateGreeting"> & { readonly "Title": string; readonly "PrivateGreeting": TR.View };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -12,7 +12,7 @@ export function TaoView_RootView$PrivateGreeting_da9ad98e2365(_Props: TR.ViewCom
     TR.ViewRenderArguments(["Private nested view"], [])
   ));
 }
-export function TaoView_RootView_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_RootView_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title" | "PrivateGreeting"> & { readonly "Title": string; readonly "PrivateGreeting": TR.View };
   const _Imported_LibraryGreeting = TR.ScopeAliases<ModuleImports["LibraryGreeting"]>(_Scope, { ["LibraryGreeting"]: "LibraryGreeting" });
@@ -25,7 +25,7 @@ export function TaoView_RootView_da9ad98e2365(_Props: TR.ViewComponentProps) {
   const _Imported_Caption = TR.ScopeAliases<ModuleImports["Caption"]>(_Scope, { ["Text"]: "Caption" });
   const _Imported_UI$Text = TR.ScopeAliases<ModuleImports["UI.Text"]>(_Scope, { ["Text"]: "UI.Text" });
   const _Imported_Row = TR.ScopeAliases<ModuleImports["Row"]>(_Scope, { ["Row"]: "Row" });
-  TR.LetDeclaration(_Scope, "PrivateGreeting", TR.ViewDeclaration("PrivateGreeting", [], TaoView_RootView$PrivateGreeting_da9ad98e2365, _Scope));
+  TR.LetDeclaration(_Scope, "PrivateGreeting", TR.ViewDeclaration("PrivateGreeting", [], TaoView_RootView$PrivateGreeting_7fc23c8183d4, _Scope));
   TR.LetDeclaration(_Scope, "Title", _Scope["DefaultTitle"]);
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Col["Col"],
@@ -110,7 +110,7 @@ export function TaoView_RootView_da9ad98e2365(_Props: TR.ViewComponentProps) {
   ));
 }
 
-export function TaoView_Pair_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_Pair_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "FirstCaption"> & { readonly "First": string; readonly "Second": string; readonly "FirstCaption": string };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -131,7 +131,7 @@ export function TaoView_Pair_da9ad98e2365(_Props: TR.ViewComponentProps) {
   ));
 }
 
-function useTaoInjectionPanel_da9ad98e2365(Caption: string, Children: TR.ViewComponentProps['children']) {
+function useTaoInjectionPanel_7fc23c8183d4(Caption: string, Children: TR.ViewComponentProps['children']) {
   return (
         <Tao.View style={{ padding: 12, borderWidth: 1 }}>
           <Tao.Text>{Caption}</Tao.Text>
@@ -139,24 +139,24 @@ function useTaoInjectionPanel_da9ad98e2365(Caption: string, Children: TR.ViewCom
         </Tao.View>
       )
 }
-export function TaoView_Panel_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_Panel_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title"> & { readonly "Title": string };
 
-  return TR.finishViewRender(_Render, useTaoInjectionPanel_da9ad98e2365(_Scope["Title"] as string, _Render.children));
+  return TR.finishViewRender(_Render, useTaoInjectionPanel_7fc23c8183d4(_Scope["Title"] as string, _Render.children));
 }
 
-function useTaoInjectionHeading_da9ad98e2365() {
+function useTaoInjectionHeading_7fc23c8183d4() {
   return <Tao.Text style={{ fontSize: 24 }}>Kitchen Sink</Tao.Text>
 }
-export function TaoView_Heading_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_Heading_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
 
-  return TR.finishViewRender(_Render, useTaoInjectionHeading_da9ad98e2365());
+  return TR.finishViewRender(_Render, useTaoInjectionHeading_7fc23c8183d4());
 }
 
-function useTaoInjectionSaveButton_da9ad98e2365() {
+function useTaoInjectionSaveButton_7fc23c8183d4() {
   const status = Tao.useWritable(() => ({ captions: ['Save'] }))
       const snapshot = Tao.useValue(status)
       return (
@@ -165,9 +165,9 @@ function useTaoInjectionSaveButton_da9ad98e2365() {
         </Tao.Pressable>
       )
 }
-export function TaoView_SaveButton_da9ad98e2365(_Props: TR.ViewComponentProps) {
+export function TaoView_SaveButton_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
 
-  return TR.finishViewRender(_Render, useTaoInjectionSaveButton_da9ad98e2365());
+  return TR.finishViewRender(_Render, useTaoInjectionSaveButton_7fc23c8183d4());
 }

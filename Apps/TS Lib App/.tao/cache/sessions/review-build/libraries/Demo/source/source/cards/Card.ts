@@ -17,5 +17,5 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "Caption", TR.ViewDeclaration("Caption", ["Value"], _Views.TaoView_Caption_4bff99336c5a, _Scope));
+  TR.LetDeclaration(_Scope, "Caption", TR.ViewDeclaration("Caption", ["Value"], _Views.TaoView_Caption_e8e5822cf03d, _Scope));
 }

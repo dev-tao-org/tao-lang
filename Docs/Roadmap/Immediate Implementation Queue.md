@@ -4,7 +4,7 @@ This queue records the developer-approved direction and immediate execution orde
 
 ## 1. Reconcile review and remove the disabled branch
 
-Status: Partial Review checkpoint `c133ec0c7` merged on `feat/disabled-rollback`. The rollback and its proof are in progress.
+Status: complete. Independently reviewed rollback `1d95d7b9` integrated here; regenerated output committed as `06946fd6`. Partial Review received it in `b70110c90` and regenerated its output as `ae1edf172`. Verification passed in both checkouts. Human review remains separate.
 
 1. Obtain a safe committed Partial Review checkpoint and coordinate affected-file ownership.
 2. Merge that checkpoint into the integration work, then remove the entire disabled feature branch, including its Boolean support and disabled-specific review corrections. Preserve unrelated subsequent fixes. Use forward commits, not history rewriting.
@@ -15,8 +15,8 @@ Status: Partial Review checkpoint `c133ec0c7` merged on `feat/disabled-rollback`
 
 ## 2. Close current engineering work
 
-- Resolve remaining integration findings: failed direct library output cleanup; parser preparation for the outer `agent unsandboxed verify` route; vacuous test assertion. Preserve these fixes through the rollback.
-- Retain the independently reviewed synchronous-batch repair separately from the now-paused Boolean capture repair. Integrate it without importing disabled/Boolean fixtures or stale generated output.
+- Completed with the rollback: failed direct library output cleanup, parser preparation for the outer `agent unsandboxed verify` route, and the vacuous test assertion.
+- Synchronous-batch repair integrated from `bc5d463a`: ordinary synchronous results with a noncallable `then` field are accepted. Disabled and Boolean support remain removed. Human review is still separate.
 - Finish the native CI worker's exact-tip verification and performance report; independently review, integrate and verify that branch separately. Earlier green CI is not evidence for a later tip.
 - Preserve performance and review evidence, back up commits, and retire worktrees only when their unique evidence is safe. Remote archive publication remains separately deferred for this consolidation.
 
@@ -24,7 +24,13 @@ Status: Partial Review checkpoint `c133ec0c7` merged on `feat/disabled-rollback`
 
 Fold the three history audits into the owning roadmap/specification topics. Restore omitted accepted requirements and explicit deferrals; remove stale pending entries for implemented work. Preserve pending proposals in task notes. Correct superseded package-output descriptions. Keep implementation, independent review, human review, integration and landing distinct.
 
-## 4. Design core types and expressions
+## Near-term execution before new language design
+
+The developer moved new core-type and layout/style design behind recent in-flight work. Finish the current Partial Review queue and resolve native CI/integration. The independent batch repair is integrated. Reconcile the history audits in parallel with those closures.
+
+Select the next two bounded implementation slices from the existing projects before resuming new language design. Preserve small reviews and avoid changing files while their human review is active. Slice recommendations remain proposals until accepted.
+
+## Later design: core types and expressions
 
 Owner: [Language decisions](Tao%20Language%20Design%20Decisions.md), [Runtime PoC](Tao%20Runtime%20PoC.md).
 
@@ -32,13 +38,13 @@ Design Boolean, text and numeric types as one coherent foundation, rather than a
 
 Implementation remains a sequence of small reviewable pieces beneath that shared design; this queue does not select unsettled numeric representations or spellings.
 
-## 5. Design brackets, layout, styling and design declarations
+## Later design: brackets, layout, styling and design declarations
 
 Consult the previous implementation first. Establish a general bracket parser/AST, typed validation and compact runtime contract. Define the initial layout/style subset, reusable designs, composition and precedence. Include disabled interaction from the start, distinguishing visual styling from interaction enforcement, inherited behavior, keyboard/accessibility and custom controls. The removed implementation is evidence, not an assumed architecture.
 
 Core-type and bracket design can proceed together. Implement the necessary type foundation before the bracket features that depend on it. Do not require the entire design system before implementing a useful coherent subset.
 
-## 6. Package and library implementation
+## 4. Package and library implementation
 
 Owner: [TypeScript libraries](TypeScript%20Library%20Decisions%20and%20PoC.md).
 
@@ -49,17 +55,17 @@ Owner: [TypeScript libraries](TypeScript%20Library%20Decisions%20and%20PoC.md).
 
 Keep cross-library interaction requirements with this runtime boundary and the redesigned bracket system; do not restore the removed disabled implementation merely to satisfy an older task entry.
 
-## 7. Reactive values, sidecars and typed calculations
+## 5. Reactive values, sidecars and typed calculations
 
 Owners: [Compiler and reactive runtime](Compiler%20and%20Reactive%20Runtime%20Plan.md), [Language decisions](Tao%20Language%20Design%20Decisions.md).
 
 Complete generated sidecar contracts, checked conversions, immutable snapshots and structural equality, observation/writable-state integration, pure and inline functions, typed matching and inferred returns. Effects remain explicit actions. Reuse already implemented behavior rather than reopening its decisions. Prove authored Tao calculations and headless TypeScript-library consumption.
 
-## 8. Actions, control flow and collections
+## 6. Actions, control flow and collections
 
 Implement local state and updates, scoped actions and event bindings, render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton only after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
 
-## 9. Data and providers
+## 7. Data and providers
 
 Owner: [Provider conformance](Tao%20Provider%20Conformance.md).
 

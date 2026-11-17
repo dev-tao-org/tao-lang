@@ -3,7 +3,7 @@ import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./ValueSnapshots";
 
 
-function useTaoInjectionValueSnapshots_c2010549d29d() {
+function useTaoInjectionValueSnapshots_d91ca1acb358() {
   const mode = Tao.useWritable(() => 'initial')
       const value = Tao.useComputed(() => {
         const currentMode = mode.jsValue()
@@ -37,9 +37,9 @@ function useTaoInjectionValueSnapshots_c2010549d29d() {
         </Tao.View>
       )
 }
-export function TaoView_ValueSnapshots_c2010549d29d(_Props: TR.ViewComponentProps) {
+export function TaoView_ValueSnapshots_d91ca1acb358(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
 
-  return TR.finishViewRender(_Render, useTaoInjectionValueSnapshots_c2010549d29d());
+  return TR.finishViewRender(_Render, useTaoInjectionValueSnapshots_d91ca1acb358());
 }
