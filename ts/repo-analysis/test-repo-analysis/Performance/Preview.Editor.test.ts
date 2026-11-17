@@ -81,7 +81,10 @@ async function savePerformanceEntry(page: HeadlessBrowser.Page, source: string):
 
 async function verifyEditor(directory: string): Promise<void> {
   const project = await Workspace.createProject({ directory })
-  const workspace = Workspace.createWorkspace({ directory: project.directory })
+  const workspace = Workspace.createWorkspace({
+    directory: project.directory,
+    runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
+  })
   await Try(async () => {
     const editor = await preparePreviewEditor(workspace, project.directory, {
       entry: EntrySource,

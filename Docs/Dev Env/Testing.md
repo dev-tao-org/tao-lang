@@ -52,9 +52,10 @@ One combined log records `info`, `warn` and `error` messages with their original
 identity. Ordinary tool stderr is informational unless a Tao adapter explicitly reports a warning
 or error. Tao subprocesses preserve these levels. A concise command always announces its log path;
 the first error produces a terminal notice. Completion reports warning/error message counts and
-then lists compact warning details, including source locations when available. Slow-test warnings
-put the absolute source-file path first; full messages remain in the log. Warnings do not change
-the exit status.
+then lists compact warning details, including source locations when available. Slow-test reporting
+emits one warning per worker with the number of cases over the threshold, the slowest duration,
+and a path to the complete JUnit timing report. Individual timing rows and headings do not count
+as separate warnings. Full test output remains in the log. Warnings do not change the exit status.
 
 Workspace tests supply change notifications and control debounce turns while keeping file reads
 and compilation real. They check Tao's response to changes without depending on native watcher
