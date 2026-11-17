@@ -52,7 +52,7 @@ type Session = {
 
 function listenForAbort(state: Session, signal?: AbortSignal): () => void {
   const abort = () => {
-    void Try.WithDefault(undefined, async () => await state.browser?.dispose())
+    void Try.IgnoreError(async () => await state.browser?.dispose())
   }
   signal?.addEventListener('abort', abort, { once: true })
   return abort
