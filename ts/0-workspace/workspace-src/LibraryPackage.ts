@@ -44,10 +44,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   await FS.mkdir(Path.dirname(output))
   await FS.createExclusiveDirectory(output)
   await Try(() => writeLibraryPackage(output, library, request.name), {
-    async catch(error) {
-      await FS.rm(output, { recursive: true, force: true })
-      Errors.Throw(error)
-    },
+    catch: error => removeFailedLibraryOutput(output, error),
   })
   return output
 }
@@ -66,6 +63,17 @@ async function writeLibraryPackage(output: string, library: Compile.CompiledLibr
   for (const [name, source] of Object.entries(packageFiles)) {
     await FS.writeFile(Path.join(output, name), source)
   }
+}
+
+async function removeFailedLibraryOutput(output: string, buildError: unknown): Promise<never> {
+  await Try(() => FS.rm(output, { recursive: true, force: true }), {
+    catch: cleanupError =>
+      Errors.ThrowHostEnvironment(
+        `Library compilation failed and its incomplete output could not be removed: ${output}.`,
+        { cause: buildError, details: { cleanupError } },
+      ),
+  })
+  Errors.Throw(buildError)
 }
 
 function requireLibraryPackageRequest(request: LibraryPackageRequest): void {
