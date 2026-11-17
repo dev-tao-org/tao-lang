@@ -30,13 +30,13 @@ Sources: [grammar](../../ts/1-grammar/grammar-src/treesitter-grammar.js), [view 
 
 #### Projects and dependencies
 
-- **Project**: A source root identified by `.tao`, owning modules, dependencies and sessions.
-  - **Named module**: An `@name` directory whose Tao files form an import boundary.
+- **Project**: A source root identified by `.tao`, owning packages, dependencies and sessions.
+  - **Named package**: An `@name` folder that establishes a package boundary.
   - **Source file**: An authored `.tao` file containing declarations.
   - **Dependency**: An external source project or npm requirement declared with `requires`.
   - **Dependency alias**: A project-local name selecting a source dependency in imports.
-  - **Import**: A `use` declaration bringing names or a namespace into scope.
-  - **Visibility**: A declaration's `file`, `folder`, `package`, `project` or `public` access boundary.
+  - **Import**: A `use` statement bringing individual declaration names into scope.
+  - **Visibility**: A declaration's `file`, `folder` or `package` access level. The default is `file`.
   - **Session**: An isolated prepared working context using the project's dependency pins.
   - **Store**: Durable, committed `.tao/store/` data, including dependency locks.
   - **Cache**: Disposable generated data under `.tao/cache/`.

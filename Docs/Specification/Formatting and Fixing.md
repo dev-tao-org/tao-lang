@@ -5,7 +5,7 @@ Formatting normalizes Tao layout without changing meaning; explicitly requested 
 ```tao
 use tao@ui Text, Col
 
-public
+package
 view Greeting(Title text, Subtitle text) {
   render Col {
     Text(Title)
@@ -48,10 +48,10 @@ indent after `use <source> FirstName,` on the first line.
 
 #### Unused bindings
 
-Fixing warns about unused named imports, namespaces, private declarations and local bindings
-without deleting them. References respect lexical shadowing, qualified names and explicit native
-captures. Wildcard exports receive no individual warnings; single-file checks do not call
-declarations unused when other files can access them. Warning locations refer to formatted source.
+Fixing warns about unused named imports, private declarations and local bindings without deleting
+them. References respect lexical shadowing and explicit native captures. Single-file checks do
+not call declarations unused when other files can access them. Warning locations refer to formatted
+source.
 
 #### Incomplete source
 

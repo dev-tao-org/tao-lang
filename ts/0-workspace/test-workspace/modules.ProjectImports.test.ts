@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Tests from '@shared-tests'
-import type * as Typecheck from '@typecheck'
+import * as Typecheck from '@typecheck'
 
 import { S, Try } from '@shared'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -12,7 +12,7 @@ const AmbiguousProjectPackageErrorRegx = /Package @ui is ambiguous/
 const MissingProjectModuleErrorRegx = /Project module tao@missing was not found/
 const MissingLocalPackageErrorRegx = /Package @ui was not found/
 
-Tests.test('project imports resolve through consumer aliases and producer-local aliases', async () => {
+Tests.test('project aliases link package APIs and preserve the producer’s folder scope', async () => {
   const consumer = await createProject('consumer')
   const producer = await createProject('producer')
   const icons = await createProject('icons')
@@ -20,6 +20,10 @@ Tests.test('project imports resolve through consumer aliases and producer-local 
     const paths = await writeProjectImportSources(producer, icons)
     const modules = await loadProjectImportGraph(consumer, producer, icons)
     assertProjectImportGraph(modules, paths)
+    assertProjectBindings(modules, paths)
+
+    const hidden = await loadProjectImportGraph(consumer, producer, icons, 'Caption')
+    Tests.expect(() => Typecheck.linkModules(hidden[0]!.path, hidden)).toThrow('it is not visible')
   }, {
     async finally() {
       await FS.rm(consumer, { recursive: true, force: true })
@@ -69,12 +73,12 @@ async function writeProjectImportSources(producer: string, icons: string): Promi
     S`
       use @ui/controls Caption
       use icons@icons/labels Label
-      view Card { render Text("Card") }
+      package view Card { render Caption }
     `,
   )
-  await writeSource(paths.caption, 'view Caption { render Text("Caption") }')
+  await writeSource(paths.caption, 'folder view Caption { render Text("Caption") }')
   await writeSource(paths.unrelated, 'view Unused { render Text("Unused") }')
-  await writeSource(paths.label, 'view Label { render Text("Label") }')
+  await writeSource(paths.label, 'package view Label { render Text("Label") }')
   return paths
 }
 
@@ -82,14 +86,15 @@ async function loadProjectImportGraph(
   consumer: string,
   producer: string,
   icons: string,
+  declarationName = 'Card',
 ): Promise<Typecheck.SourceModule[]> {
   const entryPath = Path.join(consumer, 'Main.tao')
   return await loadModules(
     parseEntry(
       entryPath,
       S`
-        use widgets@ui/controls Card
-        app Main { root Card }
+        use widgets@ui/controls ${declarationName}
+        app Main { root ${declarationName} }
       `,
     ),
     {
@@ -132,6 +137,16 @@ function assertProjectImportGraph(
     { path: paths.card, relation: 'same-file' },
   ])
   Tests.expect(byPath.get(paths.card)!.imports[1]!.targets).toEqual([{ path: paths.label, relation: 'package-api' }])
+}
+
+function assertProjectBindings(modules: Typecheck.SourceModule[], paths: ProjectImportPaths): void {
+  const linked = Typecheck.linkModules(modules[0]!.path, modules)
+  const card = linked.modules.find(module => module.path === paths.card)!
+  Tests.expect(linked.modules[0]!.bindings).toEqual([{ name: 'Card', source: paths.card, target: 'Card' }])
+  Tests.expect(card.bindings).toEqual([
+    { name: 'Caption', source: paths.caption, target: 'Caption' },
+    { name: 'Label', source: paths.label, target: 'Label' },
+  ])
 }
 
 Tests.test('the implicit tao alias resolves standard library modules from an ordinary project', async () => {
