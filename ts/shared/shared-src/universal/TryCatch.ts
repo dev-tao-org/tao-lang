@@ -39,7 +39,7 @@ export function Try<Value, Recovery = never, Final = void>(
   >
 }
 
-/** Try.WithDefault returns a fixed fallback when the callback throws or rejects. */
+/** Try helpers run callbacks with an explicit failure policy. */
 export namespace Try {
   /** WithDefault returns a fixed fallback when the callback throws or rejects. */
   export function WithDefault<Value, Default>(
@@ -49,6 +49,12 @@ export namespace Try {
     return Try(action, {
       catch: () => defaultValue,
     }) as TryResult<Value, Default, void>
+  }
+
+  /** IgnoreError discards values and suppresses failures, returning a promise for asynchronous completion. */
+  export function IgnoreError(action: () => unknown): void | Promise<void> {
+    const completed = capture(action)
+    return isNativePromise(completed) ? completed.then(() => undefined) : undefined
   }
 }
 
