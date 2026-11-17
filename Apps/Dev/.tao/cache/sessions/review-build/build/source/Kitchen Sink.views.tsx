@@ -1,9 +1,9 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Kitchen Sink";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/e3c2c83dcb5f5d6ad4ae5fb1aea21efa0c3b179320fd7548a7b6a8fb0c3d1796/modules/e493e7fda938e120/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/d18a/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/263a8958d59256904ac546c0c2a35be58fd40852e687a6486880d08622fb925f/modules/bdd9fc1681b43369/Kitchen Sink/SidecarGreeting.tsx";
 
-export function TaoView_RootView$PrivateGreeting_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_RootView$PrivateGreeting_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title" | "PrivateGreeting"> & { readonly "Title": string; readonly "PrivateGreeting": TR.View };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -12,7 +12,7 @@ export function TaoView_RootView$PrivateGreeting_7fc23c8183d4(_Props: TR.ViewCom
     TR.ViewRenderArguments(["Private nested view"], [])
   ));
 }
-export function TaoView_RootView_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_RootView_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title" | "PrivateGreeting"> & { readonly "Title": string; readonly "PrivateGreeting": TR.View };
   const _Imported_LibraryGreeting = TR.ScopeAliases<ModuleImports["LibraryGreeting"]>(_Scope, { ["LibraryGreeting"]: "LibraryGreeting" });
@@ -25,7 +25,7 @@ export function TaoView_RootView_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   const _Imported_Caption = TR.ScopeAliases<ModuleImports["Caption"]>(_Scope, { ["Text"]: "Caption" });
   const _Imported_UI$Text = TR.ScopeAliases<ModuleImports["UI.Text"]>(_Scope, { ["Text"]: "UI.Text" });
   const _Imported_Row = TR.ScopeAliases<ModuleImports["Row"]>(_Scope, { ["Row"]: "Row" });
-  TR.LetDeclaration(_Scope, "PrivateGreeting", TR.ViewDeclaration("PrivateGreeting", [], TaoView_RootView$PrivateGreeting_7fc23c8183d4, _Scope));
+  TR.LetDeclaration(_Scope, "PrivateGreeting", TR.ViewDeclaration("PrivateGreeting", [], TaoView_RootView$PrivateGreeting_54615efc471f, _Scope));
   TR.LetDeclaration(_Scope, "Title", _Scope["DefaultTitle"]);
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Col["Col"],
@@ -110,7 +110,7 @@ export function TaoView_RootView_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   ));
 }
 
-export function TaoView_Pair_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_Pair_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "FirstCaption"> & { readonly "First": string; readonly "Second": string; readonly "FirstCaption": string };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -131,7 +131,7 @@ export function TaoView_Pair_7fc23c8183d4(_Props: TR.ViewComponentProps) {
   ));
 }
 
-function useTaoInjectionPanel_7fc23c8183d4(Caption: string, Children: TR.ViewComponentProps['children']) {
+function useTaoInjectionPanel_54615efc471f(Caption: string, Children: TR.ViewComponentProps['children']) {
   return (
         <Tao.View style={{ padding: 12, borderWidth: 1 }}>
           <Tao.Text>{Caption}</Tao.Text>
@@ -139,35 +139,35 @@ function useTaoInjectionPanel_7fc23c8183d4(Caption: string, Children: TR.ViewCom
         </Tao.View>
       )
 }
-export function TaoView_Panel_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_Panel_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Title"> & { readonly "Title": string };
 
-  return TR.finishViewRender(_Render, useTaoInjectionPanel_7fc23c8183d4(_Scope["Title"] as string, _Render.children));
+  return TR.finishViewRender(_Render, useTaoInjectionPanel_54615efc471f(_Scope["Title"] as string, _Render.children));
 }
 
-function useTaoInjectionHeading_7fc23c8183d4() {
+function useTaoInjectionHeading_54615efc471f() {
   return <Tao.Text style={{ fontSize: 24 }}>Kitchen Sink</Tao.Text>
 }
-export function TaoView_Heading_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_Heading_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
 
-  return TR.finishViewRender(_Render, useTaoInjectionHeading_7fc23c8183d4());
+  return TR.finishViewRender(_Render, useTaoInjectionHeading_54615efc471f());
 }
 
-function useTaoInjectionSaveButton_7fc23c8183d4() {
-  const status = Tao.useWritable(() => ({ captions: ['Save'] }))
-      const snapshot = Tao.useValue(status)
-      return (
-        <Tao.Pressable onPress={() => status.update({ captions: ['Saved'] })}>
-          <Tao.Text>{snapshot.captions[0]}</Tao.Text>
-        </Tao.Pressable>
-      )
-}
-export function TaoView_SaveButton_7fc23c8183d4(_Props: TR.ViewComponentProps) {
+export function TaoView_SaveButton_54615efc471f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as ModuleScope;
-
-  return TR.finishViewRender(_Render, useTaoInjectionSaveButton_7fc23c8183d4());
+  const _Scope = _Render.scope as Omit<ModuleScope, "Caption" | "Save"> & { readonly "Caption": string; readonly "Save": unknown };
+  const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
+  TR.useStateDeclaration(_Scope, "Caption", () => "Save");
+  TR.useActionDeclaration(_Scope, "Save", [], _Scope => {
+    TR.SetStatement(_Scope, "Caption", "Saved");
+  });
+  return TR.finishViewRender(_Render, TR.ViewRenderExpression(
+    _Imported_Button["Button"],
+    TR.ViewPressArguments([_Scope["Caption"]], TR.ViewPressBlock(_Scope, (_Scope, _Children, _BindPress) => {
+      TR.PressBinding(_BindPress, _Scope["Save"]);
+    }))
+  ));
 }

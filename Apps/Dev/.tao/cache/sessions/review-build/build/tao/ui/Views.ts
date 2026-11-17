@@ -8,6 +8,7 @@ export type Scope = {
   readonly "Col": TR.View;
   readonly "Row": TR.View;
   readonly "Input": TR.View;
+  readonly "Button": TR.View;
 };
 
 export type Imports = {
@@ -19,8 +20,9 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "Text", TR.ViewDeclaration("Text", ["Value"], _Views.TaoView_Text_9bf877ca8681, _Scope));
-  TR.LetDeclaration(_Scope, "Col", TR.ViewDeclaration("Col", [], _Views.TaoView_Col_9bf877ca8681, _Scope));
-  TR.LetDeclaration(_Scope, "Row", TR.ViewDeclaration("Row", [], _Views.TaoView_Row_9bf877ca8681, _Scope));
-  TR.LetDeclaration(_Scope, "Input", TR.ViewDeclaration("Input", ["Value"], _Views.TaoView_Input_9bf877ca8681, _Scope));
+  TR.LetDeclaration(_Scope, "Text", TR.ViewDeclaration("Text", ["Value"], _Views.TaoView_Text_35a20822f58b, _Scope));
+  TR.LetDeclaration(_Scope, "Col", TR.ViewDeclaration("Col", [], _Views.TaoView_Col_35a20822f58b, _Scope));
+  TR.LetDeclaration(_Scope, "Row", TR.ViewDeclaration("Row", [], _Views.TaoView_Row_35a20822f58b, _Scope));
+  TR.LetDeclaration(_Scope, "Input", TR.ViewDeclaration("Input", ["Value"], _Views.TaoView_Input_35a20822f58b, _Scope));
+  TR.LetDeclaration(_Scope, "Button", TR.ViewDeclaration("Button", ["Label"], _Views.TaoView_Button_35a20822f58b, _Scope));
 }
