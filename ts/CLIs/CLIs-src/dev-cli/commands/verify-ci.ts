@@ -15,6 +15,7 @@ export default registerCommand({
   options: [
     { flags: '--status', description: 'Show run status. With no run ID, find the latest dispatch for HEAD.' },
     { flags: '--wait', description: 'Watch the run until it completes and return its verdict.' },
+    { flags: '--rate-limit', description: 'Show the GitHub API quota and reset time.' },
     { flags: '--compare <baseline>', description: 'Compare job and step times with a baseline run ID.' },
     { flags: '--logs', description: 'Print hosted job logs.' },
     { flags: '--failed-logs', description: 'Print hosted logs for failed steps.' },
@@ -26,6 +27,7 @@ export default registerCommand({
     const modes = [
       options.status,
       options.wait,
+      options.rateLimit,
       options.compare !== undefined,
       options.logs,
       options.failedLogs,
@@ -35,6 +37,20 @@ export default registerCommand({
       Errors.ThrowUserInput('Choose one Verify operation.')
     }
     requireLogJobOption(options)
+    if (options.rateLimit) {
+      if (runId !== undefined) {
+        Errors.ThrowUserInput('Use --rate-limit without a run ID.')
+      }
+      await CLIKit.runNonInteractiveCommand('gh', [
+        'api',
+        'rate_limit',
+        '--hostname',
+        'github.com',
+        '--jq',
+        '.resources.core',
+      ], { cwd })
+      return
+    }
     if (runId !== undefined) {
       requireIdentifier(runId, 'Run')
       await inspectRun(cwd, runId, options)
@@ -50,6 +66,7 @@ export default registerCommand({
 type VerifyOptions = {
   status?: boolean
   wait?: boolean
+  rateLimit?: boolean
   compare?: string
   logs?: boolean
   failedLogs?: boolean
@@ -77,7 +94,7 @@ function requireLogJobOption(options: VerifyOptions): void {
 
 async function inspectRun(cwd: string, runId: string, options: VerifyOptions): Promise<void> {
   if (options.wait) {
-    await runGitHub(cwd, ['run', 'watch', runId, '--compact', '--exit-status'])
+    await runGitHub(cwd, ['run', 'watch', runId, '--interval', '30', '--compact', '--exit-status'])
     return
   }
   if (options.logs || options.failedLogs) {
