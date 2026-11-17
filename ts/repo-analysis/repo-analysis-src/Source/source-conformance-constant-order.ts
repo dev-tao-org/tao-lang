@@ -1,7 +1,6 @@
 import { NewlineCharacter } from '@shared'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
 import { containsNode, movableStart } from './source-conformance-type-order'
-import { isExcludedSource } from './source-size'
 
 export { analyzeConstantOrder }
 
@@ -39,9 +38,12 @@ const NonEvaluatedStatementKinds = new Set([
 ])
 
 /** analyzeConstantOrder places inert single-consumer constants beside their module-level owner. */
-function analyzeConstantOrder(program: TypeScript.Program): ConstantOrderChanges {
+function analyzeConstantOrder(
+  program: TypeScript.Program,
+  editableSources: ReadonlySet<TypeScript.SourceFile>,
+): ConstantOrderChanges {
   const checker = program.getTypeChecker()
-  const candidates = collectCandidates(program, checker)
+  const candidates = collectCandidates(editableSources, checker)
   const names = new Set([...candidates.keys()].map(symbol => symbol.name))
   for (const file of program.getSourceFiles()) {
     if (!program.isSourceFileDefaultLibrary(file)) {
@@ -51,14 +53,12 @@ function analyzeConstantOrder(program: TypeScript.Program): ConstantOrderChanges
   return collectChanges(candidates)
 }
 
-function collectCandidates(program: TypeScript.Program, checker: TypeScript.TypeChecker): ConstantCandidates {
+function collectCandidates(
+  editableSources: ReadonlySet<TypeScript.SourceFile>,
+  checker: TypeScript.TypeChecker,
+): ConstantCandidates {
   const candidates: ConstantCandidates = new Map()
-  for (const file of program.getSourceFiles()) {
-    if (
-      file.isDeclarationFile || file.fileName.includes('/.x-tao-old-v1/') || isExcludedSource(file.fileName, file.text)
-    ) {
-      continue
-    }
+  for (const file of editableSources) {
     for (const statement of file.statements) {
       if (!TypeScript.isVariableStatement(statement)) {
         continue

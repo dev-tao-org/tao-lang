@@ -187,11 +187,13 @@ export function write(path: WritableTarget, data: WritableData): Promise<number>
   return BunHost.getRuntime().write(path, data)
 }
 
-/** listSourceFiles lists TypeScript sources while excluding installed dependencies.
+const SourceDiscoveryExclusions = ['**/.*', '**/node_modules/**', '**/_gen_*/**']
+
+/** listSourceFiles lists TypeScript sources, excluding hidden descendants, dependencies and generated directories.
  *  Load the compiler lazily so fresh setup can import OS APIs before dependencies are installed. */
 export async function listSourceFiles(root: string): Promise<string[]> {
   const { TypeScript } = await import('../../bridges/Bridge_typescript')
-  return TypeScript.sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], ['**/node_modules/**', '**/_gen_*/**'])
+  return TypeScript.sys.readDirectory(root, ['.ts', '.tsx', '.mts', '.cts'], SourceDiscoveryExclusions)
 }
 
 /** listProductionSourceFiles excludes sibling test folders and test entries from shipped source inputs. */

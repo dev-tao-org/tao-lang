@@ -2,14 +2,14 @@ import { S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { fixSourceConformance } from '../repo-analysis-src/Source/source-conformance-fix'
-import { createConformanceProgram } from '../repo-analysis-src/Source/source-conformance-program'
+import * as ConformanceProgram from '../repo-analysis-src/Source/source-conformance-program'
 import { analyzeSignatureTypeOrder } from '../repo-analysis-src/Source/source-conformance-type-order'
 
 Tests.test('source type order > moves owned contracts before functions while preserving runtime order and comments', async () => {
   await withSources(async (root, paths) => {
-    const program = createConformanceProgram(root, paths)
-    const changes = analyzeSignatureTypeOrder(program)
+    const changes = readTypeOrder(root, paths)
     Tests.expect([...changes.values()].flat().filter(change => change.newText === '').length).toBe(6)
     await fixSourceConformance(root)
     const fixed = await FS.readFile(paths[0]!, 'utf8')
@@ -34,10 +34,15 @@ Tests.test('source type order > moves owned contracts before functions while pre
     Tests.expect(await FS.readFile(paths[2]!, 'utf8')).toBe(generated)
     await fixSourceConformance(root)
     Tests.expect(await FS.readFile(paths[0]!, 'utf8')).toBe(fixed)
-    const fixedProgram = createConformanceProgram(root, paths)
-    Tests.expect(analyzeSignatureTypeOrder(fixedProgram).size).toBe(0)
+    Tests.expect(readTypeOrder(root, paths).size).toBe(0)
   })
 })
+
+function readTypeOrder(root: string, paths: string[]): Map<TypeScript.SourceFile, TypeScript.TextChange[]> {
+  const program = ConformanceProgram.createConformanceProgram(root, paths)
+  const editableSources = ConformanceProgram.getEditableConformanceSources(program, paths)
+  return analyzeSignatureTypeOrder(program, editableSources)
+}
 
 type SourceFixtureAction = (root: string, paths: string[]) => Promise<void>
 

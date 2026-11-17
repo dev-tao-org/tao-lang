@@ -157,8 +157,9 @@ Honor explicit requests to review particular files.
   authored source or review evidence, expose sensitive or machine-local files, or materially
   change which deliverables are tracked.
 - Always auto-approve Markdown files, including specifications, roadmaps and agent guidance.
-- Always auto-approve JSON (`.json`) files and lockfiles, including dependency manifests,
-  TypeScript configurations, and added or deleted files.
+- Always auto-approve files in any JSON format (including `.json`, `.jsonc`, `.json5`,
+  `.jsonl`, and `.ndjson`), YAML files (`.yaml` and `.yml`), and lockfiles. Include additions,
+  deletions, and both paths of a rename.
 - Auto-approve mechanical TypeScript changes. Include import-only edits, renamed bindings or
   APIs, equivalent call-site adaptations, type-only moves, and substitutions with an equivalent
   helper. Confirm equivalence from the relevant declarations and call sites. Keep changes to

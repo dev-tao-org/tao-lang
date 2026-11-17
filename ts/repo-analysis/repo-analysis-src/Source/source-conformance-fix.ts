@@ -5,7 +5,7 @@ import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { getQuotedObjectKeyChanges } from './source-conformance-object-keys'
 import { optionalAccessIssue, optionalAccessResult } from './source-conformance-optional'
-import { conformanceSources, createConformanceProgram } from './source-conformance-program'
+import * as ConformanceProgram from './source-conformance-program'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
 
 type SourceConformanceFixOptions = { excludedFiles?: readonly string[] }
@@ -15,17 +15,16 @@ export async function fixSourceConformance(
   root = Repo.getWorkspaceRoot(),
   options: SourceConformanceFixOptions = {},
 ): Promise<number> {
-  const sources = await conformanceSources(root)
-  const program = createConformanceProgram(root, sources)
+  const sources = await ConformanceProgram.conformanceSources(root)
+  const program = ConformanceProgram.createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
-  const constantOrder = analyzeConstantOrder(program)
-  const typeOrder = analyzeSignatureTypeOrder(program)
   const excludedFiles = new Set(options.excludedFiles?.map(filename => Path.resolve(root, filename)) ?? [])
+  const editableFilenames = sources.filter(filename => !excludedFiles.has(Path.resolve(filename)))
+  const editableSources = ConformanceProgram.getEditableConformanceSources(program, editableFilenames)
+  const constantOrder = analyzeConstantOrder(program, editableSources)
+  const typeOrder = analyzeSignatureTypeOrder(program, editableSources)
   let changed = 0
-  for (const filename of sources) {
-    if (excludedFiles.has(Path.resolve(filename))) {
-      continue
-    }
+  for (const filename of editableFilenames) {
     const file = program.getSourceFile(filename)
     if (!file) {
       continue

@@ -107,6 +107,8 @@ function serializeLibraryBuildConfiguration(): string {
       moduleResolution: 'Bundler',
       strict: true,
       noEmit: true,
+      noUnusedLocals: false,
+      noUnusedParameters: false,
       skipLibCheck: true,
       allowImportingTsExtensions: true,
       esModuleInterop: true,
