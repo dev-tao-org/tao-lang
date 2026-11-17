@@ -14,6 +14,7 @@ export default registerCommand({
   arguments: [{ name: 'run', description: 'Run ID to inspect. With no run or options, dispatch Verify.' }],
   options: [
     { flags: '--status', description: 'Show run status. With no run ID, find the latest dispatch for HEAD.' },
+    { flags: '--diagnostics', description: 'Show workflow and job annotations for an exact run.' },
     { flags: '--wait', description: 'Watch the run until it completes and return its verdict.' },
     { flags: '--rate-limit', description: 'Show the GitHub API quota and reset time.' },
     {
@@ -30,6 +31,7 @@ export default registerCommand({
     const cwd = Repo.getWorkspaceRoot()
     const modes = [
       options.status,
+      options.diagnostics,
       options.wait,
       options.rateLimit,
       options.compare !== undefined,
@@ -72,6 +74,7 @@ export default registerCommand({
 
 type VerifyOptions = {
   status?: boolean
+  diagnostics?: boolean
   wait?: boolean
   rateLimit?: boolean
   compare?: string
@@ -101,6 +104,10 @@ function requireLogJobOption(options: VerifyOptions): void {
 }
 
 async function inspectRun(cwd: string, runId: string, options: VerifyOptions): Promise<void> {
+  if (options.diagnostics) {
+    await runGitHub(cwd, ['run', 'view', runId])
+    return
+  }
   if (options.wait) {
     await runGitHub(cwd, ['run', 'watch', runId, '--interval', '30', '--compact', '--exit-status'])
     return

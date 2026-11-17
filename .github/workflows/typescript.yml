@@ -3,9 +3,9 @@ name: TypeScript workspace
 on:
   workflow_call:
     inputs:
-      shards:
-        type: number
-        default: 3
+      lanes:
+        type: string
+        default: '["check","web",1,2,3]'
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: ${{ fromJSON('[null,["check","web",1],["check","web",1,2],["check","web",1,2,3],["check","web",1,2,3,4],["check","web",1,2,3,4,5],["check","web",1,2,3,4,5,6],["check","web",1,2,3,4,5,6,7],["check","web",1,2,3,4,5,6,7,8]]')[inputs.shards || 3] }}
+        lane: ${{ fromJSON(inputs.lanes || '["check","web",1,2,3]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:

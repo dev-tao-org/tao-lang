@@ -3,11 +3,12 @@ name: Native Tao journeys
 on:
   workflow_call:
     inputs:
-      platform:
+      platforms:
         type: string
+        default: '["ios","android"]'
       shards:
-        type: number
-        default: 1
+        type: string
+        default: '[1]'
   workflow_dispatch:
 
 permissions:
@@ -21,8 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ fromJSON(inputs.platform && format('["{0}"]', inputs.platform) || '["ios","android"]') }}
-        shard: ${{ fromJSON('[null,[1],[1,2],[1,2,3],[1,2,3,4],[1,2,3,4,5],[1,2,3,4,5,6],[1,2,3,4,5,6,7]]')[inputs.shards || 1] }}
+        platform: ${{ fromJSON(inputs.platforms || '["ios","android"]') }}
+        shard: ${{ fromJSON(inputs.shards || '[1]') }}
     env:
       TERMINAL_OUTPUT: '1'
       TAO_SETUP_STORAGE: 'false'
@@ -161,7 +162,7 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
           SHARD: ${{ matrix.shard }}
-          SHARD_COUNT: ${{ inputs.platform && strategy.job-total || 1 }}
+          SHARD_COUNT: ${{ inputs.shards && strategy.job-total || 1 }}
         run: ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --shard "$SHARD/$SHARD_COUNT" --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
