@@ -3,7 +3,7 @@ import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./ScopeExamples";
 
 
-export function TaoView_FolderScope_676631b4464a(_Props: TR.ViewComponentProps) {
+export function TaoView_FolderScope_2b7780826b86(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -13,7 +13,7 @@ export function TaoView_FolderScope_676631b4464a(_Props: TR.ViewComponentProps) 
   ));
 }
 
-export function TaoView_PackageScope_676631b4464a(_Props: TR.ViewComponentProps) {
+export function TaoView_PackageScope_2b7780826b86(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -23,7 +23,7 @@ export function TaoView_PackageScope_676631b4464a(_Props: TR.ViewComponentProps)
   ));
 }
 
-export function TaoView_ProjectScope_676631b4464a(_Props: TR.ViewComponentProps) {
+export function TaoView_ProjectScope_2b7780826b86(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as ModuleScope;
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });

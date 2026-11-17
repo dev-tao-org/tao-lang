@@ -42,7 +42,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "Greeting", TR.ViewDeclaration("Greeting", ["First", "Second"], _Views.TaoView_Greeting_a75dd1f6470a, _Scope));
-  TR.LetDeclaration(_Scope, "Panel", TR.ViewDeclaration("Panel", [], _Views.TaoView_Panel_a75dd1f6470a, _Scope));
-  TR.LetDeclaration(_Scope, "Hidden", TR.ViewDeclaration("Hidden", [], _Views.TaoView_Hidden_a75dd1f6470a, _Scope));
+  TR.LetDeclaration(_Scope, "Greeting", TR.ViewDeclaration("Greeting", ["First", "Second"], _Views.TaoView_Greeting_e14d7f2bb079, _Scope));
+  TR.LetDeclaration(_Scope, "Panel", TR.ViewDeclaration("Panel", [], _Views.TaoView_Panel_e14d7f2bb079, _Scope));
+  TR.LetDeclaration(_Scope, "Hidden", TR.ViewDeclaration("Hidden", [], _Views.TaoView_Hidden_e14d7f2bb079, _Scope));
 }

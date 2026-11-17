@@ -1,18 +1,18 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./LanguageFeatures";
-import { ForeignGreeting as _taoForeignView0 } from "/private/tmp/tao-disabled-rollback/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
+import { ForeignGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
 
-function useTaoInjectionLanguageFeatures$CapturedCaption_f1bc170ab554(Caption: string) {
+function useTaoInjectionLanguageFeatures$CapturedCaption_a2b02828914f(Caption: string) {
   return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
 }
-export function TaoView_LanguageFeatures$CapturedCaption_f1bc170ab554(_Props: TR.ViewComponentProps) {
+export function TaoView_LanguageFeatures$CapturedCaption_a2b02828914f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption"> & { readonly "Name": string; readonly "CapturedCaption": TR.View }, "Value"> & { readonly "Value": string };
 
-  return TR.finishViewRender(_Render, useTaoInjectionLanguageFeatures$CapturedCaption_f1bc170ab554(_Scope["Value"] as string));
+  return TR.finishViewRender(_Render, useTaoInjectionLanguageFeatures$CapturedCaption_a2b02828914f(_Scope["Value"] as string));
 }
-export function TaoView_LanguageFeatures_f1bc170ab554(_Props: TR.ViewComponentProps) {
+export function TaoView_LanguageFeatures_a2b02828914f(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Name" | "CapturedCaption"> & { readonly "Name": string; readonly "CapturedCaption": TR.View };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
@@ -24,7 +24,7 @@ export function TaoView_LanguageFeatures_f1bc170ab554(_Props: TR.ViewComponentPr
   const _Imported_Cards$Caption = TR.ScopeAliases<ModuleImports["Cards.Caption"]>(_Scope, { ["Caption"]: "Cards.Caption" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   const _Imported_Input = TR.ScopeAliases<ModuleImports["Input"]>(_Scope, { ["Input"]: "Input" });
-  TR.LetDeclaration(_Scope, "CapturedCaption", TR.ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_f1bc170ab554, _Scope));
+  TR.LetDeclaration(_Scope, "CapturedCaption", TR.ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_a2b02828914f, _Scope));
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Col["Col"],
     TR.ViewRenderArguments([], [
