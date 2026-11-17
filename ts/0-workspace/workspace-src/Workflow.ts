@@ -10,9 +10,11 @@ import type { TestProgress, TestResult } from './testing/RunTests'
 import { runSidecarTests } from './testing/WorkspaceTests'
 import type { UpdateResult, WorkspaceSession } from './Workspace'
 
+type SetupConfirmation = { entry: string; message: string; consumer?: boolean }
+
 /** WorkflowUI supplies consent and cancellation for exactly one caller's workflow. */
 export type WorkflowUI = {
-  confirm(requirement: { entry: string; message: string }): Promise<boolean>
+  confirm(requirement: SetupConfirmation): Promise<boolean>
   cancelled?: () => boolean
 }
 

@@ -20,15 +20,14 @@ export async function withConsumerProject(
   ui?: WorkflowUI,
 ): Promise<void> {
   const manifest = await readTypeScriptProjectPackage(packageDirectory)
+  const runConfiguration = manifest.run ?? UserInput.fail('Configure tao.run.entry in the authored package.json.')
   const project = await discoverProject(packageDirectory)
-  if (!project) {
-    UserInput.fail(`No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
-  }
+  UserInput.require(!!project, `No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
   await ensureProjectMetadata(project.root)
   await withDependencySession(project.root, sessionId, async session => {
     const library = await compileConsumerLibrary(manifest, project.root, session, ui)
     const directory = Path.join(session.directory, 'expo')
-    await Expo.createConsumerHost(createHostOptions(manifest, directory, library))
+    await Expo.createConsumerHost(createHostOptions(manifest, directory, library, runConfiguration))
     await run(directory)
   })
 }
@@ -76,9 +75,10 @@ async function compileConsumerLibrary(
     return
   }
   const target = await resolveCompileTarget(manifest.directory)
-  if (target.kind !== 'library' || !target.name) {
-    return UserInput.fail('A React consumer tao.compile configuration must select a named TypeScript library output.')
-  }
+  UserInput.require(
+    target.kind === 'library' && !!target.name,
+    'A React consumer tao.compile configuration must select a named TypeScript library output.',
+  )
   const directory = await publishPreparedLibrary(target, manifest, projectRoot, session, ui)
   return { name: target.name, directory }
 }
@@ -104,8 +104,12 @@ async function prepareDefaultLibraryInput(
   }
 }
 
-function createHostOptions(manifest: TypeScriptProjectPackage, directory: string, library: OptionalConsumerLibrary) {
-  const run = manifest.run ?? UserInput.fail('Configure tao.run.entry in the authored package.json.')
+function createHostOptions(
+  manifest: TypeScriptProjectPackage,
+  directory: string,
+  library: OptionalConsumerLibrary,
+  run: NonNullable<TypeScriptProjectPackage['run']>,
+) {
   return {
     directory,
     packageDirectory: manifest.directory,

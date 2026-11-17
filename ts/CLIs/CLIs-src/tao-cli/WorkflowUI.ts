@@ -11,14 +11,13 @@ export function workflowUI(
 ): Workspace.WorkflowUI {
   return {
     cancelled: () => signal?.aborted === true,
-    async confirm({ entry, message }) {
+    async confirm({ entry, message, consumer }) {
       if (yes) {
         return true
       }
       if (!Terminal.isInteractive()) {
-        UserInput.fail(
-          `Setup is required for ${entry}: ${message} Use tao setup or pass --yes to authorize setup non-interactively.`,
-        )
+        const retry = consumer ? 'Pass --yes' : 'Use tao setup or pass --yes'
+        UserInput.fail(`Setup is required for ${entry}: ${message} ${retry} to authorize setup non-interactively.`)
       }
       return await askConfirm({
         message: `${message} Set up dependencies and continue?`,

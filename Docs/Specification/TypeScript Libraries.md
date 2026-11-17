@@ -59,9 +59,9 @@ Importing any public entry initializes one shared scope for that library. All of
 
 `tao compile Demo --package src/ts` publishes the configured package in `.tao/cache/sessions/.cli/libraries/Demo/`. A local consumer can install it from that directory and the runtime from `.tao/cache/runtime-package/`. Use `--session <name>` for an independent build session. Tao replaces the selected session's compiled output on each build.
 
-`tao run --package src/ts --web` compiles the configured library and starts Expo. Tao creates the host under the selected session and resolves the compiled library there. The Expo host uses the consumer's existing dependency installation. `--port` selects the web server port, and Ctrl+C stops the host.
+`tao run --package src/ts --web` compiles the configured library and starts Expo. Tao creates the host under the selected session and resolves the compiled library there. Local compile and run prompt before installing missing or changed consumer dependencies. Pass `--yes` to authorize this setup non-interactively. `--port` selects the web server port, and Ctrl+C stops the host.
 
-Run `tao init <existing-directory> --library` to scaffold a Tao library and React consumer. Initialization creates `src/tao`, `src/ts`, a local Justfile, and Tao project metadata. Install the scaffold's dependencies after its first compilation.
+Run `tao init <existing-directory> --library` to scaffold a Tao library and React consumer. Initialization creates `src/tao`, `src/ts`, a local Justfile, and Tao project metadata. The first local compile or run prepares the scaffold's dependencies.
 
 #### Supported subset
 

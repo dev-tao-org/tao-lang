@@ -49,9 +49,7 @@ function createSessionLibraryRequest(target: CompileTarget, session: ProjectSess
   )
   const libraries = Path.join(session.directory, 'libraries')
   const out = Path.join(libraries, target.target)
-  if (Path.dirname(out) !== libraries) {
-    UserInput.fail(`Invalid library target name: ${target.target}`)
-  }
+  UserInput.require(Path.dirname(out) === libraries, `Invalid library target name: ${target.target}`)
   return { entry: target.entry, target: target.target, name: target.name, out }
 }
 

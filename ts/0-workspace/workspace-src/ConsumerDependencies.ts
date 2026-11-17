@@ -1,7 +1,8 @@
-import { Json } from '@shared'
+import { Json, Schema } from '@shared'
 import { Try, UserInput } from '@shared'
 import { Files, FS, Path, Platform, Storage } from '@shared/os'
 import Exec from '@shared/os/exec'
+import { satisfies, validRange } from './bridges/Bridge_semver'
 import { isNpmPackageName } from './NpmPackageName'
 import type { TypeScriptProjectPackage } from './TypeScriptProjectPackage'
 import type { WorkflowUI } from './Workflow'
@@ -24,34 +25,39 @@ export async function linkConsumerBuildDependencies(directory: string, libraryOu
   }
 }
 
+type ConsumerPackages = TypeScriptProjectPackage['dependencies']
 const InstallReceipt = '.tao-consumer-install'
 
 async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: WorkflowUI): Promise<void> {
   const { directory } = manifest
-  const names = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })
+  const packages = { ...manifest.dependencies, ...manifest.devDependencies }
+  const names = Object.keys(packages)
   if (!names.length) {
     return
   }
   const receiptPath = Path.join(directory, 'node_modules', InstallReceipt)
   const receipt = await readOptionalText(receiptPath)
-  const fingerprint = await fingerprintInstallInputs(directory)
+  const fingerprint = await fingerprintInstallInputs(directory, packages)
   const hasPackages = names.every(name => hasInstalledPackage(directory, name))
-  if (!hasPackages || receipt !== undefined && receipt !== fingerprint) {
+  const recorded = receipt === undefined
+    ? await matchesUnrecordedInstall(directory, packages, hasPackages)
+    : receipt === fingerprint
+  if (!hasPackages || !recorded) {
     await confirmConsumerInstall(directory, ui)
-    await installConsumerDependencies(manifest)
+    await installConsumerDependencies(manifest, hasPackages ? ['--force'] : [])
     UserInput.require(
       names.every(name => hasInstalledPackage(directory, name)),
       `The install did not prepare all declared packages in ${directory}.`,
     )
   } else {
-    await refreshLocalPackages(manifest, ui)
+    await refreshLocalPackages(manifest, packages, ui)
   }
-  await FS.writeIfChanged(receiptPath, await fingerprintInstallInputs(directory))
+  await FS.writeIfChanged(receiptPath, await fingerprintInstallInputs(directory, packages))
 }
 
 async function confirmConsumerInstall(directory: string, ui: WorkflowUI): Promise<void> {
   const message = `The TypeScript consumer at ${directory} needs dependency setup.`
-  UserInput.require(await ui.confirm({ entry: directory, message }), 'Dependency setup was declined.')
+  UserInput.require(await ui.confirm({ entry: directory, message, consumer: true }), 'Dependency setup was declined.')
   UserInput.require(!ui.cancelled?.(), 'Workflow cancelled.')
 }
 
@@ -60,39 +66,54 @@ function hasInstalledPackage(directory: string, name: string): boolean {
   return FS.existsSync(Path.join(directory, 'node_modules', name, 'package.json'))
 }
 
-const RuntimePackageName = '@tao/runtime'
-
-async function refreshLocalPackages(manifest: TypeScriptProjectPackage, ui: WorkflowUI): Promise<void> {
-  if (
-    await hasStaleLocalPackage(manifest, RuntimePackageName)
-    || await hasStaleLocalPackage(manifest, manifest.compile?.name)
-  ) {
-    const hasLock = FS.existsSync(Path.join(manifest.directory, 'bun.lock'))
-    if (!hasLock) {
-      await confirmConsumerInstall(manifest.directory, ui)
+async function matchesUnrecordedInstall(directory: string, packages: ConsumerPackages, hasPackages: boolean) {
+  if (!hasPackages || FS.existsSync(Path.join(directory, 'bun.lock'))) {
+    return false
+  }
+  for (const [name, specification] of Object.entries(packages)) {
+    const installed = Path.join(directory, 'node_modules', name)
+    if (!await matchesInstalledPackage(directory, specification, installed)) {
+      return false
     }
-    const options = hasLock ? ['--frozen-lockfile', '--force'] : ['--force']
-    await installConsumerDependencies(manifest, options)
+  }
+  return true
+}
+
+async function matchesInstalledPackage(directory: string, specification: string, installed: string): Promise<boolean> {
+  const source = resolveLocalSource(directory, specification)
+  if (source) {
+    return isDirectory(source) && !await hasChangedLocalDirectory(source, installed)
+  }
+  const fields = await readPackageFields(installed)
+  const version = fields?.version
+  const range = validRange(specification)
+  return typeof version === 'string' && !!range && satisfies(version, range)
+}
+
+async function refreshLocalPackages(
+  manifest: TypeScriptProjectPackage,
+  packages: ConsumerPackages,
+  ui: WorkflowUI,
+): Promise<void> {
+  for (const [name, specification] of Object.entries(packages)) {
+    const source = resolveLocalSource(manifest.directory, specification)
+    const installed = Path.join(manifest.directory, 'node_modules', name)
+    if (source && isDirectory(source) && await hasChangedLocalDirectory(source, installed)) {
+      const hasLock = FS.existsSync(Path.join(manifest.directory, 'bun.lock'))
+      if (!hasLock) {
+        await confirmConsumerInstall(manifest.directory, ui)
+      }
+      const options = hasLock ? ['--frozen-lockfile', '--force'] : ['--force']
+      await installConsumerDependencies(manifest, options)
+      return
+    }
   }
 }
 
-async function hasStaleLocalPackage(manifest: TypeScriptProjectPackage, name?: string): Promise<boolean> {
-  if (!name) {
+async function hasChangedLocalDirectory(source: string, installed: string): Promise<boolean> {
+  if (FS.realpathSync(source) === FS.realpathSync(installed)) {
     return false
   }
-  const specifier = manifest.dependencies[name]
-  if (!specifier?.startsWith('file:')) {
-    return false
-  }
-  const source = Path.resolve(manifest.directory, specifier.slice('file:'.length))
-  const installed = Path.join(manifest.directory, 'node_modules', name)
-  if (!FS.existsSync(source) || FS.realpathSync(source) === FS.realpathSync(installed)) {
-    return false
-  }
-  return await hasChangedPackageFiles(source, installed)
-}
-
-async function hasChangedPackageFiles(source: string, installed: string): Promise<boolean> {
   const paths = await listPackageFiles(source)
   if (paths.length !== (await listPackageFiles(installed)).length) {
     return true
@@ -143,10 +164,56 @@ async function installConsumerDependencies(
   await Exec.capture('bun', args, { cwd: manifest.directory })
 }
 
-async function fingerprintInstallInputs(directory: string): Promise<string> {
+async function fingerprintInstallInputs(directory: string, packages: ConsumerPackages): Promise<string> {
   const manifest = await FS.readFile(Path.join(directory, 'package.json'), 'utf8')
   const lock = await readOptionalText(Path.join(directory, 'bun.lock'))
-  return Platform.hashText(Json.Print([manifest, lock ?? null]))
+  const localSources = await Promise.all(
+    Object.values(packages).map(specification => describeLocalSource(resolveLocalSource(directory, specification))),
+  )
+  return Platform.hashText(Json.Canonical([manifest, lock ?? null, localSources]))
+}
+
+const LocalPackagePrefixes = ['file:', 'link:']
+const PackageFieldsSchema = Schema.record(Schema.string(), Schema.unknown())
+const PackageGraphFields = [
+  'name',
+  'version',
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'peerDependenciesMeta',
+  'bundleDependencies',
+  'bundledDependencies',
+  'os',
+  'cpu',
+  'libc',
+]
+
+function resolveLocalSource(directory: string, specification: string): string | undefined {
+  const prefix = LocalPackagePrefixes.find(candidate => specification.startsWith(candidate))
+  if (prefix) {
+    return Path.resolve(directory, specification.slice(prefix.length))
+  }
+}
+
+async function describeLocalSource(source?: string): Promise<unknown> {
+  if (!source || !FS.existsSync(source)) {
+    return null
+  }
+  if (isDirectory(source)) {
+    const fields = await readPackageFields(source)
+    return PackageGraphFields.map(name => fields?.[name] ?? null)
+  }
+  return Platform.hashBytes(await FS.readFile(source), 'sha256')
+}
+
+function isDirectory(path: string): boolean {
+  return Try.WithDefault(false, () => FS.statSync(path).isDirectory())
+}
+
+async function readPackageFields(directory: string) {
+  const manifest = Path.join(directory, 'package.json')
+  return await Try.WithDefault(undefined, () => FS.readJson(manifest, { schema: PackageFieldsSchema }))
 }
 
 async function readOptionalText(path: string): Promise<string | undefined> {

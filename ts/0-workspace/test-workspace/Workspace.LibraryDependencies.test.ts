@@ -183,6 +183,7 @@ async function usePublishedPackageInSidecar(root: string): Promise<void> {
 
 const ConsumerManifest = Schema.object({
   tao: Schema.object({ compile: Schema.unknown().optional(), run: Schema.unknown() }).passthrough(),
+  dependencies: Schema.record(Schema.string(), Schema.string()),
 }).passthrough()
 
 async function verifyInstalledConsumer(root: string): Promise<void> {
@@ -190,6 +191,8 @@ async function verifyInstalledConsumer(root: string): Promise<void> {
   const manifestPath = Path.join(cwd, 'package.json')
   const manifest = await FS.readJson(manifestPath, { schema: ConsumerManifest })
   delete manifest.tao.compile
+  manifest.dependencies['@tao-dev/ts-lib-example'] = '0.0.0'
+  manifest.dependencies['@tao/runtime'] = '0.0.0'
   await FS.writeJson(manifestPath, manifest)
   await Exec.captureStdout('tsc', [
     '--noEmit',
