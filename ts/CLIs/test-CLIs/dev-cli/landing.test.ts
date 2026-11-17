@@ -33,9 +33,18 @@ Tests.test('landing orders verification, archive publication, remote confirmatio
   Tests.expect(stages.every(index => index >= 0)).toBe(true)
   Tests.expect(stages).toEqual([...stages].sort((a, b) => a - b))
   Tests.expect(f.calls.find(call => call.startsWith('gh pr merge'))).toContain(`--match-head-commit ${f.source}`)
+  Tests.expect(f.calls.some(call => call.startsWith('hosted iOS'))).toBe(false)
   Tests.expect(f.calls.filter(call => call.startsWith('storage git add'))).toEqual([
     `storage git add -- performance/preview/${f.source}/record.json performance/preview/${f.source}/report.json`,
   ])
+})
+
+Tests.test('opt-in hosted iOS verifies the pinned source and blocks landing on failure', async () => {
+  const f = recordingLanding()
+  f.state.fail = 'hosted iOS'
+  await Tests.expect(land(f.io, true)).rejects.toThrow('Hosted iOS failed.')
+  Tests.expect(f.calls.indexOf(`hosted iOS ${f.branch} ${f.source}`)).toBeGreaterThan(f.calls.indexOf('./agent verify'))
+  Tests.expect(f.calls.some(call => call.startsWith('gh pr merge'))).toBe(false)
 })
 
 Tests.test('dirty authored and ignored-storage work stop before any fetch or publication', async () => {

@@ -4,10 +4,10 @@ import { Errors, Json, Schema } from '@shared'
 import { Artifacts, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { registerCommand } from './_command-runner'
+import { dispatchVerify, requireFeatureBranch, requirePushedFeature, TaoRepository } from './VerifyDispatch'
 import { watchVerifyRun } from './VerifyWatch'
 
 type RequestedRun = string | undefined
-const TaoRepository = 'tao-dev-org/tao-lang'
 /** verifyCICommand dispatches and inspects hosted Verify for the Tao repository. */
 export default registerCommand({
   name: 'verify-ci',
@@ -16,12 +16,13 @@ export default registerCommand({
   options: [
     { flags: '--status', description: 'Show run status. With no run ID, find the latest dispatch for HEAD.' },
     { flags: '--diagnostics', description: 'Show workflow and job annotations for an exact run.' },
-    { flags: '--wait', description: 'Watch the run until it completes and return its verdict.' },
+    { flags: '--wait', description: 'Watch an existing or newly dispatched run through its verdict.' },
     { flags: '--cancel', description: 'Cancel an exact Verify dispatch for the current feature branch.' },
     { flags: '--rate-limit', description: 'Show the GitHub API quota and reset time.' },
+    { flags: '--with-ios', description: 'Include hosted iOS journeys in a new Verify dispatch.' },
     {
       flags: '--shards <ts/ios/android>',
-      description: 'Dispatch with explicit TypeScript, iOS and Android shard counts.',
+      description: 'Set shard counts for a new dispatch. A positive iOS count enables hosted iOS.',
     },
     { flags: '--compare <baseline>', description: 'Compare job and step times with a baseline run ID.' },
     { flags: '--logs', description: 'Print hosted job logs.' },
@@ -46,8 +47,9 @@ export default registerCommand({
       Errors.ThrowUserInput('Choose one Verify operation.')
     }
     requireLogJobOption(options)
-    if (options.shards !== undefined && (runId !== undefined || modes.some(Boolean))) {
-      Errors.ThrowUserInput('--shards applies to a new Verify dispatch.')
+    const inspectsExistingRun = runId !== undefined || (modes.some(Boolean) && !options.wait)
+    if (inspectsExistingRun && (options.shards !== undefined || options.withIos)) {
+      Errors.ThrowUserInput('--shards and --with-ios apply to a new Verify dispatch.')
     }
     if (options.rateLimit) {
       if (runId !== undefined) {
@@ -68,10 +70,10 @@ export default registerCommand({
       await inspectRun(cwd, runId, options)
       return
     }
-    if (modes.some(Boolean) && !options.status) {
+    if (modes.some(Boolean) && !options.status && !options.wait) {
       Errors.ThrowUserInput('Name the GitHub Actions run ID.')
     }
-    await useCurrentBranch(cwd, options.status, options.shards)
+    await useCurrentBranch(cwd, options)
   },
 })
 
@@ -87,6 +89,7 @@ type VerifyOptions = {
   job?: string
   artifact?: string
   shards?: string
+  withIos?: boolean
 }
 
 const IdentifierRegx = /^[1-9]\d*$/u
@@ -172,9 +175,9 @@ async function downloadArtifact(cwd: string, runId: string, name: string): Promi
   IO.print(directory)
 }
 
-async function useCurrentBranch(cwd: string, status?: boolean, shardCounts?: string): Promise<void> {
+async function useCurrentBranch(cwd: string, options: VerifyOptions): Promise<void> {
   const { branch, commit } = await requirePushedFeature(cwd)
-  if (status) {
+  if (options.status) {
     await runGitHub(cwd, [
       'run',
       'list',
@@ -193,31 +196,7 @@ async function useCurrentBranch(cwd: string, status?: boolean, shardCounts?: str
     ])
     return
   }
-  IO.print(`Dispatching Verify for ${branch} at ${commit}.`)
-  await runGitHub(cwd, ['workflow', 'run', 'verify.yml', '--ref', branch, ...dispatchShardInputs(shardCounts)])
-}
-
-async function requirePushedFeature(cwd: string) {
-  const branch = await requireFeatureBranch(cwd)
-  const origin = await Exec.captureStdout('git', ['remote', 'get-url', 'origin'], { cwd })
-  if (origin !== `https://github.com/${TaoRepository}.git`) {
-    Errors.ThrowUserInput(`Hosted Verify dispatch expects the official origin at ${TaoRepository}.`)
-  }
-  const commit = await Exec.captureStdout('git', ['rev-parse', '--verify', 'HEAD^{commit}'], { cwd })
-  const ref = `refs/heads/${branch}`
-  const remote = await Exec.captureStdout('git', ['ls-remote', '--heads', 'origin', ref], { cwd })
-  if (remote !== `${commit}\t${ref}`) {
-    Errors.ThrowUserInput(`Push ${branch} to origin before dispatching Verify for ${commit}.`)
-  }
-  return { branch, commit }
-}
-
-async function requireFeatureBranch(cwd: string): Promise<string> {
-  const branch = await Exec.captureStdout('git', ['symbolic-ref', '--short', 'HEAD'], { cwd })
-  if (!branch.startsWith('feat/')) {
-    Errors.ThrowUserInput('This hosted Verify operation requires a checked-out feat/ branch.')
-  }
-  return branch
+  await dispatchVerify(cwd, branch, commit, options)
 }
 
 function runGitHub(cwd: string, args: string[]): Promise<void> {
@@ -329,17 +308,4 @@ function printTimingRows(rows: TimingRows, baseline?: TimingRows): void {
 
 function formatSeconds(value?: number): string {
   return value === undefined ? '—' : `${value}s`
-}
-
-type OptionalShardCounts = string | undefined
-const DispatchShardsRegx = /^([1-8])\/([1-7])\/([1-7])$/u
-function dispatchShardInputs(counts: OptionalShardCounts): string[] {
-  if (counts === undefined) {
-    return []
-  }
-  const match = DispatchShardsRegx.exec(counts)
-  if (!match) {
-    Errors.ThrowUserInput('--shards requires TypeScript/iOS/Android counts (up to 8/7/7).')
-  }
-  return ['-f', 'typescript_shards=' + match[1], '-f', 'ios_shards=' + match[2], '-f', 'android_shards=' + match[3]]
 }

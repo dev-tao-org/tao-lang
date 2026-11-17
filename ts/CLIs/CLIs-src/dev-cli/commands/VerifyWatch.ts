@@ -10,8 +10,11 @@ type WatchDependencies = {
 
 const DefaultWatchDependencies: WatchDependencies = { capture: Exec.capture, print: IO.print, sleep: Time.sleep }
 
+type WatchOptions = { dependencies?: WatchDependencies; expectedHead?: string }
+
 /** watchVerifyRun polls only the exact run and reports its terminal verdict. */
-export async function watchVerifyRun(cwd: string, runId: string, deps = DefaultWatchDependencies): Promise<void> {
+export async function watchVerifyRun(cwd: string, runId: string, options: WatchOptions = {}): Promise<void> {
+  const deps = options.dependencies ?? DefaultWatchDependencies
   let etag = ''
   let previousStatus = ''
   for (;;) {
@@ -19,6 +22,11 @@ export async function watchVerifyRun(cwd: string, runId: string, deps = DefaultW
     if (observation) {
       etag = observation.etag
       const { run } = observation
+      if (options.expectedHead !== undefined && run.head_sha !== options.expectedHead) {
+        Errors.ThrowHostEnvironment(
+          `GitHub Actions run ${runId} is for ${run.head_sha}, expected ${options.expectedHead}.`,
+        )
+      }
       if (run.status !== previousStatus) {
         deps.print(`Run ${runId} (${run.conclusion ?? run.status}) ${run.html_url}`)
         previousStatus = run.status
@@ -37,6 +45,7 @@ export async function watchVerifyRun(cwd: string, runId: string, deps = DefaultW
 }
 
 const RunStatusSchema = Schema.object({
+  head_sha: Schema.string(),
   status: Schema.string().min(1),
   conclusion: Schema.string().nullable(),
   html_url: Schema.string(),

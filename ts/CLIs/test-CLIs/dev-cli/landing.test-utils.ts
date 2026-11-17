@@ -14,6 +14,12 @@ export function recordingLanding() {
     root: '/recording',
     command: (command, args = [], { cwd = '/recording' } = {}) =>
       Promise.resolve(commandReply(command, Exec.resolveCommandArgs(args), cwd, state, calls)),
+    async verifyHostedIos(branch, head) {
+      calls.push(`hosted iOS ${branch} ${head}`)
+      if (state.fail === 'hosted iOS') {
+        Errors.ThrowHostEnvironment('Hosted iOS failed.')
+      }
+    },
     async read(path) {
       const content = files.get(path)
       if (content === undefined) {

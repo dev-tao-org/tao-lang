@@ -1,11 +1,13 @@
 import { IO } from '@cli-kit'
 import { FS, Path, Repo } from '@shared/os'
 import Exec, { type Command, type CommandArgs, type CommandOptions } from '@shared/os/exec'
+import { dispatchVerify } from '../commands/VerifyDispatch'
 
 /** LandingIO scopes landing commands and file operations to the selected checkout. */
 export type LandingIO = {
   root: string
   command: (command: Command, args?: CommandArgs, options?: CommandOptions) => Promise<string>
+  verifyHostedIos: (branch: string, head: string) => Promise<void>
   read: (path: string) => Promise<string>
   exists: (path: string) => Promise<boolean>
   write: (path: string, text: string) => Promise<void>
@@ -25,6 +27,7 @@ export function createLandingIO(): LandingIO {
       const { cwd = root, addEnv } = options
       return Exec.captureStdout(command, argv, { cwd, addEnv, trim: false })
     },
+    verifyHostedIos: (branch, head) => dispatchVerify(root, branch, head, { withIos: true, wait: true }),
     read: path => FS.readFile(Path.resolve(root, path), 'utf8'),
     exists: path => FS.exists(Path.resolve(root, path)),
     async write(path, text) {

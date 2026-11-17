@@ -3,12 +3,12 @@
 The [Tests specification](../Specification/Tests.md) explains Tao journey syntax. Run `./agent test`
 for the repository TypeScript suite and Tao app journeys; `./tao test Apps` selects Tao journeys only.
 
-Full verification includes web, iOS Simulator and Android Emulator. On macOS, set
-`TAO_IOS_EXPO_GO` to the SDK-matched simulator app directory and `TAO_ANDROID_EXPO_GO` to the
-matching emulator APK before running `./agent unsandboxed verify --yes`. Use `verify --web-only`
-for the portable verification subset. The hosted Verify check requires the web and TypeScript
-job and both native jobs. The iOS job uses Xcode on macOS. The Android job uses an API 36
-emulator and hardware acceleration on Linux.
+`just verify` runs portable verification. For full local verification, set `TAO_IOS_EXPO_GO`
+to the SDK-matched Expo Go app for iOS Simulator and run `just verify-full`. This is the local
+gate used for landing. Local Android verification is not enabled yet.
+
+Hosted Verify runs TypeScript, web, and Android by default. Android uses an API 36 emulator with
+hardware acceleration on Linux. Hosted iOS uses Xcode on macOS and runs on request.
 
 To run only one native platform or one authored file, use the same test discovery and select
 an Expo Go binary for that target.
@@ -29,7 +29,9 @@ identity.
 
 With authorization to run hosted CI, push the feature branch and run `./agent unsandboxed verify-ci`
 from its checkout. The command checks that the pushed revision matches the current branch and
-dispatches the required Verify workflow. Use `verify-ci --status` to find the run for that commit.
+dispatches the Verify workflow. Add `--with-ios --wait` to include hosted iOS and wait for the result.
+Use `verify-ci --status` to find the run for that commit. To require hosted iOS when landing, add
+`--with-ios` to `./agent unsandboxed land`.
 
 Repository TypeScript tests report warnings for slow cases. Set the threshold in seconds for one
 invocation, optionally selecting a test file or directory:

@@ -14,9 +14,9 @@ on:
         type: number
         default: 3
       ios_shards:
-        description: iOS shard count
+        description: iOS shard count (0 disables hosted iOS)
         type: number
-        default: 2
+        default: 0
       android_shards:
         description: Android shard count
         type: number
@@ -42,10 +42,10 @@ jobs:
       - id: widths
         env:
           TYPESCRIPT_WIDTH: ${{ format('{0}', inputs.typescript_shards) || '3' }}
-          IOS_WIDTH: ${{ format('{0}', inputs.ios_shards) || '2' }}
+          IOS_WIDTH: ${{ format('{0}', inputs.ios_shards) || '0' }}
           ANDROID_WIDTH: ${{ format('{0}', inputs.android_shards) || '2' }}
         run: |
-          [[ "$TYPESCRIPT_WIDTH" =~ ^[1-8]$ && "$IOS_WIDTH" =~ ^[1-7]$ && "$ANDROID_WIDTH" =~ ^[1-7]$ ]]
+          [[ "$TYPESCRIPT_WIDTH" =~ ^[1-8]$ && "$IOS_WIDTH" =~ ^[0-7]$ && "$ANDROID_WIDTH" =~ ^[1-7]$ ]]
           portable=$(jq -cn --argjson n "$TYPESCRIPT_WIDTH" '["check","web"] + [range(1; $n + 1)]')
           ios=$(jq -cn --argjson n "$IOS_WIDTH" '[range(1; $n + 1)]')
           android=$(jq -cn --argjson n "$ANDROID_WIDTH" '[range(1; $n + 1)]')
@@ -60,6 +60,7 @@ jobs:
 
   ios:
     needs: plan
+    if: needs.plan.outputs.ios != '[]'
     uses: ./.github/workflows/native-journeys.yml
     with:
       platforms: '["ios"]'
@@ -144,19 +145,23 @@ jobs:
           exit 1
 
   verify:
-    name: Verify
-    needs: [typescript, ios, android]
+    name: ${{ github.event_name == 'workflow_dispatch' && (format('{0}', inputs.ios_shards) || '0') != '0' && 'Verify with iOS' || 'Verify' }}
+    needs: [plan, typescript, ios, android]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
-      - name: Require web, iOS and Android verification to pass
+      - name: Require the selected verification jobs to pass
         env:
+          PLAN_RESULT: ${{ needs.plan.result }}
           TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
+          IOS_SHARDS: ${{ needs.plan.outputs.ios }}
           IOS_RESULT: ${{ needs.ios.result }}
           ANDROID_RESULT: ${{ needs.android.result }}
         run: |
-          if [ "$TYPESCRIPT_RESULT" != success ] || [ "$IOS_RESULT" != success ] || [ "$ANDROID_RESULT" != success ]; then
-            echo "Web and TypeScript: $TYPESCRIPT_RESULT. iOS: $IOS_RESULT. Android: $ANDROID_RESULT."
+          expected_ios=success
+          if [ "$IOS_SHARDS" = '[]' ]; then expected_ios=skipped; fi
+          if [ "$PLAN_RESULT" != success ] || [ "$TYPESCRIPT_RESULT" != success ] || [ "$IOS_RESULT" != "$expected_ios" ] || [ "$ANDROID_RESULT" != success ]; then
+            echo "Plan: $PLAN_RESULT. Web and TypeScript: $TYPESCRIPT_RESULT. iOS: $IOS_RESULT. Android: $ANDROID_RESULT."
             exit 1
           fi

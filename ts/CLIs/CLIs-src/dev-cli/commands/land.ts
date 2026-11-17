@@ -8,10 +8,11 @@ import { registerCommand } from './_command-runner'
 export default registerCommand({
   name: 'land',
   description: 'Integrate, verify, archive performance and squash-merge the reviewed feature branch.',
-  async action() {
+  options: [{ flags: '--with-ios', description: 'Also require hosted iOS journeys before merging.' }],
+  async action(options: { withIos?: boolean } = {}) {
     const proof = await BuildLock.withBuildLock(
       Path.join(Repo.getMainWorktreeRoot(), '.artifacts/landing.lock'),
-      () => land(createLandingIO()),
+      () => land(createLandingIO(), options.withIos),
     )
     IO.print(`Landed ${proof.branch}: ${proof.url} at ${proof.mergeCommit} (${proof.mergedAt})`)
   },

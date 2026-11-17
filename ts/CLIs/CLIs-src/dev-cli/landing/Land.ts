@@ -5,7 +5,7 @@ import { git, type LandingIO } from './LandingIO'
 import { inspectLanding, type LandingProof, publishAndMerge } from './PullRequest'
 
 /** land runs the authorized landing route; a changed integration head stops for renewed code review. */
-export async function land(io: LandingIO): Promise<LandingProof> {
+export async function land(io: LandingIO, withIos = false): Promise<LandingProof> {
   const branch = await requireCleanBranch(io)
   const existing = await existingLanding(io, branch)
   if (existing) {
@@ -36,7 +36,7 @@ export async function land(io: LandingIO): Promise<LandingProof> {
   if (await io.read(messagePath) !== message) {
     Errors.ThrowUserInput('The reviewed merge message changed while land was running; review it and rerun land.')
   }
-  const proof = await publishAndMerge(io, branch, message, archive.landingHead)
+  const proof = await publishAndMerge(io, branch, message, archive.landingHead, withIos)
   await io.write(`.artifacts/landing/${branch}.json`, formatLandingRecord({ ...proof, archive }))
   return proof
 }

@@ -42,11 +42,15 @@ export async function publishAndMerge(
   branch: string,
   message: string,
   head: string,
+  withIos = false,
 ): Promise<LandingProof> {
   await requireSourceHead(io, head)
   await git(io, ['push', 'origin', `${head}:refs/heads/${branch}`])
   const { pr, title, bodyPath } = await reviewedPullRequest(io, branch, message)
   requirePullRequestHead(pr, head)
+  if (withIos) {
+    await io.verifyHostedIos(branch, head)
+  }
   await io.command('gh', ['pr', 'checks', pr.url, '--required', '--watch', '--fail-fast'])
   requirePullRequestHead((await listPullRequests(io, branch, 'open'))[0], head)
   if (await git(io, ['rev-parse', 'HEAD']) !== head) {

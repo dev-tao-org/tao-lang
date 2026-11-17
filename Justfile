@@ -163,6 +163,12 @@ package-graph:
 verify *ARGS:
     ./dev verify --web-only "$@"
 
+# Format, check and test locally, including the iOS Simulator journeys
+[group('Dev')]
+[positional-arguments]
+verify-full *ARGS:
+    ./dev verify "$@"
+
 # Dev branch management
 #######################
 

@@ -1,4 +1,5 @@
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Errors } from '@shared'
 import { Env, Path, Platform, Repo } from '@shared/os'
 import { workspaceTests } from '../../cli-checks/check'
@@ -10,7 +11,7 @@ import fmt from './fmt'
 /** verifyCommand fixes, checks and tests the new workspace. */
 export default registerCommand({
   name: 'verify',
-  description: 'Format, verify review builds, and test the workspace and Tao journeys on web, iOS and Android.',
+  description: 'Format, verify review builds, and test the workspace and Tao journeys on web and iOS.',
   arguments: [{
     name: 'format-paths',
     description: 'Limit formatting to named files or globs; checks stay workspace-wide.',
@@ -33,24 +34,23 @@ export default registerCommand({
 })
 
 function createNativeVerificationSteps(yes?: boolean): Array<() => Promise<void>> {
-  const root = Repo.getWorkspaceRoot()
-  const binaries = requireNativeVerificationTools()
-  return [
-    async () => (await import('../testing/NativeTaoTests')).runNativeTaoTests('ios', binaries.ios, root, yes),
-    async () => (await import('../testing/NativeTaoTests')).runNativeTaoTests('android', binaries.android, root, yes),
-  ]
-}
-
-function requireNativeVerificationTools() {
+  IO.warn('Local Android verification is not enabled yet.')
   if (Platform.systemInfo().os !== 'Darwin') {
     Errors.ThrowHostEnvironment('Full verification needs iOS Simulator on macOS. Use --web-only for portable checks.')
   }
   const ios = Env.get('TAO_IOS_EXPO_GO')
-  const android = Env.get('TAO_ANDROID_EXPO_GO')
-  if (ios === undefined || android === undefined) {
-    Errors.ThrowUserInput('Set TAO_IOS_EXPO_GO to the simulator app and TAO_ANDROID_EXPO_GO to the emulator APK.')
+  if (ios === undefined) {
+    Errors.ThrowUserInput('Set TAO_IOS_EXPO_GO to the Expo Go app for iOS Simulator.')
   }
-  return { ios: Repo.resolvePath(ios), android: Repo.resolvePath(android) }
+  return [
+    async () =>
+      (await import('../testing/NativeTaoTests')).runNativeTaoTests(
+        'ios',
+        Repo.resolvePath(ios),
+        Repo.getWorkspaceRoot(),
+        yes,
+      ),
+  ]
 }
 
 async function verifyReviewBuilds(options: { yes?: boolean }): Promise<void> {
