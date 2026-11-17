@@ -14,8 +14,6 @@ landing authorization and its proof. Root `AGENTS.md` owns required validation c
 
 ## Current implementation outside .x-tao-old-v1
 
-- Run Tao app journeys on headless web during iteration. Keep iOS simulator and Android emulator
-  tests paused until the Developer asks to resume them.
 - During iteration, run the focused new/changed proof and relevant existing journeys or package tests. Instruction-only changes use `./agent check`; completing an implementation slice still requires root's `./agent verify`. Do not run application tests merely because instruction prose changed.
 - Reuse successful validation for unchanged inputs across commit-only chunks, read-only review rounds and repeated status requests. Record the scope, source snapshot and result; rerun affected checks after relevant changes. Focused evidence does not count as a full-suite pass, and don't assume an automated test-result cache exists.
 - The current `verify` command formats, checks and runs the complete TypeScript and Tao suites. Its format paths do not narrow checks or tests. Current workers have a per-run budget; do not assume they participate in the retained implementation's machine-wide broker or landing lock. Coordinate expensive runs across agents when needed.
