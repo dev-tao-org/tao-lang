@@ -21,6 +21,43 @@ export function FormattedDate(props: { Value: string }) {
 }
 ```
 
+#### Agreed future native functions
+
+In `Shell.tao`, declare the function signature and its ordinary Tao visibility.
+
+```tao
+package
+type StampOptions is { Prefix text }
+
+package
+type Stamp is { Value text }
+
+package
+native func ReadStamp(Options StampOptions) -> Stamp
+```
+
+`Shell.ts` implements `ReadStamp`. The matching basename supplies the implementation path. A Tao file owns one matching sidecar and declares the types used at its boundary. Those types may come from other Tao modules. Tao generates the TypeScript contract from the declarations, and `Shell.ts` supplies its implementation through the generated `sidecar.implement` helper.
+
+```ts
+import { sidecar, Stamp } from './Shell.tao'
+
+export default sidecar.implement({
+  ReadStamp({ Options }) {
+    return Stamp.from({ Value: `${Options.encode().Prefix}dev` })
+  },
+})
+```
+
+Other Tao files import `ReadStamp` through `Shell.tao` and call it normally. Visibility applies to the Tao declaration. The TypeScript implementation is private to that boundary and can import private TypeScript helpers. A native function has the same synchronous, pure contract as a Tao-bodied function.
+
+```tao
+use ReadStamp, StampOptions
+
+let BuildStamp = ReadStamp(StampOptions { Prefix: "build-" }) // Stamp with Value "build-dev"
+```
+
+This syntax is agreed future behavior for functions. The view example above describes the current view syntax.
+
 #### Module boundaries
 
 Sidecars, relative helpers and symlink targets must remain inside their owning project and named

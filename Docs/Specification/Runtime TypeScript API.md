@@ -41,7 +41,7 @@ The compiler generates the interfaces and function or method signatures a sideca
 
 The owning `.tao` module is the canonical TypeScript import surface for generated types, factories and implementation contracts. Pure callbacks and action callbacks have distinct generated contracts: pure callbacks participate in evaluation, while action callbacks explicitly invoke effects.
 
-Each Tao file may have at most one sidecar, named to match that Tao file. The exact filename convention and whether the Tao declaration can omit the implementation pathname are deferred decisions. A sidecar may import ordinary private TypeScript helper modules without giving each helper a Tao declaration; their execution remains subject to the owning managed boundary.
+Each Tao file may have at most one sidecar, named to match that Tao file. A [`native func`](Sidecars.md#agreed-future-native-functions) in `NAME.tao` gets its implementation from `NAME.ts`. The filename and pathname syntax for native action and view declarations remain deferred. A sidecar may import ordinary private TypeScript helper modules without giving each helper a Tao declaration; their execution remains subject to the owning managed boundary.
 
 Sidecars are expected to import their owning Tao module and use its generated API for implementation. Calling generated Tao functions, including functions in that same module, is a supported boundary. Normal checked construction, encoding and decoding helpers hide runtime factory plumbing from sidecar authors.
 

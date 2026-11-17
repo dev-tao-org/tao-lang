@@ -36,7 +36,7 @@ Select the next two bounded implementation slices from the existing projects bef
 
 Owner: [Language decisions](Tao%20Language%20Design%20Decisions.md), [Runtime PoC](Tao%20Runtime%20PoC.md).
 
-Design Boolean, text and numeric types as one coherent foundation, rather than adding Boolean support as an incidental prerequisite for disabled. Resolve numeric representation/precision/limits, named types, construction/validation/conversion, arithmetic/comparison/logical expressions, optional values and `none`/`missing`, and time/duration semantics. Specify consistent sidecar and TypeScript-library contracts. Refresh one annotated example spanning the core types and their conversions.
+Design Boolean, text and numeric types as one coherent foundation, rather than adding Boolean support as an incidental prerequisite for disabled. Resolve the remaining questions about numeric representation, precision and limits, named-type construction and validation, arithmetic, comparison and logical expressions, optional values and `none`/`missing`, and time and duration. Specify consistent sidecar and TypeScript-library contracts. Refresh one annotated example spanning the core types and use the accepted [Type Conversions](../Specification/Type%20Conversions.md) examples as input.
 
 Implementation remains a sequence of small reviewable pieces beneath that shared design; this queue does not select unsettled numeric representations or spellings.
 
@@ -65,6 +65,10 @@ Keep cross-library interaction requirements with this runtime boundary and the r
 Owners: [Compiler and reactive runtime](Compiler%20and%20Reactive%20Runtime%20Plan.md), [Language decisions](Tao%20Language%20Design%20Decisions.md).
 
 Complete generated sidecar contracts, checked conversions, immutable snapshots and structural equality, observation/writable-state integration, pure and inline functions, typed matching and inferred returns. Effects remain explicit actions. Reuse already implemented behavior rather than reopening its decisions. Prove authored Tao calculations and headless TypeScript-library consumption.
+
+- **Typed initializers and conversions.** With the relevant core types in place, implement named `or` unions, postfix `as` for `let` and `state`, authored converters and fallback widening. Prove constructor and arithmetic grouping, exact target identity, source distance and tie diagnostics, unchanged value identity on widening, and the full write domain of optional and union state. Include the typed empty-list case when list typing is available. Audit typed initializer migrations for newly invoked converters and preserve the type and identity rules for entity and opaque-handle values.
+- **Persisted schema.** When persistence is available, derive the schema from the initializer type. Prove an inferred scalar and an explicitly widened union survive reload with the intended write domain. Keep the explicit stable key contract in [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md#persistence).
+- **Native functions.** With generated sidecar contracts and pure functions in place, implement [`native func`](../Specification/Sidecars.md#agreed-future-native-functions). Prove matching-file ownership, visibility through the Tao module, signature and result checking, and invocation from a compiled library in a headless TypeScript consumer.
 
 Include external reactive-source subscription/disposal and sidecar callback lifetime protection in the sidecar integration slice. Consult the previous runtime's revocable native mutation leases; prove that discarded renders and unmounted controls cannot publish late changes. Preserve the current commit-owned React subscription bridge.
 
@@ -100,6 +104,8 @@ These follow-ups are grouped, not assigned a strict implementation priority beyo
 ## Explicitly deferred
 
 [Advanced action execution](Advanced%20Action%20Execution.md) retains retry, cancellation, concurrency, progress and individual-operation inspection. Also preserve deferred scheduled actions with explicit execution providers, local project linking, piping reconsideration, callable conveniences and detailed [developer-overlay design](App%20Developer%20Overlay.md).
+
+- **Structural interfaces.** Implement the agreed [interface design](../Specification/Structural%20Interfaces.md) after MVP. Build on associated methods and typed matching. Prove inherited methods, compatible parameter and result types, unique matching across different ordinary parameter labels, explicit role matching, and action and view dispatch with their ordinary lifecycle contracts.
 
 ## Slice completion
 
