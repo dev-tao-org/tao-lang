@@ -14,19 +14,29 @@
   operation and the harness's command-scoped approval path. Full access requires a concrete need
   and explicit Developer approval before selecting it.
 
-## Verify at startup
+## Before creation
 
-- Use the creation tool's permission selector when it has one. When it does not, use the
-  destination's configured defaults unless they are known to grant unapproved full access. Make
-  the first worker step a read-only preflight. The brief must make edits and host operations
-  conditional on verifying the effective sandbox and checkout. Prompt text, committed config,
-  and the caller's mode do not establish the worker's effective permissions.
+- Unless the Developer explicitly approved Full access for this launch, establish restricted
+  startup through the tool's permission selector or a verified restricted destination default.
+  Worktree environment setup and `SessionStart` hooks can run before the worker sees its brief.
+  If the mode is unknown before creation, launch only the preflight and only after verifying that
+  startup commands that write or need host access are disabled or deferred. Use a different
+  restricted route if these conditions cannot be met. Do not launch under known, unapproved Full
+  access.
+- Reviews and other read-only assignments require enforced read-only access from launch and no
+  mutating startup steps. If a visible chat tool cannot establish that boundary, use an enforced
+  read-only subagent. If a visible chat is required and no such route is available, report it.
 - State the required capabilities and acceptable fallback in the brief. Require an exact
   profile name only when the Developer requires it.
-- Verify the isolated worktree and agreed starting commit before edits. A worker with ordinary
-  workspace writes may establish its own branch and begin implementation. For missing capabilities,
-  use existing scoped host routes or continue independent work while reporting the exact operation
-  that is blocked. A different profile name alone is not a reason to stop.
+
+## Worker preflight
+
+- Verify the effective sandbox, isolated worktree and agreed starting commit before edits or host
+  operations. Prompt text, committed config and the caller's mode do not establish the worker's
+  effective permissions. A worker with ordinary workspace writes may establish its own branch and
+  begin implementation. For missing capabilities, use existing scoped host routes or continue
+  independent work while reporting the exact operation that is blocked. A different profile name
+  alone is not a reason to stop.
 - If the effective mode cannot be verified, a required profile or access restriction is missing,
   or a worker has unapproved full access, stop after preflight or at the next safe boundary if
   already running. Report the boundary and use a verified configuration before resuming.
