@@ -8,6 +8,7 @@ export type NativeWebDriver = {
   attribute(element: string, name: string): Promise<unknown>
   isDisplayed(element: string): Promise<boolean>
   isKeyboardShown(): Promise<boolean>
+  hideKeyboard(): Promise<void>
   snapshot(): Promise<string>
   tap(element: string): Promise<void>
   enterText(element: string, text: string): Promise<void>
@@ -34,6 +35,9 @@ export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabi
     attribute: (element, name) => command(elementPath(element, '/attribute/' + name), 'GET', undefined, true),
     isDisplayed: async element => await command(elementPath(element, '/displayed'), 'GET', undefined, true) === true,
     isKeyboardShown: async () => Schema.boolean().parse(await command('/appium/device/is_keyboard_shown', 'GET')),
+    async hideKeyboard() {
+      await command('/appium/device/hide_keyboard', 'POST', {})
+    },
     snapshot: async () => Schema.string().parse(await command('/source', 'GET')),
     async tap(element) {
       const rect = RectSchema.parse(await command(elementPath(element, '/rect'), 'GET'))

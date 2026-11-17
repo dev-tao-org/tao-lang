@@ -91,7 +91,9 @@ async function typeInput(
   // A disabled field can refuse keyboard focus. Attempt an actual touch before observing that state.
   if (await awaitKeyboard(driver)) {
     await driver.enterText(element, value)
-    await hideKeyboard(platform, driver)
+    if (platform === 'android') {
+      await driver.hideKeyboard()
+    }
   }
 }
 
@@ -104,12 +106,6 @@ async function awaitKeyboard(driver: NativeWebDriver): Promise<boolean> {
     await Time.sleep(100)
   }
   return false
-}
-
-async function hideKeyboard(platform: NativeTestPlatform, driver: NativeWebDriver): Promise<void> {
-  if (platform === 'android') {
-    await driver.execute('mobile: pressKey', { keycode: 4 })
-  }
 }
 
 async function expectInput(
