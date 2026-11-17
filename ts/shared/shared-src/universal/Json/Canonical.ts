@@ -19,9 +19,7 @@ function serializeValue(value: unknown, ancestors: Set<object>): string {
     requireFiniteNumber(value)
     return Print(value)
   }
-  if (typeof value !== 'object') {
-    return UserInput.fail('Canonical JSON requires JSON data without unsupported values.')
-  }
+  UserInput.require(typeof value === 'object', 'Canonical JSON requires JSON data without unsupported values.')
   requireAcyclic(value, ancestors)
   ancestors.add(value)
   const result = Array.isArray(value) ? serializeArray(value, ancestors) : serializeRecord(value, ancestors)
