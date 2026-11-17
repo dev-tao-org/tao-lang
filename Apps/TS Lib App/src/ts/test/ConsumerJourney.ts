@@ -11,7 +11,8 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await first.getByText('Ada', { exact: true }).waitFor()
   await first.getByText('Lovelace', { exact: true }).waitFor()
   await page.getByTestId('react-child').waitFor()
-  await first.getByText('Published submodule', { exact: true }).waitFor()
+  await first.getByText('Published package', { exact: true }).waitFor()
+  await first.getByText('Published subfolder', { exact: true }).waitFor()
   await verifyLanguageFeatures(page)
   await verifyValueSnapshots(page)
   await first.getByText('Nested private Tao helper 0', { exact: true }).click()
@@ -22,7 +23,6 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await first.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   await page.getByTestId('unmount').click()
   await first.waitFor({ state: 'detached' })
-  expect(await page.getByTestId('borrowed-instance').textContent()).toBe('borrowed')
   await second.getByText('Alan', { exact: true }).waitFor()
   await second.getByText('Turing', { exact: true }).waitFor()
   await second.getByText('Nested private Tao helper 0', { exact: true }).click()
@@ -38,9 +38,9 @@ async function verifyLanguageFeatures(page: Page): Promise<void> {
       'Folder-scoped view',
       'Package-scoped view',
       'Project-scoped view',
-      'Wildcard import',
+      'Package import',
       'Tao alias',
-      'Namespace member',
+      'Aliased package import',
       'Nested lexical text',
       'Aliased capture: Ada',
       'Foreign view: Ada',

@@ -13,13 +13,15 @@ import { publishBuild } from '../workspace-src/Workspace/WorkspaceBuild'
 
 Tests.test('standard view uses navigate through generated lexical types to their source-owned definition', async () => {
   await inspectGeneratedTypes(await generateNavigationFixture(), (service, build) => {
-    const source = Path.join(build, 'source/Main.views.tsx')
+    const source = Path.join(build, 'ts/packages/Main.views.tsx')
     const text = FS.readFileSync(source, 'utf8')
     const anchor = '_Imported_UI$Text["Text"]'
     const use = text.indexOf(anchor) + '_Imported_UI$Text["'.length
     Tests.expect(text).toContain(anchor)
     const definitions = service.getDefinitionAtPosition(source, use) ?? []
-    Tests.expect(definitions.map(definition => definition.fileName)).toContain(Path.join(build, 'tao/ui/Views.ts'))
+    Tests.expect(definitions.map(definition => definition.fileName)).toContain(
+      Path.join(build, 'ts/dependencies/tao/@ui/Views.ts'),
+    )
   })
 })
 
@@ -119,7 +121,13 @@ async function generateNavigationFixture(): Promise<Readonly<Record<string, stri
       imports: [{ statement, targets: [{ path: standardPath, relation: 'public' }] }],
       siblings: [],
     },
-    { path: standardPath, document: standard, imports: [], siblings: [] },
+    {
+      path: standardPath,
+      document: standard,
+      imports: [],
+      siblings: [],
+      project: { root: Path.dirname(Path.dirname(standardPath)), alias: 'tao' },
+    },
   ])
   return Compile.compile(entry, { program, revision: 'navigation' })
 }

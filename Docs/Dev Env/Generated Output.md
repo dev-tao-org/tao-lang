@@ -6,7 +6,7 @@ Each Tao input owns a main TypeScript module and any nonempty category modules. 
 
 The category policy reserves `Screen.design.ts` for design, `Screen.data.ts` for data and datasources, and `Screen.previews.tsx` for development preview declarations. These categories have no handlers in the current grammar/compiler and emit no files. Adding one requires its language implementation and an explicit declaration handler; empty categories are always omitted.
 
-Open the generated `build` folder as a TypeScript project. It includes a project configuration and links to the pinned runtime dependencies. Standard-library generated sources live under `tao/`; other inputs retain their file boundaries under `source/` or a separate module directory. Typed lazy projections preserve standard TypeScript definition navigation through renamed and namespaced imports. Original Tao navigation remains future IDE work.
+Open the generated `build` folder as a TypeScript project. It includes a project configuration and links to the pinned runtime dependencies. App and library compilation share a module layout. The current project's generated modules preserve their source folders under `ts/packages/`. Generated Tao dependencies preserve their source folders under `ts/dependencies/<alias>/`, including `ts/dependencies/tao/@ui/` for the standard library. Typed lazy projections preserve standard TypeScript definition navigation through renamed and namespaced imports. Original Tao navigation remains future IDE work.
 
 Live Metro publication consumes one complete memory revision. After acceptance, the disk inspection mirror replaces its real output directory with the completed build, restoring the previous directory if replacement fails. It does not publish a second Metro update. Source generation does not run a formatter on each edit; emitters produce the readable layout directly.
 
@@ -14,25 +14,30 @@ Live Metro publication consumes one complete memory revision. After acceptance, 
 It runs the pinned TypeScript compiler on each generated project's own `tsconfig.json` before
 continuing to workspace checks and tests. Generated projects allow unused locals and parameters.
 Kitchen Sink writes `Apps/Dev/.tao/cache/sessions/review-build/build/`. Demo writes
-`Apps/TS Lib App/.tao/cache/sessions/review-build/libraries/Demo/`, including generated sources under `source/`.
-The tracked Demo package includes its manifest, JavaScript and declarations. It resolves its
-dependencies through the package manifest. The Kitchen Sink build and Demo's inspection sources
-resolve sidecars and toolchain files from the checkout that generated them, so Git ignores those
-trees. Run `./agent verify` to regenerate and typecheck them in the current checkout. The formatter
-excludes all `.tao/` output.
+`Apps/TS Lib App/.tao/cache/sessions/review-build/libraries/Demo/`. The package manifest maps the
+root to `ts/Library.ts`, published packages to `ts/@package.ts`, and subfolders to
+`ts/@package/subfolder.ts`. The facades share the initialization in `ts/LibraryScope.ts`.
+The library keeps foreign-view sources and their relative imports under `ts/sidecars/`.
+The portable Demo manifest and `ts/` tree are tracked for review, including its `ts/tsconfig.json`.
+The Kitchen Sink build still resolves sidecars and toolchain files from the checkout that generated
+it, so Git ignores that tree. Dependency links, incremental state and temporary publication
+generations remain ignored. Run `./agent verify` to regenerate and typecheck both projects in the
+current checkout. The formatter excludes all `.tao/` output.
 
 There is no separate tracking compiler or output comparison step in `check`. Studio uses a separate
 session. App output, library packages, sidecar snapshots and runtime hosts belong to their session;
 prepared dependencies and toolchain caches remain shared. Library consumers resolve the package
 from their own session without changing the authored package's dependency links. The default CLI
-session is `.cli`; `tao.compile.out` is no longer supported.
+session is `.cli`. `tao compile --ts-lib Demo --package src/ts --out <directory>` publishes a
+standalone artifact from the selected session into a fresh directory.
 
 Session isolation does not create independent dependency installations. Installed packages used by
 the app, sidecars and imported projects retain their existing dependency resolution. Only generated
 Tao package locations differ between sessions. Metro resolves those packages against the selected
 session using its own package-export and platform rules; it does not pre-resolve them through Node.
-Generated library source includes a TypeScript configuration for inspecting that session's output.
-The authored standalone consumer's ordinary file dependency selects `.cli` explicitly.
+The shared runtime build also prepares an independent `@tao/runtime` package from its captured
+runtime sources. The project links it through `.tao/cache/runtime-package/`. The authored consumer
+installs the runtime as a peer and selects `.cli` for its ordinary library file dependency.
 
 Compilation respects session ownership and reports a busy session when that same session is active.
 Outputs remain after commands exit. Explicit project cleanup removes inactive session outputs;

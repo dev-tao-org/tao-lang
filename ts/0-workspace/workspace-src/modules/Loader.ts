@@ -17,6 +17,7 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
+  includedSources?: readonly string[]
   beforeLoad?: () => Promise<void>
 }
 
@@ -45,6 +46,7 @@ type LoadState = LoadRequest & {
   projectRoot: string
   sources: Map<string, Typecheck.SourceModule>
   projectRoots: Map<string, string>
+  projectAliases: Map<string, string>
   pending: string[]
   observedRoots: Set<string>
   documents: Map<string, AST.Document>
@@ -58,6 +60,7 @@ type Discovery = {
   imports: Typecheck.SourceModule['imports'][number][]
   siblings: string[]
   projectRoots: Map<string, string>
+  projectAliases: Map<string, string>
 }
 
 const loadGraph = Timings.measure(
@@ -71,6 +74,16 @@ const loadGraph = Timings.measure(
     }
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
+    if (options.includedSources?.length) {
+      const included: Discovery = {
+        sources: new Map(options.includedSources.map(path => [path, undefined])),
+        imports: [],
+        siblings: [],
+        projectRoots: new Map(),
+        projectAliases: new Map(),
+      }
+      await addDiscoveredSources(state, included, timings)
+    }
     while (state.pending.length > 0) {
       await loadNextSource(state, timings)
     }
@@ -108,6 +121,11 @@ async function addDiscoveredSources(
   discovery: Discovery,
   timings: Timings,
 ): Promise<void> {
+  for (const [root, alias] of discovery.projectAliases) {
+    if (!state.projectAliases.has(root)) {
+      state.projectAliases.set(root, alias)
+    }
+  }
   for (const [candidate, text] of discovery.sources) {
     if (!state.sources.has(candidate)) {
       const document = text === undefined
@@ -133,6 +151,7 @@ function createLoadState(request: LoadRequest, entryPath: string, projectRoot: s
     projectRoot,
     sources: new Map([[entryPath, sourceModule(entryPath, document)]]),
     projectRoots: new Map(),
+    projectAliases: new Map(),
     pending: [entryPath],
     observedRoots: new Set(),
     documents: new Map([[entryPath, document]]),
@@ -140,23 +159,32 @@ function createLoadState(request: LoadRequest, entryPath: string, projectRoot: s
 }
 
 async function completedGraph(state: LoadState, timings: Timings): Promise<Typecheck.SourceModule[]> {
-  const sources = [...state.sources.values()]
-  return state.options.includeModuleRequirements
+  const sources = state.options.includeModuleRequirements
     ? [
-      ...sources,
+      ...state.sources.values(),
       ...await loadRequirementModules(
-        sources,
+        [...state.sources.values()],
         state.projectRoot,
         path => readDocument(path, state.parser, state.documents, timings),
       ),
     ]
-    : sources
+    : [...state.sources.values()]
+  return sources.map(source => {
+    const root = source.project?.root ?? state.projectRoots.get(source.path) ?? state.projectRoot
+    return { ...source, project: { root, alias: state.projectAliases.get(root) } }
+  })
 }
 
 const discover = Timings.measure(
   'modules.discover',
   async function(timings, state: LoadState, source: Typecheck.SourceModule): Promise<Discovery> {
-    const found: Discovery = { sources: new Map(), imports: [], siblings: [], projectRoots: new Map() }
+    const found: Discovery = {
+      sources: new Map(),
+      imports: [],
+      siblings: [],
+      projectRoots: new Map(),
+      projectAliases: new Map(),
+    }
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     await observeProject(state, projectRoot, timings)
     const physical = await resolvePhysicalSourcePath(source.path, state.entryPath, projectRoot)
@@ -203,8 +231,10 @@ async function discoverImports(
       targets: targets.map(({ path, relation }) => ({ path, relation })),
     })
     for (const target of targets) {
-      if (target.projectRoot) {
-        discovery.projectRoots.set(target.path, target.projectRoot)
+      const root = target.projectRoot ?? projectRoot
+      discovery.projectRoots.set(target.path, root)
+      if (target.projectAlias !== undefined) {
+        discovery.projectAliases.set(root, target.projectAlias)
       }
       if (!discovery.sources.has(target.path)) {
         discovery.sources.set(target.path, target.source)

@@ -8,6 +8,7 @@
 !/cache/sessions/review-build/libraries/Demo/
 /cache/sessions/review-build/libraries/Demo/*
 !/cache/sessions/review-build/libraries/Demo/package.json
-!/cache/sessions/review-build/libraries/Demo/*.js
-!/cache/sessions/review-build/libraries/Demo/*.d.ts
+!/cache/sessions/review-build/libraries/Demo/ts/
+/cache/sessions/review-build/libraries/Demo/**/node_modules/
+/cache/sessions/review-build/libraries/Demo/**/*.tsbuildinfo
 /locks/

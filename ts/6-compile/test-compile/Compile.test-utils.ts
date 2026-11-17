@@ -33,10 +33,10 @@ function loadGeneratedModule(
   const module = { exports: {} as Record<string, unknown> }
   cache.set(path, module)
   const requireModule = (specifier: string) => {
-    if (specifier === '@runtime') {
+    if (specifier === '@tao/runtime/generated') {
       return runtime
     }
-    if (specifier === '@tao/runtime-api') {
+    if (specifier === '@tao/runtime/runtime-api') {
       return { default: {} }
     }
     const target = resolveGeneratedPath(path, specifier, files)

@@ -16,7 +16,11 @@ export type SourceModule = {
   document: AST.Document
   imports: readonly ResolvedImport[]
   siblings: readonly string[]
+  project?: SourceProject
 }
+
+/** SourceProject identifies the enclosing project and its first resolved dependency alias. */
+export type SourceProject = { root: string; alias?: string }
 
 /** ModuleBinding connects a local name to its declaration's owning source scope. */
 export type ModuleBinding = { name: string; source: string; target: string }
@@ -30,6 +34,7 @@ export type LinkedModule = {
   document: AST.Document
   bindings: readonly ModuleBinding[]
   imports: SourceModule['imports']
+  project?: SourceProject
 }
 
 /** LinkedDefinition identifies a module-level value in initialization order. */

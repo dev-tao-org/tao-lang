@@ -16,7 +16,6 @@ export const ExternalWorkspaceEntries: WorkspaceEntries = {
     'runtime-src/expo/Metro/MetroPreload.ts',
   ],
   'stdlib': ['stdlib-src/.tao/.gitignore.d.ts'],
-  'ts-api': ['ts-api-src/ts-api.ts'],
   'ide-extensions/tao-ide-extension': ['tao-ide-extension-src/extension.ts'],
   'ide-extensions/dev-tao-org': ['dev-tao-org-src/extension.ts'],
 }

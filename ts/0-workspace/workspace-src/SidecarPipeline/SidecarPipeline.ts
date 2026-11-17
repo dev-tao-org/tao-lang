@@ -82,6 +82,15 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
   }
 }
 
+/** collectLibrarySidecars captures the same bounded source closure for relocatable library publication. */
+export async function collectLibrarySidecars(
+  program: Typecheck.LinkedProgram,
+  projectDirectory: string,
+): Promise<readonly Snapshots.SidecarGroup[]> {
+  const { groups } = await collectSidecarInputs({ program, projectDirectory })
+  return groups
+}
+
 function resolveTypeScriptDefaultsPath(options: SidecarPipelineOptions): string {
   const projectDirectory = options.projectDirectory === undefined
     ? Path.dirname(options.program.entry)
@@ -116,7 +125,9 @@ function snapshotForeignViewPaths(
 }
 
 type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
-async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<CollectedSidecarInputs> {
+type SidecarInputField = 'program' | 'projectDirectory' | 'onWatchFiles'
+type SidecarInputOptions = Pick<SidecarPipelineOptions, SidecarInputField>
+async function collectSidecarInputs(options: SidecarInputOptions): Promise<CollectedSidecarInputs> {
   const entryPath = options.program.entry
   const projectDirectory = options.projectDirectory
     ? Path.resolve(options.projectDirectory)
@@ -148,7 +159,7 @@ function compareSidecarModuleRoots(left: Snapshots.SidecarGroup, right: Snapshot
 }
 
 async function collectProgramSidecarViews(
-  options: SidecarPipelineOptions,
+  options: SidecarInputOptions,
   canonicalConsumerDirectory: string,
   groups: Map<string, Snapshots.SidecarGroup>,
   watchFiles: Set<string>,

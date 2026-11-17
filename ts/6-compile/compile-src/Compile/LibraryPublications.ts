@@ -1,96 +1,144 @@
 import * as AST from '@ast-gen'
 import { Errors } from '@shared'
+import { Path, Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
 import { isTextParameter } from '../ValuesCompiler'
 
-/** PublishedView retains source ownership and the public package subpath of a Tao view. */
-export type PublishedView = { path: string; source: string; declaration: AST.ViewDeclaration }
-
-/** compilePublicationExportName identifies a public component consistently across package entrypoints. */
-export function compilePublicationExportName(index: number): string {
-  return `Published${index}`
+/** PublishedView retains the owning source and canonical TypeScript export. */
+export type PublishedView = {
+  subpath: string
+  name: string
+  source: string
+  declaration: AST.ViewDeclaration
 }
 
-/** collectLibraryPublications resolves explicit own-project public views and selected module lists. */
-export function collectLibraryPublications(
-  program: Typecheck.LinkedProgram,
-  ownSources: ReadonlySet<string>,
-  target?: string,
-): readonly PublishedView[] {
-  const entry = program.modules.find(module => module.path === program.entry)!
-  const libraries = [...AST.GetTypeScriptLibraryDeclarations(entry.document, target)]
+/** LibraryPublication selects one publish block, the current project's sources and named package roots. */
+export type LibraryPublication = {
+  declaration: AST.PublishDeclaration
+  ownSources: ReadonlySet<string>
+  packageRoots: ReadonlyMap<string, string>
+}
+
+/** requireLibraryPublication selects the single publish block of a validated library. */
+export function requireLibraryPublication(document: AST.Document, target?: string): AST.PublishDeclaration {
+  const libraries = AST.GetTypeScriptLibraryDeclarations(document, target)
   if (libraries.length !== 1) {
     Errors.ThrowUserInput(
       target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.',
     )
   }
   const publication = AST.FindLibraryPublication(libraries[0]!)
-  if (!publication) {
-    Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
+  return publication ?? Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
+}
+
+/** collectLibraryPublications resolves explicit own-project public views and local package APIs. */
+export function collectLibraryPublications(
+  program: Typecheck.LinkedProgram,
+  publication: LibraryPublication,
+): readonly PublishedView[] {
+  const entry = program.modules.find(module => module.path === program.entry)!
+  const views = publication.declaration.members.flatMap(member => {
+    const name = member.value
+    return name.startsWith('@')
+      ? collectPackageViews(program, publication, name)
+      : [collectRootView(program, publication, entry, name)]
+  })
+  assertUniquePublications(views)
+  return views
+}
+
+function collectRootView(
+  program: Typecheck.LinkedProgram,
+  publication: LibraryPublication,
+  entry: Typecheck.LinkedModule,
+  name: string,
+): PublishedView {
+  const binding = entry.bindings.find(binding => binding.name === name)
+  if (binding && binding.name !== binding.target) {
+    Errors.ThrowUserInput(`Publish ${binding.target} by its declaration name.`)
   }
-  const views = publication.members.flatMap(member => collectSelectedPublication(program, entry, member, ownSources))
-  const paths = new Set<string>()
-  for (const view of views) {
-    if (paths.has(view.path)) {
-      Errors.ThrowUserInput(`Duplicate published TypeScript path: ${view.path}.`)
-    }
-    paths.add(view.path)
+  const source = binding?.source ?? entry.path
+  const owner = program.modules.find(module => module.path === source)!
+  const declaration = AST.FindValueDeclaration(owner.document, name)
+  return requirePublishedView(owner, declaration, '.', name, publication.ownSources)
+}
+
+function collectPackageViews(
+  program: Typecheck.LinkedProgram,
+  publication: LibraryPublication,
+  name: string,
+): PublishedView[] {
+  const root = publication.packageRoots.get(name)
+  if (root === undefined) {
+    Errors.ThrowUserInput(`Published package ${name} is not a local Tao package.`)
+  }
+  const views = program.modules.flatMap(module => packageViews(module, root, name, publication.ownSources))
+  if (views.length === 0) {
+    Errors.ThrowUserInput(`Published package ${name} has no public declarations.`)
   }
   return views
 }
 
-function collectSelectedPublication(
-  program: Typecheck.LinkedProgram,
-  entry: Typecheck.LinkedModule,
-  member: AST.Name,
+function packageViews(
+  module: Typecheck.LinkedModule,
+  root: string,
+  name: string,
   ownSources: ReadonlySet<string>,
 ): PublishedView[] {
-  const name = member.value
-  const importedModule = entry.imports.find(imported => {
-    const statement = imported.statement
-    return AST.IsUsePackageStatement(statement)
-      && (statement.alias?.value ?? Typecheck.deriveNamespaceFromPath(statement.from.value)) === name
-  })
-  if (!importedModule) {
-    const binding = entry.bindings.find(binding => binding.name === name)
-    const source = binding?.source ?? entry.path
-    const owner = program.modules.find(module => module.path === source)!
-    return [requirePublishedView(owner, binding?.target ?? name, name, ownSources)]
+  if (!ownSources.has(module.path) || !Path.isWithin(root, module.path)) {
+    return []
   }
-  const sources = new Set(importedModule.targets.map(target => target.path))
-  const lists = program.modules.filter(module => sources.has(module.path)).flatMap(module =>
-    AST.GetPublishDeclarations(module.document)
-  )
-  if (lists.length !== 1) {
-    Errors.ThrowUserInput(`Published module ${name} must declare one publish block.`)
+  const directory = Path.toPortablePath(Path.relative(root, Path.dirname(module.path)))
+  if (directory.split('/').some(part => part.startsWith('@'))) {
+    return []
   }
-  return lists[0]!.members.map(selected => {
-    const binding = entry.bindings.find(binding => binding.name === `${name}.${selected.value}`)
-    if (!binding || !sources.has(binding.source)) {
-      return Errors.ThrowUserInput(`Published definition ${selected.value} must be an own-project public declaration.`)
-    }
-    const owner = program.modules.find(module => module.path === binding.source)!
-    const path = `${name}/${selected.value}`
-    return requirePublishedView(owner, binding.target, path, ownSources)
-  })
+  const subpath = directory ? `./${name}/${directory}` : `./${name}`
+  return AST.GetValueDeclarations(module.document).filter(declaration => declaration.visibility === 'public')
+    .map(declaration => requirePublishedView(module, declaration, subpath, declaration.name.value, ownSources))
 }
+
+type CandidateViewDeclaration = AST.ValueDeclaration | undefined
 
 function requirePublishedView(
   owner: Typecheck.LinkedModule,
+  declaration: CandidateViewDeclaration,
+  subpath: string,
   name: string,
-  path: string,
   ownSources: ReadonlySet<string>,
 ): PublishedView {
   if (!ownSources.has(owner.path)) {
     Errors.ThrowUserInput(`Cannot publish dependency definition ${name}.`)
   }
-  const declaration = AST.FindValueDeclaration(owner.document, name)
   if (!declaration || declaration.visibility !== 'public') {
     Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
   }
   if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
     Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)
   }
-  return { path, source: owner.path, declaration }
+  return { subpath, name, source: owner.path, declaration }
+}
+
+function assertUniquePublications(views: readonly PublishedView[]): void {
+  const addresses = new Set<string>()
+  const declarations = new Set<string>()
+  for (const view of views) {
+    const address = publishedViewKey(view)
+    const declaration = Typecheck.createModuleMemberKey(view.source, view.name)
+    if (addresses.has(address) || declarations.has(declaration)) {
+      Errors.ThrowUserInput(`Duplicate published TypeScript export: ${address}.`)
+    }
+    addresses.add(address)
+    declarations.add(declaration)
+  }
+}
+
+function publishedViewKey(view: PublishedView): string {
+  return `${view.subpath}/${view.name}`
+}
+
+/** publishedViewBinding names the shared implementation binding for a public component. */
+export function publishedViewBinding(view: PublishedView): string {
+  const packageIdentity = Platform.hashText(view.subpath).slice(0, 12)
+  return `Published_${view.name}_${packageIdentity}`
 }

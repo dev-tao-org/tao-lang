@@ -13,15 +13,14 @@ Tests.test('consumer sessions publish independent libraries and resolve their ow
   await Try(async () => {
     await withConsumerProject(packageDirectory, 'first', async firstHost => {
       const firstOutput = Path.join(firstHost, '../libraries/Demo')
-      const accepted = await FS.readFile(Path.join(firstOutput, '_Library.js'), 'utf8')
+      const module = 'ts/packages/src/tao/Library.views.tsx'
+      const accepted = await FS.readFile(Path.join(firstOutput, module), 'utf8')
       const source = await FS.readFile(entry, 'utf8')
       await FS.writeFile(entry, source.replace('Nested private Tao helper', 'Second session helper'))
       await withConsumerProject(packageDirectory, 'second', async secondHost => {
         const secondOutput = Path.join(secondHost, '../libraries/Demo')
-        Tests.expect(await FS.readFile(Path.join(secondOutput, '_Library.js'), 'utf8')).toContain(
-          'Second session helper',
-        )
-        Tests.expect(await FS.readFile(Path.join(firstOutput, '_Library.js'), 'utf8')).toBe(accepted)
+        Tests.expect(await FS.readFile(Path.join(secondOutput, module), 'utf8')).toContain('Second session helper')
+        Tests.expect(await FS.readFile(Path.join(firstOutput, module), 'utf8')).toBe(accepted)
         Tests.expect(await FS.readFile(Path.join(firstHost, 'tao-consumer.json'), 'utf8')).toContain(
           '/first/libraries/Demo',
         )

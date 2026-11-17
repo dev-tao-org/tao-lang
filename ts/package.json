@@ -17,8 +17,7 @@
     "ide-extensions/*",
     "repo-analysis",
     "shared",
-    "stdlib",
-    "ts-api"
+    "stdlib"
   ],
   "overrides": {
     "rulesync": { "js-yaml": "5.4.2" }

@@ -57,7 +57,7 @@ const PlacementByKind: PlacementByStatementKind = {
   InputExpectation: { syntax: 'Input value expectations', owners: ExpectOwners },
   LetDeclaration: { syntax: 'Let declarations', owners: ['file', 'view', 'render'] },
   PressStatement: { syntax: 'Press statements', owners: TestOwners },
-  PublishDeclaration: { syntax: 'Publish declarations', owners: ['file', 'library'] },
+  PublishDeclaration: { syntax: 'Publish declarations', owners: ['library'] },
   RenderInjectStatement: { syntax: 'Render statements', owners: ['view'] },
   RenderViewExpressionStatement: { syntax: 'Render statements', owners: ['view'] },
   RequiresDeclaration: { syntax: 'Requirements', owners: FileOwners },

@@ -5,6 +5,7 @@ import { Errors, Try, UserInput } from '@shared'
 import { Terminal } from '@shared/os'
 import * as Workspace from '@workspace'
 
+import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { prepareCompiledApplication } from '../CompileApplication'
 
@@ -26,6 +27,7 @@ export default registerCommand({
     requireRunPort(options.port)
     if (!entry) {
       const directory = CLIKit.resolveCallerPath(options.package ?? '.')
+      await prepareRuntime()
       await Workspace.withConsumerProject(directory, options.session, host => startExpo(host, options))
       return
     }

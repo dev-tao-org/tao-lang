@@ -107,13 +107,6 @@ export function GetTypeScriptLibraryDeclarations(
   )
 }
 
-/** GetPublishDeclarations lists publish blocks declared in a source document. */
-export function GetPublishDeclarations(document: AST.Document): readonly AST.PublishDeclaration[] {
-  return document.root.block.statements.filter((node): node is AST.PublishDeclaration =>
-    AST.IsKind(node, 'PublishDeclaration')
-  )
-}
-
 /** GetAppDeclarations lists app declarations in a source document. */
 export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
   return document.root.block.statements.filter(IsAppDeclaration)
