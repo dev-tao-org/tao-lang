@@ -9,7 +9,11 @@ type Label is text with {
 
 let Original = Label "start"
 let Result = Original as text // text "converted"
-state Current = Original as text // text state initially holding "converted"
+
+view LabelEditor {
+   state Current = Original as text // text state initially holding "converted"
+   render "{ Current }"
+}
 ```
 
 #### `Value as Type`
@@ -74,6 +78,8 @@ view Catalog {
    state Preview = Featured as PreviewItem
 
    action ShowStationery() { set Preview = Stationery }
+
+   render "Catalog"
 }
 ```
 
@@ -87,6 +93,8 @@ view ProductPicker {
 
    action SelectProduct(ID ProductID) { set Selected = ID }
    action ClearSelection() { set Selected = none }
+
+   render "Choose a product"
 }
 ```
 
