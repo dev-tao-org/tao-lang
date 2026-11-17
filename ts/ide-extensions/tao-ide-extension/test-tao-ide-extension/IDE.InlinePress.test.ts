@@ -46,7 +46,7 @@ Tests.test('unfinished press handlers report the exact edited token or insertion
   }, { finally: runtime.dispose })
 })
 
-Tests.test('the invalid do-block prefix preserves independent syntax errors and probes at most once', async () => {
+Tests.test('the recovered do-block prefix preserves independent syntax errors without a probe', async () => {
   const phases: string[] = []
   const runtime = await loadRuntime(phase => phases.push(phase))
   Shared.Try(() => {
@@ -62,7 +62,7 @@ Tests.test('the invalid do-block prefix preserves independent syntax errors and 
       expected,
       { range: Shared.Range(later, later), message: 'Expected Identifier' },
     ])
-    Tests.expect(phases.filter(phase => phase === 'tao.diagnostic-probe')).toHaveLength(1)
+    Tests.expect(phases.filter(phase => phase === 'tao.diagnostic-probe')).toHaveLength(0)
     phases.length = 0
     Tests.expect(runtime.document.update(source).diagnostics).toHaveLength(1)
     Tests.expect(phases.filter(phase => phase === 'tao.diagnostic-probe')).toHaveLength(0)
@@ -106,5 +106,42 @@ Tests.test('opened arguments and blocks keep their later syntax diagnostics and 
       Tests.expect(runtime.document.update(source + injection).diagnostics.length).toBeGreaterThan(1)
     }
     Tests.expect(phases.filter(phase => phase === 'tao.diagnostic-probe')).toHaveLength(0)
+  }, { finally: runtime.dispose })
+})
+
+Tests.test('incremental inline recovery matches cold WASM trees through splits and repairs', async () => {
+  const runtime = await loadRuntime()
+  Shared.Try(() => {
+    const source = FS.readFileSync(Fixture, 'utf8')
+    for (const newline of [Shared.NewlineCharacter, Shared.CarriageReturnCharacter + Shared.NewlineCharacter]) {
+      const fixture = source.replaceAll(Shared.NewlineCharacter, newline)
+      const variants = [
+        Handler,
+        ['on press -> do', '        ' + FollowingBinding].join(newline),
+        ['on press -> do Reset', '        ('].join(newline),
+        ['on press -> do SetMessage(', '          "Saved")'].join(newline),
+        ['on press ->', '        { do Reset() }'].join(newline),
+        'on press Reset',
+      ]
+      for (const [index, handler] of variants.entries()) {
+        const edited = fixture.replace(Handler, handler)
+        const cold = runtime.createDocument()
+        const fresh = cold.update(edited)
+        cold.dispose()
+        const incremental = runtime.document.update(edited)
+        Tests.expect(incremental).toEqual(fresh)
+        if (index === 1) {
+          Tests.expect(incremental.diagnostics).toHaveLength(1)
+        } else if (index === 2) {
+          const end = edited.indexOf(handler) + handler.indexOf(newline)
+          Tests.expect(incremental.diagnostics[0]).toEqual({
+            range: Shared.Range(end, end),
+            message: ExpectedArguments,
+          })
+        } else {
+          Tests.expect(incremental.diagnostics).toEqual([])
+        }
+      }
+    }
   }, { finally: runtime.dispose })
 })

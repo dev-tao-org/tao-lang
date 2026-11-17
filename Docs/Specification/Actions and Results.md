@@ -28,6 +28,10 @@ Declare an action in a view before `render`. It can read the view’s values, wr
 
 Bind a parameterless action to the standard `Button(Label)` to run it on press. `on press -> do Rename()` creates an anonymous action that calls `Rename` when pressed. Use `on press -> { ... }` for several statements. Registering a handler does not run it, and changes to values it reads do not trigger it.
 
+#### `on press -> do Rename()`
+
+An unbraced handler contains one `do` call or one `set` statement. Write `do`, the action name and the opening `(` on the same line as `->`. Arguments can continue on later lines. For `set`, put the keyword, the state name, `=` and the start of the value on the arrow line. A braced handler can open with `{` on a later line.
+
 #### Planned action inspection
 
 The agreed MVP design below uses `when ACTION` to inspect aggregate activity and `pick ACTION` for first-match rendering. Inspection, returned results, failure handling and guards are not implemented.

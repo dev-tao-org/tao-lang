@@ -26,6 +26,12 @@ export default grammar({
     return [WhitespaceCharacterRegx, $.Comment]
   },
   word: $ => $.Identifier,
+  // The scanner recognizes the end of an incomplete inline header. Tree-sitter inserts the missing token.
+  externals: $ => [$._incomplete_inline_action, $.ExpectedInlineAction, $._scanner_error],
+  // Tree-sitter substitutes inline rules at each use, so their matched nodes appear directly in the tree.
+  inline: $ => [$._ActionInlineStatements],
+  // Supertypes are hidden node unions exposed in generated node-type metadata and queries.
+  // ex: _ViewRenderStatement -> RenderInjectStatement | RenderViewExpressionStatement
   supertypes: $ => [$._Declaration, $._Expression, $._Statement, $._ViewRenderStatement],
   rules: {
     SourceFile($) {
@@ -47,8 +53,7 @@ export default grammar({
         $.InputValueExpectation,
         $.StateDeclaration,
         $.ActionDeclaration,
-        $.SetStatement,
-        $.DoStatement,
+        $._ActionInlineStatements,
         $.PressBinding,
       )
     },
@@ -166,6 +171,9 @@ export default grammar({
     ActionDeclaration($) {
       return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))
     },
+    _ActionInlineStatements($) {
+      return choice($.SetStatement, $.DoStatement)
+    },
     SetStatement($) {
       return seq('set', field('target', $.QualifiedName), '=', field('value', $._Expression))
     },
@@ -176,7 +184,11 @@ export default grammar({
       return seq('on', 'press', field('handler', choice($.QualifiedName, $.InlineAction)))
     },
     InlineAction($) {
-      return seq('->', field('body', choice($.Block, $.DoStatement, $.SetStatement)))
+      return seq('->', field('body', choice($.Block, $._ActionInlineStatements, $.IncompleteInlineAction)))
+    },
+    IncompleteInlineAction($) {
+      // ExpectedInlineAction is never emitted by the scanner and therefore always marks a syntax error.
+      return seq($._incomplete_inline_action, $.ExpectedInlineAction)
     },
 
     // Modules

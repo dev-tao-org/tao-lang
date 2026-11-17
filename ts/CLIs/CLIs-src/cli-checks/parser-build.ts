@@ -51,6 +51,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
   const stamp = encodeParserBuildInputs(inputs)
   const outputs = [
     'src/parser.c',
+    'src/scanner.c',
     'src/grammar.json',
     'src/node-types.json',
     'src/tree_sitter/parser.h',
@@ -69,6 +70,7 @@ async function rebuildParser(force: boolean, timings: Timings): Promise<void> {
     await FS.write(Path.join(outputRoot, filename), inputs.sources[filename]!)
   }
   await timings.run(generateParser)
+  await FS.write(Path.join(outputRoot, 'src/scanner.c'), inputs.sources['scanner.c']!)
   await writeCSTTypes(outputRoot)
   await writeSemanticAst(outputRoot)
   await timings.run(buildParserNative, inputs)
@@ -120,6 +122,7 @@ async function readInputs(): Promise<ParserBuildInputs> {
       'tree-sitter.json',
       'binding.gyp',
       'binding.cc',
+      'scanner.c',
     ]
   ) {
     sources[filename] = await FS.file(Path.join(grammarRoot, filename)).text()

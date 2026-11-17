@@ -133,3 +133,75 @@ Tests.test('requirements, package subpath imports and foreign views parse', () =
   ])
   Tests.expect(tree.rootNode.descendantsOfType('ForeignView')).toHaveLength(1)
 })
+
+Tests.test('incomplete inline actions keep the following binding and tagged view in their blocks', () => {
+  const parser = createParser()
+  for (const prefix of ['->', '-> d', '-> se', '-> do', '-> do Reset', '-> set', '-> set Status', '-> set Status =']) {
+    const source = S`
+      view Example {
+        render Col {
+          #first
+          Button("First") {
+            on press ${prefix}
+            let Caption = "Still separate"
+          }
+          #second
+          Button("Second") { on press Reset }
+        }
+      }
+    `
+    const root = parser.parse(source).rootNode
+    const [first, second] = root.descendantsOfType('RenderTag').map(tag => tag.parent!)
+    const block = first?.childForFieldName('block')
+    const missing = block?.descendantsOfType('ExpectedInlineAction')[0]
+    Tests.expect({
+      prefix,
+      hasError: root.hasError,
+      missing: missing?.isMissing,
+      first: block?.namedChildren.map(child => child.type),
+      closing: block?.lastChild?.text,
+      following: second?.childForFieldName('tag')?.text,
+      siblings: first?.parent?.id === second?.parent?.id,
+    }).toEqual({
+      prefix,
+      hasError: true,
+      missing: true,
+      first: ['PressBinding', 'LetDeclaration'],
+      closing: '}',
+      following: '#second',
+      siblings: true,
+    })
+  }
+})
+
+Tests.test('unbraced handlers keep their headers on one line and allow multiline argument contents', () => {
+  const parser = createParser()
+  for (const newline of ['\n', '\r\n']) {
+    const invalid = [
+      ['on press ->', 'do Reset()'],
+      ['on press -> do', 'Reset()'],
+      ['on press -> do Controls.', 'Reset()'],
+      ['on press -> do Reset', '()'],
+      ['on press -> set', 'Status = "Saved"'],
+      ['on press -> set Status', '= "Saved"'],
+      ['on press -> set Status =', '"Saved"'],
+      ['on press -> do /*', '*/ Reset()'],
+    ]
+    const valid = [
+      ['on press -> do SetMessage(', '"Saved")'],
+      ['on press -> /*', '*/ { do Reset() }'],
+      ['on press ->', '{ do Reset() }'],
+      ['on press -> do /* same line */ Controls.Reset()'],
+      ['on press -> set Status = "Saved"'],
+      ['on press Reset'],
+    ]
+    for (const line of invalid) {
+      const source = line.join(newline)
+      Tests.expect({ source, error: parser.parse(source).rootNode.hasError }).toEqual({ source, error: true })
+    }
+    for (const line of valid) {
+      const source = line.join(newline)
+      Tests.expect({ source, error: parser.parse(source).rootNode.hasError }).toEqual({ source, error: false })
+    }
+  }
+})

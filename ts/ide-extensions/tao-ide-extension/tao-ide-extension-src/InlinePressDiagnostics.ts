@@ -15,37 +15,39 @@ export function refineInlinePressDiagnostics(
     return diagnostics
   }
   const issues: PressIssue[] = []
-  collectPressIssues(root, source, diagnostics, issues)
+  collectPressIssues(root, source, issues)
   const remaining = diagnostics.filter(diagnostic => !issues.some(issue => ownsDiagnostic(issue, diagnostic)))
   const issue = issues[0]
-  const confirmed = issues.length === 1 && issue && remaining.length > 0
-    ? probeRecovery(source, issue, parseRepair)
+  const confirmed = issues.length === 1 && issue?.repair && remaining.length > 0
+    ? probeRecovery(source, issue.repair, parseRepair)
     : undefined
-  return (confirmed ?? remaining).concat(issues.map(issue => issue.diagnostic))
+  const otherDiagnostics = (confirmed ?? remaining).map(formatRecoveryDiagnostic)
+  return otherDiagnostics.concat(issues.map(issue => issue.diagnostic))
 }
 
 type PressIssue = {
   scope: Range
   diagnostic: Diagnostic
-  repair: { start: number; end: number; text: string }
+  repair?: PressRepair
 }
+type PressRepair = { start: number; end: number; text: string }
 type Prefix = { start: number; end: number; text: string }
 
 const Arrow = '->'
 const ExpectedBody = 'Expected a `do` call, a `set` statement, or a `{ … }` block after `->`.'
 
-function collectPressIssues(node: Node, source: string, diagnostics: Diagnostic[], issues: PressIssue[]): void {
+function collectPressIssues(node: Node, source: string, issues: PressIssue[]): void {
   const arrow = findPressArrow(node)
   if (arrow) {
-    const issue = classifyPressIssue(node, arrow, source, diagnostics)
+    const issue = classifyPressIssue(node, arrow, source)
     if (issue) {
       issues.push(issue)
     }
   }
   if (node.hasError) {
     for (const child of node.namedChildren) {
-      if (child.hasError || child.type === 'PressBinding') {
-        collectPressIssues(child, source, diagnostics, issues)
+      if (child.hasError) {
+        collectPressIssues(child, source, issues)
       }
     }
   }
@@ -66,12 +68,7 @@ function findPressArrow(node: Node): Node | undefined {
   return handler?.children.find(child => child.type === Arrow)
 }
 
-function classifyPressIssue(
-  binding: Node,
-  arrow: Node,
-  source: string,
-  diagnostics: Diagnostic[],
-): PressIssue | undefined {
+function classifyPressIssue(binding: Node, arrow: Node, source: string): PressIssue | undefined {
   const line = readLine(source, arrow.endIndex)
   if (line.length === MaxPrefixLength) {
     return undefined
@@ -81,21 +78,22 @@ function classifyPressIssue(
   if (!issue || arrow.isMissing) {
     return undefined
   }
-  if (!binding.hasError && !hasDisplacedBinding(binding, source, diagnostics)) {
+  const body = binding.childForFieldName('handler')?.childForFieldName('body')
+  if (body && hasOpenedBody(body, arrow, command)) {
     return undefined
   }
-  if (hasOpenedBody(binding, arrow, command)) {
-    return undefined
+  if (body?.type === 'IncompleteInlineAction') {
+    // The parser has already separated the incomplete header from subsequent syntax.
+    return { scope: issue.scope, diagnostic: issue.diagnostic }
   }
   return issue
 }
 
-function hasOpenedBody(binding: Node, arrow: Node, command: Prefix): boolean {
-  const body = binding.childForFieldName('handler')?.childForFieldName('body')
-  if (!command.text && body?.type === 'Block') {
+function hasOpenedBody(body: Node, arrow: Node, command: Prefix): boolean {
+  if (!command.text && body.type === 'Block') {
     return true
   }
-  if (body?.type !== 'DoStatement' || command.text !== 'do') {
+  if (body.type !== 'DoStatement' || command.text !== 'do') {
     return false
   }
   const target = body.childForFieldName('target')
@@ -111,19 +109,6 @@ function readLine(source: string, start: number): string {
   const cr = nearby.indexOf(CarriageReturnCharacter)
   const end = Math.min(lf < 0 ? nearby.length : lf, cr < 0 ? nearby.length : cr)
   return nearby.slice(0, end)
-}
-
-function hasDisplacedBinding(binding: Node, source: string, diagnostics: Diagnostic[]): boolean {
-  const handler = binding.childForFieldName('handler')
-  const body = handler?.childForFieldName('body')
-  const value = body?.childForFieldName('value')
-  if (value?.text !== 'let') {
-    return false
-  }
-  const statement = readLine(source, value.startIndex)
-  const nextStatementEnd = value.startIndex + statement.length
-  return Regxs.LeadingTaoLetBindingRegx.test(statement)
-    && diagnostics.some(({ range }) => range.start >= value.endIndex && range.start <= nextStatementEnd)
 }
 
 function classifyPrefix(start: number, arrow: Node, command: Prefix, line: string): PressIssue | undefined {
@@ -215,8 +200,11 @@ function ownsDiagnostic(issue: PressIssue, { range }: Diagnostic): boolean {
   return range.start >= issue.scope.start && range.end <= issue.scope.end
 }
 
-function probeRecovery(source: string, issue: PressIssue, parseRepair: ParseRepair): Diagnostic[] | undefined {
-  const { start, end, text } = issue.repair
+function probeRecovery(
+  source: string,
+  { start, end, text }: PressRepair,
+  parseRepair: ParseRepair,
+): Diagnostic[] | undefined {
   const repaired = parseRepair(source.slice(0, start) + text + source.slice(end))
   if (!repaired) {
     return undefined
@@ -236,4 +224,11 @@ function probeRecovery(source: string, issue: PressIssue, parseRepair: ParseRepa
       return { ...diagnostic, range }
     })
   }, { finally: () => repaired.delete() })
+}
+
+function formatRecoveryDiagnostic(diagnostic: Diagnostic): Diagnostic {
+  if (diagnostic.message === 'Expected ExpectedInlineAction') {
+    return { range: diagnostic.range, message: 'Incomplete inline action' }
+  }
+  return diagnostic
 }
