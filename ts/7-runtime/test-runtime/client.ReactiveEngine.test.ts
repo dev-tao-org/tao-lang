@@ -157,6 +157,9 @@ Tests.test('nested batches clean up after errors and reject asynchronous ownersh
     })
   ).toThrow('failed')
   Tests.expect(source.jsValue()).toBe(2)
+  const synchronousValue = { then: 'next' }
+  Tests.expect(engine.batch(() => synchronousValue)).toBe(synchronousValue)
+  Tests.expect(() => engine.batch(() => ({ then: () => undefined }))).toThrow('must finish synchronously')
   Tests.expect(() => engine.batch(() => Promise.resolve())).toThrow('must finish synchronously')
   Tests.expect(source.jsValue()).toBe(2)
   engine.dispose()

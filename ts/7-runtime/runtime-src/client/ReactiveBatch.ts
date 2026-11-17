@@ -14,12 +14,13 @@ export function runSynchronousReactiveBatch<T>(perform: () => T): T {
 }
 
 type ObjectOrFunction = object | Function
+type PotentialThenable = { then?: unknown }
 
 function isThenable(value: unknown): boolean {
   if (!isObjectOrFunction(value)) {
     return false
   }
-  return 'then' in value
+  return typeof (value as PotentialThenable).then === 'function'
 }
 
 function isObjectOrFunction(value: unknown): value is ObjectOrFunction {

@@ -591,7 +591,7 @@ function isThenable(value) {
   if (!isObjectOrFunction(value)) {
     return false;
   }
-  return "then" in value;
+  return typeof value.then === "function";
 }
 function isObjectOrFunction(value) {
   return typeof value === "object" && value !== null || typeof value === "function";
