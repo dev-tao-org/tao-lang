@@ -40,6 +40,11 @@ view Editor(Initial text) {
       Control("Reset") {
         on press -> do Reset()
       }
+      #inline-editor
+      Control("Set inline") {
+        on press -> set Status = "Inline message"
+        let Status = "Later render binding"
+      }
     }
   }
 }

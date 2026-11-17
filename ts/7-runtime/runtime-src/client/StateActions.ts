@@ -50,7 +50,8 @@ export function DoStatement(candidate: unknown, values: ActionArguments): void {
 
 /** InlineAction defers an anonymous action body until invoked. */
 export function InlineAction(parent: Scope, execute: ActionBody): PressHandler {
-  return () => batch(() => execute(Scope(parent)))
+  const captured = captureBindings(parent)
+  return () => batch(() => execute(Scope(captured)))
 }
 
 /** PressBinding registers a callable without executing it. */
@@ -75,6 +76,13 @@ type BindPress = (handler: PressHandler) => void
 type ActionArguments = readonly unknown[]
 type Action = (...values: ActionArguments) => void
 type ActionBody = (scope: Scope) => void
+type ParentScope = Scope | null
+
+function captureBindings(scope: Scope): Scope {
+  const parent = Object.getPrototypeOf(scope) as ParentScope
+  const snapshot = Scope(parent === null ? undefined : captureBindings(parent))
+  return Object.defineProperties(snapshot, Object.getOwnPropertyDescriptors(scope))
+}
 
 function bindActionArguments(parent: Scope, parameters: readonly string[], values: ActionArguments): Scope {
   const scope = Scope(parent)

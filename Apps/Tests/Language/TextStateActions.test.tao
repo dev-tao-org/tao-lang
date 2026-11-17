@@ -8,5 +8,7 @@ tests "Authored text state and actions" {
     expect text "Renamed"
     press #reset-editor
     expect text "Original message"
+    press #inline-editor
+    expect text "Inline message"
   }
 }
