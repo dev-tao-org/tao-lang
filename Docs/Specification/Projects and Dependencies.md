@@ -111,8 +111,10 @@ kinds beyond currently published views remains under design.
 
 #### Store, cache and sessions
 
-`.tao/store/` retains identity, locks and `dependencies.initialized`; keep these in version control.
-The marker prevents a deleted source lock from silently resolving new pins: restore the lock instead.
+`.tao/store/` retains project identity and durable dependency locks. Commit
+`.tao/store/dependencies.lock.json` to preserve resolved source pins and npm graph references.
+When the source lock is missing, Tao treats the project as unprepared. Restore the committed
+lock to recover its pins before running setup again.
 `.tao/cache/` holds generated state, including reusable
 `sessions/.cli/` output. `.tao/.gitignore` excludes caches and session locks, retaining the store.
 Session names match `[a-z0-9][a-z0-9_-]*`; `.cli` and `.studio` are reserved. Preparation and updates

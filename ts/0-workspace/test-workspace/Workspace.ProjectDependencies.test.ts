@@ -11,7 +11,6 @@ import type { DependencyRequirement, DependencyStoreOptions } from '../workspace
 import { ProjectDependencies } from '../workspace-src/ProjectDependencies'
 
 const BundledTaoAliasErrorRegx = /alias tao belongs to the bundled Tao project/
-const MissingDurableLockErrorRegx = /missing; restore the exact durable lock/
 const DependencySetupRequiredErrorRegx = /needs setup/
 const DependencyDeclarationChangedErrorRegx = /Dependency declarations changed/
 
@@ -75,7 +74,11 @@ Tests.test('active dependency graphs require restart when authored requirements 
     dependencies.observeProjectSources(root, parsed(root, requirements))
     Tests.expect(dependencies.sourceDirectories()).toEqual([first])
     await FS.rm(Path.join(root, '.tao/store/dependencies.lock.json'))
-    await Tests.rejects(dependencies.refresh(), MissingDurableLockErrorRegx)
+    await dependencies.refresh()
+    await Tests.rejects(
+      dependencies.resolveProject(Path.join(root, 'Main.tao'), 'Local'),
+      DependencySetupRequiredErrorRegx,
+    )
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
