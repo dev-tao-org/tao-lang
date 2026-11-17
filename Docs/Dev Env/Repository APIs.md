@@ -42,6 +42,23 @@ Narrow imports remain appropriate for manifest-declared primary entities and con
 families are already namespaces: `import { Json, Sort } from '@shared'` exposes qualified operations
 and types without creating aggregate wrapper objects.
 
+## Invariants and user input
+
+Import `Invariant` and `UserInput` from `@shared`. Use `Invariant(condition, message)` for
+conditions guaranteed by Tao or an established upstream contract. Use
+`UserInput.require(condition, message)` when a caller can correct the input. Domain functions
+such as `requireRunPort` own the validity rules and write the diagnostic message.
+
+Both checks require a primitive boolean and a string, narrow the checked expression in
+TypeScript, and return `undefined` on success. They run synchronously in every build.
+`Invariant` throws `UnexpectedBehaviorError` on failure and `UserInput.require` throws
+`UserInputError`. Malformed calls throw a fixed `UnexpectedBehaviorError` without inspecting
+or attaching the arguments.
+
+Use `Errors.ThrowX` for unconditional failures and the existing structured error boundary
+for collected diagnostics. Use schema decoding to validate and type unknown data. Put a check
+before the operation it protects. Argument evaluation and earlier effects happen before it runs.
+
 ## Serialization and ordering
 
 - `Json.Parse(text)` returns `unknown`; `Json.Parse(text, { schema, sourceName })` validates the
