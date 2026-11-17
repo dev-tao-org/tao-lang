@@ -3,7 +3,7 @@ import Tao from '@tao/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./Card";
 
 
-export function TaoView_Caption_134457407937(_Props: TR.ViewComponentProps) {
+export function TaoView_Caption_e8e5822cf03d(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": string };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });

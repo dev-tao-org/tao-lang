@@ -74,6 +74,24 @@ Tests.test('a rejected promise return stops its observer and releases the writin
   engine.dispose()
 })
 
+Tests.test('rejecting a structural thenable does not execute its deferred write', async () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable(0)
+  let called = false
+  const receive = () => ({
+    then(resolve: () => void) {
+      called = true
+      source.update(1)
+      resolve()
+    },
+  })
+  Tests.expect(() => source.observe(receive as () => void)).toThrow('Observation callbacks must finish synchronously')
+  await Promise.resolve()
+  Tests.expect(called).toBe(false)
+  Tests.expect(source.jsValue()).toBe(0)
+  engine.dispose()
+})
+
 function verifyNestedBatchFailure(deferred: boolean): void {
   const queue: (() => void)[] = []
   const engine = createReactiveEngine({ scheduleDelivery: deferred ? deliver => queue.push(deliver) : undefined })

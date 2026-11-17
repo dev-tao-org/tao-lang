@@ -408,7 +408,8 @@ plan or obtaining its review. Commit, push, merge and landing each follow curren
 
 Use minimal meaningful tests, dominated by representative Tao journeys. Internal tests cover only
 the contracts not yet expressible in the current language: dynamic/diamond dependencies, cached
-reads, equal results, nested/standalone batches, in-batch reads, reentrant updates and disposal.
+reads, equal results, nested/standalone batches, in-batch reads, observation write rejection,
+independent delivery and disposal.
 Use recording schedulers/clocks for deterministic notification timing; do not assert fragile timings.
 
 Exercise changed/unchanged hook topology, hook-bearing injections, failed-edit recovery, component

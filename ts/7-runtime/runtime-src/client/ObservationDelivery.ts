@@ -52,8 +52,8 @@ function requireSynchronousResult(result: unknown, stop: () => void): void {
     return
   }
   stop()
-  // The synchronous contract violation is already reported. Consume a late rejection from started work.
-  void Try(() => Promise.resolve(result), { catch: () => undefined })
+  // Consume an already-started native promise without invoking an arbitrary thenable's method.
+  void Try(() => Promise.prototype.then.call(result, undefined, () => undefined), { catch: () => undefined })
   throwAsynchronousObservation()
 }
 
