@@ -48,10 +48,13 @@ Use the named-session workflow above.
 Keep the portability result from the experiment. At `bfc14aa2`, generated Kitchen Sink and Demo
 foreign-view imports named the checkout that compiled them. The committed layout checkpoint
 `c7fab3ec` still showed those imports after moving the modules. The generated package layout
-work owns relocation proof. Regenerate and typecheck from another checkout, and verify both
-the app and the library resolve foreign views without imports into the original checkout.
+work owns relocation proof. Rebuild and typecheck Kitchen Sink in a separate checkout and
+verify its foreign view resolves to the validated sidecar snapshot there. Move the built Demo
+artifact independently, then import it and render its foreign view in an ordinary TypeScript
+consumer with the authored project unavailable.
 
-The local [evidence inventory](../../.artifacts/notes/tracked-output-reconciliation/17c2c529b/README.md)
-records the dirty snapshot, per-file dispositions, generated specimens and available test results.
-Retain the old checkout until the evidence is durably archived and verified. The patch and
-generated specimens are historical evidence for that archive.
+The [evidence inventory](../../.artifacts/notes/tracked-output-reconciliation/17c2c529b/README.md)
+is local to the reconciliation worktree. It records the dirty snapshot, per-file dispositions,
+generated specimens and available test results. Retain the old checkout until the archive is
+verified and the receiving branch contains the handoff and archive pointer. Worktree retirement
+requires separate authorization.
