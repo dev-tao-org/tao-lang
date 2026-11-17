@@ -35,6 +35,22 @@ Tests.test('Android waits once for the System UI dialog and still requires the a
   Tests.expect(actions).toEqual(['tap wait', 'tap continue'])
 })
 
+Tests.test('native device cleanup terminates the app when the diagnostic hierarchy is unavailable', async () => {
+  const actions: string[] = []
+  const driver = recordingDriver(actions, {
+    async snapshot() {
+      actions.push('snapshot')
+      return Errors.ThrowHostEnvironment('Example snapshot timeout.')
+    },
+    async execute(script) {
+      actions.push(script)
+    },
+  })
+  const device = await createNativeTestTarget('ios', driver).openDevice()
+  await device.dispose()
+  Tests.expect(actions).toEqual(['snapshot', 'mobile: terminateApp'])
+})
+
 function recordingDriver(actions: string[], overrides: Partial<NativeWebDriver>): NativeWebDriver {
   return {
     execute: async script => Errors.ThrowShouldNeverHappen(`Unexpected Appium script ${script}.`),

@@ -19,7 +19,7 @@ type NativeCapabilities = Record<string, NativeCapabilityValue>
 const StartupMs = 240_000
 const IosSessionMs = 300_000
 const CommandMs = 20_000
-const IosAppLaunchMs = 90_000
+const IosAppLifecycleMs = 90_000
 const IosElementLookupMs = 45_000
 /** openNativeWebDriver creates a session using the requested device capabilities. */
 export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabilities): Promise<NativeWebDriver> {
@@ -37,8 +37,8 @@ export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabi
   ) => requestAppium(sessionUrl + path, method, body, timeoutMs, tolerateStale)
   return {
     execute(script, ...args) {
-      // An iOS deep link can cold-launch Expo Go before returning from the command.
-      const timeoutMs = script === 'mobile: deepLink' && ios ? IosAppLaunchMs : CommandMs
+      const appLifecycle = script === 'mobile: deepLink' || script === 'mobile: terminateApp'
+      const timeoutMs = appLifecycle && ios ? IosAppLifecycleMs : CommandMs
       return command('/execute/sync', 'POST', { script, args }, false, timeoutMs)
     },
     async find(xpath) {

@@ -47,6 +47,9 @@ export function createNativeTestTarget(
 async function disposeDevice(platform: NativeTestPlatform, driver: NativeWebDriver): Promise<void> {
   const path = Artifacts.resolvePath('logs', 'native-journeys', `${platform}-ui-${Platform.randomUUID()}.xml`)
   await Try(async () => FS.writeFile(path, await driver.snapshot()), {
+    catch(error) {
+      IO.warn(`Could not save the ${platform} UI hierarchy:`, String(error))
+    },
     async finally() {
       await driver.execute('mobile: terminateApp', applicationArguments(platform))
     },

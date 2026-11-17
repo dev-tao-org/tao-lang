@@ -301,6 +301,7 @@ function iosCapabilities(target: IosTestTarget, bundleId: string) {
     'appium:automationName': 'XCUITest',
     'appium:udid': target.id,
     'appium:bundleId': bundleId,
+    'appium:autoLaunch': false,
     'appium:noReset': true,
     'appium:isHeadless': true,
     'appium:forceSimulatorSoftwareKeyboardPresence': true,
