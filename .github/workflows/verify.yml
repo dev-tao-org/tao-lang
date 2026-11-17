@@ -41,9 +41,9 @@ jobs:
     steps:
       - id: widths
         env:
-          TYPESCRIPT_WIDTH: ${{ inputs.typescript_shards || 3 }}
-          IOS_WIDTH: ${{ inputs.ios_shards || 2 }}
-          ANDROID_WIDTH: ${{ inputs.android_shards || 2 }}
+          TYPESCRIPT_WIDTH: ${{ github.event_name == 'workflow_dispatch' && toJSON(inputs.typescript_shards) || '3' }}
+          IOS_WIDTH: ${{ github.event_name == 'workflow_dispatch' && toJSON(inputs.ios_shards) || '2' }}
+          ANDROID_WIDTH: ${{ github.event_name == 'workflow_dispatch' && toJSON(inputs.android_shards) || '2' }}
         run: |
           [[ "$TYPESCRIPT_WIDTH" =~ ^[1-8]$ && "$IOS_WIDTH" =~ ^[1-7]$ && "$ANDROID_WIDTH" =~ ^[1-7]$ ]]
           portable=$(jq -cn --argjson n "$TYPESCRIPT_WIDTH" '["check","web"] + [range(1; $n + 1)]')

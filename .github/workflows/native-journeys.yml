@@ -164,8 +164,10 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
           SHARD: ${{ matrix.shard }}
-          SHARD_COUNT: ${{ inputs.shards && strategy.job-total || 1 }}
-        run: ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --shard "$SHARD/$SHARD_COUNT" --yes
+          SHARDS: ${{ inputs.shards || '[1]' }}
+        run: |
+          shard_count=$(jq -er length <<< "$SHARDS")
+          ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --shard "$SHARD/$shard_count" --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Keep native driver and test logs

@@ -68,7 +68,6 @@
   "ts/7-runtime/test-runtime/client.RenderTag.test.ts": 57,
   "ts/7-runtime/test-runtime/client.Scope.test.ts": 47,
   "ts/7-runtime/test-runtime/client.TR.test.ts": 131,
-  "ts/7-runtime/test-runtime/client.ValueSnapshots.test.ts": 260,
   "ts/7-runtime/test-runtime/expo.GeneratedRevision.test.ts": 38,
   "ts/7-runtime/test-runtime/expo.HostTransitions.test.ts": 87,
   "ts/7-runtime/test-runtime/expo.ToolchainAcceptance.test.ts": 2694,

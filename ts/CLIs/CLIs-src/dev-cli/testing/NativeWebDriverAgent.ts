@@ -12,7 +12,11 @@ const ToolchainDiscoveryMs = 60_000
 export async function openIosWebDriver(url: string, device: string, caps: Capabilities): Promise<NativeWebDriver> {
   const cache = await resolveWebDriverAgentCache(device)
   const app = Path.join(cache, 'Build', 'Products', 'Debug-iphonesimulator', 'WebDriverAgentRunner-Runner.app')
-  const build = () => openNativeWebDriver(url, { ...caps, 'appium:derivedDataPath': cache })
+  const build = async () => {
+    await FS.rm(cache, { recursive: true, force: true })
+    await FS.mkdir(cache)
+    return await openNativeWebDriver(url, { ...caps, 'appium:derivedDataPath': cache })
+  }
   if (!await isPrebuiltAgent(app)) {
     IO.progress('Building WebDriverAgent for the selected simulator…')
     return await build()
