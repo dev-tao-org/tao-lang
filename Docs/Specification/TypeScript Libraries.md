@@ -51,7 +51,7 @@ export default function Example() {
 }
 ```
 
-Published text parameters become required string props. A published `Children` parameter is a string prop. Components accept React children independently.
+Published `text` and `number` parameters become required TypeScript `string` and `number` props, including when the parameter uses a transparent alias. A published `Children` parameter declared as `text` becomes a string prop. Components accept React children independently.
 
 Importing any public entry initializes one shared scope for that library. All of its published views use that scope. Tao keeps view-local state for each mount and retains the shared scope when a view unmounts.
 
@@ -65,4 +65,4 @@ Run `tao init <existing-directory> --library` to scaffold a Tao library and Reac
 
 #### Supported subset
 
-The current target is Expo and React Native Web. Published views support `text` parameters and ordinary React children. Published datasource, action and typed calculation contracts, explicit distribution builds, and runtime shutdown remain future work.
+The current target is Expo and React Native Web. Published views support `text` and `number` parameters and ordinary React children. Published datasource, action and typed calculation contracts, explicit distribution builds, and runtime shutdown remain future work.

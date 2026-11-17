@@ -168,6 +168,7 @@ function renderSemanticAst(model: SemanticAstModel): string {
     export const CstConstructorKinds = ${model.constructorKinds} as const
     export const CstFieldLayouts = ${model.fieldLayouts} as const
     export const DeclarationKinds = ${Json.Print(model.declarationMembers)} as const
+    export const ExpressionKinds = ${Json.Print(model.expressionMembers)} as const
     export const StatementKinds = ${Json.Print(model.statementMembers)} as const
     export type OfKind<Kind extends Node['kind']> = Extract<Node, { readonly kind: Kind }>
     export function IsKind<Kind extends Node['kind']>(node: Node, kind: Kind | readonly Kind[]): node is OfKind<Kind> {
@@ -231,6 +232,12 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
   })
   if (['ImportPath', 'RenderTag', 'TextLiteral', 'ContextReference'].includes(kind)) {
     generatedFields.push('  value: string')
+  }
+  if (kind === 'NumberLiteral') {
+    generatedFields.push('  value: number')
+  }
+  if (kind === 'TypeDeclaration') {
+    generatedFields.push('  nominal: boolean')
   }
   return S`
     export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {

@@ -16,12 +16,16 @@
 (TypeStatement ["type" "into"] @keyword)
 (ExpectStatement "expect" @keyword)
 (RenderTag) @variable
-(LetDeclaration ["let" "is"] @keyword)
+(LetDeclaration "let" @keyword)
 (LetDeclaration name: (Identifier) @variable)
-(LetDeclaration type: (QualifiedName) @type)
-(StateDeclaration ["state" "is"] @keyword)
+(StateDeclaration "state" @keyword)
 (StateDeclaration name: (Identifier) @variable)
-(StateDeclaration type: (QualifiedName) @type)
+(TypeDeclaration ["type" "is"] @keyword)
+(TypeDeclaration name: (Identifier) @type)
+(TypeDeclaration base: (Identifier) @type)
+(ConstructionExpression type: (Identifier) @type)
+(ConversionExpression "as" @keyword)
+(ConversionExpression type: (Identifier) @type)
 (ActionDeclaration "action" @keyword)
 (ActionDeclaration name: (Identifier) @function)
 (SetStatement "set" @keyword)
@@ -43,4 +47,5 @@
 (Visibility) @keyword
 (QualifiedName) @type
 (TextLiteral) @string
+(NumberLiteral) @number
 (Comment) @comment

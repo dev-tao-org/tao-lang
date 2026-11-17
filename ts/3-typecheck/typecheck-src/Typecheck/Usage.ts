@@ -54,6 +54,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
       }
     },
     LetDeclaration: value => visitLet(value, scope),
+    TypeDeclaration: Switch.nothing,
     ViewDeclaration: view => visitView(view, scope),
     TestsDeclaration(tests) {
       for (const test of AST.GetTests(tests)) {
@@ -135,19 +136,18 @@ function visitLocalValue(node: AST.ViewValueDeclaration, scope: Scope): void {
 }
 
 function visitLet(node: AST.ViewValueDeclaration, scope: Scope): void {
-  if (node.type) {
-    reference(scope, node.type)
-  }
-  if (AST.IsKind(node.value, 'Name')) {
-    reference(scope, node.value)
+  const operand = AST.GetExpressionOperand(node.value)
+  if (AST.IsKind(operand, 'Name')) {
+    reference(scope, operand)
   }
 }
 
 function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   reference(scope, node.target)
   for (const argument of node.arguments) {
-    if (AST.IsKind(argument, 'Name')) {
-      reference(scope, argument)
+    const operand = AST.GetExpressionOperand(argument)
+    if (AST.IsKind(operand, 'Name')) {
+      reference(scope, operand)
     }
   }
   const statements = AST.GetViewRenderBlockStatements(node)

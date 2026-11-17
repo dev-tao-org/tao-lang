@@ -1,26 +1,33 @@
 # Type Conversions WIP
 
-The agreed future `as` expression runs a declared converter or uses an existing value at a compatible type.
+Use `as` to widen a value from a nominal scalar type to one of its ancestors.
 
-```tao
-type Label is text with {
-   Label as text { return "converted" }
+````tao
+type Score is number
+type Total = number
+
+view Scores {
+  state Points = Score 2 as Total
+
+  action Update() { set Points = 7 }
+
+  render inject Points ```ts
+    return <Tao.Text>{String(Points)}</Tao.Text>
+  ```
 }
-
-let Original = Label "start"
-let Result = Original as text // text "converted"
-
-view LabelEditor {
-   state Current = Original as text // text state initially holding "converted"
-   render "{ Current }"
-}
-```
+````
 
 #### `Value as Type`
 
 Tao resolves the conversion from the operand's static type and the requested type. The same expression has the same meaning in a `let`, a `state`, or an argument. A literal and a variable with the same static type qualify for the same conversions. A `let` or `state` infers the result type of its initializer. A state keeps that type for later writes.
 
+#### File-local scalar types
+
+`type Score is number` declares a distinct type backed by `number`. `type Total = number` and `type Points = Total` share the identity of `number`. File-local types can derive from `text`, `number`, or another file-local type. Use `Score 2` to construct a nominal scalar, or `Score (Value)` for a grouped input. Number literals support finite decimal and scientific-notation values.
+
 #### Declared converters
+
+Declared converters are agreed future behavior. When a converter applies, it runs before fallback widening.
 
 Either the source or the target type can declare the converter in its `with` body. The source type name binds the operand inside that body. The converter's result type is its declared target. Converters follow the rules for pure functions.
 
@@ -64,7 +71,7 @@ type PublicCode is text with {
 
 #### Widening and named unions
 
-When there is no matching converter, `as` accepts an operand whose entire static type already fits the target without constructing a new value. This includes nominal ancestors, unions, optionals, and [structural interfaces](Structural%20Interfaces.md) when available. Tao preserves the existing value. Use `or` to declare a union and use the union's name as the `as` target.
+In the agreed future design, when there is no matching converter, `as` accepts an operand whose entire static type already fits the target without constructing a new value. In addition to implemented nominal widening, this includes unions, optionals, and [structural interfaces](Structural%20Interfaces.md) when available. Tao preserves the existing value. Use `or` to declare a union and use the union's name as the `as` target.
 
 ```tao
 type Product is { Name text }
@@ -102,14 +109,12 @@ view ProductPicker {
 
 #### Construction and diagnostics
 
-`Label "start"` constructs a `Label`. Both `"start" as Label` and `Raw as Label`, where `Raw` is `text`, require a declared converter. A missing converter can be reported as ``text would need an `as Label { .. }` converter``.
+`Label "start"` constructs a `Label`. Both `"start" as Label` and `Raw as Label`, where `Raw` is `text`, are rejected by widening. In the future converter design they require a declared converter.
 
-Tao rejects `Label as Label { ... }` at its declaration. It also rejects `Original as Label` when `Original` already has type `Label`, with the diagnostic ``Original is already `Label` ``.
+Tao rejects `Original as Label` when `Original` already has type `Label`, with the diagnostic ``Original is already `Label` ``. The future converter syntax also rejects same-type converter declarations.
 
 ```tao
-type Label is text with {
-   // Label as Label { return Label "normalized" } // Error: same-type converter.
-}
+type Label is text
 
 let Raw = "start"
 let Original = Label "start"
@@ -120,7 +125,7 @@ let Original = Label "start"
 
 #### Grouping
 
-`as` groups after construction and arithmetic. Parentheses can put the conversion inside the constructor argument.
+`as` groups after construction. Parentheses can put the conversion inside the constructor argument. The agreed future arithmetic grammar groups arithmetic before `as`.
 
 ```tao
 type Score is number
@@ -128,9 +133,8 @@ type Score is number
 let Points = Score 2 as number // (Score 2) as number, yielding number 2.
 let Input = Score 2
 let Rebuilt = Score (Input as number) // Converts Input to number, then constructs Score 2.
-// let Total = 1 + 2 as Score // (1 + 2) as Score. Needs a number as Score converter.
 ```
 
 #### Availability
 
-This is agreed future behavior. The conversion expression replaces the explicit `let Name is Type = Value` and `state Name is Type = Value` forms. Where a converter applies, migrating an annotation to `as` can change the initializer's value.
+The conversion expression replaces the explicit `let Name is Type = Value` and `state Name is Type = Value` forms. Initializers with the intended type already can use `let Name = Value` or `state Name = Value`. Declared converters, unions, and optionals are future behavior.

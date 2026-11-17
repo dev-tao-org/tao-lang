@@ -4,8 +4,10 @@ tests "Authored text state and actions" {
   test "Named and anonymous handlers explicitly update visible text" {
     run Language
     expect text "Original message"
+    expect text "Points: 2"
     press #rename-editor
     expect text "Renamed"
+    expect text "Points: 7"
     press #reset-editor
     expect text "Original message"
     press #inline-editor

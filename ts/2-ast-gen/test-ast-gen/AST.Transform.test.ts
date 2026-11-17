@@ -106,7 +106,7 @@ Tests.test('module statements and declaration visibility become semantic nodes',
     use tao@ui/controls Button as Control
     file app Demo { root UI . Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
-    package let Value is UI.Text = UI.Default
+    package let Value = UI.Default as Text
   `
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)

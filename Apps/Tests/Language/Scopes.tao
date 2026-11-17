@@ -1,6 +1,6 @@
 use tao@ui Text, Col
 
-let Greeting is text = "File scope"
+let Greeting = "File scope"
 let Fallback = "Second file binding"
 
 folder view ScopeExamples {

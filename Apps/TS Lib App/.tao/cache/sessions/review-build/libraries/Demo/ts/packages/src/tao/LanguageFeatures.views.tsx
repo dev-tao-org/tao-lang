@@ -14,13 +14,15 @@ export function TaoView_LanguageFeatures$CapturedCaption_f61fcef90f44(_Props: TR
 }
 export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor"> & { readonly "Name": string; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View }, "Initial" | "Status" | "Save" | "Reset"> & { readonly "Initial": string; readonly "Status": string; readonly "Save": unknown; readonly "Reset": unknown };
+  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor"> & { readonly "Name": string; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View }, "Initial" | "Status" | "Points" | "Save" | "Reset"> & { readonly "Initial": string; readonly "Status": string; readonly "Points": number; readonly "Save": unknown; readonly "Reset": unknown };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   TR.useStateDeclaration(_Scope, "Status", () => _Scope["Initial"]);
+  TR.useStateDeclaration(_Scope, "Points", () => TR.WidenScalar(_Scope, "Total", TR.ConstructScalar(_Scope, "Score", 2)));
   TR.useActionDeclaration(_Scope, "Save", [], _Scope => {
     TR.SetStatement(_Scope, "Status", "Saved state");
+    TR.SetStatement(_Scope, "Points", 7);
   });
   TR.useActionDeclaration(_Scope, "Reset", [], _Scope => {
     TR.SetStatement(_Scope, "Status", _Scope["Initial"]);
@@ -31,6 +33,10 @@ export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.Vie
       TR.ViewRenderExpression(
         _Imported_Text["Text"],
         TR.ViewRenderArguments([_Scope["Status"]], [])
+      ),
+      TR.ViewRenderExpression(
+        _Scope["ScoreReadout"],
+        TR.ViewRenderArguments([_Scope["Points"]], [])
       ),
       TR.ViewRenderExpression(
         _Imported_Button["Button"],
@@ -130,4 +136,14 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
       )
     ])
   ));
+}
+
+function useTaoInjectionScoreReadout_f61fcef90f44(Value: number) {
+  return <Tao.Text>{'Points: ' + Value.toString()}</Tao.Text>
+}
+export function TaoView_ScoreReadout_f61fcef90f44(_Props: TR.ViewComponentProps) {
+  const _Render = TR.beginViewRender(_Props);
+  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": number };
+
+  return TR.finishViewRender(_Render, useTaoInjectionScoreReadout_f61fcef90f44(_Scope["Value"] as number));
 }

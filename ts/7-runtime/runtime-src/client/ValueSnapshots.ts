@@ -1,4 +1,5 @@
 import { Objects, UserInput } from '@shared'
+import { compareNominalScalars } from './ScalarValues'
 
 /** ValueCapability identifies an expression or observation registered by the reactive runtime. */
 export type ValueCapability = ValueCapabilityIdentity
@@ -171,7 +172,7 @@ function requireDataField(source: object, name: string): unknown {
 }
 
 function compareSnapshotValues(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) {
+  if (Object.is(left, right) || compareNominalScalars(left, right)) {
     return true
   }
   if (!isOwnedSnapshot(left) || !isOwnedSnapshot(right)) {
@@ -213,7 +214,7 @@ function compareCollectionField(frame: CollectionComparison, name: string, compa
   }
   const left: unknown = Reflect.get(frame.left, name)
   const right: unknown = Reflect.get(frame.right, name)
-  if (Object.is(left, right)) {
+  if (Object.is(left, right) || compareNominalScalars(left, right)) {
     return true
   }
   const bothOwned = isOwnedSnapshot(left) && isOwnedSnapshot(right)

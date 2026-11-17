@@ -11,11 +11,14 @@ export const syntaxFixture = S`
   requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
   ts-library Demo{publish{Root,@cards,}}
-  file let Caption is text="Hello"
+  type Label is text
+  type Count=number
+  file let Caption=Label("Hello")as text
   folder app Demo{root Root}
   package view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  state Status is text=Title
+  state Status=Title
+  state Points=2
   action Rename (Value text){set Status=Value}
   action Save(){do Rename (Caption)}
   render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message) UI.Button(Status){on press Save} UI.Button(Subtitle){on press->do Rename(Title)}}
@@ -43,8 +46,12 @@ export const formattedSyntaxFixture = S`
     }
   }
 
+  type Label is text
+
+  type Count = number
+
   file
-  let Caption is text = "Hello"
+  let Caption = Label ("Hello") as text
 
   folder
   app Demo {
@@ -54,7 +61,8 @@ export const formattedSyntaxFixture = S`
   package
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    state Status is text = Title
+    state Status = Title
+    state Points = 2
     action Rename(Value text) {
       set Status = Value
     }
@@ -108,6 +116,11 @@ export const formattedSyntaxFixture = S`
 
 /** syntaxKinds makes grammar additions require an explicit fixture coverage decision. */
 export const syntaxKinds = {
+  ConstructionExpression: true,
+  ConversionExpression: true,
+  GroupedExpression: true,
+  NumberLiteral: true,
+  TypeDeclaration: true,
   TypeScriptLibraryDeclaration: true,
   PublishDeclaration: true,
   SourceFile: true,

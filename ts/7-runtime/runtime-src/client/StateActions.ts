@@ -1,6 +1,7 @@
 import { UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
 import { batch, useValue, useWritable } from './ReactiveEngine'
+import { requireScalar, unwrapScalar } from './ScalarValues'
 import { defineScopeBinding, hasScopeBinding, LetDeclaration, Scope, ViewRenderBlock } from './Scope'
 
 /** PressHandler invokes a parameterless action for one press. */
@@ -9,13 +10,18 @@ export type PressHandler = () => void
 /** PressRenderBlock supplies the children and the independent press event of a view invocation. */
 export type PressRenderBlock = { children: readonly React.ReactNode[]; press?: PressHandler }
 
-/** useStateDeclaration retains writable text in this view instance and exposes its current value lexically. */
+/** useStateDeclaration retains a writable scalar in this view instance and exposes its current value lexically. */
 export function useStateDeclaration(scope: Scope, name: string, initialize: () => unknown): void {
-  const source = useWritable(() => requireText(initialize()))
+  const source = useWritable(() => requireScalar(initialize()))
   useValue(source)
   defineScopeBinding(scope, name, {
     get: () => source.jsValue(),
-    set: write => source.update(requireText(write)),
+    set(write) {
+      const current = source.jsValue()
+      const value = typeof current === 'object' ? write : unwrapScalar(write)
+      UserInput.Require(typeof current === typeof value, `Invalid value for state "${name}".`)
+      source.update(requireScalar(value))
+    },
     enumerable: true,
   })
 }
@@ -87,7 +93,7 @@ function captureBindings(scope: Scope): Scope {
 function bindActionArguments(parent: Scope, parameters: readonly string[], values: ActionArguments): Scope {
   const scope = Scope(parent)
   for (const [index, name] of parameters.entries()) {
-    LetDeclaration(scope, name, requireText(values[index]))
+    LetDeclaration(scope, name, requireScalar(unwrapScalar(values[index])))
   }
   return scope
 }
@@ -95,9 +101,4 @@ function bindActionArguments(parent: Scope, parameters: readonly string[], value
 function requireAction(candidate: unknown): Action {
   UserInput.Require(typeof candidate === 'function', 'Expected a Tao action.')
   return candidate as Action
-}
-
-function requireText(value: unknown): string {
-  UserInput.Require(typeof value === 'string', 'Expected a text value.')
-  return value
 }

@@ -27,11 +27,25 @@ export const Formatting = {
   },
   LetDeclaration(fm) {
     fm.oneSpaceAfter('let')
-    fm.oneSpaceAround('=', 'is')
+    fm.oneSpaceAround('=')
   },
   StateDeclaration(fm) {
     fm.oneSpaceAfter('state')
-    fm.oneSpaceAround('=', 'is')
+    fm.oneSpaceAround('=')
+  },
+  TypeDeclaration(fm) {
+    fm.oneSpaceAfter('type')
+    fm.oneSpaceAround('is', '=')
+  },
+  ConversionExpression(fm) {
+    fm.oneSpaceAround('as')
+  },
+  ConstructionExpression(fm) {
+    fm.oneSpaceBeforeProperty('value')
+  },
+  GroupedExpression(fm) {
+    fm.noSpaceAfter('(')
+    fm.noSpaceBefore(')')
   },
   ActionDeclaration(fm) {
     fm.oneSpaceAfter('action')

@@ -27,7 +27,8 @@ Tests.test('library publications reject private, unsupported, duplicate and depe
   Tests.expect(() => resolvePublications(source.replace('package view', 'folder view'))).toThrow(
     'package-visible declaration',
   )
-  Tests.expect(() => resolvePublications(source.replace('Value text', 'Value number'))).toThrow('text parameters')
+  Tests.expect(resolvePublications(source.replace('Value text', 'Value number'))[0]?.parameterTypes)
+    .toEqual({ Value: 'number' })
   Tests.expect(() => resolvePublications(source.replace('Greeting, }', 'Greeting, Greeting, }'))).toThrow('Duplicate')
   Tests.expect(() => resolvePublications(source, new Set())).toThrow('dependency definition')
 })
@@ -69,7 +70,7 @@ Tests.test('library signatures allow uppercase Tao props with React-related name
     package view Greeting(Value text) { render inject \`\`\`ts return null \`\`\` }
   `
   const publications = resolvePublications(source.replace('Value text', 'Children text, Key text, Ref text'))
-  Tests.expect(publications[0]!.declaration.parameters.map(parameter => parameter.name.value))
+  Tests.expect(Object.keys(publications[0]!.parameterTypes))
     .toEqual(['Children', 'Key', 'Ref'])
 })
 

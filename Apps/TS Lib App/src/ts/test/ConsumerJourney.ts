@@ -37,9 +37,12 @@ async function verifyAuthoredState(page: Page): Promise<void> {
   const firstSaved = first.getByText('Saved state', { exact: true })
   const secondInitial = second.getByText('Second initial state', { exact: true })
   await first.getByText('Ada', { exact: true }).waitFor()
+  await first.getByText('Points: 2', { exact: true }).waitFor()
   await secondInitial.waitFor()
   await first.getByRole('button', { name: 'Save state' }).click()
   await firstSaved.waitFor()
+  await first.getByText('Points: 7', { exact: true }).waitFor()
+  await second.getByText('Points: 2', { exact: true }).waitFor()
   expect(await secondInitial.isVisible()).toBe(true)
   await page.getByTestId('update').click()
   await page.getByText('Aliased capture: Grace', { exact: true }).waitFor()
@@ -58,6 +61,7 @@ async function verifyLanguageFeatures(page: Page): Promise<void> {
   for (
     const text of [
       'File-scoped text',
+      'Points: 8',
       'Folder-scoped view',
       'Package-scoped view',
       'Package import',

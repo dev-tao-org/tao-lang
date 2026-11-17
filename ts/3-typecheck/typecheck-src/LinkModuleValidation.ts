@@ -12,6 +12,7 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
       },
       ViewDeclaration: view => collectViewReferences(view, names, new Set()),
       LetDeclaration: definition => addLetReferences(definition, names),
+      TypeDeclaration: Switch.nothing,
       TestsDeclaration: tests => collectTestReferences(tests, names),
       // Imports and requirements introduce bindings but do not reference Tao values.
       UseStatement: Switch.nothing,
@@ -76,11 +77,9 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
 }
 
 function addLetReferences(definition: AST.LetDeclaration, names: Set<string>): void {
-  if (definition.type) {
-    names.add(definition.type.value)
-  }
-  if (AST.IsKind(definition.value, 'Name')) {
-    names.add(definition.value.value)
+  const operand = AST.GetExpressionOperand(definition.value)
+  if (AST.IsKind(operand, 'Name')) {
+    names.add(operand.value)
   }
 }
 
@@ -89,11 +88,9 @@ function addScopedLetReferences(
   names: Set<string>,
   localNames: ReadonlySet<string>,
 ): void {
-  if (definition.type) {
-    addReference(definition.type.value, names, localNames)
-  }
-  if (AST.IsKind(definition.value, 'Name')) {
-    addReference(definition.value.value, names, localNames)
+  const operand = AST.GetExpressionOperand(definition.value)
+  if (AST.IsKind(operand, 'Name')) {
+    addReference(operand.value, names, localNames)
   }
 }
 
@@ -105,8 +102,9 @@ function addScopedRenderReferences(
   const localNames = new Set(parentNames)
   addReference(render.target.value, names, localNames)
   for (const argument of render.arguments) {
-    if (AST.IsKind(argument, 'Name')) {
-      addReference(argument.value, names, localNames)
+    const operand = AST.GetExpressionOperand(argument)
+    if (AST.IsKind(operand, 'Name')) {
+      addReference(operand.value, names, localNames)
     }
   }
   for (const child of AST.GetViewRenderBlockStatements(render)) {

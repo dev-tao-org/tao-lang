@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import { Switch, UserInput } from '@shared'
+import * as Scalars from './ScalarTypes'
 
 /** ViewBinding describes a declaration visible in a view's lexical scope. */
 export type ViewBinding = AST.ViewDeclaration | AST.ActionDeclaration | ValueBinding
@@ -8,31 +9,43 @@ export type ViewBinding = AST.ViewDeclaration | AST.ActionDeclaration | ValueBin
 export type ResolveModuleValue = (name: string) => ViewBinding | undefined
 
 /** assertValidViewScopes validates local declarations, text writes, action calls and event targets. */
-export function assertValidViewScopes(document: AST.Document, path: string, resolveModule: ResolveModuleValue): void {
-  const scope = createScope(undefined, resolveModule)
+export function assertValidViewScopes(
+  document: AST.Document,
+  types: Scalars.ScalarTypeScope,
+  resolveModule: ResolveModuleValue,
+  viewTypes: ViewTypeScopes,
+): void {
+  const scope: Scope = { parent: undefined, locals: new Map(), resolveModule, types, viewTypes }
   for (const view of AST.GetViewDeclarations(document)) {
-    assertValidView(view, scope, path)
+    assertValidView(view, scope, types.path)
   }
 }
 
-type ValueBinding = { kind: ValueBindingKind }
-type ValueBindingKind = 'text' | 'state' | 'other'
+type ValueBinding = ScalarBinding | { kind: 'other' }
+type ScalarBinding = { kind: 'scalar'; type: Scalars.ScalarType; writable: boolean }
 
-/** TextBinding describes a read-only lexical text value. */
-export const TextBinding: ValueBinding = { kind: 'text' }
+/** scalarBinding describes a lexical scalar with its static domain and write authority. */
+export function scalarBinding(type: Scalars.ScalarType, writable = false): ScalarBinding {
+  return { kind: 'scalar', type, writable }
+}
 
 type OptionalScope = Scope | undefined
-type Scope = { parent: OptionalScope; locals: Map<string, ViewBinding>; resolveModule: ResolveModuleValue }
+type ViewTypeScopes = ReadonlyMap<AST.ViewDeclaration, Scalars.ScalarTypeScope>
+type Scope = {
+  parent: OptionalScope
+  locals: Map<string, ViewBinding>
+  resolveModule: ResolveModuleValue
+  types: Scalars.ScalarTypeScope
+  viewTypes: ViewTypeScopes
+}
 type ViewOwner = { view: string; path: string }
 
-const StateBinding: ValueBinding = { kind: 'state' }
 const OtherBinding: ValueBinding = { kind: 'other' }
-const TextType = 'text'
 
 function assertValidView(node: AST.ViewDeclaration, parent: Scope, path: string): void {
   const owner = { view: node.name.value, path }
   const statements = AST.GetViewDeclarationStatements(node) ?? []
-  const scope = createScope(parent, parent.resolveModule)
+  const scope = createChildScope(parent)
   declareParameters(node.parameters, scope, owner)
   const actions = declareDeferredBindings(statements, scope, owner)
   for (const statement of statements) {
@@ -46,7 +59,7 @@ function assertValidView(node: AST.ViewDeclaration, parent: Scope, path: string)
     })
   }
   for (const action of actions) {
-    const actionScope = createScope(scope, scope.resolveModule)
+    const actionScope = createChildScope(scope)
     declareParameters(action.parameters, actionScope, owner)
     assertValidActionBody(action.block, actionScope, owner)
   }
@@ -64,9 +77,6 @@ function declareDeferredBindings(
     }
     if (AST.IsKind(statement, 'ActionDeclaration')) {
       actions.push(statement)
-      for (const parameter of statement.parameters) {
-        assertTextType(parameter.type, owner)
-      }
     }
   }
   return actions
@@ -75,52 +85,69 @@ function declareDeferredBindings(
 function declareLet(node: AST.LetDeclaration, scope: Scope, owner: ViewOwner): void {
   const value = resolveExpression(scope, node.value)
   assertValue(value, owner, node.value)
-  const binding = value?.kind === 'state' ? TextBinding : value ?? OtherBinding
+  const binding = value?.kind === 'scalar' ? scalarBinding(value.type) : value ?? OtherBinding
   declare(scope, node.name, binding, owner)
 }
 
 function declareState(node: AST.StateDeclaration, scope: Scope, owner: ViewOwner): void {
-  if (node.type) {
-    assertTextType(node.type, owner)
-  }
-  assertTextValue(node.value, scope, owner)
-  declare(scope, node.name, StateBinding, owner)
+  const type = requireScalarValue(node.value, scope, owner)
+  declare(scope, node.name, scalarBinding(type, true), owner)
 }
 
 function declareParameters(parameters: readonly AST.Parameter[], scope: Scope, owner: ViewOwner): void {
   for (const parameter of parameters) {
-    const binding = parameter.type.value === TextType ? TextBinding : OtherBinding
-    declare(scope, parameter.name, binding, owner)
+    const type = scope.types.resolve(parameter.type)
+    if (type !== Scalars.TextType && type !== Scalars.NumberType) {
+      reject(owner, parameter.type, 'Parameters currently require text or number.')
+    }
+    declare(scope, parameter.name, scalarBinding(type), owner)
   }
 }
 
 function assertValidRender(node: AST.ViewRenderExpression, scope: Scope, owner: ViewOwner): void {
-  assertRenderTarget(node.target, scope, owner)
-  for (const argument of node.arguments) {
-    if (AST.IsKind(argument, 'Name')) {
-      assertValue(resolveLocal(scope, argument.value), owner, argument)
-    }
-  }
+  const target = resolve(scope, node.target.value)
+  assertRenderTarget(node.target, target, owner)
+  assertRenderArguments(node.arguments, target, scope, owner)
   const statements = AST.GetViewRenderBlockStatements(node)
   if (statements.length === 0) {
     return
   }
-  const children = createScope(scope, scope.resolveModule)
+  const children = createChildScope(scope)
   for (const statement of statements) {
     Switch.kind(statement, {
       LetDeclaration: definition => declareLet(definition, children, owner),
-      PressBinding: binding => assertValidPress(binding, resolve(scope, node.target.value), children, owner),
+      PressBinding: binding => assertValidPress(binding, target, children, owner),
       ViewRenderExpression: expression => assertValidRender(expression, children, owner),
     })
   }
 }
 
-function assertRenderTarget(target: AST.Name, scope: Scope, owner: ViewOwner): void {
-  const binding = resolveLocal(scope, target.value)
-  if (binding?.kind === 'text' || binding?.kind === 'state') {
-    reject(owner, target, `${target.value} is text and cannot be rendered as a view.`)
+function assertRenderTarget(target: AST.Name, binding: OptionalBinding, owner: ViewOwner): void {
+  if (binding?.kind === 'scalar') {
+    reject(owner, target, `${target.value} is ${binding.type.name} and cannot be rendered as a view.`)
   }
   assertValue(binding, owner, target)
+}
+
+function assertRenderArguments(
+  args: readonly AST.Expression[],
+  target: OptionalBinding,
+  scope: Scope,
+  owner: ViewOwner,
+): void {
+  const view = target?.kind === 'ViewDeclaration' ? target : undefined
+  const types = view && scope.viewTypes.get(view) || scope.types
+  for (const [index, argument] of args.entries()) {
+    const value = resolveExpression(scope, argument)
+    assertValue(value, owner, argument)
+    const parameter = view?.parameters[index]
+    if (parameter && value?.kind === 'scalar') {
+      const expected = types.resolve(parameter.type)
+      if (!Scalars.admitsScalarType(value.type, expected)) {
+        reject(owner, argument, `Expected a ${expected.name} value.`)
+      }
+    }
+  }
 }
 
 function assertValueCaptures(injection: AST.Injection, scope: Scope, owner: ViewOwner): void {
@@ -161,8 +188,7 @@ function assertValidActionBody(body: AST.InlineActionBody, scope: Scope, owner: 
   const statements = AST.IsKind(body, 'Block') ? body.statements : [body]
   for (const statement of statements) {
     if (AST.IsKind(statement, 'SetStatement')) {
-      assertStateTarget(statement, scope, owner)
-      assertTextValue(statement.value, scope, owner)
+      assertStateWrite(statement, scope, owner)
     } else if (AST.IsKind(statement, 'DoStatement')) {
       assertActionCall(statement.target, statement.arguments, scope, owner)
     } else {
@@ -171,10 +197,12 @@ function assertValidActionBody(body: AST.InlineActionBody, scope: Scope, owner: 
   }
 }
 
-function assertStateTarget(node: AST.SetStatement, scope: Scope, owner: ViewOwner): void {
-  if (resolve(scope, node.target.value)?.kind !== 'state') {
+function assertStateWrite(node: AST.SetStatement, scope: Scope, owner: ViewOwner): void {
+  const binding = resolve(scope, node.target.value)
+  if (binding?.kind !== 'scalar' || !binding.writable) {
     reject(owner, node.target, `Cannot set ${node.target.value}: it is not writable state.`)
   }
+  assertScalarType(node.value, binding.type, scope, owner)
 }
 
 function assertActionCall(
@@ -190,22 +218,29 @@ function assertActionCall(
   if (values.length !== action.parameters.length) {
     reject(owner, target, `${target.value} expects ${action.parameters.length} action arguments; got ${values.length}.`)
   }
-  for (const value of values) {
-    assertTextValue(value, scope, owner)
+  for (const [index, parameter] of action.parameters.entries()) {
+    assertScalarType(values[index]!, scope.types.resolve(parameter.type), scope, owner)
   }
 }
 
-function assertTextType(type: AST.Name, owner: ViewOwner): void {
-  if (type.value !== TextType) {
-    reject(owner, type, 'Only text is supported for local state and action parameters.')
+function assertScalarType(value: AST.Expression, target: Scalars.ScalarType, scope: Scope, owner: ViewOwner): void {
+  const actual = requireScalarValue(value, scope, owner, target.name)
+  if (!Scalars.admitsScalarType(actual, target)) {
+    reject(owner, value, `Expected a ${target.name} value.`)
   }
 }
 
-function assertTextValue(value: AST.Expression, scope: Scope, owner: ViewOwner): void {
+function requireScalarValue(
+  value: AST.Expression,
+  scope: Scope,
+  owner: ViewOwner,
+  expected = 'scalar',
+): Scalars.ScalarType {
   const binding = resolveExpression(scope, value)
-  if (binding?.kind !== 'text' && binding?.kind !== 'state') {
-    reject(owner, value, 'Expected a text value.')
+  if (binding?.kind !== 'scalar') {
+    reject(owner, value, `Expected a ${expected} value.`)
   }
+  return binding.type
 }
 
 type OptionalBinding = ViewBinding | undefined
@@ -217,11 +252,27 @@ function assertValue(binding: OptionalBinding, owner: ViewOwner, value: AST.Expr
 }
 
 function resolveExpression(scope: Scope, value: AST.Expression): OptionalBinding {
-  return AST.IsKind(value, 'TextLiteral') ? TextBinding : resolve(scope, value.value)
+  if (AST.IsKind(value, 'GroupedExpression')) {
+    return resolveExpression(scope, value.value)
+  }
+  if (AST.IsKind(value, 'Name')) {
+    return resolve(scope, value.value)
+  }
+  const type = Scalars.resolveScalarExpression(value, scope.types, name => {
+    const binding = resolve(scope, name.value)
+    return binding?.kind === 'scalar' ? binding.type : undefined
+  })
+  return type && scalarBinding(type)
 }
 
-function createScope(parent: OptionalScope, resolveModule: ResolveModuleValue): Scope {
-  return { parent, locals: new Map(), resolveModule }
+function createChildScope(parent: Scope): Scope {
+  return {
+    parent,
+    locals: new Map(),
+    resolveModule: parent.resolveModule,
+    types: parent.types,
+    viewTypes: parent.viewTypes,
+  }
 }
 
 function declare(scope: Scope, name: AST.Name, binding: ViewBinding, owner: ViewOwner): void {

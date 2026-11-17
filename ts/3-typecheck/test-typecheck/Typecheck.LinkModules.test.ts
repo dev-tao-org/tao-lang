@@ -178,7 +178,6 @@ function createLetReference(name: string, value: string, visibility?: AST.Visibi
     kind: 'LetDeclaration',
     range: Range(),
     name: Fixtures.createIdentifier(name),
-    type: undefined,
     value: Fixtures.createIdentifier(value),
     visibility,
   }

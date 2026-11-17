@@ -3,6 +3,7 @@ import { UserInput } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
 import { collectReferencedNames } from '../LinkModuleValidation'
 import { createModuleValueResolver } from '../ModuleValueResolution'
+import { createScalarTypeScope } from '../ScalarTypes'
 import { assertValidViewScopes } from '../ViewScopeValidation'
 import * as Modules from './Modules'
 
@@ -32,15 +33,31 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     path: source.path,
     document: source.document,
     bindings: bindings.get(source.path)!,
+    scalarTypes: createScalarTypeScope(source.document, source.path),
     imports: source.imports,
     project: source.project,
   }))
   const definitions = orderDefinitions(linkedModules)
-  const resolveModule = createModuleValueResolver(linkedModules)
-  for (const module of linkedModules) {
-    assertValidViewScopes(module.document, module.path, name => resolveModule(module.path, name))
-  }
+  validateScalarValues(linkedModules, definitions)
   return { entry, modules: linkedModules, definitions }
+}
+
+function validateScalarValues(
+  modules: readonly Modules.LinkedModule[],
+  definitions: readonly Modules.LinkedDefinition[],
+): void {
+  const viewTypes = new Map(
+    modules.flatMap(module =>
+      AST.GetViewDeclarations(module.document).map(view => [view, module.scalarTypes] as const)
+    ),
+  )
+  const resolveModule = createModuleValueResolver(modules)
+  for (const definition of definitions) {
+    resolveModule(definition.source, definition.declaration.name.value)
+  }
+  for (const module of modules) {
+    assertValidViewScopes(module.document, module.scalarTypes, name => resolveModule(module.path, name), viewTypes)
+  }
 }
 
 type SourceModulesByPath = ReadonlyMap<string, Modules.SourceModule>

@@ -1,6 +1,6 @@
 # Local State and Data Drafts WIP
 
-Use local state to retain a text value for the life of a view instance.
+Use local state to retain a text or numeric value for the life of a view instance.
 
 ```tao
 use tao@ui Button
@@ -15,13 +15,13 @@ view SaveButton {
 
 #### `state Caption = "Save"`
 
-Declare text state inside a view before `render`. Tao infers `text` from the initial value; `state Caption is text = "Save"` says the same thing explicitly. Each instance initializes its own state when mounted and retains it across renders, even when an input used to initialize it later changes.
+Declare state inside a view before `render`. Tao infers `text` from `"Save"`. Each instance initializes its own state when mounted and retains it across renders, even when an input used to initialize it later changes.
 
-In the agreed future syntax, an explicit initializer conversion uses `state Name = Value as Type`. The result type is the state type for later writes, and an applicable converter runs when the initializer is evaluated. See [Type Conversions](Type%20Conversions.md).
+Use `state Name = Value as Type` to widen an initializer. Its result type sets the state type for later writes. See [Type Conversions](Type%20Conversions.md).
 
 #### `set Caption = "Saved"`
 
-Use `set` inside an [action](Actions%20and%20Results.md) to replace the nearest visible state binding. Setting an equal text value does not notify dependent views of a change. Unmounting a view discards its local state.
+Use `set` inside an [action](Actions%20and%20Results.md) to replace the nearest visible state binding. Its value must fit the type inferred from the initializer. An equal replacement leaves dependent views unchanged. Unmounting a view discards its local state.
 
 #### Planned detached drafts
 

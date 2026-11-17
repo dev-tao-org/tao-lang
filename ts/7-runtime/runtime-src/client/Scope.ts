@@ -20,12 +20,18 @@ export function AliasBinding(scope: Scope, name: string, resolve: () => unknown)
 }
 
 /** LetReferenceDeclaration binds the source visible at declaration time, preserving live state reads. */
-export function LetReferenceDeclaration(scope: Scope, name: string, reference: string): void {
+export function LetReferenceDeclaration(
+  scope: Scope,
+  name: string,
+  reference: string,
+  adapt?: (value: unknown) => unknown,
+): void {
   const source = findScopeBinding(scope, reference)
-  if (source?.get) {
-    AliasBinding(scope, name, source.get)
+  const get = source?.get
+  if (get) {
+    AliasBinding(scope, name, adapt ? () => adapt(get()) : get)
   } else {
-    LetDeclaration(scope, name, source?.value)
+    LetDeclaration(scope, name, adapt ? adapt(source?.value) : source?.value)
   }
 }
 

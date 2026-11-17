@@ -96,7 +96,7 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
     use tao@ui Text
     file app Demo { root UI.Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
-    package let Value is UI.Text = UI.Default
+    package let Value = UI.Default as Text
   `
   const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
@@ -106,11 +106,23 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
     'UI.Text',
     'UI.Text',
     'Value',
-    'UI.Text',
     'UI.Default',
   ])
   Tests.expect(tree.rootNode.descendantsOfType('Visibility').map(node => node.text))
     .toEqual(['file', 'folder', 'package'])
+})
+
+Tests.test('as follows construction and old initializer annotations are rejected', () => {
+  const parser = createParser()
+  const tree = parser.parse(S`
+    type Score is number
+    let Points = Score 2 as number
+  `)
+  Tests.expect(tree.rootNode.hasError).toBe(false)
+  const conversion = tree.rootNode.descendantsOfType('ConversionExpression')[0]!
+  Tests.expect(conversion.childForFieldName('value')?.type).toBe('ConstructionExpression')
+  Tests.expect(parser.parse('let Title is text = "Hi"').rootNode.hasError).toBe(true)
+  Tests.expect(parser.parse('view V { state Title is text = "Hi" render Text(Title) }').rootNode.hasError).toBe(true)
 })
 
 Tests.test('requirements, package subpath imports and foreign views parse', () => {

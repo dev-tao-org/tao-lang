@@ -13,6 +13,7 @@ export type Scope = {
   readonly "Col": ImportedScope0["Col"];
   readonly "Text": ImportedScope0["Text"];
   readonly "LanguageFeatures": ImportedScope1["LanguageFeatures"];
+  readonly "ScoreReadout": ImportedScope1["ScoreReadout"];
   readonly "ValueSnapshots": ImportedScope2["ValueSnapshots"];
   readonly "FolderScope": ImportedScope3["FolderScope"];
 };
@@ -21,6 +22,7 @@ export type Imports = {
   readonly "Col": Pick<ImportedScope0, "Col">;
   readonly "Text": Pick<ImportedScope0, "Text">;
   readonly "LanguageFeatures": Pick<ImportedScope1, "LanguageFeatures">;
+  readonly "ScoreReadout": Pick<ImportedScope1, "ScoreReadout">;
   readonly "ValueSnapshots": Pick<ImportedScope2, "ValueSnapshots">;
   readonly "FolderScope": Pick<ImportedScope3, "FolderScope">;
 };
@@ -29,6 +31,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
   TR.AliasBinding(_Scope, "Col", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Col"]);
   TR.AliasBinding(_Scope, "Text", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Text"]);
   TR.AliasBinding(_Scope, "LanguageFeatures", () => _Modules["ts/packages/src/tao/LanguageFeatures.ts"]!["LanguageFeatures"]);
+  TR.AliasBinding(_Scope, "ScoreReadout", () => _Modules["ts/packages/src/tao/LanguageFeatures.ts"]!["ScoreReadout"]);
   TR.AliasBinding(_Scope, "ValueSnapshots", () => _Modules["ts/packages/src/tao/ValueSnapshots.ts"]!["ValueSnapshots"]);
   TR.AliasBinding(_Scope, "FolderScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["FolderScope"]);
 }

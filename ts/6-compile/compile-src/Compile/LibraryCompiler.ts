@@ -5,7 +5,6 @@ import { emitStringLiteral } from '../codegen-util'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
 import { emitGeneratedRuntimeImport } from '../RuntimeEmitter'
-import { projectTextViewParameterTypes } from './ForeignViewContractCompiler'
 import * as LibraryPublications from './LibraryPublications'
 import { type CompiledFiles, compileModuleSources, type ForeignViewPathResolver } from './ModulesCompiler'
 
@@ -48,7 +47,7 @@ function compileLibraryBootstrap(
 }
 
 function compilePublicComponent(view: LibraryPublications.PublishedView, scope: string): string {
-  const types = projectTextViewParameterTypes(view.declaration)
+  const types = view.parameterTypes
   const props = Object.entries(types).map(([name, type]) => `${emitStringLiteral(name)}: ${type}`)
   const parameters = Object.keys(types).map(emitStringLiteral)
   const binding = LibraryPublications.publishedViewBinding(view)

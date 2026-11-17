@@ -187,7 +187,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     const dependencyDocument = AST.transform(
       Grammar.createParser().parse('package view FormattedDate(Value text) from ./FormattedDate.tsx'),
     )!
-    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
+    fixture.program.modules.push(...SidecarPipelineTestFixtures.createProgramFor(taoPath, dependencyDocument).modules)
     const prepared = await prepareSidecarPipeline({
       ...fixture,
       executor: SidecarPipelineTestFixtures.executeTypeScript,
@@ -226,7 +226,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     const dependencyDocument = AST.transform(
       Grammar.createParser().parse('package view FormattedDate(Value text) from ./FormattedDate.tsx'),
     )!
-    fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
+    fixture.program.modules.push(...SidecarPipelineTestFixtures.createProgramFor(taoPath, dependencyDocument).modules)
     await Tests.rejects(
       prepareSidecarPipeline({ ...fixture, executor: SidecarPipelineTestFixtures.executeTypeScript }),
       CrossingModuleBoundaryErrorRegx,

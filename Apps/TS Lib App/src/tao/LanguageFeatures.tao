@@ -3,8 +3,12 @@ use @cards Caption, Caption as PackageCaption
 use @cards/details DetailedCard
 use FolderScope, PackageScope
 
+type CaptionText is text
+type Score is number
+type Total = number
+
 file
-let FileCaption is text = "File-scoped text"
+let FileCaption = CaptionText "File-scoped text" as text
 
 file
 let EscapedCaption = "Escaped \"text\", backslash \\ and Unicode \u263A"
@@ -42,14 +46,17 @@ view LanguageFeatures(Name text) {
 
   view StateEditor(Initial text) {
     state Status = Initial
+    state Points = Score 2 as Total
     action Save() {
       set Status = "Saved state"
+      set Points = 7
     }
     action Reset() {
       set Status = Initial
     }
     render Col {
       Text(Status)
+      ScoreReadout(Points)
       Button("Save state") {
         on press Save
       }
@@ -58,6 +65,14 @@ view LanguageFeatures(Name text) {
       }
     }
   }
+
+}
+
+package
+view ScoreReadout(Value Total) {
+  render inject Value ```ts
+    return <Tao.Text>{'Points: ' + Value.toString()}</Tao.Text>
+  ```
 }
 
 view ForeignGreeting(Value text) from ../ts/ForeignGreeting.tsx

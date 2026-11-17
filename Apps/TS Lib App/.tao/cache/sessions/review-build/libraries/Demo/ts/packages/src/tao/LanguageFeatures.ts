@@ -10,6 +10,7 @@ export type Scope = {
   readonly "FileCaption": string;
   readonly "EscapedCaption": string;
   readonly "LanguageFeatures": TR.View;
+  readonly "ScoreReadout": TR.View;
   readonly "ForeignGreeting": TR.View;
   readonly "Button": ImportedScope0["Button"];
   readonly "Col": ImportedScope0["Col"];
@@ -50,12 +51,16 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
+  TR.ScalarTypeDeclaration(_Scope, "CaptionText", "text", "f61fcef90f44:CaptionText");
+  TR.ScalarTypeDeclaration(_Scope, "Score", "number", "f61fcef90f44:Score");
+  TR.ScalarTypeDeclaration(_Scope, "Total", "number");
   TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_f61fcef90f44, _Scope));
+  TR.LetDeclaration(_Scope, "ScoreReadout", TR.ViewDeclaration("ScoreReadout", ["Value"], _Views.TaoView_ScoreReadout_f61fcef90f44, _Scope));
   TR.LetDeclaration(_Scope, "ForeignGreeting", TR.ForeignView("ForeignGreeting", ["Value"], _taoForeignView0, _Scope));
 }
 
 export function initializeFileCaption(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "FileCaption", "File-scoped text");
+  TR.LetDeclaration(_Scope, "FileCaption", TR.WidenScalar(_Scope, "text", TR.ConstructScalar(_Scope, "CaptionText", "File-scoped text")));
 }
 
 export function initializeEscapedCaption(_Scope: Scope): void {

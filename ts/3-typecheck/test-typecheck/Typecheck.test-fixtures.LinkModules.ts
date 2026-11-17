@@ -57,7 +57,6 @@ export function createLetDefinition(
     kind: 'LetDeclaration',
     range: Range(),
     name: createIdentifier(name),
-    type: undefined,
     value: { kind: 'TextLiteral', range: Range(), value },
     visibility,
   }

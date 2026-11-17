@@ -3,6 +3,7 @@ export { ForeignView } from './ForeignView'
 export type { ForeignViewComponent } from './ForeignView'
 export { LibraryView, type LibraryViewProps } from './LibraryView'
 export { ModuleApplied } from './Preview'
+export { ConstructScalar, ScalarTypeDeclaration, WidenScalar } from './ScalarValues'
 export {
   AliasBinding,
   LetDeclaration,

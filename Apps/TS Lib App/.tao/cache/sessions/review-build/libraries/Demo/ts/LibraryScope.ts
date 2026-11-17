@@ -52,6 +52,9 @@ export function Published_Panel_cdb4ee2aea69(props: TR.LibraryViewProps) {
 export function Published_LanguageFeatures_cdb4ee2aea69(props: TR.LibraryViewProps & { "Name": string }) {
    return TR.LibraryView(_scope4["LanguageFeatures"], ["Name"], props);
 }
+export function Published_ScoreReadout_cdb4ee2aea69(props: TR.LibraryViewProps & { "Value": number }) {
+   return TR.LibraryView(_scope4["ScoreReadout"], ["Value"], props);
+}
 export function Published_ValueSnapshots_cdb4ee2aea69(props: TR.LibraryViewProps) {
    return TR.LibraryView(_scope6["ValueSnapshots"], [], props);
 }

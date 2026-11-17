@@ -1,4 +1,4 @@
-import { Greeting, LanguageFeatures, Panel, ValueSnapshots } from '@tao-dev/ts-lib-example'
+import { Greeting, LanguageFeatures, Panel, ScoreReadout, ValueSnapshots } from '@tao-dev/ts-lib-example'
 import { Caption } from '@tao-dev/ts-lib-example/@cards'
 import { DetailedCard } from '@tao-dev/ts-lib-example/@cards/details'
 import React from 'react'
@@ -27,6 +27,7 @@ export default function Consumer() {
           <Caption Value="Published package" />
           <DetailedCard Value="Published subfolder" />
           <View testID="language-features">
+            <ScoreReadout Value={8} />
             <LanguageFeatures Name={name} />
             <ValueSnapshots />
           </View>

@@ -8,7 +8,7 @@ import { transform } from '../ast-gen-src/Transform'
 
 Tests.test('lets retain their lexical owner and ordered render block', () => {
   const source = S`
-    let Title is text = "File"
+    let Title = "File"
     app Example { root Root }
     view Root {
       let Caption = Title
@@ -25,7 +25,6 @@ Tests.test('lets retain their lexical owner and ordered render block', () => {
   Tests.expect(document.root.block.statements[0]).toMatchObject({
     kind: 'LetDeclaration',
     name: { value: 'Title' },
-    type: { value: 'text' },
     value: { value: 'File' },
   })
   const view = AST.FindViewDeclaration(document.root.block.statements)!

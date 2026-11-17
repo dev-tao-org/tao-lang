@@ -3,15 +3,17 @@ import { Errors, UserInput } from '@shared'
 import { Path, Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
-import { isTextParameter } from '../ValuesCompiler'
+import { type PrimitiveType, projectPrimitiveType } from '../ValuesCompiler'
 
 /** PublishedView retains the owning source and canonical TypeScript export. */
 export type PublishedView = {
   subpath: string
   name: string
   source: string
-  declaration: AST.ViewDeclaration
+  parameterTypes: PublishedParameterTypes
 }
+
+type PublishedParameterTypes = Readonly<Record<string, PrimitiveType>>
 
 /** LibraryPublication selects one publish block, the current project's sources and named package roots. */
 export type LibraryPublication = {
@@ -120,10 +122,15 @@ function requirePublishedView(
   if (!declaration || declaration.visibility !== 'package') {
     UserInput.Fail(`Published definition ${name} must be an own-project package-visible declaration.`)
   }
-  if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
-    UserInput.Fail(`TypeScript library publication ${name} supports only views with text parameters.`)
+  if (!AST.IsViewDeclaration(declaration)) {
+    UserInput.Fail(`TypeScript library publication ${name} supports only views.`)
   }
-  return { subpath, name, source: owner.path, declaration }
+  const parameterTypes: PublishedParameterTypes = Object.fromEntries(declaration.parameters.map(parameter => {
+    const type = projectPrimitiveType(parameter.type, owner.scalarTypes)
+    UserInput.Require(type !== undefined, 'Expected a text or number parameter.')
+    return [parameter.name.value, type]
+  }))
+  return { subpath, name, source: owner.path, parameterTypes }
 }
 
 function assertUniquePublications(views: readonly PublishedView[]): void {

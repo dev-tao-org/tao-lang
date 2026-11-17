@@ -184,6 +184,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
       view Root { render EntryShared }
     `),
   )!
+  const declaration = AST.FindLetDeclaration(entry.root.block.statements)!
   return {
     entry,
     program: {
@@ -192,6 +193,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
         {
           path: '/entry',
           document: entry,
+          scalarTypes: Typecheck.createScalarTypeScope(entry, '/entry'),
           imports: [],
           bindings: [
             { name: 'ImportedRoot', source: '/common', target: 'Root' },
@@ -202,14 +204,12 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
         {
           path: '/common',
           document: common,
+          scalarTypes: Typecheck.createScalarTypeScope(common, '/common'),
           imports: [],
           bindings: [{ name: 'EntryShared', source: '/entry', target: 'Shared' }],
         },
       ],
-      definitions: [{
-        source: '/entry',
-        declaration: AST.FindLetDeclaration(entry.root.block.statements)!,
-      }],
+      definitions: [{ source: '/entry', declaration }],
     },
   }
 }

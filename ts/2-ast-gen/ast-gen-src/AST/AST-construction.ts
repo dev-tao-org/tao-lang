@@ -31,6 +31,8 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   Identifier: constructName,
   QualifiedName: constructName,
   TextLiteral: constructTextLiteral,
+  NumberLiteral: constructNumberLiteral,
+  TypeDeclaration: constructTypeDeclaration,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
   ImportPath: constructImportPath,
@@ -131,7 +133,7 @@ function constructDoStatement(cst: CST.SyntaxNode): Generated.DoStatement {
 
 function constructArguments(cst: CST.SyntaxNode): Generated.Expression[] {
   const argumentsNode = cst.childForFieldName('argumentList')
-  return constructChildren(argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral'])
+  return constructChildren(argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], Generated.ExpressionKinds)
 }
 
 function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatement {
@@ -179,6 +181,18 @@ function constructName(cst: CST.SyntaxNode): Generated.Name {
 
 function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
   return makeNode(cst, 'TextLiteral', { value: Json.Parse(cst.text) as string })
+}
+
+function constructNumberLiteral(cst: CST.SyntaxNode): Generated.NumberLiteral {
+  return makeNode(cst, 'NumberLiteral', { value: Number(cst.text) })
+}
+
+function constructTypeDeclaration(cst: CST.SyntaxNode): Generated.TypeDeclaration {
+  return makeNode(cst, 'TypeDeclaration', {
+    name: constructFieldNode(cst, 'name', 'Name'),
+    base: constructFieldNode(cst, 'base', 'Name'),
+    nominal: cst.children.some(child => child.type === 'is'),
+  })
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {

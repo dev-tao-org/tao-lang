@@ -34,8 +34,20 @@ Tests.test('source names with category suffixes cannot shadow another input comp
   const paths = createGeneratedPaths({
     entry: '/app/Foo.tao',
     modules: [
-      { path: '/app/Foo.tao', document, bindings: [], imports: [] },
-      { path: '/app/Foo.views.tao', document, bindings: [], imports: [] },
+      {
+        path: '/app/Foo.tao',
+        document,
+        bindings: [],
+        imports: [],
+        scalarTypes: Typecheck.createScalarTypeScope(document, '/app/Foo.tao'),
+      },
+      {
+        path: '/app/Foo.views.tao',
+        document,
+        bindings: [],
+        imports: [],
+        scalarTypes: Typecheck.createScalarTypeScope(document, '/app/Foo.views.tao'),
+      },
     ],
     definitions: [],
   })

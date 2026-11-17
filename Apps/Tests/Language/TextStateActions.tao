@@ -1,6 +1,11 @@
 use tao@ui Col, Text
 use tao@ui Button as Control
 
+type Score is number
+type PriorityScore is Score
+type Points = number
+type Total = Points
+
 folder
 view TextStateActions {
   render Editor("Original message")
@@ -8,12 +13,14 @@ view TextStateActions {
 
 view Editor(Initial text) {
   state Message = Initial
-  state Status is text = Initial
+  state Status = Initial
+  state PointsShown = PriorityScore 2 as Score as Total
   let Caption = Message
 
   action Rename() {
     do SetMessage("Renamed")
     set Status = Caption
+    set PointsShown = 7
   }
 
   action SetMessage(Value text) {
@@ -27,6 +34,7 @@ view Editor(Initial text) {
 
   render Col {
     Text(Status)
+    ScoreReadout(PointsShown)
     Controls
   }
 
@@ -47,4 +55,10 @@ view Editor(Initial text) {
       }
     }
   }
+}
+
+view ScoreReadout(Value number) {
+  render inject Value ```ts
+    return <Tao.Text>{'Points: ' + Value.toString()}</Tao.Text>
+  ```
 }

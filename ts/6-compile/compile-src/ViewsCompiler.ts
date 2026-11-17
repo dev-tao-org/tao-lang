@@ -14,7 +14,8 @@ import { createViewReferences, shadowReferences, type ViewReferences } from './V
 export type ViewCompilationContext = {
   scope: string
   moduleIdentity: string
-  textBindings: ReadonlySet<string>
+  primitiveBindings: ValuesCompiler.PrimitiveBindings
+  scalarTypes: Typecheck.ScalarTypeScope
   foreignComponent: OptionalForeignComponent
   scopeType: string
   ownerPath?: readonly string[]
@@ -40,7 +41,11 @@ type RenderCompilation = { result: string; components: string }
 const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
-  if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
+  if (
+    node.parameters.some(parameter =>
+      ValuesCompiler.projectPrimitiveType(parameter.type, context.scalarTypes) !== 'string'
+    )
+  ) {
     UserInput.Fail(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
@@ -61,12 +66,12 @@ function compileTaoView(
     inputs.children,
     createNestedOwnerContext(context, inputs),
     inputs.names,
-    inputs.textBindings,
+    inputs.primitiveBindings,
   )
   const valuesCode = compileViewBindings(inputs)
   const compiled = compileViewRenderStatement(
     inputs.render,
-    inputs.textBindings,
+    inputs.primitiveBindings,
     inputs.names,
     inputs.references.scope,
   )
@@ -85,7 +90,7 @@ type TaoViewCompileInputs = ViewScopeDeclarations & {
   references: ViewReferences
   render: AST.ViewRenderStatement
   shadowed: Set<string>
-  textBindings: ReadonlySet<string>
+  primitiveBindings: ValuesCompiler.PrimitiveBindings
 }
 
 function createTaoViewCompileInputs(
@@ -99,14 +104,19 @@ function createTaoViewCompileInputs(
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
   }
-  const textBindings = new Set(context.textBindings)
+  const primitiveBindings = new Map(context.primitiveBindings)
   for (const child of children) {
-    textBindings.delete(child.name.value)
+    primitiveBindings.delete(child.name.value)
   }
   for (const action of actions) {
-    textBindings.delete(action.name.value)
+    primitiveBindings.delete(action.name.value)
   }
-  const bindings = ValuesCompiler.collectTextBindings(definitions, textBindings, node.parameters)
+  const bindings = ValuesCompiler.collectPrimitiveBindings(
+    definitions,
+    primitiveBindings,
+    node.parameters,
+    context.scalarTypes,
+  )
   const shadowed = new Set([
     ...context.shadowedNames ?? [],
     ...node.parameters.map(item => item.name.value),
@@ -125,7 +135,7 @@ function createTaoViewCompileInputs(
     references: createViewReferences(context.moduleBindings, shadowed, trackState),
     render,
     shadowed,
-    textBindings: bindings,
+    primitiveBindings: bindings,
   }
 }
 
@@ -190,7 +200,7 @@ function compileNestedViews(
   children: readonly AST.ViewDeclaration[],
   context: ViewCompilationContext,
   names: RuntimeEmitter.ComponentNames,
-  bindings: ReadonlySet<string>,
+  bindings: ValuesCompiler.PrimitiveBindings,
 ): DeclarationCompilation[] {
   return children.map(child =>
     compileViewDeclaration(child, createChildViewContext(owner, child, context, names, bindings))
@@ -202,7 +212,7 @@ function createChildViewContext(
   child: AST.ViewDeclaration,
   context: ViewCompilationContext,
   names: RuntimeEmitter.ComponentNames,
-  textBindings: ReadonlySet<string>,
+  primitiveBindings: ValuesCompiler.PrimitiveBindings,
 ): ViewCompilationContext {
   const ownerPath = [...context.ownerPath ?? [], owner.name.value]
   const foreignComponent = context.resolveForeignComponent?.(child)
@@ -211,7 +221,7 @@ function createChildViewContext(
     scope: names.scope,
     scopeType: names.scopeType,
     ownerPath,
-    textBindings,
+    primitiveBindings,
     componentPrefix: '',
     foreignComponent,
   }
@@ -219,7 +229,7 @@ function createChildViewContext(
 
 function compileViewRenderStatement(
   node: AST.ViewRenderStatement,
-  bindings: ReadonlySet<string>,
+  bindings: ValuesCompiler.PrimitiveBindings,
   names: RuntimeEmitter.ComponentNames,
   scope: CodegenUtil.ScopeCode,
 ): RenderCompilation {
@@ -283,7 +293,7 @@ function createComponentNames(
   node: AST.ViewDeclaration,
   context: ViewCompilationContext,
   declarations: ViewScopeDeclarations,
-  bindings: ReadonlySet<string>,
+  bindings: ValuesCompiler.PrimitiveBindings,
 ): RuntimeEmitter.ComponentNames {
   const path = [...context.ownerPath ?? [], node.name.value].join('$')
   const identity = `${path}_${context.moduleIdentity}`
@@ -301,11 +311,11 @@ function createScopeType(
   node: AST.ViewDeclaration,
   inherited: string,
   declarations: ViewScopeDeclarations,
-  bindings: ReadonlySet<string>,
+  bindings: ValuesCompiler.PrimitiveBindings,
 ): string {
   const values = [...node.parameters, ...declarations.definitions].map(value => ({
     name: value.name.value,
-    type: bindings.has(value.name.value) ? 'string' : 'unknown',
+    type: bindings.get(value.name.value) ?? 'unknown',
   }))
   const views = declarations.children.map(child => ({ name: child.name.value, type: 'TR.View' }))
   const actions = declarations.actions.map(action => ({ name: action.name.value, type: 'unknown' }))

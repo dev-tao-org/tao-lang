@@ -1,5 +1,6 @@
 import { Objects, UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
+import { unwrapScalar } from './ScalarValues'
 import type { Scope as RuntimeScope } from './Scope'
 import { LetDeclaration, Scope } from './Scope'
 import type { PressHandler, PressRenderBlock } from './StateActions'
@@ -146,7 +147,7 @@ function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
   }
   const scope = Scope(view.scope)
   for (const [index, parameter] of view.parameters.entries()) {
-    LetDeclaration(scope, parameter, args.values[index])
+    LetDeclaration(scope, parameter, unwrapScalar(args.values[index]))
   }
   return scope
 }

@@ -3,6 +3,20 @@ import * as AST from '../AST'
 
 export { IsKind } from '../../_gen_AST/AST-generated'
 
+/** ScalarApplication is an explicit scalar constructor or an as expression. */
+export type ScalarApplication = AST.ConstructionExpression | AST.ConversionExpression
+
+type ExpressionOperand = AST.Name | AST.TextLiteral | AST.NumberLiteral
+
+/** GetExpressionOperand finds the name or literal under scalar construction, conversion and grouping. */
+export function GetExpressionOperand(node: AST.Expression): ExpressionOperand {
+  let operand = node
+  while (AST.IsKind(operand, ['ConstructionExpression', 'ConversionExpression', 'GroupedExpression'])) {
+    operand = operand.value
+  }
+  return operand
+}
+
 /** IsAppDeclaration narrows a semantic node to an app declaration. */
 export function IsAppDeclaration(node: AST.Node): node is AST.AppDeclaration {
   return AST.IsKind(node, 'AppDeclaration')

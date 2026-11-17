@@ -72,6 +72,7 @@ const PlacementByKind: PlacementByStatementKind = {
   TestDeclaration: { syntax: 'Test cases', owners: ['tests'] },
   TestsDeclaration: { syntax: 'Test suites', owners: FileOwners },
   TextExpectation: { syntax: 'Text expectations', owners: ExpectOwners },
+  TypeDeclaration: { syntax: 'Type declarations', owners: FileOwners },
   TypeScriptLibraryDeclaration: { syntax: 'TypeScript library declarations', owners: FileOwners },
   TypeStatement: { syntax: 'Type statements', owners: TestOwners },
   UseStatement: { syntax: 'Imports', owners: FileOwners },

@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen'
+import { resolveScalarExpression, type ScalarTypeScope } from './ScalarTypes'
 import { createModuleMemberKey, type LinkedModule } from './Typecheck'
-import { TextBinding, type ViewBinding } from './ViewScopeValidation'
+import { scalarBinding, type ViewBinding } from './ViewScopeValidation'
 
 /** createModuleValueResolver follows linked module aliases to the names needed by scoped actions. */
 export function createModuleValueResolver(modules: readonly LinkedModule[]): ResolveLinkedValue {
@@ -23,15 +24,36 @@ type ResolveLinkedValue = (path: string, name: string) => ViewBinding | undefine
 type CachedViewBinding = ViewBinding | null
 type ResolvedValuesByKey = Map<string, CachedViewBinding>
 
-function resolveModuleValue(module: LinkedModule, name: string, resolve: ResolveLinkedValue): ViewBinding | undefined {
+function resolveModuleValue(
+  module: LinkedModule,
+  name: string,
+  resolve: ResolveLinkedValue,
+): ViewBinding | undefined {
   const declaration = AST.FindValueDeclaration(module.document, name)
   if (declaration?.kind === 'ViewDeclaration') {
     return declaration
   }
   if (declaration?.kind === 'LetDeclaration') {
-    const value = declaration.value
-    return AST.IsKind(value, 'TextLiteral') ? TextBinding : resolve(module.path, value.value)
+    return resolveLetValue(declaration.value, module.scalarTypes, name => resolve(module.path, name))
   }
   const binding = module.bindings.find(binding => binding.name === name)
   return binding ? resolve(binding.source, binding.target) : undefined
+}
+
+function resolveLetValue(
+  node: AST.Expression,
+  types: ScalarTypeScope,
+  resolve: (name: string) => ViewBinding | undefined,
+): ViewBinding | undefined {
+  if (AST.IsKind(node, 'GroupedExpression')) {
+    return resolveLetValue(node.value, types, resolve)
+  }
+  if (AST.IsKind(node, 'Name')) {
+    return resolve(node.value)
+  }
+  const scalar = resolveScalarExpression(node, types, name => {
+    const binding = resolve(name.value)
+    return binding?.kind === 'scalar' ? binding.type : undefined
+  })
+  return scalar && scalarBinding(scalar)
 }

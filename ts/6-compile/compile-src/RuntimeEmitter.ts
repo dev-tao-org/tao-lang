@@ -56,10 +56,28 @@ export function emitLetDeclaration(node: AST.LetDeclaration, scope: string, valu
 }
 
 /** emitLocalAlias makes a view-local name follow its lexical source. */
-export function emitLocalAlias(node: AST.LetDeclaration, scope: string, reference: AST.Name): string {
-  return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${
-    CodegenUtil.emitLiteral(reference)
+export function emitLocalAlias(node: AST.LetDeclaration, scope: string, reference: AST.Name, adapt?: string): string {
+  return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${CodegenUtil.emitLiteral(reference)}${
+    adapt ? `, _Value => ${adapt}` : ''
   });`
+}
+
+/** emitScalarExpression delegates checked nominal construction or widening to the runtime. */
+export function emitScalarExpression(
+  node: AST.ScalarApplication,
+  scope: CodegenUtil.ScopeCode,
+  value: string,
+): string {
+  const operation = node.kind === 'ConstructionExpression' ? 'ConstructScalar' : 'WidenScalar'
+  return `TR.${operation}(${CodegenUtil.getScopeValue(scope)}, ${CodegenUtil.emitLiteral(node.type)}, ${value})`
+}
+
+/** emitScalarTypeDeclaration registers a file-owned scalar domain or a transparent alias. */
+export function emitScalarTypeDeclaration(node: AST.TypeDeclaration, scope: string, moduleIdentity: string): string {
+  const name = CodegenUtil.emitLiteral(node.name)
+  const base = CodegenUtil.emitLiteral(node.base)
+  const identity = node.nominal ? `, ${CodegenUtil.emitStringLiteral(`${moduleIdentity}:${node.name.value}`)}` : ''
+  return `TR.ScalarTypeDeclaration(${scope}, ${name}, ${base}${identity});`
 }
 
 /** emitStateDeclaration initializes a view-owned state slot on the first render. */
@@ -145,7 +163,7 @@ export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): str
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
 
-type InjectionCaptureType = 'text' | 'children' | 'press' | 'unknown'
+type InjectionCaptureType = 'text' | 'number' | 'children' | 'press' | 'unknown'
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
@@ -216,6 +234,7 @@ function getCaptureParameterType(capture: InjectionCapture): string {
     children: () => "TR.ViewComponentProps['children']",
     press: () => "TR.ViewComponentProps['press']",
     text: () => 'string',
+    number: () => 'number',
     unknown: () => 'unknown',
   })
 }

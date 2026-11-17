@@ -1,6 +1,6 @@
 import type * as AST from '@ast-gen'
 import { Switch } from '@shared'
-import { emitAppBinding } from './RuntimeEmitter'
+import { emitAppBinding, emitScalarTypeDeclaration } from './RuntimeEmitter'
 import { compileLetDeclaration } from './ValuesCompiler'
 import { compileViewDeclaration, type ViewCompilationContext } from './ViewsCompiler'
 
@@ -17,6 +17,8 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
   return Switch.kind(node, {
     AppDeclaration: app => compileInitialization(emitAppBinding(app, context.scope)),
     LetDeclaration: declaration => compileInitialization(compileLetDeclaration(declaration, context.scope)),
+    TypeDeclaration: declaration =>
+      compileInitialization(emitScalarTypeDeclaration(declaration, context.scope, context.moduleIdentity)),
     ViewDeclaration: view => compileViewDeclaration(view, createViewCompilationContext(view, context)),
     TestsDeclaration: omitRuntimeDeclaration,
     UseStatement: omitRuntimeDeclaration,

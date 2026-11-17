@@ -5,8 +5,13 @@ use ModuleCaption, ModuleCaption as ImportedCaption
 use @examples/details PackageBadge
 use ./Library LibraryGreeting
 
+type Label is text
+type CaptionValue = text
+type Score is number
+type Total = number
+
 file
-let DefaultTitle is text = "Kitchen Sink"
+let DefaultTitle = Label "Kitchen Sink" as text
 
 app KitchenSink {
   root RootView
@@ -29,7 +34,6 @@ view RootView {
     }
     #editable
     Input("Original")
-    #save
     SaveButton
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
@@ -78,21 +82,34 @@ view Heading {
 package
 view SaveButton {
   state Caption = "Save"
+  state Points = Score 2 as Total
   action Save() {
     set Caption = "Saved"
+    set Points = 7
   }
-  render Button(Caption) {
-    on press Save
+  render Col {
+    #save
+    Button(Caption) {
+      on press Save
+    }
+    ScoreReadout(Points)
   }
 }
 
+view ScoreReadout(Value number) {
+  render inject Value ```ts
+    return <Tao.Text>{'Points: ' + Value.toString()}</Tao.Text>
+  ```
+}
+
 package
-view SidecarGreeting(Value text) from ./SidecarGreeting.tsx
+view SidecarGreeting(Value CaptionValue) from ./SidecarGreeting.tsx
 
 tests "Kitchen Sink" {
   test(Label "Tagged input and control") {
     run KitchenSink
     expect text "Kitchen Sink"
+    expect text "Points: 2"
     expect text "Private nested view"
     expect text "Named package subfolder"
     expect text "Sidecar: Validated TypeScript sidecar"
@@ -102,6 +119,7 @@ tests "Kitchen Sink" {
     expect {
       text "Saved"
     }
+    expect text "Points: 7"
     expect #editable input value "Edited text"
   }
 }

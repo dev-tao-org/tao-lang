@@ -10,7 +10,7 @@ import * as ForeignViewsCompiler from '../ForeignViewsCompiler'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
-import { buildModuleTextBindings, type ModuleTextBindingsBySourcePath } from '../ModuleTextBindings'
+import { buildModulePrimitiveBindings, type ModulePrimitiveBindingsBySourcePath } from '../ModulePrimitiveBindings'
 import * as RuntimeEmitter from '../RuntimeEmitter'
 
 export type { ForeignViewPathResolver } from '../ForeignViewsCompiler'
@@ -43,11 +43,11 @@ export const compileModuleSources = Timings.createTopLevelTimer(function(
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): CompiledModuleSources {
   const paths = createGeneratedPaths(program)
-  const textBindings = buildModuleTextBindings(program)
+  const primitiveBindings = buildModulePrimitiveBindings(program)
   const files: MutableCompiledFiles = {}
   for (const module of program.modules) {
     const path = resolvePath(paths, module.path)
-    const generated = timings.run(compileSource, module, program, paths, textBindings, resolveForeignViewPath)
+    const generated = timings.run(compileSource, module, program, paths, primitiveBindings, resolveForeignViewPath)
     files[path] = generated.main
     if (generated.views) {
       files[resolveViewsPath(path)] = generated.views
@@ -65,13 +65,13 @@ const compileSource = Timings.measured('compiler.emit-module', function(
   module: Typecheck.LinkedModule,
   program: Typecheck.LinkedProgram,
   paths: GeneratedModulePaths,
-  textBindings: ModuleTextBindingsBySourcePath,
+  primitiveBindings: ModulePrimitiveBindingsBySourcePath,
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): GeneratedSource {
   const sourceProgram = selectSourceProgram(program, module)
   const mainPath = resolvePath(paths, module.path)
   const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, mainPath, resolveForeignViewPath)
-  const context = createModuleCompilationContext(module, mainPath, textBindings, foreign.names)
+  const context = createModuleCompilationContext(module, mainPath, primitiveBindings, foreign.names)
   const declarations = AST.GetDeclarations(module.document).map(node => ({
     node,
     compiled: DeclarationCompiler.compileDeclaration(node, context),
@@ -101,7 +101,7 @@ function selectSourceProgram(
 function createModuleCompilationContext(
   module: Typecheck.LinkedModule,
   generatedPath: string,
-  textBindings: ModuleTextBindingsBySourcePath,
+  primitiveBindings: ModulePrimitiveBindingsBySourcePath,
   foreignNames: ForeignViewsCompiler.ForeignViewNamesByModuleMemberKey,
 ): DeclarationCompiler.DeclarationContext {
   return {
@@ -109,7 +109,8 @@ function createModuleCompilationContext(
     scopeType: 'ModuleScope',
     componentPrefix: '_Views.',
     moduleIdentity: Platform.hashText(generatedPath).slice(0, 12),
-    textBindings: textBindings.get(module.path) ?? new Set(),
+    primitiveBindings: primitiveBindings.get(module.path) ?? new Map(),
+    scalarTypes: module.scalarTypes,
     moduleBindings: module.bindings,
     resolveForeignComponent: node => foreignNames.get(Typecheck.createModuleMemberKey(module.path, node.range.start)),
   }
@@ -207,10 +208,7 @@ function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationComp
   if (!AST.IsLetDeclaration(node)) {
     return 'TR.View'
   }
-  if (context.textBindings.has(node.name.value)) {
-    return 'string'
-  }
-  return 'unknown'
+  return context.primitiveBindings.get(node.name.value) ?? 'unknown'
 }
 
 function compileBootstrap(

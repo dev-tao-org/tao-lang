@@ -44,6 +44,53 @@ Tests.test('invalid text writes and event handlers are rejected before app gener
   }, { finally: () => workspace.dispose() })
 })
 
+Tests.test('scalar as rejects same types, unrelated domains and incompatible state writes', async () => {
+  const workspace = Workspace.createWorkspace({})
+  const cases = [
+    [
+      S`
+        type Foo = text
+        type Bar = Foo
+        let Raw = "value"
+        let Cast = Raw as Bar
+      `,
+      'Raw is already',
+    ],
+    [
+      S`
+        type Score is number
+        let Cast = 2 as Score
+      `,
+      'Cannot convert number to Score.',
+    ],
+    [
+      S`
+        type Foo = Bar
+        type Bar = Foo
+      `,
+      'Type cycle includes Foo.',
+    ],
+    ['let TooLarge = 1e999', 'Number must be finite.'],
+  ]
+  await Try(async () => {
+    for (const [declarations, message] of cases) {
+      const result = await workspace.update(S`
+        use tao@ui Text
+        ${declarations}
+        app Example { root Main }
+        view Main { render Text("Ready") }
+      `)
+      Tests.expect(result.status === 'failed' && result.error).toContain(message)
+    }
+    await expectRejection(
+      workspace,
+      'action Edit() { set Status = 7 }',
+      'render Text(Status)',
+      'Expected a text value.',
+    )
+  }, { finally: () => workspace.dispose() })
+})
+
 async function expectRejection(
   workspace: Workspace.WorkspaceSession,
   action: string,

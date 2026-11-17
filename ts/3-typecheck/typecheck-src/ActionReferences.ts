@@ -30,7 +30,8 @@ export function visitPressReferences(handler: AST.PressHandler, visit: VisitName
 type VisitName = (name: AST.Name) => void
 
 function visitValue(value: AST.Expression, visit: VisitName): void {
-  if (AST.IsKind(value, 'Name')) {
-    visit(value)
+  const operand = AST.GetExpressionOperand(value)
+  if (AST.IsKind(operand, 'Name')) {
+    visit(operand)
   }
 }

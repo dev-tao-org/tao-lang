@@ -17,6 +17,7 @@ const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
+const NumberLiteralRegx = /-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/
 const PublishPackageRegx = /@[A-Za-z_][A-Za-z0-9._-]*/
 const VisibilityKeywords = ['file', 'folder', 'package']
 
@@ -58,6 +59,7 @@ export default grammar({
         $.ViewDeclaration,
         $.TestsDeclaration,
         $.LetDeclaration,
+        $.TypeDeclaration,
         $.UseStatement,
         $.RequiresDeclaration,
         $.TypeScriptLibraryDeclaration,
@@ -65,7 +67,10 @@ export default grammar({
       )
     },
     _Expression($) {
-      return choice($.QualifiedName, $.TextLiteral)
+      return choice($._PrimaryExpression, $.ConversionExpression)
+    },
+    _PrimaryExpression($) {
+      return choice($.QualifiedName, $.TextLiteral, $.NumberLiteral, $.ConstructionExpression, $.GroupedExpression)
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -149,7 +154,6 @@ export default grammar({
         optional(field('visibility', $.Visibility)),
         'let',
         field('name', $.Identifier),
-        optional(seq('is', field('type', $.QualifiedName))),
         '=',
         field('value', $._Expression),
       )
@@ -158,10 +162,12 @@ export default grammar({
       return seq(
         'state',
         field('name', $.Identifier),
-        optional(seq('is', field('type', $.QualifiedName))),
         '=',
         field('value', $._Expression),
       )
+    },
+    TypeDeclaration($) {
+      return seq('type', field('name', $.Identifier), choice('is', '='), field('base', $.Identifier))
     },
     ActionDeclaration($) {
       return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))
@@ -283,6 +289,21 @@ export default grammar({
     },
 
     // Expressions
+    ConversionExpression($) {
+      return prec.left(seq(field('value', $._Expression), 'as', field('type', $.Identifier)))
+    },
+    ConstructionExpression($) {
+      return seq(
+        field('type', $.Identifier),
+        field('value', choice($.TextLiteral, $.NumberLiteral, $.GroupedExpression)),
+      )
+    },
+    GroupedExpression($) {
+      return seq('(', field('value', $._Expression), ')')
+    },
+    NumberLiteral() {
+      return token(NumberLiteralRegx)
+    },
     ArgumentList($) {
       return seq(
         '(',

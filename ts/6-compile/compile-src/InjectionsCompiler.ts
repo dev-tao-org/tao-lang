@@ -2,12 +2,12 @@ import * as AST from '@ast-gen'
 import { Switch, UserInput } from '@shared'
 import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
-import { isTextExpression } from './ValuesCompiler'
+import type { PrimitiveBindings } from './ValuesCompiler'
 
 /** compileInjection emits an authored hook declaration and its owning-view invocation. */
 export function compileInjection(
   node: AST.Injection,
-  bindings: ReadonlySet<string>,
+  bindings: PrimitiveBindings,
   names: RuntimeEmitter.ComponentNames,
   scope: ScopeCode,
 ): RuntimeEmitter.InjectionCompilation {
@@ -17,16 +17,16 @@ export function compileInjection(
 
 function compileCapture(
   node: AST.Capture,
-  bindings: ReadonlySet<string>,
+  bindings: PrimitiveBindings,
   names: RuntimeEmitter.ComponentNames,
   scope: ScopeCode,
 ): RuntimeEmitter.InjectionCapture {
   assertCaptureName(node.name.value)
   return Switch.kind(node.value, {
     Name(name) {
-      const text = isTextExpression(name, reference => bindings.has(reference.value))
-      const value = RuntimeEmitter.emitName(name, scope) + (text ? ' as string' : '')
-      return RuntimeEmitter.InjectionCapture(node, text ? 'text' : 'unknown', value)
+      const type = bindings.get(name.value)
+      const value = RuntimeEmitter.emitName(name, scope) + (type ? ` as ${type}` : '')
+      return RuntimeEmitter.InjectionCapture(node, type === 'string' ? 'text' : type ?? 'unknown', value)
     },
     ContextReference: reference => compileContextCapture(node, reference, names),
   })

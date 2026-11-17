@@ -1,6 +1,6 @@
 use tao@ui Col, Text
 
-let Banner is text = "Original"
+let Banner = "Original"
 
 folder view PrivateViewExamples {
   render Col {

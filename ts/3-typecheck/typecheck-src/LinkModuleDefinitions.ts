@@ -104,7 +104,7 @@ function collectDefinitionDependencies(
 ): ModuleBinding[] {
   const value = AST.IsAppDeclaration(item.declaration)
     ? AST.GetAppRoot(item.declaration)
-    : item.declaration.value
+    : AST.GetExpressionOperand(item.declaration.value)
   if (!AST.IsKind(value, 'Name')) {
     return []
   }
