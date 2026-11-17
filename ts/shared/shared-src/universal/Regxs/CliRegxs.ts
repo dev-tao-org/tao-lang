@@ -90,3 +90,12 @@ export const SkillFrontmatterBlockRegx = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)
 export const SkillFrontmatterNameRegx = /^name:\s*([A-Za-z0-9_-]+)\s*$/m
 /** CommandRegistrationImportRegx matches side-effect command registrations in CLI entrypoints. */
 export const CommandRegistrationImportRegx = /^import\s+['"](\.\/commands\/[^'"]+)['"]\s*;?\s*$/gm
+
+/** HttpStatusLineRegx captures the status code at the start of a CLI HTTP response. */
+export const HttpStatusLineRegx = /^HTTP\/\S+ (\d{3})\b/u
+
+/** HttpHeaderEndRegx matches the empty line separating CLI HTTP headers from the body. */
+export const HttpHeaderEndRegx = /\r?\n\r?\n/u
+
+/** HttpETagHeaderRegx captures an ETag value in CLI HTTP response headers. */
+export const HttpETagHeaderRegx = /^etag:[ \t]*([^\r\n]+)/imu

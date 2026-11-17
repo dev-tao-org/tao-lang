@@ -4,6 +4,7 @@ import { Errors, Json, Schema } from '@shared'
 import { Artifacts, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { registerCommand } from './_command-runner'
+import { watchVerifyRun } from './VerifyWatch'
 
 type RequestedRun = string | undefined
 const TaoRepository = 'tao-dev-org/tao-lang'
@@ -109,7 +110,7 @@ async function inspectRun(cwd: string, runId: string, options: VerifyOptions): P
     return
   }
   if (options.wait) {
-    await runGitHub(cwd, ['run', 'watch', runId, '--interval', '30', '--compact', '--exit-status'])
+    await watchVerifyRun(cwd, runId)
     return
   }
   if (options.logs || options.failedLogs) {
