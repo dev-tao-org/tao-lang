@@ -25,6 +25,12 @@ export const timingArguments = [
   { name: 'repo', required: true, description: 'Absolute immutable candidate checkout path on the runner.' },
 ]
 
+/** DefaultTimingSamples sets the number of independent preview sessions in a standard runner job. */
+export const DefaultTimingSamples = 5
+
+/** DefaultTimingEdits sets the number of edits in each standard runner session. */
+export const DefaultTimingEdits = 24
+
 /** timingOptions declares the shared workload and preview flags for both run lifecycles. */
 export const timingOptions = [
   { flags: '--label <name>', description: 'Agent or chat name to print in the runner’s live log.' },
@@ -33,11 +39,15 @@ export const timingOptions = [
     flags: '--fixture <path>',
     description: 'Absolute runner fixture; defaults to the candidate’s performance fixture.',
   },
-  { flags: '--samples <count>', description: 'Independent preview sessions.', defaultValue: '5' },
+  {
+    flags: '--samples <count>',
+    description: 'Independent preview sessions.',
+    defaultValue: String(DefaultTimingSamples),
+  },
   {
     flags: '--edits <count>',
     description: 'Edits per session, excluding the first complete cycle from warm analysis.',
-    defaultValue: '24',
+    defaultValue: String(DefaultTimingEdits),
   },
   { flags: '--dry-run', description: 'Print the workload and connection plan without connecting.' },
 ]

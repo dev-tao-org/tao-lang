@@ -87,6 +87,12 @@ timing-disconnect HOST *ARGS:
 timing-session HOST CHECKOUT *ARGS:
     ./dev timing-session "$@"
 
+# Measure on the dedicated timing runner. Use --local for a diagnostic on this Mac.
+[group('Performance')]
+[positional-arguments]
+timing *ARGS:
+    ./dev timing "$@"
+
 # Repeat measurements in an immutable runner checkout; source is not synchronized
 [group('Performance')]
 [positional-arguments]
@@ -173,10 +179,11 @@ my-branch name='':
 dev:
     ./dev
 
-# Measure preview refresh and print scenario timings and the raw report path
-[group('Dev')]
-performance:
-    ./dev performance preview
+# Measure preview refresh on the timing runner. Use --local for a local diagnostic.
+[group('Performance')]
+[positional-arguments]
+performance *ARGS:
+    ./dev timing "$@"
 
 # Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]

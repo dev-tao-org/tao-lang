@@ -137,6 +137,16 @@ causes a nonzero command exit.
 The runner keeps the comparison index, fixed fixture and raw timings under the printed comparison
 directory. To collect the evidence, retrieve that directory including its `sessions/` children.
 These sessions are separate from the jobs searched by the standalone `timing-report` command.
+
+## Run a timing job
+
+Use the dedicated speed-testing machine in an isolated, prepared checkout under its shared timing
+lock for all formal speed tests. Run `just timing <runner-checkout> --host <runner>` or set
+`TAO_TIMING_HOST` and `TAO_TIMING_CHECKOUT` to use `just timing` without arguments. The shortcut
+uses five independent sessions of 24 edits and measures the named runner checkout. Prepare the
+exact revision there before starting. `just performance` uses the same route.
+
+Use `just timing --local` for one diagnostic preview run in the current local checkout.
 An interrupted or failed run retains evidence separately
 from completed comparisons. Compare revisions with the same launch and reopen workloads.
 The browser endpoint is React-applied with a DOM check. The native
