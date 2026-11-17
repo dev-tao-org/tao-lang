@@ -365,22 +365,6 @@ var options = {
   observer: { now: nowMs, onTiming: previewTiming }
 };
 
-// 7-runtime/runtime-src/client/DisabledInteraction.ts
-function DisabledWhen(value) {
-  if (typeof value !== "boolean") {
-    ThrowUserInput("A disabled condition must be a boolean.");
-  }
-  return value;
-}
-function useInteractionDisabled() {
-  return Bridge_react_default.useContext(DisabledInteractionContext);
-}
-function DisabledInteraction({ disabled, children }) {
-  const inherited = useInteractionDisabled();
-  return Bridge_react_default.createElement(DisabledInteractionContext.Provider, { value: inherited || disabled }, children);
-}
-var DisabledInteractionContext = Bridge_react_default.createContext(false);
-
 // 7-runtime/runtime-src/client/Scope.ts
 function Scope(parent) {
   return Object.create(parent ?? null);
@@ -423,9 +407,9 @@ function hasScopeBinding(scope, name) {
 function ViewDeclaration(name, parameters, render, scope = Scope()) {
   return { name, parameters: [...parameters], render, scope, [viewMarker]: true };
 }
-function ViewRenderArguments(values = [], inputChildren = [], testID, disabled) {
+function ViewRenderArguments(values = [], inputChildren = [], testID) {
   const children = inputChildren.map((child, index) => Bridge_react_default.isValidElement(child) ? Bridge_react_default.cloneElement(child, { key: child.key ?? index }) : child);
-  return { values, testID, children, disabled };
+  return { values, testID, children };
 }
 function ViewRenderExpression(candidate, args, observer) {
   const body = Bridge_react_default.createElement(ViewBody, { candidate, args, key: args.testID });
@@ -451,11 +435,7 @@ function ViewBody({ candidate, args, testID }) {
   const scope = bindValues(view, args);
   observe(observer, "bind", bindingStartedAt);
   const componentProps = { view, scope, children: args.children, testID: args.testID ?? testID, observer };
-  const children = Bridge_react_default.createElement(view.render, componentProps);
-  return args.disabled === undefined ? children : Bridge_react_default.createElement(DisabledInteraction, {
-    disabled: args.disabled,
-    children
-  });
+  return Bridge_react_default.createElement(view.render, componentProps);
 }
 function applyTestID(result, testID) {
   if (testID === undefined || !Bridge_react_default.isValidElement(result)) {
@@ -1073,7 +1053,7 @@ import * as ReactNative from "react-native";
 var Bridge_react_native_default = ReactNative;
 
 // 7-runtime/runtime-src/client/TaoRuntimeAPI.ts
-var Tao = { Text, View: View2, TextInput, Pressable, useInteractionDisabled, useWritable, useComputed, useValue };
+var Tao = { Text, View: View2, TextInput, Pressable, useWritable, useComputed, useValue };
 var TaoRuntimeAPI_default = Tao;
 function Text({ style, ...props }) {
   return Bridge_react_default.createElement(Bridge_react_native_default.Text, { ...props, style: [textStyle, style] });
@@ -1082,36 +1062,22 @@ function View2(props) {
   return Bridge_react_default.createElement(Bridge_react_native_default.View, props);
 }
 function TextInput({ style, ...props }) {
-  const disabled = useInteractionDisabled();
   return Bridge_react_default.createElement(Bridge_react_native_default.TextInput, {
     placeholderTextColor: DefaultAppearance.border,
     keyboardAppearance: "dark",
     ...props,
-    "aria-disabled": disabled || undefined,
-    focusable: disabled ? false : undefined,
-    readOnly: disabled || undefined,
-    style: [textStyle, style, disabled && DisabledStyle]
+    style: [textStyle, style]
   });
 }
-function Pressable({ onPress, style, ...props }) {
-  const disabled = useInteractionDisabled();
-  const perform = !disabled && onPress ? () => batch(onPress) : undefined;
-  return Bridge_react_default.createElement(Bridge_react_native_default.Pressable, {
-    ...props,
-    accessibilityRole: "button",
-    accessibilityState: { disabled },
-    disabled,
-    focusable: disabled ? false : undefined,
-    onPress: perform,
-    style: [style, disabled && DisabledStyle]
-  });
+function Pressable({ onPress, ...props }) {
+  const perform = onPress ? () => batch(onPress) : undefined;
+  return Bridge_react_default.createElement(Bridge_react_native_default.Pressable, { ...props, onPress: perform });
 }
 var textStyle = { color: DefaultAppearance.foreground };
-var DisabledStyle = { opacity: 0.6 };
 
 // tao-generated/source/Library.views.tsx
 import { jsxDEV } from "react/jsx-dev-runtime";
-function useTaoInjectionGreeting$PrivateGreeting_e14d7f2bb079() {
+function useTaoInjectionGreeting$PrivateGreeting_a75dd1f6470a() {
   const count = TaoRuntimeAPI_default.useWritable(() => 0);
   const value = TaoRuntimeAPI_default.useValue(count);
   const caption = TaoRuntimeAPI_default.useComputed(() => "Nested private Tao helper " + count.jsValue(), [count]);
@@ -1123,34 +1089,34 @@ function useTaoInjectionGreeting$PrivateGreeting_e14d7f2bb079() {
     }, undefined, false, undefined, this)
   }, undefined, false, undefined, this);
 }
-function TaoView_Greeting$PrivateGreeting_e14d7f2bb079(_Props) {
+function TaoView_Greeting$PrivateGreeting_a75dd1f6470a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionGreeting$PrivateGreeting_e14d7f2bb079());
+  return finishViewRender(_Render, useTaoInjectionGreeting$PrivateGreeting_a75dd1f6470a());
 }
-function TaoView_Greeting_e14d7f2bb079(_Props) {
+function TaoView_Greeting_a75dd1f6470a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
   const _Imported_Col = ScopeAliases(_Scope, { ["Col"]: "Col" });
-  LetDeclaration(_Scope, "PrivateGreeting", ViewDeclaration("PrivateGreeting", [], TaoView_Greeting$PrivateGreeting_e14d7f2bb079, _Scope));
+  LetDeclaration(_Scope, "PrivateGreeting", ViewDeclaration("PrivateGreeting", [], TaoView_Greeting$PrivateGreeting_a75dd1f6470a, _Scope));
   return finishViewRender(_Render, ViewRenderExpression(_Imported_Col["Col"], ViewRenderArguments([], [
     ViewRenderExpression(_Imported_Text["Text"], ViewRenderArguments([_Scope["First"]], [])),
     ViewRenderExpression(_Scope["PrivateGreeting"], ViewRenderArguments([], [])),
     ViewRenderExpression(_Imported_Text["Text"], ViewRenderArguments([_Scope["Second"]], []))
   ])));
 }
-function useTaoInjectionPanel_e14d7f2bb079(Children) {
+function useTaoInjectionPanel_a75dd1f6470a(Children) {
   return /* @__PURE__ */ jsxDEV(TaoRuntimeAPI_default.View, {
     children: Children
   }, undefined, false, undefined, this);
 }
-function TaoView_Panel_e14d7f2bb079(_Props) {
+function TaoView_Panel_a75dd1f6470a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionPanel_e14d7f2bb079(_Render.children));
+  return finishViewRender(_Render, useTaoInjectionPanel_a75dd1f6470a(_Render.children));
 }
-function TaoView_Hidden_e14d7f2bb079(_Props) {
+function TaoView_Hidden_a75dd1f6470a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
@@ -1165,90 +1131,27 @@ function bindAliases(_Scope, _Modules) {
   AliasBinding(_Scope, "Cards.Unselected", () => _Modules["source/cards/Other.ts"]["Unselected"]);
   AliasBinding(_Scope, "LanguageFeatures", () => _Modules["source/LanguageFeatures.ts"]["LanguageFeatures"]);
   AliasBinding(_Scope, "ValueSnapshots", () => _Modules["source/ValueSnapshots.ts"]["ValueSnapshots"]);
-  AliasBinding(_Scope, "DisabledPreview", () => _Modules["source/DisabledPreview.ts"]["DisabledPreview"]);
   AliasBinding(_Scope, "FolderScope", () => _Modules["source/ScopeExamples.ts"]["FolderScope"]);
 }
 function bindDeclarations(_Scope) {
-  LetDeclaration(_Scope, "Greeting", ViewDeclaration("Greeting", ["First", "Second"], TaoView_Greeting_e14d7f2bb079, _Scope));
-  LetDeclaration(_Scope, "Panel", ViewDeclaration("Panel", [], TaoView_Panel_e14d7f2bb079, _Scope));
-  LetDeclaration(_Scope, "Hidden", ViewDeclaration("Hidden", [], TaoView_Hidden_e14d7f2bb079, _Scope));
-}
-
-// tao-generated/source/DisabledPreview.views.tsx
-function TaoView_DisabledPreview_b33e36884a1c(_Props) {
-  const _Render = beginViewRender(_Props);
-  const _Scope = _Render.scope;
-  const _Imported_Input = ScopeAliases(_Scope, { ["Input"]: "Input" });
-  const _Imported_Col = ScopeAliases(_Scope, { ["Col"]: "Col" });
-  return finishViewRender(_Render, ViewRenderExpression(_Imported_Col["Col"], ViewRenderArguments([], [
-    ViewRenderExpression(_Scope["DisabledPreviewControls"], ViewRenderArguments([_Scope["Locked"]], [], undefined, DisabledWhen(false))),
-    ViewRenderExpression(_Imported_Input["Input"], ViewRenderArguments(["Editable"], [], "previewInput"))
-  ], undefined, DisabledWhen(_Scope["Locked"]))));
-}
-
-// ../Apps/TS Lib App/src/tao/DisabledPreviewControls.tsx
-import React2 from "react";
-import { jsxDEV as jsxDEV2 } from "react/jsx-dev-runtime";
-function DisabledPreviewControls({ Locked }) {
-  const disabled = TaoRuntimeAPI_default.useInteractionDisabled();
-  const state = TaoRuntimeAPI_default.useWritable(() => ({ tao: 0, raw: 0, programmatic: 0 }));
-  const counts = TaoRuntimeAPI_default.useValue(state);
-  function recordPress(kind) {
-    const previous = state.jsValue();
-    state.update({ ...previous, [kind]: previous[kind] + 1 });
-  }
-  React2.useEffect(() => {
-    if (Locked) {
-      recordPress("programmatic");
-    }
-  }, [Locked]);
-  return /* @__PURE__ */ jsxDEV2(TaoRuntimeAPI_default.View, {
-    children: [
-      /* @__PURE__ */ jsxDEV2(TaoRuntimeAPI_default.Pressable, {
-        onPress: () => recordPress("tao"),
-        children: /* @__PURE__ */ jsxDEV2(TaoRuntimeAPI_default.Text, {
-          children: `Tao presses: ${counts.tao}`
-        }, undefined, false, undefined, this)
-      }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsxDEV2("button", {
-        disabled,
-        onClick: disabled ? undefined : () => recordPress("raw"),
-        children: [
-          "Raw presses: ",
-          counts.raw
-        ]
-      }, undefined, true, undefined, this),
-      /* @__PURE__ */ jsxDEV2(TaoRuntimeAPI_default.Text, {
-        children: `Programmatic: ${counts.programmatic}`
-      }, undefined, false, undefined, this)
-    ]
-  }, undefined, true, undefined, this);
-}
-
-// tao-generated/source/DisabledPreview.ts
-function bindAliases2(_Scope, _Modules) {
-  AliasBinding(_Scope, "Col", () => _Modules["tao/ui/Views.ts"]["Col"]);
-  AliasBinding(_Scope, "Input", () => _Modules["tao/ui/Views.ts"]["Input"]);
-  AliasBinding(_Scope, "FolderScope", () => _Modules["source/ScopeExamples.ts"]["FolderScope"]);
-}
-function bindDeclarations2(_Scope) {
-  LetDeclaration(_Scope, "DisabledPreview", ViewDeclaration("DisabledPreview", ["Locked"], TaoView_DisabledPreview_b33e36884a1c, _Scope));
-  LetDeclaration(_Scope, "DisabledPreviewControls", ForeignView("DisabledPreviewControls", ["Locked"], DisabledPreviewControls, _Scope));
+  LetDeclaration(_Scope, "Greeting", ViewDeclaration("Greeting", ["First", "Second"], TaoView_Greeting_a75dd1f6470a, _Scope));
+  LetDeclaration(_Scope, "Panel", ViewDeclaration("Panel", [], TaoView_Panel_a75dd1f6470a, _Scope));
+  LetDeclaration(_Scope, "Hidden", ViewDeclaration("Hidden", [], TaoView_Hidden_a75dd1f6470a, _Scope));
 }
 
 // tao-generated/source/LanguageFeatures.views.tsx
-import { jsxDEV as jsxDEV3 } from "react/jsx-dev-runtime";
-function useTaoInjectionLanguageFeatures$CapturedCaption_a2b02828914f(Caption) {
-  return /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
+import { jsxDEV as jsxDEV2 } from "react/jsx-dev-runtime";
+function useTaoInjectionLanguageFeatures$CapturedCaption_f1bc170ab554(Caption) {
+  return /* @__PURE__ */ jsxDEV2(TaoRuntimeAPI_default.Text, {
     children: "Aliased capture: " + Caption
   }, undefined, false, undefined, this);
 }
-function TaoView_LanguageFeatures$CapturedCaption_a2b02828914f(_Props) {
+function TaoView_LanguageFeatures$CapturedCaption_f1bc170ab554(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionLanguageFeatures$CapturedCaption_a2b02828914f(_Scope["Value"]));
+  return finishViewRender(_Render, useTaoInjectionLanguageFeatures$CapturedCaption_f1bc170ab554(_Scope["Value"]));
 }
-function TaoView_LanguageFeatures_a2b02828914f(_Props) {
+function TaoView_LanguageFeatures_f1bc170ab554(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
@@ -1260,7 +1163,7 @@ function TaoView_LanguageFeatures_a2b02828914f(_Props) {
   const _Imported_Cards$Caption = ScopeAliases(_Scope, { ["Caption"]: "Cards.Caption" });
   const _Imported_Col = ScopeAliases(_Scope, { ["Col"]: "Col" });
   const _Imported_Input = ScopeAliases(_Scope, { ["Input"]: "Input" });
-  LetDeclaration(_Scope, "CapturedCaption", ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_a2b02828914f, _Scope));
+  LetDeclaration(_Scope, "CapturedCaption", ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_f1bc170ab554, _Scope));
   return finishViewRender(_Render, ViewRenderExpression(_Imported_Col["Col"], ViewRenderArguments([], [
     ViewRenderExpression(_Imported_Text["Text"], ViewRenderArguments([_Scope["FileCaption"]], [])),
     ViewRenderExpression(_Imported_FolderScope["FolderScope"], ViewRenderArguments([], [])),
@@ -1281,14 +1184,14 @@ function TaoView_LanguageFeatures_a2b02828914f(_Props) {
 }
 
 // ../Apps/TS Lib App/src/ts/ForeignGreeting.tsx
-import React3 from "react";
+import React2 from "react";
 import { Text as Text2 } from "react-native";
 function ForeignGreeting({ Value }) {
-  return React3.createElement(Text2, null, "Foreign view: " + Value);
+  return React2.createElement(Text2, null, "Foreign view: " + Value);
 }
 
 // tao-generated/source/LanguageFeatures.ts
-function bindAliases3(_Scope, _Modules) {
+function bindAliases2(_Scope, _Modules) {
   AliasBinding(_Scope, "Text", () => _Modules["tao/ui/Views.ts"]["Text"]);
   AliasBinding(_Scope, "Col", () => _Modules["tao/ui/Views.ts"]["Col"]);
   AliasBinding(_Scope, "Row", () => _Modules["tao/ui/Views.ts"]["Row"]);
@@ -1301,8 +1204,8 @@ function bindAliases3(_Scope, _Modules) {
   AliasBinding(_Scope, "PackageScope", () => _Modules["source/ScopeExamples.ts"]["PackageScope"]);
   AliasBinding(_Scope, "ProjectScope", () => _Modules["source/ScopeExamples.ts"]["ProjectScope"]);
 }
-function bindDeclarations3(_Scope) {
-  LetDeclaration(_Scope, "LanguageFeatures", ViewDeclaration("LanguageFeatures", ["Name"], TaoView_LanguageFeatures_a2b02828914f, _Scope));
+function bindDeclarations2(_Scope) {
+  LetDeclaration(_Scope, "LanguageFeatures", ViewDeclaration("LanguageFeatures", ["Name"], TaoView_LanguageFeatures_f1bc170ab554, _Scope));
   LetDeclaration(_Scope, "ForeignGreeting", ForeignView("ForeignGreeting", ["Value"], ForeignGreeting, _Scope));
 }
 function initializeFileCaption(_Scope) {
@@ -1313,19 +1216,19 @@ function initializeEscapedCaption(_Scope) {
 }
 
 // tao-generated/source/ScopeExamples.views.tsx
-function TaoView_FolderScope_2b7780826b86(_Props) {
+function TaoView_FolderScope_676631b4464a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
   return finishViewRender(_Render, ViewRenderExpression(_Imported_Text["Text"], ViewRenderArguments(["Folder-scoped view"], [])));
 }
-function TaoView_PackageScope_2b7780826b86(_Props) {
+function TaoView_PackageScope_676631b4464a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
   return finishViewRender(_Render, ViewRenderExpression(_Imported_Text["Text"], ViewRenderArguments(["Package-scoped view"], [])));
 }
-function TaoView_ProjectScope_2b7780826b86(_Props) {
+function TaoView_ProjectScope_676631b4464a(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
@@ -1333,18 +1236,18 @@ function TaoView_ProjectScope_2b7780826b86(_Props) {
 }
 
 // tao-generated/source/ScopeExamples.ts
-function bindAliases4(_Scope, _Modules) {
+function bindAliases3(_Scope, _Modules) {
   AliasBinding(_Scope, "Text", () => _Modules["tao/ui/Views.ts"]["Text"]);
 }
-function bindDeclarations4(_Scope) {
-  LetDeclaration(_Scope, "FolderScope", ViewDeclaration("FolderScope", [], TaoView_FolderScope_2b7780826b86, _Scope));
-  LetDeclaration(_Scope, "PackageScope", ViewDeclaration("PackageScope", [], TaoView_PackageScope_2b7780826b86, _Scope));
-  LetDeclaration(_Scope, "ProjectScope", ViewDeclaration("ProjectScope", [], TaoView_ProjectScope_2b7780826b86, _Scope));
+function bindDeclarations3(_Scope) {
+  LetDeclaration(_Scope, "FolderScope", ViewDeclaration("FolderScope", [], TaoView_FolderScope_676631b4464a, _Scope));
+  LetDeclaration(_Scope, "PackageScope", ViewDeclaration("PackageScope", [], TaoView_PackageScope_676631b4464a, _Scope));
+  LetDeclaration(_Scope, "ProjectScope", ViewDeclaration("ProjectScope", [], TaoView_ProjectScope_676631b4464a, _Scope));
 }
 
 // tao-generated/source/ValueSnapshots.views.tsx
-import { jsxDEV as jsxDEV4 } from "react/jsx-dev-runtime";
-function useTaoInjectionValueSnapshots_d91ca1acb358() {
+import { jsxDEV as jsxDEV3 } from "react/jsx-dev-runtime";
+function useTaoInjectionValueSnapshots_1e20ee44d02c() {
   const mode = TaoRuntimeAPI_default.useWritable(() => "initial");
   const value = TaoRuntimeAPI_default.useComputed(() => {
     const currentMode = mode.jsValue();
@@ -1358,112 +1261,112 @@ function useTaoInjectionValueSnapshots_d91ca1acb358() {
   const comparison = TaoRuntimeAPI_default.useWritable(() => "");
   const snapshot = TaoRuntimeAPI_default.useValue(value);
   const result = TaoRuntimeAPI_default.useValue(comparison);
-  return /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.View, {
+  return /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.View, {
     children: [
-      /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
+      /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
         children: snapshot.rows.map((row) => row.label).join(", ")
       }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Pressable, {
+      /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Pressable, {
         testID: "recompute-equal",
         onPress: () => {
           const previous = value.jsValue();
           mode.update("equal");
           comparison.update(value.jsValue() === previous ? "Reused snapshot" : "Replaced snapshot");
         },
-        children: /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
+        children: /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
           children: "Recompute equal rows"
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
+      /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
         children: result
       }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Pressable, {
+      /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Pressable, {
         testID: "reorder-rows",
         onPress: () => mode.update("reordered"),
-        children: /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
+        children: /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
           children: "Reorder rows"
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Pressable, {
+      /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Pressable, {
         testID: "add-duplicate-row",
         onPress: () => mode.update("extra-duplicate"),
-        children: /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
+        children: /* @__PURE__ */ jsxDEV3(TaoRuntimeAPI_default.Text, {
           children: "Add another matching row"
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);
 }
-function TaoView_ValueSnapshots_d91ca1acb358(_Props) {
+function TaoView_ValueSnapshots_1e20ee44d02c(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionValueSnapshots_d91ca1acb358());
+  return finishViewRender(_Render, useTaoInjectionValueSnapshots_1e20ee44d02c());
 }
 
 // tao-generated/source/ValueSnapshots.ts
-function bindAliases5(_Scope, _Modules) {
+function bindAliases4(_Scope, _Modules) {
   AliasBinding(_Scope, "FolderScope", () => _Modules["source/ScopeExamples.ts"]["FolderScope"]);
 }
-function bindDeclarations5(_Scope) {
-  LetDeclaration(_Scope, "ValueSnapshots", ViewDeclaration("ValueSnapshots", [], TaoView_ValueSnapshots_d91ca1acb358, _Scope));
+function bindDeclarations4(_Scope) {
+  LetDeclaration(_Scope, "ValueSnapshots", ViewDeclaration("ValueSnapshots", [], TaoView_ValueSnapshots_1e20ee44d02c, _Scope));
 }
 
 // tao-generated/tao/ui/Views.views.tsx
-import { jsxDEV as jsxDEV5 } from "react/jsx-dev-runtime";
-function useTaoInjectionText_9bf877ca8681(Value) {
-  return /* @__PURE__ */ jsxDEV5(TaoRuntimeAPI_default.Text, {
+import { jsxDEV as jsxDEV4 } from "react/jsx-dev-runtime";
+function useTaoInjectionText_8da6fc2c7acb(Value) {
+  return /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.Text, {
     children: Value
   }, undefined, false, undefined, this);
 }
-function TaoView_Text_9bf877ca8681(_Props) {
+function TaoView_Text_8da6fc2c7acb(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionText_9bf877ca8681(_Scope["Value"]));
+  return finishViewRender(_Render, useTaoInjectionText_8da6fc2c7acb(_Scope["Value"]));
 }
-function useTaoInjectionCol_9bf877ca8681(Children) {
-  return /* @__PURE__ */ jsxDEV5(TaoRuntimeAPI_default.View, {
+function useTaoInjectionCol_8da6fc2c7acb(Children) {
+  return /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.View, {
     style: { flexDirection: "column" },
     children: Children
   }, undefined, false, undefined, this);
 }
-function TaoView_Col_9bf877ca8681(_Props) {
+function TaoView_Col_8da6fc2c7acb(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionCol_9bf877ca8681(_Render.children));
+  return finishViewRender(_Render, useTaoInjectionCol_8da6fc2c7acb(_Render.children));
 }
-function useTaoInjectionRow_9bf877ca8681(Children) {
-  return /* @__PURE__ */ jsxDEV5(TaoRuntimeAPI_default.View, {
+function useTaoInjectionRow_8da6fc2c7acb(Children) {
+  return /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.View, {
     style: { flexDirection: "row" },
     children: Children
   }, undefined, false, undefined, this);
 }
-function TaoView_Row_9bf877ca8681(_Props) {
+function TaoView_Row_8da6fc2c7acb(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionRow_9bf877ca8681(_Render.children));
+  return finishViewRender(_Render, useTaoInjectionRow_8da6fc2c7acb(_Render.children));
 }
-function useTaoInjectionInput_9bf877ca8681(Value) {
-  return /* @__PURE__ */ jsxDEV5(TaoRuntimeAPI_default.TextInput, {
+function useTaoInjectionInput_8da6fc2c7acb(Value) {
+  return /* @__PURE__ */ jsxDEV4(TaoRuntimeAPI_default.TextInput, {
     defaultValue: Value
   }, undefined, false, undefined, this);
 }
-function TaoView_Input_9bf877ca8681(_Props) {
+function TaoView_Input_8da6fc2c7acb(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
-  return finishViewRender(_Render, useTaoInjectionInput_9bf877ca8681(_Scope["Value"]));
+  return finishViewRender(_Render, useTaoInjectionInput_8da6fc2c7acb(_Scope["Value"]));
 }
 
 // tao-generated/tao/ui/Views.ts
-function bindAliases6(_Scope, _Modules) {}
-function bindDeclarations6(_Scope) {
-  LetDeclaration(_Scope, "Text", ViewDeclaration("Text", ["Value"], TaoView_Text_9bf877ca8681, _Scope));
-  LetDeclaration(_Scope, "Col", ViewDeclaration("Col", [], TaoView_Col_9bf877ca8681, _Scope));
-  LetDeclaration(_Scope, "Row", ViewDeclaration("Row", [], TaoView_Row_9bf877ca8681, _Scope));
-  LetDeclaration(_Scope, "Input", ViewDeclaration("Input", ["Value"], TaoView_Input_9bf877ca8681, _Scope));
+function bindAliases5(_Scope, _Modules) {}
+function bindDeclarations5(_Scope) {
+  LetDeclaration(_Scope, "Text", ViewDeclaration("Text", ["Value"], TaoView_Text_8da6fc2c7acb, _Scope));
+  LetDeclaration(_Scope, "Col", ViewDeclaration("Col", [], TaoView_Col_8da6fc2c7acb, _Scope));
+  LetDeclaration(_Scope, "Row", ViewDeclaration("Row", [], TaoView_Row_8da6fc2c7acb, _Scope));
+  LetDeclaration(_Scope, "Input", ViewDeclaration("Input", ["Value"], TaoView_Input_8da6fc2c7acb, _Scope));
 }
 
 // tao-generated/source/cards/Card.views.tsx
-function TaoView_Caption_e8e5822cf03d(_Props) {
+function TaoView_Caption_3f68f911d666(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
@@ -1471,15 +1374,15 @@ function TaoView_Caption_e8e5822cf03d(_Props) {
 }
 
 // tao-generated/source/cards/Card.ts
-function bindAliases7(_Scope, _Modules) {
+function bindAliases6(_Scope, _Modules) {
   AliasBinding(_Scope, "Text", () => _Modules["tao/ui/Views.ts"]["Text"]);
 }
-function bindDeclarations7(_Scope) {
-  LetDeclaration(_Scope, "Caption", ViewDeclaration("Caption", ["Value"], TaoView_Caption_e8e5822cf03d, _Scope));
+function bindDeclarations6(_Scope) {
+  LetDeclaration(_Scope, "Caption", ViewDeclaration("Caption", ["Value"], TaoView_Caption_3f68f911d666, _Scope));
 }
 
 // tao-generated/source/cards/Other.views.tsx
-function TaoView_Unselected_a6f315dbebd4(_Props) {
+function TaoView_Unselected_2b13e746c6ed(_Props) {
   const _Render = beginViewRender(_Props);
   const _Scope = _Render.scope;
   const _Imported_Text = ScopeAliases(_Scope, { ["Text"]: "Text" });
@@ -1487,16 +1390,16 @@ function TaoView_Unselected_a6f315dbebd4(_Props) {
 }
 
 // tao-generated/source/cards/Other.ts
-function bindAliases8(_Scope, _Modules) {
+function bindAliases7(_Scope, _Modules) {
   AliasBinding(_Scope, "Text", () => _Modules["tao/ui/Views.ts"]["Text"]);
 }
-function bindDeclarations8(_Scope) {
-  LetDeclaration(_Scope, "Unselected", ViewDeclaration("Unselected", [], TaoView_Unselected_a6f315dbebd4, _Scope));
+function bindDeclarations7(_Scope) {
+  LetDeclaration(_Scope, "Unselected", ViewDeclaration("Unselected", [], TaoView_Unselected_2b13e746c6ed, _Scope));
 }
 
 // tao-generated/source/cards/Publication.ts
-function bindAliases9(_Scope, _Modules) {}
-function bindDeclarations9(_Scope) {}
+function bindAliases8(_Scope, _Modules) {}
+function bindDeclarations8(_Scope) {}
 
 // tao-generated/Library.ts
 var library = createLibrary(() => {
@@ -1508,17 +1411,15 @@ var library = createLibrary(() => {
   const _scope5 = Scope();
   const _scope6 = Scope();
   const _scope7 = Scope();
-  const _scope8 = Scope();
   const _Modules = {
     "source/Library.ts": _scope0,
-    "source/DisabledPreview.ts": _scope1,
-    "source/LanguageFeatures.ts": _scope2,
-    "source/ScopeExamples.ts": _scope3,
-    "source/ValueSnapshots.ts": _scope4,
-    "tao/ui/Views.ts": _scope5,
-    "source/cards/Card.ts": _scope6,
-    "source/cards/Other.ts": _scope7,
-    "source/cards/Publication.ts": _scope8
+    "source/LanguageFeatures.ts": _scope1,
+    "source/ScopeExamples.ts": _scope2,
+    "source/ValueSnapshots.ts": _scope3,
+    "tao/ui/Views.ts": _scope4,
+    "source/cards/Card.ts": _scope5,
+    "source/cards/Other.ts": _scope6,
+    "source/cards/Publication.ts": _scope7
   };
   bindAliases(_scope0, _Modules);
   bindAliases2(_scope1, _Modules);
@@ -1528,7 +1429,6 @@ var library = createLibrary(() => {
   bindAliases6(_scope5, _Modules);
   bindAliases7(_scope6, _Modules);
   bindAliases8(_scope7, _Modules);
-  bindAliases9(_scope8, _Modules);
   bindDeclarations(_scope0);
   bindDeclarations2(_scope1);
   bindDeclarations3(_scope2);
@@ -1537,17 +1437,15 @@ var library = createLibrary(() => {
   bindDeclarations6(_scope5);
   bindDeclarations7(_scope6);
   bindDeclarations8(_scope7);
-  bindDeclarations9(_scope8);
-  initializeFileCaption(_scope2);
-  initializeEscapedCaption(_scope2);
-  return { Greeting: _scope0["Greeting"], Panel: _scope0["Panel"], LanguageFeatures: _scope2["LanguageFeatures"], ValueSnapshots: _scope4["ValueSnapshots"], DisabledPreview: _scope1["DisabledPreview"], "Cards/Caption": _scope6["Caption"] };
+  initializeFileCaption(_scope1);
+  initializeEscapedCaption(_scope1);
+  return { Greeting: _scope0["Greeting"], Panel: _scope0["Panel"], LanguageFeatures: _scope1["LanguageFeatures"], ValueSnapshots: _scope3["ValueSnapshots"], "Cards/Caption": _scope5["Caption"] };
 });
 var Published0 = createViewComponent(library, "Greeting", ["First", "Second"]);
 var Published1 = createViewComponent(library, "Panel", []);
 var Published2 = createViewComponent(library, "LanguageFeatures", ["Name"]);
 var Published3 = createViewComponent(library, "ValueSnapshots", []);
-var Published4 = createViewComponent(library, "DisabledPreview", ["Locked"]);
-var Published5 = createViewComponent(library, "Cards/Caption", ["Value"]);
+var Published4 = createViewComponent(library, "Cards/Caption", ["Value"]);
 var Library_default = library;
 export {
   Published0,
@@ -1555,6 +1453,5 @@ export {
   Published2,
   Published3,
   Published4,
-  Published5,
   Library_default as default
 };

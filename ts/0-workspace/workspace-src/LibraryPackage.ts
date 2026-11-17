@@ -47,8 +47,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   await writeGeneratedSources(sources, library.files)
   const configuration = Path.join(sources, 'tsconfig.json')
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
-  const runtimeAPI = Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')
-  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration, runtimeAPI)
+  await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration)
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
     name: request.name,
     peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
@@ -99,8 +98,8 @@ function serializeLibraryBuildConfiguration(): string {
         '@runtime': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TR.ts')],
         '@runtime/client': [Repo.resolvePath('ts/7-runtime/runtime-src/client/Client.ts')],
         '@runtime/client/*': [Repo.resolvePath('ts/7-runtime/runtime-src/client/*')],
-        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@tao/runtime-api': [Repo.resolvePath('ts/7-runtime/runtime-src/client/TaoRuntimeAPI.ts')],
+        '@tao/ts-api': [Repo.resolvePath('ts/ts-api/ts-api-src/ts-api.ts')],
         '@shared': [Repo.resolvePath('ts/shared/shared-src/shared.ts')],
         '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
         'react': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react')],

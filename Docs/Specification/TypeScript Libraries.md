@@ -92,6 +92,6 @@ shutdown and development reload lifecycle details remain under design.
 
 #### Supported subset
 
-Published views currently support required `text` and `boolean` parameters as named string and boolean props, plus ordinary React children. Use a boolean prop in a [disabled condition](Actions%20and%20Results.md#disabled-interaction) to update a rendered subtree's disabled state without remounting it. Injections can render captured `@@children`. Private Tao views and the current standard web views run through the same compiler and runtime as app views. Unsupported published signatures and unresolved imports fail compilation.
+Published views currently support required `text` parameters as named string props and ordinary React children. Injections can render captured `@@children`. Private Tao views and the current standard web views run through the same compiler and runtime as app views. Unsupported published signatures and unresolved imports fail compilation.
 
 The initial target is Expo and React Native Web. Data, designs, actions, drafts, selector hooks and native acceptance remain future work.

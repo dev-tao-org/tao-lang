@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import { Errors } from '@shared'
 import * as Typecheck from '@typecheck'
 
-import { hasSupportedViewParameters } from '../ValuesCompiler'
+import { isTextParameter } from '../ValuesCompiler'
 
 /** PublishedView retains source ownership and the public package subpath of a Tao view. */
 export type PublishedView = { path: string; source: string; declaration: AST.ViewDeclaration }
@@ -89,8 +89,8 @@ function requirePublishedView(
   if (!declaration || declaration.visibility !== 'public') {
     Errors.ThrowUserInput(`Published definition ${name} must be an own-project public declaration.`)
   }
-  if (!AST.IsViewDeclaration(declaration) || !hasSupportedViewParameters(declaration)) {
-    Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text or boolean parameters.`)
+  if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
+    Errors.ThrowUserInput(`TypeScript library publication ${name} supports only views with text parameters.`)
   }
   return { path, source: owner.path, declaration }
 }

@@ -96,7 +96,7 @@ The review-build follow-up uses ordinary compilation to retain reviewable output
 
 ## Cross-library disabled inheritance
 
-Deferred to the accepted package/runtime layout slice: controls from independently compiled Tao libraries must inherit disabled interaction when composed beneath another library's disabled container. The current bundled libraries have separate React contexts; within-runtime inheritance is implemented, cross-library inheritance is not. See [the current behavior and limitation](../Specification/Actions%20and%20Results.md#disabled-interaction).
+When the layout and style bracket system adds [disabled interaction](../Specification/Actions%20and%20Results.md#disabled-interaction), controls from independently compiled Tao libraries must inherit interaction state from an enclosing Tao container. Coordinate that requirement with the package/runtime layout so both libraries use a shared interaction context.
 
-- [ ] Establish shared disabled-context identity as part of the package/runtime layout.
+- [ ] Establish shared interaction context across compiled libraries when implementing disabled interaction.
 - [ ] Prove it through an ordinary TypeScript consumer composing two independently compiled libraries: inherited disabling, a child unable to override it, re-enabling with state retained, and an enabled sibling remaining interactive.

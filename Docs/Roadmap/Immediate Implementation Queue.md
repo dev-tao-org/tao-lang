@@ -4,7 +4,7 @@ This queue records the developer-approved direction and immediate execution orde
 
 ## 1. Reconcile review and remove the disabled branch
 
-Status: authorized, delegated on `feat/disabled-rollback`.
+Status: Partial Review checkpoint `c133ec0c7` merged on `feat/disabled-rollback`. The rollback and its proof are in progress.
 
 1. Obtain a safe committed Partial Review checkpoint and coordinate affected-file ownership.
 2. Merge that checkpoint into the integration work, then remove the entire disabled feature branch, including its Boolean support and disabled-specific review corrections. Preserve unrelated subsequent fixes. Use forward commits, not history rewriting.

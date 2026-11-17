@@ -11,7 +11,7 @@
 | App                      | Status   | Scope                                                                                                                           | Verification                                                                                                                             |
 | ------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Language                 | Active   | Lexical scopes, parameters, private views, captures and immutable value snapshots; future functions and conditional composition | `Scopes.test.tao`, `PrivateViews.test.tao`, `ImmutableValues.test.tao`; workspace refresh integration reuses its private-view components |
-| UI Interactions          | Active   | Editable and disabled controls, actions, local state and instance lifecycle; future forms and stateful lists                    | `Forms.test.tao`, `Disabled Controls.test.tao`                                                                                           |
+| UI Interactions          | Active   | Editable controls, actions, local state and instance lifecycle; future forms and stateful lists                                 | `Forms.test.tao`                                                                                                                         |
 | Modules and Dependencies | Active   | Imports, visibility, folder/package boundaries and dependency ownership; future external TypeScript interop                     | `Imports.test.tao`; module-loader package tests                                                                                          |
 | Data and Queries         | Reserved | Queries, relations, writes, reactive results and detached drafts with controlled datasource setup                               | Add a journey lane and isolated datasource lifecycle when implemented                                                                    |
 | Navigation and Scenes    | Reserved | Presentation, history, dismissal, scene arguments and navigation-owned state                                                    | Add journeys when implemented                                                                                                            |
@@ -23,7 +23,7 @@ includes all active correctness apps.
 ## Current files
 
 - **Language**: `Language/Language.tao` composes `Scopes.tao`, `PrivateViews.tao` and `ImmutableValues.tao`; each feature has a matching `.test.tao` journey. Nested declarations stay inside their owning feature file.
-- **UI Interactions**: `UI Interactions/UI Interactions.tao` composes `Forms.tao` and `Disabled Controls.tao`; their matching journey files cover editing, pressing, fresh state and disabled inheritance.
+- **UI Interactions**: `UI Interactions/UI Interactions.tao` selects the form in `Forms.tao`; `Forms.test.tao` covers control interaction and fresh state for each case.
 - **Modules and Dependencies**: `Modules and Dependencies/Modules and Dependencies.tao` selects `Imports.tao`; `Imports.test.tao` covers the visible result. `Nearby.tao`, `Public/Caption.tao`, `@cards/Card.tao`, `@cards/Captions.tao` and `@cards/Data/Caption.tao` intentionally exercise sibling, wildcard and package boundaries.
 
 ## Performance

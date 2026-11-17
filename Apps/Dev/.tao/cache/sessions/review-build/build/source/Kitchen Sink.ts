@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./Kitchen Sink.views";
-import { SidecarGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/1cb35dede85026fa667423a0b94c8d9415b520699805bfc610e639670738fcb6/modules/e493e7fda938e120/Kitchen Sink/SidecarGreeting.tsx";
+import { SidecarGreeting as _taoForeignView0 } from "/private/tmp/tao-disabled-rollback/Apps/Dev/.tao/cache/sessions/review-build/foreign-views/d6eaf16e518cd872b44dcd0b5417d6c745704da102ccee7cab56392dc73bade5/modules/b819cc30b36309ec/Kitchen Sink/SidecarGreeting.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./Modules";
 import type { Scope as ImportedScope2 } from "./Library/Demo";
@@ -63,11 +63,11 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 
 export function bindDeclarations(_Scope: Scope): void {
   TR.AliasBinding(_Scope, "KitchenSink", () => _Scope["RootView"]);
-  TR.LetDeclaration(_Scope, "RootView", TR.ViewDeclaration("RootView", [], _Views.TaoView_RootView_7fc23c8183d4, _Scope));
-  TR.LetDeclaration(_Scope, "Pair", TR.ViewDeclaration("Pair", ["First", "Second"], _Views.TaoView_Pair_7fc23c8183d4, _Scope));
-  TR.LetDeclaration(_Scope, "Panel", TR.ViewDeclaration("Panel", ["Title"], _Views.TaoView_Panel_7fc23c8183d4, _Scope));
-  TR.LetDeclaration(_Scope, "Heading", TR.ViewDeclaration("Heading", [], _Views.TaoView_Heading_7fc23c8183d4, _Scope));
-  TR.LetDeclaration(_Scope, "SaveButton", TR.ViewDeclaration("SaveButton", [], _Views.TaoView_SaveButton_7fc23c8183d4, _Scope));
+  TR.LetDeclaration(_Scope, "RootView", TR.ViewDeclaration("RootView", [], _Views.TaoView_RootView_22d843d92464, _Scope));
+  TR.LetDeclaration(_Scope, "Pair", TR.ViewDeclaration("Pair", ["First", "Second"], _Views.TaoView_Pair_22d843d92464, _Scope));
+  TR.LetDeclaration(_Scope, "Panel", TR.ViewDeclaration("Panel", ["Title"], _Views.TaoView_Panel_22d843d92464, _Scope));
+  TR.LetDeclaration(_Scope, "Heading", TR.ViewDeclaration("Heading", [], _Views.TaoView_Heading_22d843d92464, _Scope));
+  TR.LetDeclaration(_Scope, "SaveButton", TR.ViewDeclaration("SaveButton", [], _Views.TaoView_SaveButton_22d843d92464, _Scope));
   TR.LetDeclaration(_Scope, "SidecarGreeting", TR.ForeignView("SidecarGreeting", ["Value"], _taoForeignView0, _Scope));
 }
 
