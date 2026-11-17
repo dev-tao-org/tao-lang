@@ -1,6 +1,7 @@
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { isExcludedSource } from './source-size'
 
 /** conformanceSources lists current implementation and agent-script sources for checking and fixing. */
 export async function conformanceSources(root: string): Promise<string[]> {
@@ -15,6 +16,21 @@ export function createConformanceProgram(root: string, files: string[]): TypeScr
   const configPath = Path.join(root, 'ts/tsconfig.base.json')
   const options = FS.existsSync(configPath) ? compilerOptions(configPath) : { strict: true, noEmit: true }
   return TypeScript.createProgram(files, options)
+}
+
+/** getEditableConformanceSources selects authored declarations eligible for ordering changes. */
+export function getEditableConformanceSources(
+  program: TypeScript.Program,
+  filenames: readonly string[],
+): ReadonlySet<TypeScript.SourceFile> {
+  const sources = new Set<TypeScript.SourceFile>()
+  for (const filename of filenames) {
+    const file = program.getSourceFile(filename)
+    if (file && !file.isDeclarationFile && !isExcludedSource(file.fileName, file.text)) {
+      sources.add(file)
+    }
+  }
+  return sources
 }
 
 function compilerOptions(configPath: string): TypeScript.CompilerOptions {

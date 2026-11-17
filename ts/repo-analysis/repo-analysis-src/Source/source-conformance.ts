@@ -19,7 +19,7 @@ import * as ConformanceNaming from './source-conformance-naming'
 import { objectCopyIssue, objectLiteralKeysIssue } from './source-conformance-object-keys'
 import { optionalAccessIssue } from './source-conformance-optional'
 import { predicateOperatorIssue } from './source-conformance-predicates'
-import { conformanceSources, createConformanceProgram } from './source-conformance-program'
+import * as ConformanceProgram from './source-conformance-program'
 import { concreteReturnTypeIssue, ownLineNullishIssue } from './source-conformance-result-contracts'
 import { complexSignatureTypeIssue } from './source-conformance-signatures'
 import { analyzeSignatureTypeOrder } from './source-conformance-type-order'
@@ -35,13 +35,14 @@ export type SourceConformanceResult = {
 /** analyzeSourceConformance checks new TypeScript syntax and type-aware source rules without running tests. */
 export async function analyzeSourceConformance(root: string): Promise<SourceConformanceResult> {
   const findings: SourceDiagnostic[] = []
-  const sources = await conformanceSources(root)
+  const sources = await ConformanceProgram.conformanceSources(root)
   const bridgeContext = createSourceBridgeContext(root)
-  const program = createConformanceProgram(root, sources)
+  const program = ConformanceProgram.createConformanceProgram(root, sources)
   const checker = program.getTypeChecker()
   const facadeContext = Facades.createSourceFacadeContext(root, sources, program.getCompilerOptions())
-  const constantOrder = analyzeConstantOrder(program)
-  const typeOrder = analyzeSignatureTypeOrder(program)
+  const editableSources = ConformanceProgram.getEditableConformanceSources(program, sources)
+  const constantOrder = analyzeConstantOrder(program, editableSources)
+  const typeOrder = analyzeSignatureTypeOrder(program, editableSources)
   for (const filename of sources) {
     const relative = Path.relative(root, filename).replaceAll('\\', '/')
     const file = program.getSourceFile(filename) ?? Errors.ThrowShouldNeverHappen(`Missing checked source: ${filename}`)

@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '../../universal/universal'
+import { Errors, Objects, Time, Try } from '../../universal/universal'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as Process from '../Process'
 
@@ -53,5 +53,5 @@ function errorCode(error: unknown): unknown {
 }
 
 function isErrorWithCode(error: unknown): error is { code: unknown } {
-  return typeof error === 'object' && error !== null && 'code' in error
+  return Objects.isObject(error) && 'code' in error
 }

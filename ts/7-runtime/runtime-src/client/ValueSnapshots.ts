@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Objects } from '@shared'
 
 /** ValueCapability identifies an expression or observation registered by the reactive runtime. */
 export type ValueCapability = ValueCapabilityIdentity
@@ -70,7 +70,7 @@ const ownedSnapshots = new WeakSet<object>()
 const valueCapabilities = new WeakSet<object>()
 
 function snapshotValue(value: unknown): unknown {
-  if (!isObject(value)) {
+  if (!Objects.isObject(value)) {
     return value
   }
   const prototype = findCollectionPrototype(value)
@@ -78,10 +78,6 @@ function snapshotValue(value: unknown): unknown {
     return value
   }
   return copyCollection(value, prototype)
-}
-
-function isObject(value: unknown): value is object {
-  return typeof value === 'object' && value !== null
 }
 
 function findCollectionPrototype(value: object): CollectionPrototype | undefined {
@@ -127,7 +123,7 @@ function copyCollection(source: object, prototype: CollectionPrototype): object 
 }
 
 function copyFieldValue(value: unknown, traversal: SnapshotCopy): unknown {
-  if (!isObject(value)) {
+  if (!Objects.isObject(value)) {
     return value
   }
   const prototype = findCollectionPrototype(value)
@@ -203,7 +199,7 @@ function compareSnapshotValues(left: unknown, right: unknown): boolean {
 }
 
 function isOwnedSnapshot(value: unknown): value is object {
-  return isObject(value) && ownedSnapshots.has(value)
+  return Objects.isObject(value) && ownedSnapshots.has(value)
 }
 
 function rememberMatchedPair(frame: CollectionComparison, pairs: MatchedCollectionPairs): void {

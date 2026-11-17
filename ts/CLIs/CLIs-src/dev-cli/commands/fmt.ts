@@ -11,11 +11,11 @@ export default registerCommand({
   description: 'Format repository files, optionally only named files or dprint globs.',
   arguments: [{ name: 'paths', description: 'Repository-relative files or dprint globs.', variadic: true }],
   async action(paths: string[]) {
+    await Check.assertNewWorkspaceTree()
     if (paths.length === 0) {
       await Check.workspaceFormat('fmt')
       return
     }
-    await Check.assertNewWorkspaceTree()
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
       Repo.assertNewWorkspacePath(absolute)
@@ -32,7 +32,7 @@ export default registerCommand({
       } else {
         await CLIKit.runNonInteractiveCommand(
           'dprint',
-          ['fmt', '--config', '.dprint.jsonc', '--incremental=false', '--excludes', '.x-tao-old-v1/**', '--', path],
+          ['fmt', '--config', '.dprint.jsonc', '--incremental=false', '--', path],
           { cwd: Repo.getWorkspaceRoot() },
         )
       }

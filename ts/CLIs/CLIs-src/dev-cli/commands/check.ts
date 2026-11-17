@@ -11,6 +11,7 @@ export default registerCommand({
     // App/IDE/runtime checks await their new implementations.
     await CLIKit.runSteps(
       () => doctor.action([]),
+      () => Check.assertNewWorkspaceTree(),
       () => Check.workspaceTypes(),
       () => Check.workspaceShellSyntax(),
       () => Check.workspaceDeadExports(),

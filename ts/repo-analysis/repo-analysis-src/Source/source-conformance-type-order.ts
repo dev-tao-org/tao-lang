@@ -1,15 +1,17 @@
 import { CarriageReturnCharacter, NewlineCharacter } from '@shared'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
-import { isExcludedSource } from './source-size'
 
 export { analyzeSignatureTypeOrder, containsNode, movableStart }
 
 type SignatureTypeOrder = Map<TypeScript.SourceFile, TypeScript.TextChange[]>
 
 /** analyzeSignatureTypeOrder locates single-consumer signature types declared after their functions. */
-function analyzeSignatureTypeOrder(program: TypeScript.Program): SignatureTypeOrder {
+function analyzeSignatureTypeOrder(
+  program: TypeScript.Program,
+  editableSources: ReadonlySet<TypeScript.SourceFile>,
+): SignatureTypeOrder {
   const checker = program.getTypeChecker()
-  const candidates = collectCandidates(program, checker)
+  const candidates = collectCandidates(editableSources, checker)
   const names = new Set([...candidates.keys()].map(symbol => symbol.name))
   for (const file of program.getSourceFiles()) {
     if (!program.isSourceFileDefaultLibrary(file)) {
@@ -32,13 +34,12 @@ type FileTypeInsertions = Map<TypeScript.SourceFile, Map<number, TypeScript.Text
 type FunctionBodyNode = TypeScript.Node | undefined
 type FunctionBodyOwner = TypeScript.SignatureDeclaration & { body: FunctionBodyNode }
 
-function collectCandidates(program: TypeScript.Program, checker: TypeScript.TypeChecker): SignatureCandidates {
+function collectCandidates(
+  editableSources: ReadonlySet<TypeScript.SourceFile>,
+  checker: TypeScript.TypeChecker,
+): SignatureCandidates {
   const candidates: SignatureCandidates = new Map()
-  for (const file of program.getSourceFiles()) {
-    const legacy = file.fileName.includes('/.x-tao-old-v1/')
-    if (file.isDeclarationFile || legacy || isExcludedSource(file.fileName, file.text)) {
-      continue
-    }
+  for (const file of editableSources) {
     for (const declaration of file.statements) {
       if (!TypeScript.isTypeAliasDeclaration(declaration) && !TypeScript.isInterfaceDeclaration(declaration)) {
         continue

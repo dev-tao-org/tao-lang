@@ -12,16 +12,17 @@ description: >-
 
 ## Guide the review
 
-- Propose all groups in order with [recommended auto-approvals](references/operations.md#recommend-auto-approval).
-  A request to start or continue review authorizes presenting the first or next groups. Ask before
-  presenting files when the Developer asks for a proposal only or the review order needs a decision.
-  Group interdependent changes by feature and keep groups small enough to review together.
-  Normally separate Projects, Dependencies and Sidecars.
-- Organize large reviews into functional feature sets containing review groups. Include each
-  specification with its first related implementation group; keep design-only specifications with
-  related planning. Give each feature set and group a brief cognitive overview of its contribution.
-  For language changes, follow the feature-set overview with minimal Tao usage snippets, preferably
-  single-line with unrelated parts replaced by `...`; label design-only syntax explicitly.
+- Apply the [standing auto-approval policy](references/operations.md#auto-approval) before
+  proposing the remaining groups. List what was auto-approved and why.
+  Requests to start or continue authorize the first or next display. Ask when the Developer
+  wants a proposal only or the order needs a decision. Keep related changes in small feature
+  groups. Normally separate Projects, Dependencies and Sidecars.
+- Review authored changes to in-repo Tao apps and their journeys first so concrete usage and
+  behavior guide the rest of the review.
+- For large reviews, organize groups into feature sets. Place specifications with their first
+  related implementation group and design-only specifications with planning. Summarize each set
+  and group. Show minimal Tao usage for language changes, preferably one line with `...` for
+  unrelated details. Label design-only syntax.
 - Count remaining changed files and Git diff hunks against the reviewed branch, including saved
   pending edits. A diff means one `@@` hunk using normal three-line context. Count only the hunks
   assigned to that group; account for shared files explicitly without counting the same hunk twice.
@@ -31,7 +32,7 @@ description: >-
 - At review start, freeze the original change inventory, baseline and source snapshot in the session
   notes. Record its file/hunk totals and review units: one per original diff hunk, plus one per binary
   or zero-hunk change. Keep this denominator fixed throughout the review.
-- Track completed original units from approvals, including automatic test acceptance below. Map
+- Track completed original units from approvals, including auto-approvals. Map
   renames, splits and replacements to original changes without double counting. Partial approvals earn only
   the corresponding original units. Added fixes, tests and refactors are additional completed work,
   not additional review units; they must not enlarge the denominator or reduce earned progress.
@@ -39,7 +40,7 @@ description: >-
   as completed original units divided by frozen original units. Retain earned credit when corrections
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
-  units across interruptions; never recalculate progress from the growing current diff.
+  units across interruptions. Keep queued snapshots out of the active progress total.
 - Use absolute file links without default line anchors. Label each file with its owning package,
   app, or repository scope. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
@@ -77,15 +78,13 @@ description: >-
   Check each human acceptance for an associated lesson, but approval alone is not a general rule.
   Propagated edits remain pending until the developer reviews them, and this workflow does not
   authorize an unrelated review.
-- End messages with `subagent <name> ready to be merged` until work is merged or the Developer
-  postpones it. Keep postponed work tracked and remind the Developer about every three groups,
-  sooner if it affects the current group.
-- Merge subagent work only when the reviewing developer explicitly says they are ready for that
-  integration; completion and passing checks do not authorize merging.
+- During an active review, pin and [queue incoming work](references/operations.md#integrate-incoming-work).
+  Ask before importing the next snapshot at completion. Import during the review only when the
+  Developer explicitly asks to bypass the queue.
 - Commit validated requested corrections, including subagent work, in coherent chunks under this
   workflow's standing developer authorization; preserve unrelated edits and index selections.
-  Keep corrections pending human acceptance on the approved-content branch; commits, staging and
-  tests never grant it. Verify proportionately: focused checks may cover checkpoints, with full
+  Apply the same acceptance policy to corrections. Commits, staging and tests do not grant
+  acceptance. Verify proportionately: focused checks may cover checkpoints, with full
   verification before readiness to land. Omit detailed test ledgers and application reruns for
   acceptance-only transfers.
 
@@ -145,8 +144,6 @@ List remaining group titles before the current groups and omit unused headings.
 - For a worktree move on the same baseline, use `continue` and retain the frozen progress
   denominator. After landing, keep the chat and follow
   [Continue after a landing](references/operations.md#continue-after-a-landing).
-- To merge an authorized incoming branch, follow
-  [Integrate incoming work](references/operations.md#integrate-incoming-work).
 - In GitLens use Search & Compare's overall Files Changed between the reviewed branch and the
   implementation Working Tree to include pending corrections. Use direct tree comparisons, not
   merge-base/Ahead/Behind comparisons. Refresh after acceptance. Staging alone does not shrink

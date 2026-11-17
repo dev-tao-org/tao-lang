@@ -10,7 +10,9 @@ import { prepareRuntime } from './runtime-build'
 
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
 export async function assertNewWorkspaceTree(): Promise<void> {
-  const workspace = FS.realpathSync(Repo.resolvePath('ts'))
+  const workspacePath = Repo.resolvePath('ts')
+  Repo.assertNewWorkspacePath(workspacePath)
+  const workspace = FS.realpathSync(workspacePath)
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await FS.readdir(directory, { withFileTypes: true })) {
       if (entry.name === 'node_modules' || entry.name.startsWith('_gen_')) {
@@ -19,8 +21,7 @@ export async function assertNewWorkspaceTree(): Promise<void> {
       const path = `${directory}/${entry.name}`
       if (entry.isSymbolicLink()) {
         const target = FS.realpathSync(path)
-        Repo.assertNewWorkspacePath(target)
-        if (!isWithinDirectory(target, workspace)) {
+        if (!Path.isWithin(workspace, target)) {
           Errors.ThrowUserInput(`Workspace source links must remain inside ts/: ${path}`)
         }
       } else if (entry.isDirectory()) {
@@ -35,7 +36,6 @@ export async function assertNewWorkspaceTree(): Promise<void> {
 
 /** workspaceTypes checks only the new TypeScript workspace. */
 export async function workspaceTypes(): Promise<void> {
-  await assertNewWorkspaceTree()
   await checkEditorTypeScript()
   const RepoAnalysis = await import('@repo-analysis')
   RepoAnalysis.assertPackageApis()
@@ -76,7 +76,6 @@ export async function workspaceShellSyntax(): Promise<void> {
 
 /** workspaceConformance checks API documentation, source syntax and type-aware style rules. */
 export async function workspaceConformance(): Promise<void> {
-  await assertNewWorkspaceTree()
   // Formatting and test execution also import this module; load the compiler only for source checks.
   const RepoAnalysis = await import('@repo-analysis')
   const started = Time.nowMs()
@@ -94,7 +93,6 @@ export async function workspaceConformance(): Promise<void> {
 
 /** workspaceDeadExports rejects unreferenced exports in the new TypeScript implementation. */
 export async function workspaceDeadExports(): Promise<void> {
-  await assertNewWorkspaceTree()
   // Tao bindings, generated native siblings and declaration facades await their new implementations.
   await CLIKit.runNonInteractiveCommand('knip', '--config repo-analysis/scripts/knip.ts --no-progress', {
     cwd: Repo.resolvePath('ts'),
@@ -130,7 +128,7 @@ export async function workspaceTests(
 type FormatMode = 'fmt' | 'check'
 /** workspaceFormat formats or checks the new workspace and shared repository files. */
 export async function workspaceFormat(mode: FormatMode, excludedPaths: readonly string[] = []): Promise<void> {
-  await assertNewWorkspaceTree()
+  const excludes = excludedPaths.length > 0 ? ['--excludes', ...excludedPaths] : []
   await CLIKit.runNonInteractiveCommand(
     'dprint',
     [
@@ -139,9 +137,7 @@ export async function workspaceFormat(mode: FormatMode, excludedPaths: readonly 
       '.dprint.jsonc',
       '--incremental=false',
       '**/*',
-      '--excludes',
-      '.x-tao-old-v1/**',
-      ...excludedPaths,
+      ...excludes,
     ],
     { cwd: Repo.getWorkspaceRoot() },
   )

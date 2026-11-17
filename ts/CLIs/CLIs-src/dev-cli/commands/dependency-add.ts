@@ -38,6 +38,5 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   if (!manifest) {
     Errors.ThrowUserInput(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
   }
-  Repo.assertNewWorkspacePath(manifest, workspace)
-  return directory
+  return Path.dirname(manifest)
 }

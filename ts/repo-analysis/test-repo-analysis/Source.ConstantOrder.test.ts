@@ -1,17 +1,17 @@
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
+import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
 import { analyzeConstantOrder } from '../repo-analysis-src/Source/source-conformance-constant-order'
 import { fixSourceConformance } from '../repo-analysis-src/Source/source-conformance-fix'
-import { createConformanceProgram } from '../repo-analysis-src/Source/source-conformance-program'
+import * as ConformanceProgram from '../repo-analysis-src/Source/source-conformance-program'
 
 Tests.test('source constant order > moves inert single-consumer constants before module owners', async () => {
   await withSource(verifySource)
 })
 
 async function verifySource(root: string, path: string): Promise<void> {
-  const program = createConformanceProgram(root, [path])
-  const changes = analyzeConstantOrder(program)
+  const changes = readConstantOrder(root, path)
   Tests.expect([...changes.values()].flat().filter(change => change.newText === '').length).toBe(8)
   const movedDeclarations = [...changes].flatMap(([file, edits]) =>
     edits.filter(change => change.newText === '')
@@ -38,7 +38,14 @@ async function verifyFixedSource(root: string, path: string, fixed: string): Pro
   expectFixedOrdering(fixed)
   await fixSourceConformance(root)
   Tests.expect(await FS.readFile(path, 'utf8')).toBe(fixed)
-  Tests.expect(analyzeConstantOrder(createConformanceProgram(root, [path])).size).toBe(0)
+  Tests.expect(readConstantOrder(root, path).size).toBe(0)
+}
+
+function readConstantOrder(root: string, path: string): Map<TypeScript.SourceFile, TypeScript.TextChange[]> {
+  const paths = [path]
+  const program = ConformanceProgram.createConformanceProgram(root, paths)
+  const editableSources = ConformanceProgram.getEditableConformanceSources(program, paths)
+  return analyzeConstantOrder(program, editableSources)
 }
 
 function expectFixedOrdering(fixed: string): void {

@@ -107,6 +107,8 @@ function serializeLibraryBuildConfiguration(): string {
       moduleResolution: 'Bundler',
       strict: true,
       noEmit: true,
+      noUnusedLocals: false,
+      noUnusedParameters: false,
       skipLibCheck: true,
       allowImportingTsExtensions: true,
       esModuleInterop: true,
@@ -121,6 +123,7 @@ function serializeLibraryBuildConfiguration(): string {
         '@shared/os/preview': [Repo.resolvePath('ts/shared/shared-src/os/preview/PreviewPlatform.ts')],
         'react': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react')],
         'react/*': [Repo.resolvePath('ts/7-runtime/node_modules/@types/react/*')],
+        'react-native': [Repo.resolvePath('ts/7-runtime/node_modules/react-native')],
       },
     },
   })

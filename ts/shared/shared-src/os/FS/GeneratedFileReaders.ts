@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '../../universal/universal'
+import { Errors, Objects, Regxs } from '../../universal/universal'
 import { sep } from '../bridges/Bridge_node/Bridge_node'
 import type { FileOperations, GeneratedReaderOptions, GeneratedSnapshot } from './GeneratedFileSystem'
 
@@ -185,7 +185,7 @@ function readStreamConfiguration(options: GeneratedReaderOptions, path: unknown,
 }
 
 function hasStreamDescriptor(configuration: unknown): boolean {
-  return typeof configuration === 'object' && configuration !== null && 'fd' in configuration
+  return Objects.isObject(configuration) && 'fd' in configuration
 }
 
 function isOriginalStreamInstance(value: unknown, original: FileOperations[string]): boolean {

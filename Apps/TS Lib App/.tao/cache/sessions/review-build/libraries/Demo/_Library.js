@@ -6,6 +6,11 @@ var Bridge_react_default = React;
 var NewlineCharacter = `
 `;
 var NewlineCharacterCode = NewlineCharacter.charCodeAt(0);
+// shared/shared-src/universal/ObjectGuards.ts
+function isObject(value) {
+  return typeof value === "object" && value !== null;
+}
+
 // shared/shared-src/universal/Errors/Base.ts
 class BaseTaoError extends Error {
   details;
@@ -21,7 +26,7 @@ class BaseTaoError extends Error {
   }
 }
 function isTaoError(error) {
-  return typeof error === "object" && error !== null && taoErrors.has(error);
+  return isObject(error) && taoErrors.has(error);
 }
 var taoErrors = new WeakSet;
 // shared/shared-src/universal/TryCatch.ts
@@ -461,7 +466,7 @@ function requireView(value) {
   return value;
 }
 function isView(value) {
-  return typeof value === "object" && value !== null && viewMarker in value;
+  return isObject(value) && viewMarker in value;
 }
 function observe(observer, phase, startedAt) {
   if (!observer || startedAt === undefined) {
@@ -599,9 +604,6 @@ function snapshotValue(value) {
     return value;
   }
   return copyCollection(value, prototype);
-}
-function isObject(value) {
-  return typeof value === "object" && value !== null;
 }
 function findCollectionPrototype(value) {
   if (ownedSnapshots.has(value) || valueCapabilities.has(value)) {
@@ -752,8 +754,7 @@ function haveMatchingCollectionShape(left, right) {
 // 7-runtime/runtime-src/client/ReactiveValues.ts
 function encodeReactiveValue(value, previous) {
   if (typeof value !== "number") {
-    const isObject = typeof value === "object" && value !== null;
-    return isObject && areValueSnapshotsEqual(value, previous) ? previous : value;
+    return isObject(value) && areValueSnapshotsEqual(value, previous) ? previous : value;
   }
   if (Object.is(value, -0)) {
     return NegativeZero;

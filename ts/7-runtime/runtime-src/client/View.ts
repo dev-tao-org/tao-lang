@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, Objects } from '@shared'
 import React from './Bridge_react/Bridge_react'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
@@ -146,7 +146,7 @@ function requireView(value: unknown): View {
 }
 
 function isView(value: unknown): value is View {
-  return typeof value === 'object' && value !== null && viewMarker in value
+  return Objects.isObject(value) && viewMarker in value
 }
 
 type OptionalRenderStartTime = number | undefined
