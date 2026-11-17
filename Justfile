@@ -150,11 +150,11 @@ check *ARGS:
 package-graph:
     ./dev package-graph
 
-# Format, check and test the new TypeScript workspace
+# Format, check and test the workspace and web journeys locally
 [group('Dev')]
 [positional-arguments]
 verify *ARGS:
-    ./dev verify "$@"
+    ./dev verify --web-only "$@"
 
 # Dev branch management
 #######################
