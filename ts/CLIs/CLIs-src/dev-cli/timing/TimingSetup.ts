@@ -45,7 +45,7 @@ export async function setupTiming(options: TimingSetup): Promise<void> {
   }
   if (!io.interactive) {
     Errors.ThrowUserInput(
-      `Run just timing-setup-${options.role} in Terminal for administrator authorization and login.`,
+      `Run just timing-setup ${options.role} in Terminal for administrator authorization and login.`,
     )
   }
   await retainPackage(io, packageDirectory)
@@ -101,6 +101,6 @@ function printRoleInstructions(role: TimingSetup['role'], print: TimingSetupIO['
     print('Enable System Settings → General → Sharing → Remote Login for your existing macOS user.')
     print('Keep the runner awake on AC power. Use the actual private DNS name shown by netbird status.')
   } else {
-    print('Next: just timing-connect ro@tao-timing.netbird.cloud (replace with the runner’s actual DNS name).')
+    print('Next: ./dev timing-connect ro@tao-timing.netbird.cloud (replace with the runner’s actual DNS name).')
   }
 }

@@ -43,8 +43,8 @@ the runner refuses dirty implementation inputs. No dependency/tool versions are 
 
 ## Existing SSH infrastructure
 
-For local Wi-Fi, initialize storage with `just timing-home` on both Macs and use the runner's
-existing Remote Login account. `just timing-connect HOST` authenticates a reusable socket under
+For local Wi-Fi, initialize storage with `./dev timing-home` on both Macs and use the runner's
+existing Remote Login account. `./dev timing-connect HOST` authenticates a reusable socket under
 `~/.tao-dev/ssh`; its path can be supplied to `ssh --control-path` below. Optional private networking
 is described in the [remote workflow](../../../../Docs/Dev%20Env/Performance/Remote%20timing%20workflow.md).
 Network installation does not itself establish an authenticated SSH connection.

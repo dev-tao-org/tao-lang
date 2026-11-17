@@ -12,7 +12,7 @@ Use these commands from the repository root after `./agent unsandboxed setup`:
 | `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.          |
 | `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                       |
 | `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.           |
-| `just timing` or `just performance`       | Preview measurement on the configured timing runner. Pass `--local` for a diagnostic on this machine.          |
+| `just timing`                             | Preview measurement on the configured timing runner. Pass `--local` for a diagnostic on this machine.          |
 
 Official speed tests run on the dedicated speed-testing machine in an isolated checkout under its
 shared timing lock. Configure the shortcut with `TAO_TIMING_HOST` and `TAO_TIMING_CHECKOUT`, or
