@@ -17,11 +17,14 @@ export type NativeWebDriver = {
 type NativeCapabilityValue = string | boolean | number
 type NativeCapabilities = Record<string, NativeCapabilityValue>
 const StartupMs = 240_000
+const IosSessionMs = 300_000
 const CommandMs = 20_000
 const IosAppLaunchMs = 90_000
 /** openNativeWebDriver creates a session using the requested device capabilities. */
 export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabilities): Promise<NativeWebDriver> {
-  const result = await requestAppium(url + '/session', 'POST', { capabilities: { alwaysMatch } }, StartupMs)
+  const ios = alwaysMatch.platformName === 'iOS'
+  const startupMs = ios ? IosSessionMs : StartupMs
+  const result = await requestAppium(url + '/session', 'POST', { capabilities: { alwaysMatch } }, startupMs)
   const { sessionId } = SessionSchema.parse(result)
   const sessionUrl = url + '/session/' + sessionId
   const command = (
@@ -34,7 +37,7 @@ export async function openNativeWebDriver(url: string, alwaysMatch: NativeCapabi
   return {
     execute(script, ...args) {
       // An iOS deep link can cold-launch Expo Go before returning from the command.
-      const timeoutMs = script === 'mobile: deepLink' && alwaysMatch.platformName === 'iOS' ? IosAppLaunchMs : CommandMs
+      const timeoutMs = script === 'mobile: deepLink' && ios ? IosAppLaunchMs : CommandMs
       return command('/execute/sync', 'POST', { script, args }, false, timeoutMs)
     },
     async find(xpath) {
@@ -97,7 +100,11 @@ async function requestAppium(
   tolerateStale = false,
 ): Promise<unknown> {
   const controller = Cancellation.createController()
-  const stop = Time.schedule(timeoutMs, () => controller.abort())
+  const stop = Time.schedule(timeoutMs, () => {
+    controller.abort(
+      Errors.createHostEnvironmentError(`Appium ${method} ${url} exceeded its ${timeoutMs} ms deadline.`),
+    )
+  })
   return await requestAppiumBeforeTimeout(url, method, body, controller.signal, tolerateStale).finally(stop)
 }
 
