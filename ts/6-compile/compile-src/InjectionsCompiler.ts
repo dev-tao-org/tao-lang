@@ -28,11 +28,19 @@ function compileCapture(
       const value = RuntimeEmitter.emitName(name, scope) + (text ? ' as string' : '')
       return RuntimeEmitter.InjectionCapture(node, text ? 'text' : 'unknown', value)
     },
-    ContextReference: reference =>
-      reference.value === 'children'
-        ? RuntimeEmitter.InjectionCapture(node, 'children', `${names.render}.children`)
-        : Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`),
+    ContextReference: reference => compileContextCapture(node, reference, names),
   })
+}
+
+function compileContextCapture(
+  node: AST.Capture,
+  reference: AST.ContextReference,
+  names: RuntimeEmitter.ComponentNames,
+): RuntimeEmitter.InjectionCapture {
+  if (reference.value === 'children' || reference.value === 'press') {
+    return RuntimeEmitter.InjectionCapture(node, reference.value, `${names.render}.${reference.value}`)
+  }
+  return Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`)
 }
 
 function assertCaptureName(name: string): void {

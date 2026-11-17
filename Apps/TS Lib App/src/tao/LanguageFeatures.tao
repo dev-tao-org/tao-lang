@@ -29,12 +29,35 @@ view LanguageFeatures(Name text) {
     #libraryInput
     Input("Library input")
     Text(EscapedCaption)
+    #state-first
+    StateEditor(Name)
+    #state-second
+    StateEditor("Second initial state")
   }
 
   view CapturedCaption(Value text) {
     render inject Caption Value ```ts
       return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
     ```
+  }
+
+  view StateEditor(Initial text) {
+    state Status = Initial
+    action Save() {
+      set Status = "Saved state"
+    }
+    action Reset() {
+      set Status = Initial
+    }
+    render Col {
+      Text(Status)
+      Button("Save state") {
+        on press Save
+      }
+      Button("Read current input") {
+        on press -> do Reset()
+      }
+    }
   }
 }
 

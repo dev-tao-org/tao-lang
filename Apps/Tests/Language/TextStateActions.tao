@@ -1,0 +1,45 @@
+use tao@ui Col, Text
+use tao@ui Button as Control
+
+folder
+view TextStateActions {
+  render Editor("Original message")
+}
+
+view Editor(Initial text) {
+  state Message = Initial
+  state Status is text = Initial
+  let Caption = Message
+
+  action Rename() {
+    do SetMessage("Renamed")
+    set Status = Caption
+  }
+
+  action SetMessage(Value text) {
+    set Message = Value
+  }
+
+  action Reset() {
+    set Message = Initial
+    set Status = Caption
+  }
+
+  render Col {
+    Text(Status)
+    Controls
+  }
+
+  view Controls {
+    render Col {
+      #rename-editor
+      Control("Rename") {
+        on press Rename
+      }
+      #reset-editor
+      Control("Reset") {
+        on press -> do Reset()
+      }
+    }
+  }
+}

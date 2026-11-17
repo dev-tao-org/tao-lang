@@ -70,7 +70,9 @@ The runtime and its authored TypeScript expression API enforce synchronous, read
 
 ## 6. Actions, control flow and collections
 
-Implement local state and updates, scoped actions and event bindings, render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton only after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
+The first slice implements view-local text state, `set`, synchronous scoped actions with text arguments, explicit `do`, and the standard Button’s named and anonymous `on press` bindings. See [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md) and [Actions and Results](../Specification/Actions%20and%20Results.md).
+
+Later slices cover render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
 
 Implement writable field projections and mapped writable inputs with the state/record/input slices, retaining one authoritative storage owner. Use the previous writable-lens behavior as reference, not its compatibility wrappers. Define transaction overlays and rollback in the owning mutation/action slice; synchronous reactive batching alone does not provide rollback or authorize making every UI action transactional.
 

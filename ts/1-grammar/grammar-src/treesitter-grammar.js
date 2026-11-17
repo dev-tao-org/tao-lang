@@ -24,6 +24,11 @@ const StatementKeywords = [
   'view',
   'render',
   'let',
+  'state',
+  'action',
+  'set',
+  'do',
+  'on',
   'publish',
   'use',
   'requires',
@@ -64,6 +69,11 @@ export default grammar({
         $.TextExpectation,
         $.InputExpectation,
         $.InputValueExpectation,
+        $.StateDeclaration,
+        $.ActionDeclaration,
+        $.SetStatement,
+        $.DoStatement,
+        $.PressBinding,
       )
     },
     _Declaration($) {
@@ -187,6 +197,30 @@ export default grammar({
         '=',
         field('value', $._Expression),
       )
+    },
+    StateDeclaration($) {
+      return seq(
+        'state',
+        field('name', $.Identifier),
+        optional(seq('is', field('type', $.QualifiedName))),
+        '=',
+        field('value', $._Expression),
+      )
+    },
+    ActionDeclaration($) {
+      return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))
+    },
+    SetStatement($) {
+      return seq('set', field('target', $.QualifiedName), '=', field('value', $._Expression))
+    },
+    DoStatement($) {
+      return seq('do', field('target', $.QualifiedName), field('argumentList', $.ArgumentList))
+    },
+    PressBinding($) {
+      return seq('on', 'press', field('handler', choice($.QualifiedName, $.InlineAction)))
+    },
+    InlineAction($) {
+      return seq('->', field('body', choice($.Block, $.DoStatement, $.SetStatement)))
     },
 
     // Modules

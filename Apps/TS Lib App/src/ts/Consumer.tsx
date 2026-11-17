@@ -26,13 +26,15 @@ export default function Consumer() {
       {mounted && (
         <View style={styles.instance} testID="instance-A">
           <library.Provider instance={first}>
-            <Greeting First={name} Second="Lovelace" />
+            <View testID="first-greeting">
+              <Greeting First={name} Second="Lovelace" />
+            </View>
             <Panel>
               <Text style={styles.label} testID="react-child">React child</Text>
             </Panel>
             <Card Value="Published submodule" />
             <View testID="language-features">
-              <LanguageFeatures Name="Ada" />
+              <LanguageFeatures Name={name} />
               <ValueSnapshots />
             </View>
           </library.Provider>

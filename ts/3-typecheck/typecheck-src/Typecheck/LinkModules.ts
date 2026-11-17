@@ -1,7 +1,9 @@
 import * as AST from '@ast-gen'
 import { Errors, Switch } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
-import { assertUniqueLocalBindings, collectReferencedNames } from '../LinkModuleValidation'
+import { collectReferencedNames } from '../LinkModuleValidation'
+import { createModuleValueResolver } from '../ModuleValueResolution'
+import { assertValidViewScopes } from '../ViewScopeValidation'
 import * as Modules from './Modules'
 
 /** linkModules resolves declarations from structurally validated sources and orders module-level initialization. */
@@ -21,7 +23,6 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     const sourceBindings = bindings.get(source.path)!
     const sourceNames = ownNames.get(source.path)!
     assertUniqueOwnDeclarations(source)
-    assertUniqueLocalBindings(source)
     addExplicitBindings(source, modules, sourceBindings, sourceNames)
     addImplicitSiblingBindings(source, modules, sourceBindings, sourceNames, collectReferencedNames(source.document))
     assertUniqueBindings(source, sourceBindings, sourceNames)
@@ -33,7 +34,12 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     bindings: bindings.get(source.path)!,
     imports: source.imports,
   }))
-  return { entry, modules: linkedModules, definitions: orderDefinitions(linkedModules) }
+  const definitions = orderDefinitions(linkedModules)
+  const resolveModule = createModuleValueResolver(linkedModules)
+  for (const module of linkedModules) {
+    assertValidViewScopes(module.document, module.path, name => resolveModule(module.path, name))
+  }
+  return { entry, modules: linkedModules, definitions }
 }
 
 type SourceModulesByPath = ReadonlyMap<string, Modules.SourceModule>

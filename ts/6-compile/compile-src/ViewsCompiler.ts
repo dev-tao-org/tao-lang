@@ -2,6 +2,7 @@ import * as AST from '@ast-gen'
 import { Errors, NewlineCharacter, Switch } from '@shared'
 import type * as Typecheck from '@typecheck'
 
+import { compileActionDeclaration, compilePressBinding } from './ActionsCompiler'
 import * as CodegenUtil from './codegen-util'
 import type { DeclarationCompilation } from './DeclarationCompiler'
 import { compileInjection } from './InjectionsCompiler'
@@ -21,6 +22,7 @@ export type ViewCompilationContext = {
   resolveForeignComponent?(node: AST.ViewDeclaration): string | undefined
   moduleBindings: readonly Typecheck.ModuleBinding[]
   shadowedNames?: ReadonlySet<string>
+  liveLocalAliases?: boolean
 }
 
 /** compileViewDeclaration registers a named Tao component or a resolved foreign implementation. */
@@ -57,14 +59,11 @@ function compileTaoView(
   const nested = compileNestedViews(
     node,
     inputs.children,
-    createNestedOwnerContext(context, inputs.shadowed),
+    createNestedOwnerContext(context, inputs),
     inputs.names,
     inputs.textBindings,
   )
-  const valuesCode = inputs.definitions.map(definition =>
-    ValuesCompiler.compileLetDeclaration(definition, inputs.references.scope)
-  )
-    .join(NewlineCharacter)
+  const valuesCode = compileViewBindings(inputs)
   const compiled = compileViewRenderStatement(
     inputs.render,
     inputs.textBindings,
@@ -74,9 +73,14 @@ function compileTaoView(
   return registerTaoView(node, context, inputs.names, nested, inputs.references, compiled, valuesCode)
 }
 
-type TaoViewCompileInputs = {
+type ViewScopeDeclarations = {
+  actions: readonly AST.ActionDeclaration[]
   children: readonly AST.ViewDeclaration[]
-  definitions: readonly AST.LetDeclaration[]
+  definitions: readonly AST.ViewValueDeclaration[]
+}
+
+type TaoViewCompileInputs = ViewScopeDeclarations & {
+  liveLocalAliases: boolean
   names: RuntimeEmitter.ComponentNames
   references: ViewReferences
   render: AST.ViewRenderStatement
@@ -89,8 +93,8 @@ function createTaoViewCompileInputs(
   block: AST.Block,
   context: ViewCompilationContext,
 ): TaoViewCompileInputs {
-  const definitions = AST.GetLetDeclarations(block.statements)
-  const children = AST.GetNestedViewDeclarations(block.statements)
+  const declarations = collectViewScopeDeclarations(block)
+  const { actions, children, definitions } = declarations
   const render = AST.FindViewRenderStatement(block)
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
@@ -99,23 +103,55 @@ function createTaoViewCompileInputs(
   for (const child of children) {
     textBindings.delete(child.name.value)
   }
+  for (const action of actions) {
+    textBindings.delete(action.name.value)
+  }
   const bindings = ValuesCompiler.collectTextBindings(definitions, textBindings, node.parameters)
   const shadowed = new Set([
     ...context.shadowedNames ?? [],
     ...node.parameters.map(item => item.name.value),
     ...definitions.map(item => item.name.value),
     ...children.map(item => item.name.value),
+    ...actions.map(item => item.name.value),
   ])
-  const names = createComponentNames(node, context, definitions, children, bindings)
+  const liveLocalAliases = context.liveLocalAliases ?? false
+  const hasState = definitions.some(definition => AST.IsKind(definition, 'StateDeclaration'))
+  const trackState = liveLocalAliases || hasState
+  const names = createComponentNames(node, context, declarations, bindings)
   return {
-    children,
-    definitions,
+    ...declarations,
+    liveLocalAliases: trackState,
     names,
-    references: createViewReferences(context.moduleBindings, shadowed),
+    references: createViewReferences(context.moduleBindings, shadowed, trackState),
     render,
     shadowed,
     textBindings: bindings,
   }
+}
+
+function collectViewScopeDeclarations(block: AST.Block): ViewScopeDeclarations {
+  const actions: AST.ActionDeclaration[] = []
+  const children: AST.ViewDeclaration[] = []
+  const definitions: AST.ViewValueDeclaration[] = []
+  for (const statement of block.statements) {
+    if (AST.IsKind(statement, 'ActionDeclaration')) {
+      actions.push(statement)
+    } else if (AST.IsViewDeclaration(statement)) {
+      children.push(statement)
+    } else if (AST.IsKind(statement, ['LetDeclaration', 'StateDeclaration'])) {
+      definitions.push(statement)
+    } else {
+      // Render statements introduce no scope bindings.
+    }
+  }
+  return { actions, children, definitions }
+}
+
+function compileViewBindings(inputs: TaoViewCompileInputs): string {
+  const scope = inputs.references.scope
+  const values = inputs.definitions.map(definition => ValuesCompiler.compileViewValueDeclaration(definition, scope))
+  const actions = inputs.actions.map(action => compileActionDeclaration(action, scope))
+  return CodegenUtil.joinCodeLines(...values, ...actions)
 }
 
 function registerTaoView(
@@ -144,9 +180,9 @@ function registerTaoView(
 
 function createNestedOwnerContext(
   context: ViewCompilationContext,
-  shadowedNames: ReadonlySet<string>,
+  inputs: TaoViewCompileInputs,
 ): ViewCompilationContext {
-  return { ...context, shadowedNames }
+  return { ...context, shadowedNames: inputs.shadowed, liveLocalAliases: inputs.liveLocalAliases }
 }
 
 function compileNestedViews(
@@ -201,30 +237,31 @@ function compileViewRenderStatement(
 }
 
 function compileViewRenderExpression(node: AST.ViewRenderExpression, scope: CodegenUtil.ScopeCode): string {
-  const argumentsCode = CodegenUtil.listMap(
-    node.arguments,
-    argument => ValuesCompiler.compileExpression(argument, scope),
-  )
-  const childrenCode = compileViewRenderBlock(node.block, scope)
-  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, childrenCode)
-}
-
-type OptionalViewRenderBlock = AST.Block | undefined
-function compileViewRenderBlock(block: OptionalViewRenderBlock, scope: CodegenUtil.ScopeCode): string {
-  if (!block) {
-    return '[]'
-  }
-  const blockScope = shadowReferences(scope, AST.GetLetDeclarations(block.statements))
-  if (AST.HasOnlyViewRenderExpressions(block)) {
-    return CodegenUtil.listMap(
-      AST.GetViewRenderExpressions(block.statements),
+  const argumentsCode = ValuesCompiler.compileArguments(node, scope)
+  const block = node.block
+  if (!block || AST.HasOnlyViewRenderExpressions(block)) {
+    const children = CodegenUtil.listMap(
+      AST.GetViewRenderExpressions(block?.statements ?? []),
       child => compileViewRenderExpression(child, scope),
     )
+    return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, children, false)
   }
+  return compileViewRenderBlock(node, block, scope, argumentsCode)
+}
+
+function compileViewRenderBlock(
+  node: AST.ViewRenderExpression,
+  block: AST.Block,
+  scope: CodegenUtil.ScopeCode,
+  argumentsCode: string,
+): string {
+  const blockScope = shadowReferences(scope, AST.GetLetDeclarations(block.statements))
+  const hasPress = block.statements.some(statement => AST.IsKind(statement, 'PressBinding'))
   const statements = block.statements.map(statement => compileBlockStatement(statement, blockScope)).join(
     NewlineCharacter,
   )
-  return RuntimeEmitter.emitViewRenderBlock(scope, statements)
+  const children = RuntimeEmitter.emitViewRenderBlock(scope, statements, hasPress)
+  return RuntimeEmitter.emitViewRenderExpression(node, scope, argumentsCode, children, hasPress)
 }
 
 type OptionalForeignComponent = string | undefined
@@ -236,14 +273,16 @@ function compileBlockStatement(node: AST.Statement, scope: CodegenUtil.ScopeCode
   if (AST.IsViewRenderExpression(node)) {
     return `_Children.push(${compileViewRenderExpression(node, scope)});`
   }
+  if (AST.IsKind(node, 'PressBinding')) {
+    return compilePressBinding(node, scope)
+  }
   return Errors.ThrowShouldNeverHappen(`Unexpected ${node.kind} in a validated render block.`)
 }
 
 function createComponentNames(
   node: AST.ViewDeclaration,
   context: ViewCompilationContext,
-  definitions: readonly AST.LetDeclaration[],
-  children: readonly AST.ViewDeclaration[],
+  declarations: ViewScopeDeclarations,
   bindings: ReadonlySet<string>,
 ): RuntimeEmitter.ComponentNames {
   const path = [...context.ownerPath ?? [], node.name.value].join('$')
@@ -254,22 +293,23 @@ function createComponentNames(
     props: '_Props',
     render: '_Render',
     scope: '_Scope',
-    scopeType: createScopeType(node, context.scopeType, definitions, children, bindings),
+    scopeType: createScopeType(node, context.scopeType, declarations, bindings),
   }
 }
 
 function createScopeType(
   node: AST.ViewDeclaration,
   inherited: string,
-  definitions: readonly AST.LetDeclaration[],
-  children: readonly AST.ViewDeclaration[],
+  declarations: ViewScopeDeclarations,
   bindings: ReadonlySet<string>,
 ): string {
-  const values = [...node.parameters, ...definitions].map(value => ({
+  const values = [...node.parameters, ...declarations.definitions].map(value => ({
     name: value.name.value,
     type: bindings.has(value.name.value) ? 'string' : 'unknown',
   }))
-  const properties = [...values, ...children.map(child => ({ name: child.name.value, type: 'TR.View' }))]
+  const views = declarations.children.map(child => ({ name: child.name.value, type: 'TR.View' }))
+  const actions = declarations.actions.map(action => ({ name: action.name.value, type: 'unknown' }))
+  const properties = [...values, ...views, ...actions]
   if (properties.length === 0) {
     return inherited
   }

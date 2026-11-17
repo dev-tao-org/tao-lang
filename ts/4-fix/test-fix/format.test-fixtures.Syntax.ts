@@ -16,7 +16,10 @@ export const syntaxFixture = S`
   folder app Demo{root Root}
   public view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message)}
+  state Status is text=Title
+  action Rename (Value text){set Status=Value}
+  action Save(){do Rename (Caption)}
+  render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message) UI.Button(Status){on press Save} UI.Button(Subtitle){on press->do Rename(Title)}}
   }
   package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`}
   project let Shared=Caption
@@ -55,11 +58,24 @@ export const formattedSyntaxFixture = S`
   public
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
+    state Status is text = Title
+    action Rename(Value text) {
+      set Status = Value
+    }
+    action Save() {
+      do Rename(Caption)
+    }
     render #root UI.Col {
       #child
       Panel(Title, Caption)
       let Message = Hidden
       UI.Text(Message)
+      UI.Button(Status) {
+        on press Save
+      }
+      UI.Button(Subtitle) {
+        on press -> do Rename(Title)
+      }
     }
   }
 
@@ -117,6 +133,12 @@ export const syntaxKinds = {
   TypeScript: true,
   ViewRenderExpression: true,
   LetDeclaration: true,
+  StateDeclaration: true,
+  ActionDeclaration: true,
+  SetStatement: true,
+  DoStatement: true,
+  PressBinding: true,
+  InlineAction: true,
   UseStatement: true,
   NamedImport: true,
   All: true,

@@ -12,15 +12,15 @@ The Justfile defaults to this checkout's `../../tao`, resolved from the Justfile
 
 The library demonstrates the currently executable language surface through published components:
 
-| Example                        | Features                                                                                                                                                              |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/tao/Library.tao`          | Library publication, module aliases, required text parameters, private nested views, React children and instance-owned writable/computed values                       |
-| `src/tao/LanguageFeatures.tao` | Named, aliased, wildcard and namespace imports; typed file lets; lexical shadowing; escaped text; aliased injection captures; standard input; TypeScript foreign view |
-| `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                                              |
-| `src/tao/ScopeExamples.tao`    | Folder, package and project visibility across files                                                                                                                   |
-| `src/tao/cards`                | Separate module publication list and unselected public declarations                                                                                                   |
-| `src/ts/Consumer.tsx`          | Ordinary package/subpath imports, React prop updates, children and two isolated library instances                                                                     |
+| Example                        | Features                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/tao/Library.tao`          | Library publication, module aliases, required text parameters, private nested views, React children and instance-owned writable/computed values        |
+| `src/tao/LanguageFeatures.tao` | Imports, lexical shadowing, escaped text, injection captures, foreign views, standard input, and view-local text state with synchronous button actions |
+| `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                               |
+| `src/tao/ScopeExamples.tao`    | Folder, package and project visibility across files                                                                                                    |
+| `src/tao/cards`                | Separate module publication list and unselected public declarations                                                                                    |
+| `src/ts/Consumer.tsx`          | Ordinary package/subpath imports, React prop updates, children and two isolated library instances                                                      |
 
-The browser journey asserts the rendered examples, edits the input, updates state and props, and unmounts one instance without disturbing the other. App declarations and Tao test controls belong to application journeys, not library exports. Data, actions, designs, navigation and other planned language syntax are not implemented by this example.
+The browser journey edits the input, presses both kinds of Tao action handler, and confirms that a React prop change preserves local state until an action explicitly reads it. It verifies that two mounts of the same authored stateful view stay independent and that unmounting one library instance does not disturb the other. App declarations and Tao test controls belong to application journeys, not library exports. Data, asynchronous actions, designs and navigation remain outside this example.
 
 `tao init <directory> --library` remains the way to generate the smaller starter. Its separate static copy was removed from this repository; initializer acceptance still generates and tests a fresh project.

@@ -1,0 +1,12 @@
+use Language
+
+tests "Authored text state and actions" {
+  test "Named and anonymous handlers explicitly update visible text" {
+    run Language
+    expect text "Original message"
+    press #rename-editor
+    expect text "Renamed"
+    press #reset-editor
+    expect text "Original message"
+  }
+}

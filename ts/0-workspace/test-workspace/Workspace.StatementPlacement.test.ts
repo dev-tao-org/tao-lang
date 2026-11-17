@@ -166,6 +166,38 @@ Tests.test('lowercase declarations keep their syntax and block compilation at th
   }, { finally: () => workspace.dispose() })
 })
 
+Tests.test('text state and action statements parse before their placement and names are checked', async () => {
+  const source = S`
+    state Outside = "No"
+    app Example { root Main }
+    view Main {
+      set Outside = "No"
+      do Missing()
+      on press Missing
+      action rename(value text) {
+        state Inner = "No"
+      }
+      ${RootRender}
+      state Late = "No"
+    }
+  `
+  Tests.expect(Grammar.createParser().parse(source).rootNode.hasError).toBe(false)
+  const workspace = Workspace.createWorkspace({})
+  await Try(async () => {
+    const outcome = await workspace.update(source)
+    Tests.expect(outcome.status).toBe('failed')
+    const error = outcome.status === 'failed' ? outcome.error : ''
+    Tests.expect(error).toContain('State declarations belong directly inside a view.')
+    Tests.expect(error).toContain('Set statements belong inside an action.')
+    Tests.expect(error).toContain('Do statements belong inside an action.')
+    Tests.expect(error).toContain('Press bindings belong inside a view invocation.')
+    Tests.expect(error).toContain("Declared name 'rename' must start with an uppercase letter.")
+    Tests.expect(error).toContain("Declared name 'value' must start with an uppercase letter.")
+    Tests.expect(error).toContain('A state or action declaration must precede')
+    Tests.expect(error).toContain(`offset ${source.indexOf('set Outside')}`)
+  }, { finally: () => workspace.dispose() })
+})
+
 Tests.test('bare and tagged qualified views accept package-derived keyword namespaces', async () => {
   const directory = Artifacts.resolvePath('tmp', `placement-namespaces-${Platform.randomUUID()}`)
   const entry = Path.join(directory, 'Main.tao')

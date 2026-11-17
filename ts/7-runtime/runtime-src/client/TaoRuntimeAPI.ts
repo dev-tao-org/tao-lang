@@ -29,7 +29,7 @@ export type ViewProps = {
 export type TextInputProps = ViewProps & { defaultValue?: string; placeholder?: string }
 
 /** PressableProps describes an action-bearing native container. */
-export type PressableProps = ViewProps & { onPress?: () => void }
+export type PressableProps = ViewProps & { onPress?: () => void; accessibilityRole?: 'button' }
 
 function Text({ style, ...props }: ViewProps): React.ReactElement {
   return React.createElement(ReactNative.Text, { ...props, style: [textStyle, style] })

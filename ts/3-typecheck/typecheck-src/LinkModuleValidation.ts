@@ -1,13 +1,6 @@
 import * as AST from '@ast-gen'
-import { Errors, Switch } from '@shared'
-import type { SourceModule } from './Typecheck'
-
-/** assertUniqueLocalBindings rejects duplicate bindings in one Tao lexical scope. */
-export function assertUniqueLocalBindings(source: SourceModule): void {
-  for (const view of AST.GetViewDeclarations(source.document)) {
-    assertUniqueViewScope(source.path, view)
-  }
-}
+import { Switch } from '@shared'
+import { visitActionReferences, visitPressReferences } from './ActionReferences'
 
 /** collectReferencedNames returns module names used by source declarations and app tests. */
 export function collectReferencedNames(document: AST.Document): ReadonlySet<string> {
@@ -41,26 +34,6 @@ function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>):
   }
 }
 
-function assertUniqueViewScope(source: string, view: AST.ViewDeclaration): void {
-  const statements = AST.GetViewDeclarationStatements(view) ?? []
-  const lets = AST.GetLetDeclarations(statements)
-  const children = AST.GetNestedViewDeclarations(statements)
-  assertUniqueNames(source, view.name.value, [
-    ...view.parameters.map(parameter => parameter.name.value),
-    ...lets.map(definition => definition.name.value),
-    ...children.map(child => child.name.value),
-  ])
-  for (const statement of statements) {
-    if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
-      assertUniqueRenderChildren(source, view.name.value, statement.expression)
-    } else if (AST.IsViewDeclaration(statement)) {
-      assertUniqueViewScope(source, statement)
-    } else {
-      // Lets were checked above; injection renders introduce no nested declaration scopes.
-    }
-  }
-}
-
 function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, parentNames: ReadonlySet<string>): void {
   const statements = AST.GetViewDeclarationStatements(view) ?? []
   const localNames = new Set(parentNames)
@@ -68,8 +41,14 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
     addReference(parameter.type.value, names, localNames)
     localNames.add(parameter.name.value)
   }
-  for (const child of AST.GetNestedViewDeclarations(statements)) {
-    localNames.add(child.name.value)
+  const actions = []
+  for (const statement of statements) {
+    if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration'])) {
+      localNames.add(statement.name.value)
+    }
+    if (AST.IsKind(statement, 'ActionDeclaration')) {
+      actions.push(statement)
+    }
   }
   for (const statement of statements) {
     Switch.kind(statement, {
@@ -77,29 +56,23 @@ function collectViewReferences(view: AST.ViewDeclaration, names: Set<string>, pa
         addScopedLetReferences(definition, names, localNames)
         localNames.add(definition.name.value)
       },
+      StateDeclaration(definition) {
+        addScopedLetReferences(definition, names, localNames)
+        localNames.add(definition.name.value)
+      },
+      ActionDeclaration: Switch.nothing,
       RenderViewExpressionStatement: render => addScopedRenderReferences(render.expression, names, localNames),
       RenderInjectStatement: render => addInjectionReferences(render.injection, names, localNames),
       ViewDeclaration: view => collectViewReferences(view, names, localNames),
     })
   }
-}
-
-function assertUniqueRenderChildren(source: string, view: string, render: AST.ViewRenderExpression): void {
-  const statements = AST.GetViewRenderBlockStatements(render)
-  const lets = AST.GetLetDeclarations(statements)
-  assertUniqueNames(source, view, lets.map(definition => definition.name.value))
-  for (const child of AST.GetViewRenderExpressions(statements)) {
-    assertUniqueRenderChildren(source, view, child)
-  }
-}
-
-function assertUniqueNames(source: string, view: string, names: readonly string[]): void {
-  const seen = new Set<string>()
-  for (const name of names) {
-    if (seen.has(name)) {
-      Errors.ThrowUserInput(`View ${view} in ${source} declares ${name} more than once in one scope.`)
+  for (const action of actions) {
+    const actionNames = new Set(localNames)
+    for (const parameter of action.parameters) {
+      addReference(parameter.type.value, names, localNames)
+      actionNames.add(parameter.name.value)
     }
-    seen.add(name)
+    visitActionReferences(action.block, name => addReference(name.value, names, actionNames))
   }
 }
 
@@ -113,7 +86,7 @@ function addLetReferences(definition: AST.LetDeclaration, names: Set<string>): v
 }
 
 function addScopedLetReferences(
-  definition: AST.LetDeclaration,
+  definition: AST.ViewValueDeclaration,
   names: Set<string>,
   localNames: ReadonlySet<string>,
 ): void {
@@ -138,12 +111,15 @@ function addScopedRenderReferences(
     }
   }
   for (const child of AST.GetViewRenderBlockStatements(render)) {
-    if (AST.IsLetDeclaration(child)) {
-      addScopedLetReferences(child, names, localNames)
-      localNames.add(child.name.value)
-    } else {
-      addScopedRenderReferences(child, names, localNames)
-    }
+    Switch.kind(child, {
+      LetDeclaration(definition) {
+        addScopedLetReferences(definition, names, localNames)
+        localNames.add(definition.name.value)
+      },
+      PressBinding: binding =>
+        visitPressReferences(binding.handler, name => addReference(name.value, names, localNames)),
+      ViewRenderExpression: render => addScopedRenderReferences(render, names, localNames),
+    })
   }
 }
 
