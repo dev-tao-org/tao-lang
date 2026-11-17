@@ -11,8 +11,9 @@ Open the generated `build` folder as a TypeScript project. It includes a project
 Live Metro publication consumes one complete memory revision. After acceptance, the disk inspection mirror replaces its real output directory with the completed build, restoring the previous directory if replacement fails. It does not publish a second Metro update. Source generation does not run a formatter on each edit; emitters produce the readable layout directly.
 
 `./agent verify` compiles Kitchen Sink and Demo in the ordinary named session `review-build`.
-It runs the pinned TypeScript compiler on each generated project's own `tsconfig.json` before
-continuing to workspace checks and tests. Generated projects allow unused locals and parameters.
+It typechecks the generated Kitchen Sink app before the workspace checks and tests. Workspace tests
+typecheck the compiled Demo library in an ordinary TypeScript consumer with its peers installed,
+including after relocating the compiled package. Generated projects allow unused locals and parameters.
 Kitchen Sink writes `Apps/Dev/.tao/cache/sessions/review-build/build/`. Demo writes
 `Apps/TS Lib App/.tao/cache/sessions/review-build/libraries/Demo/`. The package manifest maps the
 root to `ts/Library.ts`, published packages to `ts/@package.ts`, and subfolders to
@@ -21,8 +22,8 @@ The library keeps foreign-view sources and their relative imports under `ts/side
 The portable Demo manifest and `ts/` tree are tracked for review, including its `ts/tsconfig.json`.
 The Kitchen Sink build still resolves sidecars and toolchain files from the checkout that generated
 it, so Git ignores that tree. Dependency links, incremental state and temporary publication
-generations remain ignored. Run `./agent verify` to regenerate and typecheck both projects in the
-current checkout. The formatter excludes all `.tao/` output.
+generations remain ignored. Run `./agent verify` to regenerate both outputs and run the app and
+library typechecks described above. The formatter excludes all `.tao/` output.
 
 There is no separate tracking compiler or output comparison step in `check`. Studio uses a separate
 session. App output, library packages, sidecar snapshots and runtime hosts belong to their session;
