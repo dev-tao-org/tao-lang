@@ -101,6 +101,7 @@ async function compileLibraryFiles(
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
     name,
     peerDependencies,
+    hostProvidedPeers: [Runtime.RuntimeLibraryPackageName],
     dependencies: collectLibraryDependencies(program, peerDependencies),
   })
   return { ...library.files, ...packageFiles }

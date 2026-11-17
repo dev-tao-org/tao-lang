@@ -11,7 +11,7 @@ compile:
     "{{TAO}}" compile Demo --package src/ts
 
 # Start the managed Expo web host for this library consumer.
-run: compile
+run:
     "{{TAO}}" run --package src/ts --web
 
 # Check actual JSX props and expected type errors with the local TypeScript config.

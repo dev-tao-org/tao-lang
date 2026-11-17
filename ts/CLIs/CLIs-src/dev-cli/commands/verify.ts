@@ -1,6 +1,8 @@
 import * as CLIKit from '@cli-kit'
 import { Path, Repo } from '@shared/os'
+import * as Workspace from '@workspace'
 import { workspaceTests } from '../../cli-checks/check'
+import { publishCompiledLibrary } from '../../tao-cli/CompileApplication'
 import { registerCommand } from './_command-runner'
 import check from './check'
 import compile from './compile'
@@ -34,7 +36,7 @@ async function verifyReviewBuilds(options: { yes?: boolean }): Promise<void> {
         session: ReviewSession,
         yes: options.yes,
       }),
-    () => compile.action('Demo', { package: Repo.resolvePath(LibraryConsumer), session: ReviewSession }),
+    compileReviewLibrary,
     checkKitchenSinkBuild,
   )
 }
@@ -43,6 +45,12 @@ const ReviewSession = 'review-build'
 const KitchenSink = 'Apps/Dev/Kitchen Sink/Kitchen Sink.tao'
 const LibraryConsumer = 'Apps/TS Lib App/src/ts'
 const KitchenSinkBuild = `Apps/Dev/.tao/cache/sessions/${ReviewSession}/build`
+
+async function compileReviewLibrary(): Promise<void> {
+  const directory = Repo.resolvePath(LibraryConsumer)
+  const target = await Workspace.resolveCompileTarget(directory, 'Demo')
+  await publishCompiledLibrary(target, ReviewSession, undefined, { directory })
+}
 
 async function checkKitchenSinkBuild(): Promise<void> {
   const config = Path.join(KitchenSinkBuild, 'tsconfig.json')

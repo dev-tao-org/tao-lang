@@ -16,11 +16,14 @@ export async function prepareCompiledApplication(target: Workspace.CompileTarget
   return await Workspace.execute({ kind: 'compile', entry: target.entry, options }, workflowUI(yes))
 }
 
+type LibraryConsumerPreparation = { directory: string; ui?: Workspace.WorkflowUI }
+
 /** publishCompiledLibrary validates package settings before publishing the selected library generation. */
 export async function publishCompiledLibrary(
   target: Workspace.CompileTarget,
   session?: string,
   destination?: string,
+  consumer?: LibraryConsumerPreparation,
 ): Promise<string> {
   const project = await Workspace.discoverProject(target.entry)
   if (!project) {
@@ -30,7 +33,10 @@ export async function publishCompiledLibrary(
   return await Workspace.withDependencySession(
     project.root,
     session,
-    locked => Workspace.publishLibrary(target, locked, destination),
+    locked =>
+      consumer
+        ? Workspace.publishConsumerLibrary(target, consumer.directory, project.root, locked, consumer.ui)
+        : Workspace.publishLibrary(target, locked, destination),
   )
 }
 

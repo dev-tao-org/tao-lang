@@ -8,6 +8,7 @@ import * as Workspace from '@workspace'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { prepareCompiledApplication } from '../CompileApplication'
+import { workflowUI } from '../WorkflowUI'
 
 type RunCommandOptions = { package?: string; session?: string; web?: boolean; port?: string; yes?: boolean }
 
@@ -21,14 +22,19 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use an independent named project session.' },
     { flags: '--web', description: 'Open the web app using the standard Expo interface.' },
     { flags: '--port <port>', description: 'Use this Expo server port.' },
-    { flags: '--yes', description: 'Authorize required Tao app dependency setup.' },
+    { flags: '--yes', description: 'Authorize required app or consumer dependency setup.' },
   ],
   async action(entry?: string, options: RunCommandOptions = {}) {
     requireRunPort(options.port)
     if (!entry) {
       const directory = CLIKit.resolveCallerPath(options.package ?? '.')
       await prepareRuntime()
-      await Workspace.withConsumerProject(directory, options.session, host => startExpo(host, options))
+      await Workspace.withConsumerProject(
+        directory,
+        options.session,
+        host => startExpo(host, options),
+        workflowUI(options.yes),
+      )
       return
     }
     if (options.package) {

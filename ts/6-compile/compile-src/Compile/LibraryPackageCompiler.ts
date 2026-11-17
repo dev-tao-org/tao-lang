@@ -10,6 +10,7 @@ import type { CompiledFiles } from './ModulesCompiler'
 export type LibraryPackageConfiguration = {
   name: string
   peerDependencies: LibraryDependencyVersions
+  hostProvidedPeers: readonly string[]
   dependencies: LibraryDependencyVersions
 }
 
@@ -78,12 +79,16 @@ function compileFacade(path: string, views: readonly PublishedView[]): string {
 }
 
 function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exports: LibraryPackageExports): string {
+  const peerDependenciesMeta = Object.fromEntries(
+    configuration.hostProvidedPeers.map(name => [name, { optional: true }]),
+  )
   return emitJsonDocument({
     name: configuration.name,
     version: '0.0.0',
     type: 'module',
     exports,
     peerDependencies: configuration.peerDependencies,
+    peerDependenciesMeta,
     dependencies: configuration.dependencies,
   })
 }

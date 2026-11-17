@@ -38,6 +38,80 @@ Tests.test('standalone TS-Lib Justfile compiles repeatedly and checks its author
     .toThrow()
 })
 
+Tests.test('library compile requests consumer setup and repairs missing dependencies after consent', async () => {
+  const root = await WorkspaceTests.createStandaloneLibraryFixture()
+  const consumer = Path.join(root, 'src/ts')
+  const dependency = Path.join(consumer, 'local-fixture')
+  const runtime = Path.join(consumer, 'local-runtime')
+  const modules = Path.join(consumer, 'node_modules')
+  await FS.rm(modules, { recursive: true, force: true })
+  await FS.mkdirs(dependency, runtime)
+  await FS.writeFile(Path.join(dependency, 'package.json'), '{"name":"local-fixture","version":"1.0.0"}')
+  await FS.writeFile(Path.join(runtime, 'package.json'), '{"name":"@tao/runtime","version":"0.0.0"}')
+  await FS.writeFile(
+    Path.join(consumer, 'package.json'),
+    Json.Print({
+      name: 'consumer-fixture',
+      tao: { compile: { entry: '../tao/Library.tao', name: '@tao-dev/ts-lib-example' } },
+      dependencies: {
+        'local-fixture': 'file:./local-fixture',
+        '@tao/runtime': 'file:./local-runtime',
+        '@tao-dev/ts-lib-example': 'file:../../.tao/cache/sessions/.cli/libraries/Demo',
+      },
+    }),
+  )
+  const args = ['compile', 'Demo', '--package', consumer]
+  const cli = Repo.resolvePath('tao')
+  const cold = await Exec.capture(cli, args, { cwd: root, stdin: 'ignore', check: false })
+  Tests.expect(cold.status).toBe(1)
+  Tests.expect(cold.stdout + cold.stderr).toContain('pass --yes')
+  await Exec.captureStdout(cli, [...args, '--yes'], { cwd: root })
+  const output = Path.join(root, '.tao/cache/sessions/.cli/libraries/Demo')
+  Tests.expect(FS.realpathSync(Path.join(output, 'node_modules'))).toBe(FS.realpathSync(modules))
+  await verifyExistingLinkedInstall(root, consumer, runtime)
+  await verifyRefreshedLocalPackages(root, consumer, runtime)
+  const lock = Path.join(consumer, 'bun.lock')
+  await FS.writeFile(lock, (await FS.readFile(lock, 'utf8')) + '\n')
+  const changed = await Exec.capture(cli, args, { cwd: root, stdin: 'ignore', check: false })
+  Tests.expect(changed.stdout + changed.stderr).toContain('pass --yes')
+  await Exec.captureStdout(cli, [...args, '--yes'], { cwd: root })
+  await FS.rm(Path.join(modules, 'local-fixture'), { recursive: true, force: true })
+  const missing = await Exec.capture(cli, args, { cwd: root, stdin: 'ignore', check: false })
+  Tests.expect(missing.status).toBe(1)
+}, { timeout: 10_000 })
+
+async function verifyExistingLinkedInstall(root: string, consumer: string, runtime: string): Promise<void> {
+  const modules = Path.join(consumer, 'node_modules')
+  const manifest = Path.join(modules, '@tao/runtime/package.json')
+  await FS.rm(manifest)
+  await FS.symlink(Path.join(runtime, 'package.json'), manifest)
+  const lock = Path.join(consumer, 'bun.lock')
+  const lockContents = await FS.readFile(lock)
+  const receipt = Path.join(modules, '.tao-consumer-install')
+  const receiptContents = await FS.readFile(receipt)
+  await FS.rm(lock)
+  await FS.rm(receipt)
+  await Exec.captureStdout(Repo.resolvePath('tao'), ['compile', 'Demo', '--package', consumer], { cwd: root })
+  Tests.expect(FS.existsSync(lock)).toBe(false)
+  await FS.writeFile(lock, lockContents)
+  await FS.writeFile(receipt, receiptContents)
+}
+
+async function verifyRefreshedLocalPackages(root: string, consumer: string, runtime: string): Promise<void> {
+  const source = Path.join(root, 'src/tao/Library.tao')
+  const authored = await FS.readFile(source, 'utf8')
+  await FS.writeFile(source, authored.replace('Nested private Tao helper', 'Refreshed helper'))
+  const cli = Repo.resolvePath('tao')
+  const args = ['compile', 'Demo', '--package', consumer]
+  await Exec.captureStdout(cli, args, { cwd: root })
+  const modules = Path.join(consumer, 'node_modules')
+  const installed = Path.join(modules, '@tao-dev/ts-lib-example/ts/packages/src/tao/Library.views.tsx')
+  Tests.expect(await FS.readFile(installed, 'utf8')).toContain('Refreshed helper')
+  await FS.writeFile(Path.join(runtime, 'updated.ts'), 'export const updated = true')
+  await Exec.captureStdout(cli, args, { cwd: root })
+  Tests.expect(await FS.readFile(Path.join(modules, '@tao/runtime/updated.ts'), 'utf8')).toContain('updated')
+}
+
 Tests.test('library compilation rejects path escapes and preserves files and symlinks', async () => {
   const root = Artifacts.resolvePath('tmp', 'library-output-' + Platform.randomUUID())
   Artifacts.trackTemporary(root)

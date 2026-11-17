@@ -4,6 +4,7 @@ import { Errors, NewlineCharacter } from '@shared'
 import * as Workspace from '@workspace'
 
 import { prepareCompiledApplication, publishCompiledLibrary } from '../../tao-cli/CompileApplication'
+import { workflowUI } from '../../tao-cli/WorkflowUI'
 import { registerCommand } from './_command-runner'
 
 type CompileCommandOptions = { session?: string; yes?: boolean; package?: string; tsLib?: string; out?: string }
@@ -28,7 +29,12 @@ export default registerCommand({
     }
     const target = await Workspace.resolveCompileTarget(directory, argument)
     if (target.kind === 'library') {
-      IO.print(await publishCompiledLibrary(target, options.session))
+      IO.print(
+        await publishCompiledLibrary(target, options.session, undefined, {
+          directory,
+          ui: workflowUI(options.yes),
+        }),
+      )
       return
     }
     await compileEntry(target, options.session, options.yes)
