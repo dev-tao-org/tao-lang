@@ -10,6 +10,7 @@ Tests.test('Tao app discovery includes developer apps and excludes files without
   const paths = await findTaoTestFiles(Repo.resolvePath('Apps'))
   Tests.expect(paths.map(path => Path.relative(Repo.getWorkspaceRoot(), path))).toEqual([
     'Apps/Dev/Kitchen Sink/Kitchen Sink.tao',
+    'Apps/Tests/Language/ImmutableValues.test.tao',
     'Apps/Tests/Language/PrivateViews.test.tao',
     'Apps/Tests/Language/Scopes.test.tao',
     'Apps/Tests/Modules and Dependencies/Imports.test.tao',

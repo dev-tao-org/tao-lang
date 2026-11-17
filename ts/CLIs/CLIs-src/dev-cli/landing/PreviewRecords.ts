@@ -1,4 +1,3 @@
-import * as Perf from '@perf'
 import { Json } from '@shared'
 import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
@@ -54,13 +53,14 @@ function isExemptPath(path: string): boolean {
 }
 
 async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord> {
+  const Performance = await import('@repo-analysis/performance')
   const directory = `performance/preview/${source}`
   const pending = `.artifacts/notes/preview-history/${source}`
   const base = await io.exists(`${pending}/record.json`) ? pending : `.storage/${directory}`
   await requirePreviewRecordFiles(io, base, source)
   const record = await io.read(`${base}/record.json`)
   const report = await io.read(`${base}/report.json`)
-  Perf.validatePreviewReport(report, source)
+  Performance.validatePreviewReport(report, source)
   const metadata = parseRecordMetadata(record)
   const tree = await git(io, ['rev-parse', `${source}^{tree}`])
   const fixture = await git(io, ['show', `${source}:${metadata.fixture?.path}`], { trim: false })

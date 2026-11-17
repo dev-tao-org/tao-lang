@@ -10,7 +10,8 @@ export async function createProject(options: ProjectOptions = {}): Promise<Proje
     Artifacts.trackTemporary(directory)
   }
   const project = await initializeProject(directory)
-  return { directory: project.root, buildDirectory: Path.join(project.root, '.tao/cache/build') }
+  const session = `workspace-${Platform.randomUUID()}`
+  return { directory: project.root, buildDirectory: Path.join(project.sessionsDirectory, session, 'build') }
 }
 
 /** Project identifies an authored Tao project and its separate compilation output directory. */

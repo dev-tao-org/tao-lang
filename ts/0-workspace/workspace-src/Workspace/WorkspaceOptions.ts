@@ -4,7 +4,7 @@ import type * as Typecheck from '@typecheck'
 
 import type { ModuleLoadOptions } from '../modules/Loader'
 import type { Project } from '../Project'
-import type { ProjectPipelineResult } from '../ProjectPipeline'
+import type { WorkspacePreparation } from '../ProjectPipeline'
 import type { CompiledApp, UpdateResult } from '../Workspace'
 
 /** WorkspaceOptions configures output publication for a single compile session. */
@@ -22,14 +22,12 @@ export type WorkspaceOptions = {
   resolveProject?: ModuleLoadOptions['resolveProject']
   observeProjectSources?: ModuleLoadOptions['observeProjectSources']
   includeModuleRequirements?: boolean
-  beforeLoad?: () => Promise<void>
+  beforeLoad?: ModuleLoadOptions['beforeLoad']
   watchDirectories?: readonly string[]
   beforeCompile?: PrepareWorkspace
 }
 
 type WatchAttemptedFiles = (files: readonly string[]) => Promise<void>
-/** WorkspacePreparation contains optional results returned by a project pipeline callback. */
-export type WorkspacePreparation = Partial<ProjectPipelineResult>
 type PrepareWorkspace = (
   program: Typecheck.LinkedProgram,
   watchAttemptedFiles: WatchAttemptedFiles,

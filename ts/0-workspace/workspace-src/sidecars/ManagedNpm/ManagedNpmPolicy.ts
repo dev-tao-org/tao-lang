@@ -1,7 +1,7 @@
 import { Json, Sort } from '@shared'
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
-import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../ManagedModule/ManagedModuleTypes'
 import * as PackageMetadata from '../ManagedModule/ManagedPackageMetadata'
 import { ensureOwnedFile, optionalText, validateManagedProfilePath } from './ManagedNpmState'

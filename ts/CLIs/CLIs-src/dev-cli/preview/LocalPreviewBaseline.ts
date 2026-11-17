@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors, NewlineCharacter, Objects, Schema } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -49,7 +49,7 @@ async function measureFreshProcess(): Promise<string> {
   const output = await Exec.captureStdout(Repo.resolvePath('dev'), ['performance', 'preview', '--report-only'], {
     cwd: Repo.getWorkspaceRoot(),
     addEnv: {
-      TAO_PREVIEW_EDIT_COUNT: String(Perf.DefaultPreviewEditCount),
+      TAO_PREVIEW_EDIT_COUNT: String(Performance.DefaultPreviewEditCount),
       TAO_PREVIEW_FRAME_COUNT: '2',
     },
   })
@@ -102,7 +102,7 @@ function requireComparableSessions(reports: PreviewReport[], commit: string): vo
 }
 
 function isBaselineSample(report: PreviewReport, commit: string): boolean {
-  return report.commit === commit && !report.modified && report.results.length === Perf.DefaultPreviewEditCount
+  return report.commit === commit && !report.modified && report.results.length === Performance.DefaultPreviewEditCount
 }
 
 function sameConditions(first: PreviewReport, second: PreviewReport): boolean {

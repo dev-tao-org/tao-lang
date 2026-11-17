@@ -31,14 +31,11 @@ export default registerCommand({
     planTestExecution(execution)
     if (target?.endsWith('.tao')) {
       const path = Repo.resolvePath(target)
-      Check.assertNewWorkspacePath(path)
+      Repo.assertNewWorkspacePath(path)
       await runTaoTests(path, execution)
       return
     }
     await Check.assertNewWorkspaceTree()
-    if (target) {
-      Check.assertNewWorkspacePath(Repo.resolvePath(target))
-    }
     const workspaceTarget = workspaceTestTarget(target)
     const args = resolveTestArguments(workspaceTarget, target)
     await Check.workspaceTests(args, slowSeconds, execution)
@@ -62,25 +59,26 @@ function workspaceTestTarget(target: OptionalTestTarget): OptionalTestTarget {
     return undefined
   }
   const path = resolveTestTargetPath(target)
-  Check.assertNewWorkspacePath(path)
-  const canonical = FS.existsSync(path) ? FS.realpathSync(path) : path
-  const root = FS.realpathSync(Repo.getWorkspaceRoot())
-  const workspace = FS.realpathSync(Repo.resolvePath('ts'))
-  if (canonical === root) {
-    return workspace
+  const exists = FS.existsSync(path)
+  const canonical = exists ? FS.realpathSync(path) : path
+  const root = Repo.getWorkspaceRoot()
+  const workspace = Repo.resolvePath('ts')
+  const isRepositoryRoot = canonical === FS.realpathSync(root)
+  const hasPathTarget = exists || Path.isAbsolute(target)
+  const allowedRoot = hasPathTarget && !isRepositoryRoot ? workspace : root
+  Repo.assertNewWorkspacePath(path, allowedRoot)
+  if (isRepositoryRoot) {
+    return FS.realpathSync(workspace)
   }
-  if (FS.existsSync(path) || Path.isAbsolute(target)) {
-    Check.assertNewWorkspacePath(path, workspace)
-    return canonical
-  }
-  return undefined
+  return hasPathTarget ? canonical : undefined
 }
 
 function resolveTestTargetPath(target: string): string {
-  const workspacePath = Path.resolve(Repo.resolvePath('ts'), target)
-  const useWorkspacePath = Path.isAbsolute(target) || FS.existsSync(workspacePath)
-  if (useWorkspacePath) {
-    return workspacePath
+  const root = Repo.getWorkspaceRoot()
+  const repositoryPath = Path.resolve(root, target)
+  if (!Path.isWithin(root, repositoryPath)) {
+    return repositoryPath
   }
-  return Repo.resolvePath(target)
+  const workspacePath = Path.resolve(root, 'ts', target)
+  return FS.existsSync(workspacePath) ? workspacePath : repositoryPath
 }

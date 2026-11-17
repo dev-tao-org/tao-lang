@@ -103,10 +103,10 @@ USB-C helps only when the ports/cable establish a Thunderbolt network interface.
 ## Measure, detach and collect
 
 ```sh
-PERF run --repo /Users/ro/.tao-dev/timing/checkouts/baseline --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao
-PERF run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao --samples 5 --edits 24
+PERF run --repo /Users/ro/.tao-dev/timing/checkouts/baseline --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao --label "Your agent or chat name"
+PERF run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao --samples 5 --edits 24 --label "Your agent or chat name"
 PERF summarize /absolute/job-one /absolute/job-two
-PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts/tooling --detach /Users/ro/.tao-dev/timing/transfers/job.log -- ./agent skill-script agents/skills/performance-investigation/scripts/performance.ts -- run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao
+PERF ssh tao-bench --cwd /Users/ro/.tao-dev/timing/checkouts/tooling --detach /Users/ro/.tao-dev/timing/transfers/job.log -- ./agent skill-script agents/skills/performance-investigation/scripts/performance.ts -- run --repo /Users/ro/.tao-dev/timing/checkouts/current --fixture /Users/ro/.tao-dev/timing/transfers/canonical.tao --label "Your agent or chat name"
 ```
 
 The default is one session per job so the skill can balance checkpoint order across rounds.

@@ -86,7 +86,9 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 
 function visitPublication(node: AST.PublishDeclaration, scope: Scope): void {
   for (const member of node.members) {
-    reference(scope, member.target)
+    if (!member.value.startsWith('@')) {
+      reference(scope, member)
+    }
   }
 }
 

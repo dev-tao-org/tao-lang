@@ -1,5 +1,5 @@
 import { Errors, Json } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** runtimeLock retains resolved workspace package versions for the standalone Expo toolchain. */
 export function runtimeLock(source: string, manifest: RuntimeManifest): string {

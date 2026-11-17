@@ -2,13 +2,15 @@ import { NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { gitSourceAdapter } from '../workspace-src/dependencies/Git'
 import { readDependencyLock, resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
 import type { DependencyRequirement, DependencyStoreOptions } from '../workspace-src/dependencies/Types'
-import { prepareProject } from '../workspace-src/ProjectPreparation'
+import { inspectProjectPreparation, prepareProject } from '../workspace-src/ProjectPreparation'
 import { initializeProject } from '../workspace-src/projects/Projects'
 
 const ConflictingDependencyCommitErrorRegx = /conflicting commits/
 const LowercaseNpmAliasErrorRegx = /Declared name 'packageAlias' must start with an uppercase letter\./
+const MisplacedRootErrorRegx = /Root declarations belong directly inside an app\./
 
 Tests.test('automatic preparation rejects reached aliases that resolve one repository to different commits', async () => {
   const root = Artifacts.resolvePath('tmp', `project-preparation-source-conflict-${Platform.randomUUID()}`)
@@ -72,5 +74,57 @@ Tests.test('project preparation rejects lowercase npm aliases before installing 
     await Tests.rejects(preparation, LowercaseNpmAliasErrorRegx)
     Tests.expect(toolInvocations).toBe(0)
     Tests.expect(await readDependencyLock(lock)).toEqual(originalLock)
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('project preparation and inspection reject misplaced statements before reading source requirements', async () => {
+  const root = Artifacts.resolvePath('tmp', `project-preparation-placement-${Platform.randomUUID()}`)
+  const entry = Path.join(root, 'Main.tao')
+  const source = S`
+    use Packages@ui Widget
+    root Widget
+  `
+  let requirementReads = 0
+  const dependencyOptions: DependencyStoreOptions = {
+    storeRoot: Path.join(root, 'source-cache'),
+    git: gitSourceAdapter,
+    async readRequirements() {
+      requirementReads++
+      return []
+    },
+  }
+  await Try(async () => {
+    await initializeProject(root)
+    await FS.writeFile(entry, source)
+    const lock = resolveDependencyLockPath(root)
+    const originalLock = await readDependencyLock(lock)
+    await Tests.rejects(prepareProject(entry, { dependencyOptions }), MisplacedRootErrorRegx)
+    await Tests.rejects(prepareProject(entry, { dependencyOptions, update: ['Packages'] }), MisplacedRootErrorRegx)
+    Tests.expect(requirementReads).toBe(0)
+    Tests.expect(await readDependencyLock(lock)).toEqual(originalLock)
+    await Tests.rejects(inspectProjectPreparation(entry, { dependencyOptions, runtime: false }), MisplacedRootErrorRegx)
+    Tests.expect(requirementReads).toBe(0)
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+Tests.test('project preparation and inspection validate entry edits saved during dependency work', async () => {
+  const root = Artifacts.resolvePath('tmp', `project-preparation-entry-edit-${Platform.randomUUID()}`)
+  const entry = Path.join(root, '@ui', 'Main.tao')
+  const source = 'use Packages@ui Widget'
+  const dependencyOptions: DependencyStoreOptions = {
+    storeRoot: Path.join(root, 'source-cache'),
+    git: gitSourceAdapter,
+    async readRequirements() {
+      await FS.writeFile(entry, `${source}${NewlineCharacter}root Widget`)
+      return []
+    },
+  }
+  await Try(async () => {
+    await initializeProject(root)
+    await FS.mkdir(Path.dirname(entry))
+    await FS.writeFile(entry, source)
+    await Tests.rejects(prepareProject(entry, { dependencyOptions, update: ['Packages'] }), MisplacedRootErrorRegx)
+    await FS.writeFile(entry, source)
+    await Tests.rejects(inspectProjectPreparation(entry, { dependencyOptions, runtime: false }), MisplacedRootErrorRegx)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })

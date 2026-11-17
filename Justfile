@@ -99,10 +99,11 @@ timing-run HOST CHECKOUT *ARGS:
 timing-compare HOST BASELINE CANDIDATE *ARGS:
     ./dev timing-compare "$@"
 
-# Follow current and future benchmark jobs on the timing laptop
+# Follow the timing laptop over SSH; pass --local to follow this machine
 [group('Performance')]
-timing-watch:
-    ./dev timing-watch
+[positional-arguments]
+timing-watch *ARGS:
+    ./dev timing-watch "$@"
 
 # Print a retained timing report without launching measurements
 [group('Performance')]

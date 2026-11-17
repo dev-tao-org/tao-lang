@@ -4,8 +4,6 @@ import { Errors, Timings, Try } from '@shared'
 import { FS, Process } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
-import * as LocalBaseline from '../preview/LocalPreviewBaseline'
-import { preparePreviewProject, startPerformanceEditor } from '../preview/PerformanceProject'
 import { registerCommand } from './_command-runner'
 
 type PerformanceOptions = { fixture?: string; baseline?: boolean; reportOnly?: boolean }
@@ -47,8 +45,8 @@ export default registerCommand({
     }
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
-      const Perf = await import('@perf')
-      const record = await Perf.recordPreviewPerformance(runPreview)
+      const Performance = await import('@repo-analysis/performance')
+      const record = await Performance.recordPreviewPerformance(runPreview)
       IO.print(`${record.reused ? 'Existing' : 'Recorded'} commit performance: ${record.directory}`)
       return
     }
@@ -58,8 +56,8 @@ export default registerCommand({
     if (target === 'editor') {
       return await runPerformanceEditor()
     }
-    const Perf = await import('@perf')
-    const { path, summary } = await Perf.parserPerformance(timings.samples)
+    const Performance = await import('@repo-analysis/performance')
+    const { path, summary } = await Performance.parserPerformance(timings.samples)
     for (const phase of summary) {
       IO.print(
         `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -75,8 +73,8 @@ function hasPreviewOptions(options: PerformanceOptions): boolean {
 
 async function runModules(): Promise<void> {
   await prepareRuntime()
-  const Perf = await import('@perf')
-  const { path, summary } = await Perf.moduleRefreshPerformance()
+  const Performance = await import('@repo-analysis/performance')
+  const { path, summary } = await Performance.moduleRefreshPerformance()
   for (const result of summary) {
     IO.print(`${result.layout}: median ${result.medianMs.toFixed(1)} ms, p95 ${result.p95Ms.toFixed(1)} ms`)
   }
@@ -84,8 +82,8 @@ async function runModules(): Promise<void> {
 }
 
 async function runReactivity(): Promise<void> {
-  const Perf = await import('@perf')
-  const { path, summary } = await Perf.reactivityPerformance()
+  const Performance = await import('@repo-analysis/performance')
+  const { path, summary } = await Performance.reactivityPerformance()
   for (const result of summary) {
     IO.print(`${result.candidate}/${result.scenario}: median ${result.medianMs.toFixed(3)} ms per 1000 operations`)
   }
@@ -94,8 +92,8 @@ async function runReactivity(): Promise<void> {
 
 async function runFormatter(): Promise<void> {
   await prepareParser()
-  const Perf = await import('@perf')
-  const { path, summary } = await Perf.formatterPerformance()
+  const Performance = await import('@repo-analysis/performance')
+  const { path, summary } = await Performance.formatterPerformance()
   for (const phase of summary) {
     IO.print(
       `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -107,8 +105,8 @@ async function runFormatter(): Promise<void> {
 async function runExtension(): Promise<void> {
   const { prepareExtensionAssets } = await import('../ide/ExtensionBuild')
   await prepareExtensionAssets()
-  const Perf = await import('@perf')
-  const { path, summary } = await Perf.extensionPerformance()
+  const Performance = await import('@repo-analysis/performance')
+  const { path, summary } = await Performance.extensionPerformance()
   for (const phase of summary) {
     IO.print(
       `${phase.phase}: median ${phase.medianMs.toFixed(3)}ms, p95 ${phase.p95Ms.toFixed(3)}ms (n=${phase.count})`,
@@ -118,6 +116,7 @@ async function runExtension(): Promise<void> {
 }
 
 async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
+  const LocalBaseline = await import('../preview/LocalPreviewBaseline')
   if (options.baseline) {
     if (options.fixture) {
       Errors.ThrowUserInput('Capture the baseline on the fixed performance project.')
@@ -135,10 +134,11 @@ async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
 }
 
 async function runPreview(initialSource?: string) {
-  const Perf = await import('@perf')
+  const Performance = await import('@repo-analysis/performance')
+  const { preparePreviewProject } = await import('../preview/PerformanceProject')
   const options = await preparePreviewProject(initialSource)
-  const result = await Perf.previewPerformance(options)
-  for (const { scenario, timing } of Perf.describePreviewOutput(result)) {
+  const result = await Performance.previewPerformance(options)
+  for (const { scenario, timing } of Performance.describePreviewOutput(result)) {
     if (!timing) {
       IO.warn(`${scenario}: no matching save timing; browser samples remain in the raw report.`)
     }
@@ -147,6 +147,7 @@ async function runPreview(initialSource?: string) {
 }
 
 async function runPerformanceEditor(): Promise<void> {
+  const { startPerformanceEditor } = await import('../preview/PerformanceProject')
   const harness = await startPerformanceEditor()
   await Try(() => Process.waitForTermination(), { finally: () => harness.dispose() })
 }

@@ -58,7 +58,7 @@ window were verified from a successful shell exit alone. Do not change editor se
 existing tabs. A request to open files authorizes this scoped shell launch; no additional approval
 question is needed. Do not open future groups automatically.
 
-## Continue in another implementation worktree
+## Continue in another implementation worktree with the same baseline
 
 After creating the new implementation branch/worktree, continue from the original implementation
 checkout's idle review session:
@@ -75,6 +75,57 @@ Read the inherited progress/group records and reconcile them before presenting t
 New implementation changes are not automatically approved. Do not pre-create the approved branch
 or copy the old active session over the new one.
 
+## Continue after a landing
+
+Keep the review chat and prior session. Use the
+[landing checkpoint](../../landing/references/merge-progress.md#merging-and-continuing) to pin the
+cut and the remaining changes. Use updated `main` as the new implementation base, or the
+explicit reconciliation commit when a shared integration branch supplies the intended base.
+Replay only the outstanding scope under [Git workflow](../../git-workflow/SKILL.md).
+
+- Start a review session on the new implementation branch with
+  `start --base <new-base-sha> --branch <implementation-branch>-incremental-review-approved`.
+  Ordinary `continue` retains the old baseline and approvals tree.
+- If the prior scope all landed, keep the original receipts and begin a fresh scope at the
+  new base. The pending diff starts empty before incoming work.
+- When part of the scope remains, carry forward the original inventory, stable IDs, earned
+  credit and receipts. Record surviving approved content on the new approvals branch through
+  the usual acceptance operations when the original approval still covers its exact content
+  and meaning. After restoring approvals, register outstanding semantic rechecks and any new
+  ones from conflict resolutions or changes to shared behavior with `recheck --files … --state pending`.
+- Before presenting groups, reconcile `status.pending` with outstanding content changes and
+  `status.recheck` with outstanding semantic rechecks, including files whose bytes are unchanged.
+  Keep the prior session and landing boundary available for resuming.
+
+## Integrate incoming work
+
+- Resolve a named chat to its implementation checkout and branch. Record the exact committed SHA
+  from its handoff or Git, the requested scope, and any open findings or verification gaps. Use
+  that snapshot even if the source branch advances. Refresh it only on the Developer's instruction.
+- During an active review, record incoming import requests and ready subagent work in order in
+  the retained session checkpoint. Acknowledge the queue entry and continue the current review.
+  Keep queued snapshots outside the displayed groups and their progress totals. A request to
+  import for review goes into the queue unless the Developer explicitly asks to merge immediately.
+- When the current scope is complete, including its outstanding approvals and rechecks, ask whether
+  to import the first queued snapshot. Wait for the Developer's decision. If they skip it or select
+  another entry, record that choice and keep the other queued snapshots available.
+- Merge the pinned tip into the implementation branch under [Git workflow](../../git-workflow/SKILL.md).
+  Compare the merged snapshot directly with the existing approved-content tree. Carry forward
+  accepted content and receipts, and register rechecks for prior approvals affected by conflict
+  resolution or changed shared behavior. Treat new content as pending under the usual approval rules.
+- After importing from the queue, freeze a new inventory for that review and retain the completed
+  checkpoint. When the Developer requests an immediate merge during an active review, preserve
+  the active inventory and earned credit and track the incoming work as a separate scope. Keep
+  follow-up work outside the current display when possible.
+
+## Work during review
+
+- Present requested groups and continue authorized work while awaiting feedback. Respond to new
+  group requests or approvals as they arrive, then resume the work.
+- Keep displayed files stable. If necessary work changes a displayed file, refresh its diff,
+  withdraw any stale approval request, and ask the Developer to review the changed content.
+  Keep new follow-up work pending without changing the original progress denominator.
+
 ## Accept whole files
 
 An unambiguous whole-file request takes one call:
@@ -90,24 +141,37 @@ edits to those paths; unsaved editor buffers are not filesystem contents.
 
 Already committed contents need only a review checkpoint. Commit requested implementation
 corrections in coherent chunks as they are completed, including delegated changes, using this
-workflow's standing developer authorization. Source commits remain unapproved until explicit
-acceptance or the standing authored-test policy applies. Preserve unrelated edits and index
+workflow's standing developer authorization. Source commits require explicit acceptance or
+standing auto-approval. Preserve unrelated edits and index
 selections; checkpoint source corrections before transferring accepted contents. Do not run full
 verification merely to copy previously committed approved contents. For implementation corrections,
 choose proportionate intermittent checks and retain actionable failures.
 
-## Recommend auto-approval
+## Auto-approval
 
-With each group proposal, list candidates by file or stable ID and give a short reason for each.
-Report any files already accepted under standing authorization separately. A recommendation needs
-developer approval unless standing authorization already covers the change.
+Apply standing auto-approval to each eligible saved change before proposing groups and when
+rescreening an active review. Record the accepted files and a short reason by file or stable ID.
+Honor explicit requests to review particular files.
 
-Recommend straightforward tests and changes to fixtures or helpers whose callers are exclusively
-tests. Trace usage and check that the changes preserve meaningful coverage. Keep shared runners,
-execution infrastructure, and fixtures that define substantial expected behavior available for
-manual review. Recommend Markdown changes that accurately document verified implementation or
-make editorial corrections. Keep changes that introduce architectural decisions, unimplemented
-behavior, or new contracts in their review groups.
+- Auto-approve `.gitignore` changes by default. Keep a file for review when a rule could hide
+  authored source or review evidence, expose sensitive or machine-local files, or materially
+  change which deliverables are tracked.
+- Always auto-approve Markdown files, including specifications, roadmaps and agent guidance.
+- Always auto-approve files in any JSON format (including `.json`, `.jsonc`, `.json5`,
+  `.jsonl`, and `.ndjson`), YAML files (`.yaml` and `.yml`), and lockfiles. Include additions,
+  deletions, and both paths of a rename.
+- Auto-approve mechanical TypeScript changes. Include import-only edits, renamed bindings or
+  APIs, equivalent call-site adaptations, type-only moves, and substitutions with an equivalent
+  helper. Confirm equivalence from the relevant declarations and call sites. Keep changes to
+  control flow, side effects, validation, public contracts or architectural boundaries for human
+  review, along with new implementations or concepts. Judge the effect of the diff, regardless of
+  its line count.
+- Always auto-approve test fixture code, including fixtures that define expected behavior. Use the
+  file's role and callers to identify test fixtures. Apply the normal review policy to shared test
+  runners and execution infrastructure.
+
+Record whole-file approvals through the review script, including both paths for renames. Any
+additional recommendations outside the standing policy require developer approval.
 
 ## Automatic test acceptance
 

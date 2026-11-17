@@ -1,3 +1,4 @@
+import { isObject } from '../ObjectGuards'
 import type { ErrorDetails, TaoError } from './Values'
 
 /** BaseTaoError preserves structured Tao error identity and causes. */
@@ -19,7 +20,7 @@ export class BaseTaoError extends Error {
 /** isTaoError checks whether a value is one of Tao's structured errors. */
 export function isTaoError(error: unknown): error is TaoError {
   // Identity checks do not invoke a thrown Proxy's prototype traps, unlike instanceof.
-  return typeof error === 'object' && error !== null && taoErrors.has(error)
+  return isObject(error) && taoErrors.has(error)
 }
 
 const taoErrors = new WeakSet<object>()

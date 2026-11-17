@@ -51,6 +51,37 @@ Tests.test('Try > preserves synchronous values', () => {
   Tests.expect(recoveredFailure).toBe(failure)
 })
 
+Tests.test('Try.IgnoreError > suppresses sync and async failures without a recovery value', async () => {
+  const events: string[] = []
+  Try.IgnoreError(() => {
+    events.push('sync')
+  })
+  Try.IgnoreError(() => {
+    throw 'ignored'
+  })
+  await Try.IgnoreError(async () => {
+    events.push('async')
+  })
+  await Try.IgnoreError(async () => {
+    throw 'ignored async'
+  })
+  Tests.expect(events).toEqual(['sync', 'async'])
+})
+
+Tests.test('Try.IgnoreError > discards values and waits for a deferred effect', async () => {
+  const effect = Promise.withResolvers<number>()
+  const completion = Try.IgnoreError(() => effect.promise)
+  Tests.expect(Try.IgnoreError(() => 7)).toBeUndefined()
+  Tests.expect(completion).toBeInstanceOf(Promise)
+  const observed: void[] = []
+  const completed = Promise.resolve(completion).then(value => observed.push(value))
+  await Promise.resolve()
+  Tests.expect(observed).toEqual([])
+  effect.resolve(7)
+  await completed
+  Tests.expect(observed).toEqual([undefined])
+})
+
 Tests.test('Try.WithDefault > preserves success values and returns the fallback on sync or async failure', async () => {
   const fallback = { recovered: true }
   type RecoveredText = string | typeof fallback

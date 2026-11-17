@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
-import * as Typecheck from '@typecheck'
+import * as SourceValidation from '@source-validation'
 
 import { Errors, Sort } from '@shared'
 import { FS, Path } from '@shared/os'
@@ -65,7 +65,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   if (!document) {
     Errors.ThrowUserInput(`Cannot read requirements from invalid Tao source: ${path}.`)
   }
-  Typecheck.assertValidStatements(document, path)
+  SourceValidation.assertValidRequirements(document, path)
   const requirements = AST.GetDeclarations(document)
     .filter(isSourceRequirement)
     .map(declaration => requirementFromDeclaration(declaration, path))
@@ -92,7 +92,7 @@ function requirementFromDeclaration(
   }
   const version = provider === 'github' ? declaration.version! : declaration.version ?? getDefaultVersion(provider)
   if (declaration.alias) {
-    Typecheck.requireValidDeclarationName(declaration.alias, path)
+    SourceValidation.requireValidDeclarationName(declaration.alias, path)
   }
   const aliasFields = declaration.alias ? { alias: declaration.alias.value } : {}
   return {

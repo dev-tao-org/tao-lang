@@ -32,6 +32,9 @@
       "@ast-gen": [
         "./2-ast-gen/ast-gen-src/ASTGen.ts"
       ],
+      "@source-validation": [
+        "./2.5-source-validation/source-validation-src/SourceValidation.ts"
+      ],
       "@typecheck": [
         "./3-typecheck/typecheck-src/Typecheck.ts"
       ],
@@ -83,8 +86,17 @@
       "@cli-kit/runtime-tooling": [
         "./CLIs/CLIs-src/cli-checks/RuntimeTooling.ts"
       ],
-      "@perf": [
-        "./perf/perf-src/Perf.ts"
+      "@ide": [
+        "./ide-extensions/tao-ide-extension/tao-ide-extension-src/Editor.ts"
+      ],
+      "@repo-analysis": [
+        "./repo-analysis/repo-analysis-src/RepoAnalysis.ts"
+      ],
+      "@repo-analysis/performance": [
+        "./repo-analysis/repo-analysis-src/Performance/Performance.ts"
+      ],
+      "@tao/repo-analysis/fix": [
+        "./repo-analysis/repo-analysis-src/RepoAnalysisFix.ts"
       ],
       "@shared": [
         "./shared/shared-src/shared.ts"
@@ -116,14 +128,11 @@
       "@shared/os/metro": [
         "./shared/shared-src/os/MetroPlatform.ts"
       ],
+      "@tao/shared/typescript": [
+        "./shared/shared-src/bridges/Bridge_typescript.ts"
+      ],
       "@stdlib": [
         "./stdlib/stdlib-src/Stdlib.ts"
-      ],
-      "@tao/ts-api": [
-        "./ts-api/ts-api-src/ts-api.ts"
-      ],
-      "@ide": [
-        "./ide-extensions/tao-ide-extension/tao-ide-extension-src/Editor.ts"
       ]
     },
     "jsxImportSource": "@runtime/client/Bridge_react"

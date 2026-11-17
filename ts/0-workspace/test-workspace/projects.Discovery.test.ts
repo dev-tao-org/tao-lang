@@ -13,7 +13,7 @@ Tests.test('project metadata initializes at a boundary and discovery walks upwar
     Tests.expect(await FS.readFile(Path.join(layout.taoDirectory, 'store', 'project.json'), 'utf8')).toBe(identity)
     await FS.mkdir(Path.join(root, 'src'))
     Tests.expect(await discoverProject(Path.join(root, 'src', 'Main.tao'))).toEqual(layout)
-    Tests.expect(await FS.readFile(Path.join(root, '.tao', '.gitignore'), 'utf8')).toBe('cache/\nlocks/\n')
+    Tests.expect(await FS.readFile(Path.join(root, '.tao', '.gitignore'), 'utf8')).toBe('/cache/\n/locks/\n')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 

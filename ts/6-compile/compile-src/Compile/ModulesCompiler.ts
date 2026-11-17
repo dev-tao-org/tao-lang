@@ -69,14 +69,14 @@ const compileSource = Timings.measured('compiler.emit-module', function(
   resolveForeignViewPath?: ForeignViewsCompiler.ForeignViewPathResolver,
 ): GeneratedSource {
   const sourceProgram = selectSourceProgram(program, module)
-  const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, resolveForeignViewPath)
-  const context = createModuleCompilationContext(module, textBindings, foreign.names)
+  const mainPath = resolvePath(paths, module.path)
+  const foreign = ForeignViewsCompiler.compileForeignViews(sourceProgram, mainPath, resolveForeignViewPath)
+  const context = createModuleCompilationContext(module, mainPath, textBindings, foreign.names)
   const declarations = AST.GetDeclarations(module.document).map(node => ({
     node,
     compiled: DeclarationCompiler.compileDeclaration(node, context),
   }))
   const components = joinCodeBlocks(...declarations.map(item => item.compiled.components))
-  const mainPath = resolvePath(paths, module.path)
   const viewPath = resolveViewsPath(mainPath)
   const main = compileMain(module, paths, context, declarations, components.length > 0, foreign.imports)
   const views = components
@@ -100,6 +100,7 @@ function selectSourceProgram(
 
 function createModuleCompilationContext(
   module: Typecheck.LinkedModule,
+  generatedPath: string,
   textBindings: ModuleTextBindingsBySourcePath,
   foreignNames: ForeignViewsCompiler.ForeignViewNamesByModuleMemberKey,
 ): DeclarationCompiler.DeclarationContext {
@@ -107,7 +108,7 @@ function createModuleCompilationContext(
     scope: '_Scope',
     scopeType: 'ModuleScope',
     componentPrefix: '_Views.',
-    moduleIdentity: Platform.hashText(module.path).slice(0, 12),
+    moduleIdentity: Platform.hashText(generatedPath).slice(0, 12),
     textBindings: textBindings.get(module.path) ?? new Set(),
     moduleBindings: module.bindings,
     resolveForeignComponent: node => foreignNames.get(Typecheck.createModuleMemberKey(module.path, node.range.start)),
@@ -139,7 +140,7 @@ function compileMain(
     `
   ).join(NewlineCharacter + NewlineCharacter)
   return S`
-    import * as TR from '@runtime';
+    ${RuntimeEmitter.emitGeneratedRuntimeImport()}
     ${componentImport}
     ${foreignImports}
     ${bindingTypes}
@@ -221,7 +222,7 @@ function compileBootstrap(
   const initialization = compileModuleInitialization(program, 'App.tsx', paths)
   const scope = initialization.scopes.get(selected.source)!
   return S`
-    import * as TR from '@runtime';
+    ${RuntimeEmitter.emitGeneratedRuntimeImport()}
     ${initialization.imports}
 
     ${RuntimeEmitter.emitModuleApplied(revision)}

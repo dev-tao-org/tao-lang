@@ -1,3 +1,4 @@
+import { Objects } from '@shared'
 import * as PreviewPlatform from '@shared/os/preview'
 import MetroHMRClient from 'tao:metro-hmr-client'
 
@@ -46,5 +47,5 @@ function describeError(error: unknown): string {
 }
 
 function hasErrorMessage(error: unknown): error is { message: unknown } {
-  return typeof error === 'object' && error !== null && 'message' in error
+  return Objects.isObject(error) && 'message' in error
 }

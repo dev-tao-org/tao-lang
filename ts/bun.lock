@@ -15,6 +15,7 @@
         "@tao/grammar": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/source-validation": "workspace:*",
         "@tao/stdlib": "workspace:*",
         "@tao/typecheck": "workspace:*",
         "semver": "7.8.5",
@@ -48,6 +49,17 @@
         "@tao/shared": "workspace:*",
       },
       "devDependencies": {
+        "@types/bun": "1.4.0",
+      },
+    },
+    "2.5-source-validation": {
+      "name": "@tao/source-validation",
+      "dependencies": {
+        "@tao/ast-gen": "workspace:*",
+        "@tao/shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@tao/grammar": "workspace:*",
         "@types/bun": "1.4.0",
       },
     },
@@ -89,6 +101,7 @@
         "@tao/ast-gen": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
+        "@tao/source-validation": "workspace:*",
         "@tao/typecheck": "workspace:*",
       },
       "devDependencies": {
@@ -123,6 +136,7 @@
         "@tao/ast-gen": "workspace:*",
         "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/repo-analysis": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/typecheck": "workspace:*",
@@ -137,7 +151,6 @@
       "devDependencies": {
         "@types/bun": "1.4.0",
         "@types/react": "~19.2.0",
-        "dependency-cruiser": "18.7.2",
         "rulesync": "16.18.0",
       },
     },
@@ -154,6 +167,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@tao/fix": "workspace:*",
+        "@tao/source-validation": "workspace:*",
         "tree-sitter-typescript": "0.23.2",
         "web-tree-sitter": "0.26.6",
       },
@@ -163,13 +177,14 @@
         "@vscode/vsce": "3.7.1",
       },
     },
-    "perf": {
-      "name": "@tao/perf",
+    "repo-analysis": {
+      "name": "@tao/repo-analysis",
       "dependencies": {
         "@tao/ast-gen": "workspace:*",
-        "@tao/cli": "workspace:*",
+        "@tao/compile": "workspace:*",
         "@tao/fix": "workspace:*",
         "@tao/grammar": "workspace:*",
+        "@tao/ide-extension": "workspace:*",
         "@tao/runtime": "workspace:*",
         "@tao/shared": "workspace:*",
         "@tao/stdlib": "workspace:*",
@@ -178,6 +193,7 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
+        "dependency-cruiser": "18.7.2",
       },
     },
     "shared": {
@@ -203,22 +219,6 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
-      },
-    },
-    "ts-api": {
-      "name": "@tao/ts-api",
-      "dependencies": {
-        "@tao/runtime": "workspace:*",
-        "@tao/shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@tao/workspace": "workspace:*",
-        "@types/bun": "1.4.0",
-        "@types/react": "~19.2.0",
-        "typescript": "5.9.3",
-      },
-      "peerDependencies": {
-        "react": "19.2.3",
       },
     },
   },
@@ -739,15 +739,15 @@
 
     "@tao/ide-extension": ["@tao/ide-extension@workspace:ide-extensions/tao-ide-extension"],
 
-    "@tao/perf": ["@tao/perf@workspace:perf"],
+    "@tao/repo-analysis": ["@tao/repo-analysis@workspace:repo-analysis"],
 
     "@tao/runtime": ["@tao/runtime@workspace:7-runtime"],
 
     "@tao/shared": ["@tao/shared@workspace:shared"],
 
-    "@tao/stdlib": ["@tao/stdlib@workspace:stdlib"],
+    "@tao/source-validation": ["@tao/source-validation@workspace:2.5-source-validation"],
 
-    "@tao/ts-api": ["@tao/ts-api@workspace:ts-api"],
+    "@tao/stdlib": ["@tao/stdlib@workspace:stdlib"],
 
     "@tao/typecheck": ["@tao/typecheck@workspace:3-typecheck"],
 

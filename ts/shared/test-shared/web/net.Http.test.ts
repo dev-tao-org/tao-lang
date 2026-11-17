@@ -1,7 +1,7 @@
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, HeadlessBrowser, Path } from '@shared/os'
-import { TypeScript } from '../../shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 Tests.test('standalone HTTP modules preserve the native fetch receiver', async () => {
   const [bridge, http] = await Promise.all([

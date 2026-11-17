@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** assertUniqueSecretStoreKeys rejects JSONC keys that conversion would overwrite or discard. */
 export function assertUniqueSecretStoreKeys(source: string): void {

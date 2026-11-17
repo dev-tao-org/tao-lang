@@ -13,10 +13,10 @@ import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles, transpileGeneratedFiles } from './Compile.test-utils'
 
 Tests.test('Preview performance fixture generates generic runtime calls and authored native injections', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const document = AST.transform(tree)!
-  const entryPath = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const entryPath = Repo.resolvePath('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const program = await linkedUIProgram(entryPath, document)
   const code = combineGeneratedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')
@@ -75,7 +75,7 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "HelloWorld", () => _Scope["RootView"]);')
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Interactions", () => _Scope["Form"]);')
   Tests.expect(code).toContain(
-    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["source/interactions.ts"]!["Interactions"]);',
+    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["ts/packages/interactions.ts"]!["Interactions"]);',
   )
 })
 
@@ -144,9 +144,13 @@ Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles',
 
   Tests.expect(code).toContain('const _scope0 = TR.Scope() as Source0.Scope;')
   Tests.expect(code).toContain('const _scope1 = TR.Scope() as Source1.Scope;')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["source/common.ts"]!["Root"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["source/entry.ts"]!["Shared"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "LocalShared", () => _Modules["source/entry.ts"]!["Shared"]);')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["ts/packages/common.ts"]!["Root"]);')
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "LocalShared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
   Tests.expect(code).toContain('_Scope["UI.Root"]')
   Tests.expect(code).toContain('_Imported_Entry$Shared["Shared"]')
   Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Shared", TR.ViewDeclaration("Shared"')

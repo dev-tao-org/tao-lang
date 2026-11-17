@@ -49,7 +49,7 @@ These are your rules of usage:
 - When asked about issues encountered, give a concise executive report from the task's complication record. When asked what remains or whether work is ready to land or archive, also surface every unresolved complication, distinguishing blockers from follow-up improvements.
 - Record only developer-accepted decisions and explicit deferrals in durable Tao design, specification and implementation documents. Keep pending proposals and open questions in task-local `.artifacts` notes unless the developer explicitly requests their preservation in a design document; label them separately from accepted decisions.
 - Integrate accepted behavior into the existing specification topic and keep corresponding decisions and implementation tasks under `Docs/Roadmap/`. Cross-reference the owning document; distinguish agreed future behavior from implemented behavior and verified work. `Docs/Specification/AGENTS.md` owns specification scope and style.
-- Order implementation tasks where dependencies or an accepted sequence justify it. Group the rest by topic without implying a priority.
+- Organize upcoming projects, tasks and reviewable slices in [Immediate Implementation Queue](Docs/Roadmap/Immediate%20Implementation%20Queue.md). Consult it when selecting or delegating work, and update it when priorities, dependencies, scope or completion change. Keep detailed decisions in their owning topic documents and link them from the queue. Order tasks where dependencies or an accepted sequence justify it; group the rest by topic without implying a priority.
 - Before any merge or merge handoff, reconcile affected specifications, decision records and implementation tasks with the branch and its verification evidence.
 - Repository tooling and contributor workflows belong in [Docs/Dev Env](Docs/Dev%20Env/README.md). Update unrelated documents only when instructed.
 
@@ -80,6 +80,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 ## Implementation policy
 
+- Treat `.tao/` directories as Tao-managed state: change them through Tao Studio or CLI, not by direct edits or repository formatters. Direct edits are allowed only when updating existing projects to reflect changes to project-creation tooling.
 - Never preserve backward compatibility. Tao rolls forward only: update affected implementations, callers, formats, fixtures and documentation together. Do not add legacy readers, migration branches, compatibility shims or fallbacks for superseded assumptions.
 - For a large breaking rewrite, coordinate exclusive ownership by one agent with the developer instead of maintaining old and new designs in parallel. Rebuild incompatible generated state explicitly; do not silently discard authored data or re-resolve durable dependency pins.
 
@@ -141,7 +142,7 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
   - For `Exec` and its callers, pass the executable as one string, arguments separately, and options last. Use an argument array when individual arguments contain spaces or come from dynamic values.
   - Expose static validation through `check`; keep its individual type, comment and style checks internal.
   - The global CLI fatal handler prints uncaught failures and uses the command error status when present, otherwise 1; no new implementation code assigns `process.exitCode`. Actions and workflow steps return void and propagate failures. Use variadic `runSteps`.
-  - Output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve error output for flows near process exit; prefer throwing failures or warning otherwise.
+  - Human-facing command output uses `IO.print`, yellow `IO.warn`, or red `IO.printToStdErr`. Reserve error output for flows near process exit; prefer throwing failures or warning otherwise. Standalone machine protocols may write exact bytes through shared OS streams.
   - Human command progress always appears in gray on stderr; agent progress follows its configured output mode.
   - Common developer actions live in Justfile; include only developer-selected recipes. Each calls one complete `./dev` command owning every step; document justified exceptions beside the recipe.
 
@@ -163,10 +164,10 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 - `ts/` owns the independent TypeScript workspace, dependencies, lockfile and compiler configuration.
 - `ts/CLIs/CLIs-src/tao-cli/` owns project commands; `dev-cli/` owns developer commands; `agent-cli/` adds agent-only commands and imports shared dev commands. Root `tao`, `dev` and `agent` are thin environment-aware launchers.
-- `ts/CLIs/CLIs-src/cli-kit/` provides command execution, configured output, fatal handling, secrets and host dispatch. `cli-checks/` owns diagnostics, validation, source rules and test timing reports.
+- `ts/CLIs/CLIs-src/cli-kit/` provides command execution, configured output, fatal handling, secrets and host dispatch. `cli-checks/` runs preparation and verification workflows and reports their results. `ts/repo-analysis/` owns TypeScript source policy, workspace package and test analysis, repository scripts and performance workloads.
 - `ts/shared/shared-src/universal/` provides portable errors, Try, strings, time and type-safe switching. `os/`, exported through `@shared/os`, owns platform operations, repository roots and artifacts.
-- `ts/0-workspace/workspace-src/` owns projects, sessions, dependency preparation, sidecars and workspace publication. `ts/1-grammar/grammar-src/` owns the Tree-sitter grammar, native binding and CST parser. `ts/2-ast-gen/ast-gen-src/` owns CST-to-AST transformation. `ts/3-typecheck/` owns linking and current validation; `ts/4-fix/` owns formatting and fixing; `ts/5-check/` reserves the following check stage. `ts/6-compile/` owns AST-to-code generation; its `AGENTS.md` owns the compiler/runtime boundary. `ts/7-runtime/runtime-src/` owns the handwritten app runtime. `ts/stdlib/` owns the bundled Tao project. `ts/perf/` owns performance fixtures and measurement drivers; shared `Timings` records operation spans.
-- Tests live under each package's central `test-<package>/` root. `@shared-tests` owns generic test mechanisms. `ts/scripts/` holds tool configuration such as Knip.
+- `ts/0-workspace/workspace-src/` owns projects, sessions, dependency preparation, sidecars and workspace publication. `ts/1-grammar/grammar-src/` owns the Tree-sitter grammar, native binding and CST parser. `ts/2-ast-gen/ast-gen-src/` owns CST-to-AST transformation. `ts/2.5-source-validation/` owns context-free structural checks on the semantic AST. `ts/3-typecheck/` owns linking and validation that depends on name resolution. `ts/4-fix/` owns formatting and fixing. `ts/5-check/` reserves the following check stage. `ts/6-compile/` owns AST-to-code generation; its `AGENTS.md` owns the compiler/runtime boundary. `ts/7-runtime/runtime-src/` owns the handwritten app runtime. `ts/stdlib/` owns the bundled Tao project. Shared `Timings` records operation spans.
+- Tests live under each package's central `test-<package>/` root. `@shared-tests` owns generic test mechanisms.
 - `.config/` owns tool/bootstrap configuration and the local InstantDB Compose file. Root `devenv.*` defines the pinned environment; `.envrc` activates it through direnv, with `enter-tao-dev-env.sh` as the explicit alternative.
 - `agents/`, `.rulesync/`, and native harness directories own agent guidance and configuration. `.secrets/` contains encrypted secrets; `.storage/` is the QA archive submodule.
 - `.artifacts/` holds generated output, logs, caches, temporary state and retained agent notes/progress; the PoC links to it. Its separate environment state lives under `.devenv/.x-tao-old-v1/`.

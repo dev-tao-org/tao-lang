@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/cache/typescript/2.5-source-validation.tsbuildinfo"
+  },
+  "include": [
+    "source-validation-src/**/*",
+    "test-source-validation/**/*"
+  ]
+}

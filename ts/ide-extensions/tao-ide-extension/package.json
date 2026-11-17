@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@tao/fix": "workspace:*",
+    "@tao/source-validation": "workspace:*",
     "web-tree-sitter": "0.26.6",
     "tree-sitter-typescript": "0.23.2"
   },

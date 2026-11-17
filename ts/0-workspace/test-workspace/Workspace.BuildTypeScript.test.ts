@@ -2,7 +2,7 @@ import * as Runtime from '@runtime'
 import { Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { prepareBuildTypeScript } from '../workspace-src/BuildTypeScript'
 
 Tests.test('generated build files resolve runtime aliases and JSX packages in their own TypeScript project', async () => {
@@ -22,7 +22,9 @@ Tests.test('generated build files resolve runtime aliases and JSX packages in th
     const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, build)
     Tests.expect(parsed.errors).toEqual([])
     Tests.expect(parsed.fileNames).toContain(source)
-    for (const name of ['@runtime', '@tao/runtime-api', '@shared', 'react', 'react/jsx-runtime']) {
+    for (
+      const name of ['@tao/runtime/generated', '@tao/runtime/runtime-api', '@shared', 'react', 'react/jsx-runtime']
+    ) {
       const resolved = TypeScript.resolveModuleName(name, source, parsed.options, TypeScript.sys)
       Tests.expect(resolved.resolvedModule).toBeDefined()
     }

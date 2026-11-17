@@ -6,7 +6,6 @@ import { Errors, Timings } from '@shared'
 
 import { prepareNativeLocks } from '../cli-checks/native-lock-build'
 import { prepareRuntime } from '../cli-checks/runtime-build'
-import { withProjectSessions } from './ProjectCommand'
 import { workflowUI } from './WorkflowUI'
 
 /** prepareCompiledApplication opens an app through the shared preparation and source compilation workflow. */
@@ -18,12 +17,21 @@ export async function prepareCompiledApplication(target: Workspace.CompileTarget
 }
 
 /** publishCompiledLibrary validates package settings before publishing the selected library generation. */
-export async function publishCompiledLibrary(target: Workspace.CompileTarget, session?: string): Promise<string> {
-  if (!target.out || !target.name) {
-    return Errors.ThrowUserInput('Configure tao.compile.out and tao.compile.name for a TypeScript library.')
+export async function publishCompiledLibrary(
+  target: Workspace.CompileTarget,
+  session?: string,
+  destination?: string,
+): Promise<string> {
+  const project = await Workspace.discoverProject(target.entry)
+  if (!project) {
+    return Errors.ThrowUserInput(`No Tao project owns ${target.entry}.`)
   }
-  const request = { entry: target.entry, out: target.out, name: target.name, target: target.target }
-  return await withProjectSessions([target.entry], () => Workspace.publishLibrary(request), session)
+  await prepareRuntime()
+  return await Workspace.withDependencySession(
+    project.root,
+    session,
+    locked => Workspace.publishLibrary(target, locked, destination),
+  )
 }
 
 function createSelectedAppCompiler(app?: string): typeof Compile.compile {

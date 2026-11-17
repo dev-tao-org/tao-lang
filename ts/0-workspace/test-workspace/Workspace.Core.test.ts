@@ -8,7 +8,7 @@ type WorkspaceEventVersion = number | undefined
 type WorkspaceEvent = { path: WorkspaceEventPath; source: string; version: WorkspaceEventVersion }
 
 Tests.test('a rapid edit burst compiles only the active and newest queued source', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   let releaseFirst!: () => void
   let enteredFirst!: () => void
   const firstGate = new Promise<void>(resolve => releaseFirst = resolve)
@@ -50,7 +50,7 @@ Tests.test('a rapid edit burst compiles only the active and newest queued source
 })
 
 Tests.test('invalid source retains the last published application', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   let publishCount = 0
   const workspace = createWorkspace({
     compile: Timings.createTopLevelTimer(() => ({ 'App.tsx': 'compiled app' })),
@@ -66,7 +66,7 @@ Tests.test('invalid source retains the last published application', async () => 
 })
 
 Tests.test('a virtual document queues immutable versions without reading its entry from disk', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const document = new Document('/virtual/Hello World.tao', source)
   let releaseFirst!: () => void
   let enteredFirst!: () => void
@@ -110,7 +110,7 @@ async function verifyOpeningAnotherSourceInvalidatesOldPublication(): Promise<vo
   const directory = Artifacts.resolvePath('tmp', `workspace-open-race-${Platform.randomUUID()}`)
   const pathA = Path.join(directory, 'A.tao')
   const pathB = Path.join(directory, 'B.tao')
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   let releaseA!: () => void
   let enteredA!: () => void
   const gateA = new Promise<void>(resolve => releaseA = resolve)

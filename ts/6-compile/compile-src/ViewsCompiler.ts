@@ -7,7 +7,7 @@ import type { DeclarationCompilation } from './DeclarationCompiler'
 import { compileInjection } from './InjectionsCompiler'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import * as ValuesCompiler from './ValuesCompiler'
-import { createViewReferences, shadowReferences } from './ViewReferences'
+import { createViewReferences, shadowReferences, type ViewReferences } from './ViewReferences'
 
 /** ViewCompilationContext provides module-owned names and resolved foreign implementations. */
 export type ViewCompilationContext = {
@@ -53,32 +53,80 @@ function compileTaoView(
   block: AST.Block,
   context: ViewCompilationContext,
 ): DeclarationCompilation {
+  const inputs = createTaoViewCompileInputs(node, block, context)
+  const nested = compileNestedViews(
+    node,
+    inputs.children,
+    createNestedOwnerContext(context, inputs.shadowed),
+    inputs.names,
+    inputs.textBindings,
+  )
+  const valuesCode = inputs.definitions.map(definition =>
+    ValuesCompiler.compileLetDeclaration(definition, inputs.references.scope)
+  )
+    .join(NewlineCharacter)
+  const compiled = compileViewRenderStatement(
+    inputs.render,
+    inputs.textBindings,
+    inputs.names,
+    inputs.references.scope,
+  )
+  return registerTaoView(node, context, inputs.names, nested, inputs.references, compiled, valuesCode)
+}
+
+type TaoViewCompileInputs = {
+  children: readonly AST.ViewDeclaration[]
+  definitions: readonly AST.LetDeclaration[]
+  names: RuntimeEmitter.ComponentNames
+  references: ViewReferences
+  render: AST.ViewRenderStatement
+  shadowed: Set<string>
+  textBindings: ReadonlySet<string>
+}
+
+function createTaoViewCompileInputs(
+  node: AST.ViewDeclaration,
+  block: AST.Block,
+  context: ViewCompilationContext,
+): TaoViewCompileInputs {
   const definitions = AST.GetLetDeclarations(block.statements)
   const children = AST.GetNestedViewDeclarations(block.statements)
   const render = AST.FindViewRenderStatement(block)
   if (render === undefined) {
     Errors.ThrowShouldNeverHappen(`View ${node.name.value} has no final render statement.`)
   }
-  const inheritedText = new Set(context.textBindings)
+  const textBindings = new Set(context.textBindings)
   for (const child of children) {
-    inheritedText.delete(child.name.value)
+    textBindings.delete(child.name.value)
   }
-  const bindings = ValuesCompiler.collectTextBindings(definitions, inheritedText, node.parameters)
-  const names = createComponentNames(node, context, definitions, children, bindings)
+  const bindings = ValuesCompiler.collectTextBindings(definitions, textBindings, node.parameters)
   const shadowed = new Set([
     ...context.shadowedNames ?? [],
     ...node.parameters.map(item => item.name.value),
     ...definitions.map(item => item.name.value),
     ...children.map(item => item.name.value),
   ])
-  const references = createViewReferences(context.moduleBindings, shadowed)
-  const nestedContext = createNestedOwnerContext(context, shadowed)
-  const nested = compileNestedViews(node, children, nestedContext, names, bindings)
-  const valuesCode = definitions.map(definition => ValuesCompiler.compileLetDeclaration(definition, references.scope))
-    .join(
-      NewlineCharacter,
-    )
-  const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
+  const names = createComponentNames(node, context, definitions, children, bindings)
+  return {
+    children,
+    definitions,
+    names,
+    references: createViewReferences(context.moduleBindings, shadowed),
+    render,
+    shadowed,
+    textBindings: bindings,
+  }
+}
+
+function registerTaoView(
+  node: AST.ViewDeclaration,
+  context: ViewCompilationContext,
+  names: RuntimeEmitter.ComponentNames,
+  nested: readonly DeclarationCompilation[],
+  references: ViewReferences,
+  compiled: RenderCompilation,
+  valuesCode: string,
+): DeclarationCompilation {
   const statements = CodegenUtil.joinCodeLines(
     references.initialize(),
     ...nested.map(child => child.initialization),

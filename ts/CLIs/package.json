@@ -7,6 +7,7 @@
     "@tao/fix": "workspace:*",
     "@tao/ast-gen": "workspace:*",
     "@tao/grammar": "workspace:*",
+    "@tao/repo-analysis": "workspace:*",
     "@tao/runtime": "workspace:*",
     "@tao/shared": "workspace:*",
     "@tao/typecheck": "workspace:*",
@@ -21,7 +22,6 @@
   "devDependencies": {
     "@types/bun": "1.4.0",
     "@types/react": "~19.2.0",
-    "dependency-cruiser": "18.7.2",
     "rulesync": "16.18.0"
   },
   "exports": {

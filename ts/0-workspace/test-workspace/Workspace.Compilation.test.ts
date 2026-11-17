@@ -4,7 +4,7 @@ import { Json } from '@shared'
 import { Timings, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { createProject, createWorkspace, type WorkspaceSession } from '../workspace-src/Workspace'
 
 Tests.test('project compilation creates its runtime lazily and publishes only changed build files', async () => {
@@ -28,7 +28,7 @@ async function verifyFolderWorkspace(root: string): Promise<void> {
   await FS.mkdir(directory)
   await FS.writeFile(
     Path.join(directory, 'Hello World.tao'),
-    await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao'),
+    await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao'),
   )
   await writeResources(resourcesDirectory)
   const workspace = createWorkspace({
@@ -88,7 +88,7 @@ async function verifyProjectCompilation(root: string): Promise<void> {
   await Try(async () => {
     Tests.expect((await workspace.update('app')).status).toBe('invalid')
     Tests.expect(installs).toBe(0)
-    const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+    const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
     Tests.expect((await workspace.update(source)).status).toBe('published')
     await verifyPublication(workspace, project.buildDirectory, source, () =>
       files = {

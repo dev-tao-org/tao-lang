@@ -1,16 +1,14 @@
-import library from '@example/tao-library'
-import Card from '@example/tao-library/Catalog/Greeting'
-import Greeting from '@example/tao-library/Greeting'
-import LanguageFeatures from '@example/tao-library/LanguageFeatures'
-import React from 'react'
+import { Greeting, LanguageFeatures } from '@tao-dev/ts-lib-example'
+import { Caption } from '@tao-dev/ts-lib-example/@cards'
+import { DetailedCard } from '@tao-dev/ts-lib-example/@cards/details'
 
-const instance = library.instantiate()
 const valid = (
-  <library.Provider instance={instance}>
+  <>
     <Greeting First="Ada" Second="Lovelace" />
-    <Card Value="Card" />
+    <Caption Value="Card" />
+    <DetailedCard Value="Detail" />
     <LanguageFeatures Name="Ada" />
-  </library.Provider>
+  </>
 )
 // @ts-expect-error Missing required Second prop.
 const missing = <Greeting First="Ada" />
@@ -21,10 +19,10 @@ const unknown = <Greeting First="Ada" Second="Lovelace" Third="No" />
 // @ts-expect-error New published views retain their required text parameter.
 const missingFeatureName = <LanguageFeatures />
 // @ts-expect-error Private Tao helper has no package export.
-import Hidden from '@example/tao-library/PrivateGreeting'
-// @ts-expect-error Unselected public view has no package export.
-import Unselected from '@example/tao-library/cards/Unselected'
+import Hidden from '@tao-dev/ts-lib-example/PrivateGreeting'
+// @ts-expect-error Project-scoped views are internal to the compiled package.
+import { Unselected } from '@tao-dev/ts-lib-example/@cards'
 // @ts-expect-error Dependencies are internal to the library.
-import Text from '@example/tao-library/tao/ui/Text'
-// @ts-expect-error Internal bundle is not a public package path.
-import Internal from '@example/tao-library/_Library.js'
+import Text from '@tao-dev/ts-lib-example/tao/ui/Text'
+// @ts-expect-error Internal scope is missing from package exports.
+import Internal from '@tao-dev/ts-lib-example/ts/LibraryScope'

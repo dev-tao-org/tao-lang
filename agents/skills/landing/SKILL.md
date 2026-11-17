@@ -32,6 +32,8 @@ Root commands outside `.x-tao-old-v1/` expose three routes, with the same names 
 - `landed [branch]` checks authoritative merged-PR and remote-main evidence. Authentication or
   remote-query errors are not evidence that a branch did not land.
 
+Use [Merge Progress](references/merge-progress.md) for a mid-task landing and its continuation.
+
 Rerun `land` to resume after a reported review or recovery stop. Review newly integrated changes
 and exact archive/source references before retrying; a retry is not a substitute for that review.
 The command must push and confirm archive data before publishing Tao's pointer, and pin the PR

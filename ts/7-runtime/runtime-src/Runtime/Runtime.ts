@@ -7,6 +7,7 @@ import * as RuntimeDependencyPolicy from '../expo/RuntimeDependencyPolicy'
 export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '../expo/Toolchain'
+import { RuntimeLibraryResourceDirectory } from './RuntimeResources'
 
 /** RuntimePackageVersions maps package names to their pinned install specifications. */
 export type RuntimePackageVersions = Record<string, string>
@@ -39,9 +40,8 @@ export async function preparedRuntime(
 /** create prepares an Expo application from the compiled runtime resources. */
 export async function create(options: RuntimeCreateOptions): Promise<RuntimeApplication> {
   const directory = Path.resolve(options.directory)
-  const resourcesPath = Path.resolve(options.resourcesDirectory ?? defaultResourcesDirectory())
   options.onProgress?.('Reading and validating runtime resources…')
-  const resourcesDirectory = FS.realpathSync(resourcesPath)
+  const resourcesDirectory = resolveRuntimeResourcesDirectory(options.resourcesDirectory)
   const resources = await readRuntimeResources(resourcesDirectory)
   options.onProgress?.('Runtime resources ready.')
   const cacheDirectory = Path.resolve(options.toolchainCacheDirectory ?? defaultToolchainCacheDirectory())
@@ -111,9 +111,9 @@ export type RuntimeCreateOptions = {
 export type { ExpoOptions, ExpoSession } from '../expo/Expo/Expo'
 export type { RuntimeInstaller } from '../expo/Toolchain'
 
-/** runtimeTypeScriptPaths resolves authored API aliases to the immutable packaged runtime sources. */
-export function runtimeTypeScriptPaths(): Record<string, string[]> {
-  const resourceDirectory = Path.resolve(FS.realpathSync(defaultResourcesDirectory()))
+/** runtimeTypeScriptPaths resolves authored API aliases through the stable packaged runtime entry.
+ *  Source-only rebuilds update that entry without changing the managed npm installation identity. */
+export function runtimeTypeScriptPaths(resourceDirectory = defaultResourcesDirectory()): Record<string, string[]> {
   const apiPath = Path.join(resourceDirectory, 'runtime/TaoRuntimeAPI.ts')
   const sharedPath = Path.join(resourceDirectory, 'shared/shared.ts')
   for (const path of [apiPath, sharedPath]) {
@@ -123,6 +123,16 @@ export function runtimeTypeScriptPaths(): Record<string, string[]> {
   }
   const runtimeClientPath = Path.join(resourceDirectory, 'runtime/*')
   return { '@runtime/client/*': [runtimeClientPath], '@tao/runtime-api': [apiPath], '@shared': [sharedPath] }
+}
+
+/** resolveRuntimeResourcesDirectory pins a session to one immutable runtime generation. */
+export function resolveRuntimeResourcesDirectory(directory = defaultResourcesDirectory()): string {
+  return FS.realpathSync(Path.resolve(directory))
+}
+
+/** libraryRuntimePackageDirectory locates the independent installer-facing runtime package. */
+export function libraryRuntimePackageDirectory(): string {
+  return Path.join(resolveRuntimeResourcesDirectory(), RuntimeLibraryResourceDirectory)
 }
 
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */

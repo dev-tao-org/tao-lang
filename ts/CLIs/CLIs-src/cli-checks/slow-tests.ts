@@ -25,7 +25,8 @@ export async function withTestTimings(
         if (!report.trim()) {
           Errors.ThrowHostEnvironment('Test runner did not write timing data.')
         }
-        for (const warning of slowTestWarnings(report, slowSeconds)) {
+        const warning = slowTestSummary(report, reportPath, slowSeconds)
+        if (warning) {
           output.warn(warning)
         }
         files = readTestFileTimings(report)
@@ -78,18 +79,18 @@ export function parseSlowTestSeconds(value = '0.075'): number {
 type OptionalTimedTest = TimedTest | undefined
 type XmlAttributes = Record<string, string>
 type XmlEntities = Record<string, string>
-type OptionalSuiteAttributes = XmlAttributes | undefined
 
-function slowTestWarnings(report: string, slowSeconds = 0.075): string[] {
+function slowTestSummary(report: string, reportPath: string, slowSeconds: number): string | undefined {
   const slow = readTestCases(report).filter(test => isSlowTest(test, slowSeconds))
     .sort((left, right) => right.seconds - left.seconds)
   if (slow.length === 0) {
-    return []
+    return undefined
   }
-  return [
-    `Slow tests (>${slowSeconds * 1000} ms):`,
-    ...slow.map(formatSlowTest),
-  ]
+  const slowest = slow[0]!
+  const duration = (slowest.seconds * 1000).toFixed(2)
+  const path = Path.relative(Repo.getWorkspaceRoot(), reportPath)
+  const noun = slow.length === 1 ? 'test' : 'tests'
+  return `${slow.length} ${noun} exceeded ${slowSeconds * 1000} ms; slowest ${duration} ms. Full timings: ${path}`
 }
 
 async function prepareTestReport(): Promise<string | undefined> {
@@ -107,16 +108,9 @@ async function prepareTestReport(): Promise<string | undefined> {
   })
 }
 
-type TimedTest = { name: string; suite?: string; file?: string; seconds: number; skipped: boolean }
-
-function formatSlowTest(test: TimedTest): string {
-  const location = test.file ? Repo.resolvePath('ts', test.file) + '  ' : ''
-  const suite = test.suite && test.suite !== test.file ? test.suite + ' > ' : ''
-  return `  ${location}${(test.seconds * 1000).toFixed(2)} ms  ${suite}${test.name}`
-}
+type TimedTest = { seconds: number; skipped: boolean }
 
 function readTestCases(report: string): TimedTest[] {
-  const suites: XmlAttributes[] = []
   const cases: TimedTest[] = []
   let current: OptionalTimedTest
   // Match whole XML tokens, including quoted > characters; diagnostic CDATA and comments stay opaque.
@@ -127,15 +121,7 @@ function readTestCases(report: string): TimedTest[] {
       continue
     }
     const closing = tag[1] === '/'
-    if (tag[2] === 'testsuite') {
-      if (closing) {
-        suites.pop()
-      } else if (!token.endsWith('/>')) {
-        suites.push(xmlAttributes(token))
-      } else {
-        // A self-closing suite contains no cases and opens no nesting scope.
-      }
-    } else if (tag[2] === 'testcase') {
+    if (tag[2] === 'testcase') {
       if (closing) {
         if (current) {
           cases.push(current)
@@ -143,29 +129,18 @@ function readTestCases(report: string): TimedTest[] {
         }
         continue
       }
-      current = timedTest(token, suites[suites.length - 1])
+      current = { seconds: Number(xmlAttributes(token).time), skipped: false }
       if (token.endsWith('/>')) {
         cases.push(current)
         current = undefined
       }
-    } else if (current && !closing) {
+    } else if (tag[2] === 'skipped' && current && !closing) {
       current.skipped = true
     } else {
       // Closing skipped tags and skipped tags outside a test case add no timing information.
     }
   }
   return cases
-}
-
-function timedTest(token: string, suite: OptionalSuiteAttributes): TimedTest {
-  const attributes = xmlAttributes(token)
-  return {
-    name: attributes.name ?? '<unnamed>',
-    suite: attributes.classname || suite?.name,
-    file: attributes.file || suite?.file,
-    seconds: Number(attributes.time),
-    skipped: false,
-  }
 }
 
 function isSlowTest(test: { seconds: number; skipped: boolean }, threshold: number): boolean {

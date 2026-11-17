@@ -28,3 +28,28 @@ Tests.test('shard timing observations use file wall time including setup', async
   })
   Tests.expect(timings).toEqual([{ file: 'package/one.test.ts', durationMs: 1250 }])
 })
+
+Tests.test('slow tests produce one summary while retaining every timing in the report', async () => {
+  const warnings: string[] = []
+  const output = { warn: (value: unknown) => warnings.push(String(value)) }
+  await withTestTimings(
+    async report => {
+      const junit = S`
+        <testsuites>
+          <testsuite file="package/one.test.ts" time="1.25">
+            <testcase name="slowest test" time="0.50"/>
+            <testcase name="another slow test" time="0.25"/>
+            <testcase name="quick test" time="0.02"/>
+            <testcase name="skipped test" time="2"><skipped/></testcase>
+          </testsuite>
+        </testsuites>
+      `
+      await FS.writeFile(report!, junit)
+    },
+    0.075,
+    output,
+  )
+  Tests.expect(warnings).toHaveLength(1)
+  Tests.expect(warnings[0]).toContain('2 tests exceeded 75 ms; slowest 500.00 ms.')
+  Tests.expect(warnings[0]).toContain('Full timings: ')
+})

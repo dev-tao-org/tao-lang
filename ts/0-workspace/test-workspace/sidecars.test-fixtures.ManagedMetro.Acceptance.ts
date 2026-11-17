@@ -3,7 +3,7 @@ import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { satisfies } from '../workspace-src/bridges/Bridge_semver'
 import { initializeProject } from '../workspace-src/projects/Projects'
 import type { BunExecutor } from '../workspace-src/sidecars/ManagedModule/ManagedModules'
@@ -130,6 +130,7 @@ async function materializeLockGraph(
   nodeModules: string,
 ): Promise<void> {
   const sources = await readPackageSources(options)
+  const packagesByName = indexLockPackages(lock)
   const wrappers = Path.join(Path.dirname(nodeModules), '.acceptance-packages')
   await FS.mkdir(wrappers)
   for (const [key, value] of Object.entries(lock.packages)) {
@@ -142,7 +143,7 @@ async function materializeLockGraph(
   for (const [key, value] of Object.entries(lock.packages)) {
     const source = sources.get(lockIdentity(value))
     if (source) {
-      await linkDependencies(lock, key, source, resolveWrapperPath(wrappers, key), wrappers)
+      await linkDependencies(packagesByName, key, source, resolveWrapperPath(wrappers, key), wrappers)
     }
   }
   for (const name of Object.keys(lock.packages)) {
@@ -218,7 +219,7 @@ async function createPackageWrapper(source: string, target: string): Promise<voi
 }
 
 async function linkDependencies(
-  lock: LockFile,
+  packagesByName: LockPackagesByName,
   key: string,
   source: string,
   wrapper: string,
@@ -232,7 +233,7 @@ async function linkDependencies(
   const target = Path.join(wrapper, 'node_modules')
   for (const [name, range] of Object.entries(dependencies ?? {})) {
     const dependency = npmDependency(name, range)
-    const child = createPackageKey(lock, dependency.name, dependency.range, key)
+    const child = createPackageKey(packagesByName, dependency.name, dependency.range, key)
     if (!child) {
       continue
     }
@@ -242,16 +243,27 @@ async function linkDependencies(
   }
 }
 
-function createPackageKey(lock: LockFile, name: string, version: string, parent?: string): string {
-  const matching = Object.entries(lock.packages).filter(([, value]) => {
+type LockPackageCandidate = { key: string; version: string }
+type LockPackagesByName = Map<string, LockPackageCandidate[]>
+
+function indexLockPackages(lock: LockFile): LockPackagesByName {
+  const packagesByName: LockPackagesByName = new Map()
+  for (const [key, value] of Object.entries(lock.packages)) {
     const identity = lockIdentity(value)
     const split = identity.lastIndexOf('@')
-    return identity.slice(0, split) === name && satisfies(identity.slice(split + 1), version)
-  })
-  const nested = parent ? matching.find(([key]) => key.startsWith(`${parent}/`)) : undefined
-  const candidates = matching
-  const root = candidates.find(([key]) => key === name)
-  return (nested ?? root ?? candidates[0])?.[0] ?? ''
+    const name = identity.slice(0, split)
+    const candidates = packagesByName.get(name) ?? []
+    candidates.push({ key, version: identity.slice(split + 1) })
+    packagesByName.set(name, candidates)
+  }
+  return packagesByName
+}
+
+function createPackageKey(packagesByName: LockPackagesByName, name: string, version: string, parent?: string): string {
+  const candidates = (packagesByName.get(name) ?? []).filter(candidate => satisfies(candidate.version, version))
+  const nested = parent ? candidates.find(candidate => candidate.key.startsWith(`${parent}/`)) : undefined
+  const root = candidates.find(candidate => candidate.key === name)
+  return (nested ?? root ?? candidates[0])?.key ?? ''
 }
 
 function npmDependency(name: string, range: string): { name: string; range: string } {

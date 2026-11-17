@@ -1,10 +1,8 @@
 import { IO } from '@cli-kit'
-import { ControlCCharacter, NewlineCharacter, Try } from '@shared'
+import { ControlCCharacter, Try } from '@shared'
 import { Browser, Process, Terminal } from '@shared/os'
 import { Cancellation } from '@shared/web'
 import { workflowUI } from '../../tao-cli/WorkflowUI'
-import { startDevelopmentPreview } from '../preview/DevelopmentPreview'
-import { startPerformanceEditor } from '../preview/PerformanceProject'
 import { registerCommand } from './_command-runner'
 
 /** devCommand runs the keyboard launcher and owns opened development apps until exit. */
@@ -29,14 +27,24 @@ async function runDevelopmentLoop(yes?: boolean): Promise<void> {
   }
   const controller = Cancellation.createController()
   const apps: AppLaunches = new Map([
-    ['p', { label: 'Performance', start: startPerformanceEditor }],
+    ['p', {
+      label: 'Performance',
+      async start() {
+        const { startPerformanceEditor } = await import('../preview/PerformanceProject')
+        return await startPerformanceEditor()
+      },
+    }],
     ['v', {
       label: 'Live Preview',
-      start: () => startDevelopmentPreview(controller.signal, ui),
+      async start() {
+        const { startDevelopmentPreview } = await import('../preview/DevelopmentPreview')
+        return await startDevelopmentPreview(controller.signal, ui)
+      },
     }],
   ])
   const sessions: DevelopmentSessions = new Map()
-  IO.print([...apps].map(([key, app]) => `${key}  ${app.label}`).concat('q  Quit').join(NewlineCharacter))
+  const commands = [...apps].map(([key, app]) => ({ key, label: `${key} ${app.label}` }))
+  IO.setCommands([...commands, { key: 'q', label: 'q Quit' }])
   const keys = listenForDevelopmentApps(apps, sessions, controller)
   const ui = workflowUI(yes, controller.signal, options => keys.withoutKeys(() => IO.askTerminalConfirmation(options)))
   await Try(() => Process.waitForTermination(controller.signal), {

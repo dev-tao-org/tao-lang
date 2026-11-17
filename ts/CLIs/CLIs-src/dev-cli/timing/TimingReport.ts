@@ -5,7 +5,7 @@ import { JobFileName, JobsDirectory } from '../../agent-skills/performance-inves
 import { describeTimingComparison } from './TimingComparison'
 import { resolveTimingSocket } from './TimingConnection'
 import { readTimingRemote, type TimingRemoteRequest } from './TimingRemote'
-import { parseTimingReport, type TimingReport } from './TimingReportContract'
+import type { TimingReport } from './TimingReportContract'
 import { readTimingHistory } from './TimingReportHistory'
 
 /** TimingReportRequest selects a tooling checkout and optional exact completed job. */
@@ -42,6 +42,7 @@ export async function readTimingReport(
   request: TimingReportRequest,
   controlPath: string,
 ): Promise<TimingReport> {
+  const { parseTimingReport } = await import('./TimingReportContract')
   if (!Path.posix.isAbsolute(request.tooling)) {
     Errors.ThrowUserInput('Use an absolute runner tooling checkout path.')
   }

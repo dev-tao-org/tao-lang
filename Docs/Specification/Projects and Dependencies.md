@@ -93,6 +93,47 @@ Adding resolves an exact npm version, writes `requires npm:date-fns version ...`
 module, and prepares its reachable dependency graph. Scoped names are supported; direct npm
 requirements need exact semantic versions. Runtime conflicts are reported rather than overridden.
 
+#### Agreed package addressing and generated manifests
+
+A folder named `@editor` establishes a local package boundary without a package declaration.
+Bare `@editor/subpath` addressing is reserved for packages in the current project and remains
+subject to ordinary declaration visibility. External dependencies use an explicit source provider
+and a declared alias; they do not occupy the bare local-package lookup.
+
+In the agreed future design, packages have no separately declared name. An external Tao package
+is addressed by its project source and `@folder` name, independently of that folder's position
+within the project. Tao projects are not published to or installed from npm; `npm:` remains
+available for consuming JavaScript dependencies.
+
+Tao owns package manifest generation for Tao-managed projects and modules; authors declare
+dependencies in Tao rather than editing generated `package.json` files. Generation is idempotent.
+Tool-required generated JavaScript package metadata does not establish a public Tao distribution
+name. Exact dependency-block ownership remains under design.
+
+Local checkout overrides for dependencies from separate projects are deferred until after MVP.
+
+Tao source distribution requires no separate project publication list: a project is made available
+at a supported source location, such as GitHub. Package visibility determines its accessible API.
+A `ts-library` declaration separately selects the API of a generated TypeScript build; it is not
+a prerequisite for consuming the project from Tao.
+
+Future imports explicitly name declarations; namespace imports (`use package`) and wildcard
+imports (`use ... all`) will be removed. Future visibility consists of `file` (the default),
+`folder`, and `package`. File declarations stay within their file; folder declarations are shared
+within their folder; package declarations are accessible through the package's address, including
+externally through an available project source. This replaces the current `project` and `public` levels.
+
+Bare imports search the same folder. Relative imports select folders within the same package.
+Package addresses preserve subfolder paths: `use @cards/details Caption` selects a package-visible
+declaration in that folder, not a declaration flattened into the package root. For external consumers,
+the package address is qualified by its project source; bare `@cards` remains project-local.
+
+In the agreed future design, TypeScript files in a Tao-managed project can import the same local
+package identities, such as `import { Editor } from '@editor'`. Tao generates the TypeScript and
+runtime resolver configuration; authors do not maintain matching manifests or path mappings.
+Both languages must preserve the same visibility restrictions. The representation of declaration
+kinds beyond currently published views remains under design.
+
 #### Store, cache and sessions
 
 `.tao/store/` retains identity, locks and `dependencies.initialized`; keep these in version control.

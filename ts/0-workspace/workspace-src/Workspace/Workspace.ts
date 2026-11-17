@@ -16,8 +16,9 @@ import { type CompileRequest, FileManager } from '../FileManager/FileManager'
 import { watchSourceTree } from '../FileManager/SourceWatch'
 import { loadModules } from '../modules/Loader'
 import { resolveCanonicalPath } from '../modules/Paths'
+import type { WorkspacePreparation } from '../ProjectPipeline'
 import { publishBuild } from './WorkspaceBuild'
-import type { WorkspaceOptions, WorkspacePreparation } from './WorkspaceOptions'
+import type { WorkspaceOptions } from './WorkspaceOptions'
 
 export { Document } from '../Document'
 export * from '../Project'
@@ -90,10 +91,6 @@ const PrepareDependencies = Timings.measured('dependencies.prepared', async func
   return await prepare?.(program, watchAttemptedFiles)
 })
 
-const LoadSources = Timings.measured(
-  'dependencies.sources',
-  async (load: WorkspaceOptions['beforeLoad']) => await load?.(),
-)
 const Publish = Timings.measure('workspace.publish', async function(
   timings,
   publish: (timings: Timings, output: CompiledApp, isCurrent: () => boolean) => Promise<void>,
@@ -218,7 +215,6 @@ class WorkspaceSession {
       return undefined
     }
     progress?.('Resolving source modules and visibility…')
-    await request.timings.run(LoadSources, this.options.beforeLoad)
     const sources = await request.timings.run(
       loadModules,
       { path: request.path ?? '<memory>', document },
@@ -227,6 +223,7 @@ class WorkspaceSession {
         resolveProject: (importer, alias) => this.resolveProject(importer, alias),
         observeProjectSources: this.options.observeProjectSources,
         includeModuleRequirements: this.options.includeModuleRequirements,
+        beforeLoad: this.options.beforeLoad,
       },
       this.parser,
     )
@@ -326,7 +323,7 @@ function createOutputPaths(options: WorkspaceOptions): WorkspaceOutputPaths | un
   if (options.project) {
     return {
       buildDirectory: options.project.buildDirectory,
-      runtimeDirectory: Path.join(options.project.directory, '.tao/cache/expo'),
+      runtimeDirectory: Path.join(Path.dirname(options.project.buildDirectory), 'expo'),
     }
   }
   return undefined

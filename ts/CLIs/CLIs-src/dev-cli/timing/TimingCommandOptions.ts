@@ -9,6 +9,7 @@ export type TimingCommandOptions = {
   fixture?: string
   samples: string
   edits: string
+  label?: string
   dryRun?: boolean
 }
 
@@ -26,6 +27,7 @@ export const timingArguments = [
 
 /** timingOptions declares the shared workload and preview flags for both run lifecycles. */
 export const timingOptions = [
+  { flags: '--label <name>', description: 'Agent or chat name to print in the runner’s live log.' },
   { flags: '--tooling <path>', description: 'Absolute prepared tooling checkout; defaults to the candidate.' },
   {
     flags: '--fixture <path>',

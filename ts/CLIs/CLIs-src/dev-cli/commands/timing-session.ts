@@ -1,5 +1,4 @@
 import * as TimingOptions from '../timing/TimingCommandOptions'
-import { runTimingSession } from '../timing/TimingSession'
 import { registerCommand } from './_command-runner'
 
 /** timingSessionCommand owns one connect, measure, report and disconnect lifecycle. */
@@ -9,6 +8,7 @@ export default registerCommand({
   arguments: TimingOptions.timingArguments,
   options: TimingOptions.timingOptions,
   async action(host: string, repo: string, options: TimingOptions.TimingCommandOptions) {
+    const { runTimingSession } = await import('../timing/TimingSession')
     const request = TimingOptions.describeTimingRun(host, repo, options)
     await runTimingSession(request)
   },

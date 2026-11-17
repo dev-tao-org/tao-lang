@@ -9,6 +9,14 @@ browser, bootstrap and packaging boundaries retain deliberately separate module 
 from the same owner. `./agent check` detects stale paths, missing targets, wildcard entrypoints,
 private cross-package imports and incorrect operation-family imports.
 
+`ts/repo-analysis` owns source policy, package and test analysis, and the Knip configuration.
+The CLI runs the tools, prints findings and writes command artifacts. The package also publishes
+the benchmark harness as `@repo-analysis/performance`, so check and fix can load analysis
+without loading preview or compiler benchmark code.
+
+Repository path confinement is owned by `Repo.assertNewWorkspacePath` in the shared OS layer.
+CLI preparation and package analysis use the same check without an analysis-to-CLI dependency.
+
 Run `just package-graph` to generate `.artifacts/package-graph.md` with Mermaid diagrams of
 direct source and test imports between TypeScript workspace packages. The arrows point from
 the importing package to the imported package. Labels count value, type and compile-only imports
@@ -33,6 +41,23 @@ Use module namespaces for operation families, such as `import * as Workspace fro
 Narrow imports remain appropriate for manifest-declared primary entities and constructors. Shared
 families are already namespaces: `import { Json, Sort } from '@shared'` exposes qualified operations
 and types without creating aggregate wrapper objects.
+
+## Invariants and user input
+
+Import `Invariant` and `UserInput` from `@shared`. Use `Invariant(condition, message)` for
+conditions guaranteed by Tao or an established upstream contract. Use
+`UserInput.require(condition, message)` when a caller can correct the input. Domain functions
+such as `requireRunPort` own the validity rules and write the diagnostic message.
+
+Both checks require a primitive boolean and a string, narrow the checked expression in
+TypeScript, and return `undefined` on success. They run synchronously in every build.
+`Invariant` throws `UnexpectedBehaviorError` on failure and `UserInput.require` throws
+`UserInputError`. Malformed calls throw a fixed `UnexpectedBehaviorError` without inspecting
+or attaching the arguments.
+
+Use `Errors.ThrowX` for unconditional failures and the existing structured error boundary
+for collected diagnostics. Use schema decoding to validate and type unknown data. Put a check
+before the operation it protects. Argument evaluation and earlier effects happen before it runs.
 
 ## Serialization and ordering
 
