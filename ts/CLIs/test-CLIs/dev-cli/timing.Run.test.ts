@@ -49,6 +49,11 @@ Tests.test.skipIf(Path.sep === '\\')('timing watch defaults to the runner and ca
     await FS.cp(Path.join(directory, 'ssh'), Path.join(directory, 'tail'))
     const env = { PATH: directory, TAO_TIMING_HOST: undefined, TAO_TIMING_SSH_RECORDING: recording }
     await Tests.withEnv(env, () => timingWatch.action(undefined, {}))
+    const args = (await FS.readFile(recording + '.args', 'utf8')).trimEnd().split(NewlineCharacter)
+    Tests.expect(args).toContain('ro@192.168.50.199')
+    Tests.expect(args).toContain('-tt')
+    Tests.expect(args).toContain('-S')
+    Tests.expect(args[args.indexOf('-S') + 1]).toStartWith(Path.home('.tao-dev/ssh/s-'))
     await Tests.withEnv({ ...env, HOME: directory }, () => timingWatch.action(undefined, { local: true }))
     const [remote, local] = (await FS.readFile(recording, 'utf8')).trimEnd().split(NewlineCharacter)
     Tests.expect(remote).toContain("'tao-timing' '.tao-dev/timing/transfers/live-preview.log'")
@@ -60,6 +65,7 @@ async function writeTimingRunner(directory: string): Promise<void> {
   const executable = Path.join(directory, 'ssh')
   const script = S`
     #!/bin/sh
+    printf '%s\\n' "$@" >> "$TAO_TIMING_SSH_RECORDING.args"
     for command do :; done
     printf '%s\\n' "$command" >> "$TAO_TIMING_SSH_RECORDING"
     case "$command" in
