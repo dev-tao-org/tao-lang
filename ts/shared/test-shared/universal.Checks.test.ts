@@ -27,6 +27,7 @@ Tests.test('malformed boolean-check arguments fail internally without touching o
   })
   const invalidArguments: readonly CheckArguments[] = [
     [1, 'Rejected.'],
+    [0, 'Rejected.'],
     [hostile, 'Rejected.'],
     [Promise.resolve(true), 'Rejected.'],
     [true, hostile],
