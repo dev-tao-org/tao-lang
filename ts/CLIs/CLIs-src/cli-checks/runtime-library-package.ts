@@ -1,7 +1,6 @@
 import * as Runtime from '@runtime'
 import { Json, NewlineCharacter } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import * as Workspace from '@workspace'
 
 import type { RuntimeSourceContents, RuntimeSourcePaths } from './runtime-sources'
 
@@ -19,6 +18,7 @@ export async function writeRuntimeLibraryPackage(
   sourcePaths: RuntimeSourcePaths,
   pins: Runtime.RuntimePackageVersions,
 ): Promise<void> {
+  const Workspace = await import('@workspace')
   const root = Path.join(directory, Runtime.RuntimeLibraryResourceDirectory)
   for (const [resource, sourcePath] of listLibraryClientSources(sourcePaths)) {
     const target = Path.join(root, resource)
